@@ -1,0 +1,73 @@
+lttng-load(1)
+=============
+
+
+NAME
+----
+lttng-load - Load LTTng tracing session configurations
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *load* [option:--force] [option:--input-path='PATH'] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng load` command loads the configurations of one or more
+tracing sessions from files.
+
+The `lttng load` command is used in conjunction with the
+linklttng:lttng-save(1) command to save and restore the complete
+configurations of tracing sessions. This includes the enabled channels
+and event rules, the context added to channels, the tracing activity,
+and more.
+
+Once one or more tracing session configurations are loaded, they appear
+exactly as they were saved from the user's point of view.
+
+The default input path is `$LTTNG_HOME/.lttng/sessions`
+(`$LTTNG_HOME` defaults to `$HOME`). The input path can be
+overridden with the option:--input-path option.
+
+If the input path is a directory, then if 'SESSION' is specified, the
+tracing session configuration named 'SESSION' is searched in all the
+files of this directory and loaded if found. If 'SESSION' is not
+specified, the option:--all option is implicit: all the tracing session
+configurations found in all the files in this directory are loaded.
+
+If the input path is a file, then if 'SESSION' is specified, the tracing
+session configuration named 'SESSION' is searched in this file and
+loaded if found. If 'SESSION' is not specified, the option:--all option
+is implicit: all the tracing session configurations found in this file
+are loaded.
+
+By default, existing tracing sessions are not overwritten when loading;
+the command fails. The option:--force option can be used to allow this.
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-a, option:--all::
+    Load all tracing session configurations (default).
+
+option:-f, option:--force::
+    Overwrite existing tracing sessions when loading.
+
+option:-i, option:--input-path='PATH'::
+    Set input path to 'PATH', either a directory or a file, in which
+    tracing session configurations are searched for.
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-save(1),
+linklttng:lttng(1)
