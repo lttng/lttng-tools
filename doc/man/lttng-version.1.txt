@@ -1,0 +1,40 @@
+lttng-version(1)
+================
+
+
+NAME
+----
+lttng-version - Get the version of LTTng-tools
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *version*
+
+
+DESCRIPTION
+-----------
+The `lttng version` command outputs the version of LTTng-tools.
+
+The output of `lttng version` is broke down into the following parts:
+
+* Major, minor, and patch numbers
+* Git commit information, if available
+* Release name with its description
+* LTTng project's website URL
+* License information
+
+
+include::common-cmd-options-head.txt[]
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1)
