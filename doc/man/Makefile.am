@@ -15,7 +15,8 @@ MAN1_NAMES = \
 	lttng-save \
 	lttng-load \
 	lttng-start \
-	lttng-stop
+	lttng-stop \
+	lttng-version
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
