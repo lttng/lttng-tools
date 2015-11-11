@@ -12,7 +12,8 @@ manaddsuffix = $(addsuffix $(1),$(addprefix $(srcdir)/,$(2)))
 #
 # List only the names without the extension here.
 MAN1_NAMES = \
-	lttng
+	lttng \
+	lttng-create
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
@@ -50,7 +51,8 @@ MAN_HTML = $(patsubst $(srcdir)/%.txt,%.html,$(MAN_TXT))
 
 # common AsciiDoc source files
 COMMON_TXT = \
-	$(srcdir)/common-footer.txt
+	$(srcdir)/common-footer.txt \
+	$(srcdir)/common-help-options.txt
 
 # config
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
