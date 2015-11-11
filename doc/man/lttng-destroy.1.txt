@@ -1,0 +1,55 @@
+lttng-destroy(1)
+===============
+
+
+NAME
+----
+lttng-destroy - Destroy an LTTng tracing session
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *destroy* [option:--all | 'SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng destroy` command destroys one or more tracing sessions.
+
+If no options are specified, the current tracing session is destroyed
+(see linklttng:lttng-create(1) for more information about the current
+tracing session).
+
+If 'SESSION' is specified, the existing tracing session named 'SESSION'
+is destroyed. `lttng list` outputs all the existing tracing sessions
+(see linklttng:lttng-list(1)).
+
+If the option:--all option is used, *all* the tracing sessions, as listed
+in the output of `lttng list`, are destroyed.
+
+Destroying a tracing session stops any tracing running within the latter.
+
+Destroying a tracing session does not destroy the recorded trace data,
+if any; it frees resources acquired by the session daemon and tracer
+side, making sure to flush all trace data.
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-a, option:--all::
+    Destroy all tracing sessions.
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-create(1),
+linklttng:lttng-set-session(1),
+linklttng:lttng(1)
