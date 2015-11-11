@@ -1,0 +1,50 @@
+BUGS
+----
+If you encounter any issue or usability problem, please report it on the
+LTTng bug tracker: *<https://bugs.lttng.org/projects/lttng-tools>*.
+
+
+RESOURCES
+---------
+LTTng project website: *<http://lttng.org>*.
+
+LTTng documentation: *<http://lttng.org/docs>*.
+
+Git repositories: *<http://git.lttng.org>*.
+
+http://lists.lttng.org[Mailing list] for support and
+development: `lttng-dev@lists.lttng.org`.
+
+IRC channel: `#lttng` on `irc.oftc.net` (http://www.oftc.net/[OFTC]).
+
+
+COPYRIGHTS
+----------
+This program is part of the LTTng-tools project.
+
+LTTng-tools is distributed under the
+http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html[GNU General
+Public License version 2]. See the
+https://github.com/lttng/lttng-tools/blob/master/LICENSE[`LICENSE`] file
+for details.
+
+
+THANKS
+------
+Special thanks to Michel Dagenais and the
+http://www.dorsal.polymtl.ca/[DORSAL laboratory] at École Polytechnique
+de Montréal for the LTTng journey.
+
+Also thanks to the Ericsson teams working on tracing which helped us
+greatly with detailed bug reports and unusual test cases.
+
+
+AUTHORS
+-------
+LTTng-tools was originally written by Mathieu Desnoyers,
+Julien Desfossez, and David Goulet. More people have since
+contributed to it.
+
+LTTng-tools is currently maintained by
+Jérémie Galarneau
+(*mailto:jeremie.galarneau@efficios.com[jeremie.galarneau@efficios.com]*).
