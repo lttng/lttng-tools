@@ -25,6 +25,9 @@
 #include "conf.h"
 #include "utils.h"
 
+#define DECL_COMMAND(_name) \
+	extern int cmd_##_name(int, const char **)
+
 enum cmd_error_code {
 	CMD_SUCCESS = 0,
 	CMD_ERROR,
@@ -39,26 +42,27 @@ struct cmd_struct {
 	int (*func)(int argc, const char **argv);
 };
 
-extern int cmd_list(int argc, const char **argv);
-extern int cmd_create(int argc, const char **argv);
-extern int cmd_destroy(int argc, const char **argv);
-extern int cmd_start(int argc, const char **argv);
-extern int cmd_stop(int argc, const char **argv);
-extern int cmd_enable_events(int argc, const char **argv);
-extern int cmd_disable_events(int argc, const char **argv);
-extern int cmd_enable_channels(int argc, const char **argv);
-extern int cmd_disable_channels(int argc, const char **argv);
-extern int cmd_add_context(int argc, const char **argv);
-extern int cmd_set_session(int argc, const char **argv);
-extern int cmd_version(int argc, const char **argv);
-extern int cmd_calibrate(int argc, const char **argv);
-extern int cmd_view(int argc, const char **argv);
-extern int cmd_enable_consumer(int argc, const char **argv);
-extern int cmd_disable_consumer(int argc, const char **argv);
-extern int cmd_snapshot(int argc, const char **argv);
-extern int cmd_save(int argc, const char **argv);
-extern int cmd_load(int argc, const char **argv);
-extern int cmd_track(int argc, const char **argv);
-extern int cmd_untrack(int argc, const char **argv);
+DECL_COMMAND(list);
+DECL_COMMAND(status);
+DECL_COMMAND(create);
+DECL_COMMAND(destroy);
+DECL_COMMAND(start);
+DECL_COMMAND(stop);
+DECL_COMMAND(enable_events);
+DECL_COMMAND(disable_events);
+DECL_COMMAND(enable_channels);
+DECL_COMMAND(disable_channels);
+DECL_COMMAND(add_context);
+DECL_COMMAND(set_session);
+DECL_COMMAND(version);
+DECL_COMMAND(calibrate);
+DECL_COMMAND(view);
+DECL_COMMAND(enable_consumer);
+DECL_COMMAND(disable_consumer);
+DECL_COMMAND(snapshot);
+DECL_COMMAND(save);
+DECL_COMMAND(load);
+DECL_COMMAND(track);
+DECL_COMMAND(untrack);
 
 #endif /* _LTTNG_CMD_H */
