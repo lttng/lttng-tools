@@ -8,7 +8,8 @@ manaddsuffix = $(addsuffix $(1),$(addprefix $(srcdir)/,$(2)))
 
 # List only the names without the .*.txt extension here:
 MAN1_NAMES = \
-	lttng
+	lttng \
+	lttng-create
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
@@ -47,7 +48,8 @@ MAN_XML = $(patsubst $(srcdir)/%.txt,%.xml,$(MAN_TXT))
 COMMON_TXT = \
 	$(srcdir)/common-footer.txt \
 	$(srcdir)/common-cmd-footer.txt \
-	$(srcdir)/common-cmd-options-head.txt
+	$(srcdir)/common-cmd-options-head.txt \
+	$(srcdir)/common-cmd-help-options.txt
 
 # config
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
