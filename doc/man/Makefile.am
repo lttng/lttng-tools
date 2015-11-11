@@ -9,7 +9,8 @@ manaddsuffix = $(addsuffix $(1),$(addprefix $(srcdir)/,$(2)))
 # List only the names without the .*.txt extension here:
 MAN1_NAMES = \
 	lttng \
-	lttng-create
+	lttng-create \
+	lttng-destroy
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
