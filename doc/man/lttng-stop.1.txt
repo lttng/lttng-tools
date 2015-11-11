@@ -1,0 +1,59 @@
+lttng-stop(1)
+=============
+
+
+NAME
+----
+lttng-stop - Stop LTTng tracers
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *stop* [option:--no-wait] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng stop` command stops the various LTTng tracers for a given
+active tracing session.
+
+Stoping the LTTng tracers has the effect that all enabled event rules
+within enabled channels cannot make event sources _emit_ trace events
+anymore.
+
+A tracing session with no running tracers is said to be _inactive_.
+Inactive tracing sessions can be set active using the
+linklttng:lttng-start(1) command.
+
+If 'SESSION' is omitted, the LTTng tracers are stopped for the current
+tracing session (see linklttng:lttng-create(1) for more information
+about the current tracing session). Otherwise, they are stopped for the
+existing tracing session named 'SESSION'. `lttng list`
+outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+
+By default, the `lttng stop` command ensures that the tracing session's
+trace data is valid before returning to the prompt. With the
+option:--no-wait option, the command finishes immediately, hence a local
+trace might not be valid when the command is done. In this case, there
+is no way to know when the trace becomes valid.
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-n, option:--no-wait::
+	Do not ensure that the chosen tracing session's trace data is valid
+	before returning to the prompt.
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-start(1),
+linklttng:lttng(1)
