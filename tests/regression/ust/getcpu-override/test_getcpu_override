@@ -58,7 +58,7 @@ fi
 run_app()
 {
 	diag "Launching app without getcpu-plugin wrapper"
-	$TESTAPP_BIN $NUM_EVENT
+	$TESTAPP_BIN $NUM_EVENT 1
 	ok $? "Application without wrapper done"
 }
 
