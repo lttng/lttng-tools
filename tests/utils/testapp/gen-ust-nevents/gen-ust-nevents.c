@@ -25,13 +25,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "utils.h"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
 int main(int argc, char **argv)
 {
-	int i, netint;
+	int i, netint, ret = 0;
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
 	double dbl = 2.0;
@@ -60,8 +61,14 @@ int main(int argc, char **argv)
 				dbl, flt);
 		tracepoint(tp, tptest5, i, netint, values, text, strlen(text),
 				dbl, flt);
-		usleep(nr_usec);
+		if (nr_usec) {
+		        if (usleep_safe(nr_usec)) {
+				ret = -1;
+				goto end;
+			}
+		}
 	}
 
-	return 0;
+end:
+        exit(!ret ? EXIT_SUCCESS : EXIT_FAILURE);
 }
