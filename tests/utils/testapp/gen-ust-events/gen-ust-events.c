@@ -126,7 +126,9 @@ int main(int argc, char **argv)
 		 * that at least one tracepoint has been hit.
 		 */
 		create_file(after_first_event_file_path);
-		usleep(nr_usec);
+		if (nr_usec) {
+			usleep(nr_usec);
+		}
 	}
 
 	return 0;
