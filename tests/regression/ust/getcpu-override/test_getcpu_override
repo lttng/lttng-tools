@@ -25,6 +25,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 TESTAPP_WRAPPER="run-getcpu-override"
 NUM_EVENT=256
+EVENT_WAIT_USEC=1
 EVENT_NAME="tp:tptest"
 
 NUM_TESTS=20
@@ -58,14 +59,14 @@ fi
 run_app()
 {
 	diag "Launching app without getcpu-plugin wrapper"
-	$TESTAPP_BIN $NUM_EVENT 1
+	$TESTAPP_BIN $NUM_EVENT $EVENT_WAIT_USEC
 	ok $? "Application without wrapper done"
 }
 
 run_getcpu_plugin_app()
 {
 	diag "Launching app with getcpu-plugin wrapper"
-	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN $NUM_EVENT
+	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN $NUM_EVENT $EVENT_WAIT_USEC
 	ok $? "Application with wrapper done"
 }
 
