@@ -1,7 +1,10 @@
-SUBDIRS = tap testapp
+SUBDIRS = . tap testapp
 
 EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_lttng_processes.sh
 dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl warn_lttng_processes.sh
+noinst_LTLIBRARIES = libtestutils.la
+
+libtestutils_la_SOURCES = utils.c utils.h
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
