@@ -3385,135 +3385,93 @@ int cmd_snapshot_record(struct ltt_session *session,
 		use_tmp_output = 1;
 	}
 
-	if (session->kernel_session) {
-		struct ltt_kernel_session *ksess = session->kernel_session;
+	if (use_tmp_output) {
+		int64_t nb_packets_per_stream;
 
-		if (use_tmp_output) {
-			int64_t nb_packets_per_stream;
-
-			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
-					tmp_output.max_size);
-			if (nb_packets_per_stream < 0) {
-				ret = LTTNG_ERR_MAX_SIZE_INVALID;
-				goto error;
-			}
-			ret = record_kernel_snapshot(ksess, &tmp_output, session,
-					wait, nb_packets_per_stream);
-			if (ret != LTTNG_OK) {
-				goto error;
-			}
-			snapshot_success = 1;
-		} else {
-			struct snapshot_output *sout;
-			struct lttng_ht_iter iter;
-
-			rcu_read_lock();
-			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
-					&iter.iter, sout, node.node) {
-				int64_t nb_packets_per_stream;
-
-				/*
-				 * Make a local copy of the output and assign the possible
-				 * temporary value given by the caller.
-				 */
-				memset(&tmp_output, 0, sizeof(tmp_output));
-				memcpy(&tmp_output, sout, sizeof(tmp_output));
-
-				if (output->max_size != (uint64_t) -1ULL) {
-					tmp_output.max_size = output->max_size;
-				}
-
-				nb_packets_per_stream = get_session_nb_packets_per_stream(session,
-						tmp_output.max_size);
-				if (nb_packets_per_stream < 0) {
-					ret = LTTNG_ERR_MAX_SIZE_INVALID;
-					goto error;
-				}
-
-				/* Use temporary name. */
-				if (*output->name != '\0') {
-					strncpy(tmp_output.name, output->name,
-							sizeof(tmp_output.name));
-				}
-
-				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
-
-				ret = record_kernel_snapshot(ksess, &tmp_output,
-						session, wait, nb_packets_per_stream);
-				if (ret != LTTNG_OK) {
-					rcu_read_unlock();
-					goto error;
-				}
-				snapshot_success = 1;
-			}
-			rcu_read_unlock();
+		nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+				tmp_output.max_size);
+		if (nb_packets_per_stream < 0) {
+			ret = LTTNG_ERR_MAX_SIZE_INVALID;
+			goto error;
 		}
-	}
 
-	if (session->ust_session) {
-		struct ltt_ust_session *usess = session->ust_session;
+		if (session->kernel_session) {
+			ret = record_kernel_snapshot(session->kernel_session,
+					&tmp_output, session,
+					wait, nb_packets_per_stream);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+		}
 
-		if (use_tmp_output) {
+		if (session->ust_session) {
+			ret = record_ust_snapshot(session->ust_session,
+					&tmp_output, session,
+					wait, nb_packets_per_stream);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
+		}
+
+		snapshot_success = 1;
+	} else {
+		struct snapshot_output *sout;
+		struct lttng_ht_iter iter;
+
+		rcu_read_lock();
+		cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
+				&iter.iter, sout, node.node) {
 			int64_t nb_packets_per_stream;
+
+			/*
+			 * Make a local copy of the output and assign the possible
+			 * temporary value given by the caller.
+			 */
+			memset(&tmp_output, 0, sizeof(tmp_output));
+			memcpy(&tmp_output, sout, sizeof(tmp_output));
+
+			if (output->max_size != (uint64_t) -1ULL) {
+				tmp_output.max_size = output->max_size;
+			}
 
 			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
 					tmp_output.max_size);
 			if (nb_packets_per_stream < 0) {
 				ret = LTTNG_ERR_MAX_SIZE_INVALID;
+				rcu_read_unlock();
 				goto error;
 			}
-			ret = record_ust_snapshot(usess, &tmp_output, session,
-					wait, nb_packets_per_stream);
-			if (ret != LTTNG_OK) {
-				goto error;
+
+			/* Use temporary name. */
+			if (*output->name != '\0') {
+				strncpy(tmp_output.name, output->name,
+						sizeof(tmp_output.name));
 			}
-			snapshot_success = 1;
-		} else {
-			struct snapshot_output *sout;
-			struct lttng_ht_iter iter;
 
-			rcu_read_lock();
-			cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
-					&iter.iter, sout, node.node) {
-				int64_t nb_packets_per_stream;
+			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
 
-				/*
-				 * Make a local copy of the output and assign the possible
-				 * temporary value given by the caller.
-				 */
-				memset(&tmp_output, 0, sizeof(tmp_output));
-				memcpy(&tmp_output, sout, sizeof(tmp_output));
-
-				if (output->max_size != (uint64_t) -1ULL) {
-					tmp_output.max_size = output->max_size;
-				}
-
-				nb_packets_per_stream = get_session_nb_packets_per_stream(session,
-						tmp_output.max_size);
-				if (nb_packets_per_stream < 0) {
-					ret = LTTNG_ERR_MAX_SIZE_INVALID;
-					rcu_read_unlock();
-					goto error;
-				}
-
-				/* Use temporary name. */
-				if (*output->name != '\0') {
-					strncpy(tmp_output.name, output->name,
-							sizeof(tmp_output.name));
-				}
-
-				tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
-
-				ret = record_ust_snapshot(usess, &tmp_output, session,
+			if (session->kernel_session) {
+				ret = record_kernel_snapshot(session->kernel_session,
+						&tmp_output, session,
 						wait, nb_packets_per_stream);
 				if (ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
 				}
-				snapshot_success = 1;
 			}
-			rcu_read_unlock();
+
+			if (session->ust_session) {
+				ret = record_ust_snapshot(session->ust_session,
+						&tmp_output, session,
+						wait, nb_packets_per_stream);
+				if (ret != LTTNG_OK) {
+					rcu_read_unlock();
+					goto error;
+				}
+			}
+			snapshot_success = 1;
 		}
+		rcu_read_unlock();
 	}
 
 	if (snapshot_success) {
