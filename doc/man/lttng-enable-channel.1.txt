@@ -1,0 +1,365 @@
+lttng-enable-channel(1)
+=======================
+
+
+NAME
+----
+lttng-enable-channel - Create or enable LTTng channels
+
+
+SYNOPSIS
+--------
+Create a Linux kernel channel:
+
+[verse]
+*lttng enable-channel* ['GENERAL OPTIONS'] option:--kernel
+                     [option:--discard | option:--overwrite]
+                     [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
+                     [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
+                     [option:--output=(`mmap` | `splice`)] [option:--buffers-global]
+                     [option:--tracefile-size='SIZE'] [option:--tracefile-count='COUNT']
+                     [option:--session='SESSION'] 'CHANNEL'
+
+Create a user space channel:
+
+[verse]
+*lttng enable-channel* ['GENERAL OPTIONS'] option:--userspace
+                     [option:--discard | option:--overwrite]
+                     [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
+                     [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
+                     [option:--output=`mmap`] [option:--buffers-uid | option:--buffers-pid]
+                     [option:--tracefile-size='SIZE'] [option:--tracefile-count='COUNT']
+                     [option:--session='SESSION'] 'CHANNEL'
+
+Enable existing channel(s):
+
+[verse]
+*lttng enable-channel* ['GENERAL OPTIONS'] (option:--userspace | option:--kernel)
+                     [option:--session='SESSION'] 'CHANNEL'[,'CHANNEL']...
+
+
+DESCRIPTION
+-----------
+The `lttng enable-channel` command can create a new channel, or enable
+one or more existing and disabled ones.
+
+A channel is the owner of sub-buffers holding recorded events. Event,
+rules, when created using linklttng:lttng-enable-event(1), are always
+assigned to a channel. When creating a new channel, many parameters
+related to those sub-buffers can be fine-tuned. They are described in
+the subsections below.
+
+When 'CHANNEL' does not name an existing channel, a channel named
+'CHANNEL' is created. Otherwise, the disabled channel named 'CHANNEL'
+is enabled.
+
+Note that the linklttng:lttng-enable-event(1) command can automatically
+create default channels when no channel exist.
+
+A channel is always contained in a tracing session
+(see linklttng:lttng-create(1) for creating a tracing session). The
+session in which a channel is created using `lttng enable-channel` can
+be specified using the option:--session option. If the option:--session
+option is omitted, the current tracing session is targeted.
+
+Existing enabled channels can be disabled using
+linklttng:lttng-disable-channel(1). Channels of a given session can be
+listed using linklttng:lttng-list(1).
+
+As of this version of LTTng, it is not possible to:
+
+* Reconfigure a channel once it is created.
+* Re-enable a disabled channel once its tracing session has been active
+  at least once.
+* Create a channel once its tracing session has been active
+  at least once.
+* Create a user space channel with a given buffering scheme
+  (option:--buffers-uid or option:--buffers-pid options) and create
+  a second user space channel with a different buffering scheme in the
+  same tracing session.
+
+
+Event loss modes
+~~~~~~~~~~~~~~~~
+LTTng tracers are non-blocking: when no empty sub-buffer exists,
+losing events is acceptable when the alternative would be to cause
+substantial delays in the instrumented application's execution.
+
+LTTng privileges performance over integrity, aiming at perturbing the
+traced system as little as possible in order to make tracing of subtle
+race conditions and rare interrupt cascades possible.
+
+When it comes to losing events because no empty sub-buffer is available,
+the channel's event loss mode, specified by one of the option:--discard
+and option:--overwrite options, determines what to do amongst:
+
+Discard::
+    Drop the newest events until a sub-buffer is released.
+
+Overwrite::
+    Clear the sub-buffer containing the oldest recorded events and start
+    recording the newest events there. This mode is sometimes called
+    _flight recorder mode_ because it behaves like a flight recorder:
+    always keep a fixed amount of the latest data.
+
+Which mechanism to choose depends on the context: prioritize the newest
+or the oldest events in the ring buffer?
+
+Beware that, in overwrite mode (option:--overwrite option), a whole
+sub-buffer is abandoned as soon as a new event doesn't find an empty
+sub-buffer, whereas in discard mode (option:--discard option), only the
+event that doesn't fit is discarded.
+
+Also note that a count of lost events is incremented and saved in the
+trace itself when an event is lost in discard mode, whereas no
+information is kept when a sub-buffer gets overwritten before being
+committed.
+
+The probability of losing events, if it is experience in a given
+context, can be reduced by fine-tuning the sub-buffers count and size
+(see next subsection).
+
+
+Sub-buffers count and size
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+The option:--num-subbuf and option:--subbuf-size options respectively
+set the number of sub-buffers and their individual size when creating
+a new channel.
+
+Note that there is a noticeable tracer's CPU overhead introduced when
+switching sub-buffers (marking a full one as consumable and switching
+to an empty one for the following events to be recorded). Knowing this,
+the following list presents a few practical situations along with how
+to configure sub-buffers for them when creating a channel in overwrite
+mode (option:--overwrite option):
+
+High event throughput::
+    In general, prefer bigger sub-buffers to lower the risk of losing
+    events. Having bigger sub-buffers also ensures a lower sub-buffer
+    switching frequency. The number of sub-buffers is only meaningful
+    if the channel is enabled in overwrite mode: in this case, if a
+    sub-buffer overwrite happens, the other sub-buffers
+    are left unaltered.
+
+Low event throughput::
+    In general, prefer smaller sub-buffers since the risk of losing
+    events is already low. Since events happen less frequently, the
+    sub-buffer switching frequency should remain low and thus the
+    tracer's overhead should not be a problem.
+
+Low memory system::
+    If the target system has a low memory limit, prefer fewer first,
+    then smaller sub-buffers. Even if the system is limited in memory,
+    it is recommended to keep the sub-buffers as big as possible to
+    avoid a high sub-buffer switching frequency.
+
+In discard mode (option:--discard option), the sub-buffers count
+parameter is pointless: using two sub-buffers and setting their size
+according to the requirements of the context is fine.
+
+
+Switch and read timers
+~~~~~~~~~~~~~~~~~~~~~~
+When a channel's switch timer fires, a sub-buffer switch happens. This
+timer may be used to ensure that event data is consumed and committed
+to trace files periodically in case of a low event throughput.
+
+It's also convenient when big sub-buffers are used to cope with sporadic
+high event throughput, even if the throughput is normally lower.
+
+By default, a notification mechanism is used to signal a full sub-buffer
+so that it can be consumed. When such notifications must be avoided,
+for example in real-time applications, the channel's read timer can be
+used instead. When the read timer fires, sub-buffers are checked for
+consumption when they are full.
+
+
+Buffering scheme
+~~~~~~~~~~~~~~~~
+In the user space tracing domain, two buffering schemes are available
+when creating a channel:
+
+Per-process buffering (option:--buffers-pid option)::
+    Keep one ring buffer per process.
+
+Per-user buffering (option:--buffers-uid option)::
+    Keep one ring buffer for all the processes of a single user.
+
+The per-process buffering scheme consumes more memory than the per-user
+option if more than one process is instrumented for LTTng-UST.
+However, per-process buffering ensures that one process having a high
+event throughput won't fill all the shared sub-buffers, only its own.
+
+The Linux kernel tracing domain only has one available buffering scheme
+which is to use a single ring buffer for the whole system
+(option:--buffers-global option).
+
+
+Trace files limit and size
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+By default, trace files can grow as large as needed. The maximum size
+of each trace file written by a channel can be set on creation using the
+option:--tracefile-size option. When such a trace file's size reaches
+the channel's fixed maximum size, another trace file is created to hold
+the next recorded events. A file count is appended to each trace file
+name in this case.
+
+If the option:--tracefile-size option is used, the maximum number of
+created trace files is unlimited. To limit them, the
+option:--tracefile-count option can be used. This option is always used
+in conjunction with the option:--tracefile-size option.
+
+For example, consider this command:
+
+-----------------------------------------------------
+lttng enable-channel --kernel --tracefile-size=4096 \
+                     --tracefile-count=32 my-channel
+-----------------------------------------------------
+
+Here, for each stream, the maximum size of each trace file is
+4 kiB and there can be a maximum of 32 different files. When there is
+no space left in the last file, _trace file rotation_ happens: the first
+file is cleared and new sub-buffers containing events are written there.
+
+
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
+
+
+Domain
+~~~~~~
+One of:
+
+option:-k, option:--kernel::
+    Apply command to the Linux kernel domain.
+
+option:-u, option:--userspace::
+    Apply command to the user space domain.
+
+
+Target
+~~~~~~
+option:-s, option:--session='SESSION'::
+    Create or enable channel in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+Event loss mode
+~~~~~~~~~~~~~~~
+One of:
+
+option:--discard::
+    Discard events when sub-buffers are full (default).
+
+option:--overwrite::
+    Flight recorder mode: always keep a fixed amount of the latest
+    data.
+
+
+Sub-buffers
+~~~~~~~~~~~
+option:--num-subbuf='COUNT'::
+    Use 'COUNT' sub-buffers. Rounded up to the next power of two.
++
+Default values:
++
+* `metadata` channel: 2
+* Everything else: 4
+
+option:--subbuf-size='SIZE'::
+    Set the individual size of sub-buffers to 'SIZE' bytes.
+    The `k` (kiB), `M` (MiB), and `G` (GiB) suffixes are supported.
+    Rounded up to the next power of two.
++
+The minimum sub-buffer size, for each tracer, is the maximum value
+between the default below and the system's page size. The following
+command shows the current system's page size: `getconf PAGE_SIZE`.
++
+Default values:
++
+* option:--userspace and option:--buffers-uid options: `128k`
+* option:--userspace and option:--buffers-pid options: `4k`
+* option:--kernel option: `256k`
+* `metadata` channel: `4k`
+
+option:--output='TYPE'::
+    Set channel's output type to 'TYPE'.
++
+Available types: `mmap` (always available) and `splice` (only available
+with the option:--kernel option).
++
+Default values:
++
+* option:--userspace and option:--buffers-uid options: `mmap`
+* option:--userspace and option:--buffers-pid options: `mmap`
+* option:--kernel option: `splice`
+* `metadata` channel: `mmap`
+
+Buffering scheme
+~~~~~~~~~~~~~~~~
+One of:
+
+option:--buffers-global::
+    Use shared sub-buffers for the whole system (only available with the
+    option:--kernel option).
+
+option:--buffers-pid::
+    Use different sub-buffers for each traced process (only available
+    with the the option:--userspace option). This is the default
+    buffering scheme for user space channels.
+
+option:--buffers-uid::
+    Use shared sub-buffers for all the processes of the user running
+    the command (only available with the option:--userspace option).
+
+
+Trace files
+~~~~~~~~~~~
+option:--tracefile-count='COUNT'::
+    Limit the number of trace files created by this channel to
+    'COUNT'. 0 means unlimited. Default: 0.
++
+Use this option in conjunction with the option:--tracefile-size option.
++
+The file count within a stream is appended to each created trace
+file. If 'COUNT' files are created and more events need to be recorded,
+the first trace file of the stream is cleared and used again.
+
+option:--tracefile-size='SIZE'::
+    Set the maximum size of each trace file written by
+    this channel within a stream to 'SIZE' bytes. 0 means unlimited.
+    Default: 0.
++
+Note: traces generated with this option may inaccurately report
+discarded events as of CTF 1.8.
+
+
+Timers
+~~~~~~
+option:--read-timer::
+    Set the channel's read timer's period to 'PERIODUS' µs. 0 means a
+    disabled read timer.
++
+Default values:
++
+* option:--userspace and option:--buffers-uid options: 0
+* option:--userspace and option:--buffers-pid options: 0
+* option:--kernel option: 200000
+* `metadata` channel: 0
+
+option:--switch-timer='PERIODUS'::
+    Set the channel's switch timer's period to 'PERIODUS' µs. 0 means
+    a disabled switch timer. Default: 0.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-disable-channel(1),
+linklttng:lttng(1)
