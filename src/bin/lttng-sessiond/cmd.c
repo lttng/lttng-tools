@@ -3121,13 +3121,6 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	assert(output);
 	assert(session);
 
-	/* Get the datetime for the snapshot output directory. */
-	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
-			sizeof(output->datetime));
-	if (!ret) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
 
 	/*
 	 * Copy kernel session sockets so we can communicate with the right
@@ -3174,14 +3167,6 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(output);
 	assert(session);
-
-	/* Get the datetime for the snapshot output directory. */
-	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", output->datetime,
-			sizeof(output->datetime));
-	if (!ret) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
 
 	/*
 	 * Copy UST session sockets so we can communicate with the right
@@ -3324,11 +3309,20 @@ int cmd_snapshot_record(struct ltt_session *session,
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
 	unsigned int snapshot_success = 0;
+	char datetime[16];
 
 	assert(session);
 	assert(output);
 
 	DBG("Cmd snapshot record for session %s", session->name);
+
+	/* Get the datetime for the snapshot output directory. */
+	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", datetime,
+			sizeof(datetime));
+	if (!ret) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	/*
 	 * Permission denied to create an output if the session is not
@@ -3360,6 +3354,9 @@ int cmd_snapshot_record(struct ltt_session *session,
 		}
 		/* Use the global session count for the temporary snapshot. */
 		tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+
+		/* Use the global datetime */
+		memcpy(tmp_output.datetime, datetime, sizeof(datetime));
 		use_tmp_output = 1;
 	}
 
@@ -3427,6 +3424,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			}
 
 			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+			memcpy(tmp_output.datetime, datetime, sizeof(datetime));
 
 			if (session->kernel_session) {
 				ret = record_kernel_snapshot(session->kernel_session,
