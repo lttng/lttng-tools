@@ -23,7 +23,8 @@ MAN1_NAMES = \
 	lttng-add-context \
 	lttng-list \
 	lttng-calibrate \
-	lttng-track
+	lttng-track \
+	lttng-untrack
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
