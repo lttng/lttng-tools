@@ -24,7 +24,8 @@ MAN1_NAMES = \
 	lttng-list \
 	lttng-calibrate \
 	lttng-track \
-	lttng-untrack
+	lttng-untrack \
+	lttng-status
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
