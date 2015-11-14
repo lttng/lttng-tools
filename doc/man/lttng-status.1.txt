@@ -1,0 +1,43 @@
+lttng-status(1)
+===============
+
+
+NAME
+----
+lttng-status - Get the current LTTng tracing session's status
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *status*
+
+
+DESCRIPTION
+-----------
+The `lttng status` command shows the status of the current
+tracing session.
+
+This command is the exact equivalent of:
+
+---------------------
+lttng list CURSESSION
+---------------------
+
+where `CURSESSION` is the name of the current tracing session.
+Use linklttng:lttng-set-session(1) to set the current tracing session.
+
+
+include::common-cmd-options-head.txt[]
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-set-session(1),
+linklttng:lttng(1)
