@@ -1,0 +1,138 @@
+lttng-snapshot(1)
+=================
+
+
+NAME
+----
+lttng-snapshot - Take LTTng snapshots and configure snapshot outputs
+
+
+SYNOPSIS
+--------
+Add a snapshot output:
+
+[verse]
+*lttng snapshot* ['GENERAL OPTIONS'] *add-output* [option:--max-size='SIZE']
+               [option:--name='NAME'] [option:--session='SESSION']
+               ('URL' | option:--ctrl-url='URL' option:--data-url='URL')
+
+Remove a snapshot output:
+
+[verse]
+*lttng snapshot* ['GENERAL OPTIONS'] *del-output* [option:--session='SESSION']
+               ('ID' | 'NAME')
+
+List current snapshot outputs:
+
+[verse]
+*lttng snapshot* ['GENERAL OPTIONS'] *list-output* [option:--session='SESSION']
+
+Take a snapshot:
+
+[verse]
+*lttng snapshot* ['GENERAL OPTIONS'] *record* [option:--max-size='SIZE']
+               [option:--name='NAME'] [option:--session='SESSION']
+               ('URL' | option:--ctrl-url='URL' option:--data-url='URL')
+
+
+DESCRIPTION
+-----------
+The `lttng snapshot` command manages the snapshot outputs and takes
+snapshots.
+
+A _snapshot_ is a dump of the current sub-buffers of all the channels
+of a given tracing session. When a snapshot is taken, the memory dump
+is sent to the registered snapshot outputs.
+
+The tracing session should be created in _snapshot mode_ to make sure
+taking snapshots is allowed. This is done at tracing session creation
+time using the linklttng:lttng-create(1) command.
+
+Note that, when a snapshot is taken, the sub-buffers are not cleared.
+This means that different recorded snapshots may contain the same
+events.
+
+
+Snapshot outputs
+~~~~~~~~~~~~~~~~
+Snapshot outputs are the destinations of snapshot files when a
+snapshot is taken using the `record` action.
+
+As of this version, only one snapshot output is allowed.
+
+A snapshot output can be added using the `add-output` action. The
+output destination URL is set using either the 'URL' positional
+argument, or both the option:--ctrl-url and option:--data-url options.
+See linklttng:lttng-create(1) to learn more about the URL format.
+
+A name can be assigned to an output when adding it using the
+option:--name option. This name is part of the names of the
+snapshot files written to this output.
+
+By default, the snapshot files can be as big as the sum of the
+sizes of all the sub-buffers or all the channels of the selected
+tracing session. The maximum total size of all the snapshot files can
+be configured using the option:--max-size option.
+
+Snapshot outputs can be listed using the `list-output` action.
+
+Snapshot outputs can be removed using the `del-output` action. The
+configured name can be used when removing an output, or an ID as
+listed by the `list-output` action.
+
+
+Taking a snapshot
+~~~~~~~~~~~~~~~~~
+Taking a snapshot of the current tracing session is as easy as:
+
+---------------------
+lttng snapshot record
+---------------------
+
+This writes the snapshot files to the configured output. It is possible
+to use a custom, unregistered output at record time using the same
+options supported by the `add-output` action.
+
+
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
+
+
+Target
+~~~~~~
+option:-s, option:--session='SESSION'::
+    Take a snapshot of the sub-buffers of the channels contained in
+    the tracing session named 'SESSION' instead of the current
+    tracing session.
+
+
+Snapshot output
+~~~~~~~~~~~~~~~
+option:-C, option:--ctrl-url='URL'::
+    Set control path URL to 'URL' (must use option:--data-url option
+    also).
+
+option:-D, option:--data-url='URL'::
+    Set data path URL to 'URL' (must use option:--ctrl-url option
+    also).
+
+option:-m, option:--max-size='SIZE'::
+    Limit the total size of all the snapshot files written when
+    recording a snapshot to 'SIZE' bytes. The `k` (kiB), `M` (MiB),
+    and `G` (GiB) suffixes are supported.
+
+option:-n, option:--name='NAME'::
+    Assign the name 'NAME' to the snapshot output.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-untrack(1),
+linklttng:lttng(1)
