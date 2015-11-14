@@ -20,7 +20,8 @@ MAN1_NAMES = \
 	lttng-view \
 	lttng-enable-channel \
 	lttng-disable-channel \
-	lttng-add-context
+	lttng-add-context \
+	lttng-list
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
