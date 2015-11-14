@@ -1,0 +1,150 @@
+lttng-track(1)
+==============
+
+
+NAME
+----
+lttng-track - Add one or more entries to an LTTng resource tracker
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng track* ['GENERAL OPTIONS'] (option:--kernel | option:--userspace)
+            option:--pid[='PID'[,'PID']...] [option:--all] [option:--session='SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng track` commands adds one or more entries to a
+resource tracker.
+
+A resource tracker is a _whitelist_ of resources. Tracked resources are
+allowed to emit events, provided those events are targeted by enabled
+event rules (see linklttng:lttng-enable-event(1)).
+
+Tracker entries can be removed from the whitelist with
+linklttng:lttng-untrack(1).
+
+As of this version, the only available tracker is the *PID tracker*. The
+process ID (PID) tracker follows one or more process IDs; only the
+processes with a tracked PID are allowed to emit events. By default, all
+possible PIDs on the system are tracked: any process may emit enabled
+events (equivalent of `lttng track --pid --all` for all domains).
+
+With the PID tracker, it is possible, for example, to record all system
+calls called by a given process:
+
+-------------------------------------------
+lttng enable-event --kernel --all --syscall
+lttng track --kernel --pid=2345
+lttng start
+-------------------------------------------
+
+If all the PIDs are tracked (i.e. `lttng track --pid --all`, which is
+the default state of all domains when creating a tracing session), then
+using the track command with one or more specific PIDs has the effect of
+first removing all the PIDs from the whitelist, then adding the
+specified PIDs.
+
+
+Example
+~~~~~~~
+Assume the maximum system PID is 7 for this example.
+
+Initial whitelist:
+
+-------------------------------
+[0] [1] [2] [3] [4] [5] [6] [7]
+-------------------------------
+
+Command:
+
+-----------------------------------
+lttng track --userspace --pid=3,6,7
+-----------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [ ] [ ] [3] [ ] [ ] [6] [7]
+-------------------------------
+
+Command:
+
+---------------------------------
+lttng untrack --userspace --pid=7
+---------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [ ] [ ] [3] [ ] [ ] [6] [ ]
+-------------------------------
+
+Command:
+
+---------------------------------
+lttng track --userspace --pid=1,5
+---------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [1] [ ] [3] [ ] [5] [6] [ ]
+-------------------------------
+
+It should be noted that the PID tracker tracks the numeric process IDs.
+Should a process with a given ID exit and another process be given this
+ID, then the latter would also be allowed to emit events.
+
+See the linklttng:lttng-untrack(1) for more details about removing
+entries.
+
+
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
+
+
+Domain
+~~~~~~
+One of:
+
+option:-k, option:--kernel::
+    Track resources in the Linux kernel domain.
+
+option:-u, option:--userspace::
+    Track resources in the user space domain.
+
+
+Target
+~~~~~~
+option:-s, option:--session='SESSION'::
+    Track resources in the tracing session named 'SESSION' instead of
+    the current tracing session.
+
+
+Tracking
+~~~~~~~~
+option:-a, option:--all::
+    Used in conjunction with an empty option:--pid option: track _all_
+    process IDs (add all entries to the whitelist).
+
+option:-p, option:--pid[='PID'[,'PID']...]::
+    Track process IDs 'PID' (add them to the current whitelist).
++
+The 'PID' argument must be omitted when also using the option:--all
+option.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-untrack(1),
+linklttng:lttng(1)

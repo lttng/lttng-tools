@@ -26,7 +26,8 @@ MAN1_NAMES = \
 	lttng-disable-channel \
 	lttng-add-context \
 	lttng-list \
-	lttng-calibrate
+	lttng-calibrate \
+	lttng-track
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
