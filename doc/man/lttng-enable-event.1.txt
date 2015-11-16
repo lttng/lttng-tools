@@ -1,0 +1,433 @@
+lttng-enable-event(1)
+=====================
+
+
+NAME
+----
+lttng-enable-event - Create or enable LTTng event rules
+
+
+SYNOPSIS
+--------
+Create or enable Linux kernel event rules:
+
+[verse]
+*lttng enable-event* ['GENERAL OPTIONS'] option:--kernel
+                   ([option:--tracepoint] | option:--probe='SOURCE' |
+                    option:--function='SOURCE' | option:--syscall)
+                   [option:--filter='EXPR'] [option:--session='SESSION']
+                   [option:--channel='CHANNEL'] 'EVENT'[,'EVENT']...
+
+Create or enable an "all" Linux kernel event rule:
+
+[verse]
+*lttng enable-event* ['GENERAL OPTIONS'] option:--kernel option:--all
+                   ([option:--tracepoint] | option:--syscall)
+                   [option:--filter='EXPR'] [option:--session='SESSION']
+                   [option:--channel='CHANNEL']
+
+Create or enable application event rules:
+
+[verse]
+*lttng enable-event* ['GENERAL OPTIONS']
+                   (option:--userspace | option:--jul | option:--log4j | option:--python)
+                   [option:--tracepoint] [option:--filter='EXPR']
+                   [option:--exclude='EVENT'[,'EVENT']...]
+                   [option:--loglevel='LOGLEVEL' | option:--loglevel-only='LOGLEVEL']
+                   [option:--session='SESSION'] [option:--channel='CHANNEL']
+                   'EVENT'[,'EVENT']...
+
+Create or enable and "all" application event rule:
+
+[verse]
+*lttng enable-event* ['GENERAL OPTIONS'] option:--all
+                   (option:--userspace | option:--jul | option:--log4j | option:--python)
+                   [option:--tracepoint] [option:--filter='EXPR']
+                   [option:--exclude='EVENT'[,'EVENT']...]
+                   [option:--loglevel='LOGLEVEL' | option:--loglevel-only='LOGLEVEL']
+                   [option:--session='SESSION'] [option:--channel='CHANNEL']
+
+
+DESCRIPTION
+-----------
+The `lttng enable-event` command can create a new event rule, or enable
+one or more existing and disabled ones.
+
+An event rule created by `lttng enable-event` is a set of conditions
+that must be satisfied in order for an actual event to be emitted by
+an LTTng tracer when the execution of an application or the Linux kernel
+reaches an event source (tracepoint, system call, dynamic probe).
+Event sources can be listed with the linklttng:lttng-list(1) command.
+
+The linklttng:lttng-disable-event(1) command can be used to disable
+existing event rules.
+
+Event rules are always assigned to a channel when they are created. If
+the option:--channel option is omitted, a default channel named
+`channel0` is used (and created automatically if it does not exist for
+the specified domain in the selected tracing session).
+
+If the option:--session option is omitted, the chosen channel is picked
+from the current tracing session.
+
+Events can be enabled while tracing is active
+(use linklttng:lttng-start(1) to make a tracing session active).
+
+
+Event source types
+~~~~~~~~~~~~~~~~~~
+Four types of event sources are available in the Linux kernel tracing
+domain (option:--kernel option):
+
+Tracepoint (option:--tracepoint option; default)::
+    A Linux kernel tracepoint, that is, a static instrumentation point
+    placed in the kernel source code. Standard tracepoints are designed
+    and placed in the source code by developers and record useful
+    payload fields.
+
+Dynamic probe (option:--probe option)::
+    A Linux kernel kprobe, that is, an instrumentation point placed
+    dynamically in the compiled kernel code. Dynamic probe events do not
+    record any payload field.
+
+Function probe (option:--function option)::
+    A Linux kernel kretprobe, that is, two instrumentation points placed
+    dynamically where a function is entered and where it returns in the
+    compiled kernel code. Function probe events do not record any
+    payload field.
+
+System call (option:--syscall option)::
+    A Linux kernel system call. Two instrumentation points are
+    statically placed where a system call function is entered and where
+    it returns in the compiled kernel code. System call event sources
+    record useful payload fields.
+
+The application tracing domains (option:--userspace, option:--jul,
+option:--log4j, or option:--python options) only support tracepoints.
+In the cases of the JUL, Apache log4j, and Python domains, the event
+names correspond to _logger_ names.
+
+
+Understanding event rule conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When creating an event rule with `lttng enable-event`, conditions are
+specified using options. The logical conjunction (logical AND) of all
+those conditions must be true when an event source is reached by an
+application or by the Linux kernel in order for an actual event
+to be emitted by an LTTng tracer. Any condition that is not explicitly
+specified on creation is considered a _don't care_.
+
+For example, consider the following commands:
+
+----------------------------------------------------------------
+lttng enable-event --userspace hello:world
+lttng enable-event --userspace hello:world --loglevel=TRACE_INFO
+----------------------------------------------------------------
+
+Here, two event rules are created. The first one has a single condition:
+the tracepoint name must match `hello:world`. The second one has two
+conditions:
+
+* the tracepoint name must match `hello:world`, _and_
+* the tracepoint's defined log level must be at least as important as
+  the `TRACE_INFO` level.
+
+In this case, the second event rule is pointless because the first one
+is more general: it does not care about the tracepoint's log level.
+If an event source matching both event rules is reached by the
+application's execution, only one event is emitted.
+
+The available conditions for the Linux kernel domain are:
+
+* Tracepoint/system call name ('EVENT' argument with
+  option:--tracepoint or option:--syscall options) or
+  dynamic probe/function name/address
+  (option:--probe or option:--function option's argument) which must
+  match event source's equivalent.
++
+Wildcard using the `*` character are supported _at the end_ of
+tracepoint and system call names.
+
+* Filter expression (option:--filter option) executed against the
+  dynamic values of event fields at execution time that must evaluate
+  to true. See the following subsection for the filter expression syntax.
+
+The available conditions for the application domains are:
+
+* Tracepoint name ('EVENT' with option:--tracepoint option) which must
+  match event source's equivalent.
++
+Wildcard using the `*` character are supported _at the end_ of
+tracepoint names. When creating an event rule with a tracepoint name
+containing a wildcard, specific tracepoint names can be excluded from
+the match using the option:--exclude option.
+
+* Filter expression (option:--filter option) executed against the
+  dynamic values of event fields at execution time that must evaluate
+  to true. See the following subsection for the filter expression syntax.
+* Event's log level that must be at least as important as a given
+  log level (option:--loglevel option) or match exactly a given log
+  level (option:--loglevel-only option).
+
+When using `lttng enable-event` with a set of conditions that does not
+currently exist for the chosen tracing session, domain, and channel,
+a new event rule is created. Otherwise, the existing event rule is
+enabled if it is currently disabled
+(see linklttng:lttng-disable-event(1)).
+
+The option:--all option can be used alongside the option:--tracepoint
+or option:--syscall options. When this option is used, no 'EVENT'
+argument must be specified. This option defines a single event rule
+matching _all_ the possible events of a given tracing domain for the
+chosen channel and tracing session. It is the equivalent of an 'EVENT'
+argument named `*` (wildcard).
+
+
+Filter expression syntax
+~~~~~~~~~~~~~~~~~~~~~~~~
+Filter expressions can be specified with the option:--filter option
+when creating a new event rule. If the filter expression evaluates
+to true when executed against the dynamic values of an event's fields
+when tracing, the filtering condition passes.
+
+The filter expression syntax is very similar to C language conditional
+expressions (expressions that can be evaluated by an `if` statement).
+
+The following logical operators are supported:
+
+[width="40%",options="header"]
+|=====================================
+| Name                      | Syntax
+| Logical negation (NOT)    | `!a`
+| Logical conjunction (AND) | `a && b`
+| Logical disjunction (OR)  | `a \|\| b`
+|=====================================
+
+The following comparison operators/relational operators are supported:
+
+[width="40%",options="header"]
+|====================================
+| Name                     | Syntax
+| Equal to                 | `a == b`
+| Not equal to             | `a != b`
+| Greater than             | `a > b`
+| Less than                | `a < b`
+| Greater than or equal to | `a >= b`
+| Less than or equal to    | `a <= b`
+|====================================
+
+The arithmetic and bitwise operators are _not_ supported.
+
+The precedence table of the operators above match the one of the
+C language. Parentheses are supported to bypass this.
+
+The dynamic value of an event field is read by using its name as
+a C identifier.
+
+The dynamic value of an event context field is read by prefixing its
+name with `$ctx.`. Context fields are added to channels using the
+linklttng:lttng-add-context(1) command.
+
+When a comparison includes a non existent event field, the whole filter
+expression evaluates to false (the event is discarded).
+
+C integer and floating point number constants are supported, as well as
+literal strings between double quotes (`"`). Literal strings can contain
+a wildcard character (`*`) at the end to match more than one string.
+This wildcard can be escaped using `\\*`.
+
+Examples:
+
+-------------------------------------------------
+msg_id == 23 && size >= 2048
+$ctx.procname == "lttng*" && (!flag || poel < 34)
+-------------------------------------------------
+
+Although it is possible to filter the process ID of an event when the
+`pid` context has been added to its channel using, for example,
+`$ctx.pid == 2832`, it is recommended to use the PID tracker instead,
+which is much more efficient (see linklttng:lttng-track(1)).
+
+
+Log levels
+~~~~~~~~~~
+Tracepoints and log statements in applications have an attached log
+level. Application event rules can contain a _log level_ condition.
+With the option:--loglevel option, the event source's log level must
+be at least as important as the option's argument. With the
+option:--loglevel-only option, the event source's log level must match
+the option's argument.
+
+A log level A is more important than a log level B if the numeric value
+of A is less than the numeric value of B.
+
+The available log levels are:
+
+User space domain (option:--userspace option)::
+    Shortcuts such as `system` are allowed.
++
+    * `TRACE_EMERG` (0)
+    * `TRACE_ALERT` (1)
+    * `TRACE_CRIT` (2)
+    * `TRACE_ERR` (3)
+    * `TRACE_WARNING` (4)
+    * `TRACE_NOTICE` (5)
+    * `TRACE_INFO` (6)
+    * `TRACE_DEBUG_SYSTEM` (7)
+    * `TRACE_DEBUG_PROGRAM` (8)
+    * `TRACE_DEBUG_PROCESS` (9)
+    * `TRACE_DEBUG_MODULE` (10)
+    * `TRACE_DEBUG_UNIT` (11)
+    * `TRACE_DEBUG_FUNCTION` (12)
+    * `TRACE_DEBUG_LINE` (13)
+    * `TRACE_DEBUG` (14)
+
+`java.util.logging` domain (option:--jul option)::
+    Shortcuts such as `severe` are allowed.
++
+    * `JUL_OFF` (`INT32_MAX`)
+    * `JUL_SEVERE` (1000)
+    * `JUL_WARNING` (900)
+    * `JUL_INFO` (800)
+    * `JUL_CONFIG` (700)
+    * `JUL_FINE` (500)
+    * `JUL_FINER` (400)
+    * `JUL_FINEST` (300)
+    * `JUL_ALL` (`INT32_MIN`)
+
+Apache log4j domain (option:--log4j option)::
+    Shortcuts such as `severe` are allowed.
++
+    * `LOG4J_OFF` (`INT32_MAX`)
+    * `LOG4J_FATAL` (50000)
+    * `LOG4J_ERROR` (40000)
+    * `LOG4J_WARN` (30000)
+    * `LOG4J_INFO` (20000)
+    * `LOG4J_DEBUG` (10000)
+    * `LOG4J_TRACE` (5000)
+    * `LOG4J_ALL` (`INT32_MIN`)
+
+Python domain (option:--python option)::
+    Shortcuts such as `critical` are allowed.
++
+    * `PYTHON_CRITICAL` (50)
+    * `PYTHON_ERROR` (40)
+    * `PYTHON_WARNING` (30)
+    * `PYTHON_INFO` (20)
+    * `PYTHON_DEBUG` (10)
+    * `PYTHON_NOTSET` (0)
+
+
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
+
+
+Domain
+~~~~~~
+One of:
+
+option:-j, option:--jul::
+    Create or enable event rules in the `java.util.logging`
+    (JUL) domain.
+
+option:-k, option:--kernel::
+    Create or enable event rules in the Linux kernel domain.
+
+option:-l, option:--log4j::
+    Create or enable event rules in the Apache log4j domain.
+
+option:-p, option:--python::
+    Create or enable event rules in the Python domain.
+
+option:-u, option:--userspace::
+    Create or enable event rules in the user space domain.
+
+
+Target
+~~~~~~
+option:-c, option:--channel='CHANNEL'::
+    Create or enable event rules in the channel named 'CHANNEL' instead
+    of the default channel name `channel0`.
+
+option:-s, option:--session='SESSION'::
+    Create or enable event rules in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+Event source type
+~~~~~~~~~~~~~~~~~
+One of:
+
+option:--function='SOURCE'::
+    Linux kernel kretprobe. Only available with the option:--kernel
+    domain option. 'SOURCE' is one of:
++
+* Function address (`0x` prefix supported)
+* Function symbol
+* Function symbol and offset (`SYMBOL+OFFSET` format)
+
+option:--probe='SOURCE'::
+    Linux kernel kprobe. Only available with the option:--kernel
+    domain option. 'SOURCE' is one of:
++
+* Address (`0x` prefix supported)
+* Symbol
+* Symbol and offset (`SYMBOL+OFFSET` format)
+
+option:--syscall::
+    Linux kernel system call. Only available with the option:--kernel
+    domain option.
+
+option:--tracepoint::
+    Linux kernel or application tracepoint (default).
+
+
+Log level
+~~~~~~~~~
+One of:
+
+option:--loglevel='LOGLEVEL'::
+    Add log level condition to the event rule: the event source's
+    defined log level must be at least as important as 'LOGLEVEL'.
+    See the section above for the available log levels. Only available
+    with application domains.
+
+option:--loglevel-only='LOGLEVEL'::
+    Add log level condition to the event rule: the event source's
+    defined log level must match 'LOGLEVEL'. See the section above for
+    the available log levels. Only available with application domains.
+
+
+Filtering and exclusion
+~~~~~~~~~~~~~~~~~~~~~~~
+option:-x, option:--exclude='EVENT'[,'EVENT']...::
+    Exclude events named 'EVENT' from the event rule. This option
+    can be used when the command's 'EVENT' argument contains a wildcard
+    (`*`) to exclude specific names. Only available with application
+    domains.
+
+option:-f, option:--filter='EXPR'::
+    Add filter expression condition to the event rule. Expression 'EXPR'
+    must evaluate to true when executed against the dynamic values of
+    event fields. See the section above for the filter
+    expression syntax.
+
+
+Shortcuts
+~~~~~~~~~
+option:-a, option:--all::
+    Equivalent to an 'EVENT' argument named `*` (wildcard) when also
+    using the option:--tracepoint or option:--syscall options.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-disable-event(1),
+linklttng:lttng(1)
