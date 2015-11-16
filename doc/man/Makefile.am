@@ -27,7 +27,8 @@ MAN1_NAMES = \
 	lttng-untrack \
 	lttng-status \
 	lttng-help \
-	lttng-snapshot
+	lttng-snapshot \
+	lttng-enable-event
 MAN3_NAMES =
 MAN8_NAMES =
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
