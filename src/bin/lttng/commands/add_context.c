@@ -33,8 +33,6 @@
 
 #include "../command.h"
 
-#define PRINT_LINE_LEN	80
-
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
@@ -50,6 +48,7 @@ enum {
 	OPT_JUL,
 	OPT_LOG4J,
 	OPT_LIST_OPTIONS,
+	OPT_LIST,
 };
 
 static struct lttng_handle *handle;
@@ -153,6 +152,7 @@ static struct poptOption long_options[] = {
 	{"jul",            'j', POPT_ARG_NONE, 0, OPT_JUL, 0, 0},
 	{"log4j",          'l', POPT_ARG_NONE, 0, OPT_LOG4J, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
+	{"list",           0, POPT_ARG_NONE, NULL, OPT_LIST, NULL, NULL},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -472,25 +472,11 @@ struct ctx_type_list {
  */
 static void print_ctx_type(FILE *ofp)
 {
-	const char *indent = "                               ";
-	int indent_len = strlen(indent);
-	int len, i = 0;
+	int i = 0;
 
-	fprintf(ofp, "%s", indent);
-	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
 		if (!ctx_opts[i].hide_help) {
-			if (len > indent_len) {
-				if (len + strlen(ctx_opts[i].symbol) + 2
-						>= PRINT_LINE_LEN) {
-					fprintf(ofp, ",\n");
-					fprintf(ofp, "%s", indent);
-					len = indent_len;
-				} else {
-					len += fprintf(ofp, ", ");
-				}
-			}
-			len += fprintf(ofp, "%s", ctx_opts[i].symbol);
+			fprintf(ofp, "%s\n", ctx_opts[i].symbol);
 		}
 		i++;
 	}
@@ -848,6 +834,9 @@ int cmd_add_context(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			usage(stdout);
+			goto end;
+		case OPT_LIST:
+			print_ctx_type(stdout);
 			goto end;
 		case OPT_TYPE:
 		{
