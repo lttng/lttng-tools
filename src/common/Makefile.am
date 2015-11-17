@@ -1,4 +1,5 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
+	-DMANPATH=\""$(mandir)"\"
 
 AUTOMAKE_OPTIONS = subdir-objects
 

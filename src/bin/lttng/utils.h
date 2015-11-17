@@ -59,5 +59,6 @@ int print_missing_or_multiple_domains(unsigned int sum);
 
 int spawn_relayd(const char *pathname, int port);
 int check_relayd(void);
+int show_cmd_man_page(const char *cmd_name);
 
 #endif /* _LTTNG_UTILS_H */

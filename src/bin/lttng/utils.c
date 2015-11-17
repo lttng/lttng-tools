@@ -25,9 +25,11 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include <common/error.h>
 #include <common/utils.h>
+#include <common/defaults.h>
 
 #include "conf.h"
 #include "utils.h"
@@ -414,4 +416,15 @@ int print_missing_or_multiple_domains(unsigned int sum)
 	}
 
 	return ret;
+}
+
+int show_cmd_man_page(const char *cmd_name)
+{
+	char page_name[32];
+	int ret;
+
+	ret = sprintf(page_name, "lttng-%s", cmd_name);
+	assert(ret > 0 && ret < 32);
+
+	return utils_show_man_page(1, page_name);
 }

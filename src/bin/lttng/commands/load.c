@@ -151,7 +151,7 @@ int cmd_load(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_ALL:
 			opt_load_all = 1;

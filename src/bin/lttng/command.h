@@ -28,6 +28,16 @@
 #define DECL_COMMAND(_name) \
 	extern int cmd_##_name(int, const char **)
 
+#define SHOW_HELP() 							\
+	do {								\
+		ret = show_cmd_man_page(argv[0]);			\
+									\
+		if (ret) {						\
+			ERR("Cannot view man page lttng-%s(1)", argv[0]); \
+			perror("exec");					\
+		}							\
+	} while (0)
+
 enum cmd_error_code {
 	CMD_SUCCESS = 0,
 	CMD_ERROR,
