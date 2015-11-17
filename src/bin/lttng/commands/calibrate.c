@@ -63,24 +63,6 @@ static struct poptOption long_options[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng calibrate [-k|-u] [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Calibrate options:\n");
-	fprintf(ofp, "    --function             Dynamic function entry/return probe (default)\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Calibrate LTTng.
  *
  * Returns a CMD_* error.
@@ -202,7 +184,6 @@ int cmd_calibrate(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
