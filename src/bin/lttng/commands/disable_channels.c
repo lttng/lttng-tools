@@ -53,22 +53,6 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-/*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng disable-channel NAME[,NAME2,...] (-k | -u) [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "\n");
-}
-
 static int mi_partial_channel_print(char *channel_name, unsigned int enabled,
 		int success)
 {
@@ -242,7 +226,6 @@ int cmd_disable_channels(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -257,7 +240,6 @@ int cmd_disable_channels(int argc, const char **argv)
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}

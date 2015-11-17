@@ -68,34 +68,6 @@ static struct poptOption long_options[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng list [OPTIONS] [SESSION [SESSION OPTIONS]]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "With no arguments, list available tracing session(s)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Without a session, -k lists available kernel events\n");
-	fprintf(ofp, "Without a session, -u lists available userspace events\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  -h, --help              Show this help\n");
-	fprintf(ofp, "      --list-options      Simple listing of options\n");
-	fprintf(ofp, "  -k, --kernel            Select kernel domain\n");
-	fprintf(ofp, "  -u, --userspace         Select user-space domain.\n");
-	fprintf(ofp, "  -j, --jul               Apply for Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j             Apply for Java application using LOG4J\n");
-	fprintf(ofp, "  -p, --python            Apply for Python application using logging\n");
-	fprintf(ofp, "  -f, --fields            List event fields.\n");
-	fprintf(ofp, "      --syscall           List available system calls.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Session Options:\n");
-	fprintf(ofp, "  -c, --channel NAME      List details of a channel\n");
-	fprintf(ofp, "  -d, --domain            List available domain(s)\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Get command line from /proc for a specific pid.
  *
  * On success, return an allocated string pointer to the proc cmdline.
@@ -1705,7 +1677,6 @@ int cmd_list(int argc, const char **argv)
 	memset(&domain, 0, sizeof(domain));
 
 	if (argc < 1) {
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -1725,7 +1696,6 @@ int cmd_list(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}

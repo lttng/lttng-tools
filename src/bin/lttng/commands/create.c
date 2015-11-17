@@ -83,79 +83,6 @@ extern int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime);
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng create [NAME] [OPTIONS] \n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Without a given NAME, the default is 'auto-<yyyymmdd>-<hhmmss>'\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options   Simple listing of options\n");
-	fprintf(ofp, "  -o, --output PATH    Specify output path for traces\n");
-	fprintf(ofp, "      --no-output      Traces will not be outputted\n");
-	fprintf(ofp, "      --snapshot       Set the session in snapshot mode.\n");
-	fprintf(ofp, "                       Created in no-output mode and uses the URL,\n");
-	fprintf(ofp, "                       if one, as the default snapshot output.\n");
-	fprintf(ofp, "                       Every channel will be set in overwrite mode\n");
-	fprintf(ofp, "                       and with mmap output (splice not supported).\n");
-	fprintf(ofp, "      --live [USEC]    Set the session in live-reading mode.\n");
-	fprintf(ofp, "                       The delay parameter in micro-seconds is the\n");
-	fprintf(ofp, "                       maximum time the user can wait for the data\n");
-	fprintf(ofp, "                       to be flushed. Can be set with a network\n");
-	fprintf(ofp, "                       URL (-U or -C/-D) and must have a relayd listening.\n");
-	fprintf(ofp, "                       By default, %u is used for the timer and the\n",
-											DEFAULT_LTTNG_LIVE_TIMER);
-	fprintf(ofp, "                       network URL is set to net://127.0.0.1.\n");
-	fprintf(ofp, "      --shm-path PATH  Path where shared memory holding buffers\n");
-	fprintf(ofp, "                       should be created. Useful when used with pramfs\n");
-	fprintf(ofp, "                       to extract trace data after crash.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Extended Options:\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Using these options, each API call can be controlled individually.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  -U, --set-url=URL    Set URL destination of the trace data.\n");
-	fprintf(ofp, "                       It is persistent for the session lifetime.\n");
-	fprintf(ofp, "                       This will set both data and control URL.\n");
-	fprintf(ofp, "  -C, --ctrl-url=URL   Set control path URL. (Must use -D also)\n");
-	fprintf(ofp, "  -D, --data-url=URL   Set data path URL. (Must use -C also)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Please refer to the man page (lttng(1)) for more information on network\n");
-	fprintf(ofp, "streaming mechanisms and explanation of the control and data port\n");
-	fprintf(ofp, "You must have a running remote lttng-relayd for network streaming\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "URL format is has followed:\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  proto://[HOST|IP][:PORT1[:PORT2]][/TRACE_PATH]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  Supported protocols are (proto):\n");
-	fprintf(ofp, "  > file://...\n");
-	fprintf(ofp, "    Local filesystem full path.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  > net[6]://...\n");
-	fprintf(ofp, "    This will use the default network transport layer which is\n");
-	fprintf(ofp, "    TCP for both control (PORT1) and data port (PORT2).\n");
-	fprintf(ofp, "    The default ports are respectively 5342 and 5343.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  > tcp[6]://...\n");
-	fprintf(ofp, "    Can only be used with -C and -D together\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "NOTE: IPv6 address MUST be enclosed in brackets '[]' (rfc2732)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Examples:\n");
-	fprintf(ofp, "    # lttng create -U net://192.168.1.42\n");
-	fprintf(ofp, "    Uses TCP and default ports for the given destination.\n");
-	fprintf(ofp, "    # lttng create -U net6://[fe80::f66d:4ff:fe53:d220]\n");
-	fprintf(ofp, "    Uses TCP, default ports and IPv6.\n");
-	fprintf(ofp, "    # lttng create s1 -U net://myhost.com:3229\n");
-	fprintf(ofp, "    Set the consumer to the remote HOST on port 3229 for control.\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Retrieve the created session and mi output it based on provided argument
  * This is currently a summary of what was pretty printed and is subject to
  * enhancements.
@@ -739,7 +666,6 @@ int cmd_create(int argc, const char **argv)
 			break;
 		}
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
