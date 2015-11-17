@@ -1,0 +1,3 @@
+OPTIONS
+-------
+General options are described in linklttng:lttng(1).
