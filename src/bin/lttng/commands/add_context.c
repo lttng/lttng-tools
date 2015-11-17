@@ -471,46 +471,6 @@ static void print_ctx_type(FILE *ofp)
 }
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng add-context -t TYPE [-k|-u] [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "If no channel is given (-c), the context is added to\n");
-	fprintf(ofp, "all channels.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Otherwise the context is added only to the channel (-c).\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Exactly one domain (-k or -u) must be specified.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Context:\n");
-	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
-	fprintf(ofp, "                           the command line to specify multiple contexts at once.\n");
-	fprintf(ofp, "                           (--kernel preempts --userspace)\n");
-	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
-	print_ctx_type(ofp);
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Note that the vpid, vppid and vtid context types represent the virtual process id,\n"
-			"virtual parent process id and virtual thread id as seen from the current execution context\n"
-			"as opposed to the pid, ppid and tid which are kernel internal data structures.\n\n");
-	fprintf(ofp, "Example:\n");
-	fprintf(ofp, "This command will add the context information 'prio' and two per-cpu\n"
-			"perf counters (hardware branch misses and cache misses), to all channels\n"
-			"in the trace data output:\n");
-	fprintf(ofp, "# lttng add-context -k -t prio -t perf:cpu:branch-misses -t perf:cpu:cache-misses\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Find context numerical value from string.
  */
 static int find_ctx_type_idx(const char *opt)
@@ -669,7 +629,6 @@ int cmd_add_context(int argc, const char **argv)
 	char *session_name = NULL;
 
 	if (argc < 2) {
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -721,7 +680,6 @@ int cmd_add_context(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -736,7 +694,6 @@ int cmd_add_context(int argc, const char **argv)
 
 	if (!opt_type) {
 		ERR("Missing mandatory -t TYPE");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}

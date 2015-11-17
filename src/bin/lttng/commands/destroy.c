@@ -50,23 +50,6 @@ static struct poptOption long_options[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng destroy [NAME] [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Where NAME is an optional session name. If not specified, lttng will\n");
-	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "  -a, --all            Destroy all sessions\n");
-	fprintf(ofp, "      --list-options   Simple listing of options\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * destroy_session
  *
  * Unregister the provided session to the session daemon. On success, removes
@@ -163,7 +146,6 @@ int cmd_destroy(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			break;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			break;
 		}

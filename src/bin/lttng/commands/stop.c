@@ -48,22 +48,6 @@ static struct poptOption long_options[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng stop [NAME] [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Where NAME is an optional session name. If not specified, lttng will\n");
-	fprintf(ofp, "get it from the configuration directory (.lttng).\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -n, --no-wait            Don't wait for data availability\n");
-	fprintf(ofp, "\n");
-}
-/*
  * Mi print of partial session
  */
 static int mi_print_session(char *session_name, int enabled)
@@ -194,7 +178,6 @@ int cmd_stop(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
