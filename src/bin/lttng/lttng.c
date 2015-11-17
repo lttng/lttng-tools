@@ -85,6 +85,7 @@ static struct cmd_struct commands[] =  {
 	{ "load", cmd_load},
 	{ "track", cmd_track},
 	{ "untrack", cmd_untrack},
+	{ "help", NULL},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -215,8 +216,14 @@ static int handle_command(int argc, char **argv)
 		goto end;
 	}
 
+	/* Special case for help command which needs the commands array */
+	if (strcmp(argv[0], "help") == 0) {
+		ret = cmd_help(argc, (const char**) argv, commands);
+		goto end;
+	}
+
 	cmd = &commands[i];
-	while (cmd->func != NULL) {
+	while (cmd->name != NULL) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
 			ret = cmd->func(argc, (const char**) argv);

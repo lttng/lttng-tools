@@ -17,6 +17,7 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/load.c \
 				commands/track-untrack.c \
 				commands/status.c \
+				commands/help.c \
 				utils.c utils.h lttng.c
 
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
