@@ -189,7 +189,7 @@ int cmd_stop(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);

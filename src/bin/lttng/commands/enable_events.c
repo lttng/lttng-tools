@@ -1401,7 +1401,7 @@ int cmd_enable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;

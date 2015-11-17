@@ -26,9 +26,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <common/error.h>
 #include <common/utils.h>
+#include <common/defaults.h>
 
 #include "conf.h"
 #include "utils.h"
@@ -478,4 +480,15 @@ void print_session_stats(const char *session_name)
 
 end:
 	return;
+}
+
+int show_cmd_man_page(const char *cmd_name)
+{
+	int ret;
+	char page_name[32];
+
+	ret = sprintf(page_name, "lttng-%s", cmd_name);
+	assert(ret > 0 && ret < 32);
+
+	return utils_show_man_page(1, page_name);
 }

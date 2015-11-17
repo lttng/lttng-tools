@@ -401,7 +401,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_DISCARD:
 			chan.attr.overwrite = 0;

@@ -364,7 +364,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout, cmd_str);
+			SHOW_HELP();
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);

@@ -1341,7 +1341,40 @@ int utils_truncate_stream_file(int fd, off_t length)
 		PERROR("lseek");
 		goto end;
 	}
-
 end:
+	return ret;
+}
+
+static const char *get_man_bin_path(void)
+{
+	char *env_man_path = getenv(DEFAULT_MAN_BIN_PATH_ENV);
+
+	if (env_man_path) {
+		return env_man_path;
+	}
+
+	return DEFAULT_MAN_BIN_PATH;
+}
+
+LTTNG_HIDDEN
+int utils_show_man_page(int section, const char *page_name)
+{
+	char section_string[8];
+	const char *man_bin_path = get_man_bin_path();
+	int ret;
+
+	/* Section integer -> section string */
+	ret = sprintf(section_string, "%d", section);
+	assert(ret > 0 && ret < 8);
+
+	/*
+	 * Execute man pager.
+	 *
+	 * We provide --manpath to man here because LTTng-tools can
+	 * be installed outside /usr, in which case its man pages are
+	 * not located in the default /usr/share/man directory.
+	 */
+	ret = execlp(man_bin_path, "man", "--manpath", MANPATH,
+		section_string, page_name, NULL);
 	return ret;
 }

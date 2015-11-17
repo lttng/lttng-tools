@@ -172,7 +172,7 @@ int cmd_calibrate(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_TRACEPOINT:
 			ret = CMD_UNDEFINED;
