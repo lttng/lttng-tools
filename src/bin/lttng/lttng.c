@@ -394,7 +394,7 @@ static int parse_args(int argc, char **argv)
 		ERR("Command error");
 		break;
 	case CMD_UNDEFINED:
-		ERR("Undefined command");
+		ERR("Undefined command or invalid arguments");
 		break;
 	case CMD_FATAL:
 		ERR("Fatal error");
