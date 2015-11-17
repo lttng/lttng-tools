@@ -66,6 +66,12 @@ order to compile the Git repository tree:
   - Flex >= 2.5.35
   - Bison >= 2.4
 
+Optional packages to build some LTTng-tools man pages:
+
+  - AsciiDoc >= 8.6.5
+  - xmlto >= 0.0.21 (previous versions may work, but
+    they were not tested)
+
 If you use GNU gold, which is _not_ mandatory, make sure you have this
 version:
 
