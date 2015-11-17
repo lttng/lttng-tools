@@ -1,5 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
-			  -DINSTALL_BIN_PATH=\""$(bindir)"\"
+			  -DINSTALL_BIN_PATH=\""$(bindir)"\" \
+			  -DMANPATH=\""$(mandir)"\"
 
 AUTOMAKE_OPTIONS = subdir-objects
 

@@ -35,6 +35,12 @@
 /* Environment variable to set session daemon binary path. */
 #define DEFAULT_SESSIOND_PATH_ENV               "LTTNG_SESSIOND_PATH"
 
+/* Environment variable to set man pager binary path. */
+#define DEFAULT_MAN_BIN_PATH_ENV                "LTTNG_MAN_BIN_PATH"
+
+/* Default man pager binary path. */
+#define DEFAULT_MAN_BIN_PATH                    "/usr/bin/man"
+
 /* Default trace output directory name */
 #define DEFAULT_TRACE_DIR_NAME                  "lttng-traces"
 
