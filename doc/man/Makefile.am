@@ -46,7 +46,8 @@ MAN_XML = $(patsubst $(srcdir)/%.txt,%.xml,$(MAN_TXT))
 # common AsciiDoc source files
 COMMON_TXT = \
 	$(srcdir)/common-footer.txt \
-	$(srcdir)/common-cmd-footer.txt
+	$(srcdir)/common-cmd-footer.txt \
+	$(srcdir)/common-cmd-options-head.txt
 
 # config
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
