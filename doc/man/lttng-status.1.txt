@@ -28,9 +28,7 @@ where `CURSESSION` is the name of the current tracing session.
 Use linklttng:lttng-set-session(1) to set the current tracing session.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 include::common-help-options.txt[]

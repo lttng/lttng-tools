@@ -318,9 +318,7 @@ Python domain (option:--python option)::
     * `PYTHON_NOTSET` (0)
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

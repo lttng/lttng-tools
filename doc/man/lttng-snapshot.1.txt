@@ -94,9 +94,7 @@ to use a custom, unregistered output at record time using the same
 options supported by the `add-output` action.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Target

@@ -25,9 +25,7 @@ specified in other commands. See linklttng:lttng-create(1) for more
 information about the current tracing session.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 include::common-help-options.txt[]

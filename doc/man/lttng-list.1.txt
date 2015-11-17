@@ -58,9 +58,7 @@ except when the option:--channel option is used to isolate a specific
 channel by name.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

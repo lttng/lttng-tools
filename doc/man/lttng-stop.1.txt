@@ -39,9 +39,8 @@ know when the trace data becomes available, as the command returns
 immediately.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
+
 
 option:-n, option:--no-wait::
 	Do not wait for trace data availability.

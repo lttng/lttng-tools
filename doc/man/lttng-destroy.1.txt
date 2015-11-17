@@ -35,9 +35,8 @@ if any; it frees resources acquired by the session daemon and tracer
 side, making sure to flush all trace data.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
+
 
 option:-a, option:--all::
     Destroy all tracing sessions.

@@ -43,9 +43,7 @@ Events can be disabled while tracing is active
 (use linklttng:lttng-start(1) to make a tracing session active).
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

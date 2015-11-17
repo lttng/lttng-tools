@@ -29,9 +29,7 @@ Note that re-enabling a disabled channel once its tracing session
 has been active at least once is currently not supported.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

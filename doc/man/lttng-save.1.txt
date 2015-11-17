@@ -42,9 +42,8 @@ overwritten when saving; the command fails. The option:--force option
 can be used to allow this.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
+
 
 option:-a, option:--all::
     Save all tracing session configurations (default).

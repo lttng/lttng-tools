@@ -34,9 +34,8 @@ as the first positional argument to the trace viewer. This path can
 be overridden using the option:--trace-path option.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
+
 
 option:-t, option:--trace-path='PATH'::
     View trace at path 'PATH' instead of using the chosen tracing

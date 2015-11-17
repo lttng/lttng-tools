@@ -45,9 +45,7 @@ Use the option:--list option without other arguments to list the
 available context field names.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

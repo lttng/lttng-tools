@@ -33,9 +33,7 @@ the command's man page. The path to the man pager can be overridden
 by the `LTTNG_MAN_BIN_PATH` environment variable.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 include::common-help-options.txt[]

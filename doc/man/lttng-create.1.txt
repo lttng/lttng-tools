@@ -134,9 +134,7 @@ The other version is used for *network streaming*.
     see linklttng:lttng-relayd(8).
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Mode

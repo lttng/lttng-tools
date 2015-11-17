@@ -90,9 +90,7 @@ Whitelist:
 -------------------------------
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

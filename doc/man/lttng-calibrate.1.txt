@@ -82,9 +82,7 @@ link between the code executed and the CPU prefetch activity) to be
 accounted for.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

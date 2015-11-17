@@ -36,9 +36,7 @@ existing tracing session named 'SESSION'. `lttng list`
 outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 include::common-help-options.txt[]

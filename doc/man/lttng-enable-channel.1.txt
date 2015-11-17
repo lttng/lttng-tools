@@ -222,9 +222,7 @@ no space left in the last file, _trace file rotation_ happens: the first
 file is cleared and new sub-buffers containing events are written there.
 
 
-OPTIONS
--------
-General options are described in linklttng:lttng(1).
+include::common-options-head.txt[]
 
 
 Domain

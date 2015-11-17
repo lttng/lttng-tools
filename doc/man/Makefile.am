@@ -72,7 +72,8 @@ MAN_HTML = $(patsubst $(srcdir)/%.txt,%.html,$(MAN_TXT))
 # common AsciiDoc source files
 COMMON_TXT = \
 	$(srcdir)/common-footer.txt \
-	$(srcdir)/common-help-options.txt
+	$(srcdir)/common-help-options.txt \
+	$(srcdir)/common-options-head.txt
 
 # config
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
