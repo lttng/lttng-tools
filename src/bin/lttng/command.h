@@ -35,6 +35,7 @@
 		if (ret) {						\
 			ERR("Cannot view man page lttng-%s(1)", argv[0]); \
 			perror("exec");					\
+			ret = CMD_ERROR;				\
 		}							\
 	} while (0)
 
@@ -75,5 +76,8 @@ DECL_COMMAND(load);
 DECL_COMMAND(track);
 DECL_COMMAND(untrack);
 DECL_COMMAND(metadata);
+
+extern int cmd_help(int argc, const char **argv,
+		const struct cmd_struct commands[]);
 
 #endif /* _LTTNG_CMD_H */
