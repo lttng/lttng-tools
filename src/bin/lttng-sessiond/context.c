@@ -284,7 +284,8 @@ int context_ust_add(struct ltt_ust_session *usess, int domain,
 		cds_lfht_for_each_entry(chan_ht->ht, &iter.iter, uchan, node.node) {
 			ret = add_uctx_to_channel(usess, domain, uchan, ctx);
 			if (ret < 0) {
-				ERR("Context failed for channel %s", uchan->name);
+				ERR("Failed to add context to channel %s",
+						uchan->name);
 				continue;
 			}
 		}
