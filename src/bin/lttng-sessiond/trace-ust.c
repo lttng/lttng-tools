@@ -476,7 +476,6 @@ int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
 		}
 		break;
 	default:
-		ERR("Invalid UST context");
 		utype = -1;
 		break;
 	}
@@ -536,6 +535,7 @@ struct ltt_ust_context *trace_ust_create_context(
 
 	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
 	if (utype < 0) {
+		ERR("Invalid UST context");
 		return NULL;
 	}
 
