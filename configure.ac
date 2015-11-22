@@ -313,7 +313,7 @@ AC_ARG_WITH(lttng-ust-prefix,
 # Check liblttng-ust-ctl library
 AC_ARG_WITH(lttng-ust,
 	AS_HELP_STRING([--without-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
-	lttng_ust_support=$enableval, lttng_ust_support=yes)
+	lttng_ust_support=$withval, lttng_ust_support=yes)
 
 AS_IF([test "x$lttng_ust_support" = "xyes"], [
 	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_recv_channel_from_consumer],
