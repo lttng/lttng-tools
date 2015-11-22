@@ -218,15 +218,17 @@ AC_CHECK_LIB([pthread], [pthread_create], [],
 )
 
 # Check libpopt
-AC_CHECK_LIB([popt], [poptGetContext], [],
+PKG_CHECK_MODULES([POPT], [popt],
+	[LIBS="$LIBS $POPT_LIBS"],
 	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
 AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
 
 # Check for libuuid
-AC_CHECK_LIB([uuid], [uuid_generate],
+PKG_CHECK_MODULES([UUID], [uuid],
 [
+	LIBS="$LIBS $UUID_LIBS"
 	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
 	have_libuuid=yes
 ],
