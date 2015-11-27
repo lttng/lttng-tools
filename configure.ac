@@ -26,6 +26,7 @@ AC_PROG_LEX
 AC_PROG_MAKE_SET
 AC_PROG_SED
 AC_PROG_YACC
+AC_PATH_PROG(report_fold, fold)
 LT_INIT
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -59,6 +60,7 @@ AX_LIB_SOCKET_NSL
 major_version=$(echo AC_PACKAGE_VERSION | $SED 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
 minor_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
 patchlevel_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\).*$/\1/')
+
 AC_SUBST([MAJOR_VERSION], [$major_version])
 AC_SUBST([MINOR_VERSION], [$minor_version])
 AC_SUBST([PATCHLEVEL_VERSION], [$patchlevel_version])
@@ -860,12 +862,23 @@ AC_OUTPUT
 #
 # Mini-report on what will be built.
 #
-AS_ECHO()
 
-AS_ECHO("Version name: $version_name")
-AS_ECHO("$version_description")
+PPRINT_INIT
+PPRINT_SET_INDENT(1)
+PPRINT_SET_TS(38)
 
-AS_ECHO()
+AS_ECHO
+AS_ECHO("${PPRINT_COLOR_BLDBLU}LTTng-tools $PACKAGE_VERSION \"$version_name\"$PPRINT_COLOR_RST")
+AS_ECHO
+
+AS_IF([test -n "$report_fold"], [
+	AS_ECHO("`AS_ECHO("$version_description") | $report_fold -s`")
+], [
+	AS_ECHO("$version_description")
+])
+
+AS_ECHO
+PPRINT_SUBTITLE([Features])
 
 # Target architecture we're building for.
 target_arch=$host_cpu
@@ -878,188 +891,126 @@ for f in $CFLAGS; do
         fi
 done
 ]
-AS_ECHO_N("Target architecture: ")
-AS_ECHO($target_arch)
+PPRINT_PROP_STRING([Target architecture], $target_arch)
 
 # kmod enabled/disabled
-AS_ECHO_N("libkmod support: ")
-AS_IF([test "x$kmod_found" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$kmod_found" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([libkmod support], $value)
 
 # LTTng-UST enabled/disabled
-AS_ECHO_N("Lttng-UST support: ")
-AS_IF([test "x$lttng_ust_support" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$lttng_ust_support" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST support], $value)
 
-AS_ECHO()
-AS_ECHO("Binaries:")
+AS_ECHO
+PPRINT_SUBTITLE([Binaries])
 
 # List binaries to be built
-AS_ECHO_N("lttng: ")
-AS_IF([test x$enable_bin_lttng != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng], $value)
 
-AS_ECHO_N("lttng-consumerd: ")
-AS_IF([test x$enable_bin_lttng_consumerd != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_consumerd != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-consumerd], $value)
 
-AS_ECHO_N("lttng-crash: ")
-AS_IF([test x$enable_bin_lttng_crash != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_crash != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-crash], $value)
 
-AS_ECHO_N("lttng-relayd: ")
-AS_IF([test x$enable_bin_lttng_relayd != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_relayd != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-relayd], $value)
 
-AS_ECHO_N("lttng-sessiond: ")
-AS_IF([test x$enable_bin_lttng_sessiond != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_sessiond != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-sessiond], $value)
 
-AS_ECHO_N("Extras: ")
-AS_IF([test x$enable_extras != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+# Extras
+test x$enable_extras != xno && value=1 || value=0
+AS_ECHO
+PPRINT_SET_INDENT(0)
+PPRINT_PROP_BOOL([Extras], $value, $PPRINT_COLOR_SUBTITLE)
+PPRINT_SET_INDENT(1)
 
-# Print the bindir and libdir this `make install' will install into.
-AS_ECHO()
-AS_ECHO_N("Binaries will be installed in:  ")
-AS_ECHO("`eval eval echo $bindir`")
-AS_ECHO_N("Libraries will be installed in: ")
-AS_ECHO("`eval eval echo $libdir`")
-
-
-AS_ECHO()
+AS_ECHO
+PPRINT_SUBTITLE([Tests])
 
 # Print clear message that tests won't be built
 AS_IF([test "x$build_tests" = "xno"],[
-       AS_ECHO("WARNING: Tests won't be built since some binaries were disabled")
+	PPRINT_WARN([Tests won't be built since some binaries were disabled])
 ])
-
-AS_ECHO("Tests:")
 
 # LTTng UST Java agent JUL tests enabled/disabled
-AS_ECHO_N("LTTng-UST Java agent JUL tests: ")
-AS_IF([test "x$test_java_agent_jul" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$test_java_agent_jul" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Java agent JUL tests], $value)
 
 # LTTng UST Java agent Log4j tests enabled/disabled
-AS_ECHO_N("LTTng-UST Java agent Log4j tests: ")
-AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$test_java_agent_log4j" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j tests], $value)
 
-AS_ECHO_N("LTTng-UST Python2 agent tests: ")
-AS_IF([test ! -z "$PYTHON2_AGENT"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test ! -z "$PYTHON2_AGENT" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
 
-AS_ECHO_N("LTTng-UST Python3 agent tests: ")
-AS_IF([test ! -z "$PYTHON3_AGENT"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
-
-AS_ECHO()
+test ! -z "$PYTHON3_AGENT" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
 
 #Python binding enabled/disabled
-AS_ECHO_N("Python binding: ")
-AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x${enable_python_binding:-yes}" = xyes && value=1 || value=0
+AS_ECHO
+PPRINT_SET_INDENT(0)
+PPRINT_PROP_BOOL([Python binding], $value, $PPRINT_COLOR_SUBTITLE)
+PPRINT_SET_INDENT(1)
 
-AS_ECHO()
+AS_ECHO
+PPRINT_SUBTITLE([Man pages])
 
 # man pages build enabled/disabled
-AS_ECHO_N("Build man pages: ")
-AS_IF([test "x$enable_build_man_pages" = "xyes"], [
-	AS_ECHO("Yes")
-], [
-	AS_ECHO("No")
-])
+test "x$enable_build_man_pages" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Build man pages], $value)
 
 # man pages install enabled/disabled (always true in tarball)
-AS_ECHO_N("Install man pages: ")
-AS_IF([test "x$enable_build_man_pages" = "xno" -a "x$in_git_repo" = "xyes"], [
-	AS_ECHO("No")
-], [
-	AS_ECHO("Yes")
-])
+test "x$enable_build_man_pages" = "xno" -a "x$in_git_repo" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Install man pages], $value)
 
-AS_ECHO()
+report_bindir="`eval eval echo $bindir`"
+report_libdir="`eval eval echo $libdir`"
+
+# Print the bindir and libdir this `make install' will install into.
+AS_ECHO
+PPRINT_SUBTITLE([Install directories])
+PPRINT_PROP_STRING([Binaries], [$report_bindir])
+PPRINT_PROP_STRING([Libraries], [$report_libdir])
+
+AS_ECHO
+PPRINT_SUBTITLE([Search directories])
 
 # If we build the sessiond, print the paths it will use
-AS_ECHO_N("The lttng command will search for the lttng-sessiond executable at: ")
 AS_IF([test "$SESSIOND_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $bindir`")
-	AS_ECHO("/lttng-sessiond")
+	path="$report_bindir/lttng-sessiond"
 ],[
-	AS_ECHO("$SESSIOND_BIN")
+	path="$SESSIOND_BIN"
 ])
+PPRINT_PROP_STRING([lttng-sessiond executable], [$path])
 
-AS_ECHO()
-AS_ECHO("The sessiond daemon will search the following directories: ")
-AS_ECHO_N("32-bit consumerd executable: ")
 AS_IF([test "$CONSUMERD32_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-	AS_ECHO("/lttng-consumerd")
+	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
-	AS_ECHO("$CONSUMERD32_BIN")
+	path="$CONSUMERD32_BIN"
 ])
+PPRINT_PROP_STRING([32-bit lttng-consumerd executable], [$path])
 
-AS_ECHO_N("32-bit consumer libraries:   ")
 AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
-	AS_ECHO("`eval eval echo $libdir`")
+	path="`eval eval echo $libdir`"
 ],[
-	AS_ECHO("$CONSUMERD32_LIBDIR")
+	path="$CONSUMERD32_LIBDIR"
 ])
+PPRINT_PROP_STRING([32-bit consumer libraries], [$path])
 
-AS_ECHO_N("64-bit consumerd executable: ")
 AS_IF([test "$CONSUMERD64_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-	AS_ECHO("/lttng-consumerd")
+	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
-	AS_ECHO("$CONSUMERD64_BIN")
+	path="$CONSUMERD64_BIN"
 ])
+PPRINT_PROP_STRING([64-bit lttng-consumerd executable], [$path])
 
-AS_ECHO_N("64-bit consumer libraries:   ")
 AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
-	AS_ECHO("`eval eval echo $libdir`")
+	path="`eval eval echo $libdir`"
 ],[
-	AS_ECHO("$CONSUMERD64_LIBDIR")
+	path="$CONSUMERD64_LIBDIR"
 ])
-
-AS_ECHO()
-
+PPRINT_PROP_STRING([64-bit consumer libraries], [$path])
