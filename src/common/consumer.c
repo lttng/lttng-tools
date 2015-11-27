@@ -1575,6 +1575,12 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			outfd = stream->out_fd;
 
 			if (stream->index_fd >= 0) {
+				ret = close(stream->index_fd);
+				if (ret < 0) {
+					PERROR("Closing index");
+					goto end;
+				}
+				stream->index_fd = -1;
 				ret = index_create_file(stream->chan->pathname,
 						stream->name, stream->uid, stream->gid,
 						stream->chan->tracefile_size,
