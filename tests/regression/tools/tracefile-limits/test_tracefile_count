@@ -28,6 +28,7 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 NUM_TESTS=74
 
 NUM_CPUS=`nproc`
+PAGE_SIZE=$(getconf PAGE_SIZE)
 
 source $TESTDIR/utils/utils.sh
 
@@ -47,7 +48,7 @@ function enable_lttng_channel_count_limit ()
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
 	    -u $channel_name -s $sess_name \
-	    -C 4096 -W $tracefile_count_limit \
+	    -C $(($PAGE_SIZE*3)) -W $tracefile_count_limit \
 	    --overwrite >/dev/null 2>&1
 
 	ok $? "$test_name"
@@ -103,7 +104,7 @@ function test_tracefile_count_limit ()
 	session_name=$(randstring 16 0)
 	channel_name="channel"
 	event_name="tp:tptest"
-	num_iter=1000
+	num_iter=100000
 	expected_max=$(($num_iter - 1))
 
 	diag "Test tracefile count limit : $count_limit tracefiles"
