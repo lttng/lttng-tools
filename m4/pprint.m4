@@ -168,3 +168,17 @@ AC_DEFUN([PPRINT_WARN], [
 
   m4_popdef([pprint_msg])
 ])
+
+# PPRINT_ERROR(msg): pretty prints an error message and exits.
+#
+# The message is put as is in a double-quoted shell string so the user
+# needs to escape ".
+#
+# Use PPRINT_INIT() before using this macro.
+AC_DEFUN([PPRINT_ERROR], [
+  m4_pushdef([pprint_msg], [$1])
+
+  AC_MSG_ERROR(${PPRINT_COLOR_BLDRED}pprint_msg$PPRINT_COLOR_RST)
+
+  m4_popdef([pprint_msg])
+])
