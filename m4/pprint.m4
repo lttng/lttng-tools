@@ -131,3 +131,11 @@ AC_DEFUN([PPRINT_WARN], [
 
   AS_ECHO("${PPRINT_COLOR_TXTYLW}WARNING:$PPRINT_COLOR_RST $PPRINT_COLOR_BLDYLW$pprint_msg$PPRINT_COLOR_RST")
 ])
+
+# PPRINT_ERROR(msg): pretty prints an error message and exits.
+#
+# Use PPRINT_INIT() before using this macro.
+AC_DEFUN([PPRINT_ERROR], [
+  pprint_msg="$1"
+  AC_MSG_ERROR("$PPRINT_COLOR_BLDRED$pprint_msg$PPRINT_COLOR_RST")
+])
