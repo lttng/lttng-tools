@@ -206,9 +206,10 @@ AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv
 AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_RUNDIR], ["$LTTNG_SYSTEM_RUNDIR"], [LTTng system runtime directory])
 
-if test "x$prefix" = "xNONE"; then
+AS_IF([test "x$prefix" = "xNONE"], [
 	prefix=$ac_default_prefix
-fi
+])
+
 CONFDIR=`eval echo $sysconfdir`
 AC_SUBST(CONFDIR)
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_CONFIGDIR],"$CONFDIR", [LTTng system configuration directory.])
@@ -384,7 +385,7 @@ AC_ARG_ENABLE([python-bindings],
 
 AM_CONDITIONAL([PYTHON_BINDING], [test "x${enable_python_binding:-yes}" = xyes])
 
-if test "x${enable_python_binding:-yes}" = xyes; then
+AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
   AX_PKG_SWIG($swig_version, [], [ PPRINT_ERROR([SWIG $swig_version or newer is needed]) ])
   AM_PATH_PYTHON([3.0])
 
@@ -402,12 +403,10 @@ if test "x${enable_python_binding:-yes}" = xyes; then
     PYTHON_INCLUDE=`$PYTHON_CONFIG --includes`
     AC_MSG_RESULT([$PYTHON_INCLUDE])
   ])
-
-else
+], [
     AC_MSG_NOTICE([You may configure with --enable-python-bindings ]dnl
 [if you want Python bindings.])
-
-fi
+])
 
 # Epoll check. If not present, the build will fallback on poll() API
 AX_HAVE_EPOLL(
@@ -424,7 +423,7 @@ AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 AM_CONDITIONAL([TEST_JAVA_JUL_AGENT], [test "x$test_java_agent_jul" = "xyes"])
 AM_CONDITIONAL([TEST_JAVA_LOG4J_AGENT], [test "x$test_java_agent_log4j" = "xyes"])
 
-if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xyes"; then
+AS_IF([test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xyes"], [
 	AX_JAVA_OPTIONS
 	AX_PROG_JAVAC
 	AX_PROG_JAVA
@@ -434,32 +433,32 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 
 	# Check for Java UST agent common class first
 	AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
-	if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"; then
-		PPRINT_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH=\"/path/to/lttng-ust-agent-common.jar\"])
-	fi
+	AS_IF([test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"], [
+		PPRINT_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-common.jar"])
+	])
 
-	if test "x$test_java_agent_jul" = "xyes"; then
+	AS_IF([test "x$test_java_agent_jul" = "xyes"], [
 		# Check for JUL agent class
 		AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
-		if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xno"; then
-			PPRINT_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH=\"/path/to/lttng-ust-agent-jul.jar\"])
-		fi
-	fi
+		AS_IF([test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xno"], [
+			PPRINT_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-jul.jar"])
+		])
+	])
 
-	if test "x$test_java_agent_log4j" = "xyes"; then
+	AS_IF([test "x$test_java_agent_log4j" = "xyes"], [
 		# Check for Log4j agent class
 		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
-		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"; then
-			PPRINT_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH=\"/path/to/lttng-ust-agent-log4j.jar\"])
-		fi
+		AS_IF([test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"], [
+			PPRINT_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
+		])
 
 		# Check for Log4j class
 		AX_CHECK_CLASS(org.apache.log4j.Logger)
-		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
-			PPRINT_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH=\"/path/to/log4j.jar\"])
-		fi
-	fi
-fi
+		AS_IF([test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"], [
+			PPRINT_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
+		])
+	])
+])
 
 # set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
 # is not distributed in tarballs
@@ -485,9 +484,9 @@ AS_IF([test "x$enable_build_man_pages" = "xyes"], [
 	AC_PATH_PROG([ASCIIDOC],[asciidoc],[no])
 	AC_PATH_PROG([XMLTO],[xmlto],[no])
 
-	if test "x$ASCIIDOC" = xno -o "x$XMLTO" = xno; then
+	AS_IF([test "x$ASCIIDOC" = xno -o "x$XMLTO" = xno], [
 		PPRINT_ERROR([Both asciidoc and xmlto are needed to build the LTTng man pages.])
-	fi
+	])
 ])
 
 # Python agent test
@@ -740,27 +739,29 @@ AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 AC_PATH_PROG([PGREP], [pgrep], [no])
 AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
-	if test x"$(basename "$YACC")" != "xbison -y"; then
+AS_IF([test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"], [
+	AS_IF([test x"$(basename "$YACC")" != "xbison -y"], [
 		PPRINT_ERROR([bison not found and is required when building from git.
 		Please install bison])
-	fi
+	])
+
 	AC_PATH_PROG([BISON],[bison])
 	AX_PROG_BISON_VERSION([2.4], [],[
 		PPRINT_ERROR([Bison >= 2.4 is required when building from git])
 	])
-fi
+])
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
-	if test x"$LEX" != "xflex"; then
+AS_IF([test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"], [
+	AS_IF([test x"$LEX" != "xflex"], [
 		PPRINT_ERROR([flex not found and is required when building from git.
 		Please install flex])
-	fi
+	])
+
 	AC_PATH_PROG([FLEX],[flex])
 	AX_PROG_FLEX_VERSION([2.5.35], [],[
 		PPRINT_ERROR([Flex >= 2.5.35 is required when building from git])
 	])
-fi
+])
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
@@ -883,15 +884,14 @@ PPRINT_SUBTITLE([Features])
 
 # Target architecture we're building for.
 target_arch=$host_cpu
-[
+
 for f in $CFLAGS; do
-        if test $f = "-m32"; then
-			target_arch="32-bit"
-        elif test $f = "-m64"; then
-			target_arch="64-bit"
-        fi
+	AS_IF(
+		[test $f = "-m32"], [target_arch="32-bit"],
+		[test $f = "-m64"], [target_arch="64-bit"]
+	)
 done
-]
+
 PPRINT_PROP_STRING([Target architecture], $target_arch)
 
 # kmod enabled/disabled
