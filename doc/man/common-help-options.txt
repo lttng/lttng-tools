@@ -1,0 +1,11 @@
+Program information
+~~~~~~~~~~~~~~~~~~~
+option:-h, option:--help::
+    Show command help.
++
+This option, like linklttng:lttng-help(1), attempts to launch
+`/usr/bin/man` to view the command's man page. The path to the man pager
+can be overridden by the `LTTNG_MAN_BIN_PATH` environment variable.
+
+option:--list-options::
+    List available command options.

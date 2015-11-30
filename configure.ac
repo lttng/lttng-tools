@@ -5,6 +5,8 @@ AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
 
+PPRINT_INIT
+
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 
@@ -46,9 +48,9 @@ AC_TYPE_UINT8_T
 AX_C___ATTRIBUTE__
 AS_IF([test "x$ax_cv___attribute__" = "xyes"],
         [:],
-        [AC_MSG_ERROR([The compiler does not support __attribute__ extensions])])
+        [PPRINT_ERROR([The compiler does not support __attribute__ extensions])])
 
-AX_PTHREAD(,[AC_MSG_ERROR([Could not configure pthreads support])])
+AX_PTHREAD(,[PPRINT_ERROR([Could not configure pthreads support])])
 LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
@@ -59,6 +61,7 @@ AX_LIB_SOCKET_NSL
 major_version=$(echo AC_PACKAGE_VERSION | $SED 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
 minor_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
 patchlevel_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.[[0-9]]*\.\([[0-9]]*\).*$/\1/')
+
 AC_SUBST([MAJOR_VERSION], [$major_version])
 AC_SUBST([MINOR_VERSION], [$minor_version])
 AC_SUBST([PATCHLEVEL_VERSION], [$patchlevel_version])
@@ -214,15 +217,15 @@ AC_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR],[datadir], [LTTng system data direct
 #
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
-	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
+	[PPRINT_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
 # Check libpopt
 AC_CHECK_LIB([popt], [poptGetContext], [],
-	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
+	[PPRINT_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
 )
 
-AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
+AM_PATH_XML2(2.7.6, true, PPRINT_ERROR([No supported version of libxml2 found.]))
 
 # Check for libuuid
 AC_CHECK_LIB([uuid], [uuid_generate],
@@ -238,7 +241,7 @@ AC_CHECK_LIB([uuid], [uuid_generate],
 		have_libc_uuid=yes
 	],
 	[
-		AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Use [LDFLAGS]=-Ldir to specify their location.])
+		PPRINT_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Use [LDFLAGS]=-Ldir to specify their location.])
 	])
 ]
 )
@@ -250,29 +253,29 @@ liburcu_version=">= 0.8.0"
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
 )
 AC_CHECK_DECL([cds_wfcq_init], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
 )
 AC_CHECK_DECL([cds_wfcq_dequeue_blocking], [],
-    [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
+    [PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
 )
 AC_CHECK_DECL([futex_async], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
 )
 AC_CHECK_DECL([rcu_thread_offline], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 AC_CHECK_DECL([rcu_thread_online], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 AC_CHECK_DECL([caa_likely], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+	[PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 #Function added in urcu 0.7.0
 AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
-        [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+        [PPRINT_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
 )
 
 # Check kmod library
@@ -321,7 +324,7 @@ AS_IF([test "x$lttng_ust_support" = "xyes"], [
 			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
 			lttng_ust_ctl_found=yes
 		],
-		[AC_MSG_ERROR([Cannot find LTTng-UST >= 2.2.x. Use --with-lttng-ust-prefix=PREFIX to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])],
+		[PPRINT_ERROR([Cannot find LTTng-UST >= 2.2.x. Use --with-lttng-ust-prefix=PREFIX to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])],
 		[-lurcu-common -lurcu-bp -lurcu-cds -lrt -ldl]
 	)
 ])
@@ -340,7 +343,7 @@ AC_CHECK_LIB([dl], [dlopen],
 		have_libc_dl=yes
 	],
 	[
-		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
+		PPRINT_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
 	])
 ])
 AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
@@ -381,7 +384,7 @@ AC_ARG_ENABLE([python-bindings],
 AM_CONDITIONAL([PYTHON_BINDING], [test "x${enable_python_binding:-yes}" = xyes])
 
 if test "x${enable_python_binding:-yes}" = xyes; then
-  AX_PKG_SWIG($swig_version, [], [ AC_MSG_ERROR([SWIG $swig_version or newer is needed]) ])
+  AX_PKG_SWIG($swig_version, [], [ PPRINT_ERROR([SWIG $swig_version or newer is needed]) ])
   AM_PATH_PYTHON([3.0])
 
   AC_ARG_VAR([PYTHON_INCLUDE], [Include flags for python, bypassing python-config])
@@ -392,7 +395,7 @@ if test "x${enable_python_binding:-yes}" = xyes; then
                     [python$PYTHON_VERSION-config python-config],
                     [no],
                     [`dirname $PYTHON`])
-      AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON. Do you have python-dev installed?])])
+      AS_IF([test "$PYTHON_CONFIG" = no], [PPRINT_ERROR([cannot find python-config for $PYTHON. Do you have python-dev installed?])])
     ])
     AC_MSG_CHECKING([python include flags])
     PYTHON_INCLUDE=`$PYTHON_CONFIG --includes`
@@ -431,14 +434,14 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	# Check for Java UST agent common class first
 	AX_CHECK_CLASS(org.lttng.ust.agent.AbstractLttngAgent)
 	if test "x$ac_cv_class_org_lttng_ust_agent_AbstractLttngAgent" = "xno"; then
-		AC_MSG_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-common.jar"])
+		PPRINT_ERROR([The UST Java agent common class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-common.jar"])
 	fi
 
 	if test "x$test_java_agent_jul" = "xyes"; then
 		# Check for JUL agent class
 		AX_CHECK_CLASS(org.lttng.ust.agent.jul.LttngLogHandler)
 		if test "x$ac_cv_class_org_lttng_ust_agent_jul_LttngLogHandler" = "xno"; then
-			AC_MSG_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-jul.jar"])
+			PPRINT_ERROR([The UST Java agent JUL class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-jul.jar"])
 		fi
 	fi
 
@@ -446,16 +449,45 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 		# Check for Log4j agent class
 		AX_CHECK_CLASS(org.lttng.ust.agent.log4j.LttngLogAppender)
 		if test "x$ac_cv_class_org_lttng_ust_agent_log4j_LttngLogAppender" = "xno"; then
-			AC_MSG_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
+			PPRINT_ERROR([The UST Java agent Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/lttng-ust-agent-log4j.jar"])
 		fi
 
 		# Check for Log4j class
 		AX_CHECK_CLASS(org.apache.log4j.Logger)
 		if test "x$ac_cv_class_org_apache_log4j_Logger" = "xno"; then
-			AC_MSG_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
+			PPRINT_ERROR([The Log4j class was not found. Please specify the location of the jar via the Java CLASSPATH e.g: export CLASSPATH="/path/to/log4j.jar"])
 		fi
 	fi
 fi
+
+# set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
+# is not distributed in tarballs
+AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
+AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
+
+# enable building man pages
+AC_ARG_ENABLE(
+	build-man-pages,
+	AS_HELP_STRING(
+		[--enable-build-man-pages],
+		[Build man pages (already built in a distributed tarball)]
+	),
+	[enable_build_man_pages=yes],
+	[enable_build_man_pages=no]
+)
+
+# export man page build condition
+AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$enable_build_man_pages" != "xno"])
+
+# check for asciidoc and xmlto if we enabled building the man pages
+AS_IF([test "x$enable_build_man_pages" = "xyes"], [
+	AC_PATH_PROG([ASCIIDOC],[asciidoc],[no])
+	AC_PATH_PROG([XMLTO],[xmlto],[no])
+
+	if test "x$ASCIIDOC" = xno -o "x$XMLTO" = xno; then
+		PPRINT_ERROR([Both asciidoc and xmlto are needed to build the LTTng man pages.])
+	fi
+])
 
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
@@ -504,7 +536,7 @@ AS_IF([test "x$enable_test_python2_agent" = "xyes" -o "x$test_python2_agent_auto
 	AC_PATH_PROG([PYTHON2_BIN],[$PYTHON2])
 	AS_IF([test -z "$PYTHON2_BIN"], [
 		AS_IF([test -z "$test_python2_agent_autodetect"],[
-			AC_MSG_ERROR([No python2 interpreter found. PYTHON2 can be set to override default interpreter path])
+			PPRINT_ERROR([No python2 interpreter found. PYTHON2 can be set to override default interpreter path])
 		])
 	], [
 		AC_MSG_CHECKING([for python2 lttng-ust agent])
@@ -515,7 +547,7 @@ AS_IF([test "x$enable_test_python2_agent" = "xyes" -o "x$test_python2_agent_auto
 		], [
 			AC_MSG_RESULT([no])
 			AS_IF([test -z "$test_python2_agent_autodetect"],[
-				AC_MSG_ERROR([No python2 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
+				PPRINT_ERROR([No python2 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
 			])
 		])
 
@@ -533,7 +565,7 @@ AS_IF([test "x$enable_test_python3_agent" = "xyes" -o "x$test_python3_agent_auto
 	AC_PATH_PROG([PYTHON3_BIN],[$PYTHON3])
 	AS_IF([test -z "$PYTHON3_BIN"], [
 		AS_IF([test -z "$test_python3_agent_autodetect"],[
-			AC_MSG_ERROR([No python3 interpreter found. PYTHON3 can be set to override default interpreter path])
+			PPRINT_ERROR([No python3 interpreter found. PYTHON3 can be set to override default interpreter path])
 		])
 	], [
 		AC_MSG_CHECKING([for python3 lttng-ust agent])
@@ -544,7 +576,7 @@ AS_IF([test "x$enable_test_python3_agent" = "xyes" -o "x$test_python3_agent_auto
 		], [
 			AC_MSG_RESULT([no])
 			AS_IF([test -z "$test_python3_agent_autodetect"],[
-				AC_MSG_ERROR([No python3 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
+				PPRINT_ERROR([No python3 agent found. The path to the agent can be specified by setting the PYTHONPATH environment variable.])
 			])
 		])
 
@@ -709,23 +741,23 @@ AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
 
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
 	if test x"$(basename "$YACC")" != "xbison -y"; then
-		AC_MSG_ERROR([[bison not found and is required when building from git.
-		Please install bison]])
+		PPRINT_ERROR([bison not found and is required when building from git.
+		Please install bison])
 	fi
 	AC_PATH_PROG([BISON],[bison])
 	AX_PROG_BISON_VERSION([2.4], [],[
-		AC_MSG_ERROR([[Bison >= 2.4 is required when building from git]])
+		PPRINT_ERROR([Bison >= 2.4 is required when building from git])
 	])
 fi
 
 if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
 	if test x"$LEX" != "xflex"; then
-		AC_MSG_ERROR([[flex not found and is required when building from git.
-		Please install flex]])
+		PPRINT_ERROR([flex not found and is required when building from git.
+		Please install flex])
 	fi
 	AC_PATH_PROG([FLEX],[flex])
 	AX_PROG_FLEX_VERSION([2.5.35], [],[
-		AC_MSG_ERROR([[Flex >= 2.5.35 is required when building from git]])
+		PPRINT_ERROR([Flex >= 2.5.35 is required when building from git])
 	])
 fi
 
@@ -831,12 +863,22 @@ AC_OUTPUT
 #
 # Mini-report on what will be built.
 #
-AS_ECHO()
 
-AS_ECHO("Version name: $version_name")
-AS_ECHO("$version_description")
+PPRINT_CONFIG_INDENT=2
+PPRINT_CONFIG_TS=38
 
-AS_ECHO()
+AS_ECHO
+AS_ECHO("${PPRINT_COLOR_BLDBLU}LTTng-tools $PACKAGE_VERSION \"$version_name\"$PPRINT_COLOR_RST")
+AS_ECHO
+
+AS_IF([test -x /bin/fold], [
+	AS_ECHO("`AS_ECHO("$version_description") | /bin/fold -s`")
+], [
+	AS_ECHO("$version_description")
+])
+
+AS_ECHO
+PPRINT_SUBTITLE([Features])
 
 # Target architecture we're building for.
 target_arch=$host_cpu
@@ -849,167 +891,126 @@ for f in $CFLAGS; do
         fi
 done
 ]
-AS_ECHO_N("Target architecture: ")
-AS_ECHO($target_arch)
+PPRINT_PROP_STRING([Target architecture], $target_arch)
 
 # kmod enabled/disabled
-AS_ECHO_N("libkmod support: ")
-AS_IF([test "x$kmod_found" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$kmod_found" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([libkmod support], $value)
 
 # LTTng-UST enabled/disabled
-AS_ECHO_N("Lttng-UST support: ")
-AS_IF([test "x$lttng_ust_support" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$lttng_ust_support" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST support], $value)
 
-AS_ECHO()
-AS_ECHO("Binaries:")
+AS_ECHO
+PPRINT_SUBTITLE([Binaries])
 
 # List binaries to be built
-AS_ECHO_N("lttng: ")
-AS_IF([test x$enable_bin_lttng != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng], $value)
 
-AS_ECHO_N("lttng-consumerd: ")
-AS_IF([test x$enable_bin_lttng_consumerd != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_consumerd != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-consumerd], $value)
 
-AS_ECHO_N("lttng-crash: ")
-AS_IF([test x$enable_bin_lttng_crash != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_crash != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-crash], $value)
 
-AS_ECHO_N("lttng-relayd: ")
-AS_IF([test x$enable_bin_lttng_relayd != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_relayd != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-relayd], $value)
 
-AS_ECHO_N("lttng-sessiond: ")
-AS_IF([test x$enable_bin_lttng_sessiond != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+test x$enable_bin_lttng_sessiond != xno && value=1 || value=0
+PPRINT_PROP_BOOL([lttng-sessiond], $value)
 
-AS_ECHO_N("Extras: ")
-AS_IF([test x$enable_extras != xno],[
-       AS_ECHO("Enabled")
-],[
-       AS_ECHO("Disabled")
-])
+# Extras
+test x$enable_extras != xno && value=1 || value=0
+AS_ECHO
+PPRINT_CONFIG_INDENT=0
+PPRINT_PROP_BOOL([Extras], $value, $PPRINT_COLOR_SUBTITLE)
+PPRINT_CONFIG_INDENT=2
 
-# Print the bindir and libdir this `make install' will install into.
-AS_ECHO()
-AS_ECHO_N("Binaries will be installed in:  ")
-AS_ECHO("`eval eval echo $bindir`")
-AS_ECHO_N("Libraries will be installed in: ")
-AS_ECHO("`eval eval echo $libdir`")
-
-
-AS_ECHO()
+AS_ECHO
+PPRINT_SUBTITLE([Tests])
 
 # Print clear message that tests won't be built
 AS_IF([test "x$build_tests" = "xno"],[
-       AS_ECHO("WARNING: Tests won't be built since some binaries were disabled")
+	PPRINT_WARN([Tests won't be built since some binaries were disabled])
 ])
-
-AS_ECHO("Tests:")
 
 # LTTng UST Java agent JUL tests enabled/disabled
-AS_ECHO_N("LTTng-UST Java agent JUL tests: ")
-AS_IF([test "x$test_java_agent_jul" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$test_java_agent_jul" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Java agent JUL tests], $value)
 
 # LTTng UST Java agent Log4j tests enabled/disabled
-AS_ECHO_N("LTTng-UST Java agent Log4j tests: ")
-AS_IF([test "x$test_java_agent_log4j" = "xyes"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x$test_java_agent_log4j" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Java agent Log4j tests], $value)
 
-AS_ECHO_N("LTTng-UST Python2 agent tests: ")
-AS_IF([test ! -z "$PYTHON2_AGENT"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test ! -z "$PYTHON2_AGENT" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
 
-AS_ECHO_N("LTTng-UST Python3 agent tests: ")
-AS_IF([test ! -z "$PYTHON3_AGENT"],[
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test ! -z "$PYTHON3_AGENT" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
 
 #Python binding enabled/disabled
-AS_ECHO_N("Python binding: ")
-AS_IF([test "x${enable_python_binding:-yes}" = xyes], [
-	AS_ECHO("Enabled")
-],[
-	AS_ECHO("Disabled")
-])
+test "x${enable_python_binding:-yes}" = xyes && value=1 || value=0
+AS_ECHO
+PPRINT_CONFIG_INDENT=0
+PPRINT_PROP_BOOL([Python binding], $value, $PPRINT_COLOR_SUBTITLE)
+PPRINT_CONFIG_INDENT=2
+
+AS_ECHO
+PPRINT_SUBTITLE([Man pages])
+
+# man pages build enabled/disabled
+test "x$enable_build_man_pages" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Build man pages], $value)
+
+# man pages install enabled/disabled (always true in tarball)
+test "x$enable_build_man_pages" = "xno" -a "x$in_git_repo" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([Install man pages], $value)
+
+report_bindir="`eval eval echo $bindir`"
+report_libdir="`eval eval echo $libdir`"
+
+# Print the bindir and libdir this `make install' will install into.
+AS_ECHO
+PPRINT_SUBTITLE([Install directories])
+PPRINT_PROP_STRING([Binaries], [$report_bindir])
+PPRINT_PROP_STRING([Libraries], [$report_libdir])
+
+AS_ECHO
+PPRINT_SUBTITLE([Search directories])
 
 # If we build the sessiond, print the paths it will use
-AS_ECHO()
-AS_ECHO_N("The lttng command will search for the lttng-sessiond executable at: ")
 AS_IF([test "$SESSIOND_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $bindir`")
-	AS_ECHO("/lttng-sessiond")
+	path="$report_bindir/lttng-sessiond"
 ],[
-	AS_ECHO("$SESSIOND_BIN")
+	path="$SESSIOND_BIN"
 ])
+PPRINT_PROP_STRING([lttng-sessiond executable], [$path])
 
-AS_ECHO()
-AS_ECHO("The sessiond daemon will search the following directories: ")
-AS_ECHO_N("32-bit consumerd executable: ")
 AS_IF([test "$CONSUMERD32_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-	AS_ECHO("/lttng-consumerd")
+	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
-	AS_ECHO("$CONSUMERD32_BIN")
+	path="$CONSUMERD32_BIN"
 ])
+PPRINT_PROP_STRING([32-bit lttng-consumerd executable], [$path])
 
-AS_ECHO_N("32-bit consumer libraries:   ")
 AS_IF([test "$CONSUMERD32_LIBDIR" = ""],[
-	AS_ECHO("`eval eval echo $libdir`")
+	path="`eval eval echo $libdir`"
 ],[
-	AS_ECHO("$CONSUMERD32_LIBDIR")
+	path="$CONSUMERD32_LIBDIR"
 ])
+PPRINT_PROP_STRING([32-bit consumer libraries], [$path])
 
-AS_ECHO_N("64-bit consumerd executable: ")
 AS_IF([test "$CONSUMERD64_BIN" = ""],[
-	AS_ECHO_N("`eval eval echo $lttnglibexecdir`")
-	AS_ECHO("/lttng-consumerd")
+	path="`eval eval echo $lttnglibexecdir`/lttng-consumerd"
 ],[
-	AS_ECHO("$CONSUMERD64_BIN")
+	path="$CONSUMERD64_BIN"
 ])
+PPRINT_PROP_STRING([64-bit lttng-consumerd executable], [$path])
 
-AS_ECHO_N("64-bit consumer libraries:   ")
 AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
-	AS_ECHO("`eval eval echo $libdir`")
+	path="`eval eval echo $libdir`"
 ],[
-	AS_ECHO("$CONSUMERD64_LIBDIR")
+	path="$CONSUMERD64_LIBDIR"
 ])
-
-AS_ECHO()
-
+PPRINT_PROP_STRING([64-bit consumer libraries], [$path])

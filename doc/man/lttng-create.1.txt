@@ -1,0 +1,199 @@
+lttng-create(1)
+===============
+
+
+NAME
+----
+lttng-create - Create an LTTng tracing session
+
+
+SYNOPSIS
+--------
+Normal mode:
+
+[verse]
+*lttng create* ['GENERAL OPTIONS'] [option:--output='PATH' | option:--no-output]
+             [option:--shm-path='PATH'] ['SESSION']
+
+Snapshot mode:
+
+[verse]
+*lttng create* ['GENERAL OPTIONS'] option:--snapshot
+             [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
+             [option:--shm-path='PATH'] ['SESSION']
+
+Live mode:
+
+[verse]
+*lttng create* ['GENERAL OPTIONS'] option:--live[='DELAYUS']
+             [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
+             [option:--shm-path='PATH'] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng create` command creates a new tracing session.
+
+A tracing session is a named container of channels, which in turn
+contain event rules. It is domain-agnostic, in that channels and event
+rules can be enabled for the user space tracer and/or the Linux
+kernel tracer.
+
+On execution, an `.lttngrc` file is created, if it does not exist, in the
+user's home directory. This file contains the name of the current tracing
+session. When creating a new tracing session with `lttng create`, the
+current tracing session is set to this new tracing session. The
+linklttng:lttng-set-session(1) command can be used to set the current
+tracing session without manually editing the `.lttngrc` file.
+
+If 'SESSION' is omitted, a session name is automatically created having
+this form: `auto-YYYYmmdd-HHMMSS`. 'SESSION' *must not* contain the
+character `/`.
+
+The option:--shm-path option can be used to specify the path to the
+shared memory holding the ring buffers. Specifying a location on an
+NVRAM file system makes it possible to retrieve the latest recorded
+trace data when the system reboots after a crash. To view the events
+of ring buffer files after a system crash, use the
+linklttng:lttng-crash(1) utility.
+
+Tracing sessions are destroyed using the linklttng:lttng-destroy(1)
+command.
+
+
+Creation modes
+~~~~~~~~~~~~~~
+There are three tracing session modes:
+
+Normal mode::
+    Traces the local system and writes the trace to the local
+    file system. The option:--output option specifies the trace path.
+    If omitted, the trace is written in the `$LTTNG_HOME/lttng-traces`
+    directory (`$LTTNG_HOME` defaults to `$HOME`). The file system
+    output can be disabled using the option:--no-output option.
+
+Snapshot mode::
+    Traces the local system without writing the trace to the local file
+    system (implicit option:--no-output option). Channels are automatically
+    configured to be snapshot-ready on creation (see
+    linklttng:lttng-enable-channel(1)). The linklttng:lttng-snapshot(1)
+    command is used to take snapshots of the current ring buffers.
+    The option:--set-url, or option:--ctrl-url and option:--data-url
+    options set the default snapshot output destination.
+
+Live mode::
+    Traces the local system, sending trace data to an LTTng relay daemon
+    over the network (see linklttng:lttng-relayd(1)). The
+    option:--set-url, or option:--ctrl-url and option:--data-url options
+    set the trace output destination. The live output URLs cannot use
+    the `file://` protocol (see URL format below).
+
+
+URL format
+~~~~~~~~~~
+The option:--set-url, option:--ctrl-url, and option:--data-url options
+specify URLs.
+
+The format of those URLs is one of:
+
+[verse]
+file://'TRACEPATH'
+'NETPROTO'://('HOST' | 'IPADDR')[:__CTRLPORT__[:__DATAPORT__]][/'TRACEPATH']
+
+The `file://` protocol targets the *local file system*.
+
+'TRACEPATH'::
+    Absolute path to trace files on the local file system.
+
+The other version is used for *network streaming*.
+
+'NETPROTO'::
+    Network protocol, amongst:
++
+* `net`:  TCP over IPv4; the default values of `<ctrl port>` and
+  `<data port>` are resp. 5342 and 5343
+* `net6`: TCP over IPv6: same default ports as `net` protocol
+* `tcp`:  same as `net` protocol; can only be used with the
+  option:--ctrl-url and option:--data-url options together
+* `tcp6`: same as `net6` protocol; can only be used with the
+  option:--ctrl-url and option:--data-url options together
+
+('HOST' | 'IPADDR')::
+    Hostname or IP address (IPv6 address *must* be enclosed in brackets
+    (`[` and `]`); see https://www.ietf.org/rfc/rfc2732.txt[RFC 2732]).
+
+'CTRLPORT'::
+    Control port.
+
+'DATAPORT'::
+    Data port.
+
+'TRACEPATH'::
+    Path of trace files on the remote file system. This path is relative
+    to the base output directory set on the relay daemon side;
+    see linklttng:lttng-relayd(8).
+
+
+include::common-options-head.txt[]
+
+
+Mode
+~~~~
+option:--live[='DELAYUS']::
+    Create the session in live mode. The optional 'DELAYUS' parameter,
+    given in microseconds, is the maximum time the user can wait for
+    the data to be flushed. This mode can be set with a network URL
+    (options option:--set-url, or option:--ctrl-url and option:--data-url)
+    and must have a relay daemon listening (see linklttng:lttng-relayd(1)).
++
+By default, 'DELAYUS' is 1000000 and the network URL is set to
+`net://127.0.0.1`.
+
+option:--snapshot::
+    Create the session in snapshot mode. This is the equivalent of using
+    the option:--no-output option and creating all the channels of this
+    new tracing session in overwrite mode with an `mmap` output type.
+
+
+Output
+~~~~~~
+option:--no-output::
+    Do not output any trace data.
+
+option:-o, option:--output='PATH'::
+    Set trace output path to 'PATH'.
+
+option:--shm-path='PATH'::
+    Create shared memory holding buffers at 'PATH'.
+
+
+URL
+~~~
+See URL format above for the format of the 'URL' parameters below.
+
+option:-C, option:--ctrl-url='URL'::
+    Set control path URL to 'URL' (must use option:--data-url option
+    also).
+
+option:-D, option:--data-url='URL'::
+    Set data path URL to 'URL' (must use option:--ctrl-url option
+    also).
+
+option:-U, option:--set-url='URL'::
+    Set URL destination of the trace data to 'URL'. It is persistent for
+    the session lifetime. This option sets both data
+    (option:--data-url option) and control (option:--ctrl-url option)
+    URLs at the same time.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-destroy(1),
+linklttng:lttng-set-session(1),
+linklttng:lttng(1)

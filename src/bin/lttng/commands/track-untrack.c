@@ -64,28 +64,6 @@ static struct poptOption long_options[] = {
 	{ 0, 0, 0, 0, 0, 0, 0, },
 };
 
-/*
- * usage
- */
-static void usage(FILE *ofp, const char *cmd_str)
-{
-	fprintf(ofp, "usage: lttng %s [-k|-u] [OPTIONS]\n", cmd_str);
-	fprintf(ofp, "\n");
-	fprintf(ofp, "If no session is given (-s), the context is added to\n");
-	fprintf(ofp, "the current sesssion. Exactly one domain (-k or -u)\n");
-	fprintf(ofp, "must be specified.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help.\n");
-	fprintf(ofp, "      --list-options       Simple listing of options.\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name.\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer.\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer.\n");
-	fprintf(ofp, "  -p, --pid [PID]          Process ID tracker. Leave PID empty when used with --all.\n");
-	fprintf(ofp, "  -a, --all                All PIDs (use with --pid).\n");
-	fprintf(ofp, "\n");
-}
-
 static
 int parse_pid_string(const char *_pid_string,
 		int all, int **_pid_list, int *nr_pids)
@@ -236,7 +214,6 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 	ret = parse_pid_string(pid_string, all, &pid_list, &nr_pids);
 	if (ret != CMD_SUCCESS) {
 		ERR("Error parsing PID string");
-		usage(stderr, cmd_str);
 		retval = CMD_ERROR;
 		goto end;
 	}
@@ -353,7 +330,6 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	struct mi_writer *writer = NULL;
 
 	if (argc < 1) {
-		usage(stderr, cmd_str);
 		command_ret = CMD_ERROR;
 		goto end;
 	}
@@ -364,7 +340,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout, cmd_str);
+			SHOW_HELP();
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
@@ -374,7 +350,6 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 			opt_pid = 1;
 			break;
 		default:
-			usage(stderr, cmd_str);
 			command_ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -399,7 +374,6 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	/* Currently only PID tracker is supported */
 	if (!opt_pid) {
 		ERR("Please specify at least one tracker with its expected arguments");
-		usage(stderr, cmd_str);
 		command_ret = CMD_ERROR;
 		goto end;
 	}

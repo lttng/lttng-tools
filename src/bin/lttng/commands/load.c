@@ -53,24 +53,6 @@ static struct poptOption load_opts[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-/*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng load [OPTIONS] [SESSION]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "  -a, --all                Load all sessions (default)\n");
-	fprintf(ofp, "  -i, --input-path PATH    Input path of the session file(s).\n");
-	fprintf(ofp, "                           If a directory, load all files in it\n");
-	fprintf(ofp, "                           else try to load the given file.\n");
-	fprintf(ofp, "  -f, --force              Override existing session(s).\n");
-	fprintf(ofp, "                           This will destroy existing session(s)\n");
-	fprintf(ofp, "                           before creating new one(s).\n");
-}
-
 static int mi_partial_session(const char *session_name)
 {
 	int ret;
@@ -151,7 +133,7 @@ int cmd_load(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_ALL:
 			opt_load_all = 1;
@@ -163,7 +145,6 @@ int cmd_load(int argc, const char **argv)
 			opt_force = 1;
 			break;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}

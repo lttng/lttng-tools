@@ -1,0 +1,136 @@
+lttng-untrack(1)
+================
+
+
+NAME
+----
+lttng-untrack - Remove one or more entries from an LTTng resource tracker
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng untrack* ['GENERAL OPTIONS'] (option:--kernel | option:--userspace)
+            option:--pid[='PID'[,'PID']...] [option:--all] [option:--session='SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng untrack` commands removes one or more entries from a
+resource tracker.
+
+See linklttng:lttng-track(1) to learn more about LTTng trackers.
+
+The untrack command removes specific resources from a tracker. The
+resources to remove must have been precedently added by
+linklttng:lttng-track(1). It is also possible to remove all the
+resources from the whitelist using the option:--all option.
+
+As of this version, the only available tracker is the PID tracker.
+
+
+Example
+~~~~~~~
+One common operation is to create a tracing session
+(see linklttng:lttng-create(1)), remove all the entries from the PID
+tracker whitelist, start tracing, and then manually track PIDs
+while tracing is active.
+
+Assume the maximum system PID is 7 for this example.
+
+Command:
+
+------------
+lttng create
+------------
+
+Initial whitelist:
+
+-------------------------------
+[0] [1] [2] [3] [4] [5] [6] [7]
+-------------------------------
+
+Command:
+
+-------------------------------------
+lttng untrack --userspace --pid --all
+-------------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
+-------------------------------
+
+Commands:
+
+----------------------------------
+lttng enable-event --userspace ...
+lttng start
+...
+lttng track --userspace --pid=3,5
+----------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [ ] [ ] [3] [ ] [5] [ ] [ ]
+-------------------------------
+
+Command:
+
+-------------------------------
+lttng track --userspace --pid=2
+-------------------------------
+
+Whitelist:
+
+-------------------------------
+[ ] [ ] [2] [3] [ ] [5] [ ] [ ]
+-------------------------------
+
+
+include::common-options-head.txt[]
+
+
+Domain
+~~~~~~
+One of:
+
+option:-k, option:--kernel::
+    Untrack resources tracked in the Linux kernel domain.
+
+option:-u, option:--userspace::
+    Untrack resources tracked in the user space domain.
+
+
+Target
+~~~~~~
+option:-s, option:--session='SESSION'::
+    Untrack resources in the tracing session named 'SESSION' instead of
+    the current tracing session.
+
+
+Untracking
+~~~~~~~~~~
+option:-a, option:--all::
+    Used in conjunction with an empty option:--pid option: untrack _all_
+    process IDs (clear the whitelist).
+
+option:-p, option:--pid[='PID'[,'PID']...]::
+    Untrack process IDs 'PID' (remove them from the current whitelist).
++
+The 'PID' argument must be omitted when also using the option:--all
+option.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-track(1),
+linklttng:lttng(1)

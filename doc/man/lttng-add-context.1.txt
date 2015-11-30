@@ -1,0 +1,91 @@
+lttng-add-context(1)
+====================
+
+
+NAME
+----
+lttng-add-context - Add context fields to an LTTng channel
+
+
+SYNOPSIS
+--------
+Add context fields to a channel:
+
+[verse]
+*lttng add-context* ['GENERAL OPTIONS'] (option:--kernel | option:--userspace)
+                  [option:--session='SESSION'] [option:--channel='CHANNEL']
+                  --type 'TYPE' [--type 'TYPE']...
+
+List the available context fields:
+
+[verse]
+*lttng add-context* ['GENERAL OPTIONS'] --list
+
+
+DESCRIPTION
+-----------
+The `lttng add-context` command adds one or more context fields to
+a channel.
+
+Channels are created with the linklttng:lttng-enable-channel(1) command.
+
+If the option:--session option is omitted, the current tracing session
+is used. If the option:--channel option is omitted, the context fields
+are added to all the selected tracing session's channels.
+
+Many context fields can be added to a channel at once by repeating the
+option:--type option.
+
+perf counters are available as per-CPU (`perf:cpu:` prefix) as well as
+per-thread (`perf:thread:` prefix) counters. Currently, per-CPU counters
+can only be used in the Linux kernel tracing domain, and per-thread
+counters can only be used in the user space tracing domain.
+
+Use the option:--list option without other arguments to list the
+available context field names.
+
+
+include::common-options-head.txt[]
+
+
+Domain
+~~~~~~
+One of:
+
+option:-k, option:--kernel::
+    Apply command to the Linux kernel domain.
+
+option:-u, option:--userspace::
+    Apply command to the user space domain.
+
+
+Target
+~~~~~~
+option:-c, option:--channel='CHANNEL'::
+    Add context fields to a channel named 'CHANNEL' instead of adding
+    them to all the channels.
+
+option:-s, option:--session='SESSION'::
+    Add context fields to a channel in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+Context
+~~~~~~~
+option:--list::
+    List the available context fields. Use this option alone.
+
+option:-t, option:--type='TYPE'::
+    Add context field named 'TYPE'. This option can be repeated as
+    many times as needed on the command-line.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1)

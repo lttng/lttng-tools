@@ -1,0 +1,47 @@
+lttng-help(1)
+=============
+
+
+NAME
+----
+lttng-help - Display help information about an LTTng command
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng help* ['GENERAL OPTIONS'] ['COMMAND']
+
+
+DESCRIPTION
+-----------
+The `lttng help` command displays help information about an LTTng
+command.
+
+This command is the equivalent of:
+
+--------------------
+lttng COMMAND --help
+--------------------
+
+where `COMMAND` is the name of the command about which to get help. If
+'COMMAND' is omitted, `lttng help` shows general help about the
+linklttng:lttng(1) command.
+
+The `lttng help` command attempts to launch `/usr/bin/man` to view
+the command's man page. The path to the man pager can be overridden
+by the `LTTNG_MAN_BIN_PATH` environment variable.
+
+
+include::common-options-head.txt[]
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1)

@@ -1,0 +1,62 @@
+lttng-disable-channel(1)
+=======================
+
+
+NAME
+----
+lttng-disable-channel - Disable LTTng channels
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng disable-channel* ['GENERAL OPTIONS'] (option:--kernel | option:--userspace)
+                      [option:--session='SESSION'] 'CHANNEL'[,'CHANNEL']...
+
+
+DESCRIPTION
+-----------
+The `lttng disable-channel` command disables one or more channels
+previously enabled by the linklttng:lttng-enable-channel(1) command.
+
+A channel is always contained in a tracing session
+(see linklttng:lttng-create(1) for creating a tracing session). The
+session in which a channel is disabled using `lttng disable-channel` can
+be specified using the option:--session option. If the option:--session
+option is omitted, the current tracing session is targeted.
+
+Note that re-enabling a disabled channel once its tracing session
+has been active at least once is currently not supported.
+
+
+include::common-options-head.txt[]
+
+
+Domain
+~~~~~~
+One of:
+
+option:-k, option:--kernel::
+    Apply command to the Linux kernel domain.
+
+option:-u, option:--userspace::
+    Apply command to the user space domain.
+
+
+Target
+~~~~~~
+option:-s, option:--session='SESSION'::
+    Disable channels in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-disable-channel(1),
+linklttng:lttng(1)

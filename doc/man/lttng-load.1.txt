@@ -1,0 +1,71 @@
+lttng-load(1)
+=============
+
+
+NAME
+----
+lttng-load - Load LTTng tracing session configurations
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng load* ['GENERAL OPTIONS'] [option:--all] [option:--force]
+           [option:--input-path='PATH'] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng load` command loads the configurations of one or more
+tracing sessions from files.
+
+The `lttng load` command is used in conjunction with the
+linklttng:lttng-save(1) command to save and restore the complete
+configurations of tracing sessions. This includes the enabled channels
+and event rules, the context added to channels, the tracing activity,
+and more.
+
+Once one or more tracing session configurations are loaded, they appear
+exactly as they were saved from the user's point of view.
+
+If 'SESSION' is omitted, all the existing tracing session configuration
+files are loaded (equivalent to using the option:--all option).
+Otherwise, 'SESSION' is the name of a tracing session of which the
+configuration file can be found in the input directory path.
+
+The default input directory path is `$LTTNG_HOME/.lttng/sessions`
+(`$LTTNG_HOME` defaults to `$HOME`). This directory path can be
+overridden with the option:--input-path option.
+The option:--input-path option can also point to the full path of a
+tracing session configuration file, in which case only this one is
+loaded.
+
+By default, existing tracing sessions are not overwritten when
+loading; the command fails. The option:--force option can be used to
+allow this.
+
+
+include::common-options-head.txt[]
+
+
+option:-a, option:--all::
+    Load all tracing session configurations (default).
+
+option:-f, option:--force::
+    Allow overwriting existing tracing sessions when loading.
+
+option:-i, option:--input-path='PATH'::
+    Set input directory path to 'PATH'. 'PATH' may also point to a
+    specific tracing session configuration file to load only this one.
+
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-save(1),
+linklttng:lttng(1)

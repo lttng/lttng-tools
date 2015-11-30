@@ -59,17 +59,23 @@ This source tree is based on the Autotools suite from GNU to simplify
 portability. Here are some things you should have on your system in
 order to compile the Git repository tree:
 
-  - GNU Autotools (Automake >= 1.10, Autoconf >= 2.64,
-    Autoheader >= 2.50; make sure your system-wide `automake` points to
-    a recent version!)
-  - [GNU Libtool](http://www.gnu.org/software/autoconf/) >= 2.2
-  - Flex >= 2.5.35
-  - Bison >= 2.4
+  - **GNU Autotools** (**Automake >= 1.10**, **Autoconf >= 2.64**,
+    **Autoheader >= 2.50**; make sure your system-wide `automake` points
+    to a recent version!)
+  - **[GNU Libtool](http://www.gnu.org/software/autoconf/) >= 2.2**
+  - **Flex >= 2.5.35**
+  - **Bison >= 2.4**
+
+Optional packages to build some LTTng-tools man pages:
+
+  - **AsciiDoc >= 8.6.5**
+  - **xmlto >= 0.0.21** (previous versions may work, but
+    they were not tested)
 
 If you use GNU gold, which is _not_ mandatory, make sure you have this
 version:
 
-  - GNU gold >= 2.22
+  - **GNU gold >= 2.22**
 
 Before this version of GNU gold, we hit a
 [known bug](http://sourceware.org/bugzilla/show_bug.cgi?id=11317).

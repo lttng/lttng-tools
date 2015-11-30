@@ -1,0 +1,117 @@
+lttng-disable-event(1)
+======================
+
+
+NAME
+----
+lttng-disable-event - Disable LTTng event rules
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng disable-event* ['GENERAL OPTIONS']
+                    (option:--kernel [option:--tracepoint | option:--probe |
+                               option:--function | option:--syscall] |
+                     option:--userspace | option:--jul | option:--log4j | option:--python)
+                    [option:--session='SESSION'] [option:--channel='CHANNEL']
+                    (option:--all-events | 'EVENT'[,'EVENT']...)
+
+DESCRIPTION
+-----------
+The `lttng disable-event` command disables one or more event rules
+previously enabled by the linklttng:lttng-enable-event(1) command.
+
+Event rules are always assigned to a channel when they are created. If
+the option:--channel option is omitted, the default channel named
+`channel0` is used.
+
+If the option:--session option is omitted, the chosen channel is picked
+from the current tracing session.
+
+If the option:--all-events option is used, all the existing event rules
+of the chosen domain are disabled. Otherwise, at least one event rule
+to disable named 'EVENT' must be specified.
+
+With the option:--kernel option, the event source type can be specified
+using one of the option:--tracepoint, option:--probe,
+option:--function, or option:--syscall options. See
+linklttng:lttng-enable-event(1) for more details about event source
+types.
+
+Events can be disabled while tracing is active
+(use linklttng:lttng-start(1) to make a tracing session active).
+
+
+include::common-options-head.txt[]
+
+
+Domain
+~~~~~~
+One of:
+
+option:-j, option:--jul::
+    Disable event rules in the `java.util.logging` (JUL) domain.
+
+option:-k, option:--kernel::
+    Disable event rules in the Linux kernel domain.
+
+option:-l, option:--log4j::
+    Disable event rules in the Apache log4j domain.
+
+option:-p, option:--python::
+    Disable event rules in the Python domain.
+
+option:-u, option:--userspace::
+    Disable event rules in the user space domain.
+
+
+Target
+~~~~~~
+option:-c, option:--channel='CHANNEL'::
+    Disable event rules in the channel named 'CHANNEL' instead
+    of the default channel name `channel0`.
+
+option:-s, option:--session='SESSION'::
+    Disable event rules in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+Event source type
+~~~~~~~~~~~~~~~~~
+One of:
+
+option:--function::
+    Linux kernel kretprobe. Only available with the option:--kernel
+    domain option.
+
+option:--probe::
+    Linux kernel kprobe. Only available with the option:--kernel
+    domain option.
+
+option:--syscall::
+    Linux kernel system call. Only available with the option:--kernel
+    domain option.
+
+option:--tracepoint::
+    Linux kernel or application tracepoint. Only available
+    with the option:--kernel domain option (default Linux kernel
+    domain event source type).
+
+
+Disabling
+~~~~~~~~~
+option:-a, option:--all-events::
+    Disable all enabled event rules in the chosen tracing session,
+    tracing domain, and channel.
+
+include::common-help-options.txt[]
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng-enable-event(1),
+linklttng:lttng(1)

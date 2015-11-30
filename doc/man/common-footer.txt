@@ -1,0 +1,89 @@
+ENVIRONMENT VARIABLES
+---------------------
+`LTTNG_HOME`::
+    Overrides the `$HOME` environment variable. Useful when the user
+    running the commands has a non-writable home directory.
+
+`LTTNG_MAN_BIN_PATH`::
+    Absolute path to the man pager to use for viewing help information
+    about LTTng commands (using linklttng:lttng-help(1) or
+    `lttng COMMAND --help`).
+
+`LTTNG_SESSION_CONFIG_XSD_PATH`::
+    Set the path in which the `session.xsd` session configuration XML
+    schema may be found.
+
+`LTTNG_SESSIOND_PATH`::
+    Allows one to specify the full session daemon binary path to
+    linklttng:lttng(1) command-line tool.
++
+The option:--sessiond-path option can be used instead of this
+environment variable.
+
+
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Command error
+
+*2*::
+    Undefined command
+
+*3*::
+    Fatal error
+
+*4*::
+    Command warning (something went wrong during the command)
+
+
+BUGS
+----
+If you encounter any issue or usability problem, please report it on the
+LTTng bug tracker: *<https://bugs.lttng.org>*.
+
+
+RESOURCES
+---------
+LTTng project website: *<http://lttng.org>*.
+
+LTTng documentation: *<http://lttng.org/docs>*.
+
+Git repositories: *<http://git.lttng.org>*.
+
+http://lists.lttng.org[Mailing list] for support and
+development: `lttng-dev@lists.lttng.org`.
+
+IRC channel: `#lttng` on `irc.oftc.net` (http://www.oftc.net/[OFTC]).
+
+
+COPYRIGHTS
+----------
+LTTng is distributed under the
+http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html[GNU General
+Public License version 2]. See the
+https://github.com/lttng/lttng-tools/blob/master/LICENSE[`LICENSE`] file
+for details.
+
+
+THANKS
+------
+Special thanks to Michel Dagenais and the
+http://www.dorsal.polymtl.ca/[DORSAL laboratory] at École Polytechnique
+de Montréal for the LTTng journey.
+
+Also thanks to the Ericsson teams working on tracing which helped us
+greatly with detailed bug reports and unusual test cases.
+
+
+AUTHORS
+-------
+LTTng-tools was originally written by Mathieu Desnoyers,
+Julien Desfossez, and David Goulet. More people have since
+contributed to it.
+
+LTTng-tools is currently maintained by
+Jérémie Galarneau
+(*mailto:jeremie.galarneau@efficios.com[jeremie.galarneau@efficios.com]*).

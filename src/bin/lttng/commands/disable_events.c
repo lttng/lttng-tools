@@ -73,34 +73,6 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-/*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng disable-event NAME[,NAME2,...] (-k | -u | -j | -l | -p) [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to this channel\n");
-	fprintf(ofp, "  -a, --all-events         Disable all tracepoints\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply to Java application using LOG4j\n");
-	fprintf(ofp, "  -p, --python             Apply to Python application using logging\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Event type options (Only supported with kernel domain):\n");
-	fprintf(ofp, "      --all                All event types (default)\n");
-	fprintf(ofp, "      --tracepoint         Tracepoint event\n");
-	fprintf(ofp, "      --syscall            System call event\n");
-	fprintf(ofp, "      --probe              Probe event\n");
-	fprintf(ofp, "      --function           Function event\n");
-	fprintf(ofp, "\n");
-}
-
 static
 const char *print_channel_name(const char *name)
 {
@@ -361,7 +333,7 @@ int cmd_disable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_TYPE_SYSCALL:
 			opt_event_type = LTTNG_EVENT_SYSCALL;
@@ -382,7 +354,6 @@ int cmd_disable_events(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -410,7 +381,6 @@ int cmd_disable_events(int argc, const char **argv)
 	if ((opt_userspace || opt_jul || opt_log4j || opt_python)
 			&& opt_event_type != LTTNG_EVENT_ALL) {
 		ERR("Disabling userspace and agent (-j | -l | -p) event(s) based on instrumentation type is not supported.\n");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -418,7 +388,6 @@ int cmd_disable_events(int argc, const char **argv)
 	opt_event_list = (char*) poptGetArg(pc);
 	if (opt_event_list == NULL && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}

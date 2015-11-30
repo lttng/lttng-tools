@@ -51,20 +51,6 @@ static struct poptOption save_opts[] = {
 
 static struct mi_writer *writer;
 
-/*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng save [OPTIONS] [SESSION]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "  -a, --all            Save all sessions (default)\n");
-	fprintf(ofp, "  -o, --output-path    Output path of the session configuration(s)\n");
-	fprintf(ofp, "  -f, --force          Overwrite existing session configuration(s)\n");
-}
-
 static int mi_partial_session(const char *session_name)
 {
 	int ret;
@@ -146,7 +132,7 @@ int cmd_save(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_ALL:
 			opt_save_all = 1;
@@ -158,7 +144,6 @@ int cmd_save(int argc, const char **argv)
 			list_cmd_options(stdout, save_opts);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}

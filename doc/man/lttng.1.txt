@@ -1,0 +1,242 @@
+lttng(1)
+========
+
+
+NAME
+----
+lttng - LTTng 2 tracer control command-line tool
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* [option:--group='GROUP'] [option:--mi='TYPE'] [option:--no-sessiond | option:--sessiond-path='PATH']
+      [option:--quiet | option:-v | option:-vv | option:-vvv] 'COMMAND' ['COMMAND OPTIONS']
+
+
+DESCRIPTION
+-----------
+The http://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
+source system software package for correlated tracing of the Linux
+kernel, user applications, and user libraries.
+
+LTTng consists of Linux kernel modules (for Linux kernel tracing) and
+dynamically loaded libraries (for user application and library tracing).
+It is controlled by a session daemon, linklttng:lttng-sessiond(8), which
+receives commands from a command-line interface, `lttng`.
+
+The `lttng` command-line tool, from the LTTng-tools package, is used
+to control both Linux kernel and user space tracers. Every interaction
+with the tracer should happen through this tool or through the
+liblttng-ctl library shipped by the LTTng-tools package.
+
+A _tracing domain_ is the official term the LTTng project uses to
+designate a tracer category.
+
+There are currently five known domains. For some commands, the domain
+needs to be specified using a command-line option. The domain selection
+options are:
+
+option:-j, option:--jul::
+    Apply command to the java.util.logging (JUL) domain.
+
+option:-k, option:--kernel::
+    Apply command to the Linux kernel domain.
+
+option:-l, option:--log4j::
+    Apply command to the Apache log4j 1.2 (Java) domain.
+
+option:-p, option:--python::
+    Apply command to the Python domain.
+
+option:-u, option:--userspace::
+    Apply command to the user space domain.
+
+The LTTng session daemon, linklttng:lttng-sessiond(8), acts as a tracing
+registry, which allows the user to interact with multiple tracers
+(kernel and user space) within the same container, a _tracing session_.
+Traces can be gathered from the Linux kernel and/or instrumented
+applications (see linklttng:lttng-ust(3)). Aggregating and reading those
+traces can be done using the linklttng:babeltrace(1) trace reader and
+converter.
+
+In order to trace the Linux kernel, the session daemon needs to be
+running as `root`. LTTng provides the use of a _tracing group_
+(default name: `tracing`). `lttng`'s option:--group option can be used
+to change the default tracing group name. Whomever is in that group can
+interact with the root session daemon and thus trace the kernel.
+
+Session daemons can coexist, in that you can have a session daemon
+running as user Alice that can be used to trace her applications
+alongside with a root session daemon or even a session daemon running as
+user Bob. It is highly recommended to start the session daemon at boot
+time for stable and long-term tracing.
+
+Each user space application instrumented with linklttng:lttng-ust(3)
+automatically registers with the root session daemon and its user
+session daemon. This allows each session daemon to list the available
+traceable applications and event sources at any given moment
+(see linklttng:lttng-list(1)).
+
+By default, the linklttng:lttng-create(1) command automatically spawns
+a user session daemon if none is currently running. The
+option:--no-sessiond general option can be set to avoid this.
+
+
+OPTIONS
+-------
+option:-g, option:--group='GROUP'::
+    Use 'GROUP' as Unix tracing group (default: `tracing`).
+
+option:-m, option:--mi='TYPE'::
+    Use machine interface type 'TYPE'.
++
+Supported types: `xml`.
++
+The machine interface (MI) mode converts the traditional pretty-printing to a
+machine output syntax. The MI mode provides a change-resistant way to access
+information generated via the `lttng` command-line program.
++
+When using the MI mode, the data is printed on the standard output. Errors and
+warnings are printed on the standard error with the pretty-print default
+format.
++
+If any error occurs during the execution of a command, the return value of the
+command will be different than 0. In this case, `lttng` does NOT
+guarantee the syntax and data validity of the generated MI output.
++
+For the `xml` output type, an XML schema definition (XSD) file used for
+validation is available: see the `src/common/mi_lttng.xsd` file in
+LTTng-tools' source tree.
+
+option:-n, option:--no-sessiond::
+    Do not automatically spawn a session daemon.
+
+option:-q, option:--quiet::
+    Suppress all messages (even warnings and errors).
+
+option:--sessiond-path='PATH'::
+    Set the session daemon binary's absolute path to 'PATH'.
+
+option:-v, option:--verbose::
+    Increase verbosity.
++
+Three levels of verbosity are available, which are triggered by
+appending additional `v` letters to the option
+(that is, `-vv` and `-vvv`).
+
+
+Program information
+~~~~~~~~~~~~~~~~~~~
+option:-h, option:--help::
+    Show help.
+
+option:--list-commands::
+    List available commands.
+
+option:--list-options::
+    List available general options.
+
+option:-V, option:--version::
+    Show version.
+
+
+COMMANDS
+--------
+The following commands also has their own option:--help option.
+
+
+Tracing sessions
+~~~~~~~~~~~~~~~~
+linklttng:lttng-create(1)::
+    Create a tracing session.
+
+linklttng:lttng-destroy(1)::
+    Tear down a tracing session.
+
+linklttng:lttng-save(1)::
+    Save tracing session configuration.
+
+linklttng:lttng-set-session(1)::
+    Set current tracing session.
+
+linklttng:lttng-load(1)::
+    Load tracing session configuration.
+
+
+Channels
+~~~~~~~~
+linklttng:lttng-enable-channel(1)::
+    Create or enable tracing channel(s).
+
+linklttng:lttng-disable-channel(1)::
+    Disable tracing channel(s).
+
+linklttng:lttng-add-context(1)::
+    Add context fields to a channel.
+
+
+Event rules
+~~~~~~~~~~~
+linklttng:lttng-enable-event(1)::
+    Create or enable event rule(s).
+
+linklttng:lttng-disable-event(1)::
+    Disable event rule(s).
+
+
+Status
+~~~~~~
+linklttng:lttng-list(1)::
+    List tracing sessions, domains, channels, and events.
+
+linklttng:lttng-status(1)::
+    Get the status of the current tracing session.
+
+
+Control
+~~~~~~~
+linklttng:lttng-start(1)::
+    Start tracing.
+
+linklttng:lttng-stop(1)::
+    Stop tracing.
+
+linklttng:lttng-snapshot(1)::
+    Snapshot buffers of current tracing session.
+
+
+Resource tracking
+~~~~~~~~~~~~~~~~~
+linklttng:lttng-track(1)::
+    Track specific system resources.
+
+linklttng:lttng-untrack(1)::
+    Untrack specific system resources.
+
+
+Miscellaneous
+~~~~~~~~~~~~~
+linklttng:lttng-calibrate(1)::
+    Quantify LTTng overhead.
+
+linklttng:lttng-help(1)::
+    Display help information about a command.
+
+linklttng:lttng-version(1)::
+    Show version information.
+
+linklttng:lttng-view(1)::
+    Start trace viewer.
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:babeltrace(1)
+linklttng:lttng-crash(1)
+linklttng:lttng-relayd(1),
+linklttng:lttng-sessiond(8)
+linklttng:lttng-ust(3)
