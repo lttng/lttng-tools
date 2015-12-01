@@ -34,9 +34,9 @@ SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.o	\
 	 $(top_builddir)/src/bin/lttng-sessiond/consumer.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.o \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
-	 $(top_builddir)/src/common/.libs/uri.o \
-	 $(top_builddir)/src/common/.libs/utils.o \
-	 $(top_builddir)/src/common/.libs/error.o \
+	 $(top_builddir)/src/common/uri.o \
+	 $(top_builddir)/src/common/utils.o \
+	 $(top_builddir)/src/common/error.o \
 	 $(top_builddir)/src/common/health/libhealth.la \
 	 $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
@@ -60,8 +60,8 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/snapshot.o \
 		   $(top_builddir)/src/bin/lttng-sessiond/agent.o \
-		   $(top_builddir)/src/common/.libs/uri.o \
-		   $(top_builddir)/src/common/.libs/utils.o \
+		   $(top_builddir)/src/common/uri.o \
+		   $(top_builddir)/src/common/utils.o \
 		   $(top_builddir)/src/common/health/libhealth.la \
 		   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
@@ -75,8 +75,8 @@ endif
 KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.o	\
 		$(top_builddir)/src/bin/lttng-sessiond/consumer.o	\
 		$(top_builddir)/src/bin/lttng-sessiond/utils.o \
-		$(top_builddir)/src/common/.libs/uri.o \
-		$(top_builddir)/src/common/.libs/utils.o \
+		$(top_builddir)/src/common/uri.o \
+		$(top_builddir)/src/common/utils.o \
 		$(top_builddir)/src/common/health/libhealth.la \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
@@ -86,8 +86,8 @@ test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM)
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
 # utils suffix for unit test
-UTILS_SUFFIX=$(top_builddir)/src/common/.libs/utils.o \
-		$(top_builddir)/src/common/.libs/runas.o
+UTILS_SUFFIX=$(top_builddir)/src/common/utils.o \
+		$(top_builddir)/src/common/runas.o
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
