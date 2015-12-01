@@ -140,13 +140,23 @@ AC_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR],[datadir], [LTTng system data direct
 #
 # Check for pthread
 AC_CHECK_LIB([pthread], [pthread_create], [],
-	[AC_MSG_ERROR([Cannot find libpthread. Use [LDFLAGS]=-Ldir to specify its location.])]
+	[AC_MSG_ERROR([Cannot find libpthread. Use LDFLAGS=-Ldir to specify its location.])]
 )
 
 # Check libpopt
 PKG_CHECK_MODULES([POPT], [popt],
 	[LIBS="$LIBS $POPT_LIBS"],
-	[AC_MSG_ERROR([Cannot find libpopt. Use [LDFLAGS]=-Ldir to specify its location.])]
+	[
+		AC_MSG_WARN([pkg-config was unable to find a valid .pc for libpopt. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
+		AC_MSG_WARN([Finding libpopt without pkg-config.])
+		AC_CHECK_LIB([popt],
+			[poptGetContext],
+			[],
+			[
+				 AC_MSG_ERROR([Cannot find libpopt. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
+			]
+		)
+	]
 )
 
 AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
@@ -159,17 +169,29 @@ PKG_CHECK_MODULES([UUID], [uuid],
 	have_libuuid=yes
 ],
 [
-	# libuuid not found, check for uuid_create in libc.
-	AC_CHECK_LIB([c], [uuid_create],
-	[
-		AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBC_UUID], 1, [Has libc uuid support.])
-		have_libc_uuid=yes
-	],
-	[
-		AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Use [LDFLAGS]=-Ldir to specify their location.])
-	])
-]
-)
+	AC_MSG_WARN([pkg-config was unable to find a valid .pc for libuuid. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
+	AC_MSG_WARN([Finding libuuid without pkg-config.])
+	AC_CHECK_LIB([uuid],
+		[uuid_generate],
+		[
+			AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
+			have_libuuid=yes
+		],
+		[
+			# libuuid not found, check for uuid_create in libc.
+			AC_CHECK_LIB([c],
+				[uuid_create],
+				[
+					AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBC_UUID], 1, [Has libc uuid support.])
+					have_libc_uuid=yes
+				],
+				[
+					AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
+				]
+			)
+		]
+	)
+])
 AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$have_libuuid" = "xyes"])
 AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$have_libc_uuid" = "xyes"])
 
