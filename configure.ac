@@ -28,6 +28,13 @@ AC_PROG_SED
 AC_PROG_YACC
 LT_INIT
 
+# Check for objcopy, required by the base address statedump and dynamic linker tests
+AC_CHECK_TOOL([OBJCOPY], objcopy, no)
+AS_IF([test "x$OBJCOPY" = xno],
+	[AC_MSG_WARN([Cannont find objcopy. The base address statedump and dynamic linker tests will be disabled. Install the binutils package to remediate this.])]
+)
+AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != xno])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_TYPE_INT32_T
