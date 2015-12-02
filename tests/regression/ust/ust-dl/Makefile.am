@@ -1,3 +1,7 @@
+objcopy_verbose = $(objcopy_verbose_@AM_V@)
+objcopy_verbose_ = $(objcopy_verbose_@AM_DEFAULT_V@)
+objcopy_verbose_0 = @echo OBJCOPY $@;
+
 AM_CPPFLAGS = -I$(srcdir) -g
 
 noinst_PROGRAMS = prog
@@ -12,15 +16,21 @@ libfoo_la_LDFLAGS = -module -shared -avoid-version \
 noinst_SCRIPTS = test_ust-dl test_ust-dl.py
 EXTRA_DIST = test_ust-dl test_ust-dl.py
 
-all-local: libfoo.la
+# Extract debug symbols
+libfoo.so.debug: libfoo.la
+	$(objcopy_verbose)$(OBJCOPY) --only-keep-debug .libs/libfoo.so libfoo.so.debug
+
+# Strip and add debuglink
+libfoo.so: libfoo.so.debug
+	@cp -f .libs/libfoo.so libfoo.so
+	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libfoo.so.debug libfoo.so
+
+all-local: libfoo.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \
 			cp -f $(srcdir)/$$script $(builddir); \
 		done; \
 	fi
-	objcopy --only-keep-debug .libs/libfoo.so .libs/libfoo.so.debug
-	strip -g .libs/libfoo.so
-	objcopy --add-gnu-debuglink .libs/libfoo.so.debug .libs/libfoo.so
 
 clean-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
@@ -28,4 +38,5 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
-	rm -f .libs/libfoo.so.debug
+
+CLEANFILES = libfoo.so libfoo.so.debug

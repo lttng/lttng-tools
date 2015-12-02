@@ -45,7 +45,7 @@ session_info = create_session()
 enable_ust_tracepoint_event(session_info, "*")
 start_session(session_info)
 
-test_process = subprocess.Popen(test_path + "prog", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+test_process = subprocess.Popen(test_path + "prog.strip", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 if sys.version_info >= (3, 3):
     try:
         test_process.wait(5)
