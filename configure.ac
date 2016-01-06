@@ -97,7 +97,7 @@ AS_IF([test "x$libtool_fixup" = "xyes"],
 	    [
 		  AC_MSG_RESULT([$libtool_flag_pattern_count])
 		  AC_MSG_WARN([the detected libtool will not link all dependencies, forcing link_all_deplibs = unknown])
-		  SED -i "s/\($libtool_flag_pattern\)\s*=\s*no/\1=unknown/g" $libtool_m4
+		  $SED -i "s/\($libtool_flag_pattern\)\s*=\s*no/\1=unknown/g" $libtool_m4
 		  ],
 		  [
 		  AC_MSG_RESULT([none])
