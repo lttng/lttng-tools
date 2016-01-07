@@ -1,3 +1,18 @@
+2016-01-07 lttng-tools 2.7.1 (National Tempura Day)
+	* Build: fallback to AC_CHECK_LIBS when looking for popt and uuid
+	* tests/unit: fix object files' location
+	* configure.ac: fix static build
+	* Fix: close indexes when rotating the trace files in mmap mode
+	* Fix: close indexes when rotating the trace files in splice mode
+	* Fix: Don't spam session daemon logs on invalid UST context
+	* Fix: Check for NULL hash tables on relay daemon teardown
+	* Fix: Verify directory's existence before calling mkdir
+	* Fix: Unchecked NULL string in logging statement
+	* Fix: include the filter expression in agent events' primary key
+	* Fix live timer calculation error
+	* Fix: Remove dependency on glibc 2.12 caused by pthread_setname_np
+	* Fix: Log and ignore SIGINT and SIGTERM in run_as worker
+
 2015-09-24 lttng-tools 2.7.0 (National Punctuation Day)
 	* Fix: Handle EINTR of waipid in run-as worker
 	* Fix: Handle EINTR of waitpid when spawning a session daemon
