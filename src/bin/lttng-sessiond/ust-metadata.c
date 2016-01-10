@@ -179,6 +179,102 @@ end:
 	return ret;
 }
 
+/* Called with session registry mutex held. */
+static
+int ust_metadata_enum_statedump(struct ust_registry_session *session,
+		const char *enum_name,
+		uint64_t enum_id,
+		const struct ustctl_integer_type *container_type,
+		const char *field_name)
+{
+	struct ust_registry_enum *reg_enum;
+	const struct ustctl_enum_entry *entries;
+	size_t nr_entries;
+	int ret = 0;
+	size_t i;
+
+	rcu_read_lock();
+	reg_enum = ust_registry_lookup_enum_by_id(session, enum_name, enum_id);
+	rcu_read_unlock();
+	/* reg_enum can still be used because session registry mutex is held. */
+	if (!reg_enum) {
+		ret = -ENOENT;
+		goto end;
+	}
+	entries = reg_enum->entries;
+	nr_entries = reg_enum->nr_entries;
+
+	ret = lttng_metadata_printf(session,
+		"		enum : integer { size = %u; align = %u; signed = %u; encoding = %s; base = %u; } {\n",
+		container_type->size,
+		container_type->alignment,
+		container_type->signedness,
+		(container_type->encoding == ustctl_encode_none)
+			? "none"
+			: (container_type->encoding == ustctl_encode_UTF8)
+				? "UTF8"
+				: "ASCII",
+		container_type->base);
+	if (ret) {
+	        goto end;
+	}
+	/* Dump all entries */
+	for (i = 0; i < nr_entries; i++) {
+		const struct ustctl_enum_entry *entry = &entries[i];
+		int j, len;
+
+		ret = lttng_metadata_printf(session,
+				"			\"");
+		if (ret) {
+			goto end;
+		}
+		len = strlen(entry->string);
+		/* Escape the character '"' */
+		for (j = 0; j < len; j++) {
+			char c = entry->string[j];
+
+			switch (c) {
+			case '"':
+				ret = lttng_metadata_printf(session,
+						"\\\"");
+				break;
+			case '\\':
+				ret = lttng_metadata_printf(session,
+						"\\\\");
+				break;
+			default:
+				ret = lttng_metadata_printf(session,
+						"%c", c);
+				break;
+			}
+			if (ret) {
+				goto end;
+			}
+		}
+		ret = lttng_metadata_printf(session,
+				"\" = ");
+		if (ret) {
+			goto end;
+		}
+		if (entry->start == entry->end) {
+			ret = lttng_metadata_printf(session,
+					"%d,\n",
+					entry->start);
+		} else {
+			ret = lttng_metadata_printf(session,
+					"%d ... %d,\n",
+					entry->start, entry->end);
+		}
+		if (ret) {
+			goto end;
+		}
+	}
+	ret = lttng_metadata_printf(session, "		} _%s;\n",
+			field_name);
+end:
+	return ret;
+}
+
 static
 int _lttng_field_statedump(struct ust_registry_session *session,
 		const struct ustctl_field *field)
@@ -210,6 +306,13 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->type.u.basic.integer.reverse_byte_order ? bo_reverse : bo_native,
 			field->name);
 		break;
+	case ustctl_atype_enum:
+		ret = ust_metadata_enum_statedump(session,
+			field->type.u.basic.enumeration.name,
+			field->type.u.basic.enumeration.id,
+			&field->type.u.basic.enumeration.container_type,
+			field->name);
+		break;
 	case ustctl_atype_float:
 		ret = lttng_metadata_printf(session,
 			"		floating_point { exp_dig = %u; mant_dig = %u; align = %u;%s } _%s;\n",
@@ -219,8 +322,6 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->type.u.basic.integer.reverse_byte_order ? bo_reverse : bo_native,
 			field->name);
 		break;
-	case ustctl_atype_enum:
-		return -EINVAL;
 	case ustctl_atype_array:
 	{
 		const struct ustctl_basic_type *elem_type;

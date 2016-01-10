@@ -192,6 +192,11 @@ struct ust_app_session {
 	uint64_t id;	/* Unique session identifier */
 	struct lttng_ht *channels; /* Registered channels */
 	struct lttng_ht_node_u64 node;
+	/*
+	 * Node indexed by UST session object descriptor (handle). Stored in the
+	 * ust_sessions_objd hash table in the ust_app object.
+	 */
+	struct lttng_ht_node_ulong ust_objd_node;
 	char path[PATH_MAX];
 	/* UID/GID of the application owning the session */
 	uid_t uid;
@@ -272,6 +277,10 @@ struct ust_app {
 	 * Hash table containing ust_app_channel indexed by channel objd.
 	 */
 	struct lttng_ht *ust_objd;
+	/*
+	 * Hash table containing ust_app_session indexed by objd.
+	 */
+	struct lttng_ht *ust_sessions_objd;
 
 	/*
 	 * If this application is of the agent domain and this is non negative then

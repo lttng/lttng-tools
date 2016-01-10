@@ -607,6 +607,7 @@ Expression examples:
   'intfield > 500 && intfield < 503'
   '(strfield == "test" || intfield != 10) && intfield > 33'
   'doublefield > 1.1 && intfield < 5.3'
+  'enumfield == 1234'
 .fi
 
 Wildcards are allowed at the end of strings:
@@ -614,7 +615,8 @@ Wildcards are allowed at the end of strings:
 In string literals, the escape character is a '\\'. Use '\\*' for
 the '*' character, and '\\\\' for the '\\' character sequence. Wildcard
 matches any sequence of characters, including an empty sub-string
-(matches 0 or more characters).
+(matches 0 or more characters). Enumeration fields can currently only be
+compared as integers.
 
 Context information can be used for filtering. The examples below shows
 usage of context filtering on the process name (using a wildcard), process ID

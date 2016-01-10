@@ -843,6 +843,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/python-logging/Makefile
 	tests/regression/ust/getcpu-override/Makefile
 	tests/regression/ust/clock-override/Makefile
+	tests/regression/ust/type-declarations/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/unit/ini_config/Makefile

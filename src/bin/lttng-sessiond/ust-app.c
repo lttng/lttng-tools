@@ -791,7 +791,12 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 			ERR("UST app sock %d release session handle failed with ret %d",
 					sock, ret);
 		}
+		/* Remove session from application UST object descriptor. */
+		iter.iter.node = &ua_sess->ust_objd_node.node;
+		ret = lttng_ht_del(app->ust_sessions_objd, &iter);
+		assert(!ret);
 	}
+
 	pthread_mutex_unlock(&ua_sess->lock);
 
 	consumer_output_put(ua_sess->consumer);
@@ -825,6 +830,7 @@ void delete_ust_app(struct ust_app *app)
 	}
 
 	ht_cleanup_push(app->sessions);
+	ht_cleanup_push(app->ust_sessions_objd);
 	ht_cleanup_push(app->ust_objd);
 
 	/*
@@ -2138,6 +2144,9 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 		lttng_ht_node_init_u64(&ua_sess->node,
 				ua_sess->tracing_id);
 		lttng_ht_add_unique_u64(app->sessions, &ua_sess->node);
+		lttng_ht_node_init_ulong(&ua_sess->ust_objd_node, ua_sess->handle);
+		lttng_ht_add_unique_ulong(app->ust_sessions_objd,
+				&ua_sess->ust_objd_node);
 
 		DBG2("UST app session created successfully with handle %d", ret);
 	}
@@ -3212,6 +3221,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->v_minor = msg->minor;
 	lta->sessions = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	lta->ust_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	lta->ust_sessions_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->notify_sock = -1;
 
 	/* Copy name and make sure it's NULL terminated. */
@@ -5031,6 +5041,33 @@ error:
 }
 
 /*
+ * Return a ust app session object using the application object and the
+ * session object descriptor has a key. If not found, NULL is returned.
+ * A RCU read side lock MUST be acquired when calling this function.
+*/
+static struct ust_app_session *find_session_by_objd(struct ust_app *app,
+		int objd)
+{
+	struct lttng_ht_node_ulong *node;
+	struct lttng_ht_iter iter;
+	struct ust_app_session *ua_sess = NULL;
+
+	assert(app);
+
+	lttng_ht_lookup(app->ust_sessions_objd, (void *)((unsigned long) objd), &iter);
+	node = lttng_ht_iter_get_node_ulong(&iter);
+	if (node == NULL) {
+		DBG2("UST app session find by objd %d not found", objd);
+		goto error;
+	}
+
+	ua_sess = caa_container_of(node, struct ust_app_session, ust_objd_node);
+
+error:
+	return ua_sess;
+}
+
+/*
  * Return a ust app channel object using the application object and the channel
  * object descriptor has a key. If not found, NULL is returned. A RCU read side
  * lock MUST be acquired before calling this function.
@@ -5276,6 +5313,86 @@ error_rcu_unlock:
 }
 
 /*
+ * Add enum to the UST session registry. Once done, this replies to the
+ * application with the appropriate error code.
+ *
+ * The session UST registry lock is acquired within this function.
+ *
+ * On success 0 is returned else a negative value.
+ */
+static int add_enum_ust_registry(int sock, int sobjd, char *name,
+		struct ustctl_enum_entry *entries, size_t nr_entries)
+{
+	int ret = 0, ret_code;
+	struct ust_app *app;
+	struct ust_app_session *ua_sess;
+	struct ust_registry_session *registry;
+	uint64_t enum_id = -1ULL;
+
+	rcu_read_lock();
+
+	/* Lookup application. If not found, there is a code flow error. */
+	app = find_app_by_notify_sock(sock);
+	if (!app) {
+		/* Return an error since this is not an error */
+		DBG("Application socket %d is being torn down. Aborting enum registration",
+				sock);
+		free(entries);
+		goto error_rcu_unlock;
+	}
+
+	/* Lookup session by UST object descriptor. */
+	ua_sess = find_session_by_objd(app, sobjd);
+	if (!ua_sess) {
+		/* Return an error since this is not an error */
+		DBG("Application session is being torn down. Aborting enum registration.");
+		free(entries);
+		goto error_rcu_unlock;
+	}
+
+	registry = get_session_registry(ua_sess);
+	assert(registry);
+
+	pthread_mutex_lock(&registry->lock);
+
+	/*
+	 * From this point on, the callee acquires the ownership of
+	 * entries. The variable entries MUST NOT be read/written after
+	 * call.
+	 */
+	ret_code = ust_registry_create_or_find_enum(registry, sobjd, name,
+			entries, nr_entries, &enum_id);
+	entries = NULL;
+
+	/*
+	 * The return value is returned to ustctl so in case of an error, the
+	 * application can be notified. In case of an error, it's important not to
+	 * return a negative error or else the application will get closed.
+	 */
+	ret = ustctl_reply_register_enum(sock, enum_id, ret_code);
+	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app reply enum failed with ret %d", ret);
+		} else {
+			DBG3("UST app reply enum failed. Application died");
+		}
+		/*
+		 * No need to wipe the create enum since the application socket will
+		 * get close on error hence cleaning up everything by itself.
+		 */
+		goto error;
+	}
+
+	DBG3("UST registry enum %s added successfully or already found", name);
+
+error:
+	pthread_mutex_unlock(&registry->lock);
+error_rcu_unlock:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
  * Handle application notification through the given notify socket.
  *
  * Return 0 on success or else a negative value.
@@ -5359,6 +5476,35 @@ int ust_app_recv_notify(int sock)
 		 */
 		ret = reply_ust_register_channel(sock, sobjd, cobjd, nr_fields,
 				fields);
+		if (ret < 0) {
+			goto error;
+		}
+
+		break;
+	}
+	case USTCTL_NOTIFY_CMD_ENUM:
+	{
+		int sobjd;
+		char name[LTTNG_UST_SYM_NAME_LEN];
+		size_t nr_entries;
+		struct ustctl_enum_entry *entries;
+
+		DBG2("UST app ustctl register enum received");
+
+		ret = ustctl_recv_register_enum(sock, &sobjd, name,
+				&entries, &nr_entries);
+		if (ret < 0) {
+			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+				ERR("UST app recv enum failed with ret %d", ret);
+			} else {
+				DBG3("UST app recv enum failed. Application died");
+			}
+			goto error;
+		}
+
+		/* Callee assumes ownership of entries */
+		ret = add_enum_ust_registry(sock, sobjd, name,
+				entries, nr_entries);
 		if (ret < 0) {
 			goto error;
 		}

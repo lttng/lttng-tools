@@ -73,6 +73,109 @@ static unsigned long ht_hash_event(void *_key, unsigned long seed)
 	return hash_key_u64(&xored_key, seed);
 }
 
+static int compare_enums(const struct ust_registry_enum *reg_enum_a,
+		const struct ust_registry_enum *reg_enum_b)
+{
+	int ret = 0;
+	size_t i;
+
+	assert(strcmp(reg_enum_a->name, reg_enum_b->name) == 0);
+	if (reg_enum_a->nr_entries != reg_enum_b->nr_entries) {
+		ret = -1;
+		goto end;
+	}
+	for (i = 0; i < reg_enum_a->nr_entries; i++) {
+		const struct ustctl_enum_entry *entries_a, *entries_b;
+
+		entries_a = &reg_enum_a->entries[i];
+		entries_b = &reg_enum_b->entries[i];
+		if (entries_a->start != entries_b->start) {
+			ret = -1;
+			goto end;
+		}
+		if (entries_a->end != entries_b->end) {
+			ret = -1;
+			goto end;
+		}
+		if (strcmp(entries_a->string, entries_b->string)) {
+			ret = -1;
+			goto end;
+		}
+	}
+end:
+	return ret;
+}
+
+/*
+ * Hash table match function for enumerations in the session. Match is
+ * performed on enumeration name, and confirmed by comparing the enum
+ * entries.
+ */
+static int ht_match_enum(struct cds_lfht_node *node, const void *_key)
+{
+	struct ust_registry_enum *_enum;
+	const struct ust_registry_enum *key;
+
+	assert(node);
+	assert(_key);
+
+	_enum = caa_container_of(node, struct ust_registry_enum,
+			node.node);
+	assert(_enum);
+	key = _key;
+
+	if (strncmp(_enum->name, key->name, LTTNG_UST_SYM_NAME_LEN)) {
+		goto no_match;
+	}
+	if (compare_enums(_enum, key)) {
+		goto no_match;
+	}
+
+	/* Match. */
+	return 1;
+
+no_match:
+	return 0;
+}
+
+/*
+ * Hash table match function for enumerations in the session. Match is
+ * performed by enumeration ID.
+ */
+static int ht_match_enum_id(struct cds_lfht_node *node, const void *_key)
+{
+	struct ust_registry_enum *_enum;
+	const struct ust_registry_enum *key = _key;
+
+	assert(node);
+	assert(_key);
+
+	_enum = caa_container_of(node, struct ust_registry_enum, node.node);
+	assert(_enum);
+
+	if (_enum->id != key->id) {
+		goto no_match;
+	}
+
+	/* Match. */
+	return 1;
+
+no_match:
+	return 0;
+}
+
+/*
+ * Hash table hash function for enumerations in the session. The
+ * enumeration name is used for hashing.
+ */
+static unsigned long ht_hash_enum(void *_key, unsigned long seed)
+{
+	struct ust_registry_enum *key = _key;
+
+	assert(key);
+	return hash_key_str(key->name, seed);
+}
+
 /*
  * Return negative value on error, 0 if OK.
  *
@@ -377,6 +480,175 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 	return;
 }
 
+static void destroy_enum(struct ust_registry_enum *reg_enum)
+{
+	if (!reg_enum) {
+		return;
+	}
+	free(reg_enum->entries);
+	free(reg_enum);
+}
+
+static void destroy_enum_rcu(struct rcu_head *head)
+{
+	struct ust_registry_enum *reg_enum =
+		caa_container_of(head, struct ust_registry_enum, rcu_head);
+
+	destroy_enum(reg_enum);
+}
+
+/*
+ * Lookup enumeration by name and comparing enumeration entries.
+ * Needs to be called from RCU read-side critical section.
+ */
+struct ust_registry_enum *
+	ust_registry_lookup_enum(struct ust_registry_session *session,
+		const struct ust_registry_enum *reg_enum_lookup)
+{
+	struct ust_registry_enum *reg_enum = NULL;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+
+	cds_lfht_lookup(session->enums->ht,
+			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum, &reg_enum_lookup, &iter.iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (!node) {
+	        goto end;
+	}
+	reg_enum = caa_container_of(node, struct ust_registry_enum, node);
+end:
+	return reg_enum;
+}
+
+/*
+ * Lookup enumeration by enum ID.
+ * Needs to be called from RCU read-side critical section.
+ */
+struct ust_registry_enum *
+	ust_registry_lookup_enum_by_id(struct ust_registry_session *session,
+		const char *enum_name, uint64_t enum_id)
+{
+	struct ust_registry_enum *reg_enum = NULL;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+	struct ust_registry_enum reg_enum_lookup;
+
+	memset(&reg_enum_lookup, 0, sizeof(reg_enum_lookup));
+	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_SYM_NAME_LEN);
+	reg_enum_lookup.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	reg_enum_lookup.id = enum_id;
+	cds_lfht_lookup(session->enums->ht,
+			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum_id, &reg_enum_lookup, &iter.iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (!node) {
+	        goto end;
+	}
+	reg_enum = caa_container_of(node, struct ust_registry_enum, node);
+end:
+	return reg_enum;
+}
+
+/*
+ * Create a ust_registry_enum from the given parameters and add it to the
+ * registry hash table, or find it if already there.
+ *
+ * On success, return 0 else a negative value.
+ *
+ * Should be called with session registry mutex held.
+ *
+ * We receive ownership of entries.
+ */
+int ust_registry_create_or_find_enum(struct ust_registry_session *session,
+		int session_objd, char *enum_name,
+		struct ustctl_enum_entry *entries, size_t nr_entries,
+		uint64_t *enum_id)
+{
+	int ret = 0;
+	struct cds_lfht_node *nodep;
+	struct ust_registry_enum *reg_enum = NULL, *old_reg_enum;
+
+	assert(session);
+	assert(enum_name);
+
+	rcu_read_lock();
+
+	/*
+	 * This should not happen but since it comes from the UST tracer, an
+	 * external party, don't assert and simply validate values.
+	 */
+	if (session_objd < 0) {
+		ret = -EINVAL;
+		goto end;
+	}
+
+	/* Check if the enumeration was already dumped */
+	reg_enum = zmalloc(sizeof(*reg_enum));
+	if (!reg_enum) {
+		PERROR("zmalloc ust registry enumeration");
+		ret = -ENOMEM;
+		goto end;
+	}
+	strncpy(reg_enum->name, enum_name, LTTNG_UST_SYM_NAME_LEN);
+	reg_enum->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	/* entries will be owned by reg_enum. */
+	reg_enum->entries = entries;
+	reg_enum->nr_entries = nr_entries;
+	entries = NULL;
+
+	old_reg_enum = ust_registry_lookup_enum(session, reg_enum);
+	if (old_reg_enum) {
+		DBG("enum %s already in sess_objd: %u", enum_name, session_objd);
+		/* Fall through. Use prior enum. */
+		destroy_enum(reg_enum);
+		reg_enum = old_reg_enum;
+	} else {
+		DBG("UST registry creating enum: %s, sess_objd: %u",
+				enum_name, session_objd);
+		if (session->next_enum_id == -1ULL) {
+			ret = -EOVERFLOW;
+			destroy_enum(reg_enum);
+			goto end;
+		}
+		reg_enum->id = session->next_enum_id++;
+		cds_lfht_node_init(&reg_enum->node.node);
+		nodep = cds_lfht_add_unique(session->enums->ht,
+				ht_hash_enum(reg_enum, lttng_ht_seed),
+				ht_match_enum_id, reg_enum,
+				&reg_enum->node.node);
+		assert(nodep == &reg_enum->node.node);
+	}
+	DBG("UST registry reply with enum %s with id %" PRIu64 " in sess_objd: %u",
+			enum_name, reg_enum->id, session_objd);
+	*enum_id = reg_enum->id;
+end:
+	free(entries);
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * For a given enumeration in a registry, delete the entry and destroy
+ * the enumeration.
+ * This MUST be called within a RCU read side lock section.
+ */
+void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
+		struct ust_registry_enum *reg_enum)
+{
+	int ret;
+	struct lttng_ht_iter iter;
+
+	assert(reg_session);
+	assert(reg_enum);
+
+	/* Delete the node first. */
+	iter.iter.node = &reg_enum->node.node;
+	ret = lttng_ht_del(reg_session->enums, &iter);
+	assert(!ret);
+	call_rcu(&reg_enum->rcu_head, destroy_enum_rcu);
+}
+
 /*
  * We need to execute ht_destroy outside of RCU read-side critical
  * section and outside of call_rcu thread, so we postpone its execution
@@ -574,6 +846,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 	session->metadata_fd = -1;
 	session->uid = euid;
 	session->gid = egid;
+	session->next_enum_id = 0;
 	strncpy(session->root_shm_path, root_shm_path,
 		sizeof(session->root_shm_path));
 	session->root_shm_path[sizeof(session->root_shm_path) - 1] = '\0';
@@ -608,6 +881,15 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		}
 		session->metadata_fd = ret;
 	}
+
+	session->enums = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!session->enums) {
+		ret = -ENOMEM;
+		goto error;
+	}
+	/* hash/match functions are specified at call site. */
+	session->enums->match_fct = NULL;
+	session->enums->hash_fct = NULL;
 
 	session->channels = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!session->channels) {
@@ -648,6 +930,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 	int ret;
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan;
+	struct ust_registry_enum *reg_enum;
 
 	if (!reg) {
 		return;
@@ -689,5 +972,16 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		 */
 		(void) run_as_recursive_rmdir(reg->root_shm_path,
 				reg->uid, reg->gid);
+	}
+	/* Destroy the enum hash table */
+	if (reg->enums) {
+		rcu_read_lock();
+		/* Destroy all enum entries associated with this registry. */
+		cds_lfht_for_each_entry(reg->enums->ht, &iter.iter, reg_enum,
+				node.node) {
+			ust_registry_destroy_enum(reg, reg_enum);
+		}
+		rcu_read_unlock();
+		ht_cleanup_push(reg->enums);
 	}
 }
