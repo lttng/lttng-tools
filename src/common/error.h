@@ -85,9 +85,8 @@ extern int lttng_opt_mi;
 				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&  \
 					lttng_opt_verbose == 3))) {                     \
 			fprintf(stderr, fmt, ## args);                          \
-		} else if (lttng_opt_quiet == 0 && (type & (PRINT_WARN))) { \
-			fprintf(stderr, fmt, ## args);                          \
-		} else if (type & (PRINT_ERR | PRINT_BUG)) {                \
+		} else if (lttng_opt_quiet == 0 &&                          \
+				(type & (PRINT_WARN | PRINT_ERR | PRINT_BUG))) {    \
 			fprintf(stderr, fmt, ## args);                          \
 		}                                                           \
 	} while (0);
