@@ -73,22 +73,22 @@ extern int lttng_opt_mi;
  * want any nested msg to show up when printing mi to stdout(if it's the case).
  * All warnings and errors should be printed to stderr as normal.
  */
-#define __lttng_print(type, fmt, args...)                           \
-	do {                                                            \
-		if (lttng_opt_quiet == 0 && lttng_opt_mi == 0 &&            \
-				type == PRINT_MSG) {                                \
-			fprintf(stdout, fmt, ## args);                          \
-		} else if (lttng_opt_quiet == 0 && lttng_opt_mi == 0 &&     \
-				(((type & PRINT_DBG) && lttng_opt_verbose == 1) ||  \
-				((type & (PRINT_DBG | PRINT_DBG2)) &&               \
-					lttng_opt_verbose == 2) ||                      \
-				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) &&  \
-					lttng_opt_verbose == 3))) {                     \
-			fprintf(stderr, fmt, ## args);                          \
-		} else if (lttng_opt_quiet == 0 &&                          \
-				(type & (PRINT_WARN | PRINT_ERR | PRINT_BUG))) {    \
-			fprintf(stderr, fmt, ## args);                          \
-		}                                                           \
+#define __lttng_print(type, fmt, args...)                                          \
+	do {                                                                       \
+		if (!lttng_opt_quiet&& !lttng_opt_mi &&                            \
+				type == PRINT_MSG) {                               \
+			fprintf(stdout, fmt, ## args);                             \
+		} else if (!lttng_opt_quiet && !lttng_opt_mi &&                    \
+				(((type & PRINT_DBG) && lttng_opt_verbose == 1) || \
+				((type & (PRINT_DBG | PRINT_DBG2)) &&              \
+					lttng_opt_verbose == 2) ||                 \
+				((type & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) && \
+					lttng_opt_verbose == 3))) {                \
+			fprintf(stderr, fmt, ## args);                             \
+		} else if (!lttng_opt_quiet &&                                     \
+				(type & (PRINT_WARN | PRINT_ERR | PRINT_BUG))) {   \
+			fprintf(stderr, fmt, ## args);                             \
+		}                                                                  \
 	} while (0);
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
