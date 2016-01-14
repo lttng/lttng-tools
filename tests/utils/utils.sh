@@ -362,7 +362,7 @@ function start_lttng_sessiond_opt()
 	if [ -z $(pgrep --full lt-$SESSIOND_BIN) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
-			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$1" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		else
 			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
 		fi
