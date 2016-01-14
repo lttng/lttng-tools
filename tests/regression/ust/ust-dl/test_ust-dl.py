@@ -46,8 +46,8 @@ enable_ust_tracepoint_event(session_info, "*")
 start_session(session_info)
 
 test_env = os.environ.copy()
-test_env["LD_PRELOAD"] = "liblttng-ust-dl.so"
-test_env["LD_LIBRARY_PATH"] = test_path
+test_env["LD_PRELOAD"] += ":liblttng-ust-dl.so"
+test_env["LD_LIBRARY_PATH"] += ":" + test_path
 test_process = subprocess.Popen(test_path + "prog",
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 env=test_env)
