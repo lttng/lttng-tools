@@ -45,7 +45,7 @@
 
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
 #define LTTNG_UST_ABI_MAJOR_VERSION		6
-#define LTTNG_UST_ABI_MINOR_VERSION		0
+#define LTTNG_UST_ABI_MINOR_VERSION		1
 
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT		= 0,
