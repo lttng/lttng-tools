@@ -188,12 +188,22 @@ int validate_event_field(struct ustctl_field *field,
 		const char *event_name,
 		struct ust_app *app)
 {
+	int ret = 0;
+
 	switch(field->type.atype) {
 	case ustctl_atype_integer:
 	case ustctl_atype_enum:
 	case ustctl_atype_array:
 	case ustctl_atype_sequence:
 	case ustctl_atype_string:
+	case ustctl_atype_variant:
+		break;
+	case ustctl_atype_struct:
+		if (field->type.u._struct.nr_fields != 0) {
+			WARN("Unsupported non-empty struct field.");
+			ret = -EINVAL;
+			goto end;
+		}
 		break;
 
 	case ustctl_atype_float:
@@ -205,16 +215,19 @@ int validate_event_field(struct ustctl_field *field,
 				field->type.u.basic._float.mant_dig,
 				field->name,
 				event_name);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto end;
 		default:
 			break;
 		}
 		break;
 
 	default:
-		return -ENOENT;
+		ret = -ENOENT;
+		goto end;
 	}
-	return 0;
+end:
+	return ret;
 }
 
 static
