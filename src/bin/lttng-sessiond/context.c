@@ -97,6 +97,7 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(uchan);
 	assert(ctx);
+	assert(domain == LTTNG_DOMAIN_UST);
 
 	/* Check if context is duplicate */
 	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
@@ -113,15 +114,8 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
-		if (ret < 0) {
-			goto error;
-		}
-		break;
-	default:
-		ret = -ENOSYS;
+	ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
+	if (ret < 0) {
 		goto error;
 	}
 
