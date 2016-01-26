@@ -57,8 +57,8 @@ extern int lttcomm_listen_inet_sock(struct lttcomm_sock *sock, int backlog);
 
 extern ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 		size_t len, int flags);
-extern ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
-		size_t len, int flags);
+extern ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock,
+		const void *buf, size_t len, int flags);
 
 /* Initialize inet communication layer. */
 extern void lttcomm_inet_init(void);

@@ -205,7 +205,7 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  * Return the size of sent data.
  */
 LTTNG_HIDDEN
-ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
+ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
@@ -213,7 +213,7 @@ ssize_t lttcomm_send_unix_sock(int sock, void *buf, size_t len)
 
 	memset(&msg, 0, sizeof(msg));
 
-	iov[0].iov_base = buf;
+	iov[0].iov_base = (void *) buf;
 	iov[0].iov_len = len;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;

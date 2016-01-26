@@ -35,14 +35,14 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		struct lttng_domain *src);
 
 /*
- * Sends the lttcomm message to the session daemon and fills buf of the
+ * Sends the lttcomm message to the session daemon and fills buf if the
  * returned data is not NULL.
  *
  * Return the size of the received data on success or else a negative lttng
  * error code. If buf is NULL, 0 is returned on success.
  */
 int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		void *vardata, size_t varlen, void **buf);
+		const void *vardata, size_t varlen, void **buf);
 
 /*
  * Use this if no variable length data needs to be sent.

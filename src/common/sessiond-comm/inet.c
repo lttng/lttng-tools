@@ -407,7 +407,7 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
  * Return the size of sent data.
  */
 LTTNG_HIDDEN
-ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
+ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, const void *buf,
 		size_t len, int flags)
 {
 	struct msghdr msg;
@@ -416,7 +416,7 @@ ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 
 	memset(&msg, 0, sizeof(msg));
 
-	iov[0].iov_base = buf;
+	iov[0].iov_base = (void *) buf;
 	iov[0].iov_len = len;
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;

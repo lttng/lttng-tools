@@ -218,8 +218,8 @@ struct lttcomm_proto_ops {
 	int (*listen) (struct lttcomm_sock *sock, int backlog);
 	ssize_t (*recvmsg) (struct lttcomm_sock *sock, void *buf, size_t len,
 			int flags);
-	ssize_t (*sendmsg) (struct lttcomm_sock *sock, void *buf, size_t len,
-			int flags);
+	ssize_t (*sendmsg) (struct lttcomm_sock *sock, const void *buf,
+			size_t len, int flags);
 };
 
 /*

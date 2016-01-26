@@ -38,7 +38,7 @@ extern int lttcomm_listen_inet6_sock(struct lttcomm_sock *sock, int backlog);
 
 extern ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 		size_t len, int flags);
-extern ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
-		size_t len, int flags);
+extern ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock,
+		const void *buf, size_t len, int flags);
 
 #endif	/* _LTTCOMM_INET6_H */

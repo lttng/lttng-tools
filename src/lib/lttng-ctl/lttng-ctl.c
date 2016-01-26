@@ -150,7 +150,7 @@ end:
  * On success, returns the number of bytes sent (>=0)
  * On error, returns -1
  */
-static int send_session_varlen(void *data, size_t len)
+static int send_session_varlen(const void *data, size_t len)
 {
 	int ret;
 
@@ -400,7 +400,7 @@ static int disconnect_sessiond(void)
  */
 LTTNG_HIDDEN
 int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		void *vardata, size_t varlen, void **buf)
+		const void *vardata, size_t varlen, void **buf)
 {
 	int ret;
 	size_t size;
