@@ -200,6 +200,24 @@ int print_tabs(struct ust_registry_session *session, size_t nesting)
 	return 0;
 }
 
+static
+void sanitize_ctf_identifier(char *out, const char *in)
+{
+	size_t i;
+
+	for (i = 0; i < LTTNG_UST_SYM_NAME_LEN; i++) {
+		switch (in[i]) {
+		case '.':
+		case '$':
+		case ':':
+			out[i] = '_';
+			break;
+		default:
+			out[i] = in[i];
+		}
+	}
+}
+
 /* Called with session registry mutex held. */
 static
 int ust_metadata_enum_statedump(struct ust_registry_session *session,
@@ -213,6 +231,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 	size_t nr_entries;
 	int ret = 0;
 	size_t i;
+	char identifier[LTTNG_UST_SYM_NAME_LEN];
 
 	rcu_read_lock();
 	reg_enum = ust_registry_lookup_enum_by_id(session, enum_name, enum_id);
@@ -248,8 +267,12 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 		const struct ustctl_enum_entry *entry = &entries[i];
 		int j, len;
 
+		ret = print_tabs(session, nesting);
+		if (ret) {
+			goto end;
+		}
 		ret = lttng_metadata_printf(session,
-				"			\"");
+				"\"");
 		if (ret) {
 			goto end;
 		}
@@ -294,13 +317,17 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 			goto end;
 		}
 	}
-	ret = lttng_metadata_printf(session, "		} _%s;\n",
-			field_name);
+	sanitize_ctf_identifier(identifier, field_name);
+	ret = print_tabs(session, nesting);
+	if (ret) {
+		goto end;
+	}
+	ret = lttng_metadata_printf(session, "} _%s;\n",
+			identifier);
 end:
 	(*iter_field)++;
 	return ret;
 }
-
 
 static
 int _lttng_variant_statedump(struct ust_registry_session *session,
@@ -310,6 +337,7 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 	const struct ustctl_field *variant = &fields[*iter_field];
 	uint32_t nr_choices, i;
 	int ret;
+	char identifier[LTTNG_UST_SYM_NAME_LEN];
 
 	if (variant->type.atype != ustctl_atype_variant) {
 		ret = -EINVAL;
@@ -317,9 +345,14 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 	}
 	nr_choices = variant->type.u.variant.nr_choices;
 	(*iter_field)++;
+	sanitize_ctf_identifier(identifier, variant->type.u.variant.tag_name);
+	ret = print_tabs(session, nesting);
+	if (ret) {
+		goto end;
+	}
 	ret = lttng_metadata_printf(session,
-			"		variant <_%s> {\n",
-			variant->type.u.variant.tag_name);
+			"variant <_%s> {\n",
+			identifier);
 	if (ret) {
 		goto end;
 	}
@@ -333,9 +366,11 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 				fields, nr_fields,
 				iter_field, nesting + 1);
 	}
+	sanitize_ctf_identifier(identifier, variant->name);
+	ret = print_tabs(session, nesting);
 	ret = lttng_metadata_printf(session,
-			"		} _%s;\n",
-			variant->name);
+			"} _%s;\n",
+			identifier);
 	if (ret) {
 		goto end;
 	}

@@ -418,36 +418,30 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 					side);
 	case AST_EXP_GLOBAL_IDENTIFIER:
 	{
-		struct filter_node *next;
+		const char *name;
 
-		if (node->u.expression.pre_op == AST_LINK_UNKNOWN) {
-			fprintf(stderr, "[error] %s: global identifiers need chained identifier \n", __func__);
-			return NULL;
-		}
-		/* We currently only support $ctx (context) identifiers */
+		/*
+		 * We currently only support $ctx (context) and $app
+		 * identifiers.
+		 */
 		if (strncmp(node->u.expression.u.identifier,
-				"$ctx", strlen("$ctx")) != 0) {
-			fprintf(stderr, "[error] %s: \"%s\" global identifier is unknown. Only \"$ctx\" currently implemented.\n", __func__, node->u.expression.u.identifier);
+				"$ctx.", strlen("$ctx.")) != 0
+			&& strncmp(node->u.expression.u.identifier,
+				"$app.", strlen("$app.")) != 0) {
+			fprintf(stderr, "[error] %s: \"%s\" global identifier is unknown. Only \"$ctx\" and \"$app\" are currently implemented.\n", __func__, node->u.expression.u.identifier);
 			return NULL;
 		}
-		next = node->u.expression.next;
-		if (!next) {
+		name = strchr(node->u.expression.u.identifier, '.');
+		if (!name) {
+			fprintf(stderr, "[error] %s: Expecting '.'\n", __func__);
+			return NULL;
+		}
+		name++;	/* Skip . */
+		if (!strlen(name)) {
 			fprintf(stderr, "[error] %s: Expecting a context name, e.g. \'$ctx.name\'.\n", __func__);
 			return NULL;
 		}
-		if (next->type != NODE_EXPRESSION) {
-			fprintf(stderr, "[error] %s: Expecting expression.\n", __func__);
-			return NULL;
-		}
-		if (next->u.expression.type != AST_EXP_IDENTIFIER) {
-			fprintf(stderr, "[error] %s: Expecting identifier.\n", __func__);
-			return NULL;
-		}
-		if (next->u.expression.pre_op != AST_LINK_UNKNOWN) {
-			fprintf(stderr, "[error] %s: dotted and dereferenced identifiers not supported after identifier\n", __func__);
-			return NULL;
-		}
-		return make_op_load_get_context_ref(next->u.expression.u.identifier,
+		return make_op_load_get_context_ref(node->u.expression.u.identifier,
 					side);
 	}
 	case AST_EXP_NESTED:
