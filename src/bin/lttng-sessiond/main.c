@@ -3343,9 +3343,74 @@ skip_domain:
 	switch (cmd_ctx->lsm->cmd_type) {
 	case LTTNG_ADD_CONTEXT:
 	{
-		ret = cmd_add_context(cmd_ctx->session, cmd_ctx->lsm->domain.type,
+		/*
+		 * An LTTNG_ADD_CONTEXT command might have a supplementary
+		 * payload if the context being added is an application context.
+		 */
+		if (cmd_ctx->lsm->u.context.ctx.ctx ==
+				LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+			char *provider_name = NULL, *context_name = NULL;
+			size_t provider_name_len =
+					cmd_ctx->lsm->u.context.provider_name_len;
+			size_t context_name_len =
+					cmd_ctx->lsm->u.context.context_name_len;
+
+			if (provider_name_len == 0 || context_name_len == 0) {
+				/*
+				 * Application provider and context names MUST
+				 * be provided.
+				 */
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
+
+			provider_name = zmalloc(provider_name_len + 1);
+			if (!provider_name) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+
+			context_name = zmalloc(context_name_len + 1);
+			if (!context_name) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error_add_context;
+			}
+
+			ret = lttcomm_recv_unix_sock(sock, provider_name,
+					provider_name_len);
+			if (ret < 0) {
+				goto error_add_context;
+			}
+
+			ret = lttcomm_recv_unix_sock(sock, context_name,
+					context_name_len);
+			if (ret < 0) {
+				goto error_add_context;
+			}
+			cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name =
+					provider_name;
+			cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name =
+					context_name;
+		}
+
+		/*
+		 * cmd_add_context assumes ownership of the provider and context
+		 * names.
+		 */
+		ret = cmd_add_context(cmd_ctx->session,
+				cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.context.channel_name,
-				&cmd_ctx->lsm->u.context.ctx, kernel_poll_pipe[1]);
+				&cmd_ctx->lsm->u.context.ctx,
+				kernel_poll_pipe[1]);
+
+		cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name = NULL;
+		cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name = NULL;
+error_add_context:
+		free(cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name);
+		free(cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name);
+		if (ret < 0) {
+			goto error;
+		}
 		break;
 	}
 	case LTTNG_DISABLE_CHANNEL:

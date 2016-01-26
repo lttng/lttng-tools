@@ -4,6 +4,7 @@
  * Linux Trace Toolkit Control Library
  *
  * Copyright (C) 2011 David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License, version 2.1 only,
@@ -644,15 +645,18 @@ int lttng_add_context(struct lttng_handle *handle,
 		struct lttng_event_context *ctx, const char *event_name,
 		const char *channel_name)
 {
+	int ret;
+	size_t len = 0;
+	char *buf = NULL;
 	struct lttcomm_session_msg lsm;
 
 	/* Safety check. Both are mandatory. */
 	if (handle == NULL || ctx == NULL) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-
 	lsm.cmd_type = LTTNG_ADD_CONTEXT;
 
 	/* If no channel name, send empty string. */
@@ -665,13 +669,52 @@ int lttng_add_context(struct lttng_handle *handle,
 	}
 
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
-
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+		size_t provider_len, ctx_len;
+		const char *provider_name = ctx->u.app_ctx.provider_name;
+		const char *ctx_name = ctx->u.app_ctx.ctx_name;
+
+		if (!provider_name || !ctx_name) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		provider_len = strlen(provider_name);
+		if (provider_len == 0) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		lsm.u.context.provider_name_len = provider_len;
+
+		ctx_len = strlen(ctx_name);
+		if (ctx_len == 0) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		lsm.u.context.context_name_len = ctx_len;
+
+		len = provider_len + ctx_len;
+		buf = zmalloc(len);
+		if (!buf) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		memcpy(buf, provider_name, provider_len);
+		memcpy(buf + provider_len, ctx_name, ctx_len);
+	}
+	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
+	/* Don't leak application addresses to the sessiond. */
+	lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
+	lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
+
+	ret = lttng_ctl_ask_sessiond_varlen(&lsm, buf, len, NULL);
+end:
+	free(buf);
+	return ret;
 }
 
 /*
