@@ -246,21 +246,11 @@ int context_ust_add(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(ctx);
 	assert(channel_name);
+	assert(domain == LTTNG_DOMAIN_UST);
 
 	rcu_read_lock();
 
-	/*
-	 * Define which channel's hashtable to use from the domain or quit if
-	 * unknown domain.
-	 */
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
-		chan_ht = usess->domain_global.channels;
-		break;
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
+	chan_ht = usess->domain_global.channels;
 
 	/* Get UST channel if defined */
 	if (channel_name[0] != '\0') {
