@@ -87,7 +87,8 @@ error:
 /*
  * Add UST context to channel.
  */
-static int add_uctx_to_channel(struct ltt_ust_session *usess, int domain,
+static int add_uctx_to_channel(struct ltt_ust_session *usess,
+		enum lttng_domain_type domain,
 		struct ltt_ust_channel *uchan, struct lttng_event_context *ctx)
 {
 	int ret;
@@ -239,8 +240,9 @@ error:
 /*
  * Add UST context to tracer.
  */
-int context_ust_add(struct ltt_ust_session *usess, int domain,
-		struct lttng_event_context *ctx, char *channel_name)
+int context_ust_add(struct ltt_ust_session *usess,
+		enum lttng_domain_type domain, struct lttng_event_context *ctx,
+		char *channel_name)
 {
 	int ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
