@@ -2156,6 +2156,12 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 	assert(app);
 	assert(ua_sess_ptr);
 
+	/*
+	 * Hack: override app uid in order to avoid different applications'
+	 * tracefile paths when working with buffer-per-uid scheme
+	 */
+	app->uid = 0;
+
 	health_code_update();
 
 	ua_sess = lookup_session_by_app(usess, app);
