@@ -1,5 +1,6 @@
 /*
- * Copyright (C)  2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -29,6 +30,7 @@
 #include "kernel.h"
 #include "ust-app.h"
 #include "trace-ust.h"
+#include "agent.h"
 
 /*
  * Add kernel context to all channel.
@@ -92,12 +94,11 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct lttng_event_context *ctx)
 {
 	int ret;
-	struct ltt_ust_context *uctx;
+	struct ltt_ust_context *uctx = NULL;
 
 	assert(usess);
 	assert(uchan);
 	assert(ctx);
-	assert(domain == LTTNG_DOMAIN_UST);
 
 	/* Check if context is duplicate */
 	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
@@ -105,6 +106,38 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 			ret = -EEXIST;
 			goto duplicate;
 		}
+	}
+	uctx = NULL;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	{
+		struct agent *agt = trace_ust_find_agent(usess, domain);
+
+		if (!agt) {
+			agt = agent_create(domain);
+			if (!agt) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			agent_add(agt, usess->agents);
+		}
+		ret = agent_add_context(ctx, agt);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		ret = agent_enable_context(ctx, domain);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+		break;
+	default:
+		assert(0);
 	}
 
 	/* Create ltt UST context */
@@ -246,7 +279,6 @@ int context_ust_add(struct ltt_ust_session *usess,
 	assert(usess);
 	assert(ctx);
 	assert(channel_name);
-	assert(domain == LTTNG_DOMAIN_UST);
 
 	rcu_read_lock();
 

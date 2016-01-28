@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -518,7 +519,8 @@ error:
 }
 
 static
-int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
+int trace_ust_context_type_event_to_ust(
+		enum lttng_event_context_type type)
 {
 	int utype;
 
@@ -545,6 +547,9 @@ int trace_ust_context_type_event_to_ust(enum lttng_event_context_type type)
 		} else {
 			utype = LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER;
 		}
+		break;
+	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
+		utype = LTTNG_UST_CONTEXT_APP_CONTEXT;
 		break;
 	default:
 		utype = -1;
@@ -599,7 +604,7 @@ int trace_ust_match_context(struct ltt_ust_context *uctx,
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx)
 {
-	struct ltt_ust_context *uctx;
+	struct ltt_ust_context *uctx = NULL;
 	int utype;
 
 	assert(ctx);
@@ -607,13 +612,13 @@ struct ltt_ust_context *trace_ust_create_context(
 	utype = trace_ust_context_type_event_to_ust(ctx->ctx);
 	if (utype < 0) {
 		ERR("Invalid UST context");
-		return NULL;
+		goto end;
 	}
 
 	uctx = zmalloc(sizeof(struct ltt_ust_context));
-	if (uctx == NULL) {
+	if (!uctx) {
 		PERROR("zmalloc ltt_ust_context");
-		goto error;
+		goto end;
 	}
 
 	uctx->ctx.ctx = (enum lttng_ust_context_type) utype;
@@ -625,14 +630,31 @@ struct ltt_ust_context *trace_ust_create_context(
 				LTTNG_UST_SYM_NAME_LEN);
 		uctx->ctx.u.perf_counter.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 		break;
+	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+	{
+		char *provider_name = NULL, *ctx_name = NULL;
+
+		provider_name = strdup(ctx->u.app_ctx.provider_name);
+		if (!provider_name) {
+			goto error;
+		}
+		uctx->ctx.u.app_ctx.provider_name = provider_name;
+
+		ctx_name = strdup(ctx->u.app_ctx.ctx_name);
+		if (!ctx_name) {
+			goto error;
+		}
+		uctx->ctx.u.app_ctx.ctx_name = ctx_name;
+		break;
+	}
 	default:
 		break;
 	}
 	lttng_ht_node_init_ulong(&uctx->node, (unsigned long) uctx->ctx.ctx);
-
+end:
 	return uctx;
-
 error:
+	trace_ust_destroy_context(uctx);
 	return NULL;
 }
 
@@ -931,7 +953,7 @@ static void destroy_context_rcu(struct rcu_head *head)
 	struct ltt_ust_context *ctx =
 		caa_container_of(node, struct ltt_ust_context, node);
 
-	free(ctx);
+	trace_ust_destroy_context(ctx);
 }
 
 /*
@@ -974,6 +996,20 @@ void trace_ust_destroy_event(struct ltt_ust_event *event)
 	free(event->filter);
 	free(event->exclusion);
 	free(event);
+}
+
+/*
+ * Cleanup ust context structure.
+ */
+void trace_ust_destroy_context(struct ltt_ust_context *ctx)
+{
+	assert(ctx);
+
+	if (ctx->ctx.ctx == LTTNG_UST_CONTEXT_APP_CONTEXT) {
+		free(ctx->ctx.u.app_ctx.provider_name);
+		free(ctx->ctx.u.app_ctx.ctx_name);
+	}
+	free(ctx);
 }
 
 /*

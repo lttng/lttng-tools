@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 - David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -26,10 +27,12 @@
  * Command value passed in the header.
  */
 enum lttcomm_agent_command {
-	AGENT_CMD_LIST       = 1,
-	AGENT_CMD_ENABLE     = 2,
-	AGENT_CMD_DISABLE    = 3,
-	AGENT_CMD_REG_DONE   = 4,	/* End registration process. */
+	AGENT_CMD_LIST			= 1,
+	AGENT_CMD_ENABLE		= 2,
+	AGENT_CMD_DISABLE		= 3,
+	AGENT_CMD_REG_DONE		= 4,	/* End registration process. */
+	AGENT_CMD_APP_CTX_ENABLE	= 5,
+	AGENT_CMD_APP_CTX_DISABLE	= 6,
 };
 
 /*
@@ -37,11 +40,11 @@ enum lttcomm_agent_command {
  */
 enum lttcomm_agent_ret_code {
 	/* Success, assumed to be the first entry */
-	AGENT_RET_CODE_SUCCESS      = 1,
+	AGENT_RET_CODE_SUCCESS		= 1,
 	/* Invalid command */
-	AGENT_RET_CODE_INVALID      = 2,
+	AGENT_RET_CODE_INVALID		= 2,
 	/* Unknown logger name */
-	AGENT_RET_CODE_UNKNOWN_NAME = 3,
+	AGENT_RET_CODE_UNKNOWN_NAME	= 3,
 	AGENT_RET_CODE_NR,
 };
 
@@ -58,7 +61,7 @@ struct lttcomm_agent_hdr {
  * Enable event command payload. Will be immediately followed by the
  * variable-length string representing the filter expression.
  */
-struct lttcomm_agent_enable {
+struct lttcomm_agent_enable_event {
 	uint32_t loglevel_value;
 	uint32_t loglevel_type;
 	char name[LTTNG_SYMBOL_NAME_LEN];
@@ -68,7 +71,7 @@ struct lttcomm_agent_enable {
 /*
  * Disable event command payload.
  */
-struct lttcomm_agent_disable {
+struct lttcomm_agent_disable_event {
 	char name[LTTNG_SYMBOL_NAME_LEN];
 } LTTNG_PACKED;
 

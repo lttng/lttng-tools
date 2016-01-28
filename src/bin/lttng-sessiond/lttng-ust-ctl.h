@@ -59,6 +59,17 @@ struct ustctl_consumer_channel_attr {
  * API used by sessiond.
  */
 
+struct lttng_ust_context_attr {
+	enum lttng_ust_context_type ctx;
+	union {
+		struct lttng_ust_perf_counter_ctx perf_counter;
+		struct {
+		        char *provider_name;
+			char *ctx_name;
+		} app_ctx;
+	} u;
+};
+
 /*
  * Error values: all the following functions return:
  * >= 0: Success (LTTNG_UST_OK)
@@ -69,7 +80,7 @@ int ustctl_create_session(int sock);
 int ustctl_create_event(int sock, struct lttng_ust_event *ev,
 		struct lttng_ust_object_data *channel_data,
 		struct lttng_ust_object_data **event_data);
-int ustctl_add_context(int sock, struct lttng_ust_context *ctx,
+int ustctl_add_context(int sock, struct lttng_ust_context_attr *ctx,
 		struct lttng_ust_object_data *obj_data,
 		struct lttng_ust_object_data **context_data);
 int ustctl_set_filter(int sock, struct lttng_ust_filter_bytecode *bytecode,

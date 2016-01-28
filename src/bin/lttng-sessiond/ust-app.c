@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -1037,7 +1038,7 @@ error:
  * Alloc new UST app context.
  */
 static
-struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
+struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx)
 {
 	struct ust_app_ctx *ua_ctx;
 
@@ -1050,12 +1051,27 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context *uctx)
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
+		if (uctx->ctx == LTTNG_UST_CONTEXT_APP_CONTEXT) {
+		        char *provider_name = NULL, *ctx_name = NULL;
+
+			provider_name = strdup(uctx->u.app_ctx.provider_name);
+			ctx_name = strdup(uctx->u.app_ctx.ctx_name);
+			if (!provider_name || !ctx_name) {
+				free(provider_name);
+				free(ctx_name);
+				goto error;
+			}
+
+			ua_ctx->ctx.u.app_ctx.provider_name = provider_name;
+			ua_ctx->ctx.u.app_ctx.ctx_name = ctx_name;
+		}
 	}
 
 	DBG3("UST app context %d allocated", ua_ctx->ctx.ctx);
-
-error:
 	return ua_ctx;
+error:
+	free(ua_ctx);
+	return NULL;
 }
 
 /*
@@ -1696,7 +1712,6 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	struct ltt_ust_event *uevent;
 	struct ltt_ust_context *uctx;
 	struct ust_app_event *ua_event;
-	struct ust_app_ctx *ua_ctx;
 
 	DBG2("UST app shadow copy of channel %s started", ua_chan->name);
 
@@ -1722,7 +1737,8 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	ua_chan->tracing_channel_id = uchan->id;
 
 	cds_list_for_each_entry(uctx, &uchan->ctx_list, list) {
-		ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
+		struct ust_app_ctx *ua_ctx = alloc_ust_app_ctx(&uctx->ctx);
+
 		if (ua_ctx == NULL) {
 			continue;
 		}
@@ -2173,7 +2189,7 @@ error:
 static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 {
 	struct ust_app_ctx *ctx;
-	const struct lttng_ust_context *key;
+	const struct lttng_ust_context_attr *key;
 
 	assert(node);
 	assert(_key);
@@ -2186,13 +2202,24 @@ static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 		goto no_match;
 	}
 
-	/* Check the name in the case of perf thread counters. */
-	if (key->ctx == LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER) {
+	switch(key->ctx) {
+	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
 		if (strncmp(key->u.perf_counter.name,
-			ctx->ctx.u.perf_counter.name,
-			sizeof(key->u.perf_counter.name))) {
+				ctx->ctx.u.perf_counter.name,
+				sizeof(key->u.perf_counter.name))) {
 			goto no_match;
 		}
+		break;
+	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+		if (strcmp(key->u.app_ctx.provider_name,
+				ctx->ctx.u.app_ctx.provider_name) ||
+				strcmp(key->u.app_ctx.ctx_name,
+				ctx->ctx.u.app_ctx.ctx_name)) {
+			goto no_match;
+		}
+		break;
+	default:
+		break;
 	}
 
 	/* Match. */
@@ -2210,7 +2237,7 @@ no_match:
  */
 static
 struct ust_app_ctx *find_ust_app_context(struct lttng_ht *ht,
-		struct lttng_ust_context *uctx)
+		struct lttng_ust_context_attr *uctx)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
@@ -2240,7 +2267,8 @@ end:
  */
 static
 int create_ust_app_channel_context(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct lttng_ust_context *uctx,
+		struct ust_app_channel *ua_chan,
+	        struct lttng_ust_context_attr *uctx,
 		struct ust_app *app)
 {
 	int ret = 0;

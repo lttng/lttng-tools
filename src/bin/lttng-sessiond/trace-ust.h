@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -40,7 +41,7 @@ struct ltt_ust_ht_key {
 
 /* Context hash table nodes */
 struct ltt_ust_context {
-	struct lttng_ust_context ctx;
+	struct lttng_ust_context_attr ctx;
 	struct lttng_ht_node_ulong node;
 	struct cds_list_head list;
 };
@@ -209,6 +210,7 @@ void trace_ust_delete_channel(struct lttng_ht *ht,
 void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
+void trace_ust_destroy_context(struct ltt_ust_context *ctx);
 
 int trace_ust_track_pid(struct ltt_ust_session *session, int pid);
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid);

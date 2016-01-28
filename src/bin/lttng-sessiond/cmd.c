@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -1359,6 +1360,12 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event_context *ctx, int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
+	char *app_ctx_provider_name = NULL, *app_ctx_name = NULL;
+
+	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+		app_ctx_provider_name = ctx->u.app_ctx.provider_name;
+		app_ctx_name = ctx->u.app_ctx.ctx_name;
+	}
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -1378,6 +1385,28 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 			goto error;
 		}
 		break;
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	{
+		/*
+		 * Validate channel name.
+		 * If no channel name is given and the domain is JUL or LOG4J,
+		 * set it to the appropriate domain-specific channel name. If
+		 * a name is provided but does not match the expexted channel
+		 * name, return an error.
+		 */
+		if (domain == LTTNG_DOMAIN_JUL && *channel_name &&
+				strcmp(channel_name,
+				DEFAULT_JUL_CHANNEL_NAME)) {
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto error;
+		} else if (domain == LTTNG_DOMAIN_LOG4J && *channel_name &&
+				strcmp(channel_name,
+				DEFAULT_LOG4J_CHANNEL_NAME)) {
+			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto error;
+		}
+	}
 	case LTTNG_DOMAIN_UST:
 	{
 		struct ltt_ust_session *usess = session->ust_session;
@@ -1405,6 +1434,10 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		}
 
 		ret = context_ust_add(usess, domain, ctx, channel_name);
+		free(app_ctx_provider_name);
+		free(app_ctx_name);
+		app_ctx_name = NULL;
+		app_ctx_provider_name = NULL;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1415,7 +1448,8 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		goto error;
 	}
 
-	return LTTNG_OK;
+	ret = LTTNG_OK;
+	goto end;
 
 error:
 	if (chan_kern_created) {
@@ -1439,6 +1473,9 @@ error:
 				uchan);
 		trace_ust_destroy_channel(uchan);
 	}
+end:
+	free(app_ctx_provider_name);
+	free(app_ctx_name);
 	return ret;
 }
 
