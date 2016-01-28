@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -38,12 +39,16 @@ static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
 static int opt_userspace;
+static int opt_jul;
+static int opt_log4j;
 static char *opt_type;
 
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE,
 	OPT_USERSPACE,
+	OPT_JUL,
+	OPT_LOG4J,
 	OPT_LIST_OPTIONS,
 };
 
@@ -69,6 +74,7 @@ enum context_type {
 	CONTEXT_IP           = 12,
 	CONTEXT_PERF_CPU_COUNTER = 13,
 	CONTEXT_PERF_THREAD_COUNTER = 14,
+	CONTEXT_APP_CONTEXT  = 15,
 };
 
 /*
@@ -144,6 +150,8 @@ static struct poptOption long_options[] = {
 	{"channel",        'c', POPT_ARG_STRING, &opt_channel_name, 0, 0, 0},
 	{"kernel",         'k', POPT_ARG_VAL, &opt_kernel, 1, 0, 0},
 	{"userspace",      'u', POPT_ARG_NONE, 0, OPT_USERSPACE, 0, 0},
+	{"jul",            'j', POPT_ARG_NONE, 0, OPT_JUL, 0, 0},
+	{"log4j",          'l', POPT_ARG_NONE, 0, OPT_LOG4J, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
@@ -199,6 +207,10 @@ const struct ctx_opts {
 			uint32_t type;
 			uint64_t config;
 		} perf;
+		struct {
+			char *provider_name;
+			char *ctx_name;
+		} app_ctx;
 	} u;
 } ctx_opts[] = {
 	{ "pid", CONTEXT_PID },
@@ -441,7 +453,7 @@ const struct ctx_opts {
  * Context type for command line option parsing.
  */
 struct ctx_type {
-	const struct ctx_opts *opt;
+	struct ctx_opts *opt;
 	struct cds_list_head list;
 };
 
@@ -505,6 +517,8 @@ static void usage(FILE *ofp)
 	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
 	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
 	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
+	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
+	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
 	fprintf(ofp, "\n");
 	fprintf(ofp, "Context:\n");
 	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
@@ -526,10 +540,12 @@ static void usage(FILE *ofp)
 
 /*
  * Find context numerical value from string.
+ *
+ * Return -1 if not found.
  */
 static int find_ctx_type_idx(const char *opt)
 {
-	int ret = -1, i = 0;
+	int ret, i = 0;
 
 	while (ctx_opts[i].symbol != NULL) {
 		if (strcmp(opt, ctx_opts[i].symbol) == 0) {
@@ -539,8 +555,25 @@ static int find_ctx_type_idx(const char *opt)
 		i++;
 	}
 
+	ret = -1;
 end:
 	return ret;
+}
+
+static
+enum lttng_domain_type get_domain(void)
+{
+	if (opt_kernel) {
+		return LTTNG_DOMAIN_KERNEL;
+	} else if (opt_userspace) {
+		return LTTNG_DOMAIN_UST;
+	} else if (opt_jul) {
+		return LTTNG_DOMAIN_JUL;
+	} else if (opt_log4j) {
+		return LTTNG_DOMAIN_LOG4J;
+	} else {
+		assert(0);
+	}
 }
 
 /*
@@ -557,14 +590,7 @@ static int add_context(char *session_name)
 	memset(&context, 0, sizeof(context));
 	memset(&dom, 0, sizeof(dom));
 
-	if (opt_kernel) {
-		dom.type = LTTNG_DOMAIN_KERNEL;
-	} else if (opt_userspace) {
-		dom.type = LTTNG_DOMAIN_UST;
-	} else {
-		assert(0);
-	}
-
+	dom.type = get_domain();
 	handle = lttng_create_handle(session_name, &dom);
 	if (handle == NULL) {
 		ret = CMD_ERROR;
@@ -598,6 +624,12 @@ static int add_context(char *session_name)
 			while ((ptr = strchr(context.u.perf_counter.name, ':')) != NULL) {
 				*ptr = '_';
 			}
+			break;
+		case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
+			context.u.app_ctx.provider_name =
+					type->opt->u.app_ctx.provider_name;
+			context.u.app_ctx.ctx_name =
+					type->opt->u.app_ctx.ctx_name;
 			break;
 		default:
 			break;
@@ -671,12 +703,132 @@ error:
 	return ret;
 }
 
+static
+void destroy_ctx_type(struct ctx_type *type)
+{
+	if (!type) {
+		return;
+	}
+	free(type->opt->symbol);
+	free(type->opt);
+	free(type);
+}
+
+static
+struct ctx_type *create_ctx_type(void)
+{
+	struct ctx_type *type = zmalloc(sizeof(*type));
+
+	if (!type) {
+		PERROR("malloc ctx_type");
+		goto end;
+	}
+
+	type->opt = zmalloc(sizeof(*type->opt));
+	if (!type->opt) {
+		PERROR("malloc ctx_type options");
+		destroy_ctx_type(type);
+		goto end;
+	}
+end:
+	return type;
+}
+
+static
+struct ctx_type *get_context_type(const char *ctx)
+{
+	int opt_index;
+	struct ctx_type *type = NULL;
+	const char app_ctx_prefix[] = "$app.";
+	char *provider_name = NULL, *ctx_name = NULL;
+	size_t i, len, colon_pos = 0, provider_name_len, ctx_name_len;
+
+	if (!ctx) {
+		goto not_found;
+	}
+
+	type = create_ctx_type();
+	if (!type) {
+		goto not_found;
+	}
+
+	/* Check if ctx matches a known static context. */
+	opt_index = find_ctx_type_idx(ctx);
+	if (opt_index >= 0) {
+		*type->opt = ctx_opts[opt_index];
+		type->opt->symbol = strdup(ctx_opts[opt_index].symbol);
+		goto found;
+	}
+
+	/*
+	 * No match found against static contexts; check if it is an app
+	 * context.
+	 */
+	len = strlen(ctx);
+	if (len <= sizeof(app_ctx_prefix) - 1) {
+		goto not_found;
+	}
+
+	/* String starts with $app. */
+	if (strncmp(ctx, app_ctx_prefix, sizeof(app_ctx_prefix) - 1)) {
+		goto not_found;
+	}
+
+	/* Validate that the ':' separator is present. */
+	for (i = sizeof(app_ctx_prefix); i < len; i++) {
+		const char c = ctx[i];
+
+		if (c == ':') {
+			colon_pos = i;
+			break;
+		}
+	}
+
+	/*
+	 * No colon found or no ctx name ("$app.provider:") or no provider name
+	 * given ("$app.:..."), which is invalid.
+	 */
+	if (!colon_pos || colon_pos == len ||
+			colon_pos == sizeof(app_ctx_prefix)) {
+		ERR("Invalid application context provided: no provider or context name provided.");
+		goto not_found;
+	}
+
+	provider_name_len = colon_pos - sizeof(app_ctx_prefix) + 2;
+	provider_name = zmalloc(provider_name_len);
+	if (!provider_name) {
+		PERROR("malloc provider_name");
+		goto not_found;
+	}
+	strncpy(provider_name, ctx + sizeof(app_ctx_prefix) - 1,
+			provider_name_len - 1);
+	type->opt->u.app_ctx.provider_name = provider_name;
+
+	ctx_name_len = len - colon_pos;
+	ctx_name = zmalloc(ctx_name_len);
+	if (!ctx_name) {
+		PERROR("malloc ctx_name");
+		goto not_found;
+	}
+	strncpy(ctx_name, ctx + colon_pos + 1, ctx_name_len - 1);
+	type->opt->u.app_ctx.ctx_name = ctx_name;
+	type->opt->ctx_type = CONTEXT_APP_CONTEXT;
+	type->opt->symbol = strdup(ctx);
+found:
+	return type;
+not_found:
+	free(provider_name);
+	free(ctx_name);
+	destroy_ctx_type(type);
+	return NULL;
+}
+
 /*
  * Add context to channel or event.
  */
 int cmd_add_context(int argc, const char **argv)
 {
-	int index, opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
+	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
 	int success = 1;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
@@ -697,36 +849,24 @@ int cmd_add_context(int argc, const char **argv)
 			usage(stdout);
 			goto end;
 		case OPT_TYPE:
-			/*
-			 * Look up the index of opt_type in ctx_opts[] first, so we don't
-			 * have to free(type) on failure.
-			 */
-			index = find_ctx_type_idx(opt_type);
-			if (index < 0) {
+		{
+			type = get_context_type(opt_type);
+			if (!type) {
 				ERR("Unknown context type %s", opt_type);
-				ret = CMD_ERROR;
-				goto end;
-			}
-
-			type = zmalloc(sizeof(struct ctx_type));
-			if (type == NULL) {
-				PERROR("malloc ctx_type");
 				ret = CMD_FATAL;
 				goto end;
 			}
-
-			type->opt = &ctx_opts[index];
-			if (type->opt->symbol == NULL) {
-				ERR("Unknown context type %s", opt_type);
-				free(type);
-				ret = CMD_ERROR;
-				goto end;
-			} else {
-				cds_list_add_tail(&type->list, &ctx_type_list.head);
-			}
+			cds_list_add_tail(&type->list, &ctx_type_list.head);
 			break;
+		}
 		case OPT_USERSPACE:
 			opt_userspace = 1;
+			break;
+		case OPT_JUL:
+			opt_jul = 1;
+			break;
+		case OPT_LOG4J:
+			opt_log4j = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
@@ -738,8 +878,8 @@ int cmd_add_context(int argc, const char **argv)
 		}
 	}
 
-	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
-
+	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace +
+			opt_jul + opt_log4j);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;
@@ -830,7 +970,7 @@ end:
 
 	/* Cleanup allocated memory */
 	cds_list_for_each_entry_safe(type, tmptype, &ctx_type_list.head, list) {
-		free(type);
+		destroy_ctx_type(type);
 	}
 
 	/* Overwrite ret if an error occurred during add_context() */
