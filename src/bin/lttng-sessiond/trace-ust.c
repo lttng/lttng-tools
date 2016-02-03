@@ -589,6 +589,15 @@ int trace_ust_match_context(struct ltt_ust_context *uctx,
 			return 0;
 		}
 		break;
+	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+		assert(uctx->ctx.u.app_ctx.provider_name);
+		assert(uctx->ctx.u.app_ctx.ctx_name);
+		if (strcmp(uctx->ctx.u.app_ctx.provider_name,
+				ctx->u.app_ctx.provider_name) ||
+				strcmp(uctx->ctx.u.app_ctx.ctx_name,
+				ctx->u.app_ctx.ctx_name)) {
+			return 0;
+		}
 	default:
 		break;
 
