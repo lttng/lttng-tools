@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -23,6 +24,8 @@
 #include <lttng/lttng.h>
 #include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/filter.h>
+#include <common/context.h>
 
 #include "channel.h"
 #include "event.h"
@@ -417,6 +420,67 @@ error:
 }
 
 /*
+ * Check if this event's filter requires the activation of application contexts
+ * and enable them in the agent.
+ */
+static int add_filter_app_ctx(struct lttng_filter_bytecode *bytecode,
+		const char *filter_expression, struct agent *agt)
+{
+	int ret = LTTNG_OK;
+	char *provider_name = NULL, *ctx_name = NULL;
+	struct bytecode_symbol_iterator *it =
+			bytecode_symbol_iterator_create(bytecode);
+
+	if (!it) {
+		ret = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	do {
+		struct lttng_event_context ctx;
+		const char *symbol_name =
+				bytecode_symbol_iterator_get_name(it);
+
+		if (parse_application_context(symbol_name, &provider_name,
+				&ctx_name)) {
+			/* Not an application context. */
+			continue;
+		}
+
+		ctx.ctx = LTTNG_EVENT_CONTEXT_APP_CONTEXT;
+		ctx.u.app_ctx.provider_name = provider_name;
+		ctx.u.app_ctx.ctx_name = ctx_name;
+
+		/* Recognized an application context. */
+		DBG("Enabling event with filter expression \"%s\" requires enabling the %s:%s application context.",
+				filter_expression, provider_name, ctx_name);
+
+		ret = agent_add_context(&ctx, agt);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to add application context %s:%s.",
+					provider_name, ctx_name);
+			goto end;
+		}
+
+		ret = agent_enable_context(&ctx, agt->domain);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to enable application context %s:%s.",
+					provider_name, ctx_name);
+			goto end;
+		}
+
+		free(provider_name);
+		free(ctx_name);
+		provider_name = ctx_name = NULL;
+	} while (bytecode_symbol_iterator_next(it) == 0);
+end:
+	free(provider_name);
+	free(ctx_name);
+	bytecode_symbol_iterator_destroy(it);
+	return ret;
+}
+
+/*
  * Enable a single agent event for a given UST session.
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
@@ -439,7 +503,7 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			filter_expression ? filter_expression : "NULL");
 
 	aevent = agent_find_event(event->name, event->loglevel_type,
-		event->loglevel, filter_expression, agt);
+			event->loglevel, filter_expression, agt);
 	if (!aevent) {
 		aevent = agent_create_event(event->name, event->loglevel_type,
 				event->loglevel, filter,
@@ -448,12 +512,20 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
+
 		created = 1;
 	}
 
 	/* Already enabled? */
 	if (aevent->enabled) {
 		goto end;
+	}
+
+	if (created && filter) {
+		ret = add_filter_app_ctx(filter, filter_expression, agt);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
 	}
 
 	ret = agent_enable_event(aevent, agt->domain);
