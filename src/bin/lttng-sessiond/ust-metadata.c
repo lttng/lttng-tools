@@ -521,11 +521,17 @@ int _lttng_event_header_declare(struct ust_registry_session *session)
 	);
 }
 
+/*
+ * The offset between monotonic and realtime clock can be negative if
+ * the system sets the REALTIME clock to 0 after boot.
+ * Currently handle this by flooring the offset at 0.
+ */
 static
 int measure_single_clock_offset(struct offset_sample *sample)
 {
-	uint64_t offset, monotonic[2], measure_delta, realtime;
+	uint64_t monotonic_avg, monotonic[2], measure_delta, realtime;
 	uint64_t tcf = trace_clock_freq();
+	int64_t offset;
 	struct timespec rts = { 0, 0 };
 	int ret;
 
@@ -543,15 +549,15 @@ int measure_single_clock_offset(struct offset_sample *sample)
 		 */
 		return 0;
 	}
-	offset = (monotonic[0] + monotonic[1]) >> 1;
+	monotonic_avg = (monotonic[0] + monotonic[1]) >> 1;
 	realtime = (uint64_t) rts.tv_sec * tcf;
 	if (tcf == NSEC_PER_SEC) {
 		realtime += rts.tv_nsec;
 	} else {
 		realtime += (uint64_t) rts.tv_nsec * tcf / NSEC_PER_SEC;
 	}
-	offset = realtime - offset;
-	sample->offset = offset;
+	offset = (int64_t) realtime - monotonic_avg;
+	sample->offset = max(offset, 0);
 	sample->measure_delta = measure_delta;
 	return 0;
 }
