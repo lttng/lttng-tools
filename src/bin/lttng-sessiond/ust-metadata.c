@@ -41,7 +41,7 @@
 #define NR_CLOCK_OFFSET_SAMPLES		10
 
 struct offset_sample {
-	uint64_t offset;		/* correlation offset */
+	int64_t offset;			/* correlation offset */
 	uint64_t measure_delta;		/* lower is better */
 };
 
@@ -607,14 +607,12 @@ int _lttng_event_header_declare(struct ust_registry_session *session)
 /*
  * The offset between monotonic and realtime clock can be negative if
  * the system sets the REALTIME clock to 0 after boot.
- * Currently handle this by flooring the offset at 0.
  */
 static
 int measure_single_clock_offset(struct offset_sample *sample)
 {
 	uint64_t monotonic_avg, monotonic[2], measure_delta, realtime;
 	uint64_t tcf = trace_clock_freq();
-	int64_t offset;
 	struct timespec rts = { 0, 0 };
 	int ret;
 
@@ -639,8 +637,7 @@ int measure_single_clock_offset(struct offset_sample *sample)
 	} else {
 		realtime += (uint64_t) rts.tv_nsec * tcf / NSEC_PER_SEC;
 	}
-	offset = (int64_t) realtime - monotonic_avg;
-	sample->offset = max(offset, 0);
+	sample->offset = (int64_t) realtime - monotonic_avg;
 	sample->measure_delta = measure_delta;
 	return 0;
 }
@@ -649,9 +646,10 @@ int measure_single_clock_offset(struct offset_sample *sample)
  * Approximation of NTP time of day to clock monotonic correlation,
  * taken at start of trace. Keep the measurement that took the less time
  * to complete, thus removing imprecision caused by preemption.
+ * May return a negative offset.
  */
 static
-uint64_t measure_clock_offset(void)
+int64_t measure_clock_offset(void)
 {
 	int i;
 	struct offset_sample offset_best_sample = {
@@ -799,7 +797,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		"	description = \"%s\";\n"
 		"	freq = %" PRIu64 "; /* Frequency, in Hz */\n"
 		"	/* clock value offset from Epoch is: offset * (1/freq) */\n"
-		"	offset = %" PRIu64 ";\n"
+		"	offset = %" PRId64 ";\n"
 		"};\n\n",
 		trace_clock_description(),
 		trace_clock_freq(),
