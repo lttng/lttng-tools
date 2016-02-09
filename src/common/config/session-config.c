@@ -99,7 +99,10 @@ const char * const config_element_type = "type";
 const char * const config_element_buffer_type = "buffer_type";
 const char * const config_element_session = "session";
 const char * const config_element_sessions = "sessions";
-const char * const config_element_perf = "perf";
+const char * const config_element_context_perf = "perf";
+const char * const config_element_context_app = "app";
+const char * const config_element_context_app_provider_name = "provider_name";
+const char * const config_element_context_app_ctx_name = "ctx_name";
 const char * const config_element_config = "config";
 const char * const config_element_started = "started";
 const char * const config_element_snapshot_mode = "snapshot_mode";
@@ -165,6 +168,8 @@ const char * const config_event_context_pthread_id = "PTHREAD_ID";
 const char * const config_event_context_hostname = "HOSTNAME";
 const char * const config_event_context_ip = "IP";
 const char * const config_event_context_perf_thread_counter = "PERF_THREAD_COUNTER";
+const char * const config_event_context_app = "APP";
+
 
 struct consumer_output {
 	int enabled;
@@ -1991,6 +1996,7 @@ int process_context_node(xmlNodePtr context_node,
 		config_element_type)) {
 		/* type */
 		xmlChar *content = xmlNodeGetContent(context_child_node);
+
 		if (!content) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto end;
@@ -2004,10 +2010,11 @@ int process_context_node(xmlNodePtr context_node,
 		}
 
 		context.ctx = ret;
-	} else {
+	} else if (!strcmp((const char *) context_child_node->name,
+		config_element_context_perf)) {
+		/* perf */
 		xmlNodePtr perf_attr_node;
 
-		/* perf */
 		context.ctx = handle->domain.type == LTTNG_DOMAIN_KERNEL ?
 			LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER :
 			LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER;
@@ -2085,9 +2092,41 @@ int process_context_node(xmlNodePtr context_node,
 				free(content);
 			}
 		}
+	} else if (!strcmp((const char *) context_child_node->name,
+		config_element_context_app)) {
+		/* application context */
+		xmlNodePtr app_ctx_node;
+
+		context.ctx = LTTNG_EVENT_CONTEXT_APP_CONTEXT;
+		for (app_ctx_node = xmlFirstElementChild(context_child_node);
+				app_ctx_node; app_ctx_node =
+				xmlNextElementSibling(app_ctx_node)) {
+			xmlChar *content;
+			char **target = strcmp(
+				(const char *) app_ctx_node->name,
+				config_element_context_app_provider_name) == 0 ?
+					&context.u.app_ctx.provider_name :
+					&context.u.app_ctx.ctx_name;
+
+			content = xmlNodeGetContent(app_ctx_node);
+			if (!content) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto end;
+			}
+
+			*target = (char *) content;
+		}
+	} else {
+		/* Unrecognized context type */
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		goto end;
 	}
 
 	ret = lttng_add_context(handle, &context, NULL, channel_name);
+	if (context.ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+		free(context.u.app_ctx.provider_name);
+		free(context.u.app_ctx.ctx_name);
+	}
 end:
 	return ret;
 }

@@ -50,7 +50,10 @@ extern const char * const config_element_type;
 extern const char * const config_element_buffer_type;
 extern const char * const config_element_session;
 extern const char * const config_element_sessions;
-extern const char * const config_element_perf;
+extern const char * const config_element_context_perf;
+extern const char * const config_element_context_app;
+extern const char * const config_element_context_app_provider_name;
+extern const char * const config_element_context_app_ctx_name;
 extern const char * const config_element_config;
 extern const char * const config_element_started;
 extern const char * const config_element_snapshot_mode;
@@ -116,5 +119,6 @@ extern const char * const config_event_context_pthread_id;
 extern const char * const config_event_context_hostname;
 extern const char * const config_event_context_ip;
 extern const char * const config_event_context_perf_thread_counter;
+extern const char * const config_event_context_app;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */

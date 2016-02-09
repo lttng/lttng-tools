@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-elementFormDefault="qualified" version="2.7">
+elementFormDefault="qualified" version="2.8">
 
 <xs:simpleType name="name_type">
 	<xs:restriction base="xs:string">
@@ -136,6 +136,13 @@ elementFormDefault="qualified" version="2.7">
 	</xs:all>
 </xs:complexType>
 
+<xs:complexType name="event_app_context_type">
+	<xs:all>
+	  <xs:element name="provider_name" type="xs:string"/>
+	  <xs:element name="ctx_name" type="xs:string"/>
+	</xs:all>
+</xs:complexType>
+
 <!-- Maps to the lttng_event_context_type enum -->
 <xs:simpleType name="event_context_type_type">
 	<xs:restriction base="xs:string">
@@ -151,6 +158,7 @@ elementFormDefault="qualified" version="2.7">
 		<xs:enumeration value="PTHREAD_ID"/>
 		<xs:enumeration value="HOSTNAME"/>
 		<xs:enumeration value="IP"/>
+		<xs:enumeration value="APP"/>
 	</xs:restriction>
 </xs:simpleType>
 
@@ -158,6 +166,7 @@ elementFormDefault="qualified" version="2.7">
 	<xs:choice>
 		<xs:element name="type" type="event_context_type_type"/>
 		<xs:element name="perf" type="event_perf_context_type"/>
+		<xs:element name="app" type="event_app_context_type"/>
 	</xs:choice>
 </xs:complexType>
 
