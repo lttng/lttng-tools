@@ -31,6 +31,7 @@
 #include "ust-ctl.h"
 #include "utils.h"
 #include "ust-app.h"
+#include "agent.h"
 
 /*
  * Return allocated channel attributes.
@@ -272,6 +273,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	int ret = LTTNG_OK;
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
+	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
 
 	assert(usess);
 
@@ -283,6 +285,18 @@ int channel_ust_create(struct ltt_ust_session *usess,
 			goto error;
 		}
 		attr = defattr;
+	} else {
+		/*
+		 * HACK: Set the channel's subdomain (JUL, Log4j, Python, etc.)
+		 * based on the default name.
+		 */
+		if (!strcmp(attr->name, DEFAULT_JUL_CHANNEL_NAME)) {
+			domain = LTTNG_DOMAIN_JUL;
+		} else if (!strcmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME)) {
+			domain = LTTNG_DOMAIN_LOG4J;
+		} else if (!strcmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME)) {
+			domain = LTTNG_DOMAIN_PYTHON;
+		}
 	}
 
 	if (usess->snapshot_mode) {
@@ -343,22 +357,10 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	}
 
 	/* Create UST channel */
-	uchan = trace_ust_create_channel(attr, LTTNG_DOMAIN_UST);
+	uchan = trace_ust_create_channel(attr, domain);
 	if (uchan == NULL) {
 		ret = LTTNG_ERR_FATAL;
 		goto error;
-	}
-
-	/*
-	 * HACK: Set the channel's subdomain (JUL, Log4j, Python, etc.)
-	 * based on the default name.
-	 */
-	if (!strcmp(uchan->name, DEFAULT_JUL_CHANNEL_NAME)) {
-		uchan->domain = LTTNG_DOMAIN_JUL;
-	} else if (!strcmp(uchan->name, DEFAULT_LOG4J_CHANNEL_NAME)) {
-		uchan->domain = LTTNG_DOMAIN_LOG4J;
-	} else if (!strcmp(uchan->name, DEFAULT_PYTHON_CHANNEL_NAME)) {
-		uchan->domain = LTTNG_DOMAIN_PYTHON;
 	}
 
 	uchan->enabled = 1;
@@ -405,6 +407,18 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	rcu_read_unlock();
 
 	DBG2("Channel %s created successfully", uchan->name);
+	if (domain != LTTNG_DOMAIN_UST) {
+		struct agent *agt = trace_ust_find_agent(usess, domain);
+
+		if (!agt) {
+			agt = agent_create(domain);
+			if (!agt) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error_free_chan;
+			}
+			agent_add(agt, usess->agents);
+		}
+	}
 
 	free(defattr);
 	return LTTNG_OK;
