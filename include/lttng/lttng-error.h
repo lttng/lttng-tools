@@ -32,7 +32,7 @@ extern "C" {
 enum lttng_error_code {
 	LTTNG_OK                         = 10,  /* Ok */
 	LTTNG_ERR_UNK                    = 11,  /* Unknown Error */
-	LTTNG_ERR_UND                    = 12,  /* Undefine command */
+	LTTNG_ERR_UND                    = 12,  /* Undefined command */
 	LTTNG_ERR_SESSION_STARTED        = 13,  /* Session is running */
 	LTTNG_ERR_UNKNOWN_DOMAIN         = 14,  /* Tracing domain not known */
 	LTTNG_ERR_NOT_SUPPORTED          = 15,  /* Operation not supported */
@@ -106,7 +106,7 @@ enum lttng_error_code {
 	LTTNG_ERR_NEED_CHANNEL_NAME      = 83,	/* Non-default channel exists within session: channel name needs to be specified with '-c name' */
 	LTTNG_ERR_NO_UST                 = 84,  /* LTTng-UST tracer is not supported. Please rebuild lttng-tools with lttng-ust support enabled. */
 	LTTNG_ERR_SAVE_FILE_EXIST        = 85,  /* Session file already exists. */
-	LTTNG_ERR_SAVE_IO_FAIL           = 86,  /* IO error while writting session configuration */
+	LTTNG_ERR_SAVE_IO_FAIL           = 86,  /* IO error while writing session configuration */
 	LTTNG_ERR_LOAD_INVALID_CONFIG    = 87,  /* Invalid session configuration */
 	LTTNG_ERR_LOAD_IO_FAIL           = 88,  /* IO error while reading a session configuration */
 	LTTNG_ERR_LOAD_SESSION_NOENT     = 89,  /* Session file not found */
