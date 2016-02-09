@@ -113,7 +113,13 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	{
-		struct agent *agt = trace_ust_find_agent(usess, domain);
+		struct agent *agt;
+
+		if (ctx->ctx != LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+			/* Other contexts are not needed by the agent. */
+			break;
+		}
+		agt = trace_ust_find_agent(usess, domain);
 
 		if (!agt) {
 			agt = agent_create(domain);
