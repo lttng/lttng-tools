@@ -180,9 +180,12 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 			goto error;
 		}
 
-		ret = kmod_module_probe_insert_module(mod, KMOD_PROBE_IGNORE_LOADED,
+		ret = kmod_module_probe_insert_module(mod, 0,
 				NULL, NULL, NULL, NULL);
-		if (ret < 0) {
+		if (ret == -EEXIST) {
+			DBG("Module %s is already loaded", modules[i].name);
+			ret = 0;
+		} else if (ret < 0) {
 			if (required) {
 				ERR("Unable to load required module %s",
 						modules[i].name);
