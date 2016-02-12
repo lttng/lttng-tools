@@ -33,22 +33,12 @@
 
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {
-	{ "lttng-tracer" },	/* MUST be loaded first so keep at top */
-	{ "lttng-lib-ring-buffer" },
 	{ "lttng-ring-buffer-client-discard" },
 	{ "lttng-ring-buffer-client-overwrite" },
 	{ "lttng-ring-buffer-metadata-client" },
 	{ "lttng-ring-buffer-client-mmap-discard" },
 	{ "lttng-ring-buffer-client-mmap-overwrite" },
 	{ "lttng-ring-buffer-metadata-mmap-client" },
-};
-
-/* LTTng kernel tracer optional base modules list */
-struct kern_modules_param kern_modules_control_opt[] = {
-	{ "lttng-types" },
-	{ "lttng-ftrace" },
-	{ "lttng-kprobes" },
-	{ "lttng-kretprobes" },
 };
 
 /* LTTng kernel tracer probe modules list */
@@ -134,9 +124,6 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
  */
 void modprobe_remove_lttng_control(void)
 {
-	modprobe_remove_lttng(kern_modules_control_opt,
-			      ARRAY_SIZE(kern_modules_control_opt),
-			      LTTNG_MOD_OPTIONAL);
 	modprobe_remove_lttng(kern_modules_control_core,
 			      ARRAY_SIZE(kern_modules_control_core),
 			      LTTNG_MOD_REQUIRED);
@@ -303,11 +290,6 @@ int modprobe_lttng_control(void)
 	ret = modprobe_lttng(kern_modules_control_core,
 			     ARRAY_SIZE(kern_modules_control_core),
 			     LTTNG_MOD_REQUIRED);
-	if (ret != 0)
-		return ret;
-	ret = modprobe_lttng(kern_modules_control_opt,
-			     ARRAY_SIZE(kern_modules_control_opt),
-			     LTTNG_MOD_OPTIONAL);
 	return ret;
 }
 
