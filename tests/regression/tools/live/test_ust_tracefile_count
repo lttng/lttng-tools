@@ -47,18 +47,18 @@ echo "$TEST_DESC (base command: $BASE_COMMAND)"
 function setup_live_tracing()
 {
 	# Create session with default path
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+	$LTTNG create $SESSION_NAME --live $DELAY_USEC \
 		-U net://$RELAYD_HOST >/dev/null 2>&1
 
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-channel --subbuf-size 16k -C 16k -W 10 -u chan1
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$EVENT_NAME" -s $SESSION_NAME -u -c chan1 >/dev/null 2>&1
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN start $SESSION_NAME >/dev/null 2>&1
+	$LTTNG enable-channel --subbuf-size 16k -C 16k -W 10 -u chan1
+	$LTTNG enable-event "$EVENT_NAME" -s $SESSION_NAME -u -c chan1 >/dev/null 2>&1
+	$LTTNG start $SESSION_NAME >/dev/null 2>&1
 }
 
 function clean_live_tracing()
 {
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN stop $SESSION_NAME >/dev/null 2>&1
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN destroy $SESSION_NAME >/dev/null 2>&1
+	$LTTNG stop $SESSION_NAME >/dev/null 2>&1
+	$LTTNG destroy $SESSION_NAME >/dev/null 2>&1
 	$BASE_COMMAND "rm -rf $TRACE_PATH"
 }
 

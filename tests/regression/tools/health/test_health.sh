@@ -31,7 +31,7 @@ fi
 function lttng_create_session_uri
 {
 	# Create session with default path
-	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME \
+	$LTTNG create $SESSION_NAME \
 		-U net://localhost >/dev/null 2>&1
 	ok $? "Create session with default path"
 }
