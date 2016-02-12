@@ -268,7 +268,7 @@ function enable_channel_per_uid_mmap_overwrite()
 
 function test_ust_per_uid_local_snapshot ()
 {
-	diag "Test local UST snapshots"
+	diag "Test per-uid local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
