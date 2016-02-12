@@ -92,6 +92,7 @@ static int probes_capacity;
 
 #if HAVE_KMOD
 #include <libkmod.h>
+
 static void log_kmod(void *data, int priority, const char *file, int line,
 		const char *fn, const char *format, va_list args)
 {
@@ -104,21 +105,39 @@ static void log_kmod(void *data, int priority, const char *file, int line,
 	DBG("libkmod: %s", str);
 	free(str);
 }
-static int modprobe_lttng(struct kern_modules_param *modules,
-		int entries, int required)
-{
-	int ret = 0, i;
-	struct kmod_ctx *ctx;
 
-	ctx = kmod_new(NULL, NULL);
+static int setup_kmod_ctx(struct kmod_ctx **ctx)
+{
+	int ret = 0;
+
+	*ctx = kmod_new(NULL, NULL);
 	if (!ctx) {
 		PERROR("Unable to create kmod library context");
 		ret = -ENOMEM;
 		goto error;
 	}
 
-	kmod_set_log_fn(ctx, log_kmod, NULL);
-	kmod_load_resources(ctx);
+	kmod_set_log_fn(*ctx, log_kmod, NULL);
+	ret = kmod_load_resources(*ctx);
+	if (ret < 0) {
+		ERR("Failed to load kmod library resources");
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+static int modprobe_lttng(struct kern_modules_param *modules,
+		int entries, int required)
+{
+	int ret = 0, i;
+	struct kmod_ctx *ctx;
+
+	ret = setup_kmod_ctx(&ctx);
+	if (ret < 0) {
+		goto error;
+	}
 
 	for (i = 0; i < entries; i++) {
 		struct kmod_module *mod = NULL;
@@ -153,6 +172,73 @@ error:
 		kmod_unref(ctx);
 	}
 	return ret;
+}
+
+static int rmmod_recurse(struct kmod_module *mod) {
+	int ret = 0;
+	struct kmod_list *deps, *itr;
+
+	if (kmod_module_get_initstate(mod) == KMOD_MODULE_BUILTIN) {
+		DBG("Module %s is builtin", kmod_module_get_name(mod));
+		return ret;
+	}
+
+	ret = kmod_module_remove_module(mod, 0);
+
+	deps = kmod_module_get_dependencies(mod);
+	if (deps != NULL) {
+		kmod_list_foreach(itr, deps) {
+			struct kmod_module *dep = kmod_module_get_module(itr);
+			if (kmod_module_get_refcnt(dep) == 0) {
+				DBG("Recursive remove module %s",
+						kmod_module_get_name(dep));
+				rmmod_recurse(dep);
+			}
+			kmod_module_unref(dep);
+		}
+		kmod_module_unref_list(deps);
+	}
+
+	return ret;
+}
+
+static void modprobe_remove_lttng(const struct kern_modules_param *modules,
+		int entries, int required)
+{
+	int ret = 0, i;
+	struct kmod_ctx *ctx;
+
+	ret = setup_kmod_ctx(&ctx);
+	if (ret < 0) {
+		goto error;
+	}
+
+	for (i = entries - 1; i >= 0; i--) {
+		struct kmod_module *mod = NULL;
+
+		ret = kmod_module_new_from_name(ctx, modules[i].name, &mod);
+		if (ret < 0) {
+			PERROR("Failed to create kmod module for %s", modules[i].name);
+			goto error;
+		}
+
+		ret = rmmod_recurse(mod);
+		if (ret == -EEXIST) {
+			DBG("Module %s is not in kernel.", modules[i].name);
+		} else if (required && ret < 0) {
+			ERR("Unable to remove module %s", modules[i].name);
+		} else {
+			DBG("Modprobe removal successful %s",
+				modules[i].name);
+		}
+
+		kmod_module_unref(mod);
+	}
+
+error:
+	if (ctx) {
+		kmod_unref(ctx);
+	}
 }
 
 #else /* HAVE_KMOD */
@@ -203,8 +289,6 @@ error:
 	return ret;
 }
 
-#endif /* HAVE_KMOD */
-
 static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		int entries, int required)
 {
@@ -233,6 +317,8 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		}
 	}
 }
+
+#endif /* HAVE_KMOD */
 
 /*
  * Remove control kernel module(s) in reverse load order.
