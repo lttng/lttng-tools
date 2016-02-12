@@ -90,81 +90,6 @@ static struct kern_modules_param *probes;
 static int nr_probes;
 static int probes_capacity;
 
-static void modprobe_remove_lttng(const struct kern_modules_param *modules,
-		int entries, int required)
-{
-	int ret = 0, i;
-	char modprobe[256];
-
-	for (i = entries - 1; i >= 0; i--) {
-		ret = snprintf(modprobe, sizeof(modprobe),
-				"/sbin/modprobe -r -q %s",
-				modules[i].name);
-		if (ret < 0) {
-			PERROR("snprintf modprobe -r");
-			return;
-		}
-		modprobe[sizeof(modprobe) - 1] = '\0';
-		ret = system(modprobe);
-		if (ret == -1) {
-			ERR("Unable to launch modprobe -r for module %s",
-					modules[i].name);
-		} else if (required && WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-					modules[i].name);
-		} else {
-			DBG("Modprobe removal successful %s",
-					modules[i].name);
-		}
-	}
-}
-
-/*
- * Remove control kernel module(s) in reverse load order.
- */
-void modprobe_remove_lttng_control(void)
-{
-	modprobe_remove_lttng(kern_modules_control_core,
-			      ARRAY_SIZE(kern_modules_control_core),
-			      LTTNG_MOD_REQUIRED);
-}
-
-static void free_probes(void)
-{
-	int i;
-
-	if (!probes) {
-		return;
-	}
-	for (i = 0; i < nr_probes; ++i) {
-		free(probes[i].name);
-	}
-	free(probes);
-	probes = NULL;
-	nr_probes = 0;
-}
-
-/*
- * Remove data kernel modules in reverse load order.
- */
-void modprobe_remove_lttng_data(void)
-{
-	if (!probes) {
-		return;
-	}
-	modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
-	free_probes();
-}
-
-/*
- * Remove all kernel modules in reverse order.
- */
-void modprobe_remove_lttng_all(void)
-{
-	modprobe_remove_lttng_data();
-	modprobe_remove_lttng_control();
-}
-
 #if HAVE_KMOD
 #include <libkmod.h>
 static void log_kmod(void *data, int priority, const char *file, int line,
@@ -279,6 +204,81 @@ error:
 }
 
 #endif /* HAVE_KMOD */
+
+static void modprobe_remove_lttng(const struct kern_modules_param *modules,
+		int entries, int required)
+{
+	int ret = 0, i;
+	char modprobe[256];
+
+	for (i = entries - 1; i >= 0; i--) {
+		ret = snprintf(modprobe, sizeof(modprobe),
+				"/sbin/modprobe -r -q %s",
+				modules[i].name);
+		if (ret < 0) {
+			PERROR("snprintf modprobe -r");
+			return;
+		}
+		modprobe[sizeof(modprobe) - 1] = '\0';
+		ret = system(modprobe);
+		if (ret == -1) {
+			ERR("Unable to launch modprobe -r for module %s",
+					modules[i].name);
+		} else if (required && WEXITSTATUS(ret) != 0) {
+			ERR("Unable to remove module %s",
+					modules[i].name);
+		} else {
+			DBG("Modprobe removal successful %s",
+					modules[i].name);
+		}
+	}
+}
+
+/*
+ * Remove control kernel module(s) in reverse load order.
+ */
+void modprobe_remove_lttng_control(void)
+{
+	modprobe_remove_lttng(kern_modules_control_core,
+			      ARRAY_SIZE(kern_modules_control_core),
+			      LTTNG_MOD_REQUIRED);
+}
+
+static void free_probes(void)
+{
+	int i;
+
+	if (!probes) {
+		return;
+	}
+	for (i = 0; i < nr_probes; ++i) {
+		free(probes[i].name);
+	}
+	free(probes);
+	probes = NULL;
+	nr_probes = 0;
+}
+
+/*
+ * Remove data kernel modules in reverse load order.
+ */
+void modprobe_remove_lttng_data(void)
+{
+	if (!probes) {
+		return;
+	}
+	modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+	free_probes();
+}
+
+/*
+ * Remove all kernel modules in reverse order.
+ */
+void modprobe_remove_lttng_all(void)
+{
+	modprobe_remove_lttng_data();
+	modprobe_remove_lttng_control();
+}
 
 /*
  * Load control kernel module(s).
