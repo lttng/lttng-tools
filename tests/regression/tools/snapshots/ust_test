@@ -182,7 +182,7 @@ function test_ust_local_snapshot ()
 function test_ust_local_snapshot_max_size ()
 {
 	page_size=`getconf PAGE_SIZE`
-	num_cpus=`nproc`
+	num_cpus=$(conf_proc_count)
 
 	# The minimum subbuf size is the platform PAGE_SIZE
 	subbuf_size=$(($page_size*2))
