@@ -45,10 +45,10 @@ SEQUENCE_SEED=(
 89 13 63 6 136 153 23 16 47 130 75 62
 )
 
+source $TESTDIR/utils/utils.sh
+
 # Equivalent to the syconf(_SC_NPROCESSORS_CONF) call.
 num_cpus=$(conf_proc_count)
-
-source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
 	BAIL_OUT "No shared object generated"
