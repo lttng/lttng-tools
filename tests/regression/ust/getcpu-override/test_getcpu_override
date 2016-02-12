@@ -46,7 +46,7 @@ SEQUENCE_SEED=(
 )
 
 # Equivalent to the syconf(_SC_NPROCESSORS_CONF) call.
-NPROC=`nproc --all`
+num_cpus=$(conf_proc_count)
 
 source $TESTDIR/utils/utils.sh
 
@@ -90,7 +90,7 @@ compare()
 	ok $? "Sequence seed and cpuid sequence have the same size ${#SEQUENCE_SEED[*]}/${#array_to_compare[*]}"
 
 	for (( i = 0; i < ${#SEQUENCE_SEED[*]}; i++ )); do
-		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % $NPROC))" ]; then
+		if [ "${array_to_compare[$i]}" -ne "$(( ${SEQUENCE_SEED[$i]} % $num_cpus))" ]; then
 			valid=1
 			break
 		fi
@@ -107,7 +107,7 @@ compare()
 				echo -n "# array value is "
 				echo -n "${array_to_compare[$i]}"
 				echo -n " expected "
-				echo "$(( ${SEQUENCE_SEED[$i]} % $NPROC))"
+				echo "$(( ${SEQUENCE_SEED[$i]} % $num_cpus))"
 			done
 			diag "Dumping trace"
 			$BABELTRACE_BIN $TRACE_PATH | awk '{print "# " $0}'
