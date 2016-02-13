@@ -25,8 +25,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=144
-NUM_KERNEL_TESTS=144
+NUM_UST_TESTS=123
+NUM_KERNEL_TESTS=123
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -117,14 +117,10 @@ INVALID_FILTERS=(
 		# Unmatched parenthesis
 		"((((((((((((((intfield)))))))))))))"
 		'0 || ("abc" != "def")) && (3 < 4)'
-		# Field dereference
-		"a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a.a"
 		"a->"
 		"a-->a"
 		"a->a"
 		"a.b.c->d.e.f+1"
-		"!a.f.d"
-		"asdf.asdfsd.sadf < 4"
 		"asdfasdf->asdfasdf < 2"
 		# String can\'t be root node
 		"\"somestring\""
@@ -141,11 +137,6 @@ INVALID_FILTERS=(
 		# Nesting of binary operator not allowed
 		"1 | (1 | (1 | 1))"
 		"1 > (1 > (1 > 1))"
-		# Exactly one chaining level under \$ctx allowed
-		"\$ctx.vtid.blah == 0"
-		"0 == \$ctx.vtid.blah"
-		"\$ctx.44 == 0"
-		"0 == \$ctx.44"
 		"\$ctx == 0"
 		"0 == \$ctx"
 		# Only \$ctx is supported for now
