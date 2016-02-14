@@ -753,8 +753,8 @@ int agent_enable_context(struct lttng_event_context *ctx,
 
 		/* Enable event on agent application through TCP socket. */
 		ret = app_context_op(app, agent_ctx, AGENT_CMD_APP_CTX_ENABLE);
+		destroy_app_ctx(agent_ctx);
 		if (ret != LTTNG_OK) {
-			destroy_app_ctx(agent_ctx);
 			goto error_unlock;
 		}
 	}
