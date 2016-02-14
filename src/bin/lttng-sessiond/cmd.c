@@ -1740,7 +1740,9 @@ static int _cmd_enable_event(struct ltt_session *session,
 		filter_expression = NULL;
 		filter = NULL;
 		exclusion = NULL;
-		if (ret != LTTNG_OK) {
+		if (ret == LTTNG_ERR_UST_EVENT_ENABLED) {
+			goto already_enabled;
+		} else if (ret != LTTNG_OK) {
 			goto error;
 		}
 		break;
@@ -1838,7 +1840,9 @@ static int _cmd_enable_event(struct ltt_session *session,
 					filter_copy, NULL, wpipe);
 		}
 
-		if (ret != LTTNG_OK && ret != LTTNG_ERR_UST_EVENT_ENABLED) {
+		if (ret == LTTNG_ERR_UST_EVENT_ENABLED) {
+			goto already_enabled;
+		} else if (ret != LTTNG_OK) {
 			goto error;
 		}
 
@@ -1865,6 +1869,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 
 	ret = LTTNG_OK;
 
+already_enabled:
 error:
 	free(filter_expression);
 	free(filter);
