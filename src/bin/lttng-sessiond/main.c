@@ -3369,12 +3369,16 @@ skip_domain:
 				ret = -LTTNG_ERR_NOMEM;
 				goto error;
 			}
+			cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name =
+					provider_name;
 
 			context_name = zmalloc(context_name_len + 1);
 			if (!context_name) {
 				ret = -LTTNG_ERR_NOMEM;
 				goto error_add_context;
 			}
+			cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name =
+					context_name;
 
 			ret = lttcomm_recv_unix_sock(sock, provider_name,
 					provider_name_len);
@@ -3387,10 +3391,6 @@ skip_domain:
 			if (ret < 0) {
 				goto error_add_context;
 			}
-			cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name =
-					provider_name;
-			cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name =
-					context_name;
 		}
 
 		/*
