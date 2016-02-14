@@ -728,6 +728,7 @@ struct ctx_type *create_ctx_type(void)
 	if (!type->opt) {
 		PERROR("malloc ctx_type options");
 		destroy_ctx_type(type);
+		type = NULL;
 		goto end;
 	}
 end:
