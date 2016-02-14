@@ -365,6 +365,9 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 		ret = _lttng_field_statedump(session,
 				fields, nr_fields,
 				iter_field, nesting + 1);
+		if (ret) {
+			goto end;
+		}
 	}
 	sanitize_ctf_identifier(identifier, variant->name);
 	ret = print_tabs(session, nesting);
