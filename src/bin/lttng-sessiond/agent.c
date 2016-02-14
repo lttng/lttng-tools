@@ -747,6 +747,7 @@ int agent_enable_context(struct lttng_event_context *ctx,
 
 		agent_ctx = create_app_ctx(ctx);
 		if (!agent_ctx) {
+			ret = LTTNG_ERR_NOMEM;
 			goto error_unlock;
 		}
 
