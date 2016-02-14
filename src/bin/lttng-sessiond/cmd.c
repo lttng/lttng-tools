@@ -1406,6 +1406,7 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
 			goto error;
 		}
+		/* break is _not_ missing here. */
 	}
 	case LTTNG_DOMAIN_UST:
 	{
