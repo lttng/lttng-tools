@@ -108,7 +108,7 @@ void test_uri_parsing(void)
 		uri = NULL;
 	}
 
-	s_uri1 = "net6://localhost:8989";
+	s_uri1 = "net6://[::1]:8989";
 
 	size = uri_parse(s_uri1, &uri);
 
@@ -125,7 +125,7 @@ void test_uri_parsing(void)
 	   uri[1].port == 0 &&
 	   strlen(uri[1].subdir) == 0 &&
 	   strcmp(uri[0].dst.ipv6, "::1") == 0,
-	   "URI set to net6://localhost:8989");
+	   "URI set to net6://[::1]:8989");
 
 	if (uri) {
 		uri_free(uri);
