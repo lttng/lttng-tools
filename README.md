@@ -37,8 +37,8 @@ The following items are _optional_ dependencies:
   - **[Babeltrace](https://lttng.org/babeltrace)**: trace viewer.
     Enables the use of `lttng view` command.
     - Debian/Ubuntu package: `babeltrace`
-  - **[LTTng UST](https://lttng.org) (same version as LTTng Tools)**: userspace tracer.
-    Enables the tracing of userspace applications.
+  - **[LTTng UST](https://lttng.org) (same minor version as LTTng Tools)**:
+    userspace tracer. Enables the tracing of userspace applications.
     - Debian/Ubuntu package: `liblttng-ust-dev`
   - **Perl**: needed for `make check` and tests.
   - **Python >= 3.0**: needed for `make check` and tests.
@@ -51,6 +51,16 @@ The following items are _optional_ dependencies:
     (kernel tracing).
   - **bash**: needed for running `make check`.
 
+LTTng-tools supports both the [LTTng Linux Kernel tracer](https://lttng.org)
+and [LTTng user space tracer](https://lttng.org) released as part of the same
+**minor** release series. While some releases do not change the tracer ABIs and
+should work with, no testing is performed to ensure cross-version compatibility
+is maintained.
+
+Note that applications instrumented with older versions of the LTTng UST project
+do not have to be rebuilt or modified to work with the latest LTTng-tools.
+For more information on versioning, please refer to the
+[LTTng documentation](https://lttng.org/docs).
 
 Building
 --------
