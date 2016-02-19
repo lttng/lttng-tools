@@ -68,7 +68,6 @@ static const inline char *strpbrk_or_eos(const char *s, const char *accept)
 	return p;
 }
 
-
 /*
  * Validate if proto is a supported protocol from proto_uri array.
  */
