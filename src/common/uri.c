@@ -29,6 +29,9 @@
 
 #include "uri.h"
 
+#define LOOPBACK_ADDR_IPV4 "127.0.0.1"
+#define LOOPBACK_ADDR_IPV6 "::1"
+
 enum uri_proto_code {
 	P_NET, P_NET6, P_FILE, P_TCP, P_TCP6,
 };
@@ -115,14 +118,43 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 	if (ret < 1) {
 		/* We consider the dst to be an hostname or an invalid IP char */
 		record = lttng_gethostbyname2(addr, af);
-		if (record == NULL) {
+		if (record) {
+			/* Translate IP to string */
+			if (!inet_ntop(af, record->h_addr_list[0], dst, size)) {
+				PERROR("inet_ntop");
+				goto error;
+			}
+		} else if (!strcmp(addr, "localhost") &&
+				(af == AF_INET || af == AF_INET6)) {
+			/*
+			 * Some systems may not have "localhost" defined in
+			 * accordance with IETF RFC 6761. According to this RFC,
+			 * applications may recognize "localhost" names as
+			 * special and resolve to the appropriate loopback
+			 * address.
+			 *
+			 * We choose to use the system name resolution API first
+			 * to honor its network configuration. If this fails, we
+			 * resolve to the appropriate loopback address. This is
+			 * done to accomodate systems which may want to start
+			 * tracing before their network configured.
+			 */
+			const char *loopback_addr = af == AF_INET ?
+					LOOPBACK_ADDR_IPV4 : LOOPBACK_ADDR_IPV6;
+			const size_t loopback_addr_len = af == AF_INET ?
+					sizeof(LOOPBACK_ADDR_IPV4) :
+					sizeof(LOOPBACK_ADDR_IPV6);
+
+			DBG2("Could not resolve localhost address, using fallback");
+			if (loopback_addr_len > size) {
+				ERR("Could not resolve localhost address; destination string is too short");
+				goto error;
+			}
+			strcpy(dst, loopback_addr);
+		} else {
 			/* At this point, the IP or the hostname is bad */
-			ERR("URI parse bad hostname %s for af %d", addr, af);
 			goto error;
 		}
-
-		/* Translate IP to string */
-		(void) inet_ntop(af, record->h_addr_list[0], dst, size);
 	} else {
 		if (size > 0) {
 			strncpy(dst, addr, size);
@@ -131,10 +163,10 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 	}
 
 	DBG2("IP address resolved to %s", dst);
-
 	return 0;
 
 error:
+	ERR("URI parse bad hostname %s for af %d", addr, af);
 	return -1;
 }
 
