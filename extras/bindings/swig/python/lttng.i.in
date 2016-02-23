@@ -9,6 +9,7 @@ multiple concurrent processes and threads. Tracing across multiple systems is al
 %module(docstring=DOCSTRING) lttng
 
 %include "typemaps.i"
+%include "stdint.i"
 %include "pyabc.i"
 %{
 #define SWIG_FILE_WITH_INIT
@@ -999,8 +1000,8 @@ struct lttng_channel_attr {
 				sprintf(evout, "%i", $self->output);
 				break;
 			}
-			sprintf(temp, "lttng.ChannelAttr; overwrite(%i), subbuf_size(%lu), "
-				"num_subbuf(%lu), switch_timer_interval(%u), "
+			sprintf(temp, "lttng.ChannelAttr; overwrite(%i), subbuf_size(%"PRIu64"), "
+				"num_subbuf(%"PRIu64"), switch_timer_interval(%u), "
 				"read_timer_interval(%u), output(%s)",
 				$self->overwrite, $self->subbuf_size, $self->num_subbuf,
 				$self->switch_timer_interval, $self->read_timer_interval,
