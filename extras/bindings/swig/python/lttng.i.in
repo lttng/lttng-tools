@@ -864,130 +864,181 @@ struct lttng_event_context {
 	}
 };
 
-struct lttng_event_probe_attr { };
+struct lttng_event_probe_attr {
+	uint64_t addr;
+	uint64_t offset;
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+	char padding[LTTNG_EVENT_PROBE_PADDING1];
+};
 
-struct lttng_event_function_attr { };
+struct lttng_event_function_attr {
+	char symbol_name[LTTNG_SYMBOL_NAME_LEN];
+	char padding[LTTNG_EVENT_FUNCTION_PADDING1];
+};
 
-struct lttng_event { };
-%extend lttng_event {
-	char *__repr__() {
-		static char temp[512];
-		char evtype[50];
-		char logtype[50];
+struct lttng_event {
+	enum lttng_event_type type;
+	char name[LTTNG_SYMBOL_NAME_LEN];
 
-		switch ( $self->type ) {
-		case -1:
-			sprintf(evtype, "EVENT_ALL");
-			break;
-		case 0:
-			sprintf(evtype, "EVENT_TRACEPOINT");
-			break;
-		case 1:
-			sprintf(evtype, "EVENT_PROBE");
-			break;
-		case 2:
-			sprintf(evtype, "EVENT_FUNCTION");
-			break;
-		case 3:
-			sprintf(evtype, "EVENT_FUNCTION_ENTRY");
-			break;
-		case 4:
-			sprintf(evtype, "EVENT_NOOP");
-			break;
-		case 5:
-			sprintf(evtype, "EVENT_SYSCALL");
-			break;
-		default:
-			sprintf(evtype, "%i", $self->type);
-			break;
+	enum lttng_loglevel_type loglevel_type;
+	int loglevel;
+
+	int32_t enabled;
+	pid_t pid;
+
+	char padding[LTTNG_EVENT_PADDING1];
+
+	union {
+		struct lttng_event_probe_attr probe;
+		struct lttng_event_function_attr ftrace;
+
+		char padding[LTTNG_EVENT_PADDING2];
+	} attr;
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			char evtype[50];
+			char logtype[50];
+
+			switch ( $self->type ) {
+			case -1:
+				sprintf(evtype, "EVENT_ALL");
+				break;
+			case 0:
+				sprintf(evtype, "EVENT_TRACEPOINT");
+				break;
+			case 1:
+				sprintf(evtype, "EVENT_PROBE");
+				break;
+			case 2:
+				sprintf(evtype, "EVENT_FUNCTION");
+				break;
+			case 3:
+				sprintf(evtype, "EVENT_FUNCTION_ENTRY");
+				break;
+			case 4:
+				sprintf(evtype, "EVENT_NOOP");
+				break;
+			case 5:
+				sprintf(evtype, "EVENT_SYSCALL");
+				break;
+			default:
+				sprintf(evtype, "%i", $self->type);
+				break;
+			}
+
+			switch ( $self->loglevel_type ) {
+			case 0:
+				sprintf(logtype, "EVENT_LOGLEVEL_ALL");
+				break;
+			case 1:
+				sprintf(logtype, "EVENT_LOGLEVEL_RANGE");
+				break;
+			case 2:
+				sprintf(logtype, "EVENT_LOGLEVEL_SINGLE");
+				break;
+			default:
+				sprintf(logtype, "%i", $self->loglevel_type);
+				break;
+			}
+
+			sprintf(temp, "lttng.Event; name('%s'), type(%s), "
+				"loglevel_type(%s), loglevel(%i), "
+				"enabled(%s), pid(%i)",
+				$self->name, evtype, logtype, $self->loglevel,
+				$self->enabled ? "True" : "False", $self->pid);
+			return &temp[0];
 		}
-
-		switch ( $self->loglevel_type ) {
-		case 0:
-			sprintf(logtype, "EVENT_LOGLEVEL_ALL");
-			break;
-		case 1:
-			sprintf(logtype, "EVENT_LOGLEVEL_RANGE");
-			break;
-		case 2:
-			sprintf(logtype, "EVENT_LOGLEVEL_SINGLE");
-			break;
-		default:
-			sprintf(logtype, "%i", $self->loglevel_type);
-			break;
-		}
-
-		sprintf(temp, "lttng.Event; name('%s'), type(%s), "
-			"loglevel_type(%s), loglevel(%i), "
-			"enabled(%s), pid(%i)",
-			$self->name, evtype, logtype, $self->loglevel,
-			$self->enabled ? "True" : "False", $self->pid);
-		return &temp[0];
-	}
-}
-
-struct lttng_calibrate { };
-%extend lttng_calibrate {
-	char *__repr__() {
-		static char temp[256];
-		switch ( $self->type ) {
-		case 0:
-			sprintf(temp, "lttng.Calibrate; type(CALIBRATE_FUNCTION)");
-			break;
-		default:
-			sprintf(temp, "lttng.Calibrate; type(%i)", $self->type);
-			break;
-		}
-		return &temp[0];
-	}
-}
-
-struct lttng_channel_attr { };
-%extend lttng_channel_attr {
-	char *__repr__() {
-		static char temp[256];
-		char evout[25];
-
-		switch ( $self->output ) {
-		case 0:
-			sprintf(evout, "EVENT_SPLICE");
-			break;
-		case 1:
-			sprintf(evout, "EVENT_MMAP");
-			break;
-		default:
-			sprintf(evout, "%i", $self->output);
-			break;
-		}
-		sprintf(temp, "lttng.ChannelAttr; overwrite(%i), subbuf_size(%"
-			PRIu64 "), num_subbuf(%" PRIu64 "), "
-			"switch_timer_interval(%u), "
-			"read_timer_interval(%u), output(%s)",
-			$self->overwrite, $self->subbuf_size, $self->num_subbuf,
-			$self->switch_timer_interval, $self->read_timer_interval,
-			evout);
-		return &temp[0];
 	}
 };
 
-struct lttng_channel { };
-%extend lttng_channel {
-	char *__repr__() {
-		static char temp[512];
-		sprintf(temp, "lttng.Channel; name('%s'), enabled(%s)",
-			$self->name, $self->enabled ? "True" : "False");
-		return &temp[0];
-	}
-}
+struct lttng_calibrate {
+	enum lttng_calibrate_type type;
+	char padding[LTTNG_CALIBRATE_PADDING1];
 
-struct lttng_session { };
-%extend lttng_session {
-	char *__repr__() {
-		static char temp[512];
-		sprintf(temp, "lttng.Session; name('%s'), path('%s'), enabled(%s)",
-			$self->name, $self->path,
-			$self->enabled ? "True" : "False");
-		return &temp[0];
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			switch ( $self->type ) {
+			case 0:
+				sprintf(temp, "lttng.Calibrate; type(CALIBRATE_FUNCTION)");
+				break;
+			default:
+				sprintf(temp, "lttng.Calibrate; type(%i)", $self->type);
+				break;
+			}
+			return &temp[0];
+		}
 	}
+};
 
-}
+struct lttng_channel_attr {
+	int overwrite;
+	uint64_t subbuf_size;
+	uint64_t num_subbuf;
+	unsigned int switch_timer_interval;
+	unsigned int read_timer_interval;
+	enum lttng_event_output output;
+
+	char padding[LTTNG_CHANNEL_ATTR_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[256];
+			char evout[25];
+
+			switch ( $self->output ) {
+			case 0:
+				sprintf(evout, "EVENT_SPLICE");
+				break;
+			case 1:
+				sprintf(evout, "EVENT_MMAP");
+				break;
+			default:
+				sprintf(evout, "%i", $self->output);
+				break;
+			}
+			sprintf(temp, "lttng.ChannelAttr; overwrite(%i), subbuf_size(%lu), "
+				"num_subbuf(%lu), switch_timer_interval(%u), "
+				"read_timer_interval(%u), output(%s)",
+				$self->overwrite, $self->subbuf_size, $self->num_subbuf,
+				$self->switch_timer_interval, $self->read_timer_interval,
+				evout);
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_channel {
+	char name[LTTNG_SYMBOL_NAME_LEN];
+	uint32_t enabled;
+	struct lttng_channel_attr attr;
+	char padding[LTTNG_CHANNEL_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			sprintf(temp, "lttng.Channel; name('%s'), enabled(%s)",
+				$self->name, $self->enabled ? "True" : "False");
+			return &temp[0];
+		}
+	}
+};
+
+struct lttng_session {
+	char name[NAME_MAX];
+	char path[PATH_MAX];
+	uint32_t enabled;
+	char padding[LTTNG_SESSION_PADDING1];
+
+	%extend {
+		char *__repr__() {
+			static char temp[512];
+			sprintf(temp, "lttng.Session; name('%s'), path('%s'), enabled(%s)",
+				$self->name, $self->path,
+				$self->enabled ? "True" : "False");
+			return &temp[0];
+		}
+	}
+};
