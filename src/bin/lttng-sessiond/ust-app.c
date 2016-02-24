@@ -4469,7 +4469,6 @@ int ust_app_flush_app_session(struct ust_app *app,
 		cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter, ua_chan,
 				node.node) {
 			health_code_update();
-			assert(ua_chan->is_sent);
 			ret = consumer_flush_channel(socket, ua_chan->key);
 			if (ret) {
 				ERR("Error flushing consumer channel");
