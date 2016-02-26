@@ -360,8 +360,8 @@ static int list_lttng_ust_global_events(char *channel_name,
 	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
 	tmp = zmalloc(*total_size);
 	if (tmp == NULL) {
-		ret = LTTNG_ERR_FATAL;
-		goto error;
+		ret = -LTTNG_ERR_FATAL;
+		goto end;
 	}
 
 	extended_at = ((uint8_t *) tmp) + nb_event * sizeof(struct lttng_event);
