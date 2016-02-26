@@ -166,12 +166,9 @@ const char *enabled_string(int value)
 }
 
 static
-const char *filter_string(int value)
+const char *filter_message(const char *filter_msg)
 {
-	switch (value) {
-	case 1:	return " [with filter]";
-	default: return "";
-	}
+	return filter_msg ? filter_msg : "";
 }
 
 static
@@ -217,6 +214,25 @@ static const char *bitness_event(enum lttng_event_flag flags)
  */
 static void print_events(struct lttng_event *event)
 {
+	int ret;
+	const char *filter_str;
+	char *filter_msg = NULL;
+
+	ret = lttng_event_get_filter_string(event, &filter_str);
+
+	if (ret) {
+		filter_msg = strdup(" [failed to retrieve filter]");
+	} else if (filter_str) {
+		const char * const filter_fmt = " [filter: '%s']";
+
+		filter_msg = malloc(strlen(filter_str) +
+				strlen(filter_fmt) + 1);
+		if (filter_msg) {
+			sprintf(filter_msg, filter_fmt,
+					filter_str);
+		}
+	}
+
 	switch (event->type) {
 	case LTTNG_EVENT_TRACEPOINT:
 	{
@@ -229,21 +245,21 @@ static void print_events(struct lttng_event *event)
 				event->loglevel,
 				enabled_string(event->enabled),
 				exclusion_string(event->exclusion),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		} else {
 			MSG("%s%s (type: tracepoint)%s%s%s",
 				indent6,
 				event->name,
 				enabled_string(event->enabled),
 				exclusion_string(event->exclusion),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		}
 		break;
 	}
 	case LTTNG_EVENT_FUNCTION:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -254,7 +270,7 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_PROBE:
 		MSG("%s%s (type: probe)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		if (event->attr.probe.addr != 0) {
 			MSG("%saddr: 0x%" PRIx64, indent8, event->attr.probe.addr);
 		} else {
@@ -265,7 +281,7 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
@@ -277,13 +293,15 @@ static void print_events(struct lttng_event *event)
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s%s", indent6,
 				enabled_string(event->enabled),
-				filter_string(event->filter));
+				filter_message(filter_msg));
 		break;
 	case LTTNG_EVENT_ALL:
 		/* We should never have "all" events in list. */
 		assert(0);
 		break;
 	}
+
+	free(filter_msg);
 }
 
 static const char *field_type(struct lttng_event_field *field)
