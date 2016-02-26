@@ -1002,21 +1002,42 @@ static int list_session_agent_events(void)
 		}
 
 		for (i = 0; i < count; i++) {
-			if (events[i].loglevel_type !=
-					LTTNG_EVENT_LOGLEVEL_ALL) {
-				MSG("%s- %s%s (loglevel%s %s)", indent4,
-						events[i].name,
-						enabled_string(
-							events[i].enabled),
-						logleveltype_string(
-							events[i].loglevel_type),
-						mi_lttng_loglevel_string(
-							events[i].loglevel,
-							handle->domain.type));
-			} else {
-				MSG("%s- %s%s", indent4, events[i].name,
-				    enabled_string(events[i].enabled));
+			const char *filter_str;
+			char *filter_msg = NULL;
+			struct lttng_event *event = &events[i];
+
+			ret = lttng_event_get_filter_string(event, &filter_str);
+			if (ret) {
+				filter_msg = strdup(" [failed to retrieve filter]");
+			} else if (filter_str) {
+				const char * const filter_fmt =
+						" [filter: '%s']";
+
+				filter_msg = malloc(strlen(filter_str) +
+						strlen(filter_fmt) + 1);
+				if (filter_msg) {
+					sprintf(filter_msg, " [filter: '%s']",
+						filter_str);
+				}
 			}
+
+			if (event->loglevel_type !=
+					LTTNG_EVENT_LOGLEVEL_ALL) {
+				MSG("%s- %s%s (loglevel%s %s)%s", indent4,
+						event->name,
+						enabled_string(event->enabled),
+						logleveltype_string(
+							event->loglevel_type),
+						mi_lttng_loglevel_string(
+							event->loglevel,
+							handle->domain.type),
+						filter_message(filter_msg));
+			} else {
+				MSG("%s- %s%s%s", indent4, event->name,
+						enabled_string(event->enabled),
+						filter_message(filter_msg));
+			}
+			free(filter_msg);
 		}
 
 		MSG("");
