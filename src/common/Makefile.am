@@ -65,7 +65,7 @@ noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 
 # Common library
 noinst_LTLIBRARIES = libcommon.la
-EXTRA_DIST = mi_lttng.xsd
+EXTRA_DIST = mi-lttng-3.0.xsd
 
 libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        common.h futex.c futex.h uri.c uri.h defaults.c \

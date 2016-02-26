@@ -2,6 +2,7 @@
 <!--
 Copyright (c) 2014 - Oliver Cotte <olivier.cotte@polymtl.ca>
                    - Jonathan Rajotte <jonathan.r.julien@gmail.com>
+Copyright (c) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	elementFormDefault="qualified" version="2.7">
+	elementFormDefault="qualified" version="3.0">
 
 	<!-- Maps to the uint32_t type -->
 	<xs:simpleType name="uint32_type">
@@ -196,7 +197,6 @@ THE SOFTWARE.
 			<xs:element name="loglevel_type" type="loglevel_type" default="ALL" minOccurs="0" />
 			<xs:element name="loglevel" type="loglevel_string_type" default="" minOccurs="0" />
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
-			<xs:element name="filter" type="xs:boolean" minOccurs="0" />
 			<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
 			<xs:element name="exclusion" type="xs:boolean" minOccurs="0" />
 			<xs:element name="exclusions" type="event_exclusion_list_type" minOccurs="0"/>

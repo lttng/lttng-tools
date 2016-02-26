@@ -951,22 +951,16 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
 		goto end;
 	}
 
-	/* Event filter enabled? */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			config_element_filter, event->filter);
-
 	/* Event filter expression */
 	ret = lttng_event_get_filter_string(event, &filter_expression);
-
 	if (ret) {
 		goto end;
 	}
 
 	if (filter_expression) {
 		ret = mi_lttng_writer_write_element_string(writer,
-			config_element_filter_expression,
-			filter_expression);
-
+				config_element_filter_expression,
+				filter_expression);
 		if (ret) {
 			goto end;
 		}
