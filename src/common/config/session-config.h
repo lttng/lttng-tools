@@ -108,12 +108,26 @@ int config_writer_destroy(struct config_writer *writer);
  *
  * element_name Element tag name.
  *
- * Returns zero if the XML document could be closed cleanly.
+ * Returns zero if the XML element could be opened.
  * Negative values indicate an error.
  */
 LTTNG_HIDDEN
 int config_writer_open_element(struct config_writer *writer,
 		const char *element_name);
+
+/*
+ * Write an element tag attribute.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * name Attribute name.
+ *
+ * Returns zero if the XML element's attribute could be written.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_write_attribute(struct config_writer *writer,
+		const char *name, const char *value);
 
 /*
  * Close the current element tag.

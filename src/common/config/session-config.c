@@ -459,6 +459,39 @@ end:
 }
 
 LTTNG_HIDDEN
+int config_writer_write_attribute(struct config_writer *writer,
+		const char *name, const char *value)
+{
+	int ret;
+	xmlChar *encoded_name = NULL;
+	xmlChar *encoded_value = NULL;
+
+	if (!writer || !writer->writer || !name || !name[0]) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_name = encode_string(name);
+	if (!encoded_name) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_value = encode_string(value);
+	if (!encoded_value) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterWriteAttribute(writer->writer, encoded_name,
+			encoded_value);
+end:
+	xmlFree(encoded_name);
+	xmlFree(encoded_value);
+	return ret >= 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
 int config_writer_close_element(struct config_writer *writer)
 {
 	int ret;

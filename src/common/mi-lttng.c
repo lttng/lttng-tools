@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2014 - Jonathan Rajotte <jonathan.r.julien@gmail.com>
  *                    - Olivier Cotte <olivier.cotte@polymtl.ca>
+ * Copyright (C) 2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -22,6 +23,24 @@
 #include "mi-lttng.h"
 
 #include <assert.h>
+
+#define MI_SCHEMA_MAJOR_VERSION 3
+#define MI_SCHEMA_MINOR_VERSION 0
+
+/* Machine interface namespace URI */
+const char * const mi_lttng_xmlns = "xmlns";
+const char * const mi_lttng_ns_uri = "http://lttng.org/xml/ns/lttng-mi";
+const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
+const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
+const char * const mi_lttng_schema_location = "xsi:schemaLocation";
+const char * const mi_lttng_schema_location_uri =
+	"http://lttng.org/xml/ns/lttng-mi" " "
+	"http://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
+	"/lttng-mi-" XSTR(MI_SCHEMA_MAJOR_VERSION) "."
+	XSTR(MI_SCHEMA_MINOR_VERSION) ".xsd";
+const char * const mi_lttng_schema_version = "schemaVersion";
+const char * const mi_lttng_schema_version_value = XSTR(MI_SCHEMA_MAJOR_VERSION)
+	"." XSTR(MI_SCHEMA_MINOR_VERSION);
 
 /* Strings related to command */
 const char * const mi_lttng_element_command = "command";
@@ -487,10 +506,42 @@ int mi_lttng_writer_command_open(struct mi_writer *writer, const char *command)
 {
 	int ret;
 
-	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_command);
+	/*
+	 * A command is always the MI's root node, it must declare the current
+	 * namespace and schema URIs and the schema's version.
+	 */
+	ret = config_writer_open_element(writer->writer,
+			mi_lttng_element_command);
 	if (ret) {
 		goto end;
 	}
+
+	ret = config_writer_write_attribute(writer->writer,
+			mi_lttng_xmlns, mi_lttng_ns_uri);
+	if (ret) {
+		goto end;
+	}
+
+	ret = config_writer_write_attribute(writer->writer,
+			mi_lttng_xmlns_xsi, mi_lttng_w3_schema_uri);
+	if (ret) {
+		goto end;
+	}
+
+	ret = config_writer_write_attribute(writer->writer,
+			mi_lttng_schema_location,
+			mi_lttng_schema_location_uri);
+	if (ret) {
+		goto end;
+	}
+
+	ret = config_writer_write_attribute(writer->writer,
+			mi_lttng_schema_version,
+			mi_lttng_schema_version_value);
+	if (ret) {
+		goto end;
+	}
+
 	ret = mi_lttng_writer_write_element_string(writer,
 			mi_lttng_element_command_name, command);
 end:
