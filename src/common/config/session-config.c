@@ -455,7 +455,7 @@ int config_writer_open_element(struct config_writer *writer,
 	ret = xmlTextWriterStartElement(writer->writer, encoded_element_name);
 	xmlFree(encoded_element_name);
 end:
-	return ret > 0 ? 0 : ret;
+	return ret >= 0 ? 0 : ret;
 }
 
 LTTNG_HIDDEN
@@ -470,7 +470,7 @@ int config_writer_close_element(struct config_writer *writer)
 
 	ret = xmlTextWriterEndElement(writer->writer);
 end:
-	return ret > 0 ? 0 : ret;
+	return ret >= 0 ? 0 : ret;
 }
 
 LTTNG_HIDDEN
@@ -495,7 +495,7 @@ int config_writer_write_element_unsigned_int(struct config_writer *writer,
 		encoded_element_name, "%" PRIu64, value);
 	xmlFree(encoded_element_name);
 end:
-	return ret > 0 ? 0 : ret;
+	return ret >= 0 ? 0 : ret;
 }
 
 LTTNG_HIDDEN
@@ -520,7 +520,7 @@ int config_writer_write_element_signed_int(struct config_writer *writer,
 		encoded_element_name, "%" PRIi64, value);
 	xmlFree(encoded_element_name);
 end:
-	return ret > 0 ? 0 : ret;
+	return ret >= 0 ? 0 : ret;
 }
 
 LTTNG_HIDDEN
@@ -562,7 +562,7 @@ int config_writer_write_element_string(struct config_writer *writer,
 end:
 	xmlFree(encoded_element_name);
 	xmlFree(encoded_value);
-	return ret > 0 ? 0 : ret;
+	return ret >= 0 ? 0 : ret;
 }
 
 static
