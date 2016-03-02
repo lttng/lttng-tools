@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://lttng.org/xml/ns/lttng-mi"
+	xmlns:tns="http://lttng.org/xml/ns/lttng-mi"
 	elementFormDefault="qualified" version="3.0">
 
 	<!-- Maps to the uint32_t type -->
@@ -161,24 +163,24 @@ THE SOFTWARE.
 	<!-- Maps to the lttng_event_probe_attr struct -->
 	<xs:complexType name="event_probe_attributes_type">
 		<xs:all>
-			<xs:element name="address" type="uint64_type" minOccurs="0" />
-			<xs:element name="offset" type="uint64_type" minOccurs="0" />
-			<xs:element name="symbol_name" type="name_type" minOccurs="0" />
+			<xs:element name="address" type="tns:uint64_type" minOccurs="0" />
+			<xs:element name="offset" type="tns:uint64_type" minOccurs="0" />
+			<xs:element name="symbol_name" type="tns:name_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to the lttng_event_function_attr struct -->
 	<xs:complexType name="event_ftrace_attributes_type">
 		<xs:all>
-			<xs:element name="symbol_name" type="name_type" />
+			<xs:element name="symbol_name" type="tns:name_type" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to per event type configuration -->
 	<xs:complexType name="event_attributes_type">
 		<xs:choice>
-			<xs:element name="probe_attributes" type="event_probe_attributes_type" />
-			<xs:element name="function_attributes" type="event_ftrace_attributes_type" />
+			<xs:element name="probe_attributes" type="tns:event_probe_attributes_type" />
+			<xs:element name="function_attributes" type="tns:event_ftrace_attributes_type" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -192,16 +194,16 @@ THE SOFTWARE.
 	<!-- Maps to lttng_event struct -->
 	<xs:complexType name="event_type">
 		<xs:all>
-			<xs:element name="type" type="event_type_type" default="TRACEPOINT" minOccurs="0" />
-			<xs:element name="name" type="name_type" minOccurs="0" />
-			<xs:element name="loglevel_type" type="loglevel_type" default="ALL" minOccurs="0" />
-			<xs:element name="loglevel" type="loglevel_string_type" default="" minOccurs="0" />
+			<xs:element name="type" type="tns:event_type_type" default="TRACEPOINT" minOccurs="0" />
+			<xs:element name="name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="loglevel_type" type="tns:loglevel_type" default="ALL" minOccurs="0" />
+			<xs:element name="loglevel" type="tns:loglevel_string_type" default="" minOccurs="0" />
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
 			<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
 			<xs:element name="exclusion" type="xs:boolean" minOccurs="0" />
-			<xs:element name="exclusions" type="event_exclusion_list_type" minOccurs="0"/>
-			<xs:element name="attributes" type="event_attributes_type" minOccurs="0" />
-			<xs:element name="event_fields" type="event_fields_type" minOccurs="0" />
+			<xs:element name="exclusions" type="tns:event_exclusion_list_type" minOccurs="0"/>
+			<xs:element name="attributes" type="tns:event_attributes_type" minOccurs="0" />
+			<xs:element name="event_fields" type="tns:event_fields_type" minOccurs="0" />
 			<xs:element name="success" type="xs:boolean" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
@@ -209,14 +211,14 @@ THE SOFTWARE.
 	<!-- Maps to mi_lttng_version struct -->
 	<xs:complexType name="version_type">
 		<xs:all>
-			<xs:element name="name" type="name_type" />
-			<xs:element name="string" type="name_type" />
-			<xs:element name="major" type="uint32_type" />
+			<xs:element name="name" type="tns:name_type" />
+			<xs:element name="string" type="tns:name_type" />
+			<xs:element name="major" type="tns:uint32_type" />
 			<xs:element name="url" type="xs:string" />
-			<xs:element name="minor" type="uint32_type" />
+			<xs:element name="minor" type="tns:uint32_type" />
 			<xs:element name="commit" type="xs:string" />
 			<xs:element name="license" type="xs:string" />
-			<xs:element name="patchLevel" type="uint32_type" />
+			<xs:element name="patchLevel" type="tns:uint32_type" />
 			<xs:element name="description" type="xs:string" />
 		</xs:all>
 	</xs:complexType>
@@ -224,7 +226,7 @@ THE SOFTWARE.
 	<!-- Maps to an array of event -->
 	<xs:complexType name="event_list_type">
 		<xs:sequence>
-			<xs:element name="event" type="event_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="event" type="tns:event_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
@@ -268,15 +270,15 @@ THE SOFTWARE.
 	<xs:complexType name="pid_type">
 		<xs:all>
 			<xs:element name="id" type="xs:int" />
-			<xs:element name="name" type="name_type" />
-			<xs:element name="events" type="event_list_type" minOccurs="0" />
+			<xs:element name="name" type="tns:name_type" />
+			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- maps to an array of pid -->
 	<xs:complexType name="pids_type">
 		<xs:sequence>
-			<xs:element name="pid" type="pid_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="pid" type="tns:pid_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
@@ -297,7 +299,7 @@ THE SOFTWARE.
 		<xs:all>
 			<xs:element name="pid">
 				<xs:simpleType>
-					<xs:union memberTypes="pidbyint pidwildcard" />
+					<xs:union memberTypes="tns:pidbyint tns:pidwildcard" />
 				</xs:simpleType>
 			</xs:element>
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
@@ -308,7 +310,7 @@ THE SOFTWARE.
 	<xs:complexType name="targets_type">
 		<xs:sequence>
 			<xs:choice>
-				<xs:element name="pid_target" type="pid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="pid_target" type="tns:pid_target_type" minOccurs="0" maxOccurs="unbounded"/>
 			</xs:choice>
 		</xs:sequence>
 	</xs:complexType>
@@ -316,36 +318,36 @@ THE SOFTWARE.
 	<!-- Maps to a pid_tracker-->
 	<xs:complexType name="pid_tracker_type">
 		<xs:all>
-			<xs:element name="targets" type="targets_type" />
+			<xs:element name="targets" type="tns:targets_type" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to a list of trackers-->
 	<xs:complexType name="trackers_type">
 		<xs:sequence minOccurs="0" maxOccurs="unbounded">
-			<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
+			<xs:element name="pid_tracker" type="tns:pid_tracker_type" maxOccurs="1" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to struct lttng_domain and contains channels -->
 	<xs:complexType name="domain_type">
 		<xs:all>
-			<xs:element name="type" type="domain_type_type" />
-			<xs:element name="buffer_type" type="domain_buffer_type" />
-			<xs:element name="pids" type="pids_type" minOccurs="0" />
-			<xs:element name="channels" type="channels_type" minOccurs="0" />
-			<xs:element name="events" type="event_list_type" minOccurs="0" />
-			<xs:element name="trackers" type="trackers_type" minOccurs="0" />
+			<xs:element name="type" type="tns:domain_type_type" />
+			<xs:element name="buffer_type" type="tns:domain_buffer_type" />
+			<xs:element name="pids" type="tns:pids_type" minOccurs="0" />
+			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
+			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
+			<xs:element name="trackers" type="tns:trackers_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to struct lttng_channel -->
 	<xs:complexType name="channel_type">
 		<xs:all>
-			<xs:element name="name" type="name_type" />
+			<xs:element name="name" type="tns:name_type" />
 			<xs:element name="enabled" type="xs:boolean" default="true" minOccurs="0" />
-			<xs:element name="attributes" type="channel_attributes_type" minOccurs="0" />
-			<xs:element name="events" type="event_list_type" minOccurs="0" />
+			<xs:element name="attributes" type="tns:channel_attributes_type" minOccurs="0" />
+			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
@@ -353,61 +355,61 @@ THE SOFTWARE.
 	<!-- Maps to struct lttng_channel_attr -->
 	<xs:complexType name="channel_attributes_type">
 		<xs:all>
-			<xs:element name="overwrite_mode" type="channel_overwrite_mode_type" default="DISCARD" minOccurs="0" />
-			<xs:element name="subbuffer_size" type="uint64_type" minOccurs="0" /> <!-- bytes -->
-			<xs:element name="subbuffer_count" type="uint64_type" default="4" minOccurs="0" />
-			<xs:element name="switch_timer_interval" type="uint32_type" default="0" minOccurs="0" />  <!-- usec -->
-			<xs:element name="read_timer_interval" type="uint32_type" />  <!-- usec -->
-			<xs:element name="output_type" type="event_output_type" />
-			<xs:element name="tracefile_size" type="uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
-			<xs:element name="tracefile_count" type="uint64_type" default="0" minOccurs="0" />
-			<xs:element name="live_timer_interval" type="uint32_type" default="0" minOccurs="0" /> <!-- usec -->
+			<xs:element name="overwrite_mode" type="tns:channel_overwrite_mode_type" default="DISCARD" minOccurs="0" />
+			<xs:element name="subbuffer_size" type="tns:uint64_type" minOccurs="0" /> <!-- bytes -->
+			<xs:element name="subbuffer_count" type="tns:uint64_type" default="4" minOccurs="0" />
+			<xs:element name="switch_timer_interval" type="tns:uint32_type" default="0" minOccurs="0" />  <!-- usec -->
+			<xs:element name="read_timer_interval" type="tns:uint32_type" />  <!-- usec -->
+			<xs:element name="output_type" type="tns:event_output_type" />
+			<xs:element name="tracefile_size" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
+			<xs:element name="tracefile_count" type="tns:uint64_type" default="0" minOccurs="0" />
+			<xs:element name="live_timer_interval" type="tns:uint32_type" default="0" minOccurs="0" /> <!-- usec -->
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to struct lttng_snapshot_output -->
 	<xs:complexType name="snapshot_type">
 		<xs:all>
-			<xs:element name="id" type="uint32_type" minOccurs="0" />
-			<xs:element name="max_size" type="uint64_type" minOccurs="0" />
-			<xs:element name="name" type="name_type" minOccurs="0" />
-			<xs:element name="session_name" type="name_type" minOccurs="0" />
-			<xs:element name="ctrl_url" type="name_type" minOccurs="0" />
-			<xs:element name="data_url" type="name_type" minOccurs="0" />
+			<xs:element name="id" type="tns:uint32_type" minOccurs="0" />
+			<xs:element name="max_size" type="tns:uint64_type" minOccurs="0" />
+			<xs:element name="name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="session_name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="ctrl_url" type="tns:name_type" minOccurs="0" />
+			<xs:element name="data_url" type="tns:name_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
 	<xs:complexType name="snapshots_type">
 		<xs:sequence>
-			<xs:element name="snapshot" type="snapshot_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="channels_type">
 		<xs:sequence>
-			<xs:element name="channel" type="channel_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="channel" type="tns:channel_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to a lttng_session -->
 	<xs:complexType name="session_type">
 		<xs:all>
-			<xs:element name="name" type="name_type" />
-			<xs:element name="path" type="name_type" minOccurs="0" />
+			<xs:element name="name" type="tns:name_type" />
+			<xs:element name="path" type="tns:name_type" minOccurs="0" />
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
-			<xs:element name="snapshot_mode" type="uint32_type" minOccurs="0" />
-			<xs:element name="live_timer_interval" type="uint32_type" minOccurs="0" />
-			<xs:element name="channels" type="channels_type" minOccurs="0" />
-			<xs:element name="domains" type="domains_type" minOccurs="0" />
-			<xs:element name="snapshots" type="snapshots_type" minOccurs="0" />
+			<xs:element name="snapshot_mode" type="tns:uint32_type" minOccurs="0" />
+			<xs:element name="live_timer_interval" type="tns:uint32_type" minOccurs="0" />
+			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
+			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
+			<xs:element name="snapshots" type="tns:snapshots_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to a lttng_event_field -->
 	<xs:complexType name="event_field_type">
 		<xs:all>
-			<xs:element name="name" type="name_type" />
-			<xs:element name="type" type="event_field_type_type" />
+			<xs:element name="name" type="tns:name_type" />
+			<xs:element name="type" type="tns:event_field_type_type" />
 			<xs:element name="nowrite" type="xs:int" />
 		</xs:all>
 	</xs:complexType>
@@ -415,23 +417,23 @@ THE SOFTWARE.
 	<!-- Maps to the save command -->
 	<xs:complexType name="save_type">
 		<xs:all>
-			<xs:element name="session" type="session_type" />
-			<xs:element name="path" type="name_type" />
+			<xs:element name="session" type="tns:session_type" />
+			<xs:element name="path" type="tns:name_type" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to the load command -->
 	<xs:complexType name="load_type">
 		<xs:all>
-			<xs:element name="session" type="session_type" />
-			<xs:element name="path" type="name_type" />
+			<xs:element name="session" type="tns:session_type" />
+			<xs:element name="path" type="tns:name_type" />
 		</xs:all>
 	</xs:complexType>
 
 	<!-- Maps to struct lttng_calibrate -->
 	<xs:complexType name="calibrate_type">
 		<xs:all>
-			<xs:element name="type" type="calibrate_type_type" />
+			<xs:element name="type" type="tns:calibrate_type_type" />
 		</xs:all>
 	</xs:complexType>
 
@@ -456,36 +458,36 @@ THE SOFTWARE.
 	<!-- Maps to an array of domain -->
 	<xs:complexType name="domains_type">
 		<xs:sequence>
-			<xs:element name="domain" type="domain_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="domain" type="tns:domain_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to an array of session -->
 	<xs:complexType name="sessions_type">
 		<xs:sequence>
-			<xs:element name="session" type="session_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="session" type="tns:session_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to an array of event_field -->
 	<xs:complexType name="event_fields_type">
 		<xs:sequence>
-			<xs:element name="event_field" type="event_field_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="event_field" type="tns:event_field_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to an array of context -->
 	<xs:complexType name="contexts_type">
 		<xs:sequence>
-			<xs:element name="context" type="context_type" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="context" type="tns:context_type" minOccurs="0" maxOccurs="unbounded" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to an action dutring snapshot command -->
 	<xs:complexType name="snapshot_action_type">
 		<xs:sequence>
-			<xs:element name="name" type="snapshot_actiontype_type" minOccurs="0" />
-			<xs:element name="output" type="output_type" minOccurs="0" />
+			<xs:element name="name" type="tns:snapshot_actiontype_type" minOccurs="0" />
+			<xs:element name="output" type="tns:output_type" minOccurs="0" />
 		</xs:sequence>
 	</xs:complexType>
 
@@ -501,20 +503,20 @@ THE SOFTWARE.
 
 	<xs:complexType name="output_type">
 		<xs:choice>
-			<xs:element name="domains" type="domains_type" minOccurs="0" />
-			<xs:element name="sessions" type="sessions_type" minOccurs="0" />
-			<xs:element name="session" type="session_type" minOccurs="0" />
-			<xs:element name="snapshot_action" type="snapshot_action_type" minOccurs="0" />
-			<xs:element name="snapshot" type="snapshot_type" minOccurs="0" />
-			<xs:element name="version" type="version_type" minOccurs="0" />
-			<xs:element name="save" type="save_type" minOccurs="0" />
-			<xs:element name="load" type="load_type" minOccurs="0" />
-			<xs:element name="calibrate" type="calibrate_type" minOccurs="0" />
-			<xs:element name="contexts" type="contexts_type" minOccurs="0" />
-			<xs:element name="channels" type="channels_type" minOccurs="0" />
-			<xs:element name="events" type="event_list_type" minOccurs="0" />
-			<xs:element name="channel" type="channel_type" minOccurs="0" />
-			<xs:element name="targets" type="targets_type" minOccurs="0" />
+			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
+			<xs:element name="sessions" type="tns:sessions_type" minOccurs="0" />
+			<xs:element name="session" type="tns:session_type" minOccurs="0" />
+			<xs:element name="snapshot_action" type="tns:snapshot_action_type" minOccurs="0" />
+			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" />
+			<xs:element name="version" type="tns:version_type" minOccurs="0" />
+			<xs:element name="save" type="tns:save_type" minOccurs="0" />
+			<xs:element name="load" type="tns:load_type" minOccurs="0" />
+			<xs:element name="calibrate" type="tns:calibrate_type" minOccurs="0" />
+			<xs:element name="contexts" type="tns:contexts_type" minOccurs="0" />
+			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
+			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
+			<xs:element name="channel" type="tns:channel_type" minOccurs="0" />
+			<xs:element name="targets" type="tns:targets_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -545,8 +547,8 @@ THE SOFTWARE.
 	<xs:element name="command">
 		<xs:complexType>
 			<xs:all>
-				<xs:element name="name" type="command_string_type" maxOccurs="1" />
-				<xs:element name="output" type="output_type" maxOccurs="1" />
+				<xs:element name="name" type="tns:command_string_type" maxOccurs="1" />
+				<xs:element name="output" type="tns:output_type" maxOccurs="1" />
 				<xs:element name="success" type="xs:boolean" minOccurs="0" maxOccurs="1" />
 			</xs:all>
 		</xs:complexType>
