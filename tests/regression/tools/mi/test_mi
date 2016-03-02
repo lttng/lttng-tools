@@ -40,20 +40,20 @@ XML_VALIDATE="$CURDIR/validate_xml $XSD_PATH"
 XML_EXTRACT="$CURDIR/extract_xml"
 XML_NODE_CHECK="$CURDIR/extract_xml -e"
 
-XPATH_CMD_OUTPUT="//command/output"
-XPATH_COMMAND_SUCCESS="/command/success/text()"
-XPATH_SESSION="$XPATH_CMD_OUTPUT/sessions/session"
-XPATH_ENABLE_CHANNEL_NAME="$XPATH_CMD_OUTPUT/channels/channel/name/text()"
-XPATH_ENABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/events/event/success/text()"
-XPATH_DISABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/channel/events/event/success/text()"
-XPATH_LIST_DOMAIN="$XPATH_CMD_OUTPUT/sessions/session/domains/domain"
-XPATH_LIST_CHANNEL="$XPATH_CMD_OUTPUT/sessions/session/domains/domain/channels/channel"
-XPATH_LIST_UST_EVENT="$XPATH_CMD_OUTPUT/domains/domain[./type ='UST']/pids/pid/events/event"
-XPATH_SNAPSHOT_ADD_SNAPSHOT="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'add-output']/output"
-XPATH_SNAPSHOT_LIST="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'list-output']/output"
-XPATH_SNAPSHOT_DEL="$XPATH_CMD_OUTPUT/snapshot_action[./name = 'del-output']/output"
-XPATH_TRACK_UNTRACK_PID="$XPATH_CMD_OUTPUT/targets/pid_target"
-XPATH_PID_TRACKER="$XPATH_CMD_OUTPUT/sessions/session/domains/domain/trackers/pid_tracker"
+XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
+XPATH_COMMAND_SUCCESS="/lttng:command/lttng:success/text()"
+XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"
+XPATH_ENABLE_CHANNEL_NAME="$XPATH_CMD_OUTPUT/lttng:channels/lttng:channel/lttng:name/text()"
+XPATH_ENABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/lttng:events/lttng:event/lttng:success/text()"
+XPATH_DISABLE_EVENT_SUCCESS="$XPATH_CMD_OUTPUT/lttng:channel/lttng:events/lttng:event/lttng:success/text()"
+XPATH_LIST_DOMAIN="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain"
+XPATH_LIST_CHANNEL="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel"
+XPATH_LIST_UST_EVENT="$XPATH_CMD_OUTPUT/lttng:domains/lttng:domain[./lttng:type ='UST']/lttng:pids/lttng:pid/lttng:events/lttng:event"
+XPATH_SNAPSHOT_ADD_SNAPSHOT="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'add-output']/lttng:output"
+XPATH_SNAPSHOT_LIST="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'list-output']/lttng:output"
+XPATH_SNAPSHOT_DEL="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'del-output']/lttng:output"
+XPATH_TRACK_UNTRACK_PID="$XPATH_CMD_OUTPUT/lttng:targets/lttng:pid_target"
+XPATH_PID_TRACKER="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:pid_tracker"
 
 DEVNULL=/dev/null 2>&1
 
@@ -111,6 +111,7 @@ function is_command_success ()
 
 	local xpath=$XPATH_COMMAND_SUCCESS
 
+	echo $xml
 	#Extract the success element
 	#expect false
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
@@ -189,7 +190,7 @@ function test_destroy_session ()
 	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
 
 	#Verify that we destroyed the good session
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	test "$result" = "${session_name[0]}"
 	ok $? "Mi test: deleted session: $result expected: ${session_name[0]}"
 
@@ -199,7 +200,7 @@ function test_destroy_session ()
 	ok $? "MI test: destroy all session xsd validation"
 
 	#Verify that we destroyed 2 sessions
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: $num / 2 sessions discovered"
@@ -235,7 +236,7 @@ function test_list_sessions ()
 	ok $? "Mi test: list sessions xsd validation"
 
 	#We should have 3 session
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: $num / 3 sessions discovered"
@@ -400,13 +401,13 @@ function test_list_channel ()
 	ok $? "Mi test: list channel xsd validation"
 
 	#Expect 1 domain: UST
-	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/lttng:type/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: $num / 1 domains discovered"
 
 	#Expect 1 channel: test
-	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: $num / 1 channel discovered"
@@ -448,7 +449,7 @@ function test_list_domain ()
 	ok $? "Mi test: list domain xsd validation"
 
 	#Expect 2 domain: Jul and UST
-	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/lttng:type/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: $num / 2 domains discovered"
@@ -496,13 +497,13 @@ function test_list_session ()
 	ok $? "Mi test: list session xsd validation"
 
 	#Expect 2 domain: Jul and UST
-	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/type/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_LIST_DOMAIN"/lttng:type/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: $num / 2 domains discovered"
 
 	#Expect 2 channel: test and lttng_jul_event
-	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_LIST_CHANNEL"/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: $num / 2 channel discovered"
@@ -537,7 +538,7 @@ function test_list_ust_event ()
 	ok $? "Mi test: list ust event xsd validation"
 
 	#Extract events
-	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""/name/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 
 	#Since the number of events is prone to change we only look for >= from a
@@ -548,7 +549,7 @@ function test_list_ust_event ()
 
 	#Extract field from tp:tptest event. Expect >= to 12 because number of
 	#field is prone to change.
-	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""[./name = 'tp:tptest']/event_fields/event_field/name/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_LIST_UST_EVENT""[./lttng:name = 'tp:tptest']/lttng:event_fields/lttng:event_field/lttng:name/text()" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -ge "12"
 	ok $? "Mi test: $num / 12 ust event fields discovered"
@@ -598,12 +599,12 @@ function test_start_stop () {
 	ok $? "Mi test: mi report success on start command as expected"
 
 	#Extract session name from xml
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	test "$result" = "$session_name"
 	ok $? "Mi test: started $session_name"
 
 	#Extract enabled expect true
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/enabled/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:enabled/text()" result
 	test "$result" = "true"
 	ok $? "Mi test: enabled element : $result expected: true"
 
@@ -613,12 +614,12 @@ function test_start_stop () {
 	ok $? "Mi test: stop xsd validation"
 
 	#Extract session name from xml
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/name/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	test "$result" = "$session_name"
 	ok $? "Mi test: stoped $session_name"
 
 	#Extract enabled expect false
-	extract_xml $OUTPUT_DEST $XPATH_SESSION"/enabled/text()" result
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:enabled/text()" result
 	test "$result" = "false"
 	ok $? "Mi test: enabled element : $result expected: false"
 
@@ -660,13 +661,13 @@ function test_snapshot () {
 	ok $? "Mi test: add snapshot is a success"
 
 	#Get data
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/session_name/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/lttng:snapshot/lttng:session_name/text()" result
 	test "$result" = "$session_name"
 	ok $? "Mi test: added snapshot for: $result expected $session_name"
 
 	#Get name of generated output and id
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/name/text()" snapshot_name
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/snapshot/id/text()" snapshot_id
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/lttng:snapshot/lttng:name/text()" snapshot_name
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_ADD_SNAPSHOT""/lttng:snapshot/lttng:id/text()" snapshot_id
 
 	#Test list output
 	lttng_snapshot_list $session_name
@@ -678,7 +679,7 @@ function test_snapshot () {
 	test "$result" = "true"
 	ok $? "Mi test: add snapshot is a success"
 
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_LIST""/session[./name ='$session_name']/snapshots/snapshot/name/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_LIST""/lttng:session[./lttng:name ='$session_name']/lttng:snapshots/lttng:snapshot/lttng:name/text()" result
 	test "$result" = "$snapshot_name"
 	ok $? "Mi test: snapshot list extracted snapshot: $result expected: $snapshot_name"
 
@@ -693,11 +694,11 @@ function test_snapshot () {
 	ok $? "Mi test: del snapshot is a success"
 
 	#Test data
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/snapshot/id/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/lttng:snapshot/lttng:id/text()" result
 	test "$result" = "$snapshot_id"
 	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $snapshot_id"
 
-	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/snapshot/session_name/text()" result
+	extract_xml $OUTPUT_DEST "$XPATH_SNAPSHOT_DEL""/lttng:snapshot/lttng:session_name/text()" result
 	test "$result" = "$session_name"
 	ok $? "Mi test: snapshot del extracted snapshot id: $result expected: $session_name"
 
@@ -739,7 +740,7 @@ function test_track_untrack ()
 	ok $? "Mi test: track pid is a success"
 
 	#Verify that there is 3 process
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: track pid expecting 3 processes got $num"
@@ -750,7 +751,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/targets/pid_target/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: tracker pid listing expecting 3 target got $num"
@@ -766,7 +767,7 @@ function test_track_untrack ()
 	ok $? "Mi test: untrack pid is a success"
 
 	#Verify that there is 2 untracked pids
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: untrack pid expecting 2 process got $num"
@@ -777,7 +778,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/targets/pid_target/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: tracker pid listing expecting 1 process got $num"
@@ -793,7 +794,7 @@ function test_track_untrack ()
 	ok $? "Mi test: untrack all pid is a success"
 
 	#Verify that there is 1 untracked pid
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: untrack pid expecting 1 process got $num"
@@ -810,7 +811,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/targets/pid_target/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
 	num=$(echo -n "$result" | wc -l)
 	test "$num" -eq "0"
 	ok $? "Mi test: tracker pid listing expecting 0 process got $num"
@@ -826,7 +827,7 @@ function test_track_untrack ()
 	ok $? "Mi test: track all pid is a success"
 
 	#Verify that there is 1 tracked process
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: track pid expecting 1 process got $num"

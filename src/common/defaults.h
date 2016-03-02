@@ -306,6 +306,9 @@
 /* Default runas worker name */
 #define DEFAULT_RUN_AS_WORKER_NAME			"lttng-runas"
 
+/* Default LTTng MI XML namespace. */
+#define DEFAULT_LTTNG_MI_NAMESPACE		"http://lttng.org/xml/ns/lttng-mi"
+
 /*
  * Returns the default subbuf size.
  *

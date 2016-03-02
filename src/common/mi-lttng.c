@@ -19,6 +19,7 @@
 
 #define _LGPL_SOURCE
 #include <common/config/session-config.h>
+#include <common/defaults.h>
 #include <lttng/snapshot-internal.h>
 #include "mi-lttng.h"
 
@@ -29,12 +30,11 @@
 
 /* Machine interface namespace URI */
 const char * const mi_lttng_xmlns = "xmlns";
-const char * const mi_lttng_ns_uri = "http://lttng.org/xml/ns/lttng-mi";
 const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
 const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
 const char * const mi_lttng_schema_location = "xsi:schemaLocation";
 const char * const mi_lttng_schema_location_uri =
-	"http://lttng.org/xml/ns/lttng-mi" " "
+	DEFAULT_LTTNG_MI_NAMESPACE " "
 	"http://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"/lttng-mi-" XSTR(MI_SCHEMA_MAJOR_VERSION) "."
 	XSTR(MI_SCHEMA_MINOR_VERSION) ".xsd";
@@ -506,7 +506,7 @@ int mi_lttng_writer_command_open(struct mi_writer *writer, const char *command)
 	}
 
 	ret = config_writer_write_attribute(writer->writer,
-			mi_lttng_xmlns, mi_lttng_ns_uri);
+			mi_lttng_xmlns, DEFAULT_LTTNG_MI_NAMESPACE);
 	if (ret) {
 		goto end;
 	}

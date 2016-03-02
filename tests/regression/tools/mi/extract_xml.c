@@ -43,6 +43,7 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
+#include <common/defaults.h>
 
 #if defined(LIBXML_XPATH_ENABLED)
 
@@ -135,6 +136,31 @@ end:
 	return ret;
 }
 
+static int register_lttng_namespace(xmlXPathContextPtr xpathCtx)
+{
+	int ret;
+	xmlChar *prefix;
+	xmlChar *ns = NULL;
+
+	prefix = xmlCharStrdup("lttng");
+	if (!prefix) {
+		ret = -1;
+		goto end;
+	}
+
+	ns = xmlCharStrdup(DEFAULT_LTTNG_MI_NAMESPACE);
+	if (!ns) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlXPathRegisterNs(xpathCtx, prefix, ns);
+	xmlFree(prefix);
+end:
+	xmlFree(ns);
+	return ret;
+}
+
 /*
  * Extract element corresponding to xpath
  * xml_path     The path to the xml file
@@ -147,6 +173,7 @@ end:
  */
 static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 {
+	int ret;
 	xmlDocPtr doc = NULL;
 	xmlXPathContextPtr xpathCtx = NULL;
 	xmlXPathObjectPtr xpathObj = NULL;
@@ -165,6 +192,15 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 	xpathCtx = xmlXPathNewContext(doc);
 	if (!xpathCtx) {
 		fprintf(stderr, "ERR: XPath context invalid\n");
+		xmlFreeDoc(doc);
+		return -1;
+	}
+
+	/* Register the LTTng MI namespace */
+	ret = register_lttng_namespace(xpathCtx);
+	if (ret) {
+		fprintf(stderr, "ERR: Could not register lttng namespace\n");
+		xmlXPathFreeContext(xpathCtx);
 		xmlFreeDoc(doc);
 		return -1;
 	}
