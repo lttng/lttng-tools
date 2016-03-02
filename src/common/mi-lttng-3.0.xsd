@@ -551,6 +551,7 @@ THE SOFTWARE.
 				<xs:element name="output" type="tns:output_type" maxOccurs="1" />
 				<xs:element name="success" type="xs:boolean" minOccurs="0" maxOccurs="1" />
 			</xs:all>
+			<xs:attribute name="schemaVersion" type="xs:string" use="required"/>
 		</xs:complexType>
 	</xs:element>
 </xs:schema>
