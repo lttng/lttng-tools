@@ -74,7 +74,7 @@ function test_complex_load()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list $sess -c chan2 > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//command/output/sessions/session/domains/domain/channels/channel[name='chan2']/events/event[name='uevent_disabled']/enabled/text()")
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
 	if [[ $mi_result = "false" ]]; then
 	    ok 0 "Disabled event is loaded in disabled state"
 	else
@@ -126,7 +126,7 @@ function test_trackers()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//command/output/sessions/session/domains/domain/trackers/pid_tracker/targets/pid_target")
+	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:pid_tracker/lttng:targets/lttng:pid_target")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "Pid target is present"
 	else
