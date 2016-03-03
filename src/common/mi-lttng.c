@@ -1017,13 +1017,6 @@ static int write_event_exclusions(struct mi_writer *writer,
 	int ret;
 	int exclusion_count;
 
-	/* event exclusion filter */
-	ret = mi_lttng_writer_write_element_bool(writer,
-			config_element_exclusion, event->exclusion);
-	if (ret) {
-		goto end;
-	}
-
 	/* Open event exclusions */
 	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
 	if (ret) {

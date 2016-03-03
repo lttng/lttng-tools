@@ -197,7 +197,6 @@ THE SOFTWARE.
 			<xs:element name="loglevel" type="tns:loglevel_string_type" default="" minOccurs="0" />
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
 			<xs:element name="filter_expression" type="xs:string" minOccurs="0" />
-			<xs:element name="exclusion" type="xs:boolean" minOccurs="0" />
 			<xs:element name="exclusions" type="tns:event_exclusion_list_type" minOccurs="0"/>
 			<xs:element name="attributes" type="tns:event_attributes_type" minOccurs="0" />
 			<xs:element name="event_fields" type="tns:event_fields_type" minOccurs="0" />
