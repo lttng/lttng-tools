@@ -211,7 +211,6 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 	int exclusion_count;
 	char *exclusion_msg = NULL;
 	char *at;
-	int count;
 	size_t i;
 	const char * const exclusion_fmt = " [exclusions: ";
 	const size_t exclusion_fmt_len = strlen(exclusion_fmt);
@@ -259,8 +258,7 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 		}
 
 		/* Append exclusion name */
-		count = sprintf(at, "%s", name);
-		at += count;
+		at += sprintf(at, "%s", name);
 	}
 
 	/* This also puts a final '\0' at the end of exclusion_msg */
