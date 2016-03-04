@@ -1082,8 +1082,8 @@ static int list_session_agent_events(void)
 				filter_msg = malloc(strlen(filter_str) +
 						strlen(filter_fmt) + 1);
 				if (filter_msg) {
-					sprintf(filter_msg, " [filter: '%s']",
-						filter_str);
+					sprintf(filter_msg, filter_fmt,
+							filter_str);
 				}
 			}
 
