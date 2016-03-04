@@ -214,6 +214,7 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 	int count;
 	size_t i;
 	const char * const exclusion_fmt = " [exclusions: ";
+	const size_t exclusion_fmt_len = strlen(exclusion_fmt);
 
 	exclusion_count = lttng_event_get_exclusion_name_count(event);
 	if (exclusion_count < 0) {
@@ -234,15 +235,12 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 	 */
 	exclusion_msg = malloc(exclusion_count +
 			exclusion_count * LTTNG_SYMBOL_NAME_LEN +
-			strlen(exclusion_fmt) + 1);
+			exclusion_fmt_len + 1);
 	if (!exclusion_msg) {
 		goto end;
 	}
 
-	at = exclusion_msg;
-	count = sprintf(at, exclusion_fmt);
-	at += count;
-
+	at = strcpy(exclusion_msg, exclusion_fmt) + exclusion_fmt_len;
 	for (i = 0; i < exclusion_count; ++i) {
 		const char *name;
 
@@ -266,7 +264,7 @@ static char *get_exclusion_names_msg(struct lttng_event *event)
 	}
 
 	/* This also puts a final '\0' at the end of exclusion_msg */
-	sprintf(at, "]");
+	strcpy(at, "]");
 
 end:
 	return exclusion_msg;
