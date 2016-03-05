@@ -1,0 +1,297 @@
+lttng-sessiond(8)
+=================
+
+
+NAME
+----
+lttng-sessiond - LTTng 2 tracing session daemon
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng-sessiond* [option:--background | option:--daemonize] [option:--sig-parent]
+               [option:--config='PATH'] [option:--group='GROUP'] [option:--load='PATH']
+               [option:--agent-tcp-port='PORT']
+               [option:--apps-sock='PATH'] [option:--client-sock='PATH']
+               [option:--no-kernel | [option:--kmod-probes='PROBE'[,'PROBE']...]
+                              [option:--extra-kmod-probes='PROBE'[,'PROBE']...]
+                              [option:--kconsumerd-err-sock='PATH']
+                              [option:--kconsumerd-cmd-sock='PATH']]
+               [option:--ustconsumerd32-err-sock='PATH']
+               [option:--ustconsumerd64-err-sock='PATH']
+               [option:--ustconsumerd32-cmd-sock='PATH']
+               [option:--ustconsumerd64-cmd-sock='PATH']
+               [option:--consumerd32-path='PATH'] [option:--consumerd32-libdir='PATH']
+               [option:--consumerd64-path='PATH'] [option:--consumerd64-libdir='PATH']
+               [option:--quiet | [option:-v | option:-vv | option:-vvv] [option:--verbose-consumer]]
+
+
+DESCRIPTION
+-----------
+The http://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
+source software package used for correlated tracing of the Linux kernel,
+user applications, and user libraries.
+
+LTTng consists of Linux kernel modules (for Linux kernel tracing) and
+dynamically loaded libraries (for user application and library tracing).
+
+The _LTTng session daemon_ is a tracing registry which allows the user
+to interact with multiple tracers (kernel and user space) within the
+same container, a _tracing session_. Traces can be gathered from the
+Linux kernel and/or from instrumented applications (see
+linklttng:lttng-ust(3)). You can aggregate and read the events of LTTng
+traces using linklttng:babeltrace(1).
+
+To trace the Linux kernel, the session daemon needs to be running as
+`root`. LTTng uses a _tracing group_ to allow specific users to interact
+with the root session daemon. The default tracing group name is
+`tracing`. You can use the option:--group option to set the tracing
+group name to use.
+
+Session daemons can coexist. You can have a session daemon running as
+user Alice that can be used to trace her applications alongside a root
+session daemon or a session daemon running as user Bob.
+
+The LTTng session daemon manages trace data consumer daemons by spawning
+them when necessary. You do not need to manage the consumer daemons
+manually.
+
+NOTE: It is highly recommended to start the session daemon at boot time
+for stable and long-term tracing.
+
+
+Loading tracing session configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By default, the LTTng session daemon tries to load tracing session
+configurations located in the user default directory
+`$HOME/.lttng/sessions` and in the system one, `/etc/lttng/sessions`.
+Note that both the directory containing the tracing session
+configurations and the session daemon binary _must_ have the same UID
+for the configurations to be automatically loaded.
+
+Specifying a path with the option:--load option overrides the default
+directory _and_ the UID check. The session daemon simply checks if the
+path is accessible and tries to load every tracing session configuration
+in it.
+
+
+OPTIONS
+-------
+Daemon configuration
+~~~~~~~~~~~~~~~~~~~~
+option:-b, option:--background::
+    Start as Unix daemon, but keep file descriptors (console) open.
+    Use the option:--daemonize option instead to close the file
+    descriptors.
+
+option:-d, option:--daemonize::
+    Start as Unix daemon, and close file descriptors (console). Use the
+    option:--background option instead to keep the file descriptors
+    open.
+
+option:-f, option:--config='PATH'::
+    Load session daemon configuration from path 'PATH'.
+
+option:-g, option:--group='GROUP'::
+    Use 'GROUP' as Unix tracing group (default: `tracing`).
+
+option:-l, option:--load='PATH'::
+    Automatically load tracing session configurations from path 'PATH'.
+
+option:-S, option:--sig-parent::
+    Send `SIGUSR1` to parent process to notify readiness.
++
+NOTE: This is used by linklttng:lttng(1) to get notified when the
+session daemon is ready to accept commands. When building a third party
+tool on liblttng-ctl, this option can be very handy to synchronize the
+control tool and the session daemon.
+
+
+Linux kernel tracing
+~~~~~~~~~~~~~~~~~~~~
+option:--extra-kmod-probes='PROBE'[,'PROBE']...::
+    Load specific LTTng Linux kernel modules when kernel tracing
+    is enabled (option:--no-kernel option is :not: specified), in
+    addition to loading the default list of LTTng kernel modules.
++
+Only the name of the probe needs to be specified, without the
+`lttng-probe-` prefix and without the kernel module extension suffix.
+For example, specify `sched` to load the `lttng-probe-sched.ko` kernel
+module.
+
+option:--kmod-probes='PROBE'[,'PROBE']...::
+    Only load specific LTTng Linux kernel modules when kernel tracing
+    is enabled (option:--no-kernel option is :not: specified).
++
+Only the name of the probe needs to be specified, without the
+`lttng-probe-` prefix and without the kernel module extension suffix.
+For example, specify `sched` to load the `lttng-probe-sched.ko` kernel
+module.
+
+option:--no-kernel::
+    Disable Linux kernel tracing.
+
+
+Paths and ports
+~~~~~~~~~~~~~~~
+option:--agent-tcp-port='PORT'::
+    Listen on TCP port 'PORT' for agent application registrations
+    (default: 5345).
+
+option:-a, option:--apps-sock='PATH'::
+    Set application Unix socket path to 'PATH'.
+
+option:-c, option:--client-sock='PATH'::
+    Set client Unix socket path to 'PATH'.
+
+option:--consumerd32-libdir='PATH'::
+    Set 32-bit consumer daemon library directory to 'PATH'.
+
+option:--consumerd32-path='PATH'::
+    Set 32-bit consumer daemon binary path to 'PATH'.
+
+option:--consumerd64-libdir='PATH'::
+    Set 64-bit consumer daemon library directory to 'PATH'.
+
+option:--consumerd64-path='PATH'::
+    Set 64-bit consumer daemon binary path to 'PATH'.
+
+option:--kconsumerd-cmd-sock='PATH'::
+    Set Linux kernel consumer daemon's command Unix socket path
+    to 'PATH'.
+
+option:--kconsumerd-err-sock='PATH'::
+    Set Linux kernel consumer daemon's error Unix socket path
+    to 'PATH'.
+
+option:--ustconsumerd32-cmd-sock='PATH'::
+    Set 32-bit consumer daemon's command Unix socket path to 'PATH'.
+
+option:--ustconsumerd64-cmd-sock='PATH'::
+    Set 64-bit consumer daemon's command Unix socket path to 'PATH'.
+
+option:--ustconsumerd32-err-sock='PATH'::
+    Set 32-bit consumer daemon's error Unix socket path to 'PATH'.
+
+option:--ustconsumerd64-err-sock='PATH'::
+    Set 64-bit consumer daemon's error Unix socket path to 'PATH'.
+
+
+Verbosity
+~~~~~~~~~
+option:-q, option:--quiet::
+    Suppress all messages, including warnings and errors.
+
+option:-v, option:--verbose::
+    Increase verbosity.
++
+Three levels of verbosity are available, which are triggered by
+appending additional `v` letters to the option
+(that is, `-vv` and `-vvv`).
+
+option:--verbose-consumer::
+    Increase verbosity of consumer daemons spawned by this session
+    daemon.
+
+
+Program information
+~~~~~~~~~~~~~~~~~~~
+option:-h, option:--help::
+    Show help.
+
+option:-V, option:--version::
+    Show version.
+
+
+ENVIRONMENT VARIABLES
+---------------------
+Note that command-line options override their equivalent environment
+variable.
+
+`LTTNG_APP_SOCKET_TIMEOUT`::
+    Application socket's timeout (seconds) when sending/receiving
+    commands. After this period of time, the application is unregistered
+    by the session daemon. A value of 0 or -1 means an infinite timeout.
+    Default value: 5.
+
+`LTTNG_CONSUMERD32_BIN`::
+    32-bit consumer daemon binary path.
++
+The option:--consumerd32-path option overrides this variable.
+
+`LTTNG_CONSUMERD32_LIBDIR`::
+    32-bit consumer daemon library path.
++
+The option:--consumerd32-libdir option overrides this variable.
+
+`LTTNG_CONSUMERD64_BIN`::
+    64-bit consumer daemon binary path.
++
+The option:--consumerd64-path option overrides this variable.
+
+`LTTNG_CONSUMERD64_LIBDIR`::
+    64-bit consumer daemon library path.
++
+The option:--consumerd64-libdir option overrides this variable.
+
+`LTTNG_DEBUG_NOCLONE`::
+    Set to 1 to disable the use of `clone()`/`fork()`. Setting this
+    variable is considered insecure, but it is required to allow
+    debuggers to work with the session daemon on some operating systems.
+
+`LTTNG_EXTRA_KMOD_PROBES`::
+    Load specific LTTng Linux kernel modules when kernel tracing
+    is enabled (option:--no-kernel option is :not: specified), in
+    addition to loading the default list of LTTng kernel modules.
++
+The option:--extra-kmod-probes option overrides this variable.
+
+`LTTNG_KMOD_PROBES`::
+    Only load specific LTTng Linux kernel modules when kernel tracing
+    is enabled (option:--no-kernel option is :not: specified).
++
+The option:--kmod-probes option overrides this variable.
+
+`LTTNG_NETWORK_SOCKET_TIMEOUT`::
+    Socket connection, receive and send timeout (milliseconds). A value
+    of 0 or -1 uses the timeout of the operating system (default).
+
+`LTTNG_SESSION_CONFIG_XSD_PATH`::
+    Tracing session configuration XML schema definition (XSD) path.
+
+
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Error
+
+*3*::
+    Fatal error
+
+
+LIMITATIONS
+-----------
+For an unprivileged user running `lttng-sessiond`, the maximum number of
+file descriptors per process is usually 1024. This limits the number of
+traceable applications, since for each instrumented application, there
+is two file descriptors per CPU and one more socket for bidirectional
+communication.
+
+For the root user, the limit is bumped to 65535. A future version will
+deal with this limitation.
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1),
+linklttng:lttng-relayd(8),
+linklttng:lttng-crash(1),
+linklttng:lttng-ust(3),
+linklttng:babeltrace(1)
