@@ -31,10 +31,10 @@ MAN1_NAMES = \
 	lttng-enable-event \
 	lttng-disable-event
 MAN3_NAMES =
-MAN8_NAMES =
+MAN8_NAMES = lttng-sessiond
 MAN1_NO_ASCIIDOC_NAMES = lttng-crash
 MAN3_NO_ASCIIDOC_NAMES =
-MAN8_NO_ASCIIDOC_NAMES = lttng-relayd lttng-sessiond
+MAN8_NO_ASCIIDOC_NAMES = lttng-relayd
 
 # man pages destinations
 MAN1 = $(call manaddsuffix,.1,$(MAN1_NAMES))
