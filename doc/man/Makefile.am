@@ -29,10 +29,11 @@ MAN1_NAMES = \
 	lttng-help \
 	lttng-snapshot \
 	lttng-enable-event \
-	lttng-disable-event
+	lttng-disable-event \
+	lttng-crash
 MAN3_NAMES =
 MAN8_NAMES = lttng-sessiond
-MAN1_NO_ASCIIDOC_NAMES = lttng-crash
+MAN1_NO_ASCIIDOC_NAMES =
 MAN3_NO_ASCIIDOC_NAMES =
 MAN8_NO_ASCIIDOC_NAMES = lttng-relayd
 
