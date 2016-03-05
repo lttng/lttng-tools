@@ -37,6 +37,7 @@
 #include <version.h>
 #include <lttng/lttng.h>
 #include <common/common.h>
+#include <common/utils.h>
 
 #define DEFAULT_VIEWER "babeltrace"
 
@@ -204,27 +205,15 @@ static struct option long_options[] = {
 	{ NULL, 0, NULL, 0 },
 };
 
-static void usage(FILE *ofp)
+static void usage(void)
 {
-	fprintf(ofp, "LTTng Crash Trace Viewer " VERSION " - " VERSION_NAME "%s\n\n",
-		GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
-	fprintf(ofp, "usage: lttng-crash [OPTIONS] FILE\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -V, --version              Show version.\n");
-	fprintf(ofp, "  -h, --help                 Show this help.\n");
-	fprintf(ofp, "      --list-options         Simple listing of lttng-crash options.\n");
-	fprintf(ofp, "  -v, --verbose              Increase verbosity.\n");
-	fprintf(ofp, "  -e, --viewer               Specify viewer and/or options to use. This will\n"
-		     "                             completely override the default viewers so please\n"
-		     "                             make sure to specify the full command. The trace\n"
-		     "                             directory paths appended at the end to the\n"
-		     "                             arguments.\n");
-	fprintf(ofp, "  -x, --extract PATH         Extract trace(s) to specified path. Don't view\n"
-		     "                             trace.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Please see the lttng-crash(1) man page for full documentation.\n");
-	fprintf(ofp, "See http://lttng.org for updates, bug reports and news.\n");
+	int ret = utils_show_man_page(1, "lttng-crash");
+
+	if (ret) {
+		ERR("Cannot view man page lttng-crash(1)");
+		perror("exec");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void version(FILE *ofp)
@@ -269,7 +258,7 @@ static int parse_args(int argc, char **argv)
 	int opt, ret = 0;
 
 	if (argc < 2) {
-		usage(stderr);
+		usage();
 		exit(EXIT_FAILURE);
 	}
 
@@ -280,7 +269,7 @@ static int parse_args(int argc, char **argv)
 			ret = 1;
 			goto end;
 		case 'h':
-			usage(stdout);
+			usage();
 			ret = 1;
 			goto end;
 		case 'v':
@@ -302,7 +291,7 @@ static int parse_args(int argc, char **argv)
 			ret = 1;
 			goto end;
 		default:
-			usage(stderr);
+			ERR("Unknown command-line option");
 			goto error;
 		}
 	}
@@ -312,8 +301,8 @@ static int parse_args(int argc, char **argv)
 	}
 
 	/* No leftovers, or more than one input path, print usage and quit */
-	if ((argc - optind) == 0 || (argc - optind) > 1) {
-		usage(stderr);
+	if (argc - optind != 1) {
+		ERR("Command-line error: Specify exactly one input path");
 		goto error;
 	}
 
