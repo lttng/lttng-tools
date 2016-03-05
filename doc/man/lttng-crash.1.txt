@@ -1,0 +1,81 @@
+lttng-crash(1)
+==============
+
+
+NAME
+----
+lttng-crash - Recover and view LTTng 2 trace buffers in the event of a crash
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng-crash* [option:--extract='PATH' | option:--viewer='VIEWER'] [option:-v | option:-vv | option:-vvv]
+
+
+DESCRIPTION
+-----------
+The http://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
+source software package used for correlated tracing of the Linux kernel,
+user applications, and user libraries.
+
+LTTng consists of Linux kernel modules (for Linux kernel tracing) and
+dynamically loaded libraries (for user application and library tracing).
+
+The _`lttng-crash`_ command-line tool is used to recover and view
+LTTng trace buffers in the event of a system crash.
+
+
+OPTIONS
+-------
+option:-x, option:--extract='PATH'::
+    Extract recovered traces to path 'PATH'; do not execute the trace
+    viewer.
+
+option:-v, option:--verbose::
+    Increase verbosity.
++
+Three levels of verbosity are available, which are triggered by
+appending additional `v` letters to the option
+(that is, `-vv` and `-vvv`).
+
+option:-e, option:--viewer='VIEWER'::
+    Use trace viewer 'VIEWER' to view the trace buffers. 'VIEWER' is the
+    absolute path to the viewer command to use, and it can contain
+    command arguments as well. The trace directory paths are passed to
+    the 'VIEWER' command as its last arguments.
++
+Default: `babeltrace`.
+
+
+Program information
+~~~~~~~~~~~~~~~~~~~
+option:-h, option:--help::
+    Show help.
+
+option:-V, option:--version::
+    Show version.
+
+
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Error
+
+*3*::
+    Fatal error
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1),
+linklttng:lttng-sessiond(8),
+linklttng:lttng-relayd(8),
+linklttng:lttng-ust(3),
+linklttng:babeltrace(1)
