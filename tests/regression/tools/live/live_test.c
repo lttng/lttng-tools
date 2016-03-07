@@ -49,7 +49,7 @@
 #define LIVE_TIMER 2000000
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 8
+#define NUM_TESTS 11
 #define mmap_size 524288
 
 int ust_consumerd32_fd;
@@ -629,6 +629,53 @@ error:
 	return -1;
 }
 
+int detach_viewer_session(uint64_t id)
+{
+	struct lttng_viewer_cmd cmd;
+	struct lttng_viewer_detach_session_response resp;
+	struct lttng_viewer_detach_session_request rq;
+	int ret;
+	ssize_t ret_len;
+
+	cmd.cmd = htobe32(LTTNG_VIEWER_DETACH_SESSION);
+	cmd.data_size = sizeof(rq);
+	cmd.cmd_version = 0;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.session_id = htobe64(id);
+
+	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
+	if (ret_len < 0) {
+		fprintf(stderr, "[error] Error sending cmd\n");
+		ret = ret_len;
+		goto error;
+	}
+
+	ret_len = lttng_live_send(control_sock, &rq, sizeof(rq));
+	if (ret_len < 0) {
+		fprintf(stderr, "Error sending attach request\n");
+		ret = ret_len;
+		goto error;
+	}
+
+	ret_len = lttng_live_recv(control_sock, &resp, sizeof(resp));
+	if (ret_len < 0) {
+		fprintf(stderr, "[error] Error receiving detach session reply\n");
+		ret = ret_len;
+		goto error;
+	}
+
+	if (be32toh(resp.status) != LTTNG_VIEWER_DETACH_SESSION_OK) {
+		fprintf(stderr, "[error] Error detaching viewer session\n");
+		ret = -1;
+		goto error;
+	}
+	ret = 0;
+
+error:
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -666,6 +713,15 @@ int main(int argc, char **argv)
 			"Get one data packet for stream %d, offset %d, len %d",
 			first_packet_stream_id, first_packet_offset,
 			first_packet_len);
+
+	ret = detach_viewer_session(session_id);
+	ok(ret == 0, "Detach viewer session");
+
+	ret = list_sessions(&session_id);
+	ok(ret > 0, "List sessions : %d session(s)", ret);
+
+	ret = attach_session(session_id);
+	ok(ret > 0, "Attach to session, %d streams received", ret);
 
 	return exit_status();
 }
