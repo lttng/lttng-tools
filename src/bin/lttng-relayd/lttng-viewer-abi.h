@@ -48,6 +48,7 @@ enum lttng_viewer_command {
 	LTTNG_VIEWER_GET_METADATA	= 6,
 	LTTNG_VIEWER_GET_NEW_STREAMS	= 7,
 	LTTNG_VIEWER_CREATE_SESSION	= 8,
+	LTTNG_VIEWER_DETACH_SESSION	= 9,
 };
 
 enum lttng_viewer_attach_return_code {
@@ -103,6 +104,12 @@ enum lttng_viewer_new_streams_return_code {
 enum lttng_viewer_create_session_return_code {
 	LTTNG_VIEWER_CREATE_SESSION_OK		= 1,
 	LTTNG_VIEWER_CREATE_SESSION_ERR		= 2,
+};
+
+enum lttng_viewer_detach_session_return_code {
+	LTTNG_VIEWER_DETACH_SESSION_OK          = 1,
+	LTTNG_VIEWER_DETACH_SESSION_UNK		= 2,
+	LTTNG_VIEWER_DETACH_SESSION_ERR         = 3,
 };
 
 struct lttng_viewer_session {
@@ -229,6 +236,18 @@ struct lttng_viewer_new_streams_response {
 
 struct lttng_viewer_create_session_response {
 	/* enum lttng_viewer_create_session_return_code */
+	uint32_t status;
+} __attribute__((__packed__));
+
+/*
+ * LTTNG_VIEWER_DETACH_SESSION payload.
+ */
+struct lttng_viewer_detach_session_request {
+	uint64_t session_id;
+} __attribute__((__packed__));
+
+struct lttng_viewer_detach_session_response {
+	/* enum lttng_viewer_detach_session_return_code */
 	uint32_t status;
 } __attribute__((__packed__));
 

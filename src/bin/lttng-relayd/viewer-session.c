@@ -105,6 +105,41 @@ void viewer_session_destroy(struct relay_viewer_session *vsession)
 	free(vsession);
 }
 
+/*
+ * Release ownership of all the streams of one session and detach the viewer.
+ */
+void viewer_session_close_one_session(struct relay_viewer_session *vsession,
+		struct relay_session *session)
+{
+	struct lttng_ht_iter iter;
+	struct relay_viewer_stream *vstream;
+
+	/*
+	 * TODO: improvement: create more efficient list of
+	 * vstream per session.
+	 */
+	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter,
+			vstream, stream_n.node) {
+		if (!viewer_stream_get(vstream)) {
+			continue;
+		}
+		if (vstream->stream->trace->session != session) {
+			viewer_stream_put(vstream);
+			continue;
+		}
+		/* Put local reference. */
+		viewer_stream_put(vstream);
+		/*
+		 * We have reached one of the viewer stream's lifetime
+		 * end condition. This "put" will cause the proper
+		 * teardown of the viewer stream.
+		 */
+		viewer_stream_put(vstream);
+	}
+
+	viewer_session_detach(vsession, session);
+}
+
 void viewer_session_close(struct relay_viewer_session *vsession)
 {
 	struct relay_session *session;
@@ -112,32 +147,7 @@ void viewer_session_close(struct relay_viewer_session *vsession)
 	rcu_read_lock();
 	cds_list_for_each_entry_rcu(session,
 			&vsession->session_list, viewer_session_node) {
-		struct lttng_ht_iter iter;
-		struct relay_viewer_stream *vstream;
-
-		/*
-		 * TODO: improvement: create more efficient list of
-		 * vstream per session.
-		 */
-		cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter,
-				vstream, stream_n.node) {
-			if (!viewer_stream_get(vstream)) {
-				continue;
-			}
-			if (vstream->stream->trace->session != session) {
-				viewer_stream_put(vstream);
-				continue;
-			}
-			/* Put local reference. */
-			viewer_stream_put(vstream);
-			/*
-			 * We have reached one of the viewer stream's lifetime
-			 * end condition.
-			 */
-			viewer_stream_put(vstream);
-		}
-
-		viewer_session_detach(vsession, session);
+		viewer_session_close_one_session(vsession, session);
 	}
 	rcu_read_unlock();
 }

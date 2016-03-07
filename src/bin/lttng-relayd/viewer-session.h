@@ -49,5 +49,7 @@ int viewer_session_attach(struct relay_viewer_session *vsession,
 		struct relay_session *session);
 int viewer_session_is_attached(struct relay_viewer_session *vsession,
 		struct relay_session *session);
+void viewer_session_close_one_session(struct relay_viewer_session *vsession,
+		struct relay_session *session);
 
 #endif /* _VIEWER_SESSION_H */

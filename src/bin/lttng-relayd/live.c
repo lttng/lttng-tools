@@ -1734,6 +1734,78 @@ end:
 	return ret;
 }
 
+/*
+ * Detach a viewer session.
+ *
+ * Return 0 on success or else a negative value.
+ */
+static
+int viewer_detach_session(struct relay_connection *conn)
+{
+	int ret;
+	struct lttng_viewer_detach_session_response response;
+	struct lttng_viewer_detach_session_request request;
+	struct relay_session *session = NULL;
+	uint64_t viewer_session_to_close;
+
+	DBG("Viewer detach session received");
+
+	assert(conn);
+
+	health_code_update();
+
+	/* Receive the request from the connected client. */
+	ret = recv_request(conn->sock, &request, sizeof(request));
+	if (ret < 0) {
+		goto end;
+	}
+	viewer_session_to_close = be64toh(request.session_id);
+
+	if (!conn->viewer_session) {
+		DBG("Client trying to detach before creating a live viewer session");
+		response.status = htobe32(LTTNG_VIEWER_DETACH_SESSION_ERR);
+		goto send_reply;
+	}
+
+	health_code_update();
+
+	memset(&response, 0, sizeof(response));
+	DBG("Detaching from session ID %" PRIu64, viewer_session_to_close);
+
+	session = session_get_by_id(be64toh(request.session_id));
+	if (!session) {
+		DBG("Relay session %" PRIu64 " not found",
+				be64toh(request.session_id));
+		response.status = htobe32(LTTNG_VIEWER_DETACH_SESSION_UNK);
+		goto send_reply;
+	}
+
+	ret = viewer_session_is_attached(conn->viewer_session, session);
+	if (ret != 1) {
+		DBG("Not attached to this session");
+		response.status = htobe32(LTTNG_VIEWER_DETACH_SESSION_ERR);
+		goto send_reply_put;
+	}
+
+	viewer_session_close_one_session(conn->viewer_session, session);
+	response.status = htobe32(LTTNG_VIEWER_DETACH_SESSION_OK);
+	DBG("Session %" PRIu64 " detached.", viewer_session_to_close);
+
+send_reply_put:
+	session_put(session);
+
+send_reply:
+	health_code_update();
+	ret = send_response(conn->sock, &response, sizeof(response));
+	if (ret < 0) {
+		goto end;
+	}
+	health_code_update();
+	ret = 0;
+
+end:
+	return ret;
+}
 
 /*
  * live_relay_unknown_command: send -1 if received unknown command
@@ -1794,6 +1866,9 @@ int process_control(struct lttng_viewer_cmd *recv_hdr,
 		break;
 	case LTTNG_VIEWER_CREATE_SESSION:
 		ret = viewer_create_session(conn);
+		break;
+	case LTTNG_VIEWER_DETACH_SESSION:
+		ret = viewer_detach_session(conn);
 		break;
 	default:
 		ERR("Received unknown viewer command (%u)",
