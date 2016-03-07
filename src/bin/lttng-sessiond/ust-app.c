@@ -5955,7 +5955,7 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		}
 
 		/* Get channel */
-		lttng_ht_lookup(ua_sess->channels, (void *)uchan->name, &uiter);
+		lttng_ht_lookup(ua_sess->channels, (void *) uchan->name, &uiter);
 		ua_chan_node = lttng_ht_iter_get_node_str(&uiter);
 		/* If the session is found for the app, the channel must be there */
 		assert(ua_chan_node);
