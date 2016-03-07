@@ -370,6 +370,14 @@ struct lttcomm_event_extended_header {
 } LTTNG_PACKED;
 
 /*
+ * Channel extended info.
+ */
+struct lttcomm_channel_extended {
+	uint64_t discarded_events;
+	uint64_t lost_packets;
+} LTTNG_PACKED;
+
+/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {

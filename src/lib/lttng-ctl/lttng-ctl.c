@@ -1974,6 +1974,58 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 	}
 }
 
+int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
+		uint64_t *discarded_events)
+{
+	int ret = 0;
+	struct lttcomm_channel_extended *chan_ext;
+
+	if (!channel || !discarded_events) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	chan_ext = channel->attr.extended.ptr;
+	if (!chan_ext) {
+		/*
+		 * This can happen since the lttng_channel structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		*discarded_events = 0;
+		goto end;
+	}
+
+	*discarded_events = chan_ext->discarded_events;
+end:
+	return ret;
+}
+
+int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
+		uint64_t *lost_packets)
+{
+	int ret = 0;
+	struct lttcomm_channel_extended *chan_ext;
+
+	if (!channel || !lost_packets) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	chan_ext = channel->attr.extended.ptr;
+	if (!chan_ext) {
+		/*
+		 * This can happen since the lttng_channel structure is
+		 * used for other tasks where this pointer is never set.
+		 */
+		*lost_packets = 0;
+		goto end;
+	}
+
+	*lost_packets = chan_ext->lost_packets;
+end:
+	return ret;
+}
+
 /*
  * Check if session daemon is alive.
  *

@@ -20,6 +20,7 @@
 
 #include <lttng/domain.h>
 #include <lttng/event.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -106,6 +107,22 @@ extern int lttng_disable_channel(struct lttng_handle *handle,
  */
 extern void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr);
+
+/*
+ * Get the discarded event count of a specific LTTng channel.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
+		uint64_t *discarded_events);
+
+/*
+ * Get the lost packet count of a specific LTTng channel.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_channel_get_lost_packet_count(struct lttng_channel *chan,
+		uint64_t *lost_packets);
 
 #ifdef __cplusplus
 }
