@@ -145,3 +145,9 @@ When new metadata is added during a session, the GET_NEXT_INDEX will succeed
 but it will have the flag LTTNG_VIEWER_FLAG_NEW_METADATA, but the
 GET_DATA_PACKET will fail with the same flag as long as the metadata is not
 downloaded.
+
+Detach from a session:
+Closing the network connection detaches a client from all the sessions it is
+currently attached to. It is also possible to detach from a specific session
+without disconnecting by sending the LTTNG_VIEWER_DETACH_SESSION command. The
+payload of this command is the session ID.
