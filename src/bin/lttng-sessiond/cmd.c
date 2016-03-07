@@ -278,10 +278,20 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 			channels[i].enabled = uchan->enabled;
 			channels[i].attr.tracefile_size = uchan->tracefile_size;
 			channels[i].attr.tracefile_count = uchan->tracefile_count;
+
+			/*
+			 * Map enum lttng_ust_output to enum lttng_event_output.
+			 */
 			switch (uchan->attr.output) {
 			case LTTNG_UST_MMAP:
-			default:
 				channels[i].attr.output = LTTNG_EVENT_MMAP;
+				break;
+			default:
+				/*
+				 * LTTNG_UST_MMAP is the only supported UST
+				 * output mode.
+				 */
+				assert(0);
 				break;
 			}
 
