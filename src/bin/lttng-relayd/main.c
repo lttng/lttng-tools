@@ -163,24 +163,6 @@ static struct option long_options[] = {
 static const char *config_ignore_options[] = { "help", "config" };
 
 /*
- * usage function on stderr
- */
-static void usage(void)
-{
-	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(stderr, "  -h, --help                Display this usage.\n");
-	fprintf(stderr, "  -d, --daemonize           Start as a daemon.\n");
-	fprintf(stderr, "  -b, --background          Start as a daemon, keeping console open.\n");
-	fprintf(stderr, "  -C, --control-port URL    Control port listening.\n");
-	fprintf(stderr, "  -D, --data-port URL       Data port listening.\n");
-	fprintf(stderr, "  -L, --live-port URL       Live view port listening.\n");
-	fprintf(stderr, "  -o, --output PATH         Output path for traces. Must use an absolute path.\n");
-	fprintf(stderr, "  -v, --verbose             Verbose mode. Activate DBG() macro.\n");
-	fprintf(stderr, "  -g, --group NAME          Specify the tracing group name. (default: tracing)\n");
-	fprintf(stderr, "  -f  --config              Load daemon configuration file\n");
-}
-
-/*
  * Take an option from the getopt output and set it in the right variable to be
  * used later.
  *
@@ -263,7 +245,11 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		break;
 	case 'h':
-		usage();
+		ret = utils_show_man_page(8, "lttng-relayd");
+		if (ret) {
+			ERR("Cannot view man page lttng-relayd(8)");
+			perror("exec");
+		}
 		exit(EXIT_FAILURE);
 	case 'o':
 		if (lttng_is_setuid_setgid()) {
