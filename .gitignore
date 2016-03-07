@@ -37,6 +37,7 @@ tags
 # cscope and ctags
 cscope.*
 tags
+TAGS
 
 # m4 macros not automatically generated
 /m4/libtool.m4
