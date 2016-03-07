@@ -3844,19 +3844,19 @@ error_add_context:
 	}
 	case LTTNG_LIST_CHANNELS:
 	{
-		int nb_chan;
+		ssize_t payload_size;
 		struct lttng_channel *channels = NULL;
 
-		nb_chan = cmd_list_channels(cmd_ctx->lsm->domain.type,
+		payload_size = cmd_list_channels(cmd_ctx->lsm->domain.type,
 				cmd_ctx->session, &channels);
-		if (nb_chan < 0) {
+		if (payload_size < 0) {
 			/* Return value is a negative lttng_error_code. */
-			ret = -nb_chan;
+			ret = -payload_size;
 			goto error;
 		}
 
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, channels,
-			nb_chan * sizeof(struct lttng_channel));
+			payload_size);
 		free(channels);
 
 		if (ret < 0) {

@@ -1694,10 +1694,15 @@ int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel **channels)
 {
 	int ret;
+	size_t channel_count, i;
+	const size_t channel_size = sizeof(struct lttng_channel) +
+			sizeof(struct lttcomm_channel_extended);
 	struct lttcomm_session_msg lsm;
+	void *extended_at;
 
 	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
@@ -1709,10 +1714,30 @@ int lttng_list_channels(struct lttng_handle *handle,
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void**) channels);
 	if (ret < 0) {
-		return ret;
+		goto end;
 	}
 
-	return ret / sizeof(struct lttng_channel);
+	if (ret % channel_size) {
+		ret = -LTTNG_ERR_UNK;
+		free(*channels);
+		*channels = NULL;
+		goto end;
+	}
+	channel_count = (size_t) ret / channel_size;
+
+	/* Set extended info pointers */
+	extended_at = ((void *) *channels) +
+			channel_count * sizeof(struct lttng_channel);
+	for (i = 0; i < channel_count; i++) {
+		struct lttng_channel *chan = &(*channels)[i];
+
+		chan->attr.extended.ptr = extended_at;
+		extended_at += sizeof(struct lttcomm_channel_extended);
+	}
+
+	ret = (int) channel_count;
+end:
+	return ret;
 }
 
 /*

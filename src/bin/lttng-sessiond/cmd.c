@@ -2839,8 +2839,7 @@ error:
 ssize_t cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_session *session, struct lttng_channel **channels)
 {
-	int ret;
-	ssize_t nb_chan = 0;
+	ssize_t nb_chan = 0, payload_size = 0, ret;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2849,7 +2848,8 @@ ssize_t cmd_list_channels(enum lttng_domain_type domain,
 		}
 		DBG3("Number of kernel channels %zd", nb_chan);
 		if (nb_chan <= 0) {
-			ret = LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+			ret = -LTTNG_ERR_KERN_CHAN_NOT_FOUND;
+			goto end;
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
@@ -2861,30 +2861,37 @@ ssize_t cmd_list_channels(enum lttng_domain_type domain,
 		}
 		DBG3("Number of UST global channels %zd", nb_chan);
 		if (nb_chan < 0) {
-			ret = LTTNG_ERR_UST_CHAN_NOT_FOUND;
-			goto error;
+			ret = -LTTNG_ERR_UST_CHAN_NOT_FOUND;
+			goto end;
 		}
 		break;
 	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
+		ret = -LTTNG_ERR_UND;
+		goto end;
 	}
 
 	if (nb_chan > 0) {
-		*channels = zmalloc(nb_chan * sizeof(struct lttng_channel));
+		const size_t channel_size = sizeof(struct lttng_channel) +
+			sizeof(struct lttcomm_channel_extended);
+		struct lttcomm_channel_extended *channel_exts;
+
+		payload_size = nb_chan * channel_size;
+		*channels = zmalloc(payload_size);
 		if (*channels == NULL) {
-			ret = LTTNG_ERR_FATAL;
-			goto error;
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
 		}
 
-		list_lttng_channels(domain, session, *channels);
+		channel_exts = ((void *) *channels) +
+				(nb_chan * sizeof(struct lttng_channel));
+		list_lttng_channels(domain, session, *channels, channel_exts);
+	} else {
+		*channels = NULL;
 	}
 
-	return nb_chan;
-
-error:
-	/* Return negative value to differentiate return code */
-	return -ret;
+	ret = payload_size;
+end:
+	return ret;
 }
 
 /*
