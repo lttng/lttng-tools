@@ -261,7 +261,7 @@ struct lttng_event {
 
 	/* Offset 288 */
 	union {
-		char padding[8];
+		uint64_t padding;
 		void *ptr;
 	} extended;
 
