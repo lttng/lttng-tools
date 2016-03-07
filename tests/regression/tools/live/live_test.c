@@ -159,8 +159,8 @@ int establish_connection(void)
 	ssize_t ret_len;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_CONNECT);
-	cmd.data_size = sizeof(connect);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(connect));
+	cmd.cmd_version = htobe32(0);
 
 	memset(&connect, 0, sizeof(connect));
 	connect.major = htobe32(VERSION_MAJOR);
@@ -206,8 +206,8 @@ int list_sessions(uint64_t *session_id)
 	int first_session = 0;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_LIST_SESSIONS);
-	cmd.data_size = 0;
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(0);
+	cmd.cmd_version = htobe32(0);
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
@@ -250,8 +250,8 @@ int create_viewer_session(void)
 	ssize_t ret_len;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_CREATE_SESSION);
-	cmd.data_size = 0;
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(0);
+	cmd.cmd_version = htobe32(0);
 
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
@@ -296,8 +296,8 @@ int attach_session(uint64_t id)
 	}
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_ATTACH_SESSION);
-	cmd.data_size = sizeof(rq);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(rq));
+	cmd.cmd_version = htobe32(0);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.session_id = htobe64(id);
@@ -383,8 +383,8 @@ int get_metadata(void)
 	int metadata_stream_id = -1;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_GET_METADATA);
-	cmd.data_size = sizeof(rq);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(rq));
+	cmd.cmd_version = htobe32(0);
 
 	for (i = 0; i < session->stream_count; i++) {
 		if (session->streams[i].metadata_flag) {
@@ -473,8 +473,8 @@ int get_next_index(void)
 	int id;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_GET_NEXT_INDEX);
-	cmd.data_size = sizeof(rq);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(rq));
+	cmd.cmd_version = htobe32(0);
 
 	for (id = 0; id < session->stream_count; id++) {
 		if (session->streams[id].metadata_flag) {
@@ -556,8 +556,8 @@ int get_data_packet(int id, uint64_t offset,
 	ssize_t ret_len;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_GET_PACKET);
-	cmd.data_size = sizeof(rq);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(rq));
+	cmd.cmd_version = htobe32(0);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.stream_id = htobe64(session->streams[id].id);
@@ -638,8 +638,8 @@ int detach_viewer_session(uint64_t id)
 	ssize_t ret_len;
 
 	cmd.cmd = htobe32(LTTNG_VIEWER_DETACH_SESSION);
-	cmd.data_size = sizeof(rq);
-	cmd.cmd_version = 0;
+	cmd.data_size = htobe64(sizeof(rq));
+	cmd.cmd_version = htobe32(0);
 
 	memset(&rq, 0, sizeof(rq));
 	rq.session_id = htobe64(id);
