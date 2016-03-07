@@ -123,5 +123,9 @@ extern const char * const config_event_context_hostname;
 extern const char * const config_event_context_ip;
 extern const char * const config_event_context_perf_thread_counter;
 extern const char * const config_event_context_app;
+extern const char * const config_event_context_interruptible;
+extern const char * const config_event_context_preemptible;
+extern const char * const config_event_context_need_reschedule;
+extern const char * const config_event_context_migratable;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */

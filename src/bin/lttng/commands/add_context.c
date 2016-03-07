@@ -75,6 +75,10 @@ enum context_type {
 	CONTEXT_PERF_CPU_COUNTER = 13,
 	CONTEXT_PERF_THREAD_COUNTER = 14,
 	CONTEXT_APP_CONTEXT  = 15,
+	CONTEXT_INTERRUPTIBLE = 16,
+	CONTEXT_PREEMPTIBLE  = 17,
+	CONTEXT_NEED_RESCHEDULE = 18,
+	CONTEXT_MIGRATABLE   = 19,
 };
 
 /*
@@ -225,6 +229,10 @@ const struct ctx_opts {
 	{ "vppid", CONTEXT_VPPID },
 	{ "hostname", CONTEXT_HOSTNAME },
 	{ "ip", CONTEXT_IP },
+	{ "interruptible", CONTEXT_INTERRUPTIBLE },
+	{ "preemptible", CONTEXT_PREEMPTIBLE },
+	{ "need_reschedule", CONTEXT_NEED_RESCHEDULE },
+	{ "migratable", CONTEXT_MIGRATABLE },
 
 	/* Perf options */
 

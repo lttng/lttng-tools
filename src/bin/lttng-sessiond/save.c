@@ -232,6 +232,18 @@ const char *get_kernel_context_type_string(
 	case LTTNG_KERNEL_CONTEXT_HOSTNAME:
 		context_type_string = config_event_context_hostname;
 		break;
+	case LTTNG_KERNEL_CONTEXT_INTERRUPTIBLE:
+		context_type_string = config_event_context_interruptible;
+		break;
+	case LTTNG_KERNEL_CONTEXT_PREEMPTIBLE:
+		context_type_string = config_event_context_preemptible;
+		break;
+	case LTTNG_KERNEL_CONTEXT_NEED_RESCHEDULE:
+		context_type_string = config_event_context_need_reschedule;
+		break;
+	case LTTNG_KERNEL_CONTEXT_MIGRATABLE:
+		context_type_string = config_event_context_migratable;
+		break;
 	default:
 		context_type_string = NULL;
 	}

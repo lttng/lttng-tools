@@ -141,6 +141,7 @@ enum lttng_error_code {
 	LTTNG_ERR_SESSION_NOT_STARTED    = 118, /* Session not started */
 	LTTNG_ERR_LIVE_SESSION           = 119, /* Live session unsupported */
 	LTTNG_ERR_PER_PID_SESSION        = 120, /* Per-PID sessions unsupported */
+	LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE = 121, /* Context unavailable on this kernel */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

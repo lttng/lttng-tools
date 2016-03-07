@@ -49,8 +49,7 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	/* Go over all channels */
 	cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
 		ret = kernel_add_channel_context(kchan, kctx);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
+		if (ret != 0) {
 			goto error;
 		}
 	}
@@ -75,8 +74,7 @@ static int add_kctx_to_channel(struct ltt_kernel_context *kctx,
 	DBG("Add kernel context to channel '%s'", kchan->channel->name);
 
 	ret = kernel_add_channel_context(kchan, kctx);
-	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
+	if (ret != 0) {
 		goto error;
 	}
 
@@ -230,6 +228,18 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
 	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER;
+		break;
+	case LTTNG_EVENT_CONTEXT_INTERRUPTIBLE:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_INTERRUPTIBLE;
+		break;
+	case LTTNG_EVENT_CONTEXT_PREEMPTIBLE:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PREEMPTIBLE;
+		break;
+	case LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_NEED_RESCHEDULE;
+		break;
+	case LTTNG_EVENT_CONTEXT_MIGRATABLE:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_MIGRATABLE;
 		break;
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;

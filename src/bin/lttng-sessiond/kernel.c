@@ -49,17 +49,24 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 	DBG("Adding context to channel %s", chan->channel->name);
 	ret = kernctl_add_context(chan->fd, &ctx->ctx);
 	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("add context ioctl");
-		} else {
+		switch (errno) {
+		case ENOSYS:
+			/* Exists but not available for this kernel */
+			ret = LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE;
+			goto error;
+		case EEXIST:
 			/* If EEXIST, we just ignore the error */
 			ret = 0;
+			goto end;
+		default:
+			PERROR("add context ioctl");
+			ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
+			goto error;
 		}
-		goto error;
 	}
 
+end:
 	cds_list_add_tail(&ctx->list, &chan->ctx_list);
-
 	return 0;
 
 error:
