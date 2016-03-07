@@ -1,0 +1,193 @@
+lttng-relayd(8)
+===============
+
+
+NAME
+----
+lttng-relayd - LTTng 2 relay daemon
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng-relayd* [option:--background | option:--daemonize]
+             [option:--control-port='URL'] [option:--data-port='URL'] [option:--live-port='URL']
+             [option:--output='PATH'] [option:-v | option:-vv | option:-vvv]
+
+
+DESCRIPTION
+-----------
+The http://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
+source software package used for correlated tracing of the Linux kernel,
+user applications, and user libraries.
+
+LTTng consists of Linux kernel modules (for Linux kernel tracing) and
+dynamically loaded libraries (for user application and library tracing).
+
+The _LTTng relay daemon_ is responsible for receiving trace data from
+possibly remote LTTng session/consumer daemons and for writing it to
+the local file system. The relay daemon also accepts _LTTng live_
+connections from compatible viewers; this is the official approach to
+viewing LTTng events as they are emitted.
+
+The relay daemon listens by default on all network interfaces to gather
+trace data, but only on localhost for LTTng live connections.
+
+The relay daemon does not require any particular permissions, as long as
+it can write to the output directory and listen on the configured ports.
+If a user is within a secured network and/or has proper firewall
+settings, `lttng-relayd` can listen to LTTng live connections from _all_
+network interfaces by specifying `--live-port=tcp://0.0.0.0:5344`.
+
+Once a trace has been streamed completely, the trace can be processed by
+any tool that can process an LTTng trace located on the local
+file system.
+
+
+[[output-directory]]
+Output directory
+~~~~~~~~~~~~~~~~
+By default, the relay daemon writes the traces to:
+
+[verse]
+$HOME/lttng-traces/'HOSTNAME'/'SESSION'/'DOMAIN'
+
+with:
+
+'HOSTNAME'::
+    Remote hostname.
+
+'SESSION'::
+    Full session name.
+
+'DOMAIN'::
+    Tracing domain.
+
+You can override the default output directory prefix
+(`$HOME/lttng-traces`) with the option:--output option. The other
+parts depend on the remote configuration.
+
+
+[[url-format]]
+URL format
+~~~~~~~~~~
+The option:--control-port, option:--data-port, and option:--live-port
+options specify URLs.
+
+The format of those URLs is:
+
+[verse]
+tcp://('HOST' | 'IPADDR'):__PORT__
+
+with:
+
+('HOST' | 'IPADDR')::
+    Binding hostname or IP address (IPv6 address *must* be enclosed in
+    brackets (`[` and `]`); see
+    https://www.ietf.org/rfc/rfc2732.txt[RFC 2732]).
+
+'PORT'::
+    TCP port.
+
+
+OPTIONS
+-------
+Daemon
+~~~~~~
+option:-b, option:--background::
+    Start as Unix daemon, but keep file descriptors (console) open.
+    Use the option:--daemonize option instead to close the file
+    descriptors.
+
+option:-d, option:--daemonize::
+    Start as Unix daemon, and close file descriptors (console). Use the
+    option:--background option instead to keep the file descriptors
+    open.
+
+option:-g, option:--group='GROUP'::
+    Use 'GROUP' as Unix tracing group (default: `tracing`).
+
+option:-o, option:--output='PATH'::
+    Set base directory of written trace data to 'PATH'.
++
+See the <<output-directory,Output directory>> section above for more
+information.
+
+option:-v, option:--verbose::
+    Increase verbosity.
++
+Three levels of verbosity are available, which are triggered by
+appending additional `v` letters to the option
+(that is, `-vv` and `-vvv`).
+
+
+Ports
+~~~~~
+See the <<url-format,URL format>> section above for more information
+about the syntax of the following options' 'URL' argument.
+
+option:-C, option:--control-port='URL'::
+    Listen to control data on URL 'URL' (default: `tcp://0.0.0.0:5342`).
+
+option:-D, option:--data-port='URL'::
+    Listen to trace data on URL 'URL' (default: `tcp://0.0.0.0:5343`).
+
+option:-L, option:--live-port='URL'::
+    Listen to LTTng live connections on URL 'URL'
+    (default: `tcp://0.0.0.0:5344`).
+
+
+Program information
+~~~~~~~~~~~~~~~~~~~
+option:-h, option:--help::
+    Show help.
+
+option:-V, option:--version::
+    Show version.
+
+
+ENVIRONMENT VARIABLES
+---------------------
+`LTTNG_NETWORK_SOCKET_TIMEOUT`::
+    Socket connection, receive and send timeout (milliseconds). A value
+    of 0 or -1 uses the timeout of the operating system (default).
+
+`LTTNG_RELAYD_HEALTH`::
+    Path to relay daemon health's socket.
+
+
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Error
+
+*3*::
+    Fatal error
+
+
+LIMITATIONS
+-----------
+As of this version, only the TCP protocol is supported for both control
+and data ports. In future versions, TCP will remain the sole available
+protocol for control data since those communications are low-volume and
+need absolute reliability; trace data could be carried over UDP.
+
+For an unprivileged user running `lttng-relayd`, the maximum number of
+file descriptors per process is usually 1024. This limits the number of
+connections and opened trace files. This limit can be configured with
+*ulimit*(3).
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1),
+linklttng:lttng-sessiond(8),
+linklttng:lttng-crash(1),
+linklttng:lttng-ust(3),
+linklttng:babeltrace(1)
