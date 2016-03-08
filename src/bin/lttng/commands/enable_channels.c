@@ -380,6 +380,7 @@ static void init_channel_config(void)
 	 * those needed to be set by the default values.
 	 */
 	memset(&chan.attr, -1, sizeof(chan.attr));
+	chan.attr.extended.ptr = NULL;
 }
 
 /*
