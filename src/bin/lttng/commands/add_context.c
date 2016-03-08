@@ -33,8 +33,6 @@
 
 #include "../command.h"
 
-#define PRINT_LINE_LEN	80
-
 static char *opt_channel_name;
 static char *opt_session_name;
 static int opt_kernel;
@@ -50,6 +48,7 @@ enum {
 	OPT_JUL,
 	OPT_LOG4J,
 	OPT_LIST_OPTIONS,
+	OPT_LIST,
 };
 
 static struct lttng_handle *handle;
@@ -153,6 +152,7 @@ static struct poptOption long_options[] = {
 	{"jul",            'j', POPT_ARG_NONE, 0, OPT_JUL, 0, 0},
 	{"log4j",          'l', POPT_ARG_NONE, 0, OPT_LOG4J, 0, 0},
 	{"type",           't', POPT_ARG_STRING, &opt_type, OPT_TYPE, 0, 0},
+	{"list",           0, POPT_ARG_NONE, NULL, OPT_LIST, NULL, NULL},
 	{"list-options",   0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -472,70 +472,14 @@ struct ctx_type_list {
  */
 static void print_ctx_type(FILE *ofp)
 {
-	const char *indent = "                               ";
-	int indent_len = strlen(indent);
-	int len, i = 0;
+	int i = 0;
 
-	fprintf(ofp, "%s", indent);
-	len = indent_len;
 	while (ctx_opts[i].symbol != NULL) {
 		if (!ctx_opts[i].hide_help) {
-			if (len > indent_len) {
-				if (len + strlen(ctx_opts[i].symbol) + 2
-						>= PRINT_LINE_LEN) {
-					fprintf(ofp, ",\n");
-					fprintf(ofp, "%s", indent);
-					len = indent_len;
-				} else {
-					len += fprintf(ofp, ", ");
-				}
-			}
-			len += fprintf(ofp, "%s", ctx_opts[i].symbol);
+			fprintf(ofp, "%s\n", ctx_opts[i].symbol);
 		}
 		i++;
 	}
-}
-
-/*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng add-context -t TYPE [-k|-u] [OPTIONS]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "If no channel is given (-c), the context is added to\n");
-	fprintf(ofp, "all channels.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Otherwise the context is added only to the channel (-c).\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Exactly one domain (-k or -u) must be specified.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to channel\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Context:\n");
-	fprintf(ofp, "  -t, --type TYPE          Context type. You can repeat that option on\n");
-	fprintf(ofp, "                           the command line to specify multiple contexts at once.\n");
-	fprintf(ofp, "                           (--kernel preempts --userspace)\n");
-	fprintf(ofp, "                           TYPE can be one of the strings below:\n");
-	print_ctx_type(ofp);
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Note that the vpid, vppid and vtid context types represent the virtual process id,\n"
-			"virtual parent process id and virtual thread id as seen from the current execution context\n"
-			"as opposed to the pid, ppid and tid which are kernel internal data structures.\n\n");
-	fprintf(ofp, "Example:\n");
-	fprintf(ofp, "This command will add the context information 'prio' and two per-cpu\n"
-			"perf counters (hardware branch misses and cache misses), to all channels\n"
-			"in the trace data output:\n");
-	fprintf(ofp, "# lttng add-context -k -t prio -t perf:cpu:branch-misses -t perf:cpu:cache-misses\n");
-	fprintf(ofp, "\n");
 }
 
 /*
@@ -836,7 +780,6 @@ int cmd_add_context(int argc, const char **argv)
 	char *session_name = NULL;
 
 	if (argc < 2) {
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -847,7 +790,10 @@ int cmd_add_context(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
+			goto end;
+		case OPT_LIST:
+			print_ctx_type(stdout);
 			goto end;
 		case OPT_TYPE:
 		{
@@ -873,7 +819,6 @@ int cmd_add_context(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -888,7 +833,6 @@ int cmd_add_context(int argc, const char **argv)
 
 	if (!opt_type) {
 		ERR("Missing mandatory -t TYPE");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}

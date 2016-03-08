@@ -1,0 +1,90 @@
+LTTng-tools man pages
+=====================
+
+This directory contains the sources of the LTTng-tools man pages.
+
+<<<<<<< HEAD
+LTTng-tools man pages are written in AsciiDoc, and then converted to
+DocBook (XML) using the `asciidoc` command, and finally to troff
+using the appropriate DocBook XSL stylesheet (using the `xmlto`
+command).
+=======
+LTTng-tools man pages are written in
+[AsciiDoc](http://www.methods.co.nz/asciidoc/), and then converted to
+DocBook (XML) using the `asciidoc` command, and finally to troff using
+the appropriate DocBook XSL stylesheet (using the `xmlto` command).
+>>>>>>> 2922b74... doc/man: add README.md
+
+
+Custom XSL stylesheets
+----------------------
+
+There are a few custom XSL stylesheets applied for customizing the
+generated man pages in the `xsl` directory.
+
+
+Macros
+------
+
+AsciiDoc is configured with `asciidoc.conf` which contains a few
+macro definitions used everywhere in the man page sources.
+
+
+### linklttng
+
+The linklttng macro is used to link to another LTTng man page. Its
+output is different depending on the back-end. In troff, the man page
+name is rendered in bold, whereas the HTML5 output renders a hyperlink.
+
+Usage example: `linklttng:lttng-enable-channel(1)`.
+
+
+### option
+
+The option macro is used to write a command-line option.
+
+Usage example: `option:--no-output`, `option:--loglevel=TRACE_WARNING`
+
+
+### not
+
+The `:not:` macro is used to emphasize on _not_.
+
+
+Includes
+--------
+
+  * `common-cmd-footer.txt`: common `lttng` command footer.
+  * `common-cmd-help-options.txt`: common program information section
+    of `lttng` command options.
+  * `common-cmd-options-head.txt`: common `lttng` command head of
+    options section.
+  * `common-footer.txt`: common footer for all commands.
+
+
+Convention
+----------
+
+Please follow those rules when updating the current man pages or
+writing new ones:
+
+  * Always use macros when possible (link to other LTTng man page,
+    command-line option, NOT, etc.).
+  * Use callouts for command-line examples.
+  * Always refer to _long_ options in the text.
+  * Use the `option:--option=parameter` format (with `=`) when providing
+    a parameter to long options.
+  * Write _user space_, not _userspace_ nor _user-space_.
+    (neither _user land_).
+  * Write _file system_, not _filesystem_.
+  * Write _use case_, not _use-case_ nor _usecase_.
+  * Write _log level_, not _loglevel_.
+  * Write complete LTTng project names: _LTTng-modules_, _LTTng-UST_ and
+    _LTTng-tools_, not _modules_, _UST_ and _tools_.
+  * Prefer simple emphasis to strong emphasis for emphasizing text.
+  * Try to stay behind the 72th column mark if possible, and behind
+    the 80th column otherwise.
+  * Do not end directory paths with a forward slash
+    (good: `include/trace/events`, bad: `include/trace/events/`).
+  * Minimize the use of the future tense (_will_).
+  * Do not use Latin abbreviations (_e.g._, _i.e._, _etc._).

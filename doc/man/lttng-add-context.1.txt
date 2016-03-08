@@ -1,0 +1,115 @@
+lttng-add-context(1)
+====================
+
+
+NAME
+----
+lttng-add-context - Add context fields to an LTTng channel
+
+
+SYNOPSIS
+--------
+Add context fields to a channel:
+
+[verse]
+*lttng* ['GENERAL OPTIONS'] *add-context*
+      (option:--kernel | option:--userspace | option:--jul | option:--log4j)
+      [option:--session='SESSION'] [option:--channel='CHANNEL']
+      option:--type='TYPE' [option:--type='TYPE']...
+
+List the available context fields:
+
+[verse]
+*lttng* ['GENERAL OPTIONS'] *add-context* --list
+
+
+DESCRIPTION
+-----------
+The `lttng add-context` command adds one or more context fields to a
+channel.
+
+Channels are created with the linklttng:lttng-enable-channel(1) command.
+
+When context fields are added to a channel, all the events emitted
+within this channel contain the dynamic values of those context fields.
+
+If the option:--session option is omitted, the current tracing session
+is used. If the option:--channel option is omitted, the context fields
+are added to all the selected tracing session's channels.
+
+Many context fields can be added to a channel at once by repeating the
+option:--type option.
+
+perf counters are available as per-CPU (`perf:cpu:` prefix) as well as
+per-thread (`perf:thread:` prefix) counters. Currently, per-CPU counters
+can only be used in the Linux kernel tracing domain, while per-thread
+counters can only be used in the user space tracing domain.
+
+You can add application-specific context fields to a channel with the
+following syntax:
+
+[verse]
+$app.'PROVIDER':__TYPE__
+
+with:
+
+'PROVIDER'::
+    Provider name.
+
+'TYPE'::
+    Context type name.
+
+Use the option:--list option without other arguments to list the
+available context field names.
+
+
+include::common-cmd-options-head.txt[]
+
+
+Domain
+~~~~~~
+One of:
+
+option:-j, option:--jul::
+    Add context to channel in the `java.util.logging` (JUL) domain.
+
+option:-k, option:--kernel::
+    Add context to channel in the Linux kernel domain.
+
+option:-l, option:--log4j::
+    Add context to channel in the Apache log4j domain.
+
+option:-u, option:--userspace::
+    Add context to channel in the user space domain.
+
+
+Target
+~~~~~~
+option:-c, option:--channel='CHANNEL'::
+    Add context fields to a channel named 'CHANNEL' instead of adding
+    them to all the channels.
+
+option:-s, option:--session='SESSION'::
+    Add context fields to a channel in the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+Context
+~~~~~~~
+option:--list::
+    List the available context fields. Use this option alone.
+
+option:-t, option:--type='TYPE'::
+    Add context field named 'TYPE'. This option can be repeated as
+    many times as needed on the command-line.
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1)

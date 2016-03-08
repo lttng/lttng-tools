@@ -4644,43 +4644,6 @@ error_create_poll:
 	return NULL;
 }
 
-
-/*
- * usage function on stderr
- */
-static void usage(void)
-{
-	fprintf(stderr, "Usage: %s OPTIONS\n\nOptions:\n", progname);
-	fprintf(stderr, "  -h, --help                         Display this usage.\n");
-	fprintf(stderr, "  -c, --client-sock PATH             Specify path for the client unix socket\n");
-	fprintf(stderr, "  -a, --apps-sock PATH               Specify path for apps unix socket\n");
-	fprintf(stderr, "      --kconsumerd-err-sock PATH     Specify path for the kernel consumer error socket\n");
-	fprintf(stderr, "      --kconsumerd-cmd-sock PATH     Specify path for the kernel consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd32-err-sock PATH Specify path for the 32-bit UST consumer error socket\n");
-	fprintf(stderr, "      --ustconsumerd64-err-sock PATH Specify path for the 64-bit UST consumer error socket\n");
-	fprintf(stderr, "      --ustconsumerd32-cmd-sock PATH Specify path for the 32-bit UST consumer command socket\n");
-	fprintf(stderr, "      --ustconsumerd64-cmd-sock PATH Specify path for the 64-bit UST consumer command socket\n");
-	fprintf(stderr, "      --consumerd32-path PATH     Specify path for the 32-bit UST consumer daemon binary\n");
-	fprintf(stderr, "      --consumerd32-libdir PATH   Specify path for the 32-bit UST consumer daemon libraries\n");
-	fprintf(stderr, "      --consumerd64-path PATH     Specify path for the 64-bit UST consumer daemon binary\n");
-	fprintf(stderr, "      --consumerd64-libdir PATH   Specify path for the 64-bit UST consumer daemon libraries\n");
-	fprintf(stderr, "  -d, --daemonize                    Start as a daemon.\n");
-	fprintf(stderr, "  -b, --background                   Start as a daemon, keeping console open.\n");
-	fprintf(stderr, "  -g, --group NAME                   Specify the tracing group name. (default: tracing)\n");
-	fprintf(stderr, "  -V, --version                      Show version number.\n");
-	fprintf(stderr, "  -S, --sig-parent                   Send SIGUSR1 to parent pid to notify readiness.\n");
-	fprintf(stderr, "  -q, --quiet                        No output at all.\n");
-	fprintf(stderr, "  -v, --verbose                      Verbose mode. Activate DBG() macro.\n");
-	fprintf(stderr, "  -p, --pidfile FILE                 Write a pid to FILE name overriding the default value.\n");
-	fprintf(stderr, "      --verbose-consumer             Verbose mode for consumer. Activate DBG() macro.\n");
-	fprintf(stderr, "      --no-kernel                    Disable kernel tracer\n");
-	fprintf(stderr, "      --agent-tcp-port               Agent registration TCP port\n");
-	fprintf(stderr, "  -f  --config PATH                  Load daemon configuration file\n");
-	fprintf(stderr, "  -l  --load PATH                    Load session configuration\n");
-	fprintf(stderr, "      --kmod-probes                  Specify kernel module probes to load\n");
-	fprintf(stderr, "      --extra-kmod-probes            Specify extra kernel module probes to load\n");
-}
-
 static int string_match(const char *str1, const char *str2)
 {
 	return (str1 && str2) && !strcmp(str1, str2);
@@ -4746,8 +4709,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			tracing_group_name_override = 1;
 		}
 	} else if (string_match(optname, "help") || opt == 'h') {
-		usage();
-		exit(EXIT_SUCCESS);
+		ret = utils_show_man_page(8, "lttng-sessiond");
+		if (ret) {
+			ERR("Cannot view man page lttng-sessiond(8)");
+			perror("exec");
+		}
+		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
 	} else if (string_match(optname, "version") || opt == 'V') {
 		fprintf(stdout, "%s\n", VERSION);
 		exit(EXIT_SUCCESS);

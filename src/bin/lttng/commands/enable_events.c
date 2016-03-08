@@ -96,147 +96,6 @@ static struct poptOption long_options[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng enable-event NAME[,NAME2,...] (-k | -u | -j | -l | -p) [OPTIONS] \n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help               Show this help\n");
-	fprintf(ofp, "      --list-options       Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME       Apply to session name\n");
-	fprintf(ofp, "  -c, --channel NAME       Apply to this channel\n");
-	fprintf(ofp, "  -a, --all                Enable all tracepoints and syscalls\n");
-	fprintf(ofp, "  -k, --kernel             Apply to the kernel tracer\n");
-	fprintf(ofp, "  -u, --userspace          Apply to the user-space tracer\n");
-	fprintf(ofp, "  -j, --jul                Apply to Java application using JUL\n");
-	fprintf(ofp, "  -l, --log4j              Apply for Java application using LOG4j\n");
-	fprintf(ofp, "  -p, --python             Apply for Python application\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Event options:\n");
-	fprintf(ofp, "    --tracepoint           Tracepoint event (default)\n");
-	fprintf(ofp, "                           - userspace tracer supports wildcards at end of string.\n");
-	fprintf(ofp, "                             Don't forget to quote to deal with bash expansion.\n");
-	fprintf(ofp, "                             e.g.:\n");
-	fprintf(ofp, "                               \"*\"\n");
-	fprintf(ofp, "                               \"app_component:na*\"\n");
-	fprintf(ofp, "    --probe (addr | symbol | symbol+offset)\n");
-	fprintf(ofp, "                           Dynamic probe.\n");
-	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
-	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
-	fprintf(ofp, "    --function (addr | symbol | symbol+offset)\n");
-	fprintf(ofp, "                           Dynamic function entry/return probe.\n");
-	fprintf(ofp, "                           Addr and offset can be octal (0NNN...),\n");
-	fprintf(ofp, "                           decimal (NNN...) or hexadecimal (0xNNN...)\n");
-	fprintf(ofp, "    --syscall              System call event\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "    --loglevel name\n");
-	fprintf(ofp, "                           Tracepoint loglevel range from 0 to loglevel.\n");
-	fprintf(ofp, "                           For JUL/LOG4j/Python domains, see the table below for the range values.\n");
-	fprintf(ofp, "    --loglevel-only name\n");
-	fprintf(ofp, "                           Tracepoint loglevel (only this loglevel)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           The loglevel or loglevel-only options should be\n");
-	fprintf(ofp, "                           combined with a tracepoint name or tracepoint\n");
-	fprintf(ofp, "                           wildcard.\n");
-	fprintf(ofp, "                           Available loglevels:\n");
-	fprintf(ofp, "                                              (higher value is more verbose)\n");
-	fprintf(ofp, "                               TRACE_EMERG          = 0\n");
-	fprintf(ofp, "                               TRACE_ALERT          = 1\n");
-	fprintf(ofp, "                               TRACE_CRIT           = 2\n");
-	fprintf(ofp, "                               TRACE_ERR            = 3\n");
-	fprintf(ofp, "                               TRACE_WARNING        = 4\n");
-	fprintf(ofp, "                               TRACE_NOTICE         = 5\n");
-	fprintf(ofp, "                               TRACE_INFO           = 6\n");
-	fprintf(ofp, "                               TRACE_DEBUG_SYSTEM   = 7\n");
-	fprintf(ofp, "                               TRACE_DEBUG_PROGRAM  = 8\n");
-	fprintf(ofp, "                               TRACE_DEBUG_PROCESS  = 9\n");
-	fprintf(ofp, "                               TRACE_DEBUG_MODULE   = 10\n");
-	fprintf(ofp, "                               TRACE_DEBUG_UNIT     = 11\n");
-	fprintf(ofp, "                               TRACE_DEBUG_FUNCTION = 12\n");
-	fprintf(ofp, "                               TRACE_DEBUG_LINE     = 13\n");
-	fprintf(ofp, "                               TRACE_DEBUG          = 14\n");
-	fprintf(ofp, "                               (shortcuts such as \"system\" are allowed)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           Available JUL domain loglevels:\n");
-	fprintf(ofp, "                               JUL_OFF            = INT32_MAX\n");
-	fprintf(ofp, "                               JUL_SEVERE         = %d\n", LTTNG_LOGLEVEL_JUL_SEVERE);
-	fprintf(ofp, "                               JUL_WARNING        = %d\n", LTTNG_LOGLEVEL_JUL_WARNING);
-	fprintf(ofp, "                               JUL_INFO           = %d\n", LTTNG_LOGLEVEL_JUL_INFO);
-	fprintf(ofp, "                               JUL_CONFIG         = %d\n", LTTNG_LOGLEVEL_JUL_CONFIG);
-	fprintf(ofp, "                               JUL_FINE           = %d\n", LTTNG_LOGLEVEL_JUL_FINE);
-	fprintf(ofp, "                               JUL_FINER          = %d\n", LTTNG_LOGLEVEL_JUL_FINER);
-	fprintf(ofp, "                               JUL_FINEST         = %d\n", LTTNG_LOGLEVEL_JUL_FINEST);
-	fprintf(ofp, "                               JUL_ALL            = INT32_MIN\n");
-	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           Available LOG4j domain loglevels:\n");
-	fprintf(ofp, "                               LOG4J_OFF            = INT32_MAX\n");
-	fprintf(ofp, "                               LOG4J_FATAL          = %d\n", LTTNG_LOGLEVEL_LOG4J_FATAL);
-	fprintf(ofp, "                               LOG4J_ERROR          = %d\n", LTTNG_LOGLEVEL_LOG4J_ERROR);
-	fprintf(ofp, "                               LOG4J_WARN           = %d\n", LTTNG_LOGLEVEL_LOG4J_WARN);
-	fprintf(ofp, "                               LOG4J_INFO           = %d\n", LTTNG_LOGLEVEL_LOG4J_INFO);
-	fprintf(ofp, "                               LOG4J_DEBUG          = %d\n", LTTNG_LOGLEVEL_LOG4J_DEBUG);
-	fprintf(ofp, "                               LOG4J_TRACE          = %d\n", LTTNG_LOGLEVEL_LOG4J_TRACE);
-	fprintf(ofp, "                               LOG4J_ALL            = INT32_MIN\n");
-	fprintf(ofp, "                               (shortcuts such as \"severe\" are allowed)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           Available Python domain loglevels:\n");
-	fprintf(ofp, "                               PYTHON_CRITICAL      = %d\n", LTTNG_LOGLEVEL_PYTHON_CRITICAL);
-	fprintf(ofp, "                               PYTHON_ERROR         = %d\n", LTTNG_LOGLEVEL_PYTHON_ERROR);
-	fprintf(ofp, "                               PYTHON_WARNING       = %d\n", LTTNG_LOGLEVEL_PYTHON_WARNING);
-	fprintf(ofp, "                               PYTHON_INFO          = %d\n", LTTNG_LOGLEVEL_PYTHON_INFO);
-	fprintf(ofp, "                               PYTHON_DEBUG         = %d\n", LTTNG_LOGLEVEL_PYTHON_DEBUG);
-	fprintf(ofp, "                               PYTHON_NOTSET        = %d\n", LTTNG_LOGLEVEL_PYTHON_NOTSET);
-	fprintf(ofp, "                               (shortcuts such as \"critical\" are allowed)\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "  -f, --filter \'expression\'\n");
-	fprintf(ofp, "                           Filter expression on event fields and context.\n");
-	fprintf(ofp, "                           Event recording depends on evaluation.\n");
-	fprintf(ofp, "                           Only specify on first activation of\n");
-	fprintf(ofp, "                           a given event within a session.\n");
-	fprintf(ofp, "                           Filter only allowed when enabling\n");
-	fprintf(ofp, "                           events within a session before tracing\n");
-	fprintf(ofp, "                           is started. If the filter fails to link\n");
-	fprintf(ofp, "                           with the event within the traced domain,\n");
-	fprintf(ofp, "                           the event will be discarded. Currently,\n");
-	fprintf(ofp, "                           filter is only implemented for the user-space\n");
-	fprintf(ofp, "                           tracer.\n");
-	fprintf(ofp, "                           Expression examples:.\n");
-	fprintf(ofp, "                           \n");
-	fprintf(ofp, "                           'intfield > 500 && intfield < 503'\n");
-	fprintf(ofp, "                           '(strfield == \"test\" || intfield != 10) && intfield > 33'\n");
-	fprintf(ofp, "                           'doublefield > 1.1 && intfield < 5.3'\n");
-	fprintf(ofp, "                           \n");
-	fprintf(ofp, "                           Wildcards are allowed at the end of strings:\n");
-	fprintf(ofp, "                           'seqfield1 == \"te*\"'\n");
-	fprintf(ofp, "                           In string literals, the escape character is '\\'.\n");
-	fprintf(ofp, "                           Use '\\*' for the '*' character, and '\\\\' for\n");
-	fprintf(ofp, "                           the '\\' character. Wildcard match any sequence of,\n");
-	fprintf(ofp, "                           characters including an empty sub-string (match 0 or\n");
-	fprintf(ofp, "                           more characters).\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           Context information can be used for filtering. The\n");
-	fprintf(ofp, "                           examples below show usage of context filtering on\n");
-	fprintf(ofp, "                           process name (with a wildcard), process ID range, and\n");
-	fprintf(ofp, "                           unique thread ID for filtering. The process and\n");
-	fprintf(ofp, "                           thread ID of running applications can be found under\n");
-	fprintf(ofp, "                           columns \"PID\" and \"LWP\" of the \"ps -eLf\" command.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "                           '$ctx.procname == \"demo*\"'\n");
-	fprintf(ofp, "                           '$ctx.vpid >= 4433 && $ctx.vpid < 4455'\n");
-	fprintf(ofp, "                           '$ctx.vtid == 1234'\n");
-	fprintf(ofp, "  -x, --exclude LIST\n");
-	fprintf(ofp, "                           Add exclusions to UST tracepoints:\n");
-	fprintf(ofp, "                           Events that match any of the items\n");
-	fprintf(ofp, "                           in the comma-separated LIST are not\n");
-	fprintf(ofp, "                           enabled, even if they match a wildcard\n");
-	fprintf(ofp, "                           definition of the event.\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Parse probe options.
  */
 static int parse_probe_opts(struct lttng_event *ev, char *opt)
@@ -1401,7 +1260,7 @@ int cmd_enable_events(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_TRACEPOINT:
 			opt_event_type = LTTNG_EVENT_TRACEPOINT;
@@ -1434,7 +1293,6 @@ int cmd_enable_events(int argc, const char **argv)
 		case OPT_EXCLUDE:
 			break;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -1486,7 +1344,6 @@ int cmd_enable_events(int argc, const char **argv)
 	opt_event_list = (char*) poptGetArg(pc);
 	if (opt_event_list == NULL && opt_enable_all == 0) {
 		ERR("Missing event name(s).\n");
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}

@@ -79,41 +79,6 @@ static struct cmd_struct actions[] = {
 };
 
 /*
- * usage
- */
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "usage: lttng snapshot [OPTION] ACTION\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Actions:\n");
-	fprintf(ofp, "   add-output [-m <SIZE>] [-s <NAME>] [-n <NAME>] <URL> | -C <URL> -D <URL>\n");
-	fprintf(ofp, "      Setup and add an snapshot output for a session.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "   del-output ID | NAME [-s <NAME>]\n");
-	fprintf(ofp, "      Delete an output for a session using the ID.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "   list-output [-s <NAME>]\n");
-	fprintf(ofp, "      List the output of a session.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "   record [-m <SIZE>] [-s <NAME>] [-n <NAME>] [<URL> | -C <URL> -D <URL>]\n");
-	fprintf(ofp, "      Snapshot a session's buffer(s) for all domains. If an URL is\n");
-	fprintf(ofp, "      specified, it is used instead of a previously added output.\n");
-	fprintf(ofp, "      Specifying only a name or/a size will override the current output value.\n");
-	fprintf(ofp, "      For instance, you can record a snapshot with a custom maximum size\n");
-	fprintf(ofp, "      or with a different name.\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help           Show this help\n");
-	fprintf(ofp, "      --list-options   Simple listing of options\n");
-	fprintf(ofp, "  -s, --session NAME   Apply to session name\n");
-	fprintf(ofp, "  -n, --name NAME      Name of the output or snapshot\n");
-	fprintf(ofp, "  -m, --max-size SIZE  Maximum bytes size of the snapshot {+k,+M,+G}\n");
-	fprintf(ofp, "  -C, --ctrl-url URL   Set control path URL. (Must use -D also)\n");
-	fprintf(ofp, "  -D, --data-url URL   Set data path URL. (Must use -C also)\n");
-	fprintf(ofp, "\n");
-}
-
-/*
  * Count and return the number of arguments in argv.
  */
 static int count_arguments(const char **argv)
@@ -455,7 +420,6 @@ static int cmd_add_output(int argc, const char **argv)
 	int ret;
 
 	if (argc < 2 && (!opt_data_url || !opt_ctrl_url)) {
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -477,7 +441,6 @@ static int cmd_del_output(int argc, const char **argv)
 	long id;
 
 	if (argc < 2) {
-		usage(stderr);
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -615,7 +578,6 @@ static int handle_command(const char **argv)
 
 	if (argv == NULL || (!opt_ctrl_url && opt_data_url) ||
 			(opt_ctrl_url && !opt_data_url)) {
-		usage(stderr);
 		command_ret = CMD_ERROR;
 		goto end;
 	}
@@ -715,7 +677,7 @@ int cmd_snapshot(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, snapshot_opts);
@@ -739,7 +701,6 @@ int cmd_snapshot(int argc, const char **argv)
 			break;
 		}
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}

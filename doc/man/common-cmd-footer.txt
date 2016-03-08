@@ -1,0 +1,46 @@
+ENVIRONMENT VARIABLES
+---------------------
+`LTTNG_HOME`::
+    Overrides the `$HOME` environment variable. Useful when the user
+    running the commands has a non-writable home directory.
+
+`LTTNG_MAN_BIN_PATH`::
+    Absolute path to the man pager to use for viewing help information
+    about LTTng commands (using linklttng:lttng-help(1) or
+    `lttng COMMAND --help`).
+
+`LTTNG_SESSION_CONFIG_XSD_PATH`::
+    Path in which the `session.xsd` session configuration XML
+    schema may be found.
+
+`LTTNG_SESSIOND_PATH`::
+    Full session daemon binary path.
++
+The option:--sessiond-path option has precedence over this
+environment variable.
+
+Note that the linklttng:lttng-create(1) command can spawn an LTTng
+session daemon automatically if none is running. See
+linklttng:lttng-sessiond(8) for the environment variables influencing
+the execution of the session daemon.
+
+
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Command error
+
+*2*::
+    Undefined command
+
+*3*::
+    Fatal error
+
+*4*::
+    Command warning (something went wrong during the command)
+
+
+include::common-footer.txt[]

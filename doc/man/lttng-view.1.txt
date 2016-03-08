@@ -1,0 +1,55 @@
+lttng-view(1)
+=============
+
+
+NAME
+----
+lttng-view - View the traces of an LTTng tracing session
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['GENERAL OPTIONS'] *view* [option:--viewer='CMD'] [option:--trace-path='PATH' | 'SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng view` command launches an external trace viewer to view the
+current trace of a tracing session.
+
+If 'SESSION' is omitted, the viewer is launched for the current tracing
+session (see linklttng:lttng-create(1) for more information
+about the current tracing session). Otherwise, it is launched for the
+existing tracing session named 'SESSION'. `lttng list`
+outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+
+By default, the linklttng:babeltrace(1) trace viewer is launched.
+Another trace viewer command can be specified using the
+option:--viewer option.
+
+By default, the trace path of the chosen tracing session is given
+as the first positional argument to the trace viewer. This path can
+be overridden using the option:--trace-path option.
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-t, option:--trace-path='PATH'::
+    View trace at path 'PATH' instead of using the chosen tracing
+    session's trace path.
+
+option:-e, option:--viewer='CMD'::
+    Use 'CMD' as the trace viewer.
+
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+linklttng:lttng(1)

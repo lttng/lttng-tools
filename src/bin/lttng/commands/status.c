@@ -40,15 +40,6 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-static void usage(FILE *ofp)
-{
-	fprintf(ofp, "Usage: lttng status [options]\n");
-	fprintf(ofp, "\n");
-	fprintf(ofp, "Options:\n");
-	fprintf(ofp, "  -h, --help          Show this help\n");
-	fprintf(ofp, "      --list-options  List options\n");
-}
-
 static int status(void)
 {
 	const char *argv[2];
@@ -83,13 +74,12 @@ int cmd_status(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
-			usage(stdout);
+			SHOW_HELP();
 			goto end;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			usage(stderr);
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
@@ -97,7 +87,6 @@ int cmd_status(int argc, const char **argv)
 
 	if (poptPeekArg(pc) != NULL) {
 		ERR("This command does not accept positional arguments.\n");
-		usage(stderr);
 		ret = CMD_UNDEFINED;
 		goto end;
 	}
