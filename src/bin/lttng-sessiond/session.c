@@ -201,7 +201,7 @@ end:
  * Return 1 if empty, 0 if not empty.
  * The session list lock must be held.
  */
-static int ltt_sessions_ht_empty()
+static int ltt_sessions_ht_empty(void)
 {
 	int ret;
 
