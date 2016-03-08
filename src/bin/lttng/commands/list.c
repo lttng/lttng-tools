@@ -350,10 +350,11 @@ static void print_events(struct lttng_event *event)
 		MSG("%ssymbol: \"%s\"", indent8, event->attr.ftrace.symbol_name);
 		break;
 	case LTTNG_EVENT_SYSCALL:
-		MSG("%s%s%s%s%s", indent6, event->name,
+		MSG("%s%s%s%s%s%s", indent6, event->name,
 				(opt_syscall ? "" : " (type:syscall)"),
 				enabled_string(event->enabled),
-				bitness_event(event->flags));
+				bitness_event(event->flags),
+				safe_string(filter_msg));
 		break;
 	case LTTNG_EVENT_NOOP:
 		MSG("%s (type: noop)%s%s", indent6,
