@@ -5971,7 +5971,6 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 					ua_chan->key, consumer, discarded);
 			goto end;
 		}
-		goto end;
 	}
 
 end:
