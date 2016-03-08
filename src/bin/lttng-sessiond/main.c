@@ -3873,6 +3873,7 @@ error_add_context:
 		struct lttcomm_event_command_header cmd_header;
 		size_t total_size;
 
+		memset(&cmd_header, 0, sizeof(cmd_header));
 		/* Extended infos are included at the end of events */
 		nb_event = cmd_list_events(cmd_ctx->lsm->domain.type,
 			cmd_ctx->session, cmd_ctx->lsm->u.list.channel_name,
