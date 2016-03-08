@@ -376,6 +376,8 @@ void delete_ust_app_channel_rcu(struct rcu_head *head)
  * Extract the lost packet or discarded events counter when the channel is
  * being deleted and store the value in the parent channel so we can
  * access it from lttng list and at stop/destroy.
+ *
+ * The session list lock must be held by the caller.
  */
 static
 void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
@@ -426,6 +428,8 @@ end:
 /*
  * Delete ust app channel safely. RCU read lock must be held before calling
  * this function.
+ *
+ * The session list lock must be held by the caller.
  */
 static
 void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
@@ -787,6 +791,8 @@ void delete_ust_app_session_rcu(struct rcu_head *head)
 /*
  * Delete ust app session safely. RCU read lock must be held before calling
  * this function.
+ *
+ * The session list lock must be held by the caller.
  */
 static
 void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
@@ -870,6 +876,11 @@ void delete_ust_app(struct ust_app *app)
 	int ret, sock;
 	struct ust_app_session *ua_sess, *tmp_ua_sess;
 
+	/*
+	 * The session list lock must be held during this function to guarantee
+	 * the existence of ua_sess.
+	 */
+	session_lock_list();
 	/* Delete ust app sessions info */
 	sock = app->sock;
 	app->sock = -1;
@@ -908,6 +919,7 @@ void delete_ust_app(struct ust_app *app)
 
 	DBG2("UST app pid %d deleted", app->pid);
 	free(app);
+	session_unlock_list();
 }
 
 /*
@@ -928,6 +940,8 @@ void delete_ust_app_rcu(struct rcu_head *head)
 /*
  * Delete the session from the application ht and delete the data structure by
  * freeing every object inside and releasing them.
+ *
+ * The session list lock must be held by the caller.
  */
 static void destroy_app_session(struct ust_app *app,
 		struct ust_app_session *ua_sess)
