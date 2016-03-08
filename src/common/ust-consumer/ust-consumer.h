@@ -213,6 +213,7 @@ int lttng_ustconsumer_get_current_timestamp(
 {
 	return -ENOSYS;
 }
+static inline
 int lttng_ustconsumer_get_sequence_number(
 		struct lttng_consumer_stream *stream, uint64_t *seq)
 {
