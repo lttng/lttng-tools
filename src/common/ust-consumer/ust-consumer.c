@@ -1718,7 +1718,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_LOST_PACKETS:
 	{
-		uint64_t ret;
+	        int ret;
+		uint64_t lost_packets;
 		struct lttng_ht_iter iter;
 		struct lttng_ht *ht;
 		struct lttng_consumer_stream *stream;
@@ -1738,13 +1739,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * to extract the information we need, we default to 0 if not
 		 * found (no packets lost if the channel is not yet in use).
 		 */
-		ret = 0;
+	        lost_packets = 0;
 		cds_lfht_for_each_entry_duplicate(ht->ht,
 				ht->hash_fct(&id, lttng_ht_seed),
 				ht->match_fct, &id,
 				&iter.iter, stream, node_session_id.node) {
 			if (stream->chan->key == key) {
-				ret = stream->chan->lost_packets;
+			        lost_packets = stream->chan->lost_packets;
 				break;
 			}
 		}
@@ -1757,7 +1758,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		ret = lttcomm_send_unix_sock(sock, &lost_packets,
+			        sizeof(lost_packets));
 		if (ret < 0) {
 			PERROR("send lost packets");
 			goto error_fatal;
