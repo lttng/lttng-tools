@@ -50,6 +50,10 @@ The following items are _optional_ dependencies:
   - **modprobe**: needed for automatic LTTng kernel modules loading
     (kernel tracing).
   - **bash**: needed for running `make check`.
+  - **man** (manual pager): needed to view LTTng-tools commands' man
+    pages with the `--help` option or with the `lttng help` command.
+    Note that without `man`, you cannot get offline help with
+    LTTng-tools commands, not even their usage.
 
 LTTng-tools supports both the [LTTng Linux Kernel tracer](https://lttng.org)
 and [LTTng user space tracer](https://lttng.org) released as part of the same
