@@ -427,6 +427,10 @@ ssize_t syscall_list_channel(struct ltt_kernel_channel *kchan,
 		count++;
 	}
 
+	rcu_read_lock();
+	destroy_syscall_ht(syscalls_ht);
+	rcu_read_unlock();
+
 	*_events = events;
 
 	return count;
