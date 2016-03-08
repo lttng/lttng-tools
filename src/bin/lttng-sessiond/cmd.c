@@ -590,7 +590,7 @@ static int list_lttng_kernel_events(char *channel_name,
 	if (nb_event == 0) {
 		*total_size = 0;
 		*events = NULL;
-		goto syscall;
+		goto end;
 	}
 
 	/* Compute required extended infos size */
@@ -653,19 +653,7 @@ static int list_lttng_kernel_events(char *channel_name,
 			&extended_at);
 	}
 
-syscall:
-	if (syscall_table) {
-		ssize_t new_size;
-
-		new_size = syscall_list_channel(kchan, events, nb_event);
-		if (new_size < 0) {
-			free(events);
-			ret = -new_size;
-			goto error;
-		}
-		nb_event = new_size;
-	}
-
+end:
 	return nb_event;
 
 error:
