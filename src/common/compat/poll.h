@@ -73,7 +73,7 @@ enum {
 	LPOLLNVAL = EPOLLHUP,
 	LPOLLRDHUP = EPOLLRDHUP,
 	/* Close on exec feature of epoll */
-#if __GLIBC_PREREQ(2, 9)
+#if defined(HAVE_EPOLL_CREATE1) && defined(EPOLL_CLOEXEC)
 	LTTNG_CLOEXEC = EPOLL_CLOEXEC,
 #else
 	/*
@@ -127,7 +127,7 @@ extern int compat_epoll_create(struct lttng_poll_event *events,
 #define lttng_poll_create(events, size, flags) \
 	compat_epoll_create(events, size, flags)
 
-#if __GLIBC_PREREQ(2, 9)
+#if defined(HAVE_EPOLL_CREATE1) && defined(EPOLL_CLOEXEC)
 static inline int compat_glibc_epoll_create(int size __attribute__((unused)),
 		int flags)
 {

@@ -122,7 +122,7 @@ AC_CHECK_FUNCS([ \
 	gethostbyname gethostname getpagesize localtime_r memchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
-	strtoull dirfd gethostbyname2 getipnodebyname \
+	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
 ])
 
 # Babeltrace viewer check
