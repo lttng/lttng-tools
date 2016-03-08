@@ -606,7 +606,7 @@ static int list_lttng_kernel_events(char *channel_name,
 		goto error;
 	}
 
-	extended_at = ((uint8_t *) events) +
+	extended_at = ((void *) *events) +
 		nb_event * sizeof(struct lttng_event);
 
 	/* Kernel channels */
