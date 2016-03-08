@@ -1809,13 +1809,13 @@ error:
 	return ret;
 }
 
-int lttng_event_get_filter_string(struct lttng_event *event,
-	const char **filter_string)
+int lttng_event_get_filter_expression(struct lttng_event *event,
+	const char **filter_expression)
 {
 	int ret = 0;
 	struct lttcomm_event_extended_header *ext_header;
 
-	if (!event || !filter_string) {
+	if (!event || !filter_expression) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1827,15 +1827,15 @@ int lttng_event_get_filter_string(struct lttng_event *event,
 		 * This can happen since the lttng_event structure is
 		 * used for other tasks where this pointer is never set.
 		 */
-		*filter_string = NULL;
+		*filter_expression = NULL;
 		goto end;
 	}
 
 	if (ext_header->filter_len) {
-		*filter_string = ((const char *) (ext_header)) +
-			sizeof(*ext_header);
+		*filter_expression = ((const char *) (ext_header)) +
+				sizeof(*ext_header);
 	} else {
-		*filter_string = NULL;
+		*filter_expression = NULL;
 	}
 
 end:

@@ -278,7 +278,7 @@ static void print_events(struct lttng_event *event)
 	char *filter_msg = NULL;
 	char *exclusion_msg = NULL;
 
-	ret = lttng_event_get_filter_string(event, &filter_str);
+	ret = lttng_event_get_filter_expression(event, &filter_str);
 
 	if (ret) {
 		filter_msg = strdup(" [failed to retrieve filter]");
@@ -1072,7 +1072,8 @@ static int list_session_agent_events(void)
 			char *filter_msg = NULL;
 			struct lttng_event *event = &events[i];
 
-			ret = lttng_event_get_filter_string(event, &filter_str);
+			ret = lttng_event_get_filter_expression(event,
+					&filter_str);
 			if (ret) {
 				filter_msg = strdup(" [failed to retrieve filter]");
 			} else if (filter_str) {

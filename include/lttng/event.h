@@ -296,15 +296,16 @@ extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
 /*
- * Get the filter string of a specific LTTng event.
+ * Get the filter expression of a specific LTTng event.
  *
- * If the call is successful, then the filter string's address is put
- * in *filter_string. If the event has no filter string, *filter_string
- * is set to NULL. The caller does NOT own *filter_string.
+ * If the call is successful, then the filter expression's address is put
+ * in *filter_expression. If the event has no filter expression,
+ * *filter_expression is set to NULL. The caller does NOT own
+ * *filter_expression.
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
-extern int lttng_event_get_filter_string(struct lttng_event *event,
+extern int lttng_event_get_filter_expression(struct lttng_event *event,
 		const char **filter_string);
 
 /*

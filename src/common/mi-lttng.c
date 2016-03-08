@@ -1022,7 +1022,7 @@ int mi_lttng_event_common_attributes(struct mi_writer *writer,
 	}
 
 	/* Event filter expression */
-	ret = lttng_event_get_filter_string(event, &filter_expression);
+	ret = lttng_event_get_filter_expression(event, &filter_expression);
 	if (ret) {
 		goto end;
 	}
