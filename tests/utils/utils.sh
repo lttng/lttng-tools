@@ -33,6 +33,12 @@ KERNEL_PATCHLEVEL_VERSION=27
 # systems. Specialized tests should test those corner-cases.
 export LTTNG_UST_REGISTER_TIMEOUT=-1
 
+# We set the default lttng-sessiond path to /bin/true to prevent the spawning
+# of a daemonized sessiond. This is necessary since 'lttng create' will spawn
+# its own sessiond if none is running. It also ensures that 'lttng create'
+# fails when no sessiond is running.
+export LTTNG_SESSIOND_PATH="/bin/true"
+
 source $TESTDIR/utils/tap/tap.sh
 
 function print_ok ()
