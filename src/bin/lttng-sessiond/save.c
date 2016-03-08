@@ -501,57 +501,6 @@ end:
 }
 
 static
-int save_kernel_syscall(struct config_writer *writer,
-		struct ltt_kernel_channel *kchan)
-{
-	int ret, i;
-	ssize_t count;
-	struct lttng_event *events = NULL;
-
-	assert(writer);
-	assert(kchan);
-
-	count = syscall_list_channel(kchan, &events, 0);
-	if (!count) {
-		/* No syscalls, just gracefully return. */
-		ret = 0;
-		goto end;
-	}
-
-	for (i = 0; i < count; i++) {
-		struct ltt_kernel_event *kevent;
-
-		/* Create a temporary kevent in order to save it. */
-		/*
-		 * TODO: struct lttng_event does not really work for a filter,
-		 * but unfortunately, it is exposed as external API (and used as
-		 * internal representation. Using NULL meanwhile.
-		 */
-		kevent = trace_kernel_create_event(&events[i],
-			NULL, NULL);
-		if (!kevent) {
-			ret = -ENOMEM;
-			goto end;
-		}
-		/* Init list in order so the destroy call can del the node. */
-		CDS_INIT_LIST_HEAD(&kevent->list);
-
-		ret = save_kernel_event(writer, kevent);
-		trace_kernel_destroy_event(kevent);
-		if (ret) {
-			goto end;
-		}
-	}
-
-	/* Everything went well */
-	ret = 0;
-
-end:
-	free(events);
-	return ret;
-}
-
-static
 int save_kernel_events(struct config_writer *writer,
 	struct ltt_kernel_channel *kchan)
 {
@@ -569,12 +518,6 @@ int save_kernel_events(struct config_writer *writer,
 		if (ret) {
 			goto end;
 		}
-	}
-
-	/* Save syscalls if any. */
-	ret = save_kernel_syscall(writer, kchan);
-	if (ret) {
-		goto end;
 	}
 
 	/* /events */

@@ -53,7 +53,5 @@ extern struct syscall *syscall_table;
 /* Use to list kernel system calls. */
 int syscall_init_table(void);
 ssize_t syscall_table_list(struct lttng_event **events);
-ssize_t syscall_list_channel(struct ltt_kernel_channel *kchan,
-		struct lttng_event **_events, size_t size);
 
 #endif /* SYSCALL_H */
