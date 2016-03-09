@@ -88,7 +88,7 @@ function validate_kernel_version ()
 function randstring()
 {
 	[ "$2" == "0" ] && CHAR="[:alnum:]" || CHAR="[:graph:]"
-	cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-16} 2>/dev/null
+	cat /dev/urandom 2>/dev/null | tr -cd "$CHAR" 2>/dev/null | head -c ${1:-16} 2>/dev/null
 	echo
 }
 
