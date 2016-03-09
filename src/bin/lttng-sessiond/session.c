@@ -143,6 +143,8 @@ void session_unlock_list(void)
 
 /*
  * Allocate the ltt_sessions_ht_by_id HT.
+ *
+ * The session list lock must be held.
  */
 int ltt_sessions_ht_alloc(void)
 {
@@ -161,6 +163,8 @@ end:
 
 /*
  * Destroy the ltt_sessions_ht_by_id HT.
+ *
+ * The session list lock must be held.
  */
 void ltt_sessions_ht_destroy(void)
 {
