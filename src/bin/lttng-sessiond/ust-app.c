@@ -392,12 +392,22 @@ void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 
 	rcu_read_lock();
 	session = session_find_by_id(ua_chan->session->tracing_id);
-	if (!session) {
-		ERR("Missing LTT session to get discarded events");
-		goto end;
-	}
-	if (!session->ust_session) {
-		ERR("Missing UST session to get discarded events");
+	if (!session || !session->ust_session) {
+		/*
+		 * Not finding the session is not an error because there are
+		 * multiple ways the channels can be torn down.
+		 *
+		 * 1) The session daemon can initiate the destruction of the
+		 *    ust app session after receiving a destroy command or
+		 *    during its shutdown/teardown.
+		 * 2) The application, since we are in per-pid tracing, is
+		 *    unregistering and tearing down its ust app session.
+		 *
+		 * Both paths are protected by the session list lock which
+		 * ensures that the accounting of lost packets and discarded
+		 * events is done exactly once. The session is then unpublished
+		 * from the session list, resulting in this condition.
+		 */
 		goto end;
 	}
 

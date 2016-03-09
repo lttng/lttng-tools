@@ -298,17 +298,21 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct ltt_session *ls;
 
+	if (!ltt_sessions_ht_by_id) {
+		goto end;
+	}
+
 	lttng_ht_lookup(ltt_sessions_ht_by_id, &id, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node == NULL) {
-		goto error;
+		goto end;
 	}
 	ls = caa_container_of(node, struct ltt_session, node);
 
 	DBG3("Session %" PRIu64 " found by id.", id);
 	return ls;
 
-error:
+end:
 	DBG3("Session %" PRIu64 " NOT found by id", id);
 	return NULL;
 }
