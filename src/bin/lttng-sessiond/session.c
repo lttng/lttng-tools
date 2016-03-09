@@ -166,7 +166,7 @@ end:
  *
  * The session list lock must be held.
  */
-void ltt_sessions_ht_destroy(void)
+static void ltt_sessions_ht_destroy(void)
 {
 	if (!ltt_sessions_ht_by_id) {
 		return;
