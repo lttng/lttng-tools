@@ -16,6 +16,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 SESSIOND_BIN="lttng-sessiond"
+RUNAS_BIN="lttng-runas"
 CONSUMERD_BIN="lttng-consumerd"
 RELAYD_BIN="lttng-relayd"
 LTTNG_BIN="lttng"
@@ -411,7 +412,7 @@ function stop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND=`pgrep --full lt-$SESSIOND_BIN`
+	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN) $(pgrep --full $RUNAS_BIN)"
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -463,7 +464,7 @@ function sigstop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND=`pgrep --full lt-$SESSIOND_BIN`
+	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN) $(pgrep --full $RUNAS_BIN)"
 
 	kill_opt="$kill_opt -s $signal"
 
