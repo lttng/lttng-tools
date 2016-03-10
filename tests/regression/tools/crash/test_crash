@@ -31,7 +31,7 @@ NR_ITER=-1
 # Temp file output
 OUTPUT_DIR=$(mktemp -d)
 
-NUM_TESTS=71
+NUM_TESTS=73
 
 source $TESTDIR/utils/utils.sh
 
@@ -359,6 +359,9 @@ function test_lttng_crash_extraction_sigkill()
 
 	# Generate 10 events
 	$TESTAPP_BIN 10 0
+
+	sigstop_lttng_sessiond
+	sigstop_lttng_consumerd
 
 	# Kill the consumers then sessiond with sigkill
 	stop_lttng_consumerd SIGKILL

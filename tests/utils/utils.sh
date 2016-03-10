@@ -416,7 +416,9 @@ function stop_lttng_sessiond_opt()
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
 	fi
-
+	if [ $withtap -eq "1" ]; then
+		diag "Killing lt-$SESSIOND_BIN pids: $(echo $PID_SESSIOND | tr '\n' ' ')"
+	fi
 	kill $kill_opt $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
 	if [ $? -eq 1 ]; then
@@ -450,6 +452,62 @@ function stop_lttng_sessiond_notap()
 	stop_lttng_sessiond_opt 0 "$@"
 }
 
+function sigstop_lttng_sessiond_opt()
+{
+	local withtap=$1
+	local signal=SIGSTOP
+	local kill_opt=""
+
+	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
+		# Env variable requested no session daemon
+		return
+	fi
+
+	PID_SESSIOND=`pgrep --full lt-$SESSIOND_BIN`
+
+	kill_opt="$kill_opt -s $signal"
+
+	if [ $withtap -eq "1" ]; then
+		diag "Sending SIGSTOP to lt-$SESSIOND_BIN pids: $(echo $PID_SESSIOND | tr '\n' ' ')"
+	fi
+	kill $kill_opt $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+
+	if [ $? -eq 1 ]; then
+		if [ $withtap -eq "1" ]; then
+			fail "Sending SIGSTOP to session daemon"
+		fi
+	else
+		out=1
+		while [ $out -ne 0 ]; do
+			pid=$(pgrep --full lt-$SESSIOND_BIN)
+
+			# Wait until state becomes stopped for session
+			# daemon(s).
+			out=0
+			for sessiond_pid in $pid; do
+				state=$(ps -p $sessiond_pid -o state= )
+				if [[ -n "$state" && "$state" != "T" ]]; then
+					out=1
+				fi
+			done
+			sleep 0.5
+		done
+		if [ $withtap -eq "1" ]; then
+			pass "Sending SIGSTOP to session daemon"
+		fi
+	fi
+}
+
+function sigstop_lttng_sessiond()
+{
+	sigstop_lttng_sessiond_opt 1 "$@"
+}
+
+function sigstop_lttng_sessiond_notap()
+{
+	sigstop_lttng_sessiond_opt 0 "$@"
+}
+
 function stop_lttng_consumerd_opt()
 {
 	local withtap=$1
@@ -463,7 +521,7 @@ function stop_lttng_consumerd_opt()
 	fi
 
 	if [ $withtap -eq "1" ]; then
-		diag "Killing lttng-consumerd (pid: $PID_CONSUMERD)"
+		diag "Killing $CONSUMERD_BIN pids: $(echo $PID_CONSUMERD | tr '\n' ' ')"
 	fi
 	kill $kill_opt $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
@@ -505,6 +563,61 @@ function stop_lttng_consumerd()
 function stop_lttng_consumerd_notap()
 {
 	stop_lttng_consumerd_opt 0 "$@"
+}
+
+function sigstop_lttng_consumerd_opt()
+{
+	local withtap=$1
+	local signal=SIGSTOP
+	local kill_opt=""
+
+	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN`
+
+	kill_opt="$kill_opt -s $signal"
+
+	if [ $withtap -eq "1" ]; then
+		diag "Sending SIGSTOP to $CONSUMERD_BIN pids: $(echo $PID_CONSUMERD | tr '\n' ' ')"
+	fi
+	kill $kill_opt $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	retval=$?
+	set +x
+
+	if [ $? -eq 1 ]; then
+		if [ $withtap -eq "1" ]; then
+			fail "Sending SIGSTOP to consumer daemon"
+		fi
+		return 1
+	else
+		out=1
+		while [ $out -ne 0 ]; do
+			pid=$(pgrep --full $CONSUMERD_BIN)
+
+			# Wait until state becomes stopped for all
+			# consumers.
+			out=0
+			for consumer_pid in $pid; do
+				state=$(ps -p $consumer_pid -o state= )
+				if [[ -n "$state" && "$state" != "T" ]]; then
+					out=1
+				fi
+			done
+			sleep 0.5
+		done
+		if [ $withtap -eq "1" ]; then
+			pass "Sending SIGSTOP to consumer daemon"
+		fi
+	fi
+	return $retval
+}
+
+function sigstop_lttng_consumerd()
+{
+	sigstop_lttng_consumerd_opt 1 "$@"
+}
+
+function sigstop_lttng_consumerd_notap()
+{
+	sigstop_lttng_consumerd_opt 0 "$@"
 }
 
 function list_lttng_with_opts ()
