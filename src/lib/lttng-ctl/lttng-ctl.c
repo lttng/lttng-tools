@@ -736,9 +736,16 @@ int lttng_add_context(struct lttng_handle *handle,
 		memcpy(buf + provider_len, ctx_name, ctx_len);
 	}
 	memcpy(&lsm.u.context.ctx, ctx, sizeof(struct lttng_event_context));
-	/* Don't leak application addresses to the sessiond. */
-	lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
-	lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
+
+	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
+		/*
+		 * Don't leak application addresses to the sessiond.
+		 * This is only necessary when ctx is for an app ctx otherwise
+		 * the values inside the union (type & config) are overwritten.
+		 */
+		lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
+		lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
+	}
 
 	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buf, len, NULL);
 end:
