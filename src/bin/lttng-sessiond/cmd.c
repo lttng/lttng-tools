@@ -216,6 +216,7 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 		*lost_packets += uchan->per_pid_closed_app_lost;
 	} else {
 		ERR("Unsupported buffer type");
+		assert(0);
 		ret = -1;
 		goto end;
 	}
