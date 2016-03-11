@@ -354,7 +354,7 @@ void ust_registry_destroy_event(struct ust_registry_channel *chan,
 /* The app object can be NULL for registry shared across applications. */
 static inline
 int ust_metadata_session_statedump(struct ust_registry_session *session,
-		struct ust_app *app)
+		struct ust_app *app, uint32_t major, uint32_t minor)
 {
 	return 0;
 }
