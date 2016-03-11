@@ -5945,9 +5945,11 @@ int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
 	if (overwrite) {
 		ret = consumer_get_lost_packets(ust_session_id,
 				consumer_chan_key, consumer, lost);
+		*discarded = 0;
 	} else {
 		ret = consumer_get_discarded_events(ust_session_id,
 				consumer_chan_key, consumer, discarded);
+		*lost = 0;
 	}
 
 end:
@@ -5990,10 +5992,12 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		if (overwrite) {
 			ret = consumer_get_lost_packets(usess->id, ua_chan->key,
 					consumer, lost);
+			*discarded = 0;
 			goto end;
 		} else {
 			ret = consumer_get_discarded_events(usess->id,
 					ua_chan->key, consumer, discarded);
+			*lost = 0;
 			goto end;
 		}
 	}
