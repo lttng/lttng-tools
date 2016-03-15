@@ -92,6 +92,16 @@ function randstring()
 	echo
 }
 
+# Return the number of _configured_ CPUs.
+function conf_proc_count()
+{
+	getconf _NPROCESSORS_CONF
+	if [ $? -ne 0 ]; then
+		diag "Failed to get the number of configured CPUs"
+	fi
+	echo
+}
+
 function lttng_enable_kernel_event
 {
 	local sess_name=$1
