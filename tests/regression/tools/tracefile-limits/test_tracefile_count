@@ -27,9 +27,9 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 NUM_TESTS=74
 
-NUM_CPUS=`nproc`
-
 source $TESTDIR/utils/utils.sh
+
+NUM_CPUS=$(conf_proc_count)
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
