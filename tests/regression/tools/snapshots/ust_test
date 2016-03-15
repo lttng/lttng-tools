@@ -182,7 +182,7 @@ function test_ust_local_snapshot ()
 function test_ust_local_snapshot_max_size ()
 {
 	subbuf_size=8192
-	num_cpus=`nproc`
+	num_cpus=$(conf_proc_count)
 
 	# The minimum size limit is min(subbuf_size) * nb_streams
 	max_size=$(($subbuf_size*$num_cpus))
