@@ -1851,11 +1851,6 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 			}
 		}
 	}
-	/* Try to rmdir all directories under shm_path root. */
-	if (chan->root_shm_path[0]) {
-		(void) run_as_recursive_rmdir(chan->root_shm_path,
-				chan->uid, chan->gid);
-	}
 }
 
 void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
@@ -1865,6 +1860,11 @@ void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 
 	consumer_metadata_cache_destroy(chan);
 	ustctl_destroy_channel(chan->uchan);
+	/* Try to rmdir all directories under shm_path root. */
+	if (chan->root_shm_path[0]) {
+		(void) run_as_recursive_rmdir(chan->root_shm_path,
+				chan->uid, chan->gid);
+	}
 	free(chan->stream_fds);
 }
 
