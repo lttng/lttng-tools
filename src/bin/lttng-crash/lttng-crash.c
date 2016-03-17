@@ -965,6 +965,7 @@ int extract_trace_recursive(const char *output_path,
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
 	struct dirent *entry;
+	size_t path_len;
 	int has_warning = 0;
 
 	/* Open directory */
@@ -973,6 +974,9 @@ int extract_trace_recursive(const char *output_path,
 		PERROR("Cannot open '%s' path", input_path);
 		return -1;
 	}
+
+	path_len = strlen(input_path);
+
 	dir_fd = dirfd(dir);
 	if (dir_fd < 0) {
 		PERROR("dirfd");
@@ -980,13 +984,34 @@ int extract_trace_recursive(const char *output_path,
 	}
 
 	while ((entry = readdir(dir))) {
+		struct stat st;
+		size_t name_len;
+		char filename[PATH_MAX];
+
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, "..")) {
 			continue;
 		}
-		switch (entry->d_type) {
-		case DT_DIR:
-		{
+
+		name_len = strlen(entry->d_name);
+		if (path_len + name_len + 2 > sizeof(filename)) {
+			ERR("Failed to remove file: path name too long (%s/%s)",
+				input_path, entry->d_name);
+			continue;
+		}
+
+		if (snprintf(filename, sizeof(filename), "%s/%s",
+				input_path, entry->d_name) < 0) {
+			ERR("Failed to format path.");
+			continue;
+		}
+
+		if (stat(filename, &st)) {
+			PERROR("stat");
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
 			char output_subpath[PATH_MAX];
 			char input_subpath[PATH_MAX];
 
@@ -1018,10 +1043,7 @@ int extract_trace_recursive(const char *output_path,
 			if (ret) {
 				has_warning = 1;
 			}
-			break;
-		}
-		case DT_REG:
-		case DT_LNK:
+		} else if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
 			if (!strcmp(entry->d_name, "metadata")) {
 				ret = extract_one_trace(output_path,
 					input_path);
@@ -1031,9 +1053,7 @@ int extract_trace_recursive(const char *output_path,
 					has_warning = 1;
 				}
 			}
-			/* Ignore other files */
-			break;
-		default:
+		} else {
 			has_warning = 1;
 			goto end;
 		}
@@ -1051,6 +1071,7 @@ int delete_dir_recursive(const char *path)
 {
 	DIR *dir;
 	int dir_fd, ret = 0, closeret;
+	size_t path_len;
 	struct dirent *entry;
 
 	/* Open trace directory */
@@ -1060,6 +1081,9 @@ int delete_dir_recursive(const char *path)
 		ret = -errno;
 	        goto end;
 	}
+
+	path_len = strlen(path);
+
 	dir_fd = dirfd(dir);
 	if (dir_fd < 0) {
 		PERROR("dirfd");
@@ -1068,13 +1092,34 @@ int delete_dir_recursive(const char *path)
 	}
 
 	while ((entry = readdir(dir))) {
+		struct stat st;
+		size_t name_len;
+		char filename[PATH_MAX];
+
 		if (!strcmp(entry->d_name, ".")
 				|| !strcmp(entry->d_name, "..")) {
 			continue;
 		}
-		switch (entry->d_type) {
-		case DT_DIR:
-		{
+
+		name_len = strlen(entry->d_name);
+		if (path_len + name_len + 2 > sizeof(filename)) {
+			ERR("Failed to remove file: path name too long (%s/%s)",
+				path, entry->d_name);
+			continue;
+		}
+
+		if (snprintf(filename, sizeof(filename), "%s/%s",
+				path, entry->d_name) < 0) {
+			ERR("Failed to format path.");
+			continue;
+		}
+
+		if (stat(filename, &st)) {
+			PERROR("stat");
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode)) {
 			char *subpath = zmalloc(PATH_MAX);
 
 			if (!subpath) {
@@ -1095,16 +1140,13 @@ int delete_dir_recursive(const char *path)
 				/* Error occured, abort traversal. */
 				goto end;
 			}
-			break;
-		}
-		case DT_REG:
+		} else if (S_ISREG(st.st_mode)) {
 			ret = unlinkat(dir_fd, entry->d_name, 0);
 			if (ret) {
 				PERROR("Unlinking '%s'", entry->d_name);
 				goto end;
 			}
-			break;
-		default:
+		} else {
 			ret = -EINVAL;
 			goto end;
 		}
