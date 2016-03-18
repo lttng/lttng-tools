@@ -150,6 +150,9 @@ linklttng:lttng-create(1)::
 linklttng:lttng-destroy(1)::
     Tear down tracing sessions.
 
+linklttng:lttng-metadata(1)::
+    Manage an LTTng tracing session's metadata generation.
+
 linklttng:lttng-save(1)::
     Save tracing session configurations.
 
