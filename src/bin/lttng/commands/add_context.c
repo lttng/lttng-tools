@@ -605,11 +605,11 @@ static int add_context(char *session_name)
 		} else {
 			if (opt_channel_name) {
 				MSG("%s context %s added to channel %s",
-						opt_kernel ? "kernel" : "UST", type->opt->symbol,
+						get_domain_str(dom.type), type->opt->symbol,
 						opt_channel_name);
 			} else {
 				MSG("%s context %s added to all channels",
-						opt_kernel ? "kernel" : "UST", type->opt->symbol)
+						get_domain_str(dom.type), type->opt->symbol)
 			}
 			success = 1;
 		}
