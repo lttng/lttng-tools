@@ -139,5 +139,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-untrack(1),
 linklttng:lttng(1)
