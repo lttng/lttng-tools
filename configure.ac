@@ -499,11 +499,11 @@ AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
 AC_ARG_ENABLE(
 	build-man-pages,
 	AS_HELP_STRING(
-		[--enable-build-man-pages],
+		[--disable-build-man-pages],
 		[Build man pages (already built in a distributed tarball)]
 	),
-	[enable_build_man_pages=yes],
-	[enable_build_man_pages=no]
+	[enable_build_man_pages=no],
+	[enable_build_man_pages=yes]
 )
 
 # export man page build condition
