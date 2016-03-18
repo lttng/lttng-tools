@@ -150,6 +150,9 @@ linklttng:lttng-create(1)::
 linklttng:lttng-destroy(1)::
     Tear down tracing sessions.
 
+linklttng:lttng-load(1)::
+    Load tracing session configurations.
+
 linklttng:lttng-metadata(1)::
     Manage an LTTng tracing session's metadata generation.
 
@@ -159,29 +162,26 @@ linklttng:lttng-save(1)::
 linklttng:lttng-set-session(1)::
     Set current tracing session.
 
-linklttng:lttng-load(1)::
-    Load tracing session configurations.
-
 
 Channels
 ~~~~~~~~
-linklttng:lttng-enable-channel(1)::
-    Create or enable tracing channels.
+linklttng:lttng-add-context(1)::
+    Add context fields to a channel.
 
 linklttng:lttng-disable-channel(1)::
     Disable tracing channels.
 
-linklttng:lttng-add-context(1)::
-    Add context fields to a channel.
+linklttng:lttng-enable-channel(1)::
+    Create or enable tracing channels.
 
 
 Event rules
 ~~~~~~~~~~~
-linklttng:lttng-enable-event(1)::
-    Create or enable event rules.
-
 linklttng:lttng-disable-event(1)::
     Disable event rules.
+
+linklttng:lttng-enable-event(1)::
+    Create or enable event rules.
 
 
 Status
