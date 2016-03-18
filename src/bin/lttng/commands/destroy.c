@@ -70,8 +70,8 @@ static int destroy_session(struct lttng_session *session)
 	}
 	session_was_stopped = ret == -LTTNG_ERR_TRACE_ALREADY_STOPPED;
 	if (!opt_no_wait) {
-		_MSG("Waiting for data availability");
-		fflush(stdout);
+		bool printed_wait_msg = false;
+
 		do {
 			ret = lttng_data_pending(session->name);
 			if (ret < 0) {
@@ -84,12 +84,20 @@ static int destroy_session(struct lttng_session *session)
 			 * returned value indicates availability.
 			 */
 			if (ret) {
+				if (!printed_wait_msg) {
+					_MSG("Waiting for data availability");
+					fflush(stdout);
+				}
+
+				printed_wait_msg = true;
 				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
 				_MSG(".");
 				fflush(stdout);
 			}
 		} while (ret != 0);
-		MSG("");
+		if (printed_wait_msg) {
+			MSG("");
+		}
 	}
 	if (!session_was_stopped) {
 		/*
