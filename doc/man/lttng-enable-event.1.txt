@@ -180,6 +180,10 @@ when creating a new event rule. If the filter expression evaluates
 to true when executed against the dynamic values of an event's fields
 when tracing, the filtering condition passes.
 
+NOTE: Make sure to **single-quote** the filter expression when running
+the command from a shell, as filter expressions typically include
+characters having a special meaning for most shells.
+
 The filter expression syntax is very similar to C language conditional
 expressions (expressions that can be evaluated by an `if` statement).
 
