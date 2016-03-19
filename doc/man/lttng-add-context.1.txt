@@ -59,6 +59,10 @@ with:
 'TYPE'::
     Context type name.
 
+NOTE: Make sure to **single-quote** the type when running the command
+from a shell, as `$` is a special character for variable substitution in
+most shells.
+
 Use the option:--list option without other arguments to list the
 available context field names.
 
