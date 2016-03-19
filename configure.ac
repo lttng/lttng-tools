@@ -502,15 +502,15 @@ AC_ARG_ENABLE(
 		[--disable-build-man-pages],
 		[Build man pages (already built in a distributed tarball)]
 	),
-	[enable_build_man_pages=no],
-	[enable_build_man_pages=yes]
+	[build_man_pages=$enableval],
+	[build_man_pages=yes]
 )
 
 # export man page build condition
-AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$enable_build_man_pages" != "xno"])
+AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$build_man_pages" != "xno"])
 
 # check for asciidoc and xmlto if we enabled building the man pages
-AS_IF([test "x$enable_build_man_pages" = "xyes"], [
+AS_IF([test "x$build_man_pages" = "xyes"], [
 	AC_PATH_PROG([ASCIIDOC], [asciidoc], [no])
 	AC_PATH_PROG([XMLTO], [xmlto], [no])
 
@@ -994,8 +994,7 @@ AS_ECHO
 PPRINT_SUBTITLE([Man pages])
 
 # man pages build enabled/disabled
-test "x$enable_build_man_pages" = "xyes" && value=1 || value=0
-AS_IF([test "x$enable_build_man_pages" = "xyes"], [
+AS_IF([test "x$build_man_pages" = "xyes"], [
 	PPRINT_PROP_BOOL([Build man pages], 1)
 ], [
 	AS_IF([test "x$in_git_repo" = "xyes"], [
@@ -1006,7 +1005,7 @@ AS_IF([test "x$enable_build_man_pages" = "xyes"], [
 ])
 
 # man pages install enabled/disabled (always true in tarball)
-test "x$enable_build_man_pages" = "xno" && test "x$in_git_repo" = "xyes" && value=0 || value=1
+test "x$build_man_pages" != "xyes" && test "x$in_git_repo" = "xyes" && value=0 || value=1
 PPRINT_PROP_BOOL([Install man pages], $value)
 
 report_bindir="`eval eval echo $bindir`"
