@@ -39,12 +39,12 @@ MAN3_NO_ASCIIDOC_NAMES = lttng-health-check
 MAN8_NO_ASCIIDOC_NAMES =
 
 # man pages destinations
-MAN1 = $(call manaddsuffix,.1,$(MAN1_NAMES))
-MAN3 = $(call manaddsuffix,.3,$(MAN3_NAMES))
-MAN8 = $(call manaddsuffix,.8,$(MAN8_NAMES))
-MAN1_NO_ASCIIDOC = $(call manaddsuffix,.1,$(MAN1_NO_ASCIIDOC_NAMES))
-MAN3_NO_ASCIIDOC = $(call manaddsuffix,.3,$(MAN3_NO_ASCIIDOC_NAMES))
-MAN8_NO_ASCIIDOC = $(call manaddsuffix,.8,$(MAN8_NO_ASCIIDOC_NAMES))
+MAN1 = $(addsuffix .1,$(MAN1_NAMES))
+MAN3 = $(addsuffix .3,$(MAN3_NAMES))
+MAN8 = $(addsuffix .8,$(MAN8_NAMES))
+MAN1_NO_ASCIIDOC = $(addsuffix .1,$(MAN1_NO_ASCIIDOC_NAMES))
+MAN3_NO_ASCIIDOC = $(addsuffix .3,$(MAN3_NO_ASCIIDOC_NAMES))
+MAN8_NO_ASCIIDOC = $(addsuffix .8,$(MAN8_NO_ASCIIDOC_NAMES))
 MAN = $(MAN1) $(MAN3) $(MAN8)
 
 # those are always installed since they are written in troff
