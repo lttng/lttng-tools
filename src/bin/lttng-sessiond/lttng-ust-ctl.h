@@ -286,12 +286,19 @@ struct ustctl_float_type {
 	char padding[USTCTL_UST_FLOAT_TYPE_PADDING];
 } LTTNG_PACKED;
 
+#define USTCTL_UST_ENUM_VALUE_PADDING	15
+struct ustctl_enum_value {
+	uint64_t value;
+	uint8_t signedness;
+	char padding[USTCTL_UST_ENUM_VALUE_PADDING];
+} LTTNG_PACKED;
+
 #define USTCTL_UST_ENUM_ENTRY_PADDING	32
 struct ustctl_enum_entry {
-	uint64_t start, end;		/* start and end are inclusive */
+	struct ustctl_enum_value start, end; /* start and end are inclusive */
 	char string[LTTNG_UST_SYM_NAME_LEN];
 	char padding[USTCTL_UST_ENUM_ENTRY_PADDING];
-};
+} LTTNG_PACKED;
 
 #define USTCTL_UST_BASIC_TYPE_PADDING	296
 union _ustctl_basic_type {
