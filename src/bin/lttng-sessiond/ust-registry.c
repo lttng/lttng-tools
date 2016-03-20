@@ -89,14 +89,23 @@ static int compare_enums(const struct ust_registry_enum *reg_enum_a,
 
 		entries_a = &reg_enum_a->entries[i];
 		entries_b = &reg_enum_b->entries[i];
-		if (entries_a->start != entries_b->start) {
+		if (entries_a->start.value != entries_b->start.value) {
 			ret = -1;
 			goto end;
 		}
-		if (entries_a->end != entries_b->end) {
+		if (entries_a->end.value != entries_b->end.value) {
 			ret = -1;
 			goto end;
 		}
+		if (entries_a->start.signedness != entries_b->start.signedness) {
+			ret = -1;
+			goto end;
+		}
+		if (entries_a->end.signedness != entries_b->end.signedness) {
+			ret = -1;
+			goto end;
+		}
+
 		if (strcmp(entries_a->string, entries_b->string)) {
 			ret = -1;
 			goto end;

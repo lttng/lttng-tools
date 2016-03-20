@@ -304,14 +304,30 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 		if (ret) {
 			goto end;
 		}
-		if (entry->start == entry->end) {
+
+		if (entry->start.signedness) {
 			ret = lttng_metadata_printf(session,
-					"%d,\n",
-					entry->start);
+				"%lld", (long long) entry->start.value);
 		} else {
 			ret = lttng_metadata_printf(session,
-					"%d ... %d,\n",
-					entry->start, entry->end);
+				"%llu", entry->start.value);
+		}
+		if (ret) {
+			goto end;
+		}
+
+		if (entry->start.signedness == entry->end.signedness &&
+				entry->start.value == entry->end.value) {
+			ret = lttng_metadata_printf(session,
+				",\n");
+		} else {
+			if (entry->end.signedness) {
+				ret = lttng_metadata_printf(session,
+					" ... %lld,\n", (long long) entry->end.value);
+			} else {
+				ret = lttng_metadata_printf(session,
+					" ... %llu,\n", entry->end.value);
+			}
 		}
 		if (ret) {
 			goto end;
