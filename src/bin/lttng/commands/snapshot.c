@@ -267,55 +267,6 @@ error:
 }
 
 /*
- * Add output from the user URL (machine interface).
- */
-static int mi_add_output(const char *url)
-{
-	int ret;
-	struct lttng_snapshot_output *output = NULL;
-	char name[NAME_MAX];
-	const char *n_ptr;
-
-	if (!url && (!opt_data_url || !opt_ctrl_url)) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
-	output = create_output_from_args(url);
-	if (!output) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	/* This call, if successful, populates the id of the output object. */
-	ret = lttng_snapshot_add_output(current_session_name, output);
-	if (ret < 0) {
-		goto error;
-	}
-
-	n_ptr = lttng_snapshot_output_get_name(output);
-	if (*n_ptr == '\0') {
-		int pret;
-		pret = snprintf(name, sizeof(name), DEFAULT_SNAPSHOT_NAME "-%" PRIu32,
-				lttng_snapshot_output_get_id(output));
-		if (pret < 0) {
-			PERROR("snprintf add output name");
-		}
-		n_ptr = name;
-	}
-
-	ret = mi_lttng_snapshot_add_output(writer, current_session_name, n_ptr,
-			output);
-	if (ret) {
-		ret = CMD_ERROR;
-	}
-
-error:
-	lttng_snapshot_output_destroy(output);
-	return ret;
-}
-
-/*
  * Add output from the user URL.
  */
 static int add_output(const char *url)
@@ -359,6 +310,13 @@ static int add_output(const char *url)
 			lttng_snapshot_output_get_id(output), n_ptr,
 			lttng_snapshot_output_get_ctrl_url(output),
 			lttng_snapshot_output_get_maxsize(output));
+	if (lttng_opt_mi) {
+		ret = mi_lttng_snapshot_add_output(writer, current_session_name,
+				n_ptr, output);
+		if (ret) {
+			ret = CMD_ERROR;
+		}
+	}
 error:
 	lttng_snapshot_output_destroy(output);
 	return ret;
@@ -373,11 +331,7 @@ static int cmd_add_output(int argc, const char **argv)
 		goto end;
 	}
 
-	if (lttng_opt_mi) {
-		ret = mi_add_output(argv[1]);
-	} else {
-		ret = add_output(argv[1]);
-	}
+	ret = add_output(argv[1]);
 
 end:
 	return ret;
