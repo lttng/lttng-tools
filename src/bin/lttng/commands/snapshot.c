@@ -214,50 +214,6 @@ error:
 }
 
 /*
- * Delete output by ID (machine interface version).
- */
-static int mi_del_output(uint32_t id, const char *name)
-{
-	int ret;
-	struct lttng_snapshot_output *output = NULL;
-
-	assert(writer);
-
-	output = lttng_snapshot_output_create();
-	if (!output) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	if (name) {
-		ret = lttng_snapshot_output_set_name(name, output);
-	} else if (id != UINT32_MAX) {
-		ret = lttng_snapshot_output_set_id(id, output);
-	} else {
-		ret = CMD_ERROR;
-		goto error;
-	}
-	if (ret < 0) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	ret = lttng_snapshot_del_output(current_session_name, output);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = mi_lttng_snapshot_del_output(writer, id, name, current_session_name);
-	if (ret) {
-		ret = CMD_ERROR;
-	}
-
-error:
-	lttng_snapshot_output_destroy(output);
-	return ret;
-}
-
-/*
  * Delete output by ID.
  */
 static int del_output(uint32_t id, const char *name)
@@ -295,6 +251,14 @@ static int del_output(uint32_t id, const char *name)
 	} else {
 		MSG("Snapshot output %s successfully deleted for session %s",
 				name, current_session_name);
+	}
+
+	if (lttng_opt_mi) {
+		ret = mi_lttng_snapshot_del_output(writer, id, name,
+				current_session_name);
+		if (ret) {
+			ret = CMD_ERROR;
+		}
 	}
 
 error:
@@ -433,17 +397,9 @@ static int cmd_del_output(int argc, const char **argv)
 	errno = 0;
 	id = strtol(argv[1], &name, 10);
 	if (id == 0 && errno == 0) {
-		if (lttng_opt_mi) {
-			ret = mi_del_output(UINT32_MAX, name);
-		} else {
-			ret = del_output(UINT32_MAX, name);
-		}
+		ret = del_output(UINT32_MAX, name);
 	} else if (errno == 0 && *name == '\0') {
-		if (lttng_opt_mi) {
-			ret = mi_del_output(id, NULL);
-		} else {
-			ret = del_output(id, NULL);
-		}
+		ret = del_output(id, NULL);
 	} else {
 		ERR("Argument %s not recognized", argv[1]);
 		ret = -1;
