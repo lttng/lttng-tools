@@ -464,37 +464,6 @@ static int cmd_list_output(int argc, const char **argv)
 }
 
 /*
- * Do a snapshot record with the URL if one is given (machine interface).
- */
-static int mi_record(const char *url)
-{
-	int ret;
-	struct lttng_snapshot_output *output = NULL;
-
-	output = create_output_from_args(url);
-	if (!output) {
-		ret = CMD_FATAL;
-		goto error;
-	}
-
-	ret = lttng_snapshot_record(current_session_name, output, 0);
-	if (ret < 0) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
-	ret = mi_lttng_snapshot_record(writer, current_session_name, url,
-			opt_ctrl_url, opt_data_url);
-	if (ret) {
-		ret = CMD_ERROR;
-	}
-
-error:
-	lttng_snapshot_output_destroy(output);
-	return ret;
-}
-
-/*
  * Do a snapshot record with the URL if one is given.
  */
 static int record(const char *url)
@@ -525,6 +494,14 @@ static int record(const char *url)
 				opt_data_url);
 	}
 
+	if (lttng_opt_mi) {
+		ret = mi_lttng_snapshot_record(writer, current_session_name, url,
+				opt_ctrl_url, opt_data_url);
+		if (ret) {
+			ret = CMD_ERROR;
+		}
+	}
+
 error:
 	lttng_snapshot_output_destroy(output);
 	return ret;
@@ -535,18 +512,9 @@ static int cmd_record(int argc, const char **argv)
 	int ret;
 
 	if (argc == 2) {
-		/* With a given URL */
-		if (lttng_opt_mi) {
-			ret = mi_record(argv[1]);
-		} else {
-			ret = record(argv[1]);
-		}
+		ret = record(argv[1]);
 	} else {
-		if (lttng_opt_mi) {
-			ret = mi_record(NULL);
-		} else {
-			ret = record(NULL);
-		}
+		ret = record(NULL);
 	}
 
 	return ret;
