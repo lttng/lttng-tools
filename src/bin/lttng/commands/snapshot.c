@@ -150,52 +150,6 @@ error_create:
 	return NULL;
 }
 
-static int mi_list_output(void)
-{
-	int ret;
-	struct lttng_snapshot_output *s_iter;
-	struct lttng_snapshot_output_list *list;
-
-	assert(writer);
-
-	ret = lttng_snapshot_list_output(current_session_name, &list);
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = mi_lttng_snapshot_output_session_name(writer, current_session_name);
-	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
-	}
-
-	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
-		ret = mi_lttng_snapshot_list_output(writer, s_iter);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
-
-
-	/* Close snapshot snapshots element */
-	ret = mi_lttng_writer_close_element(writer);
-	if (ret) {
-		ret = CMD_ERROR;
-		goto end;
-	}
-
-	/* Close snapshot session element */
-	ret = mi_lttng_writer_close_element(writer);
-	if (ret) {
-		ret = CMD_ERROR;
-	}
-end:
-	lttng_snapshot_output_list_destroy(list);
-error:
-	return ret;
-}
-
 static int list_output(void)
 {
 	int ret, output_seen = 0;
@@ -209,6 +163,15 @@ static int list_output(void)
 
 	MSG("Snapshot output list for session %s", current_session_name);
 
+	if (lttng_opt_mi) {
+		ret = mi_lttng_snapshot_output_session_name(writer,
+				current_session_name);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
 	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
 		MSG("%s[%" PRIu32 "] %s: %s (max-size: %" PRId64 ")", indent4,
 				lttng_snapshot_output_get_id(s_iter),
@@ -216,8 +179,30 @@ static int list_output(void)
 				lttng_snapshot_output_get_ctrl_url(s_iter),
 				lttng_snapshot_output_get_maxsize(s_iter));
 		output_seen = 1;
+		if (lttng_opt_mi) {
+			ret = mi_lttng_snapshot_list_output(writer, s_iter);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto end;
+			}
+		}
 	}
 
+	if (lttng_opt_mi) {
+		/* Close snapshot snapshots element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Close snapshot session element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			ret = CMD_ERROR;
+		}
+	}
+end:
 	lttng_snapshot_output_list_destroy(list);
 
 	if (!output_seen) {
@@ -473,11 +458,7 @@ static int cmd_list_output(int argc, const char **argv)
 {
 	int ret;
 
-	if (lttng_opt_mi) {
-		ret = mi_list_output();
-	} else {
-		ret = list_output();
-	}
+	ret = list_output();
 
 	return ret;
 }
