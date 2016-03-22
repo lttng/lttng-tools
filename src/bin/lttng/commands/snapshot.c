@@ -765,6 +765,15 @@ int cmd_snapshot(int argc, const char **argv)
 			break;
 		case LTTNG_ERR_SNAPSHOT_NODATA:
 			WARN("%s", lttng_strerror(command_ret));
+
+			/*  A warning is fine since the user has no control on
+			 *  whether or not applications (or the kernel) have
+			 *  produced any event between the start of the tracing
+			 *  session and the recording of the snapshot. MI wise
+			 *  the command is not a success since nothing was
+			 *  recorded.
+			 */
+			command_ret = 0;
 			break;
 		default:
 			ERR("%s", lttng_strerror(command_ret));
