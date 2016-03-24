@@ -10,7 +10,7 @@ lttng-set-session - Set the current LTTng tracing session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *set-session* 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *set-session* 'SESSION'
 
 
 DESCRIPTION

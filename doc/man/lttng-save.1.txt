@@ -10,7 +10,7 @@ lttng-save - Save LTTng tracing session configurations
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *save* [option:--force] [option:--output-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='PATH'] ['SESSION']
 
 
 DESCRIPTION

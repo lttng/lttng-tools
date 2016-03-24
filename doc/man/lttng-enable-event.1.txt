@@ -12,7 +12,7 @@ SYNOPSIS
 Create or enable Linux kernel event rules:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-event* option:--kernel
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* option:--kernel
       [option:--probe='SOURCE' | option:--function='SOURCE' | option:--syscall]
       [option:--filter='EXPR'] [option:--session='SESSION']
       [option:--channel='CHANNEL'] 'EVENT'[,'EVENT']...
@@ -20,13 +20,13 @@ Create or enable Linux kernel event rules:
 Create or enable an "all" Linux kernel event rule:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-event* option:--kernel option:--all [option:--syscall]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* option:--kernel option:--all [option:--syscall]
       [option:--filter='EXPR'] [option:--session='SESSION'] [option:--channel='CHANNEL']
 
 Create or enable application event rules:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-event*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event*
       (option:--userspace | option:--jul | option:--log4j | option:--python)
       [option:--filter='EXPR'] [option:--exclude='EVENT'[,'EVENT']...]
       [option:--loglevel='LOGLEVEL' | option:--loglevel-only='LOGLEVEL']

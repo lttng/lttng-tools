@@ -10,7 +10,7 @@ lttng-version - Get the version of LTTng-tools
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *version*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *version*
 
 
 DESCRIPTION

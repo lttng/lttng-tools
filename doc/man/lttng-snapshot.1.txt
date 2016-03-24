@@ -12,25 +12,25 @@ SYNOPSIS
 Add a snapshot output:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *snapshot add-output* [option:--max-size='SIZE']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot add-output* [option:--max-size='SIZE']
       [option:--name='NAME'] [option:--session='SESSION']
       (option:--ctrl-url='URL' option:--data-url='URL' | 'URL')
 
 Remove a snapshot output:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *snapshot del-output* [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot del-output* [option:--session='SESSION']
       ('ID' | 'NAME')
 
 List current snapshot outputs:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *snapshot list-output* [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot list-output* [option:--session='SESSION']
 
 Take a snapshot:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *snapshot record* [option:--max-size='SIZE']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot record* [option:--max-size='SIZE']
       [option:--name='NAME'] [option:--session='SESSION']
       (option:--ctrl-url='URL' option:--data-url='URL' | 'URL')
 

@@ -10,7 +10,7 @@ lttng-metadata - Manage an LTTng tracing session's metadata generation
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *metadata regenerate* [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *metadata regenerate* [option:--session='SESSION']
 
 
 DESCRIPTION

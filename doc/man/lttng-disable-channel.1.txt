@@ -10,7 +10,7 @@ lttng-disable-channel - Disable LTTng channels
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *disable-channel* (option:--kernel | option:--userspace)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-channel* (option:--kernel | option:--userspace)
       [option:--session='SESSION'] 'CHANNEL'[,'CHANNEL']...
 
 

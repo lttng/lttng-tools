@@ -12,23 +12,23 @@ SYNOPSIS
 List existing tracing sessions:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *list*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
 
 List available event sources:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *list* [option:--fields]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--fields]
       [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul] [option:--log4j] [option:--python]
 
 List tracing session's domains:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *list* option:--domain 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
 List tracing session's channels and event rules:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *list* [option:--channel='CHANNEL'] 'SESSION'
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
 
 
 DESCRIPTION

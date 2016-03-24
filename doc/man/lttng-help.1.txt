@@ -10,7 +10,7 @@ lttng-help - Display help information about an LTTng command
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *help* ['COMMAND']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *help* ['COMMAND']
 
 
 DESCRIPTION
