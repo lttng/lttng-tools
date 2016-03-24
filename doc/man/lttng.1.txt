@@ -33,19 +33,19 @@ A _tracing domain_ is a tracer category. There are five available
 domains. For some commands, the domain needs to be specified with a
 command-line option. The domain options are:
 
-option:-j, option:--jul::
+nloption:-j, nloption:--jul::
     Apply command to the `java.util.logging` (JUL) domain.
 
-option:-k, option:--kernel::
+nloption:-k, nloption:--kernel::
     Apply command to the Linux kernel domain.
 
-option:-l, option:--log4j::
+nloption:-l, nloption:--log4j::
     Apply command to the Apache log4j 1.2 (Java) domain.
 
-option:-p, option:--python::
+nloption:-p, nloption:--python::
     Apply command to the Python domain.
 
-option:-u, option:--userspace::
+nloption:-u, nloption:--userspace::
     Apply command to the user space domain.
 
 The LTTng session daemon is a tracing registry which allows the user to
@@ -139,7 +139,7 @@ option:-V, option:--version::
 
 COMMANDS
 --------
-The following commands also have their own option:--help option.
+The following commands also have their own nloption:--help option.
 
 
 Tracing sessions
