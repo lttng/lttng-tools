@@ -20,7 +20,7 @@ Add context fields to a channel:
 List the available context fields:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context* --list
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context* option:--list
 
 
 DESCRIPTION
