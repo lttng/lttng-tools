@@ -64,17 +64,8 @@ Existing enabled channels can be disabled using
 linklttng:lttng-disable-channel(1). Channels of a given session can be
 listed using linklttng:lttng-list(1).
 
-As of this version of LTTng, it is not possible to:
-
-* Reconfigure a channel once it is created.
-* Re-enable a disabled channel once its tracing session has been active
-  at least once.
-* Create a channel once its tracing session has been active
-  at least once.
-* Create a user space channel with a given buffering scheme
-  (option:--buffers-uid or option:--buffers-pid options) and create
-  a second user space channel with a different buffering scheme in the
-  same tracing session.
+See the <<limitations,LIMITATIONS>> section below for a list of
+limitations of this command to consider.
 
 
 Event loss modes
@@ -351,6 +342,23 @@ option:--switch-timer='PERIODUS'::
 
 
 include::common-cmd-help-options.txt[]
+
+
+[[limitations]]
+LIMITATIONS
+-----------
+As of this version of LTTng, it is not possible to perform the following
+actions with the `lttng enable-channel` command:
+
+* Reconfigure a channel once it is created.
+* Re-enable a disabled channel once its tracing session has been active
+  at least once.
+* Create a channel once its tracing session has been active
+  at least once.
+* Create a user space channel with a given buffering scheme
+  (option:--buffers-uid or option:--buffers-pid options) and create
+  a second user space channel with a different buffering scheme in the
+  same tracing session.
 
 
 include::common-cmd-footer.txt[]
