@@ -34,9 +34,26 @@ Usage example: `linklttng:lttng-enable-channel(1)`.
 
 ### option
 
-The option macro is used to write a command-line option.
+The option macro is used to write a command-line option which is
+defined in the same man page.
 
 Usage example: `option:--no-output`, `option:--loglevel=TRACE_WARNING`
+
+
+### nloption
+
+Command-line option generating no link. This is used when talking
+about a generic option which is defined in many man pages.
+
+Usage example: `nloption:--jul`
+
+
+### genoption
+
+General (`lttng(1)`) command-line option, for generating the appropriate
+cross-man-page link.
+
+Usage example: `genoption:--group`, `genoption:--sessiond-path`
 
 
 ### not

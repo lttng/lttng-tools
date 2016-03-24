@@ -16,7 +16,7 @@ ENVIRONMENT VARIABLES
 `LTTNG_SESSIOND_PATH`::
     Full session daemon binary path.
 +
-The option:--sessiond-path option has precedence over this
+The genoption:--sessiond-path option has precedence over this
 environment variable.
 
 Note that the linklttng:lttng-create(1) command can spawn an LTTng
