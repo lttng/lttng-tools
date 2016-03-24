@@ -234,7 +234,7 @@ expression evaluates to false (the event is discarded).
 C integer and floating point number constants are supported, as well as
 literal strings between double quotes (`"`). Literal strings can contain
 a wildcard character (`*`) at the end to match more than one string.
-This wildcard can be escaped using `\\*`.
+This wildcard can be escaped using :escwc:.
 
 LTTng-UST enumeration fields can be compared to integer values (fields
 or constants).
