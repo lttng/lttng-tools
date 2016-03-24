@@ -11,7 +11,7 @@ SYNOPSIS
 --------
 [verse]
 *lttng* [option:--group='GROUP'] [option:--mi='TYPE'] [option:--no-sessiond | option:--sessiond-path='PATH']
-      [option:--quiet | option:-v | option:-vv | option:-vvv] 'COMMAND' ['COMMAND OPTIONS']
+      [option:--quiet | option:-v | option:-vv | option:-vvv] '<<commands,COMMAND>>' ['COMMAND OPTIONS']
 
 
 DESCRIPTION
@@ -137,6 +137,7 @@ option:-V, option:--version::
     Show version.
 
 
+[[commands]]
 COMMANDS
 --------
 The following commands also have their own nloption:--help option.
