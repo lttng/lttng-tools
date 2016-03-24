@@ -1,21 +1,17 @@
 BUGS
 ----
 If you encounter any issue or usability problem, please report it on the
-LTTng bug tracker: *<https://bugs.lttng.org/projects/lttng-tools>*.
+https://bugs.lttng.org/projects/lttng-tools[LTTng bug tracker].
 
 
 RESOURCES
 ---------
-LTTng project website: *<http://lttng.org>*.
-
-LTTng documentation: *<http://lttng.org/docs>*.
-
-Git repositories: *<http://git.lttng.org>*.
-
-http://lists.lttng.org[Mailing list] for support and
-development: `lttng-dev@lists.lttng.org`.
-
-IRC channel: `#lttng` on `irc.oftc.net` (http://www.oftc.net/[OFTC]).
+* http://lttng.org[LTTng project website]
+* http://lttng.org/docs[LTTng documentation]
+* http://git.lttng.org[Git repositories]
+* http://lists.lttng.org[Mailing list] for support and
+  development: `lttng-dev@lists.lttng.org`
+* irc://irc.oftc.net/lttng[IRC channel]: `#lttng` on `irc.oftc.net`
 
 
 COPYRIGHTS
@@ -46,5 +42,4 @@ Julien Desfossez, and David Goulet. More people have since
 contributed to it.
 
 LTTng-tools is currently maintained by
-Jérémie Galarneau
-(*mailto:jeremie.galarneau@efficios.com[jeremie.galarneau@efficios.com]*).
+mailto:jeremie.galarneau@efficios.com[Jérémie Galarneau].
