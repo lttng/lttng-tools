@@ -106,6 +106,7 @@ a _don't care_.
 
 For example, consider the following commands:
 
+[role="term"]
 ----------------------------------------------------------------
 lttng enable-event --userspace hello:world
 lttng enable-event --userspace hello:world --loglevel=TRACE_INFO

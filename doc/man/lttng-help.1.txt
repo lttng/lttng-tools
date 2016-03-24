@@ -20,6 +20,7 @@ command.
 
 This command is the equivalent of:
 
+[role="term"]
 --------------------
 lttng COMMAND --help
 --------------------
