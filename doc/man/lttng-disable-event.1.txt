@@ -10,7 +10,7 @@ lttng-disable-event - Disable LTTng event rules
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *disable-event*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-event*
       (option:--kernel [option:--probe | option:--function | option:--syscall] |
        option:--userspace | option:--jul | option:--log4j | option:--python)
       [option:--session='SESSION'] [option:--channel='CHANNEL']

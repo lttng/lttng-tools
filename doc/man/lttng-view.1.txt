@@ -10,7 +10,7 @@ lttng-view - View the traces of an LTTng tracing session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *view* [option:--viewer='CMD'] [option:--trace-path='PATH' | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *view* [option:--viewer='CMD'] [option:--trace-path='PATH' | 'SESSION']
 
 
 DESCRIPTION

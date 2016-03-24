@@ -10,7 +10,7 @@ lttng-track - Add one or more entries to an LTTng resource tracker
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *track* (option:--kernel | option:--userspace)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* (option:--kernel | option:--userspace)
       [option:--session='SESSION'] (option:--pid='PID'[,'PID']... | option:--all option:--pid)
 
 

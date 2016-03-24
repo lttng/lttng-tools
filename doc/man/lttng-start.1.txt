@@ -10,7 +10,7 @@ lttng-start - Start LTTng tracers
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *start* ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *start* ['SESSION']
 
 
 DESCRIPTION

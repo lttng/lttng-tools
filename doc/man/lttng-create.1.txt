@@ -12,20 +12,20 @@ SYNOPSIS
 Normal mode:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *create* [option:--output='PATH' | option:--no-output]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--output='PATH' | option:--no-output]
       [option:--shm-path='PATH'] ['SESSION']
 
 Snapshot mode:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *create* option:--snapshot
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--snapshot
       [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
       [option:--shm-path='PATH'] ['SESSION']
 
 Live mode:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *create* option:--live[='DELAYUS']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--live[='DELAYUS']
       [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
       [option:--shm-path='PATH'] ['SESSION']
 

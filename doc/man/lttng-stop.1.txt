@@ -10,7 +10,7 @@ lttng-stop - Stop LTTng tracers
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *stop* [option:--no-wait] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *stop* [option:--no-wait] ['SESSION']
 
 
 DESCRIPTION
