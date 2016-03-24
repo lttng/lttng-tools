@@ -145,7 +145,7 @@ option:--live[='DELAYUS']::
     given in microseconds, is the maximum time the user can wait for
     the data to be flushed. This mode can be set with a network URL
     (options option:--set-url, or option:--ctrl-url and option:--data-url)
-    and must have a relay daemon listening (see linklttng:lttng-relayd(1)).
+    and must have a relay daemon listening (see linklttng:lttng-relayd(8)).
 +
 By default, 'DELAYUS' is 1000000 and the network URL is set to
 `net://127.0.0.1`.
