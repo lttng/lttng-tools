@@ -32,6 +32,14 @@ name is rendered in bold, whereas the HTML5 output renders a hyperlink.
 Usage example: `linklttng:lttng-enable-channel(1)`.
 
 
+### linkgenoptions
+
+The linkgenoptions macro is used to link to the general options
+section of the `lttng(1)` command.
+
+Usage example: `See the linkgenoptions:(general options).`.
+
+
 ### option
 
 The option macro is used to write a command-line option which is
