@@ -77,7 +77,7 @@ COMMON_TXT = \
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
 XSL_FILES = \
 	manpage.xsl \
-	manpage-base.xsl \
+	manpage-callouts.xsl \
 	manpage-bold-literal.xsl \
 	manpage-links.xsl
 XSL_SRC_FILES = $(addprefix $(srcdir)/xsl/,$(XSL_FILES))
