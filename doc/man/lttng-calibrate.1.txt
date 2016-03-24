@@ -10,7 +10,7 @@ lttng-calibrate - Quantify LTTng overhead
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *calibrate*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *calibrate*
 
 
 DESCRIPTION

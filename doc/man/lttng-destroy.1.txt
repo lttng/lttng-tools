@@ -10,7 +10,7 @@ lttng-destroy - Destroy an LTTng tracing session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *destroy* [option:--all | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--all | 'SESSION']
 
 
 DESCRIPTION

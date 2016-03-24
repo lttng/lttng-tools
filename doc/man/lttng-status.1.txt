@@ -10,7 +10,7 @@ lttng-status - Get the current LTTng tracing session's status
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *status*
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *status*
 
 
 DESCRIPTION

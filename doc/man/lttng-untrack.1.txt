@@ -10,7 +10,7 @@ lttng-untrack - Remove one or more entries from an LTTng resource tracker
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *untrack* (option:--kernel | option:--userspace)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* (option:--kernel | option:--userspace)
       [option:--session='SESSION'] (option:--pid='PID'[,'PID']... | option:--all option:--pid)
 
 

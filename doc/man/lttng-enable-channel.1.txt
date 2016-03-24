@@ -12,7 +12,7 @@ SYNOPSIS
 Create a Linux kernel channel:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-channel* option:--kernel
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--kernel
       [option:--discard | option:--overwrite] [option:--output=(`mmap` | `splice`)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
@@ -22,7 +22,7 @@ Create a Linux kernel channel:
 Create a user space channel:
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-channel* option:--userspace
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
       [option:--discard | option:--overwrite] [option:--buffers-pid]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
@@ -32,7 +32,7 @@ Create a user space channel:
 Enable existing channel(s):
 
 [verse]
-*lttng* ['GENERAL OPTIONS'] *enable-channel* (option:--userspace | option:--kernel)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* (option:--userspace | option:--kernel)
       [option:--session='SESSION'] 'CHANNEL'[,'CHANNEL']...
 
 

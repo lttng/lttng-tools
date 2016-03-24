@@ -10,7 +10,7 @@ lttng-load - Load LTTng tracing session configurations
 SYNOPSIS
 --------
 [verse]
-*lttng* ['GENERAL OPTIONS'] *load* [option:--force] [option:--input-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH'] ['SESSION']
 
 
 DESCRIPTION
