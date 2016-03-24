@@ -38,6 +38,7 @@ hooked on an empty function, gathering PMU counters LLC
 (Last Level Cache) misses information (use `lttng add-context --list` to
 get the list of available PMU counters).
 
+[role="term"]
 ------------------------------------------------------------------------
 lttng create calibrate-function
 lttng enable-event calibrate --kernel \

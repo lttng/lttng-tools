@@ -209,6 +209,7 @@ in conjunction with the option:--tracefile-size option.
 
 For example, consider this command:
 
+[role="term"]
 -----------------------------------------------------
 lttng enable-channel --kernel --tracefile-size=4096 \
                      --tracefile-count=32 my-channel

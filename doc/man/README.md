@@ -63,7 +63,7 @@ writing new ones:
 
   * Always use macros when possible (link to other LTTng man page,
     command-line option, NOT, etc.).
-  * Use callouts for command-line examples.
+  * Use callouts with the `term` role for command-line examples.
   * Always refer to _long_ options in the text.
   * Use the `option:--option=parameter` format (with `=`) when providing
     a parameter to long options.

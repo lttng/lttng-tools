@@ -35,6 +35,7 @@ events (equivalent of `lttng track --pid --all` for all domains).
 With the PID tracker, it is possible, for example, to record all system
 calls called by a given process:
 
+[role="term"]
 -------------------------------------------
 lttng enable-event --kernel --all --syscall
 lttng track --kernel --pid=2345
@@ -60,6 +61,7 @@ Initial whitelist:
 
 Command:
 
+[role="term"]
 -----------------------------------
 lttng track --userspace --pid=3,6,7
 -----------------------------------
@@ -72,6 +74,7 @@ Whitelist:
 
 Command:
 
+[role="term"]
 ---------------------------------
 lttng untrack --userspace --pid=7
 ---------------------------------
@@ -84,6 +87,7 @@ Whitelist:
 
 Command:
 
+[role="term"]
 ---------------------------------
 lttng track --userspace --pid=1,5
 ---------------------------------
