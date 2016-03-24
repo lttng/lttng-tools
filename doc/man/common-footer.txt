@@ -10,6 +10,7 @@ RESOURCES
 * http://lttng.org/docs[LTTng documentation]
 * http://git.lttng.org[Git repositories]
 * http://github.com/lttng[GitHub organization]
+* http://ci.lttng.org/[Continuous integration]
 * http://lists.lttng.org[Mailing list] for support and
   development: `lttng-dev@lists.lttng.org`
 * irc://irc.oftc.net/lttng[IRC channel]: `#lttng` on `irc.oftc.net`
