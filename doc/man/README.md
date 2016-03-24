@@ -69,6 +69,12 @@ Usage example: `genoption:--group`, `genoption:--sessiond-path`
 The `:not:` macro is used to emphasize on _not_.
 
 
+### escwc
+
+The `:escwc:` macro is used to output `\*` literally in the man page,
+which is not so easy to do otherwise.
+
+
 Includes
 --------
 
