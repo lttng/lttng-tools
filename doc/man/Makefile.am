@@ -79,7 +79,7 @@ XSL_FILES = \
 	manpage.xsl \
 	manpage-base.xsl \
 	manpage-bold-literal.xsl \
-	manpage-ulinks.xsl
+	manpage-links.xsl
 XSL_SRC_FILES = $(addprefix $(srcdir)/xsl/,$(XSL_FILES))
 
 # common dependencies
