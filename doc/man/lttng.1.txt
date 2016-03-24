@@ -40,13 +40,15 @@ nloption:-k, nloption:--kernel::
     Apply command to the Linux kernel domain.
 
 nloption:-l, nloption:--log4j::
-    Apply command to the Apache log4j 1.2 (Java) domain.
+    Apply command to the https://logging.apache.org/log4j/1.2/[Apache log4j 1.2]
+    (Java) domain.
 
 nloption:-p, nloption:--python::
-    Apply command to the Python domain.
+    Apply command to the https://www.python.org/[Python] domain.
 
 nloption:-u, nloption:--userspace::
-    Apply command to the user space domain.
+    Apply command to the user space domain (application using
+    liblttng-ust directly; see linklttng:lttng-ust(3)).
 
 The LTTng session daemon is a tracing registry which allows the user to
 interact with multiple tracers (kernel and user space) within the same
