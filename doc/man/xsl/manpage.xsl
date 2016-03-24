@@ -1,5 +1,5 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
-    <xsl:import href="manpage-base.xsl" />
+    <xsl:import href="manpage-callouts.xsl" />
     <xsl:import href="manpage-bold-literal.xsl" />
     <xsl:import href="manpage-links.xsl" />
 
