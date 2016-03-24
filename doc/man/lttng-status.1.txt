@@ -20,6 +20,7 @@ tracing session.
 
 This command is the exact equivalent of:
 
+[role="term"]
 ---------------------
 lttng list CURSESSION
 ---------------------
