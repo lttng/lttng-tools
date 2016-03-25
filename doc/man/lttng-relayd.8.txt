@@ -156,6 +156,18 @@ ENVIRONMENT VARIABLES
     Path to relay daemon health's socket.
 
 
+FILES
+-----
+`$LTTNG_HOME/.lttng`::
+    User LTTng runtime and configuration directory.
+
+`$LTTNG_HOME/lttng-traces`::
+    Default output directory of LTTng traces. This can be overridden
+    with the option:--output option.
+
+NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
+
+
 EXIT STATUS
 -----------
 *0*::
