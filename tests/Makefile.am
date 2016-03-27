@@ -37,6 +37,10 @@ else
 	@echo "========================================="
 endif
 
+check-remote-local:
+	@source ./envremote.sh ; \
+	./run.sh remote_relayd
+
 dist_noinst_SCRIPTS = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression root_destructive_tests
 EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression README root_destructive_tests
 

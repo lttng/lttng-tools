@@ -20,7 +20,6 @@ TEST_DESC="Health check - Thread OK"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 SESSION_NAME="health_thread_ok"
 UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
@@ -30,14 +29,6 @@ NUM_TESTS=17
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
-
-function lttng_create_session_uri
-{
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME \
-		-U net://localhost >/dev/null 2>&1
-	ok $? "Create session with default path"
-}
 
 function report_errors
 {

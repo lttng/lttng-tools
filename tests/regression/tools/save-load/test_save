@@ -19,9 +19,6 @@ TEST_DESC="Save session(s)"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 
 SESSION_NAME="save-42"
 CHANNEL_NAME="chan-save"
@@ -44,7 +41,7 @@ function save_lttng_fail()
 	local sess_name=$1
 	local opts=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN save $sess_name $opts >/dev/null 2>&1
+	$LTTNG save $sess_name $opts >/dev/null 2>&1
 	if [ $? -ne 0 ]; then
 		ok 0 "Session failed to be saved. Expected!"
 	else
