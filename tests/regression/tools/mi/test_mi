@@ -59,7 +59,7 @@ DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=224
+NUM_TESTS=228
 
 source $TESTDIR/utils/utils.sh
 
@@ -246,6 +246,28 @@ function test_list_sessions ()
 	destroy_lttng_sessions
 }
 
+function test_list_session_long_path ()
+{
+	local session_name="session_long_path"
+
+	output_basedir=$OUTPUT_DIR/$(randstring 254 0)
+	mkdir -p ${output_basedir}
+
+	OUTPUT_FILE="list_sessions.xml"
+
+	#Test build up
+	OUTPUT_DEST=$DEVNULL
+	create_lttng_session_ok $session_name ${output_basedir}
+
+	OUTPUT_DEST=${output_basedir}/$OUTPUT_FILE
+	list_lttng_with_opts
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: list session with long path xsd validation"
+
+	#Teardown
+	OUTPUT_DEST=$DEVNULL
+	destroy_lttng_sessions
+}
 function test_ust_channel ()
 {
 	local session_name="testsession"
@@ -871,6 +893,7 @@ TESTS=(
 	test_start_stop
 	test_snapshot
 	test_track_untrack
+	test_list_session_long_path
 )
 
 
