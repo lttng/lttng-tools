@@ -372,8 +372,8 @@ THE SOFTWARE.
 			<xs:element name="max_size" type="tns:uint64_type" minOccurs="0" />
 			<xs:element name="name" type="tns:name_type" minOccurs="0" />
 			<xs:element name="session_name" type="tns:name_type" minOccurs="0" />
-			<xs:element name="ctrl_url" type="tns:name_type" minOccurs="0" />
-			<xs:element name="data_url" type="tns:name_type" minOccurs="0" />
+			<xs:element name="ctrl_url" type="xs:string" minOccurs="0" />
+			<xs:element name="data_url" type="xs:string" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -393,7 +393,7 @@ THE SOFTWARE.
 	<xs:complexType name="session_type">
 		<xs:all>
 			<xs:element name="name" type="tns:name_type" />
-			<xs:element name="path" type="tns:name_type" minOccurs="0" />
+			<xs:element name="path" type="xs:string" minOccurs="0" />
 			<xs:element name="enabled" type="xs:boolean" default="false" minOccurs="0" />
 			<xs:element name="snapshot_mode" type="tns:uint32_type" minOccurs="0" />
 			<xs:element name="live_timer_interval" type="tns:uint32_type" minOccurs="0" />
@@ -416,7 +416,7 @@ THE SOFTWARE.
 	<xs:complexType name="save_type">
 		<xs:all>
 			<xs:element name="session" type="tns:session_type" />
-			<xs:element name="path" type="tns:name_type" />
+			<xs:element name="path" type="xs:string" />
 		</xs:all>
 	</xs:complexType>
 
@@ -424,7 +424,7 @@ THE SOFTWARE.
 	<xs:complexType name="load_type">
 		<xs:all>
 			<xs:element name="session" type="tns:session_type" />
-			<xs:element name="path" type="tns:name_type" />
+			<xs:element name="path" type="xs:string" />
 		</xs:all>
 	</xs:complexType>
 
