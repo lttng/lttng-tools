@@ -796,27 +796,49 @@ AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 AC_PATH_PROG([PGREP], [pgrep], [no])
 AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
-	if test x"$(basename "$YACC")" != "xbison -y"; then
-		AC_MSG_ERROR([[bison not found and is required when building from git.
-		Please install bison]])
-	fi
-	AC_PATH_PROG([BISON],[bison])
-	AX_PROG_BISON_VERSION([2.4], [],[
-		AC_MSG_ERROR([[Bison >= 2.4 is required when building from git]])
-	])
-fi
+# check for bison
+have_bison=yes
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
-	if test x"$LEX" != "xflex"; then
-		AC_MSG_ERROR([[flex not found and is required when building from git.
-		Please install flex]])
-	fi
-	AC_PATH_PROG([FLEX],[flex])
-	AX_PROG_FLEX_VERSION([2.5.35], [],[
-		AC_MSG_ERROR([[Flex >= 2.5.35 is required when building from git]])
+AS_IF([test "x$(basename "$YACC")" != "xbison -y"], [have_bison=no])
+AC_PATH_PROG([BISON], [bison])
+AX_PROG_BISON_VERSION([2.4], [], [have_bison=no])
+
+AS_IF([test "x$have_bison" = "xno"], [
+	AS_IF([test "x$in_git_repo" = "xyes"], [
+		AC_MSG_ERROR([Bison >= 2.4 is required when building from the Git repository.])
+	], [
+		AC_MSG_WARN([
+Missing Bison >= 2.4. Note that the parser files are already built in
+this distribution tarball, so Bison is only needed if you intend to
+modify their sources.
+		])
 	])
-fi
+])
+
+# export bison condition
+AM_CONDITIONAL([HAVE_BISON], [test "x$have_bison" = "xyes"])
+
+# check for flex
+have_flex=yes
+
+AS_IF([test "x$LEX" != "xflex"], [have_flex=no])
+AC_PATH_PROG([FLEX], [flex])
+AX_PROG_FLEX_VERSION([2.5.35], [], [have_flex=no])
+
+AS_IF([test "x$have_flex" = "xno"], [
+	AS_IF([test "x$in_git_repo" = "xyes"], [
+		AC_MSG_ERROR([Flex >= 2.5.35 is required when building from the Git repository.])
+	], [
+		AC_MSG_WARN([
+Missing Flex >= 2.5.35. Note that the lexer files are already built in
+this distribution tarball, so Flex is only needed if you intend to
+modify their sources.
+		])
+	])
+])
+
+# export flex condition
+AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
