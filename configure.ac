@@ -495,29 +495,56 @@ fi
 AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
 AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
 
-# enable building man pages
+# enable building man pages (user's intention)
 AC_ARG_ENABLE(
-	build-man-pages,
+	man-pages,
 	AS_HELP_STRING(
-		[--disable-build-man-pages],
-		[Build man pages (already built in a distributed tarball)]
+		[--disable-man-pages],
+		[Build and install man pages (already built in a distributed tarball)]
 	),
-	[build_man_pages=$enableval],
-	[build_man_pages=yes]
+	[man_pages_opt=$enableval],
+	[man_pages_opt=yes]
 )
 
-# export man page build condition
-AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$build_man_pages" != "xno"])
-
 # check for asciidoc and xmlto if we enabled building the man pages
-AS_IF([test "x$build_man_pages" = "xyes"], [
+have_asciidoc_xmlto=no
+
+AS_IF([test "x$man_pages_opt" = "xyes"], [
 	AC_PATH_PROG([ASCIIDOC], [asciidoc], [no])
 	AC_PATH_PROG([XMLTO], [xmlto], [no])
 
 	AS_IF([test "x$ASCIIDOC" = "xno" || test "x$XMLTO" = "xno"], [
-		AC_MSG_ERROR([Both asciidoc and xmlto are needed to build the LTTng man pages.])
+		AS_IF([test "x$in_git_repo" = "xyes"], [
+			# this is an error because we're in the Git repo, which
+			# means the man pages are not already generated for us,
+			# thus asciidoc/xmlto are required because we were asked
+			# to build the man pages
+			AC_MSG_ERROR([
+Both asciidoc and xmlto are needed to build the LTTng man pages. Use
+--disable-man-pages to disable building the man pages, in which case
+they will not be installed.
+			])
+		], [
+			# only warn here: since we're in the tarball, the man
+			# pages should already be generated at this point, thus
+			# asciidoc/xmlto are not strictly required
+			AC_MSG_WARN([
+Both asciidoc and xmlto are needed to build the LTTng man pages. Note
+that the man pages are already built in this distribution tarball, so
+asciidoc and xmlto are only needed if you intend to modify their
+sources. Use --disable-man-pages to completely disable building
+and installing the man pages.
+			])
+		])
+	], [
+		have_asciidoc_xmlto=yes
 	])
 ])
+
+# export man page build condition: build the man pages if the user
+# asked for it, and if the tools are available
+AM_CONDITIONAL([MAN_PAGES_OPT], [test "x$man_pages_opt" != "xno"])
+AM_CONDITIONAL([HAVE_ASCIIDOC_XMLTO], [test "x$have_asciidoc_xmlto" = "xyes"])
 
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
@@ -988,25 +1015,29 @@ test "x${enable_python_binding:-yes}" = xyes && value=1 || value=0
 AS_ECHO
 PPRINT_SET_INDENT(0)
 PPRINT_PROP_BOOL([Python binding], $value, $PPRINT_COLOR_SUBTITLE)
-PPRINT_SET_INDENT(1)
-
-AS_ECHO
-PPRINT_SUBTITLE([Man pages])
 
 # man pages build enabled/disabled
-AS_IF([test "x$build_man_pages" = "xyes"], [
-	PPRINT_PROP_BOOL([Build man pages], 1)
-], [
+m4_pushdef([build_man_pages_msg], [Build and install man pages])
+
+AS_IF([test "x$man_pages_opt" != "xno"], [
 	AS_IF([test "x$in_git_repo" = "xyes"], [
-		PPRINT_PROP_BOOL([Build man pages], 0)
+		PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
 	], [
-		PPRINT_PROP_STRING([Build man pages], [${PPRINT_COLOR_BLDGRN}Already built])
+		AS_IF([test "x$have_asciidoc_xmlto" = "xyes"], [
+			PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
+		], [
+			PPRINT_PROP_STRING([build_man_pages_msg],
+				[${PPRINT_COLOR_BLDGRN}yes (already built)],
+				$PPRINT_COLOR_SUBTITLE)
+		])
 	])
+], [
+	PPRINT_PROP_BOOL([build_man_pages_msg], 0, $PPRINT_COLOR_SUBTITLE)
 ])
 
-# man pages install enabled/disabled (always true in tarball)
-test "x$build_man_pages" != "xyes" && test "x$in_git_repo" = "xyes" && value=0 || value=1
-PPRINT_PROP_BOOL([Install man pages], $value)
+m4_popdef([build_man_pages_msg])
+
+PPRINT_SET_INDENT(1)
 
 report_bindir="`eval eval echo $bindir`"
 report_libdir="`eval eval echo $libdir`"
