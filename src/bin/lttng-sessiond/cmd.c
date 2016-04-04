@@ -188,6 +188,8 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 	struct ltt_ust_session *usess;
 
 	usess = session->ust_session;
+	assert(discarded_events);
+	assert(lost_packets);
 
 	if (!usess || !session->has_been_started) {
 		*discarded_events = 0;
