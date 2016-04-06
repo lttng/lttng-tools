@@ -16,9 +16,11 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 SESSIOND_BIN="lttng-sessiond"
+SESSIOND_PIDS=""
 RUNAS_BIN="lttng-runas"
 CONSUMERD_BIN="lttng-consumerd"
 RELAYD_BIN="lttng-relayd"
+RELAYD_PIDS=""
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
 OUTPUT_DEST=/dev/null
@@ -41,6 +43,22 @@ export LTTNG_UST_REGISTER_TIMEOUT=-1
 export LTTNG_SESSIOND_PATH="/bin/true"
 
 source $TESTDIR/utils/tap/tap.sh
+
+function full_cleanup ()
+{
+	if [ -n "${SESSIOND_PIDS}" ] || [ -n "${RELAYD_PIDS}" ]; then
+		kill -9 ${SESSIOND_PIDS} ${RELAYD_PIDS} > /dev/null 2>&1
+	fi
+
+	# Disable trap for SIGTERM since the following kill to the
+	# pidgroup will be SIGTERM. Otherwise it loops.
+	# The '-' before the pid number ($$) indicates 'kill' to signal the
+	# whole process group.
+	trap - SIGTERM && kill -- -$$
+}
+
+
+trap full_cleanup SIGINT SIGTERM
 
 function print_ok ()
 {
@@ -302,6 +320,8 @@ function start_lttng_relayd_opt()
 	else
 		pass "Start lttng-relayd (opt: $opt)"
 	fi
+
+	RELAYD_PIDS=$(pgrep --full lt-$RELAYD_BIN)
 }
 
 function start_lttng_relayd()
@@ -318,12 +338,10 @@ function stop_lttng_relayd_opt()
 {
 	local withtap=$1
 
-	PID_RELAYD=`pgrep --full lt-$RELAYD_BIN`
-
 	if [ $withtap -eq "1" ]; then
-		diag "Killing lttng-relayd (pid: $PID_RELAYD)"
+		diag "Killing lttng-relayd (pid: $RELAYD_PIDS)"
 	fi
-	kill $PID_RELAYD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	kill $RELAYD_PIDS 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
 
 	if [ $? -eq 1 ]; then
@@ -341,6 +359,7 @@ function stop_lttng_relayd_opt()
 			pass "Kill relay daemon"
 		fi
 	fi
+	RELAYD_PIDS=""
 	return $retval
 }
 
@@ -389,6 +408,7 @@ function start_lttng_sessiond_opt()
 			ok $status "Start session daemon"
 		fi
 	fi
+	SESSIOND_PIDS=$(pgrep --full lt-$SESSIOND_BIN)
 }
 
 function start_lttng_sessiond()
@@ -412,15 +432,15 @@ function stop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN) $(pgrep --full $RUNAS_BIN)"
+	local pids="${SESSIOND_PIDS} $(pgrep --full $RUNAS_BIN)"
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
 	fi
 	if [ $withtap -eq "1" ]; then
-		diag "Killing lt-$SESSIOND_BIN pids: $(echo $PID_SESSIOND | tr '\n' ' ')"
+		diag "Killing lt-$SESSIOND_BIN pids: $(echo $pids | tr '\n' ' ')"
 	fi
-	kill $kill_opt $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	kill $kill_opt $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
 	if [ $? -eq 1 ]; then
 		if [ $withtap -eq "1" ]; then
@@ -437,6 +457,8 @@ function stop_lttng_sessiond_opt()
 			out=$(pgrep --full $CONSUMERD_BIN)
 			sleep 0.5
 		done
+
+		SESSIOND_PIDS=""
 		if [ $withtap -eq "1" ]; then
 			pass "Kill session daemon"
 		fi
