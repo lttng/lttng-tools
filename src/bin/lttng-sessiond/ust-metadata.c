@@ -262,6 +262,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 	if (ret) {
 	        goto end;
 	}
+	nesting++;
 	/* Dump all entries */
 	for (i = 0; i < nr_entries; i++) {
 		const struct ustctl_enum_entry *entry = &entries[i];
@@ -333,6 +334,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 			goto end;
 		}
 	}
+	nesting--;
 	sanitize_ctf_identifier(identifier, field_name);
 	ret = print_tabs(session, nesting);
 	if (ret) {
