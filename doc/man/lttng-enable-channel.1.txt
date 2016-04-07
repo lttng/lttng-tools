@@ -42,7 +42,7 @@ The `lttng enable-channel` command can create a new channel, or enable
 one or more existing and disabled ones.
 
 A channel is the owner of sub-buffers holding recorded events. Event,
-rules, when created using linklttng:lttng-enable-event(1), are always
+rules, when created using man:lttng-enable-event(1), are always
 assigned to a channel. When creating a new channel, many parameters
 related to those sub-buffers can be fine-tuned. They are described in
 the subsections below.
@@ -51,18 +51,18 @@ When 'CHANNEL' does not name an existing channel, a channel named
 'CHANNEL' is created. Otherwise, the disabled channel named 'CHANNEL'
 is enabled.
 
-Note that the linklttng:lttng-enable-event(1) command can automatically
+Note that the man:lttng-enable-event(1) command can automatically
 create default channels when no channel exist.
 
 A channel is always contained in a tracing session
-(see linklttng:lttng-create(1) for creating a tracing session). The
+(see man:lttng-create(1) for creating a tracing session). The
 session in which a channel is created using `lttng enable-channel` can
 be specified using the option:--session option. If the option:--session
 option is omitted, the current tracing session is targeted.
 
 Existing enabled channels can be disabled using
-linklttng:lttng-disable-channel(1). Channels of a given session can be
-listed using linklttng:lttng-list(1).
+man:lttng-disable-channel(1). Channels of a given session can be
+listed using man:lttng-list(1).
 
 See the <<limitations,LIMITATIONS>> section below for a list of
 limitations of this command to consider.
@@ -366,5 +366,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-disable-channel(1),
-linklttng:lttng(1)
+man:lttng-disable-channel(1),
+man:lttng(1)

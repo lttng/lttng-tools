@@ -23,13 +23,12 @@ AsciiDoc is configured with `asciidoc.conf` which contains a few
 macro definitions used everywhere in the man page sources.
 
 
-### linklttng
+### man
 
-The linklttng macro is used to link to another LTTng man page. Its
-output is different depending on the back-end. In troff, the man page
-name is rendered in bold, whereas the HTML5 output renders a hyperlink.
+The man macro is used to link to another man page. In troff, the man
+page name is rendered in bold.
 
-Usage example: `linklttng:lttng-enable-channel(1)`.
+Usage example: `man:lttng-enable-channel(1)`.
 
 
 ### linkgenoptions
