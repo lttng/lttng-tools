@@ -134,5 +134,11 @@ dist_man3_MANS += $(MAN3)
 dist_man8_MANS += $(MAN8)
 endif # MAN_PAGES_OPT
 
+if !MAN_PAGES_OPT
+dist-hook:
+	@echo "Error: Please enable the man pages before creating a distribution tarball."
+	@false
+endif # !MAN_PAGES_OPT
+
 # always distribute the source files
 EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) $(ASCIIDOC_CONF)
