@@ -500,7 +500,7 @@ AC_ARG_ENABLE(
 	man-pages,
 	AS_HELP_STRING(
 		[--disable-man-pages],
-		[Build and install man pages (already built in a distributed tarball)]
+		[Do not build and install man pages (already built in a distributed tarball)]
 	),
 	[man_pages_opt=$enableval],
 	[man_pages_opt=yes]
