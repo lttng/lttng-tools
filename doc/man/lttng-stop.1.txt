@@ -24,13 +24,13 @@ anymore.
 
 A tracing session with no running tracers is said to be _inactive_.
 Inactive tracing sessions can be set active using the
-linklttng:lttng-start(1) command.
+man:lttng-start(1) command.
 
 If 'SESSION' is omitted, the LTTng tracers are stopped for the current
-tracing session (see linklttng:lttng-create(1) for more information
+tracing session (see man:lttng-create(1) for more information
 about the current tracing session). Otherwise, they are stopped for the
 existing tracing session named 'SESSION'. `lttng list`
-outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+outputs all the existing tracing sessions (see man:lttng-list(1)).
 
 By default, the `lttng stop` command ensures that the tracing session's
 trace data is valid before returning to the prompt. With the
@@ -55,5 +55,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-start(1),
-linklttng:lttng(1)
+man:lttng-start(1),
+man:lttng(1)

@@ -56,7 +56,7 @@ lttng destroy
 babeltrace $(ls -1drt ~/lttng-traces/calibrate-function-* | tail -n 1)
 ------------------------------------------------------------------------
 
-The output from linklttng:babeltrace(1) can be saved to a text file and
+The output from man:babeltrace(1) can be saved to a text file and
 opened in a spreadsheet (for example, in LibreOffice) to focus on the
 per-PMU counter delta between consecutive `calibrate_entry` and
 `calibrate_return` events. Note that these counters are per-CPU, so
@@ -113,4 +113,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)

@@ -18,10 +18,10 @@ DESCRIPTION
 The `lttng set-session` command sets the current tracing session.
 
 'SESSION' is the name of an existing tracing session. `lttng list`
-outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+outputs all the existing tracing sessions (see man:lttng-list(1)).
 
 The current tracing session is used by default when a session can be
-specified in other commands. See linklttng:lttng-create(1) for more
+specified in other commands. See man:lttng-create(1) for more
 information about the current tracing session.
 
 
@@ -36,6 +36,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-create(1),
-linklttng:lttng-destroy(1),
-linklttng:lttng(1)
+man:lttng-create(1),
+man:lttng-destroy(1),
+man:lttng(1)

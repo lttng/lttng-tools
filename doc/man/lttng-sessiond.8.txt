@@ -40,8 +40,8 @@ The _LTTng session daemon_ is a tracing registry which allows the user
 to interact with multiple tracers (kernel and user space) within the
 same container, a _tracing session_. Traces can be gathered from the
 Linux kernel and/or from instrumented applications (see
-linklttng:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using linklttng:babeltrace(1).
+man:lttng-ust(3)). You can aggregate and read the events of LTTng
+traces using man:babeltrace(1).
 
 To trace the Linux kernel, the session daemon needs to be running as
 `root`. LTTng uses a _tracing group_ to allow specific users to interact
@@ -102,7 +102,7 @@ option:-l, option:--load='PATH'::
 option:-S, option:--sig-parent::
     Send `SIGUSR1` to parent process to notify readiness.
 +
-NOTE: This is used by linklttng:lttng(1) to get notified when the
+NOTE: This is used by man:lttng(1) to get notified when the
 session daemon is ready to accept commands. When building a third party
 tool on liblttng-ctl, this option can be very handy to synchronize the
 control tool and the session daemon.
@@ -268,16 +268,16 @@ FILES
 
 `$LTTNG_HOME/lttng-traces`::
     Default output directory of LTTng traces. This can be overridden
-    with the nloption:--output option of the linklttng:lttng-create(1)
+    with the nloption:--output option of the man:lttng-create(1)
     command.
 
 `$LTTNG_HOME/.lttng/sessions`::
     Default location of saved user tracing sessions (see
-    linklttng:lttng-save(1) and linklttng:lttng-load(1)).
+    man:lttng-save(1) and man:lttng-load(1)).
 
 `/etc/lttng/sessions`::
     System-wide location of saved tracing sessions
-    (see linklttng:lttng-save(1) and linklttng:lttng-load(1)).
+    (see man:lttng-save(1) and man:lttng-load(1)).
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
     Default location of the session daemon configuration file (see the
@@ -319,8 +319,8 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1),
-linklttng:lttng-relayd(8),
-linklttng:lttng-crash(1),
-linklttng:lttng-ust(3),
-linklttng:babeltrace(1)
+man:lttng(1),
+man:lttng-relayd(8),
+man:lttng-crash(1),
+man:lttng-ust(3),
+man:babeltrace(1)

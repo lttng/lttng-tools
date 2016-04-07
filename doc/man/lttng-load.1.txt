@@ -19,7 +19,7 @@ The `lttng load` command loads the configurations of one or more
 tracing sessions from files.
 
 The `lttng load` command is used in conjunction with the
-linklttng:lttng-save(1) command to save and restore the complete
+man:lttng-save(1) command to save and restore the complete
 configurations of tracing sessions. This includes the enabled channels
 and event rules, the context added to channels, the tracing activity,
 and more.
@@ -69,5 +69,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-save(1),
-linklttng:lttng(1)
+man:lttng-save(1),
+man:lttng(1)

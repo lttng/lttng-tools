@@ -23,7 +23,7 @@ user applications, and user libraries.
 LTTng consists of Linux kernel modules (for Linux kernel tracing) and
 dynamically loaded libraries (for user application and library tracing).
 
-An LTTng _session daemon_, linklttng:lttng-sessiond(8), receives
+An LTTng _session daemon_, man:lttng-sessiond(8), receives
 commands from the command-line interface `lttng` to control the LTTng
 tracers. All interactions with the LTTng tracers happen through the
 `lttng` tool or through the liblttng-ctl library shipped with the
@@ -48,14 +48,14 @@ nloption:-p, nloption:--python::
 
 nloption:-u, nloption:--userspace::
     Apply command to the user space domain (application using
-    liblttng-ust directly; see linklttng:lttng-ust(3)).
+    liblttng-ust directly; see man:lttng-ust(3)).
 
 The LTTng session daemon is a tracing registry which allows the user to
 interact with multiple tracers (kernel and user space) within the same
 container, a _tracing session_. Traces can be gathered from the Linux
 kernel and/or from instrumented applications (see
-linklttng:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using linklttng:babeltrace(1).
+man:lttng-ust(3)). You can aggregate and read the events of LTTng
+traces using man:babeltrace(1).
 
 To trace the Linux kernel, the session daemon needs to be running as
 `root`. LTTng uses a _tracing group_ to allow specific users to interact
@@ -73,9 +73,9 @@ for stable and long-term tracing.
 User applications instrumented with LTTng automatically register to the
 root session daemon and to user session daemons. This allows any session
 daemon to list the available traceable applications and event sources
-(see linklttng:lttng-list(1)).
+(see man:lttng-list(1)).
 
-By default, the linklttng:lttng-create(1) command automatically spawns a
+By default, the man:lttng-create(1) command automatically spawns a
 user session daemon if none is currently running. The
 option:--no-sessiond general option can be set to avoid this.
 
@@ -147,88 +147,88 @@ The following commands also have their own nloption:--help option.
 
 Tracing sessions
 ~~~~~~~~~~~~~~~~
-linklttng:lttng-create(1)::
+man:lttng-create(1)::
     Create a tracing session.
 
-linklttng:lttng-destroy(1)::
+man:lttng-destroy(1)::
     Tear down tracing sessions.
 
-linklttng:lttng-load(1)::
+man:lttng-load(1)::
     Load tracing session configurations.
 
-linklttng:lttng-metadata(1)::
+man:lttng-metadata(1)::
     Manage an LTTng tracing session's metadata generation.
 
-linklttng:lttng-save(1)::
+man:lttng-save(1)::
     Save tracing session configurations.
 
-linklttng:lttng-set-session(1)::
+man:lttng-set-session(1)::
     Set current tracing session.
 
 
 Channels
 ~~~~~~~~
-linklttng:lttng-add-context(1)::
+man:lttng-add-context(1)::
     Add context fields to a channel.
 
-linklttng:lttng-disable-channel(1)::
+man:lttng-disable-channel(1)::
     Disable tracing channels.
 
-linklttng:lttng-enable-channel(1)::
+man:lttng-enable-channel(1)::
     Create or enable tracing channels.
 
 
 Event rules
 ~~~~~~~~~~~
-linklttng:lttng-disable-event(1)::
+man:lttng-disable-event(1)::
     Disable event rules.
 
-linklttng:lttng-enable-event(1)::
+man:lttng-enable-event(1)::
     Create or enable event rules.
 
 
 Status
 ~~~~~~
-linklttng:lttng-list(1)::
+man:lttng-list(1)::
     List tracing sessions, domains, channels, and events.
 
-linklttng:lttng-status(1)::
+man:lttng-status(1)::
     Get the status of the current tracing session.
 
 
 Control
 ~~~~~~~
-linklttng:lttng-snapshot(1)::
+man:lttng-snapshot(1)::
     Snapshot buffers of current tracing session.
 
-linklttng:lttng-start(1)::
+man:lttng-start(1)::
     Start tracing.
 
-linklttng:lttng-stop(1)::
+man:lttng-stop(1)::
     Stop tracing.
 
 
 Resource tracking
 ~~~~~~~~~~~~~~~~~
-linklttng:lttng-track(1)::
+man:lttng-track(1)::
     Track specific system resources.
 
-linklttng:lttng-untrack(1)::
+man:lttng-untrack(1)::
     Untrack specific system resources.
 
 
 Miscellaneous
 ~~~~~~~~~~~~~
-linklttng:lttng-calibrate(1)::
+man:lttng-calibrate(1)::
     Quantify LTTng overhead.
 
-linklttng:lttng-help(1)::
+man:lttng-help(1)::
     Display help information about a command.
 
-linklttng:lttng-version(1)::
+man:lttng-version(1)::
     Show version information.
 
-linklttng:lttng-view(1)::
+man:lttng-view(1)::
     Start trace viewer.
 
 
@@ -237,8 +237,8 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-sessiond(8),
-linklttng:lttng-relayd(8),
-linklttng:lttng-crash(1),
-linklttng:lttng-ust(3),
-linklttng:babeltrace(1)
+man:lttng-sessiond(8),
+man:lttng-relayd(8),
+man:lttng-crash(1),
+man:lttng-ust(3),
+man:babeltrace(1)

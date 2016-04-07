@@ -6,7 +6,7 @@ ENVIRONMENT VARIABLES
 
 `LTTNG_MAN_BIN_PATH`::
     Absolute path to the man pager to use for viewing help information
-    about LTTng commands (using linklttng:lttng-help(1) or
+    about LTTng commands (using man:lttng-help(1) or
     `lttng COMMAND --help`).
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
@@ -19,9 +19,9 @@ ENVIRONMENT VARIABLES
 The genoption:--sessiond-path option has precedence over this
 environment variable.
 
-Note that the linklttng:lttng-create(1) command can spawn an LTTng
+Note that the man:lttng-create(1) command can spawn an LTTng
 session daemon automatically if none is running. See
-linklttng:lttng-sessiond(8) for the environment variables influencing
+man:lttng-sessiond(8) for the environment variables influencing
 the execution of the session daemon.
 
 
@@ -31,13 +31,13 @@ FILES
     User LTTng runtime configuration.
 +
 This is where the per-user current tracing session is stored between
-executions of linklttng:lttng(1). The current tracing session can be set
-with linklttng:lttng-set-session(1). See linklttng:lttng-create(1) for
+executions of man:lttng(1). The current tracing session can be set
+with man:lttng-set-session(1). See man:lttng-create(1) for
 more information about tracing sessions.
 
 `$LTTNG_HOME/lttng-traces`::
     Default output directory of LTTng traces. This can be overridden
-    with the nloption:--output option of the linklttng:lttng-create(1)
+    with the nloption:--output option of the man:lttng-create(1)
     command.
 
 `$LTTNG_HOME/.lttng`::
@@ -45,11 +45,11 @@ more information about tracing sessions.
 
 `$LTTNG_HOME/.lttng/sessions`::
     Default location of saved user tracing sessions (see
-    linklttng:lttng-save(1) and linklttng:lttng-load(1)).
+    man:lttng-save(1) and man:lttng-load(1)).
 
 `/etc/lttng/sessions`::
     System-wide location of saved tracing sessions
-    (see linklttng:lttng-save(1) and linklttng:lttng-load(1)).
+    (see man:lttng-save(1) and man:lttng-load(1)).
 
 NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
 
