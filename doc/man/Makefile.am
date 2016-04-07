@@ -1,5 +1,4 @@
-# Man pages are only built if the --enable-man-pages option was
-# passed to the configure script.
+# Man pages are only built if they are enabled at configure time.
 #
 # They should always be built before creating a distribution tarball.
 
