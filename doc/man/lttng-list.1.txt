@@ -107,4 +107,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)
