@@ -19,7 +19,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng disable-event` command disables one or more event rules
-previously enabled by the linklttng:lttng-enable-event(1) command.
+previously enabled by the man:lttng-enable-event(1) command.
 
 Event rules are always assigned to a channel when they are created. If
 the option:--channel option is omitted, the default channel named
@@ -35,11 +35,11 @@ to disable named 'EVENT' must be specified.
 With the option:--kernel option, the event source type can be specified
 using one of the option:--tracepoint, option:--probe,
 option:--function, or option:--syscall options. See
-linklttng:lttng-enable-event(1) for more details about event source
+man:lttng-enable-event(1) for more details about event source
 types.
 
 Events can be disabled while tracing is active
-(use linklttng:lttng-start(1) to make a tracing session active).
+(use man:lttng-start(1) to make a tracing session active).
 
 
 include::common-cmd-options-head.txt[]
@@ -112,5 +112,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-enable-event(1),
-linklttng:lttng(1)
+man:lttng-enable-event(1),
+man:lttng(1)

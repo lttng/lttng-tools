@@ -28,7 +28,7 @@ DESCRIPTION
 The `lttng add-context` command adds one or more context fields to a
 channel.
 
-Channels are created with the linklttng:lttng-enable-channel(1) command.
+Channels are created with the man:lttng-enable-channel(1) command.
 
 When context fields are added to a channel, all the events emitted
 within this channel contain the dynamic values of those context fields.
@@ -116,4 +116,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)

@@ -198,8 +198,8 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1),
-linklttng:lttng-sessiond(8),
-linklttng:lttng-crash(1),
-linklttng:lttng-ust(3),
-linklttng:babeltrace(1)
+man:lttng(1),
+man:lttng-sessiond(8),
+man:lttng-crash(1),
+man:lttng-ust(3),
+man:babeltrace(1)

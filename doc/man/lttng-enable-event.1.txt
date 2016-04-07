@@ -42,9 +42,9 @@ An event rule created by `lttng enable-event` is a set of conditions
 that must be satisfied in order for an actual event to be emitted by
 an LTTng tracer when the execution of an application or the Linux kernel
 reaches an event source (tracepoint, system call, dynamic probe).
-Event sources can be listed with the linklttng:lttng-list(1) command.
+Event sources can be listed with the man:lttng-list(1) command.
 
-The linklttng:lttng-disable-event(1) command can be used to disable
+The man:lttng-disable-event(1) command can be used to disable
 existing event rules.
 
 Event rules are always assigned to a channel when they are created. If
@@ -56,7 +56,7 @@ If the option:--session option is omitted, the chosen channel is picked
 from the current tracing session.
 
 Events can be enabled while tracing is active
-(use linklttng:lttng-start(1) to make a tracing session active).
+(use man:lttng-start(1) to make a tracing session active).
 
 
 Event source types
@@ -163,7 +163,7 @@ When using `lttng enable-event` with a set of conditions that does not
 currently exist for the chosen tracing session, domain, and channel,
 a new event rule is created. Otherwise, the existing event rule is
 enabled if it is currently disabled
-(see linklttng:lttng-disable-event(1)).
+(see man:lttng-disable-event(1)).
 
 The option:--all option can be used alongside the option:--tracepoint
 or option:--syscall options. When this option is used, no 'EVENT'
@@ -222,11 +222,11 @@ a C identifier.
 The dynamic value of a statically-known context field is read by
 prefixing its name with `$ctx.`. Statically-known context fields are
 context fields added to channels without the `$app.` prefix using the
-linklttng:lttng-add-context(1) command.
+man:lttng-add-context(1) command.
 
 The dynamic value of an application-specific context field is read by
 prefixing its name with `$app.` (follows the format used to add such a
-context field with the linklttng:lttng-add-context(1) command).
+context field with the man:lttng-add-context(1) command).
 
 When a comparison includes a non existent event field, the whole filter
 expression evaluates to false (the event is discarded).
@@ -242,7 +242,7 @@ or constants).
 NOTE: Although it is possible to filter the process ID of an event when
 the `pid` context has been added to its channel using, for example,
 `$ctx.pid == 2832`, it is recommended to use the PID tracker instead,
-which is much more efficient (see linklttng:lttng-track(1)).
+which is much more efficient (see man:lttng-track(1)).
 
 Examples:
 
@@ -437,5 +437,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-disable-event(1),
-linklttng:lttng(1)
+man:lttng-disable-event(1),
+man:lttng(1)
