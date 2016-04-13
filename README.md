@@ -2,7 +2,7 @@ LTTng-tools
 ===========
 
 LTTng-tools is a set of tools to control [LTTng](https://lttng.org/)
-tracing. The project includes the LTTng session daemon, consumer damon
+tracing. The project includes the LTTng session daemon, consumer daemon
 and relay daemon, as well as `liblttng-ctl`, a C library used to
 communicate with the session daemon, and `lttng`, a command line
 interface to `liblttng-ctl`.
