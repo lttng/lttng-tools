@@ -78,7 +78,7 @@ order to compile the Git repository tree:
 
   - **GNU Autotools** (**Automake >= 1.10**, **Autoconf >= 2.64**,
     **Autoheader >= 2.50**; make sure your system-wide `automake` points
-    to a recent version!)
+    to a recent version)
   - **[GNU Libtool](http://www.gnu.org/software/autoconf/) >= 2.2**
   - **Flex >= 2.5.35**
   - **Bison >= 2.4**
