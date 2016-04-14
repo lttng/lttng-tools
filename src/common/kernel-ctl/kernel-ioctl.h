@@ -127,6 +127,11 @@
 	_IOR(0xF6, 0x58, int32_t)
 #define LTTNG_KERNEL_SESSION_UNTRACK_PID	\
 	_IOR(0xF6, 0x59, int32_t)
+/*
+ * ioctl 0x58 and 0x59 are duplicated here. It works, since _IOR vs _IO
+ * are generating two different ioctl numbers, but this was not done on
+ * purpose. We should generally try to avoid those duplications.
+ */
 #define LTTNG_KERNEL_SESSION_LIST_TRACKER_PIDS	_IO(0xF6, 0x58)
 #define LTTNG_KERNEL_SESSION_METADATA_REGEN	_IO(0xF6, 0x59)
 
