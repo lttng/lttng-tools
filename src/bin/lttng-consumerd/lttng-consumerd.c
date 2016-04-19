@@ -101,7 +101,7 @@ static void sighandler(int sig)
 
 	/*
 	 * Ignore SIGPIPE because it should not stop the consumer whenever a
-	 * SIGPIPE is catched through a FD operation.
+	 * SIGPIPE is caught through a FD operation.
 	 */
 	if (sig == SIGPIPE) {
 		return;
