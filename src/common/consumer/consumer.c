@@ -2261,10 +2261,10 @@ restart:
 		DBG("Metadata poll return from wait with %d fd(s)",
 				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
-		DBG("Metadata event catched in thread");
+		DBG("Metadata event caught in thread");
 		if (ret < 0) {
 			if (errno == EINTR) {
-				ERR("Poll EINTR catched");
+				ERR("Poll EINTR caught");
 				goto restart;
 			}
 			if (LTTNG_POLL_GETNB(&events) == 0) {
@@ -2844,10 +2844,10 @@ restart:
 		DBG("Channel poll return from wait with %d fd(s)",
 				LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
-		DBG("Channel event catched in thread");
+		DBG("Channel event caught in thread");
 		if (ret < 0) {
 			if (errno == EINTR) {
-				ERR("Poll EINTR catched");
+				ERR("Poll EINTR caught");
 				goto restart;
 			}
 			if (LTTNG_POLL_GETNB(&events) == 0) {
