@@ -1,3 +1,20 @@
+2016-04-19 lttng-tools 2.6.2 (Bicycle Day)
+	* Fix: add missing synchronization point for before app test case
+	* Fix warning when building Python bindings
+	* Tests: use configured processor count in tracefile count test
+	* Tests: use configured processor count in snapshot tests
+	* Tests: Introduce conf_proc_count()
+	* Test: prevent the spawning of a daemonized sessiond
+	* Fix: do not print error and bug messages when quiet (-q) is present
+	* Build: fallback to AC_CHECK_LIBS when looking for popt and uuid
+	* tests/unit: fix object files' location
+	* configure.ac: fix static build
+	* Fix: close indexes when rotating the trace files in mmap mode
+	* Fix: close indexes when rotating the trace files in splice mode
+	* Fix: use liburcu flavor header instead of local copy
+	* Fix: rculfhash should not include specific rcu flavor
+	* Fix live timer calculation error
+
 2015-09-24 lttng-tools 2.6.1 (National Punctuation Day)
 	* Revert "Fix: add missing test file to EXTRA_DIST"
 	* Fix: regression tests
