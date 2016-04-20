@@ -179,6 +179,19 @@ error:
 	return ret;
 }
 
+static int channel_validate(struct lttng_channel *attr)
+{
+	/*
+	 * The ringbuffer (both in user space and kernel) behaves badly
+	 * in overwrite mode and with less than 2 subbuffers so block it
+	 * right away and send back an invalid attribute error.
+	 */
+	if (attr->attr.overwrite && attr->attr.num_subbuf < 2) {
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * Create kernel channel of the kernel session and notify kernel thread.
  */
@@ -205,6 +218,12 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		/* Force channel attribute for snapshot mode. */
 		attr->attr.overwrite = 1;
 		attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
+	/* Validate common channel properties. */
+	if (channel_validate(attr) < 0) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
 	}
 
 	/* Channel not found, creating it */
@@ -303,6 +322,12 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		/* Force channel attribute for snapshot mode. */
 		attr->attr.overwrite = 1;
 		attr->attr.output = LTTNG_EVENT_MMAP;
+	}
+
+	/* Validate common channel properties. */
+	if (channel_validate(attr) < 0) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
 	}
 
 	/*

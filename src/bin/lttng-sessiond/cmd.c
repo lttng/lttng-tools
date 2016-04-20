@@ -1333,16 +1333,6 @@ int cmd_enable_channel(struct ltt_session *session,
 		attr->attr.switch_timer_interval = 0;
 	}
 
-	/*
-	 * The ringbuffer (both in user space and kernel) behave badly in overwrite
-	 * mode and with less than 2 subbuf so block it right away and send back an
-	 * invalid attribute error.
-	 */
-	if (attr->attr.overwrite && attr->attr.num_subbuf < 2) {
-		ret = LTTNG_ERR_INVALID;
-		goto error;
-	}
-
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
