@@ -20,7 +20,7 @@ compiled with debug information, which is then copied into a separate
 `prog.debug` file, and a debug link section is added to the original
 `prog` executable, now stripped of debug information. This ensures
 that `lttng_ust_statedump:debug_link` event will be produced. The
-events `start`, `soinfo`, `build_id`, and `end` from the same provider
+events `start`, `bin_info`, `build_id`, and `end` from the same provider
 are also expected in the trace and verified by the test.
 
 DEPENDENCIES
