@@ -67,22 +67,22 @@ except FileNotFoundError:
     bail("Could not open babeltrace. Please make sure it is installed.", session_info)
 
 start_event_found = False
-soinfo_event_found = False
+bin_info_event_found = False
 build_id_event_found = False
 debug_link_event_found = False
 end_event_found = False
 
 for event_line in babeltrace_process.stdout:
     # Let babeltrace finish to get the return code
-    if start_event_found and soinfo_event_found and build_id_event_found and \
+    if start_event_found and bin_info_event_found and build_id_event_found and \
        debug_link_event_found and end_event_found:
         continue
 
     event_line = event_line.decode('utf-8').replace("\n", "")
     if re.search(r".*lttng_ust_statedump:start.*", event_line) is not None:
         start_event_found = True
-    elif re.search(r".*lttng_ust_statedump:soinfo.*", event_line) is not None:
-        soinfo_event_found = True
+    elif re.search(r".*lttng_ust_statedump:bin_info.*", event_line) is not None:
+        bin_info_event_found = True
     elif re.search(r".*lttng_ust_statedump:build_id.*", event_line) is not None:
         build_id_event_found = True
     elif re.search(r".*lttng_ust_statedump:debug_link.*", event_line) is not None:
@@ -98,7 +98,7 @@ current_test += 1
 print_test_result(start_event_found, current_test, "lttng_ust_statedump:start event found in resulting trace")
 current_test += 1
 
-print_test_result(soinfo_event_found, current_test, "lttng_ust_statedump:soinfo event found in resulting trace")
+print_test_result(bin_info_event_found, current_test, "lttng_ust_statedump:bin_info event found in resulting trace")
 current_test += 1
 
 print_test_result(build_id_event_found, current_test, "lttng_ust_statedump:build_id event found in resulting trace")
