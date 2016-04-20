@@ -214,9 +214,16 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		attr = defattr;
 	}
 
+	/*
+	 * Set the overwrite mode for this channel based on the session
+	 * type unless the client explicitly overrides the channel mode.
+	 */
+	if (attr->attr.overwrite == DEFAULT_CHANNEL_OVERWRITE) {
+		attr->attr.overwrite = !!ksession->snapshot_mode;
+	}
+
+	/* Enforce mmap output for snapshot sessions. */
 	if (ksession->snapshot_mode) {
-		/* Force channel attribute for snapshot mode. */
-		attr->attr.overwrite = 1;
 		attr->attr.output = LTTNG_EVENT_MMAP;
 	}
 
@@ -318,9 +325,16 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		}
 	}
 
+	/*
+	 * Set the overwrite mode for this channel based on the session
+	 * type unless the client explicitly overrides the channel mode.
+	 */
+	if (attr->attr.overwrite == DEFAULT_CHANNEL_OVERWRITE) {
+		attr->attr.overwrite = !!usess->snapshot_mode;
+	}
+
+	/* Enforce mmap output for snapshot sessions. */
 	if (usess->snapshot_mode) {
-		/* Force channel attribute for snapshot mode. */
-		attr->attr.overwrite = 1;
 		attr->attr.output = LTTNG_EVENT_MMAP;
 	}
 

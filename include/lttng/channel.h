@@ -33,7 +33,7 @@ extern "C" {
  */
 #define LTTNG_CHANNEL_ATTR_PADDING1        LTTNG_SYMBOL_NAME_LEN + 12
 struct lttng_channel_attr {
-	int overwrite;                      /* 1: overwrite, 0: discard */
+	int overwrite;                      /* -1: session default, 1: overwrite, 0: discard */
 	uint64_t subbuf_size;               /* bytes, power of 2 */
 	uint64_t num_subbuf;                /* power of 2 */
 	unsigned int switch_timer_interval; /* usec */

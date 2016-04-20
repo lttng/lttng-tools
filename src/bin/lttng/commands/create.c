@@ -439,7 +439,7 @@ static int create_session(void)
 			MSG("Default snapshot output set to: %s", print_str_url);
 		}
 		MSG("Snapshot mode set. Every channel enabled for that session will "
-				"be set in overwrite mode and mmap output.");
+				"be set to mmap output, and default to overwrite mode.");
 	}
 	if (opt_shm_path) {
 		MSG("Session %s set to shm_path: %s.", session_name,
