@@ -735,6 +735,24 @@ function enable_lttng_mmap_overwrite_kernel_channel()
 	ok $? "Enable channel $channel_name for session $sess_name"
 }
 
+function enable_lttng_mmap_discard_small_kernel_channel()
+{
+	local sess_name=$1
+	local channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -k --output mmap --discard --subbuf-size=$(getconf PAGE_SIZE) --num-subbuf=2 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Enable small discard channel $channel_name for session $sess_name"
+}
+
+function enable_lttng_mmap_overwrite_small_kernel_channel()
+{
+	local sess_name=$1
+	local channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -s $sess_name $channel_name -k --output mmap --overwrite --subbuf-size=$(getconf PAGE_SIZE) --num-subbuf=2 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Enable small discard channel $channel_name for session $sess_name"
+}
+
 function enable_lttng_mmap_overwrite_ust_channel()
 {
 	local sess_name=$1
@@ -1274,6 +1292,18 @@ function validate_trace
 	ret=$?
 	IFS=$OLDIFS
 	return $ret
+}
+
+function trace_first_line
+{
+	local trace_path=$1
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
+	fi
+
+	$BABELTRACE_BIN $trace_path 2>/dev/null | head -n 1
 }
 
 function validate_trace_exp()

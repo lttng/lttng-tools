@@ -25,7 +25,7 @@ CHANNEL_NAME="snapchan"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=2040
+NUM_TESTS=2060
 
 source $TESTDIR/utils/utils.sh
 
@@ -118,6 +118,90 @@ function test_kernel_local_snapshot_append_to_metadata ()
 	destroy_lttng_session_ok $SESSION_NAME
 }
 
+function true_loop_cpu0()
+{
+	# Generate many system call events (fill buffers) on CPU 0
+	for a in $(seq 1 $1); do
+		taskset 0x00000001 /bin/true;
+	done
+}
+
+function test_kernel_local_snapshot_discard ()
+{
+	diag "Test local kernel snapshots with small discard buffers"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_discard_small_kernel_channel $SESSION_NAME \
+			$CHANNEL_NAME
+	lttng_enable_kernel_syscall_ok $SESSION_NAME -a $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+
+	true_loop_cpu0 10000
+
+	# Take first snapshot, remember first line.
+	lttng_snapshot_record $SESSION_NAME
+	FIRST_LINE="$(trace_first_line $TRACE_PATH/)"
+	diag "First line (1st snapshot): $FIRST_LINE"
+
+	rm -rf $TRACE_PATH
+
+	true_loop_cpu0 10000
+
+	# Take 2nd snapshot, compare first line. In discard mode, they
+	# should still be the same.
+	lttng_snapshot_record $SESSION_NAME
+	FIRST_LINE_2="$(trace_first_line $TRACE_PATH/)"
+	diag "First line (2nd snapshot): $FIRST_LINE"
+	rm -rf $TRACE_PATH
+
+	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
+		fail "First snapshot event do not match."
+	else
+		pass "First snapshot event match."
+	fi
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_kernel_local_snapshot_overwrite_small_buffers ()
+{
+	diag "Test local kernel snapshot with small overwrite buffers"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_small_kernel_channel $SESSION_NAME \
+			$CHANNEL_NAME
+	lttng_enable_kernel_syscall_ok $SESSION_NAME -a $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+
+	true_loop_cpu0 10000
+
+	# Take first snapshot, remember first line.
+	lttng_snapshot_record $SESSION_NAME
+	FIRST_LINE="$(trace_first_line $TRACE_PATH/)"
+	diag "First line (1st snapshot): $FIRST_LINE"
+
+	rm -rf $TRACE_PATH
+
+	true_loop_cpu0 10000
+
+	# Take 2nd snapshot, compare first line. In overwrite mode, they
+	# WILL be different.
+	lttng_snapshot_record $SESSION_NAME
+	FIRST_LINE_2="$(trace_first_line $TRACE_PATH/)"
+	diag "First line (2nd snapshot): $FIRST_LINE_2"
+	rm -rf $TRACE_PATH
+
+	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
+		pass "First snapshot event do not match."
+	else
+		fail "First snapshot event match."
+	fi
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
 function test_kernel_1000_local_snapshots ()
 {
 	NB_SNAP=1000
@@ -160,7 +244,13 @@ skip $isroot "Root access is needed. Skipping all kernel snapshot tests." $NUM_T
 	start_lttng_sessiond
 
 	#tests=( test_kernel_1000_local_snapshots )
-	tests=( test_kernel_local_snapshot test_kernel_local_snapshot_after_stop test_kernel_local_snapshot_append_to_metadata test_kernel_1000_local_snapshots )
+	tests=( test_kernel_local_snapshot
+		test_kernel_local_snapshot_after_stop
+		test_kernel_local_snapshot_append_to_metadata
+		test_kernel_local_snapshot_discard
+		test_kernel_local_snapshot_overwrite_small_buffers
+		test_kernel_1000_local_snapshots
+	)
 
 	for fct_test in ${tests[@]};
 	do
