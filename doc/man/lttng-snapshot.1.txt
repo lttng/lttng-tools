@@ -46,7 +46,7 @@ is sent to the registered snapshot outputs.
 
 The tracing session should be created in _snapshot mode_ to make sure
 taking snapshots is allowed. This is done at tracing session creation
-time using the linklttng:lttng-create(1) command.
+time using the man:lttng-create(1) command.
 
 Note that, when a snapshot is taken, the sub-buffers are not cleared.
 This means that different recorded snapshots may contain the same
@@ -63,7 +63,7 @@ As of this version, only one snapshot output is allowed.
 A snapshot output can be added using the `add-output` action. The
 output destination URL is set using either the 'URL' positional
 argument, or both the option:--ctrl-url and option:--data-url options.
-See linklttng:lttng-create(1) to learn more about the URL format.
+See man:lttng-create(1) to learn more about the URL format.
 
 A name can be assigned to an output when adding it using the
 option:--name option. This name is part of the names of the
@@ -95,10 +95,10 @@ options supported by the `add-output` action.
 
 NOTE: Before taking a snapshot on a system with a high event throughput,
 it is recommended to first run `lttng stop` (see
-linklttng:lttng-stop(1)). Otherwise, the snapshot could contain "holes",
+man:lttng-stop(1)). Otherwise, the snapshot could contain "holes",
 the result of the tracers overwriting unconsumed trace packets during
 the record operation. After the snapshot is recorded, the tracers can be
-started again with `lttng start` (see linklttng:lttng-start(1)).
+started again with `lttng start` (see man:lttng-start(1)).
 
 
 include::common-cmd-options-head.txt[]
@@ -139,4 +139,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)

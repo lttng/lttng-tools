@@ -18,12 +18,12 @@ DESCRIPTION
 The `lttng destroy` command destroys one or more tracing sessions.
 
 If no options are specified, the current tracing session is destroyed
-(see linklttng:lttng-create(1) for more information about the current
+(see man:lttng-create(1) for more information about the current
 tracing session).
 
 If 'SESSION' is specified, the existing tracing session named 'SESSION'
 is destroyed. `lttng list` outputs all the existing tracing sessions
-(see linklttng:lttng-list(1)).
+(see man:lttng-list(1)).
 
 If the option:--all option is used, *all* the tracing sessions, as listed
 in the output of `lttng list`, are destroyed.
@@ -50,6 +50,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-create(1),
-linklttng:lttng-set-session(1),
-linklttng:lttng(1)
+man:lttng-create(1),
+man:lttng-set-session(1),
+man:lttng(1)

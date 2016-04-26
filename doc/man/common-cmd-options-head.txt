@@ -1,3 +1,3 @@
 OPTIONS
 -------
-linkgenoptions:(General options) are described in linklttng:lttng(1).
+linkgenoptions:(General options) are described in man:lttng(1).

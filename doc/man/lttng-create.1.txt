@@ -43,7 +43,7 @@ On execution, an `.lttngrc` file is created, if it does not exist, in the
 user's home directory. This file contains the name of the current tracing
 session. When creating a new tracing session with `lttng create`, the
 current tracing session is set to this new tracing session. The
-linklttng:lttng-set-session(1) command can be used to set the current
+man:lttng-set-session(1) command can be used to set the current
 tracing session without manually editing the `.lttngrc` file.
 
 If 'SESSION' is omitted, a session name is automatically created having
@@ -55,9 +55,9 @@ shared memory holding the ring buffers. Specifying a location on an
 NVRAM file system makes it possible to retrieve the latest recorded
 trace data when the system reboots after a crash. To view the events
 of ring buffer files after a system crash, use the
-linklttng:lttng-crash(1) utility.
+man:lttng-crash(1) utility.
 
-Tracing sessions are destroyed using the linklttng:lttng-destroy(1)
+Tracing sessions are destroyed using the man:lttng-destroy(1)
 command.
 
 
@@ -76,14 +76,14 @@ Snapshot mode::
     Traces the local system without writing the trace to the local file
     system (implicit option:--no-output option). Channels are automatically
     configured to be snapshot-ready on creation (see
-    linklttng:lttng-enable-channel(1)). The linklttng:lttng-snapshot(1)
+    man:lttng-enable-channel(1)). The man:lttng-snapshot(1)
     command is used to take snapshots of the current ring buffers.
     The option:--set-url, or option:--ctrl-url and option:--data-url
     options set the default snapshot output destination.
 
 Live mode::
     Traces the local system, sending trace data to an LTTng relay daemon
-    over the network (see linklttng:lttng-relayd(8)). The
+    over the network (see man:lttng-relayd(8)). The
     option:--set-url, or option:--ctrl-url and option:--data-url options
     set the trace output destination. The live output URLs cannot use
     the `file://` protocol (see URL format below).
@@ -132,7 +132,7 @@ The other version is used for *network streaming*.
 'TRACEPATH'::
     Path of trace files on the remote file system. This path is relative
     to the base output directory set on the relay daemon side;
-    see linklttng:lttng-relayd(8).
+    see man:lttng-relayd(8).
 
 
 include::common-cmd-options-head.txt[]
@@ -145,7 +145,7 @@ option:--live[='DELAYUS']::
     given in microseconds, is the maximum time the user can wait for
     the data to be flushed. This mode can be set with a network URL
     (options option:--set-url, or option:--ctrl-url and option:--data-url)
-    and must have a relay daemon listening (see linklttng:lttng-relayd(8)).
+    and must have a relay daemon listening (see man:lttng-relayd(8)).
 +
 By default, 'DELAYUS' is 1000000 and the network URL is set to
 `net://127.0.0.1`.
@@ -196,6 +196,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-destroy(1),
-linklttng:lttng-set-session(1),
-linklttng:lttng(1)
+man:lttng-destroy(1),
+man:lttng-set-session(1),
+man:lttng(1)
