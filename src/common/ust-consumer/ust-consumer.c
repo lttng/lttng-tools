@@ -79,6 +79,7 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 	 */
 	if (channel->uchan) {
 		lttng_ustconsumer_del_channel(channel);
+		lttng_ustconsumer_free_channel(channel);
 	}
 	free(channel);
 }
@@ -1687,6 +1688,13 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 	if (chan->switch_timer_enabled == 1) {
 		consumer_timer_switch_stop(chan);
 	}
+}
+
+void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
+{
+	assert(chan);
+	assert(chan->uchan);
+
 	consumer_metadata_cache_destroy(chan);
 	ustctl_destroy_channel(chan->uchan);
 }
