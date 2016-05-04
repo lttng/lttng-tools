@@ -77,7 +77,9 @@ if MAN_PAGES_OPT
 if HAVE_ASCIIDOC_XMLTO
 # tools
 ADOC = $(ASCIIDOC) -f $(ASCIIDOC_CONF) -d manpage \
-	-a lttng_version="$(PACKAGE_VERSION)"
+	-a lttng_version="$(PACKAGE_VERSION)" \
+	-a system_sessions_dir="$(sysconfdir)/lttng/sessions" \
+	-a system_lttng_conf="$(sysconfdir)/lttng/lttng.conf"
 ADOC_DOCBOOK = $(ADOC) -b docbook
 XTO = $(XMLTO) -m $(firstword $(XSL_SRC_FILES)) man
 
