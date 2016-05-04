@@ -47,7 +47,7 @@ more information about tracing sessions.
     Default location of saved user tracing sessions (see
     man:lttng-save(1) and man:lttng-load(1)).
 
-`/etc/lttng/sessions`::
++{system_sessions_dir}+::
     System-wide location of saved tracing sessions
     (see man:lttng-save(1) and man:lttng-load(1)).
 
