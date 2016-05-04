@@ -144,4 +144,4 @@ dist-hook:
 endif # !MAN_PAGES_OPT
 
 # always distribute the source files
-EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) $(ASCIIDOC_CONF)
+EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) $(ASCIIDOC_CONF).in

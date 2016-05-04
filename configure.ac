@@ -907,6 +907,7 @@ AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
 	doc/man/Makefile
+	doc/man/asciidoc.conf
 	include/Makefile
 	extras/Makefile
 	extras/bindings/Makefile
