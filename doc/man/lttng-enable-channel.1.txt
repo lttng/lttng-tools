@@ -252,8 +252,12 @@ option:--num-subbuf='COUNT'::
 +
 Default values:
 +
-* `metadata` channel: 2
-* Everything else: 4
+* option:--userspace and option:--buffers-uid options:
+  {default_ust_uid_channel_subbuf_num}
+* option:--userspace and option:--buffers-pid options:
+  {default_ust_pid_channel_subbuf_num}
+* option:--kernel option: {default_kernel_channel_subbuf_num}
+* `metadata` channel: {default_metadata_subbuf_num}
 
 option:--subbuf-size='SIZE'::
     Set the individual size of sub-buffers to 'SIZE' bytes.
@@ -266,10 +270,12 @@ command shows the current system's page size: `getconf PAGE_SIZE`.
 +
 Default values:
 +
-* option:--userspace and option:--buffers-uid options: `128k`
-* option:--userspace and option:--buffers-pid options: `4k`
-* option:--kernel option: `256k`
-* `metadata` channel: `4k`
+* option:--userspace and option:--buffers-uid options:
+  {default_ust_uid_channel_subbuf_size}
+* option:--userspace and option:--buffers-pid options:
+  {default_ust_pid_channel_subbuf_size}
+* option:--kernel option: {default_kernel_channel_subbuf_size}
+* `metadata` channel: {default_metadata_subbuf_size}
 
 option:--output='TYPE'::
     Set channel's output type to 'TYPE'.
@@ -306,7 +312,8 @@ Trace files
 ~~~~~~~~~~~
 option:--tracefile-count='COUNT'::
     Limit the number of trace files created by this channel to
-    'COUNT'. 0 means unlimited. Default: 0.
+    'COUNT'. 0 means unlimited. Default:
+    {default_channel_tracefile_count}.
 +
 Use this option in conjunction with the option:--tracefile-size option.
 +
@@ -317,7 +324,7 @@ the first trace file of the stream is cleared and used again.
 option:--tracefile-size='SIZE'::
     Set the maximum size of each trace file written by
     this channel within a stream to 'SIZE' bytes. 0 means unlimited.
-    Default: 0.
+    Default: {default_channel_tracefile_size}.
 +
 Note: traces generated with this option may inaccurately report
 discarded events as of CTF 1.8.
@@ -331,14 +338,25 @@ option:--read-timer::
 +
 Default values:
 +
-* option:--userspace and option:--buffers-uid options: 0
-* option:--userspace and option:--buffers-pid options: 0
-* option:--kernel option: 200000
-* `metadata` channel: 0
+* option:--userspace and option:--buffers-uid options:
+  {default_ust_uid_channel_read_timer}
+* option:--userspace and option:--buffers-pid options:
+  {default_ust_pid_channel_read_timer}
+* option:--kernel option: {default_kernel_channel_read_timer}
+* `metadata` channel: {default_metadata_read_timer}
 
 option:--switch-timer='PERIODUS'::
     Set the channel's switch timer's period to 'PERIODUS' µs. 0 means
-    a disabled switch timer. Default: 0.
+    a disabled switch timer.
++
+Default values:
++
+* option:--userspace and option:--buffers-uid options:
+  {default_ust_uid_channel_switch_timer}
+* option:--userspace and option:--buffers-pid options:
+  {default_ust_pid_channel_switch_timer}
+* option:--kernel option: {default_kernel_channel_switch_timer}
+* `metadata` channel: {default_metadata_switch_timer}
 
 
 include::common-cmd-help-options.txt[]
