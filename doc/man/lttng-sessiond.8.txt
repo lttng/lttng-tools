@@ -61,19 +61,32 @@ NOTE: It is highly recommended to start the session daemon at boot time
 for stable and long-term tracing.
 
 
-Loading tracing session configurations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-By default, the LTTng session daemon tries to load tracing session
-configurations located in the user default directory
-`$HOME/.lttng/sessions` and in the system one, +{system_sessions_dir}+.
+Automatic loading of tracing session configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When the session daemon starts, it automatically loads session
+configuration files.
+
+The following directories are searched, non-recursively, in this order
+for configuration files to automatically load:
+
+. `$LTTNG_HOME/.lttng/sessions/auto` (`$LTTNG_HOME` defaults to `$HOME`)
+. +{system_sessions_auto_dir}+
+
 Note that both the directory containing the tracing session
-configurations and the session daemon binary _must_ have the same UID
+configurations _and_ the session daemon binary _must_ have the same UID
 for the configurations to be automatically loaded.
 
-Specifying a path with the option:--load option overrides the default
-directory _and_ the UID check. The session daemon simply checks if the
-path is accessible and tries to load every tracing session configuration
-in it.
+The option:--load option overrides the default directories _and_ the UID
+check. The session daemon simply checks if the path is accessible and
+tries to load every tracing session configuration in it. When this
+option is specified, the default directories are :not: searched for
+configuration files. When it's not specified, _both_ default directories
+are searched for configuration files.
+
+If the option:--load option's argument is a directory, then all the
+tracing session configurations found in all the files in this directory
+are loaded. If the argument is a file, then all the tracing session
+configurations found in this file are loaded.
 
 
 OPTIONS
@@ -97,7 +110,9 @@ option:-g, option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
 
 option:-l, option:--load='PATH'::
-    Automatically load tracing session configurations from path 'PATH'.
+    Automatically load tracing session configurations from 'PATH',
+    either a directory or a file, instead of loading them from the
+    default search directories.
 
 option:-S, option:--sig-parent::
     Send `SIGUSR1` to parent process to notify readiness.
@@ -271,13 +286,17 @@ FILES
     with the nloption:--output option of the man:lttng-create(1)
     command.
 
-`$LTTNG_HOME/.lttng/sessions`::
-    Default location of saved user tracing sessions (see
-    man:lttng-save(1) and man:lttng-load(1)).
+`$LTTNG_HOME/.lttng/sessions/auto`::
+    Directory from which user tracing configuration files are
+    automatically loaded when the session daemon starts (see
+    man:lttng-save(1) and man:lttng-load(1) for saving
+    and loading tracing sessions).
 
-+{system_sessions_dir}+::
-    System-wide location of saved tracing sessions
-    (see man:lttng-save(1) and man:lttng-load(1)).
++{system_sessions_auto_dir}+::
+    Directory from which system-wide tracing configuration files are
+    automatically loaded when the session daemon starts (see
+    man:lttng-save(1) and man:lttng-load(1) for saving
+    and loading tracing sessions).
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
     Default location of the session daemon configuration file (see the
