@@ -147,8 +147,8 @@ option:--live[='DELAYUS']::
     (options option:--set-url, or option:--ctrl-url and option:--data-url)
     and must have a relay daemon listening (see man:lttng-relayd(8)).
 +
-By default, 'DELAYUS' is 1000000 and the network URL is set to
-`net://127.0.0.1`.
+By default, 'DELAYUS' is {default_lttng_live_timer} and the network URL
+is set to `net://127.0.0.1`.
 
 option:--snapshot::
     Create the session in snapshot mode. This is the equivalent of using
