@@ -65,7 +65,7 @@ Loading tracing session configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 By default, the LTTng session daemon tries to load tracing session
 configurations located in the user default directory
-`$HOME/.lttng/sessions` and in the system one, `/etc/lttng/sessions`.
+`$HOME/.lttng/sessions` and in the system one, +{system_sessions_dir}+.
 Note that both the directory containing the tracing session
 configurations and the session daemon binary _must_ have the same UID
 for the configurations to be automatically loaded.
@@ -275,7 +275,7 @@ FILES
     Default location of saved user tracing sessions (see
     man:lttng-save(1) and man:lttng-load(1)).
 
-`/etc/lttng/sessions`::
++{system_sessions_dir}+::
     System-wide location of saved tracing sessions
     (see man:lttng-save(1) and man:lttng-load(1)).
 
@@ -283,7 +283,7 @@ FILES
     Default location of the session daemon configuration file (see the
     option:--config option).
 
-`/etc/lttng/lttng.conf`::
++{system_lttng_conf}+::
     System-wide location of the session daemon configuration file (see
     the option:--config option).
 
