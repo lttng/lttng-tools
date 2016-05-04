@@ -152,7 +152,7 @@ Paths and ports
 ~~~~~~~~~~~~~~~
 option:--agent-tcp-port='PORT'::
     Listen on TCP port 'PORT' for agent application registrations
-    (default: 5345).
+    (default: {default_agent_tcp_port}).
 
 option:-a, option:--apps-sock='PATH'::
     Set application Unix socket path to 'PATH'.
@@ -228,7 +228,7 @@ variable.
     Application socket's timeout (seconds) when sending/receiving
     commands. After this period of time, the application is unregistered
     by the session daemon. A value of 0 or -1 means an infinite timeout.
-    Default value: 5.
+    Default value: {default_app_socket_rw_timeout}.
 
 `LTTNG_CONSUMERD32_BIN`::
     32-bit consumer daemon binary path.

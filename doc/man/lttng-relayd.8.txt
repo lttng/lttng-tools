@@ -37,7 +37,8 @@ The relay daemon does not require any particular permissions, as long as
 it can write to the output directory and listen on the configured ports.
 If a user is within a secured network and/or has proper firewall
 settings, `lttng-relayd` can listen to LTTng live connections from _all_
-network interfaces by specifying `--live-port=tcp://0.0.0.0:5344`.
+network interfaces by specifying
++--live-port=tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+.
 
 Once a trace has been streamed completely, the trace can be processed by
 any tool that can process an LTTng trace located on the local
@@ -127,14 +128,17 @@ See the <<url-format,URL format>> section above for more information
 about the syntax of the following options' 'URL' argument.
 
 option:-C, option:--control-port='URL'::
-    Listen to control data on URL 'URL' (default: `tcp://0.0.0.0:5342`).
+    Listen to control data on URL 'URL' (default:
+    +tcp://{default_network_control_bind_address}:{default_network_control_port}+).
 
 option:-D, option:--data-port='URL'::
-    Listen to trace data on URL 'URL' (default: `tcp://0.0.0.0:5343`).
+    Listen to trace data on URL 'URL' (default:
+    +tcp://{default_network_data_bind_address}:{default_network_data_port}+).
 
 option:-L, option:--live-port='URL'::
     Listen to LTTng live connections on URL 'URL'
-    (default: `tcp://0.0.0.0:5344`).
+    (default:
+    +tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+).
 
 
 Program information
