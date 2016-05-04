@@ -38,19 +38,23 @@ When this option is specified, the default directories are :not:
 searched for configuration files. When it's not specified, _both_
 default directories are searched for configuration files.
 
-If the input path is a directory, then if 'SESSION' is specified, the
-tracing session configuration named 'SESSION' is searched in all the
-files of this directory and loaded if found. If 'SESSION' is not
-specified, the option:--all option is implicit: all the tracing session
-configurations found in all the files in this directory are loaded.
+If the input path is a *directory*, then:
 
-If the input path is a file, then if 'SESSION' is specified, the tracing
-session configuration named 'SESSION' is searched in this file and
-loaded if found. If 'SESSION' is not specified, the option:--all option
-is implicit: all the tracing session configurations found in this file
-are loaded.
+* If 'SESSION' is specified, the tracing session configuration named
+  'SESSION' is searched for in all the files of this directory and
+  loaded if found.
+* If 'SESSION' is not specified, the option:--all option is implicit:
+  all the tracing session configurations found in all the files in this
+  directory are loaded.
 
-By default, existing tracing sessions are not overwritten when loading;
+If the input path is a *file*, then:
+
+* If 'SESSION' is specified, the tracing session configuration named
+  'SESSION' is searched for in this file and loaded if found.
+* If 'SESSION' is not specified, the option:--all option is implicit:
+  all the tracing session configurations found in this file are loaded.
+
+By default, existing tracing sessions are not overwritten when loading:
 the command fails. The option:--force option can be used to allow this.
 
 
