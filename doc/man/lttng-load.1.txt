@@ -27,9 +27,16 @@ and more.
 Once one or more tracing session configurations are loaded, they appear
 exactly as they were saved from the user's point of view.
 
-The default input path is `$LTTNG_HOME/.lttng/sessions`
-(`$LTTNG_HOME` defaults to `$HOME`). The input path can be
-overridden with the option:--input-path option.
+The following directories are searched, non-recursively, in this order
+for configuration files:
+
+. `$LTTNG_HOME/.lttng/sessions` (`$LTTNG_HOME` defaults to `$HOME`)
+. +{system_sessions_dir}+
+
+The input path can be overridden with the option:--input-path option.
+When this option is specified, the default directories are :not:
+searched for configuration files. When it's not specified, _both_
+default directories are searched for configuration files.
 
 If the input path is a directory, then if 'SESSION' is specified, the
 tracing session configuration named 'SESSION' is searched in all the
@@ -57,8 +64,9 @@ option:-f, option:--force::
     Overwrite existing tracing sessions when loading.
 
 option:-i, option:--input-path='PATH'::
-    Set input path to 'PATH', either a directory or a file, in which
-    tracing session configurations are searched for.
+    Load tracing session configurations from 'PATH', either a directory
+    or a file, instead of loading them from the default search
+    directories.
 
 
 include::common-cmd-help-options.txt[]
