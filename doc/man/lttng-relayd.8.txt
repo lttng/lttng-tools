@@ -51,7 +51,7 @@ Output directory
 By default, the relay daemon writes the traces to:
 
 [verse]
-$HOME/lttng-traces/'HOSTNAME'/'SESSION'/'DOMAIN'
+$LTTNG_HOME/lttng-traces/'HOSTNAME'/'SESSION'/'DOMAIN'
 
 with:
 
@@ -65,7 +65,7 @@ with:
     Tracing domain.
 
 You can override the default output directory prefix
-(`$HOME/lttng-traces`) with the option:--output option. The other
+(`$LTTNG_HOME/lttng-traces`) with the option:--output option. The other
 parts depend on the remote configuration.
 
 
