@@ -28,6 +28,7 @@
 #include <errno.h>
 
 #include <common/common.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 
 #include "unix.h"
 

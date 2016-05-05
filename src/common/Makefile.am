@@ -73,7 +73,7 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        pipe.c pipe.h readwrite.c readwrite.h \
                        mi-lttng.h mi-lttng.c \
                        daemonize.c daemonize.h \
-                       sessiond-comm/unix.c sessiond-comm/unix.h \
+                       unix.c unix.h \
                        filter.c filter.h context.c context.h
 
 libcommon_la_LIBADD = \

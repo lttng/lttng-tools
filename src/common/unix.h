@@ -24,8 +24,6 @@
 #include <common/compat/socket.h>
 #include <common/macros.h>
 
-#include "sessiond-comm.h"
-
 LTTNG_HIDDEN
 int lttcomm_create_unix_sock(const char *pathname);
 LTTNG_HIDDEN

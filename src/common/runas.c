@@ -36,7 +36,8 @@
 #include <common/utils.h>
 #include <common/compat/getenv.h>
 #include <common/compat/prctl.h>
-#include <common/sessiond-comm/unix.h>
+#include <common/unix.h>
+#include <common/defaults.h>
 
 #include "runas.h"
 

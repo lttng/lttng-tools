@@ -32,7 +32,7 @@
 #include "sessiond-comm.h"
 
 /* For Unix socket */
-#include "unix.h"
+#include <common/unix.h>
 /* For Inet socket */
 #include "inet.h"
 /* For Inet6 socket */
