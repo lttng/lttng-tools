@@ -40,7 +40,7 @@
 
 #include "inet.h"
 #include "inet6.h"
-#include "unix.h"
+#include <common/unix.h>
 
 /* Queue size of listen(2) */
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
