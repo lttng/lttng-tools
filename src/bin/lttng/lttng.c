@@ -242,6 +242,55 @@ end:
 	return ret;
 }
 
+static void show_basic_help(void)
+{
+	puts("Usage: lttng [--group=GROUP] [--mi=TYPE] [--no-sessiond | --sessiond-path=PATH]");
+	puts("             [--quiet | -v | -vv | -vvv] COMMAND [COMMAND OPTIONS]");
+	puts("");
+	puts("Available commands:");
+	puts("");
+	puts("Tracing sessions:");
+	puts("  create            " CONFIG_CMD_DESCR_CREATE);
+	puts("  destroy           " CONFIG_CMD_DESCR_DESTROY);
+	puts("  load              " CONFIG_CMD_DESCR_LOAD);
+	puts("  metadata          " CONFIG_CMD_DESCR_METADATA);
+	puts("  save              " CONFIG_CMD_DESCR_SAVE);
+	puts("  set-session       " CONFIG_CMD_DESCR_SET_SESSION);
+	puts("");
+	puts("Channels:");
+	puts("  add-context       " CONFIG_CMD_DESCR_ADD_CONTEXT);
+	puts("  disable-channel   " CONFIG_CMD_DESCR_DISABLE_CHANNEL);
+	puts("  enable-channel    " CONFIG_CMD_DESCR_ENABLE_CHANNEL);
+	puts("");
+	puts("Event rules:");
+	puts("  disable-event     " CONFIG_CMD_DESCR_DISABLE_EVENT);
+	puts("  enable-event      " CONFIG_CMD_DESCR_ENABLE_EVENT);
+	puts("");
+	puts("Status:");
+	puts("  list              " CONFIG_CMD_DESCR_LIST);
+	puts("  status            " CONFIG_CMD_DESCR_STATUS);
+	puts("");
+	puts("Control:");
+	puts("  snapshot          " CONFIG_CMD_DESCR_SNAPSHOT);
+	puts("  start             " CONFIG_CMD_DESCR_START);
+	puts("  stop              " CONFIG_CMD_DESCR_STOP);
+	puts("");
+	puts("Resource tracking:");
+	puts("  track             " CONFIG_CMD_DESCR_TRACK);
+	puts("  untrack           " CONFIG_CMD_DESCR_UNTRACK);
+	puts("");
+	puts("Miscellaneous:");
+	puts("  calibrate         " CONFIG_CMD_DESCR_CALIBRATE);
+	puts("  help              " CONFIG_CMD_DESCR_HELP);
+	puts("  version           " CONFIG_CMD_DESCR_VERSION);
+	puts("  view              " CONFIG_CMD_DESCR_VIEW);
+	puts("");
+	puts("Run `lttng help COMMAND` or `lttng COMMAND --help` to get help with");
+	puts("command COMMAND.");
+	puts("");
+	puts("See `man lttng` for more help with the lttng command.");
+}
+
 /*
  * Parse command line arguments.
  *
@@ -258,6 +307,7 @@ static int parse_args(int argc, char **argv)
 	}
 
 	if (argc < 2) {
+		show_basic_help();
 		clean_exit(EXIT_FAILURE);
 	}
 
