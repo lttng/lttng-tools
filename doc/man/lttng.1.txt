@@ -148,88 +148,88 @@ The following commands also have their own nloption:--help option.
 Tracing sessions
 ~~~~~~~~~~~~~~~~
 man:lttng-create(1)::
-    Create a tracing session.
+    {cmd_descr_create}.
 
 man:lttng-destroy(1)::
-    Tear down tracing sessions.
+    {cmd_descr_destroy}.
 
 man:lttng-load(1)::
-    Load tracing session configurations.
+    {cmd_descr_load}.
 
 man:lttng-metadata(1)::
-    Manage an LTTng tracing session's metadata generation.
+    {cmd_descr_metadata}.
 
 man:lttng-save(1)::
-    Save tracing session configurations.
+    {cmd_descr_save}.
 
 man:lttng-set-session(1)::
-    Set current tracing session.
+    {cmd_descr_set_session}.
 
 
 Channels
 ~~~~~~~~
 man:lttng-add-context(1)::
-    Add context fields to a channel.
+    {cmd_descr_add_context}.
 
 man:lttng-disable-channel(1)::
-    Disable tracing channels.
+    {cmd_descr_disable_channel}.
 
 man:lttng-enable-channel(1)::
-    Create or enable tracing channels.
+    {cmd_descr_enable_channel}.
 
 
 Event rules
 ~~~~~~~~~~~
 man:lttng-disable-event(1)::
-    Disable event rules.
+    {cmd_descr_disable_event}.
 
 man:lttng-enable-event(1)::
-    Create or enable event rules.
+    {cmd_descr_enable_event}.
 
 
 Status
 ~~~~~~
 man:lttng-list(1)::
-    List tracing sessions, domains, channels, and events.
+    {cmd_descr_list}.
 
 man:lttng-status(1)::
-    Get the status of the current tracing session.
+    {cmd_descr_status}.
 
 
 Control
 ~~~~~~~
 man:lttng-snapshot(1)::
-    Snapshot buffers of current tracing session.
+    {cmd_descr_snapshot}.
 
 man:lttng-start(1)::
-    Start tracing.
+    {cmd_descr_start}.
 
 man:lttng-stop(1)::
-    Stop tracing.
+    {cmd_descr_stop}.
 
 
 Resource tracking
 ~~~~~~~~~~~~~~~~~
 man:lttng-track(1)::
-    Track specific system resources.
+    {cmd_descr_track}.
 
 man:lttng-untrack(1)::
-    Untrack specific system resources.
+    {cmd_descr_untrack}.
 
 
 Miscellaneous
 ~~~~~~~~~~~~~
 man:lttng-calibrate(1)::
-    Quantify LTTng overhead.
+    {cmd_descr_calibrate}.
 
 man:lttng-help(1)::
-    Display help information about a command.
+    {cmd_descr_help}.
 
 man:lttng-version(1)::
-    Show version information.
+    {cmd_descr_version}.
 
 man:lttng-view(1)::
-    Start trace viewer.
+    {cmd_descr_view}.
 
 
 include::common-cmd-footer.txt[]
