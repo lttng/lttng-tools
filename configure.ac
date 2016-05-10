@@ -281,33 +281,27 @@ AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$have_libuuid" = "xyes"])
 AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$have_libc_uuid" = "xyes"])
 
 # URCU library version needed or newer
-liburcu_version=">= 0.8.0"
+m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.8.0 is needed])
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/list.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/list.h>]])
 AC_CHECK_DECL([cds_wfcq_init], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/wfcqueue.h>]])
 AC_CHECK_DECL([cds_wfcq_dequeue_blocking], [],
-    [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/wfcqueue.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/wfcqueue.h>]])
 AC_CHECK_DECL([futex_async], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu/futex.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/futex.h>]])
 AC_CHECK_DECL([rcu_thread_offline], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]])
 AC_CHECK_DECL([rcu_thread_online], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]])
 AC_CHECK_DECL([caa_likely], [],
-	[AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
-)
+	[AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]])
+
 #Function added in urcu 0.7.0
 AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
-        [AC_MSG_ERROR([liburcu $liburcu_version or newer is needed])], [[#include <urcu.h>]]
+        [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]]
 )
 
 # Check kmod library
