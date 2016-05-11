@@ -1,4 +1,4 @@
-EXTRA_DIST = test_event_basic test_all_events test_syscall
+EXTRA_DIST = test_event_basic test_all_events test_syscall test_clock_override
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
