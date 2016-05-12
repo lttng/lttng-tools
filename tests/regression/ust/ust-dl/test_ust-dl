@@ -21,7 +21,8 @@ TESTDIR=${CURDIR}/../../..
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$CURDIR/.libs/libfoo.so" ]; then
-	BAIL_OUT "No shared object generated"
+	diag "No shared object generated. Skipping all tests."
+	exit 0
 fi
 
 start_lttng_sessiond_notap

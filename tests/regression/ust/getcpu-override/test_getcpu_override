@@ -50,10 +50,6 @@ source $TESTDIR/utils/utils.sh
 # Equivalent to the syconf(_SC_NPROCESSORS_CONF) call.
 num_cpus=$(conf_proc_count)
 
-if [ ! -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
-	BAIL_OUT "No shared object generated"
-fi
-
 # MUST set TESTDIR before calling those functions
 
 run_app()
@@ -160,6 +156,14 @@ test_getcpu_override()
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+if [ -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
+	foundobj=1
+else
+	foundobj=0
+fi
+
+skip $foundobj "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
 
 TESTS=(
 	test_getcpu_override_fail
