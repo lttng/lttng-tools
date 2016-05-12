@@ -25,10 +25,6 @@ SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
 
-if [ ! -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
-	BAIL_OUT "${CURDIR}/${SESSIOND_PRELOAD} is missing."
-fi
-
 function lttng_create_session_uri
 {
 	# Create session with default path
@@ -162,6 +158,14 @@ function test_health
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
+
+if [ -f "$CURDIR/$SESSIOND_PRELOAD" ]; then
+	foundobj=1
+else
+	foundobj=0
+fi
+
+skip $foundobj "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
 
 THREAD=("LTTNG_SESSIOND_THREAD_MANAGE_CLIENTS"
 	"LTTNG_SESSIOND_THREAD_MANAGE_APPS"
