@@ -16,10 +16,14 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 SESSIOND_BIN="lttng-sessiond"
+SESSIOND_MATCH=".*lttng-sess.*"
 SESSIOND_PIDS=""
 RUNAS_BIN="lttng-runas"
+RUNAS_MATCH=".*lttng-runas.*"
 CONSUMERD_BIN="lttng-consumerd"
+CONSUMERD_MATCH=".*lttng-consumerd.*"
 RELAYD_BIN="lttng-relayd"
+RELAYD_MATCH=".*lttng-relayd.*"
 RELAYD_PIDS=""
 LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
@@ -304,7 +308,7 @@ function start_lttng_relayd_opt()
 
 	DIR=$(readlink -f $TESTDIR)
 
-	if [ -z $(pgrep --full lt-$RELAYD_BIN) ]; then
+	if [ -z $(pgrep $RELAYD_MATCH) ]; then
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
@@ -321,7 +325,7 @@ function start_lttng_relayd_opt()
 		pass "Start lttng-relayd (opt: $opt)"
 	fi
 
-	RELAYD_PIDS=$(pgrep --full lt-$RELAYD_BIN)
+	RELAYD_PIDS=$(pgrep $RELAYD_MATCH)
 }
 
 function start_lttng_relayd()
@@ -352,7 +356,7 @@ function stop_lttng_relayd_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full lt-$RELAYD_BIN)
+			out=$(pgrep $RELAYD_MATCH)
 			sleep 0.5
 		done
 		if [ $withtap -eq "1" ]; then
@@ -395,7 +399,7 @@ function start_lttng_sessiond_opt()
 	: ${LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/}
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z $(pgrep --full lt-$SESSIOND_BIN) ]; then
+	if [ -z $(pgrep ${SESSIOND_MATCH}) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
@@ -408,7 +412,7 @@ function start_lttng_sessiond_opt()
 			ok $status "Start session daemon"
 		fi
 	fi
-	SESSIOND_PIDS=$(pgrep --full lt-$SESSIOND_BIN)
+	SESSIOND_PIDS=$(pgrep $SESSIOND_MATCH)
 }
 
 function start_lttng_sessiond()
@@ -432,13 +436,13 @@ function stop_lttng_sessiond_opt()
 		return
 	fi
 
-	local pids="${SESSIOND_PIDS} $(pgrep --full $RUNAS_BIN)"
+	local pids="${SESSIOND_PIDS} $(pgrep $RUNAS_MATCH)"
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
 	fi
 	if [ $withtap -eq "1" ]; then
-		diag "Killing lt-$SESSIOND_BIN pids: $(echo $pids | tr '\n' ' ')"
+		diag "Killing $SESSIOND_BIN and lt-$SESSIOND_BIN pids: $(echo $pids | tr '\n' ' ')"
 	fi
 	kill $kill_opt $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
@@ -449,12 +453,12 @@ function stop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full lt-$SESSIOND_BIN)
+			out=$(pgrep ${SESSIOND_MATCH})
 			sleep 0.5
 		done
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep --full $CONSUMERD_BIN)
+			out=$(pgrep $CONSUMERD_MATCH)
 			sleep 0.5
 		done
 
@@ -486,12 +490,12 @@ function sigstop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND="$(pgrep --full lt-$SESSIOND_BIN) $(pgrep --full $RUNAS_BIN)"
+	PID_SESSIOND="$(pgrep ${SESSIOND_MATCH}) $(pgrep $RUNAS_MATCH)"
 
 	kill_opt="$kill_opt -s $signal"
 
 	if [ $withtap -eq "1" ]; then
-		diag "Sending SIGSTOP to lt-$SESSIOND_BIN pids: $(echo $PID_SESSIOND | tr '\n' ' ')"
+		diag "Sending SIGSTOP to lt-$SESSIOND_BIN and $SESSIOND_BIN pids: $(echo $PID_SESSIOND | tr '\n' ' ')"
 	fi
 	kill $kill_opt $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 
@@ -502,7 +506,7 @@ function sigstop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid=$(pgrep --full lt-$SESSIOND_BIN)
+			pid=$(pgrep $SESSIOND_MATCH)
 
 			# Wait until state becomes stopped for session
 			# daemon(s).
@@ -537,7 +541,7 @@ function stop_lttng_consumerd_opt()
 	local signal=$2
 	local kill_opt=""
 
-	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN`
+	PID_CONSUMERD=$(pgrep $CONSUMERD_MATCH)
 
 	if [ -n "$2" ]; then
 		kill_opt="$kill_opt -s $signal"
@@ -558,7 +562,7 @@ function stop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid=$(pgrep --full $CONSUMERD_BIN)
+			pid=$(pgrep $CONSUMERD_MATCH)
 
 			# If consumerds are still present check their status.
 			# A zombie status qualifies the consumerd as *killed*
@@ -594,7 +598,7 @@ function sigstop_lttng_consumerd_opt()
 	local signal=SIGSTOP
 	local kill_opt=""
 
-	PID_CONSUMERD=`pgrep --full $CONSUMERD_BIN`
+	PID_CONSUMERD=$(pgrep $CONSUMERD_MATCH)
 
 	kill_opt="$kill_opt -s $signal"
 
@@ -613,7 +617,7 @@ function sigstop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid=$(pgrep --full $CONSUMERD_BIN)
+			pid=$(pgrep $CONSUMERD_MATCH)
 
 			# Wait until state becomes stopped for all
 			# consumers.
