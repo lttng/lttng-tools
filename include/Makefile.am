@@ -59,6 +59,8 @@ version.h:
 ##
 .PHONY: version.h
 
+CLEANFILES = version.h
+
 nodist_noinst_HEADERS = \
 	version.h
 
