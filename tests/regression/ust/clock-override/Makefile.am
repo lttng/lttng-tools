@@ -1,3 +1,14 @@
+if NO_SHARED
+# Do not build this test if shared libraries support was
+# explicitly disabled.
+
+CLEANFILES = lttng-ust-clock-override-test.so \
+	lttng-ust-clock-override-test.so.debug
+
+EXTRA_DIST = test_clock_override lttng-ust-clock-override-test.c
+
+else
+
 AM_CPPFLAGS = -I$(srcdir)
 
 # The rpath is necessary because libtool won't build a shared library
@@ -35,3 +46,5 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
+
+endif

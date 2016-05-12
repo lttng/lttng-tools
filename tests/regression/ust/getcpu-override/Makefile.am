@@ -1,3 +1,15 @@
+if NO_SHARED
+# Do not build this test if shared libraries support was
+# explicitly disabled.
+
+CLEANFILES = lttng-ust-getcpu-override-test.so \
+	lttng-ust-getcpu-override-test.so.debug
+
+EXTRA_DIST = test_getcpu_override run-getcpu-override \
+	lttng-ust-getcpu-override-test.c
+
+else
+
 AM_CPPFLAGS = -I$(srcdir)
 
 # The rpath is necessary because libtool won't build a shared library
@@ -35,3 +47,5 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
+
+endif

@@ -8,9 +8,17 @@ if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
 LIBS += -lc
 endif
 
+COPYSCRIPTS = test_thread_exit test_thread_stall test_tp_fail \
+	test_health.sh test_thread_ok
+dist_noinst_SCRIPTS = $(COPYSCRIPTS)
+
 if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.
+
+EXTRA_DIST = health_exit.c health_stall.c health_fail.c \
+	health_check.c $(COPYSCRIPTS)
+
 else
 # In order to test the health check feature, the libhealth* libs
 # must be built as .so to be able to LD_PRELOAD them.
@@ -35,23 +43,21 @@ noinst_LTLIBRARIES = libhealthexit.la libhealthstall.la libhealthtpfail.la
 health_check_SOURCES = health_check.c $(UTILS)
 health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		     $(top_builddir)/src/common/libcommon.la
-endif
 
-dist_noinst_SCRIPTS = test_thread_exit test_thread_stall test_tp_fail \
-		test_health.sh test_thread_ok
-EXTRA_DIST = test_thread_exit test_thread_stall test_tp_fail \
-		test_health.sh test_thread_ok
+EXTRA_DIST = $(COPYSCRIPTS)
+
+endif
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
+		for script in $(COPYSCRIPTS); do \
 			cp -f $(srcdir)/$$script $(builddir); \
 		done; \
 	fi
 
 clean-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
+		for script in $(COPYSCRIPTS); do \
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
