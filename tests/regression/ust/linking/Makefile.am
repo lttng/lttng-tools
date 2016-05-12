@@ -44,7 +44,16 @@ endif
 
 noinst_PROGRAMS = demo_builtin demo_static
 
-if !NO_SHARED
+COPYSCRIPTS = test_linking test_linking.py demo_preload
+noinst_SCRIPTS = $(COPYSCRIPTS)
+
+if NO_SHARED
+
+EXTRA_DIST = tp.c ust_tests_demo.h tp2.c ust_tests_demo2.h \
+	tp3.c ust_tests_demo3.h demo.c ust_tests_demo.h \
+	$(COPYSCRIPTS)
+
+else
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
@@ -79,21 +88,20 @@ if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
 demo_LDADD = -lc
 endif
 
-endif
+EXTRA_DIST = $(COPYSCRIPTS)
 
-noinst_SCRIPTS = test_linking test_linking.py demo_preload
-EXTRA_DIST = test_linking test_linking.py demo_preload
+endif
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
+		for script in $(COPYSCRIPTS); do \
 			cp -f $(srcdir)/$$script $(builddir); \
 		done; \
 	fi
 
 clean-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
-		for script in $(EXTRA_DIST); do \
+		for script in $(COPYSCRIPTS); do \
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi

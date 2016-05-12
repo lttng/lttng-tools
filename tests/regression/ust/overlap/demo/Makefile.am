@@ -1,8 +1,17 @@
-AM_CFLAGS=-I$(srcdir)
 if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.
+
+CLEANFILES = demo
+
+EXTRA_DIST = demo-trace demo.c ust_tests_demo.h \
+	tp3.c ust_tests_demo3.h tp2.c ust_tests_demo2.h \
+	tp.c ust_tests_demo.h
+
 else
+
+AM_CFLAGS=-I$(srcdir)
+
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
@@ -49,4 +58,5 @@ clean-local:
 			rm -f $(builddir)/$$script; \
 		done; \
 	fi
+
 endif

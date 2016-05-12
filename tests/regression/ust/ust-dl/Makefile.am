@@ -1,3 +1,14 @@
+if NO_SHARED
+# Do not build this test if shared libraries support was
+# explicitly disabled.
+
+CLEANFILES = libfoo.so libfoo.so.debug prog
+
+EXTRA_DIST = test_ust-dl test_ust-dl.py libfoo.c libfoo.h \
+	prog.c
+
+else
+
 objcopy_verbose = $(objcopy_verbose_@AM_V@)
 objcopy_verbose_ = $(objcopy_verbose_@AM_DEFAULT_V@)
 objcopy_verbose_0 = @echo OBJCOPY $@;
@@ -13,8 +24,7 @@ libfoo_la_SOURCES = libfoo.c libfoo.h
 libfoo_la_LDFLAGS = -module -shared -avoid-version \
 		-rpath $(abs_builddir)
 
-noinst_SCRIPTS = test_ust-dl test_ust-dl.py
-EXTRA_DIST = test_ust-dl test_ust-dl.py
+CLEANFILES = libfoo.so libfoo.so.debug
 
 # Extract debug symbols
 libfoo.so.debug: libfoo.la
@@ -24,6 +34,9 @@ libfoo.so.debug: libfoo.la
 libfoo.so: libfoo.so.debug
 	@cp -f .libs/libfoo.so libfoo.so
 	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libfoo.so.debug libfoo.so
+
+noinst_SCRIPTS = test_ust-dl test_ust-dl.py
+EXTRA_DIST = test_ust-dl test_ust-dl.py
 
 all-local: libfoo.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
@@ -39,4 +52,4 @@ clean-local:
 		done; \
 	fi
 
-CLEANFILES = libfoo.so libfoo.so.debug
+endif
