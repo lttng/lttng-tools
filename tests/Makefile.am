@@ -2,18 +2,10 @@ SUBDIRS =
 DIST_SUBDIRS = utils regression unit stress destructive
 
 if BUILD_TESTS
-SUBDIRS += utils regression unit stress destructive
-endif
-
-check-am:
-if BUILD_TESTS
+SUBDIRS += . utils regression unit stress destructive
 if HAS_PGREP
-	./utils/warn_lttng_processes.sh $(PGREP)
-endif
-	./run.sh unit_tests
-	./run.sh fast_regression
-if PYTHON_BINDING
-	./run.sh with_bindings_regression
+check-am:
+	$(top_srcdir)/tests/utils/warn_lttng_processes.sh $(PGREP)
 endif
 else
 	@echo "========================================="
@@ -21,8 +13,9 @@ else
 	@echo "========================================="
 endif
 
-dist_noinst_SCRIPTS = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression root_destructive_tests
-EXTRA_DIST = run.sh unit_tests fast_regression long_regression root_regression with_bindings_regression README root_destructive_tests
+
+dist_noinst_SCRIPTS = run.sh fast_regression long_regression root_regression root_destructive_tests
+EXTRA_DIST = run.sh fast_regression long_regression root_regression README root_destructive_tests
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
