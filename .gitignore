@@ -16,6 +16,8 @@ Makefile.in
 *.bz2
 *.tar
 *.class
+*.trs
+*.log
 .dirstamp
 configure
 aclocal.m4
@@ -97,6 +99,7 @@ tests/regression/ust/python-logging/test_python_logging
 /tests/regression/ust/baddr-statedump/prog
 /tests/regression/ust/baddr-statedump/prog.debug
 /tests/regression/ust/baddr-statedump/prog.strip
+/tests/regression/ust/type-declarations/type-declarations
 /tests/regression/ust/ust-dl/prog
 /tests/regression/ust/ust-dl/libfoo.so.debug
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents

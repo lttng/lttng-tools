@@ -3,6 +3,16 @@ SUBDIRS = ini_config
 AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 AM_LDFLAGS =
 
+LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
+	$(top_srcdir)/config/tap-driver.sh
+
+TESTS = test_kernel_data \
+	test_session \
+	test_uri \
+	test_utils_parse_size_suffix \
+	test_utils_expand_path \
+	ini_config/test_ini_config
+
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
 LIBS += -ldl
 endif
@@ -23,6 +33,7 @@ noinst_PROGRAMS += test_utils_parse_size_suffix test_utils_expand_path
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
+TESTS += test_ust_data
 endif
 
 # URI unit tests
