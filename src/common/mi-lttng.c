@@ -30,17 +30,17 @@
 #define MI_SCHEMA_MINOR_VERSION 0
 
 /* Machine interface namespace URI */
-const char * const mi_lttng_xmlns = "xmlns";
-const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
-const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
-const char * const mi_lttng_schema_location = "xsi:schemaLocation";
-const char * const mi_lttng_schema_location_uri =
+LTTNG_HIDDEN const char * const mi_lttng_xmlns = "xmlns";
+LTTNG_HIDDEN const char * const mi_lttng_xmlns_xsi = "xmlns:xsi";
+LTTNG_HIDDEN const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001/XMLSchema-instance";
+LTTNG_HIDDEN const char * const mi_lttng_schema_location = "xsi:schemaLocation";
+LTTNG_HIDDEN const char * const mi_lttng_schema_location_uri =
 	DEFAULT_LTTNG_MI_NAMESPACE " "
 	"http://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"/lttng-mi-" XSTR(MI_SCHEMA_MAJOR_VERSION) "."
 	XSTR(MI_SCHEMA_MINOR_VERSION) ".xsd";
-const char * const mi_lttng_schema_version = "schemaVersion";
-const char * const mi_lttng_schema_version_value = XSTR(MI_SCHEMA_MAJOR_VERSION)
+LTTNG_HIDDEN const char * const mi_lttng_schema_version = "schemaVersion";
+LTTNG_HIDDEN const char * const mi_lttng_schema_version_value = XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"." XSTR(MI_SCHEMA_MINOR_VERSION);
 
 /* Strings related to command */
@@ -56,8 +56,8 @@ const char * const mi_lttng_element_command_enable_channels = "enable-channel";
 const char * const mi_lttng_element_command_enable_event = "enable-event";
 const char * const mi_lttng_element_command_list = "list";
 const char * const mi_lttng_element_command_load = "load";
-const char * const mi_lttng_element_command_metadata = "metadata";
-const char * const mi_lttng_element_command_metadata_action = "metadata_action";
+LTTNG_HIDDEN const char * const mi_lttng_element_command_metadata = "metadata";
+LTTNG_HIDDEN const char * const mi_lttng_element_command_metadata_action = "metadata_action";
 const char * const mi_lttng_element_command_name = "name";
 const char * const mi_lttng_element_command_output = "output";
 const char * const mi_lttng_element_command_save = "save";
