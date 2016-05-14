@@ -18,6 +18,8 @@
 #ifndef LTTNG_COMMON_CONTEXT_H
 #define LTTNG_COMMON_CONTEXT_H
 
+#include <common/macros.h>
+
 /*
  * Parse string as an application context of the form
  * "$app.provider_name:context_name" and return the provider name and context
@@ -29,6 +31,7 @@
  * Returns 0 if the string is a valid application context, else a negative
  * value on error.
  */
+LTTNG_HIDDEN
 int parse_application_context(const char *str, char **provider_name,
 		char **ctx_name);
 
