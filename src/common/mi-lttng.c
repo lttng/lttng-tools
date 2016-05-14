@@ -180,6 +180,12 @@ const char * const mi_lttng_element_snapshots = "snapshots";
 /* String related to track/untrack command */
 const char * const mi_lttng_element_track_untrack_all_wildcard = "*";
 
+/* Deprecated symbols preserved for ABI compatibility. */
+const char * const mi_lttng_context_type_perf_counter;
+const char * const mi_lttng_context_type_perf_cpu_counter;
+const char * const mi_lttng_context_type_perf_thread_counter;
+const char * const mi_lttng_element_track_untrack_pid_target;
+const char * const mi_lttng_element_track_untrack_targets;
 
 /* This is a merge of jul loglevel and regular loglevel
  * Those should never overlap by definition
