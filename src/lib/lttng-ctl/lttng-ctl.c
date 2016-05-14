@@ -1561,6 +1561,7 @@ int lttng_create_session(const char *name, const char *url)
  * Destroy session using name.
  * Returns size of returned session payload data or a negative error code.
  */
+static
 int _lttng_destroy_session(const char *session_name)
 {
 	struct lttcomm_session_msg lsm;
