@@ -26,6 +26,7 @@ struct bytecode_symbol_iterator;
  * Create an iterator on a bytecode's symbols. The iterator points to the
  * first element after creation.
  */
+LTTNG_HIDDEN
 struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
 		struct lttng_filter_bytecode *bytecode);
 
@@ -34,13 +35,17 @@ struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
  *
  * Returns 0 if a next element exists or a negative value at the end.
  */
+LTTNG_HIDDEN
 int bytecode_symbol_iterator_next(struct bytecode_symbol_iterator *it);
 
+LTTNG_HIDDEN
 int bytecode_symbol_iterator_get_type(struct bytecode_symbol_iterator *it);
 
+LTTNG_HIDDEN
 const char *bytecode_symbol_iterator_get_name(
 		struct bytecode_symbol_iterator *it);
 
+LTTNG_HIDDEN
 void bytecode_symbol_iterator_destroy(struct bytecode_symbol_iterator *it);
 
 #endif /* LTTNG_COMMON_FILTER_H */
