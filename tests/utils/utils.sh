@@ -1224,7 +1224,7 @@ function trace_matches ()
 
 	if [ "$count" -ne "$nr_iter" ]; then
 		fail "Trace match"
-		diag "$count events found in trace"
+		diag "$count matching events found in trace"
 	else
 		pass "Trace match"
 	fi
