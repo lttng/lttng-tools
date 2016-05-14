@@ -28,6 +28,7 @@ struct bytecode_symbol_iterator {
 	size_t offset, len;
 };
 
+LTTNG_HIDDEN
 struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
 		struct lttng_filter_bytecode *bytecode)
 {
@@ -49,6 +50,7 @@ end:
 	return it;
 }
 
+LTTNG_HIDDEN
 int bytecode_symbol_iterator_next(struct bytecode_symbol_iterator *it)
 {
 	int ret;
@@ -66,6 +68,7 @@ end:
 	return ret;
 }
 
+LTTNG_HIDDEN
 int bytecode_symbol_iterator_get_type(struct bytecode_symbol_iterator *it)
 {
 	int ret;
@@ -80,6 +83,7 @@ end:
 	return ret;
  }
 
+LTTNG_HIDDEN
 const char *bytecode_symbol_iterator_get_name(
 		struct bytecode_symbol_iterator *it)
 {
@@ -94,6 +98,7 @@ end:
 	return ret;
 }
 
+LTTNG_HIDDEN
 void bytecode_symbol_iterator_destroy(struct bytecode_symbol_iterator *it)
 {
 	free(it);
