@@ -187,6 +187,11 @@ static int get_ust_runtime_stats(struct ltt_session *session,
 	int ret;
 	struct ltt_ust_session *usess;
 
+	if (!discarded_events || !lost_packets) {
+		ret = -1;
+		goto end;
+	}
+
 	usess = session->ust_session;
 	assert(discarded_events);
 	assert(lost_packets);
@@ -270,7 +275,7 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 				&iter.iter, uchan, node.node) {
-			uint64_t discarded_events, lost_packets;
+			uint64_t discarded_events = 0, lost_packets = 0;
 
 			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
 			channels[i].attr.overwrite = uchan->attr.overwrite;
