@@ -74,7 +74,7 @@ function test_complex_load()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list $sess -c chan2 > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain[lttng:type='UST']/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
 	if [[ $mi_result = "false" ]]; then
 	    ok 0 "Disabled event is loaded in disabled state"
 	else

@@ -43,6 +43,10 @@ struct lttng_handle {
  * This handle contains the session name and domain on which the command will
  * be executed. A domain is basically a tracer like the kernel or user space.
  *
+ * When domain is memset to 0 it indicate the handle is not bound to a specific
+ * domain. This is mostly used for actions that apply on a session and not a
+ * specific domain (e.g lttng_set_consumer_url).
+ *
  * Return an newly allocated handle that should be freed using
  * lttng_destroy_handle. On error, NULL is returned.
  */
