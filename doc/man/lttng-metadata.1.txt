@@ -49,8 +49,8 @@ The `lttng metadata regenerate` command can only be used on kernel and
 user space tracing sessions (using per-user buffering), in non-live
 mode.
 
-See linklttng:lttng-enable-channel(1) for more information about
-buffering schemes and linklttng:lttng-create(1) for more information
+See man:lttng-enable-channel(1) for more information about
+buffering schemes and man:lttng-create(1) for more information
 about the different tracing session modes.
 
 
@@ -59,4 +59,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)

@@ -19,12 +19,12 @@ The `lttng view` command launches an external trace viewer to view the
 current trace of a tracing session.
 
 If 'SESSION' is omitted, the viewer is launched for the current tracing
-session (see linklttng:lttng-create(1) for more information
+session (see man:lttng-create(1) for more information
 about the current tracing session). Otherwise, it is launched for the
 existing tracing session named 'SESSION'. `lttng list`
-outputs all the existing tracing sessions (see linklttng:lttng-list(1)).
+outputs all the existing tracing sessions (see man:lttng-list(1)).
 
-By default, the linklttng:babeltrace(1) trace viewer is launched.
+By default, the man:babeltrace(1) trace viewer is launched.
 Another trace viewer command can be specified using the
 option:--viewer option.
 
@@ -52,4 +52,4 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1)
+man:lttng(1)
