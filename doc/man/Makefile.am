@@ -52,7 +52,7 @@ COMMON_TXT = \
 	$(srcdir)/common-cmd-help-options.txt
 
 # config
-ASCIIDOC_CONF = $(srcdir)/asciidoc.conf
+ASCIIDOC_CONF = $(builddir)/asciidoc.conf
 XSL_FILES = \
 	manpage.xsl \
 	manpage-callouts.xsl \
