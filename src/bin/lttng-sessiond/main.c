@@ -3332,6 +3332,9 @@ skip_domain:
 				goto error;
 			}
 			break;
+		default:
+			ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+			goto error;
 		}
 	}
 
