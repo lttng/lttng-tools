@@ -40,8 +40,8 @@ The _LTTng session daemon_ is a tracing registry which allows the user
 to interact with multiple tracers (kernel and user space) within the
 same container, a _tracing session_. Traces can be gathered from the
 Linux kernel and/or from instrumented applications (see
-linklttng:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using linklttng:babeltrace(1).
+man:lttng-ust(3)). You can aggregate and read the events of LTTng
+traces using man:babeltrace(1).
 
 To trace the Linux kernel, the session daemon needs to be running as
 `root`. LTTng uses a _tracing group_ to allow specific users to interact
@@ -61,19 +61,32 @@ NOTE: It is highly recommended to start the session daemon at boot time
 for stable and long-term tracing.
 
 
-Loading tracing session configurations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-By default, the LTTng session daemon tries to load tracing session
-configurations located in the user default directory
-`$HOME/.lttng/sessions` and in the system one, `/etc/lttng/sessions`.
+Automatic loading of tracing session configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When the session daemon starts, it automatically loads session
+configuration files.
+
+The following directories are searched, non-recursively, in this order
+for configuration files to automatically load:
+
+. `$LTTNG_HOME/.lttng/sessions/auto` (`$LTTNG_HOME` defaults to `$HOME`)
+. +{system_sessions_auto_dir}+
+
 Note that both the directory containing the tracing session
-configurations and the session daemon binary _must_ have the same UID
+configurations _and_ the session daemon binary _must_ have the same UID
 for the configurations to be automatically loaded.
 
-Specifying a path with the option:--load option overrides the default
-directory _and_ the UID check. The session daemon simply checks if the
-path is accessible and tries to load every tracing session configuration
-in it.
+The option:--load option overrides the default directories _and_ the UID
+check. The session daemon simply checks if the path is accessible and
+tries to load every tracing session configuration in it. When this
+option is specified, the default directories are :not: searched for
+configuration files. When it's not specified, _both_ default directories
+are searched for configuration files.
+
+If the option:--load option's argument is a directory, then all the
+tracing session configurations found in all the files in this directory
+are loaded. If the argument is a file, then all the tracing session
+configurations found in this file are loaded.
 
 
 OPTIONS
@@ -97,12 +110,14 @@ option:-g, option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
 
 option:-l, option:--load='PATH'::
-    Automatically load tracing session configurations from path 'PATH'.
+    Automatically load tracing session configurations from 'PATH',
+    either a directory or a file, instead of loading them from the
+    default search directories.
 
 option:-S, option:--sig-parent::
     Send `SIGUSR1` to parent process to notify readiness.
 +
-NOTE: This is used by linklttng:lttng(1) to get notified when the
+NOTE: This is used by man:lttng(1) to get notified when the
 session daemon is ready to accept commands. When building a third party
 tool on liblttng-ctl, this option can be very handy to synchronize the
 control tool and the session daemon.
@@ -137,7 +152,7 @@ Paths and ports
 ~~~~~~~~~~~~~~~
 option:--agent-tcp-port='PORT'::
     Listen on TCP port 'PORT' for agent application registrations
-    (default: 5345).
+    (default: {default_agent_tcp_port}).
 
 option:-a, option:--apps-sock='PATH'::
     Set application Unix socket path to 'PATH'.
@@ -213,7 +228,7 @@ variable.
     Application socket's timeout (seconds) when sending/receiving
     commands. After this period of time, the application is unregistered
     by the session daemon. A value of 0 or -1 means an infinite timeout.
-    Default value: 5.
+    Default value: {default_app_socket_rw_timeout}.
 
 `LTTNG_CONSUMERD32_BIN`::
     32-bit consumer daemon binary path.
@@ -268,22 +283,26 @@ FILES
 
 `$LTTNG_HOME/lttng-traces`::
     Default output directory of LTTng traces. This can be overridden
-    with the nloption:--output option of the linklttng:lttng-create(1)
+    with the nloption:--output option of the man:lttng-create(1)
     command.
 
-`$LTTNG_HOME/.lttng/sessions`::
-    Default location of saved user tracing sessions (see
-    linklttng:lttng-save(1) and linklttng:lttng-load(1)).
+`$LTTNG_HOME/.lttng/sessions/auto`::
+    Directory from which user tracing configuration files are
+    automatically loaded when the session daemon starts (see
+    man:lttng-save(1) and man:lttng-load(1) for saving
+    and loading tracing sessions).
 
-`/etc/lttng/sessions`::
-    System-wide location of saved tracing sessions
-    (see linklttng:lttng-save(1) and linklttng:lttng-load(1)).
++{system_sessions_auto_dir}+::
+    Directory from which system-wide tracing configuration files are
+    automatically loaded when the session daemon starts (see
+    man:lttng-save(1) and man:lttng-load(1) for saving
+    and loading tracing sessions).
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
     Default location of the session daemon configuration file (see the
     option:--config option).
 
-`/etc/lttng/lttng.conf`::
++{system_lttng_conf}+::
     System-wide location of the session daemon configuration file (see
     the option:--config option).
 
@@ -319,8 +338,8 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1),
-linklttng:lttng-relayd(8),
-linklttng:lttng-crash(1),
-linklttng:lttng-ust(3),
-linklttng:babeltrace(1)
+man:lttng(1),
+man:lttng-relayd(8),
+man:lttng-crash(1),
+man:lttng-ust(3),
+man:babeltrace(1)

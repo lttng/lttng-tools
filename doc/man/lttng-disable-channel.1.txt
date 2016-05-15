@@ -17,10 +17,10 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng disable-channel` command disables one or more channels
-previously enabled by the linklttng:lttng-enable-channel(1) command.
+previously enabled by the man:lttng-enable-channel(1) command.
 
 A channel is always contained in a tracing session
-(see linklttng:lttng-create(1) for creating a tracing session). The
+(see man:lttng-create(1) for creating a tracing session). The
 session in which a channel is disabled using `lttng disable-channel` can
 be specified using the option:--session option. If the option:--session
 option is omitted, the current tracing session is targeted.
@@ -58,5 +58,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-disable-channel(1),
-linklttng:lttng(1)
+man:lttng-disable-channel(1),
+man:lttng(1)

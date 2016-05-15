@@ -19,7 +19,7 @@ The `lttng load` command loads the configurations of one or more
 tracing sessions from files.
 
 The `lttng load` command is used in conjunction with the
-linklttng:lttng-save(1) command to save and restore the complete
+man:lttng-save(1) command to save and restore the complete
 configurations of tracing sessions. This includes the enabled channels
 and event rules, the context added to channels, the tracing activity,
 and more.
@@ -27,23 +27,34 @@ and more.
 Once one or more tracing session configurations are loaded, they appear
 exactly as they were saved from the user's point of view.
 
-The default input path is `$LTTNG_HOME/.lttng/sessions`
-(`$LTTNG_HOME` defaults to `$HOME`). The input path can be
-overridden with the option:--input-path option.
+The following directories are searched, non-recursively, in this order
+for configuration files:
 
-If the input path is a directory, then if 'SESSION' is specified, the
-tracing session configuration named 'SESSION' is searched in all the
-files of this directory and loaded if found. If 'SESSION' is not
-specified, the option:--all option is implicit: all the tracing session
-configurations found in all the files in this directory are loaded.
+. `$LTTNG_HOME/.lttng/sessions` (`$LTTNG_HOME` defaults to `$HOME`)
+. +{system_sessions_dir}+
 
-If the input path is a file, then if 'SESSION' is specified, the tracing
-session configuration named 'SESSION' is searched in this file and
-loaded if found. If 'SESSION' is not specified, the option:--all option
-is implicit: all the tracing session configurations found in this file
-are loaded.
+The input path can be overridden with the option:--input-path option.
+When this option is specified, the default directories are :not:
+searched for configuration files. When it's not specified, _both_
+default directories are searched for configuration files.
 
-By default, existing tracing sessions are not overwritten when loading;
+If the input path is a *directory*, then:
+
+* If 'SESSION' is specified, the tracing session configuration named
+  'SESSION' is searched for in all the files of this directory and
+  loaded if found.
+* If 'SESSION' is not specified, the option:--all option is implicit:
+  all the tracing session configurations found in all the files in this
+  directory are loaded.
+
+If the input path is a *file*, then:
+
+* If 'SESSION' is specified, the tracing session configuration named
+  'SESSION' is searched for in this file and loaded if found.
+* If 'SESSION' is not specified, the option:--all option is implicit:
+  all the tracing session configurations found in this file are loaded.
+
+By default, existing tracing sessions are not overwritten when loading:
 the command fails. The option:--force option can be used to allow this.
 
 
@@ -57,8 +68,9 @@ option:-f, option:--force::
     Overwrite existing tracing sessions when loading.
 
 option:-i, option:--input-path='PATH'::
-    Set input path to 'PATH', either a directory or a file, in which
-    tracing session configurations are searched for.
+    Load tracing session configurations from 'PATH', either a directory
+    or a file, instead of loading them from the default search
+    directories.
 
 
 include::common-cmd-help-options.txt[]
@@ -69,5 +81,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-save(1),
-linklttng:lttng(1)
+man:lttng-save(1),
+man:lttng(1)

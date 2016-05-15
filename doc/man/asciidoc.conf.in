@@ -1,0 +1,182 @@
+[macros]
+
+# man macro
+#
+# Inspired by linkgit macro:
+# <https://github.com/git/git/blob/master/Documentation/asciidoc.conf>
+#
+# Usage: man:command(manpage-section)
+(?su)[\\]?(?P<name>man):(?P<target>\S*?)\((?P<attrlist>.*?)\)=
+
+# linkgenoptions macro
+#
+# Usage: linkgenoptions:(text)
+(?su)[\\]?(?P<name>linkgenoptions):\((?P<text>.*?)\)=
+
+# no link option macro
+#
+# Usage: nloption:--option-name
+(?su)[\\]?(?P<name>nloption):(?P<opt>--?[a-zA-Z0-9-]*)=
+
+# lttng(1) general option macro
+#
+# Usage: genoption:--option-name
+(?su)[\\]?(?P<name>genoption):(?P<opt>--?[a-zA-Z0-9-]*)=
+
+# option macro
+#
+# Usage: option:--option-name
+(?su)[\\]?(?P<name>option):(?P<opt>--?[a-zA-Z0-9-]*)=
+
+# not macro
+#
+# Usage: :not:
+:not:=not
+
+# escwc macro
+#
+# Usage: :escwc:
+:escwc:=escwc
+
+# man macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[man-inlinemacro]
+{0%{target}}
+{0#<citerefentry>}
+{0#<refentrytitle>{target}</refentrytitle><manvolnum>{0}</manvolnum>}
+{0#</citerefentry>}
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# linkgenoptions macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[linkgenoptions-inlinemacro]
+{text}
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# option macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[option-inlinemacro]
+<literal>{opt}</literal>
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# no link option macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[nloption-inlinemacro]
+<literal>{opt}</literal>
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# lttng(1) general option macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[genoption-inlinemacro]
+<literal>{opt}</literal>
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# not macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[not-inlinemacro]
+NOT
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# escwc macro expansions
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[escwc-inlinemacro]
+<literal>\e*</literal>
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+# configure XML man page header
+ifdef::doctype-manpage[]
+ifdef::backend-docbook[]
+[header]
+template::[header-declarations]
+<refentry>
+<refmeta>
+<refentrytitle>{mantitle}</refentrytitle>
+<manvolnum>{manvolnum}</manvolnum>
+<refmiscinfo class="source">LTTng</refmiscinfo>
+<refmiscinfo class="version">{lttng_version}</refmiscinfo>
+<refmiscinfo class="manual">LTTng Manual</refmiscinfo>
+</refmeta>
+<refnamediv>
+  <refname>{manname}</refname>
+  <refpurpose>{manpurpose}</refpurpose>
+</refnamediv>
+endif::backend-docbook[]
+endif::doctype-manpage[]
+
+[attributes]
+# default values
+default_agent_tcp_port="@DEFAULT_AGENT_TCP_PORT@"
+default_app_socket_rw_timeout="@DEFAULT_APP_SOCKET_RW_TIMEOUT@"
+default_channel_subbuf_size="@DEFAULT_CHANNEL_SUBBUF_SIZE@"
+default_channel_tracefile_count="@DEFAULT_CHANNEL_TRACEFILE_COUNT@"
+default_channel_tracefile_size="@DEFAULT_CHANNEL_TRACEFILE_SIZE@"
+default_kernel_channel_live_timer="@DEFAULT_KERNEL_CHANNEL_LIVE_TIMER@"
+default_kernel_channel_read_timer="@DEFAULT_KERNEL_CHANNEL_READ_TIMER@"
+default_kernel_channel_subbuf_num="@DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM@"
+default_kernel_channel_subbuf_size="@DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE@"
+default_kernel_channel_switch_timer="@DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER@"
+default_lttng_live_timer="@DEFAULT_LTTNG_LIVE_TIMER@"
+default_metadata_cache_size="@DEFAULT_METADATA_CACHE_SIZE@"
+default_metadata_read_timer="@DEFAULT_METADATA_READ_TIMER@"
+default_metadata_subbuf_num="@DEFAULT_METADATA_SUBBUF_NUM@"
+default_metadata_subbuf_size="@DEFAULT_METADATA_SUBBUF_SIZE@"
+default_metadata_switch_timer="@DEFAULT_METADATA_SWITCH_TIMER@"
+default_network_control_port="@DEFAULT_NETWORK_CONTROL_PORT@"
+default_network_data_port="@DEFAULT_NETWORK_DATA_PORT@"
+default_network_viewer_port="@DEFAULT_NETWORK_VIEWER_PORT@"
+default_ust_pid_channel_live_timer="@DEFAULT_UST_PID_CHANNEL_LIVE_TIMER@"
+default_ust_pid_channel_read_timer="@DEFAULT_UST_PID_CHANNEL_READ_TIMER@"
+default_ust_pid_channel_subbuf_num="@DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM@"
+default_ust_pid_channel_subbuf_size="@DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE@"
+default_ust_pid_channel_switch_timer="@DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER@"
+default_ust_uid_channel_live_timer="@DEFAULT_UST_UID_CHANNEL_LIVE_TIMER@"
+default_ust_uid_channel_read_timer="@DEFAULT_UST_UID_CHANNEL_READ_TIMER@"
+default_ust_uid_channel_subbuf_num="@DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM@"
+default_ust_uid_channel_subbuf_size="@DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE@"
+default_ust_uid_channel_switch_timer="@DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER@"
+default_agent_bind_address="@DEFAULT_AGENT_BIND_ADDRESS@"
+default_network_control_bind_address="@DEFAULT_NETWORK_CONTROL_BIND_ADDRESS@"
+default_network_data_bind_address="@DEFAULT_NETWORK_DATA_BIND_ADDRESS@"
+default_network_viewer_bind_address="@DEFAULT_NETWORK_VIEWER_BIND_ADDRESS@"
+lttng_version="@PACKAGE_VERSION@"
+system_sessions_dir="@CONFDIR@/lttng/sessions"
+system_sessions_auto_dir="@CONFDIR@/lttng/sessions/auto"
+system_lttng_conf="@CONFDIR@/lttng/lttng.conf"
+
+# command short descriptions
+cmd_descr_add_context="@CMD_DESCR_ADD_CONTEXT@"
+cmd_descr_calibrate="@CMD_DESCR_CALIBRATE@"
+cmd_descr_create="@CMD_DESCR_CREATE@"
+cmd_descr_destroy="@CMD_DESCR_DESTROY@"
+cmd_descr_disable_channel="@CMD_DESCR_DISABLE_CHANNEL@"
+cmd_descr_disable_event="@CMD_DESCR_DISABLE_EVENT@"
+cmd_descr_enable_channel="@CMD_DESCR_ENABLE_CHANNEL@"
+cmd_descr_enable_event="@CMD_DESCR_ENABLE_EVENT@"
+cmd_descr_help="@CMD_DESCR_HELP@"
+cmd_descr_list="@CMD_DESCR_LIST@"
+cmd_descr_load="@CMD_DESCR_LOAD@"
+cmd_descr_metadata="@CMD_DESCR_METADATA@"
+cmd_descr_save="@CMD_DESCR_SAVE@"
+cmd_descr_set_session="@CMD_DESCR_SET_SESSION@"
+cmd_descr_snapshot="@CMD_DESCR_SNAPSHOT@"
+cmd_descr_start="@CMD_DESCR_START@"
+cmd_descr_status="@CMD_DESCR_STATUS@"
+cmd_descr_stop="@CMD_DESCR_STOP@"
+cmd_descr_track="@CMD_DESCR_TRACK@"
+cmd_descr_untrack="@CMD_DESCR_UNTRACK@"
+cmd_descr_version="@CMD_DESCR_VERSION@"
+cmd_descr_view="@CMD_DESCR_VIEW@"

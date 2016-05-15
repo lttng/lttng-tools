@@ -21,10 +21,10 @@ resource tracker.
 
 A resource tracker is a _whitelist_ of resources. Tracked resources are
 allowed to emit events, provided those events are targeted by enabled
-event rules (see linklttng:lttng-enable-event(1)).
+event rules (see man:lttng-enable-event(1)).
 
 Tracker entries can be removed from the whitelist with
-linklttng:lttng-untrack(1).
+man:lttng-untrack(1).
 
 As of this version, the only available tracker is the *PID tracker*. The
 process ID (PID) tracker follows one or more process IDs; only the
@@ -102,7 +102,7 @@ It should be noted that the PID tracker tracks the numeric process IDs.
 Should a process with a given ID exit and another process be given this
 ID, then the latter would also be allowed to emit events.
 
-See the linklttng:lttng-untrack(1) for more details about removing
+See the man:lttng-untrack(1) for more details about removing
 entries.
 
 
@@ -148,5 +148,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng-untrack(1),
-linklttng:lttng(1)
+man:lttng-untrack(1),
+man:lttng(1)

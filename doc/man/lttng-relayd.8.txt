@@ -37,7 +37,8 @@ The relay daemon does not require any particular permissions, as long as
 it can write to the output directory and listen on the configured ports.
 If a user is within a secured network and/or has proper firewall
 settings, `lttng-relayd` can listen to LTTng live connections from _all_
-network interfaces by specifying `--live-port=tcp://0.0.0.0:5344`.
+network interfaces by specifying
++--live-port=tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+.
 
 Once a trace has been streamed completely, the trace can be processed by
 any tool that can process an LTTng trace located on the local
@@ -50,7 +51,7 @@ Output directory
 By default, the relay daemon writes the traces to:
 
 [verse]
-$HOME/lttng-traces/'HOSTNAME'/'SESSION'/'DOMAIN'
+$LTTNG_HOME/lttng-traces/'HOSTNAME'/'SESSION'/'DOMAIN'
 
 with:
 
@@ -64,7 +65,7 @@ with:
     Tracing domain.
 
 You can override the default output directory prefix
-(`$HOME/lttng-traces`) with the option:--output option. The other
+(`$LTTNG_HOME/lttng-traces`) with the option:--output option. The other
 parts depend on the remote configuration.
 
 
@@ -127,14 +128,17 @@ See the <<url-format,URL format>> section above for more information
 about the syntax of the following options' 'URL' argument.
 
 option:-C, option:--control-port='URL'::
-    Listen to control data on URL 'URL' (default: `tcp://0.0.0.0:5342`).
+    Listen to control data on URL 'URL' (default:
+    +tcp://{default_network_control_bind_address}:{default_network_control_port}+).
 
 option:-D, option:--data-port='URL'::
-    Listen to trace data on URL 'URL' (default: `tcp://0.0.0.0:5343`).
+    Listen to trace data on URL 'URL' (default:
+    +tcp://{default_network_data_bind_address}:{default_network_data_port}+).
 
 option:-L, option:--live-port='URL'::
     Listen to LTTng live connections on URL 'URL'
-    (default: `tcp://0.0.0.0:5344`).
+    (default:
+    +tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+).
 
 
 Program information
@@ -198,8 +202,8 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
-linklttng:lttng(1),
-linklttng:lttng-sessiond(8),
-linklttng:lttng-crash(1),
-linklttng:lttng-ust(3),
-linklttng:babeltrace(1)
+man:lttng(1),
+man:lttng-sessiond(8),
+man:lttng-crash(1),
+man:lttng-ust(3),
+man:babeltrace(1)

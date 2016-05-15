@@ -213,6 +213,82 @@ AC_DEFINE_UNQUOTED([CONFIG_LTTV_GUI_BIN], "$LTTV_GUI_BIN", [Location of the lttv
 AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_RUNDIR], ["$LTTNG_SYSTEM_RUNDIR"], [LTTng system runtime directory])
 
+AC_DEFUN([_AC_DEFINE_AND_SUBST], [
+	AC_DEFINE_UNQUOTED([CONFIG_$1], [$2], [$1])
+	$1="$2"
+	AC_SUBST([$1])
+])
+
+AC_DEFUN([_AC_DEFINE_QUOTED_AND_SUBST], [
+	AC_DEFINE_UNQUOTED([CONFIG_$1], ["$2"], [$1])
+	$1="$2"
+	AC_SUBST([$1])
+])
+
+# Default values
+m4_define([_DEFAULT_CHANNEL_SUBBUF_SIZE], [4096])
+m4_define([_DEFAULT_CHANNEL_SUBBUF_NUM], [4])
+m4_define([_DEFAULT_CHANNEL_SWITCH_TIMER], [0])
+m4_define([_DEFAULT_CHANNEL_LIVE_TIMER], [0])
+m4_define([_DEFAULT_CHANNEL_READ_TIMER], [200000])
+_AC_DEFINE_AND_SUBST([DEFAULT_AGENT_TCP_PORT], [5345])
+_AC_DEFINE_AND_SUBST([DEFAULT_APP_SOCKET_RW_TIMEOUT], [5])
+_AC_DEFINE_AND_SUBST([DEFAULT_CHANNEL_SUBBUF_SIZE], [_DEFAULT_CHANNEL_SUBBUF_SIZE])
+_AC_DEFINE_AND_SUBST([DEFAULT_CHANNEL_TRACEFILE_COUNT], [0])
+_AC_DEFINE_AND_SUBST([DEFAULT_CHANNEL_TRACEFILE_SIZE], [0])
+_AC_DEFINE_AND_SUBST([DEFAULT_KERNEL_CHANNEL_LIVE_TIMER], [_DEFAULT_CHANNEL_LIVE_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_KERNEL_CHANNEL_READ_TIMER], [_DEFAULT_CHANNEL_READ_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM], [_DEFAULT_CHANNEL_SUBBUF_NUM])
+_AC_DEFINE_AND_SUBST([DEFAULT_KERNEL_CHANNEL_SUBBUF_SIZE], [262144])
+_AC_DEFINE_AND_SUBST([DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER], [_DEFAULT_CHANNEL_SWITCH_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_LTTNG_LIVE_TIMER], [1000000])
+_AC_DEFINE_AND_SUBST([DEFAULT_METADATA_CACHE_SIZE], [4096])
+_AC_DEFINE_AND_SUBST([DEFAULT_METADATA_READ_TIMER], [0])
+_AC_DEFINE_AND_SUBST([DEFAULT_METADATA_SUBBUF_NUM], [2])
+_AC_DEFINE_AND_SUBST([DEFAULT_METADATA_SUBBUF_SIZE], [4096])
+_AC_DEFINE_AND_SUBST([DEFAULT_METADATA_SWITCH_TIMER], [_DEFAULT_CHANNEL_SWITCH_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_NETWORK_CONTROL_PORT], [5342])
+_AC_DEFINE_AND_SUBST([DEFAULT_NETWORK_DATA_PORT], [5343])
+_AC_DEFINE_AND_SUBST([DEFAULT_NETWORK_VIEWER_PORT], [5344])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_PID_CHANNEL_LIVE_TIMER], [_DEFAULT_CHANNEL_LIVE_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_PID_CHANNEL_READ_TIMER], [0])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_PID_CHANNEL_SUBBUF_NUM], [_DEFAULT_CHANNEL_SUBBUF_NUM])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_PID_CHANNEL_SUBBUF_SIZE], [_DEFAULT_CHANNEL_SUBBUF_SIZE])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER], [_DEFAULT_CHANNEL_SWITCH_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_UID_CHANNEL_LIVE_TIMER], [_DEFAULT_CHANNEL_LIVE_TIMER])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_UID_CHANNEL_READ_TIMER], [0])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_UID_CHANNEL_SUBBUF_NUM], [_DEFAULT_CHANNEL_SUBBUF_NUM])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_UID_CHANNEL_SUBBUF_SIZE], [131072])
+_AC_DEFINE_AND_SUBST([DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER], [_DEFAULT_CHANNEL_SWITCH_TIMER])
+_AC_DEFINE_QUOTED_AND_SUBST([DEFAULT_AGENT_BIND_ADDRESS], [localhost])
+_AC_DEFINE_QUOTED_AND_SUBST([DEFAULT_NETWORK_CONTROL_BIND_ADDRESS], [0.0.0.0])
+_AC_DEFINE_QUOTED_AND_SUBST([DEFAULT_NETWORK_DATA_BIND_ADDRESS], [0.0.0.0])
+_AC_DEFINE_QUOTED_AND_SUBST([DEFAULT_NETWORK_VIEWER_BIND_ADDRESS], [localhost])
+
+# Command short descriptions
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ADD_CONTEXT], [Add context fields to a channel])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CALIBRATE], [Quantify LTTng overhead])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CREATE], [Create a tracing session])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DESTROY], [Tear down tracing sessions])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DISABLE_CHANNEL], [Disable tracing channels])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DISABLE_EVENT], [Disable event rules])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ENABLE_CHANNEL], [Create or enable tracing channels])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ENABLE_EVENT], [Create or enable event rules])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_HELP], [Display help information about a command])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_LIST], [List tracing sessions, domains, channels, and events])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_LOAD], [Load tracing session configurations])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_METADATA], [Manage an LTTng tracing session's metadata generation])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_SAVE], [Save tracing session configurations])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_SET_SESSION], [Set current tracing session])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_SNAPSHOT], [Snapshot buffers of current tracing session])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_START], [Start tracing])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_STATUS], [Get the status of the current tracing session])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_STOP], [Stop tracing])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_TRACK], [Track specific system resources])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_UNTRACK], [Untrack specific system resources])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_VERSION], [Show version information])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_VIEW], [Start trace viewer])
+
 if test "x$prefix" = "xNONE"; then
 	prefix=$ac_default_prefix
 fi
@@ -498,29 +574,56 @@ fi
 AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
 AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
 
-# enable building man pages
+# enable building man pages (user's intention)
 AC_ARG_ENABLE(
-	build-man-pages,
+	man-pages,
 	AS_HELP_STRING(
-		[--disable-build-man-pages],
-		[Build man pages (already built in a distributed tarball)]
+		[--disable-man-pages],
+		[Do not build and install man pages (already built in a distributed tarball)]
 	),
-	[build_man_pages=$enableval],
-	[build_man_pages=yes]
+	[man_pages_opt=$enableval],
+	[man_pages_opt=yes]
 )
 
-# export man page build condition
-AM_CONDITIONAL([BUILD_MAN_PAGES], [test "x$build_man_pages" != "xno"])
-
 # check for asciidoc and xmlto if we enabled building the man pages
-AS_IF([test "x$build_man_pages" = "xyes"], [
+have_asciidoc_xmlto=no
+
+AS_IF([test "x$man_pages_opt" = "xyes"], [
 	AC_PATH_PROG([ASCIIDOC], [asciidoc], [no])
 	AC_PATH_PROG([XMLTO], [xmlto], [no])
 
 	AS_IF([test "x$ASCIIDOC" = "xno" || test "x$XMLTO" = "xno"], [
-		AC_MSG_ERROR([Both asciidoc and xmlto are needed to build the LTTng man pages.])
+		AS_IF([test "x$in_git_repo" = "xyes"], [
+			# this is an error because we're in the Git repo, which
+			# means the man pages are not already generated for us,
+			# thus asciidoc/xmlto are required because we were asked
+			# to build the man pages
+			AC_MSG_ERROR([
+Both asciidoc and xmlto are needed to build the LTTng man pages. Use
+--disable-man-pages to disable building the man pages, in which case
+they will not be installed.
+			])
+		], [
+			# only warn here: since we're in the tarball, the man
+			# pages should already be generated at this point, thus
+			# asciidoc/xmlto are not strictly required
+			AC_MSG_WARN([
+Both asciidoc and xmlto are needed to build the LTTng man pages. Note
+that the man pages are already built in this distribution tarball, so
+asciidoc and xmlto are only needed if you intend to modify their
+sources. Use --disable-man-pages to completely disable building
+and installing the man pages.
+			])
+		])
+	], [
+		have_asciidoc_xmlto=yes
 	])
 ])
+
+# export man page build condition: build the man pages if the user
+# asked for it, and if the tools are available
+AM_CONDITIONAL([MAN_PAGES_OPT], [test "x$man_pages_opt" != "xno"])
+AM_CONDITIONAL([HAVE_ASCIIDOC_XMLTO], [test "x$have_asciidoc_xmlto" = "xyes"])
 
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
@@ -772,27 +875,49 @@ AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 AC_PATH_PROG([PGREP], [pgrep], [no])
 AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-parser.h"; then
-	if test x"$(basename "$YACC")" != "xbison -y"; then
-		AC_MSG_ERROR([[bison not found and is required when building from git.
-		Please install bison]])
-	fi
-	AC_PATH_PROG([BISON],[bison])
-	AX_PROG_BISON_VERSION([2.4], [],[
-		AC_MSG_ERROR([[Bison >= 2.4 is required when building from git]])
-	])
-fi
+# check for bison
+have_bison=yes
 
-if test ! -f "$srcdir/src/lib/lttng-ctl/filter/filter-lexer.c"; then
-	if test x"$LEX" != "xflex"; then
-		AC_MSG_ERROR([[flex not found and is required when building from git.
-		Please install flex]])
-	fi
-	AC_PATH_PROG([FLEX],[flex])
-	AX_PROG_FLEX_VERSION([2.5.35], [],[
-		AC_MSG_ERROR([[Flex >= 2.5.35 is required when building from git]])
+AS_IF([test "x$(basename "$YACC")" != "xbison -y"], [have_bison=no])
+AC_PATH_PROG([BISON], [bison])
+AX_PROG_BISON_VERSION([2.4], [], [have_bison=no])
+
+AS_IF([test "x$have_bison" = "xno"], [
+	AS_IF([test "x$in_git_repo" = "xyes"], [
+		AC_MSG_ERROR([Bison >= 2.4 is required when building from the Git repository.])
+	], [
+		AC_MSG_WARN([
+Missing Bison >= 2.4. Note that the parser files are already built in
+this distribution tarball, so Bison is only needed if you intend to
+modify their sources.
+		])
 	])
-fi
+])
+
+# export bison condition
+AM_CONDITIONAL([HAVE_BISON], [test "x$have_bison" = "xyes"])
+
+# check for flex
+have_flex=yes
+
+AS_IF([test "x$LEX" != "xflex"], [have_flex=no])
+AC_PATH_PROG([FLEX], [flex])
+AX_PROG_FLEX_VERSION([2.5.35], [], [have_flex=no])
+
+AS_IF([test "x$have_flex" = "xno"], [
+	AS_IF([test "x$in_git_repo" = "xyes"], [
+		AC_MSG_ERROR([Flex >= 2.5.35 is required when building from the Git repository.])
+	], [
+		AC_MSG_WARN([
+Missing Flex >= 2.5.35. Note that the lexer files are already built in
+this distribution tarball, so Flex is only needed if you intend to
+modify their sources.
+		])
+	])
+])
+
+# export flex condition
+AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
 CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 
@@ -810,6 +935,7 @@ AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
 	doc/man/Makefile
+	doc/man/asciidoc.conf
 	include/Makefile
 	extras/Makefile
 	extras/bindings/Makefile
@@ -991,25 +1117,29 @@ test "x${enable_python_binding:-yes}" = xyes && value=1 || value=0
 AS_ECHO
 PPRINT_SET_INDENT(0)
 PPRINT_PROP_BOOL([Python binding], $value, $PPRINT_COLOR_SUBTITLE)
-PPRINT_SET_INDENT(1)
-
-AS_ECHO
-PPRINT_SUBTITLE([Man pages])
 
 # man pages build enabled/disabled
-AS_IF([test "x$build_man_pages" = "xyes"], [
-	PPRINT_PROP_BOOL([Build man pages], 1)
-], [
+m4_pushdef([build_man_pages_msg], [Build and install man pages])
+
+AS_IF([test "x$man_pages_opt" != "xno"], [
 	AS_IF([test "x$in_git_repo" = "xyes"], [
-		PPRINT_PROP_BOOL([Build man pages], 0)
+		PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
 	], [
-		PPRINT_PROP_STRING([Build man pages], [${PPRINT_COLOR_BLDGRN}Already built])
+		AS_IF([test "x$have_asciidoc_xmlto" = "xyes"], [
+			PPRINT_PROP_BOOL([build_man_pages_msg], 1, $PPRINT_COLOR_SUBTITLE)
+		], [
+			PPRINT_PROP_STRING([build_man_pages_msg],
+				[${PPRINT_COLOR_BLDGRN}yes (already built)],
+				$PPRINT_COLOR_SUBTITLE)
+		])
 	])
+], [
+	PPRINT_PROP_BOOL([build_man_pages_msg], 0, $PPRINT_COLOR_SUBTITLE)
 ])
 
-# man pages install enabled/disabled (always true in tarball)
-test "x$build_man_pages" != "xyes" && test "x$in_git_repo" = "xyes" && value=0 || value=1
-PPRINT_PROP_BOOL([Install man pages], $value)
+m4_popdef([build_man_pages_msg])
+
+PPRINT_SET_INDENT(1)
 
 report_bindir="`eval eval echo $bindir`"
 report_libdir="`eval eval echo $libdir`"
