@@ -302,10 +302,9 @@ const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain)
 			return mi_lttng_loglevel_str_unknown;
 		}
 		break;
+	default:
+		return mi_lttng_loglevel_str_unknown;
 	}
-
-	/* Reaching this means the domain is unknown. */
-	return mi_lttng_loglevel_str_unknown;
 }
 
 LTTNG_HIDDEN
