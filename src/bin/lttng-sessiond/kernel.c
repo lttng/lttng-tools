@@ -836,7 +836,7 @@ int kernel_validate_version(int tracer_fd)
 
 	ret = kernctl_tracer_version(tracer_fd, &version);
 	if (ret < 0) {
-		ERR("Failed at getting the lttng-modules version");
+		ERR("Failed to retrieve the lttng-modules version");
 		goto error;
 	}
 
@@ -848,11 +848,11 @@ int kernel_validate_version(int tracer_fd)
 	}
 	ret = kernctl_tracer_abi_version(tracer_fd, &abi_version);
 	if (ret < 0) {
-		ERR("Failed at getting lttng-modules ABI version");
+		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
 	}
 	if (abi_version.major != LTTNG_MODULES_ABI_MAJOR_VERSION) {
-		ERR("Kernel tracer ABI version (%d.%d) is not compatible with expected ABI major version (%d.*)",
+		ERR("Kernel tracer ABI version (%d.%d) does not match the expected ABI major version (%d.*)",
 			abi_version.major, abi_version.minor,
 			LTTNG_MODULES_ABI_MAJOR_VERSION);
 		goto error;
@@ -866,6 +866,7 @@ error_version:
 	ret = -1;
 
 error:
+	ERR("Kernel tracer version check failed; kernel tracing will not be available");
 	return ret;
 }
 
