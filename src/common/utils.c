@@ -189,6 +189,8 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 error:
 	free(resolved_path);
 	free(cut_path);
+	free(try_path);
+	free(try_path_prev);
 	return NULL;
 }
 
