@@ -178,6 +178,9 @@ LTTNG_HIDDEN const char * const config_event_context_preemptible = "PREEMPTIBLE"
 LTTNG_HIDDEN const char * const config_event_context_need_reschedule = "NEED_RESCHEDULE";
 LTTNG_HIDDEN const char * const config_event_context_migratable = "MIGRATABLE";
 
+/* Deprecated symbols */
+const char * const config_element_perf;
+
 enum process_event_node_phase {
 	CREATION = 0,
 	ENABLE = 1,
