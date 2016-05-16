@@ -94,7 +94,7 @@ static int handle_command(const char **argv)
 	int ret = CMD_SUCCESS, i = 0, argc, command_ret = CMD_SUCCESS;
 
 	if (argv == NULL) {
-		SHOW_HELP();
+		ERR("argv is null");
 		command_ret = CMD_ERROR;
 		goto end;
 	}
