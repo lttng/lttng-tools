@@ -3317,6 +3317,8 @@ skip_domain:
 	if (cmd_ctx->lsm->cmd_type == LTTNG_START_TRACE ||
 			cmd_ctx->lsm->cmd_type == LTTNG_STOP_TRACE) {
 		switch (cmd_ctx->lsm->domain.type) {
+		case LTTNG_DOMAIN_NONE:
+			break;
 		case LTTNG_DOMAIN_JUL:
 		case LTTNG_DOMAIN_LOG4J:
 		case LTTNG_DOMAIN_PYTHON:
