@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #include <common/defaults.h>
 #include <common/error.h>
@@ -2837,8 +2838,8 @@ end:
 		}
 	}
 
-	if (!session_found) {
-		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
+	if (session_found) {
+		ret = 0;
 	}
 
 	return ret;
@@ -2883,6 +2884,7 @@ int config_load_session(const char *path, const char *session_name,
 		int override, unsigned int autoload)
 {
 	int ret;
+	bool session_loaded = false;
 	const char *path_ptr = NULL;
 	struct session_config_validation_ctx validation_ctx = { 0 };
 
@@ -2941,6 +2943,7 @@ int config_load_session(const char *path, const char *session_name,
 				 * Continue even if the session was found since we have to try
 				 * the system wide sessions.
 				 */
+				session_loaded = true;
 			}
 		}
 
@@ -2963,6 +2966,9 @@ int config_load_session(const char *path, const char *session_name,
 		if (path_ptr) {
 			ret = load_session_from_path(path_ptr, session_name,
 					&validation_ctx, override);
+			if (!ret) {
+				session_loaded = true;
+			}
 		}
 	} else {
 		ret = access(path, F_OK);
@@ -2993,6 +2999,11 @@ end:
 		 * Don't report an error if no sessions are found when called
 		 * without a session_name or a search path.
 		 */
+		ret = 0;
+	}
+
+	if (session_loaded && ret == -LTTNG_ERR_LOAD_SESSION_NOENT) {
+		/* A matching session was found in one of the search paths. */
 		ret = 0;
 	}
 	return ret;
