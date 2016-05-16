@@ -253,12 +253,12 @@ static int spawn_viewer(const char *trace_path)
 		} else {
 			PERROR("exec: %s", viewer_bin);
 		}
-		free(argv);
 		ret = CMD_FATAL;
 		goto error;
 	}
 
 error:
+	free(argv);
 	return ret;
 }
 
