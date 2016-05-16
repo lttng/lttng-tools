@@ -240,6 +240,7 @@ static int spawn_viewer(const char *trace_path)
 	}
 
 	if (argv == NULL || !viewer_bin) {
+		free(argv);
 		ret = CMD_FATAL;
 		goto error;
 	}
