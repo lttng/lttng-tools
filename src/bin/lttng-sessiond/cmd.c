@@ -3027,9 +3027,6 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 		case EINVAL:
 			ret = LTTNG_ERR_INVALID;
 			break;
-		case ENODATA:
-			ret = LTTNG_ERR_SNAPSHOT_NODATA;
-			break;
 		default:
 			ret = LTTNG_ERR_SNAPSHOT_FAIL;
 			break;
