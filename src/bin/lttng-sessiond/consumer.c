@@ -1088,7 +1088,11 @@ int consumer_set_subdir(struct consumer_output *consumer,
 		goto error;
 	}
 
-	strncpy(consumer->subdir, tmp_path, sizeof(consumer->subdir));
+	if (lttng_strncpy(consumer->subdir, tmp_path,
+			sizeof(consumer->subdir))) {
+		ret = -EINVAL;
+		goto error;
+	}
 	DBG2("Consumer subdir set to %s", consumer->subdir);
 
 error:
