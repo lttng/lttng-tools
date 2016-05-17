@@ -708,7 +708,11 @@ int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 
 	ust_event->enabled = agent_event->enabled;
 	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
-	strncpy(ust_event->attr.name, agent_event->name, LTTNG_SYMBOL_NAME_LEN);
+	if (lttng_strncpy(ust_event->attr.name, agent_event->name,
+			LTTNG_SYMBOL_NAME_LEN)) {
+		ret = -1;
+		goto end;
+	}
 	switch (agent_event->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
 		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
