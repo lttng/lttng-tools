@@ -57,7 +57,12 @@ uint64_t trace_clock_read64_monotonic(void)
 {
 	struct timespec ts;
 
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+	if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+		/* TODO Report error cleanly up the chain. */
+		PERROR("clock_gettime CLOCK_MONOTONIC");
+		ts.tv_sec = 0;
+		ts.tv_nsec = 0;
+	}
 	return ((uint64_t) ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
 }
 
