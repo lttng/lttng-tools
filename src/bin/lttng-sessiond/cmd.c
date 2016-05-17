@@ -1810,7 +1810,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		int wpipe, bool internal_event)
 {
 	int ret, channel_created = 0;
-	struct lttng_channel *attr;
+	struct lttng_channel *attr = NULL;
 
 	assert(session);
 	assert(event);
@@ -1856,17 +1856,13 @@ static int _cmd_enable_event(struct ltt_session *session,
 			if (lttng_strncpy(attr->name, channel_name,
 					sizeof(attr->name))) {
 				ret = LTTNG_ERR_INVALID;
-				free(attr);
 				goto error;
 			}
 
 			ret = cmd_enable_channel(session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
-				free(attr);
 				goto error;
 			}
-			free(attr);
-
 			channel_created = 1;
 		}
 
@@ -1998,16 +1994,13 @@ static int _cmd_enable_event(struct ltt_session *session,
 			if (lttng_strncpy(attr->name, channel_name,
 					sizeof(attr->name))) {
 				ret = LTTNG_ERR_INVALID;
-				free(attr);
 				goto error;
 			}
 
 			ret = cmd_enable_channel(session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
-				free(attr);
 				goto error;
 			}
-			free(attr);
 
 			/* Get the newly created channel reference back */
 			uchan = trace_ust_find_channel_by_name(
@@ -2182,6 +2175,7 @@ error:
 	free(filter_expression);
 	free(filter);
 	free(exclusion);
+	free(attr);
 	rcu_read_unlock();
 	return ret;
 }
