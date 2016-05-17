@@ -113,7 +113,7 @@ tests/regression/ust/python-logging/test_python_logging
 /doc/man/*.8
 /doc/man/*.xml
 /doc/man/*.html
-/doc/man/asciidoc.conf
+/doc/man/asciidoc-attrs.conf
 !/doc/man/lttng-health-check.3
 
 /benchmark/
