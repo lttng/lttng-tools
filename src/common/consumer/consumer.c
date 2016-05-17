@@ -1232,6 +1232,7 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 		off_t orig_offset)
 {
+	int ret;
 	int outfd = stream->out_fd;
 
 	/*
@@ -1262,8 +1263,11 @@ void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 	 * defined. So it can be expected to lead to lower throughput in
 	 * streaming.
 	 */
-	posix_fadvise(outfd, orig_offset - stream->max_sb_size,
+	ret = posix_fadvise(outfd, orig_offset - stream->max_sb_size,
 			stream->max_sb_size, POSIX_FADV_DONTNEED);
+	if (ret) {
+		WARN("posix_fadvise() error (%i)", ret);
+	}
 }
 
 /*
