@@ -208,7 +208,6 @@ int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
 		ERR("Wrong arguments in compat_epoll_wait");
 		goto error;
 	}
-	assert(events->nb_fd >= 0);
 
 	if (events->nb_fd == 0) {
 		errno = EINVAL;
