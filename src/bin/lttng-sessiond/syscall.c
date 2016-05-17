@@ -82,7 +82,7 @@ int syscall_init_table(void)
 
 			/* Double memory size. */
 			new_nbmem = max(index, nbmem << 1);
-			if (new_nbmem < nbmem) {
+			if (new_nbmem > (SIZE_MAX / sizeof(*new_list))) {
 				/* Overflow, stop everything, something went really wrong. */
 				ERR("Syscall listing memory size overflow. Stopping");
 				free(syscall_table);
