@@ -162,7 +162,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 end:
 	rcu_read_unlock();
 	DBG2("Index %sfound or created in HT for stream ID %" PRIu64 " and seqnum %" PRIu64,
-			(index == NULL) ? "NOT " : "", index->stream->stream_handle, net_seq_num);
+			(index == NULL) ? "NOT " : "", stream->stream_handle, net_seq_num);
 	return index;
 }
 
