@@ -170,7 +170,10 @@ static void list_lttng_channels(int domain, struct ltt_session *session,
 		rcu_read_lock();
 		cds_lfht_for_each_entry(session->ust_session->domain_global.channels->ht,
 				&iter.iter, uchan, node.node) {
-			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
+			if (lttng_strncpy(channels[i].name, uchan->name,
+					LTTNG_SYMBOL_NAME_LEN)) {
+				break;
+			}
 			channels[i].attr.overwrite = uchan->attr.overwrite;
 			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
 			channels[i].attr.num_subbuf = uchan->attr.num_subbuf;
