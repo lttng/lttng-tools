@@ -230,10 +230,21 @@ ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 		send_stream.ctf_trace_id = htobe64(ctf_trace->id);
 		send_stream.metadata_flag = htobe32(
 				vstream->stream->is_metadata);
-		strncpy(send_stream.path_name, vstream->path_name,
-				sizeof(send_stream.path_name));
-		strncpy(send_stream.channel_name, vstream->channel_name,
-				sizeof(send_stream.channel_name));
+		if (lttng_strncpy(send_stream.path_name, vstream->path_name,
+				sizeof(send_stream.path_name))) {
+			pthread_mutex_unlock(&vstream->stream->lock);
+			viewer_stream_put(vstream);
+			ret = -1;	/* Error. */
+			goto end_unlock;
+		}
+		if (lttng_strncpy(send_stream.channel_name,
+				vstream->channel_name,
+				sizeof(send_stream.channel_name))) {
+			pthread_mutex_unlock(&vstream->stream->lock);
+			viewer_stream_put(vstream);
+			ret = -1;	/* Error. */
+			goto end_unlock;
+		}
 
 		DBG("Sending stream %" PRIu64 " to viewer",
 				vstream->stream->stream_handle);
