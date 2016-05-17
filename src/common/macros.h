@@ -20,6 +20,7 @@
 #define _MACROS_H
 
 #include <stdlib.h>
+#include <string.h>
 
 /*
  * Takes a pointer x and transform it so we can use it to access members
@@ -75,5 +76,29 @@ void *zmalloc(size_t len)
 #ifndef LTTNG_HIDDEN
 #define LTTNG_HIDDEN __attribute__((visibility("hidden")))
 #endif
+
+/*
+ * lttng_strncpy returns 0 on success, or nonzero on failure.
+ * It checks that the @src string fits into @dst_len before performing
+ * the copy. On failure, no copy has been performed.
+ *
+ * dst_len includes the string's trailing NULL.
+ */
+static inline
+int lttng_strncpy(char *dst, const char *src, size_t dst_len)
+{
+	if (strnlen(src, dst_len) == dst_len) {
+		/* Fail since copying would result in truncation. */
+		return -1;
+	}
+	strncpy(dst, src, dst_len);
+	/*
+	 * Be extra careful and put final \0 at the end after strncpy(),
+	 * even though we checked the length before. This makes Coverity
+	 * happy.
+	 */
+	dst[dst_len - 1] = '\0';
+	return 0;
+}
 
 #endif /* _MACROS_H */
