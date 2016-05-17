@@ -621,6 +621,8 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 	int event_element_open = 0;
 	struct lttng_event cur_event;
 
+	memset(&cur_event, 0, sizeof(cur_event));
+
 	/* Open domains element */
 	ret = mi_lttng_domains_open(writer);
 	if (ret) {
