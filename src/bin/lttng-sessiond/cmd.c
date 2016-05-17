@@ -3356,10 +3356,18 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		assert(output->consumer);
 		list[idx].id = output->id;
 		list[idx].max_size = output->max_size;
-		strncpy(list[idx].name, output->name, sizeof(list[idx].name));
+		if (lttng_strncpy(list[idx].name, output->name,
+				sizeof(list[idx].name))) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
 		if (output->consumer->type == CONSUMER_DST_LOCAL) {
-			strncpy(list[idx].ctrl_url, output->consumer->dst.trace_path,
-					sizeof(list[idx].ctrl_url));
+			if (lttng_strncpy(list[idx].ctrl_url,
+					output->consumer->dst.trace_path,
+					sizeof(list[idx].ctrl_url))) {
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
 		} else {
 			/* Control URI. */
 			ret = uri_to_str_url(&output->consumer->dst.net.control,
