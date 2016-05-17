@@ -339,7 +339,10 @@ int make_viewer_streams(struct relay_session *session,
 				 * Ensure a self-reference is preserved even
 				 * after we have put our local reference.
 				 */
-				viewer_stream_get(vstream);
+				if (!viewer_stream_get(vstream)) {
+					ERR("Unable to get self-reference on viewer stream, logic error.");
+					abort();
+				}
 			} else {
 				if (!vstream->sent_flag && nb_unsent) {
 					/* Update number of unsent stream counter. */
