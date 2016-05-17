@@ -5061,7 +5061,10 @@ static void write_pidfile(void)
 	assert(rundir);
 
 	if (opt_pidfile) {
-		strncpy(pidfile_path, opt_pidfile, sizeof(pidfile_path));
+		if (lttng_strncpy(pidfile_path, opt_pidfile, sizeof(pidfile_path))) {
+			ret = -1;
+			goto error;
+		}
 	} else {
 		/* Build pidfile path from rundir and opt_pidfile. */
 		ret = snprintf(pidfile_path, sizeof(pidfile_path), "%s/"
