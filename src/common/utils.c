@@ -189,6 +189,8 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 error:
 	free(resolved_path);
 	free(cut_path);
+	free(try_path);
+	free(try_path_prev);
 	return NULL;
 }
 
@@ -1347,7 +1349,7 @@ end:
 
 static const char *get_man_bin_path(void)
 {
-	char *env_man_path = getenv(DEFAULT_MAN_BIN_PATH_ENV);
+	char *env_man_path = lttng_secure_getenv(DEFAULT_MAN_BIN_PATH_ENV);
 
 	if (env_man_path) {
 		return env_man_path;

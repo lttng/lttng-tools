@@ -1692,7 +1692,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DISCARDED_EVENTS:
 	{
-		uint64_t ret;
+		int ret = 0;
+		uint64_t discarded_events;
 		struct lttng_ht_iter iter;
 		struct lttng_ht *ht;
 		struct lttng_consumer_stream *stream;
@@ -1713,13 +1714,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * found (no events are dropped if the channel is not yet in
 		 * use).
 		 */
-		ret = 0;
+		discarded_events = 0;
 		cds_lfht_for_each_entry_duplicate(ht->ht,
 				ht->hash_fct(&id, lttng_ht_seed),
 				ht->match_fct, &id,
 				&iter.iter, stream, node_session_id.node) {
 			if (stream->chan->key == key) {
-				ret = stream->chan->discarded_events;
+				discarded_events = stream->chan->discarded_events;
 				break;
 			}
 		}
@@ -1732,7 +1733,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		ret = lttcomm_send_unix_sock(sock, &discarded_events, sizeof(discarded_events));
 		if (ret < 0) {
 			PERROR("send discarded events");
 			goto error_fatal;
