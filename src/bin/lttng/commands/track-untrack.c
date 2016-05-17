@@ -110,7 +110,7 @@ int parse_pid_string(const char *_pid_string,
 		goto error;
 	}
 	if (all) {
-		pid_list = zmalloc(sizeof(*_pid_list));
+		pid_list = zmalloc(sizeof(*pid_list));
 		if (!pid_list) {
 			ERR("Out of memory");
 			retval = CMD_ERROR;
