@@ -255,8 +255,16 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {
 		memset(&msg, 0, sizeof(msg));
-		strncpy(msg.channel_name, channel_name, sizeof(msg.channel_name));
-		strncpy(msg.pathname, pathname, sizeof(msg.pathname));
+		if (lttng_strncpy(msg.channel_name, channel_name,
+				sizeof(msg.channel_name))) {
+			ret = -1;
+			goto error;
+		}
+		if (lttng_strncpy(msg.pathname, pathname,
+				sizeof(msg.pathname))) {
+			ret = -1;
+			goto error;
+		}
 
 		/* Send command */
 		ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) &msg, sizeof(msg), 0);
@@ -266,8 +274,16 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	} else {
 		memset(&msg_2_2, 0, sizeof(msg_2_2));
 		/* Compat with relayd 2.2+ */
-		strncpy(msg_2_2.channel_name, channel_name, sizeof(msg_2_2.channel_name));
-		strncpy(msg_2_2.pathname, pathname, sizeof(msg_2_2.pathname));
+		if (lttng_strncpy(msg_2_2.channel_name, channel_name,
+				sizeof(msg_2_2.channel_name))) {
+			ret = -1;
+			goto error;
+		}
+		if (lttng_strncpy(msg_2_2.pathname, pathname,
+				sizeof(msg_2_2.pathname))) {
+			ret = -1;
+			goto error;
+		}
 		msg_2_2.tracefile_size = htobe64(tracefile_size);
 		msg_2_2.tracefile_count = htobe64(tracefile_count);
 
