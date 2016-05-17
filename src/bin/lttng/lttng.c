@@ -348,6 +348,7 @@ static int parse_args(int argc, char **argv)
 			opt_no_sessiond = 1;
 			break;
 		case OPT_SESSION_PATH:
+			free(opt_sessiond_path);
 			opt_sessiond_path = strdup(optarg);
 			if (!opt_sessiond_path) {
 				ret = -1;
@@ -355,6 +356,7 @@ static int parse_args(int argc, char **argv)
 			}
 			break;
 		case OPT_RELAYD_PATH:
+			free(opt_relayd_path);
 			opt_relayd_path = strdup(optarg);
 			if (!opt_relayd_path) {
 				ret = -1;
