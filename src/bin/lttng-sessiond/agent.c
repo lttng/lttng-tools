@@ -392,14 +392,17 @@ static int disable_event(struct agent_app *app, struct agent_event *event)
 			app->pid, app->sock->fd);
 
 	data_size = sizeof(msg);
+	memset(&msg, 0, sizeof(msg));
+	if (lttng_strncpy(msg.name, event->name, sizeof(msg.name))) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	ret = send_header(app->sock, data_size, AGENT_CMD_DISABLE, 0);
 	if (ret < 0) {
 		goto error_io;
 	}
 
-	memset(&msg, 0, sizeof(msg));
-	strncpy(msg.name, event->name, sizeof(msg.name));
 	ret = send_payload(app->sock, &msg, sizeof(msg));
 	if (ret < 0) {
 		goto error_io;
