@@ -38,7 +38,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 14
+#define NUM_TESTS 15
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -156,7 +156,8 @@ static void test_create_ust_event_exclusion(void)
 	/* make a wildcarded event name */
 	name = get_random_string();
 	name[strlen(name) - 1] = '*';
-	strncpy(ev.name, name, LTTNG_SYMBOL_NAME_LEN);
+	ok(lttng_strncpy(ev.name, name, LTTNG_SYMBOL_NAME_LEN) == 0,
+		"Validate string length");
 
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
