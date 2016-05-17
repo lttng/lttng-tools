@@ -62,7 +62,10 @@ static int output_init(uint64_t max_size, const char *name,
 	lttng_ht_node_init_ulong(&output->node, (unsigned long) output->id);
 
 	if (name && name[0] != '\0') {
-		strncpy(output->name, name, sizeof(output->name));
+		if (lttng_strncpy(output->name, name, sizeof(output->name))) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
 	} else {
 		/* Set default name. */
 		ret = snprintf(output->name, sizeof(output->name), "%s-%" PRIu32,
@@ -93,8 +96,12 @@ static int output_init(uint64_t max_size, const char *name,
 	if (uris[0].dtype == LTTNG_DST_PATH) {
 		memset(output->consumer->dst.trace_path, 0,
 				sizeof(output->consumer->dst.trace_path));
-		strncpy(output->consumer->dst.trace_path, uris[0].dst.path,
-				sizeof(output->consumer->dst.trace_path));
+		if (lttng_strncpy(output->consumer->dst.trace_path,
+				uris[0].dst.path,
+				sizeof(output->consumer->dst.trace_path))) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
 		output->consumer->type = CONSUMER_DST_LOCAL;
 		ret = 0;
 		goto end;
