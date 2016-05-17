@@ -1853,7 +1853,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
-			strncpy(attr->name, channel_name, sizeof(attr->name));
+			if (lttng_strncpy(attr->name, channel_name,
+					sizeof(attr->name))) {
+				ret = LTTNG_ERR_INVALID;
+				free(attr);
+				goto error;
+			}
 
 			ret = cmd_enable_channel(session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
@@ -1990,7 +1995,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 				ret = LTTNG_ERR_FATAL;
 				goto error;
 			}
-			strncpy(attr->name, channel_name, sizeof(attr->name));
+			if (lttng_strncpy(attr->name, channel_name,
+					sizeof(attr->name))) {
+				ret = LTTNG_ERR_INVALID;
+				free(attr);
+				goto error;
+			}
 
 			ret = cmd_enable_channel(session, domain, attr, wpipe);
 			if (ret != LTTNG_OK) {
