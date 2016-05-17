@@ -75,7 +75,7 @@ void test_uri_parsing(void)
 	   uri[1].utype == LTTNG_URI_DST &&
 	   uri[1].stype == 0 &&
 	   uri[1].port == 4242 &&
-	   strcmp(uri[0].subdir, "my/test/path") == 0 &&
+	   strlen(uri[1].subdir) == 0 &&
 	   strcmp(uri[1].dst.ipv4, "127.0.0.1") == 0,
 	   "URI set to net://localhost:8989:4242/my/test/path");
 
@@ -93,7 +93,7 @@ void test_uri_parsing(void)
 	   uri[0].utype == LTTNG_URI_DST &&
 	   uri[0].stype == 0 &&
 	   uri[0].port == 8989 &&
-	   strlen(uri[1].subdir) == 0 &&
+	   strlen(uri[0].subdir) == 0 &&
 	   strcmp(uri[0].dst.ipv4, "127.0.0.1") == 0 &&
 	   uri[1].dtype == LTTNG_DST_IPV4 &&
 	   uri[1].utype == LTTNG_URI_DST &&
@@ -117,14 +117,14 @@ void test_uri_parsing(void)
 	   uri[0].utype == LTTNG_URI_DST &&
 	   uri[0].stype == 0 &&
 	   uri[0].port == 8989 &&
-	   strlen(uri[1].subdir) == 0 &&
+	   strlen(uri[0].subdir) == 0 &&
 	   strcmp(uri[0].dst.ipv6, "::1") == 0 &&
 	   uri[1].dtype == LTTNG_DST_IPV6 &&
 	   uri[1].utype == LTTNG_URI_DST &&
 	   uri[1].stype == 0 &&
 	   uri[1].port == 0 &&
 	   strlen(uri[1].subdir) == 0 &&
-	   strcmp(uri[0].dst.ipv6, "::1") == 0,
+	   strcmp(uri[1].dst.ipv6, "::1") == 0,
 	   "URI set to net6://[::1]:8989");
 
 	if (uri) {
@@ -230,7 +230,7 @@ void test_uri_cmp()
 	assert(uri2[0].utype == LTTNG_URI_DST);
 	assert(uri2[0].stype == 0);
 	assert(uri2[0].port == 8989);
-	assert(strlen(uri2[1].subdir) == 0);
+	assert(strlen(uri2[0].subdir) == 0);
 	assert(strcmp(uri2[0].dst.ipv4, "127.0.0.1") == 0);
 	assert(uri2[1].dtype == LTTNG_DST_IPV4);
 	assert(uri2[1].utype == LTTNG_URI_DST);
