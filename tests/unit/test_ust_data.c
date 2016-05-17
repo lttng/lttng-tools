@@ -38,7 +38,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 15
+#define NUM_TESTS 16
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -187,6 +187,8 @@ static void test_create_ust_event_exclusion(void)
 	if (!exclusion) {
 		PERROR("zmalloc");
 	}
+
+	ok(exclusion != NULL, "Create UST exclusion");
 
 	exclusion->count = exclusion_count;
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
