@@ -1560,6 +1560,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
+			free(filter_expression);
 			filter_expression = strdup((char *) content);
 			free(content);
 			if (!filter_expression) {
