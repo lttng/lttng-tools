@@ -794,7 +794,7 @@ end:
 static
 int viewer_list_sessions(struct relay_connection *conn)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_viewer_list_sessions session_list;
 	struct lttng_ht_iter iter;
 	struct relay_session *session;
@@ -824,8 +824,7 @@ int viewer_list_sessions(struct relay_connection *conn)
 				new_buf_count * sizeof(*send_session_buf));
 			if (!newbuf) {
 				ret = -1;
-				rcu_read_unlock();
-				goto end_free;
+				break;
 			}
 			send_session_buf = newbuf;
 			buf_count = new_buf_count;
@@ -835,14 +834,12 @@ int viewer_list_sessions(struct relay_connection *conn)
 				session->session_name,
 				sizeof(send_session->session_name))) {
 			ret = -1;
-			rcu_read_unlock();
-			goto end_free;
+			break;
 		}
 		if (lttng_strncpy(send_session->hostname, session->hostname,
 				sizeof(send_session->hostname))) {
 			ret = -1;
-			rcu_read_unlock();
-			goto end_free;
+			break;
 		}
 		send_session->id = htobe64(session->id);
 		send_session->live_timer = htobe32(session->live_timer);
@@ -855,6 +852,9 @@ int viewer_list_sessions(struct relay_connection *conn)
 		count++;
 	}
 	rcu_read_unlock();
+	if (ret < 0) {
+		goto end_free;
+	}
 
 	session_list.sessions_count = htobe32(count);
 
