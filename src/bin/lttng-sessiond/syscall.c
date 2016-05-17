@@ -108,8 +108,13 @@ int syscall_init_table(void)
 		}
 		syscall_table[index].index = index;
 		syscall_table[index].bitness = bitness;
-		strncpy(syscall_table[index].name, name,
-				sizeof(syscall_table[index].name));
+		if (lttng_strncpy(syscall_table[index].name, name,
+				sizeof(syscall_table[index].name))) {
+			ret = -EINVAL;
+			free(syscall_table);
+			syscall_table = NULL;
+			goto error;
+		}
 		/*
 		DBG("Syscall name '%s' at index %" PRIu32 " of bitness %u",
 				syscall_table[index].name,
