@@ -34,7 +34,7 @@ static void *th_event_minute(void *data)
 	/* Loop for 20 minutes */
 	for (i = 1; i < 21; i++) {
 		/* Sleep 60 seconds */
-		poll(NULL, 0, 60000);
+		(void) poll(NULL, 0, 60000);
 
 		/* 20 minutes tracepoint */
 		if ((i % 20) == 0) {
