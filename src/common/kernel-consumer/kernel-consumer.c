@@ -969,17 +969,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		uint64_t id = msg.u.discarded_events.session_id;
 		uint64_t key = msg.u.discarded_events.channel_key;
 
+		DBG("Kernel consumer discarded events command for session id %"
+				PRIu64 ", channel key %" PRIu64, id, key);
+
 		channel = consumer_find_channel(key);
 		if (!channel) {
 			ERR("Kernel consumer discarded events channel %"
 					PRIu64 " not found", key);
-			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			ret = 0;
+		} else {
+			ret = channel->discarded_events;
 		}
-
-		DBG("Kernel consumer discarded events command for session id %"
-				PRIu64 ", channel key %" PRIu64, id, key);
-
-		ret = channel->discarded_events;
 
 		health_code_update();
 
@@ -999,17 +999,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		uint64_t id = msg.u.lost_packets.session_id;
 		uint64_t key = msg.u.lost_packets.channel_key;
 
+		DBG("Kernel consumer lost packets command for session id %"
+				PRIu64 ", channel key %" PRIu64, id, key);
+
 		channel = consumer_find_channel(key);
 		if (!channel) {
 			ERR("Kernel consumer lost packets channel %"
 					PRIu64 " not found", key);
-			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			ret = 0;
+		} else {
+			ret = channel->lost_packets;
 		}
-
-		DBG("Kernel consumer lost packets command for session id %"
-				PRIu64 ", channel key %" PRIu64, id, key);
-
-		ret = channel->lost_packets;
 
 		health_code_update();
 
