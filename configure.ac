@@ -931,7 +931,7 @@ AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
 	doc/man/Makefile
-	doc/man/asciidoc.conf
+	doc/man/asciidoc-attrs.conf
 	include/Makefile
 	extras/Makefile
 	extras/bindings/Makefile

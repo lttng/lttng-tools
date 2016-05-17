@@ -53,6 +53,7 @@ COMMON_TXT = \
 
 # config
 ASCIIDOC_CONF = $(builddir)/asciidoc.conf
+ASCIIDOC_ATTRS_CONF = $(builddir)/asciidoc-attrs.conf
 XSL_FILES = \
 	manpage.xsl \
 	manpage-callouts.xsl \
@@ -76,7 +77,7 @@ if MAN_PAGES_OPT
 # at this point, we know the user asked to build the man pages
 if HAVE_ASCIIDOC_XMLTO
 # tools
-ADOC = $(ASCIIDOC) -f $(ASCIIDOC_CONF) -d manpage
+ADOC = $(ASCIIDOC) -f $(ASCIIDOC_CONF) -f $(ASCIIDOC_ATTRS_CONF) -d manpage
 ADOC_DOCBOOK = $(ADOC) -b docbook
 XTO = $(XMLTO) -m $(firstword $(XSL_SRC_FILES)) man
 
@@ -140,4 +141,5 @@ dist-hook:
 endif # !MAN_PAGES_OPT
 
 # always distribute the source files
-EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) $(ASCIIDOC_CONF).in
+EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) \
+	$(ASCIIDOC_CONF) $(ASCIIDOC_ATTRS_CONF).in
