@@ -38,7 +38,7 @@
 #define RANDOM_STRING_LEN	11
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 12
+#define NUM_TESTS 13
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -101,8 +101,8 @@ static void test_create_ust_channel(void)
 
 	memset(&attr, 0, sizeof(attr));
 
-	strncpy(attr.name, "channel0", 8);
-
+	ok(lttng_strncpy(attr.name, "channel0", sizeof(attr.name)) == 0,
+		"Validate channel name length");
 	uchan = trace_ust_create_channel(&attr, LTTNG_DOMAIN_UST);
 	ok(uchan != NULL, "Create UST channel");
 
