@@ -277,7 +277,10 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 				&iter.iter, uchan, node.node) {
 			uint64_t discarded_events = 0, lost_packets = 0;
 
-			strncpy(channels[i].name, uchan->name, LTTNG_SYMBOL_NAME_LEN);
+			if (lttng_strncpy(channels[i].name, uchan->name,
+					LTTNG_SYMBOL_NAME_LEN)) {
+				break;
+			}
 			channels[i].attr.overwrite = uchan->attr.overwrite;
 			channels[i].attr.subbuf_size = uchan->attr.subbuf_size;
 			channels[i].attr.num_subbuf = uchan->attr.num_subbuf;
