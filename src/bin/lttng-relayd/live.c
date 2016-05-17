@@ -832,10 +832,19 @@ int viewer_list_sessions(struct relay_connection *conn)
 			buf_count = new_buf_count;
 		}
 		send_session = &send_session_buf[count];
-		strncpy(send_session->session_name, session->session_name,
-				sizeof(send_session->session_name));
-		strncpy(send_session->hostname, session->hostname,
-				sizeof(send_session->hostname));
+		if (lttng_strncpy(send_session->session_name,
+				session->session_name,
+				sizeof(send_session->session_name))) {
+			ret = -1;
+			rcu_read_unlock();
+			goto end_free;
+		}
+		if (lttng_strncpy(send_session->hostname, session->hostname,
+				sizeof(send_session->hostname))) {
+			ret = -1;
+			rcu_read_unlock();
+			goto end_free;
+		}
 		send_session->id = htobe64(session->id);
 		send_session->live_timer = htobe32(session->live_timer);
 		if (session->viewer_attached) {
