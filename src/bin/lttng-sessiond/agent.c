@@ -408,16 +408,19 @@ static int enable_event(struct agent_app *app, struct agent_event *event)
 	}
 	data_size = sizeof(msg) + filter_expression_length;
 
+	memset(&msg, 0, sizeof(msg));
+	msg.loglevel_value = htobe32(event->loglevel_value);
+	msg.loglevel_type = htobe32(event->loglevel_type);
+	if (lttng_strncpy(msg.name, event->name, sizeof(msg.name))) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+	msg.filter_expression_length = htobe32(filter_expression_length);
+
 	ret = send_header(app->sock, data_size, AGENT_CMD_ENABLE, 0);
 	if (ret < 0) {
 		goto error_io;
 	}
-
-	memset(&msg, 0, sizeof(msg));
-	msg.loglevel_value = htobe32(event->loglevel_value);
-	msg.loglevel_type = htobe32(event->loglevel_type);
-	strncpy(msg.name, event->name, sizeof(msg.name));
-	msg.filter_expression_length = htobe32(filter_expression_length);
 
 	bytes_to_send = zmalloc(data_size);
 	if (!bytes_to_send) {
