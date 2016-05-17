@@ -353,8 +353,11 @@ static ssize_t list_events(struct agent_app *app, struct lttng_event **events)
 
 	for (i = 0; i < nb_event; i++) {
 		offset += len;
-		strncpy(tmp_events[i].name, reply->payload + offset,
-				sizeof(tmp_events[i].name));
+		if (lttng_strncpy(tmp_events[i].name, reply->payload + offset,
+				sizeof(tmp_events[i].name))) {
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
 		tmp_events[i].pid = app->pid;
 		tmp_events[i].enabled = -1;
 		len = strlen(reply->payload + offset) + 1;
