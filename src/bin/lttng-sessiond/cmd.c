@@ -758,12 +758,15 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 		DBG2("Setting trace directory path from URI to %s", uri->dst.path);
 		memset(consumer->dst.trace_path, 0,
 				sizeof(consumer->dst.trace_path));
-		strncpy(consumer->dst.trace_path, uri->dst.path,
-				sizeof(consumer->dst.trace_path));
+		/* Explicit length checks for strcpy and strcat. */
+		if (strlen(uri->dst.path) + strlen(default_trace_dir)
+				>= sizeof(consumer->dst.trace_path)) {
+			ret = LTTNG_ERR_FATAL;
+			goto error;
+		}
+		strcpy(consumer->dst.trace_path, uri->dst.path);
 		/* Append default trace dir */
-		strncat(consumer->dst.trace_path, default_trace_dir,
-				sizeof(consumer->dst.trace_path) -
-				strlen(consumer->dst.trace_path) - 1);
+		strcat(consumer->dst.trace_path, default_trace_dir);
 		/* Flag consumer as local. */
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
