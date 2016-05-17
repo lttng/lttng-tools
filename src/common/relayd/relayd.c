@@ -129,16 +129,15 @@ static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
 
-	if (strlen(session_name) >= sizeof(msg.session_name)) {
+	if (lttng_strncpy(msg.session_name, session_name,
+			sizeof(msg.session_name))) {
 		ret = -1;
 		goto error;
 	}
-	strncpy(msg.session_name, session_name, sizeof(msg.session_name));
-	if (strlen(hostname) >= sizeof(msg.hostname)) {
+	if (lttng_strncpy(msg.hostname, hostname, sizeof(msg.hostname))) {
 		ret = -1;
 		goto error;
 	}
-	strncpy(msg.hostname, hostname, sizeof(msg.hostname));
 	msg.live_timer = htobe32(session_live_timer);
 	msg.snapshot = htobe32(snapshot);
 
