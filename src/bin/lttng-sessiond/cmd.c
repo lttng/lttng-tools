@@ -3437,8 +3437,12 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 			/* Use temporary name. */
 			if (*output->name != '\0') {
-				strncpy(tmp_output.name, output->name,
-						sizeof(tmp_output.name));
+				if (lttng_strncpy(tmp_output.name, output->name,
+						sizeof(tmp_output.name))) {
+					ret = LTTNG_ERR_INVALID;
+					rcu_read_unlock();
+					goto error;
+				}
 			}
 
 			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
