@@ -46,11 +46,16 @@ struct relay_session *session_create(const char *session_name,
 		PERROR("relay session zmalloc");
 		goto error;
 	}
-
+	if (lttng_strncpy(session->session_name, session_name,
+			sizeof(session->session_name))) {
+		goto error;
+	}
+	if (lttng_strncpy(session->hostname, hostname,
+			sizeof(session->hostname))) {
+		goto error;
+	}
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->ctf_traces_ht) {
-		free(session);
-		session = NULL;
 		goto error;
 	}
 
@@ -67,17 +72,15 @@ struct relay_session *session_create(const char *session_name,
 	pthread_mutex_init(&session->reflock, NULL);
 	pthread_mutex_init(&session->recv_list_lock, NULL);
 
-	strncpy(session->session_name, session_name,
-			sizeof(session->session_name));
-	strncpy(session->hostname, hostname,
-			sizeof(session->hostname));
 	session->live_timer = live_timer;
 	session->snapshot = snapshot;
 
 	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
+	return session;
 
 error:
-	return session;
+	free(session);
+	return NULL;
 }
 
 /* Should be called with RCU read-side lock held. */
