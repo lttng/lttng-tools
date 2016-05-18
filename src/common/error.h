@@ -89,6 +89,9 @@ extern int lttng_opt_mi;
 				((type) & (PRINT_WARN | PRINT_ERR | PRINT_BUG))) { \
 			fprintf(stderr, fmt, ## args);                             \
 		}                                                                  \
+		if ((type) & (PRINT_ERR | PRINT_BUG)) {                            \
+			lttng_abort_on_error();                                    \
+		}                                                                  \
 	} while (0);
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
@@ -173,5 +176,7 @@ const char *error_get_str(int32_t code);
  * printed in the log.
  */
 const char *log_add_time();
+
+void lttng_abort_on_error(void);
 
 #endif /* _ERROR_H */

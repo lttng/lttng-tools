@@ -152,6 +152,9 @@ option:-V, option:--version::
 
 ENVIRONMENT VARIABLES
 ---------------------
+`LTTNG_ABORT_ON_ERROR`::
+    Set to 1 to abort the process after the first error is encountered.
+
 `LTTNG_NETWORK_SOCKET_TIMEOUT`::
     Socket connection, receive and send timeout (milliseconds). A value
     of 0 or -1 uses the timeout of the operating system (default).
