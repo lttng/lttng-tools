@@ -1,0 +1,153 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2014, 2016 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - Rotation destroy flush"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+SESSION_NAME="rotation_destroy_flush"
+
+NR_ITER=10
+NUM_TESTS=$((13*$NR_ITER))
+EVENT_NAME="lttng_test_filter_event"
+CHANNEL_NAME="testchan"
+PAGE_SIZE=$(getconf PAGE_SIZE)
+SIZE_LIMIT=$PAGE_SIZE
+
+TESTCMD="echo -n 10000 > /proc/lttng-test-filter-event"
+
+# Ensure the daemons invoke abort on error.
+export LTTNG_ABORT_ON_ERROR=1
+
+source $TESTDIR/utils/utils.sh
+
+function signal_cleanup()
+{
+	diag "*** Exiting ***"
+	rmmod lttng-test
+	stop_lttng_sessiond
+	exit 1
+}
+
+function enable_kernel_lttng_channel_size_limit ()
+{
+	sess_name="$1"
+	channel_name="$2"
+	tracefile_size_limit="$3"
+
+	test_name="Enable channel $channel_name "
+	test_name+="for session $sess_name: "
+	test_name+="$tracefile_size_limit bytes tracefile limit"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
+	    -k $channel_name -s $sess_name \
+	    -C $tracefile_size_limit >/dev/null 2>&1
+
+	ok $? "$test_name"
+}
+
+function enable_kernel_lttng_event_per_channel ()
+{
+	sess_name="$1"
+	event_name="$2"
+	channel_name="$3"
+
+	test_name="Enable event $event_name "
+	test_name+="for session $sess_name "
+	test_name+="in channel $channel_name"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
+	    -s $sess_name -k -c $channel_name >/dev/null 2>&1
+
+	ok $? "$test_name"
+}
+
+function test_rotation_destroy_flush_single()
+{
+	start_lttng_sessiond
+	modprobe lttng-test
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_kernel_lttng_channel_size_limit \
+		$SESSION_NAME $CHANNEL_NAME $SIZE_LIMIT
+	enable_kernel_lttng_event_per_channel \
+		$SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	eval ${TESTCMD}
+	# stop and destroy
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_kernel_lttng_channel_size_limit \
+		$SESSION_NAME $CHANNEL_NAME $SIZE_LIMIT
+	enable_kernel_lttng_event_per_channel \
+		$SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	eval ${TESTCMD}
+	# destroy only
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+
+	rmmod lttng-test
+	stop_lttng_sessiond
+}
+
+function test_rotation_destroy_flush()
+{
+	for a in $(seq 1 ${NR_ITER}); do
+		diag "Iteration ${a}/${NR_ITER}"
+		test_rotation_destroy_flush_single
+	done
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+TESTS=(
+	"test_rotation_destroy_flush"
+)
+
+TEST_COUNT=${#TESTS[@]}
+i=0
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	trap signal_cleanup SIGTERM SIGINT
+
+	while [ "$i" -lt "$TEST_COUNT" ]; do
+
+		TRACE_PATH=$(mktemp -d)
+
+		# Execute test
+		${TESTS[$i]}
+
+		let "i++"
+	done
+}
