@@ -2447,22 +2447,6 @@ int cmd_stop_trace(struct ltt_session *session)
 	if (ksession && ksession->active) {
 		DBG("Stop kernel tracing");
 
-		/* Flush metadata if exist */
-		if (ksession->metadata_stream_fd >= 0) {
-			ret = kernel_metadata_flush_buffer(ksession->metadata_stream_fd);
-			if (ret < 0) {
-				ERR("Kernel metadata flush failed");
-			}
-		}
-
-		/* Flush all buffers before stopping */
-		cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
-			ret = kernel_flush_buffer(kchan);
-			if (ret < 0) {
-				ERR("Kernel flush buffer error");
-			}
-		}
-
 		ret = kernel_stop_session(ksession);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_STOP_FAIL;
@@ -2470,6 +2454,22 @@ int cmd_stop_trace(struct ltt_session *session)
 		}
 
 		kernel_wait_quiescent(kernel_tracer_fd);
+
+		/* Flush metadata after stopping (if exists) */
+		if (ksession->metadata_stream_fd >= 0) {
+			ret = kernel_metadata_flush_buffer(ksession->metadata_stream_fd);
+			if (ret < 0) {
+				ERR("Kernel metadata flush failed");
+			}
+		}
+
+		/* Flush all buffers after stopping */
+		cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
+			ret = kernel_flush_buffer(kchan);
+			if (ret < 0) {
+				ERR("Kernel flush buffer error");
+			}
+		}
 
 		ksession->active = 0;
 	}
