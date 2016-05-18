@@ -1110,7 +1110,13 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 			}
 		}
 
-		ustctl_flush_buffer(stream->ustream, 1);
+		/*
+		 * If tracing is active, we want to perform a "full" buffer flush.
+		 * Else, if quiescent, it has already been done by the prior stop.
+		 */
+		if (!stream->quiescent) {
+			ustctl_flush_buffer(stream->ustream, 0);
+		}
 
 		ret = lttng_ustconsumer_take_snapshot(stream);
 		if (ret < 0) {
