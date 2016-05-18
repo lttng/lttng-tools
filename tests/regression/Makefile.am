@@ -1,5 +1,6 @@
 SUBDIRS = tools kernel ust
 
+LOG_DRIVER_FLAGS='--merge'
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 	$(top_srcdir)/config/tap-driver.sh
 
