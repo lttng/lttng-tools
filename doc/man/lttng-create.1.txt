@@ -9,25 +9,24 @@ lttng-create - Create an LTTng tracing session
 
 SYNOPSIS
 --------
-Normal mode:
+Local or relay mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--output='PATH' | option:--no-output]
-      [option:--shm-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--shm-path='PATH']
+      [option:--no-output | option:--output='PATH' |
+       (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')] ['SESSION']
 
 Snapshot mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--snapshot
-      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
-      [option:--shm-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--snapshot [option:--shm-path='PATH']
+      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL'] ['SESSION']
 
 Live mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--live[='DELAYUS']
-      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
-      [option:--shm-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--live[='DELAYUS'] [option:--shm-path='PATH']
+      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL'] ['SESSION']
 
 
 DESCRIPTION
@@ -65,12 +64,23 @@ Creation modes
 ~~~~~~~~~~~~~~
 There are three tracing session modes:
 
-Normal mode::
+Local or relay mode::
     Traces the local system and writes the trace to the local
-    file system. The option:--output option specifies the trace path.
-    If omitted, the trace is written in the `$LTTNG_HOME/lttng-traces`
-    directory (`$LTTNG_HOME` defaults to `$HOME`). The file system
-    output can be disabled using the option:--no-output option.
+    file system or to a remote file system by sending the trace data to
+    an LTTng relay daemon over the network (see man:lttng-relayd(8)).
++
+In local mode, the option:--output option specifies the trace path.
+Using option:--output='PATH' is the equivalent of using
+option:--set-url=file://'PATH'. The file system output can be disabled
+using the option:--no-output option.
++
+In relay mode, the option:--set-url, or option:--ctrl-url and
+option:--data-url options set the trace output destination (see the
+<<url-format,URL format>> section below).
++
+If none of the options mentioned above are used, then the trace is
+written locally in the `$LTTNG_HOME/lttng-traces` directory
+(`$LTTNG_HOME` defaults to `$HOME`).
 
 Snapshot mode::
     Traces the local system without writing the trace to the local file
@@ -86,7 +96,8 @@ Live mode::
     over the network (see man:lttng-relayd(8)). The
     option:--set-url, or option:--ctrl-url and option:--data-url options
     set the trace output destination. The live output URLs cannot use
-    the `file://` protocol (see URL format below).
+    the `file://` protocol (see the <<url-format,URL format>>
+    section below).
 
 
 [[url-format]]
