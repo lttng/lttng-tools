@@ -1192,6 +1192,38 @@ end:
 }
 
 /*
+ * Send a clear quiescent command to consumer using the given channel key.
+ *
+ * Return 0 on success else a negative value.
+ */
+int consumer_clear_quiescent_channel(struct consumer_socket *socket, uint64_t key)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG2("Consumer clear quiescent channel key %" PRIu64, key);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL;
+	msg.u.clear_quiescent_channel.key = key;
+
+	pthread_mutex_lock(socket->lock);
+	health_code_update();
+
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto end;
+	}
+
+end:
+	health_code_update();
+	pthread_mutex_unlock(socket->lock);
+	return ret;
+}
+
+/*
  * Send a close metadata command to consumer using the given channel key.
  * Called with registry lock held.
  *
