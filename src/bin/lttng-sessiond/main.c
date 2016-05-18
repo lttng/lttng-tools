@@ -4819,7 +4819,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		if (arg) {
 			opt_verbose_consumer = config_parse_value(arg);
 		} else {
-			opt_verbose_consumer += 1;
+			opt_verbose_consumer++;
 		}
 	} else if (string_match(optname, "consumerd32-path")) {
 		if (!arg || *arg == '\0') {
