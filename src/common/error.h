@@ -57,13 +57,13 @@ extern int lttng_opt_verbose;
 extern int lttng_opt_mi;
 
 /* Error type. */
-#define PRINT_ERR   0x1
-#define PRINT_WARN  0x2
-#define PRINT_BUG   0x3
-#define PRINT_MSG   0x4
-#define PRINT_DBG   0x10
-#define PRINT_DBG2  0x20
-#define PRINT_DBG3  0x30
+#define PRINT_ERR   (1 << 0)
+#define PRINT_WARN  (1 << 1)
+#define PRINT_BUG   (1 << 2)
+#define PRINT_MSG   (1 << 3)
+#define PRINT_DBG   (1 << 4)
+#define PRINT_DBG2  (1 << 5)
+#define PRINT_DBG3  (1 << 6)
 
 /*
  * Macro for printing message depending on command line option and verbosity.
