@@ -28,7 +28,7 @@ SESSION_NAME="wildcard"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
 NUM_UST_TESTS=37
-NUM_KERNEL_TESTS=37
+NUM_KERNEL_TESTS=30
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -124,7 +124,6 @@ skip $isroot "Root access is needed. Skipping all kernel wildcard tests." $NUM_K
 	EVENT_NAME="lttng_test_filter_event"
 
 	test_event_wildcard kernel 1 'lttng_test_*'
-	test_event_wildcard kernel 1 '*'
 	test_event_wildcard kernel 1 'lttng_test_filter_event*'
 	test_event_wildcard kernel 0 'lttng_test_asdfasdf*'
 
