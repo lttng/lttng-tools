@@ -1265,8 +1265,9 @@ void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 	 */
 	ret = posix_fadvise(outfd, orig_offset - stream->max_sb_size,
 			stream->max_sb_size, POSIX_FADV_DONTNEED);
-	if (ret) {
-		WARN("posix_fadvise() error (%i)", ret);
+	if (ret && ret != -ENOSYS) {
+		errno = -ret;
+		PERROR("posix_fadvise");
 	}
 }
 
