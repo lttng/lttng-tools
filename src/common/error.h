@@ -98,7 +98,7 @@ extern int lttng_opt_mi;
 #define ERR(fmt, args...) \
 	__lttng_print(PRINT_ERR, "Error: " fmt "\n", ## args)
 #define WARN(fmt, args...) \
-	__lttng_print(PRINT_ERR, "Warning: " fmt "\n", ## args)
+	__lttng_print(PRINT_WARN, "Warning: " fmt "\n", ## args)
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
