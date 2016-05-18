@@ -4531,6 +4531,155 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 	return ret;
 }
 
+static
+int ust_app_clear_quiescent_app_session(struct ust_app *app,
+		struct ust_app_session *ua_sess)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app_channel *ua_chan;
+	struct consumer_socket *socket;
+
+	DBG("Clearing stream quiescent state for ust app pid %d", app->pid);
+
+	rcu_read_lock();
+
+	if (!app->compatible) {
+		goto end_not_compatible;
+	}
+
+	pthread_mutex_lock(&ua_sess->lock);
+
+	if (ua_sess->deleted) {
+		goto end_unlock;
+	}
+
+	health_code_update();
+
+	socket = consumer_find_socket_by_bitness(app->bits_per_long,
+			ua_sess->consumer);
+	if (!socket) {
+		ERR("Failed to find consumer (%" PRIu32 ") socket",
+				app->bits_per_long);
+		ret = -1;
+		goto end_unlock;
+	}
+
+	/* Clear quiescent state. */
+	switch (ua_sess->buffer_type) {
+	case LTTNG_BUFFER_PER_PID:
+		cds_lfht_for_each_entry(ua_sess->channels->ht, &iter.iter,
+				ua_chan, node.node) {
+			health_code_update();
+			ret = consumer_clear_quiescent_channel(socket,
+					ua_chan->key);
+			if (ret) {
+				ERR("Error clearing quiescent state for consumer channel");
+				ret = -1;
+				continue;
+			}
+		}
+		break;
+	case LTTNG_BUFFER_PER_UID:
+	default:
+		assert(0);
+		ret = -1;
+		break;
+	}
+
+	health_code_update();
+
+end_unlock:
+	pthread_mutex_unlock(&ua_sess->lock);
+
+end_not_compatible:
+	rcu_read_unlock();
+	health_code_update();
+	return ret;
+}
+
+/*
+ * Clear quiescent state in each stream for all applications for a
+ * specific UST session.
+ * Called with UST session lock held.
+ */
+static
+int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
+
+{
+	int ret = 0;
+
+	DBG("Clearing stream quiescent state for all ust apps");
+
+	rcu_read_lock();
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct lttng_ht_iter iter;
+		struct buffer_reg_uid *reg;
+
+		/*
+		 * Clear quiescent for all per UID buffers associated to
+		 * that session.
+		 */
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct consumer_socket *socket;
+			struct buffer_reg_channel *reg_chan;
+
+			/* Get associated consumer socket.*/
+			socket = consumer_find_socket_by_bitness(
+					reg->bits_per_long, usess->consumer);
+			if (!socket) {
+				/*
+				 * Ignore request if no consumer is found for
+				 * the session.
+				 */
+				continue;
+			}
+
+			cds_lfht_for_each_entry(reg->registry->channels->ht,
+					&iter.iter, reg_chan, node.node) {
+				/*
+				 * The following call will print error values so
+				 * the return code is of little importance
+				 * because whatever happens, we have to try them
+				 * all.
+				 */
+				(void) consumer_clear_quiescent_channel(socket,
+						reg_chan->consumer_key);
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		struct ust_app_session *ua_sess;
+		struct lttng_ht_iter iter;
+		struct ust_app *app;
+
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app,
+				pid_n.node) {
+			ua_sess = lookup_session_by_app(usess, app);
+			if (ua_sess == NULL) {
+				continue;
+			}
+			(void) ust_app_clear_quiescent_app_session(app,
+					ua_sess);
+		}
+		break;
+	}
+	default:
+		ret = -1;
+		assert(0);
+		break;
+	}
+
+	rcu_read_unlock();
+	health_code_update();
+	return ret;
+}
+
 /*
  * Destroy a specific UST session in apps.
  */
@@ -4588,6 +4737,14 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 	DBG("Starting all UST traces");
 
 	rcu_read_lock();
+
+	/*
+	 * In a start-stop-start use-case, we need to clear the quiescent state
+	 * of each channel set by the prior stop command, thus ensuring that a
+	 * following stop or destroy is sure to grab a timestamp_end near those
+	 * operations, even if the packet is empty.
+	 */
+	(void) ust_app_clear_quiescent_session(usess);
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ret = ust_app_start_trace(usess, app);
