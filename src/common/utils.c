@@ -174,7 +174,9 @@ error:
 	free(resolved_path);
 	free(cut_path);
 	free(try_path);
-	free(try_path_prev);
+	if (try_path_prev != try_path) {
+		free(try_path_prev);
+	}
 	return NULL;
 }
 
