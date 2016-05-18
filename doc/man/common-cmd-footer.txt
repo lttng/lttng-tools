@@ -1,5 +1,8 @@
 ENVIRONMENT VARIABLES
 ---------------------
+`LTTNG_ABORT_ON_ERROR`::
+    Set to 1 to abort the process after the first error is encountered.
+
 `LTTNG_HOME`::
     Overrides the `$HOME` environment variable. Useful when the user
     running the commands has a non-writable home directory.

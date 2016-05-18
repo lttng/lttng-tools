@@ -224,6 +224,9 @@ ENVIRONMENT VARIABLES
 Note that command-line options override their equivalent environment
 variable.
 
+`LTTNG_ABORT_ON_ERROR`::
+    Set to 1 to abort the process after the first error is encountered.
+
 `LTTNG_APP_SOCKET_TIMEOUT`::
     Application socket's timeout (seconds) when sending/receiving
     commands. After this period of time, the application is unregistered
