@@ -149,7 +149,7 @@ int parse_pid_string(const char *_pid_string,
 		goto error;
 	}
 
-	/* Copy */
+	/* Reparse string and populate the pid list. */
 	count = 0;
 	one_pid_str = strtok_r(pid_string, ",", &iter);
 	while (one_pid_str != NULL) {
