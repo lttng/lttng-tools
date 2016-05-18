@@ -1002,6 +1002,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/getcpu-override/Makefile
 	tests/regression/ust/clock-override/Makefile
 	tests/regression/ust/type-declarations/Makefile
+	tests/regression/ust/rotation-destroy-flush/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/unit/ini_config/Makefile
