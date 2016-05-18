@@ -279,6 +279,7 @@ int consumer_push_metadata(struct consumer_socket *socket,
 		uint64_t metadata_key, char *metadata_str, size_t len,
 		size_t target_offset);
 int consumer_flush_channel(struct consumer_socket *socket, uint64_t key);
+int consumer_clear_quiescent_channel(struct consumer_socket *socket, uint64_t key);
 
 /* Snapshot command. */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
