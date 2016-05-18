@@ -4671,18 +4671,11 @@ static int set_option(int opt, const char *arg, const char *optname)
 {
 	int ret = 0;
 
-	if (arg && arg[0] == '\0') {
-		/*
-		 * This only happens if the value is read from daemon config
-		 * file. This means the option requires an argument and the
-		 * configuration file contains a line such as:
-		 * my_option =
-		 */
-		ret = -EINVAL;
-		goto end;
-	}
-
 	if (string_match(optname, "client-sock") || opt == 'c') {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-c, --client-sock");
@@ -4690,6 +4683,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(client_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "apps-sock") || opt == 'a') {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-a, --apps-sock");
@@ -4701,6 +4698,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 	} else if (string_match(optname, "background") || opt == 'b') {
 		opt_background = 1;
 	} else if (string_match(optname, "group") || opt == 'g') {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-g, --group");
@@ -4733,6 +4734,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 	} else if (string_match(optname, "sig-parent") || opt == 'S') {
 		opt_sig_parent = 1;
 	} else if (string_match(optname, "kconsumerd-err-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kconsumerd-err-sock");
@@ -4740,6 +4745,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "kconsumerd-cmd-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kconsumerd-cmd-sock");
@@ -4747,6 +4756,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "ustconsumerd64-err-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd64-err-sock");
@@ -4754,6 +4767,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "ustconsumerd64-cmd-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd64-cmd-sock");
@@ -4761,6 +4778,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "ustconsumerd32-err-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd32-err-sock");
@@ -4768,6 +4789,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", arg);
 		}
 	} else if (string_match(optname, "ustconsumerd32-cmd-sock")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd32-cmd-sock");
@@ -4797,6 +4822,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			opt_verbose_consumer += 1;
 		}
 	} else if (string_match(optname, "consumerd32-path")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd32-path");
@@ -4812,6 +4841,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			consumerd32_bin_override = 1;
 		}
 	} else if (string_match(optname, "consumerd32-libdir")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd32-libdir");
@@ -4827,6 +4860,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			consumerd32_libdir_override = 1;
 		}
 	} else if (string_match(optname, "consumerd64-path")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd64-path");
@@ -4842,6 +4879,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			consumerd64_bin_override = 1;
 		}
 	} else if (string_match(optname, "consumerd64-libdir")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd64-libdir");
@@ -4857,6 +4898,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			consumerd64_libdir_override = 1;
 		}
 	} else if (string_match(optname, "pidfile") || opt == 'p') {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-p, --pidfile");
@@ -4869,6 +4914,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			}
 		}
 	} else if (string_match(optname, "agent-tcp-port")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--agent-tcp-port");
@@ -4893,6 +4942,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			DBG3("Agent TCP port set to non default: %u", agent_tcp_port);
 		}
 	} else if (string_match(optname, "load") || opt == 'l') {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-l, --load");
@@ -4905,6 +4958,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			}
 		}
 	} else if (string_match(optname, "kmod-probes")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kmod-probes");
@@ -4917,6 +4974,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			}
 		}
 	} else if (string_match(optname, "extra-kmod-probes")) {
+		if (!arg || *arg == '\0') {
+			ret = -EINVAL;
+			goto end;
+		}
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--extra-kmod-probes");
