@@ -168,7 +168,7 @@ static void test_create_ust_event_exclusion(void)
 	ok(exclusion != NULL, "Create UST exclusion");
 	if (!exclusion) {
 		PERROR("zmalloc");
-		return;
+		abort();
 	}
 
 	exclusion->count = exclusion_count;
@@ -188,7 +188,7 @@ static void test_create_ust_event_exclusion(void)
 	ok(exclusion != NULL, "Create UST exclusion");
 	if (!exclusion) {
 		PERROR("zmalloc");
-		return;
+		abort();
 	}
 
 	exclusion->count = exclusion_count;
