@@ -501,6 +501,9 @@ struct lttcomm_consumer_msg {
 			uint64_t key;	/* Channel key. */
 		} LTTNG_PACKED flush_channel;
 		struct {
+			uint64_t key;	/* Channel key. */
+		} LTTNG_PACKED clear_quiescent_channel;
+		struct {
 			char pathname[PATH_MAX];
 			/* Indicate if the snapshot goes on the relayd or locally. */
 			uint32_t use_relayd;
