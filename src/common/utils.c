@@ -836,6 +836,7 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		PERROR("Closing tracefile");
 		goto error;
 	}
+	*stream_fd = -1;
 
 	if (count > 0) {
 		/*
