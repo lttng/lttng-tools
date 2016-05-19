@@ -1229,6 +1229,11 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 	DBG("Consumer flag that it should quit");
 }
 
+
+/*
+ * Flush pending writes to trace output disk file.
+ */
+static
 void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 		off_t orig_offset)
 {

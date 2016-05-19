@@ -627,12 +627,6 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx);
 void lttng_consumer_cleanup(void);
 
 /*
- * Flush pending writes to trace output disk file.
- */
-void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
-		off_t orig_offset);
-
-/*
  * Poll on the should_quit pipe and the command socket return -1 on error and
  * should exit, 0 if data is available on the command socket
  */
