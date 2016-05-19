@@ -53,7 +53,7 @@ extern int lttng_opt_verbose;
 extern int lttng_opt_mi;
 
 /* Error type. */
-enum lttng_error_type {
+enum lttng_error_level {
 	PRINT_ERR =	0,
 	PRINT_BUG =	1,
 	PRINT_WARN =	2,
@@ -63,7 +63,7 @@ enum lttng_error_type {
 	PRINT_DBG3 =	6,
 };
 
-static inline bool __lttng_print_check_opt(enum lttng_error_type type)
+static inline bool __lttng_print_check_opt(enum lttng_error_level type)
 {
 	/* lttng_opt_mi and lttng_opt_quiet. */
 	switch (type) {
