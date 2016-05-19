@@ -1657,8 +1657,8 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		lttng_sync_file_range(outfd, stream->out_fd_offset, len,
 				SYNC_FILE_RANGE_WRITE);
 		stream->out_fd_offset += len;
+		lttng_consumer_sync_trace_file(stream, orig_offset);
 	}
-	lttng_consumer_sync_trace_file(stream, orig_offset);
 
 write_error:
 	/*
@@ -1869,7 +1869,9 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		stream->output_written += ret_splice;
 		written += ret_splice;
 	}
-	lttng_consumer_sync_trace_file(stream, orig_offset);
+	if (!relayd) {
+		lttng_consumer_sync_trace_file(stream, orig_offset);
+	}
 	goto end;
 
 write_error:
