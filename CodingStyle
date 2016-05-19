@@ -36,7 +36,7 @@ Use space to indent the '\' at the end but tabs at the beginning.
 #define a_macro(x)      \
 	do {                \
 		fsync();        \
-	} while (0);        \
+	} while (0)
 
 It's really the only time we use spaces. For everything else, there is TABS! :)
 
