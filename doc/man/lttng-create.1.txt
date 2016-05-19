@@ -134,7 +134,8 @@ The other version is available when the session is created in
 --
 `net`::
     TCP over IPv4; the default values of 'CTRLPORT' and 'DATAPORT'
-    are resp. 5342 and 5343.
+    are respectively {default_network_control_port} and
+    {default_network_data_port}.
 
 `net6`::
     TCP over IPv6: same default ports as the `net` protocol.
