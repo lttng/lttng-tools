@@ -69,7 +69,7 @@ Creation modes
 ~~~~~~~~~~~~~~
 There are four tracing session modes:
 
-Local mode::
+[[local-mode]]Local mode::
     Traces the local system and writes the trace to the local
     file system. The option:--output option specifies the trace path.
     Using option:--set-url=file://'PATH' is the equivalent of using
@@ -80,14 +80,14 @@ If none of the options mentioned above are used, then the trace is
 written locally in the `$LTTNG_HOME/lttng-traces` directory
 (`$LTTNG_HOME` defaults to `$HOME`).
 
-Network streaming mode::
+[[network-streaming-mode]]Network streaming mode::
     Traces the local system and sends the trace over the network to
     a listening relay daemon (see man:lttng-relayd(8)).
     The option:--set-url, or option:--ctrl-url and option:--data-url
     options set the trace output destination (see the
     <<url-format,URL format>> section below).
 
-Snapshot mode::
+[[snapshot-mode]]Snapshot mode::
     Traces the local system without writing the trace to the local file
     system (implicit option:--no-output option). Channels are automatically
     configured to be snapshot-ready on creation (see
@@ -96,7 +96,7 @@ Snapshot mode::
     The option:--set-url, or option:--ctrl-url and option:--data-url
     options set the default snapshot output destination.
 
-Live mode::
+[[live-mode]]Live mode::
     Traces the local system, sending trace data to an LTTng relay daemon
     over the network (see man:lttng-relayd(8)). The
     option:--set-url, or option:--ctrl-url and option:--data-url options
@@ -118,12 +118,15 @@ file://'TRACEPATH'
 'NETPROTO'://('HOST' | 'IPADDR')[:__CTRLPORT__[:__DATAPORT__]][/'TRACEPATH']
 
 The `file://` protocol targets the *local file system* and can only
-be used as the option:--set-url option's argument in _local mode_.
+be used as the option:--set-url option's argument when the session is
+created in <<local-mode,local>> or <<snapshot-mode,snapshot>> mode.
 
 'TRACEPATH'::
     Absolute path to trace files on the local file system.
 
-The other version is used for the _network streaming mode_.
+The other version is available when the session is created in
+<<network-streaming-mode,network streaming>>,
+<<snapshot-mode,snapshot>>, or <<live-mode,live>> mode.
 
 'NETPROTO'::
     Network protocol, amongst:
@@ -167,28 +170,31 @@ include::common-cmd-options-head.txt[]
 Mode selection
 ~~~~~~~~~~~~~~
 option:--live[='DELAYUS']::
-    Create the session in live mode. The optional 'DELAYUS' parameter,
-    given in microseconds, is the maximum time the user can wait for
-    the data to be flushed. This mode can be set with a network URL
-    (options option:--set-url, or option:--ctrl-url and option:--data-url)
-    and must have a relay daemon listening (see man:lttng-relayd(8)).
+    Create the session in <<live-mode,live mode>>.
++
+The optional 'DELAYUS' parameter, given in microseconds, is the
+maximum time the user can wait for the data to be flushed. This mode
+can be set with a network URL (options option:--set-url, or
+option:--ctrl-url and option:--data-url) and must have a relay
+daemon listening (see man:lttng-relayd(8)).
 +
 By default, 'DELAYUS' is {default_lttng_live_timer} and the network URL
 is set to `net://127.0.0.1`.
 
 option:--snapshot::
-    Create the session in snapshot mode. This is the equivalent of using
-    the option:--no-output option and creating all the channels of this
-    new tracing session in overwrite mode with an `mmap` output type.
+    Create the session in <<snapshot-mode,snapshot mode>>.
+    This is the equivalent of using the option:--no-output option and
+    creating all the channels of this new tracing session in overwrite
+    mode with an `mmap` output type.
 
 
 Output
 ~~~~~~
 option:--no-output::
-    Do not output any trace data.
+    In <<local-mode,local mode>>, do not output any trace data.
 
 option:-o, option:--output='PATH'::
-    Set trace output path to 'PATH'.
+    In <<local-mode,local mode>>, set trace output path to 'PATH'.
 
 option:--shm-path='PATH'::
     Create shared memory holding buffers at 'PATH'.
@@ -212,6 +218,9 @@ option:-U, option:--set-url='URL'::
     the session lifetime. This option sets both data
     (option:--data-url option) and control (option:--ctrl-url option)
     URLs at the same time.
++
+In <<local-mode,local>> mode, 'URL' must start with `file://` followed
+by the destination path on the local file system.
 
 
 include::common-cmd-help-options.txt[]
