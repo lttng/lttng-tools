@@ -9,12 +9,17 @@ lttng-create - Create an LTTng tracing session
 
 SYNOPSIS
 --------
-Local or relay mode:
+Local mode:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--shm-path='PATH']
-      [option:--no-output | option:--output='PATH' |
-       (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')] ['SESSION']
+      [option:--no-output | option:--output='PATH' | option:--set-url=file://'PATH'] ['SESSION']
+
+Network streaming mode:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--shm-path='PATH']
+      (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL') ['SESSION']
 
 Snapshot mode:
 
@@ -62,25 +67,25 @@ command.
 
 Creation modes
 ~~~~~~~~~~~~~~
-There are three tracing session modes:
+There are four tracing session modes:
 
-Local or relay mode::
+Local mode::
     Traces the local system and writes the trace to the local
-    file system or to a remote file system by sending the trace data to
-    an LTTng relay daemon over the network (see man:lttng-relayd(8)).
-+
-In local mode, the option:--output option specifies the trace path.
-Using option:--output='PATH' is the equivalent of using
-option:--set-url=file://'PATH'. The file system output can be disabled
-using the option:--no-output option.
-+
-In relay mode, the option:--set-url, or option:--ctrl-url and
-option:--data-url options set the trace output destination (see the
-<<url-format,URL format>> section below).
+    file system. The option:--output option specifies the trace path.
+    Using option:--set-url=file://'PATH' is the equivalent of using
+    option:--output='PATH'. The file system output can be disabled using
+    the option:--no-output option.
 +
 If none of the options mentioned above are used, then the trace is
 written locally in the `$LTTNG_HOME/lttng-traces` directory
 (`$LTTNG_HOME` defaults to `$HOME`).
+
+Network streaming mode::
+    Traces the local system and sends the trace over the network to
+    a listening relay daemon (see man:lttng-relayd(8)).
+    The option:--set-url, or option:--ctrl-url and option:--data-url
+    options set the trace output destination (see the
+    <<url-format,URL format>> section below).
 
 Snapshot mode::
     Traces the local system without writing the trace to the local file
@@ -103,8 +108,8 @@ Live mode::
 [[url-format]]
 URL format
 ~~~~~~~~~~
-The option:--set-url, option:--ctrl-url, and option:--data-url options
-specify URLs.
+The option:--set-url, option:--ctrl-url, and option:--data-url options'
+arguments are URLs.
 
 The format of those URLs is one of:
 
@@ -112,12 +117,13 @@ The format of those URLs is one of:
 file://'TRACEPATH'
 'NETPROTO'://('HOST' | 'IPADDR')[:__CTRLPORT__[:__DATAPORT__]][/'TRACEPATH']
 
-The `file://` protocol targets the *local file system*.
+The `file://` protocol targets the *local file system* and can only
+be used as the option:--set-url option's argument in _local mode_.
 
 'TRACEPATH'::
     Absolute path to trace files on the local file system.
 
-The other version is used for *network streaming*.
+The other version is used for the _network streaming mode_.
 
 'NETPROTO'::
     Network protocol, amongst:
@@ -149,8 +155,8 @@ The other version is used for *network streaming*.
 include::common-cmd-options-head.txt[]
 
 
-Mode
-~~~~
+Mode selection
+~~~~~~~~~~~~~~
 option:--live[='DELAYUS']::
     Create the session in live mode. The optional 'DELAYUS' parameter,
     given in microseconds, is the maximum time the user can wait for
