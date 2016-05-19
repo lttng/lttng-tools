@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include <urcu/tls-compat.h>
 #include <time.h>
 
@@ -52,13 +53,62 @@ extern int lttng_opt_verbose;
 extern int lttng_opt_mi;
 
 /* Error type. */
-#define PRINT_ERR   (1 << 0)
-#define PRINT_WARN  (1 << 1)
-#define PRINT_BUG   (1 << 2)
-#define PRINT_MSG   (1 << 3)
-#define PRINT_DBG   (1 << 4)
-#define PRINT_DBG2  (1 << 5)
-#define PRINT_DBG3  (1 << 6)
+enum lttng_error_type {
+	PRINT_ERR =	0,
+	PRINT_BUG =	1,
+	PRINT_WARN =	2,
+	PRINT_MSG =	3,
+	PRINT_DBG =	4,
+	PRINT_DBG2 =	5,
+	PRINT_DBG3 =	6,
+};
+
+static inline bool __lttng_print_check_opt(enum lttng_error_type type)
+{
+	/* lttng_opt_mi and lttng_opt_quiet. */
+	switch (type) {
+	case PRINT_DBG3:
+	case PRINT_DBG2:
+	case PRINT_DBG:
+	case PRINT_MSG:
+		if (lttng_opt_mi) {
+			return false;
+		}
+		/* Fall-through. */
+	case PRINT_WARN:
+	case PRINT_BUG:
+	case PRINT_ERR:
+		if (lttng_opt_quiet) {
+			return false;
+		}
+	}
+
+	/* lttng_opt_verbose */
+	switch (type) {
+	case PRINT_DBG3:
+		if (lttng_opt_verbose < 3) {
+			return false;
+		}
+		break;
+	case PRINT_DBG2:
+		if (lttng_opt_verbose < 2) {
+			return false;
+		}
+		break;
+	case PRINT_DBG:
+		if (lttng_opt_verbose < 1) {
+			return false;
+		}
+		break;
+	case PRINT_MSG:
+	case PRINT_WARN:
+	case PRINT_BUG:
+	case PRINT_ERR:
+		break;
+	}
+
+	return true;
+}
 
 /*
  * Macro for printing message depending on command line option and verbosity.
@@ -68,23 +118,12 @@ extern int lttng_opt_mi;
  * want any nested msg to show up when printing mi to stdout(if it's the case).
  * All warnings and errors should be printed to stderr as normal.
  */
-#define __lttng_print(type, fmt, args...)                                          \
-	do {                                                                       \
-		if (!lttng_opt_quiet && !lttng_opt_mi &&                           \
-				(type) == PRINT_MSG) {                             \
-			fprintf(stdout, fmt, ## args);                             \
-		} else if (!lttng_opt_quiet && !lttng_opt_mi &&                    \
-				((((type) & PRINT_DBG) && lttng_opt_verbose == 1) || \
-				(((type) & (PRINT_DBG | PRINT_DBG2)) &&            \
-					lttng_opt_verbose == 2) ||                 \
-				(((type) & (PRINT_DBG | PRINT_DBG2 | PRINT_DBG3)) && \
-					lttng_opt_verbose == 3))) {                \
-			fprintf(stderr, fmt, ## args);                             \
-		} else if (!lttng_opt_quiet &&                                     \
-				((type) & (PRINT_WARN | PRINT_ERR | PRINT_BUG))) { \
-			fprintf(stderr, fmt, ## args);                             \
-		}                                                                  \
-	} while (0);
+#define __lttng_print(type, fmt, args...)						\
+	do {										\
+		if (__lttng_print_check_opt(type)) {					\
+			fprintf((type) == PRINT_MSG ? stdout : stderr, fmt, ## args);	\
+		}									\
+	} while (0)
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
 #define _ERRMSG(msg, type, fmt, args...) __lttng_print(type, msg \
