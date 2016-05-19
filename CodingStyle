@@ -31,14 +31,22 @@ enum my_enum {
 #define DEFAULT_VALUE_OF_SOME_SORT   6
 #define THE_ANSWER                   42
 
-Use space to indent the '\' at the end but tabs at the beginning.
+Use either a single space or tabs to indent the '\' at the end of lines.
+Use tabs at the beginning of lines.
 
-#define a_macro(x)      \
-	do {                \
-		fsync();        \
+Either:
+
+#define a_macro(x) \
+	do { \
+		fsync(); \
 	} while (0)
 
-It's really the only time we use spaces. For everything else, there is TABS! :)
+or
+
+#define a_macro(x)		\
+	do {			\
+		fsync();	\
+	} while (0)
 
 Here is a pretty cool vim macro that will highlight your whitespaces and spaces
 before tab. This helps a *LOT* when coding.
