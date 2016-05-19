@@ -171,7 +171,7 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 	case RUN_AS_MKDIR_RECURSIVE:
 		return _mkdir_recursive;
 	default:
-		ERR("Unknown command %d", (int) cmd)
+		ERR("Unknown command %d", (int) cmd);
 		return NULL;
 	}
 }
