@@ -1022,7 +1022,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 
 	CDS_INIT_LIST_HEAD(&channel->streams.head);
 
-	DBG("Allocated channel (key %" PRIu64 ")", channel->key)
+	DBG("Allocated channel (key %" PRIu64 ")", channel->key);
 
 end:
 	return channel;
