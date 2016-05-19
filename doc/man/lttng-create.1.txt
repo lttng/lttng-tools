@@ -128,13 +128,22 @@ The other version is used for the _network streaming mode_.
 'NETPROTO'::
     Network protocol, amongst:
 +
-* `net`:  TCP over IPv4; the default values of `<ctrl port>` and
-  `<data port>` are resp. 5342 and 5343
-* `net6`: TCP over IPv6: same default ports as `net` protocol
-* `tcp`:  same as `net` protocol; can only be used with the
-  option:--ctrl-url and option:--data-url options together
-* `tcp6`: same as `net6` protocol; can only be used with the
-  option:--ctrl-url and option:--data-url options together
+--
+`net`::
+    TCP over IPv4; the default values of `<ctrl port>` and `<data port>`
+    are resp. 5342 and 5343.
+
+`net6`::
+    TCP over IPv6: same default ports as the `net` protocol.
+
+`tcp`::
+    Same as the `net` protocol; can only be used with the
+    option:--ctrl-url and option:--data-url options together.
+
+`tcp6`::
+    Same as the `net6` protocol; can only be used with the
+    option:--ctrl-url and option:--data-url options together.
+--
 
 ('HOST' | 'IPADDR')::
     Hostname or IP address (IPv6 address *must* be enclosed in brackets
