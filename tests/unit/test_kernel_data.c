@@ -134,7 +134,7 @@ static void test_create_kernel_event(void)
 	struct lttng_event ev;
 
 	memset(&ev, 0, sizeof(ev));
-	ok(lttng_strncpy(ev.name, get_random_string(),
+	ok(!lttng_strncpy(ev.name, get_random_string(),
 			LTTNG_KERNEL_SYM_NAME_LEN),
 		"Validate string length");
 	ev.type = LTTNG_EVENT_TRACEPOINT;
