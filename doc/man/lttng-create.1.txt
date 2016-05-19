@@ -130,7 +130,7 @@ The other version is used for the _network streaming mode_.
 +
 --
 `net`::
-    TCP over IPv4; the default values of `<ctrl port>` and `<data port>`
+    TCP over IPv4; the default values of 'CTRLPORT' and 'DATAPORT'
     are resp. 5342 and 5343.
 
 `net6`::
