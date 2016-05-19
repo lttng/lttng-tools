@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <common/compat/string.h>
 
 /*
  * Takes a pointer x and transform it so we can use it to access members
@@ -87,7 +88,7 @@ void *zmalloc(size_t len)
 static inline
 int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 {
-	if (strnlen(src, dst_len) == dst_len) {
+	if (lttng_strnlen(src, dst_len) == dst_len) {
 		/* Fail since copying would result in truncation. */
 		return -1;
 	}
