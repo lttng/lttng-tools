@@ -903,7 +903,7 @@ int save_ust_context(struct config_writer *writer,
 			context_type_string = get_ust_context_type_string(
 				ctx->ctx.ctx);
 			if (!context_type_string) {
-				ERR("Unsupported UST context type.")
+				ERR("Unsupported UST context type.");
 					ret = LTTNG_ERR_INVALID;
 				goto end;
 			}
