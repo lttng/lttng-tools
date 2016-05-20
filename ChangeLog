@@ -1,3 +1,181 @@
+2016-05-20 lttng-tools 2.8.0 (Bike-to-Work Day)
+	* Fix: only perform lttng_consumer_sync_trace_file() in local mode
+	* Make lttng_consumer_sync_trace_file static
+	* Fix: don't negate posix_fadvise return value to check error
+	* Fix Solaris 10 build: use lttng_strnlen() wrapper
+	* Rename lttng_error_type to lttng_error_level
+	* Cleanup error.h __lttng_print() used for message printing
+	* Update coding style document for macro style
+	* Fix: coding style document has erroneous semicolon at end of macro
+	* Fix: add missing semicolons after MSG, DBG, ERR print macros
+	* Tests: inverted condition in test_kernel_data
+	* OOT build fix: asciidoc.conf is now a source file
+	* lttng-create(1): use attributes for default ports
+	* lttng-create(1): add xrefs to creation mode definitions
+	* lttng-create(1): use the correct DATAPORT/CTRLPORT variables
+	* lttng-create(1): use def list for net protocols
+	* lttng-create(1): add relay mode
+	* doc/man: put AsciiDoc attributes in their own file
+	* test: UST tracing destroy flush behavior with tracefile rotation
+	* test: kernel tracing destroy flush behavior with tracefile rotation
+	* Add environment variable to allow abort on error
+	* Fix: ust-consumer: flush empty packets on snapshot channel
+	* Fix: WARN() should print as WARN level, not ERR
+	* Fix: error.h: add missing parenthesis around macro parameter
+	* Fix: bogus mask on error.h PRINT types
+	* Fix: kernel tracing: flush after stop
+	* Fix: UST should not generate packet at destroy after stop
+	* Tests: remove flaky '*' kernel wildcard test
+	* Fix: bad file descriptors on close after rotation error
+	* Fix: configure.ac: allow --disable-python-bindings
+	* Fix: merge tap tests stdout and stderr
+	* Fix: posix_fadvise wrapper returns -ENOSYS on FreeBSD
+	* Fix: Double free in utils_partial_realpath error path
+	* Fix: remove logically dead code in send_channel_uid_to_ust
+	* Fix: unchecked return value in low throughput test
+	* Tests: abort() exclusion test on allocation failure
+	* Fix: unchecked posix_fadvise() return value
+	* Fix: unchecked return value in relayd live.c
+	* Fix: unchecked return value in trace_clock_read64_monotonic
+	* Clean-up: remove unnecessary blank line
+	* Fix: initialize the cur_event variable before using it
+	* Fix: Dereference after NULL check in consumer
+	* Tests: abort test on memory allocation failure
+	* Fix: pointer dereference after NULL check in test_create_ust_event_exclusion
+	* Fix: NULL pointer dereference in relay_index_get_by_id_or_create
+	* Clean-up verbosity incrementation in set_option
+	* Fix: Deference after null check in sessiond set_option
+	* Docs: clarify comment in parse_pid_string()
+	* Fix: Wrong sizeof argument in pid tracker
+	* Fix: tests: incorrect uri index
+	* Fix: Integer overflowed argument
+	* Fix: macro compares unsigned to 0 (no effect)
+	* Fix: Free variable before strdup() in process_event_node
+	* Fix: Free variables before strdup()
+	* Fix: Add missing free() in spawn_viewer
+	* Fix: Add missing free() in utils_partial_realpath
+	* Fix: Use distinct variables for ret and discarded_events
+	* Fix: Don't try to show manpage when argv is null
+	* Fix: Use secure_getenv() in get_man_bin_path
+	* Fix: illegal memory access in test_create_ust_event_exclusion
+	* Fix: illegal memory access in test_create_ust_event
+	* Fix: illegal memory access in test_create_kernel_event
+	* Fix: illegal memory access in test_create_ust_channel
+	* Fix: illegal memory access in send_viewer_streams
+	* Simplify rcu locking in viewer_list_sessions
+	* Fix: illegal memory access in viewer_list_sessions
+	* Fix: illegal memory access in relayd_add_stream
+	* Fix: illegal memory access in relayd_create_session_2_4
+	* Fix: illegal memory access in session_create
+	* Fix: illegal memory access in consumer_set_subdir
+	* Fix: illegal memory access in syscall_init_table
+	* Fix: illegal memory access in write_pidfile
+	* Fix: illegal memory access in list_lttng_channels
+	* Fix: illegal memory access in cmd_snapshot_record
+	* Fix: illegal memory access in output_init
+	* Fix: illegal memory access in consumer_set_network_uri
+	* Fix: illegal memory access in cmd_snapshot_list_outputs
+	* Fix: illegal memory access in list_events
+	* Fix: illegal memory access in disable_event
+	* Fix: illegal memory access in enable_event
+	* Fix: illegal memory access in add_uri_to_consumer
+	* Fix: illegal memory access in init_ust_event_from_agent_event
+	* Simplify free() of channel attribute
+	* Fix: illegal memory access in _cmd_enable_event
+	* Implement lttng_strncpy safe string copy
+	* Add missing symbol to preserve ABI compatibility of liblttng-ctl
+	* Fix: loading a session prints an error message but the load is successful
+	* Snapshot warning if there are no events in one of the domains
+	* Clarify kernel version check error messages
+	* Tests: same event name with different descriptor on load
+	* Fix: load event state (enabled/disabled) correctly
+	* Fix: Error reported if no domain is provided for start/stop
+	* Handle unknown domain in MI
+	* Handle unknown domain on session start
+	* Fix: loading of live session within userspace domains
+	* Test: expose session url bug on load with multiple domains
+	* OOT build fix: asciidoc.conf is now generated at configure
+	* Snapshot: record: use same datetime for snapshot folder output
+	* Refactor: move the snapshot type check into output type check
+	* ust-metadata.c: nest/indent enumeration entries
+	* lttng.c: show basic help when no arguments are provided
+	* Define command short descriptions in configure.ac
+	* lttng-relayd(8): $HOME -> $LTTNG_HOME
+	* doc/man: use propagated default values in man pages
+	* Propagate default values from configure.ac to asciidoc.conf
+	* Define default values in configure.ac
+	* lttng-load(1): use lists to explain the input path behaviour
+	* lttng-sessiond(8): fix load directories and behaviour
+	* lttng-load(1): specify default search order
+	* doc/man: use configured directories in man pages
+	* doc/man/asciidoc.conf: add doctype-manpage conditions
+	* doc/man: linklttng macro -> man macro
+	* doc/man/Makefile.am: add failing dist-hook on --disable-man-pages
+	* doc/man/Makefile.am: fix top comment
+	* configure.ac: fix --enable-man-pages help string
+	* Fix: standardize parser/lexer building
+	* Fix: standardize man pages building/installing
+	* configure.ac: check for an existing liburcu-cds symbol
+	* configure.ac: use macro for wrong liburcu error message
+	* Hide parse_application_context utility function
+	* Re-add deprecated MI symbols to preserve ABI compatibility
+	* Hide new MI symbols introduced as part of 2.8
+	* Re-add default size symbols which were erroneously exposed
+	* Hide config symbols introduced in 2.8
+	* Hide internal _lttng_destroy_session symbol
+	* Hide bytecode symbol iterator API symbols
+	* Tests: wording of trace_matches is misleading
+	* Test lttng-modules clock override plugin
+	* Warning fix: uninitialized variable may be used
+	* Tests: Replace prove by autotools tap runner
+	* Drop installcheck target
+	* Fix: distcheck requires that we clean version.h
+	* Fix: configure: forbid Python bindings if shared libraries are disabled
+	* Fix: tests: don't match command line arguments, match static build binary names
+	* Fix: tests: skip tests on static build
+	* Fix: tests: don't build dynamic lib tests if support disabled
+	* bootstrap: Standardize on autoreconf -vi
+	* doc/man: add notes about shell escaping
+	* Fix: doc/man/Makefile.am for OOT builds
+	* Move unix.h wrapper from sessiond-comm to common
+	* Fix: update tests following renaming of UST statedump event
+	* Typo: catched -> caught
+	* Add comment describing ioctl number duplication
+	* Test: kill sessiond,relayd and background children on SIGTERM/SIGINT
+	* Docs: Remove unnecessary exclamation mark
+	* Docs: fix wording of dependency
+	* Docs: fix "daemon" typo in README.md
+	* Fix: Use get_domain_str on add context
+	* Warning fix: possible use of uninitialized variable
+	* doc/man: add FILES section
+	* Test: xsd validation of long path (length > 255)
+	* Fix: xsd: urls and paths are not of type name_type but string
+	* Fix: do not return error on LTTNG_ERR_SNAPSHOT_NODATA
+	* Fix: Set loopback adress in set_ip_addr if gethostbyname2 fails
+	* Fix: d_type validity is not guaranteed on all nfs versions
+	* Fix: doc/man: lttng-add-context(1): add missing option macro
+	* doc/man: common-footer.txt: add CI link
+	* doc/man: common-footer.txt: add GH organization link
+	* doc/man: lttng(1): clarify UST domain and add links to languages
+	* doc/man: add escwc macro and use it
+	* doc/man: lttng(1): link from COMMAND (synopsis) to COMMANDS section
+	* doc/man: use linkgenoptions macro
+	* doc/man: add linkgenoptions AsciiDoc macro
+	* .gitignore: ignore all generated files in doc/man
+	* doc/man: fix external links
+	* doc/man: xsl: move manpage-base.xsl -> manpage-callouts.xsl
+	* doc/man: xsl: move manpage-ulinks.xsl -> manpage-links.xsl
+	* doc/man: xsl: add <URL> after ulink text
+	* doc/man: xsl: add (internal) link template
+	* doc/man: lttng-enable-channel(1): move limitations to own section
+	* Fix: doc/man: lttng-relayd(1) -> lttng-relayd(8)
+	* doc/man: add nloption and genoption AsciiDoc macros
+	* doc/man: add [role="term"] to terminal callouts
+	* Clean-up shm directory tree after freeing the channel
+	* Fix: Build man pages if --enable-build-man-pages is used
+	* Fix: convey enum value signedness into metadata
+	* Generate man pages by default
+
 2016-03-18 lttng-tools 2.8.0-rc1 (Awkward Moments Day)
 	* Bump minor kernel tracer ABI version
 	* Quote brewery names in release codename description
