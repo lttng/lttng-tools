@@ -1,3 +1,71 @@
+2016-05-20 lttng-tools 2.6.3 (Bike-to-Work Day)
+	* Fix: use start and stop sessiond from utils.sh
+	* Fix: Missing semicolon after debug statement
+	* Clarify kernel version check error messages
+	* Docs: fix "daemon" typo in README.md
+	* Fix: do not return error on LTTNG_ERR_SNAPSHOT_NODATA
+	* Fix: Set loopback adress in set_ip_addr if gethostbyname2 fails
+	* Fix: load event state (enabled/disabled) correctly
+	* Fix: only perform lttng_consumer_sync_trace_file() in local mode
+	* Fix: don't negate posix_fadvise return value to check error
+	* Rename lttng_error_type to lttng_error_level
+	* Cleanup error.h __lttng_print() used for message printing
+	* Update coding style document for macro style
+	* Fix: coding style document has erroneous semicolon at end of macro
+	* Fix: Use get_domain_str on add context
+	* Tests: inverted condition in test_kernel_data
+	* Fix: ust-consumer: flush empty packets on snapshot channel
+	* Fix: WARN() should print as WARN level, not ERR
+	* Fix: error.h: add missing parenthesis around macro parameter
+	* Fix: bogus mask on error.h PRINT types
+	* Fix: kernel tracing: flush after stop
+	* Fix: UST should not generate packet at destroy after stop
+	* Fix: bad file descriptors on close after rotation error
+	* Fix: posix_fadvise wrapper returns -ENOSYS on FreeBSD
+	* Fix: Double free in utils_partial_realpath error path
+	* Fix: remove logically dead code in send_channel_uid_to_ust
+	* Fix: unchecked return value in low throughput test
+	* Fix: unchecked posix_fadvise() return value
+	* Fix: unchecked return value in relayd live.c
+	* Fix: unchecked return value in trace_clock_read64_monotonic
+	* Fix: initialize the cur_event variable before using it
+	* Fix: NULL pointer dereference in relay_index_get_by_id_or_create
+	* Fix: Integer overflowed argument
+	* Fix: macro compares unsigned to 0 (no effect)
+	* Fix: Free variable before strdup() in process_event_node
+	* Fix: Free variables before strdup()
+	* Fix: Add missing free() in spawn_viewer
+	* Fix: Add missing free() in utils_partial_realpath
+	* Fix: illegal memory access in test_create_kernel_event
+	* Fix: illegal memory access in send_viewer_streams
+	* Fix: illegal memory access in viewer_list_sessions
+	* Fix: illegal memory access in relayd_add_stream
+	* Fix: illegal memory access in relayd_create_session_2_4
+	* Fix: illegal memory access in session_create
+	* Fix: illegal memory access in consumer_set_subdir
+	* Fix: illegal memory access in syscall_init_table
+	* Fix: illegal memory access in write_pidfile
+	* Fix: illegal memory access in list_lttng_channels
+	* Fix: illegal memory access in cmd_snapshot_record
+	* Fix: illegal memory access in output_init
+	* Fix: illegal memory access in consumer_set_network_uri
+	* Fix: illegal memory access in cmd_snapshot_list_outputs
+	* Fix: illegal memory access in list_events
+	* Fix: illegal memory access in disable_event
+	* Fix: illegal memory access in add_uri_to_consumer
+	* Fix: illegal memory access in _cmd_enable_event
+	* Implement lttng_strncpy safe string copy
+	* Fix: loading a session prints an error message but the load is successful
+	* Snapshot warning if there are no events in one of the domains
+	* Snapshot: record: use same datetime for snapshot folder output
+	* Refactor: move the snapshot type check into output type check
+	* configure.ac: check for an existing liburcu-cds symbol
+	* configure.ac: use macro for wrong liburcu error message
+	* Tests: wording of trace_matches is misleading
+	* Typo: catched -> caught
+	* Fix: free ust channel object after grace period in consumer
+	* Test fix: ignore stderr at every step of randstring
+
 2016-04-19 lttng-tools 2.6.2 (Bicycle Day)
 	* Fix: add missing synchronization point for before app test case
 	* Fix warning when building Python bindings
