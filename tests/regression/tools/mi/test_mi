@@ -643,7 +643,7 @@ function test_start_stop () {
 	#Extract session name from xml
 	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
 	test "$result" = "$session_name"
-	ok $? "Mi test: stoped $session_name"
+	ok $? "Mi test: stopped $session_name"
 
 	#Extract enabled expect false
 	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:enabled/text()" result
