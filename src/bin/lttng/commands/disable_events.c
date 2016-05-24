@@ -467,7 +467,7 @@ end:
 		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	/* Overwrite ret if an error occured in disable_events */
+	/* Overwrite ret if an error occurred in disable_events */
 	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);

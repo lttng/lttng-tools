@@ -154,7 +154,7 @@ ssize_t lttng_snapshot_list_output(struct lttng_handle *handle,
  * the date and time will be used for the directory name.
  *
  * This is a blocking call meaning that it will return only if the snapshot is
- * completed or an error occured. For now, no-wait is not supported but we keep
+ * completed or an error occurred. For now, no-wait is not supported but we keep
  * a parameter for that future case. The wait param is ignored.
  *
  * Return 0 on success or else a negative LTTNG_ERR* code.

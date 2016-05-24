@@ -241,7 +241,7 @@ end:
 		ret = ret ? ret : LTTNG_ERR_MI_IO_FAIL;
 	}
 
-	/* Overwrite ret if an error occured during set_session() */
+	/* Overwrite ret if an error occurred during set_session() */
 	ret = command_ret ? command_ret : ret;
 
 	poptFreeContext(pc);

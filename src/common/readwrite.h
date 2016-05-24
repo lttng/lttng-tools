@@ -26,7 +26,7 @@
  * Upon success, they return the "count" received as parameter.
  * They can return a negative value if an error occurs.
  * If a value lower than the requested "count" is returned, it means an
- * error occured.
+ * error occurred.
  * The error can be checked by querying errno.
  */
 LTTNG_HIDDEN
