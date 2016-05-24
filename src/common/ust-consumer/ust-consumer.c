@@ -2398,8 +2398,8 @@ int update_stream_stats(struct lttng_consumer_stream *stream)
 	}
 	if (discarded < stream->last_discarded_events) {
 		/*
-		 * Overflow has occured. We assume only one wrap-around
-		 * has occured.
+		 * Overflow has occurred. We assume only one wrap-around
+		 * has occurred.
 		 */
 		stream->chan->discarded_events +=
 				(1ULL << (CAA_BITS_PER_LONG - 1)) -

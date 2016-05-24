@@ -2374,7 +2374,7 @@ restart:
 					len = ctx->on_buffer_ready(stream, ctx);
 					/*
 					 * We don't check the return value here since if we get
-					 * a negative len, it means an error occured thus we
+					 * a negative len, it means an error occurred thus we
 					 * simply remove it from the poll set and free the
 					 * stream.
 					 */
@@ -2401,7 +2401,7 @@ restart:
 						len = ctx->on_buffer_ready(stream, ctx);
 						/*
 						 * We don't check the return value here since if we get
-						 * a negative len, it means an error occured thus we
+						 * a negative len, it means an error occurred thus we
 						 * simply remove it from the poll set and free the
 						 * stream.
 						 */

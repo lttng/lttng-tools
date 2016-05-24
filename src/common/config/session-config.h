@@ -57,7 +57,7 @@ typedef int (*config_entry_handler_cb)(const struct config_entry *, void *);
  * "", only the global entries are relayed.
  *
  * Returns 0 on success. Negative values are error codes. If the return value
- * is positive, it represents the line number on which a parsing error occured.
+ * is positive, it represents the line number on which a parsing error occurred.
  */
 LTTNG_HIDDEN
 int config_get_section_entries(const char *path, const char *section,

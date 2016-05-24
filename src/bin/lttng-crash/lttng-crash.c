@@ -1137,7 +1137,7 @@ int delete_dir_recursive(const char *path)
 			ret = delete_dir_recursive(subpath);
 			free(subpath);
 			if (ret) {
-				/* Error occured, abort traversal. */
+				/* Error occurred, abort traversal. */
 				goto end;
 			}
 		} else if (S_ISREG(st.st_mode)) {

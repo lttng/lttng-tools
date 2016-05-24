@@ -636,7 +636,7 @@ end:
 		free(session_name);
 	}
 
-	/* Overwrite ret if an error occured during handle_command */
+	/* Overwrite ret if an error occurred during handle_command */
 	ret = command_ret ? command_ret : ret;
 	poptFreeContext(pc);
 	return ret;
