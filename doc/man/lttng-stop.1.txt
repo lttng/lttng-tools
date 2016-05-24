@@ -18,7 +18,7 @@ DESCRIPTION
 The `lttng stop` command stops the various LTTng tracers for a given
 active tracing session.
 
-Stoping the LTTng tracers has the effect that all enabled event rules
+Stopping the LTTng tracers has the effect that all enabled event rules
 within enabled channels cannot make event sources _emit_ trace events
 anymore.
 
