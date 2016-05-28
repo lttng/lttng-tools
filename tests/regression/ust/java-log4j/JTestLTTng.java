@@ -21,7 +21,7 @@ import java.lang.Integer;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.BasicConfigurator;
-
+import org.apache.log4j.Level;
 import org.lttng.ust.agent.LTTngAgent;
 
 public class JTestLTTng
@@ -36,6 +36,18 @@ public class JTestLTTng
 		int waitTime = Integer.parseInt(args[1]);
 		int fire_debug_tp = 0;
 		int fire_second_tp = 0;
+
+		/*
+		 * Set lowest level to make sure all event levels are logged.
+		 * Any jar can override the default log4j rootLogger level
+		 * and a logger with no explicit level defaults to the non-null
+		 * parent level. Events could be ignored if the inherited value
+		 * is too low, thereby failing the test.
+		 *
+		 * See BSF  -> https://issues.apache.org/jira/browse/BSF-24
+		 */
+		lttng.setLevel(Level.ALL);
+		lttng2.setLevel(Level.ALL);
 
 		if (args.length > 2) {
 			fire_debug_tp = Integer.parseInt(args[2]);
