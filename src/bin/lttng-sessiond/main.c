@@ -2371,7 +2371,12 @@ static int spawn_consumer_thread(struct consumer_data *consumer_data)
 	int ret, clock_ret;
 	struct timespec timeout;
 
-	/* Make sure we set the readiness flag to 0 because we are NOT ready */
+	/*
+	 * Make sure we set the readiness flag to 0 because we are NOT ready.
+	 * This access to consumer_thread_is_ready does not need to be
+	 * protected by consumer_data.cond_mutex (yet) since the consumer
+	 * management thread has not been started at this point.
+	 */
 	consumer_data->consumer_thread_is_ready = 0;
 
 	/* Setup pthread condition */
