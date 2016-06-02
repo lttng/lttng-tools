@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *               2016 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -22,9 +23,17 @@
 #include <string.h>
 #include <common/align.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <assert.h>
 
 #include "kernel-ctl.h"
 #include "kernel-ioctl.h"
+
+#define LTTNG_IOCTL(fildes, request, ...) ({		\
+	int ret = ioctl(fildes, request, ##__VA_ARGS__);\
+	assert(ret <= 0);				\
+	ret ? -errno : 0;				\
+})
 
 /*
  * This flag indicates which version of the kernel ABI to use. The old
@@ -161,7 +170,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 	}
 
 	kmask_len.len = 0;
-	ret = ioctl(fd, LTTNG_KERNEL_SYSCALL_MASK, &kmask_len);
+	ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_SYSCALL_MASK, &kmask_len);
 	if (ret) {
 		goto end;
 	}
@@ -175,7 +184,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 	}
 
 	kmask->len = kmask_len.len;
-	ret = ioctl(fd, LTTNG_KERNEL_SYSCALL_MASK, kmask);
+	ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_SYSCALL_MASK, kmask);
 	if (ret) {
 		goto end;
 	}
@@ -196,12 +205,12 @@ end:
 
 int kernctl_track_pid(int fd, int pid)
 {
-	return ioctl(fd, LTTNG_KERNEL_SESSION_TRACK_PID, pid);
+	return LTTNG_IOCTL(fd, LTTNG_KERNEL_SESSION_TRACK_PID, pid);
 }
 
 int kernctl_untrack_pid(int fd, int pid)
 {
-	return ioctl(fd, LTTNG_KERNEL_SESSION_UNTRACK_PID, pid);
+	return LTTNG_IOCTL(fd, LTTNG_KERNEL_SESSION_UNTRACK_PID, pid);
 }
 
 int kernctl_list_tracker_pids(int fd)
@@ -211,7 +220,7 @@ int kernctl_list_tracker_pids(int fd)
 
 int kernctl_session_metadata_regenerate(int fd)
 {
-	return ioctl(fd, LTTNG_KERNEL_SESSION_METADATA_REGEN);
+	return LTTNG_IOCTL(fd, LTTNG_KERNEL_SESSION_METADATA_REGEN);
 }
 
 int kernctl_create_stream(int fd)
@@ -272,20 +281,20 @@ int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
 				ctx->u.perf_counter.name,
 				sizeof(old_ctx.u.perf_counter.name));
 		}
-		return ioctl(fd, LTTNG_KERNEL_OLD_CONTEXT, &old_ctx);
+		return LTTNG_IOCTL(fd, LTTNG_KERNEL_OLD_CONTEXT, &old_ctx);
 	}
-	return ioctl(fd, LTTNG_KERNEL_CONTEXT, ctx);
+	return LTTNG_IOCTL(fd, LTTNG_KERNEL_CONTEXT, ctx);
 }
 
 
-/* Enable event, channel and session ioctl */
+/* Enable event, channel and session LTTNG_IOCTL */
 int kernctl_enable(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_ENABLE,
 			LTTNG_KERNEL_ENABLE);
 }
 
-/* Disable event, channel and session ioctl */
+/* Disable event, channel and session LTTNG_IOCTL */
 int kernctl_disable(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_DISABLE,
@@ -318,7 +327,7 @@ int kernctl_filter(int fd, struct lttng_filter_bytecode *filter)
 	kb->reloc_offset = filter->reloc_table_offset;
 	kb->seqnum = filter->seqnum;
 	memcpy(kb->data, filter->data, len);
-	ret = ioctl(fd, LTTNG_KERNEL_FILTER, kb);
+	ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_FILTER, kb);
 	free(kb);
 	return ret;
 }
@@ -339,7 +348,7 @@ int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
 	int ret;
 
 	if (lttng_kernel_use_old_abi == -1) {
-		ret = ioctl(fd, LTTNG_KERNEL_TRACER_VERSION, v);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_TRACER_VERSION, v);
 		if (!ret) {
 			lttng_kernel_use_old_abi = 0;
 			goto end;
@@ -349,7 +358,7 @@ int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
 	if (lttng_kernel_use_old_abi) {
 		struct lttng_kernel_old_tracer_version old_v;
 
-		ret = ioctl(fd, LTTNG_KERNEL_OLD_TRACER_VERSION, &old_v);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_OLD_TRACER_VERSION, &old_v);
 		if (ret) {
 			goto end;
 		}
@@ -357,7 +366,7 @@ int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v)
 		v->minor = old_v.minor;
 		v->patchlevel = old_v.patchlevel;
 	} else {
-		ret = ioctl(fd, LTTNG_KERNEL_TRACER_VERSION, v);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_TRACER_VERSION, v);
 	}
 
 end:
@@ -367,7 +376,7 @@ end:
 int kernctl_tracer_abi_version(int fd,
 		struct lttng_kernel_tracer_abi_version *v)
 {
-	return ioctl(fd, LTTNG_KERNEL_TRACER_ABI_VERSION, v);
+	return LTTNG_IOCTL(fd, LTTNG_KERNEL_TRACER_ABI_VERSION, v);
 }
 
 int kernctl_wait_quiescent(int fd)
@@ -381,7 +390,7 @@ int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 	int ret;
 
 	if (lttng_kernel_use_old_abi == -1) {
-		ret = ioctl(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
 		if (!ret) {
 			lttng_kernel_use_old_abi = 0;
 			goto end;
@@ -392,13 +401,14 @@ int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
 		struct lttng_kernel_old_calibrate old_calibrate;
 
 		old_calibrate.type = calibrate->type;
-		ret = ioctl(fd, LTTNG_KERNEL_OLD_CALIBRATE, &old_calibrate);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_OLD_CALIBRATE,
+				&old_calibrate);
 		if (ret) {
 			goto end;
 		}
 		calibrate->type = old_calibrate.type;
 	} else {
-		ret = ioctl(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
+		ret = LTTNG_IOCTL(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
 	}
 
 end:
@@ -408,13 +418,13 @@ end:
 
 int kernctl_buffer_flush(int fd)
 {
-	return ioctl(fd, RING_BUFFER_FLUSH);
+	return LTTNG_IOCTL(fd, RING_BUFFER_FLUSH);
 }
 
 /* returns the version of the metadata. */
 int kernctl_get_metadata_version(int fd, uint64_t *version)
 {
-	return ioctl(fd, RING_BUFFER_GET_METADATA_VERSION, version);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_METADATA_VERSION, version);
 }
 
 
@@ -425,13 +435,13 @@ int kernctl_get_metadata_version(int fd, uint64_t *version)
 /* returns the length to mmap. */
 int kernctl_get_mmap_len(int fd, unsigned long *len)
 {
-	return ioctl(fd, RING_BUFFER_GET_MMAP_LEN, len);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_MMAP_LEN, len);
 }
 
 /* returns the maximum size for sub-buffers. */
 int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
 {
-	return ioctl(fd, RING_BUFFER_GET_MAX_SUBBUF_SIZE, len);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_MAX_SUBBUF_SIZE, len);
 }
 
 /*
@@ -442,32 +452,32 @@ int kernctl_get_max_subbuf_size(int fd, unsigned long *len)
 /* returns the offset of the subbuffer belonging to the mmap reader. */
 int kernctl_get_mmap_read_offset(int fd, unsigned long *off)
 {
-	return ioctl(fd, RING_BUFFER_GET_MMAP_READ_OFFSET, off);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_MMAP_READ_OFFSET, off);
 }
 
 /* returns the size of the current sub-buffer, without padding (for mmap). */
 int kernctl_get_subbuf_size(int fd, unsigned long *len)
 {
-	return ioctl(fd, RING_BUFFER_GET_SUBBUF_SIZE, len);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_SUBBUF_SIZE, len);
 }
 
 /* returns the size of the current sub-buffer, without padding (for mmap). */
 int kernctl_get_padded_subbuf_size(int fd, unsigned long *len)
 {
-	return ioctl(fd, RING_BUFFER_GET_PADDED_SUBBUF_SIZE, len);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_PADDED_SUBBUF_SIZE, len);
 }
 
 /* Get exclusive read access to the next sub-buffer that can be read. */
 int kernctl_get_next_subbuf(int fd)
 {
-	return ioctl(fd, RING_BUFFER_GET_NEXT_SUBBUF);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_NEXT_SUBBUF);
 }
 
 
 /* Release exclusive sub-buffer access, move consumer forward. */
 int kernctl_put_next_subbuf(int fd)
 {
-	return ioctl(fd, RING_BUFFER_PUT_NEXT_SUBBUF);
+	return LTTNG_IOCTL(fd, RING_BUFFER_PUT_NEXT_SUBBUF);
 }
 
 /* snapshot */
@@ -475,83 +485,87 @@ int kernctl_put_next_subbuf(int fd)
 /* Get a snapshot of the current ring buffer producer and consumer positions */
 int kernctl_snapshot(int fd)
 {
-	return ioctl(fd, RING_BUFFER_SNAPSHOT);
+	return LTTNG_IOCTL(fd, RING_BUFFER_SNAPSHOT);
 }
 
 /* Get the consumer position (iteration start) */
 int kernctl_snapshot_get_consumed(int fd, unsigned long *pos)
 {
-	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_CONSUMED, pos);
+	return LTTNG_IOCTL(fd, RING_BUFFER_SNAPSHOT_GET_CONSUMED, pos);
 }
 
 /* Get the producer position (iteration end) */
 int kernctl_snapshot_get_produced(int fd, unsigned long *pos)
 {
-	return ioctl(fd, RING_BUFFER_SNAPSHOT_GET_PRODUCED, pos);
+	return LTTNG_IOCTL(fd, RING_BUFFER_SNAPSHOT_GET_PRODUCED, pos);
 }
 
 /* Get exclusive read access to the specified sub-buffer position */
 int kernctl_get_subbuf(int fd, unsigned long *len)
 {
-	return ioctl(fd, RING_BUFFER_GET_SUBBUF, len);
+	return LTTNG_IOCTL(fd, RING_BUFFER_GET_SUBBUF, len);
 }
 
 /* Release exclusive sub-buffer access */
 int kernctl_put_subbuf(int fd)
 {
-	return ioctl(fd, RING_BUFFER_PUT_SUBBUF);
+	return LTTNG_IOCTL(fd, RING_BUFFER_PUT_SUBBUF);
 }
 
 /* Returns the timestamp begin of the current sub-buffer. */
 int kernctl_get_timestamp_begin(int fd, uint64_t *timestamp_begin)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN, timestamp_begin);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN,
+			timestamp_begin);
 }
 
 /* Returns the timestamp end of the current sub-buffer. */
 int kernctl_get_timestamp_end(int fd, uint64_t *timestamp_end)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_END, timestamp_end);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_TIMESTAMP_END,
+			timestamp_end);
 }
 
 /* Returns the number of discarded events in the current sub-buffer. */
 int kernctl_get_events_discarded(int fd, uint64_t *events_discarded)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_EVENTS_DISCARDED, events_discarded);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_EVENTS_DISCARDED,
+			events_discarded);
 }
 
 /* Returns the content size in the current sub-buffer. */
 int kernctl_get_content_size(int fd, uint64_t *content_size)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_CONTENT_SIZE, content_size);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_CONTENT_SIZE,
+			content_size);
 }
 
 /* Returns the packet size in the current sub-buffer. */
 int kernctl_get_packet_size(int fd, uint64_t *packet_size)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_PACKET_SIZE, packet_size);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_PACKET_SIZE, packet_size);
 }
 
 /* Returns the stream id of the current sub-buffer. */
 int kernctl_get_stream_id(int fd, uint64_t *stream_id)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_STREAM_ID, stream_id);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_STREAM_ID, stream_id);
 }
 
 /* Returns the current timestamp. */
 int kernctl_get_current_timestamp(int fd, uint64_t *ts)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_CURRENT_TIMESTAMP, ts);
 }
 
 /* Returns the packet sequence number of the current sub-buffer. */
 int kernctl_get_sequence_number(int fd, uint64_t *seq)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_GET_SEQ_NUM, seq);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_GET_SEQ_NUM, seq);
 }
 
 /* Returns the stream instance id. */
 int kernctl_get_instance_id(int fd, uint64_t *id)
 {
-	return ioctl(fd, LTTNG_RING_BUFFER_INSTANCE_ID, id);
+	return LTTNG_IOCTL(fd, LTTNG_RING_BUFFER_INSTANCE_ID, id);
 }
