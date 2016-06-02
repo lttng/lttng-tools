@@ -1530,7 +1530,6 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		mmap_base = stream->mmap_base;
 		ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
 		if (ret < 0) {
-			ret = -errno;
 			PERROR("tracer ctl get_mmap_read_offset");
 			goto end;
 		}

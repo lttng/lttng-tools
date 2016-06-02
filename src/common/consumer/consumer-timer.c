@@ -148,7 +148,7 @@ int consumer_flush_kernel_index(struct lttng_consumer_stream *stream)
 	}
 	ret = kernctl_snapshot(stream->wait_fd);
 	if (ret < 0) {
-		if (errno != EAGAIN && errno != ENODATA) {
+		if (ret != -EAGAIN && ret != -ENODATA) {
 			PERROR("live timer kernel snapshot");
 			ret = -1;
 			goto end;

@@ -16,7 +16,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -49,7 +48,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 	DBG("Adding context to channel %s", chan->channel->name);
 	ret = kernctl_add_context(chan->fd, &ctx->ctx);
 	if (ret < 0) {
-		switch (errno) {
+		switch (-ret) {
 		case ENOSYS:
 			/* Exists but not available for this kernel */
 			ret = LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE;
@@ -203,7 +202,7 @@ int kernel_create_event(struct lttng_event *ev,
 
 	ret = kernctl_create_event(channel->fd, event->event);
 	if (ret < 0) {
-		switch (errno) {
+		switch (-ret) {
 		case EEXIST:
 			break;
 		case ENOSYS:
@@ -215,7 +214,6 @@ int kernel_create_event(struct lttng_event *ev,
 		default:
 			PERROR("create event ioctl");
 		}
-		ret = -errno;
 		goto free_event;
 	}
 
@@ -236,7 +234,7 @@ int kernel_create_event(struct lttng_event *ev,
 
 	ret = kernctl_enable(event->fd);
 	if (ret < 0) {
-		switch (errno) {
+		switch (-ret) {
 		case EEXIST:
 			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
@@ -283,7 +281,6 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 	ret = kernctl_disable(chan->fd);
 	if (ret < 0) {
 		PERROR("disable chan ioctl");
-		ret = errno;
 		goto error;
 	}
 
@@ -306,7 +303,7 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 	assert(chan);
 
 	ret = kernctl_enable(chan->fd);
-	if (ret < 0 && errno != EEXIST) {
+	if (ret < 0 && ret != -EEXIST) {
 		PERROR("Enable kernel chan");
 		goto error;
 	}
@@ -331,7 +328,7 @@ int kernel_enable_event(struct ltt_kernel_event *event)
 
 	ret = kernctl_enable(event->fd);
 	if (ret < 0) {
-		switch (errno) {
+		switch (-ret) {
 		case EEXIST:
 			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
@@ -362,7 +359,7 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
-		switch (errno) {
+		switch (-ret) {
 		case EEXIST:
 			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
@@ -393,7 +390,7 @@ int kernel_track_pid(struct ltt_kernel_session *session, int pid)
 	if (!ret) {
 		return LTTNG_OK;
 	}
-	switch (errno) {
+	switch (-ret) {
 	case EINVAL:
 		return LTTNG_ERR_INVALID;
 	case ENOMEM:
@@ -415,7 +412,7 @@ int kernel_untrack_pid(struct ltt_kernel_session *session, int pid)
 	if (!ret) {
 		return LTTNG_OK;
 	}
-	switch (errno) {
+	switch (-ret) {
 	case EINVAL:
 		return LTTNG_ERR_INVALID;
 	case ENOMEM:

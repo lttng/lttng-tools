@@ -51,7 +51,7 @@ int syscall_init_table(void)
 
 	fd = kernctl_syscall_list(kernel_tracer_fd);
 	if (fd < 0) {
-		ret = -errno;
+		ret = fd;
 		PERROR("kernelctl syscall list");
 		goto error_ioctl;
 	}
