@@ -5474,14 +5474,14 @@ static int set_signal_handler(void)
 
 /*
  * Set open files limit to unlimited. This daemon can open a large number of
- * file descriptors in order to consumer multiple kernel traces.
+ * file descriptors in order to consume multiple kernel traces.
  */
 static void set_ulimit(void)
 {
 	int ret;
 	struct rlimit lim;
 
-	/* The kernel does not allowed an infinite limit for open files */
+	/* The kernel does not allow an infinite limit for open files */
 	lim.rlim_cur = 65535;
 	lim.rlim_max = 65535;
 
