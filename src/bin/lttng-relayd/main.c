@@ -2793,15 +2793,6 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	/* Check if daemon is UID = 0 */
-	if (!getuid()) {
-		if (control_uri->port < 1024 || data_uri->port < 1024 || live_uri->port < 1024) {
-			ERR("Need to be root to use ports < 1024");
-			retval = -1;
-			goto exit_init_data;
-		}
-	}
-
 	/* Setup the thread apps communication pipe. */
 	if (create_relay_conn_pipe()) {
 		retval = -1;
