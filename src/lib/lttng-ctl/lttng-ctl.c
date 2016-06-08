@@ -2413,7 +2413,7 @@ end:
 /*
  * lib constructor.
  */
-static void __attribute__((constructor)) init()
+static void __attribute__((constructor)) init(void)
 {
 	/* Set default session group */
 	lttng_set_tracing_group(DEFAULT_TRACING_GROUP);
@@ -2422,7 +2422,7 @@ static void __attribute__((constructor)) init()
 /*
  * lib destructor.
  */
-static void __attribute__((destructor)) lttng_ctl_exit()
+static void __attribute__((destructor)) lttng_ctl_exit(void)
 {
 	free(tracing_group);
 }
