@@ -3086,6 +3086,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_EVENTS:
 	case LTTNG_LIST_SYSCALLS:
 	case LTTNG_LIST_TRACKER_PIDS:
+	case LTTNG_DATA_PENDING:
 		break;
 	default:
 		/* Setup lttng message with no payload */
