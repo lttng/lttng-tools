@@ -2920,3 +2920,9 @@ end:
 	}
 	return ret;
 }
+
+static
+void __attribute__((destructor)) session_config_exit(void)
+{
+	xmlCleanupParser();
+}
