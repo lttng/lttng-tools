@@ -6226,6 +6226,13 @@ exit_init_data:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 
+	/*
+	 * Ensure all prior call_rcu are done. call_rcu callbacks may push
+	 * hash tables to the ht_cleanup thread. Therefore, we ensure that
+	 * the queue is empty before shutting down the clean-up thread.
+	 */
+	rcu_barrier();
+
 	ret = notify_thread_pipe(ht_cleanup_quit_pipe[1]);
 	if (ret < 0) {
 		ERR("write error on ht_cleanup quit pipe");
@@ -6255,9 +6262,6 @@ exit_health_sessiond_cleanup:
 exit_create_run_as_worker_cleanup:
 
 exit_options:
-	/* Ensure all prior call_rcu are done. */
-	rcu_barrier();
-
 	sessiond_cleanup_options();
 
 exit_set_signal_handler:
