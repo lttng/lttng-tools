@@ -5,7 +5,7 @@ if BUILD_TESTS
 SUBDIRS += . utils regression unit stress destructive
 if HAS_PGREP
 check-am:
-	$(top_srcdir)/tests/utils/warn_lttng_processes.sh $(PGREP)
+	$(top_srcdir)/tests/utils/warn_processes.sh $(PGREP)
 endif
 else
 	@echo "========================================="

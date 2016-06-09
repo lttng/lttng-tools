@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PGREP="$1"
+
 if [ x$LTTNG_TOOLS_TESTS_DISABLE_WARN_LTTNG_PROCESSES == x1 ]; then
 	exit
 fi
@@ -8,7 +10,7 @@ color_warn='\E[1;33m'
 color_reset='\E[0m'
 color_bold='\E[1m'
 
-lttng_processes="$("$1" 'lttng|gen-ust-.+' -a | grep -v "$(basename "$0")")"
+lttng_processes="$("$PGREP" -l 'lttng|gen-ust-.+')"
 
 if [ $? -eq 0 ]; then
 	pids="$(cut -d ' ' -f 1 <<< "$lttng_processes" | tr '\n' ' ')"

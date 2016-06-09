@@ -1,6 +1,6 @@
 SUBDIRS = . tap testapp
 
-EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_lttng_processes.sh
+EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh
 dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl
 noinst_LTLIBRARIES = libtestutils.la
 
