@@ -621,6 +621,8 @@ and installing the man pages.
 AM_CONDITIONAL([MAN_PAGES_OPT], [test "x$man_pages_opt" != "xno"])
 AM_CONDITIONAL([HAVE_ASCIIDOC_XMLTO], [test "x$have_asciidoc_xmlto" = "xyes"])
 
+AC_DEFINE_UNQUOTED([MANPATH], ["`eval eval echo $mandir`"], [Path to man pages.])
+
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
 
