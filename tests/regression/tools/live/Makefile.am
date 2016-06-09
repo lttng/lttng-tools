@@ -16,10 +16,10 @@ LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
 
-LIVE=$(top_builddir)/src/bin/lttng-sessiond/session.o \
-	 $(top_builddir)/src/bin/lttng-sessiond/consumer.o \
-	 $(top_builddir)/src/bin/lttng-sessiond/utils.o \
-	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.o
+LIVE=$(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT)
 
 noinst_PROGRAMS = live_test
 EXTRA_DIST = test_kernel test_lttng_kernel
