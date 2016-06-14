@@ -55,8 +55,7 @@ void ht_cleanup_push(struct lttng_ht *ht)
 	if (!ht) {
 		return;
 	}
-	if (fd < 0)
-		return;
+	assert(fd >= 0);
 	ret = lttng_write(fd, &ht, sizeof(ht));
 	if (ret < sizeof(ht)) {
 		PERROR("write ht cleanup pipe %d", fd);
