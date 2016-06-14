@@ -124,8 +124,6 @@ int ustctl_wait_quiescent(int sock);
 
 int ustctl_sock_flush_buffer(int sock, struct lttng_ust_object_data *object);
 
-int ustctl_calibrate(int sock, struct lttng_ust_calibrate *calibrate);
-
 /* Release object created by members of this API. */
 int ustctl_release_object(int sock, struct lttng_ust_object_data *data);
 /* Release handle returned by create session. */

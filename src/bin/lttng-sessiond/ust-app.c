@@ -5204,54 +5204,6 @@ end:
 }
 
 /*
- * Calibrate registered applications.
- */
-int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
-{
-	int ret = 0;
-	struct lttng_ht_iter iter;
-	struct ust_app *app;
-
-	rcu_read_lock();
-
-	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		if (!app->compatible) {
-			/*
-			 * TODO: In time, we should notice the caller of this error by
-			 * telling him that this is a version error.
-			 */
-			continue;
-		}
-
-		health_code_update();
-
-		pthread_mutex_lock(&app->sock_lock);
-		ret = ustctl_calibrate(app->sock, calibrate);
-		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0) {
-			switch (ret) {
-			case -ENOSYS:
-				/* Means that it's not implemented on the tracer side. */
-				ret = 0;
-				break;
-			default:
-				DBG2("Calibrate app PID %d returned with error %d",
-						app->pid, ret);
-				break;
-			}
-		}
-	}
-
-	DBG("UST app global domain calibration finished");
-
-	rcu_read_unlock();
-
-	health_code_update();
-
-	return ret;
-}
-
-/*
  * Receive registration and populate the given msg structure.
  *
  * On success return 0 else a negative value returned by the ustctl call.

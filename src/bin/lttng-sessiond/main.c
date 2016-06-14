@@ -3102,7 +3102,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_CREATE_SESSION:
 	case LTTNG_CREATE_SESSION_SNAPSHOT:
 	case LTTNG_CREATE_SESSION_LIVE:
-	case LTTNG_CALIBRATE:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
 	case LTTNG_LIST_SYSCALLS:
@@ -3942,12 +3941,6 @@ error_add_context:
 		}
 
 		ret = LTTNG_OK;
-		break;
-	}
-	case LTTNG_CALIBRATE:
-	{
-		ret = cmd_calibrate(cmd_ctx->lsm->domain.type,
-				&cmd_ctx->lsm->u.calibrate);
 		break;
 	}
 	case LTTNG_REGISTER_CONSUMER:
