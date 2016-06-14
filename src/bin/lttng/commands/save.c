@@ -29,8 +29,8 @@
 #include <lttng/save.h>
 
 static char *opt_output_path;
-static int opt_force;
-static int opt_save_all;
+static bool opt_force;
+static bool opt_save_all;
 static struct mi_writer *writer;
 
 enum {
@@ -134,10 +134,10 @@ int cmd_save(int argc, const char **argv)
 			SHOW_HELP();
 			goto end;
 		case OPT_ALL:
-			opt_save_all = 1;
+			opt_save_all = true;
 			break;
 		case OPT_FORCE:
-			opt_force = 1;
+			opt_force = true;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, save_opts);
@@ -154,7 +154,7 @@ int cmd_save(int argc, const char **argv)
 			DBG2("Session name: %s", session_name);
 		} else {
 			/* default to opt_save_all */
-			opt_save_all = 1;
+			opt_save_all = true;
 		}
 	}
 
