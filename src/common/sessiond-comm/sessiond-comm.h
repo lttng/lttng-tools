@@ -56,7 +56,7 @@
 enum lttcomm_sessiond_command {
 	/* Tracer command */
 	LTTNG_ADD_CONTEXT                   = 0,
-	LTTNG_CALIBRATE                     = 1,
+	/* LTTNG_CALIBRATE used to be here */
 	LTTNG_DISABLE_CHANNEL               = 2,
 	LTTNG_DISABLE_EVENT                 = 3,
 	LTTNG_LIST_SYSCALLS                 = 4,

@@ -93,10 +93,6 @@ struct lttng_kernel_old_tracer_version {
 	uint32_t patchlevel;
 };
 
-struct lttng_kernel_old_calibrate {
-	enum lttng_kernel_calibrate_type type;	/* type (input) */
-};
-
 /*
  * kernel channel
  */

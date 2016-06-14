@@ -1927,26 +1927,13 @@ int lttng_set_tracing_group(const char *name)
 	return 0;
 }
 
-/*
- * Returns size of returned session payload data or a negative error code.
- */
 int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate)
 {
-	struct lttcomm_session_msg lsm;
-
-	/* Safety check. NULL pointer are forbidden */
-	if (handle == NULL || calibrate == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_CALIBRATE;
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-
-	memcpy(&lsm.u.calibrate, calibrate, sizeof(lsm.u.calibrate));
-
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	/*
+	 * This command was removed in LTTng 2.9.
+	 */
+	return -LTTNG_ERR_UND;
 }
 
 /*
