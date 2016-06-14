@@ -33,7 +33,7 @@ struct lttng_save_session_attr {
 	/* Destination of the session configuration. See lttng(1) for URL format. */
 	char configuration_url[PATH_MAX];
 	/* Overwrite the session configuration file if it exists. */
-	uint32_t overwrite;
+	uint8_t overwrite;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_SAVE_INTERNAL_ABI_H */
