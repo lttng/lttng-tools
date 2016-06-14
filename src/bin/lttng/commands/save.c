@@ -31,6 +31,7 @@
 static char *opt_output_path;
 static int opt_force;
 static int opt_save_all;
+static struct mi_writer *writer;
 
 enum {
 	OPT_HELP = 1,
@@ -48,8 +49,6 @@ static struct poptOption save_opts[] = {
 	{"list-options",  0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
-
-static struct mi_writer *writer;
 
 static int mi_partial_session(const char *session_name)
 {
