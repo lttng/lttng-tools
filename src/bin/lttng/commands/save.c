@@ -42,10 +42,10 @@ enum {
 
 static struct poptOption save_opts[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-	{"help",        'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
-	{"all",         'a', POPT_ARG_NONE, 0, OPT_ALL, 0, 0},
-	{"output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, 0, 0},
-	{"force",       'f', POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
+	{"help",        'h', POPT_ARG_NONE, NULL, OPT_HELP, NULL, NULL},
+	{"all",         'a', POPT_ARG_NONE, NULL, OPT_ALL, NULL, NULL},
+	{"output-path", 'o', POPT_ARG_STRING, &opt_output_path, 0, NULL, NULL},
+	{"force",       'f', POPT_ARG_NONE, NULL, OPT_FORCE, NULL, NULL},
 	{"list-options",  0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
