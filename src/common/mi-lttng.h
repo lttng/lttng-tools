@@ -53,7 +53,6 @@ struct mi_lttng_version {
 extern const char * const mi_lttng_element_command;
 extern const char * const mi_lttng_element_command_action;
 extern const char * const mi_lttng_element_command_add_context;
-extern const char * const mi_lttng_element_command_calibrate;
 extern const char * const mi_lttng_element_command_create;
 extern const char * const mi_lttng_element_command_destroy;
 extern const char * const mi_lttng_element_command_disable_channel;
@@ -173,10 +172,6 @@ extern const char * const mi_lttng_loglevel_type_range;
 extern const char * const mi_lttng_loglevel_type_single;
 extern const char * const mi_lttng_loglevel_type_unknown;
 
-/* Sting related to lttng_calibrate */
-extern const char * const mi_lttng_element_calibrate;
-extern const char * const mi_lttng_element_calibrate_function;
-
 /* String related to a lttng_snapshot */
 extern const char * const mi_lttng_element_snapshot_ctrl_url;
 extern const char * const mi_lttng_element_snapshot_data_url;
@@ -194,7 +189,6 @@ const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value);
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type value);
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value);
 const char *mi_lttng_buffertype_string(enum lttng_buffer_type value);
-const char *mi_lttng_calibratetype_string(enum lttng_calibrate_type val);
 
 /*
  * Create an instance of a machine interface writer.
@@ -653,19 +647,6 @@ int mi_lttng_targets_open(struct mi_writer *writer);
  * Negative values indicate an error.
  */
 int mi_lttng_pid_target(struct mi_writer *writer, pid_t pid, int is_open);
-
-/*
- * Machine interface for struct lttng_calibrate.
- *
- * writer An instance of a machine interface writer.
- *
- * calibrate A lttng_calibrate instance.
- *
- * Returns zero if the element's value could be written.
- * Negative values indicate an error.
- */
-int mi_lttng_calibrate(struct mi_writer *writer,
-		struct lttng_calibrate *calibrate);
 
 /*
  * Machine interface of a context.
