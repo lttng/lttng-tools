@@ -40,7 +40,6 @@ system_lttng_conf="@CONFDIR@/lttng/lttng.conf"
 
 # command short descriptions
 cmd_descr_add_context="@CMD_DESCR_ADD_CONTEXT@"
-cmd_descr_calibrate="@CMD_DESCR_CALIBRATE@"
 cmd_descr_create="@CMD_DESCR_CREATE@"
 cmd_descr_destroy="@CMD_DESCR_DESTROY@"
 cmd_descr_disable_channel="@CMD_DESCR_DISABLE_CHANNEL@"

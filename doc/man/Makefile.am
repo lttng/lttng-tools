@@ -21,7 +21,6 @@ MAN1_NAMES = \
 	lttng-disable-channel \
 	lttng-add-context \
 	lttng-list \
-	lttng-calibrate \
 	lttng-track \
 	lttng-untrack \
 	lttng-status \
