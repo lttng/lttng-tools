@@ -398,37 +398,6 @@ int kernctl_wait_quiescent(int fd)
 			LTTNG_KERNEL_WAIT_QUIESCENT);
 }
 
-int kernctl_calibrate(int fd, struct lttng_kernel_calibrate *calibrate)
-{
-	int ret;
-
-	if (lttng_kernel_use_old_abi == -1) {
-		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
-		if (!ret) {
-			lttng_kernel_use_old_abi = 0;
-			goto end;
-		}
-		lttng_kernel_use_old_abi = 1;
-	}
-	if (lttng_kernel_use_old_abi) {
-		struct lttng_kernel_old_calibrate old_calibrate;
-
-		old_calibrate.type = calibrate->type;
-		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_OLD_CALIBRATE,
-				&old_calibrate);
-		if (ret) {
-			goto end;
-		}
-		calibrate->type = old_calibrate.type;
-	} else {
-		ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_CALIBRATE, calibrate);
-	}
-
-end:
-	return ret;
-}
-
-
 int kernctl_buffer_flush(int fd)
 {
 	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_FLUSH);

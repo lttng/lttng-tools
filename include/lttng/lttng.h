@@ -111,11 +111,8 @@ extern int lttng_stop_tracing(const char *session_name);
 extern int lttng_stop_tracing_no_wait(const char *session_name);
 
 /*
- * Calibrate LTTng overhead.
- *
- * The chan and handle params can not be NULL.
- *
- * Return 0 on success else a negative LTTng error code.
+ * Deprecated: As of LTTng 2.9, this function always returns
+ * -LTTNG_ERR_UND.
  */
 extern int lttng_calibrate(struct lttng_handle *handle,
 		struct lttng_calibrate *calibrate);

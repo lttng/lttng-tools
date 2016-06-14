@@ -129,14 +129,6 @@ struct lttng_kernel_tracer_abi_version {
 	uint32_t minor;
 } LTTNG_PACKED;
 
-enum lttng_kernel_calibrate_type {
-	LTTNG_KERNEL_CALIBRATE_KRETPROBE,
-};
-
-struct lttng_kernel_calibrate {
-	enum lttng_kernel_calibrate_type type;	/* type (input) */
-} LTTNG_PACKED;
-
 struct lttng_kernel_syscall_mask {
 	uint32_t len;	/* in bits */
 	char mask[];
