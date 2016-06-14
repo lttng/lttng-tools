@@ -59,6 +59,18 @@ const char *lttng_save_session_attr_get_output_url(
  */
 int lttng_save_session_attr_get_overwrite(
 	struct lttng_save_session_attr *attr);
+/*
+ * Return the omit name configuration attribute. This attribute indicates
+ * whether or not the saved sessions' names should be omitted.
+ */
+int lttng_save_session_attr_get_omit_name(
+	struct lttng_save_session_attr *attr);
+/*
+ * Return the omit output configuration attribute. This attribute indicates
+ * whether or not the saved sessions' output configuration should be omitted.
+ */
+int lttng_save_session_attr_get_omit_output(
+	struct lttng_save_session_attr *attr);
 
 /*
  * Save session attribute setter family functions.
@@ -86,6 +98,18 @@ int lttng_save_session_attr_set_output_url(
  */
 int lttng_save_session_attr_set_overwrite(
 	struct lttng_save_session_attr *attr, int overwrite);
+/*
+ * Set the omit name attribute. If set to true, the sessions' names are omitted
+ * from the resulting session configuration file.
+ */
+int lttng_save_session_attr_set_omit_name(
+	struct lttng_save_session_attr *attr, int omit_name);
+/*
+ * Set the omit output attribute. If set to true, the sessions' output
+ * configurations are omitted from the resulting session configuration file.
+ */
+int lttng_save_session_attr_set_omit_output(
+	struct lttng_save_session_attr *attr, int omit_output);
 
 /*
  * Save session configuration(s).

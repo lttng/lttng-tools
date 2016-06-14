@@ -68,6 +68,18 @@ int lttng_save_session_attr_get_overwrite(
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
 }
 
+int lttng_save_session_attr_get_omit_name(
+	struct lttng_save_session_attr *attr)
+{
+	return attr ? attr->omit_name : -LTTNG_ERR_INVALID;
+}
+
+int lttng_save_session_attr_get_omit_output(
+	struct lttng_save_session_attr *attr)
+{
+	return attr ? attr->omit_output : -LTTNG_ERR_INVALID;
+}
+
 int lttng_save_session_attr_set_session_name(
 	struct lttng_save_session_attr *attr, const char *session_name)
 {
@@ -147,6 +159,36 @@ int lttng_save_session_attr_set_overwrite(
 	}
 
 	attr->overwrite = !!overwrite;
+end:
+	return ret;
+}
+
+int lttng_save_session_attr_set_omit_name(
+	struct lttng_save_session_attr *attr, int omit_name)
+{
+	int ret = 0;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	attr->omit_name = !!omit_name;
+end:
+	return ret;
+}
+
+int lttng_save_session_attr_set_omit_output(
+	struct lttng_save_session_attr *attr, int omit_output)
+{
+	int ret = 0;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	attr->omit_output = !!omit_output;
 end:
 	return ret;
 }
