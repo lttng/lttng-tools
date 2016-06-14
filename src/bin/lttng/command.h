@@ -66,7 +66,6 @@ DECL_COMMAND(disable_channels);
 DECL_COMMAND(add_context);
 DECL_COMMAND(set_session);
 DECL_COMMAND(version);
-DECL_COMMAND(calibrate);
 DECL_COMMAND(view);
 DECL_COMMAND(enable_consumer);
 DECL_COMMAND(disable_consumer);

@@ -66,7 +66,6 @@ static struct option long_options[] = {
 /* First level command */
 static struct cmd_struct commands[] =  {
 	{ "add-context", cmd_add_context},
-	{ "calibrate", cmd_calibrate},
 	{ "create", cmd_create},
 	{ "destroy", cmd_destroy},
 	{ "disable-channel", cmd_disable_channels},
@@ -280,7 +279,6 @@ static void show_basic_help(void)
 	puts("  untrack           " CONFIG_CMD_DESCR_UNTRACK);
 	puts("");
 	puts("Miscellaneous:");
-	puts("  calibrate         " CONFIG_CMD_DESCR_CALIBRATE);
 	puts("  help              " CONFIG_CMD_DESCR_HELP);
 	puts("  version           " CONFIG_CMD_DESCR_VERSION);
 	puts("  view              " CONFIG_CMD_DESCR_VIEW);
