@@ -233,9 +233,6 @@ class TestLttngPythonModule (unittest.TestCase):
 		event.type=EVENT_TRACEPOINT
 		event.loglevel_type=EVENT_LOGLEVEL_ALL
 
-		calib = Calibrate()
-		calib.type = CALIBRATE_FUNCTION
-
 		ctx = EventContext()
 		ctx.type=EVENT_CONTEXT_PID
 
@@ -253,10 +250,6 @@ class TestLttngPythonModule (unittest.TestCase):
 		self.assertGreaterEqual(r, 0, strerror(r))
 
 		r = enable_event(han, event, None)
-		self.assertGreaterEqual(r, 0, strerror(r))
-
-		#Calibrate test
-		r = calibrate(han , calib)
 		self.assertGreaterEqual(r, 0, strerror(r))
 
 		#Context test
