@@ -328,7 +328,6 @@ void ust_app_global_update_all(struct ltt_ust_session *usess);
 void ust_app_clean_list(void);
 int ust_app_ht_alloc(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);
-int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate);
 struct ust_app_stream *ust_app_alloc_stream(void);
 int ust_app_recv_registration(int sock, struct ust_register_msg *msg);
 int ust_app_recv_notify(int sock);
@@ -493,11 +492,6 @@ static inline
 int ust_app_enable_event_pid(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent,
 		pid_t pid)
-{
-	return 0;
-}
-static inline
-int ust_app_calibrate_glb(struct lttng_ust_calibrate *calibrate)
 {
 	return 0;
 }
