@@ -84,17 +84,6 @@ _lttng_cmd_addcontext() {
 	esac
 }
 
-_lttng_cmd_calibrate() {
-	options=$(lttng calibrate --list-options)
-
-	case $cur in
-	-*)
-		_lttng_complete_options
-		return
-		;;
-	esac
-}
-
 _lttng_cmd_create() {
 	options=$(lttng create --list-options)
 
