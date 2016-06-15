@@ -198,7 +198,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 
 #define _PERROR(fmt, args...) _ERRMSG("PERROR", PRINT_ERR, fmt, ## args)
 
-#if !defined(__linux__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
+#if !defined(__GLIBC__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !defined(_GNU_SOURCE))
 
 /*
  * Version using XSI strerror_r.
