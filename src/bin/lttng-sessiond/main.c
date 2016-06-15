@@ -37,6 +37,7 @@
 #include <sys/wait.h>
 #include <urcu/uatomic.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include <common/common.h>
 #include <common/compat/socket.h>
