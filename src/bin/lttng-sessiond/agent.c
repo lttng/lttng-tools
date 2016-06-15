@@ -29,7 +29,7 @@
 #include "agent.h"
 #include "ust-app.h"
 #include "utils.h"
-#include "error.h"
+#include "common/error.h"
 
 #define AGENT_RET_CODE_INDEX(code) (code - AGENT_RET_CODE_SUCCESS)
 
