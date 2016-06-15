@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <paths.h>
 #include <fcntl.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 
 #include <urcu/system.h>
