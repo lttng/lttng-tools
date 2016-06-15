@@ -2366,8 +2366,8 @@ static int spawn_consumer_thread(struct consumer_data *consumer_data)
 		goto error;
 	}
 
-	ret = pthread_create(&consumer_data->thread, NULL, thread_manage_consumer,
-			consumer_data);
+	ret = pthread_create(&consumer_data->thread, default_pthread_attr(),
+			thread_manage_consumer, consumer_data);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create consumer");
@@ -5980,7 +5980,7 @@ int main(int argc, char **argv)
 	load_info->path = opt_load_session_path;
 
 	/* Create health-check thread */
-	ret = pthread_create(&health_thread, NULL,
+	ret = pthread_create(&health_thread, default_pthread_attr(),
 			thread_manage_health, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -5990,7 +5990,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(&client_thread, NULL,
+	ret = pthread_create(&client_thread, default_pthread_attr(),
 			thread_manage_clients, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6000,7 +6000,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to dispatch registration */
-	ret = pthread_create(&dispatch_thread, NULL,
+	ret = pthread_create(&dispatch_thread, default_pthread_attr(),
 			thread_dispatch_ust_registration, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6010,7 +6010,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application registration. */
-	ret = pthread_create(&reg_apps_thread, NULL,
+	ret = pthread_create(&reg_apps_thread, default_pthread_attr(),
 			thread_registration_apps, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6020,7 +6020,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application socket */
-	ret = pthread_create(&apps_thread, NULL,
+	ret = pthread_create(&apps_thread, default_pthread_attr(),
 			thread_manage_apps, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6030,7 +6030,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application notify socket */
-	ret = pthread_create(&apps_notify_thread, NULL,
+	ret = pthread_create(&apps_notify_thread, default_pthread_attr(),
 			ust_thread_manage_notify, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6040,7 +6040,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create agent registration thread. */
-	ret = pthread_create(&agent_reg_thread, NULL,
+	ret = pthread_create(&agent_reg_thread, default_pthread_attr(),
 			agent_thread_manage_registration, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -6052,7 +6052,7 @@ int main(int argc, char **argv)
 	/* Don't start this thread if kernel tracing is not requested nor root */
 	if (is_root && !opt_no_kernel) {
 		/* Create kernel thread to manage kernel event */
-		ret = pthread_create(&kernel_thread, NULL,
+		ret = pthread_create(&kernel_thread, default_pthread_attr(),
 				thread_manage_kernel, (void *) NULL);
 		if (ret) {
 			errno = ret;
@@ -6063,8 +6063,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Create session loading thread. */
-	ret = pthread_create(&load_session_thread, NULL, thread_load_session,
-			load_info);
+	ret = pthread_create(&load_session_thread, default_pthread_attr(),
+			thread_load_session, load_info);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create load_session_thread");

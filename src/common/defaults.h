@@ -354,4 +354,16 @@ size_t default_get_ust_pid_channel_subbuf_size(void);
 LTTNG_HIDDEN
 size_t default_get_ust_uid_channel_subbuf_size(void);
 
+/*
+ * Get the default pthread_attr to use on thread creation.
+ *
+ * Some libc, such as musl, don't honor the limit set for the stack size and use
+ * their own empirically chosen static value. This function checks if the
+ * current stack size is smaller than the stack size limit and if so returns a
+ * pthread_attr_t pointer where the thread stack size is set to the soft stack
+ * size limit.
+ */
+LTTNG_HIDDEN
+pthread_attr_t *default_pthread_attr(void);
+
 #endif /* _DEFAULTS_H */

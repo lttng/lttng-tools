@@ -492,7 +492,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(&health_thread, NULL,
+	ret = pthread_create(&health_thread, default_pthread_attr(),
 			thread_manage_health, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -511,7 +511,7 @@ int main(int argc, char **argv)
 	cmm_smp_mb();	/* Read ready before following operations */
 
 	/* Create thread to manage channels */
-	ret = pthread_create(&channel_thread, NULL,
+	ret = pthread_create(&channel_thread, default_pthread_attr(),
 			consumer_thread_channel_poll,
 			(void *) ctx);
 	if (ret) {
@@ -522,7 +522,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of trace metadata */
-	ret = pthread_create(&metadata_thread, NULL,
+	ret = pthread_create(&metadata_thread, default_pthread_attr(),
 			consumer_thread_metadata_poll,
 			(void *) ctx);
 	if (ret) {
@@ -533,8 +533,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the polling/writing of trace data */
-	ret = pthread_create(&data_thread, NULL, consumer_thread_data_poll,
-			(void *) ctx);
+	ret = pthread_create(&data_thread, default_pthread_attr(),
+			consumer_thread_data_poll, (void *) ctx);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create");
@@ -543,7 +543,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create the thread to manage the receive of fd */
-	ret = pthread_create(&sessiond_thread, NULL,
+	ret = pthread_create(&sessiond_thread, default_pthread_attr(),
 			consumer_thread_sessiond_poll,
 			(void *) ctx);
 	if (ret) {
@@ -557,7 +557,7 @@ int main(int argc, char **argv)
 	 * Create the thread to manage the UST metadata periodic timer and
 	 * live timer.
 	 */
-	ret = pthread_create(&metadata_timer_thread, NULL,
+	ret = pthread_create(&metadata_timer_thread, default_pthread_attr(),
 			consumer_timer_thread, (void *) ctx);
 	if (ret) {
 		errno = ret;

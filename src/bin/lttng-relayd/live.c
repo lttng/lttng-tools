@@ -2186,7 +2186,7 @@ int relayd_live_create(struct lttng_uri *uri)
 	}
 
 	/* Setup the dispatcher thread */
-	ret = pthread_create(&live_dispatcher_thread, NULL,
+	ret = pthread_create(&live_dispatcher_thread, default_pthread_attr(),
 			thread_dispatcher, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -2196,7 +2196,7 @@ int relayd_live_create(struct lttng_uri *uri)
 	}
 
 	/* Setup the worker thread */
-	ret = pthread_create(&live_worker_thread, NULL,
+	ret = pthread_create(&live_worker_thread, default_pthread_attr(),
 			thread_worker, NULL);
 	if (ret) {
 		errno = ret;
@@ -2206,7 +2206,7 @@ int relayd_live_create(struct lttng_uri *uri)
 	}
 
 	/* Setup the listener thread */
-	ret = pthread_create(&live_listener_thread, NULL,
+	ret = pthread_create(&live_listener_thread, default_pthread_attr(),
 			thread_listener, (void *) NULL);
 	if (ret) {
 		errno = ret;

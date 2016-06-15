@@ -2778,7 +2778,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-
 	/* Initialize thread health monitoring */
 	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
 	if (!health_relayd) {
@@ -2834,7 +2833,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage the client socket */
-	ret = pthread_create(&health_thread, NULL,
+	ret = pthread_create(&health_thread, default_pthread_attr(),
 			thread_manage_health, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -2844,7 +2843,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the dispatcher thread */
-	ret = pthread_create(&dispatcher_thread, NULL,
+	ret = pthread_create(&dispatcher_thread, default_pthread_attr(),
 			relay_thread_dispatcher, (void *) NULL);
 	if (ret) {
 		errno = ret;
@@ -2854,7 +2853,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the worker thread */
-	ret = pthread_create(&worker_thread, NULL,
+	ret = pthread_create(&worker_thread, default_pthread_attr(),
 			relay_thread_worker, NULL);
 	if (ret) {
 		errno = ret;
@@ -2864,7 +2863,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup the listener thread */
-	ret = pthread_create(&listener_thread, NULL,
+	ret = pthread_create(&listener_thread, default_pthread_attr(),
 			relay_thread_listener, (void *) NULL);
 	if (ret) {
 		errno = ret;

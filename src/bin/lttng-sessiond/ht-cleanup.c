@@ -239,7 +239,8 @@ int init_ht_cleanup_thread(pthread_t *thread)
 		goto error_quit_pipe;
 	}
 
-	ret = pthread_create(thread, NULL, thread_ht_cleanup, NULL);
+	ret = pthread_create(thread, default_pthread_attr(), thread_ht_cleanup,
+			NULL);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create ht_cleanup");
