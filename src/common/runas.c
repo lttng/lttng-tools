@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sched.h>
-#include <sys/signal.h>
+#include <signal.h>
 #include <assert.h>
 #include <signal.h>
 

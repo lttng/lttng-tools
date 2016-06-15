@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <common/compat/paths.h>
 #include <fcntl.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 
 #include <urcu/system.h>
