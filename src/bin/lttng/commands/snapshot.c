@@ -350,7 +350,7 @@ static int cmd_del_output(int argc, const char **argv)
 
 	errno = 0;
 	id = strtol(argv[1], &name, 10);
-	if (id == 0 && errno == 0) {
+	if (id == 0 && (errno == 0 || errno == EINVAL)) {
 		ret = del_output(UINT32_MAX, name);
 	} else if (errno == 0 && *name == '\0') {
 		ret = del_output(id, NULL);
