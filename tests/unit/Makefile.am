@@ -46,7 +46,10 @@ SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/ht-cleanup.$(OBJEXT) \
 	 $(top_builddir)/src/common/libcommon.la \
+	 $(top_builddir)/src/common/testpoint/libtestpoint.la \
+	 $(top_builddir)/src/common/compat/libcompat.la \
 	 $(top_builddir)/src/common/health/libhealth.la \
 	 $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 

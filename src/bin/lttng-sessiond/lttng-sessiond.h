@@ -110,6 +110,9 @@ extern long page_size;
  */
 extern unsigned int agent_tcp_port;
 
+/* Application health monitoring */
+extern struct health_app *health_sessiond;
+
 /*
  * Section name to look for in the daemon configuration file.
  */
@@ -118,15 +121,8 @@ extern const char * const config_section_name;
 /* Is this daemon root or not. */
 extern int is_root;
 
-int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
-
-int sessiond_set_ht_cleanup_thread_pollset(struct lttng_poll_event *events,
-		size_t size);
-int sessiond_check_ht_cleanup_quit(int fd, uint32_t events);
-
-void *thread_ht_cleanup(void *data);
-
+int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 void sessiond_notify_ready(void);
 
 #endif /* _LTT_SESSIOND_H */

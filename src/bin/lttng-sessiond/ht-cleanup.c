@@ -21,12 +21,77 @@
 #include <common/hashtable/hashtable.h>
 #include <common/common.h>
 #include <common/utils.h>
+#include <pthread.h>
 
 #include "lttng-sessiond.h"
 #include "health-sessiond.h"
 #include "testpoint.h"
+#include "utils.h"
 
-void *thread_ht_cleanup(void *data)
+int ht_cleanup_quit_pipe[2] = { -1, -1 };
+
+/*
+ * Check if the ht_cleanup thread quit pipe was triggered.
+ *
+ * Return true if it was triggered else false;
+ */
+static bool check_quit_pipe(int fd, uint32_t events)
+{
+	return (fd == ht_cleanup_quit_pipe[0] && (events & LPOLLIN));
+}
+
+static int init_pipe(int *pipe_fds)
+{
+	int ret, i;
+
+	ret = pipe(pipe_fds);
+	if (ret < 0) {
+		PERROR("ht_cleanup thread quit pipe");
+		goto error;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(pipe_fds[i], F_SETFD, FD_CLOEXEC);
+		if (ret < 0) {
+			PERROR("fcntl ht_cleanup_quit_pipe");
+			goto error;
+		}
+	}
+error:
+	return ret;
+}
+
+/*
+ * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
+ */
+static int set_pollset(struct lttng_poll_event *events, size_t size)
+{
+	int ret;
+
+	ret = lttng_poll_create(events, size, LTTNG_CLOEXEC);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = lttng_poll_add(events, ht_cleanup_quit_pipe[0],
+			LPOLLIN | LPOLLERR);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = lttng_poll_add(events, ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
+	if (ret < 0) {
+		DBG("[ht-thread] lttng_poll_add error %d.", ret);
+		goto error;
+	}
+
+	return 0;
+
+error:
+	return ret;
+}
+
+static void *thread_ht_cleanup(void *data)
 {
 	int ret, i, pollfd, err = -1;
 	ssize_t size_ret;
@@ -47,26 +112,16 @@ void *thread_ht_cleanup(void *data)
 
 	health_code_update();
 
-	ret = sessiond_set_ht_cleanup_thread_pollset(&events, 2);
+	ret = set_pollset(&events, 2);
 	if (ret < 0) {
 		DBG("[ht-thread] sessiond_set_ht_cleanup_thread_pollset error %d.", ret);
 		goto error_poll_create;
-	}
-
-	/* Add pipe to the pollset. */
-	ret = lttng_poll_add(&events, ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
-	if (ret < 0) {
-		DBG("[ht-thread] lttng_poll_add error %d.", ret);
-		goto error;
 	}
 
 	health_code_update();
 
 	while (1) {
 		DBG3("[ht-thread] Polling.");
-
-		/* Inifinite blocking call, waiting for transmission */
-restart:
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
 		DBG3("[ht-thread] Returning from poll on %d fds.",
@@ -77,13 +132,12 @@ restart:
 			 * Restart interrupted system call.
 			 */
 			if (errno == EINTR) {
-				goto restart;
+				continue;
 			}
 			goto error;
 		}
 
 		nb_fd = ret;
-
 		for (i = 0; i < nb_fd; i++) {
 			struct lttng_ht *ht;
 
@@ -146,7 +200,7 @@ restart:
 			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_ht_cleanup_quit(pollfd, revents);
+			ret = check_quit_pipe(pollfd, revents);
 			if (ret) {
 				err = 0;
 				DBG("[ht-cleanup] quit.");
@@ -169,4 +223,56 @@ error_testpoint:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;
+}
+
+int init_ht_cleanup_thread(pthread_t *thread)
+{
+	int ret;
+
+	ret = init_pipe(ht_cleanup_pipe);
+	if (ret) {
+		goto error;
+	}
+
+	init_pipe(ht_cleanup_quit_pipe);
+	if (ret) {
+		goto error_quit_pipe;
+	}
+
+	ret = pthread_create(thread, NULL, thread_ht_cleanup, NULL);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create ht_cleanup");
+		goto error_thread;
+	}
+
+error:
+	return ret;
+
+error_thread:
+	utils_close_pipe(ht_cleanup_quit_pipe);
+error_quit_pipe:
+	utils_close_pipe(ht_cleanup_pipe);
+	return ret;
+}
+
+int fini_ht_cleanup_thread(pthread_t *thread)
+{
+	int ret;
+
+	ret = notify_thread_pipe(ht_cleanup_quit_pipe[1]);
+	if (ret < 0) {
+		ERR("write error on ht_cleanup quit pipe");
+		goto end;
+	}
+
+	ret = pthread_join(*thread, NULL);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_join ht cleanup thread");
+	}
+	utils_close_pipe(ht_cleanup_pipe);
+	utils_close_pipe(ht_cleanup_quit_pipe);
+end:
+	return ret;
 }

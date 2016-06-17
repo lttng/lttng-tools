@@ -29,6 +29,8 @@
 
 #include <bin/lttng-sessiond/session.h>
 #include <bin/lttng-sessiond/ust-app.h>
+#include <bin/lttng-sessiond/ht-cleanup.h>
+#include <bin/lttng-sessiond/health-sessiond.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/common.h>
 
@@ -40,7 +42,9 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
+struct health_app *health_sessiond;
 static struct ltt_session_list *session_list;
+static pthread_t ht_cleanup_thread;
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -293,6 +297,9 @@ int main(int argc, char **argv)
 {
 	plan_tests(NUM_TESTS);
 
+	health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
+	assert(!init_ht_cleanup_thread(&ht_cleanup_thread));
+
 	diag("Sessions unit tests");
 
 	test_session_list();
@@ -310,6 +317,8 @@ int main(int argc, char **argv)
 	test_bogus_session_param();
 
 	test_large_session_number();
+
+	assert(!fini_ht_cleanup_thread(&ht_cleanup_thread));
 
 	return exit_status();
 }

@@ -25,7 +25,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        health-sessiond.h \
                        cmd.c cmd.h \
                        buffer-registry.c buffer-registry.h \
-                       testpoint.h ht-cleanup.c \
+                       testpoint.h ht-cleanup.c ht-cleanup.h \
                        snapshot.c snapshot.h \
                        agent.c agent.h \
                        save.h save.c \

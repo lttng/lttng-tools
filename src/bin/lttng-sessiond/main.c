@@ -72,6 +72,7 @@
 #include "load-session-thread.h"
 #include "syscall.h"
 #include "agent.h"
+#include "ht-cleanup.h"
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
@@ -189,7 +190,6 @@ static int kernel_poll_pipe[2] = { -1, -1 };
  * for all threads when receiving an event on the pipe.
  */
 static int thread_quit_pipe[2] = { -1, -1 };
-static int ht_cleanup_quit_pipe[2] = { -1, -1 };
 
 /*
  * This pipe is used to inform the thread managing application communication
@@ -315,6 +315,11 @@ struct lttng_ht *agent_apps_ht_by_sock = NULL;
 #define NR_LTTNG_SESSIOND_READY		3
 int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
 
+int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
+{
+	return (fd == thread_quit_pipe[0] && (events & LPOLLIN)) ? 1 : 0;
+}
+
 /* Notify parents that we are ready for cmd and health check */
 LTTNG_HIDDEN
 void sessiond_notify_ready(void)
@@ -422,47 +427,6 @@ int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
 }
 
 /*
- * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
- */
-int sessiond_set_ht_cleanup_thread_pollset(struct lttng_poll_event *events,
-		size_t size)
-{
-	return __sessiond_set_thread_pollset(events, size,
-			ht_cleanup_quit_pipe);
-}
-
-static
-int __sessiond_check_thread_quit_pipe(int fd, uint32_t events, int a_pipe)
-{
-	if (fd == a_pipe && (events & LPOLLIN)) {
-		return 1;
-	}
-	return 0;
-}
-
-/*
- * Check if the thread quit pipe was triggered.
- *
- * Return 1 if it was triggered else 0;
- */
-int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
-{
-	return __sessiond_check_thread_quit_pipe(fd, events,
-			thread_quit_pipe[0]);
-}
-
-/*
- * Check if the ht_cleanup thread quit pipe was triggered.
- *
- * Return 1 if it was triggered else 0;
- */
-int sessiond_check_ht_cleanup_quit(int fd, uint32_t events)
-{
-	return __sessiond_check_thread_quit_pipe(fd, events,
-			ht_cleanup_quit_pipe[0]);
-}
-
-/*
  * Init thread quit pipe.
  *
  * Return -1 on error or 0 if all pipes are created.
@@ -492,11 +456,6 @@ error:
 static int init_thread_quit_pipe(void)
 {
 	return __init_thread_quit_pipe(thread_quit_pipe);
-}
-
-static int init_ht_cleanup_quit_pipe(void)
-{
-	return __init_thread_quit_pipe(ht_cleanup_quit_pipe);
 }
 
 /*
@@ -5651,23 +5610,8 @@ int main(int argc, char **argv)
 		goto exit_health_sessiond_cleanup;
 	}
 
-	if (init_ht_cleanup_quit_pipe()) {
-		retval = -1;
-		goto exit_ht_cleanup_quit_pipe;
-	}
-
-	/* Setup the thread ht_cleanup communication pipe. */
-	if (utils_create_pipe_cloexec(ht_cleanup_pipe)) {
-		retval = -1;
-		goto exit_ht_cleanup_pipe;
-	}
-
 	/* Create thread to clean up RCU hash tables */
-	ret = pthread_create(&ht_cleanup_thread, NULL,
-			thread_ht_cleanup, (void *) NULL);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create ht_cleanup");
+	if (init_ht_cleanup_thread(&ht_cleanup_thread)) {
 		retval = -1;
 		goto exit_ht_cleanup;
 	}
@@ -6227,28 +6171,11 @@ exit_init_data:
 	 */
 	rcu_barrier();
 
-	ret = notify_thread_pipe(ht_cleanup_quit_pipe[1]);
-	if (ret < 0) {
-		ERR("write error on ht_cleanup quit pipe");
-		retval = -1;
-	}
-
-	ret = pthread_join(ht_cleanup_thread, &status);
+	ret = fini_ht_cleanup_thread(&ht_cleanup_thread);
 	if (ret) {
-		errno = ret;
-		PERROR("pthread_join ht cleanup thread");
 		retval = -1;
 	}
 exit_ht_cleanup:
-
-	utils_close_pipe(ht_cleanup_pipe);
-exit_ht_cleanup_pipe:
-
-	/*
-	 * Close the ht_cleanup quit pipe.
-	 */
-	utils_close_pipe(ht_cleanup_quit_pipe);
-exit_ht_cleanup_quit_pipe:
 
 	health_app_destroy(health_sessiond);
 exit_health_sessiond_cleanup:
