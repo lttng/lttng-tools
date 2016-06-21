@@ -394,7 +394,7 @@ AC_ARG_WITH(kmod-prefix,
 
 AC_ARG_ENABLE(kmod,
 	AS_HELP_STRING([--disable-kmod],[build without kmod support]),
-	kmod_support=zz$enableval, kmod_support=yes)
+	kmod_support=$enableval, kmod_support=yes)
 
 AS_IF([test "x$kmod_support" = "xyes"], [
 	AC_CHECK_LIB([kmod], [kmod_module_probe_insert_module],
