@@ -2802,12 +2802,6 @@ int main(int argc, char **argv)
 	/* Init relay command queue. */
 	cds_wfcq_init(&relay_conn_queue.head, &relay_conn_queue.tail);
 
-	/* Set up max poll set size */
-	if (lttng_poll_set_max_size()) {
-		retval = -1;
-		goto exit_init_data;
-	}
-
 	/* Initialize communication library */
 	lttcomm_init();
 	lttcomm_inet_init();

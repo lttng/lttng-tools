@@ -362,12 +362,6 @@ int main(int argc, char **argv)
 		goto exit_health_consumerd_cleanup;
 	}
 
-	/* Set up max poll set size */
-	if (lttng_poll_set_max_size()) {
-		retval = -1;
-		goto exit_init_data;
-	}
-
 	if (*command_sock_path == '\0') {
 		switch (opt_type) {
 		case LTTNG_CONSUMER_KERNEL:

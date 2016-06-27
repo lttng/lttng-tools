@@ -5662,12 +5662,6 @@ int main(int argc, char **argv)
 		goto exit_ht_cleanup_pipe;
 	}
 
-	/* Set up max poll set size */
-	if (lttng_poll_set_max_size()) {
-		retval = -1;
-		goto exit_set_max_size;
-	}
-
 	/* Create thread to clean up RCU hash tables */
 	ret = pthread_create(&ht_cleanup_thread, NULL,
 			thread_ht_cleanup, (void *) NULL);
@@ -6246,7 +6240,6 @@ exit_init_data:
 		retval = -1;
 	}
 exit_ht_cleanup:
-exit_set_max_size:
 
 	utils_close_pipe(ht_cleanup_pipe);
 exit_ht_cleanup_pipe:
