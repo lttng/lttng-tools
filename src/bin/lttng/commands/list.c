@@ -1186,8 +1186,8 @@ static void print_channel(struct lttng_channel *channel)
 
 	MSG("%sAttributes:", indent4);
 	MSG("%soverwrite mode: %d", indent6, channel->attr.overwrite);
-	MSG("%ssubbufers size: %" PRIu64, indent6, channel->attr.subbuf_size);
-	MSG("%snumber of subbufers: %" PRIu64, indent6, channel->attr.num_subbuf);
+	MSG("%ssubbuffers size: %" PRIu64, indent6, channel->attr.subbuf_size);
+	MSG("%snumber of subbuffers: %" PRIu64, indent6, channel->attr.num_subbuf);
 	MSG("%sswitch timer interval: %u", indent6, channel->attr.switch_timer_interval);
 	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
 	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
