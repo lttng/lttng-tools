@@ -1,0 +1,412 @@
+#!/bin/bash
+#
+# Copyright (C) - 2016 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - select, poll and epoll payload extraction"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+VALIDATE_SCRIPT="$CURDIR/validate_select_poll_epoll.py"
+NUM_TESTS=102
+
+# Only run this test on x86 and arm
+uname -m | grep -E "x86|i686|arm|aarch64" >/dev/null 2>&1
+if test $? != 0; then
+	exit 0
+fi
+
+DISABLE_VALIDATE=0
+# Babeltrace python bindings are required for the validation, but
+# it is not a mandatory dependancy of the project, so fail run the
+# without the content validation, at least we test that we are not
+# crashing the kernel.
+$VALIDATE_SCRIPT --help >/dev/null 2>&1
+if test $? != 0; then
+	echo "# Failed to run the validation script, Babeltrace Python bindings might be missing"
+	DISABLE_VALIDATE=1
+fi
+
+LAST_WARNING=$(dmesg | grep " WARNING:" | cut -d' ' -f1 | tail -1)
+LAST_OOPS=$(dmesg | grep " OOPS:" | cut -d' ' -f1 | tail -1)
+LAST_BUG=$(dmesg | grep " BUG:" | cut -d' ' -f1 | tail -1)
+
+source $TESTDIR/utils/utils.sh
+
+function check_trace_content()
+{
+	if test $DISABLE_VALIDATE == 1; then
+		ok 0 "Validation skipped"
+		return
+	fi
+
+	$VALIDATE_SCRIPT $@
+	if test $? = 0; then
+		ok 0 "Validation success"
+	else
+		fail "Validation"
+	fi
+}
+
+function test_working_cases()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+
+	# arm64 does not have epoll_wait
+	uname -m | grep -E "aarch64" >/dev/null 2>&1
+	if test $? = 0; then
+		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_pwait"
+	else
+		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_wait,epoll_pwait"
+	fi
+
+	diag "Working cases for select, pselect6, poll, ppoll and epoll, waiting for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 1); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 1 -p $pid $TRACE_PATH
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_timeout_cases()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+
+	# arm64 does not have epoll_wait
+	uname -m | grep -E "aarch64" >/dev/null 2>&1
+	if test $? = 0; then
+		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_pwait"
+	else
+		SYSCALL_LIST="select,pselect6,poll,ppoll,epoll_ctl,epoll_wait,epoll_pwait"
+	fi
+
+	diag "Timeout cases (1ms) for select, pselect6, poll, ppoll and epoll"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME "$SYSCALL_LIST"
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$($CURDIR/select_poll_epoll -t 2); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 2 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_big_pselect()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="pselect6"
+
+	diag "pselect with a FD > 1023"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$($CURDIR/select_poll_epoll -t 3); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 3 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_big_ppoll()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="ppoll"
+
+	diag "ppoll with 2047 FDs"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 4); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 4 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_ppoll_overflow()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="ppoll"
+
+	diag "ppoll buffer overflow, should segfault, waits for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	diag "Expect segfaults"
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 5); } 2>/dev/null
+	stop_lttng_tracing_ok
+	echo $out
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+
+	check_trace_content -t 5 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_pselect_invalid_ptr()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="pselect6"
+
+	diag "pselect with invalid pointer, waits for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 6); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 6 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_ppoll_ulong_max()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="ppoll"
+
+	diag "ppoll with ulong_max fds, waits for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 7); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 7 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_epoll_pwait_invalid_ptr()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="epoll_pwait"
+
+	diag "epoll_pwait with invalid pointer, waits for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 8); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 8 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_epoll_pwait_int_max()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="epoll_pwait"
+
+	diag "epoll_pwait with maxevents set to INT_MAX, waits for input"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 9); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 9 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_ppoll_concurrent()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="ppoll"
+
+	diag "ppoll with concurrent updates of the structure from user-space, stress test (3000 iterations), waits for input + timeout 1ms"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	{ out=$(yes | $CURDIR/select_poll_epoll -t 10); } 2>/dev/null
+	stop_lttng_tracing_ok
+	pid=$(echo $out | cut -d' ' -f1)
+
+	validate_trace "$SYSCALL_LIST" $TRACE_PATH
+	check_trace_content -t 10 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_epoll_pwait_concurrent()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="syscall_payload"
+	SYSCALL_LIST="epoll_ctl,epoll_pwait"
+
+	diag "epoll_pwait with concurrent munmap of the buffer from user-space, should randomly segfault, run multiple times, waits for input + timeout 1ms"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_syscall_ok $SESSION_NAME $SYSCALL_LIST
+	add_context_kernel_ok $SESSION_NAME channel0 pid
+
+	start_lttng_tracing_ok
+	diag "Expect segfaults"
+	for i in $(seq 1 100); do
+		{ out=$($CURDIR/select_poll_epoll -t 11); } 2>/dev/null
+	done
+	pid=$(echo $out | cut -d' ' -f1)
+	stop_lttng_tracing_ok
+
+	# epoll_wait is not always generated in the trace (stress test)
+	validate_trace "epoll_ctl" $TRACE_PATH
+	check_trace_content -t 11 -p $pid $TRACE_PATH 2>/dev/null
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	test_working_cases
+	test_timeout_cases
+	test_big_pselect
+	test_big_ppoll
+	test_ppoll_overflow
+	test_pselect_invalid_ptr
+	test_ppoll_ulong_max
+	test_epoll_pwait_invalid_ptr
+	test_epoll_pwait_int_max
+	test_ppoll_concurrent
+	test_epoll_pwait_concurrent
+
+	stop_lttng_sessiond
+
+	NEW_WARNING=$(dmesg | grep " WARNING:" | cut -d' ' -f1 | tail -1)
+	NEW_OOPS=$(dmesg | grep " OOPS:" | cut -d' ' -f1 | tail -1)
+	NEW_BUG=$(dmesg | grep " BUG:" | cut -d' ' -f1 | tail -1)
+
+	if test "$LAST_WARNING" != "$NEW_WARNING"; then
+		fail "New WARNING generated"
+	fi
+	if test "$LAST_OOPS" != "$NEW_OOPS"; then
+		fail "New OOPS generated"
+	fi
+	if test "$LAST_BUG" != "$NEW_BUG"; then
+		fail "New BUG generated"
+	fi
+}
