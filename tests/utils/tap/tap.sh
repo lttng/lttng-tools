@@ -392,11 +392,6 @@ BAIL_OUT(){
 _cleanup(){
     local rc=0
 
-    if (( _plan_set == 0 )) ; then
-        diag "Looks like your test died before it could output anything."
-        return $rc
-    fi
-
     if (( _test_died != 0 )) ; then
         diag "Looks like your test died just after $_executed_tests."
         return $rc
