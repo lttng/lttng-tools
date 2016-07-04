@@ -35,5 +35,7 @@ int main(int argc, char *argv[])
 		tracepoint(ust_tests_td, tptest_bis,  i % 2);
 	}
 
+	tracepoint(ust_tests_td, test_auto);
+
 	return 0;
 }
