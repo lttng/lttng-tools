@@ -43,6 +43,16 @@ TRACEPOINT_ENUM(ust_tests_td, testenum2,
 	)
 )
 
+TRACEPOINT_ENUM(ust_tests_td, testenum3,
+	TP_ENUM_VALUES(
+		ctf_enum_auto("zero")
+		ctf_enum_value("two", 2)
+		ctf_enum_auto("three")
+		ctf_enum_range("ten_to_twenty", 10, 20)
+		ctf_enum_auto("twenty_one")
+	)
+)
+
 /*
  * Enumeration field is used twice to make sure the global type declaration
  * is entered only once in the metadata file.
@@ -67,6 +77,20 @@ TRACEPOINT_EVENT(ust_tests_td, tptest_bis,
 	TP_FIELDS(
 		ctf_enum(ust_tests_td, testenum, unsigned char,
 				enumfield, enumval)
+	)
+)
+
+/*
+ * Test autoincrementing enumeration values.
+ */
+TRACEPOINT_EVENT(ust_tests_td, test_auto,
+	TP_ARGS(void),
+	TP_FIELDS(
+		ctf_enum(ust_tests_td, testenum3, int, zero, 0)
+		ctf_enum(ust_tests_td, testenum3, int, two, 2)
+		ctf_enum(ust_tests_td, testenum3, int, three, 3)
+		ctf_enum(ust_tests_td, testenum3, int, fifteen, 15)
+		ctf_enum(ust_tests_td, testenum3, int, twenty_one, 21)
 	)
 )
 
