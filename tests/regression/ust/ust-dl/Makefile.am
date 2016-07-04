@@ -2,10 +2,11 @@ if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.
 
-CLEANFILES = libfoo.so libfoo.so.debug prog
+CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
+	libzzz.so libzzz.so.debug prog
 
 EXTRA_DIST = test_ust-dl test_ust-dl.py libfoo.c libfoo.h \
-	prog.c
+	libbar.c libbar.h libzzz.c libzzz.h prog.c
 
 else
 
@@ -19,26 +20,48 @@ noinst_PROGRAMS = prog
 prog_SOURCES = prog.c
 prog_LDADD = -ldl
 
-noinst_LTLIBRARIES = libfoo.la
+noinst_LTLIBRARIES = libzzz.la libbar.la libfoo.la
+
+libzzz_la_SOURCES = libzzz.c libzzz.h
+libzzz_la_LDFLAGS = -module -shared -avoid-version \
+		-rpath $(abs_builddir)
+
+libbar_la_SOURCES = libbar.c libbar.h
+libbar_la_LDFLAGS = -module -shared -avoid-version \
+		-rpath $(abs_builddir)
+libbar_la_LIBADD = libzzz.la
+
 libfoo_la_SOURCES = libfoo.c libfoo.h
 libfoo_la_LDFLAGS = -module -shared -avoid-version \
 		-rpath $(abs_builddir)
+libfoo_la_LIBADD = libbar.la
 
-CLEANFILES = libfoo.so libfoo.so.debug
+CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
+	libzzz.so libzzz.so.debug
 
 # Extract debug symbols
 libfoo.so.debug: libfoo.la
 	$(objcopy_verbose)$(OBJCOPY) --only-keep-debug .libs/libfoo.so libfoo.so.debug
+libbar.so.debug: libbar.la
+	$(objcopy_verbose)$(OBJCOPY) --only-keep-debug .libs/libbar.so libbar.so.debug
+libzzz.so.debug: libzzz.la
+	$(objcopy_verbose)$(OBJCOPY) --only-keep-debug .libs/libzzz.so libzzz.so.debug
 
 # Strip and add debuglink
 libfoo.so: libfoo.so.debug
 	@cp -f .libs/libfoo.so libfoo.so
 	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libfoo.so.debug libfoo.so
+libbar.so: libbar.so.debug
+	@cp -f .libs/libbar.so libbar.so
+	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libbar.so.debug libbar.so
+libzzz.so: libzzz.so.debug
+	@cp -f .libs/libzzz.so libzzz.so
+	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libzzz.so.debug libzzz.so
 
 noinst_SCRIPTS = test_ust-dl test_ust-dl.py
 EXTRA_DIST = test_ust-dl test_ust-dl.py
 
-all-local: libfoo.so
+all-local: libfoo.so libbar.so libzzz.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \
 			cp -f $(srcdir)/$$script $(builddir); \

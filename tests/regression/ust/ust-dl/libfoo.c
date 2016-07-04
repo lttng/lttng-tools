@@ -1,6 +1,8 @@
 #include "libfoo.h"
+#include "libbar.h"
 
-int foo()
+int foo(void)
 {
+	bar();
 	return 1;
 }

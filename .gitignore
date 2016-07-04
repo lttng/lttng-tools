@@ -102,6 +102,7 @@ tests/regression/ust/python-logging/test_python_logging
 /tests/regression/ust/type-declarations/type-declarations
 /tests/regression/ust/ust-dl/prog
 /tests/regression/ust/ust-dl/libfoo.so.debug
+/tests/regression/ust/ust-dl/libbar.so.debug
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/regression/tools/live/live_test
