@@ -300,8 +300,21 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 				goto end;
 			}
 		}
+		ret = lttng_metadata_printf(session, "\"");
+		if (ret) {
+			goto end;
+		}
+
+		if (entry->u.options.is_auto) {
+			ret = lttng_metadata_printf(session, ",\n");
+			if (ret) {
+				goto end;
+			}
+			continue;
+		}
+
 		ret = lttng_metadata_printf(session,
-				"\" = ");
+				" = ");
 		if (ret) {
 			goto end;
 		}
