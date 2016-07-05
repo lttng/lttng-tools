@@ -45,15 +45,7 @@ test_env = os.environ.copy()
 test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
 td_process = subprocess.Popen(test_path + "type-declarations", stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env)
-
-if sys.version_info >= (3, 3):
-    try:
-        td_process.wait(5)
-    except TimeoutExpired:
-        td_process.kill()
-        bail("Failed to run type-declarations test application.")
-else:
-    td_process.wait()
+td_process.wait()
 
 print_test_result(td_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1

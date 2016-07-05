@@ -46,14 +46,7 @@ enable_ust_tracepoint_event(session_info, "*")
 start_session(session_info)
 
 test_process = subprocess.Popen(test_path + "prog.strip", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-if sys.version_info >= (3, 3):
-    try:
-        test_process.wait(5)
-    except subprocess.TimeoutExpired:
-        test_process.kill()
-        bail("Failed to run ust baddr-statedump test application.", session_info)
-else:
-    test_process.wait()
+test_process.wait()
 
 print_test_result(test_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1

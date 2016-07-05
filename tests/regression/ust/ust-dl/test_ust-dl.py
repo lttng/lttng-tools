@@ -51,15 +51,7 @@ test_env["LD_LIBRARY_PATH"] = test_env.get("LD_LIBRARY_PATH", "") + ":" + test_p
 test_process = subprocess.Popen(test_path + "prog",
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 env=test_env)
-
-if sys.version_info >= (3, 3):
-    try:
-        test_process.wait(5)
-    except subprocess.TimeoutExpired:
-        test_process.kill()
-        bail("Failed to run ust-dl test application.", session_info)
-else:
-    test_process.wait()
+test_process.wait()
 
 print_test_result(test_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1

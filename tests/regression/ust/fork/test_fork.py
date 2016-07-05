@@ -43,15 +43,7 @@ enable_ust_tracepoint_event(session_info, "ust_tests_fork*")
 start_session(session_info)
 
 fork_process = subprocess.Popen([test_path + "fork", test_path + "fork2"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-if sys.version_info >= (3, 3):
-    try:
-        fork_process.wait(5)
-    except subprocess.TimeoutExpired:
-        fork_process.kill()
-        bail("Failed to run fork test application (time out)", session_info)
-else:
-    fork_process.wait()
+fork_process.wait()
 
 parent_pid = -1
 child_pid = -1
