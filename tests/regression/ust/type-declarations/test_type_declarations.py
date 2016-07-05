@@ -29,7 +29,7 @@ test_utils_path = test_utils_path + "/utils"
 sys.path.append(test_utils_path)
 from test_utils import *
 
-NR_TESTS = 9
+NR_TESTS = 10
 current_test = 1
 print("1..{0}".format(NR_TESTS))
 
