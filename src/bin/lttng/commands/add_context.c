@@ -87,6 +87,7 @@ enum perf_type {
 	PERF_TYPE_HARDWARE = 0,
 	PERF_TYPE_SOFTWARE = 1,
 	PERF_TYPE_HW_CACHE = 3,
+	PERF_TYPE_RAW = 4,
 };
 
 enum perf_count_hard {
@@ -688,9 +689,100 @@ end:
 }
 
 static
+int find_ctx_type_perf_raw(const char *ctx, struct ctx_type *type)
+{
+	int ret;
+	int field_pos = 0;
+	char *tmp_list, *cur_list;
+
+	cur_list = tmp_list = strdup(ctx);
+	if (!tmp_list) {
+		PERROR("strdup temp list");
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	/* Looking for "perf:[cpu|thread]:raw:<mask>:<name>". */
+	for (;;) {
+		char *next;
+
+		next = strtok(cur_list, ":");
+		if (!next) {
+			break;
+		}
+		cur_list = NULL;
+		switch (field_pos) {
+		case 0:
+			if (strncmp(next, "perf", 4) != 0) {
+				ret = -1;
+				goto end;
+			}
+			break;
+		case 1:
+			if (strncmp(next, "cpu", 3) == 0) {
+				type->opt->ctx_type = CONTEXT_PERF_CPU_COUNTER;
+			} else if (strncmp(next, "thread", 4) == 0) {
+				type->opt->ctx_type = CONTEXT_PERF_THREAD_COUNTER;
+			} else {
+				ret = -1;
+				goto end;
+			}
+			break;
+		case 2:
+			if (strncmp(next, "raw", 3) != 0) {
+				ret = -1;
+				goto end;
+			}
+			break;
+		case 3:
+		{
+			char *endptr;
+
+			if (strlen(next) < 2 || next[0] != 'r') {
+				ERR("Wrong perf raw mask format: expected rNNN");
+				ret = -1;
+				goto end;
+			}
+			errno = 0;
+			type->opt->u.perf.config = strtoll(next +  1, &endptr, 16);
+			if (errno != 0 || !endptr || *endptr) {
+				ERR("Wrong perf raw mask format: expected rNNN");
+				ret = -1;
+				goto end;
+			}
+			break;
+		}
+		case 4:
+			/* name */
+			break;
+		case 5:
+			ERR("Too many ':' in perf raw format");
+			ret = -1;
+			goto end;
+		};
+		field_pos++;
+	}
+
+	if (field_pos < 5) {
+		ERR("Invalid perf counter specifier, expected a specifier of "
+			"the form perf:cpu:raw:rNNN:<name> or "
+			"perf:thread:raw:rNNN:<name>");
+		ret = -1;
+		goto end;
+	}
+
+	ret = 0;
+	goto end;
+
+end:
+	free(tmp_list);
+	return ret;
+}
+
+static
 struct ctx_type *get_context_type(const char *ctx)
 {
-	int opt_index;
+	int opt_index, ret;
 	struct ctx_type *type = NULL;
 	const char app_ctx_prefix[] = "$app.";
 	char *provider_name = NULL, *ctx_name = NULL;
@@ -710,6 +802,18 @@ struct ctx_type *get_context_type(const char *ctx)
 	if (opt_index >= 0) {
 		*type->opt = ctx_opts[opt_index];
 		type->opt->symbol = strdup(ctx_opts[opt_index].symbol);
+		goto found;
+	}
+
+	/* Check if ctx is a raw perf context. */
+	ret = find_ctx_type_perf_raw(ctx, type);
+	if (ret == 0) {
+		type->opt->u.perf.type = PERF_TYPE_RAW;
+		type->opt->symbol = strdup(ctx);
+		if (!type->opt->symbol) {
+			PERROR("Copy perf field name");
+			goto not_found;
+		}
 		goto found;
 	}
 
