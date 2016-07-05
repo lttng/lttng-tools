@@ -1294,6 +1294,35 @@ function validate_trace
 	return $ret
 }
 
+function validate_trace_count
+{
+	local event_name=$1
+	local trace_path=$2
+	local expected_count=$3
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
+	fi
+
+	cnt=0
+	OLDIFS=$IFS
+	IFS=","
+	for i in $event_name; do
+		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
+		if [ "$traced" -ne 0 ]; then
+			pass "Validate trace for event $i, $traced events"
+		else
+			fail "Validate trace for event $i"
+			diag "Found $traced occurences of $i"
+		fi
+		cnt=$(($cnt + $traced))
+	done
+	IFS=$OLDIFS
+	test $cnt -eq $expected_count
+	ok $? "Read a total of $cnt events, expected $expected_count"
+}
+
 function trace_first_line
 {
 	local trace_path=$1
@@ -1389,6 +1418,31 @@ function regenerate_metadata_ok ()
 function regenerate_metadata_fail ()
 {
 	regenerate_metadata 1 "$@"
+}
+
+function regenerate_statedump ()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN regenerate statedump -s $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected fail on regenerate statedump $sess_name"
+	else
+		ok $ret "Metadata regenerate $sess_name"
+	fi
+}
+
+function regenerate_statedump_ok ()
+{
+	regenerate_statedump 0 "$@"
+}
+
+function regenerate_statedump_fail ()
+{
+	regenerate_statedump 1 "$@"
 }
 
 function destructive_tests_enabled ()

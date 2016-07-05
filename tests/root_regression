@@ -16,4 +16,5 @@ regression/tools/filtering/test_unsupported_op
 regression/tools/filtering/test_valid_filter
 regression/tools/wildcard/test_event_wildcard
 regression/tools/regen-metadata/test_kernel
+regression/tools/regen-statedump/test_kernel
 regression/ust/test_event_perf

@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# Copyright (C) - 2016 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="Regenerate the statedump - User-space tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=10
+NR_USEC_WAIT=0
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+SESSION_NAME="stream"
+EVENT_NAME="lttng_ust_statedump:start,lttng_ust_statedump:end"
+PID_RELAYD=0
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=11
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function test_ust_local ()
+{
+	local file_sync_after_first=$(mktemp -u)
+	local file_sync_before_last=$(mktemp -u)
+
+	diag "Test UST local with statedump regeneration"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	while [ ! -f "${file_sync_after_first}" ]; do
+		sleep 0.5
+	done
+
+	regenerate_statedump_ok $SESSION_NAME
+
+	touch ${file_sync_before_last}
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+	# Validate test
+	validate_trace_count $EVENT_NAME $TRACE_PATH 4
+	if [ $? -eq 0 ]; then
+		# Only delete if successful
+		rm -rf $TRACE_PATH
+	fi
+	rm -f ${file_sync_after_first}
+	rm -f ${file_sync_before_last}
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+tests=( test_ust_local )
+
+for fct_test in ${tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test}
+done
+
+stop_lttng_sessiond
+
+exit $out
