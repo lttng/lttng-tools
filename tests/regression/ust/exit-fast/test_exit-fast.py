@@ -48,29 +48,13 @@ test_env = os.environ.copy()
 test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
 exit_fast_process = subprocess.Popen(test_path + "exit-fast", stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env)
-
-if sys.version_info >= (3, 3):
-    try:
-        exit_fast_process.wait(5)
-    except subprocess.TimeoutExpired:
-        exit_fast_process.kill()
-        bail("Failed to run exit-fast test application.")
-else:
-    exit_fast_process.wait()
+exit_fast_process.wait()
 
 print_test_result(exit_fast_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1
 
 exit_fast_process = subprocess.Popen([test_path + "exit-fast", "suicide"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env)
-
-if sys.version_info >= (3, 3):
-    try:
-        exit_fast_process.wait(5)
-    except subprocess.TimeoutExpired:
-        exit_fast_process.kill()
-        bail("Failed to run exit-fast test application in suicide mode.")
-else:
-    exit_fast_process.wait()
+exit_fast_process.wait()
 
 stop_session(session_info)
 

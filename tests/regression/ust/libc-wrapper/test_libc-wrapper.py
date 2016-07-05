@@ -43,14 +43,7 @@ enable_ust_tracepoint_event(session_info, "lttng_ust_libc*")
 start_session(session_info)
 
 malloc_process = subprocess.Popen(test_path + "prog", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-if sys.version_info >= (3, 3):
-    try:
-        malloc_process.wait(5)
-    except subprocess.TimeoutExpired:
-        malloc_process.kill()
-        bail("Failed to run libustinstr-malloc test application.", session_info)
-else:
-    malloc_process.wait()
+malloc_process.wait()
 
 print_test_result(malloc_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1
