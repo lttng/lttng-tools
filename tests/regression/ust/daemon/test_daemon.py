@@ -44,14 +44,7 @@ enable_ust_tracepoint_event(session_info, "*")
 start_session(session_info)
 
 daemon_process = subprocess.Popen(test_path + "daemon", stdout=subprocess.PIPE)
-if sys.version_info >= (3, 3):
-    try:
-        daemon_process_return_code = daemon_process.wait(5)
-    except subprocess.TimeoutExpired:
-        daemon_process.kill()
-        daemon_process_return_code = -1
-else:
-    daemon_process_return_code = daemon_process.wait()
+daemon_process_return_code = daemon_process.wait()
 
 daemon_process_output = daemon_process.communicate()[0]
 daemon_process_output = daemon_process_output.decode('utf-8').splitlines()

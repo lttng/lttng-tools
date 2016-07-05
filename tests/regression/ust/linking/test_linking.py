@@ -111,14 +111,7 @@ if DYNAMIC_TEST_ENABLED:
 
     # Dry run, no events should be logged
     demo_process = subprocess.Popen(test_path + "demo", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if sys.version_info >= (3 ,3):
-        try:
-            demo_process.wait(5)
-        except subprocess.TimeoutExpired:
-            demo_process.kill()
-            bail("Failed to run demo test application without preloading")
-    else:
-        demo_process.wait()
+    demo_process.wait()
     stop_session(session_info)
 
     print_test_result(demo_process.returncode == 0, current_test,\
@@ -137,14 +130,7 @@ for executable in test_executables:
     start_session(session_info)
 
     demo_process = subprocess.Popen(executable, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if sys.version_info >= (3, 3):
-        try:
-            demo_process.wait(5)
-        except subprocess.TimeoutExpired:
-            demo_process.kill()
-            bail("Failed to run {0} test application".format(executable_name))
-    else:
-        demo_process.wait()
+    demo_process.wait()
     stop_session(session_info)
 
     trace_found = os.path.exists(session_info.trace_path)
