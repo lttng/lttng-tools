@@ -1,3 +1,18 @@
+2016-07-05 lttng-tools 2.7.4 (NASA's Juno spacecraft enters orbit of Jupiter)
+	* Tests: eliminate process timeouts from Python tests
+	* Fix: English syntax errors in 'lttng status'
+	* Fix: sessiond ht_match_event() check if filter is NULL
+	* configure.ac: fix --enable/disable-kmod option
+	* Fix: validate number of subbuffers after tweaking properties
+	* Fix: leak of UST app hash tables
+	* Fix: leak of reply buffer on data pending check
+	* Fix: call xmlCleanupParser to free global libxml2 allocations
+	* Fix: missing "void" parameter of lib constructor and destructor
+	* Fix: lttng-relayd allow binding of privileged ports for non-root users
+	* relayd: optimize receive throughput
+	* Fix: set the logger level to prevent unexpected level inheritance
+	* Port: Don't use SIGUNUSED which is not defined on Solaris
+
 2016-05-20 lttng-tools 2.7.3 (Bike-to-Work Day)
 	* Fix: use start and stop sessiond from utils.sh
 	* Clarify kernel version check error messages
