@@ -94,6 +94,7 @@ function test_complex_load()
 
 	destroy_lttng_session_ok $sess
 
+	rm $mi_output_file
 	stop_lttng_relayd
 	rm -rf ${mi_output_file}
 }
@@ -148,6 +149,7 @@ function test_trackers()
 
 	# Test to remove the target just to make sure
 	lttng_untrack_ok "-p 666 -u -s $SESSION_NAME-trackers"
+	rm $mi_output_file
 
 	destroy_lttng_session_ok "$SESSION_NAME-trackers"
 	rm -rf ${mi_output_file}
