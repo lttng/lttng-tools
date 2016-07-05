@@ -142,6 +142,8 @@ enum lttng_error_code {
 	LTTNG_ERR_LIVE_SESSION           = 119, /* Live session unsupported */
 	LTTNG_ERR_PER_PID_SESSION        = 120, /* Per-PID sessions unsupported */
 	LTTNG_ERR_KERN_CONTEXT_UNAVAILABLE = 121, /* Context unavailable on this kernel */
+	LTTNG_ERR_REGEN_STATEDUMP_FAIL   = 122, /* Failed to regenerate the state dump */
+	LTTNG_ERR_REGEN_STATEDUMP_NOMEM   = 123, /* Failed to regenerate the state dump, not enough memory */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

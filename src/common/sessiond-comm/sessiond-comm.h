@@ -95,6 +95,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_LIST_TRACKER_PIDS             = 34,
 	LTTNG_SET_SESSION_SHM_PATH          = 40,
 	LTTNG_REGENERATE_METADATA           = 41,
+	LTTNG_REGENERATE_STATEDUMP          = 42,
 };
 
 enum lttcomm_relayd_command {

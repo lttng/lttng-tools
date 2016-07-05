@@ -111,5 +111,6 @@ int cmd_snapshot_record(struct ltt_session *session,
 int cmd_set_session_shm_path(struct ltt_session *session,
 		const char *shm_path);
 int cmd_regenerate_metadata(struct ltt_session *session);
+int cmd_regenerate_statedump(struct ltt_session *session);
 
 #endif /* CMD_H */

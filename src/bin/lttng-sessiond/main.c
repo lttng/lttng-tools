@@ -3005,6 +3005,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_SAVE_SESSION:
 	case LTTNG_SET_SESSION_SHM_PATH:
 	case LTTNG_REGENERATE_METADATA:
+	case LTTNG_REGENERATE_STATEDUMP:
 		need_domain = 0;
 		break;
 	default:
@@ -4118,6 +4119,11 @@ error_add_context:
 	case LTTNG_REGENERATE_METADATA:
 	{
 		ret = cmd_regenerate_metadata(cmd_ctx->session);
+		break;
+	}
+	case LTTNG_REGENERATE_STATEDUMP:
+	{
+		ret = cmd_regenerate_statedump(cmd_ctx->session);
 		break;
 	}
 	default:

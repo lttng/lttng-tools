@@ -2419,6 +2419,36 @@ int lttng_metadata_regenerate(const char *session_name)
 }
 
 /*
+ * Regenerate the statedump of a session.
+ * Return 0 on success, a negative error code on error.
+ */
+int lttng_regenerate_statedump(const char *session_name)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+
+	if (!session_name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_REGENERATE_STATEDUMP;
+
+	lttng_ctl_copy_string(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
+
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+	if (ret < 0) {
+		goto end;
+	}
+
+	ret = 0;
+end:
+	return ret;
+}
+
+/*
  * lib constructor.
  */
 static void __attribute__((constructor)) init(void)

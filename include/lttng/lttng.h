@@ -173,6 +173,15 @@ extern int lttng_metadata_regenerate(const char *session_name);
  */
 extern int lttng_regenerate_metadata(const char *session_name);
 
+/*
+ * Trigger the regeneration of the statedump for a session. The new statedump
+ * information is appended to the currently active trace, the session needs to
+ * be active.
+ *
+ * Return 0 on success, a negative LTTng error code on error.
+ */
+extern int lttng_regenerate_statedump(const char *session_name);
+
 #ifdef __cplusplus
 }
 #endif

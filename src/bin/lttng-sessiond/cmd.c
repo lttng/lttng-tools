@@ -3540,6 +3540,61 @@ end:
 }
 
 /*
+ * Command LTTNG_REGENERATE_STATEDUMP from the lttng-ctl library.
+ *
+ * Ask the tracer to regenerate a new statedump.
+ *
+ * Return 0 on success or else a LTTNG_ERR code.
+ */
+int cmd_regenerate_statedump(struct ltt_session *session)
+{
+	int ret;
+
+	assert(session);
+
+	if (!session->active) {
+		ret = LTTNG_ERR_SESSION_NOT_STARTED;
+		goto end;
+	}
+	ret = 0;
+
+	if (session->kernel_session) {
+		ret = kernctl_session_regenerate_statedump(
+				session->kernel_session->fd);
+		/*
+		 * Currently, the statedump in kernel can only fail if out
+		 * of memory.
+		 */
+		if (ret < 0) {
+			if (ret == -ENOMEM) {
+				ret = LTTNG_ERR_REGEN_STATEDUMP_NOMEM;
+			} else {
+				ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
+			}
+			ERR("Failed to regenerate the kernel statedump");
+			goto end;
+		}
+	}
+
+	if (session->ust_session) {
+		ret = ust_app_regenerate_statedump_all(session->ust_session);
+		/*
+		 * Currently, the statedump in UST always returns 0.
+		 */
+		if (ret < 0) {
+			ret = LTTNG_ERR_REGEN_STATEDUMP_FAIL;
+			ERR("Failed to regenerate the UST statedump");
+			goto end;
+		}
+	}
+	DBG("Cmd regenerate statedump for session %s", session->name);
+	ret = LTTNG_OK;
+
+end:
+	return ret;
+}
+
+/*
  * Send relayd sockets from snapshot output to consumer. Ignore request if the
  * snapshot output is *not* set with a remote destination.
  *

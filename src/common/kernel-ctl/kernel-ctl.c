@@ -230,6 +230,11 @@ int kernctl_session_regenerate_metadata(int fd)
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_METADATA_REGEN);
 }
 
+int kernctl_session_regenerate_statedump(int fd)
+{
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_STATEDUMP);
+}
+
 int kernctl_create_stream(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_STREAM,

@@ -32,6 +32,7 @@ static char *opt_session_name;
 static char *session_name = NULL;
 
 static int regenerate_metadata(int argc, const char **argv);
+static int regenerate_statedump(int argc, const char **argv);
 
 enum {
 	OPT_HELP = 1,
@@ -52,6 +53,7 @@ static struct poptOption long_options[] = {
 
 static struct cmd_struct actions[] = {
 	{ "metadata", regenerate_metadata },
+	{ "statedump", regenerate_statedump },
 	{ NULL, NULL }	/* Array closure */
 };
 
@@ -82,6 +84,23 @@ static int regenerate_metadata(int argc, const char **argv)
 	ret = lttng_regenerate_metadata(session_name);
 	if (ret == 0) {
 		MSG("Metadata successfully regenerated for session %s", session_name);
+	}
+
+end:
+	return ret;
+}
+
+static int regenerate_statedump(int argc, const char **argv)
+{
+	int ret;
+
+	if (argc > 1) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret = lttng_regenerate_statedump(session_name);
+	if (ret == 0) {
+		MSG("State dump successfully regenerated for session %s", session_name);
 	}
 
 end:
