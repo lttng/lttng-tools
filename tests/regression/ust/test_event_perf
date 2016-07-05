@@ -23,7 +23,7 @@ TESTDIR=$CURDIR/../..
 LTTNG_BIN="lttng"
 SESSION_NAME="perf_counters"
 EVENT_NAME="tp:tptest"
-NUM_TESTS=10
+NUM_TESTS=24
 NR_ITER=1
 NR_USEC_WAIT=1
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -42,14 +42,33 @@ function enable_ust_lttng_event_per_chan()
 	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
 }
 
-function add_ust_lttng_context()
+# Only test parsing of the enabling by raw ID
+function test_parsing_raw()
 {
-	sess_name="$1"
-	chan_name="$2"
-	type="$3"
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="ust_event_basic"
+	CHAN_NAME="mychan"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context -s $sess_name -c $chan_name -t $type -u >/dev/null 2>&1
-	ok $? "Add context $type for session $sess_name in channel $chan_name"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
+
+	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
+
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:rZZZ:test"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:b0110:test"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110::"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r:test"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r::"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw::"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw"
+	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test:wrong"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
 }
 
 function test_event_basic()
@@ -64,7 +83,7 @@ function test_event_basic()
 
 	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
 
-	add_ust_lttng_context $SESSION_NAME $CHAN_NAME "perf:thread:page-fault"
+	add_context_ust_ok $SESSION_NAME $CHAN_NAME "perf:thread:page-fault"
 
 	start_lttng_tracing_ok
 
@@ -89,11 +108,13 @@ else
         isroot=0
 fi
 
-skip $isroot "Root access is needed. Skipping UST perf tests." ${NUM_TESTS} ||
+start_lttng_sessiond
+
+test_parsing_raw
+
+skip $isroot "Root access is needed. Skipping UST perf tests." 8 ||
 {
-	start_lttng_sessiond
-
 	test_event_basic
-
-	stop_lttng_sessiond
 }
+
+stop_lttng_sessiond

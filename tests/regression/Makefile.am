@@ -38,7 +38,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/getcpu-override/test_getcpu_override \
 	ust/clock-override/test_clock_override \
 	ust/test_event_basic \
-	ust/test_event_tracef
+	ust/test_event_tracef \
+	ust/test_event_perf
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
