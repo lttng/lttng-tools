@@ -88,6 +88,7 @@ static struct cmd_struct commands[] =  {
 	{ "help", NULL},
 	{ "version", cmd_version},
 	{ "view", cmd_view},
+	{ "regenerate", cmd_regenerate},
 	{ NULL, NULL}	/* Array closure */
 };
 

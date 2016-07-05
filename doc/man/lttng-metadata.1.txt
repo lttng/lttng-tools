@@ -15,21 +15,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng metadata` command manages a tracing session's metadata
-generation options.
-
-As of this version, only the `regenerate` command's action is available.
-Regenerating a tracing session's metadata can be used to
-resample the offset between the system's monotonic clock and
-the wall-clock time.
-
-This command is meant to be used to resample the wall-clock time
-following a major
-link:https://en.wikipedia.org/wiki/Network_Time_Protocol[NTP]
-correction. As such, a system booting with an incorrect wall time can be
-traced before its wall time is NTP-corrected. Regenerating the tracing
-session's metadata ensures that trace viewers can accurately determine
-the events time relative to Unix Epoch.
+WARNING: This command is **deprecated**; it has been replaced by the *lttng
+regenerate metadata* command (see man:lttng-regenerate(1)).
 
 
 include::common-cmd-options-head.txt[]

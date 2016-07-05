@@ -631,9 +631,9 @@ function test_start_stop () {
 	ok $? "Mi test: enabled element : $result expected: true"
 
 	#Test metadata regenerate command
-	metadata_regenerate_ok $session_name
+	regenerate_metadata_ok $session_name
 	$XML_VALIDATE $OUTPUT_DEST
-	ok $? "Mi test: metadata regenerate"
+	ok $? "Mi test: regenerate metadata"
 
 	#Test stop command
 	stop_lttng_tracing_ok $session_name

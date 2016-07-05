@@ -64,6 +64,8 @@ extern const char * const mi_lttng_element_command_list;
 extern const char * const mi_lttng_element_command_load;
 extern const char * const mi_lttng_element_command_metadata;
 extern const char * const mi_lttng_element_command_metadata_action;
+extern const char * const mi_lttng_element_command_regenerate;
+extern const char * const mi_lttng_element_command_regenerate_action;
 extern const char * const mi_lttng_element_command_name;
 extern const char * const mi_lttng_element_command_output;
 extern const char * const mi_lttng_element_command_save;

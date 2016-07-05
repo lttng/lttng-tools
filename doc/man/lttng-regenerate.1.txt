@@ -1,0 +1,63 @@
+lttng-regenerate(1)
+=================
+
+
+NAME
+----
+lttng-regenerate - Manage an LTTng tracing session's data regeneration
+
+
+SYNOPSIS
+--------
+Regenerate the metadata of a session
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *regenerate metadata* [option:--session='SESSION']
+
+DESCRIPTION
+-----------
+The `lttng regenerate` command manages a tracing session's data regeneration
+options.
+
+As of this version, only the `metadata` command's action is available.
+Regenerating a tracing session's metadata can be used to
+resample the offset between the system's monotonic clock and
+the wall-clock time.
+
+This command is meant to be used to resample the wall-clock time
+following a major
+link:https://en.wikipedia.org/wiki/Network_Time_Protocol[NTP]
+correction. As such, a system booting with an incorrect wall time can be
+traced before its wall time is NTP-corrected. Regenerating the tracing
+session's metadata ensures that trace viewers can accurately determine
+the events time relative to Unix Epoch.
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-s, option:--session='SESSION'::
+    Manage the metadata generation of the tracing session named 'SESSION'
+    instead of the current tracing session.
+
+
+include::common-cmd-help-options.txt[]
+
+
+LIMITATIONS
+-----------
+The `lttng regenerate metadata` command can only be used on kernel and
+user space tracing sessions (using per-user buffering), in non-live
+mode.
+
+See man:lttng-enable-channel(1) for more information about
+buffering schemes and man:lttng-create(1) for more information
+about the different tracing session modes.
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng(1)

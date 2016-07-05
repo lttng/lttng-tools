@@ -2384,7 +2384,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
  * Regenerate the metadata for a session.
  * Return 0 on success, a negative error code on error.
  */
-int lttng_metadata_regenerate(const char *session_name)
+int lttng_regenerate_metadata(const char *session_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
@@ -2395,7 +2395,7 @@ int lttng_metadata_regenerate(const char *session_name)
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_METADATA_REGENERATE;
+	lsm.cmd_type = LTTNG_REGENERATE_METADATA;
 
 	lttng_ctl_copy_string(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
@@ -2408,6 +2408,14 @@ int lttng_metadata_regenerate(const char *session_name)
 	ret = 0;
 end:
 	return ret;
+}
+
+/*
+ * Deprecated, replaced by lttng_regenerate_metadata.
+ */
+int lttng_metadata_regenerate(const char *session_name)
+{
+	return lttng_regenerate_metadata(session_name);
 }
 
 /*

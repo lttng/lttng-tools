@@ -79,7 +79,7 @@ function test_ust_streaming ()
 
 	# Wait for the applications started in background
 	wait
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -110,7 +110,7 @@ function test_ust_local ()
 
 	# Wait for the applications started in background
 	wait
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -142,7 +142,7 @@ function test_ust_pid ()
 
 	# Wait for the applications started in background
 	wait
-	metadata_regenerate_fail $SESSION_NAME
+	regenerate_metadata_fail $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -173,7 +173,7 @@ function test_ust_live ()
 
 	# Wait for the applications started in background
 	wait
-	metadata_regenerate_fail $SESSION_NAME
+	regenerate_metadata_fail $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME

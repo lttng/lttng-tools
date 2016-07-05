@@ -89,7 +89,7 @@ function test_kernel_local ()
 	validate_trace_date $DATE1 $TRACE_PATH
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	validate_trace_date $DATE2 $TRACE_PATH
 	if [ $? -eq 0 ]; then
@@ -111,7 +111,7 @@ function test_kernel_streaming ()
 	validate_trace_date $DATE1 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	# Validate test
 	validate_trace_date $DATE2 $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
@@ -147,7 +147,7 @@ function test_ust_local ()
 
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -184,7 +184,7 @@ function test_ust_streaming ()
 	start_lttng_tracing_ok $SESSION_NAME
 	date "+%Y-%m-%d %H:%M" -s "$DATE2 $HOUR" >/dev/null
 
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME

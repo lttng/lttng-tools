@@ -49,7 +49,7 @@ function test_kernel_streaming ()
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	echo -n "100" > /proc/lttng-test-filter-event
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
@@ -69,7 +69,7 @@ function test_kernel_local ()
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	echo -n "100" > /proc/lttng-test-filter-event
-	metadata_regenerate_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	validate_trace $EVENT_NAME $TRACE_PATH
 	if [ $? -eq 0 ]; then

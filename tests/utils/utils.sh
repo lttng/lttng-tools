@@ -1366,29 +1366,29 @@ function validate_trace_empty()
 	return $ret
 }
 
-function metadata_regenerate ()
+function regenerate_metadata ()
 {
 	local expected_to_fail=$1
 	local sess_name=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN metadata regenerate -s $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN regenerate metadata -s $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
-		ok $? "Expected fail on regenerate $sess_name"
+		ok $? "Expected fail on regenerate metadata $sess_name"
 	else
 		ok $ret "Metadata regenerate $sess_name"
 	fi
 }
 
-function metadata_regenerate_ok ()
+function regenerate_metadata_ok ()
 {
-	metadata_regenerate 0 "$@"
+	regenerate_metadata 0 "$@"
 }
 
-function metadata_regenerate_fail ()
+function regenerate_metadata_fail ()
 {
-	metadata_regenerate 1 "$@"
+	regenerate_metadata 1 "$@"
 }
 
 function destructive_tests_enabled ()

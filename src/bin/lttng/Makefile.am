@@ -18,6 +18,7 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/track-untrack.c \
 				commands/status.c \
 				commands/metadata.c \
+				commands/regenerate.c \
 				commands/help.c \
 				utils.c utils.h lttng.c
 
