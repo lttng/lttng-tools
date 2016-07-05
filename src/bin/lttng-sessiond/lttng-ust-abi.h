@@ -275,6 +275,7 @@ struct lttng_ust_event_exclusion {
 	_UST_CMDW(0x51, struct lttng_ust_channel)
 #define LTTNG_UST_SESSION_START			_UST_CMD(0x52)
 #define LTTNG_UST_SESSION_STOP			_UST_CMD(0x53)
+#define LTTNG_UST_SESSION_STATEDUMP		_UST_CMD(0x54)
 
 /* Channel FD commands */
 #define LTTNG_UST_STREAM			_UST_CMD(0x60)
