@@ -9,35 +9,51 @@ lttng-regenerate - Manage an LTTng tracing session's data regeneration
 
 SYNOPSIS
 --------
-Regenerate the metadata of a session
+Regenerate the metadata of a session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *regenerate metadata* [option:--session='SESSION']
 
+Regenerate the state dump of a session:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *regenerate statedump* [option:--session='SESSION']
+
 DESCRIPTION
 -----------
-The `lttng regenerate` command manages a tracing session's data regeneration
-options.
+The `lttng regenerate` command regenerates specific data of a tracing session.
 
-As of this version, only the `metadata` command's action is available.
-Regenerating a tracing session's metadata can be used to
-resample the offset between the system's monotonic clock and
-the wall-clock time.
+As of this version, the `metadata` and `statedump` actions are
+available.
 
-This command is meant to be used to resample the wall-clock time
-following a major
-link:https://en.wikipedia.org/wiki/Network_Time_Protocol[NTP]
-correction. As such, a system booting with an incorrect wall time can be
-traced before its wall time is NTP-corrected. Regenerating the tracing
-session's metadata ensures that trace viewers can accurately determine
-the events time relative to Unix Epoch.
+
+Regenerating a tracing session's metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The `lttng regenerate metadata` action can be used to resample the offset
+between the system's monotonic clock and the wall-clock time.
+
+This action is meant to be used to resample the wall-clock time following a
+major link:https://en.wikipedia.org/wiki/Network_Time_Protocol[NTP] correction.
+As such, a system booting with an incorrect wall time can be traced before its
+wall time is NTP-corrected. Regenerating the tracing session's metadata ensures
+that trace viewers can accurately determine the events time relative to Unix
+Epoch.
+
+
+Regenerating a tracing session's state dump
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The `lttng regenerate statedump` action can be used to collect up-to-date state
+dump information during the tracing session. This is particularly useful in
+snapshot (see man:lttng-snapshot(1)) or trace file rotation (see
+man:lttng-enable-channel(1)) modes where the state dump information may be
+lost.
 
 
 include::common-cmd-options-head.txt[]
 
 
 option:-s, option:--session='SESSION'::
-    Manage the metadata generation of the tracing session named 'SESSION'
+    Regenerate the data of the tracing session named 'SESSION'
     instead of the current tracing session.
 
 
