@@ -31,7 +31,7 @@ sys.path.append(test_utils_path)
 from test_utils import *
 
 
-NR_TESTS = 11
+NR_TESTS = 14
 current_test = 1
 print("1..{0}".format(NR_TESTS))
 
