@@ -67,7 +67,7 @@ pthread_attr_t *default_pthread_attr(void)
 		return &tattr;
 	}
 
-	WARN("Uninitializez pthread attributes, using libc defaults.");
+	WARN("Uninitialized pthread attributes, using libc defaults.");
 	return NULL;
 }
 
