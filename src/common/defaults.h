@@ -309,6 +309,9 @@
 /* Default LTTng MI XML namespace. */
 #define DEFAULT_LTTNG_MI_NAMESPACE		"http://lttng.org/xml/ns/lttng-mi"
 
+/* Default thread stack size; the default mandated by pthread_create(3) */
+#define DEFAULT_LTTNG_THREAD_STACK_SIZE		2097152
+
 /*
  * Returns the default subbuf size.
  *

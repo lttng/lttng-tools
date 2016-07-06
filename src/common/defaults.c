@@ -27,9 +27,8 @@
 #include "align.h"
 #include "error.h"
 
-static bool pthread_attr_init_done;
+static int pthread_attr_init_done;
 static pthread_attr_t tattr;
-static pthread_mutex_t tattr_lock = PTHREAD_MUTEX_INITIALIZER;
 
 LTTNG_HIDDEN
 size_t default_get_channel_subbuf_size(void)
@@ -64,55 +63,93 @@ size_t default_get_ust_uid_channel_subbuf_size(void)
 LTTNG_HIDDEN
 pthread_attr_t *default_pthread_attr(void)
 {
-	int ret = 0;
-	size_t ptstacksize;
-	struct rlimit rlim;
-
-	pthread_mutex_lock(&tattr_lock);
-
-	/* Return cached value. */
 	if (pthread_attr_init_done) {
-		goto end;
+		return &tattr;
+	}
+
+	WARN("Uninitializez pthread attributes, using libc defaults.");
+	return NULL;
+}
+
+static void __attribute__((constructor)) init_default_pthread_attr(void)
+{
+	int ret;
+	struct rlimit rlim;
+	size_t pthread_ss, system_ss, selected_ss;
+
+	ret = pthread_attr_init(&tattr);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_attr_init");
+		goto error;
 	}
 
 	/* Get system stack size limits. */
 	ret = getrlimit(RLIMIT_STACK, &rlim);
 	if (ret < 0) {
 		PERROR("getrlimit");
-		goto error;
+		goto error_destroy;
 	}
 	DBG("Stack size limits: soft %lld, hard %lld bytes",
 			(long long) rlim.rlim_cur,
 			(long long) rlim.rlim_max);
 
+	/*
+	 * getrlimit() may return a stack size of "-1", meaning "unlimited".
+	 * In this case, we impose a known-good default minimum value which will
+	 * override the libc's default stack size if it is smaller.
+	 */
+	system_ss = rlim.rlim_cur != -1 ? rlim.rlim_cur :
+			DEFAULT_LTTNG_THREAD_STACK_SIZE;
+
 	/* Get pthread default thread stack size. */
-	ret = pthread_attr_getstacksize(&tattr, &ptstacksize);
+	ret = pthread_attr_getstacksize(&tattr, &pthread_ss);
 	if (ret < 0) {
 		PERROR("pthread_attr_getstacksize");
-		goto error;
+		goto error_destroy;
 	}
-	DBG("Default pthread stack size is %zu bytes", ptstacksize);
+	DBG("Default pthread stack size is %zu bytes", pthread_ss);
 
-	/* Check if the default pthread stack size honors ulimits. */
-	if (ptstacksize < rlim.rlim_cur) {
-		DBG("Your libc doesn't honor stack size limits, setting thread stack size to soft limit (%lld bytes)",
-				(long long) rlim.rlim_cur);
-
-		/* Create pthread_attr_t struct with ulimit stack size. */
-		ret = pthread_attr_setstacksize(&tattr, rlim.rlim_cur);
-		if (ret < 0) {
-			PERROR("pthread_attr_setstacksize");
-			goto error;
-		}
+	selected_ss = max_t(size_t, pthread_ss, system_ss);
+	if (selected_ss < DEFAULT_LTTNG_THREAD_STACK_SIZE) {
+		DBG("Default stack size is too small, setting it to %zu bytes",
+			(size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
+		selected_ss = DEFAULT_LTTNG_THREAD_STACK_SIZE;
 	}
 
-	/* Enable cached value. */
-	pthread_attr_init_done = true;
-end:
-	pthread_mutex_unlock(&tattr_lock);
-	return &tattr;
+	if (rlim.rlim_max >= 0 && selected_ss > rlim.rlim_max) {
+		WARN("Your system's stack size restrictions (%zu bytes) may be too low for the LTTng daemons to function properly, please set the stack size limit to at leat %zu bytes to ensure reliable operation",
+			(size_t) rlim.rlim_max, (size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
+		selected_ss = (size_t) rlim.rlim_max;
+	}
+
+	ret = pthread_attr_setstacksize(&tattr, selected_ss);
+	if (ret < 0) {
+		PERROR("pthread_attr_setstacksize");
+		goto error_destroy;
+	}
+	pthread_attr_init_done = 1;
 error:
-	pthread_mutex_unlock(&tattr_lock);
-	WARN("Failed to initialize pthread attributes, using libc defaults.");
-	return NULL;
+	return;
+error_destroy:
+	ret = pthread_attr_destroy(&tattr);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_attr_destroy");
+	}
+}
+
+static void __attribute__((destructor)) fini_default_pthread_attr(void)
+{
+	int ret;
+
+	if (!pthread_attr_init_done) {
+		return;
+	}
+
+	ret = pthread_attr_destroy(&tattr);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_attr_destroy");
+	}
 }
