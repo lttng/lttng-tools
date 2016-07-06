@@ -490,15 +490,15 @@ THE SOFTWARE.
 	</xs:complexType>
 
 	<!-- Maps to an action during snapshot command -->
-	<xs:complexType name="snapshot_action_type">
+	<xs:complexType name="snapshot_cmd_type">
 		<xs:sequence>
-			<xs:element name="name" type="tns:snapshot_actiontype_type" minOccurs="0" />
+			<xs:element name="name" type="tns:snapshot_action_type" minOccurs="0" />
 			<xs:element name="output" type="tns:output_type" minOccurs="0" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Type of snapshot commands -->
-	<xs:simpleType name="snapshot_actiontype_type">
+	<xs:simpleType name="snapshot_action_type">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="list-output" />
 			<xs:enumeration value="del-output" />
@@ -508,25 +508,40 @@ THE SOFTWARE.
 	</xs:simpleType>
 
 	<!-- Maps to an action during metadata command -->
-	<xs:complexType name="metadata_action_type">
+	<xs:complexType name="metadata_cmd_type">
 		<xs:sequence>
-			<xs:element name="name" type="tns:metadata_actiontype_type" minOccurs="0" />
+			<xs:element name="name" type="tns:metadata_action_type" minOccurs="0" />
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Type of metadata commands -->
-	<xs:simpleType name="metadata_actiontype_type">
+	<xs:simpleType name="metadata_action_type">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="regenerate" />
 		</xs:restriction>
 	</xs:simpleType>
+
+	<!-- Type of regenerate commands -->
+	<xs:simpleType name="regenerate_action_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="metadata" />
+			<xs:enumeration value="statedump" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Type of regenerate command -->
+	<xs:complexType name="regenerate_cmd_type">
+		<xs:sequence>
+			<xs:element name="name" type="tns:regenerate_action_type" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
 
 	<xs:complexType name="output_type">
 		<xs:choice>
 			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
 			<xs:element name="sessions" type="tns:sessions_type" minOccurs="0" />
 			<xs:element name="session" type="tns:session_type" minOccurs="0" />
-			<xs:element name="snapshot_action" type="tns:snapshot_action_type" minOccurs="0" />
+			<xs:element name="snapshot_action" type="tns:snapshot_cmd_type" minOccurs="0" />
 			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" />
 			<xs:element name="version" type="tns:version_type" minOccurs="0" />
 			<xs:element name="save" type="tns:save_type" minOccurs="0" />
@@ -537,7 +552,8 @@ THE SOFTWARE.
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 			<xs:element name="channel" type="tns:channel_type" minOccurs="0" />
 			<xs:element name="targets" type="tns:targets_type" minOccurs="0" />
-			<xs:element name="metadata_action" type="tns:metadata_action_type" minOccurs="0" />
+			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
+			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -563,6 +579,7 @@ THE SOFTWARE.
 			<xs:enumeration value="track" />
 			<xs:enumeration value="untrack" />
 			<xs:enumeration value="metadata" />
+			<xs:enumeration value="regenerate" />
 		</xs:restriction>
 	</xs:simpleType>
 
