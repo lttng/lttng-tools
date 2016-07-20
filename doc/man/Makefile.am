@@ -63,7 +63,7 @@ XSL_FILES = \
 XSL_SRC_FILES = $(addprefix $(srcdir)/xsl/,$(XSL_FILES))
 
 # common dependencies
-COMMON_DEPS = $(ASCIIDOC_CONF) $(COMMON_TXT)
+COMMON_DEPS = $(ASCIIDOC_CONF) $(COMMON_TXT) $(ASCIIDOC_ATTRS_CONF)
 
 # man pages destinations
 MAN1 = $(addsuffix .1,$(MAN1_NAMES))
