@@ -2,11 +2,12 @@ if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.
 
-CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
-	libzzz.so libzzz.so.debug prog
+CLEANFILES = libbar.so libbar.so.debug libfoo.so libfoo.so.debug \
+	libzzz.so libzzz.so.debug prog libtp.so
 
-EXTRA_DIST = test_ust-dl test_ust-dl.py libfoo.c libfoo.h \
-	libbar.c libbar.h libzzz.c libzzz.h prog.c
+EXTRA_DIST = test_ust-dl test_ust-dl.py libbar.c libbar.h libbar-tp.h \
+	libbar-tp.c libfoo.c libfoo.h libfoo-tp.h libfoo-tp.c \
+	libzzz.c libzzz.h libzzz-tp.h libzzz-tp.c prog.c libtp.c
 
 else
 
@@ -20,7 +21,7 @@ noinst_PROGRAMS = prog
 prog_SOURCES = prog.c
 prog_LDADD = -ldl
 
-noinst_LTLIBRARIES = libzzz.la libbar.la libfoo.la
+noinst_LTLIBRARIES = libzzz.la libbar.la libfoo.la libtp.la
 
 libzzz_la_SOURCES = libzzz.c libzzz.h
 libzzz_la_LDFLAGS = -module -shared -avoid-version \
@@ -37,7 +38,11 @@ libfoo_la_LDFLAGS = -module -shared -avoid-version \
 libfoo_la_LIBADD = libbar.la
 
 CLEANFILES = libfoo.so libfoo.so.debug libbar.so libbar.so.debug \
-	libzzz.so libzzz.so.debug
+	libzzz.so libzzz.so.debug libtp.so
+
+libtp_la_SOURCES = libbar-tp.h libbar-tp.c libfoo-tp.h libfoo-tp.c \
+	libzzz-tp.h libzzz-tp.c
+libtp_la_LDFLAGS = -module -shared -rpath $(abs_builddir)
 
 # Extract debug symbols
 libfoo.so.debug: libfoo.la
@@ -58,10 +63,13 @@ libzzz.so: libzzz.so.debug
 	@cp -f .libs/libzzz.so libzzz.so
 	$(objcopy_verbose)$(OBJCOPY) --strip-debug --add-gnu-debuglink=libzzz.so.debug libzzz.so
 
+libtp.so: libtp.la
+	@cp -f .libs/libtp.so libtp.so
+
 noinst_SCRIPTS = test_ust-dl test_ust-dl.py
 EXTRA_DIST = test_ust-dl test_ust-dl.py
 
-all-local: libfoo.so libbar.so libzzz.so
+all-local: libfoo.so libbar.so libzzz.so libtp.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \
 			cp -f $(srcdir)/$$script $(builddir); \
