@@ -117,7 +117,7 @@ static void __attribute__((constructor)) init_default_pthread_attr(void)
 		selected_ss = DEFAULT_LTTNG_THREAD_STACK_SIZE;
 	}
 
-	if (rlim.rlim_max >= 0 && selected_ss > rlim.rlim_max) {
+	if (rlim.rlim_max > 0 && selected_ss > rlim.rlim_max) {
 		WARN("Your system's stack size restrictions (%zu bytes) may be too low for the LTTng daemons to function properly, please set the stack size limit to at leat %zu bytes to ensure reliable operation",
 			(size_t) rlim.rlim_max, (size_t) DEFAULT_LTTNG_THREAD_STACK_SIZE);
 		selected_ss = (size_t) rlim.rlim_max;
