@@ -759,7 +759,7 @@ void epoll_pwait_concurrent_munmap(void)
 			(void *) epoll_event);
 	if (ret != 0) {
 		fprintf(stderr, "[error] pthread_create\n");
-		goto end;
+		goto end_unmap;
 	}
 
 	ret = epoll_pwait(epollfd, epoll_event, 1, 1, NULL);
