@@ -655,7 +655,11 @@ void stress_ppoll(int *fds, int value)
 		do_ppoll(fds, ufds);
 	}
 	stop_thread = 1;
-	pthread_join(writer, NULL);
+	ret = pthread_join(writer, NULL);
+	if (ret) {
+		fprintf(stderr, "[error] pthread_join\n");
+		goto end;
+	}
 end:
 	return;
 }
@@ -773,8 +777,11 @@ void epoll_pwait_concurrent_munmap(void)
 	}
 
 	stop_thread = 1;
-	pthread_join(writer, NULL);
-
+	ret = pthread_join(writer, NULL);
+	if (ret) {
+		fprintf(stderr, "[error] pthread_join\n");
+		goto end_unmap;
+	}
 end_unmap:
 	for (i = 0; i < MAX_FDS; i++) {
 		ret = close(fds[i]);
