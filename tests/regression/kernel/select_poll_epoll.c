@@ -751,7 +751,12 @@ void epoll_pwait_concurrent_munmap(void)
 		}
 	}
 	stop_thread = 0;
-	pthread_create(&writer, NULL, &epoll_pwait_writer, (void *) epoll_event);
+	ret = pthread_create(&writer, NULL, &epoll_pwait_writer,
+			(void *) epoll_event);
+	if (ret != 0) {
+		fprintf(stderr, "[error] pthread_create\n");
+		goto end;
+	}
 
 	ret = epoll_pwait(epollfd, epoll_event, 1, 1, NULL);
 
