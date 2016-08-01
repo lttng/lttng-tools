@@ -1357,7 +1357,6 @@ restart:
 		consumer_data->metadata_sock.lock = zmalloc(sizeof(pthread_mutex_t));
 		if (consumer_data->metadata_sock.lock == NULL) {
 			PERROR("zmalloc pthread mutex");
-			ret = -1;
 			goto error;
 		}
 		pthread_mutex_init(consumer_data->metadata_sock.lock, NULL);
