@@ -234,7 +234,7 @@ int init_ht_cleanup_thread(pthread_t *thread)
 		goto error;
 	}
 
-	init_pipe(ht_cleanup_quit_pipe);
+	ret = init_pipe(ht_cleanup_quit_pipe);
 	if (ret) {
 		goto error_quit_pipe;
 	}
