@@ -127,6 +127,10 @@ AC_CHECK_FUNCS([ \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
 ])
 
+# Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
+# add -lrt to LIBS
+AC_CHECK_LIB([rt], [clock_gettime, timer_create, timer_settime, timer_delete])
+
 # Babeltrace viewer check
 AC_ARG_WITH([babeltrace-bin],
 	AS_HELP_STRING([--with-babeltrace-bin],

@@ -76,7 +76,6 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        filter.c filter.h context.c context.h
 
 libcommon_la_LIBADD = \
-		-lrt \
 		$(top_builddir)/src/common/config/libconfig.la
 if LTTNG_BUILD_WITH_LIBUUID
 libcommon_la_LIBADD += -luuid
