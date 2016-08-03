@@ -456,7 +456,7 @@ void pselect_fd_too_big(void)
 		perror("dup2");
 		return;
 	}
-	FD_ZERO(&rfds);
+	FD_ZERO((fd_set *) &rfds);
 	FD_SET(fd2, (fd_set *) &rfds);
 	ret = syscall(SYS_pselect6, fd2 + 1, &rfds, NULL, NULL, NULL, NULL);
 
