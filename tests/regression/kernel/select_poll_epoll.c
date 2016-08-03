@@ -723,9 +723,7 @@ void epoll_pwait_concurrent_munmap(void)
 	int ret, epollfd, i, fds[MAX_FDS];
 	char buf[BUF_SIZE];
 	struct epoll_event *epoll_event;
-	void *addr = NULL;
 	pthread_t writer;
-
 
 	epollfd = epoll_create(MAX_FDS);
 	if (epollfd < 0) {
@@ -733,7 +731,7 @@ void epoll_pwait_concurrent_munmap(void)
 		goto end;
 	}
 
-	epoll_event = mmap(addr, MAX_FDS * sizeof(struct epoll_event),
+	epoll_event = mmap(NULL, MAX_FDS * sizeof(struct epoll_event),
 			PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS,
 			-1, 0);
 	if (epoll_event == MAP_FAILED) {
@@ -790,7 +788,7 @@ end_unmap:
 		}
 	}
 
-	ret = munmap(addr, MAX_FDS * sizeof(struct epoll_event));
+	ret = munmap(epoll_event, MAX_FDS * sizeof(struct epoll_event));
 	if (ret != 0) {
 		perror("munmap");
 	}
