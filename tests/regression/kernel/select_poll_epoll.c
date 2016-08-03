@@ -17,7 +17,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <sys/mman.h>
-#include <time.h>
+#include <common/compat/time.h>
 
 #define BUF_SIZE 256
 #define NB_FD 1
