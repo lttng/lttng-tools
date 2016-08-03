@@ -23,7 +23,7 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        tracefile-array.c tracefile-array.h
 
 # link on liblttngctl for check if relayd is already alive.
-lttng_relayd_LDADD = -lrt -lurcu-common -lurcu \
+lttng_relayd_LDADD = -lurcu-common -lurcu \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
