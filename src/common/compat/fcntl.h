@@ -78,8 +78,8 @@ static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 }
 #endif
 
-#if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__))
+#if !(defined(__linux__) || defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
 #error "Please add support for your OS."
-#endif /* __linux__ , __FreeBSD__, __CYGWIN__, __sun__ */
+#endif /* __linux__ , __FreeBSD__, __CYGWIN__, __sun__, __APPLE__ */
 
 #endif /* _COMPAT_FCNTL_H */
