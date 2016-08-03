@@ -442,7 +442,7 @@ void ppoll_fds_ulong_max(void)
  */
 void pselect_fd_too_big(void)
 {
-	long rfds[2048 / (sizeof(long) * CHAR_BIT)];
+	long rfds[2048 / (sizeof(long) * CHAR_BIT)] = { 0 };
 	int ret;
 	int fd2;
 	char buf[BUF_SIZE];
@@ -456,7 +456,7 @@ void pselect_fd_too_big(void)
 		perror("dup2");
 		return;
 	}
-	FD_ZERO((fd_set *) &rfds);
+
 	FD_SET(fd2, (fd_set *) &rfds);
 	ret = syscall(SYS_pselect6, fd2 + 1, &rfds, NULL, NULL, NULL, NULL);
 
