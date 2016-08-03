@@ -46,7 +46,7 @@ const char *log_add_time(void)
 	struct timespec tp;
 	time_t now;
 
-	ret = clock_gettime(CLOCK_REALTIME, &tp);
+	ret = lttng_clock_gettime(CLOCK_REALTIME, &tp);
 	if (ret < 0) {
 		goto error;
 	}

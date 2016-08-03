@@ -24,7 +24,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <time.h>
+#include <common/compat/time.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>

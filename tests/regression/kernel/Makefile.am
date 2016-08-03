@@ -1,3 +1,4 @@
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 EXTRA_DIST = test_event_basic test_all_events test_syscall \
 		test_clock_override test_rotation_destroy_flush \
 		test_select_poll_epoll

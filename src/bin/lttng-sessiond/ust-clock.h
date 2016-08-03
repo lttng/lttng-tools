@@ -20,7 +20,7 @@
 #ifndef _UST_CLOCK_H
 #define _UST_CLOCK_H
 
-#include <time.h>
+#include <common/compat/time.h>
 #include <sys/time.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -57,7 +57,7 @@ uint64_t trace_clock_read64_monotonic(void)
 {
 	struct timespec ts;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+	if (lttng_clock_gettime(CLOCK_MONOTONIC, &ts)) {
 		/* TODO Report error cleanly up the chain. */
 		PERROR("clock_gettime CLOCK_MONOTONIC");
 		ts.tv_sec = 0;
