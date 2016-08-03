@@ -4291,7 +4291,6 @@ restart:
 			if (ret) {
 				PERROR("close");
 			}
-			new_sock = -1;
 			continue;
 		}
 
@@ -4320,7 +4319,6 @@ restart:
 		if (ret) {
 			PERROR("close");
 		}
-		new_sock = -1;
 	}
 
 exit:
