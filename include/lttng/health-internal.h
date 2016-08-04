@@ -20,7 +20,7 @@
  */
 
 #include <assert.h>
-#include <time.h>
+#include <common/compat/time.h>
 #include <pthread.h>
 #include <urcu/tls-compat.h>
 #include <urcu/uatomic.h>

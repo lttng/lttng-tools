@@ -16,7 +16,7 @@
  */
 
 #include <stdint.h>
-#include <time.h>
+#include <common/compat/time.h>
 #include <assert.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -43,7 +43,7 @@ int usleep_safe(useconds_t usec)
 	struct timespec t1, t2;
 	int64_t time_remaining_ns = (int64_t) usec * (int64_t) NSEC_PER_USEC;
 
-	ret = clock_gettime(CLOCK_MONOTONIC, &t1);
+	ret = lttng_clock_gettime(CLOCK_MONOTONIC, &t1);
 	if (ret) {
 		ret = -1;
 		perror("clock_gettime");

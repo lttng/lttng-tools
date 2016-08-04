@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <urcu/tls-compat.h>
-#include <time.h>
+#include <common/compat/time.h>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"

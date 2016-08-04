@@ -2378,7 +2378,7 @@ static int spawn_consumer_thread(struct consumer_data *consumer_data)
 	pthread_mutex_lock(&consumer_data->cond_mutex);
 
 	/* Get time for sem_timedwait absolute timeout */
-	clock_ret = clock_gettime(CLOCK_MONOTONIC, &timeout);
+	clock_ret = lttng_clock_gettime(CLOCK_MONOTONIC, &timeout);
 	/*
 	 * Set the timeout for the condition timed wait even if the clock gettime
 	 * call fails since we might loop on that call and we want to avoid to

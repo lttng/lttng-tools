@@ -25,7 +25,7 @@
  */
 
 #include <stdlib.h>
-#include <time.h>
+#include <common/compat/time.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>

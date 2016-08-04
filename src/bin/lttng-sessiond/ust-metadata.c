@@ -819,7 +819,7 @@ int measure_single_clock_offset(struct offset_sample *sample)
 	int ret;
 
 	monotonic[0] = trace_clock_read64();
-	ret = clock_gettime(CLOCK_REALTIME, &rts);
+	ret = lttng_clock_gettime(CLOCK_REALTIME, &rts);
 	if (ret < 0) {
 		return ret;
 	}

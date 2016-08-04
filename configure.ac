@@ -127,6 +127,10 @@ AC_CHECK_FUNCS([ \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
 ])
 
+# Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
+# add -lrt to LIBS
+AC_CHECK_LIB([rt], [clock_gettime, timer_create, timer_settime, timer_delete])
+
 # Babeltrace viewer check
 AC_ARG_WITH([babeltrace-bin],
 	AS_HELP_STRING([--with-babeltrace-bin],
@@ -322,21 +326,28 @@ PKG_CHECK_MODULES([POPT], [popt],
 
 AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
 
-# Check for libuuid
+# Check for uuid in system libs
+AC_CHECK_FUNCS([uuid_generate],
+[
+	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
+	link_with_libuuid=no
+],
+[
+# First, check the pkg-config module is available, otherwise explicitly check
+# for libuuid, or uuid support in the C-library.
 PKG_CHECK_MODULES([UUID], [uuid],
 [
 	LIBS="$LIBS $UUID_LIBS"
 	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
-	have_libuuid=yes
+	link_with_libuuid=yes
 ],
 [
-	AC_MSG_WARN([pkg-config was unable to find a valid .pc for libuuid. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
-	AC_MSG_WARN([Finding libuuid without pkg-config.])
+	# Check for libuuid
 	AC_CHECK_LIB([uuid],
 		[uuid_generate],
 		[
 			AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
-			have_libuuid=yes
+			link_with_libuuid=yes
 		],
 		[
 			# libuuid not found, check for uuid_create in libc.
@@ -344,7 +355,7 @@ PKG_CHECK_MODULES([UUID], [uuid],
 				[uuid_create],
 				[
 					AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBC_UUID], 1, [Has libc uuid support.])
-					have_libc_uuid=yes
+					link_with_libc_uuid=yes
 				],
 				[
 					AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
@@ -353,8 +364,10 @@ PKG_CHECK_MODULES([UUID], [uuid],
 		]
 	)
 ])
-AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$have_libuuid" = "xyes"])
-AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$have_libc_uuid" = "xyes"])
+])
+
+AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$link_with_libuuid" = "xyes"])
+AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$link_with_libc_uuid" = "xyes"])
 
 # URCU library version needed or newer
 m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.8.0 is needed])

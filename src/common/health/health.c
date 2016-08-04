@@ -171,7 +171,7 @@ static int validate_state(struct health_app *ha, struct health_state *state)
 	last = state->last;
 	current = uatomic_read(&state->current);
 
-	ret = clock_gettime(CLOCK_MONOTONIC, &current_time);
+	ret = lttng_clock_gettime(CLOCK_MONOTONIC, &current_time);
 	if (ret < 0) {
 		PERROR("Error reading time\n");
 		/* error */
