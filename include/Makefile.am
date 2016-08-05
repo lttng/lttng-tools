@@ -45,7 +45,7 @@ version.h:
 		old_version=$$($(GREP) "$${version_match}" "$${version_h}"); \
 		new_version="#define GIT_VERSION	\"$${git_version}\""; \
 		if [ x"$${old_version}" != x"$${new_version}" ]; then \
-			$(SED) -i "s'$${version_match}'$${new_version}'" "$${version_h}"; \
+			$(SED) -i '' -e "s'$${version_match}'$${new_version}'" "$${version_h}"; \
 		else \
 			echo $(ECHO_N) " (cached)$(ECHO_C)"; \
 		fi; \
