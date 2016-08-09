@@ -159,14 +159,18 @@ end:
 int lttng_load_session(struct lttng_load_session_attr *attr)
 {
 	int ret;
+	const char *url, *session_name;
 
 	if (!attr) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = config_load_session(attr->input_url, attr->session_name,
-			attr->overwrite, 0);
+	url = attr->input_url[0] != '\0' ? attr->input_url : NULL;
+	session_name = attr->session_name[0] != '\0' ?
+			attr->session_name : NULL;
+
+	ret = config_load_session(url, session_name, attr->overwrite, 0);
 
 end:
 	return ret;
