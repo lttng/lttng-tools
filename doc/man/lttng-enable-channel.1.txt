@@ -13,7 +13,7 @@ Create a Linux kernel channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--kernel
-      [option:--discard | option:--overwrite] [option:--output=(`mmap` | `splice`)]
+      [option:--overwrite] [option:--output=(`mmap` | `splice`)]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
       [option:--tracefile-size='SIZE'] [option:--tracefile-count='COUNT']
@@ -23,7 +23,7 @@ Create a user space channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-channel* option:--userspace
-      [option:--discard | option:--overwrite] [option:--buffers-pid]
+      [option:--overwrite] [option:--buffers-pid]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
       [option:--tracefile-size='SIZE'] [option:--tracefile-count='COUNT']
