@@ -3352,14 +3352,14 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		if (lttng_strncpy(list[idx].name, output->name,
 				sizeof(list[idx].name))) {
 			ret = -LTTNG_ERR_INVALID;
-			goto error;
+			goto error_unlock;
 		}
 		if (output->consumer->type == CONSUMER_DST_LOCAL) {
 			if (lttng_strncpy(list[idx].ctrl_url,
 					output->consumer->dst.trace_path,
 					sizeof(list[idx].ctrl_url))) {
 				ret = -LTTNG_ERR_INVALID;
-				goto error;
+				goto error_unlock;
 			}
 		} else {
 			/* Control URI. */
@@ -3367,7 +3367,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 					list[idx].ctrl_url, sizeof(list[idx].ctrl_url));
 			if (ret < 0) {
 				ret = -LTTNG_ERR_NOMEM;
-				goto error;
+				goto error_unlock;
 			}
 
 			/* Data URI. */
@@ -3375,7 +3375,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 					list[idx].data_url, sizeof(list[idx].data_url));
 			if (ret < 0) {
 				ret = -LTTNG_ERR_NOMEM;
-				goto error;
+				goto error_unlock;
 			}
 		}
 		idx++;
@@ -3384,9 +3384,10 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 	*outputs = list;
 	list = NULL;
 	ret = session->snapshot.nb_output;
+error_unlock:
+	rcu_read_unlock();
 error:
 	free(list);
-	rcu_read_unlock();
 	return ret;
 }
 
