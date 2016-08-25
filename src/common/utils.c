@@ -1375,11 +1375,11 @@ int utils_show_man_page(int section, const char *page_name)
 	/*
 	 * Execute man pager.
 	 *
-	 * We provide --manpath to man here because LTTng-tools can
+	 * We provide -M to man here because LTTng-tools can
 	 * be installed outside /usr, in which case its man pages are
 	 * not located in the default /usr/share/man directory.
 	 */
-	ret = execlp(man_bin_path, "man", "--manpath", MANPATH,
+	ret = execlp(man_bin_path, "man", "-M", MANPATH,
 		section_string, page_name, NULL);
 	return ret;
 }
