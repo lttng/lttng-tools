@@ -547,10 +547,10 @@ void worker_sighandler(int sig)
 	const char *signame;
 
 	/*
-	 * The worker will its parent's signals since they are part of the same
-	 * process group. However, in the case of SIGINT and SIGTERM, we want
-	 * to give the worker a chance to teardown gracefully when its parent
-	 * closes the command socket.
+	 * The worker will inherit its parent's signals since they are part of
+	 * the same process group. However, in the case of SIGINT and SIGTERM,
+	 * we want to give the worker a chance to teardown gracefully when its
+	 * parent closes the command socket.
 	 */
 	switch (sig) {
 	case SIGINT:
