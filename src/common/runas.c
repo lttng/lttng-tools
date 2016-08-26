@@ -560,10 +560,14 @@ void worker_sighandler(int sig)
 		signame = "SIGTERM";
 		break;
 	default:
-		signame = "Unknown";
+		signame = NULL;
 	}
 
-	DBG("run_as worker received signal %s", signame);
+	if (signame) {
+		DBG("run_as worker received signal %s", signame);
+	} else {
+		DBG("run_as_worker received signal %d", sig);
+	}
 }
 
 static
