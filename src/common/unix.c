@@ -82,7 +82,7 @@ int lttcomm_accept_unix_sock(int sock)
 {
 	int new_fd;
 	struct sockaddr_un s_un;
-	socklen_t len = 0;
+	socklen_t len = sizeof(s_un);
 
 	/* Blocking call */
 	new_fd = accept(sock, (struct sockaddr *) &s_un, &len);
