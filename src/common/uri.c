@@ -587,6 +587,10 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		if (ret < 0) {
 			PERROR("snprintf file url");
 			goto parse_error;
+		} else if (ret >= sizeof(url)) {
+			PERROR("snprintf file url is too long");
+			goto parse_error;
+
 		}
 		ctrl_url = url;
 	}
