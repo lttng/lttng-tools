@@ -100,7 +100,8 @@ int lttng_load_session_attr_set_input_url(
 	struct lttng_load_session_attr *attr, const char *url)
 {
 	int ret = 0;
-	size_t len, size;
+	size_t len;
+	ssize_t size;
 	struct lttng_uri *uris = NULL;
 
 	if (!attr) {
