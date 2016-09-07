@@ -25,6 +25,7 @@
 
 #include <common/mi-lttng.h>
 #include <common/config/session-config.h>
+#include <lttng/load.h>
 
 #include "../command.h"
 
@@ -123,9 +124,11 @@ end:
  */
 int cmd_load(int argc, const char **argv)
 {
-	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
+	int ret, success;
 	int opt;
 	poptContext pc;
+	struct lttng_load_session_attr *session_attr = NULL;
+	char *input_path = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, load_opts, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -134,12 +137,14 @@ int cmd_load(int argc, const char **argv)
 		switch (opt) {
 		case OPT_HELP:
 			SHOW_HELP();
+			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_ALL:
 			opt_load_all = 1;
 			break;
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, load_opts);
+			ret = CMD_SUCCESS;
 			goto end;
 		case OPT_FORCE:
 			opt_force = 1;
@@ -164,7 +169,7 @@ int cmd_load(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
+			ret = CMD_ERROR;
 			goto end;
 		}
 
@@ -185,15 +190,65 @@ int cmd_load(int argc, const char **argv)
 		}
 	}
 
-	command_ret = config_load_session(opt_input_path, session_name, opt_force, 0);
-	if (command_ret) {
-		ERR("%s", lttng_strerror(command_ret));
+	/* Prepare load attributes */
+	session_attr = lttng_load_session_attr_create();
+	if (!session_attr) {
+		ERR("Failed to create load session attributes");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/*
+	 * Set the input url
+	 * lttng_load_session_attr_set_input_url only suppports absolute path.
+	 * Use realpath to resolve any relative path.
+	 * */
+	if (opt_input_path) {
+		input_path = realpath(opt_input_path, NULL);
+		if (!input_path) {
+			PERROR("Invalid input path");
+			ret = CMD_ERROR;
+			goto end;
+		}
+	} else {
+		input_path = NULL;
+	}
+
+	ret = lttng_load_session_attr_set_input_url(session_attr,
+			input_path);
+	if (ret) {
+		ERR("Invalid input path");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Set the session name. NULL means all sessions should be loaded */
+	ret = lttng_load_session_attr_set_session_name(session_attr,
+			session_name);
+	if (ret) {
+		ERR("Invalid session name");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Set the overwrite attribute */
+	ret = lttng_load_session_attr_set_overwrite(session_attr, opt_force);
+	if (ret) {
+		ERR("Force argument could not be applied");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	ret = lttng_load_session(session_attr);
+	if (ret) {
+		ERR("%s", lttng_strerror(ret));
 		success = 0;
+		ret = CMD_ERROR;
 	} else {
 		if (opt_load_all) {
 			MSG("All sessions have been loaded successfully");
 		} else if (session_name) {
-			ret = config_init((char *)session_name);
+			ret = config_init((char *) session_name);
 			if (ret < 0) {
 				ret = CMD_WARNING;
 			}
@@ -202,6 +257,7 @@ int cmd_load(int argc, const char **argv)
 			MSG("Session has been loaded successfully");
 		}
 		success = 1;
+		ret = CMD_SUCCESS;
 	}
 
 	/* Mi Printing and closing */
@@ -237,13 +293,11 @@ int cmd_load(int argc, const char **argv)
 	}
 end:
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+		ERR("Failed to destroy mi lttng writer");
 	}
 
-	/* Overwrite ret if the was an error with the load command */
-	ret = command_ret ? -command_ret : ret;
-
+	lttng_load_session_attr_destroy(session_attr);
+	free(input_path);
 	poptFreeContext(pc);
 	return ret;
 }
