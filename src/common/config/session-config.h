@@ -30,6 +30,12 @@ struct config_entry {
 	const char *value;
 };
 
+struct config_load_session_override_attr {
+	char *path_url;
+	char *ctrl_url;
+	char *data_url;
+};
+
 /* Instance of a configuration writer. */
 struct config_writer;
 

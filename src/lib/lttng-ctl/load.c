@@ -18,12 +18,16 @@
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 
 #include <lttng/lttng-error.h>
 #include <lttng/load.h>
 #include <lttng/load-internal.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/config/session-config.h>
+#include <common/uri.h>
+#include <common/macros.h>
+#include <common/compat/string.h>
 
 #include "lttng-ctl-helper.h"
 
@@ -32,9 +36,22 @@ struct lttng_load_session_attr *lttng_load_session_attr_create(void)
 	return zmalloc(sizeof(struct lttng_load_session_attr));
 }
 
+static
+void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
+{
+	free(attr->raw_override_url);
+	free(attr->raw_override_path_url);
+	free(attr->raw_override_ctrl_url);
+	free(attr->raw_override_data_url);
+	free(attr->override_attr.path_url);
+	free(attr->override_attr.ctrl_url);
+	free(attr->override_attr.data_url);
+}
+
 void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr)
 {
 	if (attr) {
+		reset_load_session_attr_urls(attr);
 		free(attr);
 	}
 }
@@ -67,6 +84,56 @@ int lttng_load_session_attr_get_overwrite(
 	struct lttng_load_session_attr *attr)
 {
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
+}
+
+const char *lttng_load_session_attr_get_override_path_url(
+	struct lttng_load_session_attr *attr)
+{
+	const char *ret = NULL;
+
+	if (attr && attr->override_attr.path_url) {
+		ret = attr->raw_override_path_url;
+	}
+
+	return ret;
+}
+
+const char *lttng_load_session_attr_get_override_ctrl_url(
+	struct lttng_load_session_attr *attr)
+{
+	const char *ret = NULL;
+
+	if (attr && attr->override_attr.ctrl_url) {
+		ret = attr->raw_override_ctrl_url;
+	}
+
+	return ret;
+}
+
+const char *lttng_load_session_attr_get_override_data_url(
+	struct lttng_load_session_attr *attr)
+{
+	const char *ret = NULL;
+
+	if (attr && attr->override_attr.data_url) {
+		ret = attr->raw_override_data_url;
+	}
+
+	return ret;
+}
+
+const char *lttng_load_session_attr_get_override_url(
+		struct lttng_load_session_attr *attr)
+{
+	const char *ret = NULL;
+
+	if (attr && (attr->override_attr.path_url ||
+		(attr->override_attr.ctrl_url &&
+		 attr->override_attr.data_url))) {
+		ret = attr->raw_override_url;
+	}
+
+	return ret;
 }
 
 int lttng_load_session_attr_set_session_name(
@@ -152,6 +219,291 @@ end:
 	return ret;
 }
 
+int lttng_load_session_attr_set_override_ctrl_url(
+	struct lttng_load_session_attr *attr, const char *url)
+{
+	int ret = 0;
+	ssize_t ret_size;
+	struct lttng_uri *uri = NULL;
+	char *url_str = NULL;
+	char *raw_str = NULL;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (attr->override_attr.path_url) {
+		/*
+		 * FIXME: return a more meaningful error.
+		 * Setting a ctrl override after a path override make no
+		 * sense.
+		 * */
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/*
+	 * FIXME: uri_parse should be able to take as parameter the protocol
+	 * type to validate "url". For now only check the parsing goes through;
+	 * it will fail later on.
+	 */
+	ret_size = uri_parse(url, &uri);
+	if (ret_size < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uri[0].port == 0) {
+		uri[0].port = DEFAULT_NETWORK_CONTROL_PORT;
+	}
+
+	url_str = zmalloc(PATH_MAX);
+	if (!url_str) {
+		/* FIXME: return valid error */
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	ret = uri_to_str_url(&uri[0], url_str, PATH_MAX);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret = 0;
+
+	raw_str = lttng_strndup(url, PATH_MAX);
+	if (!raw_str) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Squash old value if any */
+	free(attr->override_attr.ctrl_url);
+	free(attr->raw_override_ctrl_url);
+
+	/* Populate the object */
+	attr->override_attr.ctrl_url = url_str;
+	attr->raw_override_ctrl_url = raw_str;
+
+	/* Ownership passed to attr. */
+	url_str = NULL;
+	raw_str = NULL;
+
+end:
+	free(raw_str);
+	free(url_str);
+	free(uri);
+	return ret;
+}
+
+int lttng_load_session_attr_set_override_data_url(
+	struct lttng_load_session_attr *attr, const char *url)
+{
+	int ret = 0;
+	ssize_t ret_size;
+	struct lttng_uri *uri = NULL;
+	char *url_str = NULL;
+	char *raw_str = NULL;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (attr->override_attr.path_url) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/*
+	 * FIXME: uri_parse should be able to take as parameter the protocol
+	 * type to validate "url". For now only check the parsing goes through;
+	 * it will fail later on.
+	 */
+	ret_size = uri_parse(url, &uri);
+	if (ret_size < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uri[0].port == 0) {
+		uri[0].port = DEFAULT_NETWORK_DATA_PORT;
+	}
+
+	url_str = zmalloc(PATH_MAX);
+	if (!url_str) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	ret = uri_to_str_url(&uri[0], url_str, PATH_MAX);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret = 0;
+
+	raw_str = lttng_strndup(url, PATH_MAX);
+	if (!raw_str) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Squash old value if any */
+	free(attr->override_attr.data_url);
+	free(attr->raw_override_data_url);
+
+	/* Populate the object */
+	attr->override_attr.data_url = url_str;
+	attr->raw_override_data_url = raw_str;
+
+	/* Ownership passed to attr. */
+	url_str = NULL;
+	raw_str = NULL;
+end:
+	free(raw_str);
+	free(url_str);
+	free(uri);
+	return ret;
+}
+
+int lttng_load_session_attr_set_override_url(
+		struct lttng_load_session_attr *attr, const char *url)
+{
+	int ret = 0;
+	ssize_t ret_size;
+	struct lttng_uri *uri = NULL;
+	char *raw_url_str = NULL;
+	char *raw_path_str = NULL;
+	char *path_str = NULL;
+	char *raw_ctrl_str = NULL;
+	char *ctrl_str = NULL;
+	char *raw_data_str = NULL;
+	char *data_str = NULL;
+	char buffer[PATH_MAX];
+
+	if (!attr || !url || strlen(url) >= PATH_MAX) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/*
+	 * FIXME: uri_parse should be able to take as parameter the protocol
+	 * type to validate "url". For now only check the parsing goes through;
+	 * it will fail later on.
+	 */
+	ret_size = uri_parse_str_urls(url, NULL, &uri);
+	if (ret_size < 0 || ret_size > 2) {
+		/* Unexpected URL format. */
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	raw_url_str = lttng_strndup(url, PATH_MAX);
+	if (!raw_url_str) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Get path | ctrl && data string URL. */
+	ret = uri_to_str_url(&uri[0], buffer, sizeof(buffer));
+	if (ret < 0 || ret >= PATH_MAX) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret = 0;
+
+	switch (uri[0].dtype) {
+	case LTTNG_DST_PATH:
+		raw_path_str = lttng_strndup(buffer, PATH_MAX);
+		if (!raw_path_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		path_str = lttng_strndup(raw_path_str, PATH_MAX);
+		if (!path_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		break;
+	case LTTNG_DST_IPV4:
+	case LTTNG_DST_IPV6:
+		if (ret_size != 2) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		raw_ctrl_str = lttng_strndup(buffer, PATH_MAX);
+		if (!raw_ctrl_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		ctrl_str = lttng_strndup(raw_ctrl_str, PATH_MAX);
+		if (!ctrl_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Get the data uri. */
+		ret = uri_to_str_url(&uri[1], buffer, sizeof(buffer));
+		if (ret < 0) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret = 0;
+
+		raw_data_str = lttng_strndup(buffer, PATH_MAX);
+		if (!raw_data_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		data_str = lttng_strndup(raw_data_str, PATH_MAX);
+		if (!data_str) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		break;
+	default:
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	reset_load_session_attr_urls(attr);
+
+	attr->override_attr.path_url = path_str;
+	attr->override_attr.ctrl_url = ctrl_str;
+	attr->override_attr.data_url = data_str;
+
+	attr->raw_override_url = raw_url_str;
+	attr->raw_override_path_url = raw_path_str;
+	attr->raw_override_ctrl_url = raw_ctrl_str;
+	attr->raw_override_data_url = raw_data_str;
+
+	/* Pass data ownership to attr. */
+	raw_url_str = NULL;
+	raw_path_str = NULL;
+	path_str = NULL;
+	raw_ctrl_str = NULL;
+	ctrl_str = NULL;
+	raw_data_str = NULL;
+	data_str = NULL;
+
+end:
+	free(raw_path_str);
+	free(path_str);
+	free(raw_ctrl_str);
+	free(ctrl_str);
+	free(raw_data_str);
+	free(data_str);
+	free(raw_url_str);
+	free(uri);
+	return ret;
+}
 /*
  * The lttng-ctl API does not expose all the information needed to load the
  * session configurations. Thus, we must send a load command to the session

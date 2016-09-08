@@ -65,6 +65,42 @@ int lttng_load_session_attr_get_overwrite(
 	struct lttng_load_session_attr *attr);
 
 /*
+ * Return the destination URL configuration override attribute. This attribute
+ * indicates a destination URL override to be applied during the loading of the
+ * configuration.
+ *
+ * NULL indicates no override will be applied on configuration load.
+ *
+ * Caller is responsible for freeing the return value.
+ */
+const char *lttng_load_session_attr_get_override_url(
+	struct lttng_load_session_attr *attr);
+
+/*
+ * Return the configuration override control URL attribute. This attribute
+ * indicates a control URL override to be applied during the loading of the
+ * configuration(s).
+ *
+ * NULL indicates no control URL override will be applied on configuration load.
+ *
+ * Caller is responsible for freeing the return value.
+ */
+const char *lttng_load_session_attr_get_override_ctrl_url(
+	struct lttng_load_session_attr *attr);
+
+/*
+ * Return the configuration override data URL attribute. This attribute
+ * indicate a data URL override to be applied during the loading of the
+ * configuration(s).
+ *
+ * NULL indicates no data URL override will be applied on configuration load.
+ *
+ * Caller is responsible for freeing the return value.
+ */
+const char *lttng_load_session_attr_get_override_data_url(
+	struct lttng_load_session_attr *attr);
+
+/*
  * Load session attribute setter family of functions.
  *
  * For every set* call, 0 is returned on success or else -LTTNG_ERR_INVALID is
@@ -89,11 +125,57 @@ int lttng_load_session_attr_set_input_url(
 
 /*
  * Set the overwrite attribute. If set to true, current sessions matching the
- * loaded sessions will be destroyed and the replaced by the sessions being
+ * loaded sessions will be destroyed and be replaced by the session(s) being
  * loaded.
  */
 int lttng_load_session_attr_set_overwrite(
 	struct lttng_load_session_attr *attr, int overwrite);
+
+/*
+ * The following setter are for overriding sessions attributes during the
+ * loading of a configuration files. Those attributes prevail upon those
+ * specified in the loaded configuration file.
+ * */
+
+/*
+ * Set the control url override attribute.
+ *
+ * Supported format:
+ *     NETPROTO://(HOST | IPADDR)[:PORT][/TRACEPATH]
+ *
+ *     Where NETPROTO is one of {tcp, tcp6}
+ *
+ * See lttng-create(1) for more detail.
+ */
+int lttng_load_session_attr_set_override_ctrl_url(
+	struct lttng_load_session_attr *attr, const char *url);
+
+/*
+ * Set the data url override attribute.
+ *
+ * Supported format:
+ *     NETPROTO://(HOST | IPADDR)[:PORT][/TRACEPATH]
+ *
+ *     Where NETPROTO is one of {tcp, tcp6}
+ *
+ * See lttng-create(1) for more detail.
+ */
+int lttng_load_session_attr_set_override_data_url(
+	struct lttng_load_session_attr *attr, const char *url);
+
+/*
+ * Set the url override attribute.
+ *
+ * Supported format:
+ *    file://TRACEPATH
+ *    NETPROTO://(HOST | IPADDR)[:CTRLPORT[:DATAPORT]][/TRACEPATH]
+ *
+ *     Where NETPROTO is one of {tcp, tcp6}
+ *
+ * See lttng-create(1) for more detail.
+ */
+int lttng_load_session_attr_set_override_url(
+	struct lttng_load_session_attr *attr, const char *url);
 
 /*
  * Load session configuration(s).
