@@ -2395,7 +2395,7 @@ end:
 
 static
 int process_session_node(xmlNodePtr session_node, const char *session_name,
-		int override)
+		int overwrite)
 {
 	int ret, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX;
@@ -2570,7 +2570,7 @@ domain_init_error:
 		goto error;
 	}
 
-	if (override) {
+	if (overwrite) {
 		/* Destroy session if it exists */
 		ret = lttng_destroy_session((const char *) name);
 		if (ret && ret != -LTTNG_ERR_SESS_NOT_FOUND) {
@@ -2665,7 +2665,7 @@ valid:
 
 static
 int load_session_from_file(const char *path, const char *session_name,
-	struct session_config_validation_ctx *validation_ctx, int override)
+	struct session_config_validation_ctx *validation_ctx, int overwrite)
 {
 	int ret, session_found = !session_name;
 	xmlDocPtr doc = NULL;
@@ -2707,7 +2707,7 @@ int load_session_from_file(const char *path, const char *session_name,
 		session_node; session_node =
 			xmlNextElementSibling(session_node)) {
 		ret = process_session_node(session_node,
-			session_name, override);
+			session_name, overwrite);
 		if (session_name && ret == 0) {
 			/* Target session found and loaded */
 			session_found = 1;
@@ -2741,7 +2741,7 @@ struct dirent *alloc_dirent(const char *path)
 
 static
 int load_session_from_path(const char *path, const char *session_name,
-	struct session_config_validation_ctx *validation_ctx, int override)
+	struct session_config_validation_ctx *validation_ctx, int overwrite)
 {
 	int ret, session_found = !session_name;
 	DIR *directory = NULL;
@@ -2816,7 +2816,7 @@ int load_session_from_path(const char *path, const char *session_name,
 			file_path[path_len + file_name_len] = '\0';
 
 			ret = load_session_from_file(file_path, session_name,
-				validation_ctx, override);
+				validation_ctx, overwrite);
 			if (session_name && !ret) {
 				session_found = 1;
 				break;
@@ -2827,7 +2827,7 @@ int load_session_from_path(const char *path, const char *session_name,
 		free(file_path);
 	} else {
 		ret = load_session_from_file(path, session_name,
-			validation_ctx, override);
+			validation_ctx, overwrite);
 		if (ret) {
 			goto end;
 		} else {
@@ -2885,7 +2885,7 @@ invalid:
 
 LTTNG_HIDDEN
 int config_load_session(const char *path, const char *session_name,
-		int override, unsigned int autoload)
+		int overwrite, unsigned int autoload)
 {
 	int ret;
 	bool session_loaded = false;
@@ -2939,7 +2939,7 @@ int config_load_session(const char *path, const char *session_name,
 			}
 			if (path_ptr) {
 				ret = load_session_from_path(path_ptr, session_name,
-						&validation_ctx, override);
+						&validation_ctx, overwrite);
 				if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
 					goto end;
 				}
@@ -2969,7 +2969,7 @@ int config_load_session(const char *path, const char *session_name,
 
 		if (path_ptr) {
 			ret = load_session_from_path(path_ptr, session_name,
-					&validation_ctx, override);
+					&validation_ctx, overwrite);
 			if (!ret) {
 				session_loaded = true;
 			}
@@ -2994,7 +2994,7 @@ int config_load_session(const char *path, const char *session_name,
 		}
 
 		ret = load_session_from_path(path, session_name,
-			&validation_ctx, override);
+			&validation_ctx, overwrite);
 	}
 end:
 	fini_session_config_validation_ctx(&validation_ctx);
