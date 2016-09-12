@@ -1,8 +1,8 @@
 SUBDIRS =
-DIST_SUBDIRS = utils regression unit stress destructive
+DIST_SUBDIRS = utils regression unit stress destructive perf
 
 if BUILD_TESTS
-SUBDIRS += . utils regression unit stress destructive
+SUBDIRS += . utils regression unit stress destructive perf
 if HAS_PGREP
 check-am:
 	$(top_srcdir)/tests/utils/warn_processes.sh $(PGREP)
@@ -14,8 +14,8 @@ else
 endif
 
 
-dist_noinst_SCRIPTS = run.sh fast_regression long_regression root_regression root_destructive_tests
-EXTRA_DIST = run.sh fast_regression long_regression root_regression README root_destructive_tests
+dist_noinst_SCRIPTS = run.sh fast_regression long_regression root_regression root_destructive_tests perf_regression
+EXTRA_DIST = run.sh fast_regression long_regression root_regression README root_destructive_tests perf_regression
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

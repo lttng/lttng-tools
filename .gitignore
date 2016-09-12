@@ -107,6 +107,8 @@ tests/regression/ust/python-logging/test_python_logging
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
+/tests/perf/find_event
+/tests/perf/test_perf_raw
 
 # man pages
 /doc/man/*.1

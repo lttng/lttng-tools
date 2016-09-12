@@ -57,6 +57,8 @@ The following items are _optional_ dependencies:
     pages with the `--help` option or with the `lttng help` command.
     Note that without `man`, you cannot get offline help with
     LTTng-tools commands, not even their usage.
+  - **libpfm >= 4.0**: needed to run the perf regression test suite.
+    - Debian/Ubuntu package: `libpfm4-dev`
 
 LTTng-tools supports both the [LTTng Linux Kernel tracer](https://lttng.org)
 and [LTTng user space tracer](https://lttng.org) released as part of the same
