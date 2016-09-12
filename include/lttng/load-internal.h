@@ -45,7 +45,7 @@ struct lttng_load_session_attr {
 	/* The raw override data url for getter */
 	char *raw_override_data_url;
 	/* Override struct */
-	struct config_load_session_override_attr override_attr;
+	struct config_load_session_override_attr *override_attr;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_LOAD_INTERNAL_ABI_H */

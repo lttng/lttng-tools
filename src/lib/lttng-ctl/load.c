@@ -43,15 +43,18 @@ void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
 	free(attr->raw_override_path_url);
 	free(attr->raw_override_ctrl_url);
 	free(attr->raw_override_data_url);
-	free(attr->override_attr.path_url);
-	free(attr->override_attr.ctrl_url);
-	free(attr->override_attr.data_url);
+	if (attr->override_attr) {
+		free(attr->override_attr->path_url);
+		free(attr->override_attr->ctrl_url);
+		free(attr->override_attr->data_url);
+	}
 }
 
 void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr)
 {
 	if (attr) {
 		reset_load_session_attr_urls(attr);
+		free(attr->override_attr);
 		free(attr);
 	}
 }
@@ -91,7 +94,7 @@ const char *lttng_load_session_attr_get_override_path_url(
 {
 	const char *ret = NULL;
 
-	if (attr && attr->override_attr.path_url) {
+	if (attr && attr->override_attr->path_url) {
 		ret = attr->raw_override_path_url;
 	}
 
@@ -103,7 +106,7 @@ const char *lttng_load_session_attr_get_override_ctrl_url(
 {
 	const char *ret = NULL;
 
-	if (attr && attr->override_attr.ctrl_url) {
+	if (attr && attr->override_attr->ctrl_url) {
 		ret = attr->raw_override_ctrl_url;
 	}
 
@@ -115,7 +118,7 @@ const char *lttng_load_session_attr_get_override_data_url(
 {
 	const char *ret = NULL;
 
-	if (attr && attr->override_attr.data_url) {
+	if (attr && attr->override_attr->data_url) {
 		ret = attr->raw_override_data_url;
 	}
 
@@ -127,9 +130,9 @@ const char *lttng_load_session_attr_get_override_url(
 {
 	const char *ret = NULL;
 
-	if (attr && (attr->override_attr.path_url ||
-		(attr->override_attr.ctrl_url &&
-		 attr->override_attr.data_url))) {
+	if (attr && (attr->override_attr->path_url ||
+		(attr->override_attr->ctrl_url &&
+		 attr->override_attr->data_url))) {
 		ret = attr->raw_override_url;
 	}
 
@@ -233,12 +236,19 @@ int lttng_load_session_attr_set_override_ctrl_url(
 		goto end;
 	}
 
-	if (attr->override_attr.path_url) {
+	if (!attr->override_attr) {
+		attr->override_attr = zmalloc(
+			sizeof(struct config_load_session_override_attr));
+		if (!attr->override_attr) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	if (attr->override_attr->path_url) {
 		/*
-		 * FIXME: return a more meaningful error.
-		 * Setting a ctrl override after a path override make no
-		 * sense.
-		 * */
+		 * Setting a ctrl override after a path override makes no sense.
+		 */
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -279,11 +289,11 @@ int lttng_load_session_attr_set_override_ctrl_url(
 	}
 
 	/* Squash old value if any */
-	free(attr->override_attr.ctrl_url);
+	free(attr->override_attr->ctrl_url);
 	free(attr->raw_override_ctrl_url);
 
 	/* Populate the object */
-	attr->override_attr.ctrl_url = url_str;
+	attr->override_attr->ctrl_url = url_str;
 	attr->raw_override_ctrl_url = raw_str;
 
 	/* Ownership passed to attr. */
@@ -311,7 +321,19 @@ int lttng_load_session_attr_set_override_data_url(
 		goto end;
 	}
 
-	if (attr->override_attr.path_url) {
+	if (!attr->override_attr) {
+		attr->override_attr = zmalloc(
+			sizeof(struct config_load_session_override_attr));
+		if (!attr->override_attr) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	if (attr->override_attr->path_url) {
+		/*
+		 * Setting a data override after a path override makes no sense.
+		 */
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -351,11 +373,11 @@ int lttng_load_session_attr_set_override_data_url(
 	}
 
 	/* Squash old value if any */
-	free(attr->override_attr.data_url);
+	free(attr->override_attr->data_url);
 	free(attr->raw_override_data_url);
 
 	/* Populate the object */
-	attr->override_attr.data_url = url_str;
+	attr->override_attr->data_url = url_str;
 	attr->raw_override_data_url = raw_str;
 
 	/* Ownership passed to attr. */
@@ -386,6 +408,15 @@ int lttng_load_session_attr_set_override_url(
 	if (!attr || !url || strlen(url) >= PATH_MAX) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
+	}
+
+	if (!attr->override_attr) {
+		attr->override_attr = zmalloc(
+			sizeof(struct config_load_session_override_attr));
+		if (!attr->override_attr) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 	}
 
 	/*
@@ -475,9 +506,9 @@ int lttng_load_session_attr_set_override_url(
 
 	reset_load_session_attr_urls(attr);
 
-	attr->override_attr.path_url = path_str;
-	attr->override_attr.ctrl_url = ctrl_str;
-	attr->override_attr.data_url = data_str;
+	attr->override_attr->path_url = path_str;
+	attr->override_attr->ctrl_url = ctrl_str;
+	attr->override_attr->data_url = data_str;
 
 	attr->raw_override_url = raw_url_str;
 	attr->raw_override_path_url = raw_path_str;
@@ -519,7 +550,8 @@ int lttng_load_session(struct lttng_load_session_attr *attr)
 	session_name = attr->session_name[0] != '\0' ?
 			attr->session_name : NULL;
 
-	ret = config_load_session(url, session_name, attr->overwrite, 0);
+	ret = config_load_session(url, session_name, attr->overwrite, 0,
+			attr->override_attr);
 
 end:
 	return ret;
