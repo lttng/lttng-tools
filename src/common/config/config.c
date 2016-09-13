@@ -2750,7 +2750,7 @@ end:
 		}
 	}
 
-	if (session_found) {
+	if (session_found && !ret) {
 		ret = 0;
 	}
 
