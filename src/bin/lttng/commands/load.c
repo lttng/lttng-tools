@@ -30,6 +30,7 @@
 #include "../command.h"
 
 static char *opt_input_path;
+static char *opt_override_url;
 static int opt_force;
 static int opt_load_all;
 
@@ -50,6 +51,7 @@ static struct poptOption load_opts[] = {
 	{"all",         'a',  POPT_ARG_NONE, 0, OPT_ALL, 0, 0},
 	{"input-path",  'i',  POPT_ARG_STRING, &opt_input_path, 0, 0, 0},
 	{"force",       'f',  POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
+	{"override-url",'U',  POPT_ARG_STRING, &opt_override_url, 0, 0, 0},
 	{"list-options",  0,  POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -246,6 +248,16 @@ int cmd_load(int argc, const char **argv)
 		goto end;
 	}
 
+	/* Set the overrides attributes if any */
+	if (opt_override_url) {
+		ret = lttng_load_session_attr_set_override_url(session_attr,
+				opt_override_url);
+		if (ret) {
+			ERR("Url override is invalid");
+			goto end;
+		}
+	}
+
 	ret = lttng_load_session(session_attr);
 	if (ret) {
 		ERR("%s", lttng_strerror(ret));
@@ -262,6 +274,10 @@ int cmd_load(int argc, const char **argv)
 			MSG("Session %s has been loaded successfully", session_name);
 		} else {
 			MSG("Session has been loaded successfully");
+		}
+
+		if (opt_override_url) {
+			MSG("Session output url overridden with %s", opt_override_url);
 		}
 		success = 1;
 		ret = CMD_SUCCESS;

@@ -10,7 +10,8 @@ lttng-load - Load LTTng tracing session configurations
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH']
+      [option:--override-url='URL]' ['SESSION']
 
 
 DESCRIPTION
@@ -54,6 +55,14 @@ If the input path is a *file*, then:
 * If 'SESSION' is not specified, the option:--all option is implicit:
   all the tracing session configurations found in this file are loaded.
 
+Aspects of the loaded configurations can be overridden at load time.
+
+option:--override-url::
+    Provides the equivalent of the option:--set-url option
+    of the (1)lttng-create command. The validity of the url override is
+    dependant on the type of session(s) to be loaded. Refer to (1)lttng-create for
+    the accepted URL format.
+
 By default, existing tracing sessions are not overwritten when loading:
 the command fails. The option:--force option can be used to allow this.
 
@@ -72,6 +81,9 @@ option:-i, option:--input-path='PATH'::
     or a file, instead of loading them from the default search
     directories.
 
+option:-U, option:--override-url='URL'::
+    Load tracing session configurations and apply an url override
+    while loading. Applies to all sessions loaded.
 
 include::common-cmd-help-options.txt[]
 
