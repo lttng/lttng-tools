@@ -1,8 +1,5 @@
-noinst_SCRIPTS = test_save test_load
-EXTRA_DIST = $(noinst_SCRIPTS) load-42.lttng load-42-complex.lttng \
-	load-42-trackers.lttng
-
-SUBDIRS = configuration
+EXTRA_DIST = load-42-stream.lttng load-42-live.lttng \
+	load-42-snapshot.lttng
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

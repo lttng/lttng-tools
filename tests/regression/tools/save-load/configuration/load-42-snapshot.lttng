@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sessions>
+	<session>
+		<name>load-42-snapshot</name>
+		<started>false</started>
+		<attributes>
+			<snapshot_mode>true</snapshot_mode>
+		</attributes>
+		<output>
+			<snapshot_outputs>
+				<output>
+					<name>snapshot-1</name>
+					<max_size>0</max_size>
+					<consumer_output>
+						<enabled>true</enabled>
+						<destination>
+							<net_output>
+								<control_uri>tcp4://127.0.0.1:5342/</control_uri>
+								<data_uri>tcp4://127.0.0.1:5343/</data_uri>
+							</net_output>
+						</destination>
+					</consumer_output>
+				</output>
+			</snapshot_outputs>
+		</output>
+	</session>
+</sessions>

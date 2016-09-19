@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sessions>
+	<session>
+		<name>load-42-live</name>
+		<started>false</started>
+		<attributes>
+			<live_timer_interval>1000000</live_timer_interval>
+		</attributes>
+		<output>
+			<consumer_output>
+				<enabled>true</enabled>
+				<destination>
+					<net_output>
+						<control_uri>tcp4://127.0.0.1:5342/</control_uri>
+						<data_uri>tcp4://127.0.0.1:5343/</data_uri>
+					</net_output>
+				</destination>
+			</consumer_output>
+		</output>
+	</session>
+</sessions>

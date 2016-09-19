@@ -992,6 +992,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/live/Makefile
 	tests/regression/tools/exclusion/Makefile
 	tests/regression/tools/save-load/Makefile
+	tests/regression/tools/save-load/configuration/Makefile
 	tests/regression/tools/mi/Makefile
 	tests/regression/tools/wildcard/Makefile
 	tests/regression/tools/crash/Makefile

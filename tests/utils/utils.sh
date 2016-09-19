@@ -1139,10 +1139,27 @@ function lttng_save()
 
 function lttng_load()
 {
-	local opts=$1
+	local expected_to_fail=$1
+	local opts=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN load $opts 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
-	ok $? "Load command with opts: $opts"
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Load command failed as expected with opts: $opts"
+	else
+		ok $ret "Load command with opts: $opts"
+	fi
+}
+
+function lttng_load_ok()
+{
+	lttng_load 0 "$@"
+}
+
+function lttng_load_fail()
+{
+	lttng_load 1 "$@"
 }
 
 function lttng_track()
