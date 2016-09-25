@@ -389,14 +389,6 @@ static int parse_args(int argc, char **argv)
 		goto error;
 	}
 
-	/* For Mathieu Desnoyers a.k.a. Dr. Tracing */
-	user = getenv("USER");
-	if (user != NULL && ((strncmp(progname, "drtrace", 7) == 0 ||
-					strncmp("compudj", user, 7) == 0))) {
-		MSG("%c[%d;%dmWelcome back Dr Tracing!%c[%dm\n", 27,1,33,27,0);
-	}
-	/* Thanks Mathieu */
-
 	/*
 	 * Handle leftovers which is a first level command with the trailing
 	 * options.

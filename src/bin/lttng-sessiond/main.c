@@ -760,12 +760,6 @@ static void sessiond_cleanup_options(void)
 	free(kmod_extra_probes_list);
 
 	run_as_destroy_worker();
-
-	/* <fun> */
-	DBG("%c[%d;%dm*** assert failed :-) *** ==> %c[%dm%c[%d;%dm"
-			"Matthew, BEET driven development works!%c[%dm",
-			27, 1, 31, 27, 0, 27, 1, 33, 27, 0);
-	/* </fun> */
 }
 
 /*
