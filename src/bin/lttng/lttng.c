@@ -300,7 +300,6 @@ static void show_basic_help(void)
 static int parse_args(int argc, char **argv)
 {
 	int opt, ret;
-	char *user;
 
 	if (lttng_is_setuid_setgid()) {
 		ERR("'%s' is not allowed to be executed as a setuid/setgid binary for security reasons. Aborting.", argv[0]);
