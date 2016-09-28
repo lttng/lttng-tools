@@ -32,6 +32,10 @@ typedef int clockid_t;
 #include <mach/mach.h>
 #include <mach/clock.h>
 
+#undef NSEC_PER_SEC
+#undef NSEC_PER_MSEC
+#undef NSEC_PER_USEC
+
 #define CLOCK_REALTIME CALENDAR_CLOCK
 #define CLOCK_MONOTONIC SYSTEM_CLOCK
 

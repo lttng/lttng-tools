@@ -17,13 +17,11 @@
 
 #include <stdint.h>
 #include <common/compat/time.h>
+#include <common/time.h>
 #include <assert.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-
-#define NSEC_PER_SEC 1000000000ULL
-#define NSEC_PER_USEC 1000ULL
 
 static inline
 int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)

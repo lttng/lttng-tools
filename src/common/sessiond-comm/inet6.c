@@ -30,11 +30,10 @@
 #include <poll.h>
 
 #include <common/common.h>
+#include <common/time.h>
 
 #include "inet6.h"
 
-#define MSEC_PER_SEC	1000
-#define NSEC_PER_MSEC	1000000
 #define RECONNECT_DELAY	200	/* ms */
 
 /*

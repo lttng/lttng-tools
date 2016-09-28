@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <common/common.h>
+#include <common/time.h>
 
 #include "ust-registry.h"
 #include "ust-clock.h"
@@ -37,7 +38,6 @@
 #define max_t(type, a, b)	((type) ((a) > (b) ? (a) : (b)))
 #endif
 
-#define NSEC_PER_SEC			1000000000ULL
 #define NR_CLOCK_OFFSET_SAMPLES		10
 
 struct offset_sample {
