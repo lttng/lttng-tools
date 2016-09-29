@@ -47,13 +47,13 @@ start_session(session_info)
 test_env = os.environ.copy()
 test_env["LTTNG_UST_REGISTER_TIMEOUT"] = "-1"
 
-exit_fast_process = subprocess.Popen(test_path + "exit-fast", stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env)
+exit_fast_process = subprocess.Popen(test_path + "exit-fast", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=test_env)
 exit_fast_process.wait()
 
 print_test_result(exit_fast_process.returncode == 0, current_test, "Test application exited normally")
 current_test += 1
 
-exit_fast_process = subprocess.Popen([test_path + "exit-fast", "suicide"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=test_env)
+exit_fast_process = subprocess.Popen([test_path + "exit-fast", "suicide"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=test_env)
 exit_fast_process.wait()
 
 stop_session(session_info)
