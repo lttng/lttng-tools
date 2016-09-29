@@ -49,7 +49,7 @@ test_env = os.environ.copy()
 test_env["LD_PRELOAD"] = test_env.get("LD_PRELOAD", "") + ":liblttng-ust-dl.so"
 test_env["LD_LIBRARY_PATH"] = test_env.get("LD_LIBRARY_PATH", "") + ":" + test_path
 test_process = subprocess.Popen(test_path + "prog",
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                 env=test_env)
 test_process.wait()
 
