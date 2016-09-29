@@ -110,7 +110,7 @@ if DYNAMIC_TEST_ENABLED:
     start_session(session_info)
 
     # Dry run, no events should be logged
-    demo_process = subprocess.Popen(test_path + "demo", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    demo_process = subprocess.Popen(test_path + "demo", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     demo_process.wait()
     stop_session(session_info)
 
@@ -129,7 +129,7 @@ for executable in test_executables:
     enable_ust_tracepoint_event(session_info, "ust_tests_demo*")
     start_session(session_info)
 
-    demo_process = subprocess.Popen(executable, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    demo_process = subprocess.Popen(executable, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     demo_process.wait()
     stop_session(session_info)
 

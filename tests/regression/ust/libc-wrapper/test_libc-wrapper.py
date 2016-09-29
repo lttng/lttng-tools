@@ -42,7 +42,7 @@ session_info = create_session()
 enable_ust_tracepoint_event(session_info, "lttng_ust_libc*")
 start_session(session_info)
 
-malloc_process = subprocess.Popen(test_path + "prog", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+malloc_process = subprocess.Popen(test_path + "prog", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 malloc_process.wait()
 
 print_test_result(malloc_process.returncode == 0, current_test, "Test application exited normally")
