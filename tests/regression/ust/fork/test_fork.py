@@ -43,8 +43,6 @@ enable_ust_tracepoint_event(session_info, "ust_tests_fork*")
 start_session(session_info)
 
 fork_process = subprocess.Popen([test_path + "fork", test_path + "fork2"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-fork_process.wait()
-
 parent_pid = -1
 child_pid = -1
 for line in fork_process.stdout:
@@ -55,6 +53,8 @@ for line in fork_process.stdout:
     match = re.search(r"parent_pid (\d+)", line)
     if match:
         parent_pid = match.group(1)
+
+fork_process.wait()
 
 print_test_result(fork_process.returncode == 0, current_test, "Fork test application exited normally")
 current_test += 1
