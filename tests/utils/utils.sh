@@ -35,10 +35,12 @@ KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
 KERNEL_PATCHLEVEL_VERSION=27
 
-# We set the default UST register timeout to "wait forever", so that
-# basic tests don't have to worry about hitting timeouts on busy
-# systems. Specialized tests should test those corner-cases.
+# We set the default UST register timeout and network and app socket timeout to
+# "wait forever", so that basic tests don't have to worry about hitting
+# timeouts on busy systems. Specialized tests should test those corner-cases.
 export LTTNG_UST_REGISTER_TIMEOUT=-1
+export LTTNG_NETWORK_SOCKET_TIMEOUT=-1
+export LTTNG_APP_SOCKET_TIMEOUT=-1
 
 # We set the default lttng-sessiond path to /bin/true to prevent the spawning
 # of a daemonized sessiond. This is necessary since 'lttng create' will spawn
