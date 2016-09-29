@@ -369,6 +369,8 @@ PKG_CHECK_MODULES([UUID], [uuid],
 AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$link_with_libuuid" = "xyes"])
 AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$link_with_libc_uuid" = "xyes"])
 
+AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
+
 # URCU library version needed or newer
 m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.8.0 is needed])
 

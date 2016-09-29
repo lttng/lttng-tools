@@ -26,8 +26,8 @@
 #include <time.h>
 
 #ifdef __APPLE__
+
 typedef uint64_t timer_t;
-typedef int clockid_t;
 
 #include <mach/mach.h>
 #include <mach/clock.h>
@@ -36,6 +36,12 @@ typedef int clockid_t;
 #undef NSEC_PER_MSEC
 #undef NSEC_PER_USEC
 
+#endif /* __APPLE__ */
+
+/* macOS/OS X 10.12 (Sierra) and up provide clock_gettime() */
+#if defined(__APPLE__) && !defined(LTTNG_HAVE_CLOCK_GETTIME)
+
+typedef int clockid_t;
 #define CLOCK_REALTIME CALENDAR_CLOCK
 #define CLOCK_MONOTONIC SYSTEM_CLOCK
 
@@ -69,7 +75,7 @@ end:
 	return ret;
 }
 
-#else /* __APPLE__ */
+#else /* __APPLE__ && !LTTNG_HAVE_CLOCK_GETTIME */
 
 static inline
 int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
@@ -77,6 +83,6 @@ int lttng_clock_gettime(clockid_t clk_id, struct timespec *tp)
 	return clock_gettime(clk_id, tp);
 }
 
-#endif /* __APPLE__ */
+#endif /* __APPLE__ && !LTTNG_HAVE_CLOCK_GETTIME */
 
 #endif /* _COMPAT_TIME_H */
