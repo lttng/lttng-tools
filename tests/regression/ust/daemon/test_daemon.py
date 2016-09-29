@@ -43,25 +43,29 @@ session_info = create_session()
 enable_ust_tracepoint_event(session_info, "*")
 start_session(session_info)
 
+
+parent_pid = None
+daemon_pid = None
 daemon_process = subprocess.Popen(test_path + "daemon", stdout=subprocess.PIPE)
+for line in daemon_process.stdout:
+    name, pid = line.decode('utf-8').split()
+    if name == "child_pid":
+        daemon_pid = int(pid)
+    if name == "parent_pid":
+        parent_pid = int(pid)
+
 daemon_process_return_code = daemon_process.wait()
 
-daemon_process_output = daemon_process.communicate()[0]
-daemon_process_output = daemon_process_output.decode('utf-8').splitlines()
+if parent_pid is None or daemon_pid is None:
+    bail("Unexpected output received from daemon test executable." + str(daemon_process_output))
 
 print_test_result(daemon_process_return_code == 0, current_test, "Successful call to daemon() and normal exit")
 current_test += 1
 
 if daemon_process_return_code != 0:
-    bail("Could not trigger tracepoints successfully. Abondoning test.")
+    bail("Could not trigger tracepoints successfully. Abandoning test.")
 
 stop_session(session_info)
-
-if len(daemon_process_output) != 2:
-    bail("Unexpected output received from daemon test executable." + str(daemon_process_output))
-
-parent_pid = re.search(r"\d+", daemon_process_output[0]).group(0)
-daemon_pid = re.search(r"\d+", daemon_process_output[1]).group(0)
 
 try:
     babeltrace_process = subprocess.Popen(["babeltrace", session_info.trace_path], stdout=subprocess.PIPE)
@@ -83,7 +87,7 @@ for event_line in babeltrace_process.stdout:
         match = re.search(r"(?<=pid = )\d+", event_line)
 
         if match is not None:
-            before_daemon_event_pid = match.group(0)
+            before_daemon_event_pid = int(match.group(0))
 
     if re.search(r"after_daemon", event_line) is not None:
         if after_daemon_event_found:
@@ -92,7 +96,7 @@ for event_line in babeltrace_process.stdout:
         match = re.search(r"(?<=pid = )\d+", event_line)
 
         if match is not None:
-            after_daemon_event_pid = match.group(0)
+            after_daemon_event_pid = int(match.group(0))
 babeltrace_process.wait()
 
 print_test_result(babeltrace_process.returncode == 0, current_test, "Resulting trace is readable")
