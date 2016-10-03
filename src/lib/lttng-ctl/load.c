@@ -98,7 +98,9 @@ const char *lttng_load_session_attr_get_override_ctrl_url(
 		goto end;
 	}
 
-	ret = attr->raw_override_ctrl_url;
+	if (attr->override_attr->ctrl_url) {
+		ret = attr->raw_override_ctrl_url;
+	}
 end:
 	return ret;
 }
@@ -112,7 +114,9 @@ const char *lttng_load_session_attr_get_override_data_url(
 		goto end;
 	}
 
-	ret = attr->raw_override_data_url;
+	if (attr->override_attr->data_url) {
+		ret = attr->raw_override_data_url;
+	}
 end:
 	return ret;
 }
