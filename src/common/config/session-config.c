@@ -2618,6 +2618,21 @@ domain_init_error:
 		goto error;
 	}
 
+	/* Apply overrides */
+	if (overrides) {
+		if (overrides->session_name) {
+			xmlChar *name_override = xmlStrdup(BAD_CAST(overrides->session_name));
+			if (!name_override) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+
+			/* Overrides the session name to the provided name */
+			xmlFree(name);
+			name = name_override;
+		}
+	}
+
 	if (overwrite) {
 		/* Destroy session if it exists */
 		ret = lttng_destroy_session((const char *) name);
