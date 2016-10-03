@@ -95,6 +95,18 @@ const char *lttng_load_session_attr_get_override_data_url(
 	struct lttng_load_session_attr *attr);
 
 /*
+ * Return the configuration override session name attribute.
+ * This attribute indicate a session name override to be applied during
+ * the loading of the configuration(s).
+ *
+ * NULL indicates no session name override will be applied on configuration
+ * load.
+ *
+ */
+const char *lttng_load_session_attr_get_override_session_name(
+	struct lttng_load_session_attr *attr);
+
+/*
  * Load session attribute setter family of functions.
  *
  * For every set* call, 0 is returned on success or else -LTTNG_ERR_INVALID is
@@ -170,6 +182,12 @@ int lttng_load_session_attr_set_override_ctrl_url(
  */
 int lttng_load_session_attr_set_override_data_url(
 	struct lttng_load_session_attr *attr, const char *url);
+
+/*
+ * Set the session name override attribute.
+ */
+int lttng_load_session_attr_set_override_session_name(
+	struct lttng_load_session_attr *attr, const char *session_name);
 
 /*
  * Load session configuration(s).

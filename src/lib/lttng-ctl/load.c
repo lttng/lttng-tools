@@ -47,6 +47,7 @@ void reset_load_session_attr_urls(struct lttng_load_session_attr *attr)
 		free(attr->override_attr->path_url);
 		free(attr->override_attr->ctrl_url);
 		free(attr->override_attr->data_url);
+		free(attr->override_attr->session_name);
 	}
 }
 
@@ -57,6 +58,34 @@ void lttng_load_session_attr_destroy(struct lttng_load_session_attr *attr)
 		free(attr->override_attr);
 		free(attr);
 	}
+}
+
+static int validate_attr(const struct lttng_load_session_attr *attr)
+{
+	int ret;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	if (!attr->override_attr) {
+		goto end;
+	}
+
+	/*
+	 * Refuse override name if the objective is to load multiple session
+	 * since this operation is ambiguous while loading multiple session.
+	 */
+	if (attr->override_attr->session_name
+			&& attr->session_name[0] == '\0') {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+end:
+	ret = 0;
+error:
+	return ret;
 }
 
 const char *lttng_load_session_attr_get_session_name(
@@ -135,6 +164,20 @@ const char *lttng_load_session_attr_get_override_url(
 		 attr->override_attr->data_url))) {
 		ret = attr->raw_override_url;
 	}
+end:
+	return ret;
+}
+
+const char *lttng_load_session_attr_get_override_session_name(
+		struct lttng_load_session_attr *attr)
+{
+	const char *ret = NULL;
+
+	if (!attr || !attr->override_attr) {
+		goto end;
+	}
+
+	ret = attr->override_attr->session_name;
 end:
 	return ret;
 }
@@ -536,6 +579,48 @@ end:
 	return ret;
 }
 
+int lttng_load_session_attr_set_override_session_name(
+	struct lttng_load_session_attr *attr, const char *session_name)
+{
+	int ret = 0;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!attr->override_attr) {
+		attr->override_attr = zmalloc(
+			sizeof(struct config_load_session_override_attr));
+		if (!attr->override_attr) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	if (session_name) {
+		size_t len;
+
+		len = strlen(session_name);
+		if (len >= LTTNG_NAME_MAX) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		attr->override_attr->session_name = lttng_strndup(session_name,
+				len);
+		if (!attr->override_attr->session_name) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	} else {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+end:
+	return ret;
+}
+
 int lttng_load_session(struct lttng_load_session_attr *attr)
 {
 	int ret;
@@ -543,6 +628,11 @@ int lttng_load_session(struct lttng_load_session_attr *attr)
 
 	if (!attr) {
 		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = validate_attr(attr);
+	if (ret) {
 		goto end;
 	}
 
