@@ -94,10 +94,12 @@ const char *lttng_load_session_attr_get_override_ctrl_url(
 {
 	const char *ret = NULL;
 
-	if (attr && attr->override_attr->ctrl_url) {
-		ret = attr->raw_override_ctrl_url;
+	if (!attr || !attr->override_attr) {
+		goto end;
 	}
 
+	ret = attr->raw_override_ctrl_url;
+end:
 	return ret;
 }
 
@@ -106,10 +108,12 @@ const char *lttng_load_session_attr_get_override_data_url(
 {
 	const char *ret = NULL;
 
-	if (attr && attr->override_attr->data_url) {
-		ret = attr->raw_override_data_url;
+	if (!attr || !attr->override_attr) {
+		goto end;
 	}
 
+	ret = attr->raw_override_data_url;
+end:
 	return ret;
 }
 
@@ -118,12 +122,16 @@ const char *lttng_load_session_attr_get_override_url(
 {
 	const char *ret = NULL;
 
-	if (attr && (attr->override_attr->path_url ||
+	if (!attr || !attr->override_attr) {
+		goto end;
+	}
+
+	if ((attr->override_attr->path_url ||
 		(attr->override_attr->ctrl_url &&
 		 attr->override_attr->data_url))) {
 		ret = attr->raw_override_url;
 	}
-
+end:
 	return ret;
 }
 
