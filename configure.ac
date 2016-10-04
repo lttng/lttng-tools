@@ -320,7 +320,9 @@ PKG_CHECK_MODULES([POPT], [popt],
 	]
 )
 
-AM_PATH_XML2(2.7.6, true, AC_MSG_ERROR(No supported version of libxml2 found.))
+PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
+AC_SUBST([XML_CFLAGS])
+AC_SUBST([XML_LIBS])
 
 # Check for libuuid
 PKG_CHECK_MODULES([UUID], [uuid],
