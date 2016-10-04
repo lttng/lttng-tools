@@ -2,12 +2,12 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
 noinst_PROGRAMS = validate_xml extract_xml
 validate_xml_SOURCES = validate_xml.c
-validate_xml_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
-validate_xml_LDADD = $(XML_LIBS)
+validate_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
+validate_xml_LDADD = $(libxml2_LIBS)
 
 extract_xml_SOURCES = extract_xml.c
-extract_xml_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
-extract_xml_LDADD = $(XML_LIBS)
+extract_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
+extract_xml_LDADD = $(libxml2_LIBS)
 
 noinst_SCRIPTS = test_mi
 EXTRA_DIST = test_mi

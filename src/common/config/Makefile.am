@@ -4,8 +4,8 @@ noinst_LTLIBRARIES = libconfig.la
 
 libconfig_la_SOURCES = ini.c ini.h session-config.c session-config.h \
 		config-session-abi.h config-internal.h
-libconfig_la_CPPFLAGS = $(XML_CPPFLAGS) $(AM_CPPFLAGS)
-libconfig_la_LIBADD = $(XML_LIBS)
+libconfig_la_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
+libconfig_la_LIBADD = ${libxml2_LIBS}
 
 xmldir = $(datadir)/xml/lttng
 dist_xml_DATA = session.xsd
