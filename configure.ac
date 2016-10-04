@@ -325,8 +325,6 @@ PKG_CHECK_MODULES([POPT], [popt],
 )
 
 PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
-AC_SUBST([XML_CFLAGS])
-AC_SUBST([XML_LIBS])
 
 # Check for uuid in system libs
 AC_CHECK_FUNCS([uuid_generate],
