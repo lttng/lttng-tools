@@ -2211,10 +2211,12 @@ static void *thread_registration_apps(void *data)
 					 * lttcomm_setsockopt_snd_timeout expect msec as
 					 * parameter.
 					 */
-					(void) lttcomm_setsockopt_rcv_timeout(sock,
-							app_socket_timeout * 1000);
-					(void) lttcomm_setsockopt_snd_timeout(sock,
-							app_socket_timeout * 1000);
+					if (app_socket_timeout >= 0) {
+						(void) lttcomm_setsockopt_rcv_timeout(sock,
+								app_socket_timeout * 1000);
+						(void) lttcomm_setsockopt_snd_timeout(sock,
+								app_socket_timeout * 1000);
+					}
 
 					/*
 					 * Set the CLOEXEC flag. Return code is useless because
