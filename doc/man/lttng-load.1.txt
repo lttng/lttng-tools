@@ -11,7 +11,7 @@ SYNOPSIS
 --------
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH']
-      [option:--override-url='URL]' ['SESSION']
+      [option:--override-url='URL'] ['SESSION']
 
 
 DESCRIPTION
