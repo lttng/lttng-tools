@@ -1085,15 +1085,27 @@ static int get_index_values(struct ctf_packet_index *index, int infd)
 
 	ret = kernctl_get_instance_id(infd, &index->stream_instance_id);
 	if (ret < 0) {
-		PERROR("kernctl_get_instance_id");
-		goto error;
+		if (ret == -ENOTTY) {
+			/* Command not implemented by lttng-modules. */
+			index->stream_instance_id = -1ULL;
+			ret = 0;
+		} else {
+			PERROR("kernctl_get_instance_id");
+			goto error;
+		}
 	}
 	index->stream_instance_id = htobe64(index->stream_instance_id);
 
 	ret = kernctl_get_sequence_number(infd, &index->packet_seq_num);
 	if (ret < 0) {
-		PERROR("kernctl_get_sequence_number");
-		goto error;
+		if (ret == -ENOTTY) {
+			/* Command not implemented by lttng-modules. */
+			index->packet_seq_num = -1ULL;
+			ret = 0;
+		} else {
+			PERROR("kernctl_get_sequence_number");
+			goto error;
+		}
 	}
 	index->packet_seq_num = htobe64(index->packet_seq_num);
 
@@ -1145,8 +1157,14 @@ int update_stream_stats(struct lttng_consumer_stream *stream)
 
 	ret = kernctl_get_sequence_number(stream->wait_fd, &seq);
 	if (ret < 0) {
-		PERROR("kernctl_get_sequence_number");
-		goto end;
+		if (ret == -ENOTTY) {
+			/* Command not implemented by lttng-modules. */
+			seq = -1ULL;
+			ret = 0;
+		} else {
+			PERROR("kernctl_get_sequence_number");
+			goto end;
+		}
 	}
 
 	/*
@@ -1205,6 +1223,14 @@ int metadata_stream_check_version(int infd, struct lttng_consumer_stream *stream
 
 	ret = kernctl_get_metadata_version(infd, &cur_version);
 	if (ret < 0) {
+		if (ret == -ENOTTY) {
+			/*
+			 * LTTng-modules does not implement this
+			 * command.
+			 */
+			ret = 0;
+			goto end;
+		}
 		ERR("Failed to get the metadata version");
 		goto end;
 	}
