@@ -155,6 +155,13 @@ int cmd_load(int argc, const char **argv)
 		}
 	}
 
+	ret = lttng_session_daemon_alive();
+	if (!ret) {
+		ERR("No session daemon is available");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	if (!opt_load_all) {
 		session_name = poptGetArg(pc);
 		if (session_name) {
