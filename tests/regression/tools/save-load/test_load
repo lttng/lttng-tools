@@ -30,7 +30,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=62
+NUM_TESTS=66
 
 source $TESTDIR/utils/utils.sh
 
@@ -302,6 +302,35 @@ function test_override_url_live()
 	rm -rf ${mi_output_file}
 }
 
+function test_override_session_name()
+{
+	diag "Test session name override"
+	local override_name="PinkyAndTheBrain"
+
+	local mi_output_file=$(mktemp)
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+
+	lttng_load_ok "-i ${CURDIR}/${SESSION_NAME}.lttng --override-name=${override_name} ${SESSION_NAME}"
+	${TESTDIR}/../src/bin/lttng/${LTTNG_BIN} --mi XML list "${SESSION_NAME}" &> /dev/null
+	if [ $? -eq 0 ]; then
+		fail "Expected a failure on listing for old session name"
+	fi
+
+	${TESTDIR}/../src/bin/lttng/${LTTNG_BIN} --mi XML list "${override_name}" > $mi_output_file
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:name")
+
+	test "${mi_result}" = "${override_name}"
+	ok $? "Override name successful  [${SESSION_NAME} to ${override_name}]"
+	destroy_lttng_session_ok "${override_name}"
+
+	diag "Test session name override with all (Do not permit)"
+	lttng_load_fail "-i ${CURDIR}/${SESSION_NAME}.lttng --override-name=${override_name}"
+
+	rm -rf ${mi_output_file}
+}
+
 start_lttng_sessiond
 
 TESTS=(
@@ -313,6 +342,7 @@ TESTS=(
 	test_override_url_normal
 	test_override_url_snapshot
 	test_override_url_live
+	test_override_session_name
 )
 
 for fct_test in ${TESTS[@]};
