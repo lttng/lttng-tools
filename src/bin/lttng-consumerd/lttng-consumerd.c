@@ -99,14 +99,6 @@ static void sighandler(int sig)
 		return;
 	}
 
-	/*
-	 * Ignore SIGPIPE because it should not stop the consumer whenever a
-	 * SIGPIPE is caught through a FD operation.
-	 */
-	if (sig == SIGPIPE) {
-		return;
-	}
-
 	if (ctx) {
 		lttng_consumer_should_exit(ctx);
 	}
@@ -127,9 +119,10 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
-	sa.sa_handler = sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
+
+	sa.sa_handler = sighandler;
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
@@ -140,6 +133,7 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
+	sa.sa_handler = SIG_IGN;
 	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
