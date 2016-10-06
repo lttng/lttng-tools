@@ -5325,9 +5325,6 @@ error:
 static void sighandler(int sig)
 {
 	switch (sig) {
-	case SIGPIPE:
-		DBG("SIGPIPE caught");
-		return;
 	case SIGINT:
 		DBG("SIGINT caught");
 		stop_threads();
@@ -5359,9 +5356,10 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
-	sa.sa_handler = sighandler;
 	sa.sa_mask = sigset;
 	sa.sa_flags = 0;
+
+	sa.sa_handler = sighandler;
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
@@ -5372,12 +5370,13 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
+	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
 
-	if ((ret = sigaction(SIGUSR1, &sa, NULL)) < 0) {
+	sa.sa_handler = SIG_IGN;
+	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
 	}
