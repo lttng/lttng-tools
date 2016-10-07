@@ -220,21 +220,6 @@ struct lttng_ust_object_data {
 	} u;
 } LTTNG_PACKED;
 
-enum lttng_ust_calibrate_type {
-	LTTNG_UST_CALIBRATE_TRACEPOINT,
-};
-
-#define LTTNG_UST_CALIBRATE_PADDING1	16
-#define LTTNG_UST_CALIBRATE_PADDING2	(LTTNG_UST_SYM_NAME_LEN + 32)
-struct lttng_ust_calibrate {
-	enum lttng_ust_calibrate_type type;	/* type (input) */
-	char padding[LTTNG_UST_CALIBRATE_PADDING1];
-
-	union {
-		char padding[LTTNG_UST_CALIBRATE_PADDING2];
-	} u;
-} LTTNG_PACKED;
-
 #define FILTER_BYTECODE_MAX_LEN		65536
 #define LTTNG_UST_FILTER_PADDING	32
 struct lttng_ust_filter_bytecode {

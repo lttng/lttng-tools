@@ -219,9 +219,6 @@ man:lttng-untrack(1)::
 
 Miscellaneous
 ~~~~~~~~~~~~~
-man:lttng-calibrate(1)::
-    {cmd_descr_calibrate}.
-
 man:lttng-help(1)::
     {cmd_descr_help}.
 

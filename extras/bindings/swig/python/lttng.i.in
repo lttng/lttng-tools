@@ -135,10 +135,6 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
 };
 
-%rename("CALIBRATE_FUNCTION") LTTNG_CALIBRATE_FUNCTION;
-enum lttng_calibrate_type {
-	LTTNG_CALIBRATE_FUNCTION              = 0,
-};
 
 
 
@@ -335,7 +331,6 @@ enum lttng_calibrate_type {
 %rename("_lttng_enable_channel") lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *chan);
 %rename("_lttng_disable_event") lttng_disable_event(struct lttng_handle *handle, const char *name, const char *channel_name);
 %rename("_lttng_disable_channel") lttng_disable_channel(struct lttng_handle *handle, const char *name);
-%rename("_lttng_calibrate") lttng_calibrate(struct lttng_handle *handle, struct lttng_calibrate *calibrate);
 %rename("channel_set_default_attr") lttng_channel_set_default_attr(struct lttng_domain *domain, struct lttng_channel_attr *attr);
 
 //Redefined functions
@@ -354,7 +349,6 @@ int lttng_enable_channel(struct lttng_handle *handle, struct lttng_channel *chan
 int lttng_disable_event(struct lttng_handle *handle,
 		const char *name, const char *channel_name);
 int lttng_disable_channel(struct lttng_handle *handle, const char *name);
-int lttng_calibrate(struct lttng_handle *handle, struct lttng_calibrate *calibrate);
 int lttng_register_consumer(struct lttng_handle *handle, const char *socket_path);
 int lttng_list_sessions(struct lttng_session **sessions);
 int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
@@ -696,20 +690,6 @@ def disable_channel(handle, name):
 		return _lttng_disable_channel(handle._h, name)
 	except AttributeError:
 		raise TypeError("in method 'disable_channel', argument 1 must be a Handle instance")
-
-
-def calibrate(handle, calibrate):
-	"""
-	calibrate(Handle handle, Calibrate calibrate) -> int
-
-	Quantify LTTng overhead.
-	Returns size of returned session payload data or a negative error code.
-	"""
-
-	try:
-		return _lttng_calibrate(handle._h, calibrate)
-	except AttributeError:
-		raise TypeError("in method 'calibrate', argument 1 must be a Handle instance")
 %}
 
 
@@ -776,7 +756,6 @@ class Handle:
 %rename("Domain") lttng_domain;
 %rename("EventContext") lttng_event_context;
 %rename("Event") lttng_event;
-%rename("Calibrate") lttng_calibrate;
 %rename("ChannelAttr") lttng_channel_attr;
 %rename("Channel") lttng_channel;
 %rename("Session") lttng_session;
@@ -949,26 +928,6 @@ struct lttng_event {
 				"enabled(%s), pid(%i)",
 				$self->name, evtype, logtype, $self->loglevel,
 				$self->enabled ? "True" : "False", $self->pid);
-			return &temp[0];
-		}
-	}
-};
-
-struct lttng_calibrate {
-	enum lttng_calibrate_type type;
-	char padding[LTTNG_CALIBRATE_PADDING1];
-
-	%extend {
-		char *__repr__() {
-			static char temp[256];
-			switch ( $self->type ) {
-			case 0:
-				sprintf(temp, "lttng.Calibrate; type(CALIBRATE_FUNCTION)");
-				break;
-			default:
-				sprintf(temp, "lttng.Calibrate; type(%i)", $self->type);
-				break;
-			}
 			return &temp[0];
 		}
 	}

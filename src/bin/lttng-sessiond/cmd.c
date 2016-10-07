@@ -2749,64 +2749,6 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe)
 }
 
 /*
- * Command LTTNG_CALIBRATE processed by the client thread.
- */
-int cmd_calibrate(enum lttng_domain_type domain,
-		struct lttng_calibrate *calibrate)
-{
-	int ret;
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct lttng_kernel_calibrate kcalibrate;
-
-		switch (calibrate->type) {
-		case LTTNG_CALIBRATE_FUNCTION:
-		default:
-			/* Default and only possible calibrate option. */
-			kcalibrate.type = LTTNG_KERNEL_CALIBRATE_KRETPROBE;
-			break;
-		}
-
-		ret = kernel_calibrate(kernel_tracer_fd, &kcalibrate);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct lttng_ust_calibrate ucalibrate;
-
-		switch (calibrate->type) {
-		case LTTNG_CALIBRATE_FUNCTION:
-		default:
-			/* Default and only possible calibrate option. */
-			ucalibrate.type = LTTNG_UST_CALIBRATE_TRACEPOINT;
-			break;
-		}
-
-		ret = ust_app_calibrate_glb(&ucalibrate);
-		if (ret < 0) {
-			ret = LTTNG_ERR_UST_CALIBRATE_FAIL;
-			goto error;
-		}
-		break;
-	}
-	default:
-		ret = LTTNG_ERR_UND;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	return ret;
-}
-
-/*
  * Command LTTNG_REGISTER_CONSUMER processed by the client thread.
  */
 int cmd_register_consumer(struct ltt_session *session,
