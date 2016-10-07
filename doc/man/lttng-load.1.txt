@@ -11,7 +11,7 @@ SYNOPSIS
 --------
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *load* [option:--force] [option:--input-path='PATH']
-      [option:--override-url='URL'] ['SESSION']
+      [option:--override-url='URL'] [option:--override-name='NAME'] ['SESSION']
 
 
 DESCRIPTION
@@ -62,6 +62,10 @@ option:--override-url::
     of the (1)lttng-create command. The validity of the url override is
     dependant on the type of session(s) to be loaded. Refer to (1)lttng-create for
     the accepted URL format.
+
+option:--override-name::
+    Set the session name to NAME. This option is invalid in combination with
+    the --all option.
 
 By default, existing tracing sessions are not overwritten when loading:
 the command fails. The option:--force option can be used to allow this.
