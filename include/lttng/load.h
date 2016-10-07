@@ -70,8 +70,6 @@ int lttng_load_session_attr_get_overwrite(
  * configuration.
  *
  * NULL indicates no override will be applied on configuration load.
- *
- * Caller is responsible for freeing the return value.
  */
 const char *lttng_load_session_attr_get_override_url(
 	struct lttng_load_session_attr *attr);
@@ -82,8 +80,6 @@ const char *lttng_load_session_attr_get_override_url(
  * configuration(s).
  *
  * NULL indicates no control URL override will be applied on configuration load.
- *
- * Caller is responsible for freeing the return value.
  */
 const char *lttng_load_session_attr_get_override_ctrl_url(
 	struct lttng_load_session_attr *attr);
@@ -94,8 +90,6 @@ const char *lttng_load_session_attr_get_override_ctrl_url(
  * configuration(s).
  *
  * NULL indicates no data URL override will be applied on configuration load.
- *
- * Caller is responsible for freeing the return value.
  */
 const char *lttng_load_session_attr_get_override_data_url(
 	struct lttng_load_session_attr *attr);
