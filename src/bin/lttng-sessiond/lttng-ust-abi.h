@@ -47,6 +47,8 @@
 #define LTTNG_UST_ABI_MAJOR_VERSION		7
 #define LTTNG_UST_ABI_MINOR_VERSION		1
 
+struct lttng_ust_calibrate;
+
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT		= 0,
 	LTTNG_UST_PROBE			= 1,
