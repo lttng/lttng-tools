@@ -1,3 +1,30 @@
+2016-10-07 lttng-tools 2.8.2 (National Frappé Day)
+	* Fix: report truncation on snprintf
+	* Fix: check for a session daemon before running load command
+	* Fix: ignore SIGPIPE
+	* Fix: use ssize_type for the return value of uri_parse_str_urls
+	* Docs: grammar fixes in load.h
+	* Fix: wrong api comments for load.h
+	* Fix: do not overwrite ret if already set and session found
+	* Fix: handle backward compatibility with lttng-modules 2.7
+	* Clean-up: remove unnecessary autoconf variable substitution
+	* Fix: honor negative (unlimited) app socket timeout
+	* Build: Replace use of deprecated AM_PATH_XML2
+	* Tests: tap.sh spams tests' output when no plan is set
+	* Fix: location of various standard headers
+	* Fix: missing include ctype.h for isdigit()
+	* Fix: error.h -> common/error.h
+	* Test fix: set app and network socket timeouts to unlimited
+	* Test fix: test_fork can hang while waiting for child pids
+	* Test fix: test_daemon can hang while waiting for child pids
+	* Test fix: redirect python test subprocess output to /dev/null
+	* Fix: pass a valid length to accept() on unix domain sockets
+	* Fix: RCU lock imbalance on error in cmd_snapshot_list_outputs()
+	* Use -M parameter instead of --manpath when invoking man(1)
+	* OOT Build fix: reference the source directory's Python test app
+	* Fix: pass NULL to config_load_session instead of an empty string
+	* Fix: Mark ASCIIDOC_ATTRS_CONF as a dependency of man page targets
+
 2016-07-05 lttng-tools 2.8.1 (NASA's Juno spacecraft enters orbit of Jupiter)
 	* Tests: eliminate process timeouts from Python tests
 	* Fix: English syntax errors in 'lttng status'
