@@ -86,7 +86,7 @@ const char *lttng_load_session_attr_get_override_ctrl_url(
 
 /*
  * Return the configuration override data URL attribute. This attribute
- * indicate a data URL override to be applied during the loading of the
+ * indicates a data URL override to be applied during the loading of the
  * configuration(s).
  *
  * NULL indicates no data URL override will be applied on configuration load.
