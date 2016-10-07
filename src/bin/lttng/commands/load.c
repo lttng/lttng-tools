@@ -31,6 +31,7 @@
 
 static char *opt_input_path;
 static char *opt_override_url;
+static char *opt_override_session_name;
 static int opt_force;
 static int opt_load_all;
 
@@ -52,6 +53,7 @@ static struct poptOption load_opts[] = {
 	{"input-path",  'i',  POPT_ARG_STRING, &opt_input_path, 0, 0, 0},
 	{"force",       'f',  POPT_ARG_NONE, 0, OPT_FORCE, 0, 0},
 	{"override-url",'U',  POPT_ARG_STRING, &opt_override_url, 0, 0, 0},
+	{"override-name",'S',  POPT_ARG_STRING, &opt_override_session_name, 0, 0, 0},
 	{"list-options",  0,  POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{0, 0, 0, 0, 0, 0, 0}
 };
@@ -254,6 +256,18 @@ int cmd_load(int argc, const char **argv)
 				opt_override_url);
 		if (ret) {
 			ERR("Url override is invalid");
+			goto end;
+		}
+	}
+
+	if (opt_override_session_name) {
+		if (opt_load_all) {
+			ERR("Options --all and --override-name can not be used simultaneously");
+		}
+		ret = lttng_load_session_attr_set_override_session_name(session_attr,
+				opt_override_session_name);
+		if (ret) {
+			ERR("Session name override set failed");
 			goto end;
 		}
 	}
