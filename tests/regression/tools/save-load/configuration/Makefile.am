@@ -1,5 +1,4 @@
-EXTRA_DIST = load-42-stream.lttng load-42-live.lttng \
-	load-42-snapshot.lttng
+EXTRA_DIST = load-42-live.lttng load-42-snapshot.lttng
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
