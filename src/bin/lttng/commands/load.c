@@ -286,7 +286,8 @@ int cmd_load(int argc, const char **argv)
 		} else if (session_name) {
 			ret = config_init((char *) session_name);
 			if (ret < 0) {
-				ret = CMD_WARNING;
+				WARN("Could not set %s as the default session",
+						session_name);
 			}
 			MSG("Session %s has been loaded successfully", session_name);
 		} else {
