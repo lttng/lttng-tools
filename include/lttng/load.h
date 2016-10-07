@@ -138,6 +138,20 @@ int lttng_load_session_attr_set_overwrite(
  * */
 
 /*
+ * Set the url override attribute.
+ *
+ * Supported format:
+ *    file://TRACEPATH
+ *    NETPROTO://(HOST | IPADDR)[:CTRLPORT[:DATAPORT]][/TRACEPATH]
+ *
+ *     Where NETPROTO is one of {tcp, tcp6}
+ *
+ * See lttng-create(1) for more detail.
+ */
+int lttng_load_session_attr_set_override_url(
+	struct lttng_load_session_attr *attr, const char *url);
+
+/*
  * Set the control url override attribute.
  *
  * Supported format:
@@ -161,20 +175,6 @@ int lttng_load_session_attr_set_override_ctrl_url(
  * See lttng-create(1) for more detail.
  */
 int lttng_load_session_attr_set_override_data_url(
-	struct lttng_load_session_attr *attr, const char *url);
-
-/*
- * Set the url override attribute.
- *
- * Supported format:
- *    file://TRACEPATH
- *    NETPROTO://(HOST | IPADDR)[:CTRLPORT[:DATAPORT]][/TRACEPATH]
- *
- *     Where NETPROTO is one of {tcp, tcp6}
- *
- * See lttng-create(1) for more detail.
- */
-int lttng_load_session_attr_set_override_url(
 	struct lttng_load_session_attr *attr, const char *url);
 
 /*
