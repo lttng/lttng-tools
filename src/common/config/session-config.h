@@ -34,6 +34,7 @@ struct config_load_session_override_attr {
 	char *path_url;
 	char *ctrl_url;
 	char *data_url;
+	char *session_name;
 };
 
 /* Instance of a configuration writer. */
