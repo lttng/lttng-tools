@@ -89,18 +89,6 @@ int lttng_load_session_attr_get_overwrite(
 	return attr ? attr->overwrite : -LTTNG_ERR_INVALID;
 }
 
-const char *lttng_load_session_attr_get_override_path_url(
-	struct lttng_load_session_attr *attr)
-{
-	const char *ret = NULL;
-
-	if (attr && attr->override_attr->path_url) {
-		ret = attr->raw_override_path_url;
-	}
-
-	return ret;
-}
-
 const char *lttng_load_session_attr_get_override_ctrl_url(
 	struct lttng_load_session_attr *attr)
 {
