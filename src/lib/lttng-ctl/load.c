@@ -504,11 +504,7 @@ end:
 	free(uri);
 	return ret;
 }
-/*
- * The lttng-ctl API does not expose all the information needed to load the
- * session configurations. Thus, we must send a load command to the session
- * daemon which will, in turn, load its current session configuration.
- */
+
 int lttng_load_session(struct lttng_load_session_attr *attr)
 {
 	int ret;
