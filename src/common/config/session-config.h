@@ -85,8 +85,8 @@ int config_parse_value(const char *value);
 /*
  * Create an instance of a configuration writer.
  *
- * fd_output File to which the XML content must be written. The file will be
- * closed once the config_writer has been destroyed.
+ * fd_output File to which the XML content must be written. fd_output is
+ * owned by the caller.
  *
  * indent If other than 0 the XML will be pretty printed
  * with indentation and newline.

@@ -2053,6 +2053,13 @@ end:
 		}
 	}
 
+	if (file_opened) {
+		ret = close(fd);
+		if (ret) {
+			PERROR("Closing XML session configuration");
+		}
+	}
+
 	return ret;
 }
 
