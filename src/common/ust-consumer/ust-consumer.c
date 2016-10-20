@@ -510,7 +510,7 @@ error_open:
 	}
 	/* Try to rmdir all directories under shm_path root. */
 	if (channel->root_shm_path[0]) {
-		(void) run_as_recursive_rmdir(channel->root_shm_path,
+		(void) run_as_rmdir_recursive(channel->root_shm_path,
 				channel->uid, channel->gid);
 	}
 	free(stream_fds);
@@ -2067,7 +2067,7 @@ void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 	ustctl_destroy_channel(chan->uchan);
 	/* Try to rmdir all directories under shm_path root. */
 	if (chan->root_shm_path[0]) {
-		(void) run_as_recursive_rmdir(chan->root_shm_path,
+		(void) run_as_rmdir_recursive(chan->root_shm_path,
 				chan->uid, chan->gid);
 	}
 	free(chan->stream_fds);
