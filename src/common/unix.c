@@ -41,6 +41,14 @@ int lttcomm_connect_unix_sock(const char *pathname)
 	struct sockaddr_un s_un;
 	int fd, ret, closeret;
 
+	if (strlen(pathname) >= sizeof(s_un.sun_path)) {
+		ERR("unix socket address (\"%s\") is longer than the platform's limit (%zu > %zu).",
+				pathname, strlen(pathname) + 1,
+				sizeof(s_un.sun_path));
+		ret = -ENAMETOOLONG;
+		goto error;
+	}
+
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
 		PERROR("socket");
@@ -111,8 +119,16 @@ LTTNG_HIDDEN
 int lttcomm_create_unix_sock(const char *pathname)
 {
 	struct sockaddr_un s_un;
-	int fd;
+	int fd = -1;
 	int ret = -1;
+
+	if (strlen(pathname) >= sizeof(s_un.sun_path)) {
+		ERR("unix socket address (\"%s\") is longer than the platform's limit (%zu > %zu).",
+				pathname, strlen(pathname) + 1,
+				sizeof(s_un.sun_path));
+		ret = -ENAMETOOLONG;
+		goto error;
+	}
 
 	/* Create server socket */
 	if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
