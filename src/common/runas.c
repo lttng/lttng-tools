@@ -487,10 +487,6 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	return run_as(RUN_AS_MKDIR, &data, uid, gid);
 }
 
-/*
- * Note: open_run_as is currently not working. We'd need to pass the fd
- * opened in the child to the parent.
- */
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
