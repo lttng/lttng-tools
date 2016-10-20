@@ -4374,7 +4374,7 @@ error:
 	}
 
 	lttng_poll_clean(&events);
-
+	stop_threads();
 	rcu_unregister_thread();
 	return NULL;
 }
