@@ -161,10 +161,11 @@ static struct option long_options[] = {
 	{ "output", 1, 0, 'o', },
 	{ "verbose", 0, 0, 'v', },
 	{ "config", 1, 0, 'f' },
+	{ "version", 0, 0, 'V' },
 	{ NULL, 0, 0, 0, },
 };
 
-static const char *config_ignore_options[] = { "help", "config" };
+static const char *config_ignore_options[] = { "help", "config", "version" };
 
 /*
  * Take an option from the getopt output and set it in the right variable to be
@@ -255,6 +256,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 			perror("exec");
 		}
 		exit(EXIT_FAILURE);
+	case 'V':
+		fprintf(stdout, "%s\n", VERSION);
+		exit(EXIT_SUCCESS);
 	case 'o':
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
