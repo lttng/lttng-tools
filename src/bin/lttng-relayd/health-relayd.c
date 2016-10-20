@@ -409,8 +409,9 @@ restart:
 		new_sock = -1;
 	}
 
-exit:
 error:
+	lttng_relay_stop_threads();
+exit:
 	if (err) {
 		ERR("Health error occurred in %s", __func__);
 	}
