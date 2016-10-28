@@ -583,6 +583,7 @@ AC_ARG_ENABLE(
 
 # check for asciidoc and xmlto if we enabled building the man pages
 have_asciidoc_xmlto=no
+warn_prebuilt_man_pages=no
 
 AS_IF([test "x$man_pages_opt" = "xyes"], [
 	AC_PATH_PROG([ASCIIDOC], [asciidoc], [no])
@@ -603,19 +604,7 @@ they will not be installed.
 			# only warn here: since we're in the tarball, the man
 			# pages should already be generated at this point, thus
 			# asciidoc/xmlto are not strictly required
-			AC_MSG_WARN([
-You need asciidoc and xmlto to build the LTTng-tools man pages.
-
-Note that the man pages are already built in this distribution tarball,
-so asciidoc and xmlto are only needed if you intend to modify their
-sources.
-
-Also note that the installed man pages will contain the project's
-default command-line option and environment variable values.
-
-Use --disable-man-pages to completely disable building and installing
-the man pages.
-			])
+			warn_prebuilt_man_pages=yes
 		])
 	], [
 		have_asciidoc_xmlto=yes
@@ -1193,3 +1182,19 @@ AS_IF([test "$CONSUMERD64_LIBDIR" = ""],[
 	path="$CONSUMERD64_LIBDIR"
 ])
 PPRINT_PROP_STRING([64-bit consumer libraries], [$path])
+PPRINT_SET_INDENT(0)
+
+AS_IF([test "x$warn_prebuilt_man_pages" = "xyes" ], [
+	AS_ECHO
+	PPRINT_WARN([You need asciidoc and xmlto to build the LTTng-tools man pages.
+
+Note that the man pages are already built in this distribution tarball,
+therefore asciidoc and xmlto are only needed if you intend to modify
+their sources.
+
+Also note that the installed man pages will contain the project's
+default command-line option and environment variable values.
+
+Use --disable-man-pages to completely disable building and installing
+the man pages.])
+])
