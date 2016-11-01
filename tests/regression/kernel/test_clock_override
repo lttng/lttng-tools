@@ -76,8 +76,8 @@ function extract_clock_metadata_token()
 
 function test_clock_override_metadata()
 {
-	local ctf_metadata_file=$(mktemp -p $TRACE_PATH ctf-metadata.XXXXX)
-	local clock_metadata_file=$(mktemp -p $TRACE_PATH clock-metadata.XXXXX)
+	local ctf_metadata_file=$(mktemp -p $TRACE_PATH ctf-metadata.XXXXXX)
+	local clock_metadata_file=$(mktemp -p $TRACE_PATH clock-metadata.XXXXXX)
 	local result=""
 
 	diag "Clock override plugin metadata test"
