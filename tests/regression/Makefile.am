@@ -39,7 +39,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/clock-override/test_clock_override \
 	ust/test_event_basic \
 	ust/test_event_tracef \
-	ust/test_event_perf
+	ust/test_event_perf \
+	ust/blocking/test_blocking
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING

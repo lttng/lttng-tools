@@ -29,6 +29,7 @@ regression/ust/python-logging/test_python_logging
 regression/ust/getcpu-override/test_getcpu_override
 regression/ust/clock-override/test_clock_override
 regression/ust/rotation-destroy-flush/test_rotation_destroy_flush
+regression/ust/blocking/test_blocking
 regression/ust/test_event_basic
 regression/ust/test_event_tracef
 regression/ust/test_event_perf

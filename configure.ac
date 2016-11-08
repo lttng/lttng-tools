@@ -1023,6 +1023,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/clock-override/Makefile
 	tests/regression/ust/type-declarations/Makefile
 	tests/regression/ust/rotation-destroy-flush/Makefile
+	tests/regression/ust/blocking/Makefile
 	tests/stress/Makefile
 	tests/unit/Makefile
 	tests/unit/ini_config/Makefile
