@@ -21,6 +21,8 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
 NUM_TESTS=8
 
+TESTCMD="/bin/true"
+
 source $TESTDIR/utils/utils.sh
 
 function test_all_event()
@@ -33,6 +35,10 @@ function test_all_event()
 	lttng_enable_kernel_event $SESSION_NAME
 
 	start_lttng_tracing_ok
+
+	# Running a process and waiting for its completion forces the triggering of a
+	# sched_switch event
+	eval ${TESTCMD}
 	stop_lttng_tracing_ok
 
 	validate_trace "sched_switch" $TRACE_PATH
