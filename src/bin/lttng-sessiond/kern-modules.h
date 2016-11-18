@@ -29,6 +29,7 @@
 
 struct kern_modules_param {
 	char *name;
+	bool loaded;
 };
 
 #endif /* _KERN_MODULES_H */
