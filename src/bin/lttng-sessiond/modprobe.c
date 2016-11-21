@@ -342,7 +342,7 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 			}
 		} else {
 			DBG("Modprobe successfully %s", modules[i].name);
-			modules[i].loaded;
+			modules[i].loaded = true;
 		}
 	}
 
