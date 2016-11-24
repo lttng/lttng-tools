@@ -107,6 +107,8 @@ extern const char * const mi_lttng_element_save;
 
 /* Strings related to load command */
 extern const char * const mi_lttng_element_load;
+extern const char * const mi_lttng_element_load_overrides;
+extern const char * const mi_lttng_element_load_override_url;
 
 /* General element of mi_lttng */
 extern const char * const mi_lttng_element_empty;

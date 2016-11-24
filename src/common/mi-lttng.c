@@ -101,6 +101,8 @@ const char * const mi_lttng_element_save = "save";
 
 /* Strings related to load command */
 const char * const mi_lttng_element_load = "load";
+const char * const mi_lttng_element_load_overrides = "overrides";
+const char * const mi_lttng_element_load_override_url = "url";
 
 /* General elements of mi_lttng */
 const char * const mi_lttng_element_empty = "";
