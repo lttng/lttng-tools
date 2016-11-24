@@ -1257,24 +1257,28 @@ int create_snapshot_session(const char *session_name, xmlNodePtr output_node,
 			}
 		}
 
+		control_uri = output.control_uri;
+		data_uri = output.data_uri;
+		path = output.path;
+
 		if (overrides) {
 			if (overrides->path_url) {
-				/* Control/data_uri are null */
 				path = overrides->path_url;
+				/* Control/data_uri are null */
+				control_uri = NULL;
+				data_uri = NULL;
 			} else {
 				if (overrides->ctrl_url) {
-					/* path is null */
 					control_uri = overrides->ctrl_url;
+					/* path is null */
+					path = NULL;
 				}
 				if (overrides->data_url) {
-					/* path is null */
 					data_uri = overrides->data_url;
+					/* path is null */
+					path = NULL;
 				}
 			}
-		} else {
-			control_uri = output.control_uri;
-			data_uri = output.data_uri;
-			path = output.path;
 		}
 
 		snapshot_output = lttng_snapshot_output_create();
@@ -1372,26 +1376,31 @@ int create_session(const char *name,
 		}
 	}
 
+	control_uri = output.control_uri;
+	data_uri = output.data_uri;
+	path = output.path;
+
 	/* Check for override and apply them */
 	if (overrides) {
 		if (overrides->path_url) {
-			/* control/data_uri are null */;
 			path = overrides->path_url;
+			/* control/data_uri are null */;
+			control_uri = NULL;
+			data_uri = NULL;
 		} else {
 			if (overrides->ctrl_url) {
-				/* path is null */
 				control_uri = overrides->ctrl_url;
+				/* path is null */
+				path = NULL;
 			}
 			if (overrides->data_url) {
-				/* path is null */
 				data_uri = overrides->data_url;
+				/* path is null */
+				path = NULL;
 			}
 		}
-	} else {
-		control_uri = output.control_uri;
-		data_uri = output.data_uri;
-		path = output.path;
 	}
+
 
 	if (live_timer_interval != UINT64_MAX && !control_uri && !data_uri) {
 		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
