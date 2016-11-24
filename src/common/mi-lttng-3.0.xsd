@@ -425,6 +425,15 @@ THE SOFTWARE.
 		<xs:all>
 			<xs:element name="session" type="tns:session_type" />
 			<xs:element name="path" type="xs:string" />
+			<xs:element name="overrides" type="tns:overrides_type" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to the override parameters of the load command -->
+	<xs:complexType name="overrides_type">
+		<xs:all>
+			<xs:element name="name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="url" type="xs:string" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
