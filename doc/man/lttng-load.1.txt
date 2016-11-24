@@ -55,17 +55,8 @@ If the input path is a *file*, then:
 * If 'SESSION' is not specified, the option:--all option is implicit:
   all the tracing session configurations found in this file are loaded.
 
-Aspects of the loaded configurations can be overridden at load time.
-
-option:--override-url::
-    Provides the equivalent of the option:--set-url option
-    of the (1)lttng-create command. The validity of the url override is
-    dependant on the type of session(s) to be loaded. Refer to (1)lttng-create for
-    the accepted URL format.
-
-option:--override-name::
-    Set the session name to NAME. This option is invalid in combination with
-    the --all option.
+Aspects of the loaded configurations can be overridden at load time
+using the option:--override-url and option:--override-name options.
 
 By default, existing tracing sessions are not overwritten when loading:
 the command fails. The option:--force option can be used to allow this.
@@ -85,9 +76,16 @@ option:-i, option:--input-path='PATH'::
     or a file, instead of loading them from the default search
     directories.
 
-option:-U, option:--override-url='URL'::
-    Load tracing session configurations and apply an url override
-    while loading. Applies to all sessions loaded.
+option:--override-url::
+    Provides the equivalent of the option:--set-url option
+    of the man:lttng-create(1) command. The validity of the url override is
+    dependent of the type of session(s) to be loaded. Refer to
+    man:lttng-create(1) for the accepted URL format. This option applies
+    to all sessions loaded.
+
+option:--override-name='NAME'::
+    Set the session name to NAME. This option is invalid in combination with
+    the --all option.
 
 include::common-cmd-help-options.txt[]
 
