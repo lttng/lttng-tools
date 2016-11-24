@@ -116,9 +116,33 @@ static int mi_load_print(const char *session_name)
 		}
 	}
 
-	/* Close load element */
-	ret = mi_lttng_writer_close_element(writer);
+	/* Print override elements */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_load_overrides);
+	if (ret) {
+		goto end;
+	}
 
+	/* Session name override element */
+	if (opt_override_session_name) {
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_name, opt_override_session_name);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Session url override element */
+	if (opt_override_url) {
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_load_override_url,
+				opt_override_url);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close override and load element */
+	ret = mi_lttng_close_multi_element(writer, 2);
 end:
 	return ret;
 }
@@ -292,6 +316,11 @@ int cmd_load(int argc, const char **argv)
 			MSG("Session %s has been loaded successfully", session_name);
 		} else {
 			MSG("Session has been loaded successfully");
+		}
+
+		if (opt_override_session_name) {
+			MSG("Session name overridden with %s",
+					opt_override_session_name);
 		}
 
 		if (opt_override_url) {

@@ -85,9 +85,13 @@ option:-i, option:--input-path='PATH'::
     or a file, instead of loading them from the default search
     directories.
 
-option:-U, option:--override-url='URL'::
+option:--override-url='URL'::
     Load tracing session configurations and apply an url override
     while loading. Applies to all sessions loaded.
+
+option:--override-name='NAME'::
+    Set the session name to NAME. This option is invalid in combination with
+    the --all option.
 
 include::common-cmd-help-options.txt[]
 

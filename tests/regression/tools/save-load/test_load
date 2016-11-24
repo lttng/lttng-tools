@@ -30,7 +30,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=66
+NUM_TESTS=67
 
 source $TESTDIR/utils/utils.sh
 
@@ -306,6 +306,7 @@ function test_override_session_name()
 {
 	diag "Test session name override"
 	local override_name="PinkyAndTheBrain"
+	local output_path="/tmp/lttng/load-42-1"
 
 	local mi_output_file=$(mktemp)
 	if [ $? -ne 0 ]; then
@@ -323,6 +324,12 @@ function test_override_session_name()
 
 	test "${mi_result}" = "${override_name}"
 	ok $? "Override name successful  [${SESSION_NAME} to ${override_name}]"
+
+	# Make sure that the name override did not change something else
+	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	test "${mi_result}" = "${output_path}"
+	ok $? "Output path is not affected by name override"
+
 	destroy_lttng_session_ok "${override_name}"
 
 	diag "Test session name override with all (Do not permit)"
@@ -339,10 +346,10 @@ TESTS=(
 	test_all_load
 	test_overwrite
 	test_trackers
+	test_override_session_name
 	test_override_url_normal
 	test_override_url_snapshot
 	test_override_url_live
-	test_override_session_name
 )
 
 for fct_test in ${TESTS[@]};
