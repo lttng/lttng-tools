@@ -318,6 +318,11 @@ int cmd_load(int argc, const char **argv)
 			MSG("Session has been loaded successfully");
 		}
 
+		if (opt_override_session_name) {
+			MSG("Session name overridden with %s",
+					opt_override_session_name);
+		}
+
 		if (opt_override_url) {
 			MSG("Session output url overridden with %s", opt_override_url);
 		}
