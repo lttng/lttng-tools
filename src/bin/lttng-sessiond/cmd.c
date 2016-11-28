@@ -3378,6 +3378,27 @@ end:
 }
 
 static
+int clear_metadata_file(int fd)
+{
+	int ret;
+
+	ret = lseek(fd, 0, SEEK_SET);
+	if (ret < 0) {
+		PERROR("lseek");
+		goto end;
+	}
+
+	ret = ftruncate(fd, 0);
+	if (ret < 0) {
+		PERROR("ftruncate");
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
 int ust_regenerate_metadata(struct ltt_ust_session *usess)
 {
 	int ret = 0;
@@ -3398,6 +3419,15 @@ int ust_regenerate_metadata(struct ltt_ust_session *usess)
 		memset(registry->metadata, 0, registry->metadata_alloc_len);
 		registry->metadata_len = 0;
 		registry->metadata_version++;
+		if (registry->metadata_fd > 0) {
+			/* Clear the metadata file's content. */
+			ret = clear_metadata_file(registry->metadata_fd);
+			if (ret) {
+				pthread_mutex_unlock(&registry->lock);
+				goto end;
+			}
+		}
+
 		ret = ust_metadata_session_statedump(registry, NULL,
 				registry->major, registry->minor);
 		if (ret) {
