@@ -46,13 +46,17 @@ can only be used in the Linux kernel tracing domain, while per-thread
 counters can only be used in the user space tracing domain.
 
 It is also possible to enable PMU counters by raw ID using the
-`perf:cpu:raw:r<N>:<name>` or `perf:thread:raw:r<N>:<name>` format for
-the kernel and user-space respectively. `<N>` is a hexadecimal event
-descriptor which is the same format as used by perf-record(1): a
-concatenation of the `Umask value` and `Event number` provided by the
-processor's manufacturer. The possible values for this field are
-processor-specific. The `<name>` field is used to associate a clearer
-name to the counter.
+`perf:cpu:raw:rN:NAME` (Linux kernel tracing domain) or
+`perf:thread:raw:rN:NAME` (user space tracing domain), with:
+
+`N`::
+    A hexadecimal event descriptor which is the same format as used
+    by perf-record(1): a concatenation of the event number and umask
+    value provided by the processor's manufacturer. The possible values
+    for this field are processor-specific.
+
+`NAME`::
+    Custom name to easily recognize the counter.
 
 Application-specific context fields can be added to a channel using the
 following syntax:
