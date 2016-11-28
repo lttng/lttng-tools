@@ -71,7 +71,7 @@ option:-a, option:--all::
 option:-f, option:--force::
     Overwrite existing tracing sessions when loading.
 
-option:-i, option:--input-path='PATH'::
+option:-i 'PATH', option:--input-path='PATH'::
     Load tracing session configurations from 'PATH', either a directory
     or a file, instead of loading them from the default search
     directories.

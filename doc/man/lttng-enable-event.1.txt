@@ -353,11 +353,11 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-c, option:--channel='CHANNEL'::
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
     Create or enable event rules in the channel named 'CHANNEL' instead
     of the default channel name `channel0`.
 
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Create or enable event rules in the tracing session named 'SESSION'
     instead of the current tracing session.
 
@@ -409,13 +409,13 @@ option:--loglevel-only='LOGLEVEL'::
 
 Filtering and exclusion
 ~~~~~~~~~~~~~~~~~~~~~~~
-option:-x, option:--exclude='EVENT'[,'EVENT']...::
+option:-x 'EVENT'[,'EVENT']..., option:--exclude='EVENT'[,'EVENT']...::
     Exclude events named 'EVENT' from the event rule. This option
     can be used when the command's 'EVENT' argument contains a wildcard
     (`*`) to exclude specific names. Only available with application
     domains.
 
-option:-f, option:--filter='EXPR'::
+option:-f 'EXPR', option:--filter='EXPR'::
     Add filter expression condition to the event rule. Expression 'EXPR'
     must evaluate to true when executed against the dynamic values of
     event fields. See the <<filter-syntax,Filter expression syntax>>

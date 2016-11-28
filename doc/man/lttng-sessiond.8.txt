@@ -154,10 +154,10 @@ option:--agent-tcp-port='PORT'::
     Listen on TCP port 'PORT' for agent application registrations
     (default: {default_agent_tcp_port}).
 
-option:-a, option:--apps-sock='PATH'::
+option:-a 'PATH', option:--apps-sock='PATH'::
     Set application Unix socket path to 'PATH'.
 
-option:-c, option:--client-sock='PATH'::
+option:-c 'PATH', option:--client-sock='PATH'::
     Set client Unix socket path to 'PATH'.
 
 option:--consumerd32-libdir='PATH'::

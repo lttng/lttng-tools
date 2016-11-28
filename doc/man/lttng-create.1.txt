@@ -194,7 +194,7 @@ Output
 option:--no-output::
     In <<local-mode,local mode>>, do not output any trace data.
 
-option:-o, option:--output='PATH'::
+option:-o 'PATH', option:--output='PATH'::
     In <<local-mode,local mode>>, set trace output path to 'PATH'.
 
 option:--shm-path='PATH'::
@@ -206,15 +206,15 @@ URL
 See the <<url-format,URL format>> section above for more information
 about the syntax of the following options' 'URL' argument.
 
-option:-C, option:--ctrl-url='URL'::
+option:-C 'URL', option:--ctrl-url='URL'::
     Set control path URL to 'URL' (must use option:--data-url option
     also).
 
-option:-D, option:--data-url='URL'::
+option:-D 'URL', option:--data-url='URL'::
     Set data path URL to 'URL' (must use option:--ctrl-url option
     also).
 
-option:-U, option:--set-url='URL'::
+option:-U 'URL', option:--set-url='URL'::
     Set URL destination of the trace data to 'URL'. It is persistent for
     the session lifetime. This option sets both data
     (option:--data-url option) and control (option:--ctrl-url option)

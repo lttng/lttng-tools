@@ -98,11 +98,11 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-c, option:--channel='CHANNEL'::
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
     Add context fields to a channel named 'CHANNEL' instead of adding
     them to all the channels.
 
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Add context fields to a channel in the tracing session named 'SESSION'
     instead of the current tracing session.
 
@@ -112,7 +112,7 @@ Context
 option:--list::
     List the available context fields. Use this option alone.
 
-option:-t, option:--type='TYPE'::
+option:-t 'TYPE', option:--type='TYPE'::
     Add context field named 'TYPE'. This option can be repeated as
     many times as needed on the command-line.
 

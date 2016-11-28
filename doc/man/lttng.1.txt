@@ -82,10 +82,10 @@ option:--no-sessiond general option can be set to avoid this.
 
 OPTIONS
 -------
-option:-g, option:--group='GROUP'::
+option:-g 'GROUP', option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
 
-option:-m, option:--mi='TYPE'::
+option:-m 'TYPE', option:--mi='TYPE'::
     Print the command's result using the machine interface type 'TYPE'
     instead of a human-readable output.
 +

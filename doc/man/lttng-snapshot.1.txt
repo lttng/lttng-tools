@@ -106,7 +106,7 @@ include::common-cmd-options-head.txt[]
 
 Target
 ~~~~~~
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Take a snapshot of the sub-buffers of the channels contained in
     the tracing session named 'SESSION' instead of the current
     tracing session.
@@ -114,20 +114,20 @@ option:-s, option:--session='SESSION'::
 
 Snapshot output
 ~~~~~~~~~~~~~~~
-option:-C, option:--ctrl-url='URL'::
+option:-C 'URL', option:--ctrl-url='URL'::
     Set control path URL to 'URL' (must use option:--data-url option
     also).
 
-option:-D, option:--data-url='URL'::
+option:-D 'URL', option:--data-url='URL'::
     Set data path URL to 'URL' (must use option:--ctrl-url option
     also).
 
-option:-m, option:--max-size='SIZE'::
+option:-m 'SIZE', option:--max-size='SIZE'::
     Limit the total size of all the snapshot files written when
     recording a snapshot to 'SIZE' bytes. The `k` (kiB), `M` (MiB),
     and `G` (GiB) suffixes are supported.
 
-option:-n, option:--name='NAME'::
+option:-n 'NAME', option:--name='NAME'::
     Assign the name 'NAME' to the snapshot output.
 
 
