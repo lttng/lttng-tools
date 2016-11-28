@@ -253,7 +253,6 @@ static void show_basic_help(void)
 	puts("  create            " CONFIG_CMD_DESCR_CREATE);
 	puts("  destroy           " CONFIG_CMD_DESCR_DESTROY);
 	puts("  load              " CONFIG_CMD_DESCR_LOAD);
-	puts("  metadata          " CONFIG_CMD_DESCR_METADATA);
 	puts("  regenerate        " CONFIG_CMD_DESCR_REGENERATE);
 	puts("  save              " CONFIG_CMD_DESCR_SAVE);
 	puts("  set-session       " CONFIG_CMD_DESCR_SET_SESSION);

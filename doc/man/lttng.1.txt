@@ -156,9 +156,6 @@ man:lttng-destroy(1)::
 man:lttng-load(1)::
     {cmd_descr_load}.
 
-man:lttng-metadata(1)::
-    {cmd_descr_metadata}.
-
 man:lttng-regenerate(1)::
     {cmd_descr_regenerate}.
 
