@@ -15,8 +15,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-WARNING: This command is **deprecated**; it has been replaced by the *lttng
-regenerate metadata* command (see man:lttng-regenerate(1)).
+WARNING: This command is **deprecated**; it has been replaced by
+`lttng regenerate metadata` (see man:lttng-regenerate(1)).
 
 
 include::common-cmd-options-head.txt[]
