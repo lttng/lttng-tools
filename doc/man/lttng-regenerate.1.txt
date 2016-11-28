@@ -52,7 +52,7 @@ lost.
 include::common-cmd-options-head.txt[]
 
 
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Regenerate the data of the tracing session named 'SESSION'
     instead of the current tracing session.
 

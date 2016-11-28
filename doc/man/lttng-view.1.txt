@@ -36,11 +36,11 @@ be overridden using the option:--trace-path option.
 include::common-cmd-options-head.txt[]
 
 
-option:-t, option:--trace-path='PATH'::
+option:-t 'PATH', option:--trace-path='PATH'::
     View trace at path 'PATH' instead of using the chosen tracing
     session's trace path.
 
-option:-e, option:--viewer='CMD'::
+option:-e 'CMD', option:--viewer='CMD'::
     Use 'CMD' as the trace viewer.
 
 

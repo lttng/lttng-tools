@@ -228,7 +228,7 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Create or enable channel in the tracing session named 'SESSION'
     instead of the current tracing session.
 

@@ -122,7 +122,7 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Track resources in the tracing session named 'SESSION' instead of
     the current tracing session.
 
@@ -133,7 +133,7 @@ option:-a, option:--all::
     Used in conjunction with an empty option:--pid option: track _all_
     process IDs (add all entries to the whitelist).
 
-option:-p, option:--pid[='PID'[,'PID']...]::
+option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
     Track process IDs 'PID' (add them to the current whitelist).
 +
 The 'PID' argument must be omitted when also using the option:--all
