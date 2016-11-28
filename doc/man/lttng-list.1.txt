@@ -80,7 +80,7 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-c, option:--channel='CHANNEL'::
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
     Only list the details of the channel named 'CHANNEL'.
 
 

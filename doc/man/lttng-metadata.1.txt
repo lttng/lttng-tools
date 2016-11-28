@@ -22,7 +22,7 @@ regenerate metadata* command (see man:lttng-regenerate(1)).
 include::common-cmd-options-head.txt[]
 
 
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Manage the metadata generation of the tracing session named 'SESSION'
     instead of the current tracing session.
 

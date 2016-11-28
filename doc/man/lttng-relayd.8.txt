@@ -105,10 +105,10 @@ option:-d, option:--daemonize::
     option:--background option instead to keep the file descriptors
     open.
 
-option:-g, option:--group='GROUP'::
+option:-g 'GROUP', option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
 
-option:-o, option:--output='PATH'::
+option:-o 'PATH', option:--output='PATH'::
     Set base directory of written trace data to 'PATH'.
 +
 See the <<output-directory,Output directory>> section above for more
@@ -127,15 +127,15 @@ Ports
 See the <<url-format,URL format>> section above for more information
 about the syntax of the following options' 'URL' argument.
 
-option:-C, option:--control-port='URL'::
+option:-C 'URL', option:--control-port='URL'::
     Listen to control data on URL 'URL' (default:
     +tcp://{default_network_control_bind_address}:{default_network_control_port}+).
 
-option:-D, option:--data-port='URL'::
+option:-D 'URL', option:--data-port='URL'::
     Listen to trace data on URL 'URL' (default:
     +tcp://{default_network_data_bind_address}:{default_network_data_port}+).
 
-option:-L, option:--live-port='URL'::
+option:-L 'URL', option:--live-port='URL'::
     Listen to LTTng live connections on URL 'URL'
     (default:
     +tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+).

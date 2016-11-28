@@ -121,7 +121,7 @@ option:-a, option:--all::
     Used in conjunction with an empty option:--pid option: untrack _all_
     process IDs (clear the whitelist).
 
-option:-p, option:--pid[='PID'[,'PID']...]::
+option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
     Untrack process IDs 'PID' (remove them from the current whitelist).
 +
 The 'PID' argument must be omitted when also using the option:--all

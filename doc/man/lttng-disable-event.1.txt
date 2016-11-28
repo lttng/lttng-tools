@@ -67,11 +67,11 @@ option:-u, option:--userspace::
 
 Target
 ~~~~~~
-option:-c, option:--channel='CHANNEL'::
+option:-c 'CHANNEL', option:--channel='CHANNEL'::
     Disable event rules in the channel named 'CHANNEL' instead
     of the default channel name `channel0`.
 
-option:-s, option:--session='SESSION'::
+option:-s 'SESSION', option:--session='SESSION'::
     Disable event rules in the tracing session named 'SESSION'
     instead of the current tracing session.
 

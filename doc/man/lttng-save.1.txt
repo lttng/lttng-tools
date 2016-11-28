@@ -51,7 +51,7 @@ option:-f, option:--force::
     Overwrite existing tracing session configuration files when
     saving.
 
-option:-o, option:--output-path='PATH'::
+option:-o 'PATH', option:--output-path='PATH'::
     Set output directory path to 'PATH'.
 
 

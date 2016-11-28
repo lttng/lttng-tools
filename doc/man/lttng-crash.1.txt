@@ -28,7 +28,7 @@ LTTng trace buffers in the event of a system crash.
 
 OPTIONS
 -------
-option:-x, option:--extract='PATH'::
+option:-x 'PATH', option:--extract='PATH'::
     Extract recovered traces to path 'PATH'; do not execute the trace
     viewer.
 
@@ -39,7 +39,7 @@ Three levels of verbosity are available, which are triggered by
 appending additional `v` letters to the option
 (that is, `-vv` and `-vvv`).
 
-option:-e, option:--viewer='VIEWER'::
+option:-e 'VIEWER', option:--viewer='VIEWER'::
     Use trace viewer 'VIEWER' to view the trace buffers. 'VIEWER' is the
     absolute path to the viewer command to use, and it can contain
     command arguments as well. The trace directory paths are passed to
