@@ -159,6 +159,9 @@ man:lttng-load(1)::
 man:lttng-metadata(1)::
     {cmd_descr_metadata}.
 
+man:lttng-regenerate(1)::
+    {cmd_descr_regenerate}.
+
 man:lttng-save(1)::
     {cmd_descr_save}.
 
