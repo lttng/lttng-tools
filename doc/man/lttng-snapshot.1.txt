@@ -85,6 +85,7 @@ Taking a snapshot
 ~~~~~~~~~~~~~~~~~
 Taking a snapshot of the current tracing session is as easy as:
 
+[role="term"]
 ---------------------
 lttng snapshot record
 ---------------------
