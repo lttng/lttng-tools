@@ -1,3 +1,33 @@
+2016-11-29 lttng-tools 2.9.0 (National Square Dance Day)
+	* Add 2.9.0 release beer description
+	* lttng-add-context(1): fix style
+	* lttng-snapshot(1): fix style
+	* lttng-metadata(1): fix style
+	* doc/man: put short option's argument too
+	* Remove `metadata` command from various help resources
+	* List the `regenerate` command in various help resources
+	* lttng-load(1): fix synopsis and style
+	* Fix: truncate the metadata file in shm-path
+	* Load: add message indication that a name override was carried out
+	* Load: expose overrides elements in mi
+	* Fix: assign values to path, ctrl and data uris during configuration load
+	* Load: test that name override does not have side effects
+	* Docs: remove invalid short option -U and move option descriptions
+	* Fix: add missing refcount of loaded modules
+	* Fix: only unload successfully loaded kernel modules
+	* Fix: test cases now rely on explicit workloads
+	* m4/pprint.m4: update with correct quoting
+	* configure.ac: move warning to end of output for the end user
+	* doc/man: only require asciidoc-attrs.conf when building the man pages
+	* Test fix: increase test count in plan of test_perf_raw
+	* Create a dedicated test suite for Perf
+	* Tests: accommodate stricter mktemp implementations in tests
+	* Add version info to lttng-relayd help
+	* Fix: stop sessiond threads on health thread error
+	* Fix: stop lttng-relayd threads on health thread error
+	* Fix: report an error if unix socket address is too long
+	* Fix: save: leak of configuration file fd
+
 2016-10-07 lttng-tools 2.9.0-rc1 (National Frappé Day)
 	* Set 2.9 codename and description
 	* Fix: warn when a loaded session can't be set as the default
