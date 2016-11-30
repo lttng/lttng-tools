@@ -84,6 +84,7 @@ static struct cmd_struct commands[] =  {
 	{ "list", cmd_list},
 	{ "load", cmd_load},
 	{ "metadata", cmd_metadata},
+	{ "regenerate", cmd_regenerate},
 	{ "save", cmd_save},
 	{ "set-session", cmd_set_session},
 	{ "snapshot", cmd_snapshot},
@@ -92,10 +93,8 @@ static struct cmd_struct commands[] =  {
 	{ "stop", cmd_stop},
 	{ "track", cmd_track},
 	{ "untrack", cmd_untrack},
-	{ "help", NULL},
 	{ "version", cmd_version},
 	{ "view", cmd_view},
-	{ "regenerate", cmd_regenerate},
 	{ NULL, NULL}	/* Array closure */
 };
 
