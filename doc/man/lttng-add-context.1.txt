@@ -51,7 +51,7 @@ It is also possible to enable PMU counters by raw ID using the
 
 `N`::
     A hexadecimal event descriptor which is the same format as used
-    by perf-record(1): a concatenation of the event number and umask
+    by man:perf-record(1): a concatenation of the event number and umask
     value provided by the processor's manufacturer. The possible values
     for this field are processor-specific.
 
