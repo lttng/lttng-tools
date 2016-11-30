@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../command.h"
 #include <common/utils.h>
@@ -62,6 +63,7 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 	static poptContext pc;
 	const struct cmd_struct *cmd;
 	int found = 0;
+	const char *cmd_argv[2];
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -95,6 +97,12 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 		goto end;
 	}
 
+	/* Help about help? */
+	if (strcmp(cmd_name, "help") == 0) {
+		SHOW_HELP();
+		goto end;
+	}
+
 	/* Make sure command name exists */
 	cmd = &commands[0];
 
@@ -113,14 +121,11 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 		goto end;
 	}
 
-	/* Show command's man page */
-	ret = show_cmd_man_page(cmd_name);
-
-	if (ret) {
-		ERR("Cannot view man page lttng-%s(1)", cmd_name);
-		perror("exec");
-		ret = CMD_ERROR;
-	}
+	/* Show command's help */
+	cmd_argv[0] = cmd->name;
+	cmd_argv[1] = "--help";
+	assert(cmd->func);
+	ret = cmd->func(2, cmd_argv);
 
 end:
 	poptFreeContext(pc);
