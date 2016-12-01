@@ -25,6 +25,22 @@
 #include "../command.h"
 #include <common/utils.h>
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-help.1.h>
+#else
+NULL
+#endif
+;
+
+static const char *lttng_help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng.1.h>
+#else
+NULL
+#endif
+;
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
@@ -71,14 +87,14 @@ int cmd_help(int argc, const char **argv, const struct cmd_struct commands[])
 
 	if (cmd_name == NULL) {
 		/* Fall back to lttng(1) */
-		ret = utils_show_man_page(1, "lttng");
-
+		ret = utils_show_help(1, "lttng", lttng_help_msg);
 		if (ret) {
-			ERR("Cannot view man page lttng(1)");
+			ERR("Cannot show --help for `lttng`");
 			perror("exec");
 			ret = CMD_ERROR;
-			goto end;
 		}
+
+		goto end;
 	}
 
 	/* Help about help? */

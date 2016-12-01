@@ -41,6 +41,12 @@ static int opt_jul;
 static int opt_log4j;
 static char *opt_type;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-add-context.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE,

@@ -42,6 +42,12 @@ const char *indent4 = "    ";
 const char *indent6 = "      ";
 const char *indent8 = "        ";
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-list.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_USERSPACE,

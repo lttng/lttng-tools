@@ -1,6 +1,10 @@
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
 			  -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
+if EMBED_HELP
+AM_CPPFLAGS += -I$(top_builddir)/doc/man
+endif
+
 bin_PROGRAMS = lttng-crash
 
 lttng_crash_SOURCES = lttng-crash.c

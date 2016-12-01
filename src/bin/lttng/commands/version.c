@@ -28,6 +28,12 @@
 
 #include "../command.h"
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-version.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

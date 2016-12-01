@@ -55,6 +55,12 @@ static char *opt_channel_name;
 static char *opt_filter;
 static char *opt_exclude;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-enable-event.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_TRACEPOINT,

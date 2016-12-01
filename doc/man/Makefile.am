@@ -73,6 +73,34 @@ MAN3_NO_ASCIIDOC = $(addsuffix .3,$(MAN3_NO_ASCIIDOC_NAMES))
 MAN8_NO_ASCIIDOC = $(addsuffix .8,$(MAN8_NO_ASCIIDOC_NAMES))
 MAN = $(MAN1) $(MAN3) $(MAN8)
 
+# initially empty
+CLEANFILES =
+
+if EMBED_HELP
+MAN1_H = $(addsuffix .1.h,$(MAN1_NAMES))
+MAN3_H = $(addsuffix .3.h,$(MAN3_NAMES))
+MAN8_H = $(addsuffix .8.h,$(MAN8_NAMES))
+MAN_H = $(MAN1_H) $(MAN3_H) $(MAN8_H)
+MAN_H_RECIPE = \
+	MANWIDTH=80 @MANPROG@ --encoding=UTF-8 --no-hyphenation --no-justification --local-file $< > $@ ; \
+	$(SED) -i 's/\\/\\\\/g' $@ ; \
+	$(SED) -i 's/"/\\"/g' $@ ; \
+	$(SED) -i 's/^\(.*\)$$/"\1\\n"/' $@
+
+%.1.h: %.1
+	$(MAN_H_RECIPE)
+
+%.3.h: %.3
+	$(MAN_H_RECIPE)
+
+%.8.h: %.8
+	$(MAN_H_RECIPE)
+
+all-local: $(MAN_H)
+
+CLEANFILES += $(MAN_H)
+endif # EMBED_HELP
+
 if MAN_PAGES_OPT
 # at this point, we know the user asked to build the man pages
 if HAVE_ASCIIDOC_XMLTO
@@ -106,7 +134,7 @@ COMMON_DEPS += $(ASCIIDOC_ATTRS_CONF)
 	$(XTO) $<
 
 # only clean the generated files if we have the tools to generate them again
-CLEANFILES = $(MAN_XML) $(MAN)
+CLEANFILES += $(MAN_XML) $(MAN)
 else # HAVE_ASCIIDOC_XMLTO
 # create man page targets used to stop the build if we want to
 # build the man pages, but we don't have the necessary tools to do so
@@ -148,3 +176,6 @@ endif # !MAN_PAGES_OPT
 # always distribute the source files
 EXTRA_DIST = $(MAN_TXT) $(COMMON_TXT) $(XSL_SRC_FILES) \
 	$(ASCIIDOC_CONF) $(ASCIIDOC_ATTRS_CONF).in
+
+# keep generated man pages that can be considered intermediate files
+.PRECIOUS: %.1 %.3 %.8

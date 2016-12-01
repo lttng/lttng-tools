@@ -37,6 +37,12 @@ static int opt_load_all;
 
 static const char *session_name;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-load.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_ALL,

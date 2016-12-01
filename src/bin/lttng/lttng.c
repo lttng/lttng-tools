@@ -33,6 +33,14 @@
 
 #include "command.h"
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng.1.h>
+#else
+NULL
+#endif
+;
+
 /* Variables */
 static char *progname;
 int opt_no_sessiond;
@@ -315,10 +323,9 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case 'h':
-			ret = utils_show_man_page(1, "lttng");
-
+			ret = utils_show_help(1, "lttng", help_msg);
 			if (ret) {
-				ERR("Cannot view man page lttng(1)");
+				ERR("Cannot show --help for `lttng`");
 				perror("exec");
 			}
 			goto end;

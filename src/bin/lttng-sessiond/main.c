@@ -77,6 +77,14 @@
 
 #define CONSUMERD_FILE	"lttng-consumerd"
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-sessiond.8.h>
+#else
+NULL
+#endif
+;
+
 const char *progname;
 static const char *tracing_group_name = DEFAULT_TRACING_GROUP;
 static int tracing_group_name_override;
@@ -4677,9 +4685,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 			tracing_group_name_override = 1;
 		}
 	} else if (string_match(optname, "help") || opt == 'h') {
-		ret = utils_show_man_page(8, "lttng-sessiond");
+		ret = utils_show_help(8, "lttng-sessiond", help_msg);
 		if (ret) {
-			ERR("Cannot view man page lttng-sessiond(8)");
+			ERR("Cannot show --help for `lttng-sessiond`");
 			perror("exec");
 		}
 		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);

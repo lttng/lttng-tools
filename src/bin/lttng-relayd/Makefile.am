@@ -2,6 +2,10 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src \
 			  -DINSTALL_BIN_PATH=\""$(lttnglibexecdir)"\" \
 			  -DINSTALL_LIB_PATH=\""$(libdir)"\"
 
+if EMBED_HELP
+AM_CPPFLAGS += -I$(top_builddir)/doc/man
+endif
+
 AM_CFLAGS = -fno-strict-aliasing
 
 bin_PROGRAMS = lttng-relayd
