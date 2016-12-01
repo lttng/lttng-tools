@@ -34,6 +34,12 @@ static char *opt_session_name;
 static int opt_no_wait;
 static struct mi_writer *writer;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-stop.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

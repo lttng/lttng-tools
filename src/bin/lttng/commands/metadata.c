@@ -33,6 +33,12 @@ static char *session_name = NULL;
 
 static int metadata_regenerate(int argc, const char **argv);
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-metadata.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

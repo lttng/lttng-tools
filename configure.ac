@@ -653,6 +653,29 @@ AM_CONDITIONAL([HAVE_ASCIIDOC_XMLTO], [test "x$have_asciidoc_xmlto" = "xyes"])
 
 AC_DEFINE_UNQUOTED([MANPATH], ["`eval eval echo $mandir`"], [Path to man pages.])
 
+# embedded --help message
+AC_ARG_ENABLE(
+	[embedded-help],
+	AS_HELP_STRING(
+		[--enable-embedded-help],
+		[Embed the --help messages in the executable files]
+	),
+	[embedded_help=$enableval],
+	[embedded_help=no]
+)
+AS_IF([test "x$embedded_help" = "xyes"], [
+	AS_IF([test "x$man_pages_opt" = "xno"], [
+		AC_MSG_ERROR([You need the --enable-man-pages option with the --enable-embedded-help option.])
+	])
+	AC_PATH_PROG([man_prog_path], [man], [no])
+	AS_IF([test "x$man_prog_path" = "xno"], [
+		AC_MSG_ERROR([You need man with the --enable-embedded-help option.])
+	])
+	AC_DEFINE_UNQUOTED([LTTNG_EMBED_HELP], 1, [Embed --help messages.])
+	AC_SUBST([MANPROG], [$man_prog_path])
+])
+AM_CONDITIONAL([EMBED_HELP], [test "x$embedded_help" != "xno"])
+
 # Python agent test
 UST_PYTHON_AGENT="lttngust"
 
@@ -1185,6 +1208,9 @@ AS_IF([test "x$man_pages_opt" != "xno"], [
 ])
 
 m4_popdef([build_man_pages_msg])
+
+test "x$embedded_help" = xyes && value=1 || value=0
+PPRINT_PROP_BOOL([Embed --help messages], $value, $PPRINT_COLOR_SUBTITLE)
 
 PPRINT_SET_INDENT(1)
 

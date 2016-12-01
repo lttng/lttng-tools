@@ -61,6 +61,14 @@
 		0xF1 ^ 0xFF, 0x77 ^ 0xFF, 0xBF ^ 0xFF, 0x17 ^ 0xFF,	\
 	}
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-crash.1.h>
+#else
+NULL
+#endif
+;
+
 /*
  * Non-static to ensure the compiler does not optimize away the xor.
  */
@@ -207,10 +215,10 @@ static struct option long_options[] = {
 
 static void usage(void)
 {
-	int ret = utils_show_man_page(1, "lttng-crash");
+	int ret = utils_show_help(1, "lttng-crash", help_msg);
 
 	if (ret) {
-		ERR("Cannot view man page lttng-crash(1)");
+		ERR("Cannot show --help for `lttng-crash`");
 		perror("exec");
 		exit(EXIT_FAILURE);
 	}

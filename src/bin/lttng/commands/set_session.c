@@ -31,6 +31,12 @@
 
 static char *opt_session_name;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-set-session.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

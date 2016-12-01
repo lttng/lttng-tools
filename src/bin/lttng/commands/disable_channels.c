@@ -34,6 +34,12 @@ static int opt_kernel;
 static char *opt_session_name;
 static int opt_userspace;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-disable-channel.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_USERSPACE,

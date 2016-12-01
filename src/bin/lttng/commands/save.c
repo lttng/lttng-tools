@@ -33,6 +33,12 @@ static bool opt_force;
 static bool opt_save_all;
 static struct mi_writer *writer;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-save.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_ALL,

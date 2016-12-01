@@ -40,6 +40,12 @@ static int opt_log4j;
 static int opt_python;
 static int opt_event_type;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-disable-event.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_TYPE_SYSCALL,
