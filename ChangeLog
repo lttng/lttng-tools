@@ -1,3 +1,17 @@
+2016-12-01 lttng-tools 2.8.3 (National Pie Day)
+	* Fix: truncate the metadata file in shm-path
+	* Fix: add missing refcount of loaded modules
+	* Fix: only unload successfully loaded kernel modules
+	* Fix: test cases now rely on explicit workloads
+	* m4/pprint.m4: update with correct quoting
+	* configure.ac: move warning to end of output for the end user
+	* doc/man: only require asciidoc-attrs.conf when building the man pages
+	* Add version info to lttng-relayd help
+	* Fix: stop sessiond threads on health thread error
+	* Fix: stop lttng-relayd threads on health thread error
+	* Fix: report an error if unix socket address is too long
+	* Fix: save: leak of configuration file fd
+
 2016-10-07 lttng-tools 2.8.2 (National Frappé Day)
 	* Fix: report truncation on snprintf
 	* Fix: check for a session daemon before running load command
