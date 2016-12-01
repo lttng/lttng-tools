@@ -1,3 +1,11 @@
+2016-12-01 lttng-tools 2.7.6 (National Pie Day)
+	* Fix: test cases now rely on explicit workloads
+	* Add version info to lttng-relayd help
+	* Fix: stop sessiond threads on health thread error
+	* Fix: stop lttng-relayd threads on health thread error
+	* Fix: report an error if unix socket address is too long
+	* Fix: save: leak of configuration file fd
+
 2016-10-07 lttng-tools 2.7.5 (National Frappé Day)
 	* Fix: check for a session daemon before running load command
 	* Fix: report truncation on snprintf
