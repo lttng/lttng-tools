@@ -20,6 +20,7 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
+#include <pthread.h>
 #include <src/common/macros.h>
 
 /* Default unix group name for tracing. */
