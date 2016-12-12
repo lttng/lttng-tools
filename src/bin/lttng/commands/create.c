@@ -342,6 +342,10 @@ static int create_session(void)
 
 	/* Use default live URL if NO url is/are found. */
 	if ((opt_live_timer && !opt_url) && (opt_live_timer && !opt_data_url)) {
+		/* Override the url */
+		free(url);
+		url = NULL;
+
 		ret = asprintf(&alloc_url, "net://127.0.0.1");
 		if (ret < 0) {
 			PERROR("asprintf default live URL");
