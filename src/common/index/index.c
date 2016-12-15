@@ -245,6 +245,10 @@ struct lttng_index_file *lttng_index_file_open(const char *path_name,
 		ERR("Invalid header version");
 		goto error_close;
 	}
+	if (element_len > sizeof(struct ctf_packet_index)) {
+		ERR("Index element length too long");
+		goto error_close;
+	}
 
 	index_file->fd = read_fd;
 	index_file->major = major;
