@@ -570,7 +570,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->session_id = session_id;
 	stream->monitor = monitor;
 	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
-	stream->index_fd = -1;
+	stream->index_file = NULL;
 	stream->last_sequence_number = -1ULL;
 	pthread_mutex_init(&stream->lock, NULL);
 	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
@@ -1624,21 +1624,16 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			}
 			outfd = stream->out_fd;
 
-			if (stream->index_fd >= 0) {
-				ret = close(stream->index_fd);
-				if (ret < 0) {
-					PERROR("Closing index");
-					goto end;
-				}
-				stream->index_fd = -1;
-				ret = index_create_file(stream->chan->pathname,
+			if (stream->index_file) {
+				lttng_index_file_put(stream->index_file);
+				stream->index_file = lttng_index_file_create(stream->chan->pathname,
 						stream->name, stream->uid, stream->gid,
 						stream->chan->tracefile_size,
-						stream->tracefile_count_current);
-				if (ret < 0) {
+						stream->tracefile_count_current,
+						CTF_INDEX_MAJOR, CTF_INDEX_MINOR);
+				if (!stream->index_file) {
 					goto end;
 				}
-				stream->index_fd = ret;
 			}
 
 			/* Reset current size because we just perform a rotation. */
@@ -1831,22 +1826,16 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 			}
 			outfd = stream->out_fd;
 
-			if (stream->index_fd >= 0) {
-				ret = close(stream->index_fd);
-				if (ret < 0) {
-					PERROR("Closing index");
-					goto end;
-				}
-				stream->index_fd = -1;
-				ret = index_create_file(stream->chan->pathname,
+			if (stream->index_file) {
+				lttng_index_file_put(stream->index_file);
+				stream->index_file = lttng_index_file_create(stream->chan->pathname,
 						stream->name, stream->uid, stream->gid,
 						stream->chan->tracefile_size,
-						stream->tracefile_count_current);
-				if (ret < 0) {
-					written = ret;
+						stream->tracefile_count_current,
+						CTF_INDEX_MAJOR, CTF_INDEX_MINOR);
+				if (!stream->index_file) {
 					goto end;
 				}
-				stream->index_fd = ret;
 			}
 
 			/* Reset current size because we just perform a rotation. */

@@ -52,8 +52,8 @@ struct relay_viewer_stream {
 
 	/* FD from which to read the stream data. */
 	struct stream_fd *stream_fd;
-	/* FD from which to read the index data. */
-	struct stream_fd *index_fd;
+	/* index file from which to read the index data. */
+	struct lttng_index_file *index_file;
 
 	char *path_name;
 	char *channel_name;

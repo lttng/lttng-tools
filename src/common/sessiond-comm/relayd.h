@@ -159,9 +159,29 @@ struct lttcomm_relayd_index {
 	uint64_t timestamp_end;
 	uint64_t events_discarded;
 	uint64_t stream_id;
+	/* 2.8+ */
 	uint64_t stream_instance_id;
 	uint64_t packet_seq_num;
 } LTTNG_PACKED;
+
+static inline size_t lttcomm_relayd_index_len(uint32_t major, uint32_t minor)
+{
+	if (major == 1) {
+		switch (minor) {
+		case 0:
+			return offsetof(struct lttcomm_relayd_index, stream_id)
+				+ member_sizeof(struct lttcomm_relayd_index,
+						stream_id);
+		case 1:
+			return offsetof(struct lttcomm_relayd_index, packet_seq_num)
+				+ member_sizeof(struct lttcomm_relayd_index,
+						packet_seq_num);
+		default:
+			abort();
+		}
+	}
+	abort();
+}
 
 /*
  * Create session in 2.4 adds additionnal parameters for live reading.

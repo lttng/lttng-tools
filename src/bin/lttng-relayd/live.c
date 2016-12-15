@@ -1122,8 +1122,8 @@ error:
 /*
  * Open the index file if needed for the given vstream.
  *
- * If an index file is successfully opened, the vstream index_fd set with
- * it.
+ * If an index file is successfully opened, the vstream will set it as its
+ * current index file.
  *
  * Return 0 on success, a negative value on error (-ENOENT if not ready yet).
  *
@@ -1134,7 +1134,7 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 {
 	int ret = 0;
 
-	if (vstream->index_fd) {
+	if (vstream->index_file) {
 		goto end;
 	}
 
@@ -1145,20 +1145,12 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 		ret = -ENOENT;
 		goto end;
 	}
-	ret = index_open(vstream->path_name, vstream->channel_name,
+	vstream->index_file = lttng_index_file_open(vstream->path_name,
+			vstream->channel_name,
 			vstream->stream->tracefile_count,
 			vstream->current_tracefile_id);
-	if (ret >= 0) {
-		vstream->index_fd = stream_fd_create(ret);
-		if (!vstream->index_fd) {
-			if (close(ret)) {
-				PERROR("close");
-			}
-			ret = -1;
-		} else {
-			ret = 0;
-		}
-		goto end;
+	if (!vstream->index_file) {
+		ret = -1;
 	}
 
 end:
@@ -1277,7 +1269,6 @@ static
 int viewer_get_next_index(struct relay_connection *conn)
 {
 	int ret;
-	ssize_t read_ret;
 	struct lttng_viewer_get_next_index request_index;
 	struct lttng_viewer_index viewer_index;
 	struct ctf_packet_index packet_index;
@@ -1400,11 +1391,10 @@ int viewer_get_next_index(struct relay_connection *conn)
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
 	}
 
-	read_ret = lttng_read(vstream->index_fd->fd, &packet_index,
-			sizeof(packet_index));
-	if (read_ret < sizeof(packet_index)) {
-		ERR("Relay reading index file %d returned %zd",
-			vstream->index_fd->fd, read_ret);
+	ret = lttng_index_file_read(vstream->index_file, &packet_index);
+	if (ret) {
+		ERR("Relay error reading index file %d",
+				vstream->index_file->fd);
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
 		goto send_reply;
 	} else {

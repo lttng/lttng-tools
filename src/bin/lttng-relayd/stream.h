@@ -58,8 +58,8 @@ struct relay_stream {
 
 	/* FD on which to write the stream data. */
 	struct stream_fd *stream_fd;
-	/* FD on which to write the index data. */
-	struct stream_fd *index_fd;
+	/* index file on which to write the index data. */
+	struct lttng_index_file *index_file;
 
 	char *path_name;
 	char *channel_name;

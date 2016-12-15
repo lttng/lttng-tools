@@ -78,6 +78,8 @@ void *zmalloc(size_t len)
 #define LTTNG_HIDDEN __attribute__((visibility("hidden")))
 #endif
 
+#define member_sizeof(type, field)	sizeof(((type *) 0)->field)
+
 /*
  * lttng_strncpy returns 0 on success, or nonzero on failure.
  * It checks that the @src string fits into @dst_len before performing
