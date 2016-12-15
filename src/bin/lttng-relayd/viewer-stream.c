@@ -116,29 +116,21 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 * the opening of the index, otherwise open it right now.
 	 */
 	if (stream->index_received_seqcount == 0) {
-		vstream->index_fd = NULL;
+		vstream->index_file = NULL;
 	} else {
-		int read_fd;
-
-		read_fd = index_open(vstream->path_name, vstream->channel_name,
+		vstream->index_file = lttng_index_file_open(vstream->path_name,
+				vstream->channel_name,
 				stream->tracefile_count,
 				vstream->current_tracefile_id);
-		if (read_fd < 0) {
-			goto error_unlock;
-		}
-		vstream->index_fd = stream_fd_create(read_fd);
-		if (!vstream->index_fd) {
-			if (close(read_fd)) {
-				PERROR("close");
-			}
+		if (!vstream->index_file) {
 			goto error_unlock;
 		}
 	}
 
-	if (seek_t == LTTNG_VIEWER_SEEK_LAST && vstream->index_fd) {
+	if (seek_t == LTTNG_VIEWER_SEEK_LAST && vstream->index_file) {
 		off_t lseek_ret;
 
-		lseek_ret = lseek(vstream->index_fd->fd, 0, SEEK_END);
+		lseek_ret = lseek(vstream->index_file->fd, 0, SEEK_END);
 		if (lseek_ret < 0) {
 			goto error_unlock;
 		}
@@ -192,9 +184,9 @@ static void viewer_stream_release(struct urcu_ref *ref)
 		stream_fd_put(vstream->stream_fd);
 		vstream->stream_fd = NULL;
 	}
-	if (vstream->index_fd) {
-		stream_fd_put(vstream->index_fd);
-		vstream->index_fd = NULL;
+	if (vstream->index_file) {
+		lttng_index_file_put(vstream->index_file);
+		vstream->index_file = NULL;
 	}
 	if (vstream->stream) {
 		stream_put(vstream->stream);
@@ -305,29 +297,24 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 		vstream->index_sent_seqcount = seq_tail;
 	}
 
-	if (vstream->index_fd) {
-		stream_fd_put(vstream->index_fd);
-		vstream->index_fd = NULL;
+	if (vstream->index_file) {
+		lttng_index_file_put(vstream->index_file);
+		vstream->index_file = NULL;
 	}
 	if (vstream->stream_fd) {
 		stream_fd_put(vstream->stream_fd);
 		vstream->stream_fd = NULL;
 	}
 
-	ret = index_open(vstream->path_name, vstream->channel_name,
+	vstream->index_file = lttng_index_file_open(vstream->path_name,
+			vstream->channel_name,
 			stream->tracefile_count,
 			vstream->current_tracefile_id);
-	if (ret < 0) {
-		goto end;
-	}
-	vstream->index_fd = stream_fd_create(ret);
-	if (vstream->index_fd) {
-		ret = 0;
-	} else {
-		if (close(ret)) {
-			PERROR("close");
-		}
+	if (!vstream->index_file) {
 		ret = -1;
+		goto end;
+	} else {
+		ret = 0;
 	}
 end:
 	return ret;

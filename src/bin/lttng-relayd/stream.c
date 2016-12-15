@@ -306,9 +306,9 @@ static void stream_release(struct urcu_ref *ref)
 		stream_fd_put(stream->stream_fd);
 		stream->stream_fd = NULL;
 	}
-	if (stream->index_fd) {
-		stream_fd_put(stream->index_fd);
-		stream->index_fd = NULL;
+	if (stream->index_file) {
+		lttng_index_file_put(stream->index_file);
+		stream->index_file = NULL;
 	}
 	if (stream->trace) {
 		ctf_trace_put(stream->trace);

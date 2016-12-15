@@ -163,12 +163,9 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 		stream->out_fd = -1;
 	}
 
-	if (stream->index_fd >= 0) {
-		ret = close(stream->index_fd);
-		if (ret) {
-			PERROR("close stream index_fd");
-		}
-		stream->index_fd = -1;
+	if (stream->index_file) {
+		lttng_index_file_put(stream->index_file);
+		stream->index_file = NULL;
 	}
 
 	/* Check and cleanup relayd if needed. */
@@ -359,27 +356,23 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
  * Return 0 on success or else a negative value.
  */
 int consumer_stream_write_index(struct lttng_consumer_stream *stream,
-		struct ctf_packet_index *index)
+		struct ctf_packet_index *element)
 {
 	int ret;
 	struct consumer_relayd_sock_pair *relayd;
 
 	assert(stream);
-	assert(index);
+	assert(element);
 
 	rcu_read_lock();
 	relayd = consumer_find_relayd(stream->net_seq_idx);
 	if (relayd) {
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-		ret = relayd_send_index(&relayd->control_sock, index,
+		ret = relayd_send_index(&relayd->control_sock, element,
 				stream->relayd_stream_id, stream->next_net_seq_num - 1);
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	} else {
-		ssize_t size_ret;
-
-		size_ret = index_write(stream->index_fd, index,
-				sizeof(struct ctf_packet_index));
-		if (size_ret < sizeof(struct ctf_packet_index)) {
+		if (lttng_index_file_write(stream->index_file, element)) {
 			ret = -1;
 		} else {
 			ret = 0;

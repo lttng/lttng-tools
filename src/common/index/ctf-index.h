@@ -60,4 +60,45 @@ struct ctf_packet_index {
 	uint64_t packet_seq_num;	/* packet sequence number */
 } __attribute__((__packed__));
 
+static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
+{
+	if (major == 1) {
+		switch (minor) {
+		case 0:
+			return offsetof(struct ctf_packet_index, stream_id)
+				+ member_sizeof(struct ctf_packet_index,
+						stream_id);
+		case 1:
+			return offsetof(struct ctf_packet_index, packet_seq_num)
+				+ member_sizeof(struct ctf_packet_index,
+						packet_seq_num);
+		default:
+			abort();
+		}
+	}
+	abort();
+}
+
+static inline uint32_t lttng_to_index_major(uint32_t lttng_major,
+		uint32_t lttng_minor)
+{
+	if (lttng_major == 2) {
+		return 1;
+	}
+	abort();
+}
+
+static inline uint32_t lttng_to_index_minor(uint32_t lttng_major,
+		uint32_t lttng_minor)
+{
+	if (lttng_major == 2) {
+		if (lttng_minor < 8) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+	abort();
+}
+
 #endif /* LTTNG_INDEX_H */

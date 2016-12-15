@@ -856,7 +856,11 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_SEND_INDEX, &msg, sizeof(msg), 0);
+	ret = send_command(rsock, RELAYD_SEND_INDEX, &msg,
+		lttcomm_relayd_index_len(lttng_to_index_major(rsock->major,
+								rsock->minor),
+				lttng_to_index_minor(rsock->major, rsock->minor)),
+				0);
 	if (ret < 0) {
 		goto error;
 	}
