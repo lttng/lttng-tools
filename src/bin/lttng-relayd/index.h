@@ -40,10 +40,10 @@ struct relay_index {
 
 	pthread_mutex_t lock;
 	/*
-	 * FD on which to write the index data. May differ from
-	 * stream->index_fd due to tracefile rotation.
+	 * index file on which to write the index data. May differ from
+	 * stream->index_file due to tracefile rotation.
 	 */
-	struct stream_fd *index_fd;
+	struct lttng_index_file *index_file;
 
 	/* Index packet data. This is the data that is written on disk. */
 	struct ctf_packet_index index_data;
@@ -64,8 +64,9 @@ struct relay_index {
 struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 		uint64_t net_seq_num);
 void relay_index_put(struct relay_index *index);
-int relay_index_set_fd(struct relay_index *index, struct stream_fd *index_fd,
-		 uint64_t data_offset);
+int relay_index_set_file(struct relay_index *index,
+		struct lttng_index_file *index_file,
+		uint64_t data_offset);
 int relay_index_set_data(struct relay_index *index,
                 const struct ctf_packet_index *data);
 int relay_index_try_flush(struct relay_index *index);

@@ -166,18 +166,19 @@ end:
 	return index;
 }
 
-int relay_index_set_fd(struct relay_index *index, struct stream_fd *index_fd,
+int relay_index_set_file(struct relay_index *index,
+		struct lttng_index_file *index_file,
 		uint64_t data_offset)
 {
 	int ret = 0;
 
 	pthread_mutex_lock(&index->lock);
-	if (index->index_fd) {
+	if (index->index_file) {
 		ret = -1;
 		goto end;
 	}
-	stream_fd_get(index_fd);
-	index->index_fd = index_fd;
+	lttng_index_file_get(index_file);
+	index->index_file = index_file;
 	index->index_data.offset = data_offset;
 end:
 	pthread_mutex_unlock(&index->lock);
@@ -228,9 +229,9 @@ static void index_release(struct urcu_ref *ref)
 	int ret;
 	struct lttng_ht_iter iter;
 
-	if (index->index_fd) {
-		stream_fd_put(index->index_fd);
-		index->index_fd = NULL;
+	if (index->index_file) {
+		lttng_index_file_put(index->index_file);
+		index->index_file = NULL;
 	}
 	if (index->in_hash_table) {
 		/* Delete index from hash table. */
@@ -290,21 +291,16 @@ int relay_index_try_flush(struct relay_index *index)
 		goto skip;
 	}
 	/* Check if we are ready to flush. */
-	if (!index->has_index_data || !index->index_fd) {
+	if (!index->has_index_data || !index->index_file) {
 		goto skip;
 	}
-	fd = index->index_fd->fd;
+	fd = index->index_file->fd;
 	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64
 			" on fd %d", index->stream->stream_handle,
 			index->index_n.key, fd);
 	flushed = true;
 	index->flushed = true;
-	ret = index_write(fd, &index->index_data, sizeof(index->index_data));
-	if (ret == sizeof(index->index_data)) {
-		ret = 0;
-	} else {
-		ret = -1;
-	}
+	ret = lttng_index_file_write(index->index_file, &index->index_data);
 skip:
 	pthread_mutex_unlock(&index->lock);
 
@@ -341,11 +337,11 @@ void relay_index_close_partial_fd(struct relay_stream *stream)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
 			index, index_n.node) {
-		if (!index->index_fd) {
+		if (!index->index_file) {
 			continue;
 		}
 		/*
-		 * Partial index has its index_fd: we have only
+		 * Partial index has its index_file: we have only
 		 * received its info from the data socket.
 		 * Put self-ref from index.
 		 */

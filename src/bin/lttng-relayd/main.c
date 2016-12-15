@@ -1946,6 +1946,7 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	uint64_t net_seq_num;
+	size_t msg_len;
 
 	assert(conn);
 
@@ -1957,9 +1958,12 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
+	msg_len = lttcomm_relayd_index_len(
+			lttng_to_index_major(conn->major, conn->minor),
+			lttng_to_index_minor(conn->major, conn->minor));
 	ret = conn->sock->ops->recvmsg(conn->sock, &index_info,
-			sizeof(index_info), 0);
-	if (ret < sizeof(index_info)) {
+			msg_len, 0);
+	if (ret < msg_len) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
@@ -2183,41 +2187,36 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 		goto end;
 	}
 
-	if (rotate_index || !stream->index_fd) {
-		int fd;
+	if (rotate_index || !stream->index_file) {
+		uint32_t major, minor;
 
-		/* Put ref on previous index_fd. */
-		if (stream->index_fd) {
-			stream_fd_put(stream->index_fd);
-			stream->index_fd = NULL;
+		/* Put ref on previous index_file. */
+		if (stream->index_file) {
+			lttng_index_file_put(stream->index_file);
+			stream->index_file = NULL;
 		}
-
-		fd = index_create_file(stream->path_name, stream->channel_name,
+		major = stream->trace->session->major;
+		minor = stream->trace->session->minor;
+		stream->index_file = lttng_index_file_create(stream->path_name,
+				stream->channel_name,
 			        -1, -1, stream->tracefile_size,
-				tracefile_array_get_file_index_head(stream->tfa));
-		if (fd < 0) {
+				tracefile_array_get_file_index_head(stream->tfa),
+				lttng_to_index_major(major, minor),
+				lttng_to_index_minor(major, minor));
+		if (!stream->index_file) {
 			ret = -1;
 			/* Put self-ref for this index due to error. */
 			relay_index_put(index);
-			goto end;
-		}
-		stream->index_fd = stream_fd_create(fd);
-		if (!stream->index_fd) {
-			ret = -1;
-			if (close(fd)) {
-				PERROR("Error closing FD %d", fd);
-			}
-			/* Put self-ref for this index due to error. */
-			relay_index_put(index);
-			/* Will put the local ref. */
+			index = NULL;
 			goto end;
 		}
 	}
 
-	if (relay_index_set_fd(index, stream->index_fd, data_offset)) {
+	if (relay_index_set_file(index, stream->index_file, data_offset)) {
 		ret = -1;
 		/* Put self-ref for this index due to error. */
 		relay_index_put(index);
+		index = NULL;
 		goto end;
 	}
 
@@ -2231,6 +2230,7 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 	} else {
 		/* Put self-ref for this index due to error. */
 		relay_index_put(index);
+		index = NULL;
 		ret = -1;
 	}
 end:

@@ -390,9 +390,9 @@ struct lttng_consumer_stream {
 	/* Copy of the sequence number of the last packet extracted. */
 	uint64_t last_sequence_number;
 	/*
-	 * FD of the index file for this stream.
+	 * Index file object of the index file for this stream.
 	 */
-	int index_fd;
+	struct lttng_index_file *index_file;
 
 	/*
 	 * Local pipe to extract data when using splice.
