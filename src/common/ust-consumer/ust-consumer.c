@@ -2630,6 +2630,7 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 			if (!index_file) {
 				goto error;
 			}
+			assert(!stream->index_file);
 			stream->index_file = index_file;
 		}
 	}
