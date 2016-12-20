@@ -141,31 +141,18 @@ my @events;
 
 while (<>)
 {
-	my $timestamp   = '\[(.*)\]';
-	my $elapsed     = '\((.*)\)';
-	my $hostname    = '.*';
-	my $pname       = '.*';
-	my $pinfo       = '.*';
-	my $pid         = '\d+';
-	my $tp_event    = '.*';
-	my $cpu_info    = '{\scpu_id\s=\s(\d+)\s\}';
-	my $fields      = '{(.*)}';
+	my $timestamp   = '\[(?:.*)\]';
+	my $elapsed     = '\((?:.*)\)';
+	my $hostname    = '(?:.*)';
+	my $tp_event    = '(.*)';
+	my $pkt_context = '(?:\{[^}]*\},\s)*';
+	my $fields      = '\{(.*)\}$';
 
 	# Parse babeltrace text output format
-	if (/$timestamp\s$elapsed\s($pinfo)\s($tp_event):\s$cpu_info,\s$fields/) {
+	if (/$timestamp\s$elapsed\s$hostname\s$tp_event:\s$pkt_context$fields/) {
 		my %event_hash;
-		$event_hash{'timestamp'}   = $1;
-		$event_hash{'elapsed'}     = $2;
-		$event_hash{'pinfo'}       = $3;
-
-#		my @split_pinfo = split(':', $3);
-#		$event_hash{'hostname'}    = $split_pinfo[0];
-#		$event_hash{'pname'}       = defined($split_pinfo[1]) ? $split_pinfo[1] : undef;
-#		$event_hash{'pid'}         = defined($split_pinfo[2]) ? $split_pinfo[2] : undef;
-
-		$event_hash{'tp_event'}    = $4;
-		$event_hash{'cpu_id'}      = $5;
-		$event_hash{'fields'}      = parse_fields($6);
+		$event_hash{'tp_event'}    = $1;
+		$event_hash{'fields'}      = parse_fields($2);
 
 		push @events, \%event_hash;
 	}
