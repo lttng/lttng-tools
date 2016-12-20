@@ -67,6 +67,13 @@ struct relay_session {
 	/* Tell if the session connection has been closed on the streaming side. */
 	bool connection_closed;
 
+	/*
+	 * Tell if the session is currently living in a exiting relayd and
+	 * should be cleaned forcefully without waiting for pending data or
+	 * pending ctrl data.
+	 */
+	bool aborted;
+
 	/* Contains ctf_trace object of that session indexed by path name. */
 	struct lttng_ht *ctf_traces_ht;
 
@@ -111,6 +118,8 @@ bool session_get(struct relay_session *session);
 void session_put(struct relay_session *session);
 
 int session_close(struct relay_session *session);
+int session_abort(struct relay_session *session);
+
 void print_sessions(void);
 
 #endif /* _SESSION_H */

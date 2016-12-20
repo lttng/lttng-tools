@@ -2680,6 +2680,11 @@ error:
 			destroy_conn,
 			sock_n.node) {
 		health_code_update();
+
+		if (session_abort(destroy_conn->session)) {
+			assert(0);
+		}
+
 		/*
 		 * No need to grab another ref, because we own
 		 * destroy_conn.
