@@ -228,6 +228,27 @@ rcu_unlock:
 	return ret;
 }
 
+int session_abort(struct relay_session *session)
+{
+	int ret = 0;
+
+	if (!session) {
+		return 0;
+	}
+
+	pthread_mutex_lock(&session->lock);
+	DBG("aborting session %" PRIu64, session->id);
+	if (session->aborted) {
+		ERR("session %" PRIu64 " is already aborted", session->id);
+		ret = -1;
+		goto unlock;
+	}
+	session->aborted = true;
+unlock:
+	pthread_mutex_unlock(&session->lock);
+	return ret;
+}
+
 void print_sessions(void)
 {
 	struct lttng_ht_iter iter;

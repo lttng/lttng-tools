@@ -345,7 +345,15 @@ void stream_put(struct relay_stream *stream)
 
 void try_stream_close(struct relay_stream *stream)
 {
+	bool session_aborted;
+	struct relay_session *session = stream->trace->session;
+
 	DBG("Trying to close stream %" PRIu64, stream->stream_handle);
+
+	pthread_mutex_lock(&session->lock);
+	session_aborted = session->aborted;
+	pthread_mutex_unlock(&session->lock);
+
 	pthread_mutex_lock(&stream->lock);
 	/*
 	 * Can be called concurently by connection close and reception of last
@@ -387,7 +395,8 @@ void try_stream_close(struct relay_stream *stream)
 	}
 
 	if (stream->last_net_seq_num != -1ULL &&
-			((int64_t) (stream->prev_seq - stream->last_net_seq_num)) < 0) {
+			((int64_t) (stream->prev_seq - stream->last_net_seq_num)) < 0
+			&& !session_aborted) {
 		/*
 		 * Don't close since we still have data pending. This
 		 * handles cases where an explicit close command has
