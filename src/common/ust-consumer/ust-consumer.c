@@ -2273,10 +2273,10 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	 * because we locked the metadata thread.
 	 */
 	ret = lttng_ustconsumer_request_metadata(ctx, metadata->chan, 0, 0);
+	pthread_mutex_lock(&metadata->lock);
 	if (ret < 0) {
 		goto end;
 	}
-	pthread_mutex_lock(&metadata->lock);
 
 	ret = commit_one_metadata_packet(metadata);
 	if (ret <= 0) {
