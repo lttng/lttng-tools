@@ -6148,6 +6148,12 @@ exit_health:
 
 exit_init_data:
 	/*
+	 * Wait for all pending call_rcu work to complete before tearing
+	 * down data structures. call_rcu worker may be trying to
+	 * perform lookups in those structures.
+	 */
+	rcu_barrier();
+	/*
 	 * sessiond_cleanup() is called when no other thread is running, except
 	 * the ht_cleanup thread, which is needed to destroy the hash tables.
 	 */
