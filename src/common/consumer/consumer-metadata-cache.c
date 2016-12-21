@@ -147,7 +147,7 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		char dummy = 'c';
 
 		cache->max_offset = offset + len;
-		if (channel->monitor) {
+		if (channel->monitor && channel->metadata_stream) {
 			size_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
 					&dummy, 1);
 			if (size_ret < 1) {

@@ -47,6 +47,7 @@
 #include <common/consumer/consumer-stream.h>
 #include <common/consumer/consumer-testpoint.h>
 #include <common/align.h>
+#include <common/consumer/consumer-metadata-cache.h>
 
 struct lttng_consumer_global_data consumer_data = {
 	.stream_count = 0,
@@ -2051,6 +2052,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&stream->chan->lock);
+	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 	pthread_mutex_lock(&stream->lock);
 
 	/* Remove any reference to that stream. */
@@ -2076,6 +2078,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	stream->chan->metadata_stream = NULL;
 
 	pthread_mutex_unlock(&stream->lock);
+	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
