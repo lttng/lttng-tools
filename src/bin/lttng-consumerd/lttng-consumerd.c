@@ -622,6 +622,12 @@ exit_init_data:
 	tmp_ctx = ctx;
 	ctx = NULL;
 	cmm_barrier();	/* Clear ctx for signal handler. */
+	/*
+	 * Wait for all pending call_rcu work to complete before tearing
+	 * down data structures. call_rcu worker may be trying to
+	 * perform lookups in those structures.
+	 */
+	rcu_barrier();
 	lttng_consumer_destroy(tmp_ctx);
 	lttng_consumer_cleanup();
 
