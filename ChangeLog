@@ -1,3 +1,11 @@
+2017-01-06 lttng-tools 2.8.4 ("Wheel Of Fortune" debuts on NBC)
+	* Fix: lttng-relayd: forcefully close stream on relayd shutdown
+	* Fix: protect the channel's metadata stream using the metadata cache lock
+	* Fix: double unlock of metadata mutex on error
+	* Fix: add element length check in lttng_index_file_open
+	* Fix: free previous instance of url (alloc_url) on default live url assignation
+	* Fix: relayd vs consumerd compatibility
+
 2016-12-01 lttng-tools 2.8.3 (National Pie Day)
 	* Fix: truncate the metadata file in shm-path
 	* Fix: add missing refcount of loaded modules
