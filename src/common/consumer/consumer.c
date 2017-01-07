@@ -2051,7 +2051,10 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	DBG3("Consumer delete metadata stream %d", stream->wait_fd);
 
 	pthread_mutex_lock(&consumer_data.lock);
-	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
+	if (stream->chan->metadata_cache) {
+		/* Only applicable to userspace consumers. */
+		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
+	}
 	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->lock);
 
@@ -2079,7 +2082,9 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&stream->chan->lock);
-	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
+	if (stream->chan->metadata_cache) {
+		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
+	}
 	pthread_mutex_unlock(&consumer_data.lock);
 
 	if (free_chan) {
