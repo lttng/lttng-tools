@@ -1,3 +1,7 @@
+2017-01-07 lttng-tools 2.8.5 (National Bobblehead Day)
+	* Fix: only lock the metadata_cache in userspace consumers
+	* Fix: lock nesting order reversed
+
 2017-01-06 lttng-tools 2.8.4 ("Wheel Of Fortune" debuts on NBC)
 	* Fix: lttng-relayd: forcefully close stream on relayd shutdown
 	* Fix: protect the channel's metadata stream using the metadata cache lock
