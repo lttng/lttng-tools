@@ -1,3 +1,10 @@
+2017-01-09 lttng-tools 2.8.6 (National Cassoulet Day)
+	* Fix: consumerd: order of metadata cache vs stream lock
+	* Fix: add missing rcu_barrier before daemon teardown
+	* Fix: Add missing pthread.h include
+	* Fix: support for older versions of Babeltrace in test script
+	* Fix: reverse channel and metadata cache lock nesting order
+
 2017-01-07 lttng-tools 2.8.5 (National Bobblehead Day)
 	* Fix: only lock the metadata_cache in userspace consumers
 	* Fix: lock nesting order reversed
