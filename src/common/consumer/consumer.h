@@ -337,9 +337,9 @@ struct lttng_consumer_stream {
 	 * Lock to use the stream FDs since they are used between threads.
 	 *
 	 * This is nested INSIDE the consumer_data lock.
-	 * This is nested INSIDE the metadata cache lock.
 	 * This is nested INSIDE the channel lock.
 	 * This is nested INSIDE the channel timer lock.
+	 * This is nested OUTSIDE the metadata cache lock.
 	 * This is nested OUTSIDE consumer_relayd_sock_pair lock.
 	 */
 	pthread_mutex_t lock;
