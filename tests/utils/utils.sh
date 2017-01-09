@@ -1,5 +1,3 @@
-#!/src/bin/bash
-#
 # Copyright (C) - 2012 David Goulet <dgoulet@efficios.com>
 #
 # This library is free software; you can redistribute it and/or modify it under
