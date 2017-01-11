@@ -338,7 +338,7 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 
 	/* Send streams */
 	cds_list_for_each_entry(stream, &channel->stream_list.head, list) {
-		if (!stream->fd) {
+		if (!stream->fd || stream->sent_to_consumer) {
 			continue;
 		}
 
@@ -348,6 +348,7 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 		if (ret < 0) {
 			goto error;
 		}
+		stream->sent_to_consumer = true;
 	}
 
 error:
