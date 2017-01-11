@@ -84,6 +84,7 @@ struct ltt_kernel_stream {
 	int fd;
 	int state;
 	int cpu;
+	bool sent_to_consumer;
 	/* Format is %s_%d respectively channel name and CPU number. */
 	char name[DEFAULT_STREAM_NAME_LEN];
 	uint64_t tracefile_size;
