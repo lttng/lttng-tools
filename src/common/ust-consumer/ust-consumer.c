@@ -2496,6 +2496,8 @@ retry:
 		index.offset = htobe64(stream->out_fd_offset);
 		ret = get_index_values(&index, ustream);
 		if (ret < 0) {
+			err = ustctl_put_subbuf(ustream);
+			assert(err == 0);
 			goto end;
 		}
 
@@ -2503,6 +2505,8 @@ retry:
 		ret = update_stream_stats(stream);
 		if (ret < 0) {
 			PERROR("kernctl_get_events_discarded");
+			err = ustctl_put_subbuf(ustream);
+			assert(err == 0);
 			goto end;
 		}
 	} else {

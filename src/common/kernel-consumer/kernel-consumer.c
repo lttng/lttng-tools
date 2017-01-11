@@ -1315,12 +1315,34 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 		ret = update_stream_stats(stream);
 		if (ret < 0) {
+			err = kernctl_put_subbuf(infd);
+			if (err != 0) {
+				if (err == -EFAULT) {
+					PERROR("Error in unreserving sub buffer\n");
+				} else if (err == -EIO) {
+					/* Should never happen with newer LTTng versions */
+					PERROR("Reader has been pushed by the writer, last sub-buffer corrupted.");
+				}
+				ret = err;
+				goto end;
+			}
 			goto end;
 		}
 	} else {
 		write_index = 0;
 		ret = metadata_stream_check_version(infd, stream);
 		if (ret < 0) {
+			err = kernctl_put_subbuf(infd);
+			if (err != 0) {
+				if (err == -EFAULT) {
+					PERROR("Error in unreserving sub buffer\n");
+				} else if (err == -EIO) {
+					/* Should never happen with newer LTTng versions */
+					PERROR("Reader has been pushed by the writer, last sub-buffer corrupted.");
+				}
+				ret = err;
+				goto end;
+			}
 			goto end;
 		}
 	}
