@@ -12,27 +12,25 @@ SYNOPSIS
 Local mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--shm-path='PATH']
-      [option:--no-output | option:--output='PATH' | option:--set-url=file://'PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='PATH']
+      [option:--no-output | option:--output='PATH' | option:--set-url=file://'PATH']
 
 Network streaming mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* [option:--shm-path='PATH']
-      (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL') ['SESSION']
-
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='PATH']
+      (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')
 Snapshot mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--snapshot [option:--shm-path='PATH']
-      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--snapshot
+      [option:--shm-path='PATH'] [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
 
 Live mode:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* option:--live[='DELAYUS'] [option:--shm-path='PATH']
-      [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL'] ['SESSION']
-
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--live[='DELAYUS']
+      [option:--shm-path='PATH'] [option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL']
 
 DESCRIPTION
 -----------
