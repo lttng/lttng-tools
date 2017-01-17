@@ -662,7 +662,9 @@ void destroy_ctx_type(struct ctx_type *type)
 	if (!type) {
 		return;
 	}
-	free(type->opt->symbol);
+	if (type->opt) {
+		free(type->opt->symbol);
+	}
 	free(type->opt);
 	free(type);
 }
