@@ -72,6 +72,10 @@ static void test_create_one_kernel_session(void)
 	kern = trace_kernel_create_session();
 	ok(kern != NULL, "Create kernel session");
 
+	if (!kern) {
+		skip(1, "Kernel session is null");
+		return;
+	}
 	ok(kern->fd == -1 &&
 	   kern->metadata_stream_fd == -1 &&
 	   kern->consumer_fds_sent == 0 &&
@@ -117,6 +121,11 @@ static void test_create_kernel_channel(void)
 	chan = trace_kernel_create_channel(&attr);
 	ok(chan != NULL, "Create kernel channel");
 
+	if (!chan) {
+		skip(1, "Channel is null");
+		return;
+	}
+
 	ok(chan->fd == -1 &&
 	   chan->enabled == 1 &&
 	   chan->stream_count == 0 &&
@@ -143,6 +152,11 @@ static void test_create_kernel_event(void)
 	event = trace_kernel_create_event(&ev, NULL, NULL);
 	ok(event != NULL, "Create kernel event");
 
+	if (!event) {
+		skip(1, "Event is null");
+		return;
+	}
+
 	ok(event->fd == -1 &&
 	   event->enabled == 1 &&
 	   event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT &&
@@ -160,6 +174,11 @@ static void test_create_kernel_stream(void)
 
 	stream = trace_kernel_create_stream("stream1", 0);
 	ok(stream != NULL, "Create kernel stream");
+
+	if (!stream) {
+		skip(1, "Stream is null");
+		return;
+	}
 
 	ok(stream->fd == -1 &&
 	   stream->state == 0,
