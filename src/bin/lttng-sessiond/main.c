@@ -1855,6 +1855,8 @@ static void *thread_dispatch_ust_registration(void *data)
 		.count = 0,
 	};
 
+	rcu_register_thread();
+
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
 	if (testpoint(sessiond_thread_app_reg_dispatch)) {
@@ -2088,6 +2090,7 @@ error_testpoint:
 		ERR("Health error occurred in %s", __func__);
 	}
 	health_unregister(health_sessiond);
+	rcu_unregister_thread();
 	return NULL;
 }
 
