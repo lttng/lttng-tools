@@ -308,6 +308,8 @@ int main(int argc, char **argv)
 	void *status;
 	struct lttng_consumer_local_data *tmp_ctx;
 
+	rcu_register_thread();
+
 	if (set_signal_handler()) {
 		retval = -1;
 		goto exit_set_signal_handler;
@@ -642,6 +644,8 @@ exit_init_data:
 exit_health_consumerd_cleanup:
 exit_options:
 exit_set_signal_handler:
+
+	rcu_unregister_thread();
 
 	if (!retval) {
 		exit(EXIT_SUCCESS);
