@@ -566,18 +566,6 @@ ssize_t ust_app_push_metadata(struct ust_registry_session *registry,
 		return 0;
 	}
 
-	/*
-	 * On a push metadata error either the consumer is dead or the
-	 * metadata channel has been destroyed because its endpoint
-	 * might have died (e.g: relayd), or because the application has
-	 * exited. If so, the metadata closed flag is set to 1 so we
-	 * deny pushing metadata again which is not valid anymore on the
-	 * consumer side.
-	 */
-	if (registry->metadata_closed) {
-		return -EPIPE;
-	}
-
 	offset = registry->metadata_len_sent;
 	len = registry->metadata_len - registry->metadata_len_sent;
 	new_metadata_len_sent = registry->metadata_len;
