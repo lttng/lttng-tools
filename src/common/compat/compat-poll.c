@@ -111,8 +111,9 @@ int compat_poll_create(struct lttng_poll_event *events, int size)
 	}
 
 	if (!poll_max_size) {
-		ERR("poll_max_size not initialized yet");
-		goto error;
+		if (lttng_poll_set_max_size()) {
+			goto error;
+		}
 	}
 
 	/* Don't bust the limit here */
