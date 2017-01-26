@@ -18,7 +18,7 @@
 #ifndef _COMPAT_ENDIAN_H
 #define _COMPAT_ENDIAN_H
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 #include <endian.h>
 
 /*
