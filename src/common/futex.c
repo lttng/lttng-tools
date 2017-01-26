@@ -18,7 +18,6 @@
 
 #define _LGPL_SOURCE
 #include <limits.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <urcu.h>
 #include <urcu/futex.h>

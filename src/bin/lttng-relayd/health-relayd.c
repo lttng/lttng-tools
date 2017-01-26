@@ -37,7 +37,6 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <urcu/compiler.h>
-#include <ulimit.h>
 #include <inttypes.h>
 
 #include <common/defaults.h>
