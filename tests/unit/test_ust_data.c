@@ -23,6 +23,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <urcu.h>
 
 #include <lttng/lttng.h>
 #include <bin/lttng-sessiond/lttng-ust-abi.h>
@@ -257,11 +258,15 @@ int main(int argc, char **argv)
 
 	diag("UST data structures unit test");
 
+	rcu_register_thread();
+
 	test_create_one_ust_session();
 	test_create_ust_channel();
 	test_create_ust_event();
 	test_create_ust_context();
 	test_create_ust_event_exclusion();
+
+	rcu_unregister_thread();
 
 	return exit_status();
 }

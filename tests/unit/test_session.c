@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/types.h>
+#include <urcu.h>
 
 #include <tap/tap.h>
 
@@ -295,6 +296,8 @@ int main(int argc, char **argv)
 
 	diag("Sessions unit tests");
 
+	rcu_register_thread();
+
 	test_session_list();
 
 	test_create_one_session();
@@ -310,6 +313,8 @@ int main(int argc, char **argv)
 	test_bogus_session_param();
 
 	test_large_session_number();
+
+	rcu_unregister_thread();
 
 	return exit_status();
 }
