@@ -65,6 +65,16 @@ CC="$PTHREAD_CC"
 
 AX_LIB_SOCKET_NSL
 
+LT_NO_UNDEFINED=""
+AS_CASE([$host_os],
+  [cygwin*],
+    [
+      LT_NO_UNDEFINED="-no-undefined"
+    ]
+)
+
+AC_SUBST(LT_NO_UNDEFINED)
+
 # Compute minor/major/patchlevel version numbers
 major_version=$(echo AC_PACKAGE_VERSION | $SED 's/^\([[0-9]]\)*\.[[0-9]]*\.[[0-9]]*.*$/\1/')
 minor_version=$(echo AC_PACKAGE_VERSION | $SED 's/^[[0-9]]*\.\([[0-9]]*\)\.[[0-9]]*.*$/\1/')
