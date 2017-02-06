@@ -813,6 +813,7 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	ua_sess->deleted = true;
 
 	registry = get_session_registry(ua_sess);
+	/* Registry can be null on error path during initialization. */
 	if (registry) {
 		/* Push metadata for application before freeing the application. */
 		(void) push_metadata(registry, ua_sess->consumer);
@@ -840,6 +841,10 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_PID) {
 		struct buffer_reg_pid *reg_pid = buffer_reg_pid_find(ua_sess->id);
 		if (reg_pid) {
+			/*
+			 * Registry can be null on error path during
+			 * initialization.
+			 */
 			buffer_reg_pid_remove(reg_pid);
 			buffer_reg_pid_destroy(reg_pid);
 		}
@@ -2468,6 +2473,8 @@ error:
 /*
  * Ask the consumer to create a channel and get it if successful.
  *
+ * Called with UST app session lock held.
+ *
  * Return 0 on success or else a negative value.
  */
 static int do_consumer_create_channel(struct ltt_ust_session *usess,
@@ -2957,6 +2964,8 @@ error:
 /*
  * Create and send to the application the created buffers with per PID buffers.
  *
+ * Called with UST app session lock held.
+ *
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_pid(struct ust_app *app,
@@ -2980,6 +2989,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	rcu_read_lock();
 
 	registry = get_session_registry(ua_sess);
+	/* The UST app session lock is held, registry shall not be null. */
 	assert(registry);
 
 	/* Create and add a new channel registry to session. */
@@ -3039,6 +3049,8 @@ error:
  * From an already allocated ust app channel, create the channel buffers if
  * need and send it to the application. This MUST be called with a RCU read
  * side lock acquired.
+ *
+ * Called with UST app session lock held.
  *
  * Return 0 on success or else a negative value. Returns -ENOTCONN if
  * the application exited concurrently.
@@ -3226,6 +3238,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	assert(consumer);
 
 	registry = get_session_registry(ua_sess);
+	/* The UST app session is held registry shall not be null. */
 	assert(registry);
 
 	pthread_mutex_lock(&registry->lock);
@@ -4362,6 +4375,9 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 /*
  * Start tracing for a specific UST session and app.
+ *
+ * Called with UST app session lock held.
+ *
  */
 static
 int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
@@ -4545,6 +4561,8 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	health_code_update();
 
 	registry = get_session_registry(ua_sess);
+
+	/* The UST app session is held registry shall not be null. */
 	assert(registry);
 
 	/* Push metadata for application before freeing the application. */
@@ -5386,19 +5404,17 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
 	if (!app) {
-		DBG("Application socket %d is being teardown. Abort event notify",
+		DBG("Application socket %d is being torn down. Abort event notify",
 				sock);
 		ret = 0;
-		free(fields);
 		goto error_rcu_unlock;
 	}
 
 	/* Lookup channel by UST object descriptor. */
 	ua_chan = find_channel_by_objd(app, cobjd);
 	if (!ua_chan) {
-		DBG("Application channel is being teardown. Abort event notify");
+		DBG("Application channel is being torn down. Abort event notify");
 		ret = 0;
-		free(fields);
 		goto error_rcu_unlock;
 	}
 
@@ -5407,7 +5423,11 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 
 	/* Get right session registry depending on the session buffer type. */
 	registry = get_session_registry(ua_sess);
-	assert(registry);
+	if (!registry) {
+		DBG("Application session is being torn down. Abort event notify");
+		ret = 0;
+		goto error_rcu_unlock;
+	};
 
 	/* Depending on the buffer type, a different channel key is used. */
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
@@ -5431,13 +5451,11 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 
 		chan_reg->nr_ctx_fields = nr_fields;
 		chan_reg->ctx_fields = fields;
+		fields = NULL;
 		chan_reg->header_type = type;
 	} else {
 		/* Get current already assigned values. */
 		type = chan_reg->header_type;
-		free(fields);
-		/* Set to NULL so the error path does not do a double free. */
-		fields = NULL;
 	}
 	/* Channel id is set during the object creation. */
 	chan_id = chan_reg->chan_id;
@@ -5473,9 +5491,7 @@ error:
 	pthread_mutex_unlock(&registry->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
-	if (ret) {
-		free(fields);
-	}
+	free(fields);
 	return ret;
 }
 
@@ -5505,23 +5521,17 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	/* Lookup application. If not found, there is a code flow error. */
 	app = find_app_by_notify_sock(sock);
 	if (!app) {
-		DBG("Application socket %d is being teardown. Abort event notify",
+		DBG("Application socket %d is being torn down. Abort event notify",
 				sock);
 		ret = 0;
-		free(sig);
-		free(fields);
-		free(model_emf_uri);
 		goto error_rcu_unlock;
 	}
 
 	/* Lookup channel by UST object descriptor. */
 	ua_chan = find_channel_by_objd(app, cobjd);
 	if (!ua_chan) {
-		DBG("Application channel is being teardown. Abort event notify");
+		DBG("Application channel is being torn down. Abort event notify");
 		ret = 0;
-		free(sig);
-		free(fields);
-		free(model_emf_uri);
 		goto error_rcu_unlock;
 	}
 
@@ -5529,7 +5539,11 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	ua_sess = ua_chan->session;
 
 	registry = get_session_registry(ua_sess);
-	assert(registry);
+	if (!registry) {
+		DBG("Application session is being torn down. Abort event notify");
+		ret = 0;
+		goto error_rcu_unlock;
+	}
 
 	if (ua_sess->buffer_type == LTTNG_BUFFER_PER_UID) {
 		chan_reg_key = ua_chan->tracing_channel_id;
@@ -5548,6 +5562,9 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 			sobjd, cobjd, name, sig, nr_fields, fields,
 			loglevel_value, model_emf_uri, ua_sess->buffer_type,
 			&event_id, app);
+	sig = NULL;
+	fields = NULL;
+	model_emf_uri = NULL;
 
 	/*
 	 * The return value is returned to ustctl so in case of an error, the
@@ -5575,6 +5592,9 @@ error:
 	pthread_mutex_unlock(&registry->lock);
 error_rcu_unlock:
 	rcu_read_unlock();
+	free(sig);
+	free(fields);
+	free(model_emf_uri);
 	return ret;
 }
 
@@ -5611,13 +5631,17 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	ua_sess = find_session_by_objd(app, sobjd);
 	if (!ua_sess) {
 		/* Return an error since this is not an error */
-		DBG("Application session is being torn down. Aborting enum registration.");
+		DBG("Application session is being torn down (session not found). Aborting enum registration.");
 		free(entries);
 		goto error_rcu_unlock;
 	}
 
 	registry = get_session_registry(ua_sess);
-	assert(registry);
+	if (!registry) {
+		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
+		free(entries);
+		goto error_rcu_unlock;
+	}
 
 	pthread_mutex_lock(&registry->lock);
 
@@ -5983,7 +6007,11 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			}
 
 			registry = get_session_registry(ua_sess);
-			assert(registry);
+			if (!registry) {
+				DBG("Application session is being torn down. Abort snapshot record.");
+				ret = -1;
+				goto error;
+			}
 			ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
 					1, ua_sess->euid, ua_sess->egid, pathname, wait, 0);
 			if (ret < 0) {
