@@ -18,6 +18,7 @@ LAUNCH_APP="launch_ust_app"
 SESSION_NAME="stress"
 EVENT_NAME="tp:tptest"
 LOG_FILE="sessiond.log"
+LOG_ERROR_FILE="${LOG_FILE}.error"
 CHANNEL_NAME="channel0"
 NUM_TESTS=16
 NR_APP=10
@@ -32,15 +33,6 @@ source $TESTDIR/utils/utils.sh
 
 # MUST set TESTDIR before calling those functions
 
-function enable_channel_per_uid()
-{
-    local sess_name=$1
-    local channel_name=$2
-
-    $TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-uid -u $channel_name -s $sess_name >/dev/null 2>&1
-    ok $? "Enable channel $channel_name per UID for session $sess_name"
-}
-
 function check_sessiond()
 {
 	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
@@ -48,29 +40,11 @@ function check_sessiond()
 
 		diag "!!!The session daemon died unexpectedly!!!"
 		mv $LOG_FILE $LOG_FILE-$str_date
+		mv $LOG_ERROR_FILE $LOG_ERROR_FILE-$str_date
 		if [ -e $COREDUMP_FILE ]; then
 			mv $COREDUMP_FILE $COREDUMP_FILE-$str_date
 		fi
 		exit 1
-	fi
-}
-
-function start_sessiond()
-{
-	local SESSIOND_BIN="lttng-sessiond"
-
-	validate_kernel_version
-	if [ $? -ne 0 ]; then
-		fail "Start session daemon"
-		BAIL_OUT "*** Kernel too old for session daemon tests ***"
-	fi
-
-	if [ -z $(pgrep --full lt-$SESSIOND_BIN) ]; then
-		# We have to start it like this so the ulimit -c is used by this
-		# process. Also, we collect any error message printed out.
-		$TESTDIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --quiet --background --consumerd32-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$TESTDIR/../src/bin/lttng-consumerd/lttng-consumerd" >$LOG_FILE 2>&1
-		status=$?
-		ok $status "Start session daemon"
 	fi
 }
 
@@ -80,9 +54,9 @@ test_stress()
 		for a in $(seq 1 $NR_SESSION); do
 			create_lttng_session_ok $SESSION_NAME-$a $TRACE_PATH
 			check_sessiond
-			enable_channel_per_uid $SESSION_NAME-$a $CHANNEL_NAME
+			enable_ust_lttng_channel_ok $SESSION_NAME-$a $CHANNEL_NAME "--buffers-uid"
 			check_sessiond
-			enable_ust_lttng_event_ok $SESSION_NAME-$a $EVENT_NAME
+			enable_ust_lttng_event_ok $SESSION_NAME-$a $EVENT_NAME $CHANNEL_NAME
 			check_sessiond
 			start_lttng_tracing_ok $SESSION_NAME-$a
 			check_sessiond
@@ -113,7 +87,8 @@ function cleanup()
 function sighandler()
 {
 	cleanup
-	rm $LOG_FILE
+	rm $LOG_FILE $LOG_ERROR_FILE
+	rm -rf $TRACE_PATH
 	exit 1
 }
 
@@ -128,7 +103,15 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-start_sessiond
+
+# Log sessiond output to file
+OUTPUT_DEST="$LOG_FILE"
+ERROR_OUTPUT_DEST="$LOG_ERROR_FILE"
+
+start_lttng_sessiond
+
+OUTPUT_DEST="/dev/null"
+ERROR_OUTPUT_DEST="/dev/null"
 
 diag "Starting applications"
 
@@ -147,5 +130,5 @@ fi
 
 cleanup
 rm -rf $TRACE_PATH
-rm $LOG_FILE
+rm $LOG_FILE $LOG_ERROR_FILE
 exit 0

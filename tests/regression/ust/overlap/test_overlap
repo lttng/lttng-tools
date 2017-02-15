@@ -297,7 +297,7 @@ test_enable_same_wildcard_filter_2()
 	enable_ust_lttng_event_filter $SESSION_NAME "$event_wild1" "1==1"
 
 	# Enabling the same events with same filters should fail. This one is expected to fail.
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_wild2" -s $SESSION_NAME -u --filter "1==1" >/dev/null 2>&1
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event "$event_wild2" -s $SESSION_NAME -u --filter "1==1" >/dev/null 2>&1
 	if [ $? -ne 0 ]; then
 	    pass "Enable event $event_name with filtering for session $sess_name twice failure detected"
 	else

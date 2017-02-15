@@ -20,9 +20,6 @@ TEST_DESC="Live - Kernel space tracing"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 DELAY_USEC=2000000
 
 SESSION_NAME="live"
@@ -44,7 +41,7 @@ print_test_banner "$TEST_DESC"
 function setup_live_tracing()
 {
 	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN create $SESSION_NAME --live $DELAY_USEC \
 		-U net://localhost >/dev/null 2>&1
 	ok $? "Create session in live mode with delay $DELAY_USEC"
 

@@ -20,8 +20,6 @@ TEST_DESC="Machine interface testing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
 XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
 
 #Test app for ust event
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -67,7 +65,7 @@ source $TESTDIR/utils/utils.sh
 LTTNG_BIN="lttng --mi xml"
 
 #Global declaration for simplification
-LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
+LTTNG=$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN
 
 #Overwrite the default output for utils.sh command
 
@@ -667,7 +665,7 @@ function test_start_stop () {
 
 function test_snapshot () {
 	local session_name="testSnapshotAdd"
-	local snapshot_path="$OUTPUT_DIR/snapshotoutput"
+	local snapshot_path="file://$OUTPUT_DIR/snapshotoutput"
 	OUTPUT_FILE="snapshot.xml"
 
 
@@ -748,7 +746,6 @@ function test_track_untrack ()
 	diag "Test track/untrack pid"
 
 	local session_name="testTrack"
-	local snapshot_path="$OUTPUT_DIR/trackoutput"
 	local pid="1,2,3"
 	OUTPUT_FILE="track.xml"
 
@@ -906,6 +903,7 @@ do
 	fi
 done
 rm -rf $OUTPUT_DIR
+rm -rf $FOO_LOAD_DIR
 
 OUTPUT_DEST=/dev/null 2>&1
 stop_lttng_sessiond

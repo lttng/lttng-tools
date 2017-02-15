@@ -19,7 +19,6 @@ TEST_DESC="Filtering - Valid filters"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-LTTNG_BIN="lttng"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100
@@ -37,9 +36,9 @@ function enable_lttng_event_filter()
 	event_name="$3"
 	filter="$4"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event $event_name \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN enable-event $event_name \
 			-s $sess_name $domain --filter "$filter" 2>&1 >/dev/null
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-context \
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN add-context \
 			-s $sess_name $domain -t procname 2>&1 >/dev/null
 
 	ok $? "Enable lttng event with filtering"

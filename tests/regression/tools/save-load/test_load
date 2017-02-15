@@ -20,9 +20,6 @@ TEST_DESC="Load session(s)"
 CURDIR=$(dirname $0)/
 CONFIG_DIR="${CURDIR}/configuration"
 TESTDIR=$CURDIR/../../../
-SESSIOND_BIN="lttng-sessiond"
-RELAYD_BIN="lttng-relayd"
-LTTNG_BIN="lttng"
 export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/config/)
 
 SESSION_NAME="load-42"
@@ -76,7 +73,7 @@ function test_complex_load()
 	if [ $? -ne 0 ]; then
 		break;
 	fi
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list $sess -c chan2 > $mi_output_file
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN --mi XML list $sess -c chan2 > $mi_output_file
 	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain[lttng:type='UST']/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
 	if [[ $mi_result = "false" ]]; then
 	    ok 0 "Disabled event is loaded in disabled state"
@@ -97,6 +94,7 @@ function test_complex_load()
 
 	destroy_lttng_session_ok $sess
 
+	rm $mi_output_file
 	stop_lttng_relayd
 	rm -rf ${mi_output_file}
 }
@@ -141,7 +139,7 @@ function test_trackers()
 	if [ $? -ne 0 ]; then
 		break;
 	fi
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
+	$TESTDIR/$LTTNG_PATH_REL/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
 	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:pid_tracker/lttng:targets/lttng:pid_target")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "Pid target is present"
@@ -151,6 +149,7 @@ function test_trackers()
 
 	# Test to remove the target just to make sure
 	lttng_untrack_ok "-p 666 -u -s $SESSION_NAME-trackers"
+	rm $mi_output_file
 
 	destroy_lttng_session_ok "$SESSION_NAME-trackers"
 	rm -rf ${mi_output_file}
