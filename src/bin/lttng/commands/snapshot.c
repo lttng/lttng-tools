@@ -48,6 +48,12 @@ static int cmd_record(int argc, const char **argv);
 
 static const char *indent4 = "    ";
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-snapshot.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

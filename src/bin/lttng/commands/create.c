@@ -51,6 +51,12 @@ static int opt_no_output;
 static int opt_snapshot;
 static unsigned int opt_live_timer;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-create.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

@@ -33,6 +33,14 @@
 
 #include "command.h"
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng.1.h>
+#else
+NULL
+#endif
+;
+
 /* Variables */
 static char *progname;
 int opt_no_sessiond;
@@ -76,6 +84,7 @@ static struct cmd_struct commands[] =  {
 	{ "list", cmd_list},
 	{ "load", cmd_load},
 	{ "metadata", cmd_metadata},
+	{ "regenerate", cmd_regenerate},
 	{ "save", cmd_save},
 	{ "set-session", cmd_set_session},
 	{ "snapshot", cmd_snapshot},
@@ -84,10 +93,8 @@ static struct cmd_struct commands[] =  {
 	{ "stop", cmd_stop},
 	{ "track", cmd_track},
 	{ "untrack", cmd_untrack},
-	{ "help", NULL},
 	{ "version", cmd_version},
 	{ "view", cmd_view},
-	{ "regenerate", cmd_regenerate},
 	{ NULL, NULL}	/* Array closure */
 };
 
@@ -316,10 +323,9 @@ static int parse_args(int argc, char **argv)
 			ret = 0;
 			goto end;
 		case 'h':
-			ret = utils_show_man_page(1, "lttng");
-
+			ret = utils_show_help(1, "lttng", help_msg);
 			if (ret) {
-				ERR("Cannot view man page lttng(1)");
+				ERR("Cannot show --help for `lttng`");
 				perror("exec");
 			}
 			goto end;

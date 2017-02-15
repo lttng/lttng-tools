@@ -320,7 +320,7 @@ const char *get_mi_element_command(enum cmd_type cmd_type)
  */
 static
 int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
-		int argc, const char **argv)
+		int argc, const char **argv, const char *help_msg)
 {
 	int opt, ret = 0;
 	enum cmd_error_code command_ret = CMD_SUCCESS;
@@ -454,10 +454,26 @@ end:
 
 int cmd_track(int argc, const char **argv)
 {
-	return cmd_track_untrack(CMD_TRACK, "track", argc, argv);
+	static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-track.1.h>
+#else
+	NULL
+#endif
+	;
+
+	return cmd_track_untrack(CMD_TRACK, "track", argc, argv, help_msg);
 }
 
 int cmd_untrack(int argc, const char **argv)
 {
-	return cmd_track_untrack(CMD_UNTRACK, "untrack", argc, argv);
+	static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-untrack.1.h>
+#else
+	NULL
+#endif
+	;
+
+	return cmd_track_untrack(CMD_UNTRACK, "untrack", argc, argv, help_msg);
 }

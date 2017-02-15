@@ -1362,11 +1362,17 @@ static const char *get_man_bin_path(void)
 }
 
 LTTNG_HIDDEN
-int utils_show_man_page(int section, const char *page_name)
+int utils_show_help(int section, const char *page_name,
+		const char *help_msg)
 {
 	char section_string[8];
 	const char *man_bin_path = get_man_bin_path();
-	int ret;
+	int ret = 0;
+
+	if (help_msg) {
+		printf("%s", help_msg);
+		goto end;
+	}
 
 	/* Section integer -> section string */
 	ret = sprintf(section_string, "%d", section);
@@ -1381,5 +1387,7 @@ int utils_show_man_page(int section, const char *page_name)
 	 */
 	ret = execlp(man_bin_path, "man", "-M", MANPATH,
 		section_string, page_name, NULL);
+
+end:
 	return ret;
 }

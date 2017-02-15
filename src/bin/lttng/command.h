@@ -28,13 +28,20 @@
 #define DECL_COMMAND(_name) \
 	extern int cmd_##_name(int, const char **)
 
+#ifdef LTTNG_EMBED_HELP
+# define HELP_MSG_NAME		help_msg
+# define SHOW_HELP_ERROR_LINE	ERR("Cannot show --help for `lttng-%s`", argv[0]);
+#else
+# define HELP_MSG_NAME		NULL
+# define SHOW_HELP_ERROR_LINE	;
+#endif
+
 #define SHOW_HELP() 							\
 	do {								\
-		ret = show_cmd_man_page(argv[0]);			\
+		ret = show_cmd_help(argv[0], HELP_MSG_NAME);		\
 									\
 		if (ret) {						\
-			ERR("Cannot view man page lttng-%s(1)", argv[0]); \
-			perror("exec");					\
+			SHOW_HELP_ERROR_LINE 				\
 			ret = CMD_ERROR;				\
 		}							\
 	} while (0)

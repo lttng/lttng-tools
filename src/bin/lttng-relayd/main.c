@@ -71,6 +71,14 @@
 #include "connection.h"
 #include "tracefile-array.h"
 
+static const char *help_msg =
+#ifdef LTTNG_EMBED_HELP
+#include <lttng-relayd.8.h>
+#else
+NULL
+#endif
+;
+
 /* command line options */
 char *opt_output_path;
 static int opt_daemon, opt_background;
@@ -250,9 +258,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		break;
 	case 'h':
-		ret = utils_show_man_page(8, "lttng-relayd");
+		ret = utils_show_help(8, "lttng-relayd", help_msg);
 		if (ret) {
-			ERR("Cannot view man page lttng-relayd(8)");
+			ERR("Cannot show --help for `lttng-relayd`");
 			perror("exec");
 		}
 		exit(EXIT_FAILURE);

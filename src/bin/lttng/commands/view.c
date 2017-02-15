@@ -32,6 +32,12 @@ static char *opt_trace_path;
 static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
 //static const char *lttv_gui_bin = CONFIG_LTTV_GUI_BIN;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-view.1.h>
+;
+#endif
+
 enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,

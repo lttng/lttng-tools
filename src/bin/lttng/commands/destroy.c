@@ -35,6 +35,12 @@ static char *opt_session_name;
 static int opt_destroy_all;
 static int opt_no_wait;
 
+#ifdef LTTNG_EMBED_HELP
+static const char help_msg[] =
+#include <lttng-destroy.1.h>
+;
+#endif
+
 /* Mi writer */
 static struct mi_writer *writer;
 
