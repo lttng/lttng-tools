@@ -31,6 +31,7 @@
 #include "filter-ir.h"
 
 #include <common/macros.h>
+#include <common/string-utils/string-utils.h>
 
 static
 struct ir_op *generate_ir_recursive(struct filter_parser_ctx *ctx,
@@ -69,6 +70,22 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 }
 
 static
+enum ir_load_string_type get_literal_string_type(const char *string)
+{
+	assert(string);
+
+	if (strutils_is_star_glob_pattern(string)) {
+		if (strutils_is_star_at_the_end_only_glob_pattern(string)) {
+			return IR_LOAD_STRING_TYPE_GLOB_STAR_END;
+		}
+
+		return IR_LOAD_STRING_TYPE_GLOB_STAR;
+	}
+
+	return IR_LOAD_STRING_TYPE_PLAIN;
+}
+
+static
 struct ir_op *make_op_load_string(char *string, enum ir_side side)
 {
 	struct ir_op *op;
@@ -80,8 +97,9 @@ struct ir_op *make_op_load_string(char *string, enum ir_side side)
 	op->data_type = IR_DATA_STRING;
 	op->signedness = IR_SIGN_UNKNOWN;
 	op->side = side;
-	op->u.load.u.string = strdup(string);
-	if (!op->u.load.u.string) {
+	op->u.load.u.string.type = get_literal_string_type(string);
+	op->u.load.u.string.value = strdup(string);
+	if (!op->u.load.u.string.value) {
 		free(op);
 		return NULL;
 	}
@@ -366,7 +384,7 @@ void filter_free_ir_recursive(struct ir_op *op)
 	case IR_OP_LOAD:
 		switch (op->data_type) {
 		case IR_DATA_STRING:
-			free(op->u.load.u.string);
+			free(op->u.load.u.string.value);
 			break;
 		case IR_DATA_FIELD_REF:		/* fall-through */
 		case IR_DATA_GET_CONTEXT_REF:

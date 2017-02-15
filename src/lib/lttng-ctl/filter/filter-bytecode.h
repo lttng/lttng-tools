@@ -72,7 +72,7 @@ enum filter_op {
 	FILTER_OP_GE				= 16,
 	FILTER_OP_LE				= 17,
 
-	/* string binary comparator */
+	/* string binary comparator: apply to  */
 	FILTER_OP_EQ_STRING			= 18,
 	FILTER_OP_NE_STRING			= 19,
 	FILTER_OP_GT_STRING			= 20,
@@ -152,6 +152,16 @@ enum filter_op {
 	/* load userspace field ref */
 	FILTER_OP_LOAD_FIELD_REF_USER_STRING	= 74,
 	FILTER_OP_LOAD_FIELD_REF_USER_SEQUENCE	= 75,
+
+	/*
+	 * load immediate star globbing pattern (literal string)
+	 * from immediate
+	 */
+	FILTER_OP_LOAD_STAR_GLOB_STRING		= 76,
+
+	/* globbing pattern binary operator: apply to */
+	FILTER_OP_EQ_STAR_GLOB_STRING		= 77,
+	FILTER_OP_NE_STAR_GLOB_STRING		= 78,
 
 	NR_FILTER_OPS,
 };

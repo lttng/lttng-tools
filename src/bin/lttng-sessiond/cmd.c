@@ -35,6 +35,7 @@
 #include <lttng/condition/condition.h>
 #include <lttng/action/action.h>
 #include <lttng/channel-internal.h>
+#include <common/string-utils/string-utils.h>
 
 #include "channel.h"
 #include "consumer.h"
@@ -61,7 +62,6 @@
 static pthread_mutex_t relayd_net_seq_idx_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t relayd_net_seq_idx;
 
-static int validate_event_name(const char *);
 static int validate_ust_event_name(const char *);
 static int cmd_enable_event_internal(struct ltt_session *session,
 		struct lttng_domain *domain,
@@ -1444,10 +1444,6 @@ int cmd_disable_event(struct ltt_session *session,
 	DBG("Disable event command for event \'%s\'", event->name);
 
 	event_name = event->name;
-	if (validate_event_name(event_name)) {
-		ret = LTTNG_ERR_INVALID_EVENT_NAME;
-		goto error;
-	}
 
 	/* Error out on unhandled search criteria */
 	if (event->loglevel_type || event->loglevel != -1 || event->enabled
@@ -1739,43 +1735,6 @@ end:
 	return ret;
 }
 
-static int validate_event_name(const char *name)
-{
-	int ret = 0;
-	const char *c = name;
-	const char *event_name_end = c + LTTNG_SYMBOL_NAME_LEN;
-	bool null_terminated = false;
-
-	/*
-	 * Make sure that unescaped wildcards are only used as the last
-	 * character of the event name.
-	 */
-	while (c < event_name_end) {
-		switch (*c) {
-		case '\0':
-		        null_terminated = true;
-			goto end;
-		case '\\':
-			c++;
-			break;
-		case '*':
-			if ((c + 1) < event_name_end && *(c + 1)) {
-				/* Wildcard is not the last character */
-				ret = LTTNG_ERR_INVALID_EVENT_NAME;
-				goto end;
-			}
-		default:
-			break;
-		}
-		c++;
-	}
-end:
-	if (!ret && !null_terminated) {
-		ret = LTTNG_ERR_INVALID_EVENT_NAME;
-	}
-	return ret;
-}
-
 static inline bool name_starts_with(const char *name, const char *prefix)
 {
 	const size_t max_cmp_len = min(strlen(prefix), LTTNG_SYMBOL_NAME_LEN);
@@ -1821,7 +1780,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe, bool internal_event)
 {
-	int ret, channel_created = 0;
+	int ret = 0, channel_created = 0;
 	struct lttng_channel *attr = NULL;
 
 	assert(session);
@@ -1831,14 +1790,23 @@ static int _cmd_enable_event(struct ltt_session *session,
 	/* If we have a filter, we must have its filter expression */
 	assert(!(!!filter_expression ^ !!filter));
 
+	/* Normalize event name as a globbing pattern */
+	strutils_normalize_star_glob_pattern(event->name);
+
+	/* Normalize exclusion names as globbing patterns */
+	if (exclusion) {
+		size_t i;
+
+		for (i = 0; i < exclusion->count; i++) {
+			char *name = LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, i);
+
+			strutils_normalize_star_glob_pattern(name);
+		}
+	}
+
 	DBG("Enable event command for event \'%s\'", event->name);
 
 	rcu_read_lock();
-
-	ret = validate_event_name(event->name);
-	if (ret) {
-		goto error;
-	}
 
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:

@@ -28,6 +28,7 @@
 
 #include <src/common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/string.h>
+#include <common/string-utils/string-utils.h>
 
 /* Mi dependancy */
 #include <common/mi-lttng.h>
@@ -372,9 +373,10 @@ const char *print_raw_channel_name(const char *name)
  * Mi print exlcusion list
  */
 static
-int mi_print_exclusion(int count, char **names)
+int mi_print_exclusion(char **names)
 {
 	int i, ret;
+	int count = names ? strutils_array_of_strings_len(names) : 0;
 
 	assert(writer);
 
@@ -406,12 +408,13 @@ end:
  * Return allocated string for pretty-printing exclusion names.
  */
 static
-char *print_exclusions(int count, char **names)
+char *print_exclusions(char **names)
 {
 	int length = 0;
 	int i;
 	const char *preamble = " excluding ";
 	char *ret;
+	int count = names ? strutils_array_of_strings_len(names) : 0;
 
 	if (count == 0) {
 		return strdup("");
@@ -419,141 +422,168 @@ char *print_exclusions(int count, char **names)
 
 	/* calculate total required length */
 	for (i = 0; i < count; i++) {
-		length += strlen(names[i]) + 1;
+		length += strlen(names[i]) + 4;
 	}
 
 	/* add length of preamble + one for NUL - one for last (missing) comma */
 	length += strlen(preamble);
-	ret = zmalloc(length);
+	ret = zmalloc(length + 1);
 	if (!ret) {
 		return NULL;
 	}
 	strncpy(ret, preamble, length);
 	for (i = 0; i < count; i++) {
+		strcat(ret, "\"");
 		strcat(ret, names[i]);
+		strcat(ret, "\"");
 		if (i != count - 1) {
-			strcat(ret, ",");
+			strcat(ret, ", ");
 		}
 	}
 
 	return ret;
 }
 
-/*
- * Compare list of exclusions against an event name.
- * Return a list of legal exclusion names.
- * Produce an error or a warning about others (depending on the situation)
- */
 static
-int check_exclusion_subsets(const char *event_name,
-		const char *exclusions,
-		int *exclusion_count_ptr,
-		char ***exclusion_list_ptr)
+int check_exclusion_subsets(const char *event_name, const char *exclusion)
 {
-	const char *excluder_ptr;
-	const char *event_ptr;
-	const char *next_excluder;
-	int excluder_length;
-	int exclusion_count = 0;
-	char **exclusion_list = NULL;
-	int ret = CMD_SUCCESS;
+	bool warn = false;
+	int ret = 0;
+	const char *e = event_name;
+	const char *x = exclusion;
 
-	if (event_name[strlen(event_name) - 1] != '*') {
-		ERR("Event %s: Excluders can only be used with wildcarded events", event_name);
+	/* Scan both the excluder and the event letter by letter */
+	while (true) {
+		if (*e == '\\') {
+			if (*x != *e) {
+				warn = true;
+				goto end;
+			}
+
+			e++;
+			x++;
+			goto cmp_chars;
+		}
+
+		if (*x == '*') {
+			/* Event is a subset of the excluder */
+			ERR("Event %s: %s excludes all events from %s",
+				event_name, exclusion, event_name);
+			goto error;
+		}
+
+		if (*e == '*') {
+			/*
+			 * Reached the end of the event name before the
+			 * end of the exclusion: this is valid.
+			 */
+			goto end;
+		}
+
+cmp_chars:
+		if (*x != *e) {
+			warn = true;
+			break;
+		}
+
+		x++;
+		e++;
+	}
+
+	goto end;
+
+error:
+	ret = -1;
+
+end:
+	if (warn) {
+		WARN("Event %s: %s does not exclude any events from %s",
+			event_name, exclusion, event_name);
+	}
+
+	return ret;
+}
+
+static
+int check_exclusions_subsets(const char *event_name,
+		char * const *exclusions)
+{
+	int ret = 0;
+	char * const *item;
+
+	for (item = exclusions; *item; item++) {
+		ret = check_exclusion_subsets(event_name, *item);
+		if (ret) {
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
+
+static
+int create_exclusion_list_and_validate(const char *event_name,
+		const char *exclusions_arg,
+		char ***exclusion_list)
+{
+	int ret = 0;
+	char **exclusions = NULL;
+
+	/* Event name must be a valid globbing pattern to allow exclusions. */
+	if (!strutils_is_star_glob_pattern(event_name)) {
+		ERR("Event %s: Exclusions can only be used with a globbing pattern",
+			event_name);
 		goto error;
 	}
 
-	next_excluder = exclusions;
-	while (*next_excluder != 0) {
-		event_ptr = event_name;
-		excluder_ptr = next_excluder;
-		excluder_length = strcspn(next_excluder, ",");
+	/* Split exclusions. */
+	exclusions = strutils_split(exclusions_arg, ',', true);
+	if (!exclusions) {
+		goto error;
+	}
 
-		/* Scan both the excluder and the event letter by letter */
-		while (1) {
-			char e, x;
+	/*
+	 * If the event name is a star-at-end only globbing pattern,
+	 * then we can validate the individual exclusions. Otherwise
+	 * all exclusions are passed to the session daemon.
+	 */
+	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
+		char * const *exclusion;
 
-			e = *event_ptr;
-			x = *excluder_ptr;
-
-			if (x == '*') {
-				/* Event is a subset of the excluder */
-				ERR("Event %s: %.*s excludes all events from %s",
-						event_name,
-						excluder_length,
-						next_excluder,
-						event_name);
-				goto error;
-			}
-			if (e == '*') {
-				char *string;
-				char **new_exclusion_list;
-
-				/* Excluder is a proper subset of event */
-				string = lttng_strndup(next_excluder, excluder_length);
-				if (!string) {
-					PERROR("lttng_strndup error");
+		for (exclusion = exclusions; *exclusion; exclusion++) {
+			if (!strutils_is_star_glob_pattern(*exclusion) ||
+					strutils_is_star_at_the_end_only_glob_pattern(*exclusion)) {
+				ret = check_exclusions_subsets(
+					event_name, exclusion);
+				if (ret) {
 					goto error;
 				}
-				new_exclusion_list = realloc(exclusion_list,
-					sizeof(char *) * (exclusion_count + 1));
-				if (!new_exclusion_list) {
-					PERROR("realloc");
-					free(string);
-					goto error;
-				}
-				exclusion_list = new_exclusion_list;
-				exclusion_count++;
-				exclusion_list[exclusion_count - 1] = string;
-				break;
 			}
-			if (x != e) {
-				/* Excluder and event sets have no common elements */
-				WARN("Event %s: %.*s does not exclude any events from %s",
-						event_name,
-						excluder_length,
-						next_excluder,
-						event_name);
-				break;
-			}
-			excluder_ptr++;
-			event_ptr++;
-		}
-		/* next excluder */
-		next_excluder += excluder_length;
-		if (*next_excluder == ',') {
-			next_excluder++;
 		}
 	}
+
+	*exclusion_list = exclusions;
+
 	goto end;
+
 error:
-	while (exclusion_count--) {
-		free(exclusion_list[exclusion_count]);
-	}
-	if (exclusion_list != NULL) {
-		free(exclusion_list);
-	}
-	exclusion_list = NULL;
-	exclusion_count = 0;
-	ret = CMD_ERROR;
+	ret = -1;
+	strutils_free_null_terminated_array_of_strings(exclusions);
+
 end:
-	*exclusion_count_ptr = exclusion_count;
-	*exclusion_list_ptr = exclusion_list;
 	return ret;
 }
 
-static void warn_on_truncated_exclusion_names(char **exclusion_list,
-	int exclusion_count, int *warn)
+static void warn_on_truncated_exclusion_names(char * const *exclusion_list,
+	int *warn)
 {
-	size_t i = 0;
+	char * const *exclusion;
 
-	for (i = 0; i < exclusion_count; ++i) {
-		const char *name = exclusion_list[i];
-		size_t len = strlen(name);
-
-		if (len >= LTTNG_SYMBOL_NAME_LEN) {
+	for (exclusion = exclusion_list; *exclusion; exclusion++) {
+		if (strlen(*exclusion) >= LTTNG_SYMBOL_NAME_LEN) {
 			WARN("Event exclusion \"%s\" will be truncated",
-				name);
+				*exclusion);
 			*warn = 1;
 		}
 	}
@@ -570,7 +600,6 @@ static int enable_events(char *session_name)
 	char *event_name, *channel_name = NULL;
 	struct lttng_event ev;
 	struct lttng_domain dom;
-	int exclusion_count = 0;
 	char **exclusion_list = NULL;
 
 	memset(&ev, 0, sizeof(ev));
@@ -685,21 +714,23 @@ static int enable_events(char *session_name)
 		}
 
 		if (opt_exclude) {
-			ret = check_exclusion_subsets("*", opt_exclude,
-					&exclusion_count, &exclusion_list);
-			if (ret == CMD_ERROR) {
+			ret = create_exclusion_list_and_validate("*",
+				opt_exclude, &exclusion_list);
+			if (ret) {
+				ret = CMD_ERROR;
 				goto error;
 			}
-			ev.exclusion = 1;
 
+			ev.exclusion = 1;
 			warn_on_truncated_exclusion_names(exclusion_list,
-				exclusion_count, &warn);
+				&warn);
 		}
 		if (!opt_filter) {
 			ret = lttng_enable_event_with_exclusions(handle,
 					&ev, channel_name,
 					NULL,
-					exclusion_count, exclusion_list);
+					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
+					exclusion_list);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
@@ -733,7 +764,7 @@ static int enable_events(char *session_name)
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					char *exclusion_string = print_exclusions(exclusion_list);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -747,7 +778,7 @@ static int enable_events(char *session_name)
 							opt_loglevel);
 					free(exclusion_string);
 				} else {
-					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					char *exclusion_string = print_exclusions(exclusion_list);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -770,7 +801,7 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					char *exclusion_string = print_exclusions(exclusion_list);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -784,7 +815,7 @@ static int enable_events(char *session_name)
 							opt_loglevel);
 					free(exclusion_string);
 				} else {
-					char *exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					char *exclusion_string = print_exclusions(exclusion_list);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -809,7 +840,9 @@ static int enable_events(char *session_name)
 
 		if (opt_filter) {
 			command_ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
-						opt_filter, exclusion_count, exclusion_list);
+						opt_filter,
+						exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
+						exclusion_list);
 			if (command_ret < 0) {
 				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
@@ -869,7 +902,7 @@ static int enable_events(char *session_name)
 			}
 
 			/* print exclusion */
-			ret = mi_print_exclusion(exclusion_count, exclusion_list);
+			ret = mi_print_exclusion(exclusion_list);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -973,22 +1006,19 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 				/* Free previously allocated items */
-				if (exclusion_list != NULL) {
-					while (exclusion_count--) {
-						free(exclusion_list[exclusion_count]);
-					}
-					free(exclusion_list);
-					exclusion_list = NULL;
-				}
-				/* Check for proper subsets */
-				ret = check_exclusion_subsets(event_name, opt_exclude,
-						&exclusion_count, &exclusion_list);
-				if (ret == CMD_ERROR) {
+				strutils_free_null_terminated_array_of_strings(
+					exclusion_list);
+				exclusion_list = NULL;
+				ret = create_exclusion_list_and_validate(
+					event_name, opt_exclude,
+					&exclusion_list);
+				if (ret) {
+					ret = CMD_ERROR;
 					goto error;
 				}
 
 				warn_on_truncated_exclusion_names(
-					exclusion_list, exclusion_count, &warn);
+					exclusion_list, &warn);
 			}
 
 			ev.loglevel_type = opt_loglevel_type;
@@ -1045,8 +1075,10 @@ static int enable_events(char *session_name)
 
 			command_ret = lttng_enable_event_with_exclusions(handle,
 					&ev, channel_name,
-					NULL, exclusion_count, exclusion_list);
-			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					NULL,
+					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
+					exclusion_list);
+			exclusion_string = print_exclusions(exclusion_list);
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -1121,8 +1153,10 @@ static int enable_events(char *session_name)
 			ev.filter = 1;
 
 			command_ret = lttng_enable_event_with_exclusions(handle, &ev, channel_name,
-					opt_filter, exclusion_count, exclusion_list);
-			exclusion_string = print_exclusions(exclusion_count, exclusion_list);
+					opt_filter,
+					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
+					exclusion_list);
+			exclusion_string = print_exclusions(exclusion_list);
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -1185,7 +1219,7 @@ static int enable_events(char *session_name)
 			}
 
 			/* print exclusion */
-			ret = mi_print_exclusion(exclusion_count, exclusion_list);
+			ret = mi_print_exclusion(exclusion_list);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -1231,13 +1265,7 @@ error:
 		ret = CMD_ERROR;
 	}
 	lttng_destroy_handle(handle);
-
-	if (exclusion_list != NULL) {
-		while (exclusion_count--) {
-			free(exclusion_list[exclusion_count]);
-		}
-		free(exclusion_list);
-	}
+	strutils_free_null_terminated_array_of_strings(exclusion_list);
 
 	/* Overwrite ret with error_holder if there was an actual error with
 	 * enabling an event.
@@ -1413,3 +1441,4 @@ end:
 	poptFreeContext(pc);
 	return ret;
 }
+

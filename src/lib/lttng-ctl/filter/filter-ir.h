@@ -56,13 +56,27 @@ enum ir_side {
 	IR_RIGHT,
 };
 
+enum ir_load_string_type {
+	/* Plain, no globbing at all: `hello world`. */
+	IR_LOAD_STRING_TYPE_PLAIN = 0,
+
+	/* Star at the end only: `hello *`. */
+	IR_LOAD_STRING_TYPE_GLOB_STAR_END,
+
+	/* At least one star, anywhere, but not at the end only: `he*wor*`. */
+	IR_LOAD_STRING_TYPE_GLOB_STAR,
+};
+
 struct ir_op_root {
 	struct ir_op *child;
 };
 
 struct ir_op_load {
 	union {
-		char *string;
+		struct {
+			enum ir_load_string_type type;
+			char *value;
+		} string;
 		int64_t num;
 		double flt;
 		char *ref;

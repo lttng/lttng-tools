@@ -77,13 +77,9 @@ int validate_string(struct ir_op *node)
 		if (node->data_type == IR_DATA_STRING) {
 			const char *str;
 
-			assert(node->u.load.u.string);
-			str = node->u.load.u.string;
+			assert(node->u.load.u.string.value);
+			str = node->u.load.u.string.value;
 
-			/*
-			 * Make sure that if a non-escaped wildcard is
-			 * present, it is the last character of the string.
-			 */
 			for (;;) {
 				enum parse_char_result res;
 
@@ -95,20 +91,6 @@ int validate_string(struct ir_op *node)
 				str++;
 
 				switch (res) {
-				case PARSE_CHAR_WILDCARD:
-				{
-					if (*str) {
-						/*
-						 * Found a wildcard followed by non-null
-						 * character; unsupported.
-						 */
-						ret = -EINVAL;
-						fprintf(stderr,
-							"Wildcards may only be used as the last character of a string in a filter.\n");
-						goto end_load;
-					}
-					break;
-				}
 				case PARSE_CHAR_UNKNOWN:
 					ret = -EINVAL;
 					fprintf(stderr,

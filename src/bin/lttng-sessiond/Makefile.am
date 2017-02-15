@@ -59,7 +59,8 @@ lttng_sessiond_LDADD = -lurcu-common -lurcu \
 		$(top_builddir)/src/common/relayd/librelayd.la \
 		$(top_builddir)/src/common/testpoint/libtestpoint.la \
 		$(top_builddir)/src/common/health/libhealth.la \
-		$(top_builddir)/src/common/config/libconfig.la
+		$(top_builddir)/src/common/config/libconfig.la \
+		$(top_builddir)/src/common/string-utils/libstring-utils.la
 
 
 if HAVE_LIBLTTNG_UST_CTL

@@ -173,13 +173,38 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 	{
 		struct load_op *insn;
 		uint32_t insn_len = sizeof(struct load_op)
-			+ strlen(node->u.load.u.string) + 1;
+			+ strlen(node->u.load.u.string.value) + 1;
 
 		insn = calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
-		insn->op = FILTER_OP_LOAD_STRING;
-		strcpy(insn->data, node->u.load.u.string);
+
+		switch (node->u.load.u.string.type) {
+		case IR_LOAD_STRING_TYPE_GLOB_STAR:
+			/*
+			 * We explicitly tell the interpreter here that
+			 * this load is a full star globbing pattern so
+			 * that the appropriate matching function can be
+			 * called. Also, see comment below.
+			 */
+			insn->op = FILTER_OP_LOAD_STAR_GLOB_STRING;
+			break;
+		default:
+			/*
+			 * This is the "legacy" string, which includes
+			 * star globbing patterns with a star only at
+			 * the end. Both "plain" and "star at the end"
+			 * literal strings are handled at the same place
+			 * by the tracer's filter bytecode interpreter,
+			 * whereas full star globbing patterns (stars
+			 * can be anywhere in the string) is a special
+			 * case.
+			 */
+			insn->op = FILTER_OP_LOAD_STRING;
+			break;
+		}
+
+		strcpy(insn->data, node->u.load.u.string.value);
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
 		return ret;

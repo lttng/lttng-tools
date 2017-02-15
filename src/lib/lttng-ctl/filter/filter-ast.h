@@ -187,5 +187,7 @@ void filter_bytecode_free(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_check_binary_op_nesting(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_check_binary_comparator(struct filter_parser_ctx *ctx);
 int filter_visitor_ir_validate_string(struct filter_parser_ctx *ctx);
+int filter_visitor_ir_normalize_glob_patterns(struct filter_parser_ctx *ctx);
+int filter_visitor_ir_validate_globbing(struct filter_parser_ctx *ctx);
 
 #endif /* _FILTER_AST_H */

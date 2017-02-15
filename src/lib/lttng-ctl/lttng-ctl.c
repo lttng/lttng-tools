@@ -797,7 +797,7 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 	assert(ev);
 
 	/* Don't add filter for the '*' event. */
-	if (ev->name[0] != '*') {
+	if (strcmp(ev->name, "*") != 0) {
 		if (filter) {
 			err = asprintf(&agent_filter, "(%s) && (logger_name == \"%s\")", filter,
 					ev->name);
@@ -920,12 +920,28 @@ static int generate_filter(char *filter_expression,
 		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
+
+	/* Normalize globbing patterns in the expression. */
+	ret = filter_visitor_ir_normalize_glob_patterns(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
 	/* Validate strings used as literals in the expression. */
 	ret = filter_visitor_ir_validate_string(ctx);
 	if (ret) {
 		ret = -LTTNG_ERR_FILTER_INVAL;
 		goto parse_error;
 	}
+
+	/* Validate globbing patterns in the expression. */
+	ret = filter_visitor_ir_validate_globbing(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
 	dbg_printf("done\n");
 
 	dbg_printf("Generating bytecode... ");
