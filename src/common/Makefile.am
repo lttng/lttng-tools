@@ -2,7 +2,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS =
+SUBDIRS = string-utils
 
 # Make sure to always distribute all folders
 # since SUBDIRS is decided at configure time.
