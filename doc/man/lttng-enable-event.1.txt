@@ -133,8 +133,9 @@ The available conditions for the Linux kernel domain are:
   (option:--probe or option:--function option's argument) which must
   match event source's equivalent.
 +
-Wildcard using the `*` character are supported _at the end_ of
-tracepoint and system call names.
+You can use `*` characters at any place in the tracepoint or system
+call name as wildcards to match zero or more characters. To use a
+literal `*` character, use :escwc:.
 
 * Filter expression (option:--filter option) executed against the
   dynamic values of event fields at execution time that must evaluate
@@ -146,10 +147,11 @@ The available conditions for the application domains are:
 * Tracepoint name ('EVENT' with option:--tracepoint option) which must
   match event source's equivalent.
 +
-Wildcard using the `*` character are supported _at the end_ of
-tracepoint names. When creating an event rule with a tracepoint name
-containing a wildcard, specific tracepoint names can be excluded from
-the match using the option:--exclude option.
+You can use `*` characters at any place in the tracepoint name as
+wildcards to match zero or more characters. To use a literal `*`
+character, use :escwc:. When you create an event rule with a tracepoint
+name containing a wildcard, you can exclude specific tracepoint names
+from the match with the option:--exclude option.
 
 * Filter expression (option:--filter option) executed against the
   dynamic values of event fields at execution time that must evaluate
@@ -232,9 +234,9 @@ When a comparison includes a non existent event field, the whole filter
 expression evaluates to false (the event is discarded).
 
 C integer and floating point number constants are supported, as well as
-literal strings between double quotes (`"`). Literal strings can contain
-a wildcard character (`*`) at the end to match more than one string.
-This wildcard can be escaped using :escwc:.
+literal strings between double quotes (`"`). You can use `*` characters
+at any place in a literal string as wildcards to match zero or more
+characters. To use a literal `*` character, use :escwc:.
 
 LTTng-UST enumeration fields can be compared to integer values (fields
 or constants).
@@ -257,6 +259,10 @@ $ctx.procname == "lttng*" && (!flag || poel < 34)
 ---------------------------------------------------------
 $app.my_provider:my_context == 17.34e9 || some_enum >= 14
 ---------------------------------------------------------
+
+-------------------
+filename != "*.log"
+-------------------
 
 
 [[log-levels]]
@@ -411,9 +417,11 @@ Filtering and exclusion
 ~~~~~~~~~~~~~~~~~~~~~~~
 option:-x 'EVENT'[,'EVENT']..., option:--exclude='EVENT'[,'EVENT']...::
     Exclude events named 'EVENT' from the event rule. This option
-    can be used when the command's 'EVENT' argument contains a wildcard
-    (`*`) to exclude specific names. Only available with application
-    domains.
+    can be used when the command's 'EVENT' argument contains at least
+    one wildcard star (`*`) to exclude specific names. 'EVENT' can also
+    contain wildcard stars. To use a
+    literal `,` character, use :esccomma:.
+    Only available with the option:--userspace domain.
 
 option:-f 'EXPR', option:--filter='EXPR'::
     Add filter expression condition to the event rule. Expression 'EXPR'
