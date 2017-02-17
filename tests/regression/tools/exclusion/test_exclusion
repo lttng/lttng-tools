@@ -22,13 +22,12 @@ TESTDIR=$CURDIR/../../..
 LTTNG_BIN="lttng"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="test-exclusion"
-EV_EXCLUDE_NAME="tp:tptest2"
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-nevents"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=100
 NR_USEC_WAIT=1
-NUM_TESTS=8
+NUM_TESTS=149
 
 source $TESTDIR/utils/utils.sh
 
@@ -37,24 +36,25 @@ function enable_ust_lttng_all_event_exclusion()
 	sess_name="$1"
 	exclusion="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -a -s $sess_name -u -x "$exclusion" 2>&1 >/dev/null
-
-	ok $? "Enable lttng event with event $EV_EXCLUDE_NAME excluded"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -a -s $sess_name -u -x "$exclusion"
 }
 
 function run_apps
 {
-	 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+	 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
 }
 
 function test_exclusion
 {
+	exclusions="$1"
+	event_name_expected_to_be_missing="$2"
 	trace_path=$(mktemp -d)
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path
 
-	enable_ust_lttng_all_event_exclusion $SESSION_NAME $EV_EXCLUDE_NAME
+	enable_ust_lttng_all_event_exclusion $SESSION_NAME "$exclusions"
+	ok $? "Enable lttng event with event \"$exclusions\" excluded"
 
 	# Trace apps
 	start_lttng_tracing_ok $SESSION_NAME
@@ -64,12 +64,31 @@ function test_exclusion
 	# Destroy session
 	destroy_lttng_session_ok $SESSION_NAME
 
-	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $EV_EXCLUDE_NAME | grep -v index`
+	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index`
 	if [ ! -z "$stats" ]; then
-		fail "Excluded event $EV_EXCLUDE_NAME was found in trace!"
+		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
 	else
 		ok 0 "Validate trace exclusion output"
 		rm -rf $trace_path
+	fi
+}
+
+function test_exclusion_fail
+{
+	event_name="$1"
+	exclusions="$2"
+
+	create_lttng_session_ok $SESSION_NAME $trace_path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -u "$event_name" -s $sess_name -x "$exclusions" 2&>1 >/dev/null
+	res=$?
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ $res -eq 0 ]; then
+		fail "Enable LTTng event \"$event_name\" with exclusion \"$exclusions\" passes"
+		return 1
+	else
+		pass "Enable LTTng event \"$event_name\" with exclusion \"$exclusions\" fails"
+		return 0
 	fi
 }
 
@@ -79,6 +98,36 @@ print_test_banner $TEST_DESC
 
 start_lttng_sessiond
 
-test_exclusion
+test_exclusion 'tp:tptest2' 'tp:tptest2'
+test_exclusion 'tp:tptest3' 'tp:tptest3'
+test_exclusion 'tp:tptest*' 'tp:tptest1'
+test_exclusion 'tp:tptest*' 'tp:tptest2'
+test_exclusion 'tp:tptest*' 'tp:tptest3'
+test_exclusion 'tp:tptest*' 'tp:tptest4'
+test_exclusion 'tp:tptest*' 'tp:tptest5'
+test_exclusion 'tp*tptest*' 'tp:tptest1'
+test_exclusion 'tp*tptest*' 'tp:tptest2'
+test_exclusion 'tp*tptest*' 'tp:tptest3'
+test_exclusion 'tp*tptest*' 'tp:tptest4'
+test_exclusion 'tp*tptest*' 'tp:tptest5'
+test_exclusion '*test2' 'tp:tptest2'
+test_exclusion '*test5' 'tp:tptest5'
+test_exclusion '*p*test*' 'tp:tptest1'
+test_exclusion '*p*test*' 'tp:tptest2'
+test_exclusion '*p*test*' 'tp:tptest3'
+test_exclusion '*p***test*' 'tp:tptest4'
+test_exclusion '*p*test*' 'tp:tptest5'
+test_exclusion '*3' 'tp:tptest3'
+test_exclusion 'tp*test3,*2' 'tp:tptest2'
+test_exclusion '**tp*test3,*2' 'tp:tptest3'
+
+# Cannot use exclusions with non-globbing event name
+test_exclusion_fail "allo" "lol"
+test_exclusion_fail "allo" "meow,lol"
+test_exclusion_fail "allo" "z*em"
+
+# Exclusion name excludes all possible event names
+test_exclusion_fail "allo*" "all*"
+test_exclusion_fail "allo*" "ze,all*,yes"
 
 stop_lttng_sessiond
