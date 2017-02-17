@@ -27,8 +27,8 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="wildcard"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=37
-NUM_KERNEL_TESTS=30
+NUM_UST_TESTS=$(( 7 * 25 ))
+NUM_KERNEL_TESTS=$(( 7 * 25 ))
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -50,9 +50,16 @@ function test_event_wildcard()
 	DOMAIN="$1"
 	FIND="$2"
 	WILDCARD="$3"
+	CHANNEL=''
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_${DOMAIN}_lttng_event_ok $SESSION_NAME "$WILDCARD"
+
+	if [ $DOMAIN = kernel ]; then
+		CHANNEL=chan
+		$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k chan -s $SESSION_NAME --subbuf-size=8M --num-subbuf=4
+	fi
+
+	enable_${DOMAIN}_lttng_event_ok $SESSION_NAME "$WILDCARD" "$CHANNEL"
 
 	start_lttng_tracing_ok
 
@@ -65,7 +72,7 @@ function test_event_wildcard()
 	if [ ${FIND} -eq 1 ]; then
 		trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH
 	else
-		validate_trace_empty $TRACE_PATH
+		trace_matches $EVENT_NAME 0 $TRACE_PATH
 	fi
 
 	rm -rf $TRACE_PATH
@@ -99,15 +106,34 @@ fi
 
 EVENT_NAME="tp:tptest"
 
+# non-matching
+test_event_wildcard ust 0 'tp:abc*'
+test_event_wildcard ust 0 '*abc'
+test_event_wildcard ust 0 '*z*'
+test_event_wildcard ust 0 '*\**'
+test_event_wildcard ust 0 '*\*'
+test_event_wildcard ust 0 '\**'
+test_event_wildcard ust 0 '*:*tpte*s'
+test_event_wildcard ust 0 'tp**tpTest'
+
+# matching
 test_event_wildcard ust 1 'tp:tp*'
 test_event_wildcard ust 1 '*'
 test_event_wildcard ust 1 'tp:tptest*'
-test_event_wildcard ust 0 'tp:abc*'
-
-test_event_wildcard_fail ust 'tp:*tp'
-test_event_wildcard_fail ust 'tp:tp**'
-test_event_wildcard_fail ust '*tp:tp*'
-
+test_event_wildcard ust 1 '**'
+test_event_wildcard ust 1 '***'
+test_event_wildcard ust 1 '*tptest'
+test_event_wildcard ust 1 '**tptest'
+test_event_wildcard ust 1 '*tpte*'
+test_event_wildcard ust 1 '*tp*'
+test_event_wildcard ust 1 '*tp**'
+test_event_wildcard ust 1 '*:*tptest'
+test_event_wildcard ust 1 '*:*tpte*t'
+test_event_wildcard ust 1 't*p*:*t*e*s*t'
+test_event_wildcard ust 1 '*t*p*:*t*e*s*t*'
+test_event_wildcard ust 1 'tp*tptest'
+test_event_wildcard ust 1 'tp**tptest'
+test_event_wildcard ust 1 'tp*test'
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1
@@ -123,13 +149,34 @@ skip $isroot "Root access is needed. Skipping all kernel wildcard tests." $NUM_K
 
 	EVENT_NAME="lttng_test_filter_event"
 
-	test_event_wildcard kernel 1 'lttng_test_*'
-	test_event_wildcard kernel 1 'lttng_test_filter_event*'
-	test_event_wildcard kernel 0 'lttng_test_asdfasdf*'
+	# non-matching
+	test_event_wildcard kernel 0 'lttng_test_abc*'
+	test_event_wildcard kernel 0 '*abc'
+	test_event_wildcard kernel 0 '*z*'
+	test_event_wildcard kernel 0 '*\**'
+	test_event_wildcard kernel 0 '*\*'
+	test_event_wildcard kernel 0 '\**'
+	test_event_wildcard kernel 0 '*:*eve*n'
 
-	test_event_wildcard_fail kernel 'tp_*tp'
-	test_event_wildcard_fail kernel 'tp_tp**'
-	test_event_wildcard_fail kernel '*tp_tp*'
+	# matching
+	test_event_wildcard kernel 1 'lttng_test_fil*'
+	test_event_wildcard kernel 1 '*'
+	test_event_wildcard kernel 1 'lttng_test_filter_event*'
+	test_event_wildcard kernel 1 '**'
+	test_event_wildcard kernel 1 '***'
+	test_event_wildcard kernel 1 '*filter_event'
+	test_event_wildcard kernel 1 '*ter_ev*'
+	test_event_wildcard kernel 1 '*test*'
+	test_event_wildcard kernel 1 '*test**'
+	test_event_wildcard kernel 1 '*e*'
+	test_event_wildcard kernel 1 '*_*event'
+	test_event_wildcard kernel 1 '*_*filter_*nt'
+	test_event_wildcard kernel 1 '*_**filter_*nt'
+	test_event_wildcard kernel 1 'l*t*t*n*g*_*t*e*s*t*_*f*i*l*t*e*r*_*e*v*e*n*t'
+	test_event_wildcard kernel 1 '*l*t*t*n*g*_*t*e*s*t*_*f*i*l*t*e*r*_*e*v*e*n*t*'
+	test_event_wildcard kernel 1 'lttng*event'
+	test_event_wildcard kernel 1 'lttng*test*filter*event'
+	test_event_wildcard kernel 1 '*lttng*test*filter*event*'
 
 	rmmod lttng-test
 }
