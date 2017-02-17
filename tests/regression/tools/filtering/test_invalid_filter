@@ -25,8 +25,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=123
-NUM_KERNEL_TESTS=123
+NUM_UST_TESTS=165
+NUM_KERNEL_TESTS=165
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -143,8 +143,24 @@ INVALID_FILTERS=(
 		# Only \$ctx is supported for now
 		"\$global.value == 0"
 		"0 == \$global.value"
-		# A wildcard should only appear as the last character in a string literal
-		"msg == \"my_event*_blah\""
+		# Cannot compare two full star globbing patterns
+		'"hello*world" == "yes*man"'
+		'"hello*world" == "yesman*"'
+		'"helloworld*" == "yes*man"'
+		# May only use != and == operators when one of them is a full
+		# star globbing pattern
+		'"hello*world" < field'
+		'"hello*world" <= field'
+		'"hello*world" >= field'
+		'"hello*world" > field'
+		'"hello*world" || field'
+		'"hello*world" && field'
+		'field < "hello*world"'
+		'field <= "hello*world"'
+		'field >= "hello*world"'
+		'field > "hello*world"'
+		'field && "hello*world"'
+		'field || "hello*world"'
 )
 IFS="$OLDIFS"
 
