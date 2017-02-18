@@ -36,7 +36,7 @@ run_test=@RUN_PYTHON_AGENT_TEST@
 if [[ -z "$run_test" ]]; then
 	NUM_TESTS=1
 else
-	NUM_TESTS=$(((154 * ${#python_versions[@]})+2))
+	NUM_TESTS=$(((194 * ${#python_versions[@]})+2))
 fi
 
 source $TESTDIR/utils/utils.sh
@@ -342,6 +342,119 @@ function test_python_multi_session_disable_wildcard()
 	fi
 }
 
+function test_python_multi_session_disable_wildcard_begin()
+{
+	ev_name='*ev-test1'
+	diag "Test Python with multiple session with disabled wildcard (at the beginning) event"
+
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	enable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	enable_python_lttng_event $SESSION_NAME-2 "$ev_name"
+
+	disable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
+
+	run_app $1 0 1
+
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	# Validate test. Expecting all events of the first TP.
+	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
+function test_python_multi_session_disable_wildcard_middle()
+{
+	ev_name='python-*-test1'
+	diag "Test Python with multiple session with disabled wildcard (at the middle) event"
+
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	enable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	enable_python_lttng_event $SESSION_NAME-2 "$ev_name"
+
+	disable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
+
+	run_app $1 0 1
+
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	# Validate test. Expecting all events of the first TP.
+	trace_match_only $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
+function test_python_multi_session_disable_wildcard_end()
+{
+	ev_name='python-*'
+	diag "Test Python with multiple session with disabled wildcard (at the end) event"
+
+	create_lttng_session_ok $SESSION_NAME-1 $TRACE_PATH/$SESSION_NAME-1
+	enable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	create_lttng_session_ok $SESSION_NAME-2 $TRACE_PATH/$SESSION_NAME-2
+	enable_python_lttng_event $SESSION_NAME-2 "$ev_name"
+
+	disable_python_lttng_event $SESSION_NAME-1 "$ev_name"
+
+	start_lttng_tracing_ok $SESSION_NAME-1
+	start_lttng_tracing_ok $SESSION_NAME-2
+
+	run_app $1 0 1
+
+	stop_lttng_tracing_ok $SESSION_NAME-1
+	stop_lttng_tracing_ok $SESSION_NAME-2
+	destroy_lttng_session_ok $SESSION_NAME-1
+	destroy_lttng_session_ok $SESSION_NAME-2
+
+	# Validate test. Expecting NO event of the first TP.
+	trace_match_only $EVENT_NAME 0 $TRACE_PATH/$SESSION_NAME-1
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	# Validate test. Expecting all events of the first TP.
+	trace_matches $EVENT_NAME $NR_ITER $TRACE_PATH/$SESSION_NAME-2
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+
+	trace_matches $EVENT_NAME2 1 $TRACE_PATH/$SESSION_NAME-2
+	if [ $? -ne 0 ]; then
+		return $?
+	fi
+}
+
 function test_python_disable_all()
 {
 	diag "Test Python with multiple session with disabled all event"
@@ -576,6 +689,9 @@ skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 
 	tests=(
 		test_python_multi_session_disable_wildcard
+		test_python_multi_session_disable_wildcard_begin
+		test_python_multi_session_disable_wildcard_middle
+		test_python_multi_session_disable_wildcard_end
 		test_python_multi_session_disable
 		test_python_disable
 		test_python_disable_enable
