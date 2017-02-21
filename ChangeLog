@@ -1,3 +1,21 @@
+2017-02-20 lttng-tools 2.9.4 (Love Your Pet Day)
+	* Port: Link with no-undefined on Windows
+	* Port: win32 DLLs don't support hidden symbols
+	* Port: add cygwin support to endian compat
+	* Fix: Remove unused headers
+	* Fix: tests: register thread for RCU operations.
+	* Fix: Lazily initialize max poll set size in poll compat
+	* Fix: null dereference on error path for create_ctx_type
+	* Fix: test_ust_data dereference of null pointer
+	* Fix: test_kernel_data dereference of null pointer
+	* Man: move [SESSION] before options
+	* Fix: consumerd: add missing put_subbuf for ust and kernel errors
+	* Fix: sessiond: only send streams to consumer once
+	* Fix: consumerd main: needs to be a registered RCU thread
+	* Fix: thread_dispatch_ust_registration needs to be a RCU thread
+	* Fix: don't abort metadata push on closed metadata
+	* lttng-tools: remove bogus interpreter line from utils shell library
+
 2017-01-09 lttng-tools 2.9.3 (National Cassoulet Day)
 	* Fix: consumerd: order of metadata cache vs stream lock
 	* Fix: add missing rcu_barrier before daemon teardown
