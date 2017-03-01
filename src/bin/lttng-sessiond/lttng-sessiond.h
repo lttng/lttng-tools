@@ -58,7 +58,7 @@ struct ust_command {
 };
 
 /*
- * Queue used to enqueue UST registration request (ust_commant) and protected
+ * Queue used to enqueue UST registration request (ust_command) and synchronized
  * by a futex with a scheme N wakers / 1 waiters. See futex.c/.h
  */
 struct ust_cmd_queue {
