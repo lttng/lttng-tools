@@ -5973,7 +5973,7 @@ int main(int argc, char **argv)
 	}
 	load_info->path = opt_load_session_path;
 
-	/* Create health-check thread */
+	/* Create health-check thread. */
 	ret = pthread_create(&health_thread, default_pthread_attr(),
 			thread_manage_health, (void *) NULL);
 	if (ret) {
