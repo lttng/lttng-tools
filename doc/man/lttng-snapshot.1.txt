@@ -86,9 +86,9 @@ Taking a snapshot
 Taking a snapshot of the current tracing session is as easy as:
 
 [role="term"]
----------------------
-lttng snapshot record
----------------------
+----
+$ lttng snapshot record
+----
 
 This writes the snapshot files to the configured output. It is possible
 to use a custom, unregistered output at record time using the same

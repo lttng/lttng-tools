@@ -201,10 +201,10 @@ in conjunction with the option:--tracefile-size option.
 For example, consider this command:
 
 [role="term"]
------------------------------------------------------
-lttng enable-channel --kernel --tracefile-size=4096 \
+----
+$ lttng enable-channel --kernel --tracefile-size=4096 \
                      --tracefile-count=32 my-channel
------------------------------------------------------
+----
 
 Here, for each stream, the maximum size of each trace file is
 4 kiB and there can be a maximum of 32 different files. When there is
