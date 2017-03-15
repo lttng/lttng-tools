@@ -41,9 +41,9 @@ Assume the maximum system PID is 7 for this example.
 Command:
 
 [role="term"]
-------------
-lttng create
-------------
+----
+$ lttng create
+----
 
 Initial whitelist:
 
@@ -54,9 +54,9 @@ Initial whitelist:
 Command:
 
 [role="term"]
--------------------------------------
-lttng untrack --userspace --pid --all
--------------------------------------
+----
+$ lttng untrack --userspace --pid --all
+----
 
 Whitelist:
 
@@ -67,12 +67,12 @@ Whitelist:
 Commands:
 
 [role="term"]
-----------------------------------
-lttng enable-event --userspace ...
-lttng start
-# ...
-lttng track --userspace --pid=3,5
-----------------------------------
+----
+$ lttng enable-event --userspace ...
+$ lttng start
+$ # ...
+$ lttng track --userspace --pid=3,5
+----
 
 Whitelist:
 
@@ -83,9 +83,9 @@ Whitelist:
 Command:
 
 [role="term"]
--------------------------------
-lttng track --userspace --pid=2
--------------------------------
+----
+$ lttng track --userspace --pid=2
+----
 
 Whitelist:
 

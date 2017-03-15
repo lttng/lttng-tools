@@ -21,9 +21,9 @@ command.
 This command is the equivalent of:
 
 [role="term"]
---------------------
-lttng COMMAND --help
---------------------
+----
+$ lttng COMMAND --help
+----
 
 where `COMMAND` is the name of the command about which to get help. If
 'COMMAND' is omitted, `lttng help` shows general help about the

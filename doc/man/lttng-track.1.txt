@@ -36,11 +36,11 @@ With the PID tracker, it is possible, for example, to record all system
 calls called by a given process:
 
 [role="term"]
--------------------------------------------
-lttng enable-event --kernel --all --syscall
-lttng track --kernel --pid=2345
-lttng start
--------------------------------------------
+----
+# lttng enable-event --kernel --all --syscall
+# lttng track --kernel --pid=2345
+# lttng start
+----
 
 If all the PIDs are tracked (i.e. `lttng track --pid --all`, which is
 the default state of all domains when creating a tracing session), then
@@ -62,9 +62,9 @@ Initial whitelist:
 Command:
 
 [role="term"]
------------------------------------
-lttng track --userspace --pid=3,6,7
------------------------------------
+----
+$ lttng track --userspace --pid=3,6,7
+----
 
 Whitelist:
 
@@ -75,9 +75,9 @@ Whitelist:
 Command:
 
 [role="term"]
----------------------------------
-lttng untrack --userspace --pid=7
----------------------------------
+----
+$ lttng untrack --userspace --pid=7
+----
 
 Whitelist:
 
@@ -88,9 +88,9 @@ Whitelist:
 Command:
 
 [role="term"]
----------------------------------
-lttng track --userspace --pid=1,5
----------------------------------
+----
+$ lttng track --userspace --pid=1,5
+----
 
 Whitelist:
 

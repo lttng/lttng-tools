@@ -21,9 +21,9 @@ tracing session.
 This command is the exact equivalent of:
 
 [role="term"]
----------------------
-lttng list CURSESSION
----------------------
+----
+$ lttng list CURSESSION
+----
 
 where `CURSESSION` is the name of the current tracing session.
 Use man:lttng-set-session(1) to set the current tracing session.
