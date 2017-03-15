@@ -16,6 +16,8 @@
  */
 
 #define _LGPL_SOURCE
+#include <stdbool.h>
+
 #include <common/bitfield.h>
 #include <common/common.h>
 #include <common/kernel-ctl/kernel-ctl.h>
@@ -43,7 +45,8 @@ int syscall_init_table(void)
 	size_t nbmem;
 	FILE *fp;
 	/* Syscall data from the kernel. */
-	size_t index;
+	size_t index = 0;
+	bool at_least_one_syscall = false;
 	uint32_t bitness;
 	char name[SYSCALL_NAME_LEN];
 
@@ -76,12 +79,13 @@ int syscall_init_table(void)
 				name = %" XSTR(SYSCALL_NAME_LEN) "[^;]; \
 				bitness = %u; };\n",
 				&index, name, &bitness) == 3) {
-		if (index >= nbmem ) {
+		at_least_one_syscall = true;
+		if (index >= nbmem) {
 			struct syscall *new_list;
 			size_t new_nbmem;
 
 			/* Double memory size. */
-			new_nbmem = max(index, nbmem << 1);
+			new_nbmem = max(index + 1, nbmem << 1);
 			if (new_nbmem > (SIZE_MAX / sizeof(*new_list))) {
 				/* Overflow, stop everything, something went really wrong. */
 				ERR("Syscall listing memory size overflow. Stopping");
@@ -123,7 +127,10 @@ int syscall_init_table(void)
 		*/
 	}
 
-	syscall_table_nb_entry = index;
+	/* Index starts at 0. */
+	if (at_least_one_syscall) {
+		syscall_table_nb_entry = index + 1;
+	}
 
 	ret = 0;
 
