@@ -74,6 +74,7 @@ TAGS
 /tests/unit/test_ust_data
 /tests/unit/test_utils_parse_size_suffix
 /tests/unit/test_utils_expand_path
+/tests/unit/test_notification
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard
