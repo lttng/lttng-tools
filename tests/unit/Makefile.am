@@ -13,6 +13,7 @@ TESTS = test_kernel_data \
 	test_utils_parse_size_suffix \
 	test_utils_expand_path \
 	test_string_utils \
+	test_notification \
 	ini_config/test_ini_config
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
@@ -29,11 +30,12 @@ LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
+LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 # Define test programs
 noinst_PROGRAMS = test_uri test_session test_kernel_data
 noinst_PROGRAMS += test_utils_parse_size_suffix test_utils_expand_path
-noinst_PROGRAMS += test_string_utils
+noinst_PROGRAMS += test_string_utils test_notification
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -117,3 +119,7 @@ test_utils_expand_path_LDADD += $(UTILS_SUFFIX)
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
 test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS)
+#
+# Notification api
+test_notification_SOURCES = test_notification.c
+test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL)
