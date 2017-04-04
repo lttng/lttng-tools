@@ -10,7 +10,7 @@ lttng-destroy - Destroy an LTTng tracing session
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--all | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *destroy* [option:--no-wait] [option:--all | 'SESSION']
 
 
 DESCRIPTION
@@ -28,7 +28,13 @@ is destroyed. `lttng list` outputs all the existing tracing sessions
 If the option:--all option is used, *all* the tracing sessions, as listed
 in the output of `lttng list`, are destroyed.
 
-Destroying a tracing session stops any tracing running within the latter.
+Destroying a tracing session stops any tracing running within the
+latter. By default, the implicit man:lttng-stop(1) command invoked by
+the `lttng destroy` command ensures that the tracing session's trace
+data is valid before returning. With the option:--no-wait option, the
+man:lttng-stop(1) command finishes immediately, hence a local trace
+might not be valid when the command is done. In this case, there is no
+way to know when the trace becomes valid.
 
 Destroying a tracing session does not destroy the recorded trace data,
 if any; it frees resources acquired by the session daemon and tracer
@@ -40,6 +46,10 @@ include::common-cmd-options-head.txt[]
 
 option:-a, option:--all::
     Destroy all tracing sessions.
+
+option:-n, option:--no-wait::
+    Do not ensure that the chosen tracing session's trace data is valid
+    before returning to the prompt.
 
 
 include::common-cmd-help-options.txt[]
