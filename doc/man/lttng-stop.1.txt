@@ -43,8 +43,8 @@ include::common-cmd-options-head.txt[]
 
 
 option:-n, option:--no-wait::
-	Do not ensure that the chosen tracing session's trace data is valid
-	before returning to the prompt.
+    Do not ensure that the chosen tracing session's trace data is valid
+    before returning to the prompt.
 
 
 include::common-cmd-help-options.txt[]
