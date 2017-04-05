@@ -132,10 +132,10 @@ function is_command_success ()
 
 function mi_print_version ()
 {
-	local opt=$2
 	local output_path=$1
+	local opt=$2
 
-	$LTTNG version $opt > $1
+	$LTTNG version $opt > $output_path
 	ok $? "MI test: Lttng version"
 
 }
