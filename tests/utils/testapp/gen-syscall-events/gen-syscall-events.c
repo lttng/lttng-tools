@@ -33,7 +33,7 @@
  */
 int main(int argc, char **argv)
 {
-	int fd, ret = 0;
+	int fd, ret;
 	char buf[MAX_LEN];
 	char *start_file;
 

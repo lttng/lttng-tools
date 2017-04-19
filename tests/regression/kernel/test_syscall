@@ -20,12 +20,42 @@ TEST_DESC="Kernel tracer - System calls"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=157
+NUM_TESTS=183
 
-# test command issues at least open and close system calls
-TESTCMD="cat /proc/cpuinfo > /dev/null"
+# `gen-syscall-event` starts and waits for the creation a file passed by
+# arguments to start executing 3 syscalls (open,read,close) and returning.
+TESTCMD="$TESTDIR/utils/testapp/gen-syscall-events/gen-syscall-events"
 
 source $TESTDIR/utils/utils.sh
+
+function trace_testapp()
+{
+	local start_file_sync
+	start_file_sync=$(mktemp -u)
+
+	# Clear all entries from the resource tracker
+	lttng_untrack_kernel_all_ok
+
+	# Launch the testapp and save its Process ID
+	./"$TESTCMD" "$start_file_sync" &
+	PID=$!
+
+	# Set LTTng to track this PID and start the tracing
+	lttng_track_pid_ok $PID
+
+	start_lttng_tracing_ok
+
+	# Create start file to launch the execution of the workload by the
+	# test app
+	touch "$start_file_sync"
+
+	wait $PID
+
+	stop_lttng_tracing_ok
+
+	# Clean up the synchronization file
+	rm -f "$start_file_sync"
+}
 
 function validate_list()
 {
@@ -65,11 +95,9 @@ function test_syscall_simple_list()
 
 	validate_list $SESSION_NAME $EVENT_NAME
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
-	# ensure each is there.
+	# ensure all events are in the trace.
 	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
 
@@ -98,15 +126,12 @@ function test_syscall_simple_list_two()
 	validate_list $SESSION_NAME $EVENT_NAME
 	validate_list $SESSION_NAME $EVENT_NAME2
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
-	# ensure each is there.
+	# ensure all events are in the trace.
 	validate_trace_exp "-e syscall_entry_$EVENT_NAME: -e compat_syscall_entry_$EVENT_NAME:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_$EVENT_NAME: -e compat_syscall_exit_$EVENT_NAME:" $TRACE_PATH
 
-	# ensure each is there.
 	validate_trace_exp "-e syscall_entry_$EVENT_NAME2: -e compat_syscall_entry_$EVENT_NAME2:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_$EVENT_NAME2: -e compat_syscall_exit_$EVENT_NAME2:" $TRACE_PATH
 
@@ -129,11 +154,9 @@ function test_syscall_single()
 
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
-	# ensure each is there.
+	# ensure all events are in the trace.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 
@@ -157,11 +180,9 @@ function test_syscall_two()
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "open"
 	lttng_enable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
-	# ensure each is there.
+	# ensure all events are in the trace.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
 	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
@@ -187,9 +208,7 @@ function test_syscall_all()
 	# enable all syscalls
 	lttng_enable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure at least open and close are there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -218,9 +237,7 @@ function test_syscall_all_disable_one()
 	# "all syscalls" is not "the open" system call.
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
 
-	start_lttng_tracing_ok
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure "open" syscall is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
@@ -250,10 +267,7 @@ function test_syscall_all_disable_two()
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "open"
 	lttng_disable_kernel_syscall_fail $SESSION_NAME "close"
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure "open" syscall is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open: -e syscall_exit_open: -e compat_syscall_exit_open:" $TRACE_PATH
@@ -262,9 +276,9 @@ function test_syscall_all_disable_two()
 	validate_trace_exp "-e syscall_entry_close: -e compat_syscall_entry_close:" $TRACE_PATH
 	validate_trace_exp "-e syscall_exit_close: -e compat_syscall_exit_close:" $TRACE_PATH
 
-	# ensure "execve" syscall is there.
-	validate_trace_exp "-e syscall_entry_execve: -e compat_syscall_entry_execve:" $TRACE_PATH
-	validate_trace_exp "-e syscall_exit_execve: -e compat_syscall_exit_execve:" $TRACE_PATH
+	# ensure "read" syscall is there.
+	validate_trace_exp "-e syscall_entry_read: -e compat_syscall_entry_read:" $TRACE_PATH
+	validate_trace_exp "-e syscall_exit_read: -e compat_syscall_exit_read:" $TRACE_PATH
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -285,10 +299,7 @@ function test_syscall_enable_all_disable_all()
 	# disable all system calls
 	lttng_disable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -314,10 +325,7 @@ function test_syscall_enable_all_disable_all_enable_all()
 	# enable all system calls
 	lttng_enable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure at least open and close are there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
@@ -349,10 +357,7 @@ function test_syscall_enable_all_disable_all_twice()
 	# disable all system calls
 	lttng_disable_kernel_syscall_ok $SESSION_NAME
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -376,10 +381,7 @@ function test_syscall_enable_one_disable_one()
 	# disable open system call
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -405,10 +407,7 @@ function test_syscall_enable_two_disable_two()
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "open"
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure nothing has been traced.
 	validate_trace_empty $TRACE_PATH
@@ -433,10 +432,7 @@ function test_syscall_enable_two_disable_one()
 	# disable close system call
 	lttng_disable_kernel_syscall_ok $SESSION_NAME "close"
 
-	start_lttng_tracing_ok
-	# generates open, close, execve (at least)
-	eval ${TESTCMD}
-	stop_lttng_tracing_ok
+	trace_testapp
 
 	# ensure open is there.
 	validate_trace_exp "-e syscall_entry_open: -e compat_syscall_entry_open:" $TRACE_PATH
