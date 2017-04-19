@@ -1305,6 +1305,19 @@ function lttng_untrack_fail()
 	lttng_untrack 1 "$@"
 }
 
+function lttng_track_pid_ok()
+{
+	PID=$1
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" track --kernel --pid=$PID 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Lttng track pid on the kernel domain"
+}
+
+function lttng_untrack_kernel_all_ok()
+{
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" untrack --kernel --pid --all 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Lttng untrack all pid on the kernel domain"
+}
+
 function add_context_lttng()
 {
 	local expected_to_fail="$1"
