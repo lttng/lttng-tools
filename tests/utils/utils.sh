@@ -384,6 +384,7 @@ function start_lttng_sessiond_opt()
 	local withtap=$1
 	local load_path=$2
 
+	local env_vars=""
 	local consumerd=""
 	local long_bit_value=$(getconf LONG_BIT)
 
@@ -407,6 +408,11 @@ function start_lttng_sessiond_opt()
 			;;
 	esac
 
+	# Check for env. variable. Allow the use of LD_PRELOAD etc.
+	if [[ "x${LTTNG_SESSIOND_ENV_VARS}" != "x" ]]; then
+		env_vars=${LTTNG_SESSIOND_ENV_VARS}
+	fi
+
 	validate_kernel_version
 	if [ $? -ne 0 ]; then
 	    fail "Start session daemon"
@@ -419,9 +425,9 @@ function start_lttng_sessiond_opt()
 	if [ -z $(pgrep ${SESSIOND_MATCH}) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
-			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background $consumerd
+			env $env_vars $DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background $consumerd
 		else
-			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background $consumerd
+			env $env_vars $DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background $consumerd
 		fi
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
