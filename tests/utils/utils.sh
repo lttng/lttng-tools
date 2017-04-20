@@ -384,10 +384,28 @@ function start_lttng_sessiond_opt()
 	local withtap=$1
 	local load_path=$2
 
+	local consumerd=""
+	local long_bit_value=$(getconf LONG_BIT)
+
 	if [ -n $TEST_NO_SESSIOND ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
 	fi
+
+	DIR=$(readlink -f $TESTDIR)
+
+	# Get long_bit value for 32/64 consumerd
+	case "$long_bit_value" in
+		32)
+			consumerd="--consumerd32-path=$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			;;
+		64)
+			consumerd="--consumerd64-path=$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			;;
+		*)
+			return
+			;;
+	esac
 
 	validate_kernel_version
 	if [ $? -ne 0 ]; then
@@ -395,16 +413,15 @@ function start_lttng_sessiond_opt()
 	    BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
-	DIR=$(readlink -f $TESTDIR)
 	: ${LTTNG_SESSION_CONFIG_XSD_PATH=${DIR}/../src/common/config/}
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
 	if [ -z $(pgrep ${SESSIOND_MATCH}) ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
-			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --load "$load_path" --background $consumerd
 		else
-			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd"
+			$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background $consumerd
 		fi
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
