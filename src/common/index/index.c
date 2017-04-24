@@ -128,11 +128,15 @@ error:
 int lttng_index_file_write(const struct lttng_index_file *index_file,
 		const struct ctf_packet_index *element)
 {
+	int fd;
+	size_t len;
 	ssize_t ret;
-	int fd = index_file->fd;
-	size_t len = index_file->element_len;
 
+	assert(index_file);
 	assert(element);
+
+	fd = index_file->fd;
+	len = index_file->element_len;
 
 	if (fd < 0) {
 		goto error;
