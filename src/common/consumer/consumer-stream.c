@@ -359,18 +359,24 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 		struct ctf_packet_index *element)
 {
 	int ret;
-	struct consumer_relayd_sock_pair *relayd;
 
 	assert(stream);
 	assert(element);
 
 	rcu_read_lock();
-	relayd = consumer_find_relayd(stream->net_seq_idx);
-	if (relayd) {
-		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-		ret = relayd_send_index(&relayd->control_sock, element,
+	if (stream->net_seq_idx != (uint64_t) -1ULL) {
+		struct consumer_relayd_sock_pair *relayd;
+		relayd = consumer_find_relayd(stream->net_seq_idx);
+		if (relayd) {
+			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+			ret = relayd_send_index(&relayd->control_sock, element,
 				stream->relayd_stream_id, stream->next_net_seq_num - 1);
-		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		} else {
+			ERR("Stream %" PRIu64 " relayd ID %" PRIu64 " unknown. Can't write index.",
+					stream->key, stream->net_seq_idx);
+			ret = -1;
+		}
 	} else {
 		if (lttng_index_file_write(stream->index_file, element)) {
 			ret = -1;
