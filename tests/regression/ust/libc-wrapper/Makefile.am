@@ -1,5 +1,3 @@
-AM_CPPFLAGS = -I$(srcdir)
-
 noinst_PROGRAMS = prog
 prog_SOURCES = prog.c
 prog_LDADD = -llttng-ust -llttng-ust-libc-wrapper

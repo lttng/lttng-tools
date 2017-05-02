@@ -1,5 +1,3 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
-
 AUTOMAKE_OPTIONS = subdir-objects
 
 SUBDIRS = string-utils
@@ -57,8 +55,6 @@ endif
 if BUILD_LIB_CONSUMER
 SUBDIRS += consumer
 endif
-
-AM_CFLAGS = -fno-strict-aliasing
 
 noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 				 uri.h utils.h lttng-kernel-old.h \

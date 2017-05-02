@@ -10,8 +10,6 @@ EXTRA_DIST = test_getcpu_override run-getcpu-override \
 
 else
 
-AM_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/src
-
 # The rpath is necessary because libtool won't build a shared library
 # if it's noinst_
 GETCPU_LIBTOOL_FLAGS = \

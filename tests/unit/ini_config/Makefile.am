@@ -1,4 +1,4 @@
-AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests/utils/
+AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIBCONFIG=$(top_builddir)/src/common/config/libconfig.la

@@ -9,8 +9,6 @@ EXTRA_DIST = test_clock_override lttng-ust-clock-override-test.c
 
 else
 
-AM_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/src
-
 # The rpath is necessary because libtool won't build a shared library
 # if it's noinst_
 GETCPU_LIBTOOL_FLAGS = \

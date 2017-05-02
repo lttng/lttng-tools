@@ -8,7 +8,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip tar-pax])
+AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip tar-pax nostdinc])
 AM_MAINTAINER_MODE([enable])
 
 # Enable silent rules if available (Introduced in AM 1.11)
@@ -59,9 +59,6 @@ AS_IF([test "x$ax_cv___attribute__" = "xyes"],
         [AC_MSG_ERROR([The compiler does not support __attribute__ extensions])])
 
 AX_PTHREAD(,[AC_MSG_ERROR([Could not configure pthreads support])])
-LIBS="$PTHREAD_LIBS $LIBS"
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-CC="$PTHREAD_CC"
 
 AX_LIB_SOCKET_NSL
 
@@ -416,7 +413,7 @@ AC_ARG_WITH(kmod-prefix,
 		[Specify the installation prefix of the kmod library.
 		Headers must be in PATH/include; libraries in PATH/lib.]),
 		[
-			CPPFLAGS="$CPPFLAGS -I${withval}/include"
+			AM_CPPFLAGS="$AM_CPPFLAGS -I${withval}/include"
 			LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
 		])
 
@@ -441,7 +438,7 @@ AC_ARG_WITH(lttng-ust-prefix,
                  [Specify the installation prefix of the lttng-ust library.
 	          Headers must be in PATH/include; libraries in PATH/lib.]),
 		  [
-		    CPPFLAGS="$CPPFLAGS -I${withval}/include"
+		    AM_CPPFLAGS="$AM_CPPFLAGS -I${withval}/include"
 		    LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
 		  ])
 
@@ -970,9 +967,11 @@ modify their sources.
 # export flex condition
 AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
-CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
+AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS"
+AC_SUBST(AM_CFLAGS)
 
-DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir) -I\$(top_builddir)/src -I\$(top_builddir)/include -include config.h"
+AM_CPPFLAGS="-I\$(top_srcdir)/include -I\$(top_builddir)/include -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
+AC_SUBST(AM_CPPFLAGS)
 
 lttngincludedir="${includedir}/lttng"
 AC_SUBST(lttngincludedir)
@@ -988,8 +987,6 @@ AC_SUBST(lttngnotificationincludedir)
 
 lttngtriggerincludedir="${includedir}/lttng/trigger"
 AC_SUBST(lttngtriggerincludedir)
-
-AC_SUBST(DEFAULT_INCLUDES)
 
 lttnglibexecdir="${libdir}/lttng/libexec"
 AC_SUBST(lttnglibexecdir)

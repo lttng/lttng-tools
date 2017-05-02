@@ -26,7 +26,7 @@
 #include <inttypes.h>
 #include <ctype.h>
 
-#include <src/common/sessiond-comm/sessiond-comm.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/string.h>
 #include <common/string-utils/string-utils.h>
 

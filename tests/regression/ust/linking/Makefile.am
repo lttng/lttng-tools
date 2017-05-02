@@ -1,6 +1,6 @@
 # -Wsystem-headers is needed to print warnings in the tracepoint
 # description file.
-AM_CPPFLAGS = -I$(srcdir) -I$(top_builddir)/include -Wsystem-headers
+AM_CPPFLAGS += -I$(srcdir) -Wsystem-headers
 
 # Set LIBS to nothing so the application does not link on useless
 # libraries.
@@ -10,7 +10,7 @@ LIBS =
 demo_builtin_SOURCES = demo.c tp.c tp2.c tp3.c ust_tests_demo.h \
 	ust_tests_demo2.h ust_tests_demo3.h
 demo_builtin_LDADD = -llttng-ust
-demo_builtin_CFLAGS = -Werror=old-style-definition
+demo_builtin_CFLAGS = -Werror=old-style-definition $(AM_CFLAGS)
 
 # Build a version statically linked to the providers
 # contains ust_tests_demo.h and ust_tests_demo2.h provider probes
@@ -79,7 +79,7 @@ liblttng_ust_provider_ust_tests_demo3_la_LDFLAGS = \
 
 noinst_PROGRAMS += demo
 demo_SOURCES = demo.c ust_tests_demo.h
-demo_CFLAGS = -DTEST_DYNAMIC_LINKAGE
+demo_CFLAGS = -DTEST_DYNAMIC_LINKAGE $(AM_CFLAGS)
 
 if LTTNG_TOOLS_BUILD_WITH_LIBDL
 demo_LDADD = -ldl
