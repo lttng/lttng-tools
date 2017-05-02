@@ -1,6 +1,3 @@
-AM_CFLAGS = -O2 -g
-AM_LDFLAGS =
-
 noinst_PROGRAMS = crash
 crash_SOURCES = crash.c
 

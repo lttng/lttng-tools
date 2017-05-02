@@ -1,7 +1,7 @@
 lttng.i: lttng.i.in
 	$(SED) "s/LTTNG_VERSION_STR/LTTng $(PACKAGE_VERSION)/g" < $(srcdir)/lttng.i.in >lttng.i
 
-AM_CFLAGS = $(PYTHON_INCLUDE) -I$(top_srcdir)/include
+AM_CPPFLAGS += $(PYTHON_INCLUDE)
 
 EXTRA_DIST = lttng.i.in
 nodist_python_PYTHON = lttng.py

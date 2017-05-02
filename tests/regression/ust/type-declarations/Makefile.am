@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)
+AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = type-declarations
 type_declarations_SOURCES = type-declarations.c ust_tests_td.h

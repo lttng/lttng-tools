@@ -1,5 +1,3 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
-
 lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = lttng-consumerd.c \

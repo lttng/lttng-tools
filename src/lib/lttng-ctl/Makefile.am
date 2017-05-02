@@ -1,6 +1,6 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(builddir)
-
 SUBDIRS = filter
+
+AM_CPPFLAGS += -I$(srcdir) -I$(builddir)
 
 lib_LTLIBRARIES = liblttng-ctl.la
 

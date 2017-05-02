@@ -26,8 +26,7 @@
 
 #include <tap/tap.h>
 
-#include <src/common/utils.h>
-
+#include <common/utils.h>
 #include <common/common.h>
 
 /* For error.h */

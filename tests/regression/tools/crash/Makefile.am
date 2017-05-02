@@ -1,5 +1,3 @@
-AM_CPPFLAGS = -I$(top_srcdir)/include
-
 noinst_SCRIPTS = test_crash
 EXTRA_DIST = test_crash
 

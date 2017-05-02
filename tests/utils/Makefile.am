@@ -1,6 +1,5 @@
 SUBDIRS = . tap testapp
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh
 dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl
 noinst_LTLIBRARIES = libtestutils.la

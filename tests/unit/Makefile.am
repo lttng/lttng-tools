@@ -1,7 +1,6 @@
 SUBDIRS = ini_config
 
-AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests/utils/ -I$(srcdir)
-AM_LDFLAGS =
+AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LOG_DRIVER_FLAGS='--merge'
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
