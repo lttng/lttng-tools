@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)
+AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = daemon
 daemon_SOURCES = daemon.c ust_tests_daemon.h

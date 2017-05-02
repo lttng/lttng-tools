@@ -21,7 +21,7 @@
 #define _DEFAULTS_H
 
 #include <pthread.h>
-#include <src/common/macros.h>
+#include <common/macros.h>
 
 /* Default unix group name for tracing. */
 #define DEFAULT_TRACING_GROUP                   "tracing"

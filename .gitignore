@@ -85,6 +85,7 @@ gen-events-time
 gen-events
 gen-ust-events
 health_check
+/tests/regression/kernel/select_poll_epoll
 /tests/regression/tools/mi/extract_xml
 /tests/regression/tools/mi/validate_xml
 /tests/regression/tools/notification/base_client
@@ -98,7 +99,7 @@ health_check
 /tests/regression/ust/fork/fork
 /tests/regression/ust/fork/fork2
 /tests/regression/ust/libc-wrapper/prog
-tests/regression/ust/python-logging/test_python_logging
+/tests/regression/ust/python-logging/test_python_logging
 /tests/regression/ust/baddr-statedump/prog
 /tests/regression/ust/baddr-statedump/prog.debug
 /tests/regression/ust/baddr-statedump/prog.strip
@@ -106,12 +107,16 @@ tests/regression/ust/python-logging/test_python_logging
 /tests/regression/ust/ust-dl/prog
 /tests/regression/ust/ust-dl/libfoo.so.debug
 /tests/regression/ust/ust-dl/libbar.so.debug
+/tests/regression/ust/ust-dl/libzzz.so.debug
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 /tests/perf/find_event
 /tests/perf/test_perf_raw
+/tests/regression/1
+/tests/unit/test_string_utils
+/tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 
 # man pages
 /doc/man/*.1

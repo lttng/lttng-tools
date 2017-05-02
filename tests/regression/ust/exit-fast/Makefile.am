@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(srcdir)
+AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = exit-fast
 exit_fast_SOURCES = exit-fast.c ust_tests_exitfast.h

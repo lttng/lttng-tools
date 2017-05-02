@@ -10,7 +10,7 @@ EXTRA_DIST = demo-trace demo.c ust_tests_demo.h \
 
 else
 
-AM_CFLAGS=-I$(srcdir)
+AM_CPPFLAGS += -I$(srcdir)
 
 # Force the shared flag on the noinst libraries since they are
 # only built static by default
