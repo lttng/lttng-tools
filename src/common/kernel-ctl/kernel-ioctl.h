@@ -51,6 +51,12 @@
 #define RING_BUFFER_FLUSH                   _IO(0xF6, 0x0C)
 /* Get the current version of the metadata cache (after a get_next). */
 #define RING_BUFFER_GET_METADATA_VERSION    _IOR(0xF6, 0x0D, uint64_t)
+/*
+ * Get a snapshot of the current ring buffer producer and consumer positions,
+ * regardless of whether or not the two positions are contained within the same
+ * sub-buffer.
+ */
+#define RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS	_IO(0xF6, 0x0E)
 
 /* returns the timestamp begin of the current sub-buffer */
 #define LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN     _IOR(0xF6, 0x20, uint64_t)

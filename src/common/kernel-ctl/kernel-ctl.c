@@ -470,6 +470,16 @@ int kernctl_snapshot(int fd)
 	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_SNAPSHOT);
 }
 
+/*
+ * Get a snapshot of the current ring buffer producer and consumer positions,
+ * regardless of whether or not the two positions are contained within the
+ * same sub-buffer.
+ */
+int kernctl_snapshot_sample_positions(int fd)
+{
+	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS);
+}
+
 /* Get the consumer position (iteration start) */
 int kernctl_snapshot_get_consumed(int fd, unsigned long *pos)
 {
