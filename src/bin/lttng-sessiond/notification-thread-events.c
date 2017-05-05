@@ -258,7 +258,7 @@ unsigned long lttng_condition_buffer_usage_hash(
 		hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
 	}
 	if (condition->channel_name) {
-		hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
+		hash ^= hash_key_str(condition->channel_name, lttng_ht_seed);
 	}
 	if (condition->domain.set) {
 		hash ^= hash_key_ulong(
