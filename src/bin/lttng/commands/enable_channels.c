@@ -108,6 +108,8 @@ static void set_default_attr(struct lttng_domain *dom)
 {
 	struct lttng_channel_attr default_attr;
 
+	memset(&default_attr, 0, sizeof(default_attr));
+
 	/* Set attributes */
 	lttng_channel_set_default_attr(dom, &default_attr);
 
