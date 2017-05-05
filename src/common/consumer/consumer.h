@@ -161,6 +161,7 @@ struct lttng_consumer_channel {
 
 	/* Metadata cache is metadata channel */
 	struct consumer_metadata_cache *metadata_cache;
+
 	/* For UST metadata periodical flush */
 	int switch_timer_enabled;
 	timer_t switch_timer;
@@ -600,6 +601,9 @@ struct lttng_consumer_global_data {
 	 */
 	struct lttng_ht *stream_per_chan_id_ht;
 };
+
+/* Flag used to temporarily pause data consumption from testpoints. */
+extern int data_consumption_paused;
 
 /*
  * Init consumer data structures.

@@ -69,6 +69,14 @@ struct lttng_channel {
 };
 
 /*
+ */
+extern struct lttng_channel *lttng_channel_create(struct lttng_domain *domain);
+
+/*
+ */
+extern void lttng_channel_destroy(struct lttng_channel *channel);
+
+/*
  * List the channel(s) of a session.
  *
  * The handle CAN NOT be NULL.
@@ -123,6 +131,12 @@ extern int lttng_channel_get_discarded_event_count(struct lttng_channel *chan,
  */
 extern int lttng_channel_get_lost_packet_count(struct lttng_channel *chan,
 		uint64_t *lost_packets);
+
+extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
+		uint64_t *monitor_timer_interval);
+
+extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
+		uint64_t monitor_timer_interval);
 
 #ifdef __cplusplus
 }

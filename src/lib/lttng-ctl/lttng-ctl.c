@@ -1320,26 +1320,111 @@ int lttng_disable_event(struct lttng_handle *handle, const char *name,
 	return lttng_disable_event_ext(handle, &ev, channel_name, NULL);
 }
 
+struct lttng_channel *lttng_channel_create(struct lttng_domain *domain)
+{
+	struct lttng_channel *channel = NULL;
+	struct lttng_channel_extended *extended = NULL;
+
+	if (!domain) {
+		goto error;
+	}
+
+	/* Validate domain. */
+	switch (domain->type) {
+	case LTTNG_DOMAIN_UST:
+		switch (domain->buf_type) {
+		case LTTNG_BUFFER_PER_UID:
+		case LTTNG_BUFFER_PER_PID:
+			break;
+		default:
+			goto error;
+		}
+		break;
+	case LTTNG_DOMAIN_KERNEL:
+		if (domain->buf_type != LTTNG_BUFFER_GLOBAL) {
+			goto error;
+		}
+		break;
+	default:
+		goto error;
+	}
+
+	channel = zmalloc(sizeof(*channel));
+	if (!channel) {
+		goto error;
+	}
+
+	extended = zmalloc(sizeof(*extended));
+	if (!extended) {
+		goto error;
+	}
+
+	channel->attr.extended.ptr = extended;
+
+	lttng_channel_set_default_attr(domain, &channel->attr);
+	return channel;
+error:
+	free(channel);
+	free(extended);
+	return NULL;
+}
+
+void lttng_channel_destroy(struct lttng_channel *channel)
+{
+	if (!channel) {
+		return;
+	}
+
+	if (channel->attr.extended.ptr) {
+		free(channel->attr.extended.ptr);
+	}
+	free(channel);
+}
+
 /*
  * Enable channel per domain
  * Returns size of returned session payload data or a negative error code.
  */
 int lttng_enable_channel(struct lttng_handle *handle,
-		struct lttng_channel *chan)
+		struct lttng_channel *in_chan)
 {
 	struct lttcomm_session_msg lsm;
 
 	/* NULL arguments are forbidden. No default values. */
-	if (handle == NULL || chan == NULL) {
+	if (handle == NULL || in_chan == NULL) {
 		return -LTTNG_ERR_INVALID;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
+	memcpy(&lsm.u.channel.chan, in_chan, sizeof(lsm.u.channel.chan));
+	lsm.u.channel.chan.attr.extended.ptr = NULL;
 
-	memcpy(&lsm.u.channel.chan, chan, sizeof(lsm.u.channel.chan));
+	if (!in_chan->attr.extended.ptr) {
+		struct lttng_channel *channel;
+		struct lttng_channel_extended *extended;
+
+		channel = lttng_channel_create(&handle->domain);
+		if (!channel) {
+			return -LTTNG_ERR_NOMEM;
+		}
+
+		/*
+		 * Create a new channel in order to use default extended
+		 * attribute values.
+		 */
+		extended = (struct lttng_channel_extended *)
+				channel->attr.extended.ptr;
+		memcpy(&lsm.u.channel.extended, extended, sizeof(*extended));
+		lttng_channel_destroy(channel);
+	} else {
+		struct lttng_channel_extended *extended;
+
+		extended = (struct lttng_channel_extended *)
+				in_chan->attr.extended.ptr;
+		memcpy(&lsm.u.channel.extended, extended, sizeof(*extended));
+	}
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
-
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
@@ -1705,7 +1790,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	int ret;
 	size_t channel_count, i;
 	const size_t channel_size = sizeof(struct lttng_channel) +
-			sizeof(struct lttcomm_channel_extended);
+			sizeof(struct lttng_channel_extended);
 	struct lttcomm_session_msg lsm;
 	void *extended_at;
 
@@ -1741,7 +1826,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 		struct lttng_channel *chan = &(*channels)[i];
 
 		chan->attr.extended.ptr = extended_at;
-		extended_at += sizeof(struct lttcomm_channel_extended);
+		extended_at += sizeof(struct lttng_channel_extended);
 	}
 
 	ret = (int) channel_count;
@@ -1946,6 +2031,9 @@ int lttng_calibrate(struct lttng_handle *handle,
 void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr)
 {
+	struct lttng_channel_extended *extended =
+			(struct lttng_channel_extended *) attr->extended.ptr;
+
 	/* Safety check */
 	if (attr == NULL || domain == NULL) {
 		return;
@@ -1966,6 +2054,10 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		attr->subbuf_size = default_get_kernel_channel_subbuf_size();
 		attr->num_subbuf = DEFAULT_KERNEL_CHANNEL_SUBBUF_NUM;
 		attr->output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+		if (extended) {
+			extended->monitor_timer_interval =
+					DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
+		}
 		break;
 	case LTTNG_DOMAIN_UST:
 		switch (domain->buf_type) {
@@ -1977,6 +2069,10 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 					DEFAULT_UST_UID_CHANNEL_SWITCH_TIMER;
 			attr->read_timer_interval =
 					DEFAULT_UST_UID_CHANNEL_READ_TIMER;
+			if (extended) {
+				extended->monitor_timer_interval =
+						DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+			}
 			break;
 		case LTTNG_BUFFER_PER_PID:
 		default:
@@ -1987,19 +2083,25 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 					DEFAULT_UST_PID_CHANNEL_SWITCH_TIMER;
 			attr->read_timer_interval =
 					DEFAULT_UST_PID_CHANNEL_READ_TIMER;
+			if (extended) {
+				extended->monitor_timer_interval =
+						DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
+			}
 			break;
 		}
 	default:
 		/* Default behavior: leave set to 0. */
 		break;
 	}
+
+	attr->extended.ptr = extended;
 }
 
 int lttng_channel_get_discarded_event_count(struct lttng_channel *channel,
 		uint64_t *discarded_events)
 {
 	int ret = 0;
-	struct lttcomm_channel_extended *chan_ext;
+	struct lttng_channel_extended *chan_ext;
 
 	if (!channel || !discarded_events) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2025,7 +2127,7 @@ int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
 		uint64_t *lost_packets)
 {
 	int ret = 0;
-	struct lttcomm_channel_extended *chan_ext;
+	struct lttng_channel_extended *chan_ext;
 
 	if (!channel || !lost_packets) {
 		ret = -LTTNG_ERR_INVALID;
@@ -2043,6 +2145,44 @@ int lttng_channel_get_lost_packet_count(struct lttng_channel *channel,
 	}
 
 	*lost_packets = chan_ext->lost_packets;
+end:
+	return ret;
+}
+
+int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
+		uint64_t *monitor_timer_interval)
+{
+	int ret = 0;
+
+	if (!chan || !monitor_timer_interval) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!chan->attr.extended.ptr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	*monitor_timer_interval = ((struct lttng_channel_extended *)
+			chan->attr.extended.ptr)->monitor_timer_interval;
+end:
+	return ret;
+}
+
+int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
+		uint64_t monitor_timer_interval)
+{
+	int ret = 0;
+
+	if (!chan || !chan->attr.extended.ptr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	((struct lttng_channel_extended *)
+			chan->attr.extended.ptr)->monitor_timer_interval =
+			monitor_timer_interval;
 end:
 	return ret;
 }

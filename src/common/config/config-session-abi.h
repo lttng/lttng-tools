@@ -41,6 +41,7 @@ extern const char * const config_element_subbuf_size;
 extern const char * const config_element_num_subbuf;
 extern const char * const config_element_switch_timer_interval;
 extern const char * const config_element_read_timer_interval;
+extern const char * const config_element_monitor_timer_interval;
 extern const char * const config_element_output;
 extern const char * const config_element_output_type;
 extern const char * const config_element_tracefile_size;

@@ -20,7 +20,7 @@
 #define _LTT_KERNEL_IOCTL_H
 
 #define LTTNG_MODULES_ABI_MAJOR_VERSION		2
-#define LTTNG_MODULES_ABI_MINOR_VERSION		2
+#define LTTNG_MODULES_ABI_MINOR_VERSION		3
 
 /* Get a snapshot of the current ring buffer producer and consumer positions */
 #define RING_BUFFER_SNAPSHOT                _IO(0xF6, 0x00)

@@ -862,7 +862,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	int ret = 0;
 	struct lttng_channel *chan = caa_container_of(attr,
 			struct lttng_channel, attr);
-	uint64_t discarded_events, lost_packets;
+	uint64_t discarded_events, lost_packets, monitor_timer_interval;
 
 	assert(attr);
 
@@ -872,6 +872,12 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	}
 
 	ret = lttng_channel_get_lost_packet_count(chan, &lost_packets);
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_channel_get_monitor_timer_interval(chan,
+			&monitor_timer_interval);
 	if (ret) {
 		goto end;
 	}
@@ -918,6 +924,14 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	ret = mi_lttng_writer_write_element_unsigned_int(writer,
 		config_element_read_timer_interval,
 		attr->read_timer_interval);
+	if (ret) {
+		goto end;
+	}
+
+	/* Monitor timer interval in usec */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+		config_element_monitor_timer_interval,
+		monitor_timer_interval);
 	if (ret) {
 		goto end;
 	}

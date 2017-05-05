@@ -91,6 +91,7 @@ const char * const config_element_subbuf_size = "subbuffer_size";
 const char * const config_element_num_subbuf = "subbuffer_count";
 const char * const config_element_switch_timer_interval = "switch_timer_interval";
 const char * const config_element_read_timer_interval = "read_timer_interval";
+const char * const config_element_monitor_timer_interval = "monitor_timer_interval";
 const char * const config_element_output = "output";
 const char * const config_element_output_type = "output_type";
 const char * const config_element_tracefile_size = "tracefile_size";

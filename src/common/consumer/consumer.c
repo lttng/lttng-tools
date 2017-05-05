@@ -67,6 +67,8 @@ struct consumer_channel_msg {
 	uint64_t key;				/* del */
 };
 
+int data_consumption_paused;
+
 /*
  * Flag to inform the polling thread to quit when all fd hung up. Updated by
  * the consumer_thread_receive_fds when it notices that all fds has hung up.
@@ -2530,6 +2532,9 @@ void *consumer_thread_data_poll(void *data)
 		/* poll on the array of fds */
 	restart:
 		DBG("polling on %d fd", nb_fd + 2);
+		if (testpoint(consumerd_thread_data_poll)) {
+			goto end;
+		}
 		health_poll_entry();
 		num_rdy = poll(pollfd, nb_fd + 2, -1);
 		health_poll_exit();
