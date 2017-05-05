@@ -583,6 +583,14 @@ exit_metadata_timer_thread:
 		PERROR("pthread_join sessiond_thread");
 		retval = -1;
 	}
+
+	ret = consumer_timer_thread_get_channel_monitor_pipe();
+	if (ret >= 0) {
+		ret = close(ret);
+		if (ret) {
+			PERROR("close channel monitor pipe");
+		}
+	}
 exit_sessiond_thread:
 
 	ret = pthread_join(data_thread, &status);

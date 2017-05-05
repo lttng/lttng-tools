@@ -356,6 +356,8 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
 	luc->attr.output = (enum lttng_ust_output) chan->attr.output;
+	luc->monitor_timer_interval =
+			((struct lttng_channel_extended *) chan->attr.extended.ptr)->monitor_timer_interval;
 
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {

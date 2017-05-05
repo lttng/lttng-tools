@@ -157,6 +157,7 @@ struct ust_app_channel {
 	struct lttng_ht *events;
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
+	uint64_t monitor_timer_interval;
 	/*
 	 * Node indexed by channel name in the channels' hash table of a session.
 	 */

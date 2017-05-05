@@ -1502,8 +1502,17 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			consumer_timer_switch_start(channel, attr.switch_timer_interval);
 			attr.switch_timer_interval = 0;
 		} else {
+			int monitor_start_ret;
+
 			consumer_timer_live_start(channel,
 					msg.u.ask_channel.live_timer_interval);
+			monitor_start_ret = consumer_timer_monitor_start(
+					channel,
+					msg.u.ask_channel.monitor_timer_interval);
+			if (monitor_start_ret < 0) {
+				ERR("Starting channel monitoring timer failed");
+				goto end_channel_error;
+			}
 		}
 
 		health_code_update();
@@ -1525,6 +1534,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			}
 			if (channel->live_timer_enabled == 1) {
 				consumer_timer_live_stop(channel);
+			}
+			if (channel->monitor_timer_enabled == 1) {
+				consumer_timer_monitor_stop(channel);
 			}
 			goto end_channel_error;
 		}
@@ -1984,7 +1996,7 @@ void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
 }
 
 /*
- * Take a snapshot for a specific fd
+ * Take a snapshot for a specific stream.
  *
  * Returns 0 on success, < 0 on error
  */
@@ -1994,6 +2006,20 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 	assert(stream->ustream);
 
 	return ustctl_snapshot(stream->ustream);
+}
+
+/*
+ * Sample consumed and produced positions for a specific stream.
+ *
+ * Returns 0 on success, < 0 on error.
+ */
+int lttng_ustconsumer_sample_snapshot_positions(
+		struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	return ustctl_snapshot_sample_positions(stream->ustream);
 }
 
 /*

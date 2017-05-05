@@ -32,6 +32,7 @@
 #include "ust-consumer.h"
 #include "buffer-registry.h"
 #include "session.h"
+#include "lttng-sessiond.h"
 
 /*
  * Return allocated full pathname of the session using the consumer trace path
@@ -94,7 +95,7 @@ error:
 }
 
 /*
- * Send a single channel to the consumer using command ADD_CHANNEL.
+ * Send a single channel to the consumer using command ASK_CHANNEL_CREATION.
  *
  * Consumer socket lock MUST be acquired before calling this.
  */
@@ -174,6 +175,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->attr.switch_timer_interval,
 			ua_chan->attr.read_timer_interval,
 			ua_sess->live_timer_interval,
+			ua_chan->monitor_timer_interval,
 			output,
 			(int) ua_chan->attr.type,
 			ua_sess->tracing_id,
@@ -223,6 +225,8 @@ error:
 /*
  * Ask consumer to create a channel for a given session.
  *
+ * Session list and rcu read side locks must be held by the caller.
+ *
  * Returns 0 on success else a negative value.
  */
 int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
@@ -230,6 +234,7 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		struct consumer_socket *socket, struct ust_registry_session *registry)
 {
 	int ret;
+	struct ltt_session *session;
 
 	assert(ua_sess);
 	assert(ua_chan);
@@ -243,10 +248,14 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		goto error;
 	}
 
+	session = session_find_by_id(ua_sess->tracing_id);
+	assert(session);
+
 	pthread_mutex_lock(socket->lock);
 	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);
 	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
+		ERR("ask_channel_creation consumer command failed");
 		goto error;
 	}
 

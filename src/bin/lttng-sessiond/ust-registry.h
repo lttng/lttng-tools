@@ -109,6 +109,7 @@ struct ust_registry_session {
 
 struct ust_registry_channel {
 	uint64_t key;
+	uint64_t consumer_key;
 	/* Id set when replying to a register channel. */
 	uint32_t chan_id;
 	enum ustctl_channel_header header_type;
@@ -248,7 +249,7 @@ struct ust_registry_channel *ust_registry_channel_find(
 int ust_registry_channel_add(struct ust_registry_session *session,
 		uint64_t key);
 void ust_registry_channel_del_free(struct ust_registry_session *session,
-		uint64_t key);
+		uint64_t key, bool notif);
 
 int ust_registry_session_init(struct ust_registry_session **sessionp,
 		struct ust_app *app,
@@ -313,7 +314,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 }
 static inline
 void ust_registry_channel_del_free(struct ust_registry_session *session,
-		uint64_t key)
+		uint64_t key, bool notif)
 {}
 static inline
 int ust_registry_session_init(struct ust_registry_session **sessionp,

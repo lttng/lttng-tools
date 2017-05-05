@@ -94,6 +94,11 @@ struct consumer_data {
 	/* These two sockets uses the cmd_unix_sock_path. */
 	int cmd_sock;
 	/*
+	 * Write-end of the channel monitoring pipe to be passed to the
+	 * consumer.
+	 */
+	int channel_monitor_pipe;
+	/*
 	 * The metadata socket object is handled differently and only created
 	 * locally in this object thus it's the only reference available in the
 	 * session daemon. For that reason, a variable for the fd is required and
@@ -214,6 +219,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
 		enum lttng_stream_type type, uint64_t session_id,
 		char *session_name, char *hostname, int session_live_timer);
+int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
+		int pipe);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
 int consumer_recv_status_reply(struct consumer_socket *sock);
@@ -232,6 +239,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		unsigned int switch_timer_interval,
 		unsigned int read_timer_interval,
 		unsigned int live_timer_interval,
+		unsigned int monitor_timer_interval,
 		int output,
 		int type,
 		uint64_t session_id,
@@ -273,7 +281,8 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t tracefile_size,
 		uint64_t tracefile_count,
 		unsigned int monitor,
-		unsigned int live_timer_interval);
+		unsigned int live_timer_interval,
+		unsigned int monitor_timer_interval);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket,

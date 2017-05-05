@@ -29,6 +29,8 @@
 #include <lttng/lttng.h>
 #include <lttng/snapshot-internal.h>
 #include <lttng/save-internal.h>
+#include <lttng/channel-internal.h>
+#include <lttng/trigger/trigger-internal.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
@@ -96,6 +98,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_SET_SESSION_SHM_PATH          = 40,
 	LTTNG_REGENERATE_METADATA           = 41,
 	LTTNG_REGENERATE_STATEDUMP          = 42,
+	LTTNG_REGISTER_TRIGGER              = 43,
+	LTTNG_UNREGISTER_TRIGGER            = 44,
 };
 
 enum lttcomm_relayd_command {
@@ -146,6 +150,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_RELAYD_FAIL,              /* Error on remote relayd */
 	LTTCOMM_CONSUMERD_CHANNEL_FAIL,             /* Channel creation failed. */
 	LTTCOMM_CONSUMERD_CHAN_NOT_FOUND,           /* Channel not found. */
+	LTTCOMM_CONSUMERD_ALREADY_SET,              /* Resource already set. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -269,6 +274,8 @@ struct lttcomm_session_msg {
 		/* Create channel */
 		struct {
 			struct lttng_channel chan LTTNG_PACKED;
+			/* struct lttng_channel_extended is already packed. */
+			struct lttng_channel_extended extended;
 		} LTTNG_PACKED channel;
 		/* Context */
 		struct {
@@ -311,6 +318,9 @@ struct lttcomm_session_msg {
 		struct {
 			uint32_t pid;
 		} LTTNG_PACKED pid_tracker;
+		struct {
+			uint32_t length;
+		} LTTNG_PACKED trigger;
 	} u;
 } LTTNG_PACKED;
 
@@ -374,14 +384,6 @@ struct lttcomm_event_extended_header {
 } LTTNG_PACKED;
 
 /*
- * Channel extended info.
- */
-struct lttcomm_channel_extended {
-	uint64_t discarded_events;
-	uint64_t lost_packets;
-} LTTNG_PACKED;
-
-/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
@@ -423,6 +425,8 @@ struct lttcomm_consumer_msg {
 			uint32_t monitor;
 			/* timer to check the streams usage in live mode (usec). */
 			unsigned int live_timer_interval;
+			/* timer to sample a channel's positions (usec). */
+			unsigned int monitor_timer_interval;
 		} LTTNG_PACKED channel; /* Only used by Kernel. */
 		struct {
 			uint64_t stream_key;
@@ -453,7 +457,8 @@ struct lttcomm_consumer_msg {
 			int32_t overwrite;			/* 1: overwrite, 0: discard */
 			uint32_t switch_timer_interval;		/* usec */
 			uint32_t read_timer_interval;		/* usec */
-			unsigned int live_timer_interval;		/* usec */
+			unsigned int live_timer_interval;	/* usec */
+			uint32_t monitor_timer_interval;	/* usec */
 			int32_t output;				/* splice, mmap */
 			int32_t type;				/* metadata or per_cpu */
 			uint64_t session_id;			/* Tracing session id */
@@ -529,6 +534,19 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 		} LTTNG_PACKED regenerate_metadata;
 	} u;
+} LTTNG_PACKED;
+
+/*
+ * Channel monitoring message returned to the session daemon on every
+ * monitor timer expiration.
+ */
+struct lttcomm_consumer_channel_monitor_msg {
+	/* Key of the sampled channel. */
+	uint64_t key;
+	/*
+	 * Lowest and highest usage (bytes) at the moment the sample was taken.
+	 */
+	uint64_t lowest, highest;
 } LTTNG_PACKED;
 
 /*

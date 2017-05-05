@@ -27,6 +27,7 @@
 #define LTTNG_CONSUMER_SIG_SWITCH	SIGRTMIN + 10
 #define LTTNG_CONSUMER_SIG_TEARDOWN	SIGRTMIN + 11
 #define LTTNG_CONSUMER_SIG_LIVE		SIGRTMIN + 12
+#define LTTNG_CONSUMER_SIG_MONITOR	SIGRTMIN + 13
 
 #define CLOCKID CLOCK_MONOTONIC
 
@@ -44,15 +45,21 @@ struct timer_signal_data {
 };
 
 void consumer_timer_switch_start(struct lttng_consumer_channel *channel,
-		unsigned int switch_timer_interval);
+		unsigned int switch_timer_interval_us);
 void consumer_timer_switch_stop(struct lttng_consumer_channel *channel);
 void consumer_timer_live_start(struct lttng_consumer_channel *channel,
-		int live_timer_interval);
+		unsigned int live_timer_interval_us);
 void consumer_timer_live_stop(struct lttng_consumer_channel *channel);
+int consumer_timer_monitor_start(struct lttng_consumer_channel *channel,
+		unsigned int monitor_timer_interval_us);
+int consumer_timer_monitor_stop(struct lttng_consumer_channel *channel);
 void *consumer_timer_thread(void *data);
 int consumer_signal_init(void);
 
 int consumer_flush_kernel_index(struct lttng_consumer_stream *stream);
 int consumer_flush_ust_index(struct lttng_consumer_stream *stream);
+
+int consumer_timer_thread_get_channel_monitor_pipe(void);
+int consumer_timer_thread_set_channel_monitor_pipe(int fd);
 
 #endif /* CONSUMER_TIMER_H */

@@ -28,6 +28,9 @@
 #include "consumer.h"
 #include "health-sessiond.h"
 #include "kernel-consumer.h"
+#include "notification-thread-commands.h"
+#include "session.h"
+#include "lttng-sessiond.h"
 
 static char *create_channel_path(struct consumer_output *consumer,
 		uid_t uid, gid_t gid)
@@ -87,26 +90,33 @@ error:
  * Sending a single channel to the consumer with command ADD_CHANNEL.
  */
 int kernel_consumer_add_channel(struct consumer_socket *sock,
-		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session,
+		struct ltt_kernel_channel *channel,
+		struct ltt_kernel_session *ksession,
 		unsigned int monitor)
 {
 	int ret;
 	char *pathname;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
+	enum lttng_error_code status;
+	struct ltt_session *session;
+	struct lttng_channel_extended *channel_attr_extended;
 
 	/* Safety net */
 	assert(channel);
-	assert(session);
-	assert(session->consumer);
+	assert(ksession);
+	assert(ksession->consumer);
 
-	consumer = session->consumer;
+	consumer = ksession->consumer;
+	channel_attr_extended = (struct lttng_channel_extended *)
+			channel->channel->attr.extended.ptr;
 
 	DBG("Kernel consumer adding channel %s to kernel consumer",
 			channel->channel->name);
 
 	if (monitor) {
-		pathname = create_channel_path(consumer, session->uid, session->gid);
+		pathname = create_channel_path(consumer, ksession->uid,
+				ksession->gid);
 	} else {
 		/* Empty path. */
 		pathname = strdup("");
@@ -120,10 +130,10 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	consumer_init_channel_comm_msg(&lkm,
 			LTTNG_CONSUMER_ADD_CHANNEL,
 			channel->fd,
-			session->id,
+			ksession->id,
 			pathname,
-			session->uid,
-			session->gid,
+			ksession->uid,
+			ksession->gid,
 			consumer->net_seq_index,
 			channel->channel->name,
 			channel->stream_count,
@@ -132,7 +142,8 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			channel->channel->attr.tracefile_size,
 			channel->channel->attr.tracefile_count,
 			monitor,
-			channel->channel->attr.live_timer_interval);
+			channel->channel->attr.live_timer_interval,
+			channel_attr_extended->monitor_timer_interval);
 
 	health_code_update();
 
@@ -142,7 +153,21 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	}
 
 	health_code_update();
+	rcu_read_lock();
+	session = session_find_by_id(ksession->id);
+	assert(session);
 
+	status = notification_thread_command_add_channel(
+			notification_thread_handle, session->name,
+			ksession->uid, ksession->gid,
+			channel->channel->name, channel->fd,
+			LTTNG_DOMAIN_KERNEL,
+			channel->channel->attr.subbuf_size * channel->channel->attr.num_subbuf);
+	rcu_read_unlock();
+	if (status != LTTNG_OK) {
+		ret = -1;
+		goto error;
+	}
 error:
 	free(pathname);
 	return ret;
@@ -194,7 +219,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT,
 			CONSUMER_CHANNEL_TYPE_METADATA,
 			0, 0,
-			monitor, 0);
+			monitor, 0, 0);
 
 	health_code_update();
 

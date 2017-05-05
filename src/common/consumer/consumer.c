@@ -368,6 +368,9 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	if (channel->live_timer_enabled == 1) {
 		consumer_timer_live_stop(channel);
 	}
+	if (channel->monitor_timer_enabled == 1) {
+		consumer_timer_monitor_stop(channel);
+	}
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
@@ -1347,6 +1350,8 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 	if (!ctx->consumer_metadata_pipe) {
 		goto error_metadata_pipe;
 	}
+
+	ctx->channel_monitor_pipe = -1;
 
 	return ctx;
 

@@ -26,6 +26,8 @@
 #include "ust-registry.h"
 #include "ust-app.h"
 #include "utils.h"
+#include "lttng-sessiond.h"
+#include "notification-thread-commands.h"
 
 /*
  * Hash table match function for event in the registry.
@@ -695,12 +697,22 @@ void destroy_channel_rcu(struct rcu_head *head)
  * free the registry pointer since it might not have been allocated before so
  * it's the caller responsability.
  */
-static void destroy_channel(struct ust_registry_channel *chan)
+static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 {
 	struct lttng_ht_iter iter;
 	struct ust_registry_event *event;
+	enum lttng_error_code cmd_ret;
 
 	assert(chan);
+
+	if (notif) {
+		cmd_ret = notification_thread_command_remove_channel(
+				notification_thread_handle, chan->consumer_key,
+				LTTNG_DOMAIN_UST);
+		if (cmd_ret != LTTNG_OK) {
+			ERR("Failed to remove channel from notification thread");
+		}
+	}
 
 	rcu_read_lock();
 	/* Destroy all event associated with this registry. */
@@ -759,7 +771,7 @@ int ust_registry_channel_add(struct ust_registry_session *session,
 	return 0;
 
 error:
-	destroy_channel(chan);
+	destroy_channel(chan, false);
 error_alloc:
 	return ret;
 }
@@ -798,7 +810,7 @@ end:
  * Remove channel using key from registry and free memory.
  */
 void ust_registry_channel_del_free(struct ust_registry_session *session,
-		uint64_t key)
+		uint64_t key, bool notif)
 {
 	struct lttng_ht_iter iter;
 	struct ust_registry_channel *chan;
@@ -817,7 +829,7 @@ void ust_registry_channel_del_free(struct ust_registry_session *session,
 	ret = lttng_ht_del(session->channels, &iter);
 	assert(!ret);
 	rcu_read_unlock();
-	destroy_channel(chan);
+	destroy_channel(chan, notif);
 
 end:
 	return;
@@ -972,7 +984,7 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 			/* Delete the node from the ht and free it. */
 			ret = lttng_ht_del(reg->channels, &iter);
 			assert(!ret);
-			destroy_channel(chan);
+			destroy_channel(chan, true);
 		}
 		rcu_read_unlock();
 		ht_cleanup_push(reg->channels);

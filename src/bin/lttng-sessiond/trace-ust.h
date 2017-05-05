@@ -82,6 +82,7 @@ struct ltt_ust_channel {
 	uint64_t tracefile_count;
 	uint64_t per_pid_closed_app_discarded;
 	uint64_t per_pid_closed_app_lost;
+	uint64_t monitor_timer_interval;
 };
 
 /* UST domain global (LTTNG_DOMAIN_UST) */

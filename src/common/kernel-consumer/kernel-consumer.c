@@ -69,6 +69,19 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 }
 
 /*
+ * Sample consumed and produced positions for a specific fd.
+ *
+ * Returns 0 on success, < 0 on error.
+ */
+int lttng_kconsumer_sample_snapshot_positions(
+		struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+
+	return kernctl_snapshot_sample_positions(stream->wait_fd);
+}
+
+/*
  * Get the produced position
  *
  * Returns 0 on success, < 0 on error
@@ -534,9 +547,20 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		} else {
 			ret = consumer_add_channel(new_channel, ctx);
 		}
-		if (CONSUMER_CHANNEL_TYPE_DATA) {
+		if (msg.u.channel.type == CONSUMER_CHANNEL_TYPE_DATA && !ret) {
+			int monitor_start_ret;
+
+			DBG("Consumer starting monitor timer");
 			consumer_timer_live_start(new_channel,
 					msg.u.channel.live_timer_interval);
+			monitor_start_ret = consumer_timer_monitor_start(
+					new_channel,
+					msg.u.channel.monitor_timer_interval);
+			if (monitor_start_ret < 0) {
+				ERR("Starting channel monitoring timer failed");
+				goto end_nosignal;
+			}
+
 		}
 
 		health_code_update();

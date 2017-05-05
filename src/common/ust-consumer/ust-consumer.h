@@ -26,6 +26,8 @@
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
 int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream);
+int lttng_ustconsumer_sample_snapshot_positions(
+		struct lttng_consumer_stream *stream);
 
 int lttng_ustconsumer_get_produced_snapshot(
 		struct lttng_consumer_stream *stream, unsigned long *pos);
@@ -97,7 +99,21 @@ int lttng_ustconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 }
 
 static inline
+int lttng_ustconsumer_sample_snapshot_positions(
+		struct lttng_consumer_stream *stream)
+{
+	return -ENOSYS;
+}
+
+static inline
 int lttng_ustconsumer_get_produced_snapshot(
+		struct lttng_consumer_stream *stream, unsigned long *pos)
+{
+	return -ENOSYS;
+}
+
+static inline
+int lttng_ustconsumer_get_consumed_snapshot(
 		struct lttng_consumer_stream *stream, unsigned long *pos)
 {
 	return -ENOSYS;

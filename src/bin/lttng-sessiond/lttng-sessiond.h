@@ -29,6 +29,7 @@
 #include "session.h"
 #include "ust-app.h"
 #include "version.h"
+#include "notification-thread.h"
 
 extern const char default_home_dir[],
 	default_tracing_group[],
@@ -37,6 +38,8 @@ extern const char default_home_dir[],
 
 /* Set in main.c at boot time of the daemon */
 extern int kernel_tracer_fd;
+
+extern struct notification_thread_handle *notification_thread_handle;
 
 /*
  * This contains extra data needed for processing a command received by the
@@ -120,6 +123,8 @@ extern const char * const config_section_name;
 
 /* Is this daemon root or not. */
 extern int is_root;
+
+extern const char *tracing_group_name;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);

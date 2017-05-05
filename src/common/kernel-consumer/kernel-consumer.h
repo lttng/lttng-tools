@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  * Copyright (C) 2011 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2017 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -22,6 +23,8 @@
 #include <common/consumer/consumer.h>
 
 int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream);
+int lttng_kconsumer_sample_snapshot_positions(
+		struct lttng_consumer_stream *stream);
 int lttng_kconsumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
         unsigned long *pos);
 int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
