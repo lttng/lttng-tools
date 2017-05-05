@@ -21,7 +21,7 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#include <lttng/ust-ctl.h>
+#include <bin/lttng-sessiond/ust-ctl.h>
 #include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
 #include <common/compat/endian.h>
