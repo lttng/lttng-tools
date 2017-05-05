@@ -47,7 +47,11 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
 LTTNG_HIDDEN
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);
 LTTNG_HIDDEN
+ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len);
+LTTNG_HIDDEN
 ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len);
+LTTNG_HIDDEN
+ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len);
 
 LTTNG_HIDDEN
 ssize_t lttcomm_send_creds_unix_sock(int sock, void *buf, size_t len);

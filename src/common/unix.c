@@ -217,6 +217,48 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 }
 
 /*
+ * Receive data of size len in put that data into the buf param. Using recvmsg
+ * API. Only use with sockets set in non-blocking mode.
+ *
+ * Return the size of received data.
+ */
+LTTNG_HIDDEN
+ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len)
+{
+	struct msghdr msg;
+	struct iovec iov[1];
+	ssize_t ret;
+
+	memset(&msg, 0, sizeof(msg));
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+retry:
+	ret = lttng_recvmsg_nosigpipe(sock, &msg);
+	if (ret < 0) {
+		if (errno == EINTR) {
+			goto retry;
+		} else {
+			/*
+			 * Only warn about EPIPE when quiet mode is
+			 * deactivated.
+			 * We consider EPIPE as expected.
+			 */
+			if (errno != EPIPE || !lttng_opt_quiet) {
+				PERROR("recvmsg");
+			}
+			goto end;
+		}
+	}
+	ret = len;
+end:
+	return ret;
+}
+
+/*
  * Send buf data of size len. Using sendmsg API.
  *
  * Return the size of sent data.
@@ -226,7 +268,7 @@ ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 {
 	struct msghdr msg;
 	struct iovec iov[1];
-	ssize_t ret = -1;
+	ssize_t ret;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -235,17 +277,72 @@ ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
+	while (iov[0].iov_len) {
+		ret = sendmsg(sock, &msg, 0);
+		if (ret < 0) {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				/*
+				 * Only warn about EPIPE when quiet mode is
+				 * deactivated.
+				 * We consider EPIPE as expected.
+				 */
+				if (errno != EPIPE || !lttng_opt_quiet) {
+					PERROR("sendmsg");
+				}
+				goto end;
+			}
+		}
+		iov[0].iov_len -= ret;
+		iov[0].iov_base += ret;
+	}
+	ret = len;
+end:
+	return ret;
+}
+
+/*
+ * Send buf data of size len. Using sendmsg API.
+ * Only use with non-blocking sockets. The difference with the blocking version
+ * of the function is that this one does not retry to send on partial sends,
+ * except if the interruption was caused by a signal (EINTR).
+ *
+ * Return the size of sent data.
+ */
+LTTNG_HIDDEN
+ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len)
+{
+	struct msghdr msg;
+	struct iovec iov[1];
+	ssize_t ret;
+
+	memset(&msg, 0, sizeof(msg));
+
+	iov[0].iov_base = (void *) buf;
+	iov[0].iov_len = len;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+retry:
 	ret = sendmsg(sock, &msg, 0);
 	if (ret < 0) {
-		/*
-		 * Only warn about EPIPE when quiet mode is deactivated.
-		 * We consider EPIPE as expected.
-		 */
-		if (errno != EPIPE || !lttng_opt_quiet) {
-			PERROR("sendmsg");
+		if (errno == EINTR) {
+			goto retry;
+		} else {
+			/*
+			 * Only warn about EPIPE when quiet mode is
+			 * deactivated.
+			 * We consider EPIPE as expected.
+			 */
+			if (errno != EPIPE || !lttng_opt_quiet) {
+				PERROR("sendmsg");
+			}
+			goto end;
 		}
 	}
-
+	ret = len;
+end:
 	return ret;
 }
 
