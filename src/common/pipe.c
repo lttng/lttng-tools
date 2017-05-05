@@ -19,6 +19,8 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <common/common.h>
 
@@ -112,6 +114,55 @@ end:
 	return ret_val;
 }
 
+static struct lttng_pipe *_pipe_create(void)
+{
+	int ret;
+	struct lttng_pipe *p;
+
+	p = zmalloc(sizeof(*p));
+	if (!p) {
+		PERROR("zmalloc pipe create");
+		goto end;
+	}
+	p->fd[0] = p->fd[1] = -1;
+
+	ret = pthread_mutex_init(&p->read_mutex, NULL);
+	if (ret) {
+		PERROR("pthread_mutex_init read lock pipe create");
+		goto error_destroy;
+	}
+	ret = pthread_mutex_init(&p->write_mutex, NULL);
+	if (ret) {
+		PERROR("pthread_mutex_init write lock pipe create");
+		goto error_destroy_rmutex;
+	}
+end:
+	return p;
+error_destroy_rmutex:
+	(void) pthread_mutex_destroy(&p->read_mutex);
+error_destroy:
+	free(p);
+	return NULL;
+}
+
+static int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
+{
+	int i, ret = 0;
+
+	if (!flags) {
+		goto end;
+	}
+
+	for (i = 0; i < 2; i++) {
+		ret = fcntl(pipe->fd[i], F_SETFD, flags);
+		if (ret < 0) {
+			PERROR("fcntl lttng pipe %d", flags);
+			goto end;
+		}
+	}
+end:
+	return ret;
+}
 
 /*
  * Open a new lttng pipe and set flags using fcntl().
@@ -124,9 +175,8 @@ struct lttng_pipe *lttng_pipe_open(int flags)
 	int ret;
 	struct lttng_pipe *p;
 
-	p = zmalloc(sizeof(*p));
+	p = _pipe_create();
 	if (!p) {
-		PERROR("zmalloc pipe open");
 		goto error;
 	}
 
@@ -135,29 +185,72 @@ struct lttng_pipe *lttng_pipe_open(int flags)
 		PERROR("lttng pipe");
 		goto error;
 	}
-
-	if (flags) {
-		int i;
-
-		for (i = 0; i < 2; i++) {
-			ret = fcntl(p->fd[i], F_SETFD, flags);
-			if (ret < 0) {
-				PERROR("fcntl lttng pipe %d", flags);
-				goto error;
-			}
-		}
-	}
-
-	pthread_mutex_init(&p->read_mutex, NULL);
-	pthread_mutex_init(&p->write_mutex, NULL);
 	p->r_state = LTTNG_PIPE_STATE_OPENED;
 	p->w_state = LTTNG_PIPE_STATE_OPENED;
+
+	ret = _pipe_set_flags(p, flags);
+	if (ret) {
+		goto error;
+	}
+
 	p->flags = flags;
 
 	return p;
-
 error:
 	lttng_pipe_destroy(p);
+	return NULL;
+}
+
+/*
+ * Open a new lttng pipe at path and set flags using fcntl().
+ *
+ * Return a newly allocated lttng pipe on success or else NULL.
+ */
+LTTNG_HIDDEN
+struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode,
+		int flags)
+{
+	int ret, fd_r, fd_w;
+	struct lttng_pipe *pipe;
+
+	pipe = _pipe_create();
+	if (!pipe) {
+		goto error;
+	}
+
+	ret = mkfifo(path, mode);
+	if (ret) {
+		PERROR("mkfifo");
+		goto error;
+	}
+
+	fd_r = open(path, O_RDONLY | O_NONBLOCK);
+	if (fd_r < 0) {
+		PERROR("open fifo");
+		ret = fd_r;
+		goto error;
+	}
+	pipe->fd[0] = fd_r;
+	pipe->r_state = LTTNG_PIPE_STATE_OPENED;
+
+	fd_w = open(path, O_WRONLY | O_NONBLOCK);
+	if (fd_w < 0) {
+		PERROR("open fifo");
+		ret = fd_w;
+		goto error;
+	}
+	pipe->fd[1] = fd_w;
+	pipe->w_state = LTTNG_PIPE_STATE_OPENED;
+
+	ret = _pipe_set_flags(pipe, flags);
+	if (ret) {
+		goto error;
+	}
+	pipe->flags = flags;
+
+	return pipe;
+error:
+	lttng_pipe_destroy(pipe);
 	return NULL;
 }
 

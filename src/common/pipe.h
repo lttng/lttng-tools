@@ -76,6 +76,9 @@ static inline int lttng_pipe_get_writefd(struct lttng_pipe *pipe)
 LTTNG_HIDDEN
 struct lttng_pipe *lttng_pipe_open(int flags);
 LTTNG_HIDDEN
+struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode,
+		int flags);
+LTTNG_HIDDEN
 int lttng_pipe_write_close(struct lttng_pipe *pipe);
 LTTNG_HIDDEN
 int lttng_pipe_read_close(struct lttng_pipe *pipe);
