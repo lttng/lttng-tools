@@ -109,4 +109,5 @@ noinst_HEADERS = \
 	lttng/notification/notification-internal.h \
 	lttng/trigger/trigger-internal.h \
 	lttng/endpoint-internal.h \
-	lttng/notification/channel-internal.h
+	lttng/notification/channel-internal.h \
+	lttng/channel-internal.h
