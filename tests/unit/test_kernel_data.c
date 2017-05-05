@@ -116,8 +116,11 @@ static void test_create_kernel_channel(void)
 {
 	struct ltt_kernel_channel *chan;
 	struct lttng_channel attr;
+	struct lttng_channel_extended extended;
 
 	memset(&attr, 0, sizeof(attr));
+	memset(&extended, 0, sizeof(extended));
+	attr.attr.extended.ptr = &extended;
 
 	chan = trace_kernel_create_channel(&attr);
 	ok(chan != NULL, "Create kernel channel");

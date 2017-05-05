@@ -522,10 +522,12 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
 
-	status = notification_thread_command_remove_channel(
-			notification_thread_handle,
-			channel->fd, LTTNG_DOMAIN_KERNEL);
-	assert(status == LTTNG_OK);
+	if (notification_thread_handle) {
+		status = notification_thread_command_remove_channel(
+				notification_thread_handle,
+				channel->fd, LTTNG_DOMAIN_KERNEL);
+		assert(status == LTTNG_OK);
+	}
 	free(channel->channel->attr.extended.ptr);
 	free(channel->channel);
 	free(channel);
