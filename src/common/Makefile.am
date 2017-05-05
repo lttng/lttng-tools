@@ -7,7 +7,8 @@ SUBDIRS = string-utils
 # Make sure to always distribute all folders
 # since SUBDIRS is decided at configure time.
 DIST_SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
-	  kernel-consumer ust-consumer testpoint index config consumer
+	  kernel-consumer ust-consumer testpoint index config consumer \
+	  string-utils
 
 if BUILD_LIB_COMPAT
 SUBDIRS += compat
