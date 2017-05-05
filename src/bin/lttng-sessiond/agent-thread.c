@@ -252,7 +252,7 @@ void *agent_thread_manage_registration(void *data)
 		goto error_tcp_socket;
 	}
 
-	/* Add create valid TCP socket to poll set. */
+	/* Add TCP socket to poll set. */
 	ret = lttng_poll_add(&events, reg_sock->fd,
 			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 	if (ret < 0) {
