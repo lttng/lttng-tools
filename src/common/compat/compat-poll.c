@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <stdbool.h>
 
 #include <common/defaults.h>
 #include <common/error.h>
@@ -189,6 +190,42 @@ int compat_poll_add(struct lttng_poll_event *events, int fd,
 	events->need_update = 1;
 
 	DBG("fd %d of %d added to pollfd", fd, current->nb_fd);
+
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
+ * Modify an fd's events..
+ */
+int compat_poll_mod(struct lttng_poll_event *events, int fd,
+		uint32_t req_events)
+{
+	int ret, i;
+	bool fd_found = false;
+	struct compat_poll_event_array *current;
+
+	if (events == NULL || events->current.events == NULL || fd < 0) {
+		ERR("Bad compat poll mod arguments");
+		goto error;
+	}
+
+	current = &events->current;
+
+	for (i = 0; i < current->nb_fd; i++) {
+		if (current->events[i].fd == fd) {
+			fd_found = true;
+			current->events[i].events = req_events;
+			events->need_update = 1;
+			break;
+		}
+	}
+
+	if (!fd_found) {
+		goto error;
+	}
 
 	return 0;
 

@@ -198,6 +198,47 @@ error:
 }
 
 /*
+ * Set an fd's events.
+ */
+int compat_epoll_mod(struct lttng_poll_event *events, int fd, uint32_t req_events)
+{
+	int ret;
+	struct epoll_event ev;
+
+	if (events == NULL || fd < 0 || events->nb_fd == 0) {
+		goto error;
+	}
+
+	/*
+	 * Zero struct epoll_event to ensure all representations of its
+	 * union are zeroed.
+	 */
+	memset(&ev, 0, sizeof(ev));
+	ev.events = req_events;
+	ev.data.fd = fd;
+
+	ret = epoll_ctl(events->epfd, EPOLL_CTL_MOD, fd, &ev);
+	if (ret < 0) {
+		switch (errno) {
+		case ENOENT:
+		case EPERM:
+			/* Print PERROR and goto end not failing. Show must go on. */
+			PERROR("epoll_ctl MOD");
+			goto end;
+		default:
+			PERROR("epoll_ctl MOD fatal");
+			goto error;
+		}
+	}
+
+end:
+	return 0;
+
+error:
+	return -1;
+}
+
+/*
  * Wait on epoll set. This is a blocking call of timeout value.
  */
 int compat_epoll_wait(struct lttng_poll_event *events, int timeout)
