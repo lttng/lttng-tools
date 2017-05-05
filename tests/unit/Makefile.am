@@ -73,6 +73,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/agent.$(OBJEXT) \
+		   $(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
 		   $(top_builddir)/src/common/libcommon.la \
 		   $(top_builddir)/src/common/health/libhealth.la \
 		   $(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
@@ -89,6 +90,7 @@ KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
 		$(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 		$(top_builddir)/src/common/libcommon.la \
 		$(top_builddir)/src/common/health/libhealth.la \
+		$(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 
 test_kernel_data_SOURCES = test_kernel_data.c
