@@ -45,7 +45,7 @@
 
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
 #define LTTNG_UST_ABI_MAJOR_VERSION		7
-#define LTTNG_UST_ABI_MINOR_VERSION		1
+#define LTTNG_UST_ABI_MINOR_VERSION		2
 
 struct lttng_ust_calibrate;
 

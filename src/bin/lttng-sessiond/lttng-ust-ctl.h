@@ -215,6 +215,7 @@ int ustctl_put_next_subbuf(struct ustctl_consumer_stream *stream);
 /* snapshot */
 
 int ustctl_snapshot(struct ustctl_consumer_stream *stream);
+int ustctl_snapshot_sample_positions(struct ustctl_consumer_stream *stream);
 int ustctl_snapshot_get_consumed(struct ustctl_consumer_stream *stream,
 		unsigned long *pos);
 int ustctl_snapshot_get_produced(struct ustctl_consumer_stream *stream,
