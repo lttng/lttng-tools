@@ -25,13 +25,11 @@
 #include "../command.h"
 #include <common/utils.h>
 
-static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
+static const char *help_msg =
 #include <lttng-help.1.h>
-#else
-NULL
-#endif
 ;
+#endif
 
 static const char *lttng_help_msg =
 #ifdef LTTNG_EMBED_HELP
