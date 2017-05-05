@@ -20,6 +20,7 @@
 #define _MACROS_H
 
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <common/compat/string.h>
 
@@ -56,6 +57,14 @@ void *zmalloc(size_t len)
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array)   (sizeof(array) / (sizeof((array)[0])))
+#endif
+
+#ifndef container_of
+#define container_of(ptr, type, member)					\
+	({								\
+		const typeof(((type *)NULL)->member) * __ptr = (ptr);	\
+		(type *)((char *)__ptr - offsetof(type, member));	\
+	})
 #endif
 
 #ifndef max
