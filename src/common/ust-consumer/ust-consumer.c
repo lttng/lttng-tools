@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2017 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -1856,6 +1857,51 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 
 		break;
+	}
+	case LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE:
+	{
+		int channel_monitor_pipe;
+
+		ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+		/* Successfully received the command's type. */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			goto error_fatal;
+		}
+
+		ret = lttcomm_recv_fds_unix_sock(sock, &channel_monitor_pipe,
+				1);
+		if (ret != sizeof(channel_monitor_pipe)) {
+			ERR("Failed to receive channel monitor pipe");
+			goto error_fatal;
+		}
+
+		DBG("Received channel monitor pipe (%d)", channel_monitor_pipe);
+		ret = consumer_timer_thread_set_channel_monitor_pipe(
+				channel_monitor_pipe);
+		if (!ret) {
+			int flags;
+
+			ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+			/* Set the pipe as non-blocking. */
+			ret = fcntl(channel_monitor_pipe, F_GETFL, 0);
+			if (ret == -1) {
+				PERROR("fcntl get flags of the channel monitoring pipe");
+				goto error_fatal;
+			}
+			flags = ret;
+
+			ret = fcntl(channel_monitor_pipe, F_SETFL,
+					flags | O_NONBLOCK);
+			if (ret == -1) {
+				PERROR("fcntl set O_NONBLOCK flag of the channel monitoring pipe");
+				goto error_fatal;
+			}
+			DBG("Channel monitor pipe set as non-blocking");
+		} else {
+			ret_code = LTTCOMM_CONSUMERD_ALREADY_SET;
+		}
+		goto end_msg_sessiond;
 	}
 	default:
 		break;
