@@ -106,8 +106,11 @@ static void test_create_ust_channel(void)
 {
 	struct ltt_ust_channel *uchan;
 	struct lttng_channel attr;
+	struct lttng_channel_extended extended;
 
 	memset(&attr, 0, sizeof(attr));
+	memset(&extended, 0, sizeof(extended));
+	attr.attr.extended.ptr = &extended;
 
 	ok(lttng_strncpy(attr.name, "channel0", sizeof(attr.name)) == 0,
 		"Validate channel name length");
