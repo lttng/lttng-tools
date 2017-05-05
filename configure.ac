@@ -948,8 +948,20 @@ CFLAGS="-Wall $CFLAGS -g -fno-strict-aliasing"
 DEFAULT_INCLUDES="-I\$(top_srcdir) -I\$(top_builddir) -I\$(top_builddir)/src -I\$(top_builddir)/include -include config.h"
 
 lttngincludedir="${includedir}/lttng"
-
 AC_SUBST(lttngincludedir)
+
+lttngactionincludedir="${includedir}/lttng/action"
+AC_SUBST(lttngactionincludedir)
+
+lttngconditionincludedir="${includedir}/lttng/condition"
+AC_SUBST(lttngconditionincludedir)
+
+lttngnotificationincludedir="${includedir}/lttng/notification"
+AC_SUBST(lttngnotificationincludedir)
+
+lttngtriggerincludedir="${includedir}/lttng/trigger"
+AC_SUBST(lttngtriggerincludedir)
+
 AC_SUBST(DEFAULT_INCLUDES)
 
 lttnglibexecdir="${libdir}/lttng/libexec"

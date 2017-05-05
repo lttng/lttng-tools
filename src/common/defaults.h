@@ -106,10 +106,12 @@
 #define DEFAULT_LTTNG_EXTRA_KMOD_PROBES		"LTTNG_EXTRA_KMOD_PROBES"
 
 /* Default unix socket path */
-#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_HOME_CLIENT_UNIX_SOCK           DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
-#define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         DEFAULT_LTTNG_RUNDIR "/sessiond-health"
-#define DEFAULT_HOME_HEALTH_UNIX_SOCK		DEFAULT_LTTNG_HOME_RUNDIR "/sessiond-health"
+#define DEFAULT_GLOBAL_CLIENT_UNIX_SOCK         	DEFAULT_LTTNG_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_HOME_CLIENT_UNIX_SOCK           	DEFAULT_LTTNG_HOME_RUNDIR "/client-lttng-sessiond"
+#define DEFAULT_GLOBAL_HEALTH_UNIX_SOCK         	DEFAULT_LTTNG_RUNDIR "/sessiond-health"
+#define DEFAULT_HOME_HEALTH_UNIX_SOCK			DEFAULT_LTTNG_HOME_RUNDIR "/sessiond-health"
+#define DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK   DEFAULT_LTTNG_RUNDIR "/sessiond-notification"
+#define DEFAULT_HOME_NOTIFICATION_CHANNEL_UNIX_SOCK	DEFAULT_LTTNG_HOME_RUNDIR "/sessiond-notification"
 
 /* Default consumer health unix socket path */
 #define DEFAULT_GLOBAL_USTCONSUMER32_HEALTH_UNIX_SOCK	DEFAULT_LTTNG_RUNDIR "/ustconsumerd32/health"
@@ -312,6 +314,12 @@
 
 /* Default thread stack size; the default mandated by pthread_create(3) */
 #define DEFAULT_LTTNG_THREAD_STACK_SIZE		2097152
+
+/* Default maximal size of message notification channel message payloads. */
+#define DEFAULT_MAX_NOTIFICATION_CLIENT_MESSAGE_PAYLOAD_SIZE	65536
+
+/* Default maximal size of message notification channel message payloads. */
+#define DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT		100
 
 /*
  * Returns the default subbuf size.

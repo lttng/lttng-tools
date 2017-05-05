@@ -36,6 +36,9 @@
 #include <common/utils.h>
 #include <lttng/lttng.h>
 #include <lttng/health-internal.h>
+#include <lttng/trigger/trigger-internal.h>
+#include <lttng/endpoint.h>
+#include <lttng/channel-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -2432,6 +2435,94 @@ int lttng_regenerate_statedump(const char *session_name)
 
 	ret = 0;
 end:
+	return ret;
+}
+
+int lttng_register_trigger(struct lttng_trigger *trigger)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+	char *trigger_buf = NULL;
+	ssize_t trigger_size;
+
+	if (!trigger) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!lttng_trigger_validate(trigger)) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	trigger_size = lttng_trigger_serialize(trigger, NULL);
+	if (trigger_size < 0) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	trigger_buf = zmalloc(trigger_size);
+	if (!trigger_buf) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_REGISTER_TRIGGER;
+	if (lttng_trigger_serialize(trigger, trigger_buf) < 0) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	lsm.u.trigger.length = (uint32_t) trigger_size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, trigger_buf,
+			trigger_size, NULL);
+end:
+	free(trigger_buf);
+	return ret;
+}
+
+int lttng_unregister_trigger(struct lttng_trigger *trigger)
+{
+	int ret;
+	struct lttcomm_session_msg lsm;
+	char *trigger_buf = NULL;
+	ssize_t trigger_size;
+
+	if (!trigger) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!lttng_trigger_validate(trigger)) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	trigger_size = lttng_trigger_serialize(trigger, NULL);
+	if (trigger_size < 0) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	trigger_buf = zmalloc(trigger_size);
+	if (!trigger_buf) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
+	if (lttng_trigger_serialize(trigger, trigger_buf) < 0) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	lsm.u.trigger.length = (uint32_t) trigger_size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, trigger_buf,
+			trigger_size, NULL);
+end:
+	free(trigger_buf);
 	return ret;
 }
 

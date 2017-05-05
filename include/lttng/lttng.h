@@ -34,6 +34,15 @@
 #include <lttng/save.h>
 #include <lttng/session.h>
 #include <lttng/snapshot.h>
+#include <lttng/endpoint.h>
+#include <lttng/action/action.h>
+#include <lttng/action/notify.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/buffer-usage.h>
+#include <lttng/condition/evaluation.h>
+#include <lttng/notification/channel.h>
+#include <lttng/notification/notification.h>
+#include <lttng/trigger/trigger.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -77,10 +77,36 @@ lttnginclude_HEADERS = \
 	lttng/snapshot.h \
 	lttng/save.h \
 	lttng/load.h \
+	lttng/endpoint.h \
 	version.h.tmpl
+
+lttngactioninclude_HEADERS= \
+	lttng/action/action.h \
+	lttng/action/notify.h
+
+lttngconditioninclude_HEADERS= \
+	lttng/condition/condition.h \
+	lttng/condition/buffer-usage.h \
+	lttng/condition/evaluation.h
+
+lttngnotificationinclude_HEADERS= \
+	lttng/notification/channel.h \
+	lttng/notification/notification.h
+
+lttngtriggerinclude_HEADERS= \
+	lttng/trigger/trigger.h
 
 noinst_HEADERS = \
 	lttng/snapshot-internal.h \
 	lttng/health-internal.h \
 	lttng/save-internal.h \
-	lttng/load-internal.h
+	lttng/load-internal.h \
+	lttng/action/action-internal.h \
+	lttng/action/notify-internal.h \
+	lttng/condition/condition-internal.h \
+	lttng/condition/buffer-usage-internal.h \
+	lttng/condition/evaluation-internal.h \
+	lttng/notification/notification-internal.h \
+	lttng/trigger/trigger-internal.h \
+	lttng/endpoint-internal.h \
+	lttng/notification/channel-internal.h
