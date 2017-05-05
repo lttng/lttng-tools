@@ -505,24 +505,6 @@ end:
 }
 
 static
-int check_exclusions_subsets(const char *event_name,
-		char * const *exclusions)
-{
-	int ret = 0;
-	char * const *item;
-
-	for (item = exclusions; *item; item++) {
-		ret = check_exclusion_subsets(event_name, *item);
-		if (ret) {
-			goto end;
-		}
-	}
-
-end:
-	return ret;
-}
-
-static
 int create_exclusion_list_and_validate(const char *event_name,
 		const char *exclusions_arg,
 		char ***exclusion_list)
@@ -554,8 +536,7 @@ int create_exclusion_list_and_validate(const char *event_name,
 		for (exclusion = exclusions; *exclusion; exclusion++) {
 			if (!strutils_is_star_glob_pattern(*exclusion) ||
 					strutils_is_star_at_the_end_only_glob_pattern(*exclusion)) {
-				ret = check_exclusions_subsets(
-					event_name, exclusion);
+				ret = check_exclusion_subsets(event_name, *exclusion);
 				if (ret) {
 					goto error;
 				}
