@@ -93,5 +93,11 @@ ssize_t lttng_pipe_read(struct lttng_pipe *pipe, void *buf, size_t count);
 LTTNG_HIDDEN
 ssize_t lttng_pipe_write(struct lttng_pipe *pipe, const void *buf,
 		size_t count);
+/* Returns and releases the read end of the pipe. */
+LTTNG_HIDDEN
+int lttng_pipe_release_readfd(struct lttng_pipe *pipe);
+/* Returns and releases the write end of the pipe. */
+LTTNG_HIDDEN
+int lttng_pipe_release_writefd(struct lttng_pipe *pipe);
 
 #endif /* LTTNG_PIPE_H */

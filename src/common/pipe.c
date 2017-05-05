@@ -404,3 +404,69 @@ error:
 	unlock_write_side(pipe);
 	return ret;
 }
+
+/*
+ * Return and release the read end of the pipe.
+ *
+ * This call transfers the ownership of the read fd of the underlying pipe
+ * to the caller if it is still open.
+ *
+ * Returns the fd of the read end of the pipe, or -1 if it was already closed or
+ * released.
+ */
+LTTNG_HIDDEN
+int lttng_pipe_release_readfd(struct lttng_pipe *pipe)
+{
+	int ret;
+
+	if (!pipe) {
+		ret = -1;
+		goto end;
+	}
+
+	lock_read_side(pipe);
+	if (!lttng_pipe_is_read_open(pipe)) {
+		ret = -1;
+		goto end_unlock;
+	}
+	ret = pipe->fd[0];
+	pipe->fd[0] = -1;
+	pipe->r_state = LTTNG_PIPE_STATE_CLOSED;
+end_unlock:
+	unlock_read_side(pipe);
+end:
+	return ret;
+}
+
+/*
+ * Return and release the write end of the pipe.
+ *
+ * This call transfers the ownership of the write fd of the underlying pipe
+ * to the caller if it is still open.
+ *
+ * Returns the fd of the write end of the pipe, or -1 if it was alwritey closed
+ * or released.
+ */
+LTTNG_HIDDEN
+int lttng_pipe_release_writefd(struct lttng_pipe *pipe)
+{
+	int ret;
+
+	if (!pipe) {
+		ret = -1;
+		goto end;
+	}
+
+	lock_write_side(pipe);
+	if (!lttng_pipe_is_write_open(pipe)) {
+		ret = -1;
+		goto end_unlock;
+	}
+	ret = pipe->fd[1];
+	pipe->fd[1] = -1;
+	pipe->w_state = LTTNG_PIPE_STATE_CLOSED;
+end_unlock:
+	unlock_write_side(pipe);
+end:
+	return ret;
+}
