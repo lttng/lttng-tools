@@ -21,6 +21,8 @@
 #include "context.h"
 #include "session.h"
 
+struct notification_thread_handle;
+
 /*
  * Init the command subsystem. Must be called before using any of the functions
  * above. This is called in the main() of the session daemon.
@@ -110,5 +112,10 @@ int cmd_set_session_shm_path(struct ltt_session *session,
 		const char *shm_path);
 int cmd_regenerate_metadata(struct ltt_session *session);
 int cmd_regenerate_statedump(struct ltt_session *session);
+
+int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
+		struct notification_thread_handle *notification_thread_handle);
+int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
+		struct notification_thread_handle *notification_thread_handle);
 
 #endif /* CMD_H */
