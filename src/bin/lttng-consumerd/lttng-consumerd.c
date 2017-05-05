@@ -538,7 +538,7 @@ int main(int argc, char **argv)
 		goto exit_data_thread;
 	}
 
-	/* Create the thread to manage the receive of fd */
+	/* Create the thread to manage the reception of fds */
 	ret = pthread_create(&sessiond_thread, default_pthread_attr(),
 			consumer_thread_sessiond_poll,
 			(void *) ctx);
