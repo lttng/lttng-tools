@@ -405,6 +405,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (!node) {
+		free(client_list_element);
 		goto end_unlock;
 	}
 
