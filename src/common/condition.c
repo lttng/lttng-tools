@@ -66,14 +66,15 @@ ssize_t lttng_condition_serialize(const struct lttng_condition *condition,
 		char *buf)
 {
 	ssize_t ret, condition_size;
-	struct lttng_condition_comm condition_comm;
+	struct lttng_condition_comm condition_comm = {
+		.condition_type = (int8_t) condition->type
+	};
 
 	if (!condition) {
 		ret = -1;
 		goto end;
 	}
 
-	condition_comm.condition_type = (int8_t) condition->type;
 	ret = sizeof(struct lttng_condition_comm);
 	if (buf) {
 		memcpy(buf, &condition_comm, ret);
