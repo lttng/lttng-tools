@@ -22,6 +22,7 @@
 #include <common/macros.h>
 #include <common/buffer-view.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 typedef bool (*action_validate_cb)(struct lttng_action *action);
 typedef void (*action_destroy_cb)(struct lttng_action *action);

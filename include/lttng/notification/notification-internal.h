@@ -23,6 +23,7 @@
 #include <common/buffer-view.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 struct lttng_notification {
 	struct lttng_condition *condition;
