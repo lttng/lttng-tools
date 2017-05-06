@@ -87,8 +87,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="Codename TBD"
-version_description='Description TBD'
+version_name="KeKriek"
+version_description='From Brasserie Dunham, a sour mashed golden wheat ale fermented with local sour cherries from Tougas orchards. Fresh sweet cherry notes with some tartness, lively carbonation with a dry finish.'
 version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
