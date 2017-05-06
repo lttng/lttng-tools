@@ -181,7 +181,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 		struct lttng_channel *chan)
 {
 	struct ltt_kernel_channel *lkc;
-	struct lttng_channel_extended *extended;
+	struct lttng_channel_extended *extended = NULL;
 
 	assert(chan);
 
