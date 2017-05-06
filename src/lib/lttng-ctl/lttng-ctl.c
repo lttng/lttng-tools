@@ -2047,14 +2047,14 @@ int lttng_calibrate(struct lttng_handle *handle,
 void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		struct lttng_channel_attr *attr)
 {
-	struct lttng_channel_extended *extended =
-			(struct lttng_channel_extended *) attr->extended.ptr;
+	struct lttng_channel_extended *extended;
 
 	/* Safety check */
 	if (attr == NULL || domain == NULL) {
 		return;
 	}
 
+	extended = (struct lttng_channel_extended *) attr->extended.ptr;
 	memset(attr, 0, sizeof(struct lttng_channel_attr));
 
 	/* Same for all domains. */
