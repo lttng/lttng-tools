@@ -81,7 +81,9 @@ int receive_message(struct lttng_notification_channel *channel)
 end:
 	return ret;
 error:
-	lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0);
+	if (lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0)) {
+		ret = -1;
+	}
 	goto end;
 }
 
