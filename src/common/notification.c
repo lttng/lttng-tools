@@ -50,7 +50,7 @@ ssize_t lttng_notification_serialize(struct lttng_notification *notification,
 		char *buf)
 {
 	ssize_t ret, condition_size, evaluation_size, offset = 0;
-	struct lttng_notification_comm notification_comm;
+	struct lttng_notification_comm notification_comm = { 0 };
 
 	if (!notification) {
 		ret = -1;
