@@ -355,7 +355,7 @@ char **strutils_split(const char *input, char delim, bool escape_delim)
 
 error:
 	strutils_free_null_terminated_array_of_strings(substrings);
-
+	substrings = NULL;
 end:
 	return substrings;
 }
