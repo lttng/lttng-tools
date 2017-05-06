@@ -148,7 +148,7 @@ error:
 LTTNG_HIDDEN
 ssize_t lttng_trigger_serialize(struct lttng_trigger *trigger, char *buf)
 {
-	struct lttng_trigger_comm trigger_comm;
+	struct lttng_trigger_comm trigger_comm = { 0 };
 	ssize_t action_size, condition_size, offset = 0, ret;
 
 	if (!trigger) {
