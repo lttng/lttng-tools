@@ -27,9 +27,10 @@ ssize_t lttng_evaluation_serialize(struct lttng_evaluation *evaluation,
 		char *buf)
 {
 	ssize_t ret, offset = 0;
-	struct lttng_evaluation_comm evaluation_comm;
+	struct lttng_evaluation_comm evaluation_comm = {
+		.type = (int8_t) evaluation->type
+	};
 
-	evaluation_comm.type = (int8_t) evaluation->type;
 	if (buf) {
 		memcpy(buf, &evaluation_comm, sizeof(evaluation_comm));
 	}
