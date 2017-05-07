@@ -67,7 +67,8 @@ ssize_t lttng_condition_serialize(const struct lttng_condition *condition,
 {
 	ssize_t ret, condition_size;
 	struct lttng_condition_comm condition_comm = {
-		.condition_type = (int8_t) condition->type
+		.condition_type = (int8_t) (condition ?
+				condition->type : LTTNG_CONDITION_TYPE_UNKNOWN)
 	};
 
 	if (!condition) {
