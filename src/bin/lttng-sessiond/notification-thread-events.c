@@ -1949,9 +1949,7 @@ int handle_notification_thread_channel_sample(
 	 * The monitoring pipe only holds messages smaller than PIPE_BUF,
 	 * ensuring that read/write of sampling messages are atomic.
 	 */
-	do {
-		ret = read(pipe, &sample_msg, sizeof(sample_msg));
-	} while (ret == -1 && errno == EINTR);
+	ret = lttng_read(pipe, &sample_msg, sizeof(sample_msg));
 	if (ret != sizeof(sample_msg)) {
 		ERR("[notification-thread] Failed to read from monitoring pipe (fd = %i)",
 				pipe);
