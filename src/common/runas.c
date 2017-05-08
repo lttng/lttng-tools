@@ -466,6 +466,7 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
 
+	memset(&data, 0, sizeof(data));
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
@@ -479,6 +480,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
 
+	memset(&data, 0, sizeof(data));
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
@@ -492,6 +494,7 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
 
+	memset(&data, 0, sizeof(data));
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
 			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
@@ -506,6 +509,7 @@ int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
 
+	memset(&data, 0, sizeof(data));
 	DBG3("unlink() %s with for uid %d and gid %d",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
