@@ -89,10 +89,12 @@ int kernctl_create_session(int fd)
 /* open the metadata global channel */
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 {
-	struct lttng_kernel_old_channel old_channel;
 	struct lttng_kernel_channel channel;
 
 	if (lttng_kernel_use_old_abi) {
+		struct lttng_kernel_old_channel old_channel;
+
+		memset(&old_channel, 0, sizeof(old_channel));
 		old_channel.overwrite = chops->overwrite;
 		old_channel.subbuf_size = chops->subbuf_size;
 		old_channel.num_subbuf = chops->num_subbuf;
@@ -111,6 +113,7 @@ int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops)
 			        &old_channel);
 	}
 
+	memset(&channel, 0, sizeof(channel));
 	channel.overwrite = chops->overwrite;
 	channel.subbuf_size = chops->subbuf_size;
 	channel.num_subbuf = chops->num_subbuf;
@@ -246,6 +249,7 @@ int kernctl_create_event(int fd, struct lttng_kernel_event *ev)
 	if (lttng_kernel_use_old_abi) {
 		struct lttng_kernel_old_event old_event;
 
+		memset(&old_event, 0, sizeof(old_event));
 		memcpy(old_event.name, ev->name, sizeof(old_event.name));
 		old_event.instrumentation = ev->instrumentation;
 		switch (ev->instrumentation) {
@@ -283,6 +287,7 @@ int kernctl_add_context(int fd, struct lttng_kernel_context *ctx)
 	if (lttng_kernel_use_old_abi) {
 		struct lttng_kernel_old_context old_ctx;
 
+		memset(&old_ctx, 0, sizeof(old_ctx));
 		old_ctx.ctx = ctx->ctx;
 		/* only type that uses the union */
 		if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER) {
