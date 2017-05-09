@@ -301,7 +301,15 @@ int compat_epoll_set_max_size(void)
 
 	fd = open(COMPAT_EPOLL_PROC_PATH, O_RDONLY);
 	if (fd < 0) {
-		retval = -1;
+		/*
+		 * Failing on opening [1] is not an error per see. [1] was
+		 * introduced in Linux 2.6.28 but epoll is available since
+		 * 2.5.44. Hence, goto end and set a default value without
+		 * setting an error return value.
+		 *
+		 * [1] /proc/sys/fs/epoll/max_user_watches
+		 */
+		retval = 0;
 		goto end;
 	}
 
