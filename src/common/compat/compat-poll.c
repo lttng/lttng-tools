@@ -203,7 +203,7 @@ error:
 int compat_poll_mod(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
-	int ret, i;
+	int i;
 	bool fd_found = false;
 	struct compat_poll_event_array *current;
 
