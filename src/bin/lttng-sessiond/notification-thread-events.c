@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <fcntl.h>
 
 #define CLIENT_POLL_MASK_IN (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)
