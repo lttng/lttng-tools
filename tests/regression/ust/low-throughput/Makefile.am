@@ -1,15 +1,8 @@
 AM_CPPFLAGS += -I$(srcdir)
 
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-LIBS += -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-LIBS += -lc
-endif
-
 noinst_PROGRAMS = gen-events
 gen_events_SOURCES = main.c tp.c tp.h
-gen_events_LDADD = -llttng-ust -lurcu
+gen_events_LDADD = -llttng-ust -lurcu $(DL_LIBS)
 
 noinst_SCRIPTS = test_low_throughput
 EXTRA_DIST = test_low_throughput

@@ -20,7 +20,7 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 			   -rpath $(abs_builddir)
 
 libpause_consumer_la_SOURCES = consumer_testpoints.c
-libpause_consumer_la_LIBADD = $(top_builddir)/src/common/libcommon.la
+libpause_consumer_la_LIBADD = $(top_builddir)/src/common/libcommon.la $(DL_LIBS)
 libpause_consumer_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 noinst_LTLIBRARIES = libpause_consumer.la
 
@@ -29,13 +29,6 @@ base_client_LDADD = $(LIB_LTTNG_CTL)
 
 notification_SOURCES = notification.c
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
-
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-LIBS += -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-LIBS += -lc
-endif
 
 noinst_SCRIPTS = test_notification test_notification_multi_app
 EXTRA_DIST = test_notification test_notification_multi_app

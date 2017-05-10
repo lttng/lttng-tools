@@ -9,7 +9,7 @@ LIBS =
 # Build a version of the test app with built-in tracepoints
 demo_builtin_SOURCES = demo.c tp.c tp2.c tp3.c ust_tests_demo.h \
 	ust_tests_demo2.h ust_tests_demo3.h
-demo_builtin_LDADD = -llttng-ust
+demo_builtin_LDADD = -llttng-ust $(DL_LIBS)
 demo_builtin_CFLAGS = -Werror=old-style-definition $(AM_CFLAGS)
 
 # Build a version statically linked to the providers
@@ -31,16 +31,8 @@ liblttng_ust_provider_ust_tests_demo3_static_la_LIBADD = \
 
 demo_static_SOURCES = demo.c
 demo_static_LDADD = liblttng-ust-provider-ust-tests-demo-static.la \
-	liblttng-ust-provider-ust-tests-demo3-static.la
-
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-demo_builtin_LDADD += -ldl
-demo_static_LDADD += -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-demo_builtin_LDADD += -lc
-demo_static_LDADD += -lc
-endif
+	liblttng-ust-provider-ust-tests-demo3-static.la \
+	$(DL_LIBS)
 
 noinst_PROGRAMS = demo_builtin demo_static
 
@@ -80,13 +72,7 @@ liblttng_ust_provider_ust_tests_demo3_la_LDFLAGS = \
 noinst_PROGRAMS += demo
 demo_SOURCES = demo.c ust_tests_demo.h
 demo_CFLAGS = -DTEST_DYNAMIC_LINKAGE $(AM_CFLAGS)
-
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-demo_LDADD = -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-demo_LDADD = -lc
-endif
+demo_LDADD = $(DL_LIBS)
 
 EXTRA_DIST = $(COPYSCRIPTS)
 
