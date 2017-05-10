@@ -78,13 +78,8 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        waiter.h waiter.c
 
 libcommon_la_LIBADD = \
-		$(top_builddir)/src/common/config/libconfig.la
-if LTTNG_BUILD_WITH_LIBUUID
-libcommon_la_LIBADD += -luuid
-endif
-if LTTNG_BUILD_WITH_LIBC_UUID
-libcommon_la_LIBADD += -lc
-endif
+		$(top_builddir)/src/common/config/libconfig.la \
+		$(UUID_LIBS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
