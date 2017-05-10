@@ -642,6 +642,9 @@ void *thread_notification(void *data)
 			int fd = LTTNG_POLL_GETFD(&state.events, i);
 			uint32_t revents = LTTNG_POLL_GETEV(&state.events, i);
 
+			if (!revents) {
+				continue;
+			}
 			DBG("[notification-thread] Handling fd (%i) activity (%u)", fd, revents);
 
 			if (fd == state.notification_channel_socket) {
