@@ -35,12 +35,7 @@ noinst_LTLIBRARIES = liblttng-ust-provider-ust-tests-demo.la \
 noinst_PROGRAMS = demo
 demo_SOURCES = demo.c ust_tests_demo.h
 # The demo program only depends on libdl/libc for dlopen().
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-demo_LDADD = -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-demo_LDADD = -lc
-endif
+demo_LDADD = $(DL_LIBS)
 
 noinst_SCRIPTS = demo-trace
 EXTRA_DIST = demo-trace

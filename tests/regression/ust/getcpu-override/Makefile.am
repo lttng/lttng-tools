@@ -22,13 +22,7 @@ GETCPU_LIBTOOL_FLAGS = \
 noinst_LTLIBRARIES = lttng-ust-getcpu-override-test.la
 lttng_ust_getcpu_override_test_la_LDFLAGS = $(GETCPU_LIBTOOL_FLAGS)
 lttng_ust_getcpu_override_test_la_SOURCES = lttng-ust-getcpu-override-test.c
-
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-lttng_ust_getcpu_override_test_la_LIBADD = -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-lttng_ust_getcpu_override_test_la_LIBADD = -lc
-endif
+lttng_ust_getcpu_override_test_la_LIBADD = $(DL_LIBS)
 
 noinst_SCRIPTS = test_getcpu_override run-getcpu-override
 EXTRA_DIST = test_getcpu_override run-getcpu-override
