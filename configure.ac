@@ -466,21 +466,16 @@ AC_CHECK_FUNCS([sched_getcpu sysconf sync_file_range])
 
 # check for dlopen
 AC_CHECK_LIB([dl], [dlopen],
-[
-	have_libdl=yes
-],
-[
-	#libdl not found, check for dlopen in libc.
-	AC_CHECK_LIB([c], [dlopen],
-	[
-		have_libc_dl=yes
-	],
-	[
-		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
-	])
-])
-AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBDL], [test "x$have_libdl" = "xyes"])
-AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBC_DL], [test "x$have_libc_dl" = "xyes"])
+  [DL_LIBS="-ldl"],
+  [
+    #libdl not found, check for dlopen in libc.
+    AC_CHECK_LIB([c], [dlopen],
+      [DL_LIBS="-lc"],
+      [AC_MSG_FAILURE([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])]
+    )
+  ]
+)
+AC_SUBST(DL_LIBS)
 
 # Check for fmemopen
 AC_CHECK_LIB([c], [fmemopen],

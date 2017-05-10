@@ -1,15 +1,8 @@
 AM_CFLAGS += -I$(srcdir)
 
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-LIBS += -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-LIBS += -lc
-endif
-
 noinst_PROGRAMS = gen-nevents
 gen_nevents_SOURCES = gen-nevents.c tp.c ust_gen_nevents.h
-gen_nevents_LDADD = -llttng-ust -lurcu-bp
+gen_nevents_LDADD = -llttng-ust -lurcu-bp $(DL_LIBS)
 
 noinst_SCRIPTS = test_multi_session
 EXTRA_DIST = test_multi_session

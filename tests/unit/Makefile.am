@@ -15,13 +15,6 @@ TESTS = test_kernel_data \
 	test_notification \
 	ini_config/test_ini_config
 
-if LTTNG_TOOLS_BUILD_WITH_LIBDL
-LIBS += -ldl
-endif
-if LTTNG_TOOLS_BUILD_WITH_LIBC_DL
-LIBS += -lc
-endif
-
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON=$(top_builddir)/src/common/libcommon.la
@@ -43,7 +36,7 @@ endif
 
 # URI unit tests
 test_uri_SOURCES = test_uri.c
-test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE)
+test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE) $(DL_LIBS)
 
 # Session unit test
 SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
@@ -60,7 +53,7 @@ SESSIONS=$(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
 
 test_session_SOURCES = test_session.c
 test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		     $(LIBHASHTABLE) -lrt
+		     $(LIBHASHTABLE) $(DL_LIBS) -lrt
 test_session_LDADD += $(SESSIONS)
 
 # UST data structures unit test
@@ -84,7 +77,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 
 test_ust_data_SOURCES = test_ust_data.c
 test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM)\
-		      $(LIBHASHTABLE) -lrt -llttng-ust-ctl
+		      $(LIBHASHTABLE) $(DL_LIBS) -lrt -llttng-ust-ctl
 test_ust_data_LDADD += $(UST_DATA_TRACE)
 endif
 
@@ -99,7 +92,7 @@ KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
 
 test_kernel_data_SOURCES = test_kernel_data.c
 test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-			 $(LIBHASHTABLE) -lrt
+			 $(LIBHASHTABLE) $(DL_LIBS) -lrt
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
 # utils suffix for unit test
@@ -107,18 +100,18 @@ UTILS_SUFFIX=$(top_builddir)/src/common/libcommon.la
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
-test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
 test_utils_parse_size_suffix_LDADD += $(UTILS_SUFFIX)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
-test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
 test_utils_expand_path_LDADD += $(UTILS_SUFFIX)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
-test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS)
-#
+test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
+
 # Notification api
 test_notification_SOURCES = test_notification.c
-test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL)
+test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
