@@ -336,48 +336,47 @@ PKG_CHECK_MODULES([POPT], [popt],
 
 PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
 
-# Check for uuid in system libs
+# First, check for uuid in system libs
+AH_TEMPLATE([LTTNG_HAVE_LIBUUID], [Define if you have libuuid support])
 AC_CHECK_FUNCS([uuid_generate],
-[
-	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
-	link_with_libuuid=no
-],
-[
-# First, check the pkg-config module is available, otherwise explicitly check
-# for libuuid, or uuid support in the C-library.
-PKG_CHECK_MODULES([UUID], [uuid],
-[
-	LIBS="$LIBS $UUID_LIBS"
-	AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
-	link_with_libuuid=yes
-],
-[
-	# Check for libuuid
-	AC_CHECK_LIB([uuid],
-		[uuid_generate],
-		[
-			AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBUUID], 1, [Has libuuid support.])
-			link_with_libuuid=yes
-		],
-		[
-			# libuuid not found, check for uuid_create in libc.
-			AC_CHECK_LIB([c],
-				[uuid_create],
-				[
-					AC_DEFINE_UNQUOTED([LTTNG_HAVE_LIBC_UUID], 1, [Has libc uuid support.])
-					link_with_libc_uuid=yes
-				],
-				[
-					AC_MSG_ERROR([Cannot find libuuid uuid_generate nor libc uuid_create. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
-				]
-			)
-		]
-	)
-])
-])
-
-AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBUUID], [test "x$link_with_libuuid" = "xyes"])
-AM_CONDITIONAL([LTTNG_BUILD_WITH_LIBC_UUID], [test "x$link_with_libc_uuid" = "xyes"])
+  [
+    AC_DEFINE([LTTNG_HAVE_LIBUUID], [1])
+    UUID_LIBS=""
+  ],
+  [
+    # Then, check if the pkg-config module is available, otherwise explicitly check
+    # for libuuid, or uuid support in the C-library.
+    PKG_CHECK_MODULES([UUID], [uuid],
+      [
+        AC_DEFINE([LTTNG_HAVE_LIBUUID], [1])
+        dnl PKG_CHECK_MODULES defines UUID_LIBS
+      ],
+      [
+        AC_MSG_WARN([pkg-config was unable to find a valid .pc for libuuid. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
+        AC_MSG_WARN([Finding libuuid without pkg-config.])
+        AC_CHECK_LIB([uuid], [uuid_generate],
+          [
+            AC_DEFINE([LTTNG_HAVE_LIBUUID], [1])
+            UUID_LIBS="-luuid"
+          ],
+          [
+            # libuuid not found, check for uuid_create in libc.
+            AC_CHECK_LIB([c], [uuid_create],
+              [
+                AC_DEFINE([LTTNG_HAVE_LIBUUID], [1])
+                UUID_LIBS="-lc"
+              ],
+              [
+                AC_MSG_FAILURE([Cannot find libuuid uuid_generate nor libc uuid_create. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
+              ]
+            )
+          ]
+        )
+      ]
+    )
+  ]
+)
+AC_SUBST(UUID_LIBS)
 
 AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
 
