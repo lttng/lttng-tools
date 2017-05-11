@@ -224,6 +224,8 @@ struct lttng_consumer_channel {
 	uint64_t discarded_events;
 	/* Total number of missed packets due to overwriting (overwrite). */
 	uint64_t lost_packets;
+
+	bool streams_sent_to_relayd;
 };
 
 /*
