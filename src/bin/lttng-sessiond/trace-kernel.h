@@ -71,6 +71,7 @@ struct ltt_kernel_channel {
 	struct cds_list_head list;
 	/* Session pointer which has a reference to this object. */
 	struct ltt_kernel_session *session;
+	bool sent_to_consumer;
 };
 
 /* Metadata */
