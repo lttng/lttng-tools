@@ -185,9 +185,20 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			channel->streams_sent_to_relayd = true;
 		}
 
-		ret = kernctl_buffer_flush(stream->wait_fd);
+		ret = kernctl_buffer_flush_empty(stream->wait_fd);
 		if (ret < 0) {
-			ERR("Failed to flush kernel stream");
+			/*
+			 * Doing a buffer flush which does not take into
+			 * account empty packets. This is not perfect
+			 * for stream intersection, but required as a
+			 * fall-back when "flush_empty" is not
+			 * implemented by lttng-modules.
+			 */
+			ret = kernctl_buffer_flush(stream->wait_fd);
+			if (ret < 0) {
+				ERR("Failed to flush kernel stream");
+				goto end_unlock;
+			}
 			goto end_unlock;
 		}
 
