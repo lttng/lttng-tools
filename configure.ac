@@ -434,31 +434,31 @@ AS_IF([test "x$with_kmod" != "xno"],
 )
 AC_SUBST(KMOD_LIBS)
 
-AC_ARG_WITH(lttng-ust-prefix,
-  AS_HELP_STRING([--with-lttng-ust-prefix=PATH],
-                 [Specify the installation prefix of the lttng-ust library.
-	          Headers must be in PATH/include; libraries in PATH/lib.]),
-		  [
-		    AM_CPPFLAGS="$AM_CPPFLAGS -I${withval}/include"
-		    LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
-		  ])
+# Check for liblttng-ust-ctl, fail if it's not found,
+# it can be explicitly disabled with --without-lttng-ust
+AH_TEMPLATE([HAVE_LIBLTTNG_UST_CTL], [Define if you have LTTng-UST control support])
+AC_ARG_WITH([lttng-ust],
+  [AS_HELP_STRING([--without-lttng-ust], [build without LTTng-UST (Userspace Tracing) support])],
+  [],
+  [with_lttng_ust=yes]
+)
 
-# Check liblttng-ust-ctl library
-AC_ARG_WITH(lttng-ust,
-	AS_HELP_STRING([--without-lttng-ust],[build without LTTng-UST (Userspace Tracing) support]),
-	lttng_ust_support=$withval, lttng_ust_support=yes)
+AS_IF([test "x$with_lttng_ust" = "xyes"],
+  [
+    AC_CHECK_LIB([lttng-ust-ctl], [ustctl_recv_channel_from_consumer],
+      [
+        AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1])
+      ],
+      [
+        AC_MSG_FAILURE([Cannot find LTTng-UST >= 2.2.x. Use [LDFLAGS]=-Ldir and [CPPFLAGS]=-Idir to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])
+      ],
+      [-lurcu-common -lurcu-bp -lurcu-cds -lrt -ldl]
+    )
+  ]
+)
+AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$with_lttng_ust" = "xyes"])
 
-AS_IF([test "x$lttng_ust_support" = "xyes"], [
-	AC_CHECK_LIB([lttng-ust-ctl], [ustctl_recv_channel_from_consumer],
-		[
-			AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1], [has LTTng-UST control support])
-			lttng_ust_ctl_found=yes
-		],
-		[AC_MSG_ERROR([Cannot find LTTng-UST >= 2.2.x. Use --with-lttng-ust-prefix=PREFIX to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])],
-		[-lurcu-common -lurcu-bp -lurcu-cds -lrt -ldl]
-	)
-])
-AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$lttng_ust_ctl_found" = xyes])
+
 AC_CHECK_FUNCS([sched_getcpu sysconf sync_file_range])
 
 # check for dlopen
@@ -861,7 +861,7 @@ AS_IF([test x$build_lib_consumer = xyes],
        build_lib_hashtable=yes
        build_lib_compat=yes
        build_lib_relayd=yes
-       AS_IF([test x$lttng_ust_ctl_found = xyes],[build_lib_ust_consumer=yes])
+       AS_IF([test "x$with_lttng_ust" = "xyes"], [build_lib_ust_consumer=yes])
       ]
 )
 
@@ -1127,7 +1127,7 @@ test "x$with_kmod" != "xno" && value=1 || value=0
 PPRINT_PROP_BOOL([libkmod support], $value)
 
 # LTTng-UST enabled/disabled
-test "x$lttng_ust_support" = "xyes" && value=1 || value=0
+test "x$with_lttng_ust" = "xyes" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST support], $value)
 
 AS_ECHO
