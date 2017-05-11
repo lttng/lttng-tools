@@ -360,12 +360,6 @@ AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_CONFIGDIR],"$CONFDIR", [LTTng system con
 
 AC_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR],[datadir], [LTTng system data directory.])
 
-#
-# Check for pthread
-AC_CHECK_LIB([pthread], [pthread_create], [],
-	[AC_MSG_ERROR([Cannot find libpthread. Use LDFLAGS=-Ldir to specify its location.])]
-)
-
 # Check libpopt
 PKG_CHECK_MODULES([POPT], [popt],
 	[LIBS="$LIBS $POPT_LIBS"],
