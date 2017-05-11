@@ -132,6 +132,7 @@ AC_CHECK_FUNCS([ \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
+	sched_getcpu sysconf sync_file_range
 ])
 
 # Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
@@ -459,7 +460,6 @@ AS_IF([test "x$with_lttng_ust" = "xyes"],
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$with_lttng_ust" = "xyes"])
 
 
-AC_CHECK_FUNCS([sched_getcpu sysconf sync_file_range])
 
 # check for dlopen
 AC_CHECK_LIB([dl], [dlopen],
