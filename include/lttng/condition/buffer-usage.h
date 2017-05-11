@@ -18,6 +18,9 @@
 #ifndef LTTNG_CONDITION_BUFFER_USAGE_H
 #define LTTNG_CONDITION_BUFFER_USAGE_H
 
+#include <lttng/condition/evaluation.h>
+#include <lttng/condition/condition.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
