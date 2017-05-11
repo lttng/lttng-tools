@@ -644,17 +644,22 @@ error:
  * Open stream of channel, register it to the kernel tracer and add it
  * to the stream list of the channel.
  *
+ * Note: given that the streams may appear in random order wrt CPU
+ * number (e.g. cpu hotplug), the index value of the stream number in
+ * the stream name is not necessarily linked to the CPU number.
+ *
  * Return the number of created stream. Else, a negative value.
  */
 int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 {
-	int ret, count = 0;
+	int ret;
 	struct ltt_kernel_stream *lks;
 
 	assert(channel);
 
 	while ((ret = kernctl_create_stream(channel->fd)) >= 0) {
-		lks = trace_kernel_create_stream(channel->channel->name, count);
+		lks = trace_kernel_create_stream(channel->channel->name,
+				channel->stream_count);
 		if (lks == NULL) {
 			ret = close(ret);
 			if (ret) {
@@ -673,12 +678,9 @@ int kernel_open_channel_stream(struct ltt_kernel_channel *channel)
 		lks->tracefile_size = channel->channel->attr.tracefile_size;
 		lks->tracefile_count = channel->channel->attr.tracefile_count;
 
-		/* Add stream to channe stream list */
+		/* Add stream to channel stream list */
 		cds_list_add(&lks->list, &channel->stream_list.head);
 		channel->stream_count++;
-
-		/* Increment counter which represent CPU number. */
-		count++;
 
 		DBG("Kernel stream %s created (fd: %d, state: %d)", lks->name, lks->fd,
 				lks->state);
