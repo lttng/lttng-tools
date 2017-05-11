@@ -406,31 +406,33 @@ AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
         [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]]
 )
 
-# Check kmod library
-AC_ARG_WITH(kmod-prefix,
-  AS_HELP_STRING([--with-kmod-prefix=PATH],
-		[Specify the installation prefix of the kmod library.
-		Headers must be in PATH/include; libraries in PATH/lib.]),
-		[
-			AM_CPPFLAGS="$AM_CPPFLAGS -I${withval}/include"
-			LDFLAGS="$LDFLAGS -L${withval}/lib64 -L${withval}/lib"
-		])
+# Check for libkmod, it will be auto-neabled if found but won't fail if it's not,
+# it can be explicitly disabled with --without-kmod
+AH_TEMPLATE([HAVE_KMOD], [Define if you have kmod support])
+AC_ARG_WITH([kmod],
+  [AS_HELP_STRING([--with-kmod], [build with lkmod support @<:@default=check@:>@])],
+  [],
+  [with_kmod=check]
+)
 
-AC_ARG_ENABLE(kmod,
-	AS_HELP_STRING([--disable-kmod],[build without kmod support]),
-	kmod_support=$enableval, kmod_support=yes)
-
-AS_IF([test "x$kmod_support" = "xyes"], [
-	AC_CHECK_LIB([kmod], [kmod_module_probe_insert_module],
-		[
-			AC_DEFINE([HAVE_KMOD], [1], [has kmod support])
-			LIBS="$LIBS -lkmod"
-			kmod_found=yes
-		],
-		kmod_found=no
-	)
-])
-AM_CONDITIONAL([HAVE_KMOD], [test "x$kmod_found" = xyes])
+AS_IF([test "x$with_kmod" != "xno"],
+  [
+    AC_CHECK_LIB([kmod], [kmod_module_probe_insert_module],
+      [
+        AC_DEFINE([HAVE_KMOD], [1])
+        KMOD_LIBS="-lkmod"
+      ],
+      [
+        if test "x$with_kmod" != xcheck; then
+          AC_MSG_FAILURE([Cannot find libkmod. Use [LDFLAGS]=-Ldir and [CPPFLAGS]=-Idir to specify its location.])
+        else
+          with_kmod=no
+        fi
+      ]
+    )
+  ]
+)
+AC_SUBST(KMOD_LIBS)
 
 AC_ARG_WITH(lttng-ust-prefix,
   AS_HELP_STRING([--with-lttng-ust-prefix=PATH],
@@ -1121,7 +1123,7 @@ done
 PPRINT_PROP_STRING([Target architecture], $target_arch)
 
 # kmod enabled/disabled
-test "x$kmod_found" = "xyes" && value=1 || value=0
+test "x$with_kmod" != "xno" && value=1 || value=0
 PPRINT_PROP_BOOL([libkmod support], $value)
 
 # LTTng-UST enabled/disabled
