@@ -24,19 +24,66 @@ AC_PROG_CC_STDC
 
 # Checks for programs.
 AC_PROG_GREP
-AC_PROG_LEX
 AC_PROG_MAKE_SET
 AC_PROG_SED
-AC_PROG_YACC
-AC_PATH_PROG(report_fold, fold)
+AC_PATH_PROG([report_fold], [fold])
 LT_INIT
 
 # Check for objcopy, required by the base address statedump and dynamic linker tests
-AC_CHECK_TOOL([OBJCOPY], objcopy, no)
-AS_IF([test "x$OBJCOPY" = xno],
-	[AC_MSG_WARN([Cannont find objcopy. The base address statedump and dynamic linker tests will be disabled. Install the binutils package to remediate this.])]
+AC_CHECK_TOOL([OBJCOPY], [objcopy], [no])
+AS_IF([test "x$OBJCOPY" = "xno"],
+	[AC_MSG_WARN([Cannot find objcopy. The base address statedump and dynamic linker tests will be disabled. Install the binutils package to remediate this.])]
 )
 AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != xno])
+
+# check for pgrep
+AC_PATH_PROG([PGREP], [pgrep], [no])
+AM_CONDITIONAL([HAVE_PGREP], [test "x$PGREP" != "xno"])
+
+# check for bison
+AC_PROG_YACC
+BISON=$YACC
+AX_PROG_BISON_VERSION([2.4], [have_bison=yes])
+
+AS_IF([test "x$have_bison" != "xyes"], [
+  AS_IF([test "x$in_git_repo" = "xyes"], [
+    AC_MSG_FAILURE([
+Bison >= 2.4 is required when building from the Git repository. You can
+set the YACC variable to override automatic detection.
+    ])
+  ], [
+    AC_MSG_WARN([
+Missing Bison >= 2.4. Note that the parser files are already built in
+this distribution tarball, so Bison is only needed if you intend to
+modify their sources. You can set the YACC variable to override automatic
+detection.
+    ])
+  ])
+])
+AM_CONDITIONAL([HAVE_BISON], [test "x$have_bison" = "xyes"])
+
+# check for flex
+AC_PROG_LEX
+FLEX=$LEX
+AX_PROG_FLEX_VERSION([2.5.35], [have_flex=yes])
+
+AS_IF([test "x$have_flex" != "xyes"], [
+  AS_IF([test "x$in_git_repo" = "xyes"], [
+    AC_MSG_FAILURE([
+Flex >= 2.5.35 is required when building from the Git repository. You can
+set the LEX variable to override automatic detection.
+    ])
+  ], [
+    AC_MSG_WARN([
+Missing Flex >= 2.5.35. Note that the lexer files are already built in
+this distribution tarball, so Flex is only needed if you intend to
+modify their sources. You can set the LEX variable to override automatic
+detection.
+    ])
+  ])
+])
+AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -919,54 +966,6 @@ AM_CONDITIONAL([BUILD_LIB_RELAYD], [test x$build_lib_relayd = xyes])
 AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes])
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
-
-# check for pgrep
-AC_PATH_PROG([PGREP], [pgrep], [no])
-AM_CONDITIONAL([HAS_PGREP], [test "x$PGREP" != "xno"])
-
-# check for bison
-have_bison=yes
-
-AS_IF([test "x$(basename "$YACC")" != "xbison -y"], [have_bison=no])
-AC_PATH_PROG([BISON], [bison])
-AX_PROG_BISON_VERSION([2.4], [], [have_bison=no])
-
-AS_IF([test "x$have_bison" = "xno"], [
-	AS_IF([test "x$in_git_repo" = "xyes"], [
-		AC_MSG_ERROR([Bison >= 2.4 is required when building from the Git repository.])
-	], [
-		AC_MSG_WARN([
-Missing Bison >= 2.4. Note that the parser files are already built in
-this distribution tarball, so Bison is only needed if you intend to
-modify their sources.
-		])
-	])
-])
-
-# export bison condition
-AM_CONDITIONAL([HAVE_BISON], [test "x$have_bison" = "xyes"])
-
-# check for flex
-have_flex=yes
-
-AS_IF([test "x$LEX" != "xflex"], [have_flex=no])
-AC_PATH_PROG([FLEX], [flex])
-AX_PROG_FLEX_VERSION([2.5.35], [], [have_flex=no])
-
-AS_IF([test "x$have_flex" = "xno"], [
-	AS_IF([test "x$in_git_repo" = "xyes"], [
-		AC_MSG_ERROR([Flex >= 2.5.35 is required when building from the Git repository.])
-	], [
-		AC_MSG_WARN([
-Missing Flex >= 2.5.35. Note that the lexer files are already built in
-this distribution tarball, so Flex is only needed if you intend to
-modify their sources.
-		])
-	])
-])
-
-# export flex condition
-AM_CONDITIONAL([HAVE_FLEX], [test "x$have_flex" = "xyes"])
 
 AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)

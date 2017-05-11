@@ -3,7 +3,7 @@ DIST_SUBDIRS = utils unit regression stress destructive perf
 
 if BUILD_TESTS
 SUBDIRS += . utils unit regression stress destructive perf
-if HAS_PGREP
+if HAVE_PGREP
 check-am:
 	$(top_srcdir)/tests/utils/warn_processes.sh $(PGREP)
 endif
