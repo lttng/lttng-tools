@@ -958,6 +958,7 @@ error:
 	return ret;
 }
 
+static
 int handle_notification_thread_command_unregister_trigger(
 		struct notification_thread_state *state,
 		struct lttng_trigger *trigger,
