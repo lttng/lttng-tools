@@ -338,7 +338,7 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session,
 		unsigned int monitor)
 {
-	int ret;
+	int ret = LTTNG_OK;
 	struct ltt_kernel_stream *stream;
 
 	/* Safety net */
@@ -356,9 +356,12 @@ int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 	DBG("Sending streams of channel %s to kernel consumer",
 			channel->channel->name);
 
-	ret = kernel_consumer_add_channel(sock, channel, session, monitor);
-	if (ret < 0) {
-		goto error;
+	if (!channel->sent_to_consumer) {
+		ret = kernel_consumer_add_channel(sock, channel, session, monitor);
+		if (ret < 0) {
+			goto error;
+		}
+		channel->sent_to_consumer = true;
 	}
 
 	/* Send streams */
