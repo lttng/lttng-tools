@@ -362,19 +362,22 @@ AC_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR],[datadir], [LTTng system data direct
 
 # Check libpopt
 PKG_CHECK_MODULES([POPT], [popt],
-	[LIBS="$LIBS $POPT_LIBS"],
-	[
-		AC_MSG_WARN([pkg-config was unable to find a valid .pc for libpopt. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
-		AC_MSG_WARN([Finding libpopt without pkg-config.])
-		AC_CHECK_LIB([popt],
-			[poptGetContext],
-			[],
-			[
-				 AC_MSG_ERROR([Cannot find libpopt. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
-			]
-		)
-	]
+  [
+    dnl PKG_CHECK_MODULES defines POPT_LIBS
+  ],
+  [
+    AC_MSG_WARN([pkg-config was unable to find a valid .pc for libpopt. Set PKG_CONFIG_PATH to specify the pkgconfig configuration file location])
+    AC_MSG_WARN([Finding libpopt without pkg-config.])
+    AC_CHECK_LIB([popt],
+      [poptGetContext],
+      [POPT_LIBS="-lpopt"],
+      [
+        AC_MSG_FAILURE([Cannot find libpopt. Either set PKG_CONFIG_PATH to the configuration file location or use LDFLAGS=-Ldir to specify the library location])
+      ]
+    )
+  ]
 )
+AC_SUBST(POPT_LIBS)
 
 PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
 
