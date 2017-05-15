@@ -34,6 +34,7 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/action/action.h>
+#include <lttng/channel.h>
 #include <lttng/channel-internal.h>
 #include <common/string-utils/string-utils.h>
 
@@ -1355,6 +1356,30 @@ int cmd_enable_channel(struct ltt_session *session,
 	if (session->live_timer > 0) {
 		attr->attr.live_timer_interval = session->live_timer;
 		attr->attr.switch_timer_interval = 0;
+	}
+
+	/* Check for feature support */
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		if (kernel_supports_ring_buffer_snapshot_sample_positions(kernel_tracer_fd) != 1) {
+			/* Sampling position of buffer is not supported */
+			WARN("Kernel tracer does not support buffer monitoring. "
+					"Setting the monitor interval timer to 0 "
+					"(disabled) for channel '%s' of session '%s'",
+					attr-> name, session->name);
+			lttng_channel_set_monitor_timer_interval(attr, 0);
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
+		break;
+	default:
+		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		goto error;
 	}
 
 	switch (domain->type) {

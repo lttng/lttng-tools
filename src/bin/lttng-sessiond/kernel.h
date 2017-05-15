@@ -65,5 +65,6 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 int init_kernel_workarounds(void);
 ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
 		int **_pids);
+int kernel_supports_ring_buffer_snapshot_sample_positions(int tracer_fd);
 
 #endif /* _LTT_KERNEL_CTL_H */
