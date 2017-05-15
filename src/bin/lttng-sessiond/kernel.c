@@ -1088,3 +1088,35 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
 
 	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
+
+/*
+ * Check for the support of the RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS via abi
+ * version number.
+ *
+ * Return 1 on success, 0 when feature is not supported, negative value in case
+ * of errors.
+ */
+int kernel_supports_ring_buffer_snapshot_sample_positions(int tracer_fd)
+{
+	int ret = 0; // Not supported by default
+	struct lttng_kernel_tracer_abi_version abi;
+
+	ret = kernctl_tracer_abi_version(tracer_fd, &abi);
+	if (ret < 0) {
+		ERR("Failed to retrieve lttng-modules ABI version");
+		goto error;
+	}
+
+	/*
+	 * RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS was introduced in 2.3
+	 */
+	if (abi.major >= 2 && abi.minor >= 3) {
+		/* Supported */
+		ret = 1;
+	} else {
+		/* Not supported */
+		ret = 0;
+	}
+error:
+	return ret;
+}

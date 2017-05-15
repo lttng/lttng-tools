@@ -2797,6 +2797,18 @@ static int init_kernel_tracer(void)
 		goto error_modules;
 	}
 
+	ret = kernel_supports_ring_buffer_snapshot_sample_positions(
+			kernel_tracer_fd);
+	if (ret < 0) {
+		goto error_modules;
+	}
+
+	if (ret < 1) {
+		WARN("Kernel tracer does not support buffer monitoring. "
+			"The monitoring timer of channels in the kernel domain "
+			"will be set to 0 (disabled).");
+	}
+
 	DBG("Kernel tracer fd %d", kernel_tracer_fd);
 	return 0;
 
