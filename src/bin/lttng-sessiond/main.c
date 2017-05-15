@@ -5618,6 +5618,7 @@ int main(int argc, char **argv)
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
+	bool notification_thread_running = false;
 
 	init_kernel_workarounds();
 
@@ -6129,6 +6130,7 @@ int main(int argc, char **argv)
 		stop_threads();
 		goto exit_notification;
 	}
+	notification_thread_running = true;
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&client_thread, default_pthread_attr(),
@@ -6332,15 +6334,17 @@ exit_init_data:
 	 * of the active session and channels at the moment of the teardown.
 	 */
 	if (notification_thread_handle) {
-		notification_thread_command_quit(notification_thread_handle);
-		notification_thread_handle_destroy(notification_thread_handle);
-
-		ret = pthread_join(notification_thread, &status);
-		if (ret) {
-			errno = ret;
-			PERROR("pthread_join notification thread");
-			retval = -1;
+		if (notification_thread_running) {
+			notification_thread_command_quit(
+					notification_thread_handle);
+			ret = pthread_join(notification_thread, &status);
+			if (ret) {
+				errno = ret;
+				PERROR("pthread_join notification thread");
+				retval = -1;
+			}
 		}
+		notification_thread_handle_destroy(notification_thread_handle);
 	}
 
 	rcu_thread_offline();
