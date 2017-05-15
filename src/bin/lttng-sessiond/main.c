@@ -6334,13 +6334,13 @@ exit_init_data:
 	if (notification_thread_handle) {
 		notification_thread_command_quit(notification_thread_handle);
 		notification_thread_handle_destroy(notification_thread_handle);
-	}
 
-	ret = pthread_join(notification_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join notification thread");
-		retval = -1;
+		ret = pthread_join(notification_thread, &status);
+		if (ret) {
+			errno = ret;
+			PERROR("pthread_join notification thread");
+			retval = -1;
+		}
 	}
 
 	rcu_thread_offline();
