@@ -600,8 +600,7 @@ static void wait_consumer(struct consumer_data *consumer_data)
 	ret = waitpid(consumer_data->pid, &status, 0);
 	if (ret == -1) {
 		PERROR("consumerd waitpid pid: %d", consumer_data->pid)
-	}
-	if (!WIFEXITED(status)) {
+	} else	if (!WIFEXITED(status)) {
 		ERR("consumerd termination with error: %d",
 				WEXITSTATUS(ret));
 	}
