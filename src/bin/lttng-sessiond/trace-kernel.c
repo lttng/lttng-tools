@@ -221,6 +221,7 @@ struct ltt_kernel_channel *trace_kernel_create_channel(
 	lkc->stream_count = 0;
 	lkc->event_count = 0;
 	lkc->enabled = 1;
+	lkc->published_to_notification_thread = false;
 	/* Init linked list */
 	CDS_INIT_LIST_HEAD(&lkc->events_list.head);
 	CDS_INIT_LIST_HEAD(&lkc->stream_list.head);
@@ -522,7 +523,8 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
 
-	if (notification_thread_handle) {
+	if (notification_thread_handle
+			&& channel->published_to_notification_thread) {
 		status = notification_thread_command_remove_channel(
 				notification_thread_handle,
 				channel->fd, LTTNG_DOMAIN_KERNEL);
