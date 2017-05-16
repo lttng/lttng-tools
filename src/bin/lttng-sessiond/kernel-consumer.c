@@ -168,6 +168,9 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 		ret = -1;
 		goto error;
 	}
+
+	channel->published_to_notification_thread = true;
+
 error:
 	free(pathname);
 	return ret;
