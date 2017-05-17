@@ -20,7 +20,6 @@
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
 #include <common/error.h>
-#include <common/futex.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -30,6 +29,7 @@ void init_notification_thread_command(struct notification_thread_command *cmd)
 {
 	memset(cmd, 0, sizeof(*cmd));
 	CDS_INIT_LIST_HEAD(&cmd->cmd_list_node);
+	lttng_waiter_init(&cmd->reply_waiter);
 }
 
 static
@@ -38,8 +38,6 @@ int run_command_wait(struct notification_thread_handle *handle,
 {
 	int ret;
 	uint64_t notification_counter = 1;
-
-	futex_nto1_prepare(&cmd->reply_futex);
 
 	pthread_mutex_lock(&handle->cmd_queue.lock);
 	/* Add to queue. */
@@ -59,7 +57,7 @@ int run_command_wait(struct notification_thread_handle *handle,
 	}
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 
-	futex_nto1_wait(&cmd->reply_futex);
+	lttng_waiter_wait(&cmd->reply_waiter);
 	return 0;
 error_unlock_queue:
 	pthread_mutex_unlock(&handle->cmd_queue.lock);

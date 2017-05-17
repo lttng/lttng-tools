@@ -25,7 +25,6 @@
 #include <common/config/session-config.h>
 #include <common/defaults.h>
 #include <common/utils.h>
-#include <common/futex.h>
 #include <common/align.h>
 #include <common/time.h>
 #include <sys/eventfd.h>
@@ -158,7 +157,6 @@ void notification_thread_handle_destroy(
 		struct notification_thread_handle *handle)
 {
 	int ret;
-	struct notification_thread_command *cmd, *tmp;
 
 	if (!handle) {
 		goto end;
@@ -172,15 +170,7 @@ void notification_thread_handle_destroy(
 		PERROR("close notification command queue event_fd");
 	}
 
-	pthread_mutex_lock(&handle->cmd_queue.lock);
-	/* Purge queue of in-flight commands and mark them as cancelled. */
-	cds_list_for_each_entry_safe(cmd, tmp, &handle->cmd_queue.list,
-			cmd_list_node) {
-		cds_list_del(&cmd->cmd_list_node);
-		cmd->reply_code = LTTNG_ERR_COMMAND_CANCELLED;
-		futex_nto1_wake(&cmd->reply_futex);
-	}
-	pthread_mutex_unlock(&handle->cmd_queue.lock);
+	assert(cds_list_empty(&handle->cmd_queue.list));
 	pthread_mutex_destroy(&handle->cmd_queue.lock);
 
 	if (handle->channel_monitoring_pipes.ust32_consumer >= 0) {
