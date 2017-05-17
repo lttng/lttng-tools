@@ -977,11 +977,15 @@ static void *relay_thread_dispatcher(void *data)
 
 	health_code_update();
 
-	while (!CMM_LOAD_SHARED(dispatch_thread_exit)) {
+	for (;;) {
 		health_code_update();
 
 		/* Atomically prepare the queue futex */
 		futex_nto1_prepare(&relay_conn_queue.futex);
+
+		if (CMM_LOAD_SHARED(dispatch_thread_exit)) {
+			break;
+		}
 
 		do {
 			health_code_update();
