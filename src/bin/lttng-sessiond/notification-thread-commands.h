@@ -22,6 +22,7 @@
 #include <lttng/lttng-error.h>
 #include <urcu/rculfhash.h>
 #include "notification-thread.h"
+#include <common/waiter.h>
 
 struct notification_thread_data;
 struct lttng_trigger;
@@ -65,8 +66,8 @@ struct notification_thread_command {
 		} remove_channel;
 	} parameters;
 
-	/* Futex on which to wait for command reply (optional). */
-	int32_t reply_futex;
+	/* lttng_waiter on which to wait for command reply (optional). */
+	struct lttng_waiter reply_waiter;
 	enum lttng_error_code reply_code;
 };
 

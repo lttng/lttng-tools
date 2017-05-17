@@ -1110,12 +1110,12 @@ int handle_notification_thread_command(
 	}
 end:
 	cds_list_del(&cmd->cmd_list_node);
-	futex_nto1_wake(&cmd->reply_futex);
+	lttng_waiter_wake_up(&cmd->reply_waiter);
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	return ret;
 error_unlock:
 	/* Wake-up and return a fatal error to the calling thread. */
-	futex_nto1_wake(&cmd->reply_futex);
+	lttng_waiter_wake_up(&cmd->reply_waiter);
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	cmd->reply_code = LTTNG_ERR_FATAL;
 error:
