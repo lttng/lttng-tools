@@ -30,21 +30,17 @@
  * This futex wait/wake scheme only works for N wakers / 1 waiters. Hence the
  * "nto1" added to all function signature.
  *
- * The code is adapted from the adaptative busy wait/wake_up scheme used in
- * liburcu.
+ * Please see wait_gp()/update_counter_and_wait() calls in urcu.c in the urcu
+ * git tree for a detail example of this scheme being used. futex_async() is
+ * the urcu wrapper over the futex() sycall.
+ *
+ * There is also a formal verification available in the git tree.
+ *
+ *   branch: formal-model
+ *   commit id: 2a8044f3493046fcc8c67016902dc7beec6f026a
+ *
+ * Ref: git://git.lttng.org/userspace-rcu.git
  */
-
-/* Number of busy-loop attempts before waiting on futex. */
-#define FUTEX_WAIT_ATTEMPTS 1000
-
-enum futex_wait_state {
-	/* FUTEX_WAIT_WAITING is compared directly (futex() compares it). */
-	FUTEX_WAIT_WAITING =	0,
-	/* non-zero are used as masks. */
-	FUTEX_WAIT_WAKEUP =	(1 << 0),
-	FUTEX_WAIT_RUNNING =	(1 << 1),
-	FUTEX_WAIT_TEARDOWN =	(1 << 2),
-};
 
 /*
  * Update futex according to active or not. This scheme is used to wake every
@@ -75,7 +71,7 @@ void futex_wait_update(int32_t *futex, int active)
 LTTNG_HIDDEN
 void futex_nto1_prepare(int32_t *futex)
 {
-	uatomic_set(futex, FUTEX_WAIT_WAITING);
+	uatomic_set(futex, -1);
 	cmm_smp_mb();
 
 	DBG("Futex n to 1 prepare done");
@@ -87,47 +83,25 @@ void futex_nto1_prepare(int32_t *futex)
 LTTNG_HIDDEN
 void futex_nto1_wait(int32_t *futex)
 {
-	unsigned int i;
+	cmm_smp_mb();
 
-	/* Load and test condition before read state */
-	cmm_smp_rmb();
-	for (i = 0; i < FUTEX_WAIT_ATTEMPTS; i++) {
-		if (uatomic_read(futex) != FUTEX_WAIT_WAITING)
-			goto skip_futex_wait;
-		caa_cpu_relax();
-	}
-	while (futex_noasync(futex, FUTEX_WAIT, FUTEX_WAIT_WAITING,
-			NULL, NULL, 0)) {
+	if (uatomic_read(futex) != -1)
+		goto end;
+	while (futex_async(futex, FUTEX_WAIT, -1, NULL, NULL, 0)) {
 		switch (errno) {
 		case EWOULDBLOCK:
 			/* Value already changed. */
-			goto skip_futex_wait;
+			goto end;
 		case EINTR:
 			/* Retry if interrupted by signal. */
 			break;	/* Get out of switch. */
 		default:
 			/* Unexpected error. */
-			PERROR("futex");
+			PERROR("futex_async");
 			abort();
 		}
 	}
-skip_futex_wait:
-
-	/* Tell waker thread than we are running. */
-	uatomic_or(futex, FUTEX_WAIT_RUNNING);
-
-	/*
-	 * Wait until waker thread lets us know it's ok to tear down
-	 * memory allocated for the futex.
-	 */
-	for (i = 0; i < FUTEX_WAIT_ATTEMPTS; i++) {
-		if (uatomic_read(futex) & FUTEX_WAIT_TEARDOWN)
-			break;
-		caa_cpu_relax();
-	}
-	while (!(uatomic_read(futex) & FUTEX_WAIT_TEARDOWN))
-		poll(NULL, 0, 10);
-	assert(uatomic_read(futex) & FUTEX_WAIT_TEARDOWN);
+end:
 	DBG("Futex n to 1 wait done");
 }
 
@@ -137,16 +111,13 @@ skip_futex_wait:
 LTTNG_HIDDEN
 void futex_nto1_wake(int32_t *futex)
 {
-	cmm_smp_mb();
-	uatomic_set(futex, FUTEX_WAIT_WAKEUP);
-	if (!(uatomic_read(futex) & FUTEX_WAIT_RUNNING)) {
-		if (futex_noasync(futex, FUTEX_WAKE, 1,
-				NULL, NULL, 0) < 0) {
-			PERROR("futex_noasync");
-			abort();
-		}
+	if (caa_unlikely(uatomic_read(futex) != -1))
+		goto end;
+	uatomic_set(futex, 0);
+	if (futex_async(futex, FUTEX_WAKE, 1, NULL, NULL, 0) < 0) {
+		PERROR("futex_async");
+		abort();
 	}
-	/* Allow teardown of futex. */
-	uatomic_or(futex, FUTEX_WAIT_TEARDOWN);
+end:
 	DBG("Futex n to 1 wake done");
 }
