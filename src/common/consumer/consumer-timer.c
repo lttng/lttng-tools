@@ -381,7 +381,7 @@ void consumer_timer_signal_thread_qs(unsigned int signr)
 		if (ret == -1) {
 			PERROR("sigpending");
 		}
-		if (!sigismember(&pending_set, LTTNG_CONSUMER_SIG_SWITCH)) {
+		if (!sigismember(&pending_set, signr)) {
 			break;
 		}
 		caa_cpu_relax();
