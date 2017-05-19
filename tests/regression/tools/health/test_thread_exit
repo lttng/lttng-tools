@@ -23,4 +23,14 @@ SESSIOND_PRELOAD=".libs/libhealthexit.so"
 TEST_SUFFIX="EXIT"
 CURDIR=$(dirname $(readlink -f $0))
 
+# A current design limitation of the lttng-consumerd will cause it to
+# hang on shutdown if the timer management thread exits as the teardown
+# of channels switches off the channel's timers. The timer thread is
+# then expected to purge timer signals and signal when it is done.
+# Obviously this state will never be reached as signals are no longer
+# being processed. This is not dramatic as this is not what this test
+# is meant to test; we only want to make sure the health check signals that
+# something went wrong.
+KILL_SIGNAL="SIGKILL"
+
 source ${CURDIR}/test_health.sh

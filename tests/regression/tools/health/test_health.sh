@@ -20,7 +20,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=90
+NUM_TESTS=106
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -144,9 +144,10 @@ function test_health
 	if [ ${test_relayd} -eq 1 ]; then
 		# We may fail to stop relayd here, and this is OK, since
 		# it may have been killed volountarily by testpoint.
-		stop_lttng_relayd_notap
+		stop_lttng_relayd_notap $KILL_SIGNAL
 	fi
-	stop_lttng_sessiond
+	stop_lttng_consumerd $KILL_SIGNAL
+	stop_lttng_sessiond $KILL_SIGNAL
 
 	unset LTTNG_TESTPOINT_ENABLE
 	unset ${test_thread_name}_${test_suffix}
