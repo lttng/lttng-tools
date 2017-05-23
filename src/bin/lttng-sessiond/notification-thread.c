@@ -209,7 +209,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	}
 
 	/* FIXME Replace eventfd by a pipe to support older kernels. */
-	handle->cmd_queue.event_fd = eventfd(0, EFD_CLOEXEC);
+	handle->cmd_queue.event_fd = eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
 	if (handle->cmd_queue.event_fd < 0) {
 		PERROR("eventfd notification command queue");
 		goto error;
