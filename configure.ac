@@ -114,6 +114,16 @@ AS_CASE([$host_os],
   [cygwin*],
     [
       LT_NO_UNDEFINED="-no-undefined"
+    ],
+  [cygwin*|darwin*|mingw*|solaris*],
+    [
+      # On platforms where we only support the relayd, disable the other binaries by default
+      AS_IF([test "x$enable_bin_lttng" = "x" ], [enable_bin_lttng=no])
+      AS_IF([test "x$enable_bin_lttng_consumerd" = "x" ], [enable_bin_lttng_consumerd=no])
+      AS_IF([test "x$enable_bin_lttng_crash" = "x" ], [enable_bin_lttng_crash=no])
+      AS_IF([test "x$enable_bin_lttng_sessiond" = "x" ], [enable_bin_lttng_sessiond=no])
+      AS_IF([test "x$enable_extras" = "x" ], [enable_extras=no])
+      AS_IF([test "x$with_lttng_ust" = "x" ], [with_lttng_ust=no])
     ]
 )
 
