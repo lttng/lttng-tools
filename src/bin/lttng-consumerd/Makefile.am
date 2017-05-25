@@ -15,6 +15,8 @@ lttng_consumerd_LDADD = \
 	   $(top_builddir)/src/common/health/libhealth.la \
 	   $(top_builddir)/src/common/testpoint/libtestpoint.la
 
+lttng_consumerd_LDFLAGS = -rdynamic
+
 if HAVE_LIBLTTNG_UST_CTL
 lttng_consumerd_LDADD += -llttng-ust-ctl
 endif

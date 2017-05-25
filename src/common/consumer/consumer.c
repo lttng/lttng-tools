@@ -67,6 +67,7 @@ struct consumer_channel_msg {
 	uint64_t key;				/* del */
 };
 
+/* Flag used to temporarily pause data consumption from testpoints. */
 int data_consumption_paused;
 
 /*
@@ -2552,6 +2553,12 @@ void *consumer_thread_data_poll(void *data)
 		} else if (num_rdy == 0) {
 			DBG("Polling thread timed out");
 			goto end;
+		}
+
+		if (caa_unlikely(data_consumption_paused)) {
+			DBG("Data consumption paused, sleeping...");
+			sleep(1);
+			goto restart;
 		}
 
 		/*
