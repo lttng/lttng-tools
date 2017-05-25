@@ -2607,7 +2607,7 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	}
 
 	if (!lttng_trigger_validate(trigger)) {
-		ret = -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID_TRIGGER;
 		goto end;
 	}
 
