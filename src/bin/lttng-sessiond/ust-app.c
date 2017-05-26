@@ -6045,21 +6045,24 @@ int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
 	int ret;
 	uint64_t consumer_chan_key;
 
+	*discarded = 0;
+	*lost = 0;
+
 	ret = buffer_reg_uid_consumer_channel_key(
 			buffer_reg_uid_list, ust_session_id,
 			uchan_id, &consumer_chan_key);
 	if (ret < 0) {
+		/* Not found */
+		ret = 0;
 		goto end;
 	}
 
 	if (overwrite) {
 		ret = consumer_get_lost_packets(ust_session_id,
 				consumer_chan_key, consumer, lost);
-		*discarded = 0;
 	} else {
 		ret = consumer_get_discarded_events(ust_session_id,
 				consumer_chan_key, consumer, discarded);
-		*lost = 0;
 	}
 
 end:
@@ -6078,10 +6081,13 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 	struct ust_app_session *ua_sess;
 	struct ust_app_channel *ua_chan;
 
+	*discarded = 0;
+	*lost = 0;
+
 	rcu_read_lock();
 	/*
-	 * Iterate over every registered applications, return when we
-	 * found one in the right session and channel.
+	 * Iterate over every registered applications. Sum counters for
+	 * all applications containing requested session and channel.
 	 */
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		struct lttng_ht_iter uiter;
@@ -6100,19 +6106,26 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel, node);
 
 		if (overwrite) {
+			uint64_t _lost;
+
 			ret = consumer_get_lost_packets(usess->id, ua_chan->key,
-					consumer, lost);
-			*discarded = 0;
-			goto end;
+					consumer, &_lost);
+			if (ret < 0) {
+				break;
+			}
+			(*lost) += _lost;
 		} else {
+			uint64_t _discarded;
+
 			ret = consumer_get_discarded_events(usess->id,
-					ua_chan->key, consumer, discarded);
-			*lost = 0;
-			goto end;
+					ua_chan->key, consumer, &_discarded);
+			if (ret < 0) {
+				break;
+			}
+			(*discarded) += _discarded;
 		}
 	}
 
-end:
 	rcu_read_unlock();
 	return ret;
 }
