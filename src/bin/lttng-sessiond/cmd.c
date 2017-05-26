@@ -235,11 +235,11 @@ end:
 /*
  * Fill lttng_channel array of all channels.
  */
-static void list_lttng_channels(enum lttng_domain_type domain,
+static ssize_t list_lttng_channels(enum lttng_domain_type domain,
 		struct ltt_session *session, struct lttng_channel *channels,
 		struct lttcomm_channel_extended *chan_exts)
 {
-	int i = 0, ret;
+	int i = 0, ret = 0;
 	struct ltt_kernel_channel *kchan;
 
 	DBG("Listing channels for session %s", session->name);
@@ -325,7 +325,11 @@ static void list_lttng_channels(enum lttng_domain_type domain,
 	}
 
 end:
-	return;
+	if (ret < 0) {
+		return -LTTNG_ERR_FATAL;
+	} else {
+		return LTTNG_OK;
+	}
 }
 
 static void increment_extended_len(const char *filter_expression,
@@ -2952,7 +2956,12 @@ ssize_t cmd_list_channels(enum lttng_domain_type domain,
 
 		channel_exts = ((void *) *channels) +
 				(nb_chan * sizeof(struct lttng_channel));
-		list_lttng_channels(domain, session, *channels, channel_exts);
+		ret = list_lttng_channels(domain, session, *channels, channel_exts);
+		if (ret != LTTNG_OK) {
+			free(*channels);
+			*channels = NULL;
+			goto end;
+		}
 	} else {
 		*channels = NULL;
 	}
