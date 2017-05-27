@@ -22,6 +22,7 @@ struct lttng_channel_extended {
 	uint64_t discarded_events;
 	uint64_t lost_packets;
 	uint64_t monitor_timer_interval;
+	int64_t blocking_timeout;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_CHANNEL_INTERNAL_H */

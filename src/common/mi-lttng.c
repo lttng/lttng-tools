@@ -863,6 +863,7 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	struct lttng_channel *chan = caa_container_of(attr,
 			struct lttng_channel, attr);
 	uint64_t discarded_events, lost_packets, monitor_timer_interval;
+	int64_t blocking_timeout;
 
 	assert(attr);
 
@@ -878,6 +879,12 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 
 	ret = lttng_channel_get_monitor_timer_interval(chan,
 			&monitor_timer_interval);
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_channel_get_blocking_timeout(chan,
+			&blocking_timeout);
 	if (ret) {
 		goto end;
 	}
@@ -932,6 +939,14 @@ int mi_lttng_channel_attr(struct mi_writer *writer,
 	ret = mi_lttng_writer_write_element_unsigned_int(writer,
 		config_element_monitor_timer_interval,
 		monitor_timer_interval);
+	if (ret) {
+		goto end;
+	}
+
+	/* Retry timeout in usec */
+	ret = mi_lttng_writer_write_element_signed_int(writer,
+		config_element_blocking_timeout,
+		blocking_timeout);
 	if (ret) {
 		goto end;
 	}

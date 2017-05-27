@@ -53,6 +53,7 @@ struct ustctl_consumer_channel_attr {
 	enum lttng_ust_output output;		/* splice, mmap */
 	uint32_t chan_id;           /* channel ID */
 	unsigned char uuid[LTTNG_UST_UUID_LEN]; /* Trace session unique ID */
+	int64_t blocking_timeout;			/* Retry timeout (usec) */
 } LTTNG_PACKED;
 
 /*

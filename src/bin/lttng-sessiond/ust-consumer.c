@@ -192,6 +192,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_sess->id,
 			ua_sess->output_traces,
 			ua_sess->uid,
+			ua_chan->attr.blocking_timeout,
 			root_shm_path, shm_path);
 
 	health_code_update();

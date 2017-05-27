@@ -181,7 +181,12 @@ struct lttng_ust_channel_attr {
 	unsigned int switch_timer_interval;	/* usec */
 	unsigned int read_timer_interval;	/* usec */
 	enum lttng_ust_output output;		/* splice, mmap */
-	char padding[LTTNG_UST_CHANNEL_ATTR_PADDING];
+	union {
+		struct {
+			int64_t blocking_timeout;	/* Retry timeout (usec) */
+		} s;
+		char padding[LTTNG_UST_CHANNEL_ATTR_PADDING];
+	} u;
 } LTTNG_PACKED;
 
 #define LTTNG_UST_TRACEPOINT_ITER_PADDING	16

@@ -2073,6 +2073,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 		if (extended) {
 			extended->monitor_timer_interval =
 					DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
+			extended->blocking_timeout =
+					DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
 		}
 		break;
 	case LTTNG_DOMAIN_UST:
@@ -2088,6 +2090,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 			if (extended) {
 				extended->monitor_timer_interval =
 						DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
+				extended->blocking_timeout =
+						DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			}
 			break;
 		case LTTNG_BUFFER_PER_PID:
@@ -2102,6 +2106,8 @@ void lttng_channel_set_default_attr(struct lttng_domain *domain,
 			if (extended) {
 				extended->monitor_timer_interval =
 						DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
+				extended->blocking_timeout =
+						DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
 			}
 			break;
 		}
@@ -2199,6 +2205,61 @@ int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
 	((struct lttng_channel_extended *)
 			chan->attr.extended.ptr)->monitor_timer_interval =
 			monitor_timer_interval;
+end:
+	return ret;
+}
+
+int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
+		int64_t *blocking_timeout)
+{
+	int ret = 0;
+
+	if (!chan || !blocking_timeout) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!chan->attr.extended.ptr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	*blocking_timeout = ((struct lttng_channel_extended *)
+			chan->attr.extended.ptr)->blocking_timeout;
+end:
+	return ret;
+}
+
+int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
+		int64_t blocking_timeout)
+{
+	int ret = 0;
+	int64_t msec_timeout;
+
+	if (!chan || !chan->attr.extended.ptr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (blocking_timeout < 0 && blocking_timeout != -1) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/*
+	 * LTTng-ust's use of poll() to implement this timeout mechanism forces
+	 * us to accept a narrower range of values (msecs expressed as a signed
+	 * 32-bit integer).
+	 */
+	msec_timeout = blocking_timeout / 1000;
+	if (msec_timeout != (int32_t) msec_timeout) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	((struct lttng_channel_extended *)
+			chan->attr.extended.ptr)->blocking_timeout =
+			blocking_timeout;
 end:
 	return ret;
 }

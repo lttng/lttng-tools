@@ -26,6 +26,7 @@ Create a user space channel:
       [option:--overwrite] [option:--buffers-pid]
       [option:--subbuf-size='SIZE'] [option:--num-subbuf='COUNT']
       [option:--switch-timer='PERIODUS'] [option:--read-timer='PERIODUS']
+      [option:--blocking-timeout='TIMEOUTUS']
       [option:--tracefile-size='SIZE'] [option:--tracefile-count='COUNT']
       [option:--session='SESSION'] 'CHANNEL'
 
@@ -358,6 +359,16 @@ Default values:
 * option:--kernel option: {default_kernel_channel_switch_timer}
 * `metadata` channel: {default_metadata_switch_timer}
 
+Timeouts
+~~~~~~~~
+option:--blocking-timeout:
+    Set the channel's blocking timeout value to 'TIMEOUTUS' µs. 0
+    (default) does not block. -1 blocks forever until room is
+    available in the buffer to write the event. Positive
+    values are a timeout bounding the maximum blocking time
+    when trying to write into the buffer. Note that this option
+    only affects applications launched with the
+    LTTNG_UST_ALLOW_BLOCKING environment variable set.
 
 include::common-cmd-help-options.txt[]
 
@@ -385,4 +396,5 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng-disable-channel(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-ust(3)

@@ -822,6 +822,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t session_id_per_pid,
 		unsigned int monitor,
 		uint32_t ust_app_uid,
+		int64_t blocking_timeout,
 		const char *root_shm_path,
 		const char *shm_path)
 {
@@ -851,6 +852,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.tracefile_count = tracefile_count;
 	msg->u.ask_channel.monitor = monitor;
 	msg->u.ask_channel.ust_app_uid = ust_app_uid;
+	msg->u.ask_channel.blocking_timeout = blocking_timeout;
 
 	memcpy(msg->u.ask_channel.uuid, uuid, sizeof(msg->u.ask_channel.uuid));
 

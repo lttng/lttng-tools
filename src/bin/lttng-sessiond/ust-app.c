@@ -92,6 +92,7 @@ static void copy_channel_attr_to_ustctl(
 	attr->switch_timer_interval = uattr->switch_timer_interval;
 	attr->read_timer_interval = uattr->read_timer_interval;
 	attr->output = uattr->output;
+	attr->blocking_timeout = uattr->u.s.blocking_timeout;
 }
 
 /*
@@ -1040,6 +1041,7 @@ struct ust_app_channel *alloc_ust_app_channel(char *name,
 		ua_chan->attr.switch_timer_interval = attr->switch_timer_interval;
 		ua_chan->attr.read_timer_interval = attr->read_timer_interval;
 		ua_chan->attr.output = attr->output;
+		ua_chan->attr.blocking_timeout = attr->u.s.blocking_timeout;
 	}
 	/* By default, the channel is a per cpu channel. */
 	ua_chan->attr.type = LTTNG_UST_CHAN_PER_CPU;
@@ -1803,6 +1805,8 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 	ua_chan->attr.read_timer_interval = uchan->attr.read_timer_interval;
 	ua_chan->monitor_timer_interval = uchan->monitor_timer_interval;
 	ua_chan->attr.output = uchan->attr.output;
+	ua_chan->attr.blocking_timeout = uchan->attr.u.s.blocking_timeout;
+
 	/*
 	 * Note that the attribute channel type is not set since the channel on the
 	 * tracing registry side does not have this information.

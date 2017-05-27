@@ -72,6 +72,7 @@ struct lttng_channel *channel_new_default_attr(int dom,
 		chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
 		chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
 		chan->attr.live_timer_interval = DEFAULT_KERNEL_CHANNEL_LIVE_TIMER;
+		extended_attr->blocking_timeout = DEFAULT_KERNEL_CHANNEL_BLOCKING_TIMEOUT;
 		extended_attr->monitor_timer_interval =
 			DEFAULT_KERNEL_CHANNEL_MONITOR_TIMER;
 		break;
@@ -97,6 +98,7 @@ common_ust:
 				DEFAULT_UST_UID_CHANNEL_READ_TIMER;
 			chan->attr.live_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_LIVE_TIMER;
+			extended_attr->blocking_timeout = DEFAULT_UST_UID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_UID_CHANNEL_MONITOR_TIMER;
 			break;
@@ -111,6 +113,7 @@ common_ust:
 				DEFAULT_UST_PID_CHANNEL_READ_TIMER;
 			chan->attr.live_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_LIVE_TIMER;
+			extended_attr->blocking_timeout = DEFAULT_UST_PID_CHANNEL_BLOCKING_TIMEOUT;
 			extended_attr->monitor_timer_interval =
 				DEFAULT_UST_PID_CHANNEL_MONITOR_TIMER;
 			break;
@@ -217,6 +220,15 @@ static int channel_validate(struct lttng_channel *attr)
 	return 0;
 }
 
+static int channel_validate_kernel(struct lttng_channel *attr)
+{
+	/* Kernel channels do not support blocking timeout. */
+	if (((struct lttng_channel_extended *)attr->attr.extended.ptr)->blocking_timeout) {
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * Create kernel channel of the kernel session and notify kernel thread.
  */
@@ -254,6 +266,11 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 
 	/* Validate common channel properties. */
 	if (channel_validate(attr) < 0) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	if (channel_validate_kernel(attr) < 0) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}

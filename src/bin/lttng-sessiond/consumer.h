@@ -256,6 +256,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t session_id_per_pid,
 		unsigned int monitor,
 		uint32_t ust_app_uid,
+		int64_t blocking_timeout,
 		const char *root_shm_path,
 		const char *shm_path);
 void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,

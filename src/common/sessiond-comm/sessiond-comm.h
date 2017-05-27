@@ -482,6 +482,7 @@ struct lttcomm_consumer_msg {
 			 * because the application can be in the tracing for instance.
 			 */
 			uint32_t ust_app_uid;
+			int64_t blocking_timeout;
 			char root_shm_path[PATH_MAX];
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED ask_channel;
