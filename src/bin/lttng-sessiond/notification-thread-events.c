@@ -1622,9 +1622,14 @@ int handle_notification_thread_client_in(
 	}
 
 	offset = client->communication.inbound.buffer.size;
+	/*
+	 * The buffer's size starts out at the size of the command header.
+	 * Once the command is determined, the "bytes_to_receive" are bumped
+	 * to fit the remainder of the message being received.
+	 */
 	ret = lttng_dynamic_buffer_set_size(
 			&client->communication.inbound.buffer,
-			client->communication.inbound.bytes_to_receive);
+			client->communication.inbound.bytes_to_receive + offset);
 	if (ret) {
 		goto end;
 	}
