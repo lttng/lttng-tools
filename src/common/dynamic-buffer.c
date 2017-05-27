@@ -136,48 +136,33 @@ end:
 }
 
 int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
-		size_t new_capacity)
+		size_t demanded_capacity)
 {
 	int ret = 0;
-	size_t rounded_capacity = round_to_power_of_2(new_capacity);
+	void *new_buf;
+	size_t new_capacity = round_to_power_of_2(demanded_capacity);
 
-	if (!buffer || new_capacity < buffer->size) {
+	if (!buffer || demanded_capacity < buffer->size) {
+		/*
+		 * Shrinking a buffer's size by changing its capacity is
+		 * unsupported.
+		 */
 		ret = -1;
 		goto end;
 	}
 
-	if (rounded_capacity == buffer->capacity) {
+	if (new_capacity == buffer->capacity) {
 		goto end;
 	}
 
-	if (!buffer->data) {
-		buffer->data = zmalloc(rounded_capacity);
-		if (!buffer->data) {
-			ret = -1;
-			goto end;
-		}
-	} else {
-		void *new_buf;
-
-		new_buf = realloc(buffer->data, rounded_capacity);
-		if (new_buf) {
-			if (rounded_capacity > buffer->capacity) {
-				memset(new_buf + buffer->capacity, 0,
-						rounded_capacity - buffer->capacity);
-			}
-		} else {
-			/* Realloc failed, try to acquire a new block. */
-			new_buf = zmalloc(rounded_capacity);
-			if (!new_buf) {
-				ret = -1;
-				goto end;
-			}
-			memcpy(new_buf, buffer->data, buffer->size);
-			free(buffer->data);
-		}
-		buffer->data = new_buf;
+	/* Memory is initialized by the size increases. */
+	new_buf = realloc(buffer->data, new_capacity);
+	if (!new_buf) {
+		ret = -1;
+		goto end;
 	}
-	buffer->capacity = rounded_capacity;
+	buffer->data = new_buf;
+	buffer->capacity = new_capacity;
 end:
 	return ret;
 }
