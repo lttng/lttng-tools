@@ -138,6 +138,12 @@ extern int lttng_channel_get_monitor_timer_interval(struct lttng_channel *chan,
 extern int lttng_channel_set_monitor_timer_interval(struct lttng_channel *chan,
 		uint64_t monitor_timer_interval);
 
+extern int lttng_channel_get_blocking_timeout(struct lttng_channel *chan,
+		int64_t *blocking_timeout);
+
+extern int lttng_channel_set_blocking_timeout(struct lttng_channel *chan,
+		int64_t blocking_timeout);
+
 #ifdef __cplusplus
 }
 #endif

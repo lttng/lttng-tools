@@ -1173,6 +1173,7 @@ static void print_channel(struct lttng_channel *channel)
 {
 	int ret;
 	uint64_t discarded_events, lost_packets, monitor_timer_interval;
+	int64_t blocking_timeout;
 
 	ret = lttng_channel_get_discarded_event_count(channel,
 			&discarded_events);
@@ -1195,6 +1196,13 @@ static void print_channel(struct lttng_channel *channel)
 		return;
 	}
 
+	ret = lttng_channel_get_blocking_timeout(channel,
+			&blocking_timeout);
+	if (ret) {
+		ERR("Failed to retrieve blocking timeout of channel");
+		return;
+	}
+
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
 
 	MSG("%sAttributes:", indent4);
@@ -1204,6 +1212,7 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("%sswitch timer interval: %u", indent6, channel->attr.switch_timer_interval);
 	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
 	MSG("%smonitor timer interval: %" PRIu64, indent6, monitor_timer_interval);
+	MSG("%sblocking timeout (µs): %" PRId64, indent6, blocking_timeout);
 	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
 	MSG("%strace file size (bytes): %" PRIu64, indent6, channel->attr.tracefile_size);
 	MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);

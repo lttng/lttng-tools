@@ -43,6 +43,19 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!--
+	Maps to the range allowed for blocking timeout: -1 (block
+	forever), 0 (do not block), positive integer value (blocking
+	time in usec) limited by its signed 32-bit representation when
+	converted to msec.
+	-->
+	<xs:simpleType name="blocking_timeout_type">
+		<xs:restriction base="xs:integer">
+			<xs:minInclusive value="-1" />
+			<xs:maxInclusive value="2147483648000" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to the char name[LTTNG_SYMBOL_NAME_LEN] -->
 	<xs:simpleType name="name_type">
 		<xs:restriction base="xs:string">
@@ -363,6 +376,7 @@ THE SOFTWARE.
 			<xs:element name="discarded_events" type="tns:uint64_type" default="0" minOccurs="0" />
 			<xs:element name="lost_packets" type="tns:uint64_type" default="0" minOccurs="0" />
 			<xs:element name="monitor_timer_interval" type="tns:uint64_type" default="0" minOccurs="0" />
+			<xs:element name="blocking_timeout" type="tns:blocking_timeout_type" default="0" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 

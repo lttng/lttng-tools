@@ -20,13 +20,14 @@ TEST_DESC="UST - Blocking mode"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 SESSION_NAME="blocking"
+CHANNEL_NAME="testchan"
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 
-NUM_TESTS=45
+NUM_TESTS=49
 
 source $TESTDIR/utils/utils.sh
 
@@ -40,11 +41,11 @@ function run_app()
 
 function test_ust_implicit_no_blocking()
 {
-	NUM_EVENT=500000
+	NUM_EVENT=5000000
 	diag "UST implicit non-blocking mode (default): will hang if fails"
 
-	# Test without the plugin
 	start_lttng_sessiond
+	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
 	start_lttng_tracing_ok $SESSION_NAME
@@ -56,17 +57,18 @@ function test_ust_implicit_no_blocking()
 	ok 0 "Does not hang"
 }
 
-function test_ust_explicit_no_blocking()
+function test_ust_implicit_no_blocking_with_channel_blocking()
 {
-	NUM_EVENT=500000
-	diag "UST explicit non-blocking mode: will hang if fails"
+	NUM_EVENT=5000000
+	diag "UST implicit non-blocking mode (default) with blocking-timeout=-1 channel: will hang if fails"
 
-	# Test without the plugin
 	start_lttng_sessiond
+	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=-1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	LTTNG_UST_BLOCKING_RETRY_TIMEOUT=0 run_app
+	run_app
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -77,14 +79,16 @@ function test_ust_explicit_no_blocking()
 function test_ust_timeout_no_blocking()
 {
 	NUM_EVENT=12500
-	diag "UST 1ms timeout retry mode: will hang if fails"
+	diag "UST 1ms timeout blocking mode: will hang if fails"
 
 	start_lttng_sessiond
+	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	# blocking timeout 1ms
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	# retry timeout 1ms
-	LTTNG_UST_BLOCKING_RETRY_TIMEOUT=1 run_app
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -94,15 +98,17 @@ function test_ust_timeout_no_blocking()
 
 function test_ust_snapshot_no_blocking()
 {
-	NUM_EVENT=500000
+	NUM_EVENT=5000000
 	diag "UST blocking mode: don't block in snapshot mode"
 
 	# Test without the plugin
 	start_lttng_sessiond
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH --snapshot
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	# blocking timeout 1ms
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=1000"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	LTTNG_UST_BLOCKING_RETRY_TIMEOUT=-1 run_app
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -112,16 +118,17 @@ function test_ust_snapshot_no_blocking()
 
 function test_ust_blocking_no_discard()
 {
-	NUM_EVENT=500000
+	NUM_EVENT=5000000
 	diag "UST blocking mode: no event discarded"
 
 	# Test without the plugin
 	start_lttng_sessiond
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+	# infinite blocking timeout
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=-1"
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	# infinite retry timeout
-	LTTNG_UST_BLOCKING_RETRY_TIMEOUT=-1 run_app
+	LTTNG_UST_ALLOW_BLOCKING=1 run_app
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -138,7 +145,7 @@ print_test_banner "$TEST_DESC"
 
 TESTS=(
 	"test_ust_implicit_no_blocking"
-	"test_ust_explicit_no_blocking"
+	"test_ust_implicit_no_blocking_with_channel_blocking"
 	"test_ust_timeout_no_blocking"
 	"test_ust_snapshot_no_blocking"
 	"test_ust_blocking_no_discard"

@@ -43,6 +43,18 @@ elementFormDefault="qualified" version="2.8">
 	</xs:restriction>
 </xs:simpleType>
 
+<!--
+Maps to the range allowed for blocking timeout: -1 (block forever),
+0 (do not block), positive integer value (blocking time in usec) limited
+by its signed 32-bit representation when converted to msec.
+-->
+<xs:simpleType name="blocking_timeout_type">
+	<xs:restriction base="xs:integer">
+		<xs:minInclusive value="-1" />
+		<xs:maxInclusive value="2147483648000" />
+	</xs:restriction>
+</xs:simpleType>
+
 <xs:simpleType name="channel_overwrite_mode_type">
 	<xs:restriction base="xs:string">
 		<xs:enumeration value="DISCARD"/>
@@ -186,6 +198,7 @@ elementFormDefault="qualified" version="2.8">
 		<xs:element name="subbuffer_count" type="uint64_type" default="4" minOccurs="0"/>
 		<xs:element name="switch_timer_interval" type="uint32_type" default="0" minOccurs="0"/>  <!-- usec -->
 		<xs:element name="read_timer_interval" type="uint32_type"/>  <!-- usec -->
+		<xs:element name="blocking_timeout" type="blocking_timeout_type" default="0" minOccurs="0" /> <!-- usec -->
 		<xs:element name="output_type" type="event_output_type"/>
 		<xs:element name="tracefile_size" type="uint64_type" default="0" minOccurs="0"/> <!-- bytes -->
 		<xs:element name="tracefile_count" type="uint64_type" default="0" minOccurs="0"/>

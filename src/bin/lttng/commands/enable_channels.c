@@ -48,6 +48,10 @@ static struct {
 	bool set;
 	uint32_t interval;
 } opt_monitor_timer;
+static struct {
+	bool set;
+	int64_t value;
+} opt_blocking_timeout;
 
 static struct mi_writer *writer;
 
@@ -70,6 +74,7 @@ enum {
 	OPT_LIST_OPTIONS,
 	OPT_TRACEFILE_SIZE,
 	OPT_TRACEFILE_COUNT,
+	OPT_BLOCKING_TIMEOUT,
 };
 
 static struct lttng_handle *handle;
@@ -97,6 +102,7 @@ static struct poptOption long_options[] = {
 	{"buffers-global", 0,	POPT_ARG_VAL, &opt_buffer_global, 1, 0, 0},
 	{"tracefile-size", 'C',   POPT_ARG_INT, 0, OPT_TRACEFILE_SIZE, 0, 0},
 	{"tracefile-count", 'W',   POPT_ARG_INT, 0, OPT_TRACEFILE_COUNT, 0, 0},
+	{"blocking-timeout",     0,   POPT_ARG_INT, 0, OPT_BLOCKING_TIMEOUT, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
@@ -150,6 +156,15 @@ static int enable_channel(char *session_name)
 	struct lttng_domain dom;
 
 	memset(&dom, 0, sizeof(dom));
+
+	/* Validate options. */
+	if (opt_kernel) {
+		if (opt_blocking_timeout.set) {
+			ERR("Retry timeout option not supported for kernel domain (-k)");
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 
 	/* Create lttng domain */
 	if (opt_kernel) {
@@ -258,6 +273,15 @@ static int enable_channel(char *session_name)
 					opt_monitor_timer.interval);
 			if (ret) {
 				ERR("Failed to set the channel's monitor timer interval");
+				error = 1;
+				goto error;
+			}
+		}
+		if (opt_blocking_timeout.set) {
+			ret = lttng_channel_set_blocking_timeout(channel,
+					opt_blocking_timeout.value);
+			if (ret) {
+				ERR("Failed to set the channel's blocking timeout");
 				error = 1;
 				goto error;
 			}
@@ -528,6 +552,51 @@ int cmd_enable_channels(int argc, const char **argv)
 			opt_monitor_timer.interval = (uint32_t) v;
 			opt_monitor_timer.set = true;
 			DBG("Channel monitor timer interval set to %d", opt_monitor_timer.interval);
+			break;
+		}
+		case OPT_BLOCKING_TIMEOUT:
+		{
+			long long v;	/* in usec */
+			long long v_msec;
+
+			errno = 0;
+			opt_arg = poptGetOptArg(pc);
+			v = strtoll(opt_arg, NULL, 0);
+			if (errno != 0 || (!isdigit(opt_arg[0]) && opt_arg[0] != '-')
+					|| v < -1) {
+				ERR("Wrong value in --blocking-timeout parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			if (v >= 0) {
+				/*
+				 * While LTTng-UST and LTTng-tools will accept
+				 * a blocking timeout expressed in µs, the
+				 * current tracer implementation relies on
+				 * poll() which takes an "int timeout" parameter
+				 * expressed in msec.
+				 *
+				 * Since the error reporting from the tracer
+				 * is not precise, we perform this check here
+				 * to provide a helpful error message in case of
+				 * overflow.
+				 *
+				 * The setter (liblttng-ctl) also performs an
+				 * equivalent check.
+				 */
+				v_msec = v / 1000;
+				if (v_msec != (int32_t) v_msec) {
+					ERR("32-bit milliseconds overflow in --blocking-timeout parameter: %s", opt_arg);
+					ret = CMD_ERROR;
+					goto end;
+				}
+			} else if (v != -1) {
+				ERR("Invalid negative value passed as --blocking-timeout parameter; -1 (block forever) is the only valid negative value");
+			}
+			opt_blocking_timeout.value = (int64_t) v;
+			opt_blocking_timeout.set = true;
+			DBG("Channel blocking timeout set to %" PRId64 " (µs)",
+					opt_blocking_timeout.value);
 			break;
 		}
 		case OPT_USERSPACE:

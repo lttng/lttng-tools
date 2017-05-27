@@ -277,6 +277,7 @@ static ssize_t list_lttng_channels(enum lttng_domain_type domain,
 				chan_exts[i].lost_packets = lost_packets;
 				chan_exts[i].monitor_timer_interval =
 						extended->monitor_timer_interval;
+				chan_exts[i].blocking_timeout = 0;
 				i++;
 			}
 		}
@@ -324,6 +325,8 @@ static ssize_t list_lttng_channels(enum lttng_domain_type domain,
 
 			chan_exts[i].monitor_timer_interval =
 					uchan->monitor_timer_interval;
+			chan_exts[i].blocking_timeout =
+				uchan->attr.u.s.blocking_timeout;
 
 			ret = get_ust_runtime_stats(session, uchan,
 					&discarded_events, &lost_packets);
