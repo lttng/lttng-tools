@@ -59,11 +59,11 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	assert(buffer->capacity >= buffer->size);
-	if (buffer->capacity < (len + buffer->size)) {
+	assert(buffer->_capacity >= buffer->size);
+	if (buffer->_capacity < (len + buffer->size)) {
 		ret = lttng_dynamic_buffer_set_capacity(buffer,
-				buffer->capacity +
-				(len - (buffer->capacity - buffer->size)));
+				buffer->_capacity +
+				(len - (buffer->_capacity - buffer->size)));
 		if (ret) {
 			goto end;
 		}
@@ -104,9 +104,9 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	if (new_size > buffer->capacity) {
+	if (new_size > buffer->_capacity) {
 		size_t original_size = buffer->size;
-		size_t original_capacity = buffer->capacity;
+		size_t original_capacity = buffer->_capacity;
 
 		ret = lttng_dynamic_buffer_set_capacity(buffer, new_size);
 		if (ret) {
@@ -155,7 +155,7 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	if (new_capacity == buffer->capacity) {
+	if (new_capacity == buffer->_capacity) {
 		goto end;
 	}
 
@@ -166,7 +166,7 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 	buffer->data = new_buf;
-	buffer->capacity = new_capacity;
+	buffer->_capacity = new_capacity;
 end:
 	return ret;
 }
@@ -178,6 +178,6 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 		return;
 	}
 	buffer->size = 0;
-	buffer->capacity = 0;
+	buffer->_capacity = 0;
 	free(buffer->data);
 }
