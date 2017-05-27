@@ -97,6 +97,11 @@ struct notification_client {
 	struct cds_lfht_node client_socket_ht_node;
 	struct {
 		struct {
+			/*
+			 * During the reception of a message, the reception
+			 * buffers' "size" is set to contain the current
+			 * message's complete payload.
+			 */
 			struct lttng_dynamic_buffer buffer;
 			/* Bytes left to receive for the current message. */
 			size_t bytes_to_receive;
@@ -112,6 +117,7 @@ struct notification_client {
 			 * from the client.
 			 */
 			bool creds_received;
+			/* Only used during credentials reception. */
 			lttng_sock_cred creds;
 		} inbound;
 		struct {
@@ -1153,7 +1159,7 @@ end:
 }
 
 static
-void client_reset_inbound_state(struct notification_client *client)
+int client_reset_inbound_state(struct notification_client *client)
 {
 	int ret;
 
@@ -1168,6 +1174,10 @@ void client_reset_inbound_state(struct notification_client *client)
 	client->communication.inbound.receive_creds = false;
 	LTTNG_SOCK_SET_UID_CRED(&client->communication.inbound.creds, -1);
 	LTTNG_SOCK_SET_GID_CRED(&client->communication.inbound.creds, -1);
+	ret = lttng_dynamic_buffer_set_size(
+			&client->communication.inbound.buffer,
+			client->communication.inbound.bytes_to_receive);
+	return ret;
 }
 
 int handle_notification_thread_client_connect(
@@ -1187,7 +1197,12 @@ int handle_notification_thread_client_connect(
 	CDS_INIT_LIST_HEAD(&client->condition_list);
 	lttng_dynamic_buffer_init(&client->communication.inbound.buffer);
 	lttng_dynamic_buffer_init(&client->communication.outbound.buffer);
-	client_reset_inbound_state(client);
+	ret = client_reset_inbound_state(client);
+	if (ret) {
+		ERR("[notification-thread] Failed to reset client communication's inbound state");
+	        ret = 0;
+		goto error;
+	}
 
 	ret = lttcomm_accept_unix_sock(state->notification_channel_socket);
 	if (ret < 0) {
@@ -1481,7 +1496,7 @@ int client_dispatch_message(struct notification_client *client,
 			client->communication.inbound.receive_creds = true;
 		}
 		ret = lttng_dynamic_buffer_set_size(
-				&client->communication.inbound.buffer, 0);
+				&client->communication.inbound.buffer, msg->size);
 		if (ret) {
 			goto end;
 		}
@@ -1548,7 +1563,11 @@ int client_dispatch_message(struct notification_client *client,
 		}
 
 		/* Set reception state to receive the next message header. */
-		client_reset_inbound_state(client);
+		ret = client_reset_inbound_state(client);
+		if (ret) {
+			ERR("[notification-thread] Failed to reset client communication's inbound state");
+			goto end;
+		}
 		client->validated = true;
 		break;
 	}
@@ -1595,7 +1614,11 @@ int client_dispatch_message(struct notification_client *client,
 		}
 
 		/* Set reception state to receive the next message header. */
-		client_reset_inbound_state(client);
+		ret = client_reset_inbound_state(client);
+		if (ret) {
+			ERR("[notification-thread] Failed to reset client communication's inbound state");
+			goto end;
+		}
 		break;
 	}
 	default:
@@ -1609,7 +1632,7 @@ end:
 int handle_notification_thread_client_in(
 		struct notification_thread_state *state, int socket)
 {
-	int ret;
+	int ret = 0;
 	struct notification_client *client;
 	ssize_t recv_ret;
 	size_t offset;
@@ -1621,19 +1644,8 @@ int handle_notification_thread_client_in(
 		goto end;
 	}
 
-	offset = client->communication.inbound.buffer.size;
-	/*
-	 * The buffer's size starts out at the size of the command header.
-	 * Once the command is determined, the "bytes_to_receive" are bumped
-	 * to fit the remainder of the message being received.
-	 */
-	ret = lttng_dynamic_buffer_set_size(
-			&client->communication.inbound.buffer,
-			client->communication.inbound.bytes_to_receive + offset);
-	if (ret) {
-		goto end;
-	}
-
+	offset = client->communication.inbound.buffer.size -
+			client->communication.inbound.bytes_to_receive;
 	if (client->communication.inbound.receive_creds) {
 		recv_ret = lttcomm_recv_creds_unix_sock(socket,
 				client->communication.inbound.buffer.data + offset,
@@ -1653,14 +1665,6 @@ int handle_notification_thread_client_in(
 	}
 
 	client->communication.inbound.bytes_to_receive -= recv_ret;
-	ret = lttng_dynamic_buffer_set_size(
-			&client->communication.inbound.buffer,
-			client->communication.inbound.buffer.size -
-			client->communication.inbound.bytes_to_receive);
-	if (ret) {
-		goto end;
-	}
-
 	if (client->communication.inbound.bytes_to_receive == 0) {
 		ret = client_dispatch_message(client, state);
 		if (ret) {
