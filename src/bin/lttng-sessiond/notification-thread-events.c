@@ -1509,7 +1509,7 @@ int client_dispatch_message(struct notification_client *client,
 		handshake_client =
 				(struct lttng_notification_channel_command_handshake *)
 					client->communication.inbound.buffer.data;
-				client->major = handshake_client->major;
+		client->major = handshake_client->major;
 		client->minor = handshake_client->minor;
 		if (!client->communication.inbound.creds_received) {
 			ERR("[notification-thread] No credentials received from client");
