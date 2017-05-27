@@ -20,6 +20,10 @@
 #include <common/utils.h>
 #include <assert.h>
 
+/*
+ * Round to (upper) power of two, val is returned if it already is a power of
+ * two.
+ */
 static
 size_t round_to_power_of_2(size_t val)
 {
