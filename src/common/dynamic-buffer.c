@@ -55,7 +55,7 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 		goto end;
 	}
 
-	if ((buffer->capacity - buffer->size) < len) {
+	if (buffer->capacity < (len + buffer->size)) {
 		ret = lttng_dynamic_buffer_set_capacity(buffer,
 				buffer->capacity +
 				(len - (buffer->capacity - buffer->size)));
