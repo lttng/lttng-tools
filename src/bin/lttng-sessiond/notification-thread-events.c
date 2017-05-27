@@ -1222,7 +1222,6 @@ int handle_notification_thread_client_connect(
 	DBG("[notification-thread] Added new notification channel client socket (%i) to poll set",
 			client->socket);
 
-	/* Add to ht. */
 	rcu_read_lock();
 	cds_lfht_add(state->client_socket_ht,
 			hash_client_socket(client->socket),
