@@ -444,7 +444,7 @@ int handshake(struct lttng_notification_channel *channel)
 
 	pthread_mutex_lock(&channel->lock);
 
-	ret = lttcomm_send_unix_sock(channel->socket, send_buffer,
+	ret = lttcomm_send_creds_unix_sock(channel->socket, send_buffer,
 			sizeof(send_buffer));
 	if (ret < 0) {
 		goto end_unlock;
