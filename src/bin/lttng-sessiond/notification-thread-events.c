@@ -111,7 +111,7 @@ struct notification_client {
 			 * Indicates whether or not credentials are expected
 			 * from the client.
 			 */
-			bool receive_creds;
+			bool expect_creds;
 			/*
 			 * Indicates whether or not credentials were received
 			 * from the client.
@@ -1171,7 +1171,6 @@ int client_reset_inbound_state(struct notification_client *client)
 			sizeof(struct lttng_notification_channel_message);
 	client->communication.inbound.msg_type =
 			LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNKNOWN;
-	client->communication.inbound.receive_creds = false;
 	LTTNG_SOCK_SET_UID_CRED(&client->communication.inbound.creds, -1);
 	LTTNG_SOCK_SET_GID_CRED(&client->communication.inbound.creds, -1);
 	ret = lttng_dynamic_buffer_set_size(
@@ -1197,6 +1196,7 @@ int handle_notification_thread_client_connect(
 	CDS_INIT_LIST_HEAD(&client->condition_list);
 	lttng_dynamic_buffer_init(&client->communication.inbound.buffer);
 	lttng_dynamic_buffer_init(&client->communication.outbound.buffer);
+	client->communication.inbound.expect_creds = true;
 	ret = client_reset_inbound_state(client);
 	if (ret) {
 		ERR("[notification-thread] Failed to reset client communication's inbound state");
@@ -1491,10 +1491,6 @@ int client_dispatch_message(struct notification_client *client,
 		client->communication.inbound.bytes_to_receive = msg->size;
 		client->communication.inbound.msg_type =
 				(enum lttng_notification_channel_message_type) msg->type;
-		if (client->communication.inbound.msg_type ==
-				LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_HANDSHAKE) {
-			client->communication.inbound.receive_creds = true;
-		}
 		ret = lttng_dynamic_buffer_set_size(
 				&client->communication.inbound.buffer, msg->size);
 		if (ret) {
@@ -1646,13 +1642,13 @@ int handle_notification_thread_client_in(
 
 	offset = client->communication.inbound.buffer.size -
 			client->communication.inbound.bytes_to_receive;
-	if (client->communication.inbound.receive_creds) {
+	if (client->communication.inbound.expect_creds) {
 		recv_ret = lttcomm_recv_creds_unix_sock(socket,
 				client->communication.inbound.buffer.data + offset,
 				client->communication.inbound.bytes_to_receive,
 				&client->communication.inbound.creds);
 		if (recv_ret > 0) {
-			client->communication.inbound.receive_creds = false;
+			client->communication.inbound.expect_creds = false;
 			client->communication.inbound.creds_received = true;
 		}
 	} else {
