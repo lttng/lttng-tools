@@ -87,6 +87,8 @@ gen-ust-events
 health_check
 /tests/regression/tools/mi/extract_xml
 /tests/regression/tools/mi/validate_xml
+/tests/regression/tools/notification/base_client
+/tests/regression/tools/notification/notification
 /tests/regression/ust/overlap/demo/demo
 /tests/regression/ust/linking/demo_builtin
 /tests/regression/ust/linking/demo_static
