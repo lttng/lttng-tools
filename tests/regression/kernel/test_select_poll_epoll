@@ -126,13 +126,13 @@ function test_timeout_cases()
 	rm -rf $TRACE_PATH
 }
 
-function test_big_pselect()
+function test_pselect_invalid_fd()
 {
 	TRACE_PATH=$(mktemp -d)
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="pselect6"
 
-	diag "pselect with a FD > 1023"
+	diag "pselect with invalid FD"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -384,7 +384,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	test_working_cases
 	test_timeout_cases
-	test_big_pselect
+	test_pselect_invalid_fd
 	test_big_ppoll
 	test_ppoll_overflow
 	test_pselect_invalid_ptr
