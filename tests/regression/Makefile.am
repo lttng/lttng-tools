@@ -23,7 +23,9 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/wildcard/test_event_wildcard \
 	tools/crash/test_crash \
 	tools/regen-metadata/test_ust \
-	tools/regen-statedump/test_ust
+	tools/regen-statedump/test_ust \
+	tools/notification/test_notification \
+	tools/notification/test_notification_multi_app
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
