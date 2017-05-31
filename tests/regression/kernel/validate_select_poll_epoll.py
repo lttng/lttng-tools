@@ -450,8 +450,8 @@ class Test2(TraceParser):
 class Test3(TraceParser):
     def __init__(self, trace, pid):
         super().__init__(trace, pid)
-        self.expect["select_too_big_in"] = 0
-        self.expect["select_too_big_out"] = 0
+        self.expect["select_invalid_fd_in"] = 0
+        self.expect["select_invalid_fd_out"] = 0
 
     def select_entry(self, event):
         timestamp = event.timestamp
@@ -466,9 +466,8 @@ class Test3(TraceParser):
         _exceptfds_length = event["_exceptfds_length"]
         exceptfds = event["exceptfds"]
 
-        # make sure an invalid value still produces a valid event
-        if n == 2048 and overflow == 0 and _readfds_length == 0:
-            self.expect["select_too_big_in"] = 1
+        if n > 0 and overflow == 0:
+            self.expect["select_invalid_fd_in"] = 1
 
     def select_exit(self, event):
         timestamp = event.timestamp
@@ -483,9 +482,9 @@ class Test3(TraceParser):
         _exceptfds_length = event["_exceptfds_length"]
         exceptfds = event["exceptfds"]
 
-        # make sure an invalid value still produces a valid event
+        # make sure the event has a ret field equal to -EBADF
         if ret == -9 and overflow == 0 and _readfds_length == 0:
-            self.expect["select_too_big_out"] = 1
+            self.expect["select_invalid_fd_out"] = 1
 
 
 class Test4(TraceParser):
