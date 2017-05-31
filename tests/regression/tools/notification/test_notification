@@ -1,0 +1,86 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+
+#This is needed since the testpoint create a pipe with the consumerd type suffixed
+TESTPOINT_BASE_PATH=$(readlink -f "$CURDIR/lttng.t_p_n")
+TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
+TESTPOIT_ARGS="CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LTTNG_TESTPOINT_ENABLE=1"
+TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+NR_ITER=-1
+NR_USEC_WAIT=5
+
+SESSION_NAME="my_session"
+CHANNEL_NAME="my_ust_channel"
+EVENT_NAME="tp:tptest"
+
+TRACE_PATH=$(mktemp -d)
+
+DIR=$(readlink -f $TESTDIR)
+
+source $TESTDIR/utils/utils.sh
+
+consumerd_pipe=()
+
+file_sync_after_first_event=$(mktemp -u)
+
+LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
+start_lttng_sessiond_notap
+
+create_lttng_session_notap $SESSION_NAME $TRACE_PATH
+
+enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=4096
+enable_ust_lttng_event_notap $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+
+#This is needed since the testpoint create a pipe with the consumer type suffixed
+for f in "$TESTPOINT_BASE_PATH"*; do
+	consumerd_pipe+=("$f")
+done
+
+
+# Start app in infinite loop
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $file_sync_after_first_event &
+APP_PID=$!
+# Pin to CPU zero to force specific sub buffer usage
+taskset -p -c 0 $APP_PID > /dev/null 2>&1
+
+while [ ! -f "${file_sync_after_first_event}" ]; do
+	        sleep 0.5
+done
+rm ${file_sync_after_first_event}
+
+# The actual test suite
+# TODO: Add support for kernel domain
+$CURDIR/notification $SESSION_NAME $CHANNEL_NAME LTTNG_DOMAIN_UST ${consumerd_pipe[@]}
+
+stop_lttng_sessiond_notap
+
+# On ungraceful kill the app is cleaned up via the full_cleanup call
+# Suppress kill message
+kill -9 $APP_PID
+wait $APP_PID 2> /dev/null
+
+# Just in case cleanup
+rm -rf $TRACE_PATH
+rm ${consumerd_pipe[@]} 2> /dev/null
