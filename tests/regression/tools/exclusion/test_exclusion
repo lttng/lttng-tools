@@ -79,7 +79,7 @@ function test_exclusion_fail
 	exclusions="$2"
 
 	create_lttng_session_ok $SESSION_NAME $trace_path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -u "$event_name" -s $sess_name -x "$exclusions" 2&>1 >/dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -u "$event_name" -s $sess_name -x "$exclusions" >/dev/null 2>&1
 	res=$?
 	destroy_lttng_session_ok $SESSION_NAME
 
