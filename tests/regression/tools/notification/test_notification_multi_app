@@ -45,6 +45,8 @@ TRACE_PATH=$(mktemp -d)
 
 DIR=$(readlink -f $TESTDIR)
 
+PAGE_SIZE=$(getconf PAGE_SIZE)
+
 NUM_TESTS=46
 
 source $TESTDIR/utils/utils.sh
@@ -168,7 +170,7 @@ function test_multi_app ()
 	rm ${file_sync_after_first_event}
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_ok $SESSION_NAME $UST_CHANNEL_NAME --subbuf-size=4096
+	enable_ust_lttng_channel_ok $SESSION_NAME $UST_CHANNEL_NAME --subbuf-size=$PAGE_SIZE
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $UST_CHANNEL_NAME
 
 	# Fetch consumerd testpoint pipe information
