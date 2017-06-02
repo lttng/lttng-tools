@@ -31,6 +31,7 @@ typedef uint64_t timer_t;
 
 #include <mach/mach.h>
 #include <mach/clock.h>
+#include <errno.h>
 
 #undef NSEC_PER_SEC
 #undef NSEC_PER_MSEC
