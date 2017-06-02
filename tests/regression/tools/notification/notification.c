@@ -68,6 +68,9 @@ int write_pipe(const char *path, uint8_t data)
 	ret = write(fd, &data , sizeof(data));
 	if (ret < 1) {
 		perror("Named pipe write failed");
+		if (close(fd)) {
+			perror("Named pipe close failed");
+		}
 		ret = -1;
 		goto end;
 	}
@@ -563,6 +566,7 @@ end:
 	lttng_trigger_destroy(trigger);
 	lttng_action_destroy(action);
 	lttng_condition_destroy(low_condition);
+	lttng_condition_destroy(high_condition);
 	lttng_condition_destroy(dummy_invalid_condition);
 	lttng_condition_destroy(dummy_condition);
 }
