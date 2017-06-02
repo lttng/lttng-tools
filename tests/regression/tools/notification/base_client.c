@@ -297,7 +297,9 @@ end:
 	if (trigger) {
 		lttng_unregister_trigger(trigger);
 	}
-	lttng_notification_channel_unsubscribe(notification_channel, condition);
+	if (lttng_notification_channel_unsubscribe(notification_channel, condition)) {
+		printf("error: channel unsubscribe error\n");
+	}
 	lttng_trigger_destroy(trigger);
 	lttng_condition_destroy(condition);
 	lttng_action_destroy(action);
@@ -330,12 +332,27 @@ int handle_condition(
 	}
 
 	/* Fetch info to test */
-	lttng_condition_buffer_usage_get_session_name(condition,
+	ret = lttng_condition_buffer_usage_get_session_name(condition,
 			&condition_session_name);
-	lttng_condition_buffer_usage_get_channel_name(condition,
+	if (ret) {
+		printf("error: session name could not be fetched\n");
+		ret = 1;
+		goto end;
+	}
+	ret = lttng_condition_buffer_usage_get_channel_name(condition,
 			&condition_channel_name);
-	lttng_condition_buffer_usage_get_domain_type(condition,
+	if (ret) {
+		printf("error: channel name could not be fetched\n");
+		ret = 1;
+		goto end;
+	}
+	ret = lttng_condition_buffer_usage_get_domain_type(condition,
 			&condition_domain_type);
+	if (ret) {
+		printf("error: domain type could not be fetched\n");
+		ret = 1;
+		goto end;
+	}
 
 	if (strcmp(condition_session_name, session_name) != 0) {
 		printf("error: session name differs\n");
