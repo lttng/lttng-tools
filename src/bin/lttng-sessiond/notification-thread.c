@@ -68,7 +68,7 @@
  *
  *   - notification_trigger_clients_ht:
  *             associates notification-emitting triggers to clients
- *             (struct notification_client_ht_node) subscribed to those
+ *             (struct notification_client_list) subscribed to those
  *             conditions.
  *             The condition's hash and match functions are used directly since
  *             all triggers in this hash table have the "notify" action.
