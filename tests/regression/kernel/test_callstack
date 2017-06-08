@@ -1,0 +1,140 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - Callstack context"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../..
+NUM_TESTS=18
+TEST_APP="$TESTDIR/utils/testapp/gen-syscall-events-callstack/gen-syscall-events-callstack"
+PARSE_CALLSTACK="$TESTDIR/utils/parse-callstack.py"
+
+SESSION_NAME="callstack"
+CHANNEL_NAME="chan0"
+
+source "$TESTDIR/utils/utils.sh"
+
+function lttng_untrack_all()
+{
+	lttng untrack -s "$SESSION_NAME" --all --pid -k > /dev/null
+}
+
+function lttng_track_pid()
+{
+	local PID=$1
+	lttng track -s "$SESSION_NAME" -k --pid="$PID" > /dev/null
+}
+
+function run_workload()
+{
+	local start_file_sync
+	start_file_sync=$(mktemp -u)
+
+	lttng_untrack_all
+
+	./"$TEST_APP" "$start_file_sync" &
+	PID=$!
+	lttng_track_pid $PID
+
+	start_lttng_tracing_ok
+
+	# Create start file to launch the execution of the syscall call by the
+	# test app
+	touch "$start_file_sync"
+
+	wait $PID
+
+	stop_lttng_tracing_ok
+
+	# Clean up the synchronization file
+	rm -f "$start_file_sync"
+}
+
+function test_user_callstack()
+{
+	TRACE_PATH=$(mktemp -d)
+	# This is the expected userspace callstack. (see gen-syscall-events-callstack.c)
+	USER_CS_EXPECTED="main fct_a fct_b fct_c my_gettid"
+	EVENT_NAME="gettid"
+
+	diag "Userspace callstack test"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+	lttng_enable_kernel_channel_ok "$SESSION_NAME" "$CHANNEL_NAME"
+
+	lttng_enable_kernel_syscall_ok "$SESSION_NAME" "$EVENT_NAME" "$CHANNEL_NAME"
+	add_context_kernel_ok "$SESSION_NAME" "$CHANNEL_NAME" "callstack-user"
+
+	run_workload
+
+	destroy_lttng_session_ok "$SESSION_NAME"
+
+	"$BABELTRACE_BIN" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --user "$TEST_APP" $USER_CS_EXPECTED
+	ok $? "Validate userspace callstack"
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_kernel_callstack()
+{
+	TRACE_PATH=$(mktemp -d)
+	# Those are symbol expected to be present in the kernel callstack. This
+	# is not an exhaustive list since it's kernel depend.
+	KERNEL_CS_EXPECTED="save_stack_trace lttng_callstack_get_size lttng_event_reserve"
+	EVENT_NAME="gettid"
+
+	diag "Kernel callstack test"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+	lttng_enable_kernel_channel_ok "$SESSION_NAME" "$CHANNEL_NAME"
+
+	lttng_enable_kernel_syscall_ok "$SESSION_NAME" "$EVENT_NAME" "$CHANNEL_NAME"
+	add_context_kernel_ok "$SESSION_NAME" "$CHANNEL_NAME" "callstack-kernel"
+
+	run_workload
+
+	destroy_lttng_session_ok "$SESSION_NAME"
+
+	"$BABELTRACE_BIN" "$TRACE_PATH" | grep $EVENT_NAME | ./"$PARSE_CALLSTACK" --kernel $KERNEL_CS_EXPECTED
+	ok $? "Validate kernel callstack"
+
+	rm -rf "$TRACE_PATH"
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" ||
+{
+	which "$BABELTRACE_BIN" > /dev/null
+	test $? -ne 0
+	skip $? "Babeltrace binary not found. Skipping callstack tests" "$NUM_TESTS" ||
+	{
+		start_lttng_sessiond
+
+		test_user_callstack
+		test_kernel_callstack
+
+		stop_lttng_sessiond
+	}
+}
