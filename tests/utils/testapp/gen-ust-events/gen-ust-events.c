@@ -37,48 +37,6 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-void create_file(const char *path)
-{
-	static bool file_created = false;
-	int ret;
-
-	if (!path || file_created) {
-		return;
-	}
-
-	ret = creat(path, S_IRWXU);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to create file %s\n", path);
-		return;
-	}
-
-	(void) close(ret);
-	file_created = true;
-}
-
-static
-void wait_on_file(const char *path)
-{
-	if (!path) {
-		return;
-	}
-	for (;;) {
-		int ret;
-		struct stat buf;
-
-		ret = stat(path, &buf);
-		if (ret == -1 && errno == ENOENT) {
-			(void) poll(NULL, 0, 10);	/* 10 ms delay */
-			continue;			/* retry */
-		}
-		if (ret) {
-			perror("stat");
-			exit(EXIT_FAILURE);
-		}
-		break;	/* found */
-	}
-}
-
 int main(int argc, char **argv)
 {
 	unsigned int i, netint;
@@ -86,7 +44,7 @@ int main(int argc, char **argv)
 	char text[10] = "test";
 	double dbl = 2.0;
 	float flt = 2222.0;
-	int nr_iter = 100, ret = 0;
+	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;
 	char *after_first_event_file_path = NULL;
 	char *before_last_event_file_path = NULL;
@@ -122,7 +80,12 @@ int main(int argc, char **argv)
 			 * Wait on synchronization before writing last
 			 * event.
 			 */
-			wait_on_file(before_last_event_file_path);
+			if (before_last_event_file_path) {
+				ret = wait_on_file(before_last_event_file_path);
+				if (ret != 0) {
+					goto end;
+				}
+			}
 		}
 		netint = htonl(i);
 		tracepoint(tp, tptest, i, netint, values, text,
@@ -132,7 +95,16 @@ int main(int argc, char **argv)
 		 * First loop we create the file if asked to indicate
 		 * that at least one tracepoint has been hit.
 		 */
-		create_file(after_first_event_file_path);
+		if (after_first_event_file_path && first_event_file_created == 0) {
+			ret = create_file(after_first_event_file_path);
+
+			if (ret != 0) {
+				goto end;
+			} else {
+				first_event_file_created = 1;
+			}
+		}
+
 		if (nr_usec) {
 		        if (usleep_safe(nr_usec)) {
 				ret = -1;

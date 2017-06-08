@@ -15,13 +15,21 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include <stdint.h>
+#include <assert.h>
 #include <common/compat/time.h>
 #include <common/time.h>
-#include <assert.h>
-#include <unistd.h>
-#include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "utils.h"
 
 static inline
 int64_t elapsed_time_ns(struct timespec *t1, struct timespec *t2)
@@ -65,4 +73,62 @@ int usleep_safe(useconds_t usec)
 	}
 end:
 	return ret;
+}
+
+int create_file(const char *path)
+{
+	int ret;
+
+	if (!path) {
+		return -1;
+	}
+
+	ret = creat(path, S_IRWXU);
+	if (ret < 0) {
+		perror("creat");
+		return -1;
+	}
+
+	ret = close(ret);
+	if (ret < 0) {
+		perror("close");
+		return -1;
+	}
+
+	return 0;
+}
+
+int wait_on_file(const char *path)
+{
+	int ret;
+	struct stat buf;
+
+	if (!path) {
+		return -1;
+	}
+
+	for (;;) {
+		ret = stat(path, &buf);
+		if (ret == -1 && errno == ENOENT) {
+			ret = poll(NULL, 0, 10);	/* 10 ms delay */
+			/* Should return 0 everytime */
+			if (ret) {
+				if (ret < 0) {
+					perror("perror");
+				} else {
+					fprintf(stderr,
+						"poll return value is larger than zero\n");
+				}
+				return -1;
+			}
+			continue;			/* retry */
+		}
+		if (ret) {
+			perror("stat");
+			return -1;
+		}
+		break;	/* found */
+	}
+
+	return 0;
 }
