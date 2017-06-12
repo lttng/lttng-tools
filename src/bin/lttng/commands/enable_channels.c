@@ -46,7 +46,7 @@ static int opt_buffer_pid;
 static int opt_buffer_global;
 static struct {
 	bool set;
-	uint32_t interval;
+	uint64_t interval;
 } opt_monitor_timer;
 static struct {
 	bool set;
@@ -534,24 +534,19 @@ int cmd_enable_channels(int argc, const char **argv)
 		}
 		case OPT_MONITOR_TIMER:
 		{
-			unsigned long v;
+			unsigned long long v;
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			v = strtoul(opt_arg, NULL, 0);
+			v = strtoull(opt_arg, NULL, 0);
 			if (errno != 0 || !isdigit(opt_arg[0])) {
 				ERR("Wrong value in --monitor-timer parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
-			if (v != (uint32_t) v) {
-				ERR("32-bit overflow in --monitor-timer parameter: %s", opt_arg);
-				ret = CMD_ERROR;
-				goto end;
-			}
-			opt_monitor_timer.interval = (uint32_t) v;
+			opt_monitor_timer.interval = (uint64_t) v;
 			opt_monitor_timer.set = true;
-			DBG("Channel monitor timer interval set to %d", opt_monitor_timer.interval);
+			DBG("Channel monitor timer interval set to %" PRIu64" (µs)", opt_monitor_timer.interval);
 			break;
 		}
 		case OPT_BLOCKING_TIMEOUT:
