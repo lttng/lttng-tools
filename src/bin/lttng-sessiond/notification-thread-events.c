@@ -19,9 +19,6 @@
 #include <urcu.h>
 #include <urcu/rculfhash.h>
 
-#include "notification-thread.h"
-#include "notification-thread-events.h"
-#include "notification-thread-commands.h"
 #include <common/defaults.h>
 #include <common/error.h>
 #include <common/futex.h>
@@ -36,11 +33,18 @@
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/buffer-usage-internal.h>
 #include <lttng/notification/channel-internal.h>
+
 #include <time.h>
 #include <unistd.h>
 #include <assert.h>
 #include <inttypes.h>
 #include <fcntl.h>
+
+#include "notification-thread.h"
+#include "notification-thread-events.h"
+#include "notification-thread-commands.h"
+#include "lttng-sessiond.h"
+#include "kernel.h"
 
 #define CLIENT_POLL_MASK_IN (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)
@@ -806,15 +810,60 @@ end:
 	return 0;
 }
 
+static
+int condition_is_supported(struct lttng_condition *condition)
+{
+	int ret;
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	{
+		enum lttng_domain_type domain;
+
+		ret = lttng_condition_buffer_usage_get_domain_type(condition,
+				&domain);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+
+		if (domain != LTTNG_DOMAIN_KERNEL) {
+			ret = 1;
+			goto end;
+		}
+
+		/*
+		 * Older kernel tracers don't expose the API to monitor their
+		 * buffers. Therefore, we reject triggers that require that
+		 * mechanism to be available to be evaluated.
+		 */
+		ret = kernel_supports_ring_buffer_snapshot_sample_positions(
+				kernel_tracer_fd);
+		break;
+	}
+	default:
+		ret = 1;
+	}
+end:
+	return ret;
+}
+
 /*
  * FIXME A client's credentials are not checked when registering a trigger, nor
  *       are they stored alongside with the trigger.
  *
- * The effects of this are benign:
+ * The effects of this are benign since:
  *     - The client will succeed in registering the trigger, as it is valid,
  *     - The trigger will, internally, be bound to the channel,
  *     - The notifications will not be sent since the client's credentials
  *       are checked against the channel at that moment.
+ *
+ * If this function returns a non-zero value, it means something is
+ * fundamentally and the whole subsystem/thread will be torn down.
+ *
+ * If a non-fatal error occurs, just set the cmd_result to the appropriate
+ * error code.
  */
 static
 int handle_notification_thread_command_register_trigger(
@@ -836,6 +885,19 @@ int handle_notification_thread_command_register_trigger(
 	rcu_read_lock();
 
 	condition = lttng_trigger_get_condition(trigger);
+	assert(condition);
+
+	ret = condition_is_supported(condition);
+	if (ret < 0) {
+		goto error;
+	} else if (ret == 0) {
+		*cmd_result = LTTNG_ERR_NOT_SUPPORTED;
+		goto error;
+	} else {
+		/* Feature is supported, continue. */
+		ret = 0;
+	}
+
 	trigger_ht_element = zmalloc(sizeof(*trigger_ht_element));
 	if (!trigger_ht_element) {
 		ret = -1;
