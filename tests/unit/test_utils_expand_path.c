@@ -311,9 +311,12 @@ static void test_utils_expand_path(void)
 
 	/* Test invalid cases */
 	for (i = 0; i < num_invalid_tests; i++) {
-		sprintf(name, "invalid test case: %s", invalid_tests_inputs[i]);
+		const char *test_input = invalid_tests_inputs[i];
 
-		result = utils_expand_path(invalid_tests_inputs[i]);
+		sprintf(name, "invalid test case: %s", test_input ?
+				test_input : "NULL");
+
+		result = utils_expand_path(test_input);
 		if (result != NULL) {
 			free(result);
 		}
