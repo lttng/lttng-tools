@@ -1,3 +1,24 @@
+2017-06-14 lttng-tools 2.9.5 (National Bourbon Day)
+	* Fix: test_utils_expand_path passes NULL to sprintf
+	* Fix: lttng list of channels should return errors
+	* Fix: discard event/lost packet counters
+	* Fix: missing errno.h include in time.h compat header
+	* Fix: registry can be null on lookup
+	* Test: Replace test relying on pselect6(2) man page ambiguity
+	* Fix: use "flush empty" ioctl for snapshots
+	* Fix: lttng-consumerd: cpu hotplug: send "streams_sent" command
+	* Fix: lttng-sessiond: cpu hotplug: send channel to consumer only once
+	* Fix: lttng-sessiond: cpu hotplug stream number mismatch
+	* Fix: consumer_timer_signal_thread_qs waits on LTTNG_CONSUMER_SIG_SWITCH
+	* Fix: thread exit vs futex wait/wakeup race
+	* Fix: status_loc argument of waitpid() is used on error
+	* Fix: COMPAT_EPOLL_PROC_PATH is available from Linux 2.6.28
+	* doc: how to trace consumerd with valgrind
+	* Cleanup: initialize kernel ioctl ABI structures to 0
+	* Cleanup: initialize data to 0
+	* Fix: assert() on null index_file in lttng_index_file_write()
+	* Fix: fail on relayd lookup when finding a relayd is expected
+
 2017-02-20 lttng-tools 2.9.4 (Love Your Pet Day)
 	* Port: Link with no-undefined on Windows
 	* Port: win32 DLLs don't support hidden symbols
