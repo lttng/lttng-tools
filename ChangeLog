@@ -1,3 +1,95 @@
+2017-06-14 lttng-tools 2.10.0-rc2 (National Bourbon Day)
+	* Fix: test_utils_expand_path passes NULL to sprintf
+	* Fix: reject triggers if they depend on an unavailable feature
+	* Fix: check lttng-modules ABI version for RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS support
+	* Fix: Send remove channel to notification thread only when necessary
+	* Fix: notification test: resources leak and return handling
+	* Fix: parse monitor timer parameter as an unsigned 64-bit integer
+	* Introduce "--blocking-timeout" channel parameter
+	* Fix: lttng list of channels should return errors
+	* Fix: discard event/lost packet counters
+	* Fix: test: proper redirection of stderr to stdout
+	* Docs: notification comment refers to a structure by its former name
+	* Fix: missing errno.h include in time.h compat header
+	* Cleanup: remove stale file from .gitignore
+	* Disable binaries on platforms where they are not supported
+	* Cleanup: add silent rules support for docs
+	* Cleanup: popt library detection
+	* Cleanup: remove duplicated pthread detection code
+	* Cleanup: remove unused m4/libxml.m4
+	* Cleanup: bison and flex detection
+	* Cleanup: merge two instances of AC_CHECK_FUNCS
+	* Cleanup: lttng-ust library detection
+	* Cleanup: kmod library detection
+	* Cleanup: dlmopen detection
+	* Cleanup: uuid library detection
+	* Fix: Don't override user variables within the build system
+	* Fix: registry can be null on lookup
+	* Tests: channel subbuffers must be larger or equal to PAGE_SIZE
+	* Test: Replace test relying on pselect6(2) man page ambiguity
+	* Tests: regression testing for notification API
+	* Tests: add consumer testpoint to pause data consumption
+	* Fix: explicitly send client credentials during handshake
+	* Test: utils: introduce LTTNG_SESSIOND_ENV_VARS
+	* Test: utils.sh: use getconf to start either 32 or 64 consumerd
+	* Optimization: remove unnecessary buffer resizes on partial recvs
+	* Docs: improve the documentation of the dynamic buffer interface
+	* Add comment to round_to_power_of_2()
+	* Clean-up: simplify the implementation of dynamic buffer set_capacity
+	* Fix: space left in buffer may be uninitilized on capacity increase
+	* Assert that dynamic buffer size <= capacity
+	* Clean-up: improve readability of dynamic buffer append condition
+	* Fix: inbound buffer may be set too short on partial command reception
+	* Clean-up: fix misleading code alignment
+	* Clean-up: remove useless comment
+	* Fix: return LTTNG_ERR_INVALID_TRIGGER on validation failure
+	* Fix: missing includes in buffer-usage.h
+	* Unit tests for notification api
+	* Run unit tests before regression tests
+	* Fix: semaphore semantics are expected from notification command eventfd
+	* Fix: use "flush empty" ioctl for snapshots
+	* Fix: lttng-consumerd: cpu hotplug: send "streams_sent" command
+	* Fix: lttng-sessiond: cpu hotplug: send channel to consumer only once
+	* Fix: lttng-sessiond: cpu hotplug stream number mismatch
+	* Tests: use SIGKILL to shutdown daemons in test_thread_exit and test_tp_fail
+	* Fix: consumer_timer_signal_thread_qs waits on LTTNG_CONSUMER_SIG_SWITCH
+	* Revert "Fix: futex can be free'd while used by waker thread"
+	* Fix: thread exit vs futex wait/wakeup race
+	* Fix: use lttng_waiter instead of futex in notification thread
+	* Add lttng_waiter utils
+	* Fix: pthread_join on thread start error
+	* Fix: missing check on notification thread join
+	* Fix: status_loc argument of waitpid() is used on error
+	* Fix: leak of deserialized trigger sent from client
+	* Clean-up: missing static qualifier on internal function
+	* Fix: duplicate values used in lttng_evaluation_status enum
+	* Fix: missing header inclusions in buffer-usage.h
+	* Fix: COMPAT_EPOLL_PROC_PATH is available from Linux 2.6.28
+	* Fix: skip empty revents in notificationthread
+	* Clean-up: warning caused by unused label
+	* Fix: futex can be free'd while used by waker thread
+	* Fix: missing header causes build failure with --disable-epoll
+	* Fix: return NULL pointer on memory allocation failure
+	* Clean-up: unused variable warning in poll compat
+	* doc: how to trace consumerd with valgrind
+	* Cleanup: initialize kernel ioctl ABI structures to 0
+	* Cleanup: initialize data to 0
+	* Fix: consumer data lock deadlock caused by monitor timer
+	* Fix: assert() on null index_file in lttng_index_file_write()
+	* Fix: fail on relayd lookup when finding a relayd is expected
+	* Clean-up: use lttng_read() wrapper instead of read()
+	* Fix: NULL pointer dereference in lttng_condition_serialize
+	* Fix: Exclusion check iterates multiple times on same array
+	* Fix: return of free'd string on error in strutils_split()
+	* Fix: free of uninitialized value on error path
+	* Silence bogus Coverity warning of uninitialized value
+	* Silence bogus Coverity warning of uninitialized value
+	* Silence bogus Coverity warning of uninitialized value
+	* Silence bogus Coverity warning of uninitialized value
+	* Fix: dereference before null check of channel attributes
+	* Fix: memory leak of client_list_element
+	* Fix: unchecked lttng_dynamic_buffer_set_size return value
+
 2017-05-05 lttng-tools 2.10.0-rc1
 	* Add 2.10 release beer name and description
 	* Build: missing includes for ssize_t definition on Cygwin
