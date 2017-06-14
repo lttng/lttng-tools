@@ -1,3 +1,34 @@
+2017-06-14 lttng-tools 2.8.7 (National Bourbon Day)
+	* Fix: test_utils_expand_path passes NULL to sprintf
+	* Fix: lttng list of channels should return errors
+	* Fix: discard event/lost packet counters
+	* Fix: registry can be null on lookup
+	* Fix: use "flush empty" ioctl for snapshots
+	* Fix: lttng-consumerd: cpu hotplug: send "streams_sent" command
+	* Fix: lttng-sessiond: cpu hotplug: send channel to consumer only once
+	* Fix: lttng-sessiond: cpu hotplug stream number mismatch
+	* Fix: consumer_timer_signal_thread_qs waits on LTTNG_CONSUMER_SIG_SWITCH
+	* Fix: thread exit vs futex wait/wakeup race
+	* Fix: status_loc argument of waitpid() is used on error
+	* Fix: COMPAT_EPOLL_PROC_PATH is available from Linux 2.6.28
+	* Fix: assert() on null index_file in lttng_index_file_write()
+	* Fix: fail on relayd lookup when finding a relayd is expected
+	* doc: how to trace consumerd with valgrind
+	* Cleanup: initialize kernel ioctl ABI structures to 0
+	* Cleanup: initialize data to 0
+	* Fix: tests: register thread for RCU operations.
+	* Fix: Lazily initialize max poll set size in poll compat
+	* Fix: null dereference on error path for create_ctx_type
+	* Fix: test_ust_data dereference of null pointer
+	* Fix: test_kernel_data dereference of null pointer
+	* Man: move [SESSION] before options
+	* Fix: consumerd: add missing put_subbuf for ust and kernel errors
+	* Fix: sessiond: only send streams to consumer once
+	* Fix: consumerd main: needs to be a registered RCU thread
+	* Fix: thread_dispatch_ust_registration needs to be a RCU thread
+	* Fix: don't abort metadata push on closed metadata
+	* lttng-tools: remove bogus interpreter line from utils shell library
+
 2017-01-09 lttng-tools 2.8.6 (National Cassoulet Day)
 	* Fix: consumerd: order of metadata cache vs stream lock
 	* Fix: add missing rcu_barrier before daemon teardown
