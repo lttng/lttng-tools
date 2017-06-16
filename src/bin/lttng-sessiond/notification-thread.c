@@ -569,7 +569,7 @@ int handle_channel_monitoring_pipe(int fd, uint32_t revents,
 	ret = handle_notification_thread_channel_sample(
 			state, fd, domain);
 	if (ret) {
-		ERR("[notification-thread] Consumer sample handling error occured");
+		ERR("[notification-thread] Consumer sample handling error occurred");
 		ret = -1;
 		goto end;
 	}

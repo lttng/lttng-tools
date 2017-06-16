@@ -70,7 +70,7 @@ struct pending_notification {
  *   - Synchronous: commands emitted by the client to which a reply is expected
  *     (e.g. subscribing/unsubscribing to conditions),
  *   - Asynchronous: notifications which are sent by the lttng_endpoint to the
- *     client as one of the subscribed condition has occured.
+ *     client as one of the subscribed condition has occurred.
  *
  * The nature of this hybrid communication mode means that asynchronous messages
  * (e.g. notifications) may be interleaved between synchronous messages (e.g. a

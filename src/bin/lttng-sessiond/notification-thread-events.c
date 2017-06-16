@@ -1368,7 +1368,7 @@ int handle_notification_thread_client_disconnect_all(
 int handle_notification_thread_trigger_unregister_all(
 		struct notification_thread_state *state)
 {
-	bool error_occured = false;
+	bool error_occurred = false;
 	struct cds_lfht_iter iter;
 	struct lttng_trigger_ht_element *trigger_ht_element;
 
@@ -1377,10 +1377,10 @@ int handle_notification_thread_trigger_unregister_all(
 		int ret = handle_notification_thread_command_unregister_trigger(
 				state, trigger_ht_element->trigger, NULL);
 		if (ret) {
-			error_occured = true;
+			error_occurred = true;
 		}
 	}
-	return error_occured ? -1 : 0;
+	return error_occurred ? -1 : 0;
 }
 
 static
