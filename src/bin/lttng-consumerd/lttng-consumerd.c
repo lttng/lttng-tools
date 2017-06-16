@@ -56,6 +56,7 @@
 
 static pthread_t channel_thread, data_thread, metadata_thread,
 		sessiond_thread, metadata_timer_thread, health_thread;
+static bool metadata_timer_thread_online;
 
 /* to count the number of times the user pressed ctrl+c */
 static int sigintcount = 0;
@@ -506,6 +507,20 @@ int main(int argc, char **argv)
 	}
 	cmm_smp_mb();	/* Read ready before following operations */
 
+	/*
+	 * Create the thread to manage the UST metadata periodic timer and
+	 * live timer.
+	 */
+	ret = pthread_create(&metadata_timer_thread, NULL,
+			consumer_timer_thread, (void *) ctx);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create");
+		retval = -1;
+		goto exit_metadata_timer_thread;
+	}
+	metadata_timer_thread_online = true;
+
 	/* Create thread to manage channels */
 	ret = pthread_create(&channel_thread, default_pthread_attr(),
 			consumer_thread_channel_poll,
@@ -549,34 +564,12 @@ int main(int argc, char **argv)
 		goto exit_sessiond_thread;
 	}
 
-	/*
-	 * Create the thread to manage the UST metadata periodic timer and
-	 * live timer.
-	 */
-	ret = pthread_create(&metadata_timer_thread, default_pthread_attr(),
-			consumer_timer_thread, (void *) ctx);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create");
-		retval = -1;
-		goto exit_metadata_timer_thread;
-	}
-
-	ret = pthread_detach(metadata_timer_thread);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_detach");
-		retval = -1;
-		goto exit_metadata_timer_detach;
-	}
 
 	/*
 	 * This is where we start awaiting program completion (e.g. through
 	 * signal that asks threads to teardown.
 	 */
 
-exit_metadata_timer_detach:
-exit_metadata_timer_thread:
 	ret = pthread_join(sessiond_thread, &status);
 	if (ret) {
 		errno = ret;
@@ -617,6 +610,8 @@ exit_metadata_thread:
 	}
 exit_channel_thread:
 
+exit_metadata_timer_thread:
+
 	ret = pthread_join(health_thread, &status);
 	if (ret) {
 		errno = ret;
@@ -629,17 +624,38 @@ exit_health_thread:
 exit_health_pipe:
 
 exit_init_data:
-	tmp_ctx = ctx;
-	ctx = NULL;
-	cmm_barrier();	/* Clear ctx for signal handler. */
 	/*
 	 * Wait for all pending call_rcu work to complete before tearing
 	 * down data structures. call_rcu worker may be trying to
 	 * perform lookups in those structures.
 	 */
 	rcu_barrier();
-	lttng_consumer_destroy(tmp_ctx);
 	lttng_consumer_cleanup();
+	/*
+	 * Tearing down the metadata timer thread in a
+	 * non-fully-symmetric fashion compared to its creation in case
+	 * lttng_consumer_cleanup() ends up tearing down timers (which
+	 * requires the timer thread to be alive).
+	 */
+	if (metadata_timer_thread_online) {
+		/*
+		 * Ensure the metadata timer thread exits only after all other
+		 * threads are gone, because it is required to perform timer
+		 * teardown synchronization.
+		 */
+		kill(getpid(), LTTNG_CONSUMER_SIG_EXIT);
+		ret = pthread_join(metadata_timer_thread, &status);
+		if (ret) {
+			errno = ret;
+			PERROR("pthread_join metadata_timer_thread");
+			retval = -1;
+		}
+		metadata_timer_thread_online = false;
+	}
+	tmp_ctx = ctx;
+	ctx = NULL;
+	cmm_barrier();	/* Clear ctx for signal handler. */
+	lttng_consumer_destroy(tmp_ctx);
 
 	if (health_consumerd) {
 		health_app_destroy(health_consumerd);
