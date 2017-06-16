@@ -594,6 +594,12 @@ struct lttng_consumer_global_data {
 };
 
 /*
+ * Set to nonzero when the consumer is exiting. Updated by signal
+ * handler and thread exit, read by threads.
+ */
+extern volatile int consumer_quit;
+
+/*
  * Init consumer data structures.
  */
 int lttng_consumer_init(void);
