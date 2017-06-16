@@ -76,7 +76,7 @@ int data_consumption_paused;
  * Also updated by the signal handler (consumer_should_exit()). Read by the
  * polling threads.
  */
-volatile int consumer_quit;
+int consumer_quit;
 
 /*
  * Global hash table containing respectively metadata and data streams. The
@@ -1227,7 +1227,7 @@ void lttng_consumer_should_exit(struct lttng_consumer_local_data *ctx)
 {
 	ssize_t ret;
 
-	consumer_quit = 1;
+	CMM_STORE_SHARED(consumer_quit, 1);
 	ret = lttng_write(ctx->consumer_should_quit[1], "4", 1);
 	if (ret < 1) {
 		PERROR("write consumer quit");
@@ -2526,7 +2526,7 @@ void *consumer_thread_data_poll(void *data)
 		pthread_mutex_unlock(&consumer_data.lock);
 
 		/* No FDs and consumer_quit, consumer_cleanup the thread */
-		if (nb_fd == 0 && consumer_quit == 1) {
+		if (nb_fd == 0 && CMM_LOAD_SHARED(consumer_quit) == 1) {
 			err = 0;	/* All is OK */
 			goto end;
 		}
@@ -3203,7 +3203,7 @@ void *consumer_thread_sessiond_poll(void *data)
 			err = 0;
 			goto end;
 		}
-		if (consumer_quit) {
+		if (CMM_LOAD_SHARED(consumer_quit)) {
 			DBG("consumer_thread_receive_fds received quit from signal");
 			err = 0;	/* All is OK */
 			goto end;
@@ -3228,7 +3228,7 @@ end:
 	 * when all fds have hung up, the polling thread
 	 * can exit cleanly
 	 */
-	consumer_quit = 1;
+	CMM_STORE_SHARED(consumer_quit, 1);
 
 	/*
 	 * Notify the data poll thread to poll back again and test the
