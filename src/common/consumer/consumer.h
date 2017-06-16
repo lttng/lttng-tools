@@ -610,6 +610,12 @@ struct lttng_consumer_global_data {
  */
 extern int consumer_quit;
 
+/*
+ * Set to nonzero when the consumer is exiting. Updated by signal
+ * handler and thread exit, read by threads.
+ */
+extern int consumer_quit;
+
 /* Flag used to temporarily pause data consumption from testpoints. */
 extern int data_consumption_paused;
 

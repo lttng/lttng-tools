@@ -72,6 +72,10 @@ static void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigaddset monitor");
 	}
+	ret = sigaddset(mask, LTTNG_CONSUMER_SIG_EXIT);
+	if (ret) {
+		PERROR("sigaddset exit");
+	}
 }
 
 static int channel_monitor_pipe = -1;
@@ -782,7 +786,7 @@ end:
 /*
  * This thread is the sighandler for signals LTTNG_CONSUMER_SIG_SWITCH,
  * LTTNG_CONSUMER_SIG_TEARDOWN, LTTNG_CONSUMER_SIG_LIVE, and
- * LTTNG_CONSUMER_SIG_MONITOR.
+ * LTTNG_CONSUMER_SIG_MONITOR, LTTNG_CONSUMER_SIG_EXIT.
  */
 void *consumer_timer_thread(void *data)
 {
@@ -836,6 +840,9 @@ void *consumer_timer_thread(void *data)
 
 			channel = info.si_value.sival_ptr;
 			monitor_timer(ctx, channel);
+		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
+			assert(CMM_LOAD_SHARED(consumer_quit));
+			goto end;
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);
 		}
@@ -844,10 +851,8 @@ void *consumer_timer_thread(void *data)
 error_testpoint:
 	/* Only reached in testpoint error */
 	health_error();
+end:
 	health_unregister(health_consumerd);
-
 	rcu_unregister_thread();
-
-	/* Never return */
 	return NULL;
 }
