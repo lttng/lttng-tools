@@ -51,7 +51,6 @@
 
 extern struct lttng_consumer_global_data consumer_data;
 extern int consumer_poll_timeout;
-extern volatile int consumer_quit;
 
 /*
  * Free channel object and all streams associated with it. This MUST be used
