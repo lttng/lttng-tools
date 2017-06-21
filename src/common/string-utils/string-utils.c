@@ -117,6 +117,7 @@ end:
  * Returns true if `pattern` is a star-only globbing pattern, that is,
  * it contains at least one non-escaped `*`.
  */
+LTTNG_HIDDEN
 bool strutils_is_star_glob_pattern(const char *pattern)
 {
 	return strutils_test_glob_pattern(pattern) &
@@ -127,6 +128,7 @@ bool strutils_is_star_glob_pattern(const char *pattern)
  * Returns true if `pattern` is a globbing pattern with a globbing,
  * non-escaped star only at its very end.
  */
+LTTNG_HIDDEN
 bool strutils_is_star_at_the_end_only_glob_pattern(const char *pattern)
 {
 	return strutils_test_glob_pattern(pattern) &
