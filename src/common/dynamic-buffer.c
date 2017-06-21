@@ -16,7 +16,6 @@
  */
 
 #include <common/dynamic-buffer.h>
-#include <common/macros.h>
 #include <common/utils.h>
 #include <assert.h>
 
@@ -38,12 +37,14 @@ size_t round_to_power_of_2(size_t val)
 	return rounded;
 }
 
+LTTNG_HIDDEN
 void lttng_dynamic_buffer_init(struct lttng_dynamic_buffer *buffer)
 {
 	assert(buffer);
 	memset(buffer, 0, sizeof(*buffer));
 }
 
+LTTNG_HIDDEN
 int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 		const void *buf, size_t len)
 {
@@ -75,6 +76,7 @@ end:
 	return ret;
 }
 
+LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 		struct lttng_dynamic_buffer *src_buffer)
 {
@@ -91,6 +93,7 @@ end:
 	return ret;
 }
 
+LTTNG_HIDDEN
 int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 		size_t new_size)
 {
@@ -139,6 +142,7 @@ end:
 	return ret;
 }
 
+LTTNG_HIDDEN
 int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 		size_t demanded_capacity)
 {
@@ -172,6 +176,7 @@ end:
 }
 
 /* Release any memory used by the dynamic buffer. */
+LTTNG_HIDDEN
 void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 {
 	if (!buffer) {
