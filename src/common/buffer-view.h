@@ -20,6 +20,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <common/macros.h>
 
 struct lttng_dynamic_buffer;
 
@@ -41,6 +42,7 @@ struct lttng_buffer_view {
  * Note that a buffer view never assumes the ownership of the memory it
  * references.
  */
+LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_view(
 		const struct lttng_buffer_view *src, size_t offset,
 		ptrdiff_t len);
@@ -58,6 +60,7 @@ struct lttng_buffer_view lttng_buffer_view_from_view(
  * Note that a buffer view never assumes the ownership of the memory it
  * references.
  */
+LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *src, size_t offset,
 		ptrdiff_t len);
