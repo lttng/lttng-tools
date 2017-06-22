@@ -95,6 +95,7 @@ enum ast_link_type {
 	AST_LINK_UNKNOWN = 0,
 	AST_LINK_DOT,
 	AST_LINK_RARROW,
+	AST_LINK_BRACKET,
 };
 
 struct filter_node {
@@ -133,8 +134,9 @@ struct filter_node {
 				 */
 				struct filter_node *child;
 			} u;
-			/* linked dot/arrow chain */
+			/* prev: linked dot/arrow chain (postfix expression) */
 			struct filter_node *prev;
+			/* next: linked bracket chain (prefix expression) */
 			struct filter_node *next;
 		} expression;
 		struct {

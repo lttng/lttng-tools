@@ -38,6 +38,8 @@ enum ir_data_type {
 	IR_DATA_FLOAT,
 	IR_DATA_FIELD_REF,
 	IR_DATA_GET_CONTEXT_REF,
+	IR_DATA_FIELD_REF_INDEX,
+	IR_DATA_GET_CONTEXT_REF_INDEX,
 };
 
 enum ir_op_type {
@@ -80,6 +82,10 @@ struct ir_op_load {
 		int64_t num;
 		double flt;
 		char *ref;
+		struct {
+			char *symbol;
+			uint64_t index;
+		} ref_index;
 	} u;
 };
 

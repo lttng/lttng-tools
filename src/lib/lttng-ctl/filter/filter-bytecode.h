@@ -35,6 +35,12 @@ struct field_ref {
 	uint16_t offset;
 } LTTNG_PACKED;
 
+struct field_ref_index {
+	/* Initially, symbol offset. After link, field offset. */
+	uint16_t offset;
+	uint64_t index;		/* array index */
+} LTTNG_PACKED;
+
 struct literal_numeric {
 	int64_t v;
 } LTTNG_PACKED;
@@ -162,6 +168,14 @@ enum filter_op {
 	/* globbing pattern binary operator: apply to */
 	FILTER_OP_EQ_STAR_GLOB_STRING		= 77,
 	FILTER_OP_NE_STAR_GLOB_STRING		= 78,
+
+	/* load field ref with index */
+	FILTER_OP_LOAD_FIELD_REF_INDEX			= 79,
+	FILTER_OP_LOAD_FIELD_REF_INDEX_S64		= 80,
+
+	/* get context ref with index */
+	FILTER_OP_GET_CONTEXT_REF_INDEX			= 81,
+	FILTER_OP_GET_CONTEXT_REF_INDEX_S64		= 82,
 
 	NR_FILTER_OPS,
 };

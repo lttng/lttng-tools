@@ -140,7 +140,8 @@ struct ir_op *make_op_load_float(double v, enum ir_side side)
 }
 
 static
-struct ir_op *make_op_load_field_ref(char *string, enum ir_side side)
+struct ir_op *make_op_load_field_ref(char *string,
+		enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -153,14 +154,61 @@ struct ir_op *make_op_load_field_ref(char *string, enum ir_side side)
 	op->side = side;
 	op->u.load.u.ref = strdup(string);
 	if (!op->u.load.u.ref) {
-		free(op);
-		return NULL;
+		goto error;
 	}
 	return op;
+
+error:
+	free(op);
+	return NULL;
 }
 
 static
-struct ir_op *make_op_load_get_context_ref(char *string, enum ir_side side)
+struct ir_op *make_op_load_field_ref_index(char *string,
+		struct filter_node *next,
+		enum ir_side side)
+{
+	struct ir_op *op;
+
+	op = calloc(sizeof(struct ir_op), 1);
+	if (!op)
+		return NULL;
+	op->op = IR_OP_LOAD;
+	op->data_type = IR_DATA_FIELD_REF_INDEX;
+	op->signedness = IR_SIGN_DYN;
+	op->side = side;
+	op->u.load.u.ref_index.symbol = strdup(string);
+	if (!op->u.load.u.ref_index.symbol) {
+		goto error;
+	}
+	/* Only positive integer literals accepted as index. */
+	if (next->type == NODE_UNARY_OP) {
+		fprintf(stderr, "[error] Unexpected unary operator as index\n");
+		goto error;
+	}
+	if (next->type != NODE_EXPRESSION) {
+		fprintf(stderr, "[error] Expecting expression as index\n");
+		goto error;
+	}
+	if (next->u.expression.type != AST_EXP_CONSTANT) {
+		fprintf(stderr, "[error] Expecting constant index\n");
+		goto error;
+	}
+	if (next->u.expression.u.constant < 0) {
+		fprintf(stderr, "[error] Expecting positive constant index\n");
+		goto error;
+	}
+	op->u.load.u.ref_index.index = next->u.expression.u.constant;
+	return op;
+
+error:
+	free(op);
+	return NULL;
+}
+
+static
+struct ir_op *make_op_load_get_context_ref(char *string,
+		enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -173,10 +221,56 @@ struct ir_op *make_op_load_get_context_ref(char *string, enum ir_side side)
 	op->side = side;
 	op->u.load.u.ref = strdup(string);
 	if (!op->u.load.u.ref) {
-		free(op);
-		return NULL;
+		goto error;
 	}
 	return op;
+
+error:
+	free(op);
+	return NULL;
+}
+
+static
+struct ir_op *make_op_load_get_context_ref_index(char *string,
+		struct filter_node *next,
+		enum ir_side side)
+{
+	struct ir_op *op;
+
+	op = calloc(sizeof(struct ir_op), 1);
+	if (!op)
+		return NULL;
+	op->op = IR_OP_LOAD;
+	op->data_type = IR_DATA_GET_CONTEXT_REF_INDEX;
+	op->signedness = IR_SIGN_DYN;
+	op->side = side;
+	op->u.load.u.ref_index.symbol = strdup(string);
+	if (!op->u.load.u.ref_index.symbol) {
+		goto error;
+	}
+	/* Only positive integer literals accepted as offset. */
+	if (next->type == NODE_UNARY_OP) {
+		fprintf(stderr, "[error] Unexpected unary operator as index\n");
+		goto error;
+	}
+	if (next->type != NODE_EXPRESSION) {
+		fprintf(stderr, "[error] Expecting expression as index\n");
+		goto error;
+	}
+	if (next->u.expression.type != AST_EXP_CONSTANT) {
+		fprintf(stderr, "[error] Expecting constant index\n");
+		goto error;
+	}
+	if (next->u.expression.u.constant < 0) {
+		fprintf(stderr, "[error] Expecting positive constant index\n");
+		goto error;
+	}
+	op->u.load.u.ref_index.index = next->u.expression.u.constant;
+	return op;
+
+error:
+	free(op);
+	return NULL;
 }
 
 static
@@ -390,6 +484,10 @@ void filter_free_ir_recursive(struct ir_op *op)
 		case IR_DATA_GET_CONTEXT_REF:
 			free(op->u.load.u.ref);
 			break;
+		case IR_DATA_FIELD_REF_INDEX:	/* fall-through */
+		case IR_DATA_GET_CONTEXT_REF_INDEX:
+			free(op->u.load.u.ref_index.symbol);
+			break;
 		default:
 			break;
 		}
@@ -428,12 +526,18 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 		return make_op_load_float(node->u.expression.u.float_constant,
 					side);
 	case AST_EXP_IDENTIFIER:
-		if (node->u.expression.pre_op != AST_LINK_UNKNOWN) {
+		switch (node->u.expression.pre_op) {
+		case AST_LINK_UNKNOWN:
+			return make_op_load_field_ref(node->u.expression.u.identifier,
+					side);
+		case AST_LINK_BRACKET:
+			return make_op_load_field_ref_index(node->u.expression.u.identifier,
+					node->u.expression.next,
+					side);
+		default:
 			fprintf(stderr, "[error] %s: dotted and dereferenced identifiers not supported\n", __func__);
 			return NULL;
 		}
-		return make_op_load_field_ref(node->u.expression.u.identifier,
-					side);
 	case AST_EXP_GLOBAL_IDENTIFIER:
 	{
 		const char *name;
@@ -459,8 +563,19 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 			fprintf(stderr, "[error] %s: Expecting a context name, e.g. \'$ctx.name\'.\n", __func__);
 			return NULL;
 		}
-		return make_op_load_get_context_ref(node->u.expression.u.identifier,
+		switch (node->u.expression.pre_op) {
+		case AST_LINK_UNKNOWN:
+			return make_op_load_get_context_ref(node->u.expression.u.identifier,
 					side);
+		case AST_LINK_BRACKET:
+			return make_op_load_get_context_ref_index(node->u.expression.u.identifier,
+					node->u.expression.next,
+					side);
+		default:
+			fprintf(stderr, "[error] %s: dotted and dereferenced identifiers not supported\n", __func__);
+			return NULL;
+		}
+
 	}
 	case AST_EXP_NESTED:
 		return generate_ir_recursive(ctx, node->u.expression.u.child,
