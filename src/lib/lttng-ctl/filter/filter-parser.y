@@ -471,6 +471,12 @@ primary_expression
 postfix_expression
 	: primary_expression
 		{	$$ = $1;					}
+	| postfix_expression LSBRAC unary_expression RSBRAC
+		{
+			$$ = $1;
+			$$->u.expression.pre_op = AST_LINK_BRACKET;
+			$$->u.expression.next = $3;
+		}
 	| postfix_expression DOT IDENTIFIER
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);

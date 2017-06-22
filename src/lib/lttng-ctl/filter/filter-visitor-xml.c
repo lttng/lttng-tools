@@ -49,6 +49,8 @@ static
 int recursive_visit_print_expression(struct filter_node *node,
 		FILE *stream, int indent)
 {
+	struct filter_node *iter_node;
+
 	if (!node) {
 		fprintf(stderr, "[error] %s: NULL child\n", __func__);
 		return -EINVAL;
@@ -80,33 +82,18 @@ int recursive_visit_print_expression(struct filter_node *node,
 			node->u.expression.type == AST_EXP_IDENTIFIER ?
 				"identifier" : "global_identifier",
 			node->u.expression.u.identifier);
-		while (node->u.expression.next) {
+		iter_node = node->u.expression.next;
+		while (iter_node) {
 			print_tabs(stream, indent);
-			fprintf(stream, "<link type=\"");
-			switch (node->u.expression.pre_op) {
-			case AST_LINK_UNKNOWN:
-			default:
-				fprintf(stderr, "[error] %s: unknown link\n", __func__);
-				return -EINVAL;
-			case AST_LINK_DOT:
-				fprintf(stream, ".");
-				break;
-			case AST_LINK_RARROW:
-				fprintf(stream, "->");
-				break;
-			}
-			fprintf(stream, "\"/>\n");
-
-			node = node->u.expression.next;
-			if (node->type != NODE_EXPRESSION ||
-				node->u.expression.type != AST_EXP_IDENTIFIER) {
-				fprintf(stderr, "[error] %s: expecting identifier before link\n", __func__);
+			fprintf(stream, "<bracket>\n");
+			if (recursive_visit_print_expression(iter_node,
+					stream, indent + 1)) {
 				return -EINVAL;
 			}
-
 			print_tabs(stream, indent);
-			fprintf(stream, "<identifier value=\"%s\"/>\n",
-				node->u.expression.u.identifier);
+			fprintf(stream, "</bracket>\n");
+			iter_node = iter_node->u.expression.next;
+
 		}
 		break;
 	case AST_EXP_NESTED:
