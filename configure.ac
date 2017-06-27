@@ -867,6 +867,7 @@ build_lib_compat=no
 build_lib_consumer=no
 build_lib_hashtable=no
 build_lib_health=no
+build_lib_unix=no
 build_lib_index=no
 build_lib_kernel_consumer=no
 build_lib_kernel_ctl=no
@@ -923,7 +924,7 @@ AS_IF([test x$enable_bin_lttng_sessiond != xno],
        build_lib_relayd=yes
        build_lib_testpoint=yes
        build_lib_health=yes
-       build_lib_health=yes
+       build_lib_unix=yes
       ]
 )
 
@@ -1032,6 +1033,7 @@ AM_CONDITIONAL([BUILD_LIB_CONFIG], [test x$build_lib_config = xyes])
 AM_CONDITIONAL([BUILD_LIB_CONSUMER], [test x$build_lib_consumer = xyes])
 AM_CONDITIONAL([BUILD_LIB_HASHTABLE], [test x$build_lib_hashtable = xyes])
 AM_CONDITIONAL([BUILD_LIB_HEALTH], [test x$build_lib_health = xyes])
+AM_CONDITIONAL([BUILD_LIB_UNIX], [test x$build_lib_unix = xyes])
 AM_CONDITIONAL([BUILD_LIB_INDEX], [test x$build_lib_index = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CONSUMER], [test x$build_lib_kernel_consumer = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CTL], [test x$build_lib_kernel_ctl = xyes])
