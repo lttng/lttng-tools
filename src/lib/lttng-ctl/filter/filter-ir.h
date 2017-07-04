@@ -38,8 +38,7 @@ enum ir_data_type {
 	IR_DATA_FLOAT,
 	IR_DATA_FIELD_REF,
 	IR_DATA_GET_CONTEXT_REF,
-	IR_DATA_FIELD_REF_INDEX,
-	IR_DATA_GET_CONTEXT_REF_INDEX,
+	IR_DATA_EXPRESSION,
 };
 
 enum ir_op_type {
@@ -73,6 +72,28 @@ struct ir_op_root {
 	struct ir_op *child;
 };
 
+enum ir_load_expression_type {
+	IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT,
+	IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT,
+	IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT,
+	IR_LOAD_EXPRESSION_GET_SYMBOL,
+	IR_LOAD_EXPRESSION_GET_INDEX,
+	IR_LOAD_EXPRESSION_LOAD_FIELD,
+};
+
+struct ir_load_expression_op {
+	struct ir_load_expression_op *next;
+	enum ir_load_expression_type type;
+	union {
+		char *symbol;
+		uint64_t index;
+	} u;
+};
+
+struct ir_load_expression {
+	struct ir_load_expression_op *child;
+};
+
 struct ir_op_load {
 	union {
 		struct {
@@ -82,10 +103,7 @@ struct ir_op_load {
 		int64_t num;
 		double flt;
 		char *ref;
-		struct {
-			char *symbol;
-			uint64_t index;
-		} ref_index;
+		struct ir_load_expression *expression;
 	} u;
 };
 

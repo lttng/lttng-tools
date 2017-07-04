@@ -169,13 +169,13 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 		case AST_OP_OR:
 			fprintf(stream, "\"||\"");
 			break;
-		case AST_OP_BIN_AND:
+		case AST_OP_BIT_AND:
 			fprintf(stream, "\"&\"");
 			break;
-		case AST_OP_BIN_OR:
+		case AST_OP_BIT_OR:
 			fprintf(stream, "\"|\"");
 			break;
-		case AST_OP_BIN_XOR:
+		case AST_OP_BIT_XOR:
 			fprintf(stream, "\"^\"");
 			break;
 
@@ -227,7 +227,7 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 		case AST_UNARY_NOT:
 			fprintf(stream, "\"!\"");
 			break;
-		case AST_UNARY_BIN_NOT:
+		case AST_UNARY_BIT_NOT:
 			fprintf(stream, "\"~\"");
 			break;
 		}

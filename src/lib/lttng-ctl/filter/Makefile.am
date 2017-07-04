@@ -9,7 +9,6 @@ BUILT_SOURCES = filter-parser.h
 
 libfilter_la_SOURCES = \
 	filter-parser.y filter-lexer.l \
-	filter-visitor-set-parent.c \
 	filter-visitor-xml.c \
 	filter-visitor-generate-ir.c \
 	filter-visitor-ir-check-binary-op-nesting.c \

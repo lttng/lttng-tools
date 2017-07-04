@@ -61,11 +61,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Parse error\n");
 		goto parse_error;
 	}
-	ret = filter_visitor_set_parent(ctx);
-	if (ret) {
-		fprintf(stderr, "Set parent error\n");
-		goto parse_error;
-	}
 	if (print_xml) {
 		ret = filter_visitor_print_xml(ctx, stdout, 0);
 		if (ret) {
