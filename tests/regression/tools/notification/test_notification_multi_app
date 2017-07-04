@@ -20,11 +20,6 @@ TEST_DESC="Notification"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
 
-# This is needed since the testpoint creates a pipe with the consumerd domain
-# suffixed
-TESTPOINT_BASE_PATH=$(readlink -f "$CURDIR/lttng.t_p_n")
-TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
-TESTPOIT_ARGS="CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LTTNG_TESTPOINT_ENABLE=1"
 TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -38,8 +33,6 @@ SESSION_NAME="my_session"
 UST_CHANNEL_NAME="my_ust_channel"
 EVENT_NAME="tp:tptest"
 
-NR_NOTIFICATION_EXPECTED=5
-NR_CLIENT_APP=50
 
 TRACE_PATH=$(mktemp -d)
 
@@ -149,12 +142,18 @@ function test_multi_app ()
 	local low_output_file_pattern="low_app_output_file_"
 	local high_output_file_pattern="high_app_output_file_"
 
+	local testpoint_base_path=$(readlink -f "$CURDIR/lttng.t_p_n_multi_app")
+	local testpoint_pipe_path=$(mktemp -u "${testpoint_base_path}.XXXXXX")
+
+	local nr_notification_expected=5
+	local nr_client_app=50
+
 	# Cleanup
 	rm ${CURDIR}/${low_output_file_pattern}* 2> /dev/null
 	rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
 
 	# Setup
-	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${testpoint_pipe_path} LD_PRELOAD=${TESTPOINT}"
 	start_lttng_sessiond
 
 	# Start app in infinite loop
@@ -175,22 +174,22 @@ function test_multi_app ()
 
 	# Fetch consumerd testpoint pipe information
 	# This is needed since the testpoint create a pipe with the consumer type suffixed
-	for f in "$TESTPOINT_BASE_PATH"*; do
+	for f in "$testpoint_base_path"*; do
 		consumerd_pipe+=("$f")
 	done
 
-	for (( i = 0; i < $NR_CLIENT_APP; i++ )); do
+	for (( i = 0; i < $nr_client_app; i++ )); do
 		low_app_output_file=$CURDIR/${low_output_file_pattern}${i}
 		high_app_output_file=$CURDIR/${high_output_file_pattern}${i}
-		start_client $low_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST LOW RATIO 0.0 $NR_NOTIFICATION_EXPECTED
-		start_client $high_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 $NR_NOTIFICATION_EXPECTED
+		start_client $low_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST LOW RATIO 0.0 $nr_notification_expected
+		start_client $high_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 $nr_notification_expected
 	done
 
 	wait_for_message "${low_output_file_pattern}" "sync: ready"
 	wait_for_message "${high_output_file_pattern}" "sync: ready"
 
 	# Test notification reception
-	for (( i = 0; i < $NR_NOTIFICATION_EXPECTED; i++ )); do
+	for (( i = 0; i < $nr_notification_expected; i++ )); do
 
 		# Stop consumerd consumption to force high notification
 		start_lttng_tracing_ok $SESSION_NAME
