@@ -154,6 +154,20 @@ struct channel_state_sample {
 	uint64_t lowest_usage;
 };
 
+static unsigned long hash_channel_key(struct channel_key *key);
+static int evaluate_condition(struct lttng_condition *condition,
+		struct lttng_evaluation **evaluation,
+		struct notification_thread_state *state,
+		struct channel_state_sample *previous_sample,
+		struct channel_state_sample *latest_sample,
+		uint64_t buffer_capacity);
+static
+int send_evaluation_to_clients(struct lttng_trigger *trigger,
+		struct lttng_evaluation *evaluation,
+		struct notification_client_list *client_list,
+		struct notification_thread_state *state,
+		uid_t channel_uid, gid_t channel_gid);
+
 static
 int match_client(struct cds_lfht_node *node, const void *key)
 {
@@ -309,6 +323,16 @@ unsigned long lttng_condition_hash(struct lttng_condition *condition)
 }
 
 static
+unsigned long hash_channel_key(struct channel_key *key)
+{
+	unsigned long key_hash = hash_key_u64(&key->key, lttng_ht_seed);
+	unsigned long domain_hash = hash_key_ulong(
+		(void *) (unsigned long) key->domain, lttng_ht_seed);
+
+	return key_hash ^ domain_hash;
+}
+
+static
 void channel_info_destroy(struct channel_info *channel_info)
 {
 	if (!channel_info) {
@@ -355,6 +379,126 @@ end:
 error:
 	channel_info_destroy(copy);
 	return NULL;
+}
+
+/* This function must be called with the RCU read lock held. */
+static
+int evaluate_condition_for_client(struct lttng_trigger *trigger,
+		struct lttng_condition *condition,
+		struct notification_client *client,
+		struct notification_thread_state *state)
+{
+	int ret;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	struct channel_info *channel_info = NULL;
+	struct channel_key *channel_key = NULL;
+	struct channel_state_sample *last_sample = NULL;
+	struct lttng_channel_trigger_list *channel_trigger_list = NULL;
+	struct lttng_evaluation *evaluation = NULL;
+	struct notification_client_list client_list = { 0 };
+	struct notification_client_list_element client_list_element = { 0 };
+
+	assert(trigger);
+	assert(condition);
+	assert(client);
+	assert(state);
+
+	/* Find the channel associated with the trigger. */
+	cds_lfht_for_each_entry(state->channel_triggers_ht, &iter,
+			channel_trigger_list , channel_triggers_ht_node) {
+		struct lttng_trigger_list_element *element;
+
+		cds_list_for_each_entry(element, &channel_trigger_list->list, node) {
+			struct lttng_condition *current_condition =
+				lttng_trigger_get_condition(
+						element->trigger);
+
+			assert(current_condition);
+			if (!lttng_condition_is_equal(condition,
+						current_condition)) {
+				continue;
+			}
+
+			/* Found the trigger, save the channel key. */
+			channel_key = &channel_trigger_list->channel_key;
+			break;
+		}
+		if (channel_key) {
+			/* The channel key was found stop iteration. */
+			break;
+		}
+	}
+
+	if (!channel_key){
+		/* No channel found; normal exit. */
+		DBG("[notification-thread] No channel associated with newly subscribed-to condition");
+		ret = 0;
+		goto end;
+	}
+
+	/* Fetch channel info for the matching channel. */
+	cds_lfht_lookup(state->channels_ht,
+			hash_channel_key(channel_key),
+			match_channel_info,
+			channel_key,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	assert(node);
+	channel_info = caa_container_of(node, struct channel_info,
+			channels_ht_node);
+
+	/* Retrieve the channel's last sample, if it exists. */
+	cds_lfht_lookup(state->channel_state_ht,
+			hash_channel_key(channel_key),
+			match_channel_state_sample,
+			channel_key,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (node) {
+		last_sample = caa_container_of(node,
+				struct channel_state_sample,
+				channel_state_ht_node);
+	} else {
+		/* Nothing to evaluate, no sample was ever taken. Normal exit */
+		DBG("[notification-thread] No channel sample associated with newly subscribed-to condition");
+		ret = 0;
+		goto end;
+	}
+
+	ret = evaluate_condition(condition, &evaluation, state, NULL,
+			last_sample, channel_info->capacity);
+	if (ret) {
+		WARN("[notification-thread] Fatal error occured while evaluating a newly subscribed-to condition");
+		goto end;
+	}
+
+	if (!evaluation) {
+		/* Evaluation yielded nothing. Normal exit. */
+		DBG("[notification-thread] Newly subscribed-to condition evaluated to false, nothing to report to client");
+		ret = 0;
+		goto end;
+	}
+
+	/*
+	 * Create a temporary client list with the client currently
+	 * subscribing.
+	 */
+	cds_lfht_node_init(&client_list.notification_trigger_ht_node);
+	CDS_INIT_LIST_HEAD(&client_list.list);
+	client_list.trigger = trigger;
+
+	CDS_INIT_LIST_HEAD(&client_list_element.node);
+	client_list_element.client = client;
+	cds_list_add(&client_list_element.node, &client_list.list);
+
+	/* Send evaluation result to the newly-subscribed client. */
+	DBG("[notification-thread] Newly subscribed-to condition evaluated to true, notifying client");
+	ret = send_evaluation_to_clients(trigger, evaluation, &client_list,
+			state, channel_info->uid, channel_info->gid);
+
+end:
+	return ret;
 }
 
 static
@@ -404,11 +548,6 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	condition_list_element->condition = condition;
 	cds_list_add(&condition_list_element->node, &client->condition_list);
 
-	/*
-	 * Add the client to the list of clients interested in a given trigger
-	 * if a "notification" trigger with a corresponding condition was
-	 * added prior.
-	 */
 	cds_lfht_lookup(state->notification_trigger_clients_ht,
 			lttng_condition_hash(condition),
 			match_client_list_condition,
@@ -422,6 +561,18 @@ int notification_thread_client_subscribe(struct notification_client *client,
 
 	client_list = caa_container_of(node, struct notification_client_list,
 			notification_trigger_ht_node);
+	if (evaluate_condition_for_client(client_list->trigger, condition,
+			client, state)) {
+		WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
+		ret = -1;
+		goto end_unlock;
+	}
+
+	/*
+	 * Add the client to the list of clients interested in a given trigger
+	 * if a "notification" trigger with a corresponding condition was
+	 * added prior.
+	 */
 	client_list_element->client = client;
 	CDS_INIT_LIST_HEAD(&client_list_element->node);
 	cds_list_add(&client_list_element->node, &client_list->list);
@@ -640,13 +791,6 @@ bool trigger_applies_to_client(struct lttng_trigger *trigger,
 		}
 	}
 	return applies;
-}
-
-static
-unsigned long hash_channel_key(struct channel_key *key)
-{
-	return hash_key_u64(&key->key, lttng_ht_seed) ^ hash_key_ulong(
-		(void *) (unsigned long) key->domain, lttng_ht_seed);
 }
 
 static
@@ -986,7 +1130,6 @@ int handle_notification_thread_command_register_trigger(
 				&iter);
 		node = cds_lfht_iter_get_node(&iter);
 		assert(node);
-		/* Free the list of triggers associated with this channel. */
 		trigger_list = caa_container_of(node,
 				struct lttng_channel_trigger_list,
 				channel_triggers_ht_node);
@@ -999,6 +1142,7 @@ int handle_notification_thread_command_register_trigger(
 		CDS_INIT_LIST_HEAD(&trigger_list_element->node);
 		trigger_list_element->trigger = trigger;
 		cds_list_add(&trigger_list_element->node, &trigger_list->list);
+
 		/* A trigger can only apply to one channel. */
 		break;
 	}
@@ -1077,6 +1221,8 @@ int handle_notification_thread_command_unregister_trigger(
 
 			DBG("[notification-thread] Removed trigger from channel_triggers_ht");
 			cds_list_del(&trigger_element->node);
+			/* A trigger can only appear once per channel */
+			break;
 		}
 	}
 
