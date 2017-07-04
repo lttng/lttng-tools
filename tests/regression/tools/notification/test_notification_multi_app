@@ -40,7 +40,7 @@ DIR=$(readlink -f $TESTDIR)
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
 
-NUM_TESTS=46
+NUM_TESTS=62
 
 source $TESTDIR/utils/utils.sh
 
@@ -53,6 +53,7 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 app_pids=()
+
 function start_client {
 	local pid=-1
 	local output_file=$1
@@ -107,7 +108,7 @@ function print_errors ()
 	for file in $CURDIR/${file_pattern}*; do
 		# Check for "error" message
 		error_message=$(grep "error:" ${file})
-		if [[ "${error_message}" -ne "" ]]; then
+		if [[ "${error_message}x" != "x" ]]; then
 			diag "Errors for application ${file}:"
 			diag "${error_message}"
 		fi
@@ -242,9 +243,91 @@ function test_multi_app ()
 	stop_lttng_sessiond
 }
 
+function test_on_register_evaluation ()
+{
+	local app_pids=()
+	local high_output_file_pattern="high_app_output_file_on_register_evaluation"
+
+	local testpoint_base_path=$(readlink -f "$CURDIR/lttng.t_p_n_register_evaluation")
+	local testpoint_pipe_path=$(mktemp -u "${testpoint_base_path}.XXXXXX")
+
+	# Cleanup
+	rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
+
+	# Setup
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${testpoint_pipe_path} LD_PRELOAD=${TESTPOINT}"
+	start_lttng_sessiond
+
+	# Start app in infinite loop
+	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $file_sync_after_first_event &
+	app_pid=$!
+	# Pin to CPU zero to force specific sub buffer usage
+	taskset -p -c 0 $app_pid > /dev/null 2>&1
+
+	# Wait for sync with app
+	while [ ! -f "${file_sync_after_first_event}" ]; do
+		sleep 0.5
+	done
+	rm ${file_sync_after_first_event}
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $UST_CHANNEL_NAME --subbuf-size=$PAGE_SIZE
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $UST_CHANNEL_NAME
+
+	# Fetch consumerd testpoint pipe information
+	# This is needed since the testpoint create a pipe with the consumer type suffixed
+	for f in "$testpoint_base_path"*; do
+		consumerd_pipe+=("$f")
+	done
+
+	high_app_output_file=${high_output_file_pattern}.first_receiver
+	high_app_output_path=$CURDIR/${high_app_output_file}
+	start_client $high_app_output_path $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 1
+
+	wait_for_message "${high_app_output_file}" "sync: ready"
+
+	# Stop consumerd consumption to force high notification
+	start_lttng_tracing_ok $SESSION_NAME
+
+	for pipe in "${consumerd_pipe[@]}"; do
+		stop_consumerd "${pipe}"
+	done
+
+	wait_for_message "${high_app_output_file}" "notification: high 0"
+
+	# Start a second receiver, the receiver should receive a high
+	# notification on subscription
+	high_app_output_file=${high_output_file_pattern}.second_receiver
+	high_app_output_path=$CURDIR/${high_app_output_file}
+	start_client $high_app_output_path $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 1
+	wait_for_message "${high_app_output_file}" "sync: ready"
+	wait_for_message "${high_app_output_file}" "notification: high 0"
+
+	# Resume consumerd
+	for pipe in "${consumerd_pipe[@]}"; do
+		resume_consumerd "${pipe}"
+	done
+
+	wait_for_message "${high_output_file_pattern}" "exit: 0"
+	ret=$?
+	ok $ret "Application for high notification terminated normally"
+	if [[ $ret -eq "0" ]]; then
+		rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
+	else
+		# Keep the file
+		print_errors "${high_output_file_pattern}"
+	fi
+
+	stop_lttng_sessiond
+
+	kill -9 $app_pid
+	wait $app_pid 2> /dev/null
+}
+
 
 TESTS=(
 	test_multi_app
+	test_on_register_evaluation
 )
 
 for fct_test in ${TESTS[@]};
