@@ -58,6 +58,7 @@ struct ir_op *make_op_root(struct ir_op *child, enum ir_side side)
 	case IR_DATA_NUMERIC:
 	case IR_DATA_FIELD_REF:
 	case IR_DATA_GET_CONTEXT_REF:
+	case IR_DATA_EXPRESSION:
 		/* ok */
 		break;
 	}
@@ -139,6 +140,7 @@ struct ir_op *make_op_load_float(double v, enum ir_side side)
 	return op;
 }
 
+#if 0
 static
 struct ir_op *make_op_load_field_ref(char *string,
 		enum ir_side side)
@@ -162,52 +164,151 @@ error:
 	free(op);
 	return NULL;
 }
+#endif
 
 static
-struct ir_op *make_op_load_field_ref_index(char *string,
-		struct filter_node *next,
-		enum ir_side side)
+void free_load_expression(struct ir_load_expression *load_expression)
 {
-	struct ir_op *op;
+	struct ir_load_expression_op *exp_op;
 
-	op = calloc(sizeof(struct ir_op), 1);
-	if (!op)
+	if (!load_expression)
+		return;
+	exp_op = load_expression->child;
+	for (;;) {
+		struct ir_load_expression_op *prev_exp_op;
+
+		if (!exp_op)
+			break;
+		switch (exp_op->type) {
+		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
+		case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
+		case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
+		case IR_LOAD_EXPRESSION_GET_INDEX:
+		case IR_LOAD_EXPRESSION_LOAD_FIELD:
+			break;
+		case IR_LOAD_EXPRESSION_GET_SYMBOL:
+			free(exp_op->u.symbol);
+			break;
+		}
+		prev_exp_op = exp_op;
+		exp_op = exp_op->next;
+		free(prev_exp_op);
+	}
+	free(load_expression);
+}
+
+/*
+ * Returns the first node of the chain, after initializing the next
+ * pointers.
+ */
+static
+struct filter_node *load_expression_get_forward_chain(struct filter_node *node)
+{
+	struct filter_node *prev_node;
+
+	for (;;) {
+		assert(node->type == NODE_EXPRESSION);
+		prev_node = node;
+		node = node->u.expression.prev;
+		if (!node) {
+			break;
+		}
+		node->u.expression.next = prev_node;
+	}
+	return prev_node;
+}
+
+static
+struct ir_load_expression *create_load_expression(struct filter_node *node)
+{
+	struct ir_load_expression *load_exp;
+	struct ir_load_expression_op *load_exp_op, *prev_op;
+	char *str;
+
+	/* Get forward chain. */
+	node = load_expression_get_forward_chain(node);
+	if (!node)
 		return NULL;
-	op->op = IR_OP_LOAD;
-	op->data_type = IR_DATA_FIELD_REF_INDEX;
-	op->signedness = IR_SIGN_DYN;
-	op->side = side;
-	op->u.load.u.ref_index.symbol = strdup(string);
-	if (!op->u.load.u.ref_index.symbol) {
+	load_exp = calloc(sizeof(struct ir_load_expression), 1);
+	if (!load_exp)
+		return NULL;
+
+	/* Root */
+	load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+	if (!load_exp_op)
 		goto error;
-	}
-	/* Only positive integer literals accepted as index. */
-	if (next->type == NODE_UNARY_OP) {
-		fprintf(stderr, "[error] Unexpected unary operator as index\n");
+	load_exp->child = load_exp_op;
+	str = node->u.expression.u.string;
+	if (!strcmp(str, "$ctx")) {
+		load_exp_op->type = IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT;
+		node = node->u.expression.next;
+		if (!node) {
+			fprintf(stderr, "[error] Expecting identifier after \'%s\'\n", str);
+			goto error;
+		}
+		str = node->u.expression.u.string;
+	} else if (!strcmp(str, "$app")) {
+		load_exp_op->type = IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT;
+		node = node->u.expression.next;
+		if (!node) {
+			fprintf(stderr, "[error] Expecting identifier after \'%s\'\n", str);
+			goto error;
+		}
+		str = node->u.expression.u.string;
+	} else if (str[0] == '$') {
+		fprintf(stderr, "[error] Unexpected identifier \'%s\'\n", str);
 		goto error;
+	} else {
+		load_exp_op->type = IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT;
 	}
-	if (next->type != NODE_EXPRESSION) {
-		fprintf(stderr, "[error] Expecting expression as index\n");
+
+	for (;;) {
+		struct filter_node *bracket_node;
+
+		prev_op = load_exp_op;
+		load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+		if (!load_exp_op)
+			goto error;
+		prev_op->next = load_exp_op;
+		load_exp_op->type = IR_LOAD_EXPRESSION_GET_SYMBOL;
+		load_exp_op->u.symbol = strdup(str);
+		if (!load_exp_op->u.symbol)
+			goto error;
+
+		/* Explore brackets from current node. */
+		for (bracket_node = node->u.expression.next_bracket;
+				bracket_node != NULL;
+				bracket_node = bracket_node->u.expression.next_bracket) {
+			prev_op = load_exp_op;
+			load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+			if (!load_exp_op)
+				goto error;
+			prev_op->next = load_exp_op;
+			load_exp_op->type = IR_LOAD_EXPRESSION_GET_INDEX;
+			load_exp_op->u.index = bracket_node->u.expression.u.constant;
+		}
+		/* Go to next chain element. */
+		node = node->u.expression.next;
+		if (!node)
+			break;
+		str = node->u.expression.u.string;
+	}
+	/* Add final load field */
+	prev_op = load_exp_op;
+	load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
+	if (!load_exp_op)
 		goto error;
-	}
-	if (next->u.expression.type != AST_EXP_CONSTANT) {
-		fprintf(stderr, "[error] Expecting constant index\n");
-		goto error;
-	}
-	if (next->u.expression.u.constant < 0) {
-		fprintf(stderr, "[error] Expecting positive constant index\n");
-		goto error;
-	}
-	op->u.load.u.ref_index.index = next->u.expression.u.constant;
-	return op;
+	prev_op->next = load_exp_op;
+	load_exp_op->type = IR_LOAD_EXPRESSION_LOAD_FIELD;
+	return load_exp;
 
 error:
-	free(op);
+	free_load_expression(load_exp);
 	return NULL;
 }
 
 static
-struct ir_op *make_op_load_get_context_ref(char *string,
+struct ir_op *make_op_load_expression(struct filter_node *node,
 		enum ir_side side)
 {
 	struct ir_op *op;
@@ -216,59 +317,17 @@ struct ir_op *make_op_load_get_context_ref(char *string,
 	if (!op)
 		return NULL;
 	op->op = IR_OP_LOAD;
-	op->data_type = IR_DATA_GET_CONTEXT_REF;
+	op->data_type = IR_DATA_EXPRESSION;
 	op->signedness = IR_SIGN_DYN;
 	op->side = side;
-	op->u.load.u.ref = strdup(string);
-	if (!op->u.load.u.ref) {
+	op->u.load.u.expression = create_load_expression(node);
+	if (!op->u.load.u.expression) {
 		goto error;
 	}
 	return op;
 
 error:
-	free(op);
-	return NULL;
-}
-
-static
-struct ir_op *make_op_load_get_context_ref_index(char *string,
-		struct filter_node *next,
-		enum ir_side side)
-{
-	struct ir_op *op;
-
-	op = calloc(sizeof(struct ir_op), 1);
-	if (!op)
-		return NULL;
-	op->op = IR_OP_LOAD;
-	op->data_type = IR_DATA_GET_CONTEXT_REF_INDEX;
-	op->signedness = IR_SIGN_DYN;
-	op->side = side;
-	op->u.load.u.ref_index.symbol = strdup(string);
-	if (!op->u.load.u.ref_index.symbol) {
-		goto error;
-	}
-	/* Only positive integer literals accepted as offset. */
-	if (next->type == NODE_UNARY_OP) {
-		fprintf(stderr, "[error] Unexpected unary operator as index\n");
-		goto error;
-	}
-	if (next->type != NODE_EXPRESSION) {
-		fprintf(stderr, "[error] Expecting expression as index\n");
-		goto error;
-	}
-	if (next->u.expression.type != AST_EXP_CONSTANT) {
-		fprintf(stderr, "[error] Expecting constant index\n");
-		goto error;
-	}
-	if (next->u.expression.u.constant < 0) {
-		fprintf(stderr, "[error] Expecting positive constant index\n");
-		goto error;
-	}
-	op->u.load.u.ref_index.index = next->u.expression.u.constant;
-	return op;
-
-error:
+	free_load_expression(op->u.load.u.expression);
 	free(op);
 	return NULL;
 }
@@ -448,6 +507,50 @@ error:
 }
 
 static
+struct ir_op *make_op_binary_bitwise(enum op_type bin_op_type,
+		const char *op_str, struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	struct ir_op *op = NULL;
+
+	if (left->data_type == IR_DATA_UNKNOWN
+		|| right->data_type == IR_DATA_UNKNOWN) {
+		fprintf(stderr, "[error] bitwise binary operation '%s' has unknown operand type\n", op_str);
+		goto error;
+
+	}
+	if (left->data_type == IR_DATA_STRING
+		|| right->data_type == IR_DATA_STRING) {
+		fprintf(stderr, "[error] bitwise binary operation '%s' cannot have string operand\n", op_str);
+		goto error;
+	}
+	if (left->data_type == IR_DATA_FLOAT
+		|| right->data_type == IR_DATA_FLOAT) {
+		fprintf(stderr, "[error] bitwise binary operation '%s' cannot have floating point operand\n", op_str);
+		goto error;
+	}
+
+	op = calloc(sizeof(struct ir_op), 1);
+	if (!op)
+		return NULL;
+	op->op = IR_OP_BINARY;
+	op->u.binary.type = bin_op_type;
+	op->u.binary.left = left;
+	op->u.binary.right = right;
+
+	/* we return a signed numeric */
+	op->data_type = IR_DATA_NUMERIC;
+	op->signedness = IR_SIGNED;
+	op->side = side;
+
+	return op;
+
+error:
+	free(op);
+	return NULL;
+}
+
+static
 struct ir_op *make_op_binary_logical_and(struct ir_op *left, struct ir_op *right,
 		enum ir_side side)
 {
@@ -459,6 +562,27 @@ struct ir_op *make_op_binary_logical_or(struct ir_op *left, struct ir_op *right,
 		enum ir_side side)
 {
 	return make_op_binary_logical(AST_OP_OR, "||", left, right, side);
+}
+
+static
+struct ir_op *make_op_binary_bitwise_and(struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	return make_op_binary_bitwise(AST_OP_BIT_AND, "&", left, right, side);
+}
+
+static
+struct ir_op *make_op_binary_bitwise_or(struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	return make_op_binary_bitwise(AST_OP_BIT_OR, "|", left, right, side);
+}
+
+static
+struct ir_op *make_op_binary_bitwise_xor(struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	return make_op_binary_bitwise(AST_OP_BIT_XOR, "^", left, right, side);
 }
 
 static
@@ -484,10 +608,8 @@ void filter_free_ir_recursive(struct ir_op *op)
 		case IR_DATA_GET_CONTEXT_REF:
 			free(op->u.load.u.ref);
 			break;
-		case IR_DATA_FIELD_REF_INDEX:	/* fall-through */
-		case IR_DATA_GET_CONTEXT_REF_INDEX:
-			free(op->u.load.u.ref_index.symbol);
-			break;
+		case IR_DATA_EXPRESSION:
+			free_load_expression(op->u.load.u.expression);
 		default:
 			break;
 		}
@@ -526,6 +648,9 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 		return make_op_load_float(node->u.expression.u.float_constant,
 					side);
 	case AST_EXP_IDENTIFIER:
+	case AST_EXP_GLOBAL_IDENTIFIER:
+		return make_op_load_expression(node, side);
+#if 0
 		switch (node->u.expression.pre_op) {
 		case AST_LINK_UNKNOWN:
 			return make_op_load_field_ref(node->u.expression.u.identifier,
@@ -538,7 +663,8 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 			fprintf(stderr, "[error] %s: dotted and dereferenced identifiers not supported\n", __func__);
 			return NULL;
 		}
-	case AST_EXP_GLOBAL_IDENTIFIER:
+#endif
+#if 0
 	{
 		const char *name;
 
@@ -577,6 +703,7 @@ struct ir_op *make_expression(struct filter_parser_ctx *ctx,
 		}
 
 	}
+#endif
 	case AST_EXP_NESTED:
 		return generate_ir_recursive(ctx, node->u.expression.u.child,
 					side);
@@ -597,10 +724,8 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 		return NULL;
 
 	/*
-	 * Binary operators other than comparators and logical and/or
-	 * are not supported. If we ever want to support those, we will
-	 * need a stack for the general case rather than just 2
-	 * registers (see bytecode).
+	 * The following binary operators other than comparators and
+	 * logical and/or are not supported yet.
 	 */
 	case AST_OP_MUL:
 		op_str = "*";
@@ -623,15 +748,19 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 	case AST_OP_LSHIFT:
 		op_str = "<<";
 		goto error_not_supported;
-	case AST_OP_BIN_AND:
-		op_str = "&";
-		goto error_not_supported;
-	case AST_OP_BIN_OR:
-		op_str = "|";
-		goto error_not_supported;
-	case AST_OP_BIN_XOR:
-		op_str = "^";
-		goto error_not_supported;
+
+	case AST_OP_BIT_AND:
+	case AST_OP_BIT_OR:
+	case AST_OP_BIT_XOR:
+		lchild = generate_ir_recursive(ctx, node->u.op.lchild, IR_LEFT);
+		if (!lchild)
+			return NULL;
+		rchild = generate_ir_recursive(ctx, node->u.op.rchild, IR_RIGHT);
+		if (!rchild) {
+			filter_free_ir_recursive(lchild);
+			return NULL;
+		}
+		break;
 
 	case AST_OP_EQ:
 	case AST_OP_NE:
@@ -690,6 +819,15 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 		break;
 	case AST_OP_LE:
 		op = make_op_binary_le(lchild, rchild, side);
+		break;
+	case AST_OP_BIT_AND:
+		op = make_op_binary_bitwise_and(lchild, rchild, side);
+		break;
+	case AST_OP_BIT_OR:
+		op = make_op_binary_bitwise_or(lchild, rchild, side);
+		break;
+	case AST_OP_BIT_XOR:
+		op = make_op_binary_bitwise_xor(lchild, rchild, side);
 		break;
 	default:
 		break;
@@ -764,7 +902,7 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 		}
 		return op;
 	}
-	case AST_UNARY_BIN_NOT:
+	case AST_UNARY_BIT_NOT:
 	{
 		op_str = "~";
 		goto error_not_supported;

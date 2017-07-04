@@ -24,8 +24,8 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=906
-NUM_KERNEL_TESTS=840
+NUM_UST_TESTS=1002
+NUM_KERNEL_TESTS=936
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -644,6 +644,60 @@ UST_FILTERS=(
 	$issue_356_filter
 
 	true_statement
+	"1&1"
+
+	true_statement
+	"0|1"
+
+	true_statement
+	"0^1"
+
+	true_statement
+	"seqfield4[1]==2"
+
+	true_statement
+	"arrfield1[1]==2"
+
+	true_statement
+	"arrfield1[1]==2"
+
+	true_statement
+	"arrfield3[1]==2"
+
+	true_statement
+	"seqfield3[1]==2"
+
+	true_statement
+	"1 | (1 | (1 | 1))"
+
+	true_statement
+	"1 >= (1 >= (1 >= 1))"
+
+	true_statement
+	"0x101 & 0x100 == 0x100"
+
+	true_statement
+	"0x101 | 0x10100 == 0x10101"
+
+	true_statement
+	"0xF00F0F ^ 0xFF0F00 == 0x0F000F"
+
+	true_statement
+	"arrfield1[2] & 1 == 1"
+
+	true_statement
+	"arrfield1[2] | 0x111000 == 0x111003"
+
+	true_statement
+	"(arrfield1[0] | arrfield1[1] | arrfield1[2]) == 0x3"
+
+	true_statement
+	"seqfield4[2] & 1 == 1"
+
+	true_statement
+	"seqfield4[2] | 0x111000 == 0x111003"
+
+	true_statement
 	"intfield < 0xDEADBEEF"
 
 	intfield_lt
@@ -735,12 +789,6 @@ UST_FILTERS=(
 
 	has_no_event
 	"0 == \$ctx.vtid.blah"
-
-	has_no_event
-	"\$ctx.44 == 0"
-
-	has_no_event
-	"0 == \$ctx.44"
 
 	END
 )
@@ -1021,6 +1069,60 @@ KERNEL_FILTERS=(
 	$issue_356_filter
 
 	true_statement
+	"1&1"
+
+	true_statement
+	"0|1"
+
+	true_statement
+	"0^1"
+
+	true_statement
+	"seqfield4[1]==2"
+
+	true_statement
+	"arrfield1[1]==2"
+
+	true_statement
+	"arrfield1[1]==2"
+
+	true_statement
+	"arrfield3[1]==2"
+
+	true_statement
+	"seqfield3[1]==2"
+
+	true_statement
+	"1 | (1 | (1 | 1))"
+
+	true_statement
+	"1 >= (1 >= (1 >= 1))"
+
+	true_statement
+	"0x101 & 0x100 == 0x100"
+
+	true_statement
+	"0x101 | 0x10100 == 0x10101"
+
+	true_statement
+	"0xF00F0F ^ 0xFF0F00 == 0x0F000F"
+
+	true_statement
+	"arrfield1[2] & 1 == 1"
+
+	true_statement
+	"arrfield1[2] | 0x111000 == 0x111003"
+
+	true_statement
+	"(arrfield1[0] | arrfield1[1] | arrfield1[2]) == 0x3"
+
+	true_statement
+	"seqfield4[2] & 1 == 1"
+
+	true_statement
+	"seqfield4[2] | 0x111000 == 0x111003"
+
+	true_statement
 	"intfield < 0xDEADBEEF"
 
 	intfield_lt
@@ -1112,12 +1214,6 @@ KERNEL_FILTERS=(
 
 	has_no_event
 	"0 == \$ctx.vtid.blah"
-
-	has_no_event
-	"\$ctx.44 == 0"
-
-	has_no_event
-	"0 == \$ctx.44"
 
 	stringfield_has_events
 	'stringfield == "test"'

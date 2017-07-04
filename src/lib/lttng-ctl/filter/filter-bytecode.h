@@ -35,10 +35,17 @@ struct field_ref {
 	uint16_t offset;
 } LTTNG_PACKED;
 
-struct field_ref_index {
-	/* Initially, symbol offset. After link, field offset. */
+struct get_symbol {
+	/* Symbol offset. */
 	uint16_t offset;
-	uint64_t index;		/* array index */
+} LTTNG_PACKED;
+
+struct get_index_u16 {
+	uint16_t index;
+} LTTNG_PACKED;
+
+struct get_index_u64 {
+	uint64_t index;
 } LTTNG_PACKED;
 
 struct literal_numeric {
@@ -66,9 +73,9 @@ enum filter_op {
 	FILTER_OP_MINUS				= 6,
 	FILTER_OP_RSHIFT			= 7,
 	FILTER_OP_LSHIFT			= 8,
-	FILTER_OP_BIN_AND			= 9,
-	FILTER_OP_BIN_OR			= 10,
-	FILTER_OP_BIN_XOR			= 11,
+	FILTER_OP_BIT_AND			= 9,
+	FILTER_OP_BIT_OR			= 10,
+	FILTER_OP_BIT_XOR			= 11,
 
 	/* binary comparators */
 	FILTER_OP_EQ				= 12,
@@ -169,13 +176,30 @@ enum filter_op {
 	FILTER_OP_EQ_STAR_GLOB_STRING		= 77,
 	FILTER_OP_NE_STAR_GLOB_STRING		= 78,
 
-	/* load field ref with index */
-	FILTER_OP_LOAD_FIELD_REF_INDEX			= 79,
-	FILTER_OP_LOAD_FIELD_REF_INDEX_S64		= 80,
+	/*
+	 * Instructions for recursive traversal through composed types.
+	 */
+	FILTER_OP_GET_CONTEXT_ROOT		= 79,
+	FILTER_OP_GET_APP_CONTEXT_ROOT		= 80,
+	FILTER_OP_GET_PAYLOAD_ROOT		= 81,
 
-	/* get context ref with index */
-	FILTER_OP_GET_CONTEXT_REF_INDEX			= 81,
-	FILTER_OP_GET_CONTEXT_REF_INDEX_S64		= 82,
+	FILTER_OP_GET_SYMBOL			= 82,
+	FILTER_OP_GET_SYMBOL_FIELD		= 83,
+	FILTER_OP_GET_INDEX_U16			= 84,
+	FILTER_OP_GET_INDEX_U64			= 85,
+
+	FILTER_OP_LOAD_FIELD			= 86,
+	FILTER_OP_LOAD_FIELD_S8			= 87,
+	FILTER_OP_LOAD_FIELD_S16		= 88,
+	FILTER_OP_LOAD_FIELD_S32		= 89,
+	FILTER_OP_LOAD_FIELD_S64		= 90,
+	FILTER_OP_LOAD_FIELD_U8			= 91,
+	FILTER_OP_LOAD_FIELD_U16		= 92,
+	FILTER_OP_LOAD_FIELD_U32		= 93,
+	FILTER_OP_LOAD_FIELD_U64		= 94,
+	FILTER_OP_LOAD_FIELD_STRING		= 95,
+	FILTER_OP_LOAD_FIELD_SEQUENCE		= 96,
+	FILTER_OP_LOAD_FIELD_DOUBLE		= 97,
 
 	NR_FILTER_OPS,
 };

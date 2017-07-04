@@ -158,6 +158,167 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 }
 
 static
+int visit_node_load_expression(struct filter_parser_ctx *ctx,
+		struct ir_op *node)
+{
+	struct ir_load_expression *exp;
+	struct ir_load_expression_op *op;
+
+	exp = node->u.load.u.expression;
+	if (!exp) {
+		return -EINVAL;
+	}
+	op = exp->child;
+	if (!op) {
+		return -EINVAL;
+	}
+	for (; op != NULL; op = op->next) {
+		switch (op->type) {
+		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op);
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_GET_CONTEXT_ROOT;
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op);
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_GET_APP_CONTEXT_ROOT;
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op);
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_GET_PAYLOAD_ROOT;
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		case IR_LOAD_EXPRESSION_GET_SYMBOL:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op)
+				+ sizeof(struct get_symbol);
+			struct get_symbol symbol_offset;
+			uint32_t reloc_offset_u32;
+			uint16_t reloc_offset;
+			uint32_t bytecode_reloc_offset_u32;
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_GET_SYMBOL;
+			bytecode_reloc_offset_u32 =
+				bytecode_get_len(&ctx->bytecode_reloc->b)
+					+ sizeof(reloc_offset);
+			symbol_offset.offset =
+				(uint16_t) bytecode_reloc_offset_u32;
+			memcpy(insn->data, &symbol_offset,
+					sizeof(symbol_offset));
+			/* reloc_offset points to struct load_op */
+			reloc_offset_u32 = bytecode_get_len(&ctx->bytecode->b);
+			if (reloc_offset_u32 > LTTNG_FILTER_MAX_LEN - 1) {
+				free(insn);
+				return -EINVAL;
+			}
+			reloc_offset = (uint16_t) reloc_offset_u32;
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			if (ret) {
+				free(insn);
+				return ret;
+			}
+			/* append reloc */
+			ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
+					1, sizeof(reloc_offset));
+			if (ret) {
+				free(insn);
+				return ret;
+			}
+			ret = bytecode_push(&ctx->bytecode_reloc,
+					op->u.symbol,
+					1, strlen(op->u.symbol) + 1);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		case IR_LOAD_EXPRESSION_GET_INDEX:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op)
+				+ sizeof(struct get_index_u64);
+			struct get_index_u64 index;
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_GET_INDEX_U64;
+			index.index = op->u.index;
+			memcpy(insn->data, &index, sizeof(index));
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		case IR_LOAD_EXPRESSION_LOAD_FIELD:
+		{
+			struct load_op *insn;
+			uint32_t insn_len = sizeof(struct load_op);
+			int ret;
+
+			insn = calloc(insn_len, 1);
+			if (!insn)
+				return -ENOMEM;
+			insn->op = FILTER_OP_LOAD_FIELD;
+			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+			free(insn);
+			if (ret) {
+				return ret;
+			}
+			break;
+		}
+		}
+	}
+	return 0;
+}
+
+static
 int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 {
 	int ret;
@@ -239,6 +400,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		free(insn);
 		return ret;
 	}
+#if 0
 	case IR_DATA_FIELD_REF:	/* fall-through */
 	case IR_DATA_GET_CONTEXT_REF:
 	{
@@ -289,57 +451,9 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		free(insn);
 		return ret;
 	}
-	case IR_DATA_FIELD_REF_INDEX:	/* fall-through */
-	case IR_DATA_GET_CONTEXT_REF_INDEX:
-	{
-		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op)
-			+ sizeof(struct field_ref_index);
-		struct field_ref_index ref_index_offset;
-		uint32_t reloc_offset_u32;
-		uint16_t reloc_offset;
-
-		insn = calloc(insn_len, 1);
-		if (!insn)
-			return -ENOMEM;
-		switch (node->data_type) {
-		case IR_DATA_FIELD_REF_INDEX:
-			insn->op = FILTER_OP_LOAD_FIELD_REF_INDEX;
-			break;
-		case IR_DATA_GET_CONTEXT_REF_INDEX:
-			insn->op = FILTER_OP_GET_CONTEXT_REF_INDEX;
-			break;
-		default:
-			free(insn);
-			return -EINVAL;
-		}
-		ref_index_offset.offset = (uint16_t) -1U;
-		ref_index_offset.index = node->u.load.u.ref_index.index;
-		memcpy(insn->data, &ref_index_offset, sizeof(ref_index_offset));
-		/* reloc_offset points to struct load_op */
-		reloc_offset_u32 = bytecode_get_len(&ctx->bytecode->b);
-		if (reloc_offset_u32 > LTTNG_FILTER_MAX_LEN - 1) {
-			free(insn);
-			return -EINVAL;
-		}
-		reloc_offset = (uint16_t) reloc_offset_u32;
-		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-		if (ret) {
-			free(insn);
-			return ret;
-		}
-		/* append reloc */
-		ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
-					1, sizeof(reloc_offset));
-		if (ret) {
-			free(insn);
-			return ret;
-		}
-		ret = bytecode_push(&ctx->bytecode_reloc, node->u.load.u.ref_index.symbol,
-					1, strlen(node->u.load.u.ref_index.symbol) + 1);
-		free(insn);
-		return ret;
-	}
+#endif
+	case IR_DATA_EXPRESSION:
+		return visit_node_load_expression(ctx, node);
 	}
 }
 
@@ -425,14 +539,14 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case AST_OP_LSHIFT:
 		insn.op = FILTER_OP_LSHIFT;
 		break;
-	case AST_OP_BIN_AND:
-		insn.op = FILTER_OP_BIN_AND;
+	case AST_OP_BIT_AND:
+		insn.op = FILTER_OP_BIT_AND;
 		break;
-	case AST_OP_BIN_OR:
-		insn.op = FILTER_OP_BIN_OR;
+	case AST_OP_BIT_OR:
+		insn.op = FILTER_OP_BIT_OR;
 		break;
-	case AST_OP_BIN_XOR:
-		insn.op = FILTER_OP_BIN_XOR;
+	case AST_OP_BIT_XOR:
+		insn.op = FILTER_OP_BIT_XOR;
 		break;
 
 	case AST_OP_EQ:
@@ -475,15 +589,13 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	/* Cast to s64 if float or field ref */
 	if ((node->u.binary.left->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.left->data_type == IR_DATA_FIELD_REF_INDEX
-				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF_INDEX)
+				|| node->u.binary.left->data_type == IR_DATA_EXPRESSION)
 			|| node->u.binary.left->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
 		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.left->data_type == IR_DATA_FIELD_REF_INDEX
-				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF_INDEX) {
+				|| node->u.binary.left->data_type == IR_DATA_EXPRESSION) {
 			cast_insn.op = FILTER_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
@@ -518,15 +630,13 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 	/* Cast to s64 if float or field ref */
 	if ((node->u.binary.right->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.right->data_type == IR_DATA_FIELD_REF_INDEX
-				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF_INDEX)
+				|| node->u.binary.right->data_type == IR_DATA_EXPRESSION)
 			|| node->u.binary.right->data_type == IR_DATA_FLOAT) {
 		struct cast_op cast_insn;
 
 		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF
-				|| node->u.binary.right->data_type == IR_DATA_FIELD_REF_INDEX
-				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF_INDEX) {
+				|| node->u.binary.right->data_type == IR_DATA_EXPRESSION) {
 			cast_insn.op = FILTER_OP_CAST_TO_S64;
 		} else {
 			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;

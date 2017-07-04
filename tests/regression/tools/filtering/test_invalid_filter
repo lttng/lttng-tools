@@ -25,8 +25,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=165
-NUM_KERNEL_TESTS=165
+NUM_UST_TESTS=144
+NUM_KERNEL_TESTS=144
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -103,9 +103,6 @@ INVALID_FILTERS=(
 		"intfield-1"
 		"intfield>>1"
 		"intfield<<1"
-		"intfield&1"
-		"intfield|1"
-		"intfield^1"
 		"~intfield"
 		"1+11111-3333+1"
 		"(1+2)*(55*666)"
@@ -120,9 +117,7 @@ INVALID_FILTERS=(
 		'0 || ("abc" != "def")) && (3 < 4)'
 		"a->"
 		"a-->a"
-		"a->a"
 		"a.b.c->d.e.f+1"
-		"asdfasdf->asdfasdf < 2"
 		# String can\'t be root node
 		"\"somestring\""
 		# Unary op on string not allowed
@@ -135,9 +130,6 @@ INVALID_FILTERS=(
 		# Logical operator with string type not allowed
 		"\"somestring\" || 1"
 		"1 || \"somestring\""
-		# Nesting of binary operator not allowed
-		"1 | (1 | (1 | 1))"
-		"1 > (1 > (1 > 1))"
 		"\$ctx == 0"
 		"0 == \$ctx"
 		# Only \$ctx is supported for now
