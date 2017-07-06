@@ -115,6 +115,13 @@ int save_kernel_channel_attributes(struct config_writer *writer,
 		if (ret) {
 			goto end;
 		}
+
+		ret = config_writer_write_element_signed_int(writer,
+				config_element_blocking_timeout,
+				ext->blocking_timeout);
+		if (ret) {
+			goto end;
+		}
 	}
 
 end:
@@ -167,6 +174,13 @@ int save_ust_channel_attributes(struct config_writer *writer,
 		config_element_output_type,
 		attr->output == LTTNG_UST_MMAP ?
 		config_output_type_mmap : config_output_type_splice);
+	if (ret) {
+		goto end;
+	}
+
+	ret = config_writer_write_element_signed_int(writer,
+			config_element_blocking_timeout,
+			attr->u.s.blocking_timeout);
 	if (ret) {
 		goto end;
 	}
