@@ -2106,6 +2106,31 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			goto end;
 		}
 	} else if (!strcmp((const char *) attr_node->name,
+			config_element_blocking_timeout)) {
+		xmlChar *content;
+		int64_t blocking_timeout = 0;
+
+		/* blocking_timeout */
+		content = xmlNodeGetContent(attr_node);
+		if (!content) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		ret = parse_int(content, &blocking_timeout);
+		free(content);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+
+		ret = lttng_channel_set_blocking_timeout(channel,
+			blocking_timeout);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+	} else if (!strcmp((const char *) attr_node->name,
 			config_element_events)) {
 		/* events */
 		*events_node = attr_node;
