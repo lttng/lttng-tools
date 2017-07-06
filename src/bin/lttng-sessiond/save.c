@@ -104,6 +104,19 @@ int save_kernel_channel_attributes(struct config_writer *writer,
 	if (ret) {
 		goto end;
 	}
+
+	if (attr->extended.ptr) {
+		struct lttng_channel_extended *ext = NULL;
+
+		ext = (struct lttng_channel_extended *) attr->extended.ptr;
+		ret = config_writer_write_element_unsigned_int(writer,
+				config_element_monitor_timer_interval,
+				ext->monitor_timer_interval);
+		if (ret) {
+			goto end;
+		}
+	}
+
 end:
 	return ret ? LTTNG_ERR_SAVE_IO_FAIL : 0;
 }
@@ -113,6 +126,7 @@ int save_ust_channel_attributes(struct config_writer *writer,
 	struct lttng_ust_channel_attr *attr)
 {
 	int ret;
+	struct ltt_ust_channel *channel = NULL;
 
 	ret = config_writer_write_element_string(writer,
 		config_element_overwrite_mode,
@@ -156,6 +170,19 @@ int save_ust_channel_attributes(struct config_writer *writer,
 	if (ret) {
 		goto end;
 	}
+
+	/*
+	 * Fetch the monitor timer which is located in the parent of
+	 * lttng_ust_channel_attr
+	 */
+	channel = caa_container_of(attr, struct ltt_ust_channel, attr);
+	ret = config_writer_write_element_unsigned_int(writer,
+		config_element_monitor_timer_interval,
+		channel->monitor_timer_interval);
+	if (ret) {
+		goto end;
+	}
+
 end:
 	return ret ? LTTNG_ERR_SAVE_IO_FAIL : 0;
 }

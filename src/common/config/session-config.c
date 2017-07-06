@@ -2081,6 +2081,31 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 		channel->attr.live_timer_interval =
 			live_timer_interval;
 	} else if (!strcmp((const char *) attr_node->name,
+			config_element_monitor_timer_interval)) {
+		xmlChar *content;
+		uint64_t monitor_timer_interval = 0;
+
+		/* monitor_timer_interval */
+		content = xmlNodeGetContent(attr_node);
+		if (!content) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		ret = parse_uint(content, &monitor_timer_interval);
+		free(content);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+
+		ret = lttng_channel_set_monitor_timer_interval(channel,
+			monitor_timer_interval);
+		if (ret) {
+			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+			goto end;
+		}
+	} else if (!strcmp((const char *) attr_node->name,
 			config_element_events)) {
 		/* events */
 		*events_node = attr_node;
@@ -2340,13 +2365,13 @@ end:
 	return ret;
 }
 
-
 static
 int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 {
 	int ret;
 	struct lttng_domain domain = { 0 };
 	struct lttng_handle *handle = NULL;
+	struct lttng_channel *channel = NULL;
 	xmlNodePtr channels_node = NULL;
 	xmlNodePtr trackers_node = NULL;
 	xmlNodePtr pid_tracker_node = NULL;
@@ -2382,40 +2407,45 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	/* create all channels */
 	for (node = xmlFirstElementChild(channels_node); node;
 		node = xmlNextElementSibling(node)) {
-		struct lttng_channel channel;
 		xmlNodePtr contexts_node = NULL;
 		xmlNodePtr events_node = NULL;
 		xmlNodePtr channel_attr_node;
 
-		memset(&channel, 0, sizeof(channel));
-		lttng_channel_set_default_attr(&domain, &channel.attr);
+		channel = lttng_channel_create(&domain);
+		if (!channel) {
+			ret = -1;
+			goto end;
+		}
 
 		for (channel_attr_node = xmlFirstElementChild(node);
 			channel_attr_node; channel_attr_node =
 			xmlNextElementSibling(channel_attr_node)) {
 			ret = process_channel_attr_node(channel_attr_node,
-				&channel, &contexts_node, &events_node);
+				channel, &contexts_node, &events_node);
 			if (ret) {
 				goto end;
 			}
 		}
 
-		ret = lttng_enable_channel(handle, &channel);
+		ret = lttng_enable_channel(handle, channel);
 		if (ret < 0) {
 			goto end;
 		}
 
-		ret = process_events_node(events_node, handle, channel.name);
+		ret = process_events_node(events_node, handle, channel->name);
 		if (ret) {
 			goto end;
 		}
 
 		ret = process_contexts_node(contexts_node, handle,
-			channel.name);
+			channel->name);
 		if (ret) {
 			goto end;
 		}
+
+		lttng_channel_destroy(channel);
 	}
+	channel = NULL;
 
 	/* get the trackers node */
 	for (node = xmlFirstElementChild(domain_node); node;
@@ -2447,6 +2477,7 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	}
 
 end:
+	lttng_channel_destroy(channel);
 	lttng_destroy_handle(handle);
 	return ret;
 }
