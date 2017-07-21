@@ -232,7 +232,8 @@ int cmd_destroy(int argc, const char **argv)
 	/* Recuperate all sessions for further operation */
 	count = lttng_list_sessions(&sessions);
 	if (count < 0) {
-		command_ret = count;
+		ERR("%s", lttng_strerror(count));
+		command_ret = CMD_ERROR;
 		success = 0;
 		goto mi_closing;
 	}
