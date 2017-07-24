@@ -1673,7 +1673,7 @@ int save_consumer_output(struct config_writer *writer,
 	switch (output->type) {
 	case CONSUMER_DST_LOCAL:
 		ret = config_writer_write_element_string(writer,
-			config_element_path, output->dst.trace_path);
+			config_element_path, output->dst.session_root_path);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;

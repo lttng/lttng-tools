@@ -45,8 +45,10 @@ static char *create_channel_path(struct consumer_output *consumer,
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
-				consumer->dst.trace_path, consumer->subdir);
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s%s",
+				consumer->dst.session_root_path,
+				consumer->chunk_path,
+				consumer->subdir);
 		if (ret < 0) {
 			PERROR("snprintf kernel channel path");
 			goto error;
