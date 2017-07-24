@@ -62,8 +62,10 @@ static char *setup_trace_path(struct consumer_output *consumer,
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(pathname, PATH_MAX, "%s%s%s",
-				consumer->dst.trace_path, consumer->subdir, ua_sess->path);
+		ret = snprintf(pathname, PATH_MAX, "%s%s%s%s",
+				consumer->dst.session_root_path,
+				consumer->chunk_path,
+				consumer->subdir, ua_sess->path);
 		if (ret < 0) {
 			PERROR("snprintf channel path");
 			goto error;

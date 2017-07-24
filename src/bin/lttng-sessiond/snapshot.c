@@ -94,11 +94,11 @@ static int output_init(uint64_t max_size, const char *name,
 	}
 
 	if (uris[0].dtype == LTTNG_DST_PATH) {
-		memset(output->consumer->dst.trace_path, 0,
-				sizeof(output->consumer->dst.trace_path));
-		if (lttng_strncpy(output->consumer->dst.trace_path,
+		memset(output->consumer->dst.session_root_path, 0,
+				sizeof(output->consumer->dst.session_root_path));
+		if (lttng_strncpy(output->consumer->dst.session_root_path,
 				uris[0].dst.path,
-				sizeof(output->consumer->dst.trace_path))) {
+				sizeof(output->consumer->dst.session_root_path))) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}

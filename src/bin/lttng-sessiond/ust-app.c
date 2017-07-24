@@ -4417,9 +4417,21 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 
 	/* Create directories if consumer is LOCAL and has a path defined. */
 	if (usess->consumer->type == CONSUMER_DST_LOCAL &&
-			strlen(usess->consumer->dst.trace_path) > 0) {
-		ret = run_as_mkdir_recursive(usess->consumer->dst.trace_path,
-				S_IRWXU | S_IRWXG, ua_sess->euid, ua_sess->egid);
+			strnlen(usess->consumer->dst.session_root_path, LTTNG_PATH_MAX) > 0) {
+		char *tmp_path;
+
+		tmp_path = zmalloc(PATH_MAX * sizeof(char));
+		if (!tmp_path) {
+			ERR("Alloc tmp_path");
+			goto error_unlock;
+		}
+		snprintf(tmp_path, PATH_MAX, "%s%s%s",
+				usess->consumer->dst.session_root_path,
+				usess->consumer->chunk_path,
+				usess->consumer->subdir);
+		ret = run_as_mkdir_recursive(tmp_path, S_IRWXU | S_IRWXG,
+				ua_sess->euid, ua_sess->egid);
+		free(tmp_path);
 		if (ret < 0) {
 			if (errno != EEXIST) {
 				ERR("Trace directory creation error");

@@ -2833,9 +2833,9 @@ static int create_kernel_session(struct ltt_session *session)
 
 	/* Create directory(ies) on local filesystem. */
 	if (session->kernel_session->consumer->type == CONSUMER_DST_LOCAL &&
-			strlen(session->kernel_session->consumer->dst.trace_path) > 0) {
+			strlen(session->kernel_session->consumer->dst.session_root_path) > 0) {
 		ret = run_as_mkdir_recursive(
-				session->kernel_session->consumer->dst.trace_path,
+				session->kernel_session->consumer->dst.session_root_path,
 				S_IRWXU | S_IRWXG, session->uid, session->gid);
 		if (ret < 0) {
 			if (errno != EEXIST) {

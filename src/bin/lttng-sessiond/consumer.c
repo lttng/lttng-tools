@@ -1415,7 +1415,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname),
-				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.trace_path,
+				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.session_root_path,
 				output->name, output->datetime, output->nb_snapshot,
 				session_path);
 		if (ret < 0) {

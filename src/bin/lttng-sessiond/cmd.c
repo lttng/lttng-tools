@@ -784,17 +784,17 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 		break;
 	case LTTNG_DST_PATH:
 		DBG2("Setting trace directory path from URI to %s", uri->dst.path);
-		memset(consumer->dst.trace_path, 0,
-				sizeof(consumer->dst.trace_path));
+		memset(consumer->dst.session_root_path, 0,
+				sizeof(consumer->dst.session_root_path));
 		/* Explicit length checks for strcpy and strcat. */
 		if (strlen(uri->dst.path) + strlen(default_trace_dir)
-				>= sizeof(consumer->dst.trace_path)) {
+				>= sizeof(consumer->dst.session_root_path)) {
 			ret = LTTNG_ERR_FATAL;
 			goto error;
 		}
-		strcpy(consumer->dst.trace_path, uri->dst.path);
+		strcpy(consumer->dst.session_root_path, uri->dst.path);
 		/* Append default trace dir */
-		strcat(consumer->dst.trace_path, default_trace_dir);
+		strcat(consumer->dst.session_root_path, default_trace_dir);
 		/* Flag consumer as local. */
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
@@ -3082,7 +3082,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 					sizeof(sessions[i].path), session);
 		} else {
 			ret = snprintf(sessions[i].path, sizeof(sessions[i].path), "%s",
-					session->consumer->dst.trace_path);
+					session->consumer->dst.session_root_path);
 		}
 		if (ret < 0) {
 			PERROR("snprintf session path");
@@ -3319,7 +3319,7 @@ ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		}
 		if (output->consumer->type == CONSUMER_DST_LOCAL) {
 			if (lttng_strncpy(list[idx].ctrl_url,
-					output->consumer->dst.trace_path,
+					output->consumer->dst.session_root_path,
 					sizeof(list[idx].ctrl_url))) {
 				ret = -LTTNG_ERR_INVALID;
 				goto error;
