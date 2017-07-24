@@ -1482,13 +1482,15 @@ error_put:
 static
 int viewer_get_packet(struct relay_connection *conn)
 {
-	int ret, send_data = 0;
+	int ret;
 	char *data = NULL;
-	uint32_t len = 0;
-	ssize_t read_len;
 	struct lttng_viewer_get_packet get_packet_info;
 	struct lttng_viewer_trace_packet reply;
 	struct relay_viewer_stream *vstream = NULL;
+	bool skip_send_data = false;
+	uint32_t send_len = sizeof(reply);
+	uint32_t packet_data_len = 0;
+	ssize_t read_len;
 
 	DBG2("Relay get data packet");
 
@@ -1506,21 +1508,26 @@ int viewer_get_packet(struct relay_connection *conn)
 
 	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
 	if (!vstream) {
+		skip_send_data = true;
 		DBG("Client requested packet of unknown stream id %" PRIu64,
 				be64toh(get_packet_info.stream_id));
 		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
-		goto send_reply_nolock;
+	} else {
+		packet_data_len = be32toh(get_packet_info.len);
+		send_len += packet_data_len;
 	}
 
-	pthread_mutex_lock(&vstream->stream->lock);
-
-	len = be32toh(get_packet_info.len);
-	data = zmalloc(len);
+	data = zmalloc(send_len);
 	if (!data) {
 		PERROR("relay data zmalloc");
 		goto error;
 	}
 
+	if (skip_send_data) {
+		goto send_reply_nolock;
+	}
+
+	pthread_mutex_lock(&vstream->stream->lock);
 	ret = lseek(vstream->stream_fd->fd, be64toh(get_packet_info.offset),
 			SEEK_SET);
 	if (ret < 0) {
@@ -1528,16 +1535,17 @@ int viewer_get_packet(struct relay_connection *conn)
 			be64toh(get_packet_info.offset));
 		goto error;
 	}
-	read_len = lttng_read(vstream->stream_fd->fd, data, len);
-	if (read_len < len) {
+	read_len = lttng_read(vstream->stream_fd->fd,
+			data + sizeof(reply),
+			packet_data_len);
+	if (read_len < packet_data_len) {
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
 				vstream->stream_fd->fd,
 				be64toh(get_packet_info.offset));
 		goto error;
 	}
 	reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
-	reply.len = htobe32(len);
-	send_data = 1;
+	reply.len = htobe32(packet_data_len);
 	goto send_reply;
 
 error:
@@ -1548,26 +1556,19 @@ send_reply:
 		pthread_mutex_unlock(&vstream->stream->lock);
 	}
 send_reply_nolock:
-	reply.flags = htobe32(reply.flags);
 
 	health_code_update();
 
-	ret = send_response(conn->sock, &reply, sizeof(reply));
+	memcpy(data, &reply, sizeof(reply));
+	health_code_update();
+	ret = send_response(conn->sock, data, send_len);
+	health_code_update();
 	if (ret < 0) {
+		PERROR("sendmsg of packet data failed");
 		goto end_free;
 	}
-	health_code_update();
 
-	if (send_data) {
-		health_code_update();
-		ret = send_response(conn->sock, data, len);
-		if (ret < 0) {
-			goto end_free;
-		}
-		health_code_update();
-	}
-
-	DBG("Sent %u bytes for stream %" PRIu64, len,
+	DBG("Sent %u bytes for stream %" PRIu64, send_len,
 			be64toh(get_packet_info.stream_id));
 
 end_free:
