@@ -1076,9 +1076,6 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
 	cds_list_for_each_entry(stream, &channel->streams.head, send_node) {
-		/* Are we at a position _before_ the first available packet ? */
-		bool before_first_packet = true;
-
 		health_code_update();
 
 		/* Lock stream because we are about to change its state. */
@@ -1150,7 +1147,6 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 		while (consumed_pos < produced_pos) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
-			int lost_packet = 0;
 
 			health_code_update();
 
@@ -1164,15 +1160,7 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 				}
 				DBG("UST consumer get subbuf failed. Skipping it.");
 				consumed_pos += stream->max_sb_size;
-
-				/*
-				 * Start accounting lost packets only when we
-				 * already have extracted packets (to match the
-				 * content of the final snapshot).
-				 */
-				if (!before_first_packet) {
-					lost_packet = 1;
-				}
+				stream->chan->lost_packets++;
 				continue;
 			}
 
@@ -1208,16 +1196,6 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 				goto error_close_stream;
 			}
 			consumed_pos += stream->max_sb_size;
-
-			/*
-			 * Only account lost packets located between
-			 * succesfully extracted packets (do not account before
-			 * and after since they are not visible in the
-			 * resulting snapshot).
-			 */
-			stream->chan->lost_packets += lost_packet;
-			lost_packet = 0;
-			before_first_packet = false;
 		}
 
 		/* Simply close the stream so we can use it on the next snapshot. */
