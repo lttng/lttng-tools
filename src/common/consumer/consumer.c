@@ -3360,7 +3360,7 @@ error:
  * This will create a relayd socket pair and add it to the relayd hash table.
  * The caller MUST acquire a RCU read side lock before calling it.
  */
-int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
+ void consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		struct lttng_consumer_local_data *ctx, int sock,
 		struct pollfd *consumer_sockpoll,
 		struct lttcomm_relayd_sock *relayd_sock, uint64_t sessiond_id,
@@ -3516,7 +3516,7 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	add_relayd(relayd);
 
 	/* All good! */
-	return 0;
+	return;
 
 error:
 	if (consumer_send_status_msg(sock, ret_code) < 0) {
@@ -3534,8 +3534,6 @@ error_nosignal:
 	if (relayd_created) {
 		free(relayd);
 	}
-
-	return ret;
 }
 
 /*
