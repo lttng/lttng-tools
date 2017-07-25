@@ -920,7 +920,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 
 	session->enums = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->enums) {
-		ret = -ENOMEM;
+		ERR("Failed to create enums hash table");
 		goto error;
 	}
 	/* hash/match functions are specified at call site. */
