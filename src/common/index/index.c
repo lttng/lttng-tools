@@ -96,7 +96,6 @@ struct lttng_index_file *lttng_index_file_create(char *path_name,
 	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
 	if (size_ret < sizeof(hdr)) {
 		PERROR("write index header");
-		ret = -1;
 		goto error;
 	}
 	index_file->fd = fd;
