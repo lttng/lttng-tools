@@ -227,7 +227,6 @@ struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode,
 	fd_r = open(path, O_RDONLY | O_NONBLOCK);
 	if (fd_r < 0) {
 		PERROR("open fifo");
-		ret = fd_r;
 		goto error;
 	}
 	pipe->fd[0] = fd_r;
@@ -236,7 +235,6 @@ struct lttng_pipe *lttng_pipe_named_open(const char *path, mode_t mode,
 	fd_w = open(path, O_WRONLY | O_NONBLOCK);
 	if (fd_w < 0) {
 		PERROR("open fifo");
-		ret = fd_w;
 		goto error;
 	}
 	pipe->fd[1] = fd_w;
