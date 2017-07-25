@@ -63,11 +63,10 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 			goto error;
 		}
 	}
+	ret = 0;
 
 end:
 	cds_list_add_tail(&ctx->list, &chan->ctx_list);
-	return 0;
-
 error:
 	return ret;
 }
