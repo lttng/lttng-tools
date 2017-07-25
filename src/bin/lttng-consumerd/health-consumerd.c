@@ -177,7 +177,7 @@ void *thread_manage_health(void *data)
 	sock = lttcomm_create_unix_sock(health_unix_sock_path);
 	if (sock < 0) {
 		ERR("Unable to create health check Unix socket");
-		ret = -1;
+		err = -1;
 		goto error;
 	}
 
@@ -189,7 +189,7 @@ void *thread_manage_health(void *data)
 		if (ret < 0) {
 			ERR("Unable to set group on %s", health_unix_sock_path);
 			PERROR("chown");
-			ret = -1;
+			err = -1;
 			goto error;
 		}
 
@@ -198,7 +198,7 @@ void *thread_manage_health(void *data)
 		if (ret < 0) {
 			ERR("Unable to set permissions on %s", health_unix_sock_path);
 			PERROR("chmod");
-			ret = -1;
+			err = -1;
 			goto error;
 		}
 	}
