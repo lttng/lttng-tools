@@ -2595,7 +2595,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				break;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
-			ret = execl(consumer_to_use,
+			(void) execl(consumer_to_use,
 				"lttng-consumerd", verbosity, "-k",
 				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
@@ -2635,7 +2635,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
-			ret = execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
+			(void) execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					"--group", tracing_group_name,
@@ -2678,7 +2678,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				}
 			}
 			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
-			ret = execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
+			(void) execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					"--group", tracing_group_name,
