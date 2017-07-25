@@ -5408,13 +5408,10 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 	DBG2("Creating consumer directory: %s", path);
 
 	ret = mkdir(path, S_IRWXU | S_IRGRP | S_IXGRP);
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("mkdir");
-			ERR("Failed to create %s", path);
-			goto error;
-		}
-		ret = -1;
+	if (ret < 0 && errno != EEXIST) {
+		PERROR("mkdir");
+		ERR("Failed to create %s", path);
+		goto error;
 	}
 	if (is_root) {
 		ret = chown(path, 0, utils_get_group_id(tracing_group_name));
