@@ -146,7 +146,6 @@ ssize_t lttng_condition_buffer_usage_serialize(
 		memcpy(buf, usage->session_name, session_name_len);
 		buf += session_name_len;
 		memcpy(buf, usage->channel_name, channel_name_len);
-		buf += channel_name_len;
 	}
 	ret = size;
 end:
