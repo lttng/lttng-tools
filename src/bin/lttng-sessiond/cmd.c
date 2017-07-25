@@ -3550,7 +3550,6 @@ int cmd_regenerate_statedump(struct ltt_session *session)
 		ret = LTTNG_ERR_SESSION_NOT_STARTED;
 		goto end;
 	}
-	ret = 0;
 
 	if (session->kernel_session) {
 		ret = kernctl_session_regenerate_statedump(
