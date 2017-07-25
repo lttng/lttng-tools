@@ -329,7 +329,6 @@ int run_as_worker(struct run_as_worker *worker)
 	if (ret && ret != -ENOSYS) {
 		/* Don't fail as this is not essential. */
 		PERROR("prctl PR_SET_NAME");
-		ret = 0;
 	}
 
 	sendret.ret = 0;
