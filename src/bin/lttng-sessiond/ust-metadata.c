@@ -403,6 +403,9 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 	}
 	sanitize_ctf_identifier(identifier, variant->name);
 	ret = print_tabs(session, nesting);
+	if (ret) {
+		goto end;
+	}
 	ret = lttng_metadata_printf(session,
 			"} _%s;\n",
 			identifier);
