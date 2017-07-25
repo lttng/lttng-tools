@@ -3002,7 +3002,6 @@ static int validate_path_creds(const char *path)
 		if (errno != ENOENT) {
 			PERROR("stat");
 		}
-		ret = -LTTNG_ERR_INVALID;
 		goto valid;
 	}
 
