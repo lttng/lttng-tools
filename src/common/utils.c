@@ -528,7 +528,7 @@ int utils_create_lock_file(const char *filepath)
 		S_IRGRP | S_IWGRP);
 	if (fd < 0) {
 		PERROR("open lock file %s", filepath);
-		ret = -1;
+		fd = -1;
 		goto error;
 	}
 
