@@ -3382,7 +3382,6 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		/* Not found. Allocate one. */
 		relayd = consumer_allocate_relayd_sock_pair(net_seq_idx);
 		if (relayd == NULL) {
-			ret = -ENOMEM;
 			ret_code = LTTCOMM_CONSUMERD_ENOMEM;
 			goto error;
 		} else {
@@ -3415,14 +3414,12 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 	if (ret) {
 		/* Needing to exit in the middle of a command: error. */
 		lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
-		ret = -EINTR;
 		goto error_nosignal;
 	}
 
 	/* Get relayd socket from session daemon */
 	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 	if (ret != sizeof(fd)) {
-		ret = -1;
 		fd = -1;	/* Just in case it gets set with an invalid value. */
 
 		/*
@@ -3496,7 +3493,6 @@ int consumer_add_relayd_socket(uint64_t net_seq_idx, int sock_type,
 		break;
 	default:
 		ERR("Unknown relayd socket type (%d)", sock_type);
-		ret = -1;
 		ret_code = LTTCOMM_CONSUMERD_FATAL;
 		goto error;
 	}
