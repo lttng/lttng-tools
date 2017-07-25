@@ -361,14 +361,23 @@ Default values:
 
 Timeouts
 ~~~~~~~~
-option:--blocking-timeout:
-    Set the channel's blocking timeout value to 'TIMEOUTUS' µs. 0
-    (default) does not block. -1 blocks forever until room is
-    available in the buffer to write the event. Positive
-    values are a timeout bounding the maximum blocking time
-    when trying to write into the buffer. Note that this option
-    only affects applications launched with the
-    LTTNG_UST_ALLOW_BLOCKING environment variable set.
+option:--blocking-timeout='TIMEOUTUS'::
+    Set the channel's blocking timeout value to 'TIMEOUTUS' µs
+    for applications executed with a set `LTTNG_UST_ALLOW_BLOCKING`
+    environment variable:
++
+--
+0 (default)::
+    Do not block.
+
+-1::
+    Block forever until room is available in the sub-buffer to write the
+    event record.
+
+__n__, a positive value::
+    Wait for at most __n__ µs when trying to write into a sub-buffer.
+--
+
 
 include::common-cmd-help-options.txt[]
 
