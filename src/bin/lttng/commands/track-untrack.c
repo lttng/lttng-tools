@@ -357,7 +357,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 
 	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
 	if (ret) {
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
