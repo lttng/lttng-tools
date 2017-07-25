@@ -77,7 +77,6 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	stream = zmalloc(sizeof(struct relay_stream));
 	if (stream == NULL) {
 		PERROR("relay stream zmalloc");
-		ret = -1;
 		goto error_no_alloc;
 	}
 
