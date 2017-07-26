@@ -1,0 +1,11 @@
+[Unit]
+Description=LTTng 2.x central tracing registry session daemon
+Documentation=man:lttng-sessiond(8)
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/lttng-sessiond -d
+PIDFile=/var/run/lttng/lttng-sessiond.pid
+
+[Install]
+WantedBy=multi-user.target

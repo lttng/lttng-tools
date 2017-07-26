@@ -1,6 +1,8 @@
+%global strato_ver 1
+
 Name:           lttng-tools
 Version:        2.9.5
-Release:        1%{?dist}
+Release:        2.s%{strato_ver}%{?dist}
 Summary:        LTTng Trace Control
 Requires:       popt >= 1.13, libuuid, libxml2 >= 2.7.6, lttng-ust >= 2.9.0, lttng-ust < 2.10.0, liburcu >= 0.8.4
 
@@ -25,55 +27,20 @@ Requires:       %{name}%{?_isa} = %{version}-%{release}
 %description    devel
 The %{name}-devel package contains libraries and header files for developing applications that use liblttng-ctl.
 
-%package -n     python33-lttng
-%global scl_python python33
-%global scl %{scl_python}
-%global _scl_root /opt/rh/%{scl_python}/root
-%global __python %{_scl_root}%{__python}
-%global scl_prefix %{scl_python}-
-%global __python_requires %{%{scl_python}_python_requires}
-%global __python_provides %{%{scl_python}_python_provides}
-%global __os_install_post %{python33_os_install_post}
-%global python_sitearch %{_scl_root}/%{_libdir}/python3.3/site-packages
-%global python_sitelib %{_scl_root}/usr/lib/python3.3/site-packages
-Summary:        Python bindings for lttng-tools
-Group:          Development/Libraries
-Requires:       %{name}%{?_isa} = %{version}-%{release}, python33
-BuildRequires:  python33-scldevel, python33-python-devel, swig >= 2.0
-
-%description -n python33-lttng
-The python3-%{name} package contains the python bindings to lttng-tools.
-
-
 %prep
 %setup -q
 
 %build
-PYTHON=%{python33__python3}
-PYTHON_CONFIG="/opt/rh/python33/root/bin/python3-config"
-PYTHON_PREFIX="/opt/rh/python33/root/"
-source /opt/rh/python33/enable
-%configure --docdir=%{_docdir}/%{name} --enable-python-bindings
+%configure --docdir=%{_docdir}/%{name} --disable-python-bindings
 make %{?_smp_mflags} V=1
 
 %install
-PYTHON=%{python33__python3}
-PYTHON_CONFIG="/opt/rh/python33/root/bin/python3-config"
-PYTHON_PREFIX="/opt/rh/python33/root/"
-source /opt/rh/python33/enable
 make install DESTDIR=$RPM_BUILD_ROOT
 rm -vf $RPM_BUILD_ROOT%{_libdir}/*.la
 install -D -m644 extras/lttng-bash_completion %{buildroot}%{_sysconfdir}/bash_completion.d/lttng
 install -D -m644 %{SOURCE1} %{buildroot}%{_unitdir}/lttng-sessiond.service
 install -D -m644 %{SOURCE2} %{buildroot}%{_unitdir}/lttng-relayd.service
 
-# Copy the installed Python files to the SCL Python path
-mkdir -p ${RPM_BUILD_ROOT}%{python_sitelib}/
-mkdir -p ${RPM_BUILD_ROOT}%{python_sitearch}/
-mv ${RPM_BUILD_ROOT}/usr/lib/python3.3/site-packages/* ${RPM_BUILD_ROOT}%{python_sitelib}/
-mv ${RPM_BUILD_ROOT}%{_libdir}/python3.3/site-packages/* ${RPM_BUILD_ROOT}%{python_sitearch}/
-rm -vf $RPM_BUILD_ROOT%{python_sitearch}/_lttng.a
-rm -vf $RPM_BUILD_ROOT%{python_sitearch}/_lttng.la
 
 %pre
 getent group tracing >/dev/null || groupadd -r tracing
@@ -149,12 +116,10 @@ exit 0
 %{_libdir}/liblttng-ctl.so
 %{_libdir}/pkgconfig/lttng-ctl.pc
 
-%files -n python33-lttng
-%{python_sitelib}/lttng.py
-%{python_sitelib}/__pycache__/*
-%{python_sitearch}/_lttng.so*
-
 %changelog
+* Wed Jul 26 2017 Ronnie Lazar <ronnie@stratoscale.com> 2.9.5-2
+    - Updated to 2.9.5
+
 * Tue Jun 20 2017 Michael Jeanson <mjeanson@efficios.com> 2.9.5-1
     - Updated to 2.9.5
 

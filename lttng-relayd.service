@@ -1,0 +1,9 @@
+[Unit]
+Description=LTTng remote trace collection daemon
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/lttng-relayd -d
+
+[Install]
+WantedBy=multi-user.target
