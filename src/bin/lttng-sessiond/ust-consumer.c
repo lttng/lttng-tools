@@ -321,7 +321,6 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 			free(stream);
 			if (ret == -LTTNG_UST_ERR_NOENT) {
 				DBG3("UST app consumer has no more stream available");
-				ret = 0;
 				break;
 			}
 			if (ret != -EPIPE) {
