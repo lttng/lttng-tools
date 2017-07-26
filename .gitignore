@@ -124,3 +124,6 @@ tests/regression/ust/python-logging/test_python_logging
 /include/version.h
 
 classnoinst.stamp
+
+build/
+**RCS**

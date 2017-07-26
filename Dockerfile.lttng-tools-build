@@ -1,0 +1,10 @@
+FROM rackattack-nas.dc1:5000/lttng-build:31822caa7a5992e2fdc11fe494950dce97117d78
+
+RUN mkdir -p /tmp/bring
+
+COPY solvent.manifest ./
+
+RUN solvent bring --repositoryBasename=lttng-ust --product=rpms --destination=/tmp/bring
+
+RUN yum install -y libxml2-devel /tmp/bring/*.rpm && yum clean all && rm -rf /tmp/bring
+

@@ -1,0 +1,38 @@
+BUILD_DIR = build
+
+SRC_PREFIX = lttng-tools-2.9.5
+SRC_TAR = $(SRC_PREFIX).tar.bz2
+
+BOOTSTRAP_DATA_PREFIX = bootstrap_data
+BOOTSTRAP_DATA_TAR = $(BOOTSTRAP_DATA_PREFIX).tar
+
+RPM_OUTPUT_DIR = $(BUILD_DIR)/output_rpms
+
+all: $(BUILD_DIR)
+
+submit:
+	solvent submitproduct rpms $(RPM_OUTPUT_DIR)
+
+clean:
+	rm -rf build/rootfs* $(BOOTSTRAP_DATA_TAR) $(SRC_TAR)
+
+.PHONY: $(BUILD_DIR)
+$(BUILD_DIR):
+	echo "Building lttng-tools"
+	$(Q) rm -fr $@
+	$(Q) mkdir -p $@
+
+	$(Q) mkdir -p $@/output_rpms
+	$(Q) git archive --format=tar --prefix=$(BOOTSTRAP_DATA_PREFIX)/ HEAD | sh -c "bzip2 -1c > $@/$(BOOTSTRAP_DATA_TAR)"
+
+	#$(Q) cp $(BOOTSTRAP_DATA_TAR) $@
+	$(Q) sh -c " cd build && tar -xvf $(BOOTSTRAP_DATA_TAR)"
+	$(Q) sh -c "cd $@/${BOOTSTRAP_DATA_PREFIX} && ./bootstrap"
+	$(Q) tar --transform 's,^$@/$(BOOTSTRAP_DATA_PREFIX)/,$(SRC_PREFIX)/,S' -cvf $@/$(SRC_TAR) --show-transformed $@/$(BOOTSTRAP_DATA_PREFIX)/
+	$(Q) mkdir -p $@/rpmbuild/SOURCES
+	$(Q) mkdir -p $@/rpmbuild/SPECS
+	$(Q) cp $@/$(SRC_TAR) $@/rpmbuild/SOURCES
+	$(Q) cp lttng-relayd.service $@/rpmbuild/SOURCES
+	$(Q) cp lttng-sessiond.service $@/rpmbuild/SOURCES
+	$(Q) cp lttng-tools.spec $@/rpmbuild/SPECS/lttng-tools.spec
+	$(Q) ./lttng-tools-build.sh $@
