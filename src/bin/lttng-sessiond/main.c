@@ -2592,7 +2592,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			} else {
 				DBG("Could not find any valid consumerd executable");
 				ret = -EINVAL;
-				break;
+				goto error;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
 			(void) execl(consumer_to_use,
