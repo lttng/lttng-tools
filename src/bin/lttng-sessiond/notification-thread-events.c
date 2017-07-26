@@ -88,7 +88,7 @@ struct notification_client {
 	uid_t uid;
 	gid_t gid;
 	/*
-	 * Indicates if the credentials and versions of the client has been
+	 * Indicates if the credentials and versions of the client have been
 	 * checked.
 	 */
 	bool validated;
