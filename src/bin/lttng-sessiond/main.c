@@ -2716,7 +2716,6 @@ static int init_kernel_tracer(void)
 	kernel_tracer_fd = open(module_proc_lttng, O_RDWR);
 	if (kernel_tracer_fd < 0) {
 		DBG("Failed to open %s", module_proc_lttng);
-		ret = -1;
 		goto error_open;
 	}
 
