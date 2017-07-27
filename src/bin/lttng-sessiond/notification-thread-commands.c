@@ -44,7 +44,7 @@ int run_command_wait(struct notification_thread_handle *handle,
 	cds_list_add_tail(&cmd->cmd_list_node,
 			&handle->cmd_queue.list);
 	/* Wake-up thread. */
-	ret = write(handle->cmd_queue.event_fd,
+	ret = write(lttng_pipe_get_writefd(handle->cmd_queue.event_pipe),
 			&notification_counter, sizeof(notification_counter));
 	if (ret < 0) {
 		PERROR("write to notification thread's queue event fd");

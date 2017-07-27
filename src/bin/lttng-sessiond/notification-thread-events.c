@@ -1275,7 +1275,7 @@ int handle_notification_thread_command(
 	struct notification_thread_command *cmd;
 
 	/* Read event_fd to put it back into a quiescent state. */
-	ret = read(handle->cmd_queue.event_fd, &counter, sizeof(counter));
+	ret = read(lttng_pipe_get_readfd(handle->cmd_queue.event_pipe), &counter, sizeof(counter));
 	if (ret == -1) {
 		goto error;
 	}
