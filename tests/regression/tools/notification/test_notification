@@ -36,6 +36,7 @@ CHANNEL_NAME="my_ust_channel"
 EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
+PAGE_SIZE=$(getconf PAGE_SIZE)
 
 DIR=$(readlink -f $TESTDIR)
 
@@ -50,7 +51,7 @@ start_lttng_sessiond_notap
 
 create_lttng_session_notap $SESSION_NAME $TRACE_PATH
 
-enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=4096
+enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=$PAGE_SIZE
 enable_ust_lttng_event_notap $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 #This is needed since the testpoint create a pipe with the consumer type suffixed
