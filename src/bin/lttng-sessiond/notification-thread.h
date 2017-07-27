@@ -30,11 +30,11 @@
 struct notification_thread_handle {
 	/*
 	 * Queue of struct notification command.
-	 * event_fd must be WRITE(2) to signal that a new command
+	 * event_pipe must be WRITE(2) to signal that a new command
 	 * has been enqueued.
 	 */
 	struct {
-		int event_fd;
+		struct lttng_pipe *event_pipe;
 		struct cds_list_head list;
 		pthread_mutex_t lock;
 	} cmd_queue;
