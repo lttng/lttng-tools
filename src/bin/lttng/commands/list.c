@@ -1207,14 +1207,14 @@ static void print_channel(struct lttng_channel *channel)
 
 	MSG("%sAttributes:", indent4);
 	MSG("%soverwrite mode: %d", indent6, channel->attr.overwrite);
-	MSG("%ssubbuffers size: %" PRIu64, indent6, channel->attr.subbuf_size);
+	MSG("%ssubbuffers size: %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
 	MSG("%snumber of subbuffers: %" PRIu64, indent6, channel->attr.num_subbuf);
-	MSG("%sswitch timer interval: %u", indent6, channel->attr.switch_timer_interval);
-	MSG("%sread timer interval: %u", indent6, channel->attr.read_timer_interval);
-	MSG("%smonitor timer interval: %" PRIu64, indent6, monitor_timer_interval);
-	MSG("%sblocking timeout (µs): %" PRId64, indent6, blocking_timeout);
+	MSG("%sswitch timer interval: %u µs", indent6, channel->attr.switch_timer_interval);
+	MSG("%sread timer interval: %u µs", indent6, channel->attr.read_timer_interval);
+	MSG("%smonitor timer interval: %" PRIu64 " µs", indent6, monitor_timer_interval);
+	MSG("%sblocking timeout: %" PRId64 " µs", indent6, blocking_timeout);
 	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
-	MSG("%strace file size (bytes): %" PRIu64, indent6, channel->attr.tracefile_size);
+	MSG("%strace file size: %" PRIu64 " bytes", indent6, channel->attr.tracefile_size);
 	MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);
 	MSG("%slost packets: %" PRIu64, indent6, lost_packets);
 	switch (channel->attr.output) {
