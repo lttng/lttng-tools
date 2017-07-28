@@ -652,6 +652,14 @@ int cmd_enable_channels(int argc, const char **argv)
 		goto end;
 	}
 
+	if (chan_opts.attr.overwrite == 1 && opt_blocking_timeout.set &&
+			opt_blocking_timeout.value != 0) {
+		ERR("You cannot specify --overwrite and --blocking-timeout=N, "
+			"where N is different than 0");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	/* Mi check */
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
