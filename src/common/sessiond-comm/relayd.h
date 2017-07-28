@@ -95,13 +95,6 @@ struct lttcomm_relayd_generic_reply {
 } LTTNG_PACKED;
 
 /*
- * Used to update synchronization information.
- */
-struct lttcomm_relayd_update_sync_info {
-	/* TODO: fill the structure. Feature not implemented yet */
-} LTTNG_PACKED;
-
-/*
  * Version command.
  */
 struct lttcomm_relayd_version {
