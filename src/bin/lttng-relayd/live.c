@@ -1483,12 +1483,11 @@ static
 int viewer_get_packet(struct relay_connection *conn)
 {
 	int ret;
-	char *data = NULL;
+	char *reply = NULL;
 	struct lttng_viewer_get_packet get_packet_info;
-	struct lttng_viewer_trace_packet reply;
+	struct lttng_viewer_trace_packet reply_header;
 	struct relay_viewer_stream *vstream = NULL;
-	bool skip_send_data = false;
-	uint32_t send_len = sizeof(reply);
+	uint32_t reply_size = sizeof(reply_header);
 	uint32_t packet_data_len = 0;
 	ssize_t read_len;
 
@@ -1504,27 +1503,24 @@ int viewer_get_packet(struct relay_connection *conn)
 	health_code_update();
 
 	/* From this point on, the error label can be reached. */
-	memset(&reply, 0, sizeof(reply));
+	memset(&reply_header, 0, sizeof(reply_header));
 
 	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
 	if (!vstream) {
-		skip_send_data = true;
 		DBG("Client requested packet of unknown stream id %" PRIu64,
 				be64toh(get_packet_info.stream_id));
-		reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+		reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+		goto send_reply_nolock;
 	} else {
 		packet_data_len = be32toh(get_packet_info.len);
-		send_len += packet_data_len;
+		reply_size += packet_data_len;
 	}
 
-	data = zmalloc(send_len);
-	if (!data) {
-		PERROR("relay data zmalloc");
+	reply = zmalloc(reply_size);
+	if (!reply) {
+		PERROR("packet reply zmalloc");
+		reply_size = sizeof(reply_header);
 		goto error;
-	}
-
-	if (skip_send_data) {
-		goto send_reply_nolock;
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
@@ -1536,7 +1532,7 @@ int viewer_get_packet(struct relay_connection *conn)
 		goto error;
 	}
 	read_len = lttng_read(vstream->stream_fd->fd,
-			data + sizeof(reply),
+			reply + sizeof(reply_header),
 			packet_data_len);
 	if (read_len < packet_data_len) {
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
@@ -1544,12 +1540,12 @@ int viewer_get_packet(struct relay_connection *conn)
 				be64toh(get_packet_info.offset));
 		goto error;
 	}
-	reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
-	reply.len = htobe32(packet_data_len);
+	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
+	reply_header.len = htobe32(packet_data_len);
 	goto send_reply;
 
 error:
-	reply.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
+	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
 send_reply:
 	if (vstream) {
@@ -1559,20 +1555,26 @@ send_reply_nolock:
 
 	health_code_update();
 
-	memcpy(data, &reply, sizeof(reply));
-	health_code_update();
-	ret = send_response(conn->sock, data, send_len);
+	if (reply) {
+		memcpy(reply, &reply_header, sizeof(reply_header));
+		ret = send_response(conn->sock, reply, reply_size);
+	} else {
+		/* No reply to send. */
+		ret = send_response(conn->sock, &reply_header,
+				reply_size);
+	}
+
 	health_code_update();
 	if (ret < 0) {
 		PERROR("sendmsg of packet data failed");
 		goto end_free;
 	}
 
-	DBG("Sent %u bytes for stream %" PRIu64, send_len,
+	DBG("Sent %u bytes for stream %" PRIu64, reply_size,
 			be64toh(get_packet_info.stream_id));
 
 end_free:
-	free(data);
+	free(reply);
 end:
 	if (vstream) {
 		viewer_stream_put(vstream);
