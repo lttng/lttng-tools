@@ -127,10 +127,11 @@ function conf_proc_count()
 
 function enable_kernel_lttng_event
 {
-	local expected_to_fail="$1"
-	local sess_name="$2"
-	local event_name="$3"
-	local channel_name="$4"
+	local withtap="$1"
+	local expected_to_fail="$2"
+	local sess_name="$3"
+	local event_name="$4"
+	local channel_name="$5"
 
 	if [ -z "$event_name" ]; then
 		# Enable all event if no event name specified
@@ -148,20 +149,30 @@ function enable_kernel_lttng_event
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test $ret -ne "0"
-		ok $? "Enable kernel event $event_name for session $session_name on channel $channel_name failed as expected"
+		ret=$?
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Enable kernel event $event_name for session $session_name on channel $channel_name failed as expected"
+		fi
 	else
-		ok $ret "Enable kernel event $event_name for session $sess_name"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Enable kernel event $event_name for session $sess_name"
+		fi
 	fi
 }
 
 function enable_kernel_lttng_event_ok ()
 {
-	enable_kernel_lttng_event 0 "$@"
+	enable_kernel_lttng_event 1 0 "$@"
 }
 
 function enable_kernel_lttng_event_fail ()
 {
-	enable_kernel_lttng_event 1 "$@"
+	enable_kernel_lttng_event 1 1 "$@"
+}
+
+function enable_kernel_lttng_event_notap ()
+{
+	enable_kernel_lttng_event 0 0 "$@"
 }
 
 # Old interface
@@ -251,28 +262,45 @@ function lttng_disable_kernel_syscall_fail()
 
 function lttng_enable_kernel_channel()
 {
-	local expected_to_fail=$1
-	local sess_name=$2
-	local channel_name=$3
+	local withtap=$1
+	local expected_to_fail=$2
+	local sess_name=$3
+	local channel_name=$4
+	local opt=$5
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k $channel_name -s $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k $channel_name -s $sess_name $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
-		ok $? "Enable channel $channel_name for session $sess_name failed as expected"
+		ret=$?
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Enable channel $channel_name for session $sess_name failed as expected"
+		fi
 	else
-		ok $ret "Enable channel $channel_name for session $sess_name"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Enable channel $channel_name for session $sess_name"
+		fi
 	fi
 }
 
 function lttng_enable_kernel_channel_ok()
 {
-	lttng_enable_kernel_channel 0 "$@"
+	lttng_enable_kernel_channel 1 0 "$@"
 }
 
 function lttng_enable_kernel_channel_fail()
 {
-	lttng_enable_kernel_channel 1 "$@"
+	lttng_enable_kernel_channel 1 1 "$@"
+}
+
+function lttng_enable_kernel_channel_notap()
+{
+	lttng_enable_kernel_channel 0 0 "$@"
+}
+
+function enable_kernel_lttng_channel_ok()
+{
+	lttng_enable_kernel_channel 1 0 "$@"
 }
 
 function lttng_disable_kernel_channel()
@@ -1086,30 +1114,40 @@ function stop_lttng_tracing_fail ()
 
 function destroy_lttng_session ()
 {
-	local expected_to_fail=$1
-	local sess_name=$2
+	local withtap=$1
+	local expected_to_fail=$2
+	local sess_name=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN destroy $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
-		ok $? "Destroy session $sess_name failed as expected"
+		ret=$?
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Destroy session $sess_name failed as expected"
+		fi
 	else
-		ok $ret "Destroy session $sess_name"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Destroy session $sess_name"
+		fi
 	fi
 }
 
 function destroy_lttng_session_ok ()
 {
-	destroy_lttng_session 0 "$@"
+	destroy_lttng_session 1 0 "$@"
 
 }
 
 function destroy_lttng_session_fail ()
 {
-	destroy_lttng_session 1 "$@"
+	destroy_lttng_session 1 1 "$@"
 }
 
+function destroy_lttng_session_notap ()
+{
+	destroy_lttng_session 0 0 "$@"
+}
 
 function destroy_lttng_sessions ()
 {

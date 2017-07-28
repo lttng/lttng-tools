@@ -25,13 +25,13 @@ TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_STATE_FILE="$(mktemp -u)"
 
-NR_ITER=-1
+NR_ITER=1000
 NR_USEC_WAIT=5
 
 SESSION_NAME="my_session"
-UST_CHANNEL_NAME="my_ust_channel"
-EVENT_NAME="tp:tptest"
+CHANNEL_NAME="my_channel"
 
 
 TRACE_PATH=$(mktemp -d)
@@ -40,7 +40,9 @@ DIR=$(readlink -f $TESTDIR)
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
 
-NUM_TESTS=62
+NUM_TEST_UST=50
+NUM_TEST_KERNEL=50
+NUM_TESTS=$(($NUM_TEST_UST + $NUM_TEST_KERNEL))
 
 source $TESTDIR/utils/utils.sh
 
@@ -53,6 +55,54 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 app_pids=()
+
+function kernel_event_generator_toogle_state
+{
+	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
+
+}
+function kernel_event_generator
+{
+	state_file=$1
+	kernel_event_generator_suspended=0
+	trap kernel_event_generator_toogle_state SIGUSR1
+	trap "exit" SIGTERM SIGINT
+	while (true); do
+		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
+			touch $state_file
+			sleep 0.5
+		else
+			if [[ -f $state_file ]]; then
+				rm $state_file 2> /dev/null
+			fi
+			echo -n "1000" > /proc/lttng-test-filter-event
+		fi
+	done
+}
+
+function ust_event_generator_toogle_state
+{
+	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
+
+}
+function ust_event_generator
+{
+	state_file=$1
+	ust_event_generator_suspended=0
+	trap ust_event_generator_toogle_state SIGUSR1
+	trap "exit" SIGTERM SIGINT
+	while (true); do
+		if [[ $ust_event_generator_suspended -eq "1" ]]; then
+			touch $state_file
+			sleep 0.5
+		else
+			if [[ -f $state_file ]]; then
+				rm $state_file 2> /dev/null
+			fi
+			taskset  -c 0 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT > /dev/null 2>&1
+		fi
+	done
+}
 
 function start_client {
 	local pid=-1
@@ -120,25 +170,25 @@ function comm_consumerd ()
 	local message=$1
 	local pipe=$2
 	echo -ne "${message}" > "${pipe}"
-	return $?
 }
 
 function stop_consumerd ()
 {
 	local pipe=$1
 	comm_consumerd "1" "$pipe"
-	ok $? "Stopping consumption consumerd"
 }
 
 function resume_consumerd ()
 {
 	local pipe=$1
 	comm_consumerd "\0" "$pipe"
-	ok $? "Resuming consumerd"
 }
 
 function test_multi_app ()
 {
+	local domain_type=$1
+	local event_generator_pid=$2
+
 	local app_pids=()
 	local low_output_file_pattern="low_app_output_file_"
 	local high_output_file_pattern="high_app_output_file_"
@@ -148,6 +198,23 @@ function test_multi_app ()
 
 	local nr_notification_expected=5
 	local nr_client_app=50
+	local domain_string=""
+	local event_name=""
+
+	case $domain_type in
+		ust)
+			domain_string=LTTNG_DOMAIN_UST
+			event_name="tp:tptest"
+			;;
+		kernel)
+			domain_string=LTTNG_DOMAIN_KERNEL
+			event_name="lttng_test_filter_event"
+			;;
+		*)
+			fail "Invalid domain type"
+			exit 1
+			;;
+	esac
 
 	# Cleanup
 	rm ${CURDIR}/${low_output_file_pattern}* 2> /dev/null
@@ -157,21 +224,9 @@ function test_multi_app ()
 	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${testpoint_pipe_path} LD_PRELOAD=${TESTPOINT}"
 	start_lttng_sessiond
 
-	# Start app in infinite loop
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $file_sync_after_first_event &
-	app_pid=$!
-	# Pin to CPU zero to force specific sub buffer usage
-	taskset -p -c 0 $app_pid > /dev/null 2>&1
-
-	# Wait for sync with app
-	while [ ! -f "${file_sync_after_first_event}" ]; do
-		sleep 0.5
-	done
-	rm ${file_sync_after_first_event}
-
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_ok $SESSION_NAME $UST_CHANNEL_NAME --subbuf-size=$PAGE_SIZE
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $UST_CHANNEL_NAME
+	enable_${domain_type}_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME --subbuf-size=$PAGE_SIZE
+	enable_${domain_type}_lttng_event_ok $SESSION_NAME $event_name $CHANNEL_NAME
 
 	# Fetch consumerd testpoint pipe information
 	# This is needed since the testpoint create a pipe with the consumer type suffixed
@@ -182,8 +237,8 @@ function test_multi_app ()
 	for (( i = 0; i < $nr_client_app; i++ )); do
 		low_app_output_file=$CURDIR/${low_output_file_pattern}${i}
 		high_app_output_file=$CURDIR/${high_output_file_pattern}${i}
-		start_client $low_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST LOW RATIO 0.0 $nr_notification_expected
-		start_client $high_app_output_file $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 $nr_notification_expected
+		start_client $low_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string LOW RATIO 0.0 $nr_notification_expected
+		start_client $high_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 $nr_notification_expected
 	done
 
 	wait_for_message "${low_output_file_pattern}" "sync: ready"
@@ -200,6 +255,13 @@ function test_multi_app ()
 
 		wait_for_message "${high_output_file_pattern}" "notification: high $i"
 
+		# Put application in suspend mode to prevent double low
+		# notification and synchronize on state file.
+		kill -s SIGUSR1 $event_generator_pid
+		while [ ! -f "${TESTAPP_STATE_FILE}" ]; do
+			sleep 0.5
+		done
+
 		# Resume consumerd
 		for pipe in "${consumerd_pipe[@]}"; do
 			resume_consumerd "${pipe}"
@@ -215,6 +277,12 @@ function test_multi_app ()
 			# Error occurred bail out
 			break;
 		fi
+
+		# Put application in active mode and synchronize on state file.
+		kill -s SIGUSR1 $event_generator_pid
+		while [ -f "${TESTAPP_STATE_FILE}" ]; do
+			sleep 0.5
+		done
 	done
 
 	wait_for_message "${low_output_file_pattern}" "exit: 0"
@@ -237,42 +305,118 @@ function test_multi_app ()
 		print_errors "${high_output_file_pattern}"
 	fi
 
-	kill -9 $app_pid
-	wait $app_pid 2> /dev/null
-
+	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
+
+	for pipe in "${consumerd_pipe[@]}"; do
+		rm -rf "${pipe}"
+	done
+}
+
+function test_multi_app_ust ()
+{
+	diag "Multi client app UST notification"
+	ust_event_generator $TESTAPP_STATE_FILE &
+	local generator_pid=$!
+
+	test_multi_app ust $generator_pid
+
+	kill -9 $generator_pid 2> /dev/null
+	wait $generator_pid 2> /dev/null
+	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
+}
+
+function test_multi_app_kernel ()
+{
+	diag "Multi client app kernel notification"
+	modprobe lttng-test
+
+	kernel_event_generator $TESTAPP_STATE_FILE &
+	local generator_pid=$!
+
+	test_multi_app kernel $generator_pid
+
+
+	kill -9 $generator_pid 2>/dev/null
+	wait $generator_pid 2> /dev/null
+	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
+
+	rmmod lttng-test
+}
+
+function test_on_register_evaluation_ust ()
+{
+	diag "On register notification UST"
+
+	# Start app in infinite loop
+	ust_event_generator $TESTAPP_STATE_FILE &
+	local generator_pid=$!
+
+	test_on_register_evaluation ust $generator_pid
+
+	kill -9 $generator_pid 2> /dev/null
+	wait $generator_pid 2> /dev/null
+	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
+
+}
+
+function test_on_register_evaluation_kernel()
+{
+	diag "On register notification kernel"
+
+	modprobe lttng-test
+
+	kernel_event_generator $TESTAPP_STATE_FILE &
+	local generator_pid=$!
+
+	test_on_register_evaluation kernel $generator_pid
+
+
+	kill -9 $generator_pid 2> /dev/null
+	wait $generator_pid 2> /dev/null
+	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
+
+	rmmod lttng-test
 }
 
 function test_on_register_evaluation ()
 {
+	local domain_type=$1
+	local event_generator_pid=$2
+
 	local app_pids=()
 	local high_output_file_pattern="high_app_output_file_on_register_evaluation"
 
 	local testpoint_base_path=$(readlink -f "$CURDIR/lttng.t_p_n_register_evaluation")
 	local testpoint_pipe_path=$(mktemp -u "${testpoint_base_path}.XXXXXX")
+	local domain_string=""
+	local event_name=""
 
 	# Cleanup
 	rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
+
+	case $domain_type in
+		ust)
+			domain_string=LTTNG_DOMAIN_UST
+			event_name="tp:tptest"
+			;;
+		kernel)
+			domain_string=LTTNG_DOMAIN_KERNEL
+			event_name="lttng_test_filter_event"
+			;;
+		*)
+			fail "Invalid domain type"
+			exit 1
+			;;
+	esac
 
 	# Setup
 	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${testpoint_pipe_path} LD_PRELOAD=${TESTPOINT}"
 	start_lttng_sessiond
 
-	# Start app in infinite loop
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $file_sync_after_first_event &
-	app_pid=$!
-	# Pin to CPU zero to force specific sub buffer usage
-	taskset -p -c 0 $app_pid > /dev/null 2>&1
-
-	# Wait for sync with app
-	while [ ! -f "${file_sync_after_first_event}" ]; do
-		sleep 0.5
-	done
-	rm ${file_sync_after_first_event}
-
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
-	enable_ust_lttng_channel_ok $SESSION_NAME $UST_CHANNEL_NAME --subbuf-size=$PAGE_SIZE
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $UST_CHANNEL_NAME
+	enable_${domain_type}_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME --subbuf-size=$PAGE_SIZE
+	enable_${domain_type}_lttng_event_ok $SESSION_NAME $event_name $CHANNEL_NAME
 
 	# Fetch consumerd testpoint pipe information
 	# This is needed since the testpoint create a pipe with the consumer type suffixed
@@ -282,7 +426,7 @@ function test_on_register_evaluation ()
 
 	high_app_output_file=${high_output_file_pattern}.first_receiver
 	high_app_output_path=$CURDIR/${high_app_output_file}
-	start_client $high_app_output_path $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 1
+	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
 
 	wait_for_message "${high_app_output_file}" "sync: ready"
 
@@ -299,7 +443,7 @@ function test_on_register_evaluation ()
 	# notification on subscription
 	high_app_output_file=${high_output_file_pattern}.second_receiver
 	high_app_output_path=$CURDIR/${high_app_output_file}
-	start_client $high_app_output_path $SESSION_NAME $UST_CHANNEL_NAME LTTNG_DOMAIN_UST HIGH RATIO 0.420 1
+	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
 	wait_for_message "${high_app_output_file}" "sync: ready"
 	wait_for_message "${high_app_output_file}" "notification: high 0"
 
@@ -318,17 +462,33 @@ function test_on_register_evaluation ()
 		print_errors "${high_output_file_pattern}"
 	fi
 
+	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	kill -9 $app_pid
-	wait $app_pid 2> /dev/null
+	kill -9 $generator_pid
+	wait $generator_pid 2> /dev/null
+
+	for pipe in "${consumerd_pipe[@]}"; do
+		rm -rf "${pipe}"
+	done
+
 }
 
 
 TESTS=(
-	test_multi_app
-	test_on_register_evaluation
+	test_multi_app_ust
+	test_on_register_evaluation_ust
 )
+
+if [ "$(id -u)" == "0" ]; then
+	TESTS+=(
+	test_multi_app_kernel
+	test_on_register_evaluation_kernel
+)
+else
+        skip 0 "Root access is needed. Skipping all kernel multi-app notification tests." $NUM_TEST_KERNEL
+fi
+
 
 for fct_test in ${TESTS[@]};
 do
@@ -342,4 +502,3 @@ do
 	# Only delete if successful
 	rm -rf $TRACE_PATH
 done
-
