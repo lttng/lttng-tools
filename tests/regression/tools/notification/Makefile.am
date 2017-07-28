@@ -10,7 +10,7 @@ noinst_PROGRAMS = base_client notification
 if NO_SHARED
 
 CLEANFILES = libpause_consumer.so libpause_consumer.so.debug
-EXTRA_DIST = test_notification test_notification_multi_app base_client.c notification.c consumer_testpoints.c
+EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app base_client.c notification.c consumer_testpoints.c
 
 else
 
@@ -30,8 +30,7 @@ base_client_LDADD = $(LIB_LTTNG_CTL)
 notification_SOURCES = notification.c
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-noinst_SCRIPTS = test_notification test_notification_multi_app
-EXTRA_DIST = test_notification test_notification_multi_app
+noinst_SCRIPTS = test_notification_ust test_notification_ust test_notification_multi_app
 
 
 all-local:

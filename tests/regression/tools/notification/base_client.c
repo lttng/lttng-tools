@@ -201,7 +201,7 @@ int main(int argc, char **argv)
 		goto end;
 	}
 	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			condition, LTTNG_DOMAIN_UST);
+			condition, domain_type);
 	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
 		printf("error: Could not set domain type\n");
 		ret = 1;

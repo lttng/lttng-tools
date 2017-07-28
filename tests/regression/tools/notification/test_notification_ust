@@ -24,27 +24,53 @@ TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
 TESTPOIT_ARGS="CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LTTNG_TESTPOINT_ENABLE=1"
 TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
 
+
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_STATE_PATH=$(mktemp -u "$CURDIR/application_state.XXXXXXXXXX")
 
-NR_ITER=-1
+NR_ITER=1000
 NR_USEC_WAIT=5
 
 SESSION_NAME="my_session"
-CHANNEL_NAME="my_ust_channel"
-EVENT_NAME="tp:tptest"
+CHANNEL_NAME="my_channel"
 
 TRACE_PATH=$(mktemp -d)
 PAGE_SIZE=$(getconf PAGE_SIZE)
 
 DIR=$(readlink -f $TESTDIR)
 
+
 source $TESTDIR/utils/utils.sh
 
-consumerd_pipe=()
+function ust_event_generator_toogle_state
+{
+	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
 
+}
+function ust_event_generator
+{
+	state_file=$1
+	ust_event_generator_suspended=0
+	trap ust_event_generator_toogle_state SIGUSR1
+	trap "exit" SIGTERM SIGINT
+	while (true); do
+		if [[ $ust_event_generator_suspended -eq "1" ]]; then
+			touch $state_file
+			sleep 0.5
+		else
+			if [[ -f $state_file ]]; then
+				rm $state_file 2> /dev/null
+			fi
+			taskset  -c 0 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT > /dev/null 2>&1
+		fi
+	done
+}
+
+consumerd_pipe=()
 file_sync_after_first_event=$(mktemp -u)
+event_name="tp:tptest"
 
 LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
 start_lttng_sessiond_notap
@@ -52,7 +78,7 @@ start_lttng_sessiond_notap
 create_lttng_session_notap $SESSION_NAME $TRACE_PATH
 
 enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=$PAGE_SIZE
-enable_ust_lttng_event_notap $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+enable_ust_lttng_event_notap $SESSION_NAME $event_name $CHANNEL_NAME
 
 #This is needed since the testpoint create a pipe with the consumer type suffixed
 for f in "$TESTPOINT_BASE_PATH"*; do
@@ -60,28 +86,20 @@ for f in "$TESTPOINT_BASE_PATH"*; do
 done
 
 
-# Start app in infinite loop
-$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $file_sync_after_first_event &
+ust_event_generator $TESTAPP_STATE_PATH &
 APP_PID=$!
-# Pin to CPU zero to force specific sub buffer usage
-taskset -p -c 0 $APP_PID > /dev/null 2>&1
 
-while [ ! -f "${file_sync_after_first_event}" ]; do
-	        sleep 0.5
-done
-rm ${file_sync_after_first_event}
+$CURDIR/notification LTTNG_DOMAIN_UST $SESSION_NAME $CHANNEL_NAME $APP_PID $TESTAPP_STATE_PATH ${consumerd_pipe[@]}
 
-# The actual test suite
-# TODO: Add support for kernel domain
-$CURDIR/notification $SESSION_NAME $CHANNEL_NAME LTTNG_DOMAIN_UST ${consumerd_pipe[@]}
-
+destroy_lttng_session_notap $SESSION_NAME
 stop_lttng_sessiond_notap
 
 # On ungraceful kill the app is cleaned up via the full_cleanup call
 # Suppress kill message
 kill -9 $APP_PID
 wait $APP_PID 2> /dev/null
+rm ${consumerd_pipe[@]} 2> /dev/null
+rm ${TESTAPP_STATE_PATH} 2> /dev/null
 
 # Just in case cleanup
 rm -rf $TRACE_PATH
-rm ${consumerd_pipe[@]} 2> /dev/null
