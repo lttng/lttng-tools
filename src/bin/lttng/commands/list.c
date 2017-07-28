@@ -1151,7 +1151,7 @@ static int list_events(const char *channel_name)
 		}
 	} else {
 		/* Pretty print */
-		MSG("\n%sEvents:", indent4);
+		MSG("\n%sEvent rules:", indent4);
 		if (count == 0) {
 			MSG("%sNone\n", indent6);
 			goto end;
@@ -1167,6 +1167,23 @@ end:
 	free(events);
 error:
 	return ret;
+}
+
+static
+void print_timer(const char *timer_name, uint32_t space_count, int64_t value)
+{
+	uint32_t i;
+
+	_MSG("%s%s:", indent6, timer_name);
+	for (i = 0; i < space_count; i++) {
+		_MSG(" ");
+	}
+
+	if (value) {
+		MSG("%" PRId64 " µs", value);
+	} else {
+		MSG("inactive");
+	}
 }
 
 /*
@@ -1207,27 +1224,43 @@ static void print_channel(struct lttng_channel *channel)
 	}
 
 	MSG("- %s:%s\n", channel->name, enabled_string(channel->enabled));
-
 	MSG("%sAttributes:", indent4);
-	MSG("%soverwrite mode: %d", indent6, channel->attr.overwrite);
-	MSG("%ssubbuffers size: %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
-	MSG("%snumber of subbuffers: %" PRIu64, indent6, channel->attr.num_subbuf);
-	MSG("%sswitch timer interval: %u µs", indent6, channel->attr.switch_timer_interval);
-	MSG("%sread timer interval: %u µs", indent6, channel->attr.read_timer_interval);
-	MSG("%smonitor timer interval: %" PRIu64 " µs", indent6, monitor_timer_interval);
-	MSG("%sblocking timeout: %" PRId64 " µs", indent6, blocking_timeout);
-	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
-	MSG("%strace file size: %" PRIu64 " bytes", indent6, channel->attr.tracefile_size);
+	MSG("%sEvent-loss mode:  %s", indent6, channel->attr.overwrite ? "overwrite" : "discard");
+	MSG("%sSub-buffer size:  %" PRIu64 " bytes", indent6, channel->attr.subbuf_size);
+	MSG("%sSub-buffer count: %" PRIu64, indent6, channel->attr.num_subbuf);
+
+	print_timer("Switch timer", 5, channel->attr.switch_timer_interval);
+	print_timer("Read timer",  7, channel->attr.read_timer_interval);
+	print_timer("Monitor timer", 4, monitor_timer_interval);
+
+	if (!channel->attr.overwrite) {
+		if (blocking_timeout == -1) {
+			MSG("%sBlocking timeout: infinite", indent6);
+		} else {
+			MSG("%sBlocking timeout: %" PRId64 " µs", indent6, blocking_timeout);
+		}
+	}
+
+	MSG("%sTrace file count: %" PRIu64 " per stream", indent6,
+			channel->attr.tracefile_count == 0 ?
+				1 : channel->attr.tracefile_count);
+	if (channel->attr.tracefile_size != 0 ) {
+		MSG("%sTrace file size:  %" PRIu64 " bytes", indent6,
+				channel->attr.tracefile_size);
+	} else {
+		MSG("%sTrace file size:  %s", indent6, "unlimited");
+	}
 	switch (channel->attr.output) {
 		case LTTNG_EVENT_SPLICE:
-			MSG("%soutput: splice()", indent6);
+			MSG("%sOutput mode:      splice", indent6);
 			break;
 		case LTTNG_EVENT_MMAP:
-			MSG("%soutput: mmap()", indent6);
+			MSG("%sOutput mode:      mmap", indent6);
 			break;
 	}
 
-	if (!listed_session.snapshot_mode) {
+	MSG("\n%sStatistics:", indent4);
+	if (listed_session.snapshot_mode) {
 		/*
 		 * The lost packet count is omitted for sessions in snapshot
 		 * mode as it is misleading: it would indicate the number of
@@ -1241,13 +1274,14 @@ static void print_channel(struct lttng_channel *channel)
 		 * packets lost between the first and last extracted
 		 * packets of a given snapshot (which prevents most analyses).
 		 */
+		MSG("%sNone", indent6);
 		goto skip_stats_printing;
 	}
 
 	if (!channel->attr.overwrite) {
-		MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);
+		MSG("%sDiscarded events: %" PRIu64, indent6, discarded_events);
 	} else {
-		MSG("%slost packets: %" PRIu64, indent6, lost_packets);
+		MSG("%sLost packets:     %" PRIu64, indent6, lost_packets);
 	}
 skip_stats_printing:
 	return;
