@@ -424,10 +424,30 @@ int print_missing_or_multiple_domains(unsigned int sum)
  */
 void print_session_stats(const char *session_name)
 {
-	int count, nb_domains, domain_idx, channel_idx;
+	int count, nb_domains, domain_idx, channel_idx, session_idx;
 	struct lttng_domain *domains;
 	struct lttng_channel *channels;
-	uint64_t discarded_total = 0, lost_total = 0;
+	uint64_t discarded_events_total = 0, lost_packets_total = 0;
+	struct lttng_session *sessions = NULL;
+	const struct lttng_session *selected_session = NULL;
+
+	count = lttng_list_sessions(&sessions);
+	if (count < 1) {
+		ERR("Failed to retrieve session descriptions while printing session statistics.");
+		goto end;
+	}
+
+	/* Identify the currently-selected sessions. */
+	for (session_idx = 0; session_idx < count; session_idx++) {
+		if (!strcmp(session_name, sessions[session_idx].name)) {
+			selected_session = &sessions[session_idx];
+			break;
+		}
+	}
+	if (!selected_session) {
+		ERR("Failed to retrieve session \"%s\" description while printing session statistics.", session_name);
+		goto end;
+	}
 
 	nb_domains = lttng_list_domains(session_name, &domains);
 	if (nb_domains < 0) {
@@ -438,48 +458,48 @@ void print_session_stats(const char *session_name)
 				&domains[domain_idx]);
 
 		if (!handle) {
-			ERR("Failed to create session handle while printing session stats.");
+			ERR("Failed to create session handle while printing session statistics.");
 			goto end;
 		}
 
 		count = lttng_list_channels(handle, &channels);
 		for (channel_idx = 0; channel_idx < count; channel_idx++) {
 			int ret;
-			uint64_t discarded = 0, lost = 0;
+			uint64_t discarded_events = 0, lost_packets = 0;
 			struct lttng_channel *channel = &channels[channel_idx];
 
 			ret = lttng_channel_get_discarded_event_count(channel,
-					&discarded);
+					&discarded_events);
 			if (ret) {
 				ERR("Failed to retrieve discarded event count from channel %s",
 						channel->name);
 			}
 
 			ret = lttng_channel_get_lost_packet_count(channel,
-					&lost);
+					&lost_packets);
 			if (ret) {
 				ERR("Failed to retrieve lost packet count from channel %s",
 						channel->name);
 			}
 
-			discarded_total += discarded;
-			lost_total += lost;
+			discarded_events_total += discarded_events;
+			lost_packets_total += lost_packets;
 		}
 		lttng_destroy_handle(handle);
 	}
-	if (discarded_total > 0) {
+	if (discarded_events_total > 0 && !selected_session->snapshot_mode) {
 		MSG("[warning] %" PRIu64 " events discarded, please refer to "
 				"the documentation on channel configuration.",
-				discarded_total);
+				discarded_events_total);
 	}
-	if (lost_total > 0) {
+	if (lost_packets_total > 0 && !selected_session->snapshot_mode) {
 		MSG("[warning] %" PRIu64 " packets lost, please refer to "
 				"the documentation on channel configuration.",
-				lost_total);
+				lost_packets_total);
 	}
 
 end:
-	return;
+	free(sessions);
 }
 
 int show_cmd_help(const char *cmd_name, const char *help_msg)
