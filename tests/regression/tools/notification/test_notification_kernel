@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+
+#This is needed since the testpoint create a pipe with the consumerd type suffixed
+TESTPOINT_BASE_PATH=$(readlink -f "$CURDIR/lttng.t_p_n")
+TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
+TESTPOIT_ARGS="CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LTTNG_TESTPOINT_ENABLE=1"
+TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
+
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_STATE_PATH=$(mktemp -u "$CURDIR/application_state.XXXXXXXXXX")
+
+NR_ITER=-1
+NR_USEC_WAIT=5
+
+SESSION_NAME="my_session"
+CHANNEL_NAME="my_channel"
+
+TRACE_PATH=$(mktemp -d)
+PAGE_SIZE=$(getconf PAGE_SIZE)
+
+DIR=$(readlink -f $TESTDIR)
+NUM_TESTS=104
+
+source $TESTDIR/utils/utils.sh
+
+function kernel_event_generator_toogle_state
+{
+	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
+
+}
+function kernel_event_generator
+{
+	state_file=$1
+	kernel_event_generator_suspended=0
+	trap kernel_event_generator_toogle_state SIGUSR1
+	trap "exit" SIGTERM SIGINT EXIT
+	while (true); do
+		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
+			touch $state_file
+			sleep 0.5
+		else
+			if [[ -f $state_file ]]; then
+				rm $state_file 2> /dev/null
+			fi
+			echo -n "1000" > /proc/lttng-test-filter-event 2> /dev/null
+		fi
+	done
+}
+
+function kernel_test
+{
+	local consumerd_pipe=()
+	local event_name="lttng_test_filter_event"
+
+	modprobe lttng-test
+
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
+	start_lttng_sessiond_notap
+
+	create_lttng_session_notap $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=$PAGE_SIZE
+	enable_kernel_lttng_event_notap $SESSION_NAME $event_name $CHANNEL_NAME
+
+	#This is needed since the testpoint create a pipe with the consumer type suffixed
+	for f in "$TESTPOINT_BASE_PATH"*; do
+		consumerd_pipe+=("$f")
+	done
+
+	kernel_event_generator $TESTAPP_STATE_PATH &
+	APP_PID=$!
+
+	$CURDIR/notification LTTNG_DOMAIN_KERNEL $SESSION_NAME $CHANNEL_NAME $APP_PID $TESTAPP_STATE_PATH ${consumerd_pipe[@]}
+
+	destroy_lttng_session_notap $SESSION_NAME
+	stop_lttng_sessiond_notap
+
+	kill -9 $APP_PID
+	wait $APP_PID 2> /dev/null
+
+
+	rmmod lttng-test
+
+	rm ${consumerd_pipe[@]} 2> /dev/null
+}
+
+if [ "$(id -u)" == "0" ]; then
+	kernel_test
+else
+	# Kernel tests are skipped.
+	plan_tests $NUM_TESTS
+	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
+fi
+
+# Just in case cleanup
+rm -rf $TRACE_PATH
