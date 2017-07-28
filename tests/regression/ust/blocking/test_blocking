@@ -60,12 +60,12 @@ function test_ust_implicit_no_blocking()
 function test_ust_implicit_no_blocking_with_channel_blocking()
 {
 	NUM_EVENT=5000000
-	diag "UST implicit non-blocking mode (default) with blocking-timeout=-1 channel: will hang if fails"
+	diag "UST implicit non-blocking mode (default) with blocking-timeout=inf channel: will hang if fails"
 
 	start_lttng_sessiond
 	# session in no-output mode
 	create_lttng_session_no_output $SESSION_NAME
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=-1"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	run_app
@@ -125,7 +125,7 @@ function test_ust_blocking_no_discard()
 	start_lttng_sessiond
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	# infinite blocking timeout
-	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=-1"
+	enable_ust_lttng_channel_ok $SESSION_NAME $CHANNEL_NAME "--blocking-timeout=inf"
 	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME" $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	LTTNG_UST_ALLOW_BLOCKING=1 run_app
