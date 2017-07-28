@@ -556,42 +556,50 @@ int cmd_enable_channels(int argc, const char **argv)
 
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
+
+			if (strcmp(opt_arg, "inf") == 0) {
+				opt_blocking_timeout.value = (int64_t) -1;
+				opt_blocking_timeout.set = true;
+				DBG("Channel blocking timeout set to infinity");
+				break;
+			}
+
 			v = strtoll(opt_arg, NULL, 0);
 			if (errno != 0 || (!isdigit(opt_arg[0]) && opt_arg[0] != '-')
-					|| v < -1) {
+					|| v < 0) {
 				ERR("Wrong value in --blocking-timeout parameter: %s", opt_arg);
 				ret = CMD_ERROR;
 				goto end;
 			}
-			if (v >= 0) {
-				/*
-				 * While LTTng-UST and LTTng-tools will accept
-				 * a blocking timeout expressed in µs, the
-				 * current tracer implementation relies on
-				 * poll() which takes an "int timeout" parameter
-				 * expressed in msec.
-				 *
-				 * Since the error reporting from the tracer
-				 * is not precise, we perform this check here
-				 * to provide a helpful error message in case of
-				 * overflow.
-				 *
-				 * The setter (liblttng-ctl) also performs an
-				 * equivalent check.
-				 */
-				v_msec = v / 1000;
-				if (v_msec != (int32_t) v_msec) {
-					ERR("32-bit milliseconds overflow in --blocking-timeout parameter: %s", opt_arg);
-					ret = CMD_ERROR;
-					goto end;
-				}
-			} else if (v != -1) {
-				ERR("Invalid negative value passed as --blocking-timeout parameter; -1 (block forever) is the only valid negative value");
+
+			/*
+			 * While LTTng-UST and LTTng-tools will accept a
+			 * blocking timeout expressed in µs, the current
+			 * tracer implementation relies on poll() which
+			 * takes an "int timeout" parameter expressed in
+			 * msec.
+			 *
+			 * Since the error reporting from the tracer is
+			 * not precise, we perform this check here to
+			 * provide a helpful error message in case of
+			 * overflow.
+			 *
+			 * The setter (liblttng-ctl) also performs an
+			 * equivalent check.
+			 */
+			v_msec = v / 1000;
+			if (v_msec != (int32_t) v_msec) {
+				ERR("32-bit milliseconds overflow in --blocking-timeout parameter: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
 			}
+
 			opt_blocking_timeout.value = (int64_t) v;
 			opt_blocking_timeout.set = true;
-			DBG("Channel blocking timeout set to %" PRId64 " (µs)",
-					opt_blocking_timeout.value);
+			DBG("Channel blocking timeout set to %" PRId64 " µs%s",
+					opt_blocking_timeout.value,
+					opt_blocking_timeout.value == 0 ?
+						" (non-blocking)" : "");
 			break;
 		}
 		case OPT_USERSPACE:
