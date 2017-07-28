@@ -57,6 +57,9 @@ enum {
 static struct lttng_handle *handle;
 static struct mi_writer *writer;
 
+/* Only set when listing a single session. */
+static struct lttng_session listed_session;
+
 static struct poptOption long_options[] = {
 	/* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
 	{"help",	'h', POPT_ARG_NONE, 0, OPT_HELP, 0, 0},
@@ -1215,8 +1218,6 @@ static void print_channel(struct lttng_channel *channel)
 	MSG("%sblocking timeout: %" PRId64 " µs", indent6, blocking_timeout);
 	MSG("%strace file count: %" PRIu64, indent6, channel->attr.tracefile_count);
 	MSG("%strace file size: %" PRIu64 " bytes", indent6, channel->attr.tracefile_size);
-	MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);
-	MSG("%slost packets: %" PRIu64, indent6, lost_packets);
 	switch (channel->attr.output) {
 		case LTTNG_EVENT_SPLICE:
 			MSG("%soutput: splice()", indent6);
@@ -1225,6 +1226,31 @@ static void print_channel(struct lttng_channel *channel)
 			MSG("%soutput: mmap()", indent6);
 			break;
 	}
+
+	if (!listed_session.snapshot_mode) {
+		/*
+		 * The lost packet count is omitted for sessions in snapshot
+		 * mode as it is misleading: it would indicate the number of
+		 * packets that the consumer could not extract during the
+		 * course of recording the snapshot. It does not have the
+		 * same meaning as the "regular" lost packet count that
+		 * would result from the consumer not keeping up with
+		 * event production in an overwrite-mode channel.
+		 *
+		 * A more interesting statistic would be the number of
+		 * packets lost between the first and last extracted
+		 * packets of a given snapshot (which prevents most analyses).
+		 */
+		goto skip_stats_printing;
+	}
+
+	if (!channel->attr.overwrite) {
+		MSG("%sdiscarded events: %" PRIu64, indent6, discarded_events);
+	} else {
+		MSG("%slost packets: %" PRIu64, indent6, lost_packets);
+	}
+skip_stats_printing:
+	return;
 }
 
 /*
@@ -1584,6 +1610,8 @@ static int list_sessions(const char *session_name)
 							active_string(sessions[i].enabled),
 							snapshot_string(sessions[i].snapshot_mode));
 					MSG("%sTrace path: %s\n", indent4, sessions[i].path);
+					memcpy(&listed_session, &sessions[i],
+							sizeof(listed_session));
 					break;
 				}
 			} else {
@@ -1593,7 +1621,7 @@ static int list_sessions(const char *session_name)
 						snapshot_string(sessions[i].snapshot_mode));
 				MSG("%sTrace path: %s", indent4, sessions[i].path);
 				if (sessions[i].live_timer_interval != 0) {
-					MSG("%sLive timer interval (usec): %u", indent4,
+					MSG("%sLive timer interval: %u µs", indent4,
 							sessions[i].live_timer_interval);
 				}
 				MSG("");
