@@ -286,6 +286,19 @@ Default values:
 * option:--kernel option: {default_kernel_channel_subbuf_num}
 * `metadata` channel: {default_metadata_subbuf_num}
 
+option:--output='TYPE'::
+    Set channel's output type to 'TYPE'.
++
+Available types: `mmap` (always available) and `splice` (only available
+with the option:--kernel option).
++
+Default values:
++
+* option:--userspace and option:--buffers-uid options: `mmap`
+* option:--userspace and option:--buffers-pid options: `mmap`
+* option:--kernel option: `splice`
+* `metadata` channel: `mmap`
+
 option:--subbuf-size='SIZE'::
     Set the individual size of sub-buffers to 'SIZE' bytes.
     The `k` (kiB), `M` (MiB), and `G` (GiB) suffixes are supported.
@@ -304,18 +317,6 @@ Default values:
 * option:--kernel option: {default_kernel_channel_subbuf_size}
 * `metadata` channel: {default_metadata_subbuf_size}
 
-option:--output='TYPE'::
-    Set channel's output type to 'TYPE'.
-+
-Available types: `mmap` (always available) and `splice` (only available
-with the option:--kernel option).
-+
-Default values:
-+
-* option:--userspace and option:--buffers-uid options: `mmap`
-* option:--userspace and option:--buffers-pid options: `mmap`
-* option:--kernel option: `splice`
-* `metadata` channel: `mmap`
 
 Buffering scheme
 ~~~~~~~~~~~~~~~~
