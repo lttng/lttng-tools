@@ -143,6 +143,8 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 		unsigned int count);
 struct ltt_kernel_context *trace_kernel_create_context(
 		struct lttng_kernel_context *ctx);
+struct ltt_kernel_context *trace_kernel_copy_context(
+		struct ltt_kernel_context *ctx);
 
 /*
  * Destroy functions free() the data structure and remove from linked list if
