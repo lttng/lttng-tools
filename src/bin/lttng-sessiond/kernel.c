@@ -36,6 +36,8 @@
 
 /*
  * Add context on a kernel channel.
+ *
+ * Assumes the ownership of ctx.
  */
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct ltt_kernel_context *ctx)
@@ -66,9 +68,11 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 
 end:
 	cds_list_add_tail(&ctx->list, &chan->ctx_list);
-	return 0;
-
+	ctx = NULL;
 error:
+	if (ctx) {
+		trace_kernel_destroy_context(ctx);
+	}
 	return ret;
 }
 

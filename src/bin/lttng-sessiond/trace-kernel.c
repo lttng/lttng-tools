@@ -240,11 +240,33 @@ struct ltt_kernel_context *trace_kernel_create_context(
 	if (ctx) {
 		memcpy(&kctx->ctx, ctx, sizeof(kctx->ctx));
 	}
-
-	CDS_INIT_LIST_HEAD(&kctx->list);
-
 error:
 	return kctx;
+}
+
+/*
+ * Allocate and init a kernel context object from an existing kernel context
+ * object.
+ *
+ * Return the allocated object or NULL on error.
+ */
+struct ltt_kernel_context *trace_kernel_copy_context(
+		struct ltt_kernel_context *kctx)
+{
+	struct ltt_kernel_context *kctx_copy;
+
+	assert(kctx);
+	kctx_copy = zmalloc(sizeof(*kctx_copy));
+	if (!kctx_copy) {
+		PERROR("zmalloc ltt_kernel_context");
+		goto error;
+	}
+
+	memcpy(kctx_copy, kctx, sizeof(*kctx_copy));
+	memset(&kctx_copy->list, 0, sizeof(kctx_copy->list));
+
+error:
+	return kctx_copy;
 }
 
 /*

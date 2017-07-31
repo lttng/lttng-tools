@@ -34,6 +34,8 @@
 
 /*
  * Add kernel context to all channel.
+ *
+ * Assumes the ownership of kctx.
  */
 static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 		struct ltt_kernel_context *kctx)
@@ -48,7 +50,17 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 
 	/* Go over all channels */
 	cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
-		ret = kernel_add_channel_context(kchan, kctx);
+		struct ltt_kernel_context *kctx_copy;
+
+		kctx_copy = trace_kernel_copy_context(kctx);
+		if (!kctx_copy) {
+			PERROR("zmalloc ltt_kernel_context");
+			goto error;
+		}
+
+		/* Ownership of kctx_copy is transferred to the callee. */
+		ret = kernel_add_channel_context(kchan, kctx_copy);
+		kctx_copy = NULL;
 		if (ret != 0) {
 			goto error;
 		}
@@ -57,11 +69,14 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 	ret = LTTNG_OK;
 
 error:
+	trace_kernel_destroy_context(kctx);
 	return ret;
 }
 
 /*
  * Add kernel context to a specific channel.
+ *
+ * Assumes the ownership of kctx.
  */
 static int add_kctx_to_channel(struct ltt_kernel_context *kctx,
 		struct ltt_kernel_channel *kchan)
@@ -73,7 +88,9 @@ static int add_kctx_to_channel(struct ltt_kernel_context *kctx,
 
 	DBG("Add kernel context to channel '%s'", kchan->channel->name);
 
+	/* Ownership of kctx is transferred to the callee. */
 	ret = kernel_add_channel_context(kchan, kctx);
+	kctx = NULL;
 	if (ret != 0) {
 		goto error;
 	}
@@ -254,6 +271,8 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 
 	if (*channel_name == '\0') {
 		ret = add_kctx_all_channels(ksession, kctx);
+		/* Ownership of kctx is transferred to the callee. */
+		kctx = NULL;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -266,12 +285,14 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 		}
 
 		ret = add_kctx_to_channel(kctx, kchan);
+		/* Ownership of kctx is transferred to the callee. */
+		kctx = NULL;
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 	}
 
-	return LTTNG_OK;
+	ret = LTTNG_OK;
 
 error:
 	if (kctx) {
