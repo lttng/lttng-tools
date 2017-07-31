@@ -29,9 +29,17 @@ enum lttng_action_type {
 	LTTNG_ACTION_TYPE_NOTIFY = 0,
 };
 
+/*
+ * Get the type of an action.
+ *
+ * Returns the type of an action on success, LTTNG_ACTION_TYPE_UNKNOWN on error.
+ */
 extern enum lttng_action_type lttng_action_get_type(
 		struct lttng_action *action);
 
+/*
+ * Destroy (frees) an action object.
+ */
 extern void lttng_action_destroy(struct lttng_action *action);
 
 #ifdef __cplusplus
