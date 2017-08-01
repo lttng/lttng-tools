@@ -1,3 +1,70 @@
+2017-08-01 lttng-tools 2.10.0 (World Wide Web Day)
+	* lttng enable-channel: disallow --overwrite and --blocking-timeout
+	* lttng-enable-channel(1): reword --blocking-timeout, document in description
+	* lttng enable-channel: --blocking-timeout opt.: use `inf` instead of -1
+	* Cleanup: remove unused internal structure
+	* Cleanup: remove unnecessary extern qualifier
+	* Docs: document the trigger API
+	* Docs: document the notification API
+	* Docs: document the notification channel API
+	* Docs: document the evaluation API
+	* Docs: document the lttng_condition API
+	* Docs: document the lttng_buffer_usage condition API
+	* Docs: document the lttng_action_notify action type
+	* Docs: document the lttng_action API
+	* Fix: ambiguous ownership of kernel context by multiple channels
+	* lttng-enable-channel(1): move --output description to maintain A-Z ordering
+	* lttng-enable-channel(1): document --monitor-timer
+	* Prettify channel listing
+	* Use pipe instead of eventfd() for notification command queue
+	* Cleanup: useless reset of ret to zero
+	* Fix: ret is never used on error_open code path
+	* Fix: use error code path instead of break when errors happen before execl
+	* Cleanup: ignore useless check of execl() return value
+	* Fix: wrong variable assignment on error
+	* Cleanup: remove dead increment of pointer
+	* Fix: missing error handling in use of print_tabs()
+	* Cleanup: functions shall have a single exit point
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Cleanup: dead assignment
+	* Fix: ret is used instead or err to set an error code
+	* Cleanup: remove dead assignment
+	* Cleanup: remove dead assignment
+	* Fix: report error using fd instead of ret
+	* lttng-enable-channel(1): reword and fix style of --blocking-timeout description
+	* Fix: doc/man: use a single XSL file and match local names
+	* Tests: rework select_poll_epoll test to improve verbosity on failure
+	* Only print relevant session statistics on stop
+	* Fix: NULL passed to memcpy in error path
+	* Only print relevant session statistics in channel listing
+	* Uniformize the printing of units in session listing
+	* Fix: lost packet accounting always lost on snapshot
+	* Fix: report error on session listing
+	* Tests: don't assume a 4K page size in test_notification
+	* Fix live-comm: merge TCP socket write-write sequence in a single write
+	* Docs: move notification thread documentation to header
+	* Docs: grammar fix in comment
+	* Fix: evaluate condition/trigger on subscription
+	* Test: Trigger conditions is evaluated on subscription
+	* save/load: add blocking_timeout attribute to channel
+	* Introduce monitor_timer_interval to session configuration schema
+	* Test: Reduce scope of variables used in multi app notification test
+	* Hide internal buffer-view symbols
+	* Hide internal session configuration symbols
+	* Hide internal dynamic-buffer symbols
+	* Hide internal string-utils symbols
+	* Typo: occured -> occurred
+	* Fix: join consumer timer thread
+	* Cleanup: use CMM accessors for consumer_quit variable
+
 2017-06-14 lttng-tools 2.10.0-rc2 (National Bourbon Day)
 	* Fix: test_utils_expand_path passes NULL to sprintf
 	* Fix: reject triggers if they depend on an unavailable feature
