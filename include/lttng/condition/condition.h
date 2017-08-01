@@ -40,9 +40,18 @@ enum lttng_condition_status {
 	LTTNG_CONDITION_STATUS_UNSET = -4,
 };
 
+/*
+ * Get the type of a condition.
+ *
+ * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
+ * error.
+ */
 extern enum lttng_condition_type lttng_condition_get_type(
 		const struct lttng_condition *condition);
 
+/*
+ * Destroy (frees) a condition object.
+ */
 extern void lttng_condition_destroy(struct lttng_condition *condition);
 
 #ifdef __cplusplus
