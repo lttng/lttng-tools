@@ -64,7 +64,7 @@ struct lttng_condition *lttng_trigger_get_condition(
 	return trigger ? trigger->condition : NULL;
 }
 
-extern struct lttng_action *lttng_trigger_get_action(
+struct lttng_action *lttng_trigger_get_action(
 		struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->action : NULL;
