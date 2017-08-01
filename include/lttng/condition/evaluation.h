@@ -34,9 +34,18 @@ enum lttng_evaluation_status {
 	LTTNG_EVALUATION_STATUS_UNSET = -4,
 };
 
+/*
+ * Get the condition type associated with an evaluation.
+ *
+ * Returns the type of a condition on success, LTTNG_CONDITION_TYPE_UNKNOWN on
+ * error.
+ */
 extern enum lttng_condition_type lttng_evaluation_get_type(
 		const struct lttng_evaluation *evaluation);
 
+/*
+ * Destroy (frees) an evaluation object.
+ */
 extern void lttng_evaluation_destroy(struct lttng_evaluation *evaluation);
 
 #ifdef __cplusplus
