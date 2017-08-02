@@ -2365,7 +2365,7 @@ int create_ust_app_channel_context(struct ust_app_session *ua_sess,
 	ua_ctx = alloc_ust_app_ctx(uctx);
 	if (ua_ctx == NULL) {
 		/* malloc failed */
-		ret = -1;
+		ret = -ENOMEM;
 		goto error;
 	}
 
