@@ -45,6 +45,8 @@ struct ltt_kernel_channel_list {
 struct ltt_kernel_context {
 	struct lttng_kernel_context ctx;
 	struct cds_list_head list;
+	/* Indicates whether or not the context is in a list. */
+	bool in_list;
 };
 
 /* Kernel event */
