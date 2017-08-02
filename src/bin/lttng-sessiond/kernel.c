@@ -68,6 +68,7 @@ int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 
 end:
 	cds_list_add_tail(&ctx->list, &chan->ctx_list);
+	ctx->in_list = true;
 	ctx = NULL;
 error:
 	if (ctx) {
