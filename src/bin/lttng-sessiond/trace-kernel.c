@@ -484,7 +484,9 @@ void trace_kernel_destroy_context(struct ltt_kernel_context *ctx)
 {
 	assert(ctx);
 
-	cds_list_del(&ctx->list);
+	if (ctx->in_list) {
+		cds_list_del(&ctx->list);
+	}
 	free(ctx);
 }
 
