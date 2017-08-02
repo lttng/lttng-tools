@@ -55,6 +55,7 @@ static int add_kctx_all_channels(struct ltt_kernel_session *ksession,
 		kctx_copy = trace_kernel_copy_context(kctx);
 		if (!kctx_copy) {
 			PERROR("zmalloc ltt_kernel_context");
+			ret = -ENOMEM;
 			goto error;
 		}
 
