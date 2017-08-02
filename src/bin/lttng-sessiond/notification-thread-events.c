@@ -469,7 +469,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 	ret = evaluate_condition(condition, &evaluation, state, NULL,
 			last_sample, channel_info->capacity);
 	if (ret) {
-		WARN("[notification-thread] Fatal error occured while evaluating a newly subscribed-to condition");
+		WARN("[notification-thread] Fatal error occurred while evaluating a newly subscribed-to condition");
 		goto end;
 	}
 
