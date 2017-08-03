@@ -1,3 +1,19 @@
+2017-08-03 lttng-tools 2.9.6 (Watermelon Day)
+	* Fix: uninitialized return value on error path
+	* Fix: ensure kernel context is in a list before trying to delete it
+	* Fix: ambiguous ownership of kernel context by multiple channels
+	* Fix: ret is never used on error_open code path
+	* Fix: use error code path instead of break when errors happen before execl
+	* Fix: wrong variable assignment on error
+	* Fix: missing error handling in use of print_tabs()
+	* Fix: ret is used instead or err to set an error code
+	* Fix: report error using fd instead of ret
+	* Fix: NULL passed to memcpy in error path
+	* Fix: lost packet accounting always lost on snapshot
+	* Fix: report error on session listing
+	* Fix live-comm: merge TCP socket write-write sequence in a single write
+	* Fix: join consumer timer thread
+
 2017-06-14 lttng-tools 2.9.5 (National Bourbon Day)
 	* Fix: test_utils_expand_path passes NULL to sprintf
 	* Fix: lttng list of channels should return errors
