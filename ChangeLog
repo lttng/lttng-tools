@@ -1,3 +1,8 @@
+2017-08-03 lttng-tools 2.10.1 (Watermelon Day)
+	* Typo: occured -> occurred
+	* Fix: uninitialized return value on error path
+	* Fix: ensure kernel context is in a list before trying to delete it
+
 2017-08-01 lttng-tools 2.10.0 (World Wide Web Day)
 	* lttng enable-channel: disallow --overwrite and --blocking-timeout
 	* lttng-enable-channel(1): reword --blocking-timeout, document in description
