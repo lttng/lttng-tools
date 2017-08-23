@@ -1101,12 +1101,6 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 			DBG("UST consumer snapshot stream %s/%s (%" PRIu64 ")", path,
 					stream->name, stream->key);
 		}
-		if (relayd_id != -1ULL) {
-			ret = consumer_send_relayd_streams_sent(relayd_id);
-			if (ret < 0) {
-				goto error_unlock;
-			}
-		}
 
 		/*
 		 * If tracing is active, we want to perform a "full" buffer flush.
