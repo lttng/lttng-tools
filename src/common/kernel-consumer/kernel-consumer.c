@@ -187,14 +187,6 @@ int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
 			DBG("Kernel consumer snapshot stream %s/%s (%" PRIu64 ")",
 					path, stream->name, stream->key);
 		}
-		if (relayd_id != -1ULL) {
-			ret = consumer_send_relayd_streams_sent(relayd_id);
-			if (ret < 0) {
-				ERR("sending streams sent to relayd");
-				goto end_unlock;
-			}
-			channel->streams_sent_to_relayd = true;
-		}
 
 		ret = kernctl_buffer_flush_empty(stream->wait_fd);
 		if (ret < 0) {
