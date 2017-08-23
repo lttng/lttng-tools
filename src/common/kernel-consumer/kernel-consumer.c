@@ -983,7 +983,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DISCARDED_EVENTS:
 	{
-		uint64_t ret;
+		ssize_t ret;
+		uint64_t count;
 		struct lttng_consumer_channel *channel;
 		uint64_t id = msg.u.discarded_events.session_id;
 		uint64_t key = msg.u.discarded_events.channel_key;
@@ -995,15 +996,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (!channel) {
 			ERR("Kernel consumer discarded events channel %"
 					PRIu64 " not found", key);
-			ret = 0;
+			count = 0;
 		} else {
-			ret = channel->discarded_events;
+			count = channel->discarded_events;
 		}
 
 		health_code_update();
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		ret = lttcomm_send_unix_sock(sock, &count, sizeof(count));
 		if (ret < 0) {
 			PERROR("send discarded events");
 			goto error_fatal;
@@ -1013,7 +1014,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_LOST_PACKETS:
 	{
-		uint64_t ret;
+		ssize_t ret;
+		uint64_t count;
 		struct lttng_consumer_channel *channel;
 		uint64_t id = msg.u.lost_packets.session_id;
 		uint64_t key = msg.u.lost_packets.channel_key;
@@ -1025,15 +1027,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (!channel) {
 			ERR("Kernel consumer lost packets channel %"
 					PRIu64 " not found", key);
-			ret = 0;
+			count = 0;
 		} else {
-			ret = channel->lost_packets;
+			count = channel->lost_packets;
 		}
 
 		health_code_update();
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &ret, sizeof(ret));
+		ret = lttcomm_send_unix_sock(sock, &count, sizeof(count));
 		if (ret < 0) {
 			PERROR("send lost packets");
 			goto error_fatal;
