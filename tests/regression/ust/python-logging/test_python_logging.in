@@ -46,8 +46,17 @@ function run_app
 	local python=$1
 	local debug_tp=$2
 	local fire_second_tp=$3
+	local opt=""
 
-	$python $TESTAPP_PATH/$TESTAPP_BIN $NR_ITER $NR_SEC_WAIT $debug_tp $fire_second_tp
+	if [[ -n "$debug_tp" ]] && [ "$debug_tp" -eq "1" ]; then
+		opt="${opt} -d"
+	fi
+
+	if [[ -n "$fire_second_tp" ]] && [ "$fire_second_tp" -eq "1" ]; then
+		opt="${opt} -e"
+	fi
+
+	$python $TESTAPP_PATH/$TESTAPP_BIN -n $NR_ITER -s $NR_SEC_WAIT $opt
 }
 
 function run_app_background
