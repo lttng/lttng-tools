@@ -46,6 +46,8 @@ function run_app
 	local python=$1
 	local debug_tp=$2
 	local fire_second_tp=$3
+	local ready_file=$4
+	local go_file=$5
 	local opt=""
 
 	if [[ -n "$debug_tp" ]] && [ "$debug_tp" -eq "1" ]; then
@@ -56,12 +58,22 @@ function run_app
 		opt="${opt} -e"
 	fi
 
+	if [[ -n "$ready_file" ]]; then
+		opt="${opt} -r ${ready_file}"
+	fi
+
+	if [[ -n "$go_file" ]]; then
+		opt="${opt} -g ${go_file}"
+	fi
+
+	set -x
 	$python $TESTAPP_PATH/$TESTAPP_BIN -n $NR_ITER -s $NR_SEC_WAIT $opt
+	set +x
 }
 
 function run_app_background
 {
-	run_app $@ &
+	run_app "$@" &
 }
 
 function enable_python_loglevel_only()
@@ -107,16 +119,25 @@ function enable_python_filter_loglevel_only()
 
 function test_python_before_start ()
 {
+	local ready_file=$(mktemp -u)
+	local go_file=$(mktemp -u)
+
 	diag "Test Python application BEFORE tracing starts"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
-	run_app_background $1
+	run_app_background $1 "" "" $ready_file $go_file
+
+	# Wait for ready file
+	while [ ! -e ${ready_file} ]; do
+		sleep 0.5
+	done
 
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Wait for the applications started in background
+	echo "1" > ${go_file}
 	wait
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -127,6 +148,8 @@ function test_python_before_start ()
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
+
+	rm $go_file
 }
 
 function test_python_after_start ()
@@ -532,10 +555,7 @@ function test_python_destroy_session()
 	start_lttng_tracing_ok $SESSION_NAME
 
 	# Run 5 times with a 1 second delay
-	run_app_background $1 0 1
-
-	# Wait for the applications started in background
-	wait
+	run_app $1 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
@@ -550,11 +570,7 @@ function test_python_destroy_session()
 	enable_python_lttng_event $SESSION_NAME $EVENT_NAME2
 	start_lttng_tracing_ok $SESSION_NAME
 
-	# Run 5 times with a 1 second delay
-	run_app_background $1 0 1
-
-	# Wait for the applications started in background
-	wait
+	run_app $1 0 1
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
