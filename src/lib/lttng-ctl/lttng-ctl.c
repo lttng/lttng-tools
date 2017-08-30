@@ -2485,9 +2485,22 @@ int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 
 	lsm.u.uri.size = size;
 
+	/*
+	 * If the user does not specify a custom subdir, use the session name.
+	 */
+	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
+		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s", name);
+		if (ret < 0) {
+			PERROR("snprintf uri subdir");
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
+	}
+
 	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
 			sizeof(struct lttng_uri) * size, NULL);
 
+error:
 	free(uris);
 	return ret;
 }
