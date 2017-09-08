@@ -178,10 +178,10 @@ argument named `*` (wildcard).
 [[filter-syntax]]
 Filter expression syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~
-Filter expressions can be specified with the option:--filter option
-when creating a new event rule. If the filter expression evaluates
-to true when executed against the dynamic values of an event's fields
-when tracing, the filtering condition passes.
+A filter expression can be specified with the option:--filter option
+when creating a new event rule. If the filter expression evaluates to
+true when executed against the dynamic values of an event's fields when
+tracing, the filtering condition passes.
 
 NOTE: Make sure to **single-quote** the filter expression when running
 the command from a shell, as filter expressions typically include
@@ -218,13 +218,14 @@ The arithmetic and bitwise operators are :not: supported.
 The precedence table of the operators above is the same as the one of
 the C language. Parentheses are supported to bypass this.
 
-The dynamic value of an event field is read by using its name as
-a C identifier.
+The dynamic value of an event field is read by using its name as a C
+identifier.
 
 The dynamic value of a statically-known context field is read by
 prefixing its name with `$ctx.`. Statically-known context fields are
 context fields added to channels without the `$app.` prefix using the
-man:lttng-add-context(1) command.
+man:lttng-add-context(1) command. `$ctx.cpu_id` is also available as the
+ID of the CPU which emits the event.
 
 The dynamic value of an application-specific context field is read by
 prefixing its name with `$app.` (follows the format used to add such a
@@ -260,9 +261,9 @@ $ctx.procname == "lttng*" && (!flag || poel < 34)
 $app.my_provider:my_context == 17.34e9 || some_enum >= 14
 ---------------------------------------------------------
 
--------------------
-filename != "*.log"
--------------------
+---------------------------------------
+$ctx.cpu_id == 2 && filename != "*.log"
+---------------------------------------
 
 
 [[log-levels]]
