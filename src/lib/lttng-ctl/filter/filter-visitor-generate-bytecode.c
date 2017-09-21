@@ -158,11 +158,157 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 }
 
 static
+int append_str(char **s, char *append)
+{
+	char *old = *s;
+	char *new;
+	size_t oldlen = (old == NULL) ? 0 : strlen(old);
+	size_t appendlen = strlen(append);
+
+	new = calloc(oldlen + appendlen + 1, 1);
+	if (!new) {
+		return -ENOMEM;
+	}
+	if (oldlen) {
+		strcpy(new, old);
+	}
+	strcat(new, append);
+	*s = new;
+	free(old);
+	return 0;
+}
+
+/*
+ * 1: match
+ * 0: no match
+ * < 0: error
+ */
+static
+int load_expression_legacy_match(struct ir_load_expression *exp,
+		enum filter_op *op_type,
+		char **symbol)
+{
+	struct ir_load_expression_op *op;
+	bool need_dot = false;
+
+	op = exp->child;
+	switch (op->type) {
+	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
+		*op_type = FILTER_OP_GET_CONTEXT_REF;
+		if (append_str(symbol, "$ctx.")) {
+			return -ENOMEM;
+		}
+		need_dot = false;
+		break;
+	case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
+		*op_type = FILTER_OP_GET_CONTEXT_REF;
+		if (append_str(symbol, "$app.")) {
+			return -ENOMEM;
+		}
+		need_dot = false;
+		break;
+	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
+		*op_type = FILTER_OP_LOAD_FIELD_REF;
+		need_dot = false;
+		break;
+
+	case IR_LOAD_EXPRESSION_GET_SYMBOL:
+	case IR_LOAD_EXPRESSION_GET_INDEX:
+	case IR_LOAD_EXPRESSION_LOAD_FIELD:
+	default:
+		return 0;	/* no match */
+	}
+
+	for (;;) {
+		op = op->next;
+		if (!op) {
+			return 0;	/* no match */
+		}
+		switch (op->type) {
+		case IR_LOAD_EXPRESSION_LOAD_FIELD:
+			goto end;
+		case IR_LOAD_EXPRESSION_GET_SYMBOL:
+			if (need_dot && append_str(symbol, ".")) {
+				return -ENOMEM;
+			}
+			if (append_str(symbol, op->u.symbol)) {
+				return -ENOMEM;
+			}
+			break;
+		default:
+			return 0;	 /* no match */
+		}
+		need_dot = true;
+	}
+end:
+	return 1;	/* Legacy match */
+}
+
+/*
+ * 1: legacy match
+ * 0: no legacy match
+ * < 0: error
+ */
+static
+int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
+		struct ir_load_expression *exp,
+		struct ir_load_expression_op *op)
+{
+	struct load_op *insn = NULL;
+	uint32_t insn_len = sizeof(struct load_op)
+		+ sizeof(struct field_ref);
+	struct field_ref ref_offset;
+	uint32_t reloc_offset_u32;
+	uint16_t reloc_offset;
+	enum filter_op op_type;
+	char *symbol = NULL;
+	int ret;
+
+	ret = load_expression_legacy_match(exp, &op_type, &symbol);
+	if (ret <= 0) {
+		goto end;
+	}
+	insn = calloc(insn_len, 1);
+	if (!insn) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	insn->op = op_type;
+	ref_offset.offset = (uint16_t) -1U;
+	memcpy(insn->data, &ref_offset, sizeof(ref_offset));
+	/* reloc_offset points to struct load_op */
+	reloc_offset_u32 = bytecode_get_len(&ctx->bytecode->b);
+	if (reloc_offset_u32 > LTTNG_FILTER_MAX_LEN - 1) {
+		ret = -EINVAL;
+		goto end;
+	}
+	reloc_offset = (uint16_t) reloc_offset_u32;
+	ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
+	if (ret) {
+		goto end;
+	}
+	/* append reloc */
+	ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
+				1, sizeof(reloc_offset));
+	if (ret) {
+		goto end;
+	}
+	ret = bytecode_push(&ctx->bytecode_reloc, symbol,
+				1, strlen(symbol) + 1);
+	ret = 1;	/* legacy */
+end:
+	free(insn);
+	free(symbol);
+	return ret;
+}
+
+static
 int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		struct ir_op *node)
 {
 	struct ir_load_expression *exp;
 	struct ir_load_expression_op *op;
+	int ret;
 
 	exp = node->u.load.u.expression;
 	if (!exp) {
@@ -172,6 +318,15 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 	if (!op) {
 		return -EINVAL;
 	}
+
+	ret = visit_node_load_expression_legacy(ctx, exp, op);
+	if (ret < 0) {
+		return ret;
+	}
+	if (ret > 0) {
+		return 0;	/* legacy */
+	}
+
 	for (; op != NULL; op = op->next) {
 		switch (op->type) {
 		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
@@ -400,58 +555,6 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		free(insn);
 		return ret;
 	}
-#if 0
-	case IR_DATA_FIELD_REF:	/* fall-through */
-	case IR_DATA_GET_CONTEXT_REF:
-	{
-		struct load_op *insn;
-		uint32_t insn_len = sizeof(struct load_op)
-			+ sizeof(struct field_ref);
-		struct field_ref ref_offset;
-		uint32_t reloc_offset_u32;
-		uint16_t reloc_offset;
-
-		insn = calloc(insn_len, 1);
-		if (!insn)
-			return -ENOMEM;
-		switch (node->data_type) {
-		case IR_DATA_FIELD_REF:
-			insn->op = FILTER_OP_LOAD_FIELD_REF;
-			break;
-		case IR_DATA_GET_CONTEXT_REF:
-			insn->op = FILTER_OP_GET_CONTEXT_REF;
-			break;
-		default:
-			free(insn);
-			return -EINVAL;
-		}
-		ref_offset.offset = (uint16_t) -1U;
-		memcpy(insn->data, &ref_offset, sizeof(ref_offset));
-		/* reloc_offset points to struct load_op */
-		reloc_offset_u32 = bytecode_get_len(&ctx->bytecode->b);
-		if (reloc_offset_u32 > LTTNG_FILTER_MAX_LEN - 1) {
-			free(insn);
-			return -EINVAL;
-		}
-		reloc_offset = (uint16_t) reloc_offset_u32;
-		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-		if (ret) {
-			free(insn);
-			return ret;
-		}
-		/* append reloc */
-		ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
-					1, sizeof(reloc_offset));
-		if (ret) {
-			free(insn);
-			return ret;
-		}
-		ret = bytecode_push(&ctx->bytecode_reloc, node->u.load.u.ref,
-					1, strlen(node->u.load.u.ref) + 1);
-		free(insn);
-		return ret;
-	}
-#endif
 	case IR_DATA_EXPRESSION:
 		return visit_node_load_expression(ctx, node);
 	}
