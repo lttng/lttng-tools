@@ -359,6 +359,13 @@ struct ir_op *make_op_unary_not(struct ir_op *child, enum ir_side side)
 }
 
 static
+struct ir_op *make_op_unary_bit_not(struct ir_op *child, enum ir_side side)
+{
+	return make_op_unary(AST_UNARY_BIT_NOT, "~", child->signedness,
+			child, side);
+}
+
+static
 struct ir_op *make_op_binary_compare(enum op_type bin_op_type,
 		const char *op_str, struct ir_op *left, struct ir_op *right,
 		enum ir_side side)
@@ -539,6 +546,20 @@ struct ir_op *make_op_binary_logical_or(struct ir_op *left, struct ir_op *right,
 }
 
 static
+struct ir_op *make_op_binary_bitwise_rshift(struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	return make_op_binary_bitwise(AST_OP_BIT_RSHIFT, ">>", left, right, side);
+}
+
+static
+struct ir_op *make_op_binary_bitwise_lshift(struct ir_op *left, struct ir_op *right,
+		enum ir_side side)
+{
+	return make_op_binary_bitwise(AST_OP_BIT_LSHIFT, "<<", left, right, side);
+}
+
+static
 struct ir_op *make_op_binary_bitwise_and(struct ir_op *left, struct ir_op *right,
 		enum ir_side side)
 {
@@ -662,13 +683,9 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 	case AST_OP_MINUS:
 		op_str = "-";
 		goto error_not_supported;
-	case AST_OP_RSHIFT:
-		op_str = ">>";
-		goto error_not_supported;
-	case AST_OP_LSHIFT:
-		op_str = "<<";
-		goto error_not_supported;
 
+	case AST_OP_BIT_RSHIFT:
+	case AST_OP_BIT_LSHIFT:
 	case AST_OP_BIT_AND:
 	case AST_OP_BIT_OR:
 	case AST_OP_BIT_XOR:
@@ -740,6 +757,12 @@ struct ir_op *make_op(struct filter_parser_ctx *ctx,
 	case AST_OP_LE:
 		op = make_op_binary_le(lchild, rchild, side);
 		break;
+	case AST_OP_BIT_RSHIFT:
+		op = make_op_binary_bitwise_rshift(lchild, rchild, side);
+		break;
+	case AST_OP_BIT_LSHIFT:
+		op = make_op_binary_bitwise_lshift(lchild, rchild, side);
+		break;
 	case AST_OP_BIT_AND:
 		op = make_op_binary_bitwise_and(lchild, rchild, side);
 		break;
@@ -769,8 +792,6 @@ static
 struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 		struct filter_node *node, enum ir_side side)
 {
-	const char *op_str = "?";
-
 	switch (node->u.unary_op.type) {
 	case AST_UNARY_UNKNOWN:
 	default:
@@ -824,14 +845,21 @@ struct ir_op *make_unary_op(struct filter_parser_ctx *ctx,
 	}
 	case AST_UNARY_BIT_NOT:
 	{
-		op_str = "~";
-		goto error_not_supported;
+		struct ir_op *op, *child;
+
+		child = generate_ir_recursive(ctx, node->u.unary_op.child,
+					side);
+		if (!child)
+			return NULL;
+		op = make_op_unary_bit_not(child, side);
+		if (!op) {
+			filter_free_ir_recursive(child);
+			return NULL;
+		}
+		return op;
 	}
 	}
 
-error_not_supported:
-	fprintf(stderr, "[error] %s: unary operation '%s' not supported\n",
-		__func__, op_str);
 	return NULL;
 }
 

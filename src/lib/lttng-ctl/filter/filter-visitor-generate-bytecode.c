@@ -587,6 +587,9 @@ int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case AST_UNARY_NOT:
 		insn.op = FILTER_OP_UNARY_NOT;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
+	case AST_UNARY_BIT_NOT:
+		insn.op = FILTER_OP_UNARY_BIT_NOT;
+		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	}
 }
 
@@ -636,11 +639,11 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 	case AST_OP_MINUS:
 		insn.op = FILTER_OP_MINUS;
 		break;
-	case AST_OP_RSHIFT:
-		insn.op = FILTER_OP_RSHIFT;
+	case AST_OP_BIT_RSHIFT:
+		insn.op = FILTER_OP_BIT_RSHIFT;
 		break;
-	case AST_OP_LSHIFT:
-		insn.op = FILTER_OP_LSHIFT;
+	case AST_OP_BIT_LSHIFT:
+		insn.op = FILTER_OP_BIT_LSHIFT;
 		break;
 	case AST_OP_BIT_AND:
 		insn.op = FILTER_OP_BIT_AND;
