@@ -24,8 +24,8 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=1074
-NUM_KERNEL_TESTS=1008
+NUM_UST_TESTS=1098
+NUM_KERNEL_TESTS=1032
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -706,6 +706,18 @@ UST_FILTERS=(
 	true_statement
 	"-1==~0"
 
+	true_statement	# unsigned bitwise ops
+	"~0>>4==0x0fffffffffffffff"
+
+	has_no_event
+	"1<<-1"
+
+	has_no_event
+	"1<<10000"
+
+	true_statement	# comparator is signed, shift is unsigned
+	"(1<<63) < 0"
+
 	true_statement
 	"1<<1==2"	# C99 operator priority: comparator before bitwise
 
@@ -1166,6 +1178,18 @@ KERNEL_FILTERS=(
 
 	true_statement
 	"-1==~0"
+
+	true_statement	# unsigned bitwise ops
+	"~0>>4==0x0fffffffffffffff"
+
+	has_no_event
+	"1<<-1"
+
+	has_no_event
+	"1<<10000"
+
+	true_statement	# comparator is signed, shift is unsigned
+	"(1<<63) < 0"
 
 	true_statement
 	"1<<1==2"	# C99 operator priority: comparator before bitwise
