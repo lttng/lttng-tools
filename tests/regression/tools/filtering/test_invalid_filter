@@ -25,8 +25,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=144
-NUM_KERNEL_TESTS=144
+NUM_UST_TESTS=135
+NUM_KERNEL_TESTS=135
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -101,9 +101,6 @@ INVALID_FILTERS=(
 		"intfield/1"
 		"intfield+1"
 		"intfield-1"
-		"intfield>>1"
-		"intfield<<1"
-		"~intfield"
 		"1+11111-3333+1"
 		"(1+2)*(55*666)"
 		"1+2*55*666"

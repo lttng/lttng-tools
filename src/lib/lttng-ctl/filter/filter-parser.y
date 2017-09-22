@@ -588,11 +588,11 @@ shift_expression
 		{	$$ = $1;					}
 	| shift_expression LEFT_OP additive_expression
 		{
-			$$ = make_op_node(parser_ctx, AST_OP_LSHIFT, $1, $3);
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_LSHIFT, $1, $3);
 		}
 	| shift_expression RIGHT_OP additive_expression
 		{
-			$$ = make_op_node(parser_ctx, AST_OP_RSHIFT, $1, $3);
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_RSHIFT, $1, $3);
 		}
 	;
 

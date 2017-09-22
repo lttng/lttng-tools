@@ -25,8 +25,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/unsupported-ops-enable"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=32
-NUM_KERNEL_TESTS=32
+NUM_UST_TESTS=20
+NUM_KERNEL_TESTS=20
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -93,10 +93,9 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 # Unsupported operators
-OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS" "LSHIFT" "RSHIFT"
-	"UNARY_BIN_NOT")
+OP_STR=("MUL" "DIV" "MOD" "PLUS" "MINUS")
 
-OP_TKN=("*" "/" "%" "+" "-" "<<" ">>" "~")
+OP_TKN=("*" "/" "%" "+" "-")
 
 OP_COUNT=${#OP_STR[@]}
 

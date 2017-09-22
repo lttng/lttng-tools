@@ -157,10 +157,10 @@ int recursive_visit_print(struct filter_node *node, FILE *stream, int indent)
 		case AST_OP_MINUS:
 			fprintf(stream, "\"-\"");
 			break;
-		case AST_OP_RSHIFT:
+		case AST_OP_BIT_RSHIFT:
 			fprintf(stream, "\">>\"");
 			break;
-		case AST_OP_LSHIFT:
+		case AST_OP_BIT_LSHIFT:
 			fprintf(stream, "\"<<\"");
 			break;
 		case AST_OP_AND:
