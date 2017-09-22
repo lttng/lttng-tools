@@ -596,44 +596,10 @@ shift_expression
 		}
 	;
 
-relational_expression
+and_expression
 	: shift_expression
 		{	$$ = $1;					}
-	| relational_expression LT_OP shift_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_LT, $1, $3);
-		}
-	| relational_expression GT_OP shift_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_GT, $1, $3);
-		}
-	| relational_expression LE_OP shift_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_LE, $1, $3);
-		}
-	| relational_expression GE_OP shift_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_GE, $1, $3);
-		}
-	;
-
-equality_expression
-	: relational_expression
-		{	$$ = $1;					}
-	| equality_expression EQ_OP relational_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_EQ, $1, $3);
-		}
-	| equality_expression NE_OP relational_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_NE, $1, $3);
-		}
-	;
-
-and_expression
-	: equality_expression
-		{	$$ = $1;					}
-	| and_expression AND_BIN equality_expression
+	| and_expression AND_BIN shift_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_BIT_AND, $1, $3);
 		}
@@ -657,10 +623,44 @@ inclusive_or_expression
 		}
 	;
 
-logical_and_expression
+relational_expression
 	: inclusive_or_expression
 		{	$$ = $1;					}
-	| logical_and_expression AND_OP inclusive_or_expression
+	| relational_expression LT_OP inclusive_or_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_LT, $1, $3);
+		}
+	| relational_expression GT_OP inclusive_or_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_GT, $1, $3);
+		}
+	| relational_expression LE_OP inclusive_or_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_LE, $1, $3);
+		}
+	| relational_expression GE_OP inclusive_or_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_GE, $1, $3);
+		}
+	;
+
+equality_expression
+	: relational_expression
+		{	$$ = $1;					}
+	| equality_expression EQ_OP relational_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_EQ, $1, $3);
+		}
+	| equality_expression NE_OP relational_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_NE, $1, $3);
+		}
+	;
+
+logical_and_expression
+	: equality_expression
+		{	$$ = $1;					}
+	| logical_and_expression AND_OP equality_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_AND, $1, $3);
 		}
