@@ -24,8 +24,8 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=1098
-NUM_KERNEL_TESTS=1032
+NUM_UST_TESTS=1110
+NUM_KERNEL_TESTS=1044
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -719,10 +719,16 @@ UST_FILTERS=(
 	"(1<<63) < 0"
 
 	true_statement
-	"1<<1==2"	# C99 operator priority: comparator before bitwise
+	"(1<<2!=4)==0"	# operator priority: shift before equality
 
-	has_no_event
-	"!(1<<1==2)"	# C99 operator priority: comparator before bitwise
+	true_statement
+	"1&3==1"	# operator priority: masks before equality
+
+	true_statement
+	"(3|1==3)==1"	# operator priority: masks before equality
+
+	true_statement
+	"(2^1==3)==1"	# operator priority: masks before equality
 
 	true_statement
 	"(1 << 32) == 4294967296"
@@ -1192,10 +1198,16 @@ KERNEL_FILTERS=(
 	"(1<<63) < 0"
 
 	true_statement
-	"1<<1==2"	# C99 operator priority: comparator before bitwise
+	"(1<<2!=4)==0"	# operator priority: shift before equality
 
-	has_no_event
-	"!(1<<1==2)"	# C99 operator priority: comparator before bitwise
+	true_statement
+	"1&3==1"	# operator priority: masks before equality
+
+	true_statement
+	"(3|1==3)==1"	# operator priority: masks before equality
+
+	true_statement
+	"(2^1==3)==1"	# operator priority: masks before equality
 
 	true_statement
 	"(1 << 32) == 4294967296"
