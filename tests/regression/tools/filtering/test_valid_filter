@@ -674,13 +674,13 @@ UST_FILTERS=(
 	"1 >= (1 >= (1 >= 1))"
 
 	true_statement
-	"0x101 & 0x100 == 0x100"
+	"(0x101 & 0x100) == 0x100"
 
 	true_statement
-	"0x101 | 0x10100 == 0x10101"
+	"(0x101 | 0x10100) == 0x10101"
 
 	true_statement
-	"0xF00F0F ^ 0xFF0F00 == 0x0F000F"
+	"(0xF00F0F ^ 0xFF0F00) == 0x0F000F"
 
 	true_statement
 	"(1 << 1) == 2"
@@ -719,19 +719,19 @@ UST_FILTERS=(
 	"(1 << 63) == 9223372036854775808"
 
 	true_statement
-	"arrfield1[2] & 1 == 1"
+	"(arrfield1[2] & 1) == 1"
 
 	true_statement
-	"arrfield1[2] | 0x111000 == 0x111003"
+	"(arrfield1[2] | 0x111000) == 0x111003"
 
 	true_statement
 	"(arrfield1[0] | arrfield1[1] | arrfield1[2]) == 0x3"
 
 	true_statement
-	"seqfield4[2] & 1 == 1"
+	"(seqfield4[2] & 1) == 1"
 
 	true_statement
-	"seqfield4[2] | 0x111000 == 0x111003"
+	"(seqfield4[2] | 0x111000) == 0x111003"
 
 	true_statement
 	"intfield < 0xDEADBEEF"
@@ -1135,13 +1135,13 @@ KERNEL_FILTERS=(
 	"1 >= (1 >= (1 >= 1))"
 
 	true_statement
-	"0x101 & 0x100 == 0x100"
+	"(0x101 & 0x100) == 0x100"
 
 	true_statement
-	"0x101 | 0x10100 == 0x10101"
+	"(0x101 | 0x10100) == 0x10101"
 
 	true_statement
-	"0xF00F0F ^ 0xFF0F00 == 0x0F000F"
+	"(0xF00F0F ^ 0xFF0F00) == 0x0F000F"
 
 	true_statement
 	"(1 << 1) == 2"
@@ -1180,19 +1180,19 @@ KERNEL_FILTERS=(
 	"(1 << 63) == 9223372036854775808"
 
 	true_statement
-	"arrfield1[2] & 1 == 1"
+	"(arrfield1[2] & 1) == 1"
 
 	true_statement
-	"arrfield1[2] | 0x111000 == 0x111003"
+	"(arrfield1[2] | 0x111000) == 0x111003"
 
 	true_statement
 	"(arrfield1[0] | arrfield1[1] | arrfield1[2]) == 0x3"
 
 	true_statement
-	"seqfield4[2] & 1 == 1"
+	"(seqfield4[2] & 1) == 1"
 
 	true_statement
-	"seqfield4[2] | 0x111000 == 0x111003"
+	"(seqfield4[2] | 0x111000) == 0x111003"
 
 	true_statement
 	"intfield < 0xDEADBEEF"
