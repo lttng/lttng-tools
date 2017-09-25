@@ -319,6 +319,10 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		return -EINVAL;
 	}
 
+	/*
+	 * TODO: if we remove legacy load for application contexts, we
+	 * need to update session bytecode parser as well.
+	 */
 	ret = visit_node_load_expression_legacy(ctx, exp, op);
 	if (ret < 0) {
 		return ret;
