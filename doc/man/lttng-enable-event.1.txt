@@ -139,7 +139,7 @@ literal `*` character, use :escwc:.
 
 * Filter expression (option:--filter option) executed against the
   dynamic values of event fields at execution time that must evaluate
-  to true. See the <<filter-syntax,Filter expression syntax>> section
+  to true. See the <<filter-expr,Filter expression>> section
   below for more information.
 
 The available conditions for the application domains are:
@@ -155,7 +155,7 @@ from the match with the option:--exclude option.
 
 * Filter expression (option:--filter option) executed against the
   dynamic values of event fields at execution time that must evaluate
-  to true. See the <<filter-syntax,Filter expression syntax>> section
+  to true. See the <<filter-expr,Filter expression>> section
   below for more information.
 * Event's log level that must be at least as severe as a given
   log level (option:--loglevel option) or match exactly a given log
@@ -175,79 +175,137 @@ chosen channel and tracing session. It is the equivalent of an 'EVENT'
 argument named `*` (wildcard).
 
 
-[[filter-syntax]]
-Filter expression syntax
-~~~~~~~~~~~~~~~~~~~~~~~~
+[[filter-expr]]
+Filter expression
+~~~~~~~~~~~~~~~~~
 A filter expression can be specified with the option:--filter option
-when creating a new event rule. If the filter expression evaluates to
-true when executed against the dynamic values of an event's fields when
-tracing, the filtering condition passes.
+when creating a new event rule. If the filter expression evaluates
+to true when executed against the dynamic values of an event's fields
+when tracing, the filtering condition passes.
 
 NOTE: Make sure to **single-quote** the filter expression when running
 the command from a shell, as filter expressions typically include
 characters having a special meaning for most shells.
 
-The filter expression syntax is very similar to C language conditional
-expressions (expressions that can be evaluated by an `if` statement).
+The filter expression syntax is similar to C language conditional
+expressions (expressions that can be evaluated by an `if` statement),
+albeit with a few differences:
 
-The following logical operators are supported:
+* C integer and floating point number constants are supported, as well
+  as literal strings between double quotes (`"`). You can use `*`
+  characters at any place in a literal string as wildcards to match zero
+  or more characters. To use a literal `*` character, use :escwc:.
++
+Examples: `32`, `-0x17`, `0755`, `12.34`,
++"a :escbs:"literal string:escbs:""+, `"src/*/*.h"`.
 
-[width="40%",options="header"]
-|=====================================
-| Name                      | Syntax
-| Logical negation (NOT)    | `!a`
-| Logical conjunction (AND) | `a && b`
-| Logical disjunction (OR)  | `a \|\| b`
-|=====================================
+* The dynamic value of an event field is read by using its name as a C
+  identifier.
++
+The dot and square bracket notations are available, like in the C
+language, to access nested structure and array/sequence fields.
+Only a constant, positive integer number can be used within square
+brackets. If the index is out of bounds, the whole filter expression
+evaluates to false (the event is discarded).
++
+An enumeration field's value is an integer.
++
+When the expression's field does not exist, the whole filter expression
+evaluates to false.
++
+Examples: `my_field`, `target_cpu`, `seq[7]`, `msg.user[1].data[2][17]`.
 
-The following comparison operators/relational operators are supported:
+* The dynamic value of a statically-known context field is read by
+  prefixing its name with `$ctx.`. Statically-known context fields are
+  context fields added to channels without the `$app.` prefix using the
+  man:lttng-add-context(1) command.
++
+When the expression's statically-known context field does not exist,
+the whole filter expression evaluates to false.
++
+Examples: `$ctx.prio`, `$ctx.preemptible`,
+`$ctx.perf:cpu:stalled-cycles-frontend`.
 
-[width="40%",options="header"]
-|====================================
-| Name                     | Syntax
-| Equal to                 | `a == b`
-| Not equal to             | `a != b`
-| Greater than             | `a > b`
-| Less than                | `a < b`
-| Greater than or equal to | `a >= b`
-| Less than or equal to    | `a <= b`
-|====================================
+* The dynamic value of an application-specific context field is read by
+  prefixing its name with `$app.` (follows the format used to add such a
+  context field with the man:lttng-add-context(1) command).
++
+When the expression's application-specific context field does not exist,
+the whole filter expression evaluates to false.
++
+Example: `$app.server:cur_user`.
 
-The arithmetic and bitwise operators are :not: supported.
+The following precedence table shows the operators which are supported
+in a filter expression. In this table, the highest precedence is 1.
+Parentheses are supported to bypass the default order.
 
-The precedence table of the operators above is the same as the one of
-the C language. Parentheses are supported to bypass this.
+IMPORTANT: Unlike the C language, the `lttng enable-event` filter
+expression syntax's bitwise AND and OR operators (`&` and `|`) take
+precedence over relational operators (`<`, `<=`, `>`, `>=`, `==`, and
+`!=`). This means the filter expression `2 & 2 == 2` is true while the
+equivalent C expression is false.
 
-The dynamic value of an event field is read by using its name as a C
-identifier.
+[options="header"]
+|===
+|Precedence |Operator |Description |Associativity
+|1 |`-` |Unary minus |Right-to-left
+|1 |`+` |Unary plus |Right-to-left
+|1 |`!` |Logical NOT |Right-to-left
+|1 |`~` |Bitwise NOT |Right-to-left
+|2 |`<<` |Bitwise left shift |Left-to-right
+|2 |`>>` |Bitwise right shift |Left-to-right
+|3 |`&` |Bitwise AND |Left-to-right
+|4 |`^` |Bitwise XOR |Left-to-right
+|5 |`\|` |Bitwise OR |Left-to-right
+|6 |`<` |Less than |Left-to-right
+|6 |`<=` |Less than or equal to |Left-to-right
+|6 |`>` |Greater than |Left-to-right
+|6 |`>=` |Greater than or equal to |Left-to-right
+|7 |`==` |Equal to |Left-to-right
+|7 |`!=` |Not equal to |Left-to-right
+|8 |`&&` |Logical AND |Left-to-right
+|9 |`\|\|` |Logical OR |Left-to-right
+|===
 
-The dynamic value of a statically-known context field is read by
-prefixing its name with `$ctx.`. Statically-known context fields are
-context fields added to channels without the `$app.` prefix using the
-man:lttng-add-context(1) command. `$ctx.cpu_id` is also available as the
-ID of the CPU which emits the event.
+The arithmetic operators are :not: supported.
 
-The dynamic value of an application-specific context field is read by
-prefixing its name with `$app.` (follows the format used to add such a
-context field with the man:lttng-add-context(1) command).
+All integer constants and fields are first casted to signed 64-bit
+integers. The representation of negative integers is two's complement.
+This means that, for example, the signed 8-bit integer field 0xff (-1)
+becomes 0xffffffffffffffff (still -1) once casted.
 
-When a comparison includes a non existent event field, the whole filter
-expression evaluates to false (the event is discarded).
+Before a bitwise operator is applied, all its operands are casted to
+unsigned 64-bit integers, and the result is casted back to a signed
+64-bit integer. For the bitwise NOT operator, it is the equivalent of
+this C expression:
 
-C integer and floating point number constants are supported, as well as
-literal strings between double quotes (`"`). You can use `*` characters
-at any place in a literal string as wildcards to match zero or more
-characters. To use a literal `*` character, use :escwc:.
+[source,c]
+----
+(int64_t) ~((uint64_t) val)
+----
 
-LTTng-UST enumeration fields can be compared to integer values (fields
-or constants).
+For the binary bitwise operators, it is the equivalent of those C
+expressions:
+
+[source,c]
+----
+(int64_t) ((uint64_t) lhs >> (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs << (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs & (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs ^ (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs | (uint64_t) rhs)
+----
+
+If the right-hand side of a bitwise shift operator (`<<` and `>>`) is
+not in the [0,{nbsp}63] range, the whole filter expression evaluates to
+false.
 
 NOTE: Although it is possible to filter the process ID of an event when
 the `pid` context has been added to its channel using, for example,
 `$ctx.pid == 2832`, it is recommended to use the PID tracker instead,
 which is much more efficient (see man:lttng-track(1)).
 
-Examples:
+Filter expression examples:
 
 ----------------------------
 msg_id == 23 && size >= 2048
@@ -264,6 +322,10 @@ $app.my_provider:my_context == 17.34e9 || some_enum >= 14
 ---------------------------------------
 $ctx.cpu_id == 2 && filename != "*.log"
 ---------------------------------------
+
+------------------------------------------------
+eax_reg & 0xff7 == 0x240 && x[4] >> 12 <= 0x1234
+------------------------------------------------
 
 
 [[log-levels]]
@@ -427,7 +489,7 @@ option:-x 'EVENT'[,'EVENT']..., option:--exclude='EVENT'[,'EVENT']...::
 option:-f 'EXPR', option:--filter='EXPR'::
     Add filter expression condition to the event rule. Expression 'EXPR'
     must evaluate to true when executed against the dynamic values of
-    event fields. See the <<filter-syntax,Filter expression syntax>>
+    event fields. See the <<filter-expr,Filter expression>>
     section above for more information.
 
 
