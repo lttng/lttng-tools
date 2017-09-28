@@ -740,26 +740,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		/* Get the right pipe where the stream will be sent. */
 		if (new_stream->metadata_flag) {
-			ret = consumer_add_metadata_stream(new_stream);
-			if (ret) {
-				ERR("Consumer add metadata stream %" PRIu64 " failed. Continuing",
-						new_stream->key);
-				consumer_stream_free(new_stream);
-				goto end_nosignal;
-			}
+			consumer_add_metadata_stream(new_stream);
 			stream_pipe = ctx->consumer_metadata_pipe;
 		} else {
-			ret = consumer_add_data_stream(new_stream);
-			if (ret) {
-				ERR("Consumer add stream %" PRIu64 " failed. Continuing",
-						new_stream->key);
-				consumer_stream_free(new_stream);
-				goto end_nosignal;
-			}
+			consumer_add_data_stream(new_stream);
 			stream_pipe = ctx->consumer_data_pipe;
 		}
 
-		/* Vitible to other threads */
+		/* Visible to other threads */
 		new_stream->globally_visible = 1;
 
 		health_code_update();

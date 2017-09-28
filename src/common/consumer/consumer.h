@@ -754,9 +754,9 @@ void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd);
 unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 		unsigned long produced_pos, uint64_t nb_packets_per_stream,
 		uint64_t max_sb_size);
-int consumer_add_data_stream(struct lttng_consumer_stream *stream);
+void consumer_add_data_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
-int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
+void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
 

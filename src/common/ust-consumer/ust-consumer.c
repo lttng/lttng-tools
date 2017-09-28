@@ -206,20 +206,10 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 
 	/* Get the right pipe where the stream will be sent. */
 	if (stream->metadata_flag) {
-		ret = consumer_add_metadata_stream(stream);
-		if (ret) {
-			ERR("Consumer add metadata stream %" PRIu64 " failed.",
-					stream->key);
-			goto error;
-		}
+		consumer_add_metadata_stream(stream);
 		stream_pipe = ctx->consumer_metadata_pipe;
 	} else {
-		ret = consumer_add_data_stream(stream);
-		if (ret) {
-			ERR("Consumer add stream %" PRIu64 " failed.",
-					stream->key);
-			goto error;
-		}
+		consumer_add_data_stream(stream);
 		stream_pipe = ctx->consumer_data_pipe;
 	}
 

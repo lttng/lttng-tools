@@ -630,10 +630,9 @@ end:
 /*
  * Add a stream to the global list protected by a mutex.
  */
-int consumer_add_data_stream(struct lttng_consumer_stream *stream)
+void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 {
 	struct lttng_ht *ht = data_ht;
-	int ret = 0;
 
 	assert(stream);
 	assert(ht);
@@ -683,8 +682,6 @@ int consumer_add_data_stream(struct lttng_consumer_stream *stream)
 	pthread_mutex_unlock(&stream->chan->timer_lock);
 	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
-
-	return ret;
 }
 
 void consumer_del_data_stream(struct lttng_consumer_stream *stream)
@@ -2106,10 +2103,9 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
  * Action done with the metadata stream when adding it to the consumer internal
  * data structures to handle it.
  */
-int consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
+void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 {
 	struct lttng_ht *ht = metadata_ht;
-	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
 
@@ -2169,7 +2165,6 @@ int consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&stream->chan->timer_lock);
 	pthread_mutex_unlock(&consumer_data.lock);
-	return ret;
 }
 
 /*
