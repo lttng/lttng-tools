@@ -225,9 +225,12 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 
 	/*
 	 * From this point on, the stream's ownership has been moved away from
-	 * the channel and becomes globally visible.
+	 * the channel and it becomes globally visible. Hence, remove it from
+	 * the local stream list to prevent the stream from being both local and
+	 * global.
 	 */
 	stream->globally_visible = 1;
+	cds_list_del(&stream->send_node);
 
 	ret = lttng_pipe_write(stream_pipe, &stream, sizeof(stream));
 	if (ret < 0) {
@@ -239,7 +242,9 @@ static int send_stream_to_thread(struct lttng_consumer_stream *stream,
 		} else {
 			consumer_del_stream_for_data(stream);
 		}
+		goto error;
 	}
+
 error:
 	return ret;
 }
@@ -721,14 +726,8 @@ static int send_streams_to_thread(struct lttng_consumer_channel *channel,
 			 * If we are unable to send the stream to the thread, there is
 			 * a big problem so just stop everything.
 			 */
-			/* Remove node from the channel stream list. */
-			cds_list_del(&stream->send_node);
 			goto error;
 		}
-
-		/* Remove node from the channel stream list. */
-		cds_list_del(&stream->send_node);
-
 	}
 
 error:
@@ -918,6 +917,10 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 		}
 	}
 
+	/*
+	 * Ownership of metadata stream is passed along. Freeing is handled by
+	 * the callee.
+	 */
 	ret = send_streams_to_thread(metadata, ctx);
 	if (ret < 0) {
 		/*
@@ -925,7 +928,7 @@ static int setup_metadata(struct lttng_consumer_local_data *ctx, uint64_t key)
 		 * a big problem so just stop everything.
 		 */
 		ret = LTTCOMM_CONSUMERD_FATAL;
-		goto error;
+		goto send_streams_error;
 	}
 	/* List MUST be empty after or else it could be reused. */
 	assert(cds_list_empty(&metadata->streams.head));
@@ -943,6 +946,7 @@ error:
 	consumer_stream_destroy(metadata->metadata_stream, NULL);
 	cds_list_del(&metadata->metadata_stream->send_node);
 	metadata->metadata_stream = NULL;
+send_streams_error:
 error_no_stream:
 end:
 	return ret;
