@@ -117,6 +117,7 @@ health_check
 /tests/perf/test_perf_raw
 /tests/unit/test_string_utils
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
+/tests/utils/testapp/userspace-probe-elf-binary/userspace-probe-elf-binary
 
 # man pages
 /doc/man/*.1
