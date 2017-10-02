@@ -2,7 +2,8 @@ SUBDIRS = gen-ust-events \
 	  gen-ust-nevents \
 	  gen-ust-nevents-str \
 	  gen-ust-tracef \
-	  gen-syscall-events
+	  gen-syscall-events \
+	  userspace-probe-elf-binary
 
 if HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
 SUBDIRS += gen-syscall-events-callstack
