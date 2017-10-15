@@ -177,6 +177,35 @@ end:
 }
 
 /*
+ * Send file descriptors to the session daemon.
+ *
+ * On success, returns the number of bytes sent (>=0)
+ * On error, returns -1
+ */
+static int send_session_fds(int *fds, size_t nb_fd)
+{
+	int ret;
+
+	if (!connected) {
+		ret = -LTTNG_ERR_NO_SESSIOND;
+		goto end;
+	}
+
+	if (!fds || !nb_fd) {
+		ret = 0;
+		goto end;
+	}
+
+	ret = lttcomm_send_fds_unix_sock(sessiond_socket, fds, nb_fd);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Receive data from the sessiond socket.
  *
  * On success, returns the number of bytes received (>=0)
@@ -445,13 +474,14 @@ end:
 
 /*
  * Ask the session daemon a specific command and put the data into buf.
- * Takes extra var. len. data as input to send to the session daemon.
+ * Takes extra var. len. data and file descriptors as input to send to the
+ * session daemon.
  *
  * Return size of data (only payload, not header) or a negative error code.
  */
 LTTNG_HIDDEN
-int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		const void *vardata, size_t vardata_len,
+int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
+		int *fds, size_t nb_fd, const void *vardata, size_t vardata_len,
 		void **user_payload_buf, void **user_cmd_header_buf,
 		size_t *user_cmd_header_len)
 {
@@ -473,6 +503,13 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 	}
 	/* Send var len data */
 	ret = send_session_varlen(vardata, vardata_len);
+	if (ret < 0) {
+		/* Ret value is a valid lttng error code. */
+		goto end;
+	}
+
+	/* Send fds */
+	ret = send_session_fds(fds, nb_fd);
 	if (ret < 0) {
 		/* Ret value is a valid lttng error code. */
 		goto end;
@@ -1879,8 +1916,8 @@ int lttng_list_events(struct lttng_handle *handle,
 			sizeof(lsm.u.list.channel_name));
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, NULL, 0, (void **) events,
-		(void **) &cmd_header, &cmd_header_len);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+		(void **) events, (void **) &cmd_header, &cmd_header_len);
 	if (ret < 0) {
 		goto error;
 	}
