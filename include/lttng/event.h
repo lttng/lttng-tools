@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include <lttng/handle.h>
+#include <lttng/userspace-probe.h>
 
 /*
  * Instrumentation type of tracing event.
@@ -301,6 +302,10 @@ struct lttng_event_field {
 extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
+extern struct lttng_event *lttng_event_create(void);
+
+extern void lttng_event_destroy(struct lttng_event *event);
+
 /*
  * Get the filter expression of a specific LTTng event.
  *
@@ -332,6 +337,26 @@ extern int lttng_event_get_exclusion_name_count(struct lttng_event *event);
  */
 extern int lttng_event_get_exclusion_name(struct lttng_event *event,
 		size_t index, const char **exclusion_name);
+
+
+/*
+ * Get the userspace probe location of a specific LTTng event.
+ * If the call is successful, then a pointer to the probe location is returned.
+ * If the event has no probe location a NULL pointer is returned. The caller
+ * does not own the returned probe location.
+ */
+extern struct lttng_userspace_probe_location *
+lttng_event_get_userspace_probe_location(struct lttng_event *event);
+
+/*
+ * Set an LTTng event's userspace probe location.
+ * If the call is successful, then the probe location is set to the event. The
+ * ownership of the probe_location is given to the event.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
+extern int lttng_event_set_userspace_probe_location(struct lttng_event *event,
+		struct lttng_userspace_probe_location *probe_location);
 
 /*
  * List the available tracepoints of a specific lttng domain.
