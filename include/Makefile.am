@@ -82,7 +82,8 @@ lttnginclude_HEADERS = \
 	lttng/load.h \
 	lttng/endpoint.h \
 	lttng/rotation.h \
-	lttng/location.h
+	lttng/location.h \
+	lttng/userspace-probe.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
@@ -123,5 +124,6 @@ noinst_HEADERS = \
 	lttng/rotate-internal.h \
 	lttng/ref-internal.h \
 	lttng/location-internal.h \
+	lttng/userspace-probe-internal.h \
 	version.h \
 	version.i
