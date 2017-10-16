@@ -70,16 +70,15 @@ int lttng_event_get_filter_expression(struct lttng_event *event,
 	const char **filter_expression)
 {
 	int ret = 0;
-	struct lttcomm_event_extended_header *ext_header;
+	struct lttng_event_extended *event_extended;
 
 	if (!event || !filter_expression) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ext_header = event->extended.ptr;
-
-	if (!ext_header) {
+	event_extended = (struct lttng_event_extended *) event->extended.ptr;
+	if (!event_extended) {
 		/*
 		 * This can happen since the lttng_event structure is
 		 * used for other tasks where this pointer is never set.
@@ -88,42 +87,35 @@ int lttng_event_get_filter_expression(struct lttng_event *event,
 		goto end;
 	}
 
-	if (ext_header->filter_len) {
-		*filter_expression = ((const char *) (ext_header)) +
-				sizeof(*ext_header);
-	} else {
-		*filter_expression = NULL;
-	}
-
+	*filter_expression = event_extended->filter_expression;
 end:
 	return ret;
 }
 
 int lttng_event_get_exclusion_name_count(struct lttng_event *event)
 {
-	int ret;
-	struct lttcomm_event_extended_header *ext_header;
+	int ret = 0;
+	struct lttng_event_extended *event_extended;
 
 	if (!event) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ext_header = event->extended.ptr;
-	if (!ext_header) {
+	event_extended = (struct lttng_event_extended *) event->extended.ptr;
+	if (!event_extended) {
 		/*
 		 * This can happen since the lttng_event structure is
 		 * used for other tasks where this pointer is never set.
 		 */
-		ret = 0;
 		goto end;
 	}
 
-	if (ext_header->nb_exclusions > INT_MAX) {
+	if (event_extended->exclusions.count > INT_MAX) {
 		ret = -LTTNG_ERR_OVERFLOW;
 		goto end;
 	}
-	ret = (int) ext_header->nb_exclusions;
+	ret = (int) event_extended->exclusions.count;
 end:
 	return ret;
 }
@@ -132,30 +124,35 @@ int lttng_event_get_exclusion_name(struct lttng_event *event,
 		size_t index, const char **exclusion_name)
 {
 	int ret = 0;
-	struct lttcomm_event_extended_header *ext_header;
-	void *at;
+	struct lttng_event_extended *event_extended;
 
 	if (!event || !exclusion_name) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ext_header = event->extended.ptr;
-	if (!ext_header) {
+	if (index > UINT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto end;
+	}
+
+	event_extended = (struct lttng_event_extended *) event->extended.ptr;
+	if (!event_extended) {
+		/*
+		 * This can happen since the lttng_event structure is
+		 * used for other tasks where this pointer is never set.
+		 */
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (index >= ext_header->nb_exclusions) {
+	if (index >= event_extended->exclusions.count) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	at = (void *) ext_header + sizeof(*ext_header);
-	at += ext_header->filter_len;
-	at += index * LTTNG_SYMBOL_NAME_LEN;
-	*exclusion_name = at;
-
+	*exclusion_name = event_extended->exclusions.strings +
+		(index * LTTNG_SYMBOL_NAME_LEN);
 end:
 	return ret;
 }

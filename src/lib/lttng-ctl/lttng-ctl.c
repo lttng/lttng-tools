@@ -34,11 +34,13 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <common/dynamic-buffer.h>
 #include <lttng/lttng.h>
 #include <lttng/health-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/endpoint.h>
 #include <lttng/channel-internal.h>
+#include <lttng/event-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -1901,7 +1903,11 @@ int lttng_list_events(struct lttng_handle *handle,
 	struct lttcomm_event_command_header *cmd_header = NULL;
 	size_t cmd_header_len;
 	uint32_t nb_events, i;
-	void *extended_at;
+	void *comm_ext_at;
+	void *listing_at;
+	char *reception_buffer = NULL;
+	char *listing = NULL;
+	size_t storage_req;
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
@@ -1917,42 +1923,110 @@ int lttng_list_events(struct lttng_handle *handle,
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
 	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
-		(void **) events, (void **) &cmd_header, &cmd_header_len);
+		(void **) &reception_buffer, (void **) &cmd_header,
+		&cmd_header_len);
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
 
 	/* Set number of events and free command header */
 	nb_events = cmd_header->nb_events;
 	if (nb_events > INT_MAX) {
 		ret = -EOVERFLOW;
-		goto error;
+		goto end;
 	}
-	ret = (int) nb_events;
 	free(cmd_header);
 	cmd_header = NULL;
 
-	/* Set extended info pointers */
-	extended_at = ((void*) (*events)) +
-			nb_events * sizeof(struct lttng_event);
+	/*
+	 * The buffer that is returned must contain a "flat" version of
+	 * the events that are returned. In other words, all pointers
+	 * within an lttng_event must point to a location within the returned
+	 * buffer so that the user may free by simply calling free() on the
+	 * returned buffer. This is needed in order to maintain API
+	 * compatibility.
+	 *
+	 * A first pass is performed to figure the size of the buffer that
+	 * must be returned. A second pass is then performed to setup
+	 * the returned events so that their members always point within the
+	 * buffer.
+	 *
+	 * The layout of the returned buffer is as follows:
+	 *   - struct lttng_event[nb_events],
+	 *   - nb_events times the following:
+	 *     - struct lttng_event_extended,
+	 *     - flattened version of userspace_probe_location
+	 *     - filter_expression
+	 *     - exclusions
+	 *     - padding to align to 64-bits
+	 */
+	comm_ext_at = reception_buffer +
+		(nb_events * sizeof(struct lttng_event));
+	storage_req = nb_events * sizeof(struct lttng_event);
 
 	for (i = 0; i < nb_events; i++) {
-		struct lttcomm_event_extended_header *ext_header;
-		struct lttng_event *event = &(*events)[i];
+		struct lttcomm_event_extended_header *ext_comm =
+			(struct lttcomm_event_extended_header *) comm_ext_at;
 
-		event->extended.ptr = extended_at;
-		ext_header =
-			(struct lttcomm_event_extended_header *) extended_at;
-		extended_at += sizeof(*ext_header);
-		extended_at += ext_header->filter_len;
-		extended_at +=
-			ext_header->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		comm_ext_at += sizeof(*ext_comm);
+		comm_ext_at += ext_comm->filter_len;
+		comm_ext_at +=
+			ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+
+		storage_req += sizeof(struct lttng_event_extended);
+		/* TODO: missing size of flat userspace probe. */
+		storage_req += ext_comm->filter_len;
+		storage_req += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		storage_req += storage_req % 8;
 	}
 
-	return ret;
-error:
+	listing = zmalloc(storage_req);
+	if (!listing) {
+		goto end;
+	}
+	memcpy(listing, reception_buffer,
+		nb_events * sizeof(struct lttng_event));
+
+	comm_ext_at = reception_buffer +
+		(nb_events * sizeof(struct lttng_event));
+	listing_at = listing +
+		(nb_events * sizeof(struct lttng_event));
+	for (i = 0; i < nb_events; i++) {
+		struct lttng_event *event = (struct lttng_event *)
+			(listing + (sizeof(struct lttng_event) * i));
+		struct lttcomm_event_extended_header *ext_comm =
+			(struct lttcomm_event_extended_header *) comm_ext_at;
+		struct lttng_event_extended *event_extended =
+			(struct lttng_event_extended *) listing_at;
+
+		event->extended.ptr = event_extended;
+		listing_at += sizeof(*event_extended);
+		comm_ext_at += sizeof(*ext_comm);
+
+		/* Copy filter expression. */
+		memcpy(listing_at, comm_ext_at, ext_comm->filter_len);
+		event_extended->filter_expression = listing_at;
+		comm_ext_at += ext_comm->filter_len;
+		listing_at += ext_comm->filter_len;
+
+		/* Copy exclusions. */
+		event_extended->exclusions.count = ext_comm->nb_exclusions;
+		event_extended->exclusions.strings = listing_at;
+		memcpy(listing_at, comm_ext_at,
+			ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN);
+		listing_at += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		comm_ext_at += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+
+		listing_at += ((uintptr_t) listing_at) % 8;
+	}
+
+	*events = (struct lttng_event *) listing;
+	listing = NULL;
+	ret = (int) nb_events;
+end:
 	free(cmd_header);
-	free(*events);
+	free(reception_buffer);
+	free(listing);
 	return ret;
 }
 
