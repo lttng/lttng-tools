@@ -41,6 +41,7 @@
 #include <lttng/endpoint.h>
 #include <lttng/channel-internal.h>
 #include <lttng/event-internal.h>
+#include <lttng/userspace-probe-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -1032,8 +1033,9 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm;
-	char *varlen_data;
-	int ret = 0;
+	struct lttng_dynamic_buffer send_buffer;
+	int ret = 0, i, fd_to_send = -1;
+	bool send_fd = false;
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
 	/*
@@ -1085,21 +1087,10 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	lsm.u.enable.bytecode_len = 0;
 
 	/*
-	 * For the JUL domain, a filter is enforced except for the enable all
-	 * event. This is done to avoid having the event in all sessions thus
-	 * filtering by logger name.
-	 */
-	if (exclusion_count == 0 && filter_expression == NULL &&
-			(handle->domain.type != LTTNG_DOMAIN_JUL &&
-				handle->domain.type != LTTNG_DOMAIN_LOG4J &&
-				handle->domain.type != LTTNG_DOMAIN_PYTHON)) {
-		goto ask_sessiond;
-	}
-
-	/*
 	 * We have either a filter or some exclusions, so we need to set up
 	 * a variable-length memory block from where to send the data.
 	 */
+	lttng_dynamic_buffer_init(&send_buffer);
 
 	/* Parse filter expression. */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
@@ -1137,41 +1128,74 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		}
 	}
 
-	varlen_data = zmalloc(lsm.u.enable.bytecode_len
+	ret = lttng_dynamic_buffer_set_capacity(&send_buffer,
+		lsm.u.enable.bytecode_len
 			+ lsm.u.enable.expression_len
 			+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
-	if (!varlen_data) {
+	if (ret) {
 		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
 		goto mem_error;
 	}
 
 	/* Put exclusion names first in the data. */
-	while (exclusion_count--) {
-		strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
-			*(exclusion_list + exclusion_count),
-			LTTNG_SYMBOL_NAME_LEN - 1);
+	for (i = 0; i < exclusion_count; i++) {
+		size_t exclusion_len;
+
+		exclusion_len = strnlen(*(exclusion_list + i),
+				LTTNG_SYMBOL_NAME_LEN);
+		if (exclusion_len == LTTNG_SYMBOL_NAME_LEN) {
+			/* Exclusion is not NULL-terminated. */
+			ret = -LTTNG_ERR_INVALID;
+			goto mem_error;
+		}
+
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				*(exclusion_list + i),
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret) {
+			goto mem_error;
+		}
 	}
+
 	/* Add filter expression next. */
-	if (lsm.u.enable.expression_len != 0) {
-		memcpy(varlen_data
-			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count,
-			filter_expression,
-			lsm.u.enable.expression_len);
+	if (filter_expression) {
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				filter_expression, lsm.u.enable.expression_len);
+		if (ret) {
+			goto mem_error;
+		}
 	}
 	/* Add filter bytecode next. */
 	if (ctx && lsm.u.enable.bytecode_len != 0) {
-		memcpy(varlen_data
-			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count
-			+ lsm.u.enable.expression_len,
-			&ctx->bytecode->b,
-			lsm.u.enable.bytecode_len);
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				&ctx->bytecode->b, lsm.u.enable.bytecode_len);
+		if (ret) {
+			goto mem_error;
+		}
+	}
+	if (ev->extended.ptr) {
+		struct lttng_event_extended *ev_ext =
+			(struct lttng_event_extended *) ev->extended.ptr;
+
+		if (ev_ext->probe_location) {
+			ret = lttng_userspace_probe_location_serialize(
+				ev_ext->probe_location, &send_buffer,
+				&fd_to_send);
+			if (ret) {
+				goto mem_error;
+			}
+
+			send_fd = fd_to_send >= 0;
+			lsm.u.enable.userspace_probe_location_len =
+					send_buffer.size;
+		}
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, varlen_data,
-			(LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count) +
-			lsm.u.enable.bytecode_len + lsm.u.enable.expression_len,
-			NULL);
-	free(varlen_data);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+			send_fd ? &fd_to_send : NULL,
+			send_fd ? 1 : 0,
+			send_buffer.size ? send_buffer.data : NULL,
+			send_buffer.size, NULL, NULL, 0);
 
 mem_error:
 	if (filter_expression && ctx) {
@@ -1193,6 +1217,7 @@ error:
 	 * Return directly to the caller and don't ask the sessiond since
 	 * something went wrong in the parsing of data above.
 	 */
+	lttng_dynamic_buffer_reset(&send_buffer);
 	return ret;
 
 ask_sessiond:

@@ -247,13 +247,15 @@ struct lttcomm_session_msg {
 			uint32_t expression_len;
 			/* Length of following bytecode for filter. */
 			uint32_t bytecode_len;
-			/* exclusion data */
+			/* Exclusion count (fixed-size strings). */
 			uint32_t exclusion_count;
+			/* Userspace probe location size. */
+			uint32_t userspace_probe_location_len;
 			/*
 			 * After this structure, the following variable-length
 			 * items are transmitted:
 			 * - char exclusion_names[LTTNG_SYMBOL_NAME_LEN][exclusion_count]
-			 * - unsigned char filter_expression[expression_len]
+			 * - char filter_expression[expression_len]
 			 * - unsigned char filter_bytecode[bytecode_len]
 			 */
 		} LTTNG_PACKED enable;
