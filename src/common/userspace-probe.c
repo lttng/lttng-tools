@@ -415,6 +415,8 @@ int lttng_userspace_probe_location_serialize(
 		goto end;
 	}
 
+	memset(&location_generic_comm, 0, sizeof(location_generic_comm));
+
 	location_generic_comm.type = (int8_t) location->type;
 	if (buffer) {
 		ret = lttng_dynamic_buffer_append(buffer, &location_generic_comm,
