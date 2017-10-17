@@ -383,6 +383,11 @@ struct lttcomm_event_extended_header {
 	 * character.
 	 */
 	uint32_t nb_exclusions;
+
+	/*
+	 * Size of the event's userspace probe location (if applicable).
+	 */
+	uint32_t userspace_probe_location_len;
 } LTTNG_PACKED;
 
 /*
