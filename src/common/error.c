@@ -201,6 +201,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_NO_SESSION_OUTPUT) ] = "Session has no output",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY) ] = "Rotation feature not available on the relay",
 	[ ERROR_INDEX(LTTNG_ERR_AGENT_TRACING_DISABLED) ] = "Session daemon agent tracing is disabled",
+	[ ERROR_INDEX(LTTNG_ERR_PROBE_LOCATION_INVAL) ] = "Invalid userspace probe location",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
