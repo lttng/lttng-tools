@@ -30,6 +30,21 @@ struct lttng_buffer_view {
 };
 
 /**
+ * Return a buffer view referencing a subset of the memory referenced by a raw
+ * pointer.
+ *
+ * @src		Source buffer to reference
+ * @offset	Offset to apply to the source memory buffer
+ * @len		Length of the memory contents to reference.
+ *
+ * Note that a buffer view never assumes the ownership of the memory it
+ * references.
+ */
+LTTNG_HIDDEN
+struct lttng_buffer_view lttng_buffer_view_init(
+		const char *src, size_t offset, ptrdiff_t len);
+
+/**
  * Return a buffer view referencing a subset of the memory referenced by another
  * view.
  *
