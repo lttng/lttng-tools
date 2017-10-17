@@ -84,6 +84,12 @@ void *zmalloc(size_t len)
 #endif
 
 /*
+ * Align value to the next multiple of align. Returns val if it already is a
+ * multiple of align. Align must be a power of two.
+ */
+#define ALIGN_TO(value, align) ((value + (align - 1)) & ~(align - 1))
+
+/*
  * LTTNG_HIDDEN: set the hidden attribute for internal functions
  * On Windows, symbols are local unless explicitly exported,
  * see https://gcc.gnu.org/wiki/Visibility
