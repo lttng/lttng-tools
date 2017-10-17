@@ -187,3 +187,13 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 	buffer->_capacity = 0;
 	free(buffer->data);
 }
+
+LTTNG_HIDDEN
+size_t lttng_dynamic_buffer_get_capacity_left(
+		struct lttng_dynamic_buffer *buffer)
+{
+	if (!buffer) {
+		return 0;
+	}
+	return buffer->_capacity - buffer->size;
+}

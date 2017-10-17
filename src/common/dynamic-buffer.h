@@ -94,4 +94,9 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 LTTNG_HIDDEN
 void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer);
 
+/* Get the space left in the buffer before a new resize is needed. */
+LTTNG_HIDDEN
+size_t lttng_dynamic_buffer_get_capacity_left(
+		struct lttng_dynamic_buffer *buffer);
+
 #endif /* LTTNG_DYNAMIC_BUFFER_H */
