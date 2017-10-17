@@ -149,6 +149,7 @@ enum lttng_error_code {
 	LTTNG_ERR_TRIGGER_EXISTS         = 126, /* Trigger already registered. */
 	LTTNG_ERR_TRIGGER_NOT_FOUND      = 127, /* Trigger not found. */
 	LTTNG_ERR_COMMAND_CANCELLED      = 128, /* Command cancelled. */
+	LTTNG_ERR_PROBE_LOCATION_INVAL   = 129, /* Invalid userspace probe location. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
