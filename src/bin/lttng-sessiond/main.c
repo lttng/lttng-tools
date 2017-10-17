@@ -49,6 +49,8 @@
 #include <common/utils.h>
 #include <common/daemonize.h>
 #include <common/config/session-config.h>
+#include <common/dynamic-buffer.h>
+#include <lttng/userspace-probe-internal.h>
 
 #include "lttng-sessiond.h"
 #include "buffer-registry.h"
@@ -77,6 +79,8 @@
 #include "agent.h"
 #include "ht-cleanup.h"
 #include "sessiond-config.h"
+
+#define CONSUMERD_FILE	"lttng-consumerd"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -3442,7 +3446,7 @@ error_add_context:
 			ret = lttcomm_recv_unix_sock(sock, filter_expression,
 				expression_len);
 			if (ret <= 0) {
-				DBG("Nothing recv() from client car len data... continuing");
+				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
 				free(filter_expression);
 				free(exclusion);
@@ -3474,7 +3478,7 @@ error_add_context:
 			DBG("Receiving var len filter's bytecode from client ...");
 			ret = lttcomm_recv_unix_sock(sock, bytecode, bytecode_len);
 			if (ret <= 0) {
-				DBG("Nothing recv() from client car len data... continuing");
+				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
 				free(filter_expression);
 				free(bytecode);
@@ -3490,6 +3494,57 @@ error_add_context:
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
+		}
+
+		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
+			struct lttng_userspace_probe_location *probe_location;
+			struct lttng_dynamic_buffer probe_location_buffer;
+			struct lttng_buffer_view buffer_view;
+
+			lttng_dynamic_buffer_init(&probe_location_buffer);
+			ret = lttng_dynamic_buffer_set_size(
+					&probe_location_buffer,
+					cmd_ctx->lsm->u.enable.userspace_probe_location_len);
+			if (ret) {
+				ret = LTTNG_ERR_FILTER_NOMEM;
+				goto error;
+			}
+
+			ret = lttcomm_recv_unix_sock(sock,
+					probe_location_buffer.data,
+					probe_location_buffer.size);
+			if (ret <= 0) {
+				DBG("Nothing recv() from client var len data... continuing");
+				*sock_error = 1;
+				lttng_dynamic_buffer_reset(
+						&probe_location_buffer);
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+
+			/*
+			 * TODO: do something with the userspace location and
+			 * validate that it is valid (given the event type) to
+			 * receive a probe location.
+			 */
+			buffer_view = lttng_buffer_view_from_dynamic_buffer(
+					&probe_location_buffer, 0,
+					probe_location_buffer.size);
+			ret = lttng_userspace_probe_location_create_from_buffer(
+					&buffer_view, &probe_location);
+			if (ret < 0) {
+				WARN("Failed to create a userspace probe location from the received buffer");
+				lttng_dynamic_buffer_reset(
+						&probe_location_buffer);
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+
+			/*
+			 * TODO: Use lttng_userspace_probe_location_function_set_binary_fd
+			 * using the fd that was passed to the session daemon.
+			 */
+			lttng_dynamic_buffer_reset(&probe_location_buffer);
 		}
 
 		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,

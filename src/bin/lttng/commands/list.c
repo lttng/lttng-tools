@@ -249,6 +249,56 @@ end:
 	return exclusion_msg;
 }
 
+/* For debug purposes */
+static void print_probe_location(struct lttng_event *event)
+{
+	struct lttng_userspace_probe_location *location;
+
+	location = lttng_event_get_userspace_probe_location(event);
+	if (!location) {
+		MSG("Event has no userspace probe location");
+		return;
+	}
+
+	MSG("      Probe");
+	MSG("      -----");
+	switch (lttng_userspace_probe_location_get_type(location)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
+		MSG("        Type: Unknown");
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	{
+		struct lttng_userspace_probe_location_lookup_method *lookup_method;
+		enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+		const char *function_name;
+		const char *binary_path;
+
+		MSG("        Type: Function");
+		function_name = lttng_userspace_probe_location_function_get_function_name(location);
+		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
+		MSG("          Binary path:   %s", binary_path ? binary_path : "NULL");
+		MSG("          Function:      %s()", function_name ? function_name : "NULL");
+
+		lookup_method = lttng_userspace_probe_location_function_get_lookup_method(location);
+		lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+		switch (lookup_type) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			MSG("          Lookup method: ELF");
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
+			MSG("          Lookup method: default");
+			break;
+		default:
+			MSG("          Lookup method: INVALID LOOKUP TYPE ENCOUNTERED");
+			break;
+		}
+		break;
+	}
+	default:
+		ERR("INVALID PROBE TYPE ENCOUNTERED");
+	}
+}
+
 /*
  * Pretty print single event.
  */
@@ -347,6 +397,9 @@ static void print_events(struct lttng_event *event)
 		assert(0);
 		break;
 	}
+
+	/* FIXME Remove me - Example only. */
+	print_probe_location(event);
 
 	free(filter_msg);
 	free(exclusion_msg);

@@ -36,6 +36,7 @@
 #include <lttng/action/action.h>
 #include <lttng/channel.h>
 #include <lttng/channel-internal.h>
+#include <lttng/userspace-probe-internal.h>
 #include <common/string-utils/string-utils.h>
 
 #include "channel.h"
@@ -353,9 +354,27 @@ end:
 	}
 }
 
+/* TODO: Remove this; it is only meant to be used in the example. */
+static struct lttng_userspace_probe_location *get_probe_location(void)
+{
+	struct lttng_userspace_probe_location *probe_location;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+
+	lookup_method = lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+	assert(lookup_method);
+	probe_location = lttng_userspace_probe_location_function_create(
+			"/usr/bin/ls", "main", lookup_method);
+	assert(probe_location);
+
+	return probe_location;
+}
+
 static void increment_extended_len(const char *filter_expression,
 		struct lttng_event_exclusion *exclusion, size_t *extended_len)
 {
+	int location_len;
+	struct lttng_userspace_probe_location *location = get_probe_location();
+
 	*extended_len += sizeof(struct lttcomm_event_extended_header);
 
 	if (filter_expression) {
@@ -365,6 +384,11 @@ static void increment_extended_len(const char *filter_expression,
 	if (exclusion) {
 		*extended_len += exclusion->count * LTTNG_SYMBOL_NAME_LEN;
 	}
+
+	location_len = lttng_userspace_probe_location_serialize(location, NULL,
+			NULL);
+	*extended_len += location_len;
+	lttng_userspace_probe_location_destroy(location);
 }
 
 static void append_extended_info(const char *filter_expression,
@@ -373,6 +397,16 @@ static void append_extended_info(const char *filter_expression,
 	struct lttcomm_event_extended_header extended_header;
 	size_t filter_len = 0;
 	size_t nb_exclusions = 0;
+	struct lttng_userspace_probe_location *location = get_probe_location();
+	struct lttng_dynamic_buffer location_buffer;
+	int ret;
+
+	/* EXAMPLE ONLY */
+	lttng_dynamic_buffer_init(&location_buffer);
+	ret = lttng_userspace_probe_location_serialize(location,
+			&location_buffer, NULL);
+	assert(ret > 0);
+	lttng_userspace_probe_location_destroy(location);
 
 	if (filter_expression) {
 		filter_len = strlen(filter_expression) + 1;
@@ -385,6 +419,7 @@ static void append_extended_info(const char *filter_expression,
 	/* Set header fields */
 	extended_header.filter_len = filter_len;
 	extended_header.nb_exclusions = nb_exclusions;
+	extended_header.userspace_probe_location_len = location_buffer.size;
 
 	/* Copy header */
 	memcpy(*extended_at, &extended_header, sizeof(extended_header));
@@ -403,6 +438,10 @@ static void append_extended_info(const char *filter_expression,
 		memcpy(*extended_at, &exclusion->names, len);
 		*extended_at += len;
 	}
+
+	memcpy(*extended_at, location_buffer.data, location_buffer.size);
+	*extended_at += location_buffer.size;
+	lttng_dynamic_buffer_reset(&location_buffer);
 }
 
 /*
