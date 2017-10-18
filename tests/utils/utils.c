@@ -55,7 +55,7 @@ int usleep_safe(useconds_t usec)
 			goto end;
 		}
 
-		ret = clock_gettime(CLOCK_MONOTONIC, &t2);
+		ret = lttng_clock_gettime(CLOCK_MONOTONIC, &t2);
 		if (ret) {
 			perror("clock_gettime");
 			goto end;
