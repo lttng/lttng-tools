@@ -42,7 +42,8 @@
 #include "runas.h"
 
 struct run_as_data;
-typedef int (*run_as_fct)(struct run_as_data *data);
+struct run_as_ret;
+typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
 
 struct run_as_mkdir_data {
 	char path[PATH_MAX];
@@ -83,8 +84,19 @@ struct run_as_data {
 	gid_t gid;
 };
 
+/*
+ * The run_as_ret structure holds the returned value and status of the command.
+ *
+ * The `u` union field holds the return value of the command; in most cases it
+ * represents the success or the failure of the command. In more complex
+ * commands, it holds a computed value.
+ *
+ * the _errno field is the errno recorded after the execution of the command.
+ */
 struct run_as_ret {
-	int ret;
+	union {
+		int ret_int;
+	} u;
 	int _errno;
 };
 
@@ -120,7 +132,7 @@ int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode);
  * Create recursively directory using the FULL path.
  */
 static
-int _mkdir_recursive(struct run_as_data *data)
+int _mkdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -129,31 +141,41 @@ int _mkdir_recursive(struct run_as_data *data)
 	mode = data->u.mkdir.mode;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	return _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->u.ret_int = _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->_errno = errno;
+	return ret_value->u.ret_int;
 }
 
 static
-int _mkdir(struct run_as_data *data)
+int _mkdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	ret_value->u.ret_int = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	ret_value->_errno = errno;
+	return ret_value->u.ret_int;
 }
 
 static
-int _open(struct run_as_data *data)
+int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->u.ret_int = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->_errno = errno;
+	return ret_value->u.ret_int;
 }
 
 static
-int _unlink(struct run_as_data *data)
+int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return unlink(data->u.unlink.path);
+	ret_value->u.ret_int = unlink(data->u.unlink.path);
+	ret_value->_errno = errno;
+	return ret_value->u.ret_int;
 }
 
 static
-int _rmdir_recursive(struct run_as_data *data)
+int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	ret_value->u.ret_int = utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	ret_value->_errno = errno;
+	return ret_value->u.ret_int;
 }
 
 static
@@ -280,11 +302,12 @@ int handle_one_cmd(struct run_as_worker *worker)
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
-	ret = (*cmd)(&data);
+	ret = (*cmd)(&data, &sendret);
+	if (ret < 0) {
+		DBG("Execution of command returned an error");
+	}
 
 write_return:
-	sendret.ret = ret;
-	sendret._errno = errno;
 	/* send back return value */
 	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
 			sizeof(sendret));
@@ -331,8 +354,8 @@ int run_as_worker(struct run_as_worker *worker)
 		PERROR("prctl PR_SET_NAME");
 	}
 
-	sendret.ret = 0;
-	sendret._errno = 0;
+	memset(&sendret, 0, sizeof(sendret));
+
 	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
 			sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
@@ -361,18 +384,19 @@ static
 int run_as_cmd(struct run_as_worker *worker,
 		enum run_as_cmd cmd,
 		struct run_as_data *data,
+		struct run_as_ret *ret_value,
 		uid_t uid, gid_t gid)
 {
+	int ret = 0;
 	ssize_t readlen, writelen;
-	struct run_as_ret recvret;
 
 	/*
 	 * If we are non-root, we can only deal with our own uid.
 	 */
 	if (geteuid() != 0) {
 		if (uid != geteuid()) {
-			recvret.ret = -1;
-			recvret._errno = EPERM;
+			ret = -1;
+			ret_value->_errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
 				(int) uid, (int) geteuid());
 			goto end;
@@ -387,32 +411,31 @@ int run_as_cmd(struct run_as_worker *worker,
 			sizeof(*data));
 	if (writelen < sizeof(*data)) {
 		PERROR("Error writing message to run_as");
-		recvret.ret = -1;
-		recvret._errno = errno;
+		ret = -1;
+		ret_value->_errno = errno;
 		goto end;
 	}
 
 	/* receive return value */
-	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], &recvret,
-			sizeof(recvret));
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], ret_value,
+			sizeof(*ret_value));
 	if (!readlen) {
 		ERR("Run-as worker has hung-up during run_as_cmd");
-		recvret.ret = -1;
-		recvret._errno = EIO;
+		ret = -1;
+		ret_value->_errno = EIO;
 		goto end;
-	} else if (readlen < sizeof(recvret)) {
+	} else if (readlen < sizeof(*ret_value)) {
 		PERROR("Error reading response from run_as");
-		recvret.ret = -1;
-		recvret._errno = errno;
+		ret = -1;
+		ret_value->_errno = errno;
 	}
-	if (do_recv_fd(worker, cmd, &recvret.ret)) {
-		recvret.ret = -1;
-		recvret._errno = EIO;
+	if (do_recv_fd(worker, cmd, &ret_value->u.ret_int)) {
+		ret = -1;
+		ret_value->_errno = EIO;
 	}
 
 end:
-	errno = recvret._errno;
-	return recvret.ret;
+	return ret;
 }
 
 /*
@@ -420,7 +443,8 @@ end:
  */
 static
 int run_as_noworker(enum run_as_cmd cmd,
-		struct run_as_data *data, uid_t uid, gid_t gid)
+		struct run_as_data *data, struct run_as_ret *ret_value,
+		uid_t uid, gid_t gid)
 {
 	int ret, saved_errno;
 	mode_t old_mask;
@@ -433,8 +457,8 @@ int run_as_noworker(enum run_as_cmd cmd,
 		goto end;
 	}
 	old_mask = umask(0);
-	ret = fct(data);
-	saved_errno = errno;
+	ret = fct(data, ret_value);
+	saved_errno = ret_value->_errno;
 	umask(old_mask);
 	errno = saved_errno;
 end:
@@ -442,7 +466,8 @@ end:
 }
 
 static
-int run_as(enum run_as_cmd cmd, struct run_as_data *data, uid_t uid, gid_t gid)
+int run_as(enum run_as_cmd cmd, struct run_as_data *data,
+		   struct run_as_ret *ret_value, uid_t uid, gid_t gid)
 {
 	int ret;
 
@@ -450,12 +475,12 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data, uid_t uid, gid_t gid)
 		DBG("Using run_as worker");
 		pthread_mutex_lock(&worker_lock);
 		assert(global_worker);
-		ret = run_as_cmd(global_worker, cmd, data, uid, gid);
+		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
 		pthread_mutex_unlock(&worker_lock);
 
 	} else {
 		DBG("Using run_as without worker");
-		ret = run_as_noworker(cmd, data, uid, gid);
+		ret = run_as_noworker(cmd, data, ret_value, uid, gid);
 	}
 	return ret;
 }
@@ -464,68 +489,94 @@ LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(RUN_AS_MKDIR_RECURSIVE, &data, uid, gid);
+
+	run_as(RUN_AS_MKDIR_RECURSIVE, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.ret_int;
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(RUN_AS_MKDIR, &data, uid, gid);
+	run_as(RUN_AS_MKDIR, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.ret_int;
 }
 
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
 			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
-	return run_as(RUN_AS_OPEN, &data, uid, gid);
+	run_as(RUN_AS_OPEN, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.ret_int;
 }
 
 LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("unlink() %s with for uid %d and gid %d",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
-	return run_as(RUN_AS_UNLINK, &data, uid, gid);
+	run_as(RUN_AS_UNLINK, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.ret_int;
 }
 
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
+
+	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
 
 	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
-	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
+	run_as(RUN_AS_RMDIR_RECURSIVE, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.ret_int;
 }
 
 static
