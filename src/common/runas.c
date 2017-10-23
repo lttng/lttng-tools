@@ -74,6 +74,7 @@ enum run_as_cmd {
 
 struct run_as_data {
 	enum run_as_cmd cmd;
+	int fd;
 	union {
 		struct run_as_mkdir_data mkdir;
 		struct run_as_open_data open;
@@ -199,48 +200,35 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 }
 
 static
-int do_send_fd(struct run_as_worker *worker,
-		enum run_as_cmd cmd, int fd)
+int do_send_fd(int sock, int fd)
 {
 	ssize_t len;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-		break;
-	default:
-		return 0;
-	}
 	if (fd < 0) {
+		ERR("Invalid file description");
 		return 0;
 	}
-	len = lttcomm_send_fds_unix_sock(worker->sockpair[1], &fd, 1);
+
+	len = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (len < 0) {
 		PERROR("lttcomm_send_fds_unix_sock");
-		return -1;
-	}
-	if (close(fd) < 0) {
-		PERROR("close");
 		return -1;
 	}
 	return 0;
 }
 
 static
-int do_recv_fd(struct run_as_worker *worker,
-		enum run_as_cmd cmd, int *fd)
+int do_recv_fd(int sock, int *fd)
 {
 	ssize_t len;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-		break;
-	default:
-		return 0;
-	}
 	if (*fd < 0) {
+		ERR("Invalid file description");
 		return 0;
 	}
-	len = lttcomm_recv_fds_unix_sock(worker->sockpair[0], fd, 1);
+
+	len = lttcomm_recv_fds_unix_sock(sock, fd, 1);
+
 	if (!len) {
 		return -1;
 	} else if (len < 0) {
@@ -250,6 +238,108 @@ int do_recv_fd(struct run_as_worker *worker,
 	return 0;
 }
 
+static
+int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = do_send_fd(worker->sockpair[0], fd);
+	if (ret < 0) {
+		PERROR("do_send_fd");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+{
+	int ret = 0, ret_close = 0;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+
+	ret = do_send_fd(worker->sockpair[1], fd);
+	if (ret < 0) {
+		PERROR("do_send_fd error");
+		ret = -1;
+	}
+
+	ret_close = close(fd);
+	if (ret_close < 0) {
+		PERROR("close");
+	}
+
+	return ret;
+}
+
+static
+int recv_fd_from_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+
+	ret = do_recv_fd(worker->sockpair[0], fd);
+	if (ret < 0) {
+		PERROR("do_recv_fd error");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = do_recv_fd(worker->sockpair[1], fd);
+	if (ret < 0) {
+		PERROR("do_recv_fd error");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int cleanup_received_fd(enum run_as_cmd cmd, int fd)
+{
+	int ret = 0;
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = close(fd);
+	if (ret < 0) {
+		PERROR("close error");
+		ret = -1;
+	}
+
+	return ret;
+}
 /*
  * Return < 0 on error, 0 if OK, 1 on hangup.
  */
@@ -263,7 +353,11 @@ int handle_one_cmd(struct run_as_worker *worker)
 	run_as_fct cmd;
 	uid_t prev_euid;
 
-	/* Read data */
+	/*
+	 * Stage 1: Receive run_as_data struct from the master.
+	 * The structure contains the command type and all the parameters needed for
+	 * its execution
+	 */
 	readlen = lttcomm_recv_unix_sock(worker->sockpair[1], &data,
 			sizeof(data));
 	if (readlen == 0) {
@@ -283,6 +377,18 @@ int handle_one_cmd(struct run_as_worker *worker)
 		goto end;
 	}
 
+	/*
+	 * Stage 2: Receive file descriptor from master.
+	 * Some commands need a file descriptor as input so if it's needed we
+	 * receive the fd using the Unix socket.
+	 */
+	ret = recv_fd_from_master(worker, data.cmd, &data.fd);
+	if (ret < 0) {
+		PERROR("recv_fd_from_master error");
+		ret = -1;
+		goto end;
+	}
+
 	prev_euid = getuid();
 	if (data.gid != getegid()) {
 		ret = setegid(data.gid);
@@ -298,17 +404,31 @@ int handle_one_cmd(struct run_as_worker *worker)
 			goto write_return;
 		}
 	}
+
 	/*
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
+
+	/*
+	 * Stage 3: Execute the command
+	 */
 	ret = (*cmd)(&data, &sendret);
 	if (ret < 0) {
 		DBG("Execution of command returned an error");
 	}
 
 write_return:
-	/* send back return value */
+	ret = cleanup_received_fd(data.cmd, data.fd);
+	if (ret < 0) {
+		ERR("Error cleaning up FD");
+		goto end;
+	}
+
+	/*
+	 * Stage 4: Send run_as_ret structure to the master.
+	 * This structure contain the return value of the command and the errno.
+	 */
 	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
 			sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
@@ -316,12 +436,18 @@ write_return:
 		ret = -1;
 		goto end;
 	}
-	ret = do_send_fd(worker, data.cmd, ret);
-	if (ret) {
-		PERROR("do_send_fd error");
-		ret = -1;
+
+	/*
+	 * Stage 5: Send file descriptor to the master
+	 * Some commands return a file descriptor so if it's needed we pass it back
+	 * to the master using the Unix socket.
+	 */
+	ret = send_fd_to_master(worker, data.cmd, sendret.u.ret_int);
+	if (ret < 0) {
+		DBG("Sending FD to master returned an error");
 		goto end;
 	}
+
 	if (seteuid(prev_euid) < 0) {
 		PERROR("seteuid");
 		ret = -1;
@@ -407,6 +533,9 @@ int run_as_cmd(struct run_as_worker *worker,
 	data->uid = uid;
 	data->gid = gid;
 
+	/*
+	 * Stage 1: Send the run_as_data struct to the worker process
+	 */
 	writelen = lttcomm_send_unix_sock(worker->sockpair[0], data,
 			sizeof(*data));
 	if (writelen < sizeof(*data)) {
@@ -416,7 +545,24 @@ int run_as_cmd(struct run_as_worker *worker,
 		goto end;
 	}
 
-	/* receive return value */
+	/*
+	 * Stage 2: Send file descriptor to the worker process if needed
+	 */
+	ret = send_fd_to_worker(worker, data->cmd, data->fd);
+	if (ret) {
+		PERROR("do_send_fd error");
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Stage 3: Wait for the execution of the command
+	 */
+
+	/*
+	 * Stage 4: Receive the run_as_ret struct containing the return value and
+	 * errno
+	 */
 	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], ret_value,
 			sizeof(*ret_value));
 	if (!readlen) {
@@ -429,7 +575,13 @@ int run_as_cmd(struct run_as_worker *worker,
 		ret = -1;
 		ret_value->_errno = errno;
 	}
-	if (do_recv_fd(worker, cmd, &ret_value->u.ret_int)) {
+
+	/*
+	 * Stage 5: Receive file descriptor if needed
+	 */
+	ret = recv_fd_from_worker(worker, data->cmd, &ret_value->u.ret_int);
+	if (ret < 0) {
+		ERR("Error receiving fd");
 		ret = -1;
 		ret_value->_errno = EIO;
 	}
