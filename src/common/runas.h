@@ -33,6 +33,9 @@ LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
+int run_as_extract_elf_symbol_offset(int fd, const char* function,
+				uid_t uid, gid_t gid, uint64_t *offset);
 
 LTTNG_HIDDEN
 int run_as_create_worker(char *procname);
