@@ -38,6 +38,7 @@
 #include <common/compat/prctl.h>
 #include <common/unix.h>
 #include <common/defaults.h>
+#include <common/lttng-elf.h>
 
 #include "runas.h"
 
@@ -64,12 +65,17 @@ struct run_as_rmdir_recursive_data {
 	char path[PATH_MAX];
 };
 
+struct run_as_extract_elf_symbol_offset_data {
+	char function[PATH_MAX];
+};
+
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_OPEN,
 	RUN_AS_UNLINK,
 	RUN_AS_RMDIR_RECURSIVE,
 	RUN_AS_MKDIR_RECURSIVE,
+	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
 };
 
 struct run_as_data {
@@ -80,6 +86,7 @@ struct run_as_data {
 		struct run_as_open_data open;
 		struct run_as_unlink_data unlink;
 		struct run_as_rmdir_recursive_data rmdir_recursive;
+		struct run_as_extract_elf_symbol_offset_data extract_elf_symbol_offset;
 	} u;
 	uid_t uid;
 	gid_t gid;
@@ -92,13 +99,21 @@ struct run_as_data {
  * represents the success or the failure of the command. In more complex
  * commands, it holds a computed value.
  *
- * the _errno field is the errno recorded after the execution of the command.
+ * The _errno field is the errno recorded after the execution of the command.
+ *
+ * The _error fields is used the signify that return status of the command. For
+ * simple commands returning `int` the _error field will be the same as the
+ * ret_int field. In complex commands, it signify the success or failure of the
+ * command.
+ *
  */
 struct run_as_ret {
 	union {
 		int ret_int;
+		uint64_t ret_uint64_t;
 	} u;
 	int _errno;
+	bool _error;
 };
 
 struct run_as_worker {
@@ -144,6 +159,7 @@ int _mkdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.ret_int = _utils_mkdir_recursive_unsafe(path, mode);
 	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret_int) ? true : false;
 	return ret_value->u.ret_int;
 }
 
@@ -152,6 +168,7 @@ int _mkdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	ret_value->u.ret_int = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
 	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret_int) ? true : false;
 	return ret_value->u.ret_int;
 }
 
@@ -160,6 +177,7 @@ int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	ret_value->u.ret_int = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
 	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret_int) ? true : false;
 	return ret_value->u.ret_int;
 }
 
@@ -168,6 +186,7 @@ int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	ret_value->u.ret_int = unlink(data->u.unlink.path);
 	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret_int) ? true : false;
 	return ret_value->u.ret_int;
 }
 
@@ -176,7 +195,27 @@ int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	ret_value->u.ret_int = utils_recursive_rmdir(data->u.rmdir_recursive.path);
 	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret_int) ? true : false;
 	return ret_value->u.ret_int;
+}
+
+static
+int _extract_elf_symbol_offset(struct run_as_data *data,
+							   struct run_as_ret *ret_value)
+{
+	int ret = 0;
+	ret_value->_error = false;
+
+	ret = lttng_elf_get_symbol_offset(data->fd,
+									 data->u.extract_elf_symbol_offset.function,
+									 &ret_value->u.ret_uint64_t);
+	if (ret < 0) {
+		DBG("Failed to extract ELF function offset");
+		ret = -1;
+		ret_value->_error = true;
+	}
+
+	return ret;
 }
 
 static
@@ -193,6 +232,8 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 		return _rmdir_recursive;
 	case RUN_AS_MKDIR_RECURSIVE:
 		return _mkdir_recursive;
+	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+		return _extract_elf_symbol_offset;
 	default:
 		ERR("Unknown command %d", (int) cmd);
 		return NULL;
@@ -244,6 +285,8 @@ int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 	int ret = 0;
 
 	switch (cmd) {
+	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+		break;
 	default:
 		return 0;
 	}
@@ -310,6 +353,8 @@ int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *
 	int ret = 0;
 
 	switch (cmd) {
+	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+		break;
 	default:
 		return 0;
 	}
@@ -328,6 +373,8 @@ int cleanup_received_fd(enum run_as_cmd cmd, int fd)
 {
 	int ret = 0;
 	switch (cmd) {
+	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+		break;
 	default:
 		return 0;
 	}
@@ -729,6 +776,34 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 	run_as(RUN_AS_RMDIR_RECURSIVE, &data, &ret, uid, gid);
 	errno = ret._errno;
 	return ret.u.ret_int;
+}
+
+LTTNG_HIDDEN
+int run_as_extract_elf_symbol_offset(int fd, const char* function,
+				    uid_t uid, gid_t gid, uint64_t *offset)
+{
+	struct run_as_data data;
+	struct run_as_ret ret;
+
+	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
+	     "with for uid %d and gid %d", fd, function, (int) uid, (int) gid);
+
+	data.fd = fd;
+
+	strncpy(data.u.extract_elf_symbol_offset.function, function, PATH_MAX - 1);
+
+	data.u.extract_elf_symbol_offset.function[PATH_MAX - 1] = '\0';
+
+	run_as(RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET, &data, &ret, uid, gid);
+
+	errno = ret._errno;
+
+	if (ret._error != 0) {
+		return -1;
+	}
+
+	*offset = ret.u.ret_uint64_t;
+	return 0;
 }
 
 static
