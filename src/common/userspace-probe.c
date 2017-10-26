@@ -639,7 +639,7 @@ int lttng_userspace_probe_location_flatten(
 		flat_probe.parent.lookup_method =
 				(struct lttng_userspace_probe_location_lookup_method *)
 					(flat_probe_start + sizeof(flat_probe) +
-					function_name_len + binary_path_len);
+					function_name_len + binary_path_len + padding_needed);
 	} else {
 		flat_probe.parent.lookup_method = NULL;
 	}
