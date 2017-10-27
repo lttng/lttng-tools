@@ -50,6 +50,36 @@ error:
 	goto end;
 }
 
+struct lttng_event *lttng_event_copy(struct lttng_event *event)
+{
+	struct lttng_event *new_event;
+	struct lttng_event_extended *new_event_extended;
+
+	new_event = zmalloc(sizeof(*event));
+	if (!event) {
+		goto end;
+	}
+
+	/* Copy the content of the old event */
+	memcpy(new_event, event, sizeof(*event));
+
+	/*
+	 * We need to create a new extended since the previous pointer is now
+	 * invalid
+	 */
+	new_event_extended = zmalloc(sizeof(*new_event_extended));
+	if (!new_event_extended) {
+		goto error;
+	}
+
+	new_event->extended.ptr = new_event_extended;
+end:
+	return new_event;
+error:
+	free(event);
+	goto end;
+}
+
 void lttng_event_destroy(struct lttng_event *event)
 {
 	struct lttng_event_extended *event_extended;
