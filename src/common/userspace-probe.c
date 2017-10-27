@@ -347,6 +347,67 @@ end:
 }
 
 LTTNG_HIDDEN
+int lttng_userspace_probe_location_lookup_method_elf_set_run_as_ids(
+			struct lttng_userspace_probe_location_lookup_method *lookup,
+			uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttng_userspace_probe_location_lookup_method_elf *lookup_elf = NULL;
+
+	if (!lookup) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		break;
+	default:
+		/* Invalid probe location lookup method. */
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	lookup_elf = container_of(lookup,
+				struct lttng_userspace_probe_location_lookup_method_elf, parent);
+
+	lookup_elf->run_as_uid = uid;
+	lookup_elf->run_as_gid = gid;
+	ret = 0;
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
+			struct lttng_userspace_probe_location_lookup_method *lookup,
+			uid_t *uid, gid_t *gid)
+{
+	int ret;
+	struct lttng_userspace_probe_location_lookup_method_elf *lookup_elf = NULL;
+
+	if (!lookup) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		break;
+	default:
+		/* Invalid probe location lookup method. */
+		goto end;
+	}
+
+	lookup_elf = container_of(lookup,
+				struct lttng_userspace_probe_location_lookup_method_elf, parent);
+	*uid = lookup_elf->run_as_uid;
+	*gid = lookup_elf->run_as_gid;
+	ret = 0;
+
+end:
+	return ret;
+}
+LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer,
