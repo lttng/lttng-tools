@@ -302,6 +302,8 @@ extern int lttng_list_events(struct lttng_handle *handle,
 
 extern struct lttng_event *lttng_event_create(void);
 
+extern struct lttng_event *lttng_event_copy(struct lttng_event *event);
+
 extern void lttng_event_destroy(struct lttng_event *event);
 
 /*
