@@ -21,7 +21,7 @@ version.h:
 		##
 		## Check whether we are in a git repo.
 		##
-		git_describe="$$($(GIT_DESCRIBE_CMD) 2>/dev/null)"; \
+		git_describe="`$(GIT_DESCRIBE_CMD) 2>/dev/null`"; \
 		if [ $$? -eq 0 ]; then \
 			git_version="$${git_describe}"; \
 		else \
