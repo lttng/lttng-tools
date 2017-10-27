@@ -217,6 +217,24 @@ end:
 	return ret;
 }
 
+int lttng_userspace_probe_location_function_get_binary_fd(
+		struct lttng_userspace_probe_location *location)
+{
+	int ret = -1;
+	struct lttng_userspace_probe_location_function *function_location;
+
+	if (!location || lttng_userspace_probe_location_get_type(location) !=
+			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+		goto end;
+	}
+
+	function_location = container_of(location,
+		struct lttng_userspace_probe_location_function, parent);
+	ret = function_location->binary_fd;
+end:
+	return ret;
+}
+
 struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
 		struct lttng_userspace_probe_location *location)
