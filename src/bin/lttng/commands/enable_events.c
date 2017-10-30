@@ -51,6 +51,7 @@ static int opt_log4j;
 static int opt_python;
 static int opt_enable_all;
 static char *opt_probe;
+static char *opt_userspace_probe;
 static char *opt_function;
 static char *opt_channel_name;
 static char *opt_filter;
@@ -66,6 +67,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_TRACEPOINT,
 	OPT_PROBE,
+	OPT_USERSPACE_PROBE,
 	OPT_FUNCTION,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
@@ -92,6 +94,7 @@ static struct poptOption long_options[] = {
 	{"python",         'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
+	{"userspace-probe",0,   POPT_ARG_STRING, &opt_userspace_probe, OPT_USERSPACE_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{"loglevel",       0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0},
@@ -173,6 +176,115 @@ end:
 	return ret;
 }
 
+/*
+ * Parse userspace probe options
+ * Set the userspace probe fields in the lttng_event struct and set the
+ * target_path to the path to the binary.
+ */
+static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
+{
+	int ret = CMD_SUCCESS;
+	int num_token;
+
+	char **tokens;
+	char *target_path = NULL;
+	char *real_target_path = NULL;
+	char *symbol_name = NULL;
+	struct lttng_userspace_probe_location *probe_location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method =
+			NULL;
+
+	if (opt == NULL) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/*
+	 * userspace probe fields are seperated by ':'.
+	 */
+	tokens = strutils_split(opt, ':', 1);
+	num_token = strutils_array_of_strings_len(tokens);
+
+	/*
+	 * Early sanity check that the number of parameter is between 2 and 3
+	 * inclusively.
+	 * elf:PATH:SYMBOL
+	 * PATH:SYMBOL (same behavior as above^)
+	 */
+	if (num_token < 2 || num_token > 3) {
+		ret = CMD_ERROR;
+		goto end_string;
+	}
+
+	/*
+	 * Looking up the first parameter will tell the technique to use to
+	 * interpret the userspace probe/function description.
+	 */
+	if (strcmp(tokens[0], "elf") == 0) {
+		target_path = tokens[1];
+		symbol_name = tokens[2];
+	} else {
+		target_path = tokens[0];
+		symbol_name = tokens[1];
+	}
+
+	target_path = strutils_unescape_string(target_path, 0);
+
+	/*
+	 * Convert relative path to absolute path
+	 * the returned ptr from realpath must be deallocated with free().
+	 */
+	real_target_path = realpath(target_path, NULL);
+	if (real_target_path == NULL) {
+		PERROR("realpath failed");
+		ret = CMD_ERROR;
+		goto end_free_path;
+	}
+
+	switch (ev->type) {
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+		if (!lookup_method) {
+			WARN("Failed to create ELF lookup method");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+		probe_location = lttng_userspace_probe_location_function_create(
+				target_path, symbol_name, lookup_method);
+		if (!probe_location) {
+			WARN("Failed to create function probe location");
+			ret = CMD_ERROR;
+			goto end_destroy_lookup_method;
+		}
+		/* Ownership transferred to probe_location. */
+		lookup_method = NULL;
+
+		ret = lttng_event_set_userspace_probe_location(ev, probe_location);
+		if (ret) {
+			WARN("Failed to set probe location on event");
+			ret = CMD_ERROR;
+			goto end_destroy_location;
+		}
+		break;
+	default:
+		assert(0);
+	}
+
+	goto end;
+
+end_destroy_location:
+	lttng_userspace_probe_location_destroy(probe_location);
+end_destroy_lookup_method:
+	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
+end_free_path:
+	/* Free path that was allocated by the call to real_path. */
+	free(real_target_path);
+end_string:
+	strutils_free_null_terminated_array_of_strings(tokens);
+end:
+	return ret;
+}
 /*
  * Maps LOG4j loglevel from string to value
  */
@@ -582,42 +694,11 @@ static int enable_events(char *session_name)
 	struct lttng_event *ev;
 	struct lttng_domain dom;
 	char **exclusion_list = NULL;
-	struct lttng_userspace_probe_location *probe_location = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method =
-			NULL;
 
 	memset(&dom, 0, sizeof(dom));
 
 	ev = lttng_event_create();
 	if (!ev) {
-		ret = CMD_ERROR;
-		goto error;
-	}
-
-	/*
-	 * NOTE: This is done entirely for demonstration purposes. This
-	 * should be modified to take into account the cases where a
-	 * userspace probe is actually needed.
-	 */
-	lookup_method = lttng_userspace_probe_location_lookup_method_function_name_elf_create();
-	if (!lookup_method) {
-		WARN("Failed to create ELF lookup method");
-		ret = CMD_ERROR;
-		goto error;
-	}
-	probe_location = lttng_userspace_probe_location_function_create(
-			"/usr/bin/ls", "main", lookup_method);
-	if (!probe_location) {
-		WARN("Failed to create function probe location");
-		ret = CMD_ERROR;
-		goto error;
-	}
-	/* Ownership transferred to probe_location. */
-	lookup_method = NULL;
-
-	ret = lttng_event_set_userspace_probe_location(ev, probe_location);
-	if (ret) {
-		WARN("Failed to set probe location on event");
 		ret = CMD_ERROR;
 		goto error;
 	}
@@ -975,6 +1056,14 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 				break;
+			case LTTNG_EVENT_USERSPACE_PROBE:
+				ret = parse_userspace_probe_opts(ev, opt_userspace_probe);
+				if (ret) {
+					ERR("Unable to parse userspace probe options");
+					ret = 0;
+					goto error;
+				}
+				break;
 			case LTTNG_EVENT_FUNCTION:
 				ret = parse_probe_opts(ev, opt_function);
 				if (ret) {
@@ -1290,8 +1379,6 @@ error:
 	ret = error_holder ? error_holder : ret;
 
 	lttng_event_destroy(ev);
-	lttng_userspace_probe_location_destroy(probe_location);
-	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 	return ret;
 }
 
@@ -1321,6 +1408,9 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
+			break;
+		case OPT_USERSPACE_PROBE:
+			opt_event_type = LTTNG_EVENT_USERSPACE_PROBE;
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;

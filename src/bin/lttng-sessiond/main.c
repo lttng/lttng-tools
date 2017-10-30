@@ -3395,9 +3395,17 @@ error_add_context:
 	}
 	case LTTNG_ENABLE_EVENT:
 	{
+		struct lttng_event *ev = NULL;
 		struct lttng_event_exclusion *exclusion = NULL;
 		struct lttng_filter_bytecode *bytecode = NULL;
 		char *filter_expression = NULL;
+
+		ev = lttng_event_copy(&cmd_ctx->lsm->u.enable.event);
+		if (!ev) {
+			DBG("Failed to copy event");
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
 
 		/* Handle exclusion events and receive it from the client. */
 		if (cmd_ctx->lsm->u.enable.exclusion_count > 0) {
@@ -3407,6 +3415,7 @@ error_add_context:
 					(count * LTTNG_SYMBOL_NAME_LEN));
 			if (!exclusion) {
 				ret = LTTNG_ERR_EXCLUSION_NOMEM;
+				lttng_event_destroy(ev);
 				goto error;
 			}
 
@@ -3417,6 +3426,7 @@ error_add_context:
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
+				lttng_event_destroy(ev);
 				free(exclusion);
 				ret = LTTNG_ERR_EXCLUSION_INVAL;
 				goto error;
@@ -3430,6 +3440,7 @@ error_add_context:
 
 			if (expression_len > LTTNG_FILTER_MAX_LEN) {
 				ret = LTTNG_ERR_FILTER_INVAL;
+				lttng_event_destroy(ev);
 				free(exclusion);
 				goto error;
 			}
@@ -3437,6 +3448,7 @@ error_add_context:
 			filter_expression = zmalloc(expression_len);
 			if (!filter_expression) {
 				free(exclusion);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_NOMEM;
 				goto error;
 			}
@@ -3450,6 +3462,7 @@ error_add_context:
 				*sock_error = 1;
 				free(filter_expression);
 				free(exclusion);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
@@ -3463,6 +3476,7 @@ error_add_context:
 				ret = LTTNG_ERR_FILTER_INVAL;
 				free(filter_expression);
 				free(exclusion);
+				lttng_event_destroy(ev);
 				goto error;
 			}
 
@@ -3470,6 +3484,7 @@ error_add_context:
 			if (!bytecode) {
 				free(filter_expression);
 				free(exclusion);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_NOMEM;
 				goto error;
 			}
@@ -3483,6 +3498,7 @@ error_add_context:
 				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
@@ -3491,67 +3507,104 @@ error_add_context:
 				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
 		}
 
 		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
+			int fd;
 			struct lttng_userspace_probe_location *probe_location;
 			struct lttng_dynamic_buffer probe_location_buffer;
 			struct lttng_buffer_view buffer_view;
 
+			/*
+			 * Create a buffer to store the serialized version of the probe
+			 * location.
+			 */
 			lttng_dynamic_buffer_init(&probe_location_buffer);
-			ret = lttng_dynamic_buffer_set_size(
-					&probe_location_buffer,
+			ret = lttng_dynamic_buffer_set_size( &probe_location_buffer,
 					cmd_ctx->lsm->u.enable.userspace_probe_location_len);
 			if (ret) {
-				ret = LTTNG_ERR_FILTER_NOMEM;
+				ret = LTTNG_ERR_NOMEM;
+				lttng_event_destroy(ev);
 				goto error;
 			}
 
+			/*
+			 * Receive the probe location.
+			 */
 			ret = lttcomm_recv_unix_sock(sock,
 					probe_location_buffer.data,
 					probe_location_buffer.size);
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
-				lttng_dynamic_buffer_reset(
-						&probe_location_buffer);
+				lttng_dynamic_buffer_reset(&probe_location_buffer);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto error;
 			}
 
-			/*
-			 * TODO: do something with the userspace location and
-			 * validate that it is valid (given the event type) to
-			 * receive a probe location.
-			 */
 			buffer_view = lttng_buffer_view_from_dynamic_buffer(
 					&probe_location_buffer, 0,
 					probe_location_buffer.size);
+			/*
+			 * Extract the probe location from the serialized version.
+			 */
 			ret = lttng_userspace_probe_location_create_from_buffer(
 					&buffer_view, &probe_location);
 			if (ret < 0) {
 				WARN("Failed to create a userspace probe location from the received buffer");
-				lttng_dynamic_buffer_reset(
-						&probe_location_buffer);
+				lttng_dynamic_buffer_reset( &probe_location_buffer);
+				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto error;
 			}
 
 			/*
-			 * TODO: Use lttng_userspace_probe_location_function_set_binary_fd
-			 * using the fd that was passed to the session daemon.
+			 * Receive the file descriptor to the target binary from the client.
 			 */
+			DBG("Receiving userspace probe target FD from client ...");
+			ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
+			if (ret <= 0) {
+				DBG("Nothing recv() from client userspace probe fd ... continuing");
+				*sock_error = 1;
+				lttng_event_destroy(ev);
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+			/*
+			 * Set the file descriptor received from the client through the unix
+			 * socket in the probe location.
+			 */
+			ret = lttng_userspace_probe_location_function_set_binary_fd(probe_location, fd);
+			if (ret) {
+				lttng_event_destroy(ev);
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+
+			/*
+			 * Attach the probe location to the event
+			 */
+			ret = lttng_event_set_userspace_probe_location(ev, probe_location);
+			if (ret) {
+				lttng_event_destroy(ev);
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+
 			lttng_dynamic_buffer_reset(&probe_location_buffer);
 		}
 
 		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
 				cmd_ctx->lsm->u.enable.channel_name,
-				&cmd_ctx->lsm->u.enable.event,
+				ev,
 				filter_expression, bytecode, exclusion,
 				kernel_poll_pipe[1]);
+		lttng_event_destroy(ev);
 		break;
 	}
 	case LTTNG_LIST_TRACEPOINTS:

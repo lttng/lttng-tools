@@ -250,7 +250,7 @@ end:
 }
 
 /* For debug purposes */
-static void print_probe_location(struct lttng_event *event)
+static void print_userspace_probe_location(struct lttng_event *event)
 {
 	struct lttng_userspace_probe_location *location;
 
@@ -374,6 +374,9 @@ static void print_events(struct lttng_event *event)
 			MSG("%ssymbol: %s", indent8, event->attr.probe.symbol_name);
 		}
 		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		print_userspace_probe_location(event);
+		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		MSG("%s%s (type: function)%s%s", indent6,
 				event->name, enabled_string(event->enabled),
@@ -397,9 +400,6 @@ static void print_events(struct lttng_event *event)
 		assert(0);
 		break;
 	}
-
-	/* FIXME Remove me - Example only. */
-	print_probe_location(event);
 
 	free(filter_msg);
 	free(exclusion_msg);

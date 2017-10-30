@@ -34,6 +34,8 @@
 #include "kern-modules.h"
 #include "utils.h"
 
+#include <lttng/userspace-probe.h>
+#include <lttng/userspace-probe-internal.h>
 /*
  * Add context on a kernel channel.
  *
@@ -181,6 +183,53 @@ error:
 	}
 	return -1;
 }
+/*
+ * Set the uid and gid fields in the probe location of a userspace probe event
+ */
+static
+int userspace_probe_set_run_as_ids(struct lttng_event *ev, uid_t uid,
+					gid_t gid)
+{
+	int ret;
+
+	struct lttng_userspace_probe_location *location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	enum lttng_userspace_probe_location_lookup_method_type type;
+
+	assert(ev);
+	assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
+
+	location = lttng_event_get_userspace_probe_location(ev);
+	if (!location) {
+		ret = -1;
+		goto end;
+	}
+
+	lookup_method =
+		lttng_userspace_probe_location_function_get_lookup_method(location);
+	if (!lookup_method) {
+		ret = -1;
+		goto end;
+	}
+
+	type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+	switch (type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		ret = lttng_userspace_probe_location_lookup_method_elf_set_run_as_ids(
+					lookup_method, uid, gid);
+
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+		break;
+	default:
+			ret = -1;
+			goto end;
+	}
+end:
+	return ret;
+}
 
 /*
  * Create a kernel event, enable it to the kernel tracer and add it to the
@@ -197,6 +246,25 @@ int kernel_create_event(struct lttng_event *ev,
 
 	assert(ev);
 	assert(channel);
+
+	/*
+	 * Userspace probe instrumentation use the RUN_AS process to extract the
+	 * offset of the instrumentation point. The RUN_AS process needs the
+	 * credentials of the owner of the tracing session.
+	 */
+	switch (ev->type) {
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		ret = userspace_probe_set_run_as_ids(ev, channel->session->uid,
+					channel->session->gid);
+		if (ret) {
+			WARN("Fail to set uid and/or gid for RUN_AS command");
+			ret = -1;
+			goto error;
+		}
+		break;
+	default:
+		break;
+	}
 
 	/* We pass ownership of filter_expression and filter */
 	event = trace_kernel_create_event(ev, filter_expression,

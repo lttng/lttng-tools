@@ -21,6 +21,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <lttng/event.h>
+#include <lttng/userspace-probe.h>
+#include <lttng/userspace-probe-internal.h>
+
 #include <common/common.h>
 #include <common/defaults.h>
 
@@ -287,6 +291,76 @@ error:
 }
 
 /*
+ * Compute the offset of the instrumentation byte in the binary based on the
+ * function probe location using the ELF lookup method.
+ *
+ * Returns 0 on success and set the offset out parameter to the offset of the
+ * elf symbol
+ * Returns -1 on error
+ */
+static
+int extract_userspace_probe_offset_function_elf(
+					struct lttng_userspace_probe_location *probe_location,
+					uint64_t *offset)
+{
+	int ret, fd;
+	uid_t uid;
+	gid_t gid;
+	const char *symbol = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
+
+	ret = 0;
+
+	assert(lttng_userspace_probe_location_get_type(probe_location) ==
+				LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+
+	lookup = lttng_userspace_probe_location_function_get_lookup_method(
+					probe_location);
+	if (!lookup) {
+		ret = -1;
+		goto end;
+	}
+
+	lookup_method_type =
+		lttng_userspace_probe_location_lookup_method_get_type(lookup);
+
+	assert(lookup_method_type ==
+				LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
+
+
+	symbol = lttng_userspace_probe_location_function_get_function_name(
+					probe_location);
+	if (!symbol) {
+		ret = -1;
+		goto end;
+	}
+	ret = lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
+					lookup, &uid, &gid);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	fd = lttng_userspace_probe_location_function_get_binary_fd(probe_location);
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = run_as_extract_elf_symbol_offset(fd, symbol, uid, gid, offset);
+
+	if (ret < 0) {
+		DBG("userspace probe offset calculation failed for function %s", symbol);
+		goto end;
+	}
+
+	DBG("userspace probe elf offset for %s is 0x%lx", symbol, *offset);
+end:
+	return ret;
+}
+
+/*
  * Allocate and initialize a kernel event. Set name and event type.
  * We own filter_expression, and filter.
  *
@@ -297,6 +371,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 {
 	struct ltt_kernel_event *lke;
 	struct lttng_kernel_event *attr;
+	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
 
 	assert(ev);
 
@@ -316,6 +391,79 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 				ev->attr.probe.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
 		attr->u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+	{
+		int ret = 0;
+		struct lttng_userspace_probe_location* location = NULL;
+		struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+
+		location = lttng_event_get_userspace_probe_location(ev);
+		if (!location) {
+			goto error;
+		}
+
+		/*
+		 * From this point on, the specific term 'uprobe' is used instead of the
+		 * generic 'userspace probe' because it's the technology used at the
+		 * moment for this instrumentation. LTTng currently implement userspace
+		 * probes using uprobes. In the interactions with the kernel tracer, we
+		 * use the uprobe term.
+		 */
+		switch (ev->type) {
+		case LTTNG_EVENT_USERSPACE_PROBE:
+			attr->instrumentation = LTTNG_KERNEL_UPROBE;
+			break;
+		default:
+			goto error;
+		}
+
+		/*
+		 * Only the elf lookup method is supported at the moment.
+		 */
+		lookup = lttng_userspace_probe_location_function_get_lookup_method(
+										location);
+		if (!lookup) {
+			goto error;
+		}
+
+		/*
+		 * From the kernel tracer's perspective, all userspace probe event types
+		 * are all the same: a file and an offset.
+		 */
+		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			/*
+			 * Giving the probe location (symbol and fd), extract the offset of
+			 * the symbol in the binary.
+			 */
+			ret = extract_userspace_probe_offset_function_elf(location,
+							&attr->u.uprobe.offset);
+			if (ret) {
+				goto error;
+			}
+			/*
+			 * Get the file descriptor on the target binary.
+			 */
+			attr->u.uprobe.fd =
+				lttng_userspace_probe_location_function_get_binary_fd(location);
+			/*
+			 * Save a reference to the probe location used during the listing of
+			 * events.
+			 */
+			userspace_probe_location =
+				lttng_userspace_probe_location_copy(location);
+			/*
+			 * Close the binary fd
+			 */
+			lttng_userspace_probe_location_function_set_binary_fd(
+					userspace_probe_location, -1);
+			break;
+		default:
+			DBG("Unsupported lookup method type");
+			goto error;
+		}
+		break;
+	}
 	case LTTNG_EVENT_FUNCTION:
 		attr->instrumentation = LTTNG_KERNEL_KRETPROBE;
 		attr->u.kretprobe.addr = ev->attr.probe.addr;
@@ -354,6 +502,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 	lke->enabled = 1;
 	lke->filter_expression = filter_expression;
 	lke->filter = filter;
+	lke->userspace_probe_location = userspace_probe_location;
 
 	return lke;
 
