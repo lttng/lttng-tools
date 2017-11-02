@@ -449,7 +449,7 @@ static uint32_t __attribute__((unused)) hashlittle(const void *key,
 }
 
 LTTNG_HIDDEN
-unsigned long hash_key_u64(void *_key, unsigned long seed)
+unsigned long hash_key_u64(const void *_key, unsigned long seed)
 {
 	union {
 		uint64_t v64;
@@ -461,7 +461,7 @@ unsigned long hash_key_u64(void *_key, unsigned long seed)
 	} key;
 
 	v.v64 = (uint64_t) seed;
-	key.v64 = *(uint64_t *) _key;
+	key.v64 = *(const uint64_t *) _key;
 	hashword2(key.v32, 2, &v.v32[0], &v.v32[1]);
 	return v.v64;
 }
@@ -471,7 +471,7 @@ unsigned long hash_key_u64(void *_key, unsigned long seed)
  * Hash function for number value.
  */
 LTTNG_HIDDEN
-unsigned long hash_key_ulong(void *_key, unsigned long seed)
+unsigned long hash_key_ulong(const void *_key, unsigned long seed)
 {
 	uint64_t __key = (uint64_t) _key;
 	return (unsigned long) hash_key_u64(&__key, seed);
@@ -481,7 +481,7 @@ unsigned long hash_key_ulong(void *_key, unsigned long seed)
  * Hash function for number value.
  */
 LTTNG_HIDDEN
-unsigned long hash_key_ulong(void *_key, unsigned long seed)
+unsigned long hash_key_ulong(const void *_key, unsigned long seed)
 {
 	uint32_t key = (uint32_t) _key;
 
@@ -493,18 +493,19 @@ unsigned long hash_key_ulong(void *_key, unsigned long seed)
  * Hash function for string.
  */
 LTTNG_HIDDEN
-unsigned long hash_key_str(void *key, unsigned long seed)
+unsigned long hash_key_str(const void *key, unsigned long seed)
 {
-	return hashlittle(key, strlen((char *) key), seed);
+	return hashlittle(key, strlen((const char *) key), seed);
 }
 
 /*
  * Hash function for two uint64_t.
  */
 LTTNG_HIDDEN
-unsigned long hash_key_two_u64(void *key, unsigned long seed)
+unsigned long hash_key_two_u64(const void *key, unsigned long seed)
 {
-	struct lttng_ht_two_u64 *k = (struct lttng_ht_two_u64 *) key;
+	const struct lttng_ht_two_u64 *k =
+		(const struct lttng_ht_two_u64 *) key;
 
 	return hash_key_u64(&k->key1, seed) ^ hash_key_u64(&k->key2, seed);
 }
@@ -513,7 +514,7 @@ unsigned long hash_key_two_u64(void *key, unsigned long seed)
  * Hash function compare for number value.
  */
 LTTNG_HIDDEN
-int hash_match_key_ulong(void *key1, void *key2)
+int hash_match_key_ulong(const void *key1, const void *key2)
 {
 	if (key1 == key2) {
 		return 1;
@@ -526,9 +527,9 @@ int hash_match_key_ulong(void *key1, void *key2)
  * Hash function compare for number value.
  */
 LTTNG_HIDDEN
-int hash_match_key_u64(void *key1, void *key2)
+int hash_match_key_u64(const void *key1, const void *key2)
 {
-	if (*(uint64_t *) key1 == *(uint64_t *) key2) {
+	if (*(const uint64_t *) key1 == *(const uint64_t *) key2) {
 		return 1;
 	}
 
@@ -539,7 +540,7 @@ int hash_match_key_u64(void *key1, void *key2)
  * Hash compare function for string.
  */
 LTTNG_HIDDEN
-int hash_match_key_str(void *key1, void *key2)
+int hash_match_key_str(const void *key1, const void *key2)
 {
 	if (strcmp(key1, key2) == 0) {
 		return 1;
@@ -552,10 +553,12 @@ int hash_match_key_str(void *key1, void *key2)
  * Hash function compare two uint64_t.
  */
 LTTNG_HIDDEN
-int hash_match_key_two_u64(void *key1, void *key2)
+int hash_match_key_two_u64(const void *key1, const void *key2)
 {
-	struct lttng_ht_two_u64 *k1 = (struct lttng_ht_two_u64 *) key1;
-	struct lttng_ht_two_u64 *k2 = (struct lttng_ht_two_u64 *) key2;
+	const struct lttng_ht_two_u64 *k1 =
+		(const struct lttng_ht_two_u64 *) key1;
+	const struct lttng_ht_two_u64 *k2 =
+		(const struct lttng_ht_two_u64 *) key2;
 
 	if (hash_match_key_u64(&k1->key1, &k2->key1) &&
 			hash_match_key_u64(&k1->key2, &k2->key2)) {
