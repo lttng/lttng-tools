@@ -73,10 +73,10 @@ no_match:
  * Hash function for the per UID registry hash table. This XOR the triplet
  * together.
  */
-static unsigned long ht_hash_reg_uid(void *_key, unsigned long seed)
+static unsigned long ht_hash_reg_uid(const void *_key, unsigned long seed)
 {
 	uint64_t xored_key;
-	struct buffer_reg_uid *key = _key;
+	const struct buffer_reg_uid *key = _key;
 
 	assert(key);
 

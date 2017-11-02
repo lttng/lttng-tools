@@ -62,10 +62,10 @@ no_match:
 	return 0;
 }
 
-static unsigned long ht_hash_event(void *_key, unsigned long seed)
+static unsigned long ht_hash_event(const void *_key, unsigned long seed)
 {
 	uint64_t xored_key;
-	struct ust_registry_event *key = _key;
+	const struct ust_registry_event *key = _key;
 
 	assert(key);
 
