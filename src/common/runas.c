@@ -588,7 +588,7 @@ int run_as_cmd(struct run_as_worker *worker,
 	if (writelen < sizeof(*data)) {
 		PERROR("Error writing message to run_as");
 		ret = -1;
-		ret_value->_errno = errno;
+		ret_value->_errno = EIO;
 		goto end;
 	}
 
@@ -599,6 +599,7 @@ int run_as_cmd(struct run_as_worker *worker,
 	if (ret) {
 		PERROR("do_send_fd error");
 		ret = -1;
+		ret_value->_errno = EIO;
 		goto end;
 	}
 
@@ -665,22 +666,66 @@ end:
 }
 
 static
+int run_as_restart_worker(struct run_as_worker *worker)
+{
+	int ret = 0;
+	char *procname = NULL;
+
+	procname = worker->procname;
+
+	/* Close socket to run_as worker process and clean up the zombie process */
+	run_as_destroy_worker();
+
+	/* Create a new run_as worker process*/
+	ret = run_as_create_worker(procname);
+	if (ret < 0 ) {
+		ERR("Restarting the worker process failed");
+		ret = -1;
+		goto err;
+	}
+err:
+	return ret;
+}
+
+static
 int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 		   struct run_as_ret *ret_value, uid_t uid, gid_t gid)
 {
-	int ret;
+	int ret, retry, saved_errno;
 
 	if (use_clone()) {
 		DBG("Using run_as worker");
-		pthread_mutex_lock(&worker_lock);
-		assert(global_worker);
-		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
-		pthread_mutex_unlock(&worker_lock);
+		do {
+			retry = 0;
+			pthread_mutex_lock(&worker_lock);
+			assert(global_worker);
 
+			ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
+			saved_errno = ret_value->_errno;
+
+			pthread_mutex_unlock(&worker_lock);
+			/*
+			 * If the worker thread crashed the errno is set to EIO. So we start
+			 * a new worker process and retry the command.
+			 */
+			if (ret == -1 && saved_errno == EIO) {
+				DBG("Socket closed unexpectedly... "
+					"Restarting the worker process");
+				ret = run_as_restart_worker(global_worker);
+
+				if (ret == -1) {
+					ERR("Failed to restart worker process.");
+					goto err;
+				}
+
+				retry = 1;
+			}
+		} while (retry);
 	} else {
 		DBG("Using run_as without worker");
 		ret = run_as_noworker(cmd, data, ret_value, uid, gid);
 	}
+err:
 	return ret;
 }
 
@@ -907,6 +952,7 @@ int run_as_create_worker(char *procname)
 		ret = -1;
 		goto error_sock;
 	}
+
 	/* Fork worker. */
 	pid = fork();
 	if (pid < 0) {
@@ -927,6 +973,17 @@ int run_as_create_worker(char *procname)
 			PERROR("close");
 			exit(EXIT_FAILURE);
 		}
+
+		/*
+		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
+		 * Sockpair[1] is used as a control channel with the master
+		 */
+		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+			if (i != worker->sockpair[1]) {
+				(void) close(i);
+			}
+		}
+
 		worker->sockpair[0] = -1;
 		ret = run_as_worker(worker);
 		if (lttcomm_close_unix_sock(worker->sockpair[1])) {
