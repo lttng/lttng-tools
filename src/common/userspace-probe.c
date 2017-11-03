@@ -32,7 +32,18 @@ lttng_userspace_probe_location_lookup_method_get_type(
 void lttng_userspace_probe_location_lookup_method_destroy(
 		struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	free(lookup_method);
+	switch (lookup_method->type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+	{
+		struct lttng_userspace_probe_location_lookup_method_elf *elf_method =
+			container_of(lookup_method,
+				 struct lttng_userspace_probe_location_lookup_method_elf, parent);
+		free(elf_method);
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 struct lttng_userspace_probe_location_lookup_method *
