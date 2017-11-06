@@ -62,6 +62,9 @@ def print_test_result(result, number, description):
     result_string += " {0} - {1}".format(number, description)
     print(result_string)
 
+def skip_test(number, description):
+    print('ok {} # skip {}'.format(number, description))
+
 def enable_ust_tracepoint_event(session_info, event_name):
     event = Event()
     event.name = event_name

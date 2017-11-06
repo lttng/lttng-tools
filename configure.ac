@@ -196,6 +196,30 @@ AC_CHECK_FUNCS([ \
 # add -lrt to LIBS
 AC_CHECK_LIB([rt], [clock_gettime, timer_create, timer_settime, timer_delete])
 
+# Checks for dl.
+AC_CHECK_LIB([dl], [dlopen], [
+	have_libdl=yes
+	libdl_name=dl
+], [
+	# libdl not found, check for dlopen in libc.
+	AC_CHECK_LIB([c], [dlopen], [
+		have_libc_dl=yes
+		libdl_name=c
+	], [
+		AC_MSG_ERROR([Cannot find dlopen in libdl nor libc. Use [LDFLAGS]=-Ldir to specify their location.])
+	])
+])
+
+# Check if libdl has dlmopen support.
+AH_TEMPLATE([HAVE_DLMOPEN], ["Define to 1 if dlmopen is available."])
+AC_CHECK_LIB([$libdl_name], [dlmopen], [
+	AC_DEFINE([HAVE_DLMOPEN], [1])
+	HAVE_DLMOPEN=1
+], [
+	HAVE_DLMOPEN=0
+])
+AC_SUBST(HAVE_DLMOPEN)
+
 # Babeltrace viewer check
 AC_ARG_WITH([babeltrace-bin],
 	AS_HELP_STRING([--with-babeltrace-bin],
@@ -1095,6 +1119,7 @@ AC_CONFIG_FILES([
 AC_CONFIG_FILES([tests/regression/ust/python-logging/test_python_logging],[chmod +x tests/regression/ust/python-logging/test_python_logging])
 # Inject LTTNG_TOOLS_BUILD_WITH_LIBPFM variable in test script.
 AC_CONFIG_FILES([tests/perf/test_perf_raw],[chmod +x tests/perf/test_perf_raw])
+AC_CONFIG_FILES([tests/regression/ust/ust-dl/test_ust-dl],[chmod +x tests/regression/ust/ust-dl/test_ust-dl])
 
 AC_OUTPUT
 

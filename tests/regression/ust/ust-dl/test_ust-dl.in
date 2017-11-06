@@ -25,6 +25,8 @@ if [ ! -x "$CURDIR/.libs/libfoo.so" ]; then
 	exit 0
 fi
 
+export LTTNG_TOOLS_HAVE_DLMOPEN=@HAVE_DLMOPEN@
+
 start_lttng_sessiond_notap
 
 python3 ${CURDIR}/test_ust-dl.py

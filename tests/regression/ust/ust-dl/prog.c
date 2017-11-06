@@ -13,7 +13,12 @@
  */
 int main(int argc, char **argv)
 {
-	void *h0, *h1, *h2, *h3, *h4;
+	void *h0, *h2, *h3, *h4;
+
+#ifdef HAVE_DLMOPEN
+	void *h1;
+#endif
+
 	char *error;
 	int (*foo)(void);
 
@@ -21,10 +26,14 @@ int main(int argc, char **argv)
 	if (!h0) {
 		goto get_error;
 	}
+
+#ifdef HAVE_DLMOPEN
 	h1 = dlmopen(LM_ID_BASE, "libfoo.so", RTLD_LAZY);
 	if (!h1) {
 		goto get_error;
 	}
+#endif
+
 	h2 = dlopen("libzzz.so", RTLD_LAZY);
 	if (!h2) {
 		goto get_error;
@@ -38,7 +47,7 @@ int main(int argc, char **argv)
 		goto get_error;
 	}
 
-	foo = dlsym(h1, "foo");
+	foo = dlsym(h3, "foo");
 	error = dlerror();
 	if (error != NULL) {
 		goto error;
@@ -49,9 +58,13 @@ int main(int argc, char **argv)
 	if (dlclose(h0)) {
 		goto get_error;
 	}
+
+#ifdef HAVE_DLMOPEN
 	if (dlclose(h1)) {
 		goto get_error;
 	}
+#endif
+
 	if (dlclose(h2)) {
 		goto get_error;
 	}

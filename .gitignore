@@ -108,6 +108,7 @@ health_check
 /tests/regression/ust/ust-dl/libfoo.so.debug
 /tests/regression/ust/ust-dl/libbar.so.debug
 /tests/regression/ust/ust-dl/libzzz.so.debug
+/tests/regression/ust/ust-dl/test_ust-dl
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/regression/tools/live/live_test
