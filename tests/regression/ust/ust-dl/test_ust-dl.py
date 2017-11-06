@@ -31,6 +31,9 @@ sys.path.append(test_utils_path)
 from test_utils import *
 
 
+have_dlmopen = (os.environ.get('LTTNG_TOOLS_HAVE_DLMOPEN') == '1')
+
+
 NR_TESTS = 14
 current_test = 1
 print("1..{0}".format(NR_TESTS))
@@ -113,7 +116,11 @@ current_test += 1
 print_test_result(dlopen_event_found > 0, current_test, "lttng_ust_dl:dlopen event found in resulting trace")
 current_test += 1
 
-print_test_result(dlmopen_event_found > 0, current_test, "lttng_ust_dl:dlmopen event found in resulting trace")
+if have_dlmopen:
+    print_test_result(dlmopen_event_found > 0, current_test, "lttng_ust_dl:dlmopen event found in resulting trace")
+else:
+    skip_test(current_test, 'dlmopen() is not available')
+
 current_test += 1
 
 print_test_result(build_id_event_found > 0, current_test, "lttng_ust_dl:build_id event found in resulting trace")
