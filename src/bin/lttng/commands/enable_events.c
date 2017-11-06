@@ -1052,7 +1052,7 @@ static int enable_events(char *session_name)
 				ret = parse_probe_opts(ev, opt_probe);
 				if (ret) {
 					ERR("Unable to parse probe options");
-					ret = 0;
+					ret = CMD_ERROR;
 					goto error;
 				}
 				break;
@@ -1060,7 +1060,7 @@ static int enable_events(char *session_name)
 				ret = parse_userspace_probe_opts(ev, opt_userspace_probe);
 				if (ret) {
 					ERR("Unable to parse userspace probe options");
-					ret = 0;
+					ret = CMD_ERROR;
 					goto error;
 				}
 				break;
@@ -1068,7 +1068,7 @@ static int enable_events(char *session_name)
 				ret = parse_probe_opts(ev, opt_function);
 				if (ret) {
 					ERR("Unable to parse function probe options");
-					ret = 0;
+					ret = CMD_ERROR;
 					goto error;
 				}
 				break;
