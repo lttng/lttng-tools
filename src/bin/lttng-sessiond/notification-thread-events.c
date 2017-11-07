@@ -1014,7 +1014,7 @@ end:
  *       are checked against the channel at that moment.
  *
  * If this function returns a non-zero value, it means something is
- * fundamentally and the whole subsystem/thread will be torn down.
+ * fundamentally broken and the whole subsystem/thread will be torn down.
  *
  * If a non-fatal error occurs, just set the cmd_result to the appropriate
  * error code.
@@ -1843,10 +1843,6 @@ int client_dispatch_message(struct notification_client *client,
 
 		if (client->communication.inbound.msg_type ==
 				LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE) {
-			/*
-			 * FIXME The current state should be evaluated on
-			 * subscription.
-			 */
 			ret = notification_thread_client_subscribe(client,
 					condition, state, &status);
 		} else {
