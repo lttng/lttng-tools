@@ -251,7 +251,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 			goto end_free_path;
 		}
 		probe_location = lttng_userspace_probe_location_function_create(
-				target_path, symbol_name, lookup_method);
+				real_target_path, symbol_name, lookup_method);
 		if (!probe_location) {
 			WARN("Failed to create function probe location");
 			ret = CMD_ERROR;
