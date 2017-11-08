@@ -28,8 +28,10 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/string.h>
+#include <common/compat/getenv.h>
 #include <common/string-utils/string-utils.h>
 
+#include <lttng/constant.h>
 /* Mi dependancy */
 #include <common/mi-lttng.h>
 
@@ -177,6 +179,102 @@ end:
 }
 
 /*
+ * Walk the directories in the PATH environment variable to find the target
+ * binary pass as parameter.
+ *
+ * On success, the full path of the binary is copied in binary_full_path out
+ * parameter.
+ * On failure, returns -1;
+ */
+int walk_command_search_path(const char *binary, char *binary_full_path)
+{
+	int ret = 0;
+	char *command_search_path = NULL;
+	char *curr_search_dir = NULL;
+	char *curr_search_dir_end = NULL;
+	char *tentative_binary_path = NULL;
+	const char *slash = "/";
+	struct stat stat_output;
+
+	command_search_path = lttng_secure_getenv("PATH");
+	if (!command_search_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Duplicate the $PATH string as the char pointer returned by getenv() should
+	 * not be modified.
+	 */
+	command_search_path = strdup(command_search_path);
+	if (!command_search_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * This char array is used to concatenate 3 path elements of unknown length.
+	 * We cap it at 3 times the maximum path length for now, but we trim back
+	 * the max length before returning.
+	 */
+	tentative_binary_path = zmalloc(3 * LTTNG_PATH_MAX * sizeof(char));
+	if (!tentative_binary_path) {
+		ret = -1;
+		goto alloc_error;
+	}
+
+	curr_search_dir = command_search_path;
+	do {
+		/* Split on ':' */
+		curr_search_dir_end = strchr(curr_search_dir, ':');
+		if (curr_search_dir_end != NULL) {
+			/*
+			 * Add a NULL byte to the end of the char array so it can be used as
+			 * a string.
+			 */
+			curr_search_dir_end[0] = '\0';
+		}
+
+		/* Empty the tentative path */
+		memset(tentative_binary_path, 0, LTTNG_PATH_MAX * sizeof(char));
+
+		/*
+		 * Build the tentative path to the binary using the current search
+		 * directoyry and the name of the binary.
+		 */
+		strncat(tentative_binary_path, curr_search_dir, LTTNG_PATH_MAX);
+		strncat(tentative_binary_path, slash, LTTNG_PATH_MAX);
+		strncat(tentative_binary_path, binary, LTTNG_PATH_MAX);
+
+		 /*
+		  * Use STAT(2) to see if the file exists.
+		 */
+		ret = stat(tentative_binary_path, &stat_output);
+		if (ret == 0) {
+			/*
+			 * Found a match, set the out parameter and return success. Make
+			 * sure the path is not larger than the max path.
+			 */
+			if (strlen(tentative_binary_path) > LTTNG_PATH_MAX) {
+				ret = -1;
+				goto free_binary_path;
+			}
+			strncpy(binary_full_path, tentative_binary_path, LTTNG_PATH_MAX);
+			goto free_binary_path;
+		}
+		/* Go to the next entry in the $PATH variable. */
+		curr_search_dir = curr_search_dir_end + 1;
+	} while (curr_search_dir_end != NULL);
+
+free_binary_path:
+	free(tentative_binary_path);
+alloc_error:
+	free(command_search_path);
+end:
+	return ret;
+}
+
+/*
  * Parse userspace probe options
  * Set the userspace probe fields in the lttng_event struct and set the
  * target_path to the path to the binary.
@@ -230,15 +328,27 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 
 	target_path = strutils_unescape_string(target_path, 0);
 
+
 	/*
-	 * Convert relative path to absolute path
-	 * the returned ptr from realpath must be deallocated with free().
+	 * Find the full path of the target binary. Start by looking for a relative
+	 * or absolute path. If there is no match, try walking the PATH.
 	 */
 	real_target_path = realpath(target_path, NULL);
-	if (real_target_path == NULL) {
-		PERROR("realpath failed");
-		ret = CMD_ERROR;
-		goto end_free_path;
+	if (!real_target_path) {
+		/* realpath() call failed. Try walking the PATH. */
+		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
+		if (!real_target_path) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end_string;
+		}
+
+		/* Walk the $PATH variable to find the targeted binary. */
+		ret = walk_command_search_path(target_path, real_target_path);
+		if (ret) {
+			ERR("Binary not found.");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
 	}
 
 	switch (ev->type) {
@@ -278,7 +388,10 @@ end_destroy_location:
 end_destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 end_free_path:
-	/* Free path that was allocated by the call to real_path. */
+	/*
+	 * Free path that was allocated by the call to realpath() or when walking
+	 * the PATH.
+	 */
 	free(real_target_path);
 end_string:
 	strutils_free_null_terminated_array_of_strings(tokens);
