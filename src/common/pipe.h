@@ -20,6 +20,7 @@
 
 #include <pthread.h>
 #include <common/macros.h>
+#include <sys/types.h>
 
 enum lttng_pipe_state {
 	LTTNG_PIPE_STATE_OPENED = 1,
