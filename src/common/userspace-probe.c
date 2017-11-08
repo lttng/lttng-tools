@@ -419,12 +419,16 @@ int lttng_userspace_probe_location_function_serialize(
 	location_function = container_of(location,
 			struct lttng_userspace_probe_location_function,
 			parent);
-	if (!location_function->function_name ||
-			!location_function->binary_path ||
-			location_function->binary_fd < 0) {
+	if (!location_function->function_name || !location_function->binary_path) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
+
+	if (binary_fd && location_function->binary_fd < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	if (binary_fd) {
 		*binary_fd = location_function->binary_fd;
 	}
