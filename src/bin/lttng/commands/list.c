@@ -262,6 +262,7 @@ static void print_userspace_probe_location(struct lttng_event *event)
 
 	MSG("      Probe");
 	MSG("      -----");
+	MSG("        Name: %s", event->name);
 	switch (lttng_userspace_probe_location_get_type(location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
 		MSG("        Type: Unknown");
