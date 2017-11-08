@@ -95,7 +95,10 @@ function test_getcpu_override_metadata()
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	$BABELTRACE_BIN -o ctf-metadata -w $ctf_metadata_file $TRACE_PATH
+	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
+	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"
+
+	$BABELTRACE_BIN -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
 	ok $? "Metadata extraction from babeltrace"
 
 	extract_clock_metadata $ctf_metadata_file $clock_metadata_file

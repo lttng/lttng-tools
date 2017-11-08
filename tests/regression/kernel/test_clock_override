@@ -98,7 +98,10 @@ function test_clock_override_metadata()
 	rmmod lttng-clock-plugin-test
 	rmmod lttng-clock
 
-	$BABELTRACE_BIN -o ctf-metadata -w $ctf_metadata_file $TRACE_PATH
+	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
+	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"
+
+	$BABELTRACE_BIN -o ctf-metadata -w $ctf_metadata_file $TRACE_METADATA_DIR
 	ok $? "Metadata extraction from babeltrace"
 
 	extract_clock_metadata $ctf_metadata_file $clock_metadata_file
