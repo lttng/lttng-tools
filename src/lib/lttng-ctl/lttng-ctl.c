@@ -2054,7 +2054,7 @@ int lttng_list_events(struct lttng_handle *handle,
 			nb_events * sizeof(struct lttng_event));
 	if (ret) {
 		ret = -LTTNG_ERR_NOMEM;
-		goto end;
+		goto free_dynamic_buffer;
 	}
 
 	comm_ext_at = reception_buffer +
@@ -2073,7 +2073,7 @@ int lttng_list_events(struct lttng_handle *handle,
 				listing.size + sizeof(*event_extended));
 		if (ret) {
 			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			goto free_dynamic_buffer;
 		}
 		event->extended.ptr = event_extended;
 
@@ -2087,7 +2087,7 @@ int lttng_list_events(struct lttng_handle *handle,
 					ext_comm->filter_len);
 			if (ret) {
 				ret = -LTTNG_ERR_NOMEM;
-				goto end;
+				goto free_dynamic_buffer;
 			}
 			comm_ext_at += ext_comm->filter_len;
 		}
@@ -2113,7 +2113,7 @@ int lttng_list_events(struct lttng_handle *handle,
 				ALIGN_TO(listing.size, sizeof(uint64_t)));
 		if (ret) {
 			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			goto free_dynamic_buffer;
 		}
 
 		/* Insert flattened userspace probe location. */
@@ -2129,7 +2129,7 @@ int lttng_list_events(struct lttng_handle *handle,
 					&probe_location_view, &probe_location);
 			if (ret < 0) {
 				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto end;
+				goto free_dynamic_buffer;
 			}
 
 			event_extended->probe_location = (struct lttng_userspace_probe_location *)
@@ -2139,7 +2139,7 @@ int lttng_list_events(struct lttng_handle *handle,
 			lttng_userspace_probe_location_destroy(probe_location);
 			if (ret < 0) {
 				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto end;
+				goto free_dynamic_buffer;
 			}
 
 			comm_ext_at += ext_comm->userspace_probe_location_len;
@@ -2150,10 +2150,11 @@ int lttng_list_events(struct lttng_handle *handle,
 	*events = (struct lttng_event *) listing.data;
 	lttng_dynamic_buffer_init(&listing);
 	ret = (int) nb_events;
+free_dynamic_buffer:
+	lttng_dynamic_buffer_reset(&listing);
 end:
 	free(cmd_header);
 	free(reception_buffer);
-	lttng_dynamic_buffer_reset(&listing);
 	return ret;
 }
 
