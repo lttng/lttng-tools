@@ -153,6 +153,10 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 		" - %s [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
 			log_add_time(), (long) getpid(), (long) gettid(), ## args, __func__)
 
+#define _ERRMSG_NO_LOC(msg, type, fmt, args...) __lttng_print(type, msg	\
+		" - %s [%ld/%ld]: " fmt "\n", \
+			log_add_time(), (long) getpid(), (long) gettid(), ## args)
+
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
 #define _MSG(fmt, args...) \
@@ -165,6 +169,7 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
 #define DBG(fmt, args...) _ERRMSG("DEBUG1", PRINT_DBG, fmt, ## args)
+#define DBG_NO_LOC(fmt, args...) _ERRMSG_NO_LOC("DEBUG1", PRINT_DBG, fmt, ## args)
 #define DBG2(fmt, args...) _ERRMSG("DEBUG2", PRINT_DBG2, fmt, ## args)
 #define DBG3(fmt, args...) _ERRMSG("DEBUG3", PRINT_DBG3, fmt, ## args)
 #define LOG(type, fmt, args...)			\
