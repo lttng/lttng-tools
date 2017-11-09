@@ -88,8 +88,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	 */
 	ret = uri_parse(default_reg_uri, &uri);
 	assert(ret);
-	assert(agent_tcp_port);
-	uri->port = agent_tcp_port;
+	assert(config.agent_tcp_port);
+	uri->port = config.agent_tcp_port;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
@@ -116,7 +116,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	}
 
 	DBG("[agent-thread] Listening on TCP port %u and socket %d",
-			agent_tcp_port, sock->fd);
+			config.agent_tcp_port, sock->fd);
 
 	return sock;
 
@@ -134,7 +134,7 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 {
 	assert(sock);
 
-	DBG3("[agent-thread] Destroy TCP socket on port %u", agent_tcp_port);
+	DBG3("[agent-thread] Destroy TCP socket on port %u", config.agent_tcp_port);
 
 	/* This will return gracefully if fd is invalid. */
 	sock->ops->close(sock);

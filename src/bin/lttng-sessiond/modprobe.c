@@ -34,6 +34,7 @@
 
 #include "modprobe.h"
 #include "kern-modules.h"
+#include "lttng-sessiond.h"
 
 #define LTTNG_MOD_REQUIRED	1
 #define LTTNG_MOD_OPTIONAL	0
@@ -568,12 +569,7 @@ int modprobe_lttng_data(void)
 	 * Base probes: either from command line option, environment
 	 * variable or default list.
 	 */
-	if (kmod_probes_list) {
-		list = kmod_probes_list;
-	} else {
-		list = utils_get_kmod_probes_list();
-	}
-
+	list = config.kmod_probes_list.value;
 	if (list) {
 		/* User-specified probes. */
 		ret = append_list_to_probes(list);
@@ -608,12 +604,7 @@ int modprobe_lttng_data(void)
 	/*
 	 * Extra modules? Append them to current probes list.
 	 */
-	if (kmod_extra_probes_list) {
-		list = kmod_extra_probes_list;
-	} else {
-		list = utils_get_extra_kmod_probes_list();
-	}
-
+	list = config.kmod_extra_probes_list.value;
 	if (list) {
 		ret = append_list_to_probes(list);
 		if (ret) {

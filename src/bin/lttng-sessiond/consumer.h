@@ -108,8 +108,8 @@ struct consumer_data {
 	struct consumer_socket metadata_sock;
 
 	/* consumer error and command Unix socket path */
-	char err_unix_sock_path[PATH_MAX];
-	char cmd_unix_sock_path[PATH_MAX];
+	const char *err_unix_sock_path;
+	const char *cmd_unix_sock_path;
 
 	/*
 	 * This lock has two purposes. It protects any change to the consumer

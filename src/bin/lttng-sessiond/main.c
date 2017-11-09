@@ -76,8 +76,7 @@
 #include "syscall.h"
 #include "agent.h"
 #include "ht-cleanup.h"
-
-#define CONSUMERD_FILE	"lttng-consumerd"
+#include "sessiond-config.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -88,17 +87,8 @@ NULL
 ;
 
 const char *progname;
-const char *tracing_group_name = DEFAULT_TRACING_GROUP;
-static int tracing_group_name_override;
-static char *opt_pidfile;
-static int opt_sig_parent;
-static int opt_verbose_consumer;
-static int opt_daemon, opt_background;
-static int opt_no_kernel;
-static char *opt_load_session_path;
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
-static char *rundir;
 static int lockfile_fd = -1;
 
 /* Set to 1 when a SIGUSR1 signal is received. */
@@ -110,8 +100,6 @@ static int recv_child_signal;
  */
 static struct consumer_data kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
-	.err_unix_sock_path = DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
@@ -122,8 +110,6 @@ static struct consumer_data kconsumer_data = {
 };
 static struct consumer_data ustconsumer64_data = {
 	.type = LTTNG_CONSUMER64_UST,
-	.err_unix_sock_path = DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
@@ -134,8 +120,6 @@ static struct consumer_data ustconsumer64_data = {
 };
 static struct consumer_data ustconsumer32_data = {
 	.type = LTTNG_CONSUMER32_UST,
-	.err_unix_sock_path = DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
-	.cmd_unix_sock_path = DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH,
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
@@ -178,20 +162,13 @@ static const struct option long_options[] = {
 	{ NULL, 0, 0, 0 }
 };
 
+struct sessiond_config config;
+
 /* Command line options to ignore from configuration file */
 static const char *config_ignore_options[] = { "help", "version", "config" };
 
 /* Shared between threads */
 static int dispatch_thread_exit;
-
-/* Global application Unix socket path */
-static char apps_unix_sock_path[PATH_MAX];
-/* Global client Unix socket path */
-static char client_unix_sock_path[PATH_MAX];
-/* global wait shm path for UST */
-static char wait_shm_path[PATH_MAX];
-/* Global health check unix path */
-static char health_unix_sock_path[PATH_MAX];
 
 /* Sockets and FDs */
 static int client_sock = -1;
@@ -252,15 +229,6 @@ static struct ltt_session_list *session_list_ptr;
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
 
-static const char *consumerd32_bin = CONFIG_CONSUMERD32_BIN;
-static const char *consumerd64_bin = CONFIG_CONSUMERD64_BIN;
-static const char *consumerd32_libdir = CONFIG_CONSUMERD32_LIBDIR;
-static const char *consumerd64_libdir = CONFIG_CONSUMERD64_LIBDIR;
-static int consumerd32_bin_override;
-static int consumerd64_bin_override;
-static int consumerd32_libdir_override;
-static int consumerd64_libdir_override;
-
 static const char *module_proc_lttng = "/proc/lttng";
 
 /*
@@ -297,19 +265,11 @@ enum consumerd_state {
 static enum consumerd_state ust_consumerd_state;
 static enum consumerd_state kernel_consumerd_state;
 
-/*
- * Socket timeout for receiving and sending in seconds.
- */
-static int app_socket_timeout;
-
 /* Set in main() with the current page size. */
 long page_size;
 
 /* Application health monitoring */
 struct health_app *health_sessiond;
-
-/* Agent TCP port for registration. Used by the agent thread. */
-unsigned int agent_tcp_port = DEFAULT_AGENT_TCP_PORT;
 
 /* Am I root or not. */
 int is_root;			/* Set to 1 if the daemon is running as root */
@@ -349,7 +309,7 @@ void sessiond_notify_ready(void)
 		 * for client side.  This ppid is the one from the
 		 * external process that spawned us.
 		 */
-		if (opt_sig_parent) {
+		if (config.sig_parent) {
 			kill(ppid, SIGUSR1);
 		}
 
@@ -357,58 +317,9 @@ void sessiond_notify_ready(void)
 		 * Notify the parent of the fork() process that we are
 		 * ready.
 		 */
-		if (opt_daemon || opt_background) {
+		if (config.daemonize || config.background) {
 			kill(child_ppid, SIGUSR1);
 		}
-	}
-}
-
-static
-void setup_consumerd_path(void)
-{
-	const char *bin, *libdir;
-
-	/*
-	 * Allow INSTALL_BIN_PATH to be used as a target path for the
-	 * native architecture size consumer if CONFIG_CONSUMER*_PATH
-	 * has not been defined.
-	 */
-#if (CAA_BITS_PER_LONG == 32)
-	if (!consumerd32_bin[0]) {
-		consumerd32_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
-	}
-	if (!consumerd32_libdir[0]) {
-		consumerd32_libdir = INSTALL_LIB_PATH;
-	}
-#elif (CAA_BITS_PER_LONG == 64)
-	if (!consumerd64_bin[0]) {
-		consumerd64_bin = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
-	}
-	if (!consumerd64_libdir[0]) {
-		consumerd64_libdir = INSTALL_LIB_PATH;
-	}
-#else
-#error "Unknown bitness"
-#endif
-
-	/*
-	 * runtime env. var. overrides the build default.
-	 */
-	bin = lttng_secure_getenv("LTTNG_CONSUMERD32_BIN");
-	if (bin) {
-		consumerd32_bin = bin;
-	}
-	bin = lttng_secure_getenv("LTTNG_CONSUMERD64_BIN");
-	if (bin) {
-		consumerd64_bin = bin;
-	}
-	libdir = lttng_secure_getenv("LTTNG_CONSUMERD32_LIBDIR");
-	if (libdir) {
-		consumerd32_libdir = libdir;
-	}
-	libdir = lttng_secure_getenv("LTTNG_CONSUMERD64_LIBDIR");
-	if (libdir) {
-		consumerd64_libdir = libdir;
 	}
 }
 
@@ -560,27 +471,6 @@ static void close_consumer_sockets(void)
 }
 
 /*
- * Generate the full lock file path using the rundir.
- *
- * Return the snprintf() return value thus a negative value is an error.
- */
-static int generate_lock_file_path(char *path, size_t len)
-{
-	int ret;
-
-	assert(path);
-	assert(rundir);
-
-	/* Build lockfile path from rundir. */
-	ret = snprintf(path, len, "%s/" DEFAULT_LTTNG_SESSIOND_LOCKFILE, rundir);
-	if (ret < 0) {
-		PERROR("snprintf lockfile path");
-	}
-
-	return ret;
-}
-
-/*
  * Wait on consumer process termination.
  *
  * Need to be called with the consumer data lock held or from a context
@@ -614,7 +504,6 @@ static void sessiond_cleanup(void)
 {
 	int ret;
 	struct ltt_session *sess, *stmp;
-	char path[PATH_MAX];
 
 	DBG("Cleanup sessiond");
 
@@ -625,68 +514,46 @@ static void sessiond_cleanup(void)
 	utils_close_pipe(thread_quit_pipe);
 
 	/*
-	 * If opt_pidfile is undefined, the default file will be wiped when
-	 * removing the rundir.
+	 * If config.pid_file_path.value is undefined, the default file will be
+	 * wiped when removing the rundir.
 	 */
-	if (opt_pidfile) {
-		ret = remove(opt_pidfile);
+	if (config.pid_file_path.value) {
+		ret = remove(config.pid_file_path.value);
 		if (ret < 0) {
-			PERROR("remove pidfile %s", opt_pidfile);
+			PERROR("remove pidfile %s", config.pid_file_path.value);
 		}
 	}
 
-	DBG("Removing sessiond and consumerd content of directory %s", rundir);
+	DBG("Removing sessiond and consumerd content of directory %s",
+		config.rundir.value);
 
 	/* sessiond */
-	snprintf(path, PATH_MAX,
-		"%s/%s",
-		rundir, DEFAULT_LTTNG_SESSIOND_PIDFILE);
-	DBG("Removing %s", path);
-	(void) unlink(path);
+	DBG("Removing %s", config.pid_file_path.value);
+	(void) unlink(config.pid_file_path.value);
 
-	snprintf(path, PATH_MAX, "%s/%s", rundir,
-			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
-	DBG("Removing %s", path);
-	(void) unlink(path);
+	DBG("Removing %s", config.agent_port_file_path.value);
+	(void) unlink(config.agent_port_file_path.value);
 
 	/* kconsumerd */
-	snprintf(path, PATH_MAX,
-		DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
-		rundir);
-	DBG("Removing %s", path);
-	(void) unlink(path);
+	DBG("Removing %s", kconsumer_data.err_unix_sock_path);
+	(void) unlink(kconsumer_data.err_unix_sock_path);
 
-	snprintf(path, PATH_MAX,
-		DEFAULT_KCONSUMERD_PATH,
-		rundir);
-	DBG("Removing directory %s", path);
-	(void) rmdir(path);
+	DBG("Removing directory %s", config.kconsumerd_path.value);
+	(void) rmdir(config.kconsumerd_path.value);
 
 	/* ust consumerd 32 */
-	snprintf(path, PATH_MAX,
-		DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH,
-		rundir);
-	DBG("Removing %s", path);
-	(void) unlink(path);
+	DBG("Removing %s", config.consumerd32_err_unix_sock_path.value);
+	(void) unlink(config.consumerd32_err_unix_sock_path.value);
 
-	snprintf(path, PATH_MAX,
-		DEFAULT_USTCONSUMERD32_PATH,
-		rundir);
-	DBG("Removing directory %s", path);
-	(void) rmdir(path);
+	DBG("Removing directory %s", config.consumerd32_path.value);
+	(void) rmdir(config.consumerd32_path.value);
 
 	/* ust consumerd 64 */
-	snprintf(path, PATH_MAX,
-		DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH,
-		rundir);
-	DBG("Removing %s", path);
-	(void) unlink(path);
+	DBG("Removing %s", config.consumerd64_err_unix_sock_path.value);
+	(void) unlink(config.consumerd64_err_unix_sock_path.value);
 
-	snprintf(path, PATH_MAX,
-		DEFAULT_USTCONSUMERD64_PATH,
-		rundir);
-	DBG("Removing directory %s", path);
-	(void) rmdir(path);
+	DBG("Removing directory %s", config.consumerd64_path.value);
+	(void) rmdir(config.consumerd64_path.value);
 
 	DBG("Cleaning up all sessions");
 
@@ -712,7 +579,7 @@ static void sessiond_cleanup(void)
 	ust_app_clean_list();
 	buffer_reg_destroy_registries();
 
-	if (is_root && !opt_no_kernel) {
+	if (is_root && !config.no_kernel) {
 		DBG2("Closing kernel fd");
 		if (kernel_tracer_fd >= 0) {
 			ret = close(kernel_tracer_fd);
@@ -737,19 +604,13 @@ static void sessiond_cleanup(void)
 	 * release the file system lock.
 	 */
 	if (lockfile_fd >= 0) {
-		char lockfile_path[PATH_MAX];
-
-		ret = generate_lock_file_path(lockfile_path,
-				sizeof(lockfile_path));
-		if (ret > 0) {
-			ret = remove(lockfile_path);
-			if (ret < 0) {
-				PERROR("remove lock file");
-			}
-			ret = close(lockfile_fd);
-			if (ret < 0) {
-				PERROR("close lock file");
-			}
+		ret = remove(config.lock_file_path.value);
+		if (ret < 0) {
+			PERROR("remove lock file");
+		}
+		ret = close(lockfile_fd);
+		if (ret < 0) {
+			PERROR("close lock file");
 		}
 	}
 
@@ -758,8 +619,6 @@ static void sessiond_cleanup(void)
 	 * using it, for instance lttng-relayd, which can start in
 	 * parallel with this teardown.
 	 */
-
-	free(rundir);
 }
 
 /*
@@ -769,30 +628,7 @@ static void sessiond_cleanup_options(void)
 {
 	DBG("Cleaning up options");
 
-	/*
-	 * If the override option is set, the pointer points to a *non* const
-	 * thus freeing it even though the variable type is set to const.
-	 */
-	if (tracing_group_name_override) {
-		free((void *) tracing_group_name);
-	}
-	if (consumerd32_bin_override) {
-		free((void *) consumerd32_bin);
-	}
-	if (consumerd64_bin_override) {
-		free((void *) consumerd64_bin);
-	}
-	if (consumerd32_libdir_override) {
-		free((void *) consumerd32_libdir);
-	}
-	if (consumerd64_libdir_override) {
-		free((void *) consumerd64_libdir);
-	}
-
-	free(opt_pidfile);
-	free(opt_load_session_path);
-	free(kmod_probes_list);
-	free(kmod_extra_probes_list);
+	sessiond_config_fini(&config);
 
 	run_as_destroy_worker();
 }
@@ -840,7 +676,7 @@ static int notify_ust_apps(int active)
 	DBG("Notifying applications of session daemon state: %d", active);
 
 	/* See shm.c for this call implying mmap, shm and futex calls */
-	wait_shm_mmap = shm_ust_get_mmap(wait_shm_path, is_root);
+	wait_shm_mmap = shm_ust_get_mmap(config.wait_shm_path.value, is_root);
 	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
@@ -2267,11 +2103,11 @@ static void *thread_registration_apps(void *data)
 					 * lttcomm_setsockopt_snd_timeout expect msec as
 					 * parameter.
 					 */
-					if (app_socket_timeout >= 0) {
+					if (config.app_socket_timeout >= 0) {
 						(void) lttcomm_setsockopt_rcv_timeout(sock,
-								app_socket_timeout * 1000);
+								config.app_socket_timeout * 1000);
 						(void) lttcomm_setsockopt_snd_timeout(sock,
-								app_socket_timeout * 1000);
+								config.app_socket_timeout * 1000);
 					}
 
 					/*
@@ -2372,7 +2208,7 @@ error:
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 	}
-	unlink(apps_unix_sock_path);
+	unlink(config.apps_unix_sock_path.value);
 
 error_poll_add:
 	lttng_poll_clean(&events);
@@ -2561,7 +2397,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		/*
 		 * Exec consumerd.
 		 */
-		if (opt_verbose_consumer) {
+		if (config.verbose_consumer) {
 			verbosity = "--verbose";
 		} else if (lttng_opt_quiet) {
 			verbosity = "--quiet";
@@ -2577,18 +2413,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * fallback on the 32-bit one,
 			 */
 			DBG3("Looking for a kernel consumer at these locations:");
-			DBG3("	1) %s", consumerd64_bin);
-			DBG3("	2) %s/%s", INSTALL_BIN_PATH, CONSUMERD_FILE);
-			DBG3("	3) %s", consumerd32_bin);
-			if (stat(consumerd64_bin, &st) == 0) {
+			DBG3("	1) %s", config.consumerd64_bin_path.value);
+			DBG3("	2) %s/%s", INSTALL_BIN_PATH, DEFAULT_CONSUMERD_FILE);
+			DBG3("	3) %s", config.consumerd32_bin_path.value);
+			if (stat(config.consumerd64_bin_path.value, &st) == 0) {
 				DBG3("Found location #1");
-				consumer_to_use = consumerd64_bin;
-			} else if (stat(INSTALL_BIN_PATH "/" CONSUMERD_FILE, &st) == 0) {
+				consumer_to_use = config.consumerd64_bin_path.value;
+			} else if (stat(INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE, &st) == 0) {
 				DBG3("Found location #2");
-				consumer_to_use = INSTALL_BIN_PATH "/" CONSUMERD_FILE;
-			} else if (stat(consumerd32_bin, &st) == 0) {
+				consumer_to_use = INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE;
+			} else if (stat(config.consumerd32_bin_path.value, &st) == 0) {
 				DBG3("Found location #3");
-				consumer_to_use = consumerd32_bin;
+				consumer_to_use = config.consumerd32_bin_path.value;
 			} else {
 				DBG("Could not find any valid consumerd executable");
 				ret = -EINVAL;
@@ -2599,14 +2435,14 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				"lttng-consumerd", verbosity, "-k",
 				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-				"--group", tracing_group_name,
+				"--group", config.tracing_group_name.value,
 				NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
 			char *tmpnew = NULL;
 
-			if (consumerd64_libdir[0] != '\0') {
+			if (config.consumerd64_lib_dir.value[0] != '\0') {
 				char *tmp;
 				size_t tmplen;
 
@@ -2615,14 +2451,14 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					tmp = "";
 				}
 				tmplen = strlen("LD_LIBRARY_PATH=")
-					+ strlen(consumerd64_libdir) + 1 /* : */ + strlen(tmp);
+					+ strlen(config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
 				strcpy(tmpnew, "LD_LIBRARY_PATH=");
-				strcat(tmpnew, consumerd64_libdir);
+				strcat(tmpnew, config.consumerd64_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
@@ -2634,13 +2470,13 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 64-bit UST consumer at: %s",  consumerd64_bin);
-			(void) execl(consumerd64_bin, "lttng-consumerd", verbosity, "-u",
+			DBG("Using 64-bit UST consumer at: %s",  config.consumerd64_bin_path.value);
+			(void) execl(config.consumerd64_bin_path.value, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					"--group", tracing_group_name,
+					"--group", config.tracing_group_name.value,
 					NULL);
-			if (consumerd64_libdir[0] != '\0') {
+			if (config.consumerd64_lib_dir.value[0] != '\0') {
 				free(tmpnew);
 			}
 			break;
@@ -2649,7 +2485,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		{
 			char *tmpnew = NULL;
 
-			if (consumerd32_libdir[0] != '\0') {
+			if (config.consumerd32_lib_dir.value[0] != '\0') {
 				char *tmp;
 				size_t tmplen;
 
@@ -2658,14 +2494,14 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					tmp = "";
 				}
 				tmplen = strlen("LD_LIBRARY_PATH=")
-					+ strlen(consumerd32_libdir) + 1 /* : */ + strlen(tmp);
+					+ strlen(config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
 				strcpy(tmpnew, "LD_LIBRARY_PATH=");
-				strcat(tmpnew, consumerd32_libdir);
+				strcat(tmpnew, config.consumerd32_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
@@ -2677,13 +2513,13 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 32-bit UST consumer at: %s",  consumerd32_bin);
-			(void) execl(consumerd32_bin, "lttng-consumerd", verbosity, "-u",
+			DBG("Using 32-bit UST consumer at: %s",  config.consumerd32_bin_path.value);
+			(void) execl(config.consumerd32_bin_path.value, "lttng-consumerd", verbosity, "-u",
 					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					"--group", tracing_group_name,
+					"--group", config.tracing_group_name.value,
 					NULL);
-			if (consumerd32_libdir[0] != '\0') {
+			if (config.consumerd32_lib_dir.value[0] != '\0') {
 				free(tmpnew);
 			}
 			break;
@@ -3092,7 +2928,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		need_domain = 1;
 	}
 
-	if (opt_no_kernel && need_domain
+	if (config.no_kernel && need_domain
 			&& cmd_ctx->lsm->domain.type == LTTNG_DOMAIN_KERNEL) {
 		if (!is_root) {
 			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
@@ -3298,7 +3134,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			/* Start the UST consumer daemons */
 			/* 64-bit */
 			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
-			if (consumerd64_bin[0] != '\0' &&
+			if (config.consumerd64_bin_path.value &&
 					ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
@@ -3327,7 +3163,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 			/* 32-bit */
 			pthread_mutex_lock(&ustconsumer32_data.pid_mutex);
-			if (consumerd32_bin[0] != '\0' &&
+			if (config.consumerd32_bin_path.value &&
 					ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm->cmd_type != LTTNG_REGISTER_CONSUMER) {
 				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
@@ -4261,7 +4097,7 @@ static void *thread_manage_health(void *data)
 	lttng_poll_init(&events);
 
 	/* Create unix socket */
-	sock = lttcomm_create_unix_sock(health_unix_sock_path);
+	sock = lttcomm_create_unix_sock(config.health_unix_sock_path.value);
 	if (sock < 0) {
 		ERR("Unable to create health check Unix socket");
 		goto error;
@@ -4269,18 +4105,18 @@ static void *thread_manage_health(void *data)
 
 	if (is_root) {
 		/* lttng health client socket path permissions */
-		ret = chown(health_unix_sock_path, 0,
-				utils_get_group_id(tracing_group_name));
+		ret = chown(config.health_unix_sock_path.value, 0,
+				utils_get_group_id(config.tracing_group_name.value));
 		if (ret < 0) {
-			ERR("Unable to set group on %s", health_unix_sock_path);
+			ERR("Unable to set group on %s", config.health_unix_sock_path.value);
 			PERROR("chown");
 			goto error;
 		}
 
-		ret = chmod(health_unix_sock_path,
+		ret = chmod(config.health_unix_sock_path.value,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (ret < 0) {
-			ERR("Unable to set permissions on %s", health_unix_sock_path);
+			ERR("Unable to set permissions on %s", config.health_unix_sock_path.value);
 			PERROR("chmod");
 			goto error;
 		}
@@ -4418,7 +4254,7 @@ error:
 		ERR("Health error occurred in %s", __func__);
 	}
 	DBG("Health check thread dying");
-	unlink(health_unix_sock_path);
+	unlink(config.health_unix_sock_path.value);
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
@@ -4670,7 +4506,7 @@ error:
 
 error_listen:
 error_create_poll:
-	unlink(client_unix_sock_path);
+	unlink(config.client_unix_sock_path.value);
 	if (client_sock >= 0) {
 		ret = close(client_sock);
 		if (ret) {
@@ -4737,7 +4573,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-c, --client-sock");
 		} else {
-			snprintf(client_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.client_unix_sock_path,
+					strdup(arg));
+			if (!config.client_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "apps-sock") || opt == 'a') {
 		if (!arg || *arg == '\0') {
@@ -4748,12 +4589,17 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-a, --apps-sock");
 		} else {
-			snprintf(apps_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.apps_unix_sock_path,
+					strdup(arg));
+			if (!config.apps_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "daemonize") || opt == 'd') {
-		opt_daemon = 1;
+		config.daemonize = true;
 	} else if (string_match(optname, "background") || opt == 'b') {
-		opt_background = 1;
+		config.background = true;
 	} else if (string_match(optname, "group") || opt == 'g') {
 		if (!arg || *arg == '\0') {
 			ret = -EINVAL;
@@ -4763,20 +4609,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-g, --group");
 		} else {
-			/*
-			 * If the override option is set, the pointer points to a
-			 * *non* const thus freeing it even though the variable type is
-			 * set to const.
-			 */
-			if (tracing_group_name_override) {
-				free((void *) tracing_group_name);
-			}
-			tracing_group_name = strdup(arg);
-			if (!tracing_group_name) {
-				PERROR("strdup");
+			config_string_set(&config.tracing_group_name,
+					strdup(arg));
+			if (!config.tracing_group_name.value) {
 				ret = -ENOMEM;
+				PERROR("strdup");
 			}
-			tracing_group_name_override = 1;
 		}
 	} else if (string_match(optname, "help") || opt == 'h') {
 		ret = utils_show_help(8, "lttng-sessiond", help_msg);
@@ -4789,7 +4627,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		fprintf(stdout, "%s\n", VERSION);
 		exit(EXIT_SUCCESS);
 	} else if (string_match(optname, "sig-parent") || opt == 'S') {
-		opt_sig_parent = 1;
+		config.sig_parent = true;
 	} else if (string_match(optname, "kconsumerd-err-sock")) {
 		if (!arg || *arg == '\0') {
 			ret = -EINVAL;
@@ -4799,7 +4637,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kconsumerd-err-sock");
 		} else {
-			snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.kconsumerd_err_unix_sock_path,
+					strdup(arg));
+			if (!config.kconsumerd_err_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "kconsumerd-cmd-sock")) {
 		if (!arg || *arg == '\0') {
@@ -4810,7 +4653,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kconsumerd-cmd-sock");
 		} else {
-			snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.kconsumerd_cmd_unix_sock_path,
+					strdup(arg));
+			if (!config.kconsumerd_cmd_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "ustconsumerd64-err-sock")) {
 		if (!arg || *arg == '\0') {
@@ -4821,7 +4669,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd64-err-sock");
 		} else {
-			snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.consumerd64_err_unix_sock_path,
+					strdup(arg));
+			if (!config.consumerd64_err_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "ustconsumerd64-cmd-sock")) {
 		if (!arg || *arg == '\0') {
@@ -4832,7 +4685,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd64-cmd-sock");
 		} else {
-			snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.consumerd64_cmd_unix_sock_path,
+					strdup(arg));
+			if (!config.consumerd64_cmd_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "ustconsumerd32-err-sock")) {
 		if (!arg || *arg == '\0') {
@@ -4843,7 +4701,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd32-err-sock");
 		} else {
-			snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.consumerd32_err_unix_sock_path,
+					strdup(arg));
+			if (!config.consumerd32_err_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "ustconsumerd32-cmd-sock")) {
 		if (!arg || *arg == '\0') {
@@ -4854,29 +4717,34 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--ustconsumerd32-cmd-sock");
 		} else {
-			snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX, "%s", arg);
+			config_string_set(&config.consumerd32_cmd_unix_sock_path,
+					strdup(arg));
+			if (!config.consumerd32_cmd_unix_sock_path.value) {
+				ret = -ENOMEM;
+				PERROR("strdup");
+			}
 		}
 	} else if (string_match(optname, "no-kernel")) {
-		opt_no_kernel = 1;
+		config.no_kernel = true;
 	} else if (string_match(optname, "quiet") || opt == 'q') {
-		lttng_opt_quiet = 1;
+		lttng_opt_quiet = true;
 	} else if (string_match(optname, "verbose") || opt == 'v') {
 		/* Verbose level can increase using multiple -v */
 		if (arg) {
 			/* Value obtained from config file */
-			lttng_opt_verbose = config_parse_value(arg);
+			config.verbose = config_parse_value(arg);
 		} else {
 			/* -v used on command line */
-			lttng_opt_verbose++;
+			config.verbose++;
 		}
 		/* Clamp value to [0, 3] */
-		lttng_opt_verbose = lttng_opt_verbose < 0 ? 0 :
-			(lttng_opt_verbose <= 3 ? lttng_opt_verbose : 3);
+		config.verbose = config.verbose < 0 ? 0 :
+			(config.verbose <= 3 ? config.verbose : 3);
 	} else if (string_match(optname, "verbose-consumer")) {
 		if (arg) {
-			opt_verbose_consumer = config_parse_value(arg);
+			config.verbose_consumer = config_parse_value(arg);
 		} else {
-			opt_verbose_consumer++;
+			config.verbose_consumer++;
 		}
 	} else if (string_match(optname, "consumerd32-path")) {
 		if (!arg || *arg == '\0') {
@@ -4887,15 +4755,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd32-path");
 		} else {
-			if (consumerd32_bin_override) {
-				free((void *) consumerd32_bin);
-			}
-			consumerd32_bin = strdup(arg);
-			if (!consumerd32_bin) {
+			config_string_set(&config.consumerd32_bin_path,
+					strdup(arg));
+			if (!config.consumerd32_bin_path.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
-			consumerd32_bin_override = 1;
 		}
 	} else if (string_match(optname, "consumerd32-libdir")) {
 		if (!arg || *arg == '\0') {
@@ -4906,15 +4771,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd32-libdir");
 		} else {
-			if (consumerd32_libdir_override) {
-				free((void *) consumerd32_libdir);
-			}
-			consumerd32_libdir = strdup(arg);
-			if (!consumerd32_libdir) {
+			config_string_set(&config.consumerd32_lib_dir,
+					strdup(arg));
+			if (!config.consumerd32_lib_dir.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
-			consumerd32_libdir_override = 1;
 		}
 	} else if (string_match(optname, "consumerd64-path")) {
 		if (!arg || *arg == '\0') {
@@ -4925,15 +4787,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd64-path");
 		} else {
-			if (consumerd64_bin_override) {
-				free((void *) consumerd64_bin);
-			}
-			consumerd64_bin = strdup(arg);
-			if (!consumerd64_bin) {
+			config_string_set(&config.consumerd64_bin_path,
+					strdup(arg));
+			if (!config.consumerd64_bin_path.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
-			consumerd64_bin_override = 1;
 		}
 	} else if (string_match(optname, "consumerd64-libdir")) {
 		if (!arg || *arg == '\0') {
@@ -4944,15 +4803,12 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--consumerd64-libdir");
 		} else {
-			if (consumerd64_libdir_override) {
-				free((void *) consumerd64_libdir);
-			}
-			consumerd64_libdir = strdup(arg);
-			if (!consumerd64_libdir) {
+			config_string_set(&config.consumerd64_lib_dir,
+					strdup(arg));
+			if (!config.consumerd64_lib_dir.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
-			consumerd64_libdir_override = 1;
 		}
 	} else if (string_match(optname, "pidfile") || opt == 'p') {
 		if (!arg || *arg == '\0') {
@@ -4963,9 +4819,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-p, --pidfile");
 		} else {
-			free(opt_pidfile);
-			opt_pidfile = strdup(arg);
-			if (!opt_pidfile) {
+			config_string_set(&config.pid_file_path, strdup(arg));
+			if (!config.pid_file_path.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
@@ -4991,8 +4846,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ERR("Port overflow in --agent-tcp-port parameter: %s", arg);
 				return -1;
 			}
-			agent_tcp_port = (uint32_t) v;
-			DBG3("Agent TCP port set to non default: %u", agent_tcp_port);
+			config.agent_tcp_port = (uint32_t) v;
+			DBG3("Agent TCP port set to non default: %u", config.agent_tcp_port);
 		}
 	} else if (string_match(optname, "load") || opt == 'l') {
 		if (!arg || *arg == '\0') {
@@ -5003,9 +4858,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-l, --load");
 		} else {
-			free(opt_load_session_path);
-			opt_load_session_path = strdup(arg);
-			if (!opt_load_session_path) {
+		        config_string_set(&config.load_session_path, strdup(arg));
+			if (!config.load_session_path.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
@@ -5019,9 +4873,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--kmod-probes");
 		} else {
-			free(kmod_probes_list);
-			kmod_probes_list = strdup(arg);
-			if (!kmod_probes_list) {
+			config_string_set(&config.kmod_probes_list, strdup(arg));
+			if (!config.kmod_probes_list.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
@@ -5035,9 +4888,9 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"--extra-kmod-probes");
 		} else {
-			free(kmod_extra_probes_list);
-			kmod_extra_probes_list = strdup(arg);
-			if (!kmod_extra_probes_list) {
+			config_string_set(&config.kmod_extra_probes_list,
+					strdup(arg));
+			if (!config.kmod_extra_probes_list.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
 			}
@@ -5221,9 +5074,9 @@ static int init_daemon_socket(void)
 	old_umask = umask(0);
 
 	/* Create client tool unix socket */
-	client_sock = lttcomm_create_unix_sock(client_unix_sock_path);
+	client_sock = lttcomm_create_unix_sock(config.client_unix_sock_path.value);
 	if (client_sock < 0) {
-		ERR("Create unix sock failed: %s", client_unix_sock_path);
+		ERR("Create unix sock failed: %s", config.client_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -5237,17 +5090,17 @@ static int init_daemon_socket(void)
 	}
 
 	/* File permission MUST be 660 */
-	ret = chmod(client_unix_sock_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	ret = chmod(config.client_unix_sock_path.value, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
-		ERR("Set file permissions failed: %s", client_unix_sock_path);
+		ERR("Set file permissions failed: %s", config.client_unix_sock_path.value);
 		PERROR("chmod");
 		goto end;
 	}
 
 	/* Create the application unix socket */
-	apps_sock = lttcomm_create_unix_sock(apps_unix_sock_path);
+	apps_sock = lttcomm_create_unix_sock(config.apps_unix_sock_path.value);
 	if (apps_sock < 0) {
-		ERR("Create unix sock failed: %s", apps_unix_sock_path);
+		ERR("Create unix sock failed: %s", config.apps_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -5261,10 +5114,10 @@ static int init_daemon_socket(void)
 	}
 
 	/* File permission MUST be 666 */
-	ret = chmod(apps_unix_sock_path,
+	ret = chmod(config.apps_unix_sock_path.value,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (ret < 0) {
-		ERR("Set file permissions failed: %s", apps_unix_sock_path);
+		ERR("Set file permissions failed: %s", config.apps_unix_sock_path.value);
 		PERROR("chmod");
 		goto end;
 	}
@@ -5302,7 +5155,7 @@ static int set_permissions(char *rundir)
 	int ret;
 	gid_t gid;
 
-	gid = utils_get_group_id(tracing_group_name);
+	gid = utils_get_group_id(config.tracing_group_name.value);
 
 	/* Set lttng run dir */
 	ret = chown(rundir, 0, gid);
@@ -5323,9 +5176,9 @@ static int set_permissions(char *rundir)
 	}
 
 	/* lttng client socket path */
-	ret = chown(client_unix_sock_path, 0, gid);
+	ret = chown(config.client_unix_sock_path.value, 0, gid);
 	if (ret < 0) {
-		ERR("Unable to set group on %s", client_unix_sock_path);
+		ERR("Unable to set group on %s", config.client_unix_sock_path.value);
 		PERROR("chown");
 	}
 
@@ -5358,16 +5211,16 @@ static int set_permissions(char *rundir)
 /*
  * Create the lttng run directory needed for all global sockets and pipe.
  */
-static int create_lttng_rundir(const char *rundir)
+static int create_lttng_rundir(void)
 {
 	int ret;
 
-	DBG3("Creating LTTng run directory: %s", rundir);
+	DBG3("Creating LTTng run directory: %s", config.rundir.value);
 
-	ret = mkdir(rundir, S_IRWXU);
+	ret = mkdir(config.rundir.value, S_IRWXU);
 	if (ret < 0) {
 		if (errno != EEXIST) {
-			ERR("Unable to create %s", rundir);
+			ERR("Unable to create %s", config.rundir.value);
 			goto error;
 		} else {
 			ret = 0;
@@ -5379,30 +5232,30 @@ error:
 }
 
 /*
- * Setup sockets and directory needed by the kconsumerd communication with the
+ * Setup sockets and directory needed by the consumerds' communication with the
  * session daemon.
  */
-static int set_consumer_sockets(struct consumer_data *consumer_data,
-		const char *rundir)
+static int set_consumer_sockets(struct consumer_data *consumer_data)
 {
 	int ret;
-	char path[PATH_MAX];
+	char *path = NULL;
 
 	switch (consumer_data->type) {
 	case LTTNG_CONSUMER_KERNEL:
-		snprintf(path, PATH_MAX, DEFAULT_KCONSUMERD_PATH, rundir);
+		path = config.kconsumerd_path.value;
 		break;
 	case LTTNG_CONSUMER64_UST:
-		snprintf(path, PATH_MAX, DEFAULT_USTCONSUMERD64_PATH, rundir);
+		path = config.consumerd64_path.value;
 		break;
 	case LTTNG_CONSUMER32_UST:
-		snprintf(path, PATH_MAX, DEFAULT_USTCONSUMERD32_PATH, rundir);
+		path = config.consumerd32_path.value;
 		break;
 	default:
 		ERR("Consumer type unknown");
 		ret = -EINVAL;
 		goto error;
 	}
+	assert(path);
 
 	DBG2("Creating consumer directory: %s", path);
 
@@ -5413,7 +5266,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 		goto error;
 	}
 	if (is_root) {
-		ret = chown(path, 0, utils_get_group_id(tracing_group_name));
+		ret = chown(path, 0, utils_get_group_id(config.tracing_group_name.value));
 		if (ret < 0) {
 			ERR("Unable to set group on %s", path);
 			PERROR("chown");
@@ -5421,7 +5274,7 @@ static int set_consumer_sockets(struct consumer_data *consumer_data,
 		}
 	}
 
-	/* Create the kconsumerd error unix socket */
+	/* Create the consumerd error unix socket */
 	consumer_data->err_sock =
 		lttcomm_create_unix_sock(consumer_data->err_unix_sock_path);
 	if (consumer_data->err_sock < 0) {
@@ -5542,37 +5395,9 @@ static void set_ulimit(void)
 	}
 }
 
-/*
- * Write pidfile using the rundir and opt_pidfile.
- */
 static int write_pidfile(void)
 {
-	int ret;
-	char pidfile_path[PATH_MAX];
-
-	assert(rundir);
-
-	if (opt_pidfile) {
-		if (lttng_strncpy(pidfile_path, opt_pidfile, sizeof(pidfile_path))) {
-			ret = -1;
-			goto error;
-		}
-	} else {
-		/* Build pidfile path from rundir and opt_pidfile. */
-		ret = snprintf(pidfile_path, sizeof(pidfile_path), "%s/"
-				DEFAULT_LTTNG_SESSIOND_PIDFILE, rundir);
-		if (ret < 0) {
-			PERROR("snprintf pidfile path");
-			goto error;
-		}
-	}
-
-	/*
-	 * Create pid file in rundir.
-	 */
-	ret = utils_create_pid_file(getpid(), pidfile_path);
-error:
-	return ret;
+        return utils_create_pid_file(getpid(), config.pid_file_path.value);
 }
 
 /*
@@ -5580,17 +5405,7 @@ error:
  */
 static int create_lockfile(void)
 {
-	int ret;
-	char lockfile_path[PATH_MAX];
-
-	ret = generate_lock_file_path(lockfile_path, sizeof(lockfile_path));
-	if (ret < 0) {
-		goto error;
-	}
-
-	ret = utils_create_lock_file(lockfile_path);
-error:
-	return ret;
+        return utils_create_lock_file(config.lock_file_path.value);
 }
 
 /*
@@ -5598,24 +5413,36 @@ error:
  */
 static int write_agent_port(void)
 {
-	int ret;
-	char path[PATH_MAX];
+	return utils_create_pid_file(config.agent_tcp_port,
+			config.agent_port_file_path.value);
+}
 
-	assert(rundir);
+static int set_clock_plugin_env(void)
+{
+	int ret = 0;
+	char *env_value = NULL;
 
-	ret = snprintf(path, sizeof(path), "%s/"
-			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE, rundir);
-	if (ret < 0) {
-		PERROR("snprintf agent port path");
-		goto error;
+	if (!config.lttng_ust_clock_plugin.value) {
+		goto end;
 	}
 
-	/*
-	 * Create TCP agent port file in rundir.
-	 */
-	ret = utils_create_pid_file(agent_tcp_port, path);
+        ret = asprintf(&env_value, "LTTNG_UST_CLOCK_PLUGIN=%s",
+			config.lttng_ust_clock_plugin.value);
+	if (ret < 0) {
+		PERROR("asprintf");
+		goto end;
+	}
 
-error:
+	ret = putenv(env_value);
+	if (ret) {
+		free(env_value);
+		PERROR("putenv of LTTNG_UST_CLOCK_PLUGIN");
+		goto end;
+	}
+
+	DBG("Updated LTTNG_UST_CLOCK_PLUGIN environment variable to \"%s\"",
+			config.lttng_ust_clock_plugin.value);
+end:
 	return ret;
 }
 
@@ -5626,7 +5453,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
 	void *status;
-	const char *home_path, *env_app_timeout;
+	const char *env_app_timeout;
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
@@ -5641,13 +5468,17 @@ int main(int argc, char **argv)
 		goto exit_set_signal_handler;
 	}
 
-	setup_consumerd_path();
-
 	page_size = sysconf(_SC_PAGESIZE);
 	if (page_size < 0) {
 		PERROR("sysconf _SC_PAGESIZE");
 		page_size = LONG_MAX;
 		WARN("Fallback page size to %ld", page_size);
+	}
+
+	ret = sessiond_config_init(&config);
+	if (ret) {
+		retval = -1;
+		goto exit_set_signal_handler;
 	}
 
 	/*
@@ -5664,12 +5495,45 @@ int main(int argc, char **argv)
 		goto exit_options;
 	}
 
+	/* Init config from environment variables. */
+	sessiond_config_apply_env_config(&config);
+
+	/*
+	 * Resolve all paths received as arguments, configuration option, or
+	 * through environment variable as absolute paths. This is necessary
+	 * since daemonizing causes the sessiond's current working directory
+	 * to '/'.
+	 */
+	ret = sessiond_config_resolve_paths(&config);
+	if (ret) {
+		goto exit_options;
+	}
+
+	/* Apply config. */
+	lttng_opt_verbose = config.verbose;
+	lttng_opt_quiet = config.quiet;
+	kconsumer_data.err_unix_sock_path =
+			config.kconsumerd_err_unix_sock_path.value;
+	kconsumer_data.cmd_unix_sock_path =
+			config.kconsumerd_cmd_unix_sock_path.value;
+	ustconsumer32_data.err_unix_sock_path =
+			config.consumerd32_err_unix_sock_path.value;
+	ustconsumer32_data.cmd_unix_sock_path =
+			config.consumerd32_cmd_unix_sock_path.value;
+	ustconsumer64_data.err_unix_sock_path =
+			config.consumerd64_err_unix_sock_path.value;
+	ustconsumer64_data.cmd_unix_sock_path =
+			config.consumerd64_cmd_unix_sock_path.value;
+	set_clock_plugin_env();
+
+	sessiond_config_log(&config);
+
 	/* Daemonize */
-	if (opt_daemon || opt_background) {
+	if (config.daemonize || config.background) {
 		int i;
 
 		ret = lttng_daemonize(&child_ppid, &recv_child_signal,
-			!opt_background);
+			!config.background);
 		if (ret < 0) {
 			retval = -1;
 			goto exit_options;
@@ -5721,74 +5585,12 @@ int main(int argc, char **argv)
 	is_root = !getuid();
 
 	if (is_root) {
-		rundir = strdup(DEFAULT_LTTNG_RUNDIR);
-		if (!rundir) {
-			retval = -1;
-			goto exit_init_data;
-		}
-
 		/* Create global run dir with root access */
-		if (create_lttng_rundir(rundir)) {
+		if (create_lttng_rundir()) {
 			retval = -1;
 			goto exit_init_data;
 		}
 
-		if (strlen(apps_unix_sock_path) == 0) {
-			ret = snprintf(apps_unix_sock_path, PATH_MAX,
-					DEFAULT_GLOBAL_APPS_UNIX_SOCK);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		if (strlen(client_unix_sock_path) == 0) {
-			ret = snprintf(client_unix_sock_path, PATH_MAX,
-					DEFAULT_GLOBAL_CLIENT_UNIX_SOCK);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		/* Set global SHM for ust */
-		if (strlen(wait_shm_path) == 0) {
-			ret = snprintf(wait_shm_path, PATH_MAX,
-					DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		if (strlen(health_unix_sock_path) == 0) {
-			ret = snprintf(health_unix_sock_path,
-					sizeof(health_unix_sock_path),
-					DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		/* Setup kernel consumerd path */
-		ret = snprintf(kconsumer_data.err_unix_sock_path, PATH_MAX,
-				DEFAULT_KCONSUMERD_ERR_SOCK_PATH, rundir);
-		if (ret < 0) {
-			retval = -1;
-			goto exit_init_data;
-		}
-		ret = snprintf(kconsumer_data.cmd_unix_sock_path, PATH_MAX,
-				DEFAULT_KCONSUMERD_CMD_SOCK_PATH, rundir);
-		if (ret < 0) {
-			retval = -1;
-			goto exit_init_data;
-		}
-
-		DBG2("Kernel consumer err path: %s",
-				kconsumer_data.err_unix_sock_path);
-		DBG2("Kernel consumer cmd path: %s",
-				kconsumer_data.cmd_unix_sock_path);
 		kernel_channel_monitor_pipe = lttng_pipe_open(0);
 		if (!kernel_channel_monitor_pipe) {
 			ERR("Failed to create kernel consumer channel monitor pipe");
@@ -5802,73 +5604,6 @@ int main(int argc, char **argv)
 			retval = -1;
 			goto exit_init_data;
 		}
-	} else {
-		home_path = utils_get_home_dir();
-		if (home_path == NULL) {
-			/* TODO: Add --socket PATH option */
-			ERR("Can't get HOME directory for sockets creation.");
-			retval = -1;
-			goto exit_init_data;
-		}
-
-		/*
-		 * Create rundir from home path. This will create something like
-		 * $HOME/.lttng
-		 */
-		ret = asprintf(&rundir, DEFAULT_LTTNG_HOME_RUNDIR, home_path);
-		if (ret < 0) {
-			retval = -1;
-			goto exit_init_data;
-		}
-
-		if (create_lttng_rundir(rundir)) {
-			retval = -1;
-			goto exit_init_data;
-		}
-
-		if (strlen(apps_unix_sock_path) == 0) {
-			ret = snprintf(apps_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_APPS_UNIX_SOCK,
-					home_path);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		/* Set the cli tool unix socket path */
-		if (strlen(client_unix_sock_path) == 0) {
-			ret = snprintf(client_unix_sock_path, PATH_MAX,
-					DEFAULT_HOME_CLIENT_UNIX_SOCK,
-					home_path);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		/* Set global SHM for ust */
-		if (strlen(wait_shm_path) == 0) {
-			ret = snprintf(wait_shm_path, PATH_MAX,
-					DEFAULT_HOME_APPS_WAIT_SHM_PATH,
-					getuid());
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
-
-		/* Set health check Unix path */
-		if (strlen(health_unix_sock_path) == 0) {
-			ret = snprintf(health_unix_sock_path,
-					sizeof(health_unix_sock_path),
-					DEFAULT_HOME_HEALTH_UNIX_SOCK,
-					home_path);
-			if (ret < 0) {
-				retval = -1;
-				goto exit_init_data;
-			}
-		}
 	}
 
 	lockfile_fd = create_lockfile();
@@ -5881,31 +5616,6 @@ int main(int argc, char **argv)
 	kernel_consumerd_state = CONSUMER_STOPPED;
 	ust_consumerd_state = CONSUMER_STOPPED;
 
-	DBG("Client socket path %s", client_unix_sock_path);
-	DBG("Application socket path %s", apps_unix_sock_path);
-	DBG("Application wait path %s", wait_shm_path);
-	DBG("LTTng run directory path: %s", rundir);
-
-	/* 32 bits consumerd path setup */
-	ret = snprintf(ustconsumer32_data.err_unix_sock_path, PATH_MAX,
-			DEFAULT_USTCONSUMERD32_ERR_SOCK_PATH, rundir);
-	if (ret < 0) {
-		PERROR("snprintf 32-bit consumer error socket path");
-		retval = -1;
-		goto exit_init_data;
-	}
-	ret = snprintf(ustconsumer32_data.cmd_unix_sock_path, PATH_MAX,
-			DEFAULT_USTCONSUMERD32_CMD_SOCK_PATH, rundir);
-	if (ret < 0) {
-		PERROR("snprintf 32-bit consumer command socket path");
-		retval = -1;
-		goto exit_init_data;
-	}
-
-	DBG2("UST consumer 32 bits err path: %s",
-			ustconsumer32_data.err_unix_sock_path);
-	DBG2("UST consumer 32 bits cmd path: %s",
-			ustconsumer32_data.cmd_unix_sock_path);
 	ust32_channel_monitor_pipe = lttng_pipe_open(0);
 	if (!ust32_channel_monitor_pipe) {
 		ERR("Failed to create 32-bit user space consumer channel monitor pipe");
@@ -5919,26 +5629,6 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	/* 64 bits consumerd path setup */
-	ret = snprintf(ustconsumer64_data.err_unix_sock_path, PATH_MAX,
-			DEFAULT_USTCONSUMERD64_ERR_SOCK_PATH, rundir);
-	if (ret < 0) {
-		PERROR("snprintf 64-bit consumer error socket path");
-		retval = -1;
-		goto exit_init_data;
-	}
-	ret = snprintf(ustconsumer64_data.cmd_unix_sock_path, PATH_MAX,
-			DEFAULT_USTCONSUMERD64_CMD_SOCK_PATH, rundir);
-	if (ret < 0) {
-		PERROR("snprintf 64-bit consumer command socket path");
-		retval = -1;
-		goto exit_init_data;
-	}
-
-	DBG2("UST consumer 64 bits err path: %s",
-			ustconsumer64_data.err_unix_sock_path);
-	DBG2("UST consumer 64 bits cmd path: %s",
-			ustconsumer64_data.cmd_unix_sock_path);
 	ust64_channel_monitor_pipe = lttng_pipe_open(0);
 	if (!ust64_channel_monitor_pipe) {
 		ERR("Failed to create 64-bit user space consumer channel monitor pipe");
@@ -5992,13 +5682,13 @@ int main(int argc, char **argv)
 	 * kernel tracer.
 	 */
 	if (is_root) {
-		if (set_consumer_sockets(&kconsumer_data, rundir)) {
+		if (set_consumer_sockets(&kconsumer_data)) {
 			retval = -1;
 			goto exit_init_data;
 		}
 
 		/* Setup kernel tracer */
-		if (!opt_no_kernel) {
+		if (!config.no_kernel) {
 			init_kernel_tracer();
 			if (kernel_tracer_fd >= 0) {
 				ret = syscall_init_table();
@@ -6016,12 +5706,12 @@ int main(int argc, char **argv)
 	/* init lttng_fd tracking must be done after set_ulimit. */
 	lttng_fd_init();
 
-	if (set_consumer_sockets(&ustconsumer64_data, rundir)) {
+	if (set_consumer_sockets(&ustconsumer64_data)) {
 		retval = -1;
 		goto exit_init_data;
 	}
 
-	if (set_consumer_sockets(&ustconsumer32_data, rundir)) {
+	if (set_consumer_sockets(&ustconsumer32_data)) {
 		retval = -1;
 		goto exit_init_data;
 	}
@@ -6033,18 +5723,18 @@ int main(int argc, char **argv)
 	}
 
 	/* Set credentials to socket */
-	if (is_root && set_permissions(rundir)) {
+	if (is_root && set_permissions(config.rundir.value)) {
 		retval = -1;
 		goto exit_init_data;
 	}
 
 	/* Get parent pid if -S, --sig-parent is specified. */
-	if (opt_sig_parent) {
+	if (config.sig_parent) {
 		ppid = getppid();
 	}
 
 	/* Setup the kernel pipe for waking up the kernel thread */
-	if (is_root && !opt_no_kernel) {
+	if (is_root && !config.no_kernel) {
 		if (utils_create_pipe_cloexec(kernel_poll_pipe)) {
 			retval = -1;
 			goto exit_init_data;
@@ -6081,9 +5771,9 @@ int main(int argc, char **argv)
 	/* Check for the application socket timeout env variable. */
 	env_app_timeout = getenv(DEFAULT_APP_SOCKET_TIMEOUT_ENV);
 	if (env_app_timeout) {
-		app_socket_timeout = atoi(env_app_timeout);
+		config.app_socket_timeout = atoi(env_app_timeout);
 	} else {
-		app_socket_timeout = DEFAULT_APP_SOCKET_RW_TIMEOUT;
+		config.app_socket_timeout = DEFAULT_APP_SOCKET_RW_TIMEOUT;
 	}
 
 	ret = write_pidfile();
@@ -6108,7 +5798,7 @@ int main(int argc, char **argv)
 		retval = -1;
 		goto exit_init_data;
 	}
-	load_info->path = opt_load_session_path;
+	load_info->path = config.load_session_path.value;
 
 	/* Create health-check thread. */
 	ret = pthread_create(&health_thread, default_pthread_attr(),
@@ -6211,7 +5901,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
-	if (is_root && !opt_no_kernel) {
+	if (is_root && !config.no_kernel) {
 		/* Create kernel thread to manage kernel event */
 		ret = pthread_create(&kernel_thread, default_pthread_attr(),
 				thread_manage_kernel, (void *) NULL);
@@ -6248,7 +5938,7 @@ int main(int argc, char **argv)
 	}
 exit_load_session:
 
-	if (is_root && !opt_no_kernel) {
+	if (is_root && !config.no_kernel) {
 		ret = pthread_join(kernel_thread, &status);
 		if (ret) {
 			errno = ret;

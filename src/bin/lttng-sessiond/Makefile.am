@@ -34,7 +34,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        syscall.h syscall.c \
                        notification-thread.h notification-thread.c \
                        notification-thread-commands.h notification-thread-commands.c \
-                       notification-thread-events.h notification-thread-events.c
+                       notification-thread-events.h notification-thread-events.c \
+                       sessiond-config.h sessiond-config.c
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \

@@ -24,7 +24,4 @@ void modprobe_remove_lttng_data(void);
 int modprobe_lttng_control(void);
 int modprobe_lttng_data(void);
 
-char *kmod_probes_list;
-char *kmod_extra_probes_list;
-
 #endif /* _MODPROBE_H */

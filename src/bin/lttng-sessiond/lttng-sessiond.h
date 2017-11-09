@@ -30,6 +30,7 @@
 #include "ust-app.h"
 #include "version.h"
 #include "notification-thread.h"
+#include "sessiond-config.h"
 
 extern const char default_home_dir[],
 	default_tracing_group[],
@@ -108,11 +109,6 @@ extern int ht_cleanup_pipe[2];
  */
 extern long page_size;
 
-/*
- * Global set once in main(). Agent TCP port for registration.
- */
-extern unsigned int agent_tcp_port;
-
 /* Application health monitoring */
 extern struct health_app *health_sessiond;
 
@@ -124,7 +120,7 @@ extern const char * const config_section_name;
 /* Is this daemon root or not. */
 extern int is_root;
 
-extern const char *tracing_group_name;
+extern struct sessiond_config config;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
