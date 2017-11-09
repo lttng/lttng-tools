@@ -29,6 +29,7 @@ enum lttng_userspace_probe_location_lookup_method_type {
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_UNKNOWN          = -1,
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT = 0,
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF     = 1,
+	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT     = 2,
 };
 
 /* DOCS */
@@ -44,13 +45,18 @@ extern void lttng_userspace_probe_location_lookup_method_destroy(
 extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_name_elf_create(void);
 
+/* DOCS */
+extern struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void);
+
 
 /* PROBE LOCATION */
 struct lttng_userspace_probe_location;
 
 enum lttng_userspace_probe_location_type {
-	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN	= -1,
+	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN		= -1,
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION	= 0,
+	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT	= 1,
 };
 
 /* DOCS */
@@ -84,6 +90,33 @@ extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
 		struct lttng_userspace_probe_location *location);
 
+
+/* DOCS */
+extern struct lttng_userspace_probe_location *
+lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
+		const char *probe_name, const char *provider_name,
+		struct lttng_userspace_probe_location_lookup_method *lookup_method);
+
+/* DOCS */
+extern const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
+		struct lttng_userspace_probe_location *location);
+
+/* DOCS */
+extern const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
+		struct lttng_userspace_probe_location *location);
+
+/* DOCS */
+extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
+		struct lttng_userspace_probe_location *location);
+
+/* DOCS */
+extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
+		struct lttng_userspace_probe_location *location);
+
+/* DOCS (ownership of the lookup method is NOT transferred. */
+extern struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_tracepoint_get_lookup_method(
+		struct lttng_userspace_probe_location *location);
 #ifdef __cplusplus
 }
 #endif

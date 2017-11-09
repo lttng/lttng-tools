@@ -45,6 +45,12 @@ struct lttng_userspace_probe_location_lookup_method_elf {
 	gid_t run_as_gid;
 };
 
+struct lttng_userspace_probe_location_lookup_method_sdt {
+	struct lttng_userspace_probe_location_lookup_method parent;
+	uid_t run_as_uid;
+	gid_t run_as_gid;
+};
+
 struct lttng_userspace_probe_location_comm {
 	/* enum lttng_userspace_probe_location_type */
 	int8_t type;
@@ -68,6 +74,20 @@ struct lttng_userspace_probe_location_function_comm {
 	char payload[];
 } LTTNG_PACKED;
 
+struct lttng_userspace_probe_location_tracepoint_comm {
+	/* Both lengths include the trailing \0. */
+	uint32_t probe_name_len;
+	uint32_t provider_name_len;
+	uint32_t binary_path_len;
+	/*
+	 * Payload is composed of, in that order,
+	 *   - probe name (with trailing \0),
+	 *   - provider name (with trailing \0),
+	 *   - absolute binary path (with trailing \0)
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
 /* Common ancestor of all probe locations. */
 struct lttng_userspace_probe_location {
 	enum lttng_userspace_probe_location_type type;
@@ -77,6 +97,15 @@ struct lttng_userspace_probe_location {
 struct lttng_userspace_probe_location_function {
 	struct lttng_userspace_probe_location parent;
 	char *function_name;
+	char *binary_path;
+	/* Set to -1 if not open. */
+	int binary_fd;
+};
+
+struct lttng_userspace_probe_location_tracepoint {
+	struct lttng_userspace_probe_location parent;
+	char *probe_name;
+	char *provider_name;
 	char *binary_path;
 	/* Set to -1 if not open. */
 	int binary_fd;
@@ -93,6 +122,16 @@ int lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
 		uid_t *uid, gid_t *gid);
 
 LTTNG_HIDDEN
+int lttng_userspace_probe_location_lookup_method_sdt_set_run_as_ids(
+		struct lttng_userspace_probe_location_lookup_method *lookup,
+		uid_t uid, gid_t gid);
+
+LTTNG_HIDDEN
+int lttng_userspace_probe_location_lookup_method_sdt_get_run_as_ids(
+		struct lttng_userspace_probe_location_lookup_method *lookup,
+		uid_t *uid, gid_t *gid);
+
+LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer,
@@ -105,6 +144,10 @@ int lttng_userspace_probe_location_create_from_buffer(
 
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_function_set_binary_fd(
+		struct lttng_userspace_probe_location *location, int binary_fd);
+
+LTTNG_HIDDEN
+int lttng_userspace_probe_location_tracepoint_set_binary_fd(
 		struct lttng_userspace_probe_location *location, int binary_fd);
 
 /*
