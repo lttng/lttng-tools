@@ -2149,7 +2149,7 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 
 	lttng_ht_add_unique_u64(ht, &stream->node);
 
-	lttng_ht_add_unique_u64(consumer_data.stream_per_chan_id_ht,
+	lttng_ht_add_u64(consumer_data.stream_per_chan_id_ht,
 		&stream->node_channel_id);
 
 	/*
