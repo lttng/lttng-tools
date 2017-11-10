@@ -48,8 +48,8 @@
  * every time a log is fired.
  */
 struct log_time {
-	/* Format: 00:00:00.000000 plus NULL byte. */
-	char str[16];
+	/* Format: 00:00:00.000000000 plus NULL byte. */
+	char str[19];
 };
 extern DECLARE_URCU_TLS(struct log_time, error_log_time);
 

@@ -59,7 +59,7 @@ const char *log_add_time(void)
 
 	/* Format time in the TLS variable. */
 	ret = snprintf(URCU_TLS(error_log_time).str, sizeof(URCU_TLS(error_log_time).str),
-			"%02d:%02d:%02d.%06ld",
+			"%02d:%02d:%02d.%09ld",
 			tm.tm_hour, tm.tm_min, tm.tm_sec, tp.tv_nsec);
 	if (ret < 0) {
 		goto error;
