@@ -34,8 +34,6 @@ SESSION_NAME="my_session"
 CHANNEL_NAME="my_channel"
 
 
-TRACE_PATH=$(mktemp -d)
-
 DIR=$(readlink -f $TESTDIR)
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
@@ -123,10 +121,11 @@ function start_client {
 
 function wait_for_message ()
 {
-	local file_pattern=$1
-	local message=$2
+	local directory=$1
+	local file_pattern=$2
+	local message=$3
 
-	for file in $CURDIR/${file_pattern}*; do
+	for file in $directory/${file_pattern}*; do
 		while(true); do
 			# Check for "error" message
 			grep -q "error:" ${file}
@@ -153,9 +152,10 @@ function wait_for_message ()
 
 function print_errors ()
 {
-	local file_pattern=$1
+	local directory=$1
+	local file_pattern=$2
 
-	for file in $CURDIR/${file_pattern}*; do
+	for file in $directory/${file_pattern}*; do
 		# Check for "error" message
 		error_message=$(grep "error:" ${file})
 		if [[ "${error_message}x" != "x" ]]; then
@@ -192,8 +192,9 @@ function test_multi_app ()
 	local app_pids=()
 	local low_output_file_pattern="low_app_output_file_"
 	local high_output_file_pattern="high_app_output_file_"
+	local output_dir=$(mktemp -d)
 
-	local testpoint_base_path=$(readlink -f "$CURDIR/lttng.t_p_n_multi_app")
+	local testpoint_base_path=$(readlink -f "$output_dir/lttng.t_p_n_multi_app")
 	local testpoint_pipe_path=$(mktemp -u "${testpoint_base_path}.XXXXXX")
 
 	local nr_notification_expected=5
@@ -216,10 +217,6 @@ function test_multi_app ()
 			;;
 	esac
 
-	# Cleanup
-	rm ${CURDIR}/${low_output_file_pattern}* 2> /dev/null
-	rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
-
 	# Setup
 	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${testpoint_pipe_path} LD_PRELOAD=${TESTPOINT}"
 	start_lttng_sessiond
@@ -230,19 +227,20 @@ function test_multi_app ()
 
 	# Fetch consumerd testpoint pipe information
 	# This is needed since the testpoint create a pipe with the consumer type suffixed
-	for f in "$testpoint_base_path"*; do
+	consumerd_pipe=()
+	for f in "$testpoint_pipe_path"*; do
 		consumerd_pipe+=("$f")
 	done
 
 	for (( i = 0; i < $nr_client_app; i++ )); do
-		low_app_output_file=$CURDIR/${low_output_file_pattern}${i}
-		high_app_output_file=$CURDIR/${high_output_file_pattern}${i}
+		low_app_output_file=$output_dir/${low_output_file_pattern}${i}
+		high_app_output_file=$output_dir/${high_output_file_pattern}${i}
 		start_client $low_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string LOW RATIO 0.0 $nr_notification_expected
 		start_client $high_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 $nr_notification_expected
 	done
 
-	wait_for_message "${low_output_file_pattern}" "sync: ready"
-	wait_for_message "${high_output_file_pattern}" "sync: ready"
+	wait_for_message $output_dir "${low_output_file_pattern}" "sync: ready"
+	wait_for_message $output_dir "${high_output_file_pattern}" "sync: ready"
 
 	# Test notification reception
 	for (( i = 0; i < $nr_notification_expected; i++ )); do
@@ -253,7 +251,7 @@ function test_multi_app ()
 			stop_consumerd "${pipe}"
 		done
 
-		wait_for_message "${high_output_file_pattern}" "notification: high $i"
+		wait_for_message $output_dir "${high_output_file_pattern}" "notification: high $i"
 
 		# Put application in suspend mode to prevent double low
 		# notification and synchronize on state file.
@@ -270,7 +268,7 @@ function test_multi_app ()
 		stop_lttng_tracing $SESSION_NAME
 
 		# Check for notifications reception
-		wait_for_message "${low_output_file_pattern}" "notification: low $i"
+		wait_for_message $output_dir "${low_output_file_pattern}" "notification: low $i"
 		ret=$?
 		ok $ret "Notifications $i received"
 		if [[ $ret -ne "0" ]]; then
@@ -285,25 +283,21 @@ function test_multi_app ()
 		done
 	done
 
-	wait_for_message "${low_output_file_pattern}" "exit: 0"
+	wait_for_message $output_dir "${low_output_file_pattern}" "exit: 0"
 	ret=$?
 	ok $ret "Application for low notification terminated normally"
-	if [[ $ret -eq "0" ]]; then
-		rm ${CURDIR}/${low_output_file_pattern}* 2> /dev/null
-	else
-		# Keep the file
-		print_errors "${low_output_file_pattern}"
+	if [[ $ret -ne "0" ]]; then
+		print_errors $output_dir "${low_output_file_pattern}"
 	fi
 
-	wait_for_message "${high_output_file_pattern}" "exit: 0"
+	wait_for_message $output_dir "${high_output_file_pattern}" "exit: 0"
 	ret=$?
 	ok $ret "Application for high notification terminated normally"
-	if [[ $ret -eq "0" ]]; then
-		rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
-	else
-		# Keep the file
-		print_errors "${high_output_file_pattern}"
+	if [[ $ret -ne "0" ]]; then
+		print_errors $output_dir "${high_output_file_pattern}"
 	fi
+
+	rm -rf $output_dir
 
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -387,13 +381,11 @@ function test_on_register_evaluation ()
 	local app_pids=()
 	local high_output_file_pattern="high_app_output_file_on_register_evaluation"
 
-	local testpoint_base_path=$(readlink -f "$CURDIR/lttng.t_p_n_register_evaluation")
+	local output_dir=$(mktemp -d)
+	local testpoint_base_path=$(readlink -f "$output_dir/lttng.t_p_n_register_evaluation")
 	local testpoint_pipe_path=$(mktemp -u "${testpoint_base_path}.XXXXXX")
 	local domain_string=""
 	local event_name=""
-
-	# Cleanup
-	rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
 
 	case $domain_type in
 		ust)
@@ -420,15 +412,16 @@ function test_on_register_evaluation ()
 
 	# Fetch consumerd testpoint pipe information
 	# This is needed since the testpoint create a pipe with the consumer type suffixed
-	for f in "$testpoint_base_path"*; do
+	consumerd_pipe=()
+	for f in "$testpoint_pipe_path"*; do
 		consumerd_pipe+=("$f")
 	done
 
 	high_app_output_file=${high_output_file_pattern}.first_receiver
-	high_app_output_path=$CURDIR/${high_app_output_file}
+	high_app_output_path=$output_dir/${high_app_output_file}
 	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
 
-	wait_for_message "${high_app_output_file}" "sync: ready"
+	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
 
 	# Stop consumerd consumption to force high notification
 	start_lttng_tracing_ok $SESSION_NAME
@@ -437,30 +430,30 @@ function test_on_register_evaluation ()
 		stop_consumerd "${pipe}"
 	done
 
-	wait_for_message "${high_app_output_file}" "notification: high 0"
+	wait_for_message $output_dir "${high_app_output_file}" "notification: high 0"
 
 	# Start a second receiver, the receiver should receive a high
 	# notification on subscription
 	high_app_output_file=${high_output_file_pattern}.second_receiver
-	high_app_output_path=$CURDIR/${high_app_output_file}
+	high_app_output_path=$output_dir/${high_app_output_file}
 	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
-	wait_for_message "${high_app_output_file}" "sync: ready"
-	wait_for_message "${high_app_output_file}" "notification: high 0"
+	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
+	wait_for_message $output_dir "${high_app_output_file}" "notification: high 0"
 
 	# Resume consumerd
 	for pipe in "${consumerd_pipe[@]}"; do
 		resume_consumerd "${pipe}"
 	done
 
-	wait_for_message "${high_output_file_pattern}" "exit: 0"
+	wait_for_message $output_dir "${high_output_file_pattern}" "exit: 0"
 	ret=$?
 	ok $ret "Application for high notification terminated normally"
-	if [[ $ret -eq "0" ]]; then
-		rm ${CURDIR}/${high_output_file_pattern}* 2> /dev/null
-	else
+	if [[ $ret -ne "0" ]]; then
 		# Keep the file
 		print_errors "${high_output_file_pattern}"
 	fi
+
+	rm -rf $output_dir
 
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
