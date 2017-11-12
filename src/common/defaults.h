@@ -69,7 +69,7 @@
 #define DEFAULT_SESSION_NAME                    "auto"
 
 /* Default consumer paths */
-#define DEFAULT_CONSUMERD_FILE                  "lttng_consumerd"
+#define DEFAULT_CONSUMERD_FILE                  "lttng-consumerd"
 
 /* Default consumer paths */
 #define DEFAULT_CONSUMERD_RUNDIR                "%s"
