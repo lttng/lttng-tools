@@ -2413,9 +2413,9 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * fallback on the 32-bit one,
 			 */
 			DBG3("Looking for a kernel consumer at these locations:");
-			DBG3("	1) %s", config.consumerd64_bin_path.value);
+			DBG3("	1) %s", config.consumerd64_bin_path.value ? : "NULL");
 			DBG3("	2) %s/%s", INSTALL_BIN_PATH, DEFAULT_CONSUMERD_FILE);
-			DBG3("	3) %s", config.consumerd32_bin_path.value);
+			DBG3("	3) %s", config.consumerd32_bin_path.value ? : "NULL");
 			if (stat(config.consumerd64_bin_path.value, &st) == 0) {
 				DBG3("Found location #1");
 				consumer_to_use = config.consumerd64_bin_path.value;
