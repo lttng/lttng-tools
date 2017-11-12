@@ -188,10 +188,6 @@ int config_set_paths_root(struct sessiond_config *config)
 			DEFAULT_GLOBAL_APPS_WAIT_SHM_PATH);
 	config_string_set_static(&config->health_unix_sock_path,
 			DEFAULT_GLOBAL_HEALTH_UNIX_SOCK);
-	config_string_set_static(&config->kconsumerd_err_unix_sock_path,
-			DEFAULT_KCONSUMERD_ERR_SOCK_PATH);
-	config_string_set_static(&config->kconsumerd_cmd_unix_sock_path,
-			DEFAULT_KCONSUMERD_CMD_SOCK_PATH);
 end:
 	return ret;
 }
@@ -338,6 +334,24 @@ int sessiond_config_init(struct sessiond_config *config)
 		goto end;
 	}
 	config_string_set(&config->kconsumerd_path, str);
+	str = NULL;
+
+	ret = asprintf(&str, DEFAULT_KCONSUMERD_ERR_SOCK_PATH,
+			config->rundir.value);
+	if (ret < 0) {
+		ERR("Failed to set kernel consumer error socket path");
+		goto end;
+	}
+	config_string_set(&config->kconsumerd_err_unix_sock_path, str);
+	str = NULL;
+
+	ret = asprintf(&str, DEFAULT_KCONSUMERD_CMD_SOCK_PATH,
+			config->rundir.value);
+	if (ret < 0) {
+		ERR("Failed to set kernel consumer command socket path");
+		goto end;
+	}
+	config_string_set(&config->kconsumerd_cmd_unix_sock_path, str);
 	str = NULL;
 
 	ret = asprintf(&str, "%s/%s", config->rundir.value,
