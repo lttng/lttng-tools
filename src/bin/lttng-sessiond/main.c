@@ -5584,12 +5584,13 @@ int main(int argc, char **argv)
 	/* Check if daemon is UID = 0 */
 	is_root = !getuid();
 
+	if (create_lttng_rundir()) {
+		retval = -1;
+		goto exit_init_data;
+	}
+
 	if (is_root) {
 		/* Create global run dir with root access */
-		if (create_lttng_rundir()) {
-			retval = -1;
-			goto exit_init_data;
-		}
 
 		kernel_channel_monitor_pipe = lttng_pipe_open(0);
 		if (!kernel_channel_monitor_pipe) {
