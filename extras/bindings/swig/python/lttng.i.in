@@ -979,7 +979,7 @@ struct lttng_channel {
 	%extend {
 		char *__repr__() {
 			static char temp[512];
-			sprintf(temp, "lttng.Channel; name('%s'), enabled(%s)",
+			snprintf(temp, sizeof(temp), "lttng.Channel; name('%s'), enabled(%s)",
 				$self->name, $self->enabled ? "True" : "False");
 			return &temp[0];
 		}
@@ -994,8 +994,8 @@ struct lttng_session {
 
 	%extend {
 		char *__repr__() {
-			static char temp[512];
-			sprintf(temp, "lttng.Session; name('%s'), path('%s'), enabled(%s)",
+			static char temp[PATH_MAX + NAME_MAX + 512];
+			snprintf(temp, sizeof(temp), "lttng.Session; name('%s'), path('%s'), enabled(%s)",
 				$self->name, $self->path,
 				$self->enabled ? "True" : "False");
 			return &temp[0];
