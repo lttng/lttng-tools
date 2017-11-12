@@ -31,6 +31,7 @@ notification_SOURCES = notification.c
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 noinst_SCRIPTS = test_notification_ust test_notification_ust test_notification_multi_app
+EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app
 
 
 all-local:
