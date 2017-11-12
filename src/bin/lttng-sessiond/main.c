@@ -5525,6 +5525,44 @@ error:
 	return ret;
 }
 
+static int set_clock_plugin_env(void)
+{
+	int ret = 0;
+	const char *original_env_value;
+	char *full_path = NULL;
+	char *new_env_value = NULL;
+
+	original_env_value = getenv("LTTNG_UST_CLOCK_PLUGIN");
+	if (!original_env_value) {
+		goto end;
+	}
+
+	full_path = utils_expand_path(original_env_value);
+	if (!full_path) {
+		ERR("Failed to expand LTTNG_UST_CLOCK_PLUGIN path \"%s\"",
+				original_env_value);
+		ret = -1;
+		goto end;
+	}
+        ret = asprintf(&new_env_value, "LTTNG_UST_CLOCK_PLUGIN=%s",
+			full_path);
+	free(full_path);
+	if (ret < 0) {
+		PERROR("asprintf");
+		goto end;
+	}
+
+	DBG("Updating environment: %s", new_env_value);
+	ret = putenv(new_env_value);
+	if (ret) {
+		free(new_env_value);
+		PERROR("putenv of LTTNG_UST_CLOCK_PLUGIN");
+		goto end;
+	}
+end:
+	return ret;
+}
+
 /*
  * main
  */
@@ -5562,6 +5600,12 @@ int main(int argc, char **argv)
 	 */
 	progname = argv[0];
 	if (set_options(argc, argv)) {
+		retval = -1;
+		goto exit_options;
+	}
+
+	ret = set_clock_plugin_env();
+	if (ret) {
 		retval = -1;
 		goto exit_options;
 	}
