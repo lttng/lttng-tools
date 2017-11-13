@@ -387,7 +387,7 @@ int check_relayd(void)
 	 * A successful connect means the relayd exists thus returning 0 else a
 	 * negative value means it does NOT exists.
 	 */
-	ret = connect(fd, &sin, sizeof(sin));
+	ret = connect(fd, (struct sockaddr *) &sin, sizeof(sin));
 	if (ret < 0) {
 		/* Not found. */
 		ret = 0;
