@@ -154,9 +154,28 @@ static int _pipe_set_flags(struct lttng_pipe *pipe, int flags)
 	}
 
 	for (i = 0; i < 2; i++) {
-		ret = fcntl(pipe->fd[i], F_SETFD, flags);
-		if (ret < 0) {
-			PERROR("fcntl lttng pipe %d", flags);
+		if (flags & O_NONBLOCK) {
+			ret = fcntl(pipe->fd[i], F_SETFL, O_NONBLOCK);
+			if (ret < 0) {
+				PERROR("fcntl lttng pipe %d", flags);
+				goto end;
+			}
+		}
+		if (flags & FD_CLOEXEC) {
+			ret = fcntl(pipe->fd[i], F_SETFD, FD_CLOEXEC);
+			if (ret < 0) {
+				PERROR("fcntl lttng pipe %d", flags);
+				goto end;
+			}
+		}
+		/*
+		 * We only check for O_NONBLOCK or FD_CLOEXEC, if another flag is
+		 * needed, we can add it, but for now just make sure we don't make
+		 * mistakes with the parameters we pass.
+		 */
+		if (!(flags & O_NONBLOCK) && !(flags & FD_CLOEXEC)) {
+			fprintf(stderr, "Unsupported flag\n");
+			ret = -1;
 			goto end;
 		}
 	}
