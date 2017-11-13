@@ -96,7 +96,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 		goto end;
 	}
 
-	event_pipe = lttng_pipe_open(O_CLOEXEC);
+	event_pipe = lttng_pipe_open(FD_CLOEXEC);
 	if (!event_pipe) {
 		ERR("event_pipe creation");
 		goto error;
