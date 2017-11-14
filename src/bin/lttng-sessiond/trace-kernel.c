@@ -349,7 +349,6 @@ int extract_userspace_probe_offset_function_elf(
 	}
 
 	ret = run_as_extract_elf_symbol_offset(fd, symbol, uid, gid, offset);
-
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for function %s", symbol);
 		goto end;
@@ -448,17 +447,15 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 			 */
 			attr->u.uprobe.fd =
 				lttng_userspace_probe_location_function_get_binary_fd(location);
+
 			/*
 			 * Save a reference to the probe location used during the listing of
-			 * events.
+			 * events. Close its FD since it won't be needed for listing.
 			 */
 			userspace_probe_location =
 				lttng_userspace_probe_location_copy(location);
-			/*
-			 * Close the binary fd
-			 */
 			lttng_userspace_probe_location_function_set_binary_fd(
-					userspace_probe_location, -1);
+				userspace_probe_location, -1);
 			break;
 		default:
 			DBG("Unsupported lookup method type");
