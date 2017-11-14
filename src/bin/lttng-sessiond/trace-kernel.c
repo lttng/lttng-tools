@@ -437,10 +437,12 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 			 * the symbol in the binary.
 			 */
 			ret = extract_userspace_probe_offset_function_elf(location,
-							&attr->u.uprobe.offset);
+							&attr->u.uprobe.offsets[0]);
 			if (ret) {
 				goto error;
 			}
+
+			attr->u.uprobe.num_offset = 1;
 			/*
 			 * Get the file descriptor on the target binary.
 			 */

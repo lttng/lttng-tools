@@ -24,6 +24,7 @@
 #include <common/macros.h>
 
 #define LTTNG_KERNEL_SYM_NAME_LEN  256
+#define LTTNG_KERNEL_MAX_UPROBE_NUM  32
 
 /*
  * LTTng DebugFS ABI structures.
@@ -100,7 +101,8 @@ struct lttng_kernel_kprobe {
 
 struct lttng_kernel_uprobe {
 	int fd;
-	uint64_t offset;
+	uint32_t num_offset;
+	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
 } LTTNG_PACKED;
 
 /* Function tracer */
