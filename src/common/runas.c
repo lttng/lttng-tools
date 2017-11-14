@@ -69,6 +69,26 @@ struct run_as_extract_elf_symbol_offset_data {
 	char function[PATH_MAX];
 };
 
+struct run_as_mkdir_ret {
+	int ret;
+};
+
+struct run_as_open_ret {
+	int ret;
+};
+
+struct run_as_unlink_ret {
+	int ret;
+};
+
+struct run_as_rmdir_recursive_ret {
+	int ret;
+};
+
+struct run_as_extract_elf_symbol_offset_ret {
+	uint64_t offset;
+};
+
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_OPEN,
@@ -108,9 +128,13 @@ struct run_as_data {
  *
  */
 struct run_as_ret {
+	int fd;
 	union {
-		int ret_int;
-		uint64_t ret_uint64_t;
+		struct run_as_mkdir_ret mkdir;
+		struct run_as_open_ret open;
+		struct run_as_unlink_ret unlink;
+		struct run_as_rmdir_recursive_ret rmdir_recursive;
+		struct run_as_extract_elf_symbol_offset_ret extract_elf_symbol_offset;
 	} u;
 	int _errno;
 	bool _error;
@@ -157,46 +181,47 @@ int _mkdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	mode = data->u.mkdir.mode;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret_int = _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->u.mkdir.ret = _utils_mkdir_recursive_unsafe(path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret_int) ? true : false;
-	return ret_value->u.ret_int;
+	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
+	return ret_value->u.mkdir.ret;
 }
 
 static
 int _mkdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.ret_int = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	ret_value->u.mkdir.ret = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret_int) ? true : false;
-	return ret_value->u.ret_int;
+	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
+	return ret_value->u.mkdir.ret;
 }
 
 static
 int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.ret_int = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->u.open.ret = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->fd = ret_value->u.open.ret;
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret_int) ? true : false;
-	return ret_value->u.ret_int;
+	ret_value->_error = (ret_value->u.open.ret) ? true : false;
+	return ret_value->u.open.ret;
 }
 
 static
 int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.ret_int = unlink(data->u.unlink.path);
+	ret_value->u.unlink.ret = unlink(data->u.unlink.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret_int) ? true : false;
-	return ret_value->u.ret_int;
+	ret_value->_error = (ret_value->u.unlink.ret) ? true : false;
+	return ret_value->u.unlink.ret;
 }
 
 static
 int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.ret_int = utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	ret_value->u.rmdir_recursive.ret = utils_recursive_rmdir(data->u.rmdir_recursive.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.ret_int) ? true : false;
-	return ret_value->u.ret_int;
+	ret_value->_error = (ret_value->u.rmdir_recursive.ret) ? true : false;
+	return ret_value->u.rmdir_recursive.ret;
 }
 
 static
@@ -207,8 +232,8 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 	ret_value->_error = false;
 
 	ret = lttng_elf_get_symbol_offset(data->fd,
-									 data->u.extract_elf_symbol_offset.function,
-									 &ret_value->u.ret_uint64_t);
+			 data->u.extract_elf_symbol_offset.function,
+			 &ret_value->u.extract_elf_symbol_offset.offset);
 	if (ret < 0) {
 		DBG("Failed to extract ELF function offset");
 		ret = -1;
@@ -489,7 +514,7 @@ write_return:
 	 * Some commands return a file descriptor so if it's needed we pass it back
 	 * to the master using the Unix socket.
 	 */
-	ret = send_fd_to_master(worker, data.cmd, sendret.u.ret_int);
+	ret = send_fd_to_master(worker, data.cmd, sendret.fd);
 	if (ret < 0) {
 		DBG("Sending FD to master returned an error");
 		goto end;
@@ -627,7 +652,7 @@ int run_as_cmd(struct run_as_worker *worker,
 	/*
 	 * Stage 5: Receive file descriptor if needed
 	 */
-	ret = recv_fd_from_worker(worker, data->cmd, &ret_value->u.ret_int);
+	ret = recv_fd_from_worker(worker, data->cmd, &ret_value->fd);
 	if (ret < 0) {
 		ERR("Error receiving fd");
 		ret = -1;
@@ -745,7 +770,7 @@ int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 
 	run_as(RUN_AS_MKDIR_RECURSIVE, &data, &ret, uid, gid);
 	errno = ret._errno;
-	return ret.u.ret_int;
+	return ret.u.mkdir.ret;
 }
 
 LTTNG_HIDDEN
@@ -764,7 +789,7 @@ int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 	data.u.mkdir.mode = mode;
 	run_as(RUN_AS_MKDIR, &data, &ret, uid, gid);
 	errno = ret._errno;
-	return ret.u.ret_int;
+	return ret.u.mkdir.ret;
 }
 
 LTTNG_HIDDEN
@@ -784,7 +809,8 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	data.u.open.mode = mode;
 	run_as(RUN_AS_OPEN, &data, &ret, uid, gid);
 	errno = ret._errno;
-	return ret.u.ret_int;
+	ret.u.open.ret = ret.fd;
+	return ret.u.open.ret;
 }
 
 LTTNG_HIDDEN
@@ -802,7 +828,7 @@ int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
 	run_as(RUN_AS_UNLINK, &data, &ret, uid, gid);
 	errno = ret._errno;
-	return ret.u.ret_int;
+	return ret.u.unlink.ret;
 }
 
 LTTNG_HIDDEN
@@ -820,7 +846,7 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
 	run_as(RUN_AS_RMDIR_RECURSIVE, &data, &ret, uid, gid);
 	errno = ret._errno;
-	return ret.u.ret_int;
+	return ret.u.rmdir_recursive.ret;
 }
 
 LTTNG_HIDDEN
@@ -847,7 +873,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 		return -1;
 	}
 
-	*offset = ret.u.ret_uint64_t;
+	*offset = ret.u.extract_elf_symbol_offset.offset;
 	return 0;
 }
 
