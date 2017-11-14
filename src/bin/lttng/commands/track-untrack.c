@@ -257,8 +257,14 @@ enum cmd_error_code track_untrack_pid(enum cmd_type cmd_type, const char *cmd_st
 				break;
 			}
 		} else {
-			MSG("PID %i %sed in session %s",
-					pid_list[i], cmd_str, session_name);
+			if (pid_list[i] != -1) {
+				MSG("PID %i %sed in session %s",
+						pid_list[i], cmd_str,
+						session_name);
+			} else {
+				MSG("All PIDs %sed in session %s",
+						cmd_str, session_name);
+			}
 			success = 1;
 		}
 
