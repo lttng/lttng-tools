@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 #include <common/macros.h>
+#include <lttng/constant.h>
+#include <lttng/event.h>
 
 #define LTTNG_KERNEL_SYM_NAME_LEN  256
 #define LTTNG_KERNEL_MAX_UPROBE_NUM  32
