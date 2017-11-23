@@ -127,6 +127,8 @@ struct notification_thread_handle {
  *          notification_trigger_clients_ht,
  *    - add trigger to channel_triggers_ht (if applicable),
  *    - add trigger to triggers_ht
+ *    - evaluate the trigger's condition right away to react if that condition
+ *      is true from the beginning.
  *
  * 4) Unregistration of a trigger
  *    - if the trigger's action is of type "notify",
@@ -153,6 +155,8 @@ struct notification_thread_handle {
  *    - Add the condition to the client's list of subscribed conditions,
  *    - Look-up notification_trigger_clients_ht and add the client to
  *      list of clients.
+ *    - Evaluate the condition for the client that subscribed if the trigger
+ *      was already registered.
  *
  * 9) Unsubscription of a client to a condition's notifications
  *    - Remove the condition from the client's list of subscribed conditions,

@@ -416,7 +416,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 
 			assert(current_condition);
 			if (!lttng_condition_is_equal(condition,
-						current_condition)) {
+					current_condition)) {
 				continue;
 			}
 
@@ -555,12 +555,22 @@ int notification_thread_client_subscribe(struct notification_client *client,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (!node) {
+		/*
+		 * No notification-emiting trigger registered with this
+		 * condition. We don't evaluate the condition right away
+		 * since this trigger is not registered yet.
+		 */
 		free(client_list_element);
 		goto end_unlock;
 	}
 
 	client_list = caa_container_of(node, struct notification_client_list,
 			notification_trigger_ht_node);
+	/*
+	 * The condition to which the client just subscribed is evaluated
+	 * at this point so that conditions that are already TRUE result
+	 * in a notification being sent out.
+	 */
 	if (evaluate_condition_for_client(client_list->trigger, condition,
 			client, state)) {
 		WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
@@ -1104,11 +1114,6 @@ int handle_notification_thread_command_register_trigger(
 	cds_lfht_add(state->notification_trigger_clients_ht,
 			lttng_condition_hash(condition),
 			&client_list->notification_trigger_ht_node);
-	/*
-	 * Client list ownership transferred to the
-	 * notification_trigger_clients_ht.
-	 */
-	client_list = NULL;
 
 	/*
 	 * Add the trigger to list of triggers bound to the channels currently
@@ -1146,6 +1151,47 @@ int handle_notification_thread_command_register_trigger(
 		/* A trigger can only apply to one channel. */
 		break;
 	}
+
+	/*
+	 * Since there is nothing preventing clients from subscribing to a
+	 * condition before the corresponding trigger is registered, we have
+	 * to evaluate this new condition right away.
+	 *
+	 * At some point, we were waiting for the next "evaluation" (e.g. on
+	 * reception of a channel sample) to evaluate this new condition, but
+	 * that was broken.
+	 *
+	 * The reason it was broken is that waiting for the next sample
+	 * does not allow us to properly handle transitions for edge-triggered
+	 * conditions.
+	 *
+	 * Consider this example: when we handle a new channel sample, we
+	 * evaluate each conditions twice: once with the previous state, and
+	 * again with the newest state. We then use those two results to
+	 * determine whether a state change happened: a condition was false and
+	 * became true. If a state change happened, we have to notify clients.
+	 *
+	 * Now, if a client subscribes to a given notification and registers
+	 * a trigger *after* that subscription, we have to make sure the
+	 * condition is evaluated at this point while considering only the
+	 * current state. Otherwise, the next evaluation cycle may only see
+	 * that the evaluations remain the same (true for samples n-1 and n) and
+	 * the client will never know that the condition has been met.
+	 */
+	cds_list_for_each_entry_safe(client_list_element, tmp,
+			&client_list->list, node) {
+		ret = evaluate_condition_for_client(trigger, condition,
+				client_list_element->client, state);
+		if (ret) {
+			goto error_free_client_list;
+		}
+	}
+
+	/*
+	 * Client list ownership transferred to the
+	 * notification_trigger_clients_ht.
+	 */
+	client_list = NULL;
 
 	*cmd_result = LTTNG_OK;
 error_free_client_list:
