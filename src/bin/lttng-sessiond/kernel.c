@@ -204,28 +204,32 @@ int userspace_probe_set_run_as_ids(struct lttng_event *ev, uid_t uid,
 		ret = -1;
 		goto end;
 	}
-
 	lookup_method =
-		lttng_userspace_probe_location_function_get_lookup_method(location);
+		lttng_userspace_probe_location_get_lookup_method(location);
 	if (!lookup_method) {
 		ret = -1;
 		goto end;
 	}
-
 	type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
-	switch (type) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+
+	switch (location->type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+		assert(type == LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 		ret = lttng_userspace_probe_location_lookup_method_elf_set_run_as_ids(
 					lookup_method, uid, gid);
-
-		if (ret) {
-			ret = -1;
-			goto end;
-		}
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+		assert(type == LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
+		ret = lttng_userspace_probe_location_lookup_method_sdt_set_run_as_ids(
+					lookup_method, uid, gid);
 		break;
 	default:
-			ret = -1;
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
+	}
+	if (ret) {
+		ret = -1;
+		goto end;
 	}
 end:
 	return ret;
