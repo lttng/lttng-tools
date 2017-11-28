@@ -3516,6 +3516,7 @@ error_add_context:
 		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
 			int fd;
 			struct lttng_userspace_probe_location *probe_location;
+			struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 			struct lttng_dynamic_buffer probe_location_buffer;
 			struct lttng_buffer_view buffer_view;
 
@@ -3550,6 +3551,7 @@ error_add_context:
 			buffer_view = lttng_buffer_view_from_dynamic_buffer(
 					&probe_location_buffer, 0,
 					probe_location_buffer.size);
+
 			/*
 			 * Extract the probe location from the serialized version.
 			 */
@@ -3575,11 +3577,31 @@ error_add_context:
 				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto error;
 			}
+
 			/*
 			 * Set the file descriptor received from the client through the unix
 			 * socket in the probe location.
 			 */
-			ret = lttng_userspace_probe_location_function_set_binary_fd(probe_location, fd);
+			lookup = lttng_userspace_probe_location_get_lookup_method(
+							probe_location);
+			if (!lookup) {
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
+
+			switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+			case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+				ret = lttng_userspace_probe_location_function_set_binary_fd(
+							probe_location, fd);
+				break;
+			case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+				ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
+							probe_location, fd);
+				break;
+			default:
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto error;
+			}
 			if (ret) {
 				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
