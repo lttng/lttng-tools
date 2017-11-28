@@ -150,6 +150,7 @@ enum lttng_error_code {
 	LTTNG_ERR_TRIGGER_NOT_FOUND      = 127, /* Trigger not found. */
 	LTTNG_ERR_COMMAND_CANCELLED      = 128, /* Command cancelled. */
 	LTTNG_ERR_PROBE_LOCATION_INVAL   = 129, /* Invalid userspace probe location. */
+	LTTNG_ERR_SDT_PROBE_SEMAPHORE    = 130, /* SDT probe guarded by a semaphore. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
