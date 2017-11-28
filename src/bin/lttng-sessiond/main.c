@@ -2881,6 +2881,116 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 	return i;
 }
 
+static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
+			   int *sock_error, struct lttng_event *event)
+{
+	int fd, ret;
+	struct lttng_userspace_probe_location *probe_location;
+	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	struct lttng_dynamic_buffer probe_location_buffer;
+	struct lttng_buffer_view buffer_view;
+
+	/*
+	 * Create a buffer to store the serialized version of the probe
+	 * location.
+	 */
+	lttng_dynamic_buffer_init(&probe_location_buffer);
+	ret = lttng_dynamic_buffer_set_size( &probe_location_buffer,
+				 cmd_ctx->lsm->u.enable.userspace_probe_location_len);
+	if (ret) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	/*
+	 * Receive the probe location.
+	 */
+	ret = lttcomm_recv_unix_sock(sock,
+								 probe_location_buffer.data,
+								 probe_location_buffer.size);
+	if (ret <= 0) {
+		DBG("Nothing recv() from client var len data... continuing");
+		*sock_error = 1;
+		lttng_dynamic_buffer_reset(&probe_location_buffer);
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	buffer_view = lttng_buffer_view_from_dynamic_buffer(
+						&probe_location_buffer, 0, probe_location_buffer.size);
+
+	/*
+	 * Extract the probe location from the serialized version.
+	 */
+	ret = lttng_userspace_probe_location_create_from_buffer(
+				&buffer_view, &probe_location);
+	if (ret < 0) {
+		WARN("Failed to create a userspace probe location from the received buffer");
+		lttng_dynamic_buffer_reset( &probe_location_buffer);
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	/*
+	 * Receive the file descriptor to the target binary from the client.
+	 */
+	DBG("Receiving userspace probe target FD from client ...");
+	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
+	if (ret <= 0) {
+		DBG("Nothing recv() from client userspace probe fd ... continuing");
+		*sock_error = 1;
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	/*
+	 * Set the file descriptor received from the client through the unix
+	 * socket in the probe location.
+	 */
+	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
+	if (!lookup) {
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	/*
+	 * From the kernel tracer's perspective, all userspace probe event types
+	 * are all the same: a file and an offset.
+	 */
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		ret = lttng_userspace_probe_location_function_set_binary_fd(
+				probe_location, fd);
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+		ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
+				probe_location, fd);
+		break;
+	default:
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	if (ret) {
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	/*
+	 * Attach the probe location to the event
+	 */
+	ret = lttng_event_set_userspace_probe_location(event, probe_location);
+	if (ret) {
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto error;
+	}
+
+	lttng_dynamic_buffer_reset(&probe_location_buffer);
+error:
+	return ret;
+}
+
+
 /*
  * Process the command requested by the lttng client within the command
  * context structure. This function make sure that the return structure (llm)
@@ -3514,111 +3624,12 @@ error_add_context:
 		}
 
 		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
-			int fd;
-			struct lttng_userspace_probe_location *probe_location;
-			struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
-			struct lttng_dynamic_buffer probe_location_buffer;
-			struct lttng_buffer_view buffer_view;
-
-			/*
-			 * Create a buffer to store the serialized version of the probe
-			 * location.
-			 */
-			lttng_dynamic_buffer_init(&probe_location_buffer);
-			ret = lttng_dynamic_buffer_set_size( &probe_location_buffer,
-					cmd_ctx->lsm->u.enable.userspace_probe_location_len);
-			if (ret) {
-				ret = LTTNG_ERR_NOMEM;
-				lttng_event_destroy(ev);
-				goto error;
-			}
-
-			/*
-			 * Receive the probe location.
-			 */
-			ret = lttcomm_recv_unix_sock(sock,
-					probe_location_buffer.data,
-					probe_location_buffer.size);
-			if (ret <= 0) {
-				DBG("Nothing recv() from client var len data... continuing");
-				*sock_error = 1;
-				lttng_dynamic_buffer_reset(&probe_location_buffer);
-				lttng_event_destroy(ev);
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
-
-			buffer_view = lttng_buffer_view_from_dynamic_buffer(
-					&probe_location_buffer, 0,
-					probe_location_buffer.size);
-
-			/*
-			 * Extract the probe location from the serialized version.
-			 */
-			ret = lttng_userspace_probe_location_create_from_buffer(
-					&buffer_view, &probe_location);
-			if (ret < 0) {
-				WARN("Failed to create a userspace probe location from the received buffer");
-				lttng_dynamic_buffer_reset( &probe_location_buffer);
-				lttng_event_destroy(ev);
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
-
-			/*
-			 * Receive the file descriptor to the target binary from the client.
-			 */
-			DBG("Receiving userspace probe target FD from client ...");
-			ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
-			if (ret <= 0) {
-				DBG("Nothing recv() from client userspace probe fd ... continuing");
-				*sock_error = 1;
-				lttng_event_destroy(ev);
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
-
-			/*
-			 * Set the file descriptor received from the client through the unix
-			 * socket in the probe location.
-			 */
-			lookup = lttng_userspace_probe_location_get_lookup_method(
-							probe_location);
-			if (!lookup) {
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
-
-			switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-			case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-				ret = lttng_userspace_probe_location_function_set_binary_fd(
-							probe_location, fd);
-				break;
-			case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-				ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
-							probe_location, fd);
-				break;
-			default:
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
+			/* Expect a userspace probe description. */
+			ret = receive_userspace_probe(cmd_ctx, sock, sock_error, ev);
 			if (ret) {
 				lttng_event_destroy(ev);
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto error;
 			}
-
-			/*
-			 * Attach the probe location to the event
-			 */
-			ret = lttng_event_set_userspace_probe_location(ev, probe_location);
-			if (ret) {
-				lttng_event_destroy(ev);
-				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-				goto error;
-			}
-
-			lttng_dynamic_buffer_reset(&probe_location_buffer);
 		}
 
 		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
