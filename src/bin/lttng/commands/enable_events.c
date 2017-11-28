@@ -1351,6 +1351,12 @@ static int enable_events(char *session_name)
 					error = 1;
 					break;
 				}
+				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
+					ERR("SDT probe %s guarded by semaphore not supported (channel %s, session %s)",
+							event_name, print_channel_name(channel_name),
+							session_name);
+					error = 1;
+					break;
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
 							exclusion_string,
