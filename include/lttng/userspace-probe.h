@@ -90,6 +90,10 @@ extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
 		struct lttng_userspace_probe_location *location);
 
+/* DOCS (ownership of the lookup method is NOT transferred. */
+extern struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_get_lookup_method(
+		struct lttng_userspace_probe_location *location);
 
 /* DOCS */
 extern struct lttng_userspace_probe_location *
