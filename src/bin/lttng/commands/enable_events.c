@@ -289,7 +289,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	char **tokens;
 	char *target_path = NULL;
 	char *real_target_path = NULL;
-	char *symbol_name = NULL;
+	char *symbol_name = NULL, *probe_name = NULL, *provider_name = NULL;
 	struct lttng_userspace_probe_location *probe_location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method =
 			NULL;
@@ -311,7 +311,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	 * elf:PATH:SYMBOL
 	 * PATH:SYMBOL (same behavior as above^)
 	 */
-	if (num_token < 2 || num_token > 3) {
+	if (num_token < 2 || num_token > 4) {
 		ret = CMD_ERROR;
 		goto end_string;
 	}
@@ -320,12 +320,48 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	 * Looking up the first parameter will tell the technique to use to
 	 * interpret the userspace probe/function description.
 	 */
-	if (strcmp(tokens[0], "elf") == 0) {
-		target_path = tokens[1];
-		symbol_name = tokens[2];
-	} else {
-		target_path = tokens[0];
-		symbol_name = tokens[1];
+	switch (num_token) {
+	case 2:
+		/* When the probe type is omitted we assume ELF for now. */
+	case 3:
+		if (num_token == 3 && strcmp(tokens[0], "elf") == 0) {
+			target_path = tokens[1];
+			symbol_name = tokens[2];
+		} else if (num_token == 2) {
+			target_path = tokens[0];
+			symbol_name = tokens[1];
+		} else {
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+		if (!lookup_method) {
+			WARN("Failed to create ELF lookup method");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+		break;
+	case 4:
+		if (strcmp(tokens[0], "sdt") == 0) {
+			target_path = tokens[1];
+			provider_name = tokens[2];
+			probe_name = tokens[3];
+		} else {
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
+		if (!lookup_method) {
+			WARN("Failed to create ELF lookup method");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+		break;
+	default:
+		ret = CMD_ERROR;
+		goto end_string;
 	}
 
 	target_path = strutils_unescape_string(target_path, 0);
@@ -376,15 +412,8 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		}
 	}
 
-	switch (ev->type) {
-	case LTTNG_EVENT_USERSPACE_PROBE:
-		lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
-		if (!lookup_method) {
-			WARN("Failed to create ELF lookup method");
-			ret = CMD_ERROR;
-			goto end_free_path;
-		}
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup_method)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 		probe_location = lttng_userspace_probe_location_function_create(
 				real_target_path, symbol_name, lookup_method);
 		if (!probe_location) {
@@ -401,6 +430,33 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end_destroy_location;
 		}
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+		probe_location = lttng_userspace_probe_location_tracepoint_create(
+				real_target_path, provider_name, probe_name, lookup_method);
+		if (!probe_location) {
+			WARN("Failed to create function probe location");
+			ret = CMD_ERROR;
+			goto end_destroy_lookup_method;
+		}
+		/* Ownership transferred to probe_location. */
+		lookup_method = NULL;
+
+		ret = lttng_event_set_userspace_probe_location(ev, probe_location);
+		if (ret) {
+			WARN("Failed to set probe location on event");
+			ret = CMD_ERROR;
+			goto end_destroy_location;
+		}
+		break;
+	default:
+		ret = CMD_ERROR;
+		goto end_string;
+	}
+
+
+	switch (ev->type) {
+	case LTTNG_EVENT_USERSPACE_PROBE:
 		break;
 	default:
 		assert(0);
