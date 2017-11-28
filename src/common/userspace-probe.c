@@ -698,7 +698,7 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location_lookup_method *
+static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_function_get_lookup_method(
 		struct lttng_userspace_probe_location *location)
 {
@@ -714,7 +714,7 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location_lookup_method *
+static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_tracepoint_get_lookup_method(
 		struct lttng_userspace_probe_location *location)
 {

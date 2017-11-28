@@ -316,7 +316,7 @@ int extract_userspace_probe_offset_function_elf(
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
 				LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	lookup = lttng_userspace_probe_location_function_get_lookup_method(
+	lookup = lttng_userspace_probe_location_get_lookup_method(
 					probe_location);
 	if (!lookup) {
 		ret = -1;
