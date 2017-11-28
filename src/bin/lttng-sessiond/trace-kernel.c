@@ -360,6 +360,82 @@ end:
 	return ret;
 }
 
+/* Compute the offsets of the instrumentation bytes in the binary based on the
+ * tracepoint probe location using the SDT lookup method.
+ *
+ * Returns 0 on success and set the offset out parameter to the offsets of the
+ * SDT tracepoint.
+ * Returns -1 on error.
+ */
+static
+int extract_userspace_probe_offset_tracepoint_sdt(
+					struct lttng_userspace_probe_location *probe_location,
+					uint64_t *offsets, uint32_t *num_offset)
+{
+	int ret, fd;
+	uid_t uid;
+	gid_t gid;
+	const char *probe_name = NULL, *provider_name = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
+
+	ret = 0;
+
+	assert(lttng_userspace_probe_location_get_type(probe_location) ==
+				LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+
+	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
+	if (!lookup) {
+		ret = -1;
+		goto end;
+	}
+
+	lookup_method_type =
+		lttng_userspace_probe_location_lookup_method_get_type(lookup);
+
+	assert(lookup_method_type ==
+				LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
+
+
+	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
+					probe_location);
+	if (!probe_name) {
+		ret = -1;
+		goto end;
+	}
+
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
+					probe_location);
+	if (!provider_name) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_userspace_probe_location_lookup_method_sdt_get_run_as_ids(
+					lookup, &uid, &gid);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
+	fd = lttng_userspace_probe_location_tracepoint_get_binary_fd(probe_location);
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = run_as_extract_sdt_probe_offsets(fd, probe_name, provider_name, uid, gid, offsets, num_offset);
+	if (ret < 0) {
+		DBG("userspace probe offset calculation failed for sdt probe %s:%s", provider_name, probe_name);
+		goto end;
+	}
+
+	for (int i = 0; i < *num_offset; i++) {
+		DBG("userspace probe sdt offsets found for %s:%s at 0x%lx.", provider_name, probe_name, offsets[i]);
+	}
+end:
+	return ret;
+}
 /*
  * Allocate and initialize a kernel event. Set name and event type.
  * We own filter_expression, and filter.
@@ -458,6 +534,32 @@ trace_kernel_create_event(
 				lttng_userspace_probe_location_copy(location);
 			lttng_userspace_probe_location_function_set_binary_fd(
 				userspace_probe_location, -1);
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			/*
+			 * Giving the probe location (symbol and fd), extract the offset of
+			 * the symbol in the binary.
+			 */
+			ret = extract_userspace_probe_offset_tracepoint_sdt(location,
+							attr->u.uprobe.offsets, &attr->u.uprobe.num_offset);
+			if (ret) {
+				ret = LTTNG_ERR_SDT_PROBE_SEMAPHORE;
+				goto error;
+			}
+			/*
+			 * Get the file descriptor on the target binary.
+			 */
+			attr->u.uprobe.fd =
+				lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+
+		/*
+		 * Save a reference to the probe location used during the listing of
+		 * events. Close its FD since it won't be needed for listing.
+		 */
+		userspace_probe_location =
+			lttng_userspace_probe_location_copy(location);
+		lttng_userspace_probe_location_tracepoint_set_binary_fd(
+			userspace_probe_location, -1);
 			break;
 		default:
 			DBG("Unsupported lookup method type");
