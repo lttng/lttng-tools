@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <signal.h>
 
+#include <common/lttng-kernel.h>
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/compat/getenv.h>
@@ -69,6 +70,11 @@ struct run_as_extract_elf_symbol_offset_data {
 	char function[PATH_MAX];
 };
 
+struct run_as_extract_sdt_probe_offsets_data {
+	char probe_name[PATH_MAX];
+	char provider_name[PATH_MAX];
+};
+
 struct run_as_mkdir_ret {
 	int ret;
 };
@@ -89,6 +95,11 @@ struct run_as_extract_elf_symbol_offset_ret {
 	uint64_t offset;
 };
 
+struct run_as_extract_sdt_probe_offsets_ret {
+	uint32_t num_offset;
+	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
+};
+
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_OPEN,
@@ -96,6 +107,7 @@ enum run_as_cmd {
 	RUN_AS_RMDIR_RECURSIVE,
 	RUN_AS_MKDIR_RECURSIVE,
 	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
+	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
 };
 
 struct run_as_data {
@@ -107,6 +119,7 @@ struct run_as_data {
 		struct run_as_unlink_data unlink;
 		struct run_as_rmdir_recursive_data rmdir_recursive;
 		struct run_as_extract_elf_symbol_offset_data extract_elf_symbol_offset;
+		struct run_as_extract_sdt_probe_offsets_data extract_sdt_probe_offsets;
 	} u;
 	uid_t uid;
 	gid_t gid;
@@ -135,6 +148,7 @@ struct run_as_ret {
 		struct run_as_unlink_ret unlink;
 		struct run_as_rmdir_recursive_ret rmdir_recursive;
 		struct run_as_extract_elf_symbol_offset_ret extract_elf_symbol_offset;
+		struct run_as_extract_sdt_probe_offsets_ret extract_sdt_probe_offsets;
 	} u;
 	int _errno;
 	bool _error;
@@ -244,6 +258,53 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 }
 
 static
+int _extract_sdt_probe_offsets(struct run_as_data *data,
+							   struct run_as_ret *ret_value)
+{
+	int ret = 0;
+	bool has_sema = false;
+	uint64_t *offsets = NULL;
+	uint32_t num_offset;
+	ret_value->_error = false;
+
+	/* On sucess, this call allocates the offsets paramater. */
+	ret = lttng_elf_get_sdt_description(data->fd,
+			data->u.extract_sdt_probe_offsets.probe_name,
+			data->u.extract_sdt_probe_offsets.provider_name,
+			&offsets, &num_offset, &has_sema);
+
+	if (ret < 0) {
+		DBG("Failed to extract SDT probe offsets");
+		ret = -1;
+		ret_value->_error = true;
+		goto end;
+	}
+
+	if (has_sema == true) {
+		DBG("SDT probe is guarded by a semaphore.");
+		ret = -LTTNG_ERR_SDT_PROBE_SEMAPHORE;
+		ret_value->_error = true;
+		goto free_offset;
+	}
+
+	if (num_offset <= 0 || num_offset > LTTNG_KERNEL_MAX_UPROBE_NUM) {
+		DBG("Wrong number of probes.");
+		ret = -1;
+		ret_value->_error = true;
+		goto free_offset;
+	}
+
+	/* Copy the content of the offsets array to the ret struct. */
+	memcpy(ret_value->u.extract_sdt_probe_offsets.offsets,
+				offsets, num_offset * sizeof(uint64_t));
+
+	ret_value->u.extract_sdt_probe_offsets.num_offset = num_offset;
+free_offset:
+	free(offsets);
+end:
+	return ret;
+}
+static
 run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
 	switch (cmd) {
@@ -259,6 +320,8 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 		return _mkdir_recursive;
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 		return _extract_elf_symbol_offset;
+	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
+		return _extract_sdt_probe_offsets;
 	default:
 		ERR("Unknown command %d", (int) cmd);
 		return NULL;
@@ -311,6 +374,7 @@ int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 		break;
 	default:
 		return 0;
@@ -379,6 +443,7 @@ int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *
 
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 		break;
 	default:
 		return 0;
@@ -399,6 +464,7 @@ int cleanup_received_fd(enum run_as_cmd cmd, int fd)
 	int ret = 0;
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
+	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 		break;
 	default:
 		return 0;
@@ -874,6 +940,38 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 	}
 
 	*offset = ret.u.extract_elf_symbol_offset.offset;
+	return 0;
+}
+
+LTTNG_HIDDEN
+int run_as_extract_sdt_probe_offsets(int fd, const char* probe_name, const char* provider_name,
+				    uid_t uid, gid_t gid, uint64_t *offsets, uint32_t *num_offset)
+{
+	struct run_as_data data;
+	struct run_as_ret ret;
+
+	DBG3("extract_sdt_probe_offsets() on fd=%d, probe_name=%s and "
+		 "provider_name=%s with for uid %d and gid %d", fd, probe_name,
+		 provider_name, (int) uid, (int) gid);
+
+	data.fd = fd;
+
+	strncpy(data.u.extract_sdt_probe_offsets.probe_name, probe_name, PATH_MAX - 1);
+	strncpy(data.u.extract_sdt_probe_offsets.provider_name, provider_name, PATH_MAX - 1);
+
+	data.u.extract_sdt_probe_offsets.probe_name[PATH_MAX - 1] = '\0';
+	data.u.extract_sdt_probe_offsets.provider_name[PATH_MAX - 1] = '\0';
+
+	run_as(RUN_AS_EXTRACT_SDT_PROBE_OFFSETS, &data, &ret, uid, gid);
+
+	errno = ret._errno;
+
+	if (ret._error != 0) {
+		return -1;
+	}
+
+	*num_offset = ret.u.extract_sdt_probe_offsets.num_offset;
+	memcpy(offsets,ret.u.extract_sdt_probe_offsets.offsets, *num_offset * sizeof(uint64_t));
 	return 0;
 }
 
