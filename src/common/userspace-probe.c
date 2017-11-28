@@ -730,6 +730,27 @@ end:
 	return ret;
 }
 
+struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_get_lookup_method(
+		struct lttng_userspace_probe_location *location)
+{
+	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
+
+	assert(location);
+	switch (location->type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	ret = lttng_userspace_probe_location_function_get_lookup_method(
+			location);
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+	ret = lttng_userspace_probe_location_tracepoint_get_lookup_method(
+			location);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
 static
 int lttng_userspace_probe_location_lookup_method_serialize(
 		struct lttng_userspace_probe_location_lookup_method *method,
