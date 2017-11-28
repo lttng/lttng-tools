@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include <lttng/event.h>
+#include <lttng/lttng-error.h>
 #include <lttng/userspace-probe.h>
 #include <lttng/userspace-probe-internal.h>
 
@@ -365,19 +366,24 @@ end:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
-		char *filter_expression, struct lttng_filter_bytecode *filter)
+enum lttng_error_code
+trace_kernel_create_event(
+		struct lttng_event *ev, char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct ltt_kernel_event **kernel_event)
 {
-	struct ltt_kernel_event *lke;
+	enum lttng_error_code ret;
 	struct lttng_kernel_event *attr;
+	struct ltt_kernel_event *local_kernel_event;
 	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
 
 	assert(ev);
 
-	lke = zmalloc(sizeof(struct ltt_kernel_event));
+	local_kernel_event = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_event));
-	if (lke == NULL || attr == NULL) {
+	if (local_kernel_event == NULL || attr == NULL) {
 		PERROR("kernel event zmalloc");
+		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
@@ -392,12 +398,12 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 		break;
 	case LTTNG_EVENT_USERSPACE_PROBE:
 	{
-		int ret = 0;
 		struct lttng_userspace_probe_location* location = NULL;
 		struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 
 		location = lttng_event_get_userspace_probe_location(ev);
 		if (!location) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 
@@ -408,20 +414,15 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 		 * probes using uprobes. In the interactions with the kernel tracer, we
 		 * use the uprobe term.
 		 */
-		switch (ev->type) {
-		case LTTNG_EVENT_USERSPACE_PROBE:
-			attr->instrumentation = LTTNG_KERNEL_UPROBE;
-			break;
-		default:
-			goto error;
-		}
+		attr->instrumentation = LTTNG_KERNEL_UPROBE;
 
 		/*
 		 * Only the elf lookup method is supported at the moment.
 		 */
-		lookup = lttng_userspace_probe_location_function_get_lookup_method(
-										location);
+		lookup = lttng_userspace_probe_location_get_lookup_method(
+						location);
 		if (!lookup) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 
@@ -438,6 +439,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 			ret = extract_userspace_probe_offset_function_elf(location,
 							&attr->u.uprobe.offsets[0]);
 			if (ret) {
+				ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 				goto error;
 			}
 
@@ -459,6 +461,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 			break;
 		default:
 			DBG("Unsupported lookup method type");
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 		break;
@@ -488,6 +491,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 		break;
 	default:
 		ERR("Unknown kernel instrumentation type (%d)", ev->type);
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -496,21 +500,23 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 	attr->name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 
 	/* Setting up a kernel event */
-	lke->fd = -1;
-	lke->event = attr;
-	lke->enabled = 1;
-	lke->filter_expression = filter_expression;
-	lke->filter = filter;
-	lke->userspace_probe_location = userspace_probe_location;
+	local_kernel_event->fd = -1;
+	local_kernel_event->event = attr;
+	local_kernel_event->enabled = 1;
+	local_kernel_event->filter_expression = filter_expression;
+	local_kernel_event->filter = filter;
+	local_kernel_event->userspace_probe_location = userspace_probe_location;
 
-	return lke;
+	*kernel_event = local_kernel_event;
+
+	return LTTNG_OK;
 
 error:
 	free(filter_expression);
 	free(filter);
-	free(lke);
+	free(local_kernel_event);
 	free(attr);
-	return NULL;
+	return ret;
 }
 
 /*
