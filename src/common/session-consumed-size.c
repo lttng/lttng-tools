@@ -17,6 +17,7 @@
 
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
+#include <lttng/constant.h>
 #include <common/macros.h>
 #include <common/error.h>
 #include <assert.h>
