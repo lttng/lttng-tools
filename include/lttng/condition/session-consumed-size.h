@@ -124,8 +124,8 @@ lttng_condition_session_consumed_size_set_session_name(
 /*
  * Get the session consumed property of a session consumed size evaluation.
  *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a threshold expressed in
- * bytes, or LTTNG_CONDITION_STATUS_INVALID if an invalid parameter is passed.
+ * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
+ * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
  */
 extern enum lttng_evaluation_status
 lttng_evaluation_session_consumed_size_get_consumed_size(
