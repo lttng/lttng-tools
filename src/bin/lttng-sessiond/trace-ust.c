@@ -435,91 +435,99 @@ end:
  * Allocate and initialize a ust event. Set name and event type.
  * We own filter_expression, filter, and exclusion.
  *
- * Return pointer to structure or NULL.
+ * Return an lttng_error_code
  */
-struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
-		bool internal_event)
+		bool internal_event,
+		struct ltt_ust_event **ust_event)
 {
-	struct ltt_ust_event *lue;
+	struct ltt_ust_event *local_ust_event;
+	enum lttng_error_code ret = LTTNG_OK;
 
 	assert(ev);
 
 	if (exclusion && validate_exclusion(exclusion)) {
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
-	lue = zmalloc(sizeof(struct ltt_ust_event));
-	if (lue == NULL) {
+	local_ust_event = zmalloc(sizeof(struct ltt_ust_event));
+	if (local_ust_event == NULL) {
 		PERROR("ust event zmalloc");
+		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
-	lue->internal = internal_event;
+	local_ust_event->internal = internal_event;
 
 	switch (ev->type) {
 	case LTTNG_EVENT_PROBE:
-		lue->attr.instrumentation = LTTNG_UST_PROBE;
+		local_ust_event->attr.instrumentation = LTTNG_UST_PROBE;
 		break;
 	case LTTNG_EVENT_FUNCTION:
-		lue->attr.instrumentation = LTTNG_UST_FUNCTION;
+		local_ust_event->attr.instrumentation = LTTNG_UST_FUNCTION;
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
-		lue->attr.instrumentation = LTTNG_UST_FUNCTION;
+		local_ust_event->attr.instrumentation = LTTNG_UST_FUNCTION;
 		break;
 	case LTTNG_EVENT_TRACEPOINT:
-		lue->attr.instrumentation = LTTNG_UST_TRACEPOINT;
+		local_ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
+		ret = LTTNG_ERR_INVALID;
 		goto error_free_event;
 	}
 
 	/* Copy event name */
-	strncpy(lue->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
-	lue->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
+	local_ust_event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
 
 	switch (ev->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
-		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
-		lue->attr.loglevel = -1;	/* Force to -1 */
+		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		local_ust_event->attr.loglevel = -1;	/* Force to -1 */
 		break;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
-		lue->attr.loglevel = ev->loglevel;
+		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		local_ust_event->attr.loglevel = ev->loglevel;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		lue->attr.loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
-		lue->attr.loglevel = ev->loglevel;
+		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		local_ust_event->attr.loglevel = ev->loglevel;
 		break;
 	default:
 		ERR("Unknown ust loglevel type (%d)", ev->loglevel_type);
+		ret = LTTNG_ERR_INVALID;
 		goto error_free_event;
 	}
 
 	/* Same layout. */
-	lue->filter_expression = filter_expression;
-	lue->filter = filter;
-	lue->exclusion = exclusion;
+	local_ust_event->filter_expression = filter_expression;
+	local_ust_event->filter = filter;
+	local_ust_event->exclusion = exclusion;
 
 	/* Init node */
-	lttng_ht_node_init_str(&lue->node, lue->attr.name);
+	lttng_ht_node_init_str(&local_ust_event->node, local_ust_event->attr.name);
 
 	DBG2("Trace UST event %s, loglevel (%d,%d) created",
-		lue->attr.name, lue->attr.loglevel_type,
-		lue->attr.loglevel);
+		local_ust_event->attr.name, local_ust_event->attr.loglevel_type,
+		local_ust_event->attr.loglevel);
 
-	return lue;
+	*ust_event = local_ust_event;
+
+	return ret;
 
 error_free_event:
-	free(lue);
+	free(local_ust_event);
 error:
 	free(filter_expression);
 	free(filter);
 	free(exclusion);
-	return NULL;
+	return ret;
 }
 
 static
