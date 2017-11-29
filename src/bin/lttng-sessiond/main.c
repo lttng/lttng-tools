@@ -2442,7 +2442,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		{
 			char *tmpnew = NULL;
 
-			if (config.consumerd64_lib_dir.value[0] != '\0') {
+			if (config.consumerd64_lib_dir.value) {
 				char *tmp;
 				size_t tmplen;
 
@@ -2476,16 +2476,14 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					"--group", config.tracing_group_name.value,
 					NULL);
-			if (config.consumerd64_lib_dir.value[0] != '\0') {
-				free(tmpnew);
-			}
+			free(tmpnew);
 			break;
 		}
 		case LTTNG_CONSUMER32_UST:
 		{
 			char *tmpnew = NULL;
 
-			if (config.consumerd32_lib_dir.value[0] != '\0') {
+			if (config.consumerd32_lib_dir.value) {
 				char *tmp;
 				size_t tmplen;
 
@@ -2519,9 +2517,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
 					"--group", config.tracing_group_name.value,
 					NULL);
-			if (config.consumerd32_lib_dir.value[0] != '\0') {
-				free(tmpnew);
-			}
+			free(tmpnew);
 			break;
 		}
 		default:
