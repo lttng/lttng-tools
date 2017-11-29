@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <wordexp.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/string.h>
@@ -283,6 +284,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 {
 	int ret = CMD_SUCCESS;
 	int num_token;
+	wordexp_t expanded_path;
 
 	char **tokens;
 	char *target_path = NULL;
@@ -328,10 +330,33 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 
 	target_path = strutils_unescape_string(target_path, 0);
 
+	/* Find the full path of the target binary. */
+
+	/* First, expand any shell-like elements (e.g. tilde and wildcards). */
+	ret = wordexp(target_path, &expanded_path, 0);
+
+	/* Check for error */
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end_string;
+	}
+
+	/* Make sure there is only one match */
+	if (expanded_path.we_wordc != 1) {
+		ERR("Ambiguous path to binary.");
+		ret = -LTTNG_ERR_INVALID;
+		goto end_free_wordexp;
+	}
+
+	/* Take a pointer to the first and only match */
+	target_path = expanded_path.we_wordv[0];
+	if (!target_path) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end_free_wordexp;
+	}
 
 	/*
-	 * Find the full path of the target binary. Start by looking for a relative
-	 * or absolute path. If there is no match, try walking the PATH.
+	 * Use realpath(3) to expand symlinks and references to `/./` and `/../`
 	 */
 	real_target_path = realpath(target_path, NULL);
 	if (!real_target_path) {
@@ -339,7 +364,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
 		if (!real_target_path) {
 			ret = -LTTNG_ERR_NOMEM;
-			goto end_string;
+			goto end_free_wordexp;
 		}
 
 		/* Walk the $PATH variable to find the targeted binary. */
@@ -393,6 +418,8 @@ end_free_path:
 	 * the PATH.
 	 */
 	free(real_target_path);
+end_free_wordexp:
+	wordfree(&expanded_path);
 end_string:
 	strutils_free_null_terminated_array_of_strings(tokens);
 end:
