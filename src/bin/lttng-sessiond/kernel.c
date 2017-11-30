@@ -35,6 +35,12 @@
 #include "utils.h"
 
 /*
+ * Key used to reference a channel between the sessiond and the consumer. This
+ * is only read and updated with the session_list lock held.
+ */
+static uint64_t next_kernel_channel_key = 1;
+
+/*
  * Add context on a kernel channel.
  *
  * Assumes the ownership of ctx.
@@ -169,8 +175,10 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
 	lkc->session = session;
+	lkc->key = next_kernel_channel_key++;
 
-	DBG("Kernel channel %s created (fd: %d)", lkc->channel->name, lkc->fd);
+	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
+			lkc->channel->name, lkc->fd, lkc->key);
 
 	return 0;
 
@@ -291,7 +299,8 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 	}
 
 	chan->enabled = 0;
-	DBG("Kernel channel %s disabled (fd: %d)", chan->channel->name, chan->fd);
+	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
+			chan->channel->name, chan->fd, chan->key);
 
 	return 0;
 
@@ -315,7 +324,8 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 	}
 
 	chan->enabled = 1;
-	DBG("Kernel channel %s enabled (fd: %d)", chan->channel->name, chan->fd);
+	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
+			chan->channel->name, chan->fd, chan->key);
 
 	return 0;
 
@@ -1030,7 +1040,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
 			pthread_mutex_lock(socket->lock);
-			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
+			ret = consumer_snapshot_channel(socket, chan->key, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
 					nb_packets_per_stream);

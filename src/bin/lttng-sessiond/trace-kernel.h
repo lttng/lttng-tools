@@ -63,6 +63,7 @@ struct ltt_kernel_event {
 /* Kernel channel */
 struct ltt_kernel_channel {
 	int fd;
+	uint64_t key; /* Key to reference this channel with the consumer. */
 	int enabled;
 	unsigned int stream_count;
 	unsigned int event_count;

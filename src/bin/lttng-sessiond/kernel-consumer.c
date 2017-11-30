@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 #include <common/defaults.h>
@@ -129,7 +130,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	/* Prep channel message structure */
 	consumer_init_channel_comm_msg(&lkm,
 			LTTNG_CONSUMER_ADD_CHANNEL,
-			channel->fd,
+			channel->key,
 			ksession->id,
 			pathname,
 			ksession->uid,
@@ -160,7 +161,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	status = notification_thread_command_add_channel(
 			notification_thread_handle, session->name,
 			ksession->uid, ksession->gid,
-			channel->channel->name, channel->fd,
+			channel->channel->name, channel->key,
 			LTTNG_DOMAIN_KERNEL,
 			channel->channel->attr.subbuf_size * channel->channel->attr.num_subbuf);
 	rcu_read_unlock();
@@ -273,8 +274,14 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	assert(session->consumer);
 	assert(sock);
 
-	DBG("Sending stream %d of channel %s to kernel consumer",
-			stream->fd, channel->channel->name);
+	rcu_read_lock();
+	sess = session_find_by_id(session->id);
+	assert(session);
+
+	DBG("Sending stream %d of channel %s (fd: %d, key: %" PRIu64 ") in session %s to kernel consumer",
+			stream->fd, channel->channel->name, channel->fd, channel->key,
+			sess->name);
+	rcu_read_unlock();
 
 	/* Get consumer output pointer */
 	consumer = session->consumer;
@@ -282,7 +289,7 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	/* Prep stream consumer message */
 	consumer_init_stream_comm_msg(&lkm,
 			LTTNG_CONSUMER_ADD_STREAM,
-			channel->fd,
+			channel->key,
 			stream->fd,
 			stream->cpu);
 
@@ -432,7 +439,7 @@ int kernel_consumer_send_session(struct consumer_socket *sock,
 			 * Inform the relay that all the streams for the
 			 * channel were sent.
 			 */
-			ret = kernel_consumer_streams_sent(sock, session, chan->fd);
+			ret = kernel_consumer_streams_sent(sock, session, chan->key);
 			if (ret < 0) {
 				goto error;
 			}
@@ -457,11 +464,11 @@ int kernel_consumer_destroy_channel(struct consumer_socket *socket,
 	assert(channel);
 	assert(socket);
 
-	DBG("Sending kernel consumer destroy channel key %d", channel->fd);
+	DBG("Sending kernel consumer destroy channel key %" PRIu64, channel->key);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_DESTROY_CHANNEL;
-	msg.u.destroy_channel.key = channel->fd;
+	msg.u.destroy_channel.key = channel->key;
 
 	pthread_mutex_lock(socket->lock);
 	health_code_update();

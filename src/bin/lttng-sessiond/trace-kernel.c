@@ -551,7 +551,7 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 			&& channel->published_to_notification_thread) {
 		status = notification_thread_command_remove_channel(
 				notification_thread_handle,
-				channel->fd, LTTNG_DOMAIN_KERNEL);
+				channel->key, LTTNG_DOMAIN_KERNEL);
 		assert(status == LTTNG_OK);
 	}
 	free(channel->channel->attr.extended.ptr);
