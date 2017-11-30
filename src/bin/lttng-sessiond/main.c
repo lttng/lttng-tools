@@ -2450,20 +2450,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen("LD_LIBRARY_PATH=")
-					+ strlen(config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
-				strcpy(tmpnew, "LD_LIBRARY_PATH=");
 				strcat(tmpnew, config.consumerd64_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
 				}
-				ret = putenv(tmpnew);
+				ret = setenv("LD_LIBRARY_PATH", tmpnew, 1);
 				if (ret) {
 					ret = -errno;
 					free(tmpnew);
@@ -2491,20 +2489,18 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen("LD_LIBRARY_PATH=")
-					+ strlen(config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
-				strcpy(tmpnew, "LD_LIBRARY_PATH=");
 				strcat(tmpnew, config.consumerd32_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
 				}
-				ret = putenv(tmpnew);
+				ret = setenv("LD_LIBRARY_PATH", tmpnew, 1);
 				if (ret) {
 					ret = -errno;
 					free(tmpnew);
