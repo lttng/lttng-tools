@@ -2623,7 +2623,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			break;
 		}
 		default:
-			PERROR("unknown consumer type");
+			ERR("unknown consumer type");
 			exit(EXIT_FAILURE);
 		}
 		if (errno != 0) {
