@@ -167,14 +167,14 @@ static int get_kernel_runtime_stats(struct ltt_session *session,
 		goto end;
 	}
 
-	ret = consumer_get_discarded_events(session->id, kchan->fd,
+	ret = consumer_get_discarded_events(session->id, kchan->key,
 			session->kernel_session->consumer,
 			discarded_events);
 	if (ret < 0) {
 		goto end;
 	}
 
-	ret = consumer_get_lost_packets(session->id, kchan->fd,
+	ret = consumer_get_lost_packets(session->id, kchan->key,
 			session->kernel_session->consumer,
 			lost_packets);
 	if (ret < 0) {
