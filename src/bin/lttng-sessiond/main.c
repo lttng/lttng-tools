@@ -94,6 +94,9 @@ static int lockfile_fd = -1;
 /* Set to 1 when a SIGUSR1 signal is received. */
 static int recv_child_signal;
 
+struct lttng_kernel_tracer_version kernel_tracer_version;
+struct lttng_kernel_tracer_abi_version kernel_tracer_abi_version;
+
 /*
  * Consumer daemon specific control data. Every value not initialized here is
  * set to 0 by the static definition.
@@ -2620,7 +2623,8 @@ static int init_kernel_tracer(void)
 	}
 
 	/* Validate kernel version */
-	ret = kernel_validate_version(kernel_tracer_fd);
+	ret = kernel_validate_version(kernel_tracer_fd, &kernel_tracer_version,
+			&kernel_tracer_abi_version);
 	if (ret < 0) {
 		goto error_version;
 	}
