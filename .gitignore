@@ -118,6 +118,8 @@ health_check
 /tests/unit/test_string_utils
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 /tests/utils/testapp/userspace-probe-elf-binary/userspace-probe-elf-binary
+/tests/utils/testapp/userspace-probe-sdt-binary/foobar_provider.h
+/tests/utils/testapp/userspace-probe-sdt-binary/userspace-probe-sdt-binary
 
 # man pages
 /doc/man/*.1
