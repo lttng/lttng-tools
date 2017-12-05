@@ -2917,15 +2917,6 @@ static int create_channel_per_uid(struct ust_app *app,
 		created = true;
 	}
 
-	/* Send buffers to the application. */
-	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
-	if (ret < 0) {
-		if (ret != -ENOTCONN) {
-			ERR("Error sending channel to application");
-		}
-		goto error;
-	}
-
 	if (created) {
 		enum lttng_error_code cmd_ret;
 		struct ltt_session *session;
@@ -2959,6 +2950,15 @@ static int create_channel_per_uid(struct ust_app *app,
 			ERR("Failed to add channel to notification thread");
 			goto error;
 		}
+	}
+
+	/* Send buffers to the application. */
+	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
+	if (ret < 0) {
+		if (ret != -ENOTCONN) {
+			ERR("Error sending channel to application");
+		}
+		goto error;
 	}
 
 error:
