@@ -2845,6 +2845,8 @@ error:
 /*
  * Create and send to the application the created buffers with per UID buffers.
  *
+ * This MUST be called with a RCU read side lock acquired.
+ *
  * Return 0 on success else a negative value.
  */
 static int create_channel_per_uid(struct ust_app *app,
