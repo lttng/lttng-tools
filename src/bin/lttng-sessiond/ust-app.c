@@ -2925,7 +2925,6 @@ static int create_channel_per_uid(struct ust_app *app,
 		uint64_t chan_reg_key;
 		struct ust_registry_channel *chan_reg;
 
-		rcu_read_lock();
 		chan_reg_key = ua_chan->tracing_channel_id;
 
 		pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
@@ -2946,7 +2945,6 @@ static int create_channel_per_uid(struct ust_app *app,
 				ua_chan->key,
 				LTTNG_DOMAIN_UST,
 				ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
-		rcu_read_unlock();
 		if (cmd_ret != LTTNG_OK) {
 			ret = - (int) cmd_ret;
 			ERR("Failed to add channel to notification thread");
