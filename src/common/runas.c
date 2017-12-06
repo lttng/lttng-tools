@@ -945,7 +945,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 
 LTTNG_HIDDEN
 int run_as_extract_sdt_probe_offsets(int fd, const char* probe_name, const char* provider_name,
-				    uid_t uid, gid_t gid, uint64_t *offsets, uint32_t *num_offset)
+				    uid_t uid, gid_t gid, uint64_t **offsets, uint32_t *num_offset)
 {
 	struct run_as_data data;
 	struct run_as_ret ret;
@@ -971,7 +971,13 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* probe_name, const char*
 	}
 
 	*num_offset = ret.u.extract_sdt_probe_offsets.num_offset;
-	memcpy(offsets,ret.u.extract_sdt_probe_offsets.offsets, *num_offset * sizeof(uint64_t));
+
+	*offsets = malloc(*num_offset * sizeof(uint64_t));
+	if (!*offsets) {
+		return -ENOMEM;
+	}
+
+	memcpy(*offsets, ret.u.extract_sdt_probe_offsets.offsets, *num_offset * sizeof(uint64_t));
 	return 0;
 }
 
