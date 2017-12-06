@@ -333,7 +333,6 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_name_elf_copy(
 			struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	int ret;
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
 	assert(lookup_method->type ==
@@ -343,11 +342,6 @@ lttng_userspace_probe_location_lookup_method_function_name_elf_copy(
 	if (!elf_method) {
 		goto error;
 	}
-	ret = lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
-				lookup_method, &elf_method->run_as_uid, &elf_method->run_as_gid);
-	if (ret) {
-		goto free_lookup_method;
-	}
 
 	elf_method->parent.type = lookup_method->type;
 	parent = &elf_method->parent;
@@ -355,8 +349,6 @@ lttng_userspace_probe_location_lookup_method_function_name_elf_copy(
 end:
 	return parent;
 
-free_lookup_method:
-	free(elf_method);
 error:
 	parent = NULL;
 	goto end;
@@ -366,7 +358,6 @@ static struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 			struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
-	int ret;
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
 	assert(lookup_method->type ==
@@ -376,11 +367,6 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	if (!sdt_method) {
 		goto error;
 	}
-	ret = lttng_userspace_probe_location_lookup_method_sdt_get_run_as_ids(
-				lookup_method, &sdt_method->run_as_uid, &sdt_method->run_as_gid);
-	if (ret) {
-		goto free_lookup_method;
-	}
 
 	sdt_method->parent.type = lookup_method->type;
 	parent = &sdt_method->parent;
@@ -388,8 +374,6 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 end:
 	return parent;
 
-free_lookup_method:
-	free(sdt_method);
 error:
 	parent = NULL;
 	goto end;
@@ -944,131 +928,6 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_elf_set_run_as_ids(
-			struct lttng_userspace_probe_location_lookup_method *lookup,
-			uid_t uid, gid_t gid)
-{
-	int ret;
-	struct lttng_userspace_probe_location_lookup_method_elf *lookup_elf = NULL;
-
-	if (!lookup) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		break;
-	default:
-		/* Invalid probe location lookup method. */
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	lookup_elf = container_of(lookup,
-				struct lttng_userspace_probe_location_lookup_method_elf, parent);
-
-	lookup_elf->run_as_uid = uid;
-	lookup_elf->run_as_gid = gid;
-	ret = 0;
-end:
-	return ret;
-}
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_sdt_set_run_as_ids(
-			struct lttng_userspace_probe_location_lookup_method *lookup,
-			uid_t uid, gid_t gid)
-{
-	int ret;
-	struct lttng_userspace_probe_location_lookup_method_sdt *lookup_sdt = NULL;
-
-	if (!lookup) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		break;
-	default:
-		/* Invalid probe location lookup method. */
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	lookup_sdt = container_of(lookup,
-				struct lttng_userspace_probe_location_lookup_method_sdt, parent);
-
-	lookup_sdt->run_as_uid = uid;
-	lookup_sdt->run_as_gid = gid;
-	ret = 0;
-end:
-	return ret;
-}
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
-			struct lttng_userspace_probe_location_lookup_method *lookup,
-			uid_t *uid, gid_t *gid)
-{
-	int ret;
-	struct lttng_userspace_probe_location_lookup_method_elf *lookup_elf = NULL;
-
-	if (!lookup) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		break;
-	default:
-		/* Invalid probe location lookup method. */
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	lookup_elf = container_of(lookup,
-				struct lttng_userspace_probe_location_lookup_method_elf, parent);
-	*uid = lookup_elf->run_as_uid;
-	*gid = lookup_elf->run_as_gid;
-	ret = 0;
-
-end:
-	return ret;
-}
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_sdt_get_run_as_ids(
-			struct lttng_userspace_probe_location_lookup_method *lookup,
-			uid_t *uid, gid_t *gid)
-{
-	int ret;
-	struct lttng_userspace_probe_location_lookup_method_sdt *lookup_sdt = NULL;
-
-	if (!lookup) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		break;
-	default:
-		/* Invalid probe location lookup method. */
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	lookup_sdt = container_of(lookup,
-				struct lttng_userspace_probe_location_lookup_method_sdt, parent);
-	*uid = lookup_sdt->run_as_uid;
-	*gid = lookup_sdt->run_as_gid;
-	ret = 0;
-
-end:
-	return ret;
-}
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		struct lttng_userspace_probe_location *location,

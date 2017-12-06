@@ -41,14 +41,10 @@ struct lttng_userspace_probe_location_lookup_method {
 
 struct lttng_userspace_probe_location_lookup_method_elf {
 	struct lttng_userspace_probe_location_lookup_method parent;
-	uid_t run_as_uid;
-	gid_t run_as_gid;
 };
 
 struct lttng_userspace_probe_location_lookup_method_sdt {
 	struct lttng_userspace_probe_location_lookup_method parent;
-	uid_t run_as_uid;
-	gid_t run_as_gid;
 };
 
 struct lttng_userspace_probe_location_comm {
@@ -110,26 +106,6 @@ struct lttng_userspace_probe_location_tracepoint {
 	/* Set to -1 if not open. */
 	int binary_fd;
 };
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_elf_set_run_as_ids(
-		struct lttng_userspace_probe_location_lookup_method *lookup,
-		uid_t uid, gid_t gid);
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_elf_get_run_as_ids(
-		struct lttng_userspace_probe_location_lookup_method *lookup,
-		uid_t *uid, gid_t *gid);
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_sdt_set_run_as_ids(
-		struct lttng_userspace_probe_location_lookup_method *lookup,
-		uid_t uid, gid_t gid);
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_lookup_method_sdt_get_run_as_ids(
-		struct lttng_userspace_probe_location_lookup_method *lookup,
-		uid_t *uid, gid_t *gid);
 
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
