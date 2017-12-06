@@ -103,8 +103,16 @@ struct lttng_kernel_kprobe {
 
 struct lttng_kernel_uprobe {
 	int fd;
-	uint32_t num_offset;
-	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
+} LTTNG_PACKED;
+
+struct lttng_kernel_event_callsite_uprobe {
+	uint64_t offset;
+} LTTNG_PACKED;
+
+struct lttng_kernel_event_callsite {
+	union {
+		struct lttng_kernel_event_callsite_uprobe uprobe;
+	} u;
 } LTTNG_PACKED;
 
 /* Function tracer */

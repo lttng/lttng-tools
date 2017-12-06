@@ -38,6 +38,7 @@ int kernctl_stop_session(int fd);
 
 /* Apply on event FD */
 int kernctl_filter(int fd, struct lttng_filter_bytecode *filter);
+int kernctl_add_callsite(int fd, struct lttng_kernel_event_callsite *callsite);
 
 int kernctl_tracepoint_list(int fd);
 int kernctl_syscall_list(int fd);

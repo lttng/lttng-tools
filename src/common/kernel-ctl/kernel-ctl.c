@@ -350,6 +350,11 @@ int kernctl_filter(int fd, struct lttng_filter_bytecode *filter)
 	return ret;
 }
 
+int kernctl_add_callsite(int fd, struct lttng_kernel_event_callsite *callsite)
+{
+	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ADD_CALLSITE, callsite);
+}
+
 int kernctl_tracepoint_list(int fd)
 {
 	return compat_ioctl_no_arg(fd, LTTNG_KERNEL_OLD_TRACEPOINT_LIST,
