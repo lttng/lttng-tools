@@ -374,6 +374,17 @@ end:
 	lttng_action_destroy(action);
 }
 
+static
+void wait_data_pending(const char *session_name)
+{
+	int ret;
+
+	do {
+		ret = lttng_data_pending(session_name);
+		assert(ret >= 0);
+	} while (ret != 0);
+}
+
 void test_notification_channel(const char *session_name, const char *channel_name, const enum lttng_domain_type domain_type, const char **argv)
 {
 	int ret = 0;
@@ -575,8 +586,8 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED, "Subscribe to a condition for which subscription was already done");
 
 	/* Wait for notification to happen */
-	lttng_start_tracing(session_name);
 	stop_consumer(argv);
+	lttng_start_tracing(session_name);
 
 	/* Wait for high notification */
 	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
@@ -588,8 +599,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	notification = NULL;
 
 	suspend_application();
+	lttng_stop_tracing_no_wait(session_name);
 	resume_consumer(argv);
-	lttng_stop_tracing(session_name);
+	wait_data_pending(session_name);
 
 	/*
 	 * Test that communication still work even if there is notification
@@ -611,9 +623,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	notification = NULL;
 
 	/* Stop consumer to force a high notification */
+	stop_consumer(argv);
 	resume_application();
 	lttng_start_tracing(session_name);
-	stop_consumer(argv);
 
 	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
@@ -623,9 +635,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	notification = NULL;
 
 	suspend_application();
-	/* Resume consumer to allow event consumption */
+	lttng_stop_tracing_no_wait(session_name);
 	resume_consumer(argv);
-	lttng_stop_tracing(session_name);
+	wait_data_pending(session_name);
 
 	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
@@ -634,10 +646,10 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
+	stop_consumer(argv);
 	resume_application();
 	/* Stop consumer to force a high notification */
 	lttng_start_tracing(session_name);
-	stop_consumer(argv);
 
 	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
@@ -647,8 +659,10 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	notification = NULL;
 
 	/* Resume consumer to allow event consumption */
+	suspend_application();
+	lttng_stop_tracing_no_wait(session_name);
 	resume_consumer(argv);
-	lttng_stop_tracing(session_name);
+	wait_data_pending(session_name);
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Unsubscribe low condition with pending notification");
