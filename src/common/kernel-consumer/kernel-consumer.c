@@ -60,7 +60,11 @@ int lttng_kconsumer_take_snapshot(struct lttng_consumer_stream *stream)
 	int infd = stream->wait_fd;
 
 	ret = kernctl_snapshot(infd);
-	if (ret != 0) {
+	/*
+	 * -EAGAIN is not an error, it just means that there is no data to
+	 *  be read.
+	 */
+	if (ret != 0 && ret != -EAGAIN) {
 		PERROR("Getting sub-buffer snapshot.");
 	}
 
