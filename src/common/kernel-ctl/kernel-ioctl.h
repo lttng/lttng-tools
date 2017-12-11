@@ -59,6 +59,11 @@
 #define RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS	_IO(0xF6, 0x0E)
 /* Flush the current sub-buffer, even if empty. */
 #define RING_BUFFER_FLUSH_EMPTY			_IO(0xF6, 0x0F)
+/*
+ * Reset the position of what has been consumed from the metadata cache to 0
+ * so it can be read again.
+ */
+#define RING_BUFFER_METADATA_CACHE_DUMP    	_IO(0xF6, 0x10)
 
 /* returns the timestamp begin of the current sub-buffer */
 #define LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN     _IOR(0xF6, 0x20, uint64_t)
