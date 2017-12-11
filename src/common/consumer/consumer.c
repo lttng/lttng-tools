@@ -2457,7 +2457,7 @@ void *consumer_thread_data_poll(void *data)
 	/* local view of the streams */
 	struct lttng_consumer_stream **local_stream = NULL, *new_stream = NULL;
 	/* local view of consumer_data.fds_count */
-	int nb_fd = 0;
+	int nb_fd = 0, nb_pipes_fd;
 	/* Number of FDs with CONSUMER_ENDPOINT_INACTIVE but still open. */
 	int nb_inactive_fd = 0;
 	struct lttng_consumer_local_data *ctx = data;
@@ -2498,17 +2498,19 @@ void *consumer_thread_data_poll(void *data)
 			local_stream = NULL;
 
 			/*
-			 * Allocate for all fds +1 for the consumer_data_pipe and +1 for
-			 * wake up pipe.
+			 * Allocate for all fds + 2:
+			 *   +1 for the consumer_data_pipe
+			 *   +1 for wake up pipe
 			 */
-			pollfd = zmalloc((consumer_data.stream_count + 2) * sizeof(struct pollfd));
+			nb_pipes_fd = 2;
+			pollfd = zmalloc((consumer_data.stream_count + nb_pipes_fd) * sizeof(struct pollfd));
 			if (pollfd == NULL) {
 				PERROR("pollfd malloc");
 				pthread_mutex_unlock(&consumer_data.lock);
 				goto end;
 			}
 
-			local_stream = zmalloc((consumer_data.stream_count + 2) *
+			local_stream = zmalloc((consumer_data.stream_count + nb_pipes_fd) *
 					sizeof(struct lttng_consumer_stream *));
 			if (local_stream == NULL) {
 				PERROR("local_stream malloc");
@@ -2536,12 +2538,12 @@ void *consumer_thread_data_poll(void *data)
 		}
 		/* poll on the array of fds */
 	restart:
-		DBG("polling on %d fd", nb_fd + 2);
+		DBG("polling on %d fd", nb_fd + nb_pipes_fd);
 		if (testpoint(consumerd_thread_data_poll)) {
 			goto end;
 		}
 		health_poll_entry();
-		num_rdy = poll(pollfd, nb_fd + 2, -1);
+		num_rdy = poll(pollfd, nb_fd + nb_pipes_fd, -1);
 		health_poll_exit();
 		DBG("poll num_rdy : %d", num_rdy);
 		if (num_rdy == -1) {
