@@ -62,6 +62,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_LOST_PACKETS,
 	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
 	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
+	LTTNG_CONSUMER_MKDIR,
 };
 
 /* State of each fd in consumer */
@@ -759,5 +760,6 @@ void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
 void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
+int lttng_consumer_mkdir(char *path, uid_t uid, gid_t gid, uint64_t relayd_id);
 
 #endif /* LIB_CONSUMER_H */

@@ -3774,3 +3774,50 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 	}
 	return start_pos;
 }
+
+static
+int mkdir_local(char *path, uid_t uid, gid_t gid)
+{
+	int ret;
+
+	ret = utils_mkdir_recursive(path, S_IRWXU | S_IRWXG, uid, gid);
+	if (ret < 0) {
+		ERR("Create directory");
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+static
+int mkdir_relay(char *path, uint64_t relayd_id)
+{
+	int ret;
+	struct consumer_relayd_sock_pair *relayd;
+
+	relayd = consumer_find_relayd(relayd_id);
+	if (!relayd) {
+		ERR("Failed to find relayd");
+		ret = -1;
+		goto end;
+	}
+
+	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+	ret = relayd_mkdir(&relayd->control_sock, path);
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+
+end:
+	return ret;
+
+}
+int lttng_consumer_mkdir(char *path, uid_t uid, gid_t gid, uint64_t relayd_id)
+{
+	if (relayd_id != (uint64_t) -1ULL) {
+		return mkdir_relay(path, relayd_id);
+	} else {
+		return mkdir_local(path, uid, gid);
+	}
+}

@@ -2356,6 +2356,110 @@ error:
 	return -ret;
 }
 
+static
+int domain_mkdir(struct consumer_output *output, struct ltt_session *session,
+		uid_t uid, gid_t gid)
+{
+	struct consumer_socket *socket;
+	struct lttng_ht_iter iter;
+	int ret;
+	char *path = NULL;
+
+	if (!output || !output->socks) {
+		ERR("No consumer output found");
+		ret = -1;
+		goto end;
+	}
+
+	path = zmalloc(PATH_MAX * sizeof(char));
+	if (!path) {
+		ERR("Cannot allocate mkdir path");
+		ret = -1;
+		goto end;
+	}
+
+	ret = snprintf(path, PATH_MAX, "%s%s%s", session_get_base_path(session),
+			output->chunk_path, output->subdir);
+	if (ret < 0) {
+		ERR("Format path");
+		ret = -1;
+		goto end;
+	}
+
+	DBG("Domain mkdir %s for session %" PRIu64, path, session->id);
+	rcu_read_lock();
+	/*
+	 * We have to iterate to find a socket, but we only need to send the
+	 * rename command to one consumer, so we break after the first one.
+	 */
+	cds_lfht_for_each_entry(output->socks->ht, &iter.iter, socket, node.node) {
+		pthread_mutex_lock(socket->lock);
+		ret = consumer_mkdir(socket, session->id, output, path, uid, gid);
+		pthread_mutex_unlock(socket->lock);
+		if (ret) {
+			ERR("Consumer mkdir");
+			ret = -1;
+			rcu_read_unlock();
+			goto end;
+		}
+		break;
+	}
+	rcu_read_unlock();
+
+	ret = 0;
+
+end:
+	free(path);
+	return ret;
+}
+
+static
+int session_mkdir(struct ltt_session *session)
+{
+	int ret;
+	struct consumer_output *output;
+	uid_t uid;
+	gid_t gid;
+
+	/*
+	 * Unsupported feature in lttng-relayd before 2.11, not an error since it
+	 * is only needed for session rotation and the user will get an error
+	 * on rotate.
+	 */
+	if (session->consumer->type == CONSUMER_DST_NET &&
+			session->consumer->relay_minor_version < 11) {
+		ret = 0;
+		goto end;
+	}
+
+	if (session->kernel_session) {
+		output = session->kernel_session->consumer;
+		uid = session->kernel_session->uid;
+		gid = session->kernel_session->gid;
+		ret = domain_mkdir(output, session, uid, gid);
+		if (ret) {
+			ERR("Mkdir kernel");
+			goto end;
+		}
+	}
+
+	if (session->ust_session) {
+		output = session->ust_session->consumer;
+		uid = session->ust_session->uid;
+		gid = session->ust_session->gid;
+		ret = domain_mkdir(output, session, uid, gid);
+		if (ret) {
+			ERR("Mkdir UST");
+			goto end;
+		}
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
 /*
  * Command LTTNG_START_TRACE processed by the client thread.
  *

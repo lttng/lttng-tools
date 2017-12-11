@@ -940,3 +940,50 @@ int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 error:
 	return ret;
 }
+
+int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
+{
+	int ret;
+	struct lttcomm_relayd_mkdir msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd mkdir path %s", path);
+
+	memset(&msg, 0, sizeof(msg));
+	if (lttng_strncpy(msg.path, path, sizeof(msg.path))) {
+		ret = -1;
+		goto error;
+	}
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_MKDIR, (void *) &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd mkdir replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd mkdir completed successfully");
+
+error:
+	return ret;
+
+}

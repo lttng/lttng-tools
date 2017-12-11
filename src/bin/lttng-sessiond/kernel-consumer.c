@@ -271,6 +271,7 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	int ret;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
+	struct ltt_session *sess;
 
 	assert(channel);
 	assert(stream);

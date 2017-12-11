@@ -1561,3 +1561,43 @@ end:
 	rcu_read_unlock();
 	return ret;
 }
+
+int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *path,
+		uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer mkdir %s in session %" PRIu64, path, session_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_MKDIR;
+	msg.u.mkdir.session_id = session_id;
+	msg.u.mkdir.uid = uid;
+	msg.u.mkdir.gid = gid;
+	ret = snprintf(msg.u.mkdir.path, PATH_MAX, "%s", path);
+	if (ret < 0) {
+		ERR("Format path");
+		ret = -1;
+		goto error;
+	}
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.mkdir.relayd_id = output->net_seq_index;
+	} else {
+		msg.u.mkdir.relayd_id = (uint64_t) -1ULL;
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	return ret;
+}

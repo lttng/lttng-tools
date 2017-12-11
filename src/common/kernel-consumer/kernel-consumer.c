@@ -1072,6 +1072,29 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		break;
 	}
+	case LTTNG_CONSUMER_MKDIR:
+	{
+		DBG("Consumer mkdir %s in session %" PRIu64,
+				msg.u.mkdir.path,
+				msg.u.mkdir.session_id);
+		ret = lttng_consumer_mkdir(msg.u.mkdir.path,
+				msg.u.mkdir.uid,
+				msg.u.mkdir.gid,
+				msg.u.mkdir.relayd_id);
+		if (ret < 0) {
+			ERR("consumer mkdir failed");
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		health_code_update();
+
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+		break;
+	}
 	default:
 		goto end_nosignal;
 	}

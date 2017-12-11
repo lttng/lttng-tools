@@ -317,4 +317,8 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
 		const char *session_path, int wait, uint64_t nb_packets_per_stream);
 
+int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *path,
+		uid_t uid, gid_t gid);
+
 #endif /* _CONSUMER_H */
