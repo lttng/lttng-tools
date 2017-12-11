@@ -2831,20 +2831,6 @@ static int create_kernel_session(struct ltt_session *session)
 		goto error;
 	}
 
-	/* Create directory(ies) on local filesystem. */
-	if (session->kernel_session->consumer->type == CONSUMER_DST_LOCAL &&
-			strlen(session->kernel_session->consumer->dst.session_root_path) > 0) {
-		ret = run_as_mkdir_recursive(
-				session->kernel_session->consumer->dst.session_root_path,
-				S_IRWXU | S_IRWXG, session->uid, session->gid);
-		if (ret < 0) {
-			if (errno != EEXIST) {
-				ERR("Trace directory creation error");
-				goto error;
-			}
-		}
-	}
-
 	session->kernel_session->uid = session->uid;
 	session->kernel_session->gid = session->gid;
 	session->kernel_session->output_traces = session->output_traces;
