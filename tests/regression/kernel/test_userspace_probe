@@ -28,7 +28,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 SESSION_NAME=userspace_probe_test_session
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=113
+NUM_TESTS=120
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -73,6 +73,15 @@ function enable_kernel_lttng_userspace_probe_event_fail ()
 function enable_kernel_lttng_userspace_probe_event_ok ()
 {
 	enable_kernel_lttng_userspace_probe_event 0 "$@"
+}
+
+function disable_kernel_lttng_userspace_probe_event_ok ()
+{
+	local sess_name="$1"
+	local event_name="$2"
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" disable-event --kernel "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	ok $? "Disable kernel event $target for session $sess_name"
 }
 
 function test_userspace_probe_enable_file_noexist ()
@@ -280,6 +289,33 @@ function test_userspace_probe_elf ()
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_elf_disable ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enabled and traced"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# Activate and disable event
+	enable_kernel_lttng_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+	disable_kernel_lttng_userspace_probe_event_ok $SESSION_NAME $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$ELF_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Verify that the trace contains zero event.
+	validate_trace_empty "$TRACE_PATH"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -596,10 +632,9 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_userspace_probe_enable_implicit_probe_type
 	test_userspace_probe_enable_in_path
 	test_userspace_probe_enable_full_path
-
 	test_userspace_probe_enable_elf_symbol_exists
 
-	### Successful event tracing
+	# Successful event tracing
 	test_userspace_probe_elf
 
 	#test_userspace_probe_elf_cxx
@@ -610,6 +645,9 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_userspace_probe_sdt_in_shared_object
 	test_userspace_probe_sdt_in_shared_object_dlopen
 	test_userspace_probe_sdt_in_shared_object_ldpreload
+
+	# Disable userspace-probe event
+	test_userspace_probe_elf_disable
 
 	# Successful listing of event
 	test_userspace_probe_sdt_list
