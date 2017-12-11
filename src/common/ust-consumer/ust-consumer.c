@@ -2007,6 +2007,15 @@ void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
 	return ustctl_get_mmap_base(stream->ustream);
 }
 
+void lttng_ustctl_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer_active)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	ustctl_flush_buffer(stream->ustream, producer_active);
+}
+
 /*
  * Take a snapshot for a specific stream.
  *
