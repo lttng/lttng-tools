@@ -1969,6 +1969,25 @@ end:
 }
 
 /*
+ * Sample the snapshot positions for a specific fd
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_consumer_sample_snapshot_positions(struct lttng_consumer_stream *stream)
+{
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		return lttng_kconsumer_sample_snapshot_positions(stream);
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		return lttng_ustconsumer_sample_snapshot_positions(stream);
+	default:
+		ERR("Unknown consumer_data type");
+		assert(0);
+		return -ENOSYS;
+	}
+}
+/*
  * Take a snapshot for a specific fd
  *
  * Returns 0 on success, < 0 on error
@@ -2002,6 +2021,27 @@ int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
 		return lttng_ustconsumer_get_produced_snapshot(stream, pos);
+	default:
+		ERR("Unknown consumer_data type");
+		assert(0);
+		return -ENOSYS;
+	}
+}
+
+/*
+ * Get the consumed position (free-running counter position in bytes).
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_consumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
+		unsigned long *pos)
+{
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		return lttng_kconsumer_get_consumed_snapshot(stream, pos);
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		return lttng_ustconsumer_get_consumed_snapshot(stream, pos);
 	default:
 		ERR("Unknown consumer_data type");
 		assert(0);
