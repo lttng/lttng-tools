@@ -1881,6 +1881,29 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		goto end_msg_sessiond;
 	}
+	case LTTNG_CONSUMER_ROTATE_RENAME:
+	{
+		DBG("Consumer rename session %" PRIu64 " after rotation",
+				msg.u.rotate_rename.session_id);
+		ret = lttng_consumer_rotate_rename(msg.u.rotate_rename.current_path,
+				msg.u.rotate_rename.new_path,
+				msg.u.rotate_rename.uid,
+				msg.u.rotate_rename.gid,
+				msg.u.rotate_rename.relayd_id);
+		if (ret < 0) {
+			ERR("Rotate rename failed");
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		health_code_update();
+
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+		break;
+	}
 	case LTTNG_CONSUMER_MKDIR:
 	{
 		DBG("Consumer mkdir %s in session %" PRIu64,

@@ -1562,6 +1562,52 @@ end:
 	return ret;
 }
 
+int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *current_path, char *new_path,
+		uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer rotate rename session %" PRIu64, session_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_RENAME;
+	msg.u.rotate_rename.session_id = session_id;
+	msg.u.rotate_rename.uid = uid;
+	msg.u.rotate_rename.gid = gid;
+	ret = snprintf(msg.u.rotate_rename.current_path, PATH_MAX, "%s", current_path);
+	if (ret < 0) {
+		ERR("Format current_path");
+		ret = -1;
+		goto error;
+	}
+	ret = snprintf(msg.u.rotate_rename.new_path, PATH_MAX, "%s", new_path);
+	if (ret < 0) {
+		ERR("Format new_path");
+		ret = -1;
+		goto error;
+	}
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.rotate_rename.relayd_id = output->net_seq_index;
+	} else {
+		msg.u.rotate_rename.relayd_id = (uint64_t) -1ULL;
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	return ret;
+}
+
 int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 		struct consumer_output *output, char *path,
 		uid_t uid, gid_t gid)

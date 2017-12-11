@@ -3776,6 +3776,65 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 }
 
 static
+int rotate_rename_local(char *current_path, char *new_path,
+		uid_t uid, gid_t gid)
+{
+	int ret;
+
+	ret = utils_mkdir_recursive(new_path, S_IRWXU | S_IRWXG, uid, gid);
+	if (ret < 0) {
+		ERR("Create directory on rotate");
+		goto end;
+	}
+
+	ret = rename(current_path, new_path);
+	/*
+	 * If a domain has not yet created its channel, the domain-specific
+	 * folder might not exist, but this is not an error.
+	 */
+	if (ret < 0 && errno != ENOENT) {
+		PERROR("Rename completed rotation chunk");
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+static
+int rotate_rename_relay(char *current_path, char *new_path, uint64_t relayd_id)
+{
+	int ret;
+	struct consumer_relayd_sock_pair *relayd;
+
+	relayd = consumer_find_relayd(relayd_id);
+	if (!relayd) {
+		ERR("Failed to find relayd");
+		ret = -1;
+		goto end;
+	}
+
+	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+	ret = relayd_rotate_rename(&relayd->control_sock, current_path, new_path);
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+
+end:
+	return ret;
+}
+
+int lttng_consumer_rotate_rename(char *current_path, char *new_path,
+		uid_t uid, gid_t gid, uint64_t relayd_id)
+{
+	if (relayd_id != (uint64_t) -1ULL) {
+		return rotate_rename_relay(current_path, new_path, relayd_id);
+	} else {
+		return rotate_rename_local(current_path, new_path, uid, gid);
+	}
+}
+
+static
 int mkdir_local(char *path, uid_t uid, gid_t gid)
 {
 	int ret;

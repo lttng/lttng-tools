@@ -123,6 +123,8 @@ enum lttcomm_relayd_command {
 	RELAYD_STREAMS_SENT                 = 16,
 	/* Ask the relay to reset the metadata trace file (2.8+) */
 	RELAYD_RESET_METADATA               = 17,
+	/* Rename a chunk after the rotation is completed (2.11+) */
+	RELAYD_ROTATE_RENAME                = 19,
 	/* Create a folder on the relayd FS (2.11+) */
 	RELAYD_MKDIR                        = 21,
 };
@@ -536,6 +538,14 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t session_id;
 		} LTTNG_PACKED regenerate_metadata;
+		struct {
+			char current_path[PATH_MAX];
+			char new_path[PATH_MAX];
+			uint64_t relayd_id; /* Relayd id if apply. */
+			uint64_t session_id;
+			uint32_t uid;
+			uint32_t gid;
+		} LTTNG_PACKED rotate_rename;
 		struct {
 			char path[PATH_MAX];
 			uint64_t relayd_id; /* Relayd id if apply. */
