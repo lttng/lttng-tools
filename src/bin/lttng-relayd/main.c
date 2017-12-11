@@ -2123,6 +2123,118 @@ end_no_session:
 }
 
 /*
+ * relay_mkdir: Create a folder on the disk.
+ */
+static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn)
+{
+	int ret;
+	ssize_t network_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_mkdir path_info_header;
+	struct lttcomm_relayd_mkdir *path_info = NULL;
+	struct lttcomm_relayd_generic_reply reply;
+	char *path = NULL;
+
+	if (!session || !conn->version_check_done) {
+		ERR("Trying to rename before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	if (session->major == 2 && session->minor < 11) {
+		/*
+		 * This client is not supposed to use this command since
+		 * it predates its introduction.
+		 */
+		ERR("relay_mkdir command is unsupported before LTTng 2.11");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	network_ret = conn->sock->ops->recvmsg(conn->sock, &path_info_header,
+			sizeof(path_info_header), 0);
+	if (network_ret < (ssize_t) sizeof(path_info_header)) {
+		if (network_ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Reception of mkdir command argument length failed with ret = %zi, expected %zu",
+					network_ret, sizeof(path_info_header));
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	path_info_header.length = be32toh(path_info_header.length);
+
+	/* Ensure that it fits in local path length. */
+	if (path_info_header.length >= LTTNG_PATH_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Path name argument of mkdir command (%" PRIu32 " bytes) exceeds the maximal length allowed (%d bytes)",
+				path_info_header.length, LTTNG_PATH_MAX);
+		goto end;
+	}
+
+	path_info = zmalloc(sizeof(path_info_header) + path_info_header.length);
+	if (!path_info) {
+		PERROR("zmalloc of mkdir command path");
+		ret = -1;
+		goto end;
+	}
+
+	network_ret = conn->sock->ops->recvmsg(conn->sock, path_info->path,
+			path_info_header.length, 0);
+	if (network_ret < (ssize_t) path_info_header.length) {
+		if (network_ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Reception of mkdir path argument failed with ret = %zi, expected %" PRIu32,
+					network_ret, path_info_header.length);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	path = create_output_path(path_info->path);
+	if (!path) {
+		ERR("Failed to create output path");
+		ret = -1;
+		goto end;
+	}
+
+	ret = utils_mkdir_recursive(path, S_IRWXU | S_IRWXG, -1, -1);
+	if (ret < 0) {
+		ERR("relay creating output directory");
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	memset(&reply, 0, sizeof(reply));
+	if (ret < 0) {
+		reply.ret_code = htobe32(LTTNG_ERR_UNK);
+	} else {
+		reply.ret_code = htobe32(LTTNG_OK);
+	}
+	network_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
+			sizeof(struct lttcomm_relayd_generic_reply), 0);
+	if (network_ret < (ssize_t) sizeof(struct lttcomm_relayd_generic_reply)) {
+		ERR("Failed to send mkdir command status code with ret = %zi, expected %zu",
+				network_ret,
+				sizeof(struct lttcomm_relayd_generic_reply));
+		ret = -1;
+	}
+
+end_no_session:
+	free(path);
+	free(path_info);
+	return ret;
+}
+
+/*
  * Process the commands received on the control socket
  */
 static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
@@ -2169,6 +2281,9 @@ static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_RESET_METADATA:
 		ret = relay_reset_metadata(recv_hdr, conn);
+		break;
+	case RELAYD_MKDIR:
+		ret = relay_mkdir(recv_hdr, conn);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:
