@@ -658,6 +658,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		new_stream->chan = channel;
 		new_stream->wait_fd = fd;
+		consumer_stream_copy_ro_channel_values(new_stream, channel);
 		switch (channel->output) {
 		case CONSUMER_CHANNEL_SPLICE:
 			new_stream->output = LTTNG_EVENT_SPLICE;

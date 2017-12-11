@@ -415,6 +415,15 @@ struct lttng_consumer_stream {
 	pthread_cond_t metadata_rdv;
 	pthread_mutex_t metadata_rdv_lock;
 
+	/*
+	 * Read-only copies of channel values. We cannot safely access the
+	 * channel from a stream, so we need to have a local copy of these
+	 * fields in the stream object. These fields should be removed from
+	 * the stream objects when we introduce refcounting.
+	 */
+	char channel_ro_pathname[PATH_MAX];
+	uint64_t channel_ro_tracefile_size;
+
 	/* Indicate if the stream still has some data to be read. */
 	unsigned int has_data:1;
 	/*
@@ -661,6 +670,13 @@ void lttng_consumer_cleanup(void);
  * should exit, 0 if data is available on the command socket
  */
 int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
+
+/*
+ * Copy the fields from the channel that need to be accessed in read-only
+ * directly from the stream.
+ */
+void consumer_stream_copy_ro_channel_values(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_channel *channel);
 
 struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t stream_key,
