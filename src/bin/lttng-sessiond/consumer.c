@@ -1580,6 +1580,62 @@ end:
 	return ret;
 }
 
+int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
+		const struct consumer_output *output, const char *old_path,
+		const char *new_path, uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+	size_t old_path_length, new_path_length;
+
+	assert(socket);
+	assert(old_path);
+	assert(new_path);
+
+	DBG("Consumer rotate rename session %" PRIu64 ", old path = \"%s\", new_path = \"%s\"",
+			session_id, old_path, new_path);
+
+	old_path_length = strlen(old_path);
+	if (old_path_length >= sizeof(msg.u.rotate_rename.old_path)) {
+		ERR("consumer_rotate_rename: old path length (%zu bytes) exceeds the maximal length allowed by the consumer protocol (%zu bytes)",
+				old_path_length + 1, sizeof(msg.u.rotate_rename.old_path));
+		ret = -1;
+		goto error;
+	}
+
+	new_path_length = strlen(new_path);
+	if (new_path_length >= sizeof(msg.u.rotate_rename.new_path)) {
+		ERR("consumer_rotate_rename: new path length (%zu bytes) exceeds the maximal length allowed by the consumer protocol (%zu bytes)",
+				new_path_length + 1, sizeof(msg.u.rotate_rename.new_path));
+		ret = -1;
+		goto error;
+	}
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_RENAME;
+	msg.u.rotate_rename.session_id = session_id;
+	msg.u.rotate_rename.uid = uid;
+	msg.u.rotate_rename.gid = gid;
+	strcpy(msg.u.rotate_rename.old_path, old_path);
+	strcpy(msg.u.rotate_rename.new_path, new_path);
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.rotate_rename.relayd_id = output->net_seq_index;
+	} else {
+		msg.u.rotate_rename.relayd_id = -1ULL;
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	return ret;
+}
+
 /*
  * Ask the consumer to create a directory.
  *

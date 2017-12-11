@@ -942,6 +942,72 @@ error:
 	return ret;
 }
 
+int relayd_rotate_rename(struct lttcomm_relayd_sock *rsock,
+		const char *old_path, const char *new_path)
+{
+	int ret;
+	struct lttcomm_relayd_rotate_rename *msg = NULL;
+	struct lttcomm_relayd_generic_reply reply;
+	size_t old_path_length, new_path_length;
+	size_t msg_length;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd rename chunk %s to %s", old_path, new_path);
+
+	/* The two paths are sent with a '\0' delimiter between them. */
+	old_path_length = strlen(old_path) + 1;
+	new_path_length = strlen(new_path) + 1;
+
+	msg_length = sizeof(*msg) + old_path_length + new_path_length;
+	msg = zmalloc(msg_length);
+	if (!msg) {
+		PERROR("zmalloc rotate-rename command message");
+		ret = -1;
+		goto error;
+	}
+
+	assert(old_path_length <= UINT32_MAX);
+	msg->old_path_length = htobe32(old_path_length);
+
+	assert(new_path_length <= UINT32_MAX);
+	msg->new_path_length = htobe32(new_path_length);
+
+	strcpy(msg->paths, old_path);
+	strcpy(msg->paths + old_path_length, new_path);
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_ROTATE_RENAME, (const void *) msg,
+			msg_length, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd rotate rename replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd rotate rename completed successfully");
+
+error:
+	free(msg);
+	return ret;
+}
+
 int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 {
 	int ret;
@@ -997,5 +1063,4 @@ int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 error:
 	free(msg);
 	return ret;
-
 }

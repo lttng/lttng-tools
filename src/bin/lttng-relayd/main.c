@@ -2137,7 +2137,7 @@ static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
 	char *path = NULL;
 
 	if (!session || !conn->version_check_done) {
-		ERR("Trying to rename before version check");
+		ERR("Trying to create a directory before version check");
 		ret = -1;
 		goto end_no_session;
 	}
@@ -2234,6 +2234,173 @@ end_no_session:
 	return ret;
 }
 
+static int validate_rotate_rename_path_length(const char *path_type,
+		uint32_t path_length)
+{
+	int ret = 0;
+
+	if (path_length > LTTNG_PATH_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("rotate rename \"%s\" path name length (%" PRIu32 " bytes) exceeds the allowed size of %i bytes",
+				path_type, path_length, LTTNG_PATH_MAX);
+	} else if (path_length == 0) {
+		ret = -EINVAL;
+		ERR("rotate rename \"%s\" path name has an illegal length of 0", path_type);
+	}
+	return ret;
+}
+
+/*
+ * relay_rotate_rename: rename the trace folder after a rotation is
+ * completed. We are not closing any fd here, just moving the folder, so it
+ * works even if data is still in-flight.
+ */
+static int relay_rotate_rename(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn)
+{
+	int ret;
+	ssize_t network_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_generic_reply reply;
+	struct lttcomm_relayd_rotate_rename header;
+	char *received_paths = NULL;
+	size_t received_paths_size;
+	const char *received_old_path, *received_new_path;
+	char *complete_old_path = NULL, *complete_new_path = NULL;
+
+	if (!session || !conn->version_check_done) {
+		ERR("Trying to rename a trace folder before version check");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	if (session->major == 2 && session->minor < 11) {
+		ERR("relay_rotate_rename command is unsupported before LTTng 2.11");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	network_ret = conn->sock->ops->recvmsg(conn->sock, &header,
+			sizeof(header), 0);
+	if (network_ret < (ssize_t) sizeof(header)) {
+		if (network_ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown",
+					conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive a valid rotate_rename command header: expected %zu bytes, recvmsg() returned %zi",
+					sizeof(header), network_ret);
+		}
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	header.old_path_length = be32toh(header.old_path_length);
+	header.new_path_length = be32toh(header.new_path_length);
+	received_paths_size = header.old_path_length + header.new_path_length;
+
+	/* Ensure the paths don't exceed their allowed size. */
+	ret = validate_rotate_rename_path_length("old", header.old_path_length);
+	if (ret) {
+		goto end;
+	}
+	ret = validate_rotate_rename_path_length("new", header.new_path_length);
+	if (ret) {
+		goto end;
+	}
+
+	received_paths = zmalloc(received_paths_size);
+	if (!received_paths) {
+		PERROR("Could not allocate rotate commands paths reception buffer");
+		ret = -1;
+		goto end;
+	}
+
+	network_ret = conn->sock->ops->recvmsg(conn->sock, received_paths,
+			received_paths_size, 0);
+	if (network_ret < (ssize_t) received_paths_size) {
+		if (network_ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown",
+					conn->sock->fd);
+		} else {
+			ERR("Relay failed to received rename command paths (%zu bytes): recvmsg() returned %zi",
+					received_paths_size, network_ret);
+		}
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	/* Validate that both paths received are NULL terminated. */
+	if (received_paths[header.old_path_length - 1] != '\0') {
+		ERR("relay_rotate_rename command's \"old\" path is invalid (not NULL terminated)");
+		ret = -1;
+		goto end;
+	}
+	if (received_paths[received_paths_size - 1] != '\0') {
+		ERR("relay_rotate_rename command's \"new\" path is invalid (not NULL terminated)");
+		ret = -1;
+		goto end;
+	}
+
+	received_old_path = received_paths;
+	received_new_path = received_paths + header.old_path_length;
+
+	complete_old_path = create_output_path(received_old_path);
+	if (!complete_old_path) {
+		ERR("Failed to build old output path in rotate_rename command");
+		ret = -1;
+		goto end;
+	}
+
+	complete_new_path = create_output_path(received_new_path);
+	if (!complete_new_path) {
+		ERR("Failed to build new output path in rotate_rename command");
+		ret = -1;
+		goto end;
+	}
+
+	ret = utils_mkdir_recursive(complete_new_path, S_IRWXU | S_IRWXG,
+			-1, -1);
+	if (ret < 0) {
+		ERR("Failed to mkdir() rotate_rename's \"new\" output directory at \"%s\"",
+				complete_new_path);
+		goto end;
+	}
+
+	/*
+	 * If a domain has not yet created its channel, the domain-specific
+	 * folder might not exist, but this is not an error.
+	 */
+	ret = rename(complete_old_path, complete_new_path);
+	if (ret < 0 && errno != ENOENT) {
+		PERROR("Renaming chunk in rotate_rename command from \"%s\" to \"%s\"",
+				complete_old_path, complete_new_path);
+		goto end;
+	}
+	ret = 0;
+
+end:
+	memset(&reply, 0, sizeof(reply));
+	if (ret < 0) {
+		reply.ret_code = htobe32(LTTNG_ERR_UNK);
+	} else {
+		reply.ret_code = htobe32(LTTNG_OK);
+	}
+	network_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
+			sizeof(struct lttcomm_relayd_generic_reply), 0);
+	if (network_ret < sizeof(struct lttcomm_relayd_generic_reply)) {
+		ERR("Relay sending stream id");
+		ret = -1;
+	}
+
+end_no_reply:
+	free(received_paths);
+	free(complete_old_path);
+	free(complete_new_path);
+	return ret;
+}
+
 /*
  * Process the commands received on the control socket
  */
@@ -2281,6 +2448,9 @@ static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_RESET_METADATA:
 		ret = relay_reset_metadata(recv_hdr, conn);
+		break;
+	case RELAYD_ROTATE_RENAME:
+		ret = relay_rotate_rename(recv_hdr, conn);
 		break;
 	case RELAYD_MKDIR:
 		ret = relay_mkdir(recv_hdr, conn);
