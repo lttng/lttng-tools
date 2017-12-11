@@ -184,6 +184,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 		goto error;
 	}
 
+	consumer_stream_update_channel_attributes(stream, channel);
 	stream->chan = channel;
 
 error:
