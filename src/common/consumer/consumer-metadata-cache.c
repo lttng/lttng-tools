@@ -106,6 +106,30 @@ end:
 }
 
 /*
+ * Write a character on the metadata poll pipe to wake the metadata thread.
+ * Returns 0 on success, -1 on error.
+ */
+int consumer_metadata_wakeup_pipe(struct lttng_consumer_channel *channel)
+{
+	char dummy = 'c';
+	int ret = 0;
+	int size_ret;
+
+	if (channel->monitor && channel->metadata_stream) {
+		size_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
+				&dummy, 1);
+		if (size_ret < 1) {
+			ERR("Wakeup UST metadata pipe");
+			ret = -1;
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Write metadata to the cache, extend the cache if necessary. We support
  * overlapping updates, but they need to be contiguous. Send the
  * contiguous metadata in cache to the ring buffer. The metadata cache
@@ -118,7 +142,6 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		char *data)
 {
 	int ret = 0;
-	int size_ret;
 	struct consumer_metadata_cache *cache;
 
 	assert(channel);
@@ -144,18 +167,8 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 
 	memcpy(cache->data + offset, data, len);
 	if (offset + len > cache->max_offset) {
-		char dummy = 'c';
-
 		cache->max_offset = offset + len;
-		if (channel->monitor && channel->metadata_stream) {
-			size_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
-					&dummy, 1);
-			if (size_ret < 1) {
-				ERR("Wakeup UST metadata pipe");
-				ret = -1;
-				goto end;
-			}
-		}
+		ret = consumer_metadata_wakeup_pipe(channel);
 	}
 
 end:
