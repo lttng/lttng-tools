@@ -715,11 +715,12 @@ int consumer_set_network_uri(struct consumer_output *obj,
 			goto error;
 		}
 
-		if (lttng_strncpy(obj->subdir, tmp_path, sizeof(obj->subdir))) {
+		if (lttng_strncpy(obj->dst.net.base_dir, tmp_path,
+				sizeof(obj->dst.net.base_dir))) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
-		DBG3("Consumer set network uri subdir path %s", tmp_path);
+		DBG3("Consumer set network uri base_dir path %s", tmp_path);
 	}
 
 	return 0;
@@ -1417,8 +1418,11 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		msg.u.snapshot_channel.use_relayd = 1;
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname),
-				"%s/%s-%s-%" PRIu64 "%s", output->consumer->subdir,
-				output->name, output->datetime, output->nb_snapshot,
+				"%s/%s/%s-%s-%" PRIu64 "%s",
+				output->consumer->dst.net.base_dir,
+				output->consumer->subdir,
+				output->name, output->datetime,
+				output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
@@ -1427,8 +1431,10 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname),
-				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.session_root_path,
-				output->name, output->datetime, output->nb_snapshot,
+				"%s/%s-%s-%" PRIu64 "%s",
+				output->consumer->dst.session_root_path,
+				output->name, output->datetime,
+				output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;

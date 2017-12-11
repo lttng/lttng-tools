@@ -69,7 +69,9 @@ static char *create_channel_path(struct consumer_output *consumer,
 		}
 		DBG3("Kernel local consumer tracefile path: %s", pathname);
 	} else {
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s", consumer->subdir);
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
+				consumer->dst.net.base_dir,
+				consumer->subdir);
 		if (ret < 0) {
 			PERROR("snprintf kernel metadata path");
 			goto error;
