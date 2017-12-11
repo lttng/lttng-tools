@@ -51,5 +51,6 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 		uint64_t net_seq_num);
 int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 		uint64_t stream_id, uint64_t version);
+int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path);
 
 #endif /* _RELAYD_H */

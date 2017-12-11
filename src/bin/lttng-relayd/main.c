@@ -2123,6 +2123,88 @@ end_no_session:
 }
 
 /*
+ * relay_mkdir: Create a folder on the disk.
+ */
+static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn)
+{
+	int ret, send_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_mkdir path_info;
+	struct lttcomm_relayd_generic_reply reply;
+	size_t len;
+	char *path = NULL;
+
+	DBG("Mkdir received");
+
+	if (!session || conn->version_check_done == 0) {
+		ERR("Trying to rename before version check");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	if (session->major == 2 && session->minor < 11) {
+		ERR("Unsupported feature before 2.11");
+		ret = -1;
+		goto end_no_session;
+	}
+
+	ret = conn->sock->ops->recvmsg(conn->sock, &path_info,
+			sizeof(path_info), 0);
+	if (ret < 0 || ret < sizeof(path_info)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_rename struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	len = lttng_strnlen(path_info.path, sizeof(path_info.path));
+	/* Ensure that NULL-terminated and fits in local path length. */
+	if (len == sizeof(path_info.path) || len >= LTTNG_PATH_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Path name too long");
+		goto end;
+	}
+
+	path = create_output_path(path_info.path);
+	if (!path) {
+		ERR("Failed to create output path");
+		ret = -1;
+		goto end;
+	}
+
+	ret = utils_mkdir_recursive(path, S_IRWXU | S_IRWXG, -1, -1);
+	if (ret < 0) {
+		ERR("relay creating output directory");
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	memset(&reply, 0, sizeof(reply));
+	if (ret < 0) {
+		reply.ret_code = htobe32(LTTNG_ERR_UNK);
+	} else {
+		reply.ret_code = htobe32(LTTNG_OK);
+	}
+	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
+			sizeof(struct lttcomm_relayd_generic_reply), 0);
+	if (send_ret < 0) {
+		ERR("Relay sending stream id");
+		ret = send_ret;
+	}
+
+end_no_session:
+	free(path);
+	return ret;
+}
+
+/*
  * Process the commands received on the control socket
  */
 static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
@@ -2169,6 +2251,9 @@ static int relay_process_control(struct lttcomm_relayd_hdr *recv_hdr,
 		break;
 	case RELAYD_RESET_METADATA:
 		ret = relay_reset_metadata(recv_hdr, conn);
+		break;
+	case RELAYD_MKDIR:
+		ret = relay_mkdir(recv_hdr, conn);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:
