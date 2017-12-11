@@ -140,6 +140,11 @@ struct consumer_net {
 
 	/* Data path for network streaming. */
 	struct lttng_uri data;
+
+	/*
+	 * <hostname>/<session-name>
+	 */
+	char base_dir[PATH_MAX];
 };
 
 /*

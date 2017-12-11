@@ -81,7 +81,10 @@ static char *setup_trace_path(struct consumer_output *consumer,
 			}
 		}
 	} else {
-		ret = snprintf(pathname, PATH_MAX, "%s%s", consumer->subdir,
+		ret = snprintf(pathname, PATH_MAX, "%s%s%s%s",
+				consumer->dst.net.base_dir,
+				consumer->chunk_path,
+				consumer->subdir,
 				ua_sess->path);
 		if (ret < 0) {
 			PERROR("snprintf channel path");
