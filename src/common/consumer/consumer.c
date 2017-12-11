@@ -541,6 +541,13 @@ void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream)
 	consumer_stream_destroy(stream, metadata_ht);
 }
 
+void consumer_stream_copy_ro_channel_values(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_channel *channel)
+{
+	stream->channel_ro_tracefile_size = channel->tracefile_size;
+	memcpy(stream->channel_ro_pathname, channel->pathname, PATH_MAX);
+}
+
 struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t stream_key,
 		enum lttng_consumer_stream_state state,

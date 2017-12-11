@@ -183,7 +183,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 		}
 		goto error;
 	}
-
+	consumer_stream_copy_ro_channel_values(stream, channel);
 	stream->chan = channel;
 
 error:
