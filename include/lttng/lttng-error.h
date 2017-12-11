@@ -151,6 +151,7 @@ enum lttng_error_code {
 	LTTNG_ERR_COMMAND_CANCELLED      = 128, /* Command cancelled. */
 	LTTNG_ERR_PROBE_LOCATION_INVAL   = 129, /* Invalid userspace probe location. */
 	LTTNG_ERR_SDT_PROBE_SEMAPHORE    = 130, /* SDT probe guarded by a semaphore. */
+	LTTNG_ERR_ELF_PARSING			 = 131, /* ELF parsing error. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
