@@ -52,6 +52,8 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
 		unsigned long *off);
 void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream);
+void lttng_ustctl_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer_active);
 int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
 		uint64_t *stream_id);
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
@@ -186,6 +188,12 @@ static inline
 void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
 {
 	return NULL;
+}
+static inline
+void lttng_ustctl_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer_active)
+{
+	return;
 }
 static inline
 void lttng_ustconsumer_close_all_metadata(struct lttng_ht *ht)
