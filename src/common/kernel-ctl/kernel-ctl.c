@@ -419,6 +419,10 @@ int kernctl_get_metadata_version(int fd, uint64_t *version)
 	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_GET_METADATA_VERSION, version);
 }
 
+int kernctl_metadata_cache_dump(int fd)
+{
+	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_METADATA_CACHE_DUMP);
+}
 
 /* Buffer operations */
 
