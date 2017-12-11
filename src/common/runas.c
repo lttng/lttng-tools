@@ -248,9 +248,8 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 	ret = lttng_elf_get_symbol_offset(data->fd,
 			 data->u.extract_elf_symbol_offset.function,
 			 &ret_value->u.extract_elf_symbol_offset.offset);
-	if (ret < 0) {
+	if (ret) {
 		DBG("Failed to extract ELF function offset");
-		ret = -1;
 		ret_value->_error = true;
 	}
 
@@ -262,7 +261,6 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 							   struct run_as_ret *ret_value)
 {
 	int ret = 0;
-	bool has_sema = false;
 	uint64_t *offsets = NULL;
 	uint32_t num_offset;
 	ret_value->_error = false;
@@ -271,20 +269,12 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 	ret = lttng_elf_get_sdt_description(data->fd,
 			data->u.extract_sdt_probe_offsets.probe_name,
 			data->u.extract_sdt_probe_offsets.provider_name,
-			&offsets, &num_offset, &has_sema);
+			&offsets, &num_offset);
 
-	if (ret < 0) {
+	if (ret) {
 		DBG("Failed to extract SDT probe offsets");
-		ret = -1;
 		ret_value->_error = true;
 		goto end;
-	}
-
-	if (has_sema == true) {
-		DBG("SDT probe is guarded by a semaphore.");
-		ret = -LTTNG_ERR_SDT_PROBE_SEMAPHORE;
-		ret_value->_error = true;
-		goto free_offset;
 	}
 
 	if (num_offset <= 0 || num_offset > LTTNG_KERNEL_MAX_UPROBE_NUM) {
@@ -299,6 +289,7 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 				offsets, num_offset * sizeof(uint64_t));
 
 	ret_value->u.extract_sdt_probe_offsets.num_offset = num_offset;
+
 free_offset:
 	free(offsets);
 end:

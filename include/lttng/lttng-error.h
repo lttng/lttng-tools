@@ -162,6 +162,7 @@ enum lttng_error_code {
 	LTTNG_ERR_AGENT_TRACING_DISABLED = 139, /* Agent tracing disabled. */
 	LTTNG_ERR_PROBE_LOCATION_INVAL   = 140, /* Invalid userspace probe location. */
 	LTTNG_ERR_SDT_PROBE_SEMAPHORE    = 141, /* SDT probe guarded by a semaphore. */
+	LTTNG_ERR_ELF_PARSING            = 142, /* ELF parsing error. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
