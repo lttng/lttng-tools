@@ -117,7 +117,8 @@ if DYNAMIC_TEST_ENABLED:
     print_test_result(demo_process.returncode == 0, current_test,\
                           "Running application dynamically linked to providers, no preload")
     current_test += 1
-    print_test_result(not os.path.exists(session_info.trace_path), current_test,\
+    trace_path = os.path.join(session_info.trace_path, "ust", "uid")
+    print_test_result(not os.path.exists(trace_path), current_test,\
                           "No events logged when running demo application without preloading providers")
     current_test += 1
 

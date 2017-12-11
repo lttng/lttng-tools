@@ -2519,8 +2519,20 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
+	if (!session->has_been_started) {
+		if (!session->snapshot_mode && session->output_traces) {
+			ret = session_mkdir(session);
+			if (ret) {
+				ERR("Failed to create the session directories");
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+		}
+	}
+
 	/* Kernel tracing */
 	if (ksession != NULL) {
+		DBG("Start kernel tracing session %s", session->name);
 		ret = start_kernel_session(ksession, kernel_tracer_fd);
 		if (ret != LTTNG_OK) {
 			goto error;
