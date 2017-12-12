@@ -523,7 +523,6 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 			 * if no credential were include in the send(). The
 			 * kernel adds them...
 			 */
-			fprintf(stderr, "Received creds... continuing\n");
 			ret = -1;
 		}
 	}
