@@ -1294,6 +1294,7 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
 			case LTTNG_EVENT_SYSCALL:
+			case LTTNG_EVENT_USERSPACE_PROBE:
 			default:
 				ERR("Event type not available for user-space tracing");
 				ret = CMD_UNSUPPORTED;
