@@ -268,35 +268,33 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		return;
 	}
 
-	MSG("      Probe");
-	MSG("      -----");
-	MSG("        Name: %s", event->name);
+	MSG("%s%s (type: userspace-probe)%s", indent6, event->name, enabled_string(event->enabled));
 
 	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
 
 	switch (lttng_userspace_probe_location_get_type(location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
-		MSG("        Type: Unknown");
+		MSG("%sType: Unknown", indent8);
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
 		const char *function_name;
 		const char *binary_path;
 
-		MSG("        Type: Function");
+		MSG("%sType: Function", indent8);
 		function_name = lttng_userspace_probe_location_function_get_function_name(location);
 		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
-		MSG("          Binary path:   %s", binary_path ? binary_path : "NULL");
-		MSG("          Function:      %s()", function_name ? function_name : "NULL");
+		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
+		MSG("%sFunction:      %s()", indent8, function_name ? function_name : "NULL");
 		switch (lookup_type) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-			MSG("          Lookup method: ELF");
+			MSG("%sLookup method: ELF", indent8);
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
-			MSG("          Lookup method: default");
+			MSG("%sLookup method: default", indent8);
 			break;
 		default:
-			MSG("          Lookup method: INVALID LOOKUP TYPE ENCOUNTERED");
+			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
 			break;
 		}
 		break;
@@ -306,18 +304,18 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		const char *probe_name, *provider_name;
 		const char *binary_path;
 
-		MSG("        Type: Tracepoint");
+		MSG("%sType: Tracepoint", indent8);
 		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
 		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
 		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
-		MSG("          Binary path:   %s", binary_path ? binary_path : "NULL");
-		MSG("          Tracepoint:    %s:%s", provider_name ? provider_name : "NULL", probe_name ? probe_name : "NULL");
+		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
+		MSG("%sTracepoint:    %s:%s", indent8, provider_name ? provider_name : "NULL", probe_name ? probe_name : "NULL");
 		switch (lookup_type) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-			MSG("          Lookup method: SDT");
+			MSG("%sLookup method: SDT", indent8);
 			break;
 		default:
-			MSG("          Lookup method: INVALID LOOKUP TYPE ENCOUNTERED");
+			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
 			break;
 		}
 		break;
