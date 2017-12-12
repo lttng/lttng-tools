@@ -853,7 +853,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 	uint64_t curr_probe_location, curr_probe_offset, curr_semaphore_location;
 	uint64_t *probe_locs = NULL, *new_probe_locs = NULL;
 
-	if (!probe_name || !provider_name || !nb_probe || !offsets) {
+	if (!provider_name || !probe_name || !nb_probe || !offsets) {
 		ERR("Invalid arguments.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto error;

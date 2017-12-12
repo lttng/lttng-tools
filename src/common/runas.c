@@ -267,8 +267,8 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 
 	/* On sucess, this call allocates the offsets paramater. */
 	ret = lttng_elf_get_sdt_description(data->fd,
-			data->u.extract_sdt_probe_offsets.probe_name,
 			data->u.extract_sdt_probe_offsets.provider_name,
+			data->u.extract_sdt_probe_offsets.probe_name,
 			&offsets, &num_offset);
 
 	if (ret) {
@@ -935,7 +935,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 }
 
 LTTNG_HIDDEN
-int run_as_extract_sdt_probe_offsets(int fd, const char* probe_name, const char* provider_name,
+int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name, const char* probe_name,
 				    uid_t uid, gid_t gid, uint64_t **offsets, uint32_t *num_offset)
 {
 	struct run_as_data data;

@@ -214,7 +214,7 @@ error:
 
 static struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_path,
-		const char *probe_name, const char *provider_name,
+		const char *provider_name, const char *probe_name,
 		struct lttng_userspace_probe_location_lookup_method *lookup_method,
 		bool open_binary)
 {
@@ -305,7 +305,7 @@ end:
 
 struct lttng_userspace_probe_location *
 lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
-		const char *probe_name, const char *provider_name,
+		const char *provider_name, const char *probe_name,
 		struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
 	struct lttng_userspace_probe_location *ret = NULL;
@@ -324,7 +324,7 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 	}
 
 	ret = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, probe_name, provider_name, lookup_method, true);
+			binary_path, provider_name, probe_name, lookup_method, true);
 end:
 	return ret;
 }
@@ -521,7 +521,7 @@ lttng_userspace_probe_location_tracepoint_copy(struct lttng_userspace_probe_loca
 
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_tracepoint_create_no_check(
-							binary_path, probe_name, provider_name, lookup_method, true);
+						binary_path, provider_name, probe_name, lookup_method, true);
 
 	if (!new_location) {
 		goto destroy_lookup_method;
@@ -1076,7 +1076,7 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 	binary_path = strdup(binary_path_src);
 
 	*location = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, probe_name, provider_name, NULL, false);
+			binary_path, provider_name, probe_name, NULL, false);
 	if (!(*location)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1403,7 +1403,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	struct lttng_userspace_probe_location_lookup_method_sdt flat_lookup_method;
 	size_t probe_name_len, provider_name_len, binary_path_len;
 
-	/* Only SDT tracepoint are supported at the moment */
+	/* Only SDT tracepoints are supported at the moment */
 	if (location->lookup_method && location->lookup_method->type !=
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT) {
 		ret = -LTTNG_ERR_INVALID;

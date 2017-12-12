@@ -37,8 +37,8 @@ LTTNG_HIDDEN
 int run_as_extract_elf_symbol_offset(int fd, const char* function,
 				uid_t uid, gid_t gid, uint64_t *offset);
 LTTNG_HIDDEN
-int run_as_extract_sdt_probe_offsets(int fd, const char* probe_name,
-				const char *provider_name, uid_t uid, gid_t gid,
+int run_as_extract_sdt_probe_offsets(int fd, const char *provider_name,
+				const char* probe_name, uid_t uid, gid_t gid,
 				uint64_t **offsets, uint32_t *num_offset);
 LTTNG_HIDDEN
 int run_as_create_worker(char *procname);
