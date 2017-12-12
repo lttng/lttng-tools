@@ -304,7 +304,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 		goto end;
 	}
 
-	ret = run_as_extract_sdt_probe_offsets(fd, probe_name, provider_name,
+	ret = run_as_extract_sdt_probe_offsets(fd, provider_name, probe_name,
 					session->uid, session->gid, offsets, num_offset);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for sdt probe %s:%s",
