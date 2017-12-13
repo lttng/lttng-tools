@@ -106,6 +106,7 @@ static struct consumer_data kconsumer_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
+	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -116,6 +117,7 @@ static struct consumer_data ustconsumer64_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
+	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -126,6 +128,7 @@ static struct consumer_data ustconsumer32_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
+	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -469,6 +472,24 @@ static void close_consumer_sockets(void)
 		ret = close(ustconsumer64_data.channel_monitor_pipe);
 		if (ret < 0) {
 			PERROR("UST consumerd64 channel monitor pipe close");
+		}
+	}
+	if (kconsumer_data.channel_rotate_pipe >= 0) {
+		ret = close(kconsumer_data.channel_rotate_pipe);
+		if (ret < 0) {
+			PERROR("kernel consumer channel rotate pipe close");
+		}
+	}
+	if (ustconsumer32_data.channel_rotate_pipe >= 0) {
+		ret = close(ustconsumer32_data.channel_rotate_pipe);
+		if (ret < 0) {
+			PERROR("UST consumerd32 channel rotate pipe close");
+		}
+	}
+	if (ustconsumer64_data.channel_rotate_pipe >= 0) {
+		ret = close(ustconsumer64_data.channel_rotate_pipe);
+		if (ret < 0) {
+			PERROR("UST consumerd64 channel rotate pipe close");
 		}
 	}
 }
@@ -1266,8 +1287,9 @@ restart:
 	health_code_update();
 
 	/*
-	 * Transfer the write-end of the channel monitoring pipe to the
-	 * by issuing a SET_CHANNEL_MONITOR_PIPE command.
+	 * Transfer the write-end of the channel monitoring and rotate pipe
+	 * to the consumer by issuing a SET_CHANNEL_MONITOR_PIPE and
+	 * SET_CHANNEL_ROTATE_PIPE commands.
 	 */
 	cmd_socket_wrapper = consumer_allocate_socket(&consumer_data->cmd_sock);
 	if (!cmd_socket_wrapper) {
@@ -1279,6 +1301,13 @@ restart:
 	if (ret) {
 		goto error;
 	}
+
+	ret = consumer_send_channel_rotate_pipe(cmd_socket_wrapper,
+			consumer_data->channel_rotate_pipe);
+	if (ret) {
+		goto error;
+	}
+
 	/* Discard the socket wrapper as it is no longer needed. */
 	consumer_destroy_socket(cmd_socket_wrapper);
 	cmd_socket_wrapper = NULL;
@@ -5446,6 +5475,9 @@ int main(int argc, char **argv)
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
 	bool notification_thread_running = false;
+	struct lttng_pipe *ust32_channel_rotate_pipe = NULL,
+			*ust64_channel_rotate_pipe = NULL,
+			*kernel_channel_rotate_pipe = NULL;
 
 	init_kernel_workarounds();
 
@@ -5593,6 +5625,19 @@ int main(int argc, char **argv)
 			retval = -1;
 			goto exit_init_data;
 		}
+		kernel_channel_rotate_pipe = lttng_pipe_open(0);
+		if (!kernel_channel_rotate_pipe) {
+			ERR("Failed to create kernel consumer channel rotate pipe");
+			retval = -1;
+			goto exit_init_data;
+		}
+		kconsumer_data.channel_rotate_pipe =
+				lttng_pipe_release_writefd(
+					kernel_channel_rotate_pipe);
+		if (kconsumer_data.channel_rotate_pipe < 0) {
+			retval = -1;
+			goto exit_init_data;
+		}
 	}
 
 	lockfile_fd = create_lockfile();
@@ -5617,6 +5662,19 @@ int main(int argc, char **argv)
 		retval = -1;
 		goto exit_init_data;
 	}
+	ust32_channel_rotate_pipe = lttng_pipe_open(0);
+	if (!ust32_channel_rotate_pipe) {
+		ERR("Failed to create 32-bit user space consumer channel rotate pipe");
+		retval = -1;
+		goto exit_init_data;
+	}
+	ustconsumer32_data.channel_rotate_pipe = lttng_pipe_release_writefd(
+			ust32_channel_rotate_pipe);
+	if (ustconsumer32_data.channel_rotate_pipe < 0) {
+		retval = -1;
+		goto exit_init_data;
+	}
+
 
 	ust64_channel_monitor_pipe = lttng_pipe_open(0);
 	if (!ust64_channel_monitor_pipe) {
@@ -5627,6 +5685,18 @@ int main(int argc, char **argv)
 	ustconsumer64_data.channel_monitor_pipe = lttng_pipe_release_writefd(
 			ust64_channel_monitor_pipe);
 	if (ustconsumer64_data.channel_monitor_pipe < 0) {
+		retval = -1;
+		goto exit_init_data;
+	}
+	ust64_channel_rotate_pipe = lttng_pipe_open(0);
+	if (!ust64_channel_rotate_pipe) {
+		ERR("Failed to create 64-bit user space consumer channel rotate pipe");
+		retval = -1;
+		goto exit_init_data;
+	}
+	ustconsumer64_data.channel_rotate_pipe = lttng_pipe_release_writefd(
+			ust64_channel_rotate_pipe);
+	if (ustconsumer64_data.channel_rotate_pipe < 0) {
 		retval = -1;
 		goto exit_init_data;
 	}
@@ -6048,6 +6118,9 @@ exit_init_data:
 	lttng_pipe_destroy(ust32_channel_monitor_pipe);
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);
+	lttng_pipe_destroy(ust32_channel_rotate_pipe);
+	lttng_pipe_destroy(ust64_channel_rotate_pipe);
+	lttng_pipe_destroy(kernel_channel_rotate_pipe);
 exit_ht_cleanup:
 
 	health_app_destroy(health_sessiond);
