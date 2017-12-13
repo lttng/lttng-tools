@@ -172,6 +172,7 @@ const char * const config_event_type_function_entry = "FUNCTION_ENTRY";
 const char * const config_event_type_noop = "NOOP";
 const char * const config_event_type_syscall = "SYSCALL";
 const char * const config_event_type_kprobe = "KPROBE";
+const char * const config_event_type_uprobe = "UPROBE";
 const char * const config_event_type_kretprobe = "KRETPROBE";
 
 const char * const config_event_context_pid = "PID";

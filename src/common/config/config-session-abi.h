@@ -122,6 +122,7 @@ extern const char * const config_event_type_function_entry;
 extern const char * const config_event_type_noop;
 extern const char * const config_event_type_syscall;
 extern const char * const config_event_type_kprobe;
+extern const char * const config_event_type_uprobe;
 extern const char * const config_event_type_kretprobe;
 
 extern const char * const config_event_context_pid;
