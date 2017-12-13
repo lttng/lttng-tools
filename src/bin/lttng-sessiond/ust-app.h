@@ -85,6 +85,8 @@ struct lttng_ht *ust_app_ht;
 /*
  * Global applications HT used by the session daemon. This table is indexed by
  * socket using the sock_n node and sock value of an ust_app.
+ *
+ * The 'sock' in question here is the 'command' socket.
  */
 struct lttng_ht *ust_app_ht_by_sock;
 
