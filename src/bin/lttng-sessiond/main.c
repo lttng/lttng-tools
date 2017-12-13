@@ -1445,7 +1445,17 @@ error_poll:
 }
 
 /*
- * This thread manage application communication.
+ * This thread receives application command sockets (FDs) on the
+ * apps_cmd_pipe and waits (polls) on them until they are closed
+ * or an error occurs.
+ *
+ * At that point, it flushes the data (tracing and metadata) associated
+ * with this application and tears down ust app sessions and other
+ * associated data structures through ust_app_unregister().
+ *
+ * Note that this thread never sends commands to the applications
+ * through the command sockets; it merely listens for hang-ups
+ * and errors on those sockets and cleans-up as they occur.
  */
 static void *thread_manage_apps(void *data)
 {
