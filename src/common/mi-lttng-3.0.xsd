@@ -60,8 +60,6 @@ THE SOFTWARE.
 			<xs:enumeration value="FUNCTION_ENTRY" />
 			<xs:enumeration value="NOOP" />
 			<xs:enumeration value="SYSCALL" />
-			<xs:enumeration value="KPROBE" />
-			<xs:enumeration value="KRETPROBE" />
 		</xs:restriction>
 	</xs:simpleType>
 
