@@ -1064,35 +1064,68 @@ error:
 	return ret;
 }
 
-int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
-		int pipe)
+static
+int consumer_send_pipe(struct consumer_socket *consumer_sock,
+		enum lttng_consumer_command cmd, int pipe)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
+	const char *pipe_name;
+	const char *command_name;
+
+	switch (cmd) {
+	case LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE:
+		pipe_name = "channel monitor";
+		command_name = "SET_CHANNEL_MONITOR_PIPE";
+		break;
+	case LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE:
+		pipe_name = "channel rotate";
+		command_name = "SET_CHANNEL_ROTATE_PIPE";
+		break;
+	default:
+		ERR("Unexpected command received in %s (cmd = %d)", __func__,
+				(int) cmd);
+		abort();
+	}
 
 	/* Code flow error. Safety net. */
 
 	memset(&msg, 0, sizeof(msg));
-	msg.cmd_type = LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE;
+	msg.cmd_type = cmd;
 
 	pthread_mutex_lock(consumer_sock->lock);
-	DBG3("Sending set_channel_monitor_pipe command to consumer");
+	DBG3("Sending %s command to consumer", command_name);
 	ret = consumer_send_msg(consumer_sock, &msg);
 	if (ret < 0) {
 		goto error;
 	}
 
-	DBG3("Sending channel monitoring pipe %d to consumer on socket %d",
+	DBG3("Sending %s pipe %d to consumer on socket %d",
+			pipe_name,
 			pipe, *consumer_sock->fd_ptr);
 	ret = consumer_send_fds(consumer_sock, &pipe, 1);
 	if (ret < 0) {
 		goto error;
 	}
 
-	DBG2("Channel monitoring pipe successfully sent");
+	DBG2("%s pipe successfully sent", pipe_name);
 error:
 	pthread_mutex_unlock(consumer_sock->lock);
 	return ret;
+}
+
+int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
+		int pipe)
+{
+	return consumer_send_pipe(consumer_sock,
+			LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE, pipe);
+}
+
+int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
+		int pipe)
+{
+	return consumer_send_pipe(consumer_sock,
+			LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE, pipe);
 }
 
 /*
