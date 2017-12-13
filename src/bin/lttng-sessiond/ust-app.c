@@ -3577,8 +3577,8 @@ void ust_app_unregister(int sock)
 	/*
 	 * Remove application from notify hash table. The thread handling the
 	 * notify socket could have deleted the node so ignore on error because
-	 * either way it's valid. The close of that socket is handled by the other
-	 * thread.
+	 * either way it's valid. The close of that socket is handled by the
+	 * apps_notify_thread.
 	 */
 	iter.iter.node = &lta->notify_sock_n.node;
 	(void) lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
