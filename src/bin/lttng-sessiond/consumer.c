@@ -1095,6 +1095,36 @@ error:
 	return ret;
 }
 
+int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
+		int pipe)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	/* Code flow error. Safety net. */
+	assert(consumer_sock);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE;
+
+	DBG3("Sending set_channel_rotate_pipe command to consumer");
+	ret = consumer_send_msg(consumer_sock, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG3("Sending channel rotation pipe %d to consumer on socket %d",
+			pipe, *consumer_sock->fd_ptr);
+	ret = consumer_send_fds(consumer_sock, &pipe, 1);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG2("Channel rotation pipe successfully sent");
+error:
+	return ret;
+}
+
 /*
  * Set consumer subdirectory using the session name and a generated datetime if
  * needed. This is appended to the current subdirectory.

@@ -1917,6 +1917,47 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		goto end_msg_sessiond;
 	}
+	case LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE:
+	{
+		int channel_rotate_pipe;
+		int flags;
+
+		ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+		/* Successfully received the command's type. */
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			goto error_fatal;
+		}
+
+		ret = lttcomm_recv_fds_unix_sock(sock, &channel_rotate_pipe, 1);
+		if (ret != sizeof(channel_rotate_pipe)) {
+			ERR("Failed to receive channel rotate pipe");
+			goto error_fatal;
+		}
+
+		DBG("Received channel rotate pipe (%d)", channel_rotate_pipe);
+		ctx->channel_rotate_pipe = channel_rotate_pipe;
+		/* Set the pipe as non-blocking. */
+		ret = fcntl(channel_rotate_pipe, F_GETFL, 0);
+		if (ret == -1) {
+			PERROR("fcntl get flags of the channel rotate pipe");
+			goto error_fatal;
+		}
+		flags = ret;
+
+		ret = fcntl(channel_rotate_pipe, F_SETFL, flags | O_NONBLOCK);
+		if (ret == -1) {
+			PERROR("fcntl set O_NONBLOCK flag of the channel rotate pipe");
+			goto error_fatal;
+		}
+		DBG("Channel rotate pipe set as non-blocking");
+		ret_code = LTTCOMM_CONSUMERD_SUCCESS;
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			goto error_fatal;
+		}
+		break;
+	}
 	case LTTNG_CONSUMER_ROTATE_RENAME:
 	{
 		DBG("Consumer rename session %" PRIu64 " after rotation",
