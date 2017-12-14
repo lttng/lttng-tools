@@ -127,6 +127,8 @@ enum lttcomm_relayd_command {
 	RELAYD_ROTATE_STREAM                = 18,
 	/* Rename a chunk after the rotation is completed (2.11+) */
 	RELAYD_ROTATE_RENAME                = 19,
+	/* Check if a chunk has data pending (2.11+) */
+	RELAYD_ROTATE_PENDING               = 20,
 	/* Create a folder on the relayd FS (2.11+) */
 	RELAYD_MKDIR                        = 21,
 };

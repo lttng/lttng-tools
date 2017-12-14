@@ -207,6 +207,10 @@ struct lttcomm_relayd_rotate_rename {
 	char new_path[LTTNG_PATH_MAX];
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_rotate_pending {
+	uint64_t chunk_id;
+} LTTNG_PACKED;
+
 struct lttcomm_relayd_mkdir {
 	char path[LTTNG_PATH_MAX];
 } LTTNG_PACKED;
