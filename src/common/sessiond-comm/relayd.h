@@ -197,6 +197,7 @@ struct lttcomm_relayd_reset_metadata {
 
 struct lttcomm_relayd_rotate_stream {
 	uint64_t stream_id;
+	/* Ignored for metadata streams. */
 	uint64_t rotate_at_seq_num;
 	uint64_t new_chunk_id;
 	/* Includes trailing NULL. */
