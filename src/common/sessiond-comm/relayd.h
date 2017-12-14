@@ -212,6 +212,10 @@ struct lttcomm_relayd_rotate_rename {
 	char paths[];
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_rotate_pending {
+	uint64_t chunk_id;
+} LTTNG_PACKED;
+
 struct lttcomm_relayd_mkdir {
 	/* Includes trailing NULL */
 	uint32_t length;
