@@ -22,6 +22,7 @@
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
+#include <lttng/rotate.h>
 
 #include "snapshot.h"
 #include "trace-kernel.h"
@@ -52,6 +53,20 @@ struct ltt_session_list {
 
 	/* Linked list head */
 	struct cds_list_head head;
+};
+
+struct ltt_session_chunk {
+	/*
+	 * When the rotation is in progress, the temporary path name is
+	 * stored here. When the rotation is complete, the final path name
+	 * is here and can be queried with the rotate_pending call.
+	 */
+	char current_rotate_path[PATH_MAX];
+	/*
+	 * The path where the consumer is currently writing after the first
+	 * session rotation.
+	 */
+	char active_tracing_path[PATH_MAX];
 };
 
 /*
@@ -117,6 +132,42 @@ struct ltt_session {
 	 * Node in ltt_sessions_ht_by_id.
 	 */
 	struct lttng_ht_node_u64 node;
+	/*
+	 * Number of session rotation for this session.
+	 */
+	uint64_t rotate_count;
+	/*
+	 * Rotation is pending between the time it starts until the consumer has
+	 * finished extracting the data. If the session uses a relay, data related
+	 * to a rotation can still be in flight after that, see
+	 * rotate_pending_relay.
+	 */
+	bool rotate_pending;
+	/*
+	 * Current status of a rotation.
+	 */
+	enum lttng_rotate_status rotate_status;
+	/*
+	 * Number of channels waiting for a rotation.
+	 * When this number reaches 0, we can handle the rename of the chunk
+	 * folder and inform the client that the rotate is finished.
+	 */
+	unsigned int nr_chan_rotate_pending;
+	struct ltt_session_chunk rotation_chunk;
+	/*
+	 * The timestamp of the beginning of the previous chunk. For the
+	 * first chunk, this is the "lttng start" timestamp. For the
+	 * subsequent ones, this copies the current_chunk_start_ts value when
+	 * a new rotation starts. This value is used to set the name of a
+	 * complete chunk directory, ex: "last_chunk_start_ts-now()".
+	 */
+	time_t last_chunk_start_ts;
+	/*
+	 * This is the timestamp when a new chunk starts. When a new rotation
+	 * starts, we copy this value to last_chunk_start_ts and replace it
+	 * with the current timestamp.
+	 */
+	time_t current_chunk_start_ts;
 };
 
 /* Prototypes */
