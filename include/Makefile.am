@@ -78,6 +78,7 @@ lttnginclude_HEADERS = \
 	lttng/save.h \
 	lttng/load.h \
 	lttng/endpoint.h \
+	lttng/rotation.h \
 	version.h.tmpl
 
 lttngactioninclude_HEADERS= \
