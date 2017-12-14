@@ -1118,6 +1118,42 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		break;
 	}
+	case LTTNG_CONSUMER_ROTATE_CHANNEL:
+	{
+		DBG("Consumer rotate channel %" PRIu64, msg.u.rotate_channel.key);
+
+		/*
+		 * Sample the rotate position of all the streams in this channel.
+		 */
+		ret = lttng_consumer_rotate_channel(msg.u.rotate_channel.key,
+				msg.u.rotate_channel.pathname,
+				msg.u.rotate_channel.relayd_id,
+				msg.u.rotate_channel.metadata,
+				msg.u.rotate_channel.new_chunk_id,
+				ctx);
+		if (ret < 0) {
+			ERR("Rotate channel failed");
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		health_code_update();
+
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		/* Rotate the streams that are ready right now.  */
+		ret = lttng_consumer_rotate_ready_streams(
+				msg.u.rotate_channel.key, ctx);
+		if (ret < 0) {
+			ERR("Rotate ready streams failed");
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		break;
+	}
 	case LTTNG_CONSUMER_ROTATE_RENAME:
 	{
 		DBG("Consumer rename session %" PRIu64 " after rotation",
