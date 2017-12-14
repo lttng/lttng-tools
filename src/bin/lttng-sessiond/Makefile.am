@@ -43,6 +43,8 @@ lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h
 endif
 
+lttng_sessiond_SOURCES += rotation-thread.c rotate.c
+
 # Add main.c at the end for compile order
 lttng_sessiond_SOURCES += lttng-sessiond.h main.c
 

@@ -73,6 +73,7 @@
 #include "load-session-thread.h"
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
+#include "rotation-thread.h"
 #include "syscall.h"
 #include "agent.h"
 #include "ht-cleanup.h"
@@ -208,6 +209,7 @@ static pthread_t ht_cleanup_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 static pthread_t notification_thread;
+static pthread_t rotation_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -288,6 +290,9 @@ struct load_session_thread_data *load_info;
 /* Notification thread handle. */
 struct notification_thread_handle *notification_thread_handle;
 
+/* Rotation thread handle. */
+struct rotation_thread_handle *rotation_thread_handle;
+
 /* Global hash tables */
 struct lttng_ht *agent_apps_ht_by_sock = NULL;
 
@@ -297,7 +302,7 @@ struct lttng_ht *agent_apps_ht_by_sock = NULL;
  * NR_LTTNG_SESSIOND_READY must match the number of calls to
  * sessiond_notify_ready().
  */
-#define NR_LTTNG_SESSIOND_READY		4
+#define NR_LTTNG_SESSIOND_READY		5
 int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
@@ -5476,6 +5481,7 @@ int main(int argc, char **argv)
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
 	bool notification_thread_running = false;
+	bool rotation_thread_running = false;
 	struct lttng_pipe *ust32_channel_rotate_pipe = NULL,
 			*ust64_channel_rotate_pipe = NULL,
 			*kernel_channel_rotate_pipe = NULL;
@@ -5894,6 +5900,31 @@ int main(int argc, char **argv)
 	}
 	notification_thread_running = true;
 
+	/* rotation_thread_data acquires the pipes' read side. */
+	rotation_thread_handle = rotation_thread_handle_create(
+			ust32_channel_rotate_pipe,
+			ust64_channel_rotate_pipe,
+			kernel_channel_rotate_pipe,
+			thread_quit_pipe[0]);
+	if (!rotation_thread_handle) {
+		retval = -1;
+		ERR("Failed to create rotation thread shared data");
+		stop_threads();
+		goto exit_rotation;
+	}
+	rotation_thread_running = true;
+
+	/* Create rotation thread. */
+	ret = pthread_create(&rotation_thread, default_pthread_attr(),
+			thread_rotation, rotation_thread_handle);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create rotation");
+		retval = -1;
+		stop_threads();
+		goto exit_rotation;
+	}
+
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&client_thread, default_pthread_attr(),
 			thread_manage_clients, (void *) NULL);
@@ -6060,6 +6091,7 @@ exit_dispatch:
 	}
 
 exit_client:
+exit_rotation:
 exit_notification:
 	ret = pthread_join(health_thread, &status);
 	if (ret) {
@@ -6107,6 +6139,18 @@ exit_init_data:
 			}
 		}
 		notification_thread_handle_destroy(notification_thread_handle);
+	}
+
+	if (rotation_thread_handle) {
+		rotation_thread_handle_destroy(rotation_thread_handle);
+		if (rotation_thread_running) {
+			ret = pthread_join(rotation_thread, &status);
+			if (ret) {
+				errno = ret;
+				PERROR("pthread_join rotation thread");
+				retval = -1;
+			}
+		}
 	}
 
 	rcu_thread_offline();
