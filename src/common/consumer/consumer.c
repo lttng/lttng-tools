@@ -3913,6 +3913,150 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 	return start_pos;
 }
 
+static
+int consumer_flush_buffer(struct lttng_consumer_stream *stream, int producer_active)
+{
+	int ret = 0;
+
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		ret = kernctl_buffer_flush(stream->wait_fd);
+		if (ret < 0) {
+			ERR("Failed to flush kernel stream");
+			goto end;
+		}
+		break;
+	case LTTNG_CONSUMER32_UST:
+	case LTTNG_CONSUMER64_UST:
+		lttng_ustctl_flush_buffer(stream, producer_active);
+		break;
+	default:
+		ERR("Unknown consumer_data type");
+		abort();
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Sample the rotate position for all the streams of a channel. If a stream
+ * is already at the rotate position (produced == consumed), we flag it as
+ * ready for rotation. The rotation of ready streams occurs after we have
+ * replied to the session daemon that we have finished sampling the positions.
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_consumer_rotate_channel(uint64_t key, const char *path,
+		uint64_t relayd_id, uint32_t metadata, uint64_t new_chunk_id,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret;
+	struct lttng_consumer_channel *channel;
+	struct lttng_consumer_stream *stream;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
+
+	DBG("Consumer sample rotate position for channel %" PRIu64, key);
+
+	rcu_read_lock();
+
+	channel = consumer_find_channel(key);
+	if (!channel) {
+		ERR("No channel found for key %" PRIu64, key);
+		ret = -1;
+		goto end;
+	}
+
+	pthread_mutex_lock(&channel->lock);
+	channel->current_chunk_id = new_chunk_id;
+
+	ret = lttng_strncpy(channel->pathname, path, sizeof(channel->pathname));
+	if (ret) {
+		ERR("Failed to copy new path to channel during channel rotation");
+		ret = -1;
+		goto end_unlock_channel;
+	}
+
+	if (relayd_id == -1ULL) {
+		/*
+		 * The domain path (/ust or /kernel) has been created before, we
+		 * now need to create the last part of the path: the application/user
+		 * specific section (uid/1000/64-bit).
+		 */
+		ret = utils_mkdir_recursive(channel->pathname, S_IRWXU | S_IRWXG,
+				channel->uid, channel->gid);
+		if (ret < 0) {
+			ERR("Failed to create trace directory at %s during rotation",
+					channel->pathname);
+			ret = -1;
+			goto end_unlock_channel;
+		}
+	}
+
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&channel->key, lttng_ht_seed),
+			ht->match_fct, &channel->key, &iter.iter,
+			stream, node_channel_id.node) {
+		unsigned long consumed_pos;
+
+		health_code_update();
+
+		/*
+		 * Lock stream because we are about to change its state.
+		 */
+		pthread_mutex_lock(&stream->lock);
+
+		ret = lttng_strncpy(stream->channel_read_only_attributes.path,
+				channel->pathname,
+				sizeof(stream->channel_read_only_attributes.path));
+		if (ret) {
+			ERR("Failed to sample channel path name during channel rotation");
+			goto end_unlock_stream;
+		}
+		ret = lttng_consumer_sample_snapshot_positions(stream);
+		if (ret < 0) {
+			ERR("Failed to sample snapshot position during channel rotation");
+			goto end_unlock_stream;
+		}
+
+		ret = lttng_consumer_get_produced_snapshot(stream,
+				&stream->rotate_position);
+		if (ret < 0) {
+			ERR("Failed to sample produced position during channel rotation");
+			goto end_unlock_stream;
+		}
+
+		lttng_consumer_get_consumed_snapshot(stream,
+				&consumed_pos);
+		if (consumed_pos == stream->rotate_position) {
+			stream->rotate_ready = true;
+		}
+		channel->nr_stream_rotate_pending++;
+
+		ret = consumer_flush_buffer(stream, 1);
+		if (ret < 0) {
+			ERR("Failed to flush stream %" PRIu64 " during channel rotation",
+					stream->key);
+			goto end_unlock_stream;
+		}
+
+		pthread_mutex_unlock(&stream->lock);
+	}
+	pthread_mutex_unlock(&channel->lock);
+
+	ret = 0;
+	goto end;
+
+end_unlock_stream:
+	pthread_mutex_unlock(&stream->lock);
+end_unlock_channel:
+	pthread_mutex_unlock(&channel->lock);
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
 /*
  * Check if a stream is ready to be rotated after extracting it.
  *
@@ -4123,6 +4267,68 @@ int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
 	ret = 0;
 
 error:
+	return ret;
+}
+
+/*
+ * Rotate all the ready streams now.
+ *
+ * This is especially important for low throughput streams that have already
+ * been consumed, we cannot wait for their next packet to perform the
+ * rotation.
+ *
+ * Returns 0 on success, < 0 on error
+ */
+int lttng_consumer_rotate_ready_streams(uint64_t key,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret;
+	struct lttng_consumer_channel *channel;
+	struct lttng_consumer_stream *stream;
+	struct lttng_ht_iter iter;
+	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
+
+	rcu_read_lock();
+
+	DBG("Consumer rotate ready streams in channel %" PRIu64, key);
+
+	channel = consumer_find_channel(key);
+	if (!channel) {
+		ERR("No channel found for key %" PRIu64, key);
+		ret = -1;
+		goto end;
+	}
+
+	cds_lfht_for_each_entry_duplicate(ht->ht,
+			ht->hash_fct(&channel->key, lttng_ht_seed),
+			ht->match_fct, &channel->key, &iter.iter,
+			stream, node_channel_id.node) {
+		health_code_update();
+
+		pthread_mutex_lock(&stream->lock);
+
+		if (!stream->rotate_ready) {
+			pthread_mutex_unlock(&stream->lock);
+			continue;
+		}
+		DBG("Consumer rotate ready stream %" PRIu64, stream->key);
+
+		ret = lttng_consumer_rotate_stream(ctx, stream, NULL);
+		pthread_mutex_unlock(&stream->lock);
+		if (ret) {
+			goto end;
+		}
+
+		ret = consumer_post_rotation(stream, ctx);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	ret = 0;
+
+end:
+	rcu_read_unlock();
 	return ret;
 }
 
