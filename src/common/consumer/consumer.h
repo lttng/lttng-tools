@@ -431,6 +431,14 @@ struct lttng_consumer_stream {
 	pthread_mutex_t metadata_rdv_lock;
 
 	/*
+	 * rotate_position represents the position in the ring-buffer that has to
+	 * be flushed to disk to complete the ongoing rotation. When that position
+	 * is reached, this tracefile can be closed and a new one is created in
+	 * channel_read_only_attributes.path.
+	 */
+	unsigned long rotate_position;
+
+	/*
 	 * Read-only copies of channel values. We cannot safely access the
 	 * channel from a stream, so we need to have a local copy of these
 	 * fields in the stream object. These fields should be removed from
@@ -440,6 +448,12 @@ struct lttng_consumer_stream {
 		char path[LTTNG_PATH_MAX];
 		uint64_t tracefile_size;
 	} channel_read_only_attributes;
+
+	/*
+	 * Flag to inform the data or metadata thread that a stream is
+	 * ready to be rotated.
+	 */
+	bool rotate_ready;
 
 	/* Indicate if the stream still has some data to be read. */
 	unsigned int has_data:1;
@@ -803,8 +817,9 @@ void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
 void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
+int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream);
+		struct lttng_consumer_stream *stream, bool *rotated);
 int lttng_consumer_rotate_rename(const char *current_path, const char *new_path,
 		uid_t uid, gid_t gid, uint64_t relayd_id);
 void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);

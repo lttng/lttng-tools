@@ -22,6 +22,7 @@
 #include <errno.h>
 
 #include <common/consumer/consumer.h>
+#include <stdbool.h>
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
@@ -44,7 +45,7 @@ extern int lttng_ustconsumer_add_stream(struct lttng_consumer_stream *stream);
 extern void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream);
 
 int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx);
+		struct lttng_consumer_local_data *ctx, bool *rotated);
 int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
@@ -157,7 +158,7 @@ void lttng_ustconsumer_del_stream(struct lttng_consumer_stream *stream)
 
 static inline
 int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx, bool *rotated)
 {
 	return -ENOSYS;
 }
