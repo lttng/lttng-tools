@@ -2273,6 +2273,72 @@ static void validate_endpoint_status_metadata_stream(
 	rcu_read_unlock();
 }
 
+static
+int rotate_notify_sessiond(struct lttng_consumer_local_data *ctx,
+		uint64_t key)
+{
+	int ret;
+
+	do {
+		ret = write(ctx->channel_rotate_pipe, &key, sizeof(key));
+	} while (ret == -1 && errno == EINTR);
+	if (ret == -1) {
+		PERROR("write to the channel rotate pipe");
+	} else {
+		DBG("Sent channel rotation notification for channel key %"
+				PRIu64, key);
+		ret = 0;
+	}
+
+	return ret;
+}
+
+/*
+ * Perform operations that need to be done after a stream has
+ * rotated and released the stream lock.
+ *
+ * Multiple rotations cannot occur simultaneously, so we know the state of the
+ * "rotated" stream flag cannot change.
+ *
+ * This MUST be called WITHOUT the stream lock held.
+ */
+static
+int consumer_post_rotation(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	int ret = 0;
+
+	pthread_mutex_lock(&stream->chan->lock);
+
+	switch (consumer_data.type) {
+		case LTTNG_CONSUMER_KERNEL:
+			break;
+		case LTTNG_CONSUMER32_UST:
+		case LTTNG_CONSUMER64_UST:
+			/*
+			 * The ust_metadata_pushed counter has been reset to 0, so now
+			 * we can wakeup the metadata thread so it dumps the metadata
+			 * cache to the new file.
+			 */
+			if (stream->metadata_flag) {
+				consumer_metadata_wakeup_pipe(stream->chan);
+			}
+			break;
+		default:
+			ERR("Unknown consumer_data type");
+			abort();
+	}
+
+	if (--stream->chan->nr_stream_rotate_pending == 0) {
+		DBG("Notifiy sessiond %s", stream->chan->pathname);
+		ret = rotate_notify_sessiond(ctx, stream->chan->key);
+	}
+	assert(stream->chan->nr_stream_rotate_pending >= 0);
+	pthread_mutex_unlock(&stream->chan->lock);
+
+	return ret;
+}
+
 /*
  * Thread polls on metadata file descriptor and write them on disk or on the
  * network.
@@ -3831,6 +3897,159 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 		return consumed_pos;	/* Grab everything */
 	}
 	return start_pos;
+}
+
+/*
+ * Reset the state for a stream after a rotation occurred.
+ */
+void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream)
+{
+	stream->rotate_position = 0;
+	stream->rotate_ready = 0;
+}
+
+/*
+ * Perform the rotation a local stream file.
+ */
+int rotate_local_stream(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_stream *stream)
+{
+	int ret;
+
+	DBG("Rotate local stream %" PRIu64 " (channel %" PRIu64 ")", stream->key,
+			stream->chan->key);
+
+	ret = close(stream->out_fd);
+	if (ret < 0) {
+		PERROR("Closing tracefile %d, stream %lu", stream->out_fd, stream->key);
+		assert(0);
+		goto error;
+	}
+
+	ret = utils_create_stream_file(stream->channel_ro_pathname, stream->name,
+			stream->channel_ro_tracefile_size, stream->tracefile_count_current,
+			stream->uid, stream->gid, NULL);
+	if (ret < 0) {
+		ERR("Rotate create stream file");
+		goto error;
+	}
+	stream->out_fd = ret;
+	stream->tracefile_size_current = 0;
+
+	if (!stream->metadata_flag) {
+		struct lttng_index_file *index_file;
+
+		lttng_index_file_put(stream->index_file);
+
+		index_file = lttng_index_file_create(stream->channel_ro_pathname,
+				stream->name, stream->uid, stream->gid,
+				stream->channel_ro_tracefile_size,
+				stream->tracefile_count_current,
+				CTF_INDEX_MAJOR, CTF_INDEX_MINOR);
+		if (!index_file) {
+			ERR("Create index file during rotation");
+			goto error;
+		}
+		stream->index_file = index_file;
+		stream->out_fd_offset = 0;
+	}
+
+	ret = 0;
+	goto end;
+
+error:
+	ret = -1;
+end:
+	return ret;
+
+}
+
+/*
+ * Perform the rotation a stream file on the relay.
+ */
+int rotate_relay_stream(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_stream *stream)
+{
+	int ret;
+	struct consumer_relayd_sock_pair *relayd;
+
+	DBG("Rotate relay stream");
+	relayd = consumer_find_relayd(stream->net_seq_idx);
+	if (!relayd) {
+		ERR("Failed to find relayd");
+		ret = -1;
+		goto end;
+	}
+
+	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+	ret = relayd_rotate_stream(&relayd->control_sock,
+			stream->relayd_stream_id, stream->channel_ro_pathname,
+			stream->chan->current_chunk_id,
+			stream->last_sequence_number);
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+	if (ret) {
+		ERR("Rotate relay stream");
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Performs the stream rotation for the rotate session feature if needed.
+ * It must be called with the stream lock held.
+ *
+ * Return 0 on success, a negative number of error.
+ */
+int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_stream *stream)
+{
+	int ret;
+
+	DBG("Consumer rotate stream %" PRIu64, stream->key);
+
+	if (stream->net_seq_idx != (uint64_t) -1ULL) {
+		ret = rotate_relay_stream(ctx, stream);
+	} else {
+		ret = rotate_local_stream(ctx, stream);
+	}
+	if (ret < 0) {
+		ERR("Rotate stream");
+		goto error;
+	}
+
+	if (stream->metadata_flag) {
+		switch (consumer_data.type) {
+		case LTTNG_CONSUMER_KERNEL:
+			/*
+			 * Reset the position of what has been read from the metadata
+			 * cache to 0 so we can dump it again.
+			 */
+			ret = kernctl_metadata_cache_dump(stream->wait_fd);
+			if (ret < 0) {
+				ERR("Failed to dump the kernel metadata cache after rotation");
+				goto error;
+			}
+			break;
+		case LTTNG_CONSUMER32_UST:
+		case LTTNG_CONSUMER64_UST:
+			/*
+			 * Reset the position pushed from the metadata cache so it
+			 * will write from the beginning on the next push.
+			 */
+			stream->ust_metadata_pushed = 0;
+			break;
+		default:
+			ERR("Unknown consumer_data type");
+			abort();
+		}
+	}
+	lttng_consumer_reset_stream_rotate_state(stream);
+
+	ret = 0;
+
+error:
+	return ret;
 }
 
 static
