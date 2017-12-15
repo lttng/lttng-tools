@@ -71,6 +71,7 @@ const char *sessiond_thread_name[NR_HEALTH_SESSIOND_TYPES] = {
 	[ HEALTH_SESSIOND_TYPE_APP_MANAGE_NOTIFY ] = "Session daemon application notification manager",
 	[ HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH ] = "Session daemon application registration dispatcher",
 	[ HEALTH_SESSIOND_TYPE_ROTATION ] = "Session daemon rotation manager",
+	[ HEALTH_SESSIOND_TYPE_TIMER ] = "Session daemon timer manager",
 };
 
 static
