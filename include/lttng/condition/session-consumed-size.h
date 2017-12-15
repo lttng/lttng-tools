@@ -21,7 +21,6 @@
 #include <lttng/condition/evaluation.h>
 #include <lttng/condition/condition.h>
 #include <stdint.h>
-#include <lttng/domain.h>
 
 #ifdef __cplusplus
 extern "C" {

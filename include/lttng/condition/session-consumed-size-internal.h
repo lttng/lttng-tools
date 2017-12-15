@@ -21,7 +21,6 @@
 #include <lttng/condition/session-consumed-size.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/evaluation-internal.h>
-#include <lttng/domain.h>
 #include "common/buffer-view.h"
 
 struct lttng_condition_session_consumed_size {
