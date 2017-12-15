@@ -78,6 +78,7 @@
 #include "agent.h"
 #include "ht-cleanup.h"
 #include "sessiond-config.h"
+#include "sessiond-timer.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -210,6 +211,7 @@ static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 static pthread_t notification_thread;
 static pthread_t rotation_thread;
+static pthread_t timer_thread;
 
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
@@ -5469,6 +5471,44 @@ end:
 	return ret;
 }
 
+static
+struct rotation_thread_timer_queue *create_rotate_timer_queue(void)
+{
+	struct rotation_thread_timer_queue *queue = NULL;
+
+	queue = zmalloc(sizeof(struct rotation_thread_timer_queue));
+	if (!queue) {
+		PERROR("Allocation of timer rotate queue");
+		goto end;
+	}
+
+	queue->event_pipe = lttng_pipe_open(FD_CLOEXEC|O_NONBLOCK);
+	CDS_INIT_LIST_HEAD(&queue->list);
+	pthread_mutex_init(&queue->lock, NULL);
+
+end:
+	return queue;
+}
+
+static
+void destroy_rotate_timer_queue(struct rotation_thread_timer_queue *queue)
+{
+	struct sessiond_rotation_timer *node, *tmp_node;
+
+	if (!queue) {
+		return;
+	}
+
+	lttng_pipe_destroy(queue->event_pipe);
+	pthread_mutex_destroy(&queue->lock);
+	/* Clean up wait queue. */
+	cds_list_for_each_entry_safe(node, tmp_node, &queue->list, head) {
+		cds_list_del(&node->head);
+		free(node);
+	}
+	free(queue);
+}
+
 /*
  * main
  */
@@ -5482,15 +5522,24 @@ int main(int argc, char **argv)
 			*kernel_channel_monitor_pipe = NULL;
 	bool notification_thread_running = false;
 	bool rotation_thread_running = false;
+	bool timer_thread_running = false;
 	struct lttng_pipe *ust32_channel_rotate_pipe = NULL,
 			*ust64_channel_rotate_pipe = NULL,
 			*kernel_channel_rotate_pipe = NULL;
+	struct timer_thread_parameters timer_thread_ctx;
+	/* Queue of rotation jobs populated by the sessiond-timer. */
+	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
 
 	init_kernel_workarounds();
 
 	rcu_register_thread();
 
 	if (set_signal_handler()) {
+		retval = -1;
+		goto exit_set_signal_handler;
+	}
+
+	if (sessiond_timer_signal_init()) {
 		retval = -1;
 		goto exit_set_signal_handler;
 	}
@@ -5682,6 +5731,17 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
+	/*
+	 * The rotation_timer_queue structure is shared between the sessiond timer
+	 * thread and the rotation thread. The main() keeps the ownership and
+	 * destroys it when both threads have quit.
+	 */
+	rotation_timer_queue = create_rotate_timer_queue();
+	if (!rotation_timer_queue) {
+		retval = -1;
+		goto exit_init_data;
+	}
+	timer_thread_ctx.rotation_timer_queue = rotation_timer_queue;
 
 	ust64_channel_monitor_pipe = lttng_pipe_open(0);
 	if (!ust64_channel_monitor_pipe) {
@@ -5900,19 +5960,31 @@ int main(int argc, char **argv)
 	}
 	notification_thread_running = true;
 
+	/* Create timer thread. */
+	ret = pthread_create(&timer_thread, default_pthread_attr(),
+			sessiond_timer_thread, &timer_thread_ctx);
+	if (ret) {
+		errno = ret;
+		PERROR("pthread_create timer");
+		retval = -1;
+		stop_threads();
+		goto exit_notification;
+	}
+	timer_thread_running = true;
+
 	/* rotation_thread_data acquires the pipes' read side. */
 	rotation_thread_handle = rotation_thread_handle_create(
 			ust32_channel_rotate_pipe,
 			ust64_channel_rotate_pipe,
 			kernel_channel_rotate_pipe,
-			thread_quit_pipe[0]);
+			thread_quit_pipe[0],
+			rotation_timer_queue);
 	if (!rotation_thread_handle) {
 		retval = -1;
 		ERR("Failed to create rotation thread shared data");
 		stop_threads();
 		goto exit_rotation;
 	}
-	rotation_thread_running = true;
 
 	/* Create rotation thread. */
 	ret = pthread_create(&rotation_thread, default_pthread_attr(),
@@ -5924,6 +5996,7 @@ int main(int argc, char **argv)
 		stop_threads();
 		goto exit_rotation;
 	}
+	rotation_thread_running = true;
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&client_thread, default_pthread_attr(),
@@ -6152,6 +6225,22 @@ exit_init_data:
 			}
 		}
 	}
+
+	if (timer_thread_running) {
+		kill(getpid(), LTTNG_SESSIOND_SIG_EXIT);
+		ret = pthread_join(timer_thread, &status);
+		if (ret) {
+			errno = ret;
+			PERROR("pthread_join timer thread");
+			retval = -1;
+		}
+	}
+
+	/*
+	 * After the rotation and timer thread have quit, we can safely destroy
+	 * the rotation_timer_queue.
+	 */
+	destroy_rotate_timer_queue(rotation_timer_queue);
 
 	rcu_thread_offline();
 	rcu_unregister_thread();

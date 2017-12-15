@@ -40,6 +40,7 @@
 #include "rotate.h"
 #include "cmd.h"
 #include "session.h"
+#include "sessiond-timer.h"
 
 #include <urcu.h>
 #include <urcu/list.h>
@@ -140,7 +141,8 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 		struct lttng_pipe *ust32_channel_rotate_pipe,
 		struct lttng_pipe *ust64_channel_rotate_pipe,
 		struct lttng_pipe *kernel_channel_rotate_pipe,
-		int thread_quit_pipe)
+		int thread_quit_pipe,
+		struct rotation_thread_timer_queue *rotation_timer_queue)
 {
 	struct rotation_thread_handle *handle;
 
@@ -180,6 +182,7 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 		handle->kernel_consumer = -1;
 	}
 	handle->thread_quit_pipe = thread_quit_pipe;
+	handle->rotation_timer_queue = rotation_timer_queue;
 
 end:
 	return handle;
@@ -195,13 +198,14 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 	int ret;
 
 	/*
-	 * Create pollset with size 4:
+	 * Create pollset with size 5:
 	 *	- sessiond quit pipe
+	 *	- sessiond timer pipe,
 	 *	- consumerd (32-bit user space) channel rotate pipe,
 	 *	- consumerd (64-bit user space) channel rotate pipe,
 	 *	- consumerd (kernel) channel rotate pipe,
 	 */
-	ret = lttng_poll_create(poll_set, 4, LTTNG_CLOEXEC);
+	ret = lttng_poll_create(poll_set, 5, LTTNG_CLOEXEC);
 	if (ret < 0) {
 		goto end;
 	}
@@ -210,6 +214,13 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 			LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		ERR("[rotation-thread] Failed to add thread_quit_pipe fd to pollset");
+		goto error;
+	}
+	ret = lttng_poll_add(poll_set,
+			lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe),
+			LPOLLIN | LPOLLERR);
+	if (ret < 0) {
+		ERR("[rotation-thread] Failed to add rotate_pending fd to pollset");
 		goto error;
 	}
 	ret = lttng_poll_add(poll_set, handle->ust32_consumer,
