@@ -31,6 +31,7 @@
 #include <lttng/save-internal.h>
 #include <lttng/channel-internal.h>
 #include <lttng/trigger/trigger-internal.h>
+#include <lttng/rotate-internal.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
@@ -101,6 +102,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_REGISTER_TRIGGER              = 43,
 	LTTNG_UNREGISTER_TRIGGER            = 44,
 	LTTNG_ROTATE_SESSION                = 45,
+	LTTNG_ROTATE_PENDING                = 46,
 };
 
 enum lttcomm_relayd_command {
@@ -330,6 +332,9 @@ struct lttcomm_session_msg {
 		struct {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
+		struct {
+			uint64_t rotate_id;
+		} LTTNG_PACKED rotate_pending;
 	} u;
 } LTTNG_PACKED;
 
@@ -558,6 +563,11 @@ struct lttcomm_consumer_msg {
 			uint32_t uid;
 			uint32_t gid;
 		} LTTNG_PACKED rotate_rename;
+		struct {
+			uint64_t relayd_id;
+			uint64_t session_id;
+			uint64_t chunk_id;
+		} LTTNG_PACKED rotate_pending_relay;
 		struct {
 			char path[PATH_MAX];
 			uint64_t relayd_id; /* Relayd id if apply. */

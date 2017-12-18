@@ -1083,6 +1083,49 @@ error:
 	return ret;
 }
 
+int relayd_rotate_pending(struct lttcomm_relayd_sock *rsock, uint64_t chunk_id)
+{
+	int ret;
+	struct lttcomm_relayd_rotate_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd rotate pending");
+
+	memset(&msg, 0, sizeof(msg));
+	msg.chunk_id = htobe64(chunk_id);
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_ROTATE_PENDING, (void *) &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code >= LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd rotate pending replied error %d", reply.ret_code);
+	} else {
+		/* No error, just rotate pending state */
+		ret = reply.ret_code;
+	}
+
+	DBG("Relayd rotate pending completed successfully");
+
+error:
+	return ret;
+}
+
 int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 {
 	int ret;

@@ -50,6 +50,10 @@ static void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigaddset exit");
 	}
+	ret = sigaddset(mask, LTTNG_SESSIOND_SIG_ROTATE_PENDING);
+	if (ret) {
+		PERROR("sigaddset switch");
+	}
 }
 
 /*
@@ -179,6 +183,50 @@ end:
 	return ret;
 }
 
+int sessiond_timer_rotate_pending_start(struct ltt_session *session,
+		unsigned int interval_us)
+{
+	int ret;
+
+	DBG("Enabling rotate pending timer on session %" PRIu64, session->id);
+	/*
+	 * We arm this timer in a one-shot mode so we don't have to disable it
+	 * explicitly (which could deadlock if the timer thread is blocked writing
+	 * in the rotation_timer_pipe).
+	 * Instead, we re-arm it if needed after the rotation_pending check as
+	 * returned. Also, this timer is usually only needed once, so there is no
+	 * need to go through the whole signal teardown scheme everytime.
+	 */
+	ret = session_timer_start(&session->rotate_relay_pending_timer,
+			session, interval_us,
+			LTTNG_SESSIOND_SIG_ROTATE_PENDING, true);
+	if (ret == 0) {
+		session->rotate_relay_pending_timer_enabled = true;
+	}
+
+	return ret;
+}
+
+/*
+ * Stop and delete the channel's live timer.
+ * Called with session and session_list locks held.
+ */
+void sessiond_timer_rotate_pending_stop(struct ltt_session *session)
+{
+	int ret;
+
+	assert(session);
+
+	DBG("Disabling timer rotate pending on session %" PRIu64, session->id);
+	ret = session_timer_stop(&session->rotate_relay_pending_timer,
+			LTTNG_SESSIOND_SIG_ROTATE_PENDING);
+	if (ret == -1) {
+		ERR("Failed to stop rotate_pending timer");
+	}
+
+	session->rotate_relay_pending_timer_enabled = false;
+}
+
 /*
  * Block the RT signals for the entire process. It must be called from the
  * sessiond main before creating the threads
@@ -197,6 +245,109 @@ int sessiond_timer_signal_init(void)
 		return -1;
 	}
 	return 0;
+}
+
+/*
+ * Called with the rotation_timer_queue lock held.
+ * Return 1 if the same timer job already exists in the queue, 0 if not.
+ */
+static
+int check_duplicate_timer_job(struct timer_thread_parameters *ctx,
+		struct ltt_session *session, unsigned int signal)
+{
+	int ret = 0;
+	struct sessiond_rotation_timer *node;
+
+	rcu_read_lock();
+	cds_list_for_each_entry(node, &ctx->rotation_timer_queue->list, head) {
+		if (node->session_id == session->id && node->signal == signal) {
+			ret = 1;
+			goto end;
+		}
+	}
+
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Add the session ID and signal value to the rotation_timer_queue if it is
+ * not already there and wakeup the rotation thread. The rotation thread
+ * empties the whole queue everytime it is woken up. The event_pipe is
+ * non-blocking, if it would block, we just return because we know the
+ * rotation thread will be awaken anyway.
+ */
+static
+int enqueue_timer_rotate_job(struct timer_thread_parameters *ctx,
+		struct ltt_session *session, unsigned int signal)
+{
+	int ret;
+	char *c = "!";
+
+	pthread_mutex_lock(&ctx->rotation_timer_queue->lock);
+	ret = check_duplicate_timer_job(ctx, session, signal);
+	if (ret == 0) {
+		struct sessiond_rotation_timer *timer_data = NULL;
+
+		timer_data = zmalloc(sizeof(struct sessiond_rotation_timer));
+		if (!timer_data) {
+			PERROR("Allocation of timer data");
+			goto error;
+		}
+		timer_data->session_id = session->id;
+		timer_data->signal = signal;
+		cds_list_add_tail(&timer_data->head, &ctx->rotation_timer_queue->list);
+	} else if (ret == 1) {
+		/* This timer job is already pending, we don't need to add it.  */
+		pthread_mutex_unlock(&ctx->rotation_timer_queue->lock);
+		ret = 0;
+		goto end;
+	}
+	pthread_mutex_unlock(&ctx->rotation_timer_queue->lock);
+
+	ret = lttng_write(
+			lttng_pipe_get_writefd(ctx->rotation_timer_queue->event_pipe),
+			c, 1);
+	if (ret < 0) {
+		/*
+		 * We do not want to block in the timer handler, the job has been
+		 * enqueued in the list, the wakeup pipe is probably full, the job
+		 * will be processed when the rotation_thread catches up.
+		 */
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			ret = 0;
+			goto end;
+		}
+		PERROR("Timer wakeup rotation thread");
+		goto error;
+	}
+
+	ret = 0;
+	goto end;
+
+error:
+	ret = -1;
+end:
+	return ret;
+}
+
+/*
+ * Ask the rotation thread to check if the last rotation started in this
+ * session is still pending on the relay.
+ */
+static
+void relay_rotation_pending_timer(struct timer_thread_parameters *ctx,
+		int sig, siginfo_t *si)
+{
+	int ret;
+	struct ltt_session *session = si->si_value.sival_ptr;
+	assert(session);
+
+	ret = enqueue_timer_rotate_job(ctx, session, LTTNG_SESSIOND_SIG_ROTATE_PENDING);
+	if (ret) {
+		PERROR("wakeup rotate pipe");
+	}
 }
 
 /*
@@ -244,6 +395,8 @@ void *sessiond_timer_thread(void *data)
 			DBG("Signal timer metadata thread teardown");
 		} else if (signr == LTTNG_SESSIOND_SIG_EXIT) {
 			goto end;
+		} else if (signr == LTTNG_SESSIOND_SIG_ROTATE_PENDING) {
+			relay_rotation_pending_timer(ctx, info.si_signo, &info);
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);
 		}

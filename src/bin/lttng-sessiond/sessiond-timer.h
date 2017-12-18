@@ -24,6 +24,7 @@
 
 #define LTTNG_SESSIOND_SIG_TEARDOWN		SIGRTMIN + 10
 #define LTTNG_SESSIOND_SIG_EXIT			SIGRTMIN + 11
+#define LTTNG_SESSIOND_SIG_ROTATE_PENDING	SIGRTMIN + 12
 
 #define CLOCKID CLOCK_MONOTONIC
 
@@ -52,5 +53,9 @@ struct sessiond_rotation_timer {
 
 void *sessiond_timer_thread(void *data);
 int sessiond_timer_signal_init(void);
+
+int sessiond_timer_rotate_pending_start(struct ltt_session *session, unsigned int
+		interval_us);
+void sessiond_timer_rotate_pending_stop(struct ltt_session *session);
 
 #endif /* SESSIOND_TIMER_H */
