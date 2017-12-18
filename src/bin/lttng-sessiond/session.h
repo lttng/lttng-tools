@@ -132,8 +132,8 @@ struct ltt_session {
 	 * True until the relay has finished the rotation of all the streams.
 	 */
 	bool rotate_pending_relay;
-	/* Current status of a rotation. */
-	enum lttng_rotation_status rotation_status;
+	/* Current state of a rotation. */
+	enum lttng_rotation_state rotation_state;
 	/*
 	 * Number of channels waiting for a rotation.
 	 * When this number reaches 0, we can handle the rename of the chunk

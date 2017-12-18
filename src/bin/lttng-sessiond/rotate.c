@@ -348,7 +348,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 	goto end;
 
 error:
-	session->rotation_status = LTTNG_ROTATION_STATUS_ERROR;
+	session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
 end:
 	return ret;
 }

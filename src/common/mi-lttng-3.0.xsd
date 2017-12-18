@@ -580,6 +580,7 @@ THE SOFTWARE.
 			<xs:element name="targets" type="tns:targets_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
+			<xs:element name="rotations" type="tns:rotations_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -606,6 +607,7 @@ THE SOFTWARE.
 			<xs:enumeration value="untrack" />
 			<xs:enumeration value="metadata" />
 			<xs:enumeration value="regenerate" />
+			<xs:enumeration value="rotate" />
 		</xs:restriction>
 	</xs:simpleType>
 

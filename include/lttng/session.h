@@ -162,6 +162,23 @@ extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
 extern int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *enabled, int32_t **pids, size_t *nr_pids);
 
+/*
+ * Ask the session daemon where the data for this session is currently being
+ * written to. If rotations occured during a session, this call is useful to
+ * know the location of the last chunk.
+ *
+ * Return 0 and allocate chunk_path if rotations occured for this session, the
+ * caller needs to free chunk_path.
+ * Return 1 if no rotation occured during the session, chunk_path is left
+ * unallocated.
+ *
+ * Return a negative LTTng error code on error (readable with lttng_strerror).
+ *
+ * FIXME: Return an lttng_location object rather than a path.
+ */
+extern int lttng_session_get_current_archive_location(const char *session_name,
+		char **chunk_path);
+
 #ifdef __cplusplus
 }
 #endif

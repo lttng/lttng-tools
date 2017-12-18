@@ -196,6 +196,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_SIZE_IS_SET) ] = "Automatic rotation schedule with a size threshold condition already set for this session",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP) ] = "Session was already rotated once since it became inactive",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_WRONG_VERSION) ] = "Rotation feature is not supported by this kernel tracer version",
+	[ ERROR_INDEX(LTTNG_ERR_NO_SESSION_OUTPUT) ] = "Session has no output",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

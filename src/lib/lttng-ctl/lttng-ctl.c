@@ -2756,6 +2756,50 @@ end:
 	return ret;
 }
 
+int lttng_session_get_current_archive_location(const char *session_name,
+		char **chunk_path)
+{
+	struct lttcomm_session_msg lsm;
+	struct lttng_session_get_current_output_return *output_return = NULL;
+	int ret;
+	size_t path_len;
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_SESSION_GET_CURRENT_OUTPUT;
+	ret = lttng_strncpy(lsm.session.name, session_name,
+			sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &output_return);
+	if (ret < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	path_len = lttng_strnlen(output_return->path,
+			sizeof(output_return->path));
+	if (path_len == 0 || path_len == sizeof(output_return->path)) {
+		ret = -LTTNG_ERR_NO_SESSION_OUTPUT;
+		goto end;
+	}
+
+	*chunk_path = zmalloc(path_len + 1);
+	if (!*chunk_path) {
+		ret = -1;
+		goto end;
+	}
+	memcpy(*chunk_path, output_return->path, path_len);
+
+	ret = 0;
+
+end:
+	free(output_return);
+	return ret;
+}
+
 /*
  * lib constructor.
  */

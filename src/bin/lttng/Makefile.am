@@ -23,6 +23,7 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/metadata.c \
 				commands/regenerate.c \
 				commands/help.c \
+				commands/rotate.c \
 				utils.c utils.h lttng.c
 
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \

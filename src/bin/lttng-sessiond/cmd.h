@@ -120,5 +120,10 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 
 int cmd_rotate_session(struct ltt_session *session,
 		struct lttng_rotate_session_return *rotate_return);
+int cmd_rotate_get_info(struct ltt_session *session,
+		struct lttng_rotation_get_info_return *info_return,
+		uint64_t rotate_id);
+int cmd_session_get_current_output(struct ltt_session *session,
+		struct lttng_session_get_current_output_return *output_return);
 
 #endif /* CMD_H */

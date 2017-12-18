@@ -356,7 +356,7 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 		time_t now = time(NULL);
 
 		if (now == (time_t) -1) {
-			session->rotation_status = LTTNG_ROTATION_STATUS_ERROR;
+			session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
 			ret = LTTNG_ERR_UNK;
 			goto end_unlock_session;
 		}
@@ -367,7 +367,7 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 			goto end_unlock_session;
 		}
 		session->rotate_pending = false;
-		session->rotation_status = LTTNG_ROTATION_STATUS_COMPLETED;
+		session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
 		session->last_chunk_start_ts = session->current_chunk_start_ts;
 		if (session->rotate_pending_relay) {
 			ret = sessiond_timer_rotate_pending_start(

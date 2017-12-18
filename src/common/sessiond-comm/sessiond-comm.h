@@ -102,7 +102,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_REGISTER_TRIGGER              = 43,
 	LTTNG_UNREGISTER_TRIGGER            = 44,
 	LTTNG_ROTATE_SESSION                = 45,
-	LTTNG_ROTATE_PENDING                = 46,
+	LTTNG_ROTATION_GET_INFO             = 46,
+	LTTNG_SESSION_GET_CURRENT_OUTPUT    = 48,
 };
 
 enum lttcomm_relayd_command {
@@ -333,8 +334,8 @@ struct lttcomm_session_msg {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
 		struct {
-			uint64_t rotate_id;
-		} LTTNG_PACKED rotate_pending;
+			uint64_t rotation_id;
+		} LTTNG_PACKED get_rotation_info;
 	} u;
 } LTTNG_PACKED;
 

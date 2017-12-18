@@ -2964,8 +2964,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATE_PENDING:
-	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	case LTTNG_ROTATION_GET_INFO:
+	case LTTNG_SESSION_GET_CURRENT_OUTPUT:
 		need_domain = 0;
 		break;
 	default:
@@ -3009,7 +3009,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_TRACKER_PIDS:
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATION_GET_INFO:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -4104,6 +4104,7 @@ error_add_context:
 
 		DBG("Client rotate session \"%s\"", cmd_ctx->session->name);
 
+		memset(&rotate_return, 0, sizeof(rotate_return));
 		if (cmd_ctx->session->kernel_session && !check_rotate_compatible()) {
 			DBG("Kernel tracer version is not compatible with the rotation feature");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
@@ -4126,20 +4127,20 @@ error_add_context:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATION_GET_INFO:
 	{
-		struct lttng_rotate_pending_return *pending_return = NULL;
+		struct lttng_rotation_get_info_return get_info_return;
 
-		ret = cmd_rotate_pending(cmd_ctx->session, &pending_return,
-				cmd_ctx->lsm->u.rotate_pending.rotate_id);
+		memset(&get_info_return, 0, sizeof(get_info_return));
+		ret = cmd_rotate_get_info(cmd_ctx->session, &get_info_return,
+				cmd_ctx->lsm->u.get_rotation_info.rotation_id);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, pending_return,
-				sizeof(struct lttng_rotate_session_handle));
-		free(pending_return);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &get_info_return,
+				sizeof(get_info_return));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
@@ -4148,19 +4149,20 @@ error_add_context:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	case LTTNG_SESSION_GET_CURRENT_OUTPUT:
 	{
-		struct lttng_rotate_get_current_path *get_return = NULL;
+		struct lttng_session_get_current_output_return output_return;
 
-		ret = cmd_rotate_get_current_path(cmd_ctx->session, &get_return);
+		memset(&output_return, 0, sizeof(output_return));
+		ret = cmd_session_get_current_output(cmd_ctx->session,
+				&output_return);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
 		}
 
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_return,
-				sizeof(struct lttng_rotate_get_current_path));
-		free(get_return);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &output_return,
+				sizeof(output_return));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;

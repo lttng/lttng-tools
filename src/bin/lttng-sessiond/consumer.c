@@ -1752,7 +1752,7 @@ int consumer_rotate_pending_relay(struct consumer_socket *socket,
 
 	assert(socket);
 
-	DBG("Consumer rotate pending on relay for session %" PRIu64 ", chunk id % " PRIu64,
+	DBG("Consumer rotate pending on relay for session %" PRIu64 ", chunk id %" PRIu64,
 			session_id, chunk_id);
 	assert(output->type == CONSUMER_DST_NET);
 
