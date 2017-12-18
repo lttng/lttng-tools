@@ -103,6 +103,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_UNREGISTER_TRIGGER            = 44,
 	LTTNG_ROTATE_SESSION                = 45,
 	LTTNG_ROTATE_PENDING                = 46,
+	LTTNG_ROTATE_GET_CURRENT_PATH       = 48,
 };
 
 enum lttcomm_relayd_command {
