@@ -85,6 +85,7 @@ static struct cmd_struct commands[] =  {
 	{ "load", cmd_load},
 	{ "metadata", cmd_metadata},
 	{ "regenerate", cmd_regenerate},
+	{ "rotate", cmd_rotate},
 	{ "save", cmd_save},
 	{ "set-session", cmd_set_session},
 	{ "snapshot", cmd_snapshot},

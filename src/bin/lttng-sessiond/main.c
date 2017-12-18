@@ -2964,8 +2964,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATE_PENDING:
-	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	case LTTNG_ROTATION_IS_PENDING:
+	case LTTNG_ROTATION_GET_CURRENT_PATH:
 		need_domain = 0;
 		break;
 	default:
@@ -3009,7 +3009,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_TRACKER_PIDS:
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
-	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATION_IS_PENDING:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -4127,9 +4127,9 @@ error_add_context:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATION_IS_PENDING:
 	{
-		struct lttng_rotate_pending_return *pending_return = NULL;
+		struct lttng_rotation_is_pending_return *pending_return = NULL;
 
 		ret = cmd_rotate_pending(cmd_ctx->session, &pending_return,
 				cmd_ctx->lsm->u.rotate_pending.rotate_id);
@@ -4139,7 +4139,7 @@ error_add_context:
 		}
 
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, pending_return,
-				sizeof(struct lttng_rotate_session_handle));
+				sizeof(struct lttng_rotation_handle));
 		free(pending_return);
 		if (ret < 0) {
 			ret = -ret;
@@ -4149,9 +4149,9 @@ error_add_context:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	case LTTNG_ROTATION_GET_CURRENT_PATH:
 	{
-		struct lttng_rotate_get_current_path *get_return = NULL;
+		struct lttng_rotation_get_current_path *get_return = NULL;
 
 		ret = cmd_rotate_get_current_path(cmd_ctx->session, &get_return);
 		if (ret < 0) {
@@ -4160,7 +4160,7 @@ error_add_context:
 		}
 
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_return,
-				sizeof(struct lttng_rotate_get_current_path));
+				sizeof(struct lttng_rotation_get_current_path));
 		free(get_return);
 		if (ret < 0) {
 			ret = -ret;

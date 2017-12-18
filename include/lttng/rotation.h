@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 /*
- * Return codes for lttng_rotate_session_get_output_path.
+ * Return codes for lttng_rotation_handle_get_output_path.
  */
 enum lttng_rotation_status {
 	/*
@@ -50,6 +50,100 @@ enum lttng_rotation_status {
 	 */
 	LTTNG_ROTATION_STATUS_NO_ROTATION = 4,
 };
+
+/*
+ * Input parameter to the lttng_rotate_session command.
+ * The lttng_rotation_manual_attr object is opaque to the user. Use the helper
+ * functions below to use it.
+ */
+struct lttng_rotation_manual_attr;
+
+/*
+ * Handle used to check the progress of a rotation.
+ * This object is opaque to the user. Use the helper functions below to use it.
+ */
+struct lttng_rotation_handle;
+
+/*
+ * lttng rotate session command inputs.
+ */
+/*
+ * Return a newly allocated manual rotate session descriptor object or NULL on error.
+ */
+struct lttng_rotation_manual_attr *lttng_rotation_manual_attr_create(void);
+
+/*
+ * Free a given manual rotate session descriptor object.
+ */
+void lttng_rotation_manual_attr_destroy(struct lttng_rotation_manual_attr *attr);
+
+/*
+ * Set the name of the session to rotate manually.
+ */
+int lttng_rotation_manual_attr_set_session_name(
+		struct lttng_rotation_manual_attr *attr, const char *session_name);
+
+/*
+ * lttng rotate session handle functions.
+ */
+/*
+ * Get the status from a handle.
+ */
+enum lttng_rotation_status lttng_rotation_handle_get_status(
+		struct lttng_rotation_handle *rotation_handle);
+
+/*
+ * If the rotation is complete, returns 0, allocate path and set
+ * it to the path of the readable chunk, the caller is responsible to free it.
+ * Otherwise return a negative value.
+ */
+int lttng_rotation_handle_get_output_path(
+		struct lttng_rotation_handle *rotation_handle,
+		char **path);
+
+/*
+ * Destroy a lttng_rotate_session handle allocated by lttng_rotate_session()
+ */
+void lttng_rotation_handle_destroy(
+		struct lttng_rotation_handle *rotation_handle);
+
+/*
+ * Rotate the output folder of the session
+ *
+ * On success, handle is allocated and can be used to monitor the progress
+ * of the rotation with lttng_rotation_is_pending(). The handle must be freed
+ * by the caller with lttng_rotation_handle_destroy().
+ *
+ * Return 0 if the rotate action was successfully launched or a negative
+ * LTTng error code on error.
+ */
+extern int lttng_rotate_session(struct lttng_rotation_manual_attr *attr,
+		struct lttng_rotation_handle **rotation_handle);
+
+/*
+ * For a given rotation handle, this call checks if a session rotation is still in
+ * progress or has completed.
+ *
+ * Return 0 if the rotation is complete, in this case, the output path can be
+ * fetched with lttng_rotation_handle_get_output_path().
+ * Return 1 if the rotate is still pending.
+ * Return a negative LTTng error code on error (readable with lttng_strerror).
+ */
+extern int lttng_rotation_is_pending(struct lttng_rotation_handle *rotation_handle);
+
+/*
+ * Ask the session daemon where the data for this session is currently being
+ * written to. If rotations occured during a session, this call is useful to
+ * know the location of the last chunk.
+ *
+ * Return 0 and allocate chunk_path if rotations occured for this session, the
+ * caller needs to free chunk_path.
+ * Return 1 if no rotation occured during the session, chunk_path is left
+ * unallocated.
+ * Return -1 on error.
+ */
+extern int lttng_rotation_get_current_path(const char *session_name,
+		char **chunk_path);
 
 #ifdef __cplusplus
 }

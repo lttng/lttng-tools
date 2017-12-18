@@ -4570,14 +4570,14 @@ end:
 }
 
 /*
- * Command LTTNG_ROTATE_PENDING from the lttng-ctl library.
+ * Command LTTNG_ROTATION_IS_PENDING from the lttng-ctl library.
  *
  * Check if the session has finished its rotation.
  *
  * Return 0 on success or else a LTTNG_ERR code.
  */
 int cmd_rotate_pending(struct ltt_session *session,
-		struct lttng_rotate_pending_return **pending_return,
+		struct lttng_rotation_is_pending_return **pending_return,
 		uint64_t rotate_id)
 {
 	int ret;
@@ -4587,7 +4587,7 @@ int cmd_rotate_pending(struct ltt_session *session,
 	DBG("Cmd rotate pending session %s, rotate_id %" PRIu64, session->name,
 			session->rotate_count);
 
-	*pending_return = zmalloc(sizeof(struct lttng_rotate_pending_return));
+	*pending_return = zmalloc(sizeof(struct lttng_rotation_is_pending_return));
 	if (!*pending_return) {
 		ret = -ENOMEM;
 		goto end;
@@ -4642,11 +4642,11 @@ end:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_rotate_get_current_path(struct ltt_session *session,
-		struct lttng_rotate_get_current_path **get_return)
+		struct lttng_rotation_get_current_path **get_return)
 {
 	int ret;
 
-	*get_return = zmalloc(sizeof(struct lttng_rotate_get_current_path));
+	*get_return = zmalloc(sizeof(struct lttng_rotation_get_current_path));
 	if (!*get_return) {
 		ret = -ENOMEM;
 		goto end;
