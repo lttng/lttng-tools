@@ -149,6 +149,12 @@ enum lttng_error_code {
 	LTTNG_ERR_TRIGGER_EXISTS         = 126, /* Trigger already registered. */
 	LTTNG_ERR_TRIGGER_NOT_FOUND      = 127, /* Trigger not found. */
 	LTTNG_ERR_COMMAND_CANCELLED      = 128, /* Command cancelled. */
+	LTTNG_ERR_ROTATE_PENDING         = 129, /* Rotate already pending for this session. */
+	LTTNG_ERR_ROTATE_NOT_AVAILABLE   = 130, /* Rotate feature not available for this type of session (e.g: live) */
+	LTTNG_ERR_ROTATE_TIMER_EXISTS    = 131, /* Rotate timer already setup for this session. */
+	LTTNG_ERR_ROTATE_SIZE_EXISTS     = 132, /* Rotate size already setup for this session. */
+	LTTNG_ERR_ROTATE_MULTIPLE_AFTER_STOP     = 133, /* Already rotated once after a stop. */
+	LTTNG_ERR_ROTATE_WRONG_VERSION   = 134, /* Rotate not supported by this kernel tracer version */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

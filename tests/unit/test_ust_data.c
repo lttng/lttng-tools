@@ -64,6 +64,18 @@ static struct ltt_ust_session *usess;
 static struct lttng_domain dom;
 
 /*
+ * Stub to prevent an undefined reference in this test without having to link
+ * the entire tree because of a cascade of dependencies. This is not used,
+ * it is just there to prevent GCC from complaining.
+ */
+int rotate_add_channel_pending(uint64_t key, enum lttng_domain_type domain,
+		struct ltt_session *session)
+{
+	assert(0);
+	return 0;
+}
+
+/*
  * Return random string of 10 characters.
  * Not thread-safe.
  */

@@ -33,6 +33,7 @@
 
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <lttng/notification/channel-internal.h>
+#include <lttng/rotate-internal.h>
 
 #include "rotation-thread.h"
 #include "lttng-sessiond.h"

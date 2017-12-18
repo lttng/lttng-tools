@@ -43,6 +43,7 @@
 #include "session.h"
 #include "lttng-sessiond.h"
 #include "notification-thread-commands.h"
+#include "rotate.h"
 
 static
 int ust_app_flush_app_session(struct ust_app *app, struct ust_app_session *ua_sess);
@@ -6276,4 +6277,199 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 	rcu_read_unlock();
 
 	return 0;
+}
+
+/*
+ * Rotate all the channels of a session.
+ *
+ * Return 0 on success or else a negative value.
+ */
+int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
+{
+	int ret = 0;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+	struct ltt_ust_session *usess = session->ust_session;
+	char *pathname;
+
+	assert(usess);
+
+	rcu_read_lock();
+
+	pathname = zmalloc(PATH_MAX * sizeof(char));
+	if (!pathname) {
+		ERR("Failed to alloc pathname");
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+			struct consumer_socket *socket;
+
+			/* Get consumer socket to use to push the metadata.*/
+			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
+					usess->consumer);
+			if (!socket) {
+				ret = -EINVAL;
+				goto error;
+			}
+
+			/*
+			 * Account the metadata channel first to make sure the
+			 * number of channels waiting for a rotation cannot
+			 * reach 0 before we complete the iteration over all
+			 * the channels.
+			 */
+			ret = rotate_add_channel_pending(
+					reg->registry->reg.ust->metadata_key,
+					LTTNG_DOMAIN_UST, session);
+			if (ret < 0) {
+				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				goto error;
+			}
+
+			ret = snprintf(pathname, PATH_MAX,
+					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
+					reg->uid, reg->bits_per_long);
+			if (ret < 0) {
+				PERROR("snprintf rotate path");
+				goto error;
+			}
+
+			/* Rotate the data channels. */
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+				ret = rotate_add_channel_pending(
+						reg_chan->consumer_key,
+						LTTNG_DOMAIN_UST, session);
+				if (ret < 0) {
+					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+					goto error;
+				}
+				ret = consumer_rotate_channel(socket,
+						reg_chan->consumer_key,
+						usess->uid, usess->gid,
+						usess->consumer, pathname, 0,
+						session->rotate_count,
+						&session->rotate_pending_relay);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			(void) push_metadata(reg->registry->reg.ust, usess->consumer);
+
+			ret = consumer_rotate_channel(socket,
+					reg->registry->reg.ust->metadata_key,
+					usess->uid, usess->gid,
+					usess->consumer, pathname, 1,
+					session->rotate_count,
+					&session->rotate_pending_relay);
+			if (ret < 0) {
+				goto error;
+			}
+			*ust_active = true;
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct consumer_socket *socket;
+			struct lttng_ht_iter chan_iter;
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+			ret = snprintf(pathname, PATH_MAX, DEFAULT_UST_TRACE_DIR "/%s",
+					ua_sess->path);
+			if (ret < 0) {
+				PERROR("snprintf snapshot path");
+				goto error;
+			}
+
+			/* Get the right consumer socket for the application. */
+			socket = consumer_find_socket_by_bitness(app->bits_per_long,
+					usess->consumer);
+			if (!socket) {
+				ret = -EINVAL;
+				goto error;
+			}
+
+			registry = get_session_registry(ua_sess);
+			if (!registry) {
+				DBG("Application session is being torn down. Abort snapshot record.");
+				ret = -1;
+				goto error;
+			}
+
+			/*
+			 * Account the metadata channel first to make sure the
+			 * number of channels waiting for a rotation cannot
+			 * reach 0 before we complete the iteration over all
+			 * the channels.
+			 */
+			ret = rotate_add_channel_pending(registry->metadata_key,
+					LTTNG_DOMAIN_UST, session);
+			if (ret < 0) {
+				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				goto error;
+			}
+
+			/* Rotate the data channels. */
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				ret = rotate_add_channel_pending(
+						ua_chan->key, LTTNG_DOMAIN_UST,
+						session);
+				if (ret < 0) {
+					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+					goto error;
+				}
+				ret = consumer_rotate_channel(socket, ua_chan->key,
+						ua_sess->euid, ua_sess->egid,
+						ua_sess->consumer, pathname, 0,
+						session->rotate_count,
+						&session->rotate_pending_relay);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			/* Rotate the metadata channel. */
+			(void) push_metadata(registry, usess->consumer);
+			ret = consumer_rotate_channel(socket, registry->metadata_key,
+					ua_sess->euid, ua_sess->egid,
+					ua_sess->consumer, pathname, 1,
+					session->rotate_count,
+					&session->rotate_pending_relay);
+			if (ret < 0) {
+				goto error;
+			}
+			*ust_active = true;
+		}
+		break;
+	}
+	default:
+		assert(0);
+		break;
+	}
+
+	ret = LTTNG_OK;
+
+error:
+	rcu_read_unlock();
+	free(pathname);
+	return ret;
 }

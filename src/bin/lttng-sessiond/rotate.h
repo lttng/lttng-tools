@@ -47,4 +47,14 @@ unsigned long hash_channel_key(struct rotation_channel_key *key);
 
 int rename_complete_chunk(struct ltt_session *session, time_t ts);
 
+/*
+ * When we start the rotation of a channel, we add its information in
+ * channel_pending_rotate_ht. This is called in the context of
+ * thread_manage_client when the client asks for a rotation, in the context
+ * of the sessiond_timer thread when periodic rotations are enabled and from
+ * the rotation_thread when size-based rotations are enabled.
+ */
+int rotate_add_channel_pending(uint64_t key, enum lttng_domain_type domain,
+		struct ltt_session *session);
+
 #endif /* ROTATE_H */

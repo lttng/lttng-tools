@@ -2903,6 +2903,22 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 }
 
 /*
+ * Check if the current kernel tracer supports the session rotation feature.
+ * Return 1 if it does, 0 otherwise.
+ */
+static int check_rotate_compatible(void)
+{
+	int ret = 1;
+
+	if (kernel_tracer_version.minor < 11) {
+		DBG("Kernel tracer version is not compatible with the rotation feature");
+		ret = 0;
+	}
+
+	return ret;
+}
+
+/*
  * Process the command requested by the lttng client within the command
  * context structure. This function make sure that the return structure (llm)
  * is set and ready for transmission before returning.
@@ -2946,6 +2962,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_REGENERATE_STATEDUMP:
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
+	case LTTNG_ROTATE_SESSION:
+	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATE_GET_CURRENT_PATH:
 		need_domain = 0;
 		break;
 	default:
@@ -2988,6 +3007,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_LIST_SYSCALLS:
 	case LTTNG_LIST_TRACKER_PIDS:
 	case LTTNG_DATA_PENDING:
+	case LTTNG_ROTATE_SESSION:
+	case LTTNG_ROTATE_PENDING:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -4074,6 +4095,78 @@ error_add_context:
 	{
 		ret = cmd_unregister_trigger(cmd_ctx, sock,
 				notification_thread_handle);
+		break;
+	}
+	case LTTNG_ROTATE_SESSION:
+	{
+		struct lttng_rotate_session_return *rotate_return = NULL;
+
+		DBG("Client rotate session %" PRIu64, cmd_ctx->session->id);
+
+		if (cmd_ctx->session->kernel_session && !check_rotate_compatible()) {
+			DBG("Kernel tracer version is not compatible with the rotation feature");
+			ret = LTTNG_ERR_ROTATE_WRONG_VERSION;
+			goto error;
+		}
+
+		ret = cmd_rotate_session(cmd_ctx->session, &rotate_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, rotate_return,
+				sizeof(struct lttng_rotate_session_return));
+		free(rotate_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_ROTATE_PENDING:
+	{
+		struct lttng_rotate_pending_return *pending_return = NULL;
+
+		ret = cmd_rotate_pending(cmd_ctx->session, &pending_return,
+				cmd_ctx->lsm->u.rotate_pending.rotate_id);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, pending_return,
+				sizeof(struct lttng_rotate_session_handle));
+		free(pending_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	{
+		struct lttng_rotate_get_current_path *get_return = NULL;
+
+		ret = cmd_rotate_get_current_path(cmd_ctx->session, &get_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_return,
+				sizeof(struct lttng_rotate_get_current_path));
+		free(get_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
 		break;
 	}
 	default:

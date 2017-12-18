@@ -190,6 +190,12 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_TRIGGER_EXISTS) ] = "Trigger already registered",
 	[ ERROR_INDEX(LTTNG_ERR_TRIGGER_NOT_FOUND) ] = "Trigger not found",
 	[ ERROR_INDEX(LTTNG_ERR_COMMAND_CANCELLED) ] = "Command cancelled",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_PENDING) ] = "Rotate already pending for this session.",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_NOT_AVAILABLE) ] = "Rotate feature not available for this type of session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_TIMER_EXISTS) ] = "Rotate timer already setup for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_SIZE_EXISTS) ] = "Rotate size already setup for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_MULTIPLE_AFTER_STOP) ] = "Already rotated once after a stop",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_WRONG_VERSION) ] = "Rotate not supported by this kernel tracer version",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
