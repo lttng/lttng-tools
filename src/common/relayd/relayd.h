@@ -55,6 +55,8 @@ int relayd_rotate_stream(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
 		const char *new_pathname, uint64_t new_chunk_id, uint64_t seq_num);
 int relayd_rotate_rename(struct lttcomm_relayd_sock *sock,
 		const char *current_path, const char *new_path);
+int relayd_rotate_pending(struct lttcomm_relayd_sock *sock,
+		uint64_t chunk_id);
 int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path);
 
 #endif /* _RELAYD_H */

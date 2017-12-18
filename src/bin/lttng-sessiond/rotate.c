@@ -32,6 +32,8 @@
 #include <signal.h>
 #include <inttypes.h>
 
+#include <lttng/rotate-internal.h>
+
 #include "session.h"
 #include "rotate.h"
 #include "rotation-thread.h"
@@ -323,5 +325,51 @@ error:
 	session->rotate_status = LTTNG_ROTATE_ERROR;
 end:
 	free(new_path);
+	return ret;
+}
+
+int relay_rotate_pending(struct ltt_session *session, uint64_t chunk_id)
+{
+	int ret;
+	struct consumer_socket *socket;
+	struct consumer_output *output;
+	struct lttng_ht_iter iter;
+
+	/*
+	 * Either one of the sessions is enough to find the consumer_output
+	 * and uid/gid.
+	 */
+	if (session->kernel_session) {
+		output = session->kernel_session->consumer;
+	} else if (session->ust_session) {
+		output = session->ust_session->consumer;
+	} else {
+		assert(0);
+	}
+
+	if (!output || !output->socks) {
+		ERR("No consumer output found");
+		ret = -1;
+		goto end;
+	}
+
+	ret = -1;
+
+	rcu_read_lock();
+	/*
+	 * We have to iterate to find a socket, but we only need to send the
+	 * rotate pending command to one consumer, so we break after the first
+	 * one.
+	 */
+	cds_lfht_for_each_entry(output->socks->ht, &iter.iter, socket, node.node) {
+		pthread_mutex_lock(socket->lock);
+		ret = consumer_rotate_pending_relay(socket, output, session->id,
+				chunk_id);
+		pthread_mutex_unlock(socket->lock);
+		break;
+	}
+	rcu_read_unlock();
+
+end:
 	return ret;
 }

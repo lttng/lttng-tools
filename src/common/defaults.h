@@ -332,6 +332,12 @@
 #define DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT		100
 
 /*
+ * Default timer value in usec for the rotate pending polling check on the
+ * relay when a rotation has completed on the consumer.
+ */
+#define DEFAULT_ROTATE_PENDING_RELAY_TIMER	CONFIG_DEFAULT_ROTATE_PENDING_RELAY_TIMER
+
+/*
  * Returns the default subbuf size.
  *
  * This function depends on a value that is set at constructor time, so it is

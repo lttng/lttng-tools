@@ -364,6 +364,16 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 		session->rotate_pending = false;
 		session->rotate_status = LTTNG_ROTATE_COMPLETED;
 		session->last_chunk_start_ts = session->current_chunk_start_ts;
+		if (session->rotate_pending_relay) {
+			ret = sessiond_timer_rotate_pending_start(
+					session,
+					DEFAULT_ROTATE_PENDING_RELAY_TIMER);
+			if (ret) {
+				ERR("Enabling rotate pending timer");
+				ret = -1;
+				goto end_unlock_session;
+			}
+		}
 		DBG("Rotation completed for session %s", session->name);
 	}
 
@@ -374,6 +384,137 @@ end_unlock_session:
 	session_unlock(session);
 end_unlock_session_list:
 	session_unlock_list();
+	rcu_read_unlock();
+end:
+	return ret;
+}
+
+/*
+ * Process the rotate_pending check, called with session lock held.
+ */
+static
+int rotate_pending_relay_timer(struct ltt_session *session)
+{
+	int ret;
+
+	DBG("[rotation-thread] Check rotate pending on session %" PRIu64,
+			session->id);
+	ret = relay_rotate_pending(session, session->rotate_count - 1);
+	if (ret < 0) {
+		ERR("[rotation-thread] Check relay rotate pending");
+		goto end;
+	}
+	if (ret == 0) {
+		DBG("[rotation-thread] Rotation completed on the relay for "
+				"session %" PRIu64, session->id);
+		/*
+		 * Now we can clear the pending flag in the session. New
+		 * rotations can start now.
+		 */
+		session->rotate_pending_relay = false;
+	} else if (ret == 1) {
+		DBG("[rotation-thread] Rotation still pending on the relay for "
+				"session %" PRIu64, session->id);
+		ret = sessiond_timer_rotate_pending_start(session,
+				DEFAULT_ROTATE_PENDING_RELAY_TIMER);
+		if (ret) {
+			ERR("Re-enabling rotate pending timer");
+			ret = -1;
+			goto end;
+		}
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+static
+int handle_rotate_timer_pipe(uint32_t revents,
+		struct rotation_thread_handle *handle,
+		struct rotation_thread_state *state,
+		struct rotation_thread_timer_queue *queue)
+{
+	int ret = 0;
+	int fd = lttng_pipe_get_readfd(queue->event_pipe);
+	struct ltt_session *session;
+	char buf[1];
+
+	if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+		ret = lttng_poll_del(&state->events, fd);
+		if (ret) {
+			ERR("[rotation-thread] Failed to remove consumer "
+					"rotate pending pipe from poll set");
+		}
+		goto end;
+	}
+
+	ret = lttng_read(fd, buf, 1);
+	if (ret != 1) {
+		ERR("[rotation-thread] Failed to read from wakeup pipe (fd = %i)", fd);
+		ret = -1;
+		goto end;
+	}
+
+	rcu_read_lock();
+	for (;;) {
+		struct sessiond_rotation_timer *timer_data;
+
+		/*
+		 * Take the queue lock only to pop elements from the list.
+		 */
+		pthread_mutex_lock(&queue->lock);
+		if (cds_list_empty(&queue->list)) {
+			pthread_mutex_unlock(&queue->lock);
+			break;
+		}
+		timer_data = cds_list_first_entry(&queue->list,
+				struct sessiond_rotation_timer, head);
+		cds_list_del(&timer_data->head);
+		pthread_mutex_unlock(&queue->lock);
+
+		/*
+		 * session lock to lookup the session ID.
+		 */
+		session_lock_list();
+		session = session_find_by_id(timer_data->session_id);
+		if (!session) {
+			DBG("[rotation-thread] Session %" PRIu64 " not found",
+					timer_data->session_id);
+			/*
+			 * This is a non-fatal error, and we cannot report it to the
+			 * user (timer), so just print the error and continue the
+			 * processing.
+			 */
+			session_unlock_list();
+			free(timer_data);
+			continue;
+		}
+
+		/*
+		 * Take the session lock and release the session_list lock.
+		 */
+		session_lock(session);
+		session_unlock_list();
+
+		if (timer_data->signal == LTTNG_SESSIOND_SIG_ROTATE_PENDING) {
+			ret = rotate_pending_relay_timer(session);
+		} else {
+			ERR("Unknown signal in rotate timer %d", timer_data->signal);
+			ret = -1;
+		}
+		session_unlock(session);
+		free(timer_data);
+		if (ret) {
+			ERR("Error processing timer");
+			goto end_unlock;
+		}
+	}
+
+	ret = 0;
+
+end_unlock:
 	rcu_read_unlock();
 end:
 	return ret;
@@ -436,6 +577,13 @@ void *thread_rotation(void *data)
 			if (fd == handle->thread_quit_pipe) {
 				DBG("[rotation-thread] Quit pipe activity");
 				goto exit;
+			} else if (fd == lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe)) {
+				ret = handle_rotate_timer_pipe(revents,
+						handle, &state, handle->rotation_timer_queue);
+				if (ret) {
+					ERR("[rotation-thread] Rotate timer");
+					goto error;
+				}
 			} else if (fd == handle->ust32_consumer ||
 					fd == handle->ust64_consumer ||
 					fd == handle->kernel_consumer) {
