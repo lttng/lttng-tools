@@ -328,7 +328,7 @@ int session_destroy(struct ltt_session *session)
 	/* Safety check */
 	assert(session);
 
-	DBG("Destroying session %s", session->name);
+	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);
 	del_session_list(session);
 	pthread_mutex_destroy(&session->lock);
 	del_session_ht(session);
@@ -399,6 +399,9 @@ int session_create(char *name, uid_t uid, gid_t gid)
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
+
+	new_session->rotate_pending = false;
+	new_session->rotate_pending_relay = false;
 
 	/* Add new session to the session list */
 	session_lock_list();

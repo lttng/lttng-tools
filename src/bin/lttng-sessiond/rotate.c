@@ -50,6 +50,38 @@ unsigned long hash_channel_key(struct rotation_channel_key *key)
 			(void *) (unsigned long) key->domain, lttng_ht_seed);
 }
 
+int rotate_add_channel_pending(uint64_t key, enum lttng_domain_type domain,
+		struct ltt_session *session)
+{
+	int ret;
+	struct rotation_channel_info *new_info;
+	struct rotation_channel_key channel_key = { .key = key,
+		.domain = domain };
+
+	new_info = zmalloc(sizeof(struct rotation_channel_info));
+	if (!new_info) {
+		goto error;
+	}
+
+	new_info->channel_key.key = key;
+	new_info->channel_key.domain = domain;
+	new_info->session_id = session->id;
+	cds_lfht_node_init(&new_info->rotate_channels_ht_node);
+
+	session->nr_chan_rotate_pending++;
+	cds_lfht_add(channel_pending_rotate_ht,
+			hash_channel_key(&channel_key),
+			&new_info->rotate_channels_ht_node);
+
+	ret = 0;
+	goto end;
+
+error:
+	ret = -1;
+end:
+	return ret;
+}
+
 /* The session's lock must be held by the caller. */
 static
 int session_rename_chunk(struct ltt_session *session, char *current_path,

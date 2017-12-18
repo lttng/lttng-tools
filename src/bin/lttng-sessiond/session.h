@@ -19,6 +19,7 @@
 #define _LTT_SESSION_H
 
 #include <limits.h>
+#include <stdbool.h>
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
@@ -127,6 +128,10 @@ struct ltt_session {
 	 * rotate_pending_relay.
 	 */
 	bool rotate_pending;
+	/*
+	 * True until the relay has finished the rotation of all the streams.
+	 */
+	bool rotate_pending_relay;
 	/* Current status of a rotation. */
 	enum lttng_rotation_status rotation_status;
 	/*
@@ -162,6 +167,13 @@ struct ltt_session {
 	 * with the current timestamp.
 	 */
 	time_t current_chunk_start_ts;
+	/*
+	 * Keep a state if this session was rotated after the last stop command.
+	 * We only allow one rotation after a stop. At destroy, we also need to
+	 * know if a rotation occured since the last stop to rename the current
+	 * chunk.
+	 */
+	bool rotated_after_last_stop;
 };
 
 /* Prototypes */

@@ -118,4 +118,7 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		struct notification_thread_handle *notification_thread_handle);
 
+int cmd_rotate_session(struct ltt_session *session,
+		struct lttng_rotate_session_return *rotate_return);
+
 #endif /* CMD_H */
