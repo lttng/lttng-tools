@@ -1736,6 +1736,51 @@ error:
 }
 
 /*
+ * Ask the relay if a rotation is still pending. Must be called with the socket
+ * lock held.
+ *
+ * Return 1 if the rotation is still pending, 0 if finished, a negative value
+ * on error.
+ */
+int consumer_rotate_pending_relay(struct consumer_socket *socket,
+		struct consumer_output *output, uint64_t session_id,
+		uint64_t chunk_id)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+	uint32_t pending = 0;
+
+	assert(socket);
+
+	DBG("Consumer rotate pending on relay for session %" PRIu64 ", chunk id % " PRIu64,
+			session_id, chunk_id);
+	assert(output->type == CONSUMER_DST_NET);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_PENDING_RELAY;
+	msg.u.rotate_pending_relay.session_id = session_id;
+	msg.u.rotate_pending_relay.relayd_id = output->net_seq_index;
+	msg.u.rotate_pending_relay.chunk_id = chunk_id;
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = consumer_socket_recv(socket, &pending, sizeof(pending));
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = pending;
+
+error:
+	health_code_update();
+	return ret;
+}
+
+/*
  * Ask the consumer to create a directory.
  *
  * Called with the consumer socket lock held.

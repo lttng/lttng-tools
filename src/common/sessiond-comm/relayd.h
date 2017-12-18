@@ -217,6 +217,12 @@ struct lttcomm_relayd_rotate_pending {
 	uint64_t chunk_id;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_rotate_pending_reply {
+	struct lttcomm_relayd_generic_reply generic;
+	/* Valid values are [0, 1]. */
+	uint8_t is_pending;
+} LTTNG_PACKED;
+
 struct lttcomm_relayd_mkdir {
 	/* Includes trailing NULL */
 	uint32_t length;

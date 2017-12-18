@@ -2803,7 +2803,7 @@ int relay_rotate_pending(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_rotate_pending msg;
-	struct lttcomm_relayd_generic_reply reply;
+	struct lttcomm_relayd_rotate_pending_reply reply;
 	struct lttng_ht_iter iter;
 	struct relay_stream *stream;
 	int ret = 0;
@@ -2883,7 +2883,8 @@ int relay_rotate_pending(struct lttcomm_relayd_hdr *recv_hdr,
 send_reply:
 	rcu_read_unlock();
 	memset(&reply, 0, sizeof(reply));
-	reply.ret_code = htobe32(rotate_pending ? 1 : 0);
+	reply.generic.ret_code = htobe32((uint32_t) LTTNG_OK);
+	reply.is_pending = (uint8_t) !!rotate_pending;
 	network_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(reply), 0);
 	if (network_ret < (ssize_t) sizeof(reply)) {

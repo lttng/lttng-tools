@@ -4389,6 +4389,27 @@ int lttng_consumer_rotate_rename(const char *old_path, const char *new_path,
 	}
 }
 
+int lttng_consumer_rotate_pending_relay(uint64_t session_id,
+		uint64_t relayd_id, uint64_t chunk_id)
+{
+	int ret;
+	struct consumer_relayd_sock_pair *relayd;
+
+	relayd = consumer_find_relayd(relayd_id);
+	if (!relayd) {
+		ERR("Failed to find relayd");
+		ret = -1;
+		goto end;
+	}
+
+	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+	ret = relayd_rotate_pending(&relayd->control_sock, chunk_id);
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+
+end:
+	return ret;
+}
+
 static
 int mkdir_local(const char *path, uid_t uid, gid_t gid)
 {

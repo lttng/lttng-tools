@@ -48,6 +48,8 @@ unsigned long hash_channel_key(struct rotation_channel_key *key);
 /* session lock must be held by this function's caller. */
 int rename_complete_chunk(struct ltt_session *session, time_t ts);
 
+int relay_rotate_pending(struct ltt_session *session, uint64_t chunk_id);
+
 /*
  * When we start the rotation of a channel, we add its information in
  * channel_pending_rotate_ht. This is called in the context of

@@ -168,6 +168,12 @@ struct ltt_session {
 	 */
 	time_t current_chunk_start_ts;
 	/*
+	 * Timer to check periodically if a relay has completed the last
+	 * rotation.
+	 */
+	bool rotate_relay_pending_timer_enabled;
+	timer_t rotate_relay_pending_timer;
+	/*
 	 * Keep a state if this session was rotated after the last stop command.
 	 * We only allow one rotation after a stop. At destroy, we also need to
 	 * know if a rotation occured since the last stop to rename the current

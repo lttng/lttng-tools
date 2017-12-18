@@ -1180,6 +1180,40 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		break;
 	}
+	case LTTNG_CONSUMER_ROTATE_PENDING_RELAY:
+	{
+		uint32_t pending_reply;
+
+		DBG("Consumer rotate pending on relay for session %" PRIu64,
+				msg.u.rotate_pending_relay.session_id);
+		ret = lttng_consumer_rotate_pending_relay(
+				msg.u.rotate_pending_relay.session_id,
+				msg.u.rotate_pending_relay.relayd_id,
+				msg.u.rotate_pending_relay.chunk_id);
+		if (ret < 0) {
+			ERR("Rotate pending relay failed");
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		} else {
+			pending_reply = !!ret;
+		}
+
+		health_code_update();
+
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		/* Send back returned value to session daemon */
+		ret = lttcomm_send_unix_sock(sock, &pending_reply,
+				sizeof(pending_reply));
+		if (ret < 0) {
+			PERROR("send data pending ret code");
+			goto error_fatal;
+		}
+		break;
+	}
 	case LTTNG_CONSUMER_MKDIR:
 	{
 		DBG("Consumer mkdir %s in session %" PRIu64,

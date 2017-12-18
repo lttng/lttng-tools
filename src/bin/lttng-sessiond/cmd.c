@@ -2651,6 +2651,10 @@ int cmd_stop_trace(struct ltt_session *session)
 		goto error;
 	}
 
+	if (session->rotate_relay_pending_timer_enabled) {
+		sessiond_timer_rotate_pending_stop(session);
+	}
+
 	if (session->rotate_count > 0 && !session->rotate_pending) {
 		ret = rename_active_chunk(session);
 		if (ret) {
@@ -2948,6 +2952,10 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe)
 	ksess = session->kernel_session;
 
 	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name, session->id);
+
+	if (session->rotate_relay_pending_timer_enabled) {
+		sessiond_timer_rotate_pending_stop(session);
+	}
 
 	/*
 	 * The rename of the current chunk is performed at stop, but if we rotated
