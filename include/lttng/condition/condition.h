@@ -18,8 +18,6 @@
 #ifndef LTTNG_CONDITION_H
 #define LTTNG_CONDITION_H
 
-#include <lttng/lttng.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
