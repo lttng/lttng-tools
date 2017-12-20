@@ -22,6 +22,8 @@
 #include <lttng/lttng-error.h>
 #include <urcu/rculfhash.h>
 #include "notification-thread.h"
+#include "notification-thread-internal.h"
+#include "notification-thread-events.h"
 #include <common/waiter.h>
 
 struct notification_thread_data;
@@ -35,21 +37,6 @@ enum notification_thread_command_type {
 	NOTIFICATION_COMMAND_TYPE_QUIT,
 };
 
-struct channel_key {
-	uint64_t key;
-	enum lttng_domain_type domain;
-};
-
-struct channel_info {
-	struct channel_key key;
-	char *session_name;
-	uid_t uid;
-	gid_t gid;
-	char *channel_name;
-	uint64_t capacity;
-	struct cds_lfht_node channels_ht_node;
-};
-
 struct notification_thread_command {
 	struct cds_list_head cmd_list_node;
 
@@ -58,7 +45,19 @@ struct notification_thread_command {
 		/* Register/Unregister trigger. */
 		struct lttng_trigger *trigger;
 		/* Add channel. */
-		struct channel_info add_channel;
+		struct {
+			struct {
+				const char *name;
+				uid_t uid;
+				gid_t gid;
+			} session;
+			struct {
+				const char *name;
+				enum lttng_domain_type domain;
+				uint64_t key;
+				uint64_t capacity;
+			} channel;
+		} add_channel;
 		/* Remove channel. */
 		struct {
 			uint64_t key;

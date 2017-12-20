@@ -168,6 +168,23 @@ int send_evaluation_to_clients(struct lttng_trigger *trigger,
 		struct notification_thread_state *state,
 		uid_t channel_uid, gid_t channel_gid);
 
+
+static
+void session_info_destroy(void *_data);
+static
+void session_info_get(struct session_info *session_info);
+static
+void session_info_put(struct session_info *session_info);
+static
+struct session_info *session_info_create(const char *name,
+		uid_t uid, gid_t gid);
+static
+void session_info_add_channel(struct session_info *session_info,
+		struct channel_info *channel_info);
+static
+void session_info_remove_channel(struct session_info *session_info,
+		struct channel_info *channel_info);
+
 static
 int match_client(struct cds_lfht_node *node, const void *key)
 {
@@ -339,45 +356,136 @@ void channel_info_destroy(struct channel_info *channel_info)
 		return;
 	}
 
-	if (channel_info->session_name) {
-		free(channel_info->session_name);
+	if (channel_info->session_info) {
+		session_info_remove_channel(channel_info->session_info,
+				channel_info);
+		session_info_put(channel_info->session_info);
 	}
-	if (channel_info->channel_name) {
-		free(channel_info->channel_name);
+	if (channel_info->name) {
+		free(channel_info->name);
 	}
 	free(channel_info);
 }
 
+/* Don't call directly, use the ref-counting mechanism. */
 static
-struct channel_info *channel_info_copy(struct channel_info *channel_info)
+void session_info_destroy(void *_data)
 {
-	struct channel_info *copy = zmalloc(sizeof(*channel_info));
+	struct session_info *session_info = _data;
 
-	assert(channel_info);
-	assert(channel_info->session_name);
-	assert(channel_info->channel_name);
+	assert(session_info);
+	if (session_info->channel_infos_ht) {
+		cds_lfht_destroy(session_info->channel_infos_ht, NULL);
+	}
+	free(session_info->name);
+	free(session_info);
+}
 
-	if (!copy) {
+static
+void session_info_get(struct session_info *session_info)
+{
+	if (!session_info) {
+		return;
+	}
+	lttng_ref_get(&session_info->ref);
+}
+
+static
+void session_info_put(struct session_info *session_info)
+{
+	if (!session_info) {
+		return;
+	}
+	lttng_ref_put(&session_info->ref);
+}
+
+static
+struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid)
+{
+	struct session_info *session_info;
+
+	assert(name);
+
+	session_info = zmalloc(sizeof(*session_info));
+	if (!session_info) {
+		goto end;
+	}
+	lttng_ref_init(&session_info->ref, session_info_destroy);
+
+	session_info->channel_infos_ht = cds_lfht_new(DEFAULT_HT_SIZE,
+			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	if (!session_info->channel_infos_ht) {
+		goto error;
+	}
+
+	cds_lfht_node_init(&session_info->sessions_ht_node);
+	session_info->name = strdup(name);
+	if (!session_info->name) {
+		goto error;
+	}
+	session_info->uid = uid;
+	session_info->gid = gid;
+end:
+	return session_info;
+error:
+	session_info_put(session_info);
+	return NULL;
+}
+
+static
+void session_info_add_channel(struct session_info *session_info,
+		struct channel_info *channel_info)
+{
+	rcu_read_lock();
+	cds_lfht_add(session_info->channel_infos_ht,
+			hash_channel_key(&channel_info->key),
+			&channel_info->session_info_channels_ht_node);
+	rcu_read_unlock();
+}
+
+static
+void session_info_remove_channel(struct session_info *session_info,
+		struct channel_info *channel_info)
+{
+	rcu_read_lock();
+	cds_lfht_del(session_info->channel_infos_ht,
+			&channel_info->session_info_channels_ht_node);
+	rcu_read_unlock();
+}
+
+static
+struct channel_info *channel_info_create(const char *channel_name,
+		struct channel_key *channel_key, uint64_t channel_capacity,
+		struct session_info *session_info)
+{
+	struct channel_info *channel_info = zmalloc(sizeof(*channel_info));
+
+	if (!channel_info) {
 		goto end;
 	}
 
-	memcpy(copy, channel_info, sizeof(*channel_info));
-	copy->session_name = NULL;
-	copy->channel_name = NULL;
-
-	copy->session_name = strdup(channel_info->session_name);
-	if (!copy->session_name) {
-		goto error;
-	}
-	copy->channel_name = strdup(channel_info->channel_name);
-	if (!copy->channel_name) {
-		goto error;
-	}
 	cds_lfht_node_init(&channel_info->channels_ht_node);
+	cds_lfht_node_init(&channel_info->session_info_channels_ht_node);
+	memcpy(&channel_info->key, channel_key, sizeof(*channel_key));
+	channel_info->capacity = channel_capacity;
+
+	channel_info->name = strdup(channel_name);
+	if (!channel_info->name) {
+		goto error;
+	}
+
+	/*
+	 * Set the references between session and channel infos:
+	 *   - channel_info holds a strong reference to session_info
+	 *   - session_info holds a weak reference to channel_info
+	 */
+	session_info_get(session_info);
+	session_info_add_channel(session_info, channel_info);
+	channel_info->session_info = session_info;
 end:
-	return copy;
+	return channel_info;
 error:
-	channel_info_destroy(copy);
+	channel_info_destroy(channel_info);
 	return NULL;
 }
 
@@ -495,7 +603,8 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 	/* Send evaluation result to the newly-subscribed client. */
 	DBG("[notification-thread] Newly subscribed-to condition evaluated to true, notifying client");
 	ret = send_evaluation_to_clients(trigger, evaluation, &client_list,
-			state, channel_info->uid, channel_info->gid);
+			state, channel_info->session_info->uid,
+			channel_info->session_info->gid);
 
 end:
 	return ret;
@@ -736,7 +845,7 @@ end:
 
 static
 bool trigger_applies_to_channel(struct lttng_trigger *trigger,
-		struct channel_info *info)
+		struct channel_info *channel_info)
 {
 	enum lttng_condition_status status;
 	struct lttng_condition *condition;
@@ -760,7 +869,7 @@ bool trigger_applies_to_channel(struct lttng_trigger *trigger,
 	status = lttng_condition_buffer_usage_get_domain_type(condition,
 			&trigger_domain);
 	assert(status == LTTNG_CONDITION_STATUS_OK);
-	if (info->key.domain != trigger_domain) {
+	if (channel_info->key.domain != trigger_domain) {
 		goto fail;
 	}
 
@@ -772,10 +881,10 @@ bool trigger_applies_to_channel(struct lttng_trigger *trigger,
 			condition, &trigger_channel_name);
 	assert((status == LTTNG_CONDITION_STATUS_OK) && trigger_channel_name);
 
-	if (strcmp(info->session_name, trigger_session_name)) {
+	if (strcmp(channel_info->session_info->name, trigger_session_name)) {
 		goto fail;
 	}
-	if (strcmp(info->channel_name, trigger_channel_name)) {
+	if (strcmp(channel_info->name, trigger_channel_name)) {
 		goto fail;
 	}
 
@@ -804,31 +913,90 @@ bool trigger_applies_to_client(struct lttng_trigger *trigger,
 }
 
 static
+int match_session(struct cds_lfht_node *node, const void *key)
+{
+	const char *name = key;
+	struct session_info *session_info = caa_container_of(
+		node, struct session_info, sessions_ht_node);
+
+	return !strcmp(session_info->name, name);
+}
+
+static
+struct session_info *find_or_create_session_info(
+		struct notification_thread_state *state,
+		const char *name, uid_t uid, gid_t gid)
+{
+	struct session_info *session = NULL;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+
+	rcu_read_lock();
+	cds_lfht_lookup(state->sessions_ht,
+			hash_key_str(name, lttng_ht_seed),
+			match_session,
+			name,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (node) {
+		DBG("[notification-thread] Found session info of session \"%s\" (uid = %i, gid = %i)",
+				name, uid, gid);
+		session = caa_container_of(node, struct session_info,
+				sessions_ht_node);
+		assert(session->uid == uid);
+		assert(session->gid == gid);
+		goto end;
+	}
+
+	session = session_info_create(name, uid, gid);
+	if (!session) {
+		ERR("[notification-thread] Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
+				name, uid, gid);
+		goto end;
+	}
+end:
+	rcu_read_unlock();
+	return session;
+}
+
+static
 int handle_notification_thread_command_add_channel(
-	struct notification_thread_state *state,
-	struct channel_info *channel_info,
-	enum lttng_error_code *cmd_result)
+		struct notification_thread_state *state,
+		const char *session_name, uid_t session_uid, gid_t session_gid,
+		const char *channel_name, enum lttng_domain_type channel_domain,
+		uint64_t channel_key_int, uint64_t channel_capacity,
+		enum lttng_error_code *cmd_result)
 {
 	struct cds_list_head trigger_list;
-	struct channel_info *new_channel_info;
-	struct channel_key *channel_key;
+	struct channel_info *new_channel_info = NULL;
+	struct channel_key channel_key = {
+		.key = channel_key_int,
+		.domain = channel_domain,
+	};
 	struct lttng_channel_trigger_list *channel_trigger_list = NULL;
 	struct lttng_trigger_ht_element *trigger_ht_element = NULL;
 	int trigger_count = 0;
 	struct cds_lfht_iter iter;
+	struct session_info *session_info = NULL;
 
 	DBG("[notification-thread] Adding channel %s from session %s, channel key = %" PRIu64 " in %s domain",
-			channel_info->channel_name, channel_info->session_name,
-			channel_info->key.key, channel_info->key.domain == LTTNG_DOMAIN_KERNEL ? "kernel" : "user space");
+			channel_name, session_name, channel_key_int,
+			channel_domain == LTTNG_DOMAIN_KERNEL ? "kernel" : "user space");
 
 	CDS_INIT_LIST_HEAD(&trigger_list);
 
-	new_channel_info = channel_info_copy(channel_info);
-	if (!new_channel_info) {
+	session_info = find_or_create_session_info(state, session_name,
+			session_uid, session_gid);
+	if (!session_info) {
+		/* Allocation error or an internal error occured. */
 		goto error;
 	}
 
-	channel_key = &new_channel_info->key;
+	new_channel_info = channel_info_create(channel_name, &channel_key,
+			channel_capacity, session_info);
+	if (!new_channel_info) {
+		goto error;
+	}
 
 	/* Build a list of all triggers applying to the new channel. */
 	cds_lfht_for_each_entry(state->triggers_ht, &iter, trigger_ht_element,
@@ -836,7 +1004,7 @@ int handle_notification_thread_command_add_channel(
 		struct lttng_trigger_list_element *new_element;
 
 		if (!trigger_applies_to_channel(trigger_ht_element->trigger,
-				channel_info)) {
+				new_channel_info)) {
 			continue;
 		}
 
@@ -856,7 +1024,7 @@ int handle_notification_thread_command_add_channel(
 	if (!channel_trigger_list) {
 		goto error;
 	}
-	channel_trigger_list->channel_key = *channel_key;
+	channel_trigger_list->channel_key = new_channel_info->key;
 	CDS_INIT_LIST_HEAD(&channel_trigger_list->list);
 	cds_lfht_node_init(&channel_trigger_list->channel_triggers_ht_node);
 	cds_list_splice(&trigger_list, &channel_trigger_list->list);
@@ -864,21 +1032,21 @@ int handle_notification_thread_command_add_channel(
 	rcu_read_lock();
 	/* Add channel to the channel_ht which owns the channel_infos. */
 	cds_lfht_add(state->channels_ht,
-			hash_channel_key(channel_key),
+			hash_channel_key(&new_channel_info->key),
 			&new_channel_info->channels_ht_node);
 	/*
 	 * Add the list of triggers associated with this channel to the
 	 * channel_triggers_ht.
 	 */
 	cds_lfht_add(state->channel_triggers_ht,
-			hash_channel_key(channel_key),
+			hash_channel_key(&new_channel_info->key),
 			&channel_trigger_list->channel_triggers_ht_node);
 	rcu_read_unlock();
 	*cmd_result = LTTNG_OK;
 	return 0;
 error:
-	/* Empty trigger list */
 	channel_info_destroy(new_channel_info);
+	session_info_put(session_info);
 	return 1;
 }
 
@@ -1021,9 +1189,9 @@ end:
  */
 static
 int handle_notification_thread_command_register_trigger(
-	struct notification_thread_state *state,
-	struct lttng_trigger *trigger,
-	enum lttng_error_code *cmd_result)
+		struct notification_thread_state *state,
+		struct lttng_trigger *trigger,
+		enum lttng_error_code *cmd_result)
 {
 	int ret = 0;
 	struct lttng_condition *condition;
@@ -1320,8 +1488,9 @@ int handle_notification_thread_command(
 	uint64_t counter;
 	struct notification_thread_command *cmd;
 
-	/* Read event_fd to put it back into a quiescent state. */
-	ret = read(lttng_pipe_get_readfd(handle->cmd_queue.event_pipe), &counter, sizeof(counter));
+	/* Read the event pipe to put it back into a quiescent state. */
+	ret = read(lttng_pipe_get_readfd(handle->cmd_queue.event_pipe), &counter,
+			sizeof(counter));
 	if (ret == -1) {
 		goto error;
 	}
@@ -1345,7 +1514,14 @@ int handle_notification_thread_command(
 	case NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL:
 		DBG("[notification-thread] Received add channel command");
 		ret = handle_notification_thread_command_add_channel(
-				state, &cmd->parameters.add_channel,
+				state,
+				cmd->parameters.add_channel.session.name,
+				cmd->parameters.add_channel.session.uid,
+				cmd->parameters.add_channel.session.gid,
+				cmd->parameters.add_channel.channel.name,
+				cmd->parameters.add_channel.channel.domain,
+				cmd->parameters.add_channel.channel.key,
+				cmd->parameters.add_channel.channel.capacity,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL:
@@ -2244,9 +2420,9 @@ int handle_notification_thread_channel_sample(
 	channel_info = caa_container_of(node, struct channel_info,
 			channels_ht_node);
 	DBG("[notification-thread] Handling channel sample for channel %s (key = %" PRIu64 ") in session %s (highest usage = %" PRIu64 ", lowest usage = %" PRIu64")",
-			channel_info->channel_name,
+			channel_info->name,
 			latest_sample.key.key,
-			channel_info->session_name,
+			channel_info->session_info->name,
 			latest_sample.highest_usage,
 			latest_sample.lowest_usage);
 
@@ -2356,7 +2532,9 @@ int handle_notification_thread_channel_sample(
 		/* Dispatch evaluation result to all clients. */
 		ret = send_evaluation_to_clients(trigger_list_element->trigger,
 				evaluation, client_list, state,
-				channel_info->uid, channel_info->gid);
+				channel_info->session_info->uid,
+				channel_info->session_info->gid);
+		lttng_evaluation_destroy(evaluation);
 		if (ret) {
 			goto end_unlock;
 		}

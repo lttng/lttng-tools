@@ -33,6 +33,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        load-session-thread.h load-session-thread.c \
                        syscall.h syscall.c \
                        notification-thread.h notification-thread.c \
+                       notification-thread-internal.h \
                        notification-thread-commands.h notification-thread-commands.c \
                        notification-thread-events.h notification-thread-events.c \
                        sessiond-config.h sessiond-config.c \
