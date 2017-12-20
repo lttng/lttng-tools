@@ -84,6 +84,8 @@ DECL_COMMAND(untrack);
 DECL_COMMAND(metadata);
 DECL_COMMAND(regenerate);
 DECL_COMMAND(rotate);
+DECL_COMMAND(enable_rotation);
+DECL_COMMAND(disable_rotation);
 
 extern int cmd_help(int argc, const char **argv,
 		const struct cmd_struct commands[]);

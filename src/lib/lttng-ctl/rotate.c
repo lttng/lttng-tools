@@ -63,6 +63,13 @@ error:
 	return ret;
 }
 
+void lttng_rotate_session_attr_set_timer(
+		struct lttng_rotate_session_attr *attr,
+		uint64_t timer)
+{
+	attr->timer_us = timer;
+}
+
 enum lttng_rotate_status lttng_rotate_session_get_status(
 		struct lttng_rotate_session_handle *rotate_handle)
 {
@@ -223,6 +230,34 @@ int lttng_rotate_session_pending(
 
 end:
 	free(pending_return);
+	return ret;
+}
+
+/*
+ * Configure the automatic rotate parameters.
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+int lttng_rotate_setup(struct lttng_rotate_session_attr *attr)
+{
+	struct lttcomm_session_msg lsm;
+	int ret;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_ROTATE_SETUP;
+	lttng_ctl_copy_string(lsm.session.name, attr->session_name,
+			sizeof(lsm.session.name));
+	lsm.u.rotate_setup.timer_us = attr->timer_us;
+	lsm.u.rotate_setup.size = attr->size;
+
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+
+end:
 	return ret;
 }
 

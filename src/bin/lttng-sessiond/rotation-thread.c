@@ -430,6 +430,46 @@ end:
 	return ret;
 }
 
+/*
+ * Process the rotate_timer, called with session lock held.
+ */
+static
+int rotate_timer(struct ltt_session *session)
+{
+	int ret;
+
+	/*
+	 * Ignore this timer if the session is stopped.
+	 */
+	if (!session->active && session->rotate_timer_enabled) {
+		ret = 0;
+		goto end;
+	}
+
+	/* Ignore this timer if a rotation is already in progress. */
+	if (session->rotate_pending || session->rotate_pending_relay) {
+		ret = 0;
+		goto end;
+	}
+
+	DBG("[rotation-thread] Rotate timer on session %s", session->name);
+
+	ret = cmd_rotate_session(session, NULL);
+	if (ret == -LTTNG_ERR_ROTATE_PENDING) {
+		ret = 0;
+		goto end;
+	} else if (ret != LTTNG_OK) {
+		ERR("[rotation-thread] Rotate on timer");
+		ret = -1;
+		goto end;
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
 static
 int handle_rotate_timer_pipe(uint32_t revents,
 		struct rotation_thread_handle *handle,
@@ -500,6 +540,8 @@ int handle_rotate_timer_pipe(uint32_t revents,
 
 		if (timer_data->signal == LTTNG_SESSIOND_SIG_ROTATE_PENDING) {
 			ret = rotate_pending_relay_timer(session);
+		} else if (timer_data->signal == LTTNG_SESSIOND_SIG_ROTATE_TIMER) {
+			ret = rotate_timer(session);
 		} else {
 			ERR("Unknown signal in rotate timer %d", timer_data->signal);
 			ret = -1;

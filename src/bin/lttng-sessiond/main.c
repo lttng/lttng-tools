@@ -2964,6 +2964,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATE_SETUP:
 	case LTTNG_ROTATE_GET_CURRENT_PATH:
 		need_domain = 0;
 		break;
@@ -3700,6 +3701,20 @@ error_add_context:
 	}
 	case LTTNG_START_TRACE:
 	{
+		/*
+		 * On the first start, if we have a kernel session and we have enabled
+		 * time or size-based rotations, we have to make sure the kernel tracer
+		 * supports it.
+		 */
+		if (!cmd_ctx->session->has_been_started && \
+				cmd_ctx->session->kernel_session && \
+				(cmd_ctx->session->rotate_timer_period || \
+					cmd_ctx->session->rotate_size) && \
+				!check_rotate_compatible()) {
+			DBG("Kernel tracer version is not compatible with the rotation feature");
+			ret = LTTNG_ERR_ROTATE_WRONG_VERSION;
+			goto error;
+		}
 		ret = cmd_start_trace(cmd_ctx->session);
 		break;
 	}
@@ -4161,6 +4176,25 @@ error_add_context:
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_return,
 				sizeof(struct lttng_rotate_get_current_path));
 		free(get_return);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_ROTATE_SETUP:
+	{
+		if (cmd_ctx->session->kernel_session && !check_rotate_compatible()) {
+			DBG("Kernel tracer version is not compatible with the rotation feature");
+			ret = LTTNG_ERR_ROTATE_WRONG_VERSION;
+			goto error;
+		}
+
+		ret = cmd_rotate_setup(cmd_ctx->session,
+				cmd_ctx->lsm->u.rotate_setup.timer_us,
+				cmd_ctx->lsm->u.rotate_setup.size);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;

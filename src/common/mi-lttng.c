@@ -75,6 +75,8 @@ const char * const mi_lttng_element_command_track = "track";
 const char * const mi_lttng_element_command_untrack = "untrack";
 const char * const mi_lttng_element_command_version = "version";
 const char * const mi_lttng_element_command_rotate = "rotate";
+const char * const mi_lttng_element_command_enable_rotation = "enable-rotation";
+const char * const mi_lttng_element_command_disable_rotation = "disable-rotation";
 
 /* Strings related to version command */
 const char * const mi_lttng_element_version = "version";
@@ -186,6 +188,7 @@ LTTNG_HIDDEN const char * const mi_lttng_element_session_name = "session_name";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation = "rotation";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotations = "rotations";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status = "status";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_setup = "rotation_setup";
 
 /* Deprecated symbols preserved for ABI compatibility. */
 const char * const mi_lttng_context_type_perf_counter;

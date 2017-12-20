@@ -112,3 +112,4 @@ noinst_HEADERS = \
 	lttng/endpoint-internal.h \
 	lttng/notification/channel-internal.h \
 	lttng/channel-internal.h
+	lttng/rotate-internal.h

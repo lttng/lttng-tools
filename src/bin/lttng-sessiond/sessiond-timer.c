@@ -54,6 +54,10 @@ static void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigaddset switch");
 	}
+	ret = sigaddset(mask, LTTNG_SESSIOND_SIG_ROTATE_TIMER);
+	if (ret) {
+		PERROR("sigaddset switch");
+	}
 }
 
 /*
@@ -227,6 +231,44 @@ void sessiond_timer_rotate_pending_stop(struct ltt_session *session)
 	session->rotate_relay_pending_timer_enabled = false;
 }
 
+int sessiond_rotate_timer_start(struct ltt_session *session,
+		unsigned int interval_us)
+{
+	int ret;
+
+	DBG("Enabling rotation timer on session %" PRIu64, session->id);
+	ret = session_timer_start(&session->rotate_timer, session, interval_us,
+			LTTNG_SESSIOND_SIG_ROTATE_TIMER, false);
+	if (ret == 0) {
+		session->rotate_timer_enabled = true;
+	}
+
+	return ret;
+}
+
+/*
+ * Stop and delete the channel's live timer.
+ */
+void sessiond_rotate_timer_stop(struct ltt_session *session)
+{
+	int ret;
+
+	assert(session);
+
+	if (!session->rotate_timer_enabled) {
+		return;
+	}
+
+	DBG("Disabling rotation timer on session %" PRIu64, session->id);
+	ret = session_timer_stop(&session->rotate_timer,
+			LTTNG_SESSIOND_SIG_ROTATE_TIMER);
+	if (ret == -1) {
+		ERR("Failed to stop rotate timer");
+	}
+
+	session->rotate_timer_enabled = false;
+}
+
 /*
  * Block the RT signals for the entire process. It must be called from the
  * sessiond main before creating the threads
@@ -352,6 +394,28 @@ void relay_rotation_pending_timer(struct timer_thread_parameters *ctx,
 }
 
 /*
+ * Handle the LTTNG_SESSIOND_SIG_ROTATE_TIMER timer. Add the session ID to
+ * the rotation_timer_queue so the rotation thread can trigger a new rotation
+ * on that session.
+ */
+static
+void rotate_timer(struct timer_thread_parameters *ctx, int sig, siginfo_t *si)
+{
+	int ret;
+	/*
+	 * The session cannot be freed/destroyed while we are running this
+	 * signal handler.
+	 */
+	struct ltt_session *session = si->si_value.sival_ptr;
+	assert(session);
+
+	ret = enqueue_timer_rotate_job(ctx, session, LTTNG_SESSIOND_SIG_ROTATE_TIMER);
+	if (ret) {
+		PERROR("wakeup rotate pipe");
+	}
+}
+
+/*
  * This thread is the sighandler for the timer signals.
  */
 void *sessiond_timer_thread(void *data)
@@ -398,6 +462,8 @@ void *sessiond_timer_thread(void *data)
 			goto end;
 		} else if (signr == LTTNG_SESSIOND_SIG_ROTATE_PENDING) {
 			relay_rotation_pending_timer(ctx, info.si_signo, &info);
+		} else if (signr == LTTNG_SESSIOND_SIG_ROTATE_TIMER) {
+			rotate_timer(ctx, info.si_signo, &info);
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);
 		}

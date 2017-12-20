@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-elementFormDefault="qualified" version="2.10">
+elementFormDefault="qualified" version="2.11">
 
 <xs:simpleType name="name_type">
 	<xs:restriction base="xs:string">
@@ -275,10 +275,11 @@ by its signed 32-bit representation when converted to msec.
 </xs:complexType>
 
 <xs:complexType name="session_attributes_type">
-	<xs:choice>
-		<xs:element name="snapshot_mode" type="xs:boolean"/>
-		<xs:element name="live_timer_interval" type="uint32_type"/> <!-- usec -->
-	</xs:choice>
+	<xs:all>
+		<xs:element name="snapshot_mode" type="xs:boolean" minOccurs="0"/>
+		<xs:element name="live_timer_interval" type="uint32_type" minOccurs="0"/> <!-- usec -->
+		<xs:element name="rotation_timer_interval" type="uint64_type" minOccurs="0"/> <!-- micro-seconds -->
+	</xs:all>
 </xs:complexType>
 
 <xs:complexType name="domain_list_type">

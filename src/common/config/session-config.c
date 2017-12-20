@@ -40,6 +40,7 @@
 #include <libxml/tree.h>
 #include <lttng/lttng.h>
 #include <lttng/snapshot.h>
+#include <lttng/rotate.h>
 
 #include "session-config.h"
 #include "config-internal.h"
@@ -130,6 +131,9 @@ const char * const config_element_pid_tracker = "pid_tracker";
 const char * const config_element_trackers = "trackers";
 const char * const config_element_targets = "targets";
 const char * const config_element_target_pid = "pid_target";
+
+LTTNG_HIDDEN const char * const config_element_rotation_timer_interval = "rotation_timer_interval";
+LTTNG_HIDDEN const char * const config_element_rotation_setup = "rotation_setup";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
@@ -2513,7 +2517,8 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 		const struct config_load_session_override_attr *overrides)
 {
 	int ret, started = -1, snapshot_mode = -1;
-	uint64_t live_timer_interval = UINT64_MAX;
+	uint64_t live_timer_interval = UINT64_MAX,
+			 rotation_timer_interval = 0;
 	xmlChar *name = NULL;
 	xmlChar *shm_path = NULL;
 	xmlNodePtr domains_node = NULL;
@@ -2571,7 +2576,9 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 
 			shm_path = node_content;
 		} else {
-			/* attributes, snapshot_mode or live_timer_interval */
+			/*
+			 * attributes, snapshot_mode, live_timer_interval, rotation_size,
+			 * rotation_timer_interval. */
 			xmlNodePtr attributes_child =
 				xmlFirstElementChild(node);
 
@@ -2591,7 +2598,8 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 					goto error;
 				}
-			} else {
+			} else if (!strcmp((const char *) attributes_child->name,
+						config_element_live_timer_interval)) {
 				/* live_timer_interval */
 				xmlChar *timer_interval_content =
 					xmlNodeGetContent(attributes_child);
@@ -2601,6 +2609,23 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 				}
 
 				ret = parse_uint(timer_interval_content, &live_timer_interval);
+				free(timer_interval_content);
+				if (ret) {
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto error;
+				}
+			}
+			if (!strcmp((const char *) attributes_child->name,
+				config_element_rotation_timer_interval)) {
+				/* rotation_timer_interval */
+				xmlChar *timer_interval_content =
+					xmlNodeGetContent(attributes_child);
+				if (!timer_interval_content) {
+					ret = -LTTNG_ERR_NOMEM;
+					goto error;
+				}
+
+				ret = parse_uint(timer_interval_content, &rotation_timer_interval);
 				free(timer_interval_content);
 				if (ret) {
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -2741,6 +2766,25 @@ domain_init_error:
 		ret = process_domain_node(node, (const char *) name);
 		if (ret) {
 			goto end;
+		}
+	}
+
+	if (rotation_timer_interval) {
+		struct lttng_rotate_session_attr *rotate_attr = lttng_rotate_session_attr_create();
+
+		if (!rotate_attr) {
+			goto error;
+		}
+		ret = lttng_rotate_session_attr_set_session_name(rotate_attr, (const char *) name);
+		if (ret) {
+			lttng_rotate_session_attr_destroy(rotate_attr);
+			goto error;
+		}
+		lttng_rotate_session_attr_set_timer(rotate_attr, rotation_timer_interval);
+		ret = lttng_rotate_setup(rotate_attr);
+		lttng_rotate_session_attr_destroy(rotate_attr);
+		if (ret) {
+			goto error;
 		}
 	}
 

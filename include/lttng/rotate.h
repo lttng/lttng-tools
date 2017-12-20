@@ -84,6 +84,18 @@ int lttng_rotate_session_attr_set_session_name(
 		struct lttng_rotate_session_attr *attr, const char *session_name);
 
 /*
+ * Set the timer to periodically rotate the session.
+ */
+void lttng_rotate_session_attr_set_timer(
+		struct lttng_rotate_session_attr *attr, uint64_t timer);
+
+/*
+ * Set the size to rotate the session.
+ */
+void lttng_rotate_session_attr_set_size(
+		struct lttng_rotate_session_attr *attr, uint64_t size);
+
+/*
  * lttng rotate session handle functions.
  */
 /*
@@ -131,6 +143,11 @@ extern int lttng_rotate_session(struct lttng_rotate_session_attr *attr,
  */
 extern int lttng_rotate_session_pending(
 		struct lttng_rotate_session_handle *rotate_handle);
+
+/*
+ * Configure a session to rotate periodically or based on the size written.
+ */
+extern int lttng_rotate_setup(struct lttng_rotate_session_attr *attr);
 
 /*
  * Ask the sessiond where the data for this session is currently being written
