@@ -43,6 +43,7 @@
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/rotation.h>
 
 #ifdef __cplusplus
 extern "C" {

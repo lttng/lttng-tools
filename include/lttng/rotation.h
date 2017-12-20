@@ -59,6 +59,13 @@ enum lttng_rotation_status {
 struct lttng_rotation_manual_attr;
 
 /*
+ * Input parameter to the lttng_rotate_schedule command.
+ * The lttng_rotation_schedule_attr object is opaque to the user. Use the helper
+ * functions below to use it.
+ */
+struct lttng_rotation_schedule_attr;
+
+/*
  * Handle used to check the progress of a rotation.
  * This object is opaque to the user. Use the helper functions below to use it.
  */
@@ -73,15 +80,37 @@ struct lttng_rotation_handle;
 struct lttng_rotation_manual_attr *lttng_rotation_manual_attr_create(void);
 
 /*
+ * Return a newly allocated scheduled rotate session descriptor object or NULL on error.
+ */
+struct lttng_rotation_schedule_attr *lttng_rotation_schedule_attr_create(void);
+
+/*
  * Free a given manual rotate session descriptor object.
  */
 void lttng_rotation_manual_attr_destroy(struct lttng_rotation_manual_attr *attr);
+
+/*
+ * Free a given scheduled rotate session descriptor object.
+ */
+void lttng_rotation_schedule_attr_destroy(struct lttng_rotation_schedule_attr *attr);
 
 /*
  * Set the name of the session to rotate manually.
  */
 int lttng_rotation_manual_attr_set_session_name(
 		struct lttng_rotation_manual_attr *attr, const char *session_name);
+
+/*
+ * Set the name of the session to rotate automatically.
+ */
+int lttng_rotation_schedule_attr_set_session_name(
+		struct lttng_rotation_schedule_attr *attr, const char *session_name);
+
+/*
+ * Set the timer to periodically rotate the session (µs, -1ULL to disable).
+ */
+void lttng_rotation_schedule_attr_set_timer_period(
+		struct lttng_rotation_schedule_attr *attr, uint64_t timer);
 
 /*
  * lttng rotate session handle functions.
@@ -144,6 +173,12 @@ extern int lttng_rotation_is_pending(struct lttng_rotation_handle *rotation_hand
  */
 extern int lttng_rotation_get_current_path(const char *session_name,
 		char **chunk_path);
+
+/*
+ * Configure a session to rotate periodically or based on the size written.
+ */
+extern int lttng_rotation_set_schedule(struct lttng_rotation_schedule_attr *attr);
+
 
 #ifdef __cplusplus
 }

@@ -178,6 +178,12 @@ struct ltt_session {
 	 */
 	bool rotate_relay_pending_timer_enabled;
 	timer_t rotate_relay_pending_timer;
+	/* Timer to periodically rotate a session. */
+	bool rotate_timer_enabled;
+	timer_t rotate_timer;
+	uint64_t rotate_timer_period;
+	/* Value for size-based rotation, 0 if disabled. */
+	uint64_t rotate_size;
 	/*
 	 * Keep a state if this session was rotated after the last stop command.
 	 * We only allow one rotation after a stop. At destroy, we also need to

@@ -31,6 +31,7 @@
 #include <pwd.h>
 #include <sys/file.h>
 #include <unistd.h>
+#include <regex.h>
 
 #include <common/common.h>
 #include <common/runas.h>
@@ -997,6 +998,76 @@ int utils_parse_size_suffix(const char * const str, uint64_t * const size)
 	}
 
 	ret = 0;
+end:
+	return ret;
+}
+
+/**
+ * Parse a string that represents a duration in human readable format. It
+ * supports decimal integers suffixed by 'u', 'us', 'ms', 's', 'm', 'h'.
+ *
+ * @param str	The string to parse.
+ * @param size	Pointer to a uint64_t that will be filled with the
+ *		resulting duration in micro-seconds.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+LTTNG_HIDDEN
+int utils_parse_duration_suffix(const char * const str, uint64_t * const size)
+{
+	int ret;
+	regex_t preg;
+	char *pattern = "([0-9]+)([a-z]*)";
+	size_t nmatch = 3;
+	regmatch_t pmatch[3];
+	uint64_t value;
+
+	ret = regcomp(&preg, pattern, REG_ICASE | REG_EXTENDED);
+	if (ret) {
+		ERR("regcomp() failed, returning nonzero (%d)", ret);
+		goto end;
+	}
+
+	ret = regexec(&preg, str, nmatch, pmatch, 0);
+	if (ret) {
+		ERR("Wrong expression for timer value, must be in the form <value><unit> (ex: 10ms)");
+		goto end_free;
+	} else {
+		/*
+		 * pmatch[0]: whole expression,
+		 * pmatch[1]: value,
+		 * pmatch[2]: unit (maybe empty)
+		 */
+		value = strtoll(&str[pmatch[1].rm_so], NULL, 10);
+		if (errno != 0 || value < 0) {
+			PERROR("Failed to convert argument");
+			ret = -1;
+			goto end_free;
+		}
+		/* No unit suffix, consider micro-seconds. */
+		if (pmatch[2].rm_eo - pmatch[2].rm_so == 0) {
+			*size = value;
+		} else if (!strncmp(&str[pmatch[2].rm_so], "u", 1) ||
+				!strncmp(&str[pmatch[2].rm_so], "us", 2)) {
+			*size = value;
+		} else if (!strncmp(&str[pmatch[2].rm_so], "ms", 2)) {
+			*size = value * 1000;
+		} else if (!strncmp(&str[pmatch[2].rm_so], "s", 1)) {
+			*size = value * 1000 * 1000;
+		} else if (!strncmp(&str[pmatch[2].rm_so], "m", 1)) {
+			*size = value * 1000 * 1000 * 60;
+		} else if (!strncmp(&str[pmatch[2].rm_so], "h", 1)) {
+			*size = value * 1000 * 1000 * 60 * 60;
+		} else {
+			ERR("Unknown duration suffix");
+			ret = -1;
+			goto end_free;
+		}
+	}
+	ret = 0;
+
+end_free:
+	regfree(&preg);
 end:
 	return ret;
 }

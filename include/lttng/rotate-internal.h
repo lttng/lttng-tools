@@ -38,6 +38,18 @@ struct lttng_rotation_manual_attr {
 } LTTNG_PACKED;
 
 /*
+ * Object used as input parameter to the lttng_rotate_schedule API for
+ * automatic rotations.
+ * This is opaque to the public library.
+ */
+struct lttng_rotation_schedule_attr {
+	/* Session name to rotate. */
+	char session_name[LTTNG_NAME_MAX];
+	/* > 0 if a timer is set. */
+	uint64_t timer_us;
+} LTTNG_PACKED;
+
+/*
  * Object returned by the rotate session API.
  * This is opaque to the public library.
  */
