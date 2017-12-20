@@ -125,5 +125,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 		uint64_t rotate_id);
 int cmd_session_get_current_output(struct ltt_session *session,
 		struct lttng_session_get_current_output_return *output_return);
+int cmd_rotation_set_schedule(struct ltt_session *session, uint64_t timer_us,
+		uint64_t size);
 
 #endif /* CMD_H */

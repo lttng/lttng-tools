@@ -103,6 +103,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_UNREGISTER_TRIGGER            = 44,
 	LTTNG_ROTATE_SESSION                = 45,
 	LTTNG_ROTATION_GET_INFO             = 46,
+	LTTNG_ROTATION_SET_SCHEDULE         = 47,
 	LTTNG_SESSION_GET_CURRENT_OUTPUT    = 48,
 };
 
@@ -336,6 +337,10 @@ struct lttcomm_session_msg {
 		struct {
 			uint64_t rotation_id;
 		} LTTNG_PACKED get_rotation_info;
+		struct {
+			uint64_t timer_us;
+			uint64_t size;
+		} LTTNG_PACKED rotate_setup;
 	} u;
 } LTTNG_PACKED;
 

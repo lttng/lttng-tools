@@ -69,17 +69,16 @@ enum lttng_rotation_status {
  * Input parameter to the lttng_rotate_session command.
  *
  * An immediate rotation is performed as soon as possible by the tracers.
- *
- * The lttng_rotation_immediate_attr object is opaque to the user. Use the
- * helper functions below to access it.
  */
 struct lttng_rotation_immediate_attr;
 
 /*
+ * Input parameter to the lttng_rotate_schedule command.
+ */
+struct lttng_rotation_schedule_attr;
+
+/*
  * Handle used to represent a specific rotation.
- *
- * This object is opaque to the user. Use the helper functions below to access
- * it.
  */
 struct lttng_rotation_handle;
 
@@ -91,10 +90,23 @@ extern struct lttng_rotation_immediate_attr *
 lttng_rotation_immediate_attr_create(void);
 
 /*
+ * Return a newly allocated scheduled rotate session descriptor object or NULL
+ * on error.
+ */
+extern struct lttng_rotation_schedule_attr *
+lttng_rotation_schedule_attr_create(void);
+
+/*
  * Destroy a given immediate session rotation descriptor object.
  */
 extern void lttng_rotation_immediate_attr_destroy(
 		struct lttng_rotation_immediate_attr *attr);
+
+/*
+ * Destroy a given scheduled rotate session descriptor object.
+ */
+extern void lttng_rotation_schedule_attr_destroy(
+		struct lttng_rotation_schedule_attr *attr);
 
 /*
  * Set the name of the session to rotate immediately.
@@ -105,6 +117,26 @@ extern void lttng_rotation_immediate_attr_destroy(
 extern enum lttng_rotation_status lttng_rotation_immediate_attr_set_session_name(
 		struct lttng_rotation_immediate_attr *attr,
 		const char *session_name);
+
+/*
+ * Set the name of the session to rotate automatically.
+ *
+ * The session_name parameter is copied to the immediate session rotation
+ * attributes.
+ */
+extern enum lttng_rotation_status lttng_rotation_schedule_attr_set_session_name(
+		struct lttng_rotation_schedule_attr *attr,
+		const char *session_name);
+
+/*
+ * Set the timer to periodically rotate the session (µs, -1ULL to disable).
+ */
+extern enum lttng_rotation_status lttng_rotation_schedule_attr_set_timer_period(
+		struct lttng_rotation_schedule_attr *attr, uint64_t timer);
+
+/*
+ * lttng rotate session handle functions.
+ */
 
 /*
  * Get the current state of the rotation referenced by the handle.
@@ -149,6 +181,12 @@ extern void lttng_rotation_handle_destroy(
  */
 extern int lttng_rotate_session(struct lttng_rotation_immediate_attr *attr,
 		struct lttng_rotation_handle **rotation_handle);
+
+/*
+ * Configure a session to rotate periodically or based on the size written.
+ */
+extern int lttng_rotation_set_schedule(
+		struct lttng_rotation_schedule_attr *attr);
 
 #ifdef __cplusplus
 }

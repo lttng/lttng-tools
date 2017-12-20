@@ -192,10 +192,12 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_COMMAND_CANCELLED) ] = "Command cancelled",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_PENDING) ] = "Rotation already pending for this session",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NOT_AVAILABLE) ] = "Rotation feature not available for this session's creation mode",
-	[ ERROR_INDEX(LTTNG_ERR_ROTATION_TIMER_IS_SET) ] = "Automatic rotation schedule with a timer condition already set for this session",
-	[ ERROR_INDEX(LTTNG_ERR_ROTATION_SIZE_IS_SET) ] = "Automatic rotation schedule with a size threshold condition already set for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_TIMER_SET) ] = "Automatic timer-based rotation schedule already set for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_SIZE_SET) ] = "Automatic size-based rotation schedule already set for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NO_TIMER_SET) ] = "No automatic timer-based rotation schedule set for this session",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NO_SIZE_SET) ] = "No automatic size-based rotation schedule set for this session",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP) ] = "Session was already rotated once since it became inactive",
-	[ ERROR_INDEX(LTTNG_ERR_ROTATION_WRONG_VERSION) ] = "Rotation feature is not supported by this kernel tracer version",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_WRONG_VERSION) ] = "Session rotation is not supported by this kernel tracer version",
 	[ ERROR_INDEX(LTTNG_ERR_NO_SESSION_OUTPUT) ] = "Session has no output",
 
 	/* Last element */

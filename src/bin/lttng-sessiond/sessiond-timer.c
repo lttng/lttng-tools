@@ -55,6 +55,10 @@ void setmask(sigset_t *mask)
 	if (ret) {
 		PERROR("sigaddset switch");
 	}
+	ret = sigaddset(mask, LTTNG_SESSIOND_SIG_ROTATE_TIMER);
+	if (ret) {
+		PERROR("sigaddset switch");
+	}
 }
 
 /*
@@ -212,7 +216,7 @@ int sessiond_timer_rotate_pending_start(struct ltt_session *session,
  * Stop and delete the channel's live timer.
  * Called with session and session_list locks held.
  */
-void sessiond_timer_rotate_pending_stop(struct ltt_session *session)
+int sessiond_timer_rotate_pending_stop(struct ltt_session *session)
 {
 	int ret;
 
@@ -223,9 +227,55 @@ void sessiond_timer_rotate_pending_stop(struct ltt_session *session)
 			LTTNG_SESSIOND_SIG_ROTATE_PENDING);
 	if (ret == -1) {
 		ERR("Failed to stop rotate_pending timer");
+	} else {
+		session->rotate_relay_pending_timer_enabled = false;
+	}
+	return ret;
+}
+
+int sessiond_rotate_timer_start(struct ltt_session *session,
+		unsigned int interval_us)
+{
+	int ret;
+
+	DBG("Enabling rotation timer on session \"%s\" (%ui µs)", session->name,
+			interval_us);
+	ret = session_timer_start(&session->rotate_timer, session, interval_us,
+			LTTNG_SESSIOND_SIG_ROTATE_TIMER, false);
+	if (ret < 0) {
+		goto end;
+	}
+	session->rotate_timer_enabled = true;
+end:
+	return ret;
+}
+
+/*
+ * Stop and delete the channel's live timer.
+ */
+int sessiond_rotate_timer_stop(struct ltt_session *session)
+{
+	int ret = 0;
+
+	assert(session);
+
+	if (!session->rotate_timer_enabled) {
+		goto end;
 	}
 
-	session->rotate_relay_pending_timer_enabled = false;
+	DBG("Disabling rotation timer on session %s", session->name);
+	ret = session_timer_stop(&session->rotate_timer,
+			LTTNG_SESSIOND_SIG_ROTATE_TIMER);
+	if (ret < 0) {
+		ERR("Failed to stop rotate timer of session \"%s\"",
+				session->name);
+		goto end;
+	}
+
+	session->rotate_timer_enabled = false;
+	ret = 0;
+end:
+	return ret;
 }
 
 /*
@@ -340,11 +390,31 @@ static
 void relay_rotation_pending_timer(struct timer_thread_parameters *ctx,
 		int sig, siginfo_t *si)
 {
+	struct ltt_session *session = si->si_value.sival_ptr;
+
+	assert(session);
+
+	(void) enqueue_timer_rotate_job(ctx, session,
+			LTTNG_SESSIOND_SIG_ROTATE_PENDING);
+}
+
+/*
+ * Handle the LTTNG_SESSIOND_SIG_ROTATE_TIMER timer. Add the session ID to
+ * the rotation_timer_queue so the rotation thread can trigger a new rotation
+ * on that session.
+ */
+static
+void rotate_timer(struct timer_thread_parameters *ctx, int sig, siginfo_t *si)
+{
 	int ret;
+	/*
+	 * The session cannot be freed/destroyed while we are running this
+	 * signal handler.
+	 */
 	struct ltt_session *session = si->si_value.sival_ptr;
 	assert(session);
 
-	ret = enqueue_timer_rotate_job(ctx, session, LTTNG_SESSIOND_SIG_ROTATE_PENDING);
+	ret = enqueue_timer_rotate_job(ctx, session, LTTNG_SESSIOND_SIG_ROTATE_TIMER);
 	if (ret) {
 		PERROR("wakeup rotate pipe");
 	}
@@ -397,6 +467,8 @@ void *sessiond_timer_thread(void *data)
 			goto end;
 		} else if (signr == LTTNG_SESSIOND_SIG_ROTATE_PENDING) {
 			relay_rotation_pending_timer(ctx, info.si_signo, &info);
+		} else if (signr == LTTNG_SESSIOND_SIG_ROTATE_TIMER) {
+			rotate_timer(ctx, info.si_signo, &info);
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);
 		}

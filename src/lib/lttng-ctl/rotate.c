@@ -32,10 +32,23 @@ struct lttng_rotation_immediate_attr *lttng_rotation_immediate_attr_create(void)
 	return zmalloc(sizeof(struct lttng_rotation_immediate_attr));
 }
 
+struct lttng_rotation_schedule_attr *lttng_rotation_schedule_attr_create(void)
+{
+	return zmalloc(sizeof(struct lttng_rotation_schedule_attr));
+}
+
 void lttng_rotation_immediate_attr_destroy(
 		struct lttng_rotation_immediate_attr *attr)
 {
 	free(attr);
+}
+
+void lttng_rotation_schedule_attr_destroy(struct lttng_rotation_schedule_attr *attr)
+{
+	if (attr) {
+		free(attr);
+		attr = NULL;
+	}
 }
 
 enum lttng_rotation_status lttng_rotation_immediate_attr_set_session_name(
@@ -95,6 +108,45 @@ enum lttng_rotation_status ask_rotation_info(
 end:
 	return status;
 
+}
+
+enum lttng_rotation_status lttng_rotation_schedule_attr_set_session_name(
+		struct lttng_rotation_schedule_attr *attr,
+		const char *session_name)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+	int ret;
+
+	if (!attr || !session_name) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto error;
+	}
+
+	ret = lttng_strncpy(attr->session_name, session_name,
+			sizeof(attr->session_name));
+	if (ret) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto error;
+	}
+
+error:
+	return status;
+}
+
+enum lttng_rotation_status lttng_rotation_schedule_attr_set_timer_period(
+		struct lttng_rotation_schedule_attr *attr,
+		uint64_t timer)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+
+	if (!attr) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	attr->timer_us = timer;
+end:
+	return status;
 }
 
 enum lttng_rotation_status lttng_rotation_handle_get_state(
@@ -249,5 +301,31 @@ int lttng_rotate_session(struct lttng_rotation_immediate_attr *attr,
 
 end:
 	free(rotate_return);
+	return ret;
+}
+
+/*
+ * Configure the automatic rotate parameters.
+ */
+int lttng_rotation_set_schedule(
+		struct lttng_rotation_schedule_attr *attr)
+{
+	struct lttcomm_session_msg lsm;
+	int ret;
+
+	if (!attr) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_ROTATION_SET_SCHEDULE;
+	lttng_ctl_copy_string(lsm.session.name, attr->session_name,
+			sizeof(lsm.session.name));
+	lsm.u.rotate_setup.timer_us = attr->timer_us;
+
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+
+end:
 	return ret;
 }

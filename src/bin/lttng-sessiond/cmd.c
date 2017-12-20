@@ -2579,6 +2579,16 @@ int cmd_start_trace(struct ltt_session *session)
 	 */
 	session->rotated_after_last_stop = false;
 
+	if (session->rotate_timer_period) {
+		ret = sessiond_rotate_timer_start(session,
+				session->rotate_timer_period);
+		if (ret < 0) {
+			ERR("Failed to enable rotate timer");
+			ret = LTTNG_ERR_UNK;
+			goto error;
+		}
+	}
+
 	ret = LTTNG_OK;
 
 error:
@@ -2653,6 +2663,10 @@ int cmd_stop_trace(struct ltt_session *session)
 
 	if (session->rotate_relay_pending_timer_enabled) {
 		sessiond_timer_rotate_pending_stop(session);
+	}
+
+	if (session->rotate_timer_enabled) {
+		sessiond_rotate_timer_stop(session);
 	}
 
 	if (session->rotate_count > 0 && !session->rotate_pending) {
@@ -2955,6 +2969,10 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe)
 
 	if (session->rotate_relay_pending_timer_enabled) {
 		sessiond_timer_rotate_pending_stop(session);
+	}
+
+	if (session->rotate_timer_enabled) {
+		sessiond_rotate_timer_stop(session);
 	}
 
 	/*
@@ -4570,7 +4588,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		rotate_return->rotation_id = session->rotate_count;
 	}
 
-	DBG("Cmd rotate session %s, rotate_id %" PRIu64 " completed", session->name,
+	DBG("Cmd rotate session %s, rotate_id %" PRIu64 " sent", session->name,
 			session->rotate_count);
 	ret = LTTNG_OK;
 
@@ -4628,6 +4646,71 @@ int cmd_rotate_get_info(struct ltt_session *session,
 
 	info_return->status = (int32_t) session->rotation_state;
 	ret = LTTNG_OK;
+end:
+	return ret;
+}
+
+/*
+ * Command LTTNG_ROTATION_SET_SCHEDULE from the lttng-ctl library.
+ *
+ * Configure the automatic rotation parameters.
+ * Set to -1ULL to disable them.
+ *
+ * Return 0 on success or else an LTTNG_ERR code.
+ */
+int cmd_rotation_set_schedule(struct ltt_session *session,
+		uint64_t timer_us, uint64_t size)
+{
+	int ret;
+
+	assert(session);
+
+	DBG("Cmd rotate set schedule session %s", session->name);
+
+	if (session->live_timer || session->snapshot_mode ||
+			!session->output_traces) {
+		ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		goto end;
+	}
+
+	/* Trying to override an already active timer. */
+	if (timer_us && timer_us != -1ULL && session->rotate_timer_period) {
+		ret = LTTNG_ERR_ROTATION_TIMER_SET;
+		goto end;
+	/* Trying to disable an inactive timer. */
+	} else if (timer_us == -1ULL && !session->rotate_timer_period) {
+		ret = LTTNG_ERR_ROTATION_NO_TIMER_SET;
+		goto end;
+	}
+
+	if (timer_us && !session->rotate_timer_period) {
+		if (timer_us > UINT_MAX) {
+			ret = LTTNG_ERR_INVALID;
+			goto end;
+		}
+
+		session->rotate_timer_period = timer_us;
+		/*
+		 * Only start the timer if the session is active, otherwise
+		 * it will be started when the session starts.
+		 */
+		if (session->active) {
+			ret = sessiond_rotate_timer_start(session, timer_us);
+			if (ret) {
+				ERR("Failed to enable rotate timer");
+				ret = LTTNG_ERR_UNK;
+				goto end;
+			}
+		}
+	} else if (timer_us == -1ULL && session->rotate_timer_period > 0) {
+		sessiond_rotate_timer_stop(session);
+		session->rotate_timer_period = 0;
+	}
+
+	ret = LTTNG_OK;
+
+	goto end;
+
 end:
 	return ret;
 }
