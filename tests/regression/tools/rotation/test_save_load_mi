@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Rotation - Save/Load/List/MI"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+SESSION_NAME="stream"
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=14
+
+source $TESTDIR/utils/utils.sh
+source $CURDIR/rotate_utils.sh
+
+#Overwrite the lttng_bin to get mi output
+LTTNG_BIN="lttng --mi xml"
+
+#Global declaration for simplification
+LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
+
+XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
+
+XML_VALIDATE="$TESTDIR/regression/tools/mi/validate_xml $XSD_PATH"
+XML_EXTRACT="$TESTDIR/regression/tools/mi/extract_xml"
+
+XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
+XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"
+XPATH_ROTATE_SETUP="$XPATH_CMD_OUTPUT/lttng:rotation_schedule"
+
+function test_save_load ()
+{
+	tmp_xml_output=$(mktemp -u)
+	tmp_save_output=$(mktemp -d)
+
+	diag "Test save/load/list/MI with rotation"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME -a
+
+	# Enable a rotation timer and check the MI output of the command
+	$LTTNG enable-rotation -s $SESSION_NAME --timer 500ms >${tmp_xml_output}
+	$XML_VALIDATE ${tmp_xml_output}
+	ok $? "Valid lttng enable-rotation timer XML"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_timer_period)
+	test $value = 500000
+	ok $? "Found the right rotation timer value in XML"
+
+	# Enable a rotation size and check the MI output of the command
+	$LTTNG enable-rotation -s $SESSION_NAME --size 500k >${tmp_xml_output}
+	$XML_VALIDATE ${tmp_xml_output}
+	ok $? "Valid lttng enable-rotation size XML"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_size)
+	test $value = 512000
+	ok $? "Found the right rotation size value in XML"
+
+	# Check the output of lttng list with the 2 rotation parameters
+	$LTTNG list $SESSION_NAME >${tmp_xml_output}
+	$XML_VALIDATE ${tmp_xml_output}
+	ok $? "Valid lttng list XML"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
+	test $value = 500000
+	ok $? "Found the right rotation timer value in list XML"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
+	test $value = 512000
+	ok $? "Found the right rotation size value in list XML"
+
+	# save, destroy and reload the same session
+	$LTTNG save -o $tmp_save_output$SESSION_NAME >/dev/null
+	$LTTNG destroy $SESSION_NAME >/dev/null
+	$LTTNG load -i $tmp_save_output$SESSION_NAME >/dev/null
+
+	# Check the output of lttng list with the 2 rotation parameters after the load
+	$LTTNG list $SESSION_NAME >${tmp_xml_output}
+	$XML_VALIDATE ${tmp_xml_output}
+	ok $? "Valid lttng list XML after load"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
+	test $value = 500000
+	ok $? "Found the right rotation timer value in list XML after load"
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
+	test $value = 512000
+	ok $? "Found the right rotation size value in list XML after load"
+
+	$LTTNG destroy $SESSION_NAME >/dev/null
+
+	rm -rf ${TRACE_PATH}
+	rm $tmp_xml_output
+	rm -rf $tmp_save_output
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+tests=( test_save_load )
+
+for fct_test in ${tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test}
+done
+
+stop_lttng_sessiond
+
+exit $out
