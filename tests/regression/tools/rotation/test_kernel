@@ -1,0 +1,144 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="Rotation - Kernel tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+EVENT_NAME="lttng_test_filter_event"
+PID_RELAYD=0
+SESSION_NAME=""
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=68
+
+source $TESTDIR/utils/utils.sh
+source $CURDIR/rotate_utils.sh
+
+# LTTng kernel modules check
+out=`ls /lib/modules/$(uname -r)/extra | grep lttng`
+if [ -z "$out" ]; then
+	BAIL_OUT "LTTng modules not detected."
+fi
+
+function lttng_create_session_uri
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
+
+	ok $? "Create session $SESSION_NAME"
+}
+
+function rotate_kernel_test ()
+{
+	local_path=$1
+
+	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	today=$(date +%Y%m%d)
+	# First chunk contains 10 events.
+	echo -n "10" > /proc/lttng-test-filter-event
+	rotate_session_ok $SESSION_NAME
+
+	# Second chunk contains 20 events.
+	echo -n "20" > /proc/lttng-test-filter-event
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Third chunk contains no event (rotate after stop).
+	rotate_session_ok $SESSION_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# The tests on the chunk folder rely on the date staying the same during
+	# the duration of the test, if this fail we will now why the other checks
+	# fail afterwards. There is a short window of time where an automated test
+	# could fail because of that.
+	now=$(date +%Y%m%d)
+	test $today = $now
+	ok $? "Date did not change during the test"
+
+	validate_test_chunks $local_path $today kernel kernel 0
+}
+
+function test_kernel_streaming ()
+{
+	diag "Test kernel streaming with session rotation"
+	lttng_create_session_uri
+	rotate_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+function test_kernel_local ()
+{
+	diag "Test kernel local with session rotation"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	rotate_kernel_test "${TRACE_PATH}"
+}
+
+function test_kernel_local_timer ()
+{
+	diag "Test kernel local with session rotation timer"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+
+	rotate_timer_test "${TRACE_PATH}" 0
+}
+
+function test_kernel_streaming_timer ()
+{
+	diag "Test kernel remote with session rotation timer"
+	lttng_create_session_uri
+	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
+{
+	start_lttng_relayd "-o $TRACE_PATH"
+	start_lttng_sessiond
+	modprobe lttng-test
+
+	tests=( test_kernel_streaming test_kernel_local test_kernel_local_timer test_kernel_streaming_timer)
+
+	for fct_test in ${tests[@]};
+	do
+		SESSION_NAME=$(randstring 16 0)
+		${fct_test}
+	done
+
+	rmmod lttng-test
+	stop_lttng_sessiond
+	stop_lttng_relayd
+}
