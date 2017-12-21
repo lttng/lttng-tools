@@ -133,6 +133,7 @@ const char * const config_element_targets = "targets";
 const char * const config_element_target_pid = "pid_target";
 
 LTTNG_HIDDEN const char * const config_element_rotation_timer_interval = "rotation_schedule_timer_period";
+LTTNG_HIDDEN const char * const config_element_rotation_size = "rotation_schedule_size";
 LTTNG_HIDDEN const char * const config_element_rotation_schedule = "rotation_schedule";
 
 const char * const config_domain_type_kernel = "KERNEL";

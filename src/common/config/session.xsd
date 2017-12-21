@@ -278,7 +278,8 @@ by its signed 32-bit representation when converted to msec.
 	<xs:all>
 		<xs:element name="snapshot_mode" type="xs:boolean" minOccurs="0"/>
 		<xs:element name="live_timer_interval" type="uint32_type" minOccurs="0"/> <!-- usec -->
-		<xs:element name="rotation_timer_interval" type="uint64_type" minOccurs="0"/> <!-- usec -->
+		<xs:element name="rotation_schedule_timer_period" type="uint64_type" minOccurs="0"/> <!-- usec -->
+		<xs:element name="rotation_schedule_size" type="uint64_type" minOccurs="0"/> <!-- bytes -->
 	</xs:all>
 </xs:complexType>
 

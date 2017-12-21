@@ -2033,7 +2033,8 @@ int save_session(struct ltt_session *session,
 		goto end;
 	}
 
-	if (session->snapshot_mode || session->live_timer) {
+	if (session->snapshot_mode || session->live_timer ||
+			session->rotate_timer_period || session->rotate_size) {
 		ret = config_writer_open_element(writer, config_element_attributes);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -2047,9 +2048,28 @@ int save_session(struct ltt_session *session,
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
-		} else {
+		} else if (session->live_timer) {
 			ret = config_writer_write_element_unsigned_int(writer,
 					config_element_live_timer_interval, session->live_timer);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+		}
+		if (session->rotate_timer_period) {
+			ret = config_writer_write_element_unsigned_int(writer,
+					config_element_rotation_timer_interval,
+					session->rotate_timer_period);
+			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+		}
+
+		if (session->rotate_size) {
+			ret = config_writer_write_element_unsigned_int(writer,
+					config_element_rotation_size,
+					session->rotate_size);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
