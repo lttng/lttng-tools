@@ -1579,6 +1579,31 @@ function regenerate_statedump_fail ()
 	regenerate_statedump 1 "$@"
 }
 
+function rotate_session ()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN rotate $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected fail on rotate session $sess_name"
+	else
+		ok $ret "Rotate session $sess_name"
+	fi
+}
+
+function rotate_session_ok ()
+{
+	rotate_session 0 "$@"
+}
+
+function rotate_session_fail ()
+{
+	rotate_session 1 "$@"
+}
+
 function destructive_tests_enabled ()
 {
 	if [ ${LTTNG_ENABLE_DESTRUCTIVE_TESTS} = "will-break-my-system" ]; then
@@ -1586,4 +1611,56 @@ function destructive_tests_enabled ()
 	else
 		return 1
 	fi
+}
+
+function lttng_enable_rotation_timer ()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local period=$3
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-rotation -s $sess_name --timer $period 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected fail on rotate session $sess_name"
+	else
+		ok $ret "Rotate session $sess_name"
+	fi
+}
+
+function lttng_enable_rotation_timer_ok ()
+{
+	lttng_enable_rotation_timer 0 $@
+}
+
+function lttng_enable_rotation_timer_fail ()
+{
+	lttng_enable_rotation_timer 1 $@
+}
+
+function lttng_enable_rotation_size ()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+	local size=$3
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-rotation -s $sess_name --size $size 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected fail on rotate session $sess_name"
+	else
+		ok $ret "Rotate session $sess_name"
+	fi
+}
+
+function lttng_enable_rotation_size_ok ()
+{
+	lttng_enable_rotation_size 0 $@
+}
+
+function lttng_enable_rotation_size_fail ()
+{
+	lttng_enable_rotation_size 1 $@
 }
