@@ -185,6 +185,25 @@ extern int lttng_rotation_get_current_path(const char *session_name,
  */
 extern int lttng_rotation_set_schedule(struct lttng_rotation_schedule_attr *attr);
 
+/*
+ * Ask the sessiond for the value of the rotate timer (in micro-seconds) of the
+ * session.
+ *
+ * On success, return 0 and set the value or rotate_timer, on error return a
+ * negative value.
+ */
+extern int lttng_rotation_schedule_get_timer_period(const char *session_name,
+		uint64_t *rotate_timer);
+
+/*
+ * Ask the sessiond for the value of the rotate size (in micro-seconds) of the
+ * session.
+ *
+ * On success, return 0 and set the value or rotate_size, on error return
+ * a negative value.
+ */
+extern int lttng_rotation_schedule_get_size(const char *session_name,
+		uint64_t *rotate_size);
 
 #ifdef __cplusplus
 }

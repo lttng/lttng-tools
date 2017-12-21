@@ -105,6 +105,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_ROTATION_IS_PENDING           = 46,
 	LTTNG_ROTATION_SET_SCHEDULE         = 47,
 	LTTNG_ROTATION_GET_CURRENT_PATH     = 48,
+	LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD = 49,
+	LTTNG_ROTATION_SCHEDULE_GET_SIZE    = 50,
 };
 
 enum lttcomm_relayd_command {

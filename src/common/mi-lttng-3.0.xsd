@@ -413,6 +413,8 @@ THE SOFTWARE.
 			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
 			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
 			<xs:element name="snapshots" type="tns:snapshots_type" minOccurs="0" />
+			<xs:element name="rotation_schedule_size" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
+			<xs:element name="rotation_schedule_timer_period" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- usec -->
 		</xs:all>
 	</xs:complexType>
 
