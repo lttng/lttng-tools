@@ -40,6 +40,7 @@ struct session_info {
 	struct cds_lfht *channel_infos_ht;
 	/* Node in the notification thread state's sessions_ht. */
 	struct cds_lfht_node sessions_ht_node;
+	uint64_t consumed_data_size;
 };
 
 struct channel_info {

@@ -595,6 +595,10 @@ struct lttcomm_consumer_channel_monitor_msg {
 	 * Lowest and highest usage (bytes) at the moment the sample was taken.
 	 */
 	uint64_t lowest, highest;
+	/*
+	 * Sum of all the consumed positions for a channel.
+	 */
+	uint64_t total_consumed;
 } LTTNG_PACKED;
 
 /*
