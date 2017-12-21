@@ -89,4 +89,14 @@ struct lttng_rotate_get_current_path {
 	char output_path[PATH_MAX];
 } LTTNG_PACKED;
 
+/* For the LTTNG_ROTATE_GET_TIMER command. */
+struct lttng_rotate_get_timer {
+	uint64_t rotate_timer;
+} LTTNG_PACKED;
+
+/* For the LTTNG_ROTATE_GET_SIZE command. */
+struct lttng_rotate_get_size {
+	uint64_t rotate_size;
+} LTTNG_PACKED;
+
 #endif /* LTTNG_ROTATE_INTERNAL_ABI_H */

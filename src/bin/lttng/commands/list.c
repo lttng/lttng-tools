@@ -1521,6 +1521,57 @@ end:
 }
 
 /*
+ * List the rotate settings (timer/size if any).
+ */
+static int list_rotate_settings(const char *session_name)
+{
+	int ret;
+	uint64_t size, timer;
+
+	ret = lttng_rotate_get_timer(session_name, &timer);
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_rotate_get_size(session_name, &size);
+	if (ret) {
+		goto end;
+	}
+
+	if (!timer && !size) {
+		ret = 0;
+		goto end;
+	}
+
+	_MSG("Rotation settings:\n");
+
+	if (timer) {
+		_MSG("    timer: %" PRIu64" micro-seconds\n", timer);
+		if (lttng_opt_mi) {
+			ret = mi_lttng_writer_write_element_unsigned_int(writer,
+					config_element_rotation_timer_interval, timer);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+	if (size) {
+		_MSG("    size:  %" PRIu64" bytes\n", size);
+		if (lttng_opt_mi) {
+			ret = mi_lttng_writer_write_element_unsigned_int(writer,
+					config_element_rotation_size, size);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+	_MSG("\n");
+
+end:
+	return ret;
+}
+
+/*
  * Machine interface
  * Find the session with session_name as name
  * and print his informations.
@@ -1914,6 +1965,11 @@ int cmd_list(int argc, const char **argv)
 		}
 		/* MI: the ouptut of list_sessions is an unclosed session element */
 		ret = list_sessions(session_name);
+		if (ret) {
+			goto end;
+		}
+
+		ret = list_rotate_settings(session_name);
 		if (ret) {
 			goto end;
 		}

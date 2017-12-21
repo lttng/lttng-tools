@@ -2967,6 +2967,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_ROTATE_PENDING:
 	case LTTNG_ROTATE_SETUP:
 	case LTTNG_ROTATE_GET_CURRENT_PATH:
+	case LTTNG_ROTATE_GET_TIMER:
+	case LTTNG_ROTATE_GET_SIZE:
 		need_domain = 0;
 		break;
 	default:
@@ -3011,6 +3013,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATE_PENDING:
+	case LTTNG_ROTATE_GET_TIMER:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -4198,6 +4201,50 @@ error_add_context:
 				cmd_ctx->lsm->u.rotate_setup.timer_us,
 				cmd_ctx->lsm->u.rotate_setup.size,
 				notification_thread_handle);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_ROTATE_GET_TIMER:
+	{
+		struct lttng_rotate_get_timer *get_timer;
+
+		get_timer = zmalloc(sizeof(struct lttng_rotate_get_timer));
+		if (!get_timer) {
+			ret = ENOMEM;
+			goto error;
+		}
+		get_timer->rotate_timer = cmd_ctx->session->rotate_timer_period;
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_timer,
+				sizeof(struct lttng_rotate_get_timer));
+		free(get_timer);
+		if (ret < 0) {
+			ret = -ret;
+			goto error;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_ROTATE_GET_SIZE:
+	{
+		struct lttng_rotate_get_size *get_size;
+
+		get_size = zmalloc(sizeof(struct lttng_rotate_get_size));
+		if (!get_size) {
+			ret = ENOMEM;
+			goto error;
+		}
+		get_size->rotate_size = cmd_ctx->session->rotate_size;
+
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_size,
+				sizeof(struct lttng_rotate_get_size));
+		free(get_size);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
