@@ -70,6 +70,13 @@ void lttng_rotate_session_attr_set_timer(
 	attr->timer_us = timer;
 }
 
+void lttng_rotate_session_attr_set_size(
+		struct lttng_rotate_session_attr *attr,
+		uint64_t size)
+{
+	attr->size = size;
+}
+
 enum lttng_rotate_status lttng_rotate_session_get_status(
 		struct lttng_rotate_session_handle *rotate_handle)
 {

@@ -53,6 +53,8 @@
  */
 struct cds_lfht *channel_pending_rotate_ht;
 
+struct lttng_notification_channel *rotate_notification_channel = NULL;
+
 struct rotation_thread_state {
 	struct lttng_poll_event events;
 };
@@ -143,7 +145,9 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 		struct lttng_pipe *ust64_channel_rotate_pipe,
 		struct lttng_pipe *kernel_channel_rotate_pipe,
 		int thread_quit_pipe,
-		struct rotation_thread_timer_queue *rotation_timer_queue)
+		struct rotation_thread_timer_queue *rotation_timer_queue,
+		struct notification_thread_handle *notification_thread_handle,
+		sem_t *notification_thread_ready)
 {
 	struct rotation_thread_handle *handle;
 
@@ -184,6 +188,8 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 	}
 	handle->thread_quit_pipe = thread_quit_pipe;
 	handle->rotation_timer_queue = rotation_timer_queue;
+	handle->notification_thread_handle = notification_thread_handle;
+	handle->notification_thread_ready = notification_thread_ready;
 
 end:
 	return handle;
@@ -257,6 +263,9 @@ void fini_thread_state(struct rotation_thread_state *state)
 {
 	lttng_poll_clean(&state->events);
 	cds_lfht_destroy(channel_pending_rotate_ht, NULL);
+	if (rotate_notification_channel) {
+		lttng_notification_channel_destroy(rotate_notification_channel);
+	}
 }
 
 static
@@ -277,6 +286,25 @@ int init_thread_state(struct rotation_thread_handle *handle,
 			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!channel_pending_rotate_ht) {
 		ret = -1;
+	}
+
+	/*
+	 * We wait until the notification thread is ready to create the
+	 * notification channel and add it to the poll_set.
+	 */
+	sem_wait(handle->notification_thread_ready);
+	rotate_notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	if (!rotate_notification_channel) {
+		ERR("[rotation-thread] Could not create notification channel");
+		ret = 1;
+		goto end;
+	}
+	ret = lttng_poll_add(&state->events, rotate_notification_channel->socket,
+			LPOLLIN | LPOLLERR);
+	if (ret < 0) {
+		ERR("[rotation-thread] Failed to add notification fd to pollset");
+		goto end;
 	}
 
 end:
@@ -562,6 +590,127 @@ end:
 	return ret;
 }
 
+int handle_condition(
+		const struct lttng_condition *condition,
+		const struct lttng_evaluation *evaluation,
+		struct notification_thread_handle *notification_thread_handle)
+{
+	int ret = 0;
+	const char *condition_session_name = NULL;
+	enum lttng_condition_type condition_type;
+	enum lttng_evaluation_status evaluation_status;
+	uint64_t consumed;
+	struct ltt_session *session;
+
+	condition_type = lttng_condition_get_type(condition);
+
+	if (condition_type != LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE) {
+		ret = 1;
+		ERR("[rotation-thread] Condition type and session usage type are not the same\n");
+		goto end;
+	}
+
+	/* Fetch info to test */
+	ret = lttng_condition_session_consumed_size_get_session_name(condition,
+			&condition_session_name);
+	if (ret) {
+		ERR("[rotation-thread] Session name could not be fetched\n");
+		ret = 1;
+		goto end;
+	}
+	evaluation_status = lttng_evaluation_session_consumed_size_get_consumed_size(evaluation,
+			&consumed);
+	if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
+		ERR("[rotation-thread] Failed to get evaluation");
+		ret = -1;
+		goto end;
+	}
+
+	session_lock_list();
+	session = session_find_by_name(condition_session_name);
+	if (!session) {
+		ret = -1;
+		session_unlock_list();
+		ERR("[rotation-thread] Session not found");
+		goto end;
+	}
+	session_lock(session);
+	session_unlock_list();
+
+	unsubscribe_session_usage_rotation(session, notification_thread_handle);
+	ret = cmd_rotate_session(session, NULL);
+	if (ret == -LTTNG_ERR_ROTATE_PENDING) {
+		DBG("Rotate already pending, subscribe to the next threshold value");
+		ret = 0;
+	} else if (ret != LTTNG_OK) {
+		ERR("[rotation-thread] Rotate on size notification");
+		ret = -1;
+		goto end_unlock;
+	}
+	ret = subscribe_session_usage_rotation(session, consumed + session->rotate_size,
+			notification_thread_handle);
+	if (ret) {
+		ERR("[rotation-thread] Subscribe session usage");
+		goto end_unlock;
+	}
+	ret = 0;
+
+end_unlock:
+	session_unlock(session);
+end:
+	return ret;
+}
+
+static
+int handle_sampling_notification(int fd, uint32_t revents,
+		struct rotation_thread_handle *handle,
+		struct rotation_thread_state *state)
+{
+	int ret;
+	struct lttng_notification *notification;
+	enum lttng_notification_channel_status status;
+	const struct lttng_evaluation *notification_evaluation;
+	const struct lttng_condition *notification_condition;
+
+	/* Receive the next notification. */
+	status = lttng_notification_channel_get_next_notification(
+			rotate_notification_channel,
+			&notification);
+
+	switch (status) {
+	case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
+		break;
+	case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
+		/* Not an error, we will wait for the next one */
+		ret = 0;
+		goto end;;
+	case LTTNG_NOTIFICATION_CHANNEL_STATUS_CLOSED:
+		ERR("Notification channel was closed\n");
+		ret = -1;
+		goto end;
+	default:
+		/* Unhandled conditions / errors. */
+		ERR("Unknown notification channel status\n");
+		ret = -1;
+		goto end;
+	}
+
+	notification_condition = lttng_notification_get_condition(notification);
+	notification_evaluation = lttng_notification_get_evaluation(notification);
+
+	ret = handle_condition(notification_condition, notification_evaluation,
+			handle->notification_thread_handle);
+
+end:
+	lttng_notification_destroy(notification);
+	if (ret != 0) {
+		goto end;
+	}
+
+
+	return ret;
+}
+
 void *thread_rotation(void *data)
 {
 	int ret;
@@ -633,6 +782,12 @@ void *thread_rotation(void *data)
 						revents, handle, &state);
 				if (ret) {
 					ERR("[rotation-thread] Handle channel rotation pipe");
+					goto error;
+				}
+			} else if (fd == rotate_notification_channel->socket) {
+				ret = handle_sampling_notification(fd, revents, handle, &state);
+				if (ret) {
+					ERR("[rotation-thread] handle sample");
 					goto error;
 				}
 			}

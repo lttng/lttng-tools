@@ -595,7 +595,8 @@ static void sessiond_cleanup(void)
 		/* Cleanup ALL session */
 		cds_list_for_each_entry_safe(sess, stmp,
 				&session_list_ptr->head, list) {
-			cmd_destroy_session(sess, kernel_poll_pipe[1]);
+			cmd_destroy_session(sess, kernel_poll_pipe[1],
+					notification_thread_handle);
 		}
 	}
 
@@ -3766,7 +3767,8 @@ error_add_context:
 	}
 	case LTTNG_DESTROY_SESSION:
 	{
-		ret = cmd_destroy_session(cmd_ctx->session, kernel_poll_pipe[1]);
+		ret = cmd_destroy_session(cmd_ctx->session, kernel_poll_pipe[1],
+				notification_thread_handle);
 
 		/* Set session to NULL so we do not unlock it after free. */
 		cmd_ctx->session = NULL;
@@ -4194,7 +4196,8 @@ error_add_context:
 
 		ret = cmd_rotate_setup(cmd_ctx->session,
 				cmd_ctx->lsm->u.rotate_setup.timer_us,
-				cmd_ctx->lsm->u.rotate_setup.size);
+				cmd_ctx->lsm->u.rotate_setup.size,
+				notification_thread_handle);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;
@@ -5655,6 +5658,7 @@ int main(int argc, char **argv)
 	struct timer_thread_parameters timer_thread_ctx;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
+	sem_t notification_thread_ready;
 
 	init_kernel_workarounds();
 
@@ -6062,11 +6066,19 @@ int main(int argc, char **argv)
 		goto exit_health;
 	}
 
+	/*
+	 * The rotation thread needs the notification thread to be ready before
+	 * creating the rotate_notification_channel, so we use this semaphore as
+	 * a rendez-vous point.
+	 */
+	sem_init(&notification_thread_ready, 0, 0);
+
 	/* notification_thread_data acquires the pipes' read side. */
 	notification_thread_handle = notification_thread_handle_create(
 			ust32_channel_monitor_pipe,
 			ust64_channel_monitor_pipe,
-			kernel_channel_monitor_pipe);
+			kernel_channel_monitor_pipe,
+			&notification_thread_ready);
 	if (!notification_thread_handle) {
 		retval = -1;
 		ERR("Failed to create notification thread shared data");
@@ -6104,7 +6116,9 @@ int main(int argc, char **argv)
 			ust64_channel_rotate_pipe,
 			kernel_channel_rotate_pipe,
 			thread_quit_pipe[0],
-			rotation_timer_queue);
+			rotation_timer_queue,
+			notification_thread_handle,
+			&notification_thread_ready);
 	if (!rotation_thread_handle) {
 		retval = -1;
 		ERR("Failed to create rotation thread shared data");
@@ -6292,6 +6306,7 @@ exit_dispatch:
 exit_client:
 exit_rotation:
 exit_notification:
+	sem_destroy(&notification_thread_ready);
 	ret = pthread_join(health_thread, &status);
 	if (ret) {
 		errno = ret;

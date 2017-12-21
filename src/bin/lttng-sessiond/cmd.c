@@ -2915,7 +2915,8 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_destroy_session(struct ltt_session *session, int wpipe)
+int cmd_destroy_session(struct ltt_session *session, int wpipe,
+		struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
 	struct ltt_ust_session *usess;
@@ -2935,6 +2936,11 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe)
 
 	if (session->rotate_timer_enabled) {
 		sessiond_rotate_timer_stop(session);
+	}
+
+	if (session->rotate_size) {
+		unsubscribe_session_usage_rotation(session, notification_thread_handle);
+		session->rotate_size = 0;
 	}
 
 	/*
@@ -4627,7 +4633,8 @@ end:
  * Return 0 on success or else a LTTNG_ERR code.
  */
 int cmd_rotate_setup(struct ltt_session *session,
-		uint64_t timer_us, uint64_t size)
+		uint64_t timer_us, uint64_t size,
+		struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
 
@@ -4649,6 +4656,14 @@ int cmd_rotate_setup(struct ltt_session *session,
 		goto end;
 	}
 
+	if (size && size != -1ULL && session->rotate_size) {
+		ret = LTTNG_ERR_ROTATE_SIZE_EXISTS;
+		goto end;
+	} else if (size == -1ULL && !session->rotate_size) {
+		ret = LTTNG_ERR_ROTATE_SIZE_EXISTS;
+		goto end;
+	}
+
 	if (timer_us && !session->rotate_timer_period) {
 		session->rotate_timer_period = timer_us;
 		/*
@@ -4666,6 +4681,23 @@ int cmd_rotate_setup(struct ltt_session *session,
 	} else if (timer_us == -1ULL && session->rotate_timer_period > 0) {
 		sessiond_rotate_timer_stop(session);
 		session->rotate_timer_period = 0;
+	}
+
+	if (size > 0) {
+		if (size == -1ULL) {
+			unsubscribe_session_usage_rotation(session,
+					notification_thread_handle);
+			session->rotate_size = 0;
+		} else {
+			ret = subscribe_session_usage_rotation(session, size,
+					notification_thread_handle);
+			if (ret) {
+				PERROR("Subscribe to session usage");
+				ret = LTTNG_ERR_UNK;
+				goto end;
+			}
+			session->rotate_size = size;
+		}
 	}
 
 	ret = LTTNG_OK;
