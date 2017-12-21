@@ -1498,7 +1498,14 @@ function validate_trace_empty()
 	    skip 0 "Babeltrace binary not found. Skipping trace validation"
 	fi
 
-	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | wc -l)
+	events=$($BABELTRACE_BIN $trace_path 2>/dev/null)
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		fail "Failed to parse trace"
+		return $ret
+	fi
+
+	traced=$(echo -n "$events" | wc -l)
 	if [ "$traced" -eq 0 ]; then
 		pass "Validate empty trace"
 	else
