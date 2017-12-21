@@ -2444,6 +2444,7 @@ int handle_notification_thread_channel_sample(
 				sizeof(previous_sample));
 		stored_sample->highest_usage = latest_sample.highest_usage;
 		stored_sample->lowest_usage = latest_sample.lowest_usage;
+		stored_sample->channel_total_consumed = latest_sample.channel_total_consumed;
 		previous_sample_available = true;
 	} else {
 		/*
