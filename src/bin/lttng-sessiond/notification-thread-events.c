@@ -2404,7 +2404,7 @@ int handle_notification_thread_channel_sample(
 			&latest_sample.key,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	if (!node) {
+	if (caa_unlikely(!node)) {
 		/*
 		 * Not an error since the consumer can push a sample to the pipe
 		 * and the rest of the session daemon could notify us of the
@@ -2433,7 +2433,7 @@ int handle_notification_thread_channel_sample(
 			&latest_sample.key,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	if (node) {
+	if (caa_likely(node)) {
 		struct channel_state_sample *stored_sample;
 
 		/* Update the sample stored. */
@@ -2472,7 +2472,7 @@ int handle_notification_thread_channel_sample(
 			&latest_sample.key,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
-	if (!node) {
+	if (caa_likely(!node)) {
 		goto end_unlock;
 	}
 
@@ -2535,7 +2535,7 @@ int handle_notification_thread_channel_sample(
 				channel_info->session_info->uid,
 				channel_info->session_info->gid);
 		lttng_evaluation_destroy(evaluation);
-		if (ret) {
+		if (caa_unlikely(ret)) {
 			goto end_unlock;
 		}
 	}
