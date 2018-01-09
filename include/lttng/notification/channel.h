@@ -79,7 +79,7 @@ extern struct lttng_notification_channel *lttng_notification_channel_create(
  * Notifications can be dropped if a client consumes the notifications sent
  * through the notification channel too slowly.
  *
- * Returns LTTNG_NOTIFICATION_CHANNEL_STATUS_OK and a notificationon success,
+ * Returns LTTNG_NOTIFICATION_CHANNEL_STATUS_OK and a notification on success,
  * LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID if an invalid parameter was
  * provided, or LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED if
  * notifications were dropped.
