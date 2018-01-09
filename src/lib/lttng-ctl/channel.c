@@ -215,6 +215,8 @@ lttng_notification_channel_get_next_notification(
 		goto end;
 	}
 
+	pthread_mutex_lock(&channel->lock);
+
 	if (channel->pending_notifications.count) {
 		struct pending_notification *pending_notification;
 
@@ -232,10 +234,8 @@ lttng_notification_channel_get_next_notification(
 		cds_list_del(&pending_notification->node);
 		channel->pending_notifications.count--;
 		free(pending_notification);
-		goto end;
+		goto end_unlock;
 	}
-
-	pthread_mutex_lock(&channel->lock);
 
 	ret = receive_message(channel);
 	if (ret) {
