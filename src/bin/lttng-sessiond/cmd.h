@@ -120,7 +120,8 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		struct notification_thread_handle *notification_thread_handle);
 
 int cmd_rotate_session(struct ltt_session *session,
-		struct lttng_rotate_session_return **rotate_return);
+		struct lttng_rotate_session_return **rotate_return,
+		bool manual);
 int cmd_rotate_pending(struct ltt_session *session,
 		struct lttng_rotation_is_pending_return **pending_return,
 		uint64_t rotate_id);

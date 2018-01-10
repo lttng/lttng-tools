@@ -482,7 +482,7 @@ int rotate_timer(struct ltt_session *session)
 
 	DBG("[rotation-thread] Rotate timer on session %s", session->name);
 
-	ret = cmd_rotate_session(session, NULL);
+	ret = cmd_rotate_session(session, NULL, false);
 	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
 		ret = 0;
 		goto end;
@@ -635,7 +635,7 @@ int handle_condition(
 	session_unlock_list();
 
 	unsubscribe_session_usage_rotation(session, notification_thread_handle);
-	ret = cmd_rotate_session(session, NULL);
+	ret = cmd_rotate_session(session, NULL, false);
 	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
 		DBG("Rotate already pending, subscribe to the next threshold value");
 		ret = 0;

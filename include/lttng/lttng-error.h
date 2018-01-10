@@ -155,6 +155,7 @@ enum lttng_error_code {
 	LTTNG_ERR_ROTATION_SIZE_IS_SET     = 132, /* Rotate size already setup for this session. */
 	LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP     = 133, /* Already rotated once after a stop. */
 	LTTNG_ERR_ROTATION_WRONG_VERSION   = 134, /* Rotate not supported by this kernel tracer version */
+	LTTNG_ERR_ROTATION_MANUAL_UNSUPPORTED      = 135, /* Manual rotation unsupported when size or timer-based rotations are enabled. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

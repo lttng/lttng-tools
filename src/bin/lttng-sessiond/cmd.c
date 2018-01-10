@@ -4358,7 +4358,7 @@ int cmd_set_session_shm_path(struct ltt_session *session,
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_rotate_session(struct ltt_session *session,
-		struct lttng_rotate_session_return **rotate_return)
+		struct lttng_rotate_session_return **rotate_return, bool manual)
 {
 	int ret;
 	size_t strf_ret;
@@ -4396,6 +4396,15 @@ int cmd_rotate_session(struct ltt_session *session,
 			(session->consumer->relay_major_version == 2 &&
 			session->consumer->relay_minor_version < 11)) {
 		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		goto error;
+	}
+
+	/*
+	 * Prevent starting a rotation manually when the session is configured
+	 * with size or timer-based rotations.
+	 */
+	if (manual && (session->rotate_timer_period || session->rotate_size)) {
+		ret = -LTTNG_ERR_ROTATION_MANUAL_UNSUPPORTED;
 		goto error;
 	}
 
