@@ -196,6 +196,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATE_SIZE_EXISTS) ] = "Rotate size already setup for this session",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATE_MULTIPLE_AFTER_STOP) ] = "Already rotated once after a stop",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATE_WRONG_VERSION) ] = "Rotate not supported by this kernel tracer version",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_MANUAL_UNSUPPORTED) ] = "Manual rotation unsupported when size or timer-based rotations are enabled",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
