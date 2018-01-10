@@ -1519,7 +1519,7 @@ function validate_trace_only_exp()
 	local total=$($BABELTRACE_BIN $trace_path | wc -l)
 
 	if [ "$count" -ne 0 ] && [ "$total" -eq "$count" ]; then
-		pass "Trace match with $total for expression '${event_exp}"
+		pass "Trace match with $total for expression '${event_exp}'"
 	else
 		fail "Trace match"
 		diag "$total syscall event(s) found, only syscalls matching expression '${event_exp}' ($count occurrences) are expected"

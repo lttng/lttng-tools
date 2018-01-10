@@ -1,0 +1,138 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="Kernel tracer - lttng-logger"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../..
+NUM_TESTS=30
+PAYLOAD="test_logger"
+SESSION_NAME="kernel_event_basic"
+
+source $TESTDIR/utils/utils.sh
+
+function test_proc_logger()
+{
+	diag "Test /proc/lttng-logger"
+
+	TRACE_PATH=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_event $SESSION_NAME "lttng_logger"
+
+	start_lttng_tracing_ok
+
+	test -e /proc/lttng-logger
+	if test $? = 0; then
+		pass "/proc/lttng-logger exists"
+		echo -n "$PAYLOAD proc" > /proc/lttng-logger
+		ok $? "Write in /proc/lttng-logger"
+	else
+		fail "No /proc/lttng-logger"
+	fi
+
+	stop_lttng_tracing_ok
+
+	validate_trace_count "lttng_logger" $TRACE_PATH 1
+	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_dev_logger()
+{
+	diag "Test /dev/lttng-logger"
+
+	TRACE_PATH=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_event $SESSION_NAME "lttng_logger"
+
+	start_lttng_tracing_ok
+
+	test -c /dev/lttng-logger
+	if test $? = 0; then
+		pass "/dev/lttng-logger is a character device"
+		echo -n "$PAYLOAD dev" > /dev/lttng-logger
+		ok $? "Write in /dev/lttng-logger"
+	else
+		fail "No /dev/lttng-logger"
+	fi
+
+	stop_lttng_tracing_ok
+
+	validate_trace_count "lttng_logger" $TRACE_PATH 1
+	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+function test_payload_limit()
+{
+	diag "Test lttng-logger payload limit"
+
+	TRACE_PATH=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	lttng_enable_kernel_event $SESSION_NAME "lttng_logger"
+
+	start_lttng_tracing_ok
+
+	# Write 100 times "test_logger", which generates 1200 characters, we expect
+	# the tracer to write 2 events from that string because it limits the
+	# input to 1024 strings.
+	printf "%.s $PAYLOAD" {1..100} > /proc/lttng-logger
+	printf "%.s $PAYLOAD" {1..100} > /dev/lttng-logger
+
+	stop_lttng_tracing_ok
+
+	validate_trace_count "lttng_logger" $TRACE_PATH 4
+	validate_trace_only_exp "$PAYLOAD" $TRACE_PATH
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	test_proc_logger
+	test_dev_logger
+	test_payload_limit
+
+	stop_lttng_sessiond
+}

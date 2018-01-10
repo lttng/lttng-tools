@@ -1,6 +1,6 @@
 EXTRA_DIST = test_event_basic test_all_events test_syscall \
 		test_clock_override test_rotation_destroy_flush \
-		test_select_poll_epoll
+		test_select_poll_epoll test_lttng_logger
 
 noinst_PROGRAMS = select_poll_epoll
 select_poll_epoll_SOURCES = select_poll_epoll.c
