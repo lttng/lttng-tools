@@ -667,10 +667,24 @@ int handle_sampling_notification(int fd, uint32_t revents,
 		struct rotation_thread_state *state)
 {
 	int ret;
-	struct lttng_notification *notification;
+	bool notification_pending;
+	struct lttng_notification *notification = NULL;
 	enum lttng_notification_channel_status status;
 	const struct lttng_evaluation *notification_evaluation;
 	const struct lttng_condition *notification_condition;
+
+	status = lttng_notification_channel_has_pending_notification(
+			rotate_notification_channel, &notification_pending);
+	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
+		ERR("Error occured while checking for pending notification");
+		ret = -1;
+		goto end;
+	}
+
+	if (!notification_pending) {
+		ret = 0;
+		goto end;
+	}
 
 	/* Receive the next notification. */
 	status = lttng_notification_channel_get_next_notification(
