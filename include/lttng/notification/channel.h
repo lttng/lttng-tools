@@ -18,6 +18,8 @@
 #ifndef LTTNG_NOTIFICATION_CHANNEL_H
 #define LTTNG_NOTIFICATION_CHANNEL_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -88,6 +90,26 @@ extern enum lttng_notification_channel_status
 lttng_notification_channel_get_next_notification(
 		struct lttng_notification_channel *channel,
 		struct lttng_notification **notification);
+
+/*
+ * Check whether a notification is pending on a notification channel.
+ *
+ * This call allows the user to check whether a notification is pending on
+ * the notification channel.
+ *
+ * If pending is set to true and the return value is
+ * LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+ * lttng_notification_channel_get_next_notification() can be called and
+ * is guaranteed to not block.
+ *
+ * Returns LTTNG_NOTIFICATION_CHANNEL_STATUS_OK on success or
+ * LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID if an invalid parameter was
+ * provided.
+ */
+extern enum lttng_notification_channel_status
+lttng_notification_channel_has_pending_notification(
+		struct lttng_notification_channel *channel,
+		bool *notification_pending);
 
 /*
  * Subscribe to notifications of a condition through a notification channel.

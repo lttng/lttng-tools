@@ -26,13 +26,15 @@
 #include <common/defaults.h>
 #include <assert.h>
 #include "lttng-ctl-helper.h"
+#include <sys/select.h>
+#include <sys/time.h>
 
 static
 int handshake(struct lttng_notification_channel *channel);
 
 /*
  * Populates the reception buffer with the next complete message.
- * The caller must acquire the client's lock.
+ * The caller must acquire the channel's lock.
  */
 static
 int receive_message(struct lttng_notification_channel *channel)
@@ -40,9 +42,9 @@ int receive_message(struct lttng_notification_channel *channel)
 	ssize_t ret;
 	struct lttng_notification_channel_message msg;
 
-	ret = lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0);
-	if (ret) {
-		goto error;
+	if (lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0)) {
+		ret = -1;
+		goto end;
 	}
 
 	ret = lttcomm_recv_unix_sock(channel->socket, &msg, sizeof(msg));
@@ -354,6 +356,101 @@ end:
 error:
 	free(pending_notification);
 	goto end;
+}
+
+enum lttng_notification_channel_status
+lttng_notification_channel_has_pending_notification(
+		struct lttng_notification_channel *channel,
+		bool *_notification_pending)
+{
+	int ret;
+	enum lttng_notification_channel_status status =
+			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	fd_set read_fds;
+	struct timeval timeout;
+
+	FD_ZERO(&read_fds);
+	memset(&timeout, 0, sizeof(timeout));
+
+	if (!channel || !_notification_pending) {
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
+		goto end;
+	}
+
+	pthread_mutex_lock(&channel->lock);
+
+	if (channel->pending_notifications.count) {
+		*_notification_pending = true;
+		goto end_unlock;
+	}
+
+	if (channel->socket < 0) {
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_CLOSED;
+		goto end_unlock;
+	}
+
+	/*
+	 * Check, without blocking, if data is available on the channel's
+	 * socket. If there is data available, it is safe to read (blocking)
+	 * on the socket for a message from the session daemon.
+	 *
+	 * Since all commands wait for the session daemon's reply before
+	 * releasing the channel's lock, the protocol only allows for
+	 * notifications and "notification dropped" messages to come
+	 * through. If we receive a different message type, it is
+	 * considered a protocol error.
+	 *
+	 * Note that this function is not guaranteed not to block. This
+	 * will block until our peer (the session daemon) has sent a complete
+	 * message if we see data available on the socket. If the peer does
+	 * not respect the protocol, this may block indefinitely.
+	 */
+	FD_SET(channel->socket, &read_fds);
+	do {
+		ret = select(channel->socket + 1, &read_fds, NULL, NULL, &timeout);
+	} while (ret < 0 && errno == EINTR);
+
+	if (ret == 0) {
+		/* No data available. */
+		*_notification_pending = false;
+		goto end_unlock;
+	} else if (ret < 0) {
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+		goto end_unlock;
+	}
+
+	/* Data available on socket. */
+	ret = receive_message(channel);
+	if (ret) {
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+		goto end_unlock;
+	}
+
+	switch (get_current_message_type(channel)) {
+	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION:
+		ret = enqueue_notification_from_current_message(channel);
+		if (ret) {
+			goto end;
+		}
+		*_notification_pending = true;
+		break;
+	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED:
+		ret = enqueue_dropped_notification(channel);
+		if (ret) {
+			goto end;
+		}
+		*_notification_pending = true;
+		break;
+	default:
+		/* Protocol error. */
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+		goto end_unlock;
+	}
+
+end_unlock:
+	pthread_mutex_unlock(&channel->lock);
+end:
+	return status;
 }
 
 static
