@@ -4342,7 +4342,7 @@ int cmd_rotate_session(struct ltt_session *session,
 {
 	int ret;
 	struct tm *timeinfo;
-	char datetime[16];
+	char datetime[21];
 	time_t now;
 	bool ust_active = false;
 
@@ -4456,7 +4456,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->current_chunk_start_ts = now;
 
 	timeinfo = localtime(&now);
-	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+	strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z", timeinfo);
 	if (session->kernel_session) {
 		/*
 		 * The active path for the next rotation/destroy.

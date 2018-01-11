@@ -217,13 +217,14 @@ error:
 int rename_complete_chunk(struct ltt_session *session, time_t ts)
 {
 	struct tm *timeinfo;
-	char datetime[16], start_datetime[16];
+	char datetime[21], start_datetime[21];
+	struct tm lt = {0};
 	char *new_path = NULL;
 	int ret;
 
 	DBG("Renaming complete chunk for session %s", session->name);
-	timeinfo = localtime(&ts);
-	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+	timeinfo = localtime_r(&ts, &lt);
+	strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z", timeinfo);
 
 	new_path = zmalloc(PATH_MAX * sizeof(char));
 	if (!new_path) {
@@ -234,10 +235,10 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 	}
 
 	if (session->rotate_count == 1) {
-		char start_time[16];
+		char start_time[21];
 
 		timeinfo = localtime(&session->last_chunk_start_ts);
-		strftime(start_time, sizeof(start_time), "%Y%m%d-%H%M%S", timeinfo);
+		strftime(start_time, sizeof(start_time), "%Y%m%dT%H%M%S%z", timeinfo);
 
 		/*
 		 * On the first rotation, the current_rotate_path is the
@@ -288,7 +289,8 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 		 */
 		/* Recreate the session->rotation_chunk.current_rotate_path */
 		timeinfo = localtime(&session->last_chunk_start_ts);
-		strftime(start_datetime, sizeof(start_datetime), "%Y%m%d-%H%M%S", timeinfo);
+		strftime(start_datetime, sizeof(start_datetime), "%Y%m%dT%H%M%S%z",
+				timeinfo);
 		ret = snprintf(new_path, PATH_MAX, "%s/%s-%s-%" PRIu64,
 				session_get_base_path(session),
 				start_datetime,
