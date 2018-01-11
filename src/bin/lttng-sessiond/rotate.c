@@ -217,7 +217,7 @@ error:
 int rename_complete_chunk(struct ltt_session *session, time_t ts)
 {
 	struct tm *timeinfo;
-	char datetime[16], start_datetime[16];
+	char datetime[21], start_datetime[21];
 	char *new_path = NULL;
 	int ret;
 	size_t strf_ret;
@@ -229,7 +229,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 		ret = -1;
 		goto end;
 	}
-	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z", timeinfo);
 	if (!strf_ret) {
 		ERR("Format timestamp");
 		ret = -1;
@@ -245,7 +245,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 	}
 
 	if (session->rotate_count == 1) {
-		char start_time[16];
+		char start_time[21];
 
 		timeinfo = localtime(&session->last_chunk_start_ts);
 		if (!timeinfo) {
@@ -253,7 +253,8 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 			ret = -1;
 			goto end;
 		}
-		strf_ret = strftime(start_time, sizeof(start_time), "%Y%m%d-%H%M%S", timeinfo);
+		strf_ret = strftime(start_time, sizeof(start_time), "%Y%m%dT%H%M%S%z",
+				timeinfo);
 		if (!strf_ret) {
 			ERR("Format timestamp");
 			ret = -1;
@@ -314,7 +315,8 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 			ret = -1;
 			goto end;
 		}
-		strf_ret = strftime(start_datetime, sizeof(start_datetime), "%Y%m%d-%H%M%S", timeinfo);
+		strf_ret = strftime(start_datetime, sizeof(start_datetime),
+				"%Y%m%dT%H%M%S%z", timeinfo);
 		if (!strf_ret) {
 			ERR("Format timestamp");
 			ret = -1;

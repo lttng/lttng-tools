@@ -4363,7 +4363,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	int ret;
 	size_t strf_ret;
 	struct tm *timeinfo;
-	char datetime[16];
+	char datetime[21];
 	time_t now;
 	bool ust_active = false;
 
@@ -4483,7 +4483,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		ret = -1;
 		goto error;
 	}
-	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z", timeinfo);
 	if (!strf_ret) {
 		ERR("Format timestamp");
 		ret = -1;
