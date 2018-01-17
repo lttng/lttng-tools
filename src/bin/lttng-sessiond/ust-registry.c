@@ -25,17 +25,20 @@
 
 #include "ust-registry.h"
 #include "ust-app.h"
+#include "ust-field-utils.h"
 #include "utils.h"
 #include "lttng-sessiond.h"
 #include "notification-thread-commands.h"
+
 
 /*
  * Hash table match function for event in the registry.
  */
 static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 {
-	struct ust_registry_event *event;
 	const struct ust_registry_event *key;
+	struct ust_registry_event *event;
+	int i;
 
 	assert(node);
 	assert(_key);
@@ -44,15 +47,37 @@ static int ht_match_event(struct cds_lfht_node *node, const void *_key)
 	assert(event);
 	key = _key;
 
-	/* It has to be a perfect match. */
+	/* It has to be a perfect match. First, compare the event names. */
 	if (strncmp(event->name, key->name, sizeof(event->name))) {
 		goto no_match;
 	}
 
-	/* It has to be a perfect match. */
-	if (strncmp(event->signature, key->signature,
-			strlen(event->signature))) {
+	/* Compare log levels. */
+	if (event->loglevel_value != key->loglevel_value) {
 		goto no_match;
+	}
+
+	/* Compare the number of fields. */
+	if (event->nr_fields != key->nr_fields) {
+		goto no_match;
+	}
+
+	/* Compare each field individually. */
+	for (i = 0; i < event->nr_fields; i++) {
+		if (match_ustctl_field(&event->fields[i], &key->fields[i]) == 0) {
+			goto no_match;
+		}
+	}
+
+	/* Compare model URI. */
+	if (event->model_emf_uri != NULL && key->model_emf_uri == NULL) {
+		goto no_match;
+	} else if(event->model_emf_uri == NULL && key->model_emf_uri != NULL) {
+		goto no_match;
+	} else if (event->model_emf_uri != NULL && key->model_emf_uri != NULL) {
+		if (strcmp(event->model_emf_uri, key->model_emf_uri)) {
+			goto no_match;
+		}
 	}
 
 	/* Match */
@@ -64,15 +89,14 @@ no_match:
 
 static unsigned long ht_hash_event(void *_key, unsigned long seed)
 {
-	uint64_t xored_key;
+	uint64_t hashed_key;
 	struct ust_registry_event *key = _key;
 
 	assert(key);
 
-	xored_key = (uint64_t) (hash_key_str(key->name, seed) ^
-			hash_key_str(key->signature, seed));
+	hashed_key = (uint64_t) hash_key_str(key->name, seed);
 
-	return hash_key_u64(&xored_key, seed);
+	return hash_key_u64(&hashed_key, seed);
 }
 
 static int compare_enums(const struct ust_registry_enum *reg_enum_a,
