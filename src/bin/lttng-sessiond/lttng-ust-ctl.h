@@ -20,6 +20,7 @@
 #define _LTTNG_UST_CTL_H
 
 #include <sys/types.h>
+#include <limits.h>
 
 #include "lttng-ust-abi.h"
 
@@ -45,15 +46,15 @@ struct lttng_ust_lib_ring_buffer;
 
 struct ustctl_consumer_channel_attr {
 	enum lttng_ust_chan_type type;
-	uint64_t subbuf_size;			/* bytes, power of 2 */
+	uint64_t subbuf_size;			/* bytes */
 	uint64_t num_subbuf;			/* power of 2 */
 	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usec */
 	unsigned int read_timer_interval;	/* usec */
 	enum lttng_ust_output output;		/* splice, mmap */
-	uint32_t chan_id;           /* channel ID */
+	uint32_t chan_id;			/* channel ID */
 	unsigned char uuid[LTTNG_UST_UUID_LEN]; /* Trace session unique ID */
-	int64_t blocking_timeout;			/* Retry timeout (usec) */
+	int64_t blocking_timeout;			/* Blocking timeout (usec) */
 } LTTNG_PACKED;
 
 /*
@@ -65,7 +66,7 @@ struct lttng_ust_context_attr {
 	union {
 		struct lttng_ust_perf_counter_ctx perf_counter;
 		struct {
-		        char *provider_name;
+			char *provider_name;
 			char *ctx_name;
 		} app_ctx;
 	} u;
@@ -85,6 +86,8 @@ int ustctl_add_context(int sock, struct lttng_ust_context_attr *ctx,
 		struct lttng_ust_object_data *obj_data,
 		struct lttng_ust_object_data **context_data);
 int ustctl_set_filter(int sock, struct lttng_ust_filter_bytecode *bytecode,
+		struct lttng_ust_object_data *obj_data);
+int ustctl_set_exclusion(int sock, struct lttng_ust_event_exclusion *exclusion,
 		struct lttng_ust_object_data *obj_data);
 
 int ustctl_enable(int sock, struct lttng_ust_object_data *object);
@@ -125,6 +128,8 @@ int ustctl_wait_quiescent(int sock);
 
 int ustctl_sock_flush_buffer(int sock, struct lttng_ust_object_data *object);
 
+int ustctl_calibrate(int sock, struct lttng_ust_calibrate *calibrate);
+
 /* Release object created by members of this API. */
 int ustctl_release_object(int sock, struct lttng_ust_object_data *data);
 /* Release handle returned by create session. */
@@ -156,8 +161,11 @@ struct ustctl_consumer_channel;
 struct ustctl_consumer_stream;
 struct ustctl_consumer_channel_attr;
 
+int ustctl_get_nr_stream_per_channel(void);
+
 struct ustctl_consumer_channel *
-	ustctl_create_channel(struct ustctl_consumer_channel_attr *attr);
+	ustctl_create_channel(struct ustctl_consumer_channel_attr *attr,
+		const int *stream_fds, int nr_stream_fds);
 /*
  * Each stream created needs to be destroyed before calling
  * ustctl_destroy_channel().
@@ -172,6 +180,10 @@ int ustctl_channel_get_wait_fd(struct ustctl_consumer_channel *consumer_chan);
 int ustctl_channel_get_wakeup_fd(struct ustctl_consumer_channel *consumer_chan);
 
 int ustctl_write_metadata_to_channel(
+		struct ustctl_consumer_channel *channel,
+		const char *metadata_str,	/* NOT null-terminated */
+		size_t len);			/* metadata length */
+ssize_t ustctl_write_one_packet_to_channel(
 		struct ustctl_consumer_channel *channel,
 		const char *metadata_str,	/* NOT null-terminated */
 		size_t len);			/* metadata length */
@@ -228,6 +240,32 @@ int ustctl_put_subbuf(struct ustctl_consumer_stream *stream);
 void ustctl_flush_buffer(struct ustctl_consumer_stream *stream,
 		int producer_active);
 
+/* index */
+int ustctl_get_timestamp_begin(struct ustctl_consumer_stream *stream,
+		uint64_t *timestamp_begin);
+int ustctl_get_timestamp_end(struct ustctl_consumer_stream *stream,
+	uint64_t *timestamp_end);
+int ustctl_get_events_discarded(struct ustctl_consumer_stream *stream,
+	uint64_t *events_discarded);
+int ustctl_get_content_size(struct ustctl_consumer_stream *stream,
+	uint64_t *content_size);
+int ustctl_get_packet_size(struct ustctl_consumer_stream *stream,
+	uint64_t *packet_size);
+int ustctl_get_stream_id(struct ustctl_consumer_stream *stream,
+		uint64_t *stream_id);
+int ustctl_get_current_timestamp(struct ustctl_consumer_stream *stream,
+		uint64_t *ts);
+int ustctl_get_sequence_number(struct ustctl_consumer_stream *stream,
+		uint64_t *seq);
+int ustctl_get_instance_id(struct ustctl_consumer_stream *stream,
+		uint64_t *id);
+
+/* returns whether UST has perf counters support. */
+int ustctl_has_perf_counters(void);
+
+/* Regenerate the statedump. */
+int ustctl_regenerate_statedump(int sock, int handle);
+
 /* event registry management */
 
 enum ustctl_socket_type {
@@ -256,6 +294,8 @@ enum ustctl_abstract_types {
 	ustctl_atype_sequence,
 	ustctl_atype_string,
 	ustctl_atype_float,
+	ustctl_atype_variant,
+	ustctl_atype_struct,
 	NR_USTCTL_ABSTRACT_TYPES,
 };
 
@@ -272,7 +312,7 @@ struct ustctl_integer_type {
 	uint32_t signedness;
 	uint32_t reverse_byte_order;
 	uint32_t base;		/* 2, 8, 10, 16, for pretty print */
-	int32_t encoding;
+	int32_t encoding;	/* enum ustctl_string_encodings */
 	uint16_t alignment;	/* in bits */
 	char padding[USTCTL_UST_INTEGER_TYPE_PADDING];
 } LTTNG_PACKED;
@@ -313,12 +353,14 @@ struct ustctl_enum_entry {
 union _ustctl_basic_type {
 	struct ustctl_integer_type integer;
 	struct {
-		int32_t encoding;
+		char name[LTTNG_UST_SYM_NAME_LEN];
+		struct ustctl_integer_type container_type;
+		uint64_t id;	/* enum ID in sessiond. */
+	} enumeration;
+	struct {
+		int32_t encoding;	/* enum ustctl_string_encodings */
 	} string;
 	struct ustctl_float_type _float;
-	struct {
-		char name[LTTNG_UST_SYM_NAME_LEN];
-	} enumeration;
 	char padding[USTCTL_UST_BASIC_TYPE_PADDING];
 } LTTNG_PACKED;
 
@@ -342,6 +384,15 @@ struct ustctl_type {
 			struct ustctl_basic_type length_type;
 			struct ustctl_basic_type elem_type;
 		} sequence;
+		struct {
+			uint32_t nr_choices;
+			char tag_name[LTTNG_UST_SYM_NAME_LEN];
+			/* Followed by nr_choices struct ustctl_field. */
+		} variant;
+		struct {
+			uint32_t nr_fields;
+			/* Followed by nr_fields struct ustctl_field. */
+		} _struct;
 		char padding[USTCTL_UST_TYPE_PADDING];
 	} u;
 } LTTNG_PACKED;
@@ -394,7 +445,7 @@ int ustctl_recv_register_event(int sock,
 					 * event name (output,
 					 * size LTTNG_UST_SYM_NAME_LEN)
 					 */
-	int *loglevel_value,
+	int *loglevel,
 	char **signature,		/*
 					 * event signature
 					 * (output, dynamically
@@ -420,13 +471,13 @@ int ustctl_recv_register_enum(int sock,
 	int *session_objd,
 	char *enum_name,
 	struct ustctl_enum_entry **entries,
-	unsigned int *nr_entries);
+	size_t *nr_entries);
 
 /*
  * Returns 0 on success, negative error value on error.
  */
 int ustctl_reply_register_enum(int sock,
-	int64_t id,			/* enum id (input) */
+	uint64_t id,			/* enum id (input) */
 	int ret_code);
 
 /*
