@@ -208,6 +208,19 @@ man:lttng-stop(1)::
     {cmd_descr_stop}.
 
 
+Tracing session rotation
+~~~~~~~~~~~~~~~~~~~~~~~~
+man:lttng-disable-rotation(1)::
+    {cmd_descr_disable_rotation}.
+
+man:lttng-enable-rotation(1)::
+    {cmd_descr_enable_rotation}.
+
+man:lttng-rotate(1)::
+    {cmd_descr_rotate}.
+
+
+
 Resource tracking
 ~~~~~~~~~~~~~~~~~
 man:lttng-track(1)::

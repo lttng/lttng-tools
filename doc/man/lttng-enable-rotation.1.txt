@@ -1,0 +1,110 @@
+lttng-enable-rotation(1)
+========================
+
+
+NAME
+----
+lttng-enable-rotation - Set a tracing session's automatic rotation schedule
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-rotation* (option:--timer='PERIOD' | option:--size='SIZE')
+      [option:--session='SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng enable-rotation` command sets an automatic rotation schedule
+for the current tracing session, or for the tracing session named
+'SESSION' if provided. See man:lttng-rotate(1) for more information
+about the concepts of a tracing session _rotation_ and a _trace chunk_.
+
+With the option:--timer option, the rotation schedule is set so that an
+automatic rotation occurs at least every 'PERIOD' (microseconds without
+a unit suffix).
+
+With the option:--size option, the rotation schedule is set
+so that an automatic rotation occurs every time the total size of the
+flushed part of the current trace chunk is at least 'SIZE' (bytes
+without a unit suffix).
+
+With both the option:--timer and option:--size options, LTTng checks the
+schedule condition periodically using the monitor timers of the tracing
+session's channels. This means that, with the option:--timer option, the
+automatic rotation can occur when the elapsed time since the last
+automatic rotation is greater than 'PERIOD', and with the option:--size
+option, the automatic rotation can occur when the size of the flushed
+part of the current trace chunk is greater than 'SIZE'. See the
+nloption:--monitor-timer option in man:lttng-enable-channel(1) for more
+information about the monitor timer.
+
+The naming convention of a trace chunk archive which an automatic
+rotation creates is the same as with the manual rotation command,
+man:lttng-rotate(1).
+
+For a given tracing session, you cannot set multiple automatic rotation
+schedules with the option:--timer or the option:--size option.
+
+You can unset an automatic rotation schedule with the
+man:lttng-disable-rotation(1) command.
+
+See <<limitations,LIMITATIONS>> for important limitations regarding
+this command.
+
+
+include::common-cmd-options-head.txt[]
+
+
+Automatic rotation schedule condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+One of:
+
+option:--size='SIZE'::
+    Set an automatic rotation schedule so that an automatic rotation
+    occurs every time the total size of the flushed part of the current
+    trace chunk is at least 'SIZE' bytes. The `k` (kiB), `M` (MiB), and
+    `G` (GiB) suffixes are supported.
+
+option:--timer='PERIOD'::
+    Set an automatic rotation schedule so that an automatic rotation
+    occurs at least every 'PERIOD' microseconds. The
+    `ms` (milliseconds), `s` (seconds), `m` (minutes), and `h` (hours)
+    suffixes are supported.
+
+
+Target
+~~~~~~
+option:-s 'SESSION', option:--session='SESSION'::
+    Set an automatic rotation schedule for the tracing session named
+    'SESSION' instead of the current tracing session.
+
+
+include::common-cmd-help-options.txt[]
+
+
+[[limitations]]
+LIMITATIONS
+-----------
+The `lttng enable-rotation` command only works when:
+
+* The tracing session is created in normal mode or in network streaming
+  mode (see man:lttng-create(1)).
+
+* No channel was created with a configured trace file count or size
+  limit (see the nloption:--tracefile-size and
+  nloption:--tracefile-count options in man:lttng-enable-channel(1)).
+
+For a given tracing session, LTTng only performs an automatic rotation
+when no other rotation is currently happening.
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng-rotate(1),
+man:lttng-disable-rotation(1),
+man:lttng(1)

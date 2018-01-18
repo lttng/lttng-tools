@@ -38,6 +38,15 @@ option:--no-wait option, the command finishes immediately, hence a local
 trace might not be valid when the command is done. In this case, there
 is no way to know when the trace becomes valid.
 
+If at least one rotation occurred during the chosen tracing session's
+lifetime (see man:lttng-rotate(1) and man:lttng-enable-rotation(1)), the
+`lttng stop` command renames the current trace chunk subdirectory and
+prints the renamed path. Although it is safe to read the content of this
+renamed subdirectory while the tracing session remains inactive (until
+the next man:lttng-start(1)), it is :not: a trace chunk archive: you
+need to destroy the tracing session with man:lttng-destroy(1) or make
+a rotation with man:lttng-rotate(1) to archive it.
+
 
 include::common-cmd-options-head.txt[]
 

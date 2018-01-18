@@ -20,6 +20,7 @@ Network streaming mode:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='PATH']
       (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')
+
 Snapshot mode:
 
 [verse]
