@@ -39,6 +39,10 @@ wall time is NTP-corrected. Regenerating the tracing session's metadata ensures
 that trace viewers can accurately determine the events time relative to Unix
 Epoch.
 
+If you use man:lttng-rotate(1) or man:lttng-enable-rotation(1) to make
+tracing session rotations, this action regenerates the current and
+next trace chunks's metadata files.
+
 
 Regenerating a tracing session's state dump
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
