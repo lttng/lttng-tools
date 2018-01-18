@@ -1,0 +1,73 @@
+lttng-disable-rotation(1)
+=========================
+
+
+NAME
+----
+lttng-disable-rotation - Unset a tracing session's automatic rotation schedule
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-rotation* (option:--timer | option:--size)
+      [option:--session='SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng disable-rotation` command unsets an automatic rotation
+schedule for the current tracing session, or for the tracing session
+named 'SESSION' if provided, previously set with the
+man:lttng-enable-rotation(1) command.
+
+
+include::common-cmd-options-head.txt[]
+
+
+Automatic rotation schedule condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+One of:
+
+option:--size::
+    Unset the automatic rotation schedule previously set with the
+    nloption:--size option of the man:lttng-enable-rotation(1) command.
+
+option:--timer::
+    Unset the automatic rotation schedule previously set with the
+    nloption:--timer option of the man:lttng-enable-rotation(1) command.
+
+
+Target
+~~~~~~
+option:-s 'SESSION', option:--session='SESSION'::
+    Unset an automatic rotation schedule in the tracing session named
+    'SESSION' instead of the current tracing session.
+
+
+include::common-cmd-help-options.txt[]
+
+
+[[limitations]]
+LIMITATIONS
+-----------
+The `lttng enable-rotation` command only works when:
+
+* The tracing session is created in normal mode or in network streaming
+  mode (see man:lttng-create(1)).
+
+* No channel was created with a configured trace file count or size
+  limit (see the nloption:--tracefile-size and
+  nloption:--tracefile-count options in man:lttng-enable-channel(1)).
+
+For a given tracing session, LTTng only performs an automatic rotation
+when no other rotation is currently happening.
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng-enable-rotation(1),
+man:lttng(1)

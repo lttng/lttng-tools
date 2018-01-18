@@ -244,6 +244,14 @@ Here, for each stream, the maximum size of each trace file is
 no space left in the last file, _trace file rotation_ happens: the first
 file is cleared and new sub-buffers containing events are written there.
 
+LTTng does not guarantee that you can view the trace of an active
+tracing session (before you run the man:lttng-stop(1) command), even
+with multiple trace files, because LTTng could overwrite them at any
+moment, or some of them could be incomplete. You can archive a
+tracing session's current trace chunk while the tracing session is
+active to obtain an unmanaged and self-contained LTTng trace: see
+man:lttng-rotate(1) and man:lttng-enable-rotation(1).
+
 
 include::common-cmd-options-head.txt[]
 
