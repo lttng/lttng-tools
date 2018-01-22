@@ -70,6 +70,7 @@
 #include "stream.h"
 #include "connection.h"
 #include "tracefile-array.h"
+#include "tcp_keep_alive.h"
 
 /* command line options */
 char *opt_output_path;
@@ -891,6 +892,15 @@ restart:
 					lttcomm_destroy_sock(newsock);
 					goto error;
 				}
+
+				ret = socket_apply_keep_alive_config(newsock->fd);
+				if (ret < 0) {
+					ERR("Failed to apply TCP keep-alive configuration on socket (%i)",
+							newsock->fd);
+					lttcomm_destroy_sock(newsock);
+					goto error;
+				}
+
 				new_conn = connection_create(newsock, type);
 				if (!new_conn) {
 					lttcomm_destroy_sock(newsock);
