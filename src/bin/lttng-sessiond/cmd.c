@@ -899,7 +899,7 @@ static int send_consumer_relayd_socket(enum lttng_domain_type domain,
 	/* Connect to relayd and make version check if uri is the control. */
 	ret = create_connect_relayd(relayd_uri, &rsock, consumer);
 	if (ret != LTTNG_OK) {
-		goto error;
+		goto relayd_comm_error;
 	}
 	assert(rsock);
 
@@ -939,10 +939,6 @@ static int send_consumer_relayd_socket(enum lttng_domain_type domain,
 	 */
 
 close_sock:
-	(void) relayd_close(rsock);
-	free(rsock);
-
-error:
 	if (ret != LTTNG_OK) {
 		/*
 		 * The consumer output for this session should not be used anymore
@@ -951,6 +947,10 @@ error:
 		 */
 		consumer->enabled = 0;
 	}
+	(void) relayd_close(rsock);
+	free(rsock);
+
+relayd_comm_error:
 	return ret;
 }
 
