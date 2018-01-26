@@ -198,6 +198,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATE_WRONG_VERSION) ] = "Rotate not supported by this kernel tracer version",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATE_MANUAL_UNSUPPORTED) ] = "Manual rotation unsupported when size or timer-based rotations are enabled",
 
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_NOT_AVAILABLE_RELAY) ] = "Rotate feature not available on the relay.",
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
 };
