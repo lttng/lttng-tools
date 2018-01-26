@@ -199,6 +199,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP) ] = "Session was already rotated once since it became inactive",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_WRONG_VERSION) ] = "Session rotation is not supported by this kernel tracer version",
 	[ ERROR_INDEX(LTTNG_ERR_NO_SESSION_OUTPUT) ] = "Session has no output",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY) ] = "Rotation feature not available on the relay",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

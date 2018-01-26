@@ -4406,7 +4406,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (session->consumer->type == CONSUMER_DST_NET &&
 			(session->consumer->relay_major_version == 2 &&
 			session->consumer->relay_minor_version < 11)) {
-		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY;
 		goto end;
 	}
 

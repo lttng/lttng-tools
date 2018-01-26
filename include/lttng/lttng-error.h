@@ -158,6 +158,7 @@ enum lttng_error_code {
 	LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP     = 135, /* Already rotated once after a stop. */
 	LTTNG_ERR_ROTATION_WRONG_VERSION   = 136, /* Session rotation not supported by this kernel tracer version */
 	LTTNG_ERR_NO_SESSION_OUTPUT        = 137, /* Session has no output configured. */
+	LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY     = 138, /* Rotate feature not available on the relay. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
