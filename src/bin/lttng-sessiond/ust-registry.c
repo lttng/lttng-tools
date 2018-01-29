@@ -558,8 +558,8 @@ struct ust_registry_enum *
 	struct lttng_ht_iter iter;
 
 	cds_lfht_lookup(session->enums->ht,
-			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
-			ht_match_enum, &reg_enum_lookup, &iter.iter);
+			ht_hash_enum((void *) reg_enum_lookup, lttng_ht_seed),
+			ht_match_enum, reg_enum_lookup, &iter.iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
 	        goto end;
