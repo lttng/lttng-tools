@@ -95,3 +95,22 @@ int loglevels_match(int a_loglevel_type, int a_loglevel_value,
 
 	return match;
 }
+
+const char *session_get_base_path(struct ltt_session *session)
+{
+	struct consumer_output *consumer;
+
+	if (session->kernel_session) {
+		consumer = session->kernel_session->consumer;
+	} else if (session->ust_session) {
+		consumer = session->ust_session->consumer;
+	} else {
+		assert(0);
+	}
+
+	if (session->net_handle > 0) {
+		return consumer->dst.net.base_dir;
+	} else {
+		return consumer->dst.session_root_path;
+	}
+}

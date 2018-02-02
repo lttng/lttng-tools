@@ -17,6 +17,7 @@
 
 #include <lttng/condition/evaluation-internal.h>
 #include <lttng/condition/buffer-usage-internal.h>
+#include <lttng/condition/session-consumed-size-internal.h>
 #include <common/macros.h>
 #include <common/error.h>
 #include <stdbool.h>
@@ -80,6 +81,14 @@ ssize_t lttng_evaluation_create_from_buffer(
 		break;
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
 		ret = lttng_evaluation_buffer_usage_high_create_from_buffer(
+				&evaluation_view, evaluation);
+		if (ret < 0) {
+			goto end;
+		}
+		evaluation_size += ret;
+		break;
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+		ret = lttng_evaluation_session_consumed_size_create_from_buffer(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;

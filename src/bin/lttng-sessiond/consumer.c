@@ -715,11 +715,12 @@ int consumer_set_network_uri(struct consumer_output *obj,
 			goto error;
 		}
 
-		if (lttng_strncpy(obj->subdir, tmp_path, sizeof(obj->subdir))) {
+		if (lttng_strncpy(obj->dst.net.base_dir, tmp_path,
+					sizeof(obj->dst.net.base_dir))) {
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
-		DBG3("Consumer set network uri subdir path %s", tmp_path);
+		DBG3("Consumer set network uri base_dir path %s", tmp_path);
 	}
 
 	return 0;
@@ -1082,6 +1083,36 @@ error:
 	return ret;
 }
 
+int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
+		int pipe)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	/* Code flow error. Safety net. */
+	assert(consumer_sock);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE;
+
+	DBG3("Sending set_channel_rotate_pipe command to consumer");
+	ret = consumer_send_msg(consumer_sock, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG3("Sending channel rotation pipe %d to consumer on socket %d",
+			pipe, *consumer_sock->fd_ptr);
+	ret = consumer_send_fds(consumer_sock, &pipe, 1);
+	if (ret < 0) {
+		goto error;
+	}
+
+	DBG2("Channel rotation pipe successfully sent");
+error:
+	return ret;
+}
+
 /*
  * Set consumer subdirectory using the session name and a generated datetime if
  * needed. This is appended to the current subdirectory.
@@ -1405,7 +1436,8 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		msg.u.snapshot_channel.use_relayd = 1;
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname),
-				"%s/%s-%s-%" PRIu64 "%s", output->consumer->subdir,
+				"%s/%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.net.base_dir,
+				output->consumer->subdir,
 				output->name, output->datetime, output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
@@ -1415,7 +1447,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
 				sizeof(msg.u.snapshot_channel.pathname),
-				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.trace_path,
+				"%s/%s-%s-%" PRIu64 "%s", output->consumer->dst.session_root_path,
 				output->name, output->datetime, output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
@@ -1557,5 +1589,198 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 
 end:
 	rcu_read_unlock();
+	return ret;
+}
+
+/*
+ * Ask the consumer to rotate a channel.
+ * domain_path contains "/kernel" for kernel or the complete path for UST
+ * (ex: /ust/uid/1000/64-bit);
+ *
+ * The new_chunk_id is the session->rotate_count that has been incremented
+ * when the rotation started. On the relay, this allows to keep track in which
+ * chunk each stream is currently writing to (for the rotate_pending operation).
+ */
+int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
+		uid_t uid, gid_t gid, struct consumer_output *output,
+		char *domain_path, uint32_t metadata, uint64_t new_chunk_id,
+		bool *rotate_pending_relay)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer rotate channel key %" PRIu64, key);
+
+	pthread_mutex_lock(socket->lock);
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_CHANNEL;
+	msg.u.rotate_channel.key = key;
+	msg.u.rotate_channel.metadata = metadata;
+	msg.u.rotate_channel.new_chunk_id = new_chunk_id;
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.rotate_channel.relayd_id = output->net_seq_index;
+		ret = snprintf(msg.u.rotate_channel.pathname, PATH_MAX, "%s%s%s",
+				output->dst.net.base_dir,
+				output->chunk_path, domain_path);
+		if (ret < 0) {
+			ERR("Format pathname");
+			ret = -1;
+			goto error;
+		}
+		*rotate_pending_relay = true;
+	} else {
+		msg.u.rotate_channel.relayd_id = (uint64_t) -1ULL;
+		ret = snprintf(msg.u.rotate_channel.pathname, PATH_MAX, "%s%s%s",
+				output->dst.session_root_path,
+				output->chunk_path, domain_path);
+		if (ret < 0) {
+			ERR("Format pathname");
+			ret = -1;
+			goto error;
+		}
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+	pthread_mutex_unlock(socket->lock);
+
+error:
+	health_code_update();
+	return ret;
+}
+
+int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *current_path, char *new_path,
+		uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer rotate rename session %" PRIu64, session_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_RENAME;
+	msg.u.rotate_rename.session_id = session_id;
+	msg.u.rotate_rename.uid = uid;
+	msg.u.rotate_rename.gid = gid;
+	ret = snprintf(msg.u.rotate_rename.current_path, PATH_MAX, "%s", current_path);
+	if (ret < 0) {
+		ERR("Format current_path");
+		ret = -1;
+		goto error;
+	}
+	ret = snprintf(msg.u.rotate_rename.new_path, PATH_MAX, "%s", new_path);
+	if (ret < 0) {
+		ERR("Format new_path");
+		ret = -1;
+		goto error;
+	}
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.rotate_rename.relayd_id = output->net_seq_index;
+	} else {
+		msg.u.rotate_rename.relayd_id = (uint64_t) -1ULL;
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
+	return ret;
+}
+
+/*
+ * Ask the relay if a rotation is still pending. Must be called with the socket
+ * lock held.
+ *
+ * Return 1 if the rotation is still pending, 0 if finished, a negative value
+ * on error.
+ */
+int consumer_rotate_pending_relay(struct consumer_socket *socket,
+		struct consumer_output *output, uint64_t session_id,
+		uint64_t chunk_id)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+	uint32_t pending = 0;
+
+	assert(socket);
+
+	DBG("Consumer rotate pending on relay for session %" PRIu64, session_id);
+	assert(output->type == CONSUMER_DST_NET);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_ROTATE_PENDING_RELAY;
+	msg.u.rotate_pending_relay.session_id = session_id;
+	msg.u.rotate_pending_relay.relayd_id = output->net_seq_index;
+	msg.u.rotate_pending_relay.chunk_id = chunk_id;
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = consumer_socket_recv(socket, &pending, sizeof(pending));
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = pending;
+
+error:
+	health_code_update();
+	return ret;
+}
+
+int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *path,
+		uid_t uid, gid_t gid)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer mkdir %s in session %" PRIu64, path, session_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_MKDIR;
+	msg.u.mkdir.session_id = session_id;
+	msg.u.mkdir.uid = uid;
+	msg.u.mkdir.gid = gid;
+	ret = snprintf(msg.u.mkdir.path, PATH_MAX, "%s", path);
+	if (ret < 0) {
+		ERR("Format path");
+		ret = -1;
+		goto error;
+	}
+
+	if (output->type == CONSUMER_DST_NET) {
+		msg.u.mkdir.relayd_id = output->net_seq_index;
+	} else {
+		msg.u.mkdir.relayd_id = (uint64_t) -1ULL;
+	}
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+error:
+	health_code_update();
 	return ret;
 }

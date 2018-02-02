@@ -26,6 +26,7 @@
 #include <common/compat/poll.h>
 #include <common/hashtable/hashtable.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 struct notification_thread_handle {
 	/*
@@ -47,6 +48,10 @@ struct notification_thread_handle {
 		int ust64_consumer;
 		int kernel_consumer;
 	} channel_monitoring_pipes;
+	/*
+	 * To inform the rotation thread we are ready.
+	 */
+	sem_t *notification_thread_ready;
 };
 
 /**
@@ -88,8 +93,14 @@ struct notification_thread_handle {
  *             associates a channel_key to a struct channel_info. The hash table
  *             holds the ownership of the struct channel_info.
  *
+ *   - sessions_ht:
+ *             associates a session_name (hash) to a struct session_info. The
+ *             hash table holds no ownership of the struct session_info;
+ *             the session_info structure is owned by the session's various
+ *             channels through their struct channel_info (ref-counting is used).
+ *
  *   - triggers_ht:
- *             associated a condition to a struct lttng_trigger_ht_element.
+ *             associates a condition to a struct lttng_trigger_ht_element.
  *             The hash table holds the ownership of the
  *             lttng_trigger_ht_elements along with the triggers themselves.
  *
@@ -110,7 +121,7 @@ struct notification_thread_handle {
  * 1) Creation of a tracing channel
  *    - notification_trigger_clients_ht is traversed to identify
  *      triggers which apply to this new channel,
- *    - triggers identified are added to the channel_triggers_ht.
+ *      - triggers identified are added to the channel_triggers_ht.
  *    - add channel to channels_ht
  *
  * 2) Destruction of a tracing channel
@@ -171,6 +182,7 @@ struct notification_thread_state {
 	struct cds_lfht *channel_state_ht;
 	struct cds_lfht *notification_trigger_clients_ht;
 	struct cds_lfht *channels_ht;
+	struct cds_lfht *sessions_ht;
 	struct cds_lfht *triggers_ht;
 };
 
@@ -178,7 +190,8 @@ struct notification_thread_state {
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe);
+		struct lttng_pipe *kernel_channel_monitor_pipe,
+		sem_t *notification_thread_ready);
 void notification_thread_handle_destroy(
 		struct notification_thread_handle *handle);
 

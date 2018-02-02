@@ -33,15 +33,19 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        load-session-thread.h load-session-thread.c \
                        syscall.h syscall.c \
                        notification-thread.h notification-thread.c \
+                       notification-thread-internal.h \
                        notification-thread-commands.h notification-thread-commands.c \
                        notification-thread-events.h notification-thread-events.c \
-                       sessiond-config.h sessiond-config.c
+                       sessiond-config.h sessiond-config.c \
+					   sessiond-timer.c
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h ust-thread.c \
 			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h
 endif
+
+lttng_sessiond_SOURCES += rotation-thread.c rotate.c
 
 # Add main.c at the end for compile order
 lttng_sessiond_SOURCES += lttng-sessiond.h main.c

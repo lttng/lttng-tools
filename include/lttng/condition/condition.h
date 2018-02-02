@@ -18,8 +18,6 @@
 #ifndef LTTNG_CONDITION_H
 #define LTTNG_CONDITION_H
 
-#include <lttng/lttng.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,6 +28,7 @@ enum lttng_condition_type {
 	LTTNG_CONDITION_TYPE_UNKNOWN = -1,
 	LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW = 102,
 	LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH = 101,
+	LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE = 100,
 };
 
 enum lttng_condition_status {

@@ -633,7 +633,7 @@ int consumer_signal_init(void)
 
 static
 int sample_channel_positions(struct lttng_consumer_channel *channel,
-		uint64_t *_highest_use, uint64_t *_lowest_use,
+		uint64_t *_highest_use, uint64_t *_lowest_use, uint64_t *_total_consumed,
 		sample_positions_cb sample, get_consumed_cb get_consumed,
 		get_produced_cb get_produced)
 {
@@ -643,6 +643,8 @@ int sample_channel_positions(struct lttng_consumer_channel *channel,
 	bool empty_channel = true;
 	uint64_t high = 0, low = UINT64_MAX;
 	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
+
+	*_total_consumed = 0;
 
 	rcu_read_lock();
 
@@ -681,6 +683,15 @@ int sample_channel_positions(struct lttng_consumer_channel *channel,
 		usage = produced - consumed;
 		high = (usage > high) ? usage : high;
 		low = (usage < low) ? usage : low;
+
+		/*
+		 * We don't use consumed here for 2 reasons:
+		 *  - output_written takes into account the padding written in the
+		 *    tracefiles when we stop the session;
+		 *  - the consumed position is not the accurate representation of what
+		 *    was extracted from a buffer in overwrite mode.
+		 */
+		*_total_consumed += stream->output_written;
 	next:
 		pthread_mutex_unlock(&stream->lock);
 	}
@@ -735,7 +746,7 @@ void monitor_timer(struct lttng_consumer_local_data *ctx,
 	}
 
 	ret = sample_channel_positions(channel, &msg.highest, &msg.lowest,
-			sample, get_consumed, get_produced);
+			&msg.total_consumed, sample, get_consumed, get_produced);
 	if (ret) {
 		return;
 	}

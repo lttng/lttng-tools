@@ -123,13 +123,13 @@ enum lttng_error_code notification_thread_command_add_channel(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL;
-	cmd.parameters.add_channel.session_name = session_name;
-	cmd.parameters.add_channel.uid = uid;
-	cmd.parameters.add_channel.gid = gid;
-	cmd.parameters.add_channel.channel_name = channel_name;
-	cmd.parameters.add_channel.key.key = key;
-	cmd.parameters.add_channel.key.domain = domain;
-	cmd.parameters.add_channel.capacity = capacity;
+	cmd.parameters.add_channel.session.name = session_name;
+	cmd.parameters.add_channel.session.uid = uid;
+	cmd.parameters.add_channel.session.gid = gid;
+	cmd.parameters.add_channel.channel.name = channel_name;
+	cmd.parameters.add_channel.channel.key = key;
+	cmd.parameters.add_channel.channel.domain = domain;
+	cmd.parameters.add_channel.channel.capacity = capacity;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {

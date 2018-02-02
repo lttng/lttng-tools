@@ -1,0 +1,247 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Julien Desfossez <jdesfossez@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="Rotation - User space tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+NR_ITER=1
+NR_USEC_WAIT=0
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+SESSION_NAME="stream"
+EVENT_NAME="tp:tptest"
+PID_RELAYD=0
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=146
+
+source $TESTDIR/utils/utils.sh
+source $CURDIR/rotate_utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function enable_channel_per_pid()
+{
+	sess_name=$1
+	channel_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel --buffers-pid -u $channel_name -s $sess_name >/dev/null 2>&1
+	ok $? "Enable channel $channel_name per PID for session $sess_name"
+}
+
+function lttng_create_session_uri
+{
+	# Create session with default path
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
+
+	ok $? "Create session $SESSION_NAME"
+}
+
+# MUST set TESTDIR before calling those functions
+
+function rotate_ust_test ()
+{
+	local_path=$1
+	app_path=$2
+	per_pid=$3
+
+	start_lttng_tracing_ok $SESSION_NAME
+	today=$(date +%Y%m%d)
+
+	$TESTAPP_BIN 10 $NR_USEC_WAIT /dev/null 2>&1
+	rotate_session_ok $SESSION_NAME
+
+	$TESTAPP_BIN 20 $NR_USEC_WAIT /dev/null 2>&1
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Third chunk contains no event (rotate after stop).
+	rotate_session_ok $SESSION_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# The tests on the chunk folder rely on the date staying the same during
+	# the duration of the test, if this fail we will now why the other checks
+	# fail afterwards. There is a short window of time where an automated test
+	# could fail because of that.
+	now=$(date +%Y%m%d)
+	test $today = $now
+	ok $? "Date did not change during the test"
+
+	validate_test_chunks "${local_path}" $today $app_path ust $per_pid
+}
+
+function test_ust_streaming_uid ()
+{
+	diag "Test UST streaming with session rotation per UID"
+	lttng_create_session_uri
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+
+	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/uid/*/*/" 0
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+function test_ust_local_uid ()
+{
+	diag "Test UST local with session rotation per UID"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+
+	rotate_ust_test "${TRACE_PATH}" "ust/uid/*/*/" 0
+	rm -rf ${TRACE_PATH}
+}
+
+function test_ust_streaming_pid ()
+{
+	diag "Test UST streaming with session rotation per PID"
+	lttng_create_session_uri
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+
+	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/pid/*/" 1
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+function test_ust_local_pid ()
+{
+	diag "Test UST local with session rotation per PID"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+
+	rotate_ust_test "${TRACE_PATH}" "ust/pid/*/" 1
+	rm -rf ${TRACE_PATH}
+}
+
+function test_ust_local_timer_uid ()
+{
+	diag "Test ust local with session rotation timer per-uid"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+	# We just want the app to register, no event generated
+	$TESTAPP_BIN 0 0 /dev/null 2>&1
+
+	rotate_timer_test "${TRACE_PATH}" 0
+	rm -rf ${TRACE_PATH}
+}
+
+function test_ust_streaming_timer_uid ()
+{
+	diag "Test ust remote with session rotation timer per-uid"
+	lttng_create_session_uri
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+	# We just want the app to register, no event generated
+	$TESTAPP_BIN 0 0 /dev/null 2>&1
+
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+function test_ust_local_timer_pid ()
+{
+	diag "Test ust local with session rotation timer per-pid"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+	# We just want the app to register, no event generated
+	$TESTAPP_BIN 0 0 /dev/null 2>&1
+
+	rotate_timer_test "${TRACE_PATH}" 1
+	rm -rf ${TRACE_PATH}
+}
+
+function test_ust_streaming_timer_pid ()
+{
+	diag "Test ust remote with session rotation timer per-pid"
+	lttng_create_session_uri
+	enable_channel_per_pid $SESSION_NAME "channel0"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
+	start_lttng_tracing_ok $SESSION_NAME
+	# We just want the app to register, no event generated
+	$TESTAPP_BIN 0 0 /dev/null 2>&1
+
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 1
+	rm -rf ${TRACE_PATH}/${HOSTNAME}
+}
+
+function test_incompatible_sessions ()
+{
+	diag "Check incompatible session types with rotation"
+
+	diag "Live session with rotate timer"
+	# Should not be able to enable a rotation timer with a live session
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live >/dev/null 2>&1
+	lttng_enable_rotation_timer_fail $SESSION_NAME 500ms
+	destroy_lttng_session_ok $SESSION_NAME
+
+	diag "Snapshot session with rotate timer"
+	# Should not be able to enable a rotation timer with a snapshot session
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --snapshot >/dev/null 2>&1
+	lttng_enable_rotation_timer_fail $SESSION_NAME 500ms
+	destroy_lttng_session_ok $SESSION_NAME
+
+	diag "Live session with rotate"
+	# Should not be able to rotate a live session
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live >/dev/null 2>&1
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	rotate_session_fail $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	diag "Snapshot session with rotate"
+	# Should not be able to rotate a snapshot session
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --snapshot >/dev/null 2>&1
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	rotate_session_fail $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_sessiond
+
+tests=( test_ust_streaming_uid test_ust_local_uid \
+	test_ust_streaming_pid test_ust_local_pid \
+	test_ust_local_timer_uid test_ust_streaming_timer_uid \
+	test_ust_local_timer_pid test_ust_streaming_timer_pid \
+	test_incompatible_sessions )
+
+for fct_test in ${tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test}
+done
+
+stop_lttng_sessiond
+stop_lttng_relayd
+
+exit $out

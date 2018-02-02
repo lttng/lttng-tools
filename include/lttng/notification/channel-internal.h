@@ -26,8 +26,16 @@
 #include <pthread.h>
 #include <urcu/list.h>
 
+/*
+ * Protocol version change log:
+ * - v1.0
+ *   - Initial implementation of the notification channel protocol,
+ *   - Supported conditions are LOW/HIGH buffer usage conditions,
+ * - v1.1
+ *   - New condition type "LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE" added,
+ */
 #define LTTNG_NOTIFICATION_CHANNEL_VERSION_MAJOR 1
-#define LTTNG_NOTIFICATION_CHANNEL_VERSION_MINOR 0
+#define LTTNG_NOTIFICATION_CHANNEL_VERSION_MINOR 1
 
 enum lttng_notification_channel_message_type {
 	LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNKNOWN = -1,

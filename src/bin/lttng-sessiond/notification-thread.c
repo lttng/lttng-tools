@@ -85,7 +85,8 @@ end:
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe)
+		struct lttng_pipe *kernel_channel_monitor_pipe,
+		sem_t *notification_thread_ready)
 {
 	int ret;
 	struct notification_thread_handle *handle;
@@ -141,6 +142,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	} else {
 		handle->channel_monitoring_pipes.kernel_consumer = -1;
 	}
+	handle->notification_thread_ready = notification_thread_ready;
 end:
 	return handle;
 error:
@@ -350,11 +352,13 @@ void fini_thread_state(struct notification_thread_state *state)
 		assert(!ret);
 	}
 	if (state->channels_ht) {
-		ret = cds_lfht_destroy(state->channels_ht,
-				NULL);
+		ret = cds_lfht_destroy(state->channels_ht, NULL);
 		assert(!ret);
 	}
-
+	if (state->sessions_ht) {
+		ret = cds_lfht_destroy(state->sessions_ht, NULL);
+		assert(!ret);
+	}
 	if (state->notification_channel_socket >= 0) {
 		notification_channel_socket_destroy(
 				state->notification_channel_socket);
@@ -420,12 +424,17 @@ int init_thread_state(struct notification_thread_handle *handle,
 	if (!state->channels_ht) {
 		goto error;
 	}
-
+	state->sessions_ht = cds_lfht_new(DEFAULT_HT_SIZE,
+			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	if (!state->sessions_ht) {
+		goto error;
+	}
 	state->triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE,
 			1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->triggers_ht) {
 		goto error;
 	}
+	sem_post(handle->notification_thread_ready);
 end:
 	return 0;
 error:

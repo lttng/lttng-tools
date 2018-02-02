@@ -195,4 +195,24 @@ struct lttcomm_relayd_reset_metadata {
 	uint64_t version;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_rotate_stream {
+	uint64_t stream_id;
+	uint64_t rotate_at_seq_num;
+	uint64_t new_chunk_id;
+	char new_pathname[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_rename {
+	char current_path[LTTNG_PATH_MAX];
+	char new_path[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_pending {
+	uint64_t chunk_id;
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_mkdir {
+	char path[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

@@ -1,0 +1,161 @@
+lttng-rotate(1)
+===============
+
+
+NAME
+----
+lttng-rotate - Archive a tracing session's current trace chunk
+
+
+SYNOPSIS
+--------
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *rotate* [option:--no-wait] ['SESSION']
+
+
+DESCRIPTION
+-----------
+The `lttng rotate` command archives the current trace chunk of the
+current tracing session, or of the tracing session named 'SESSION' if
+provided, to the file system. This action is called a tracing session
+_rotation_.
+
+Once a trace chunk is archived, LTTng does not manage it anymore: you
+can read it, modify it, move it, or remove it.
+
+An archived trace chunk is a collection of metadata and data stream
+files which form a self-contained trace.
+
+The _current trace chunk_ of a given tracing session includes:
+
+* The stream files already written to the file system, and which are
+  not part of a previously archived trace chunk, since the most recent
+  event amongst:
+** The first time the tracing session was started with
+   man:lttng-start(1).
+** The last rotation, either a manual one with `lttng rotate`, or an
+   automatic one from a rotation schedule previously set with
+   man:lttng-enable-rotation(1).
+* The content of all the non-flushed sub-buffers of the tracing
+  session's channels.
+
+You can use `lttng rotate` either at any time when the tracing session
+is active (see man:lttng-start(1)), or a single time once the tracing
+session becomes inactive (see man:lttng-stop(1)).
+
+By default, the `lttng rotate` command ensures that the rotation is done
+before printing the archived trace chunk's path and returning to the
+prompt. The printed path is absolute when the tracing session was
+created in normal mode and relative to the relay daemon's output
+directory (see the nloption:--output option in man:lttng-relayd(8)) when
+it was created in network streaming mode (see man:lttng-create(1)).
+
+With the option:--no-wait option, the command finishes immediately,
+hence a rotation might not be completed when the command is done. In
+this case, there is no easy way to know when the current trace chunk is
+archived, and the command does not print the archived trace chunk's
+path.
+
+Because a rotation causes the tracing session's current sub-buffers to
+be flushed, archived trace chunks are never redundant, that is, they do
+not overlap over time like snapshots can (see man:lttng-snapshot(1)).
+Also, a rotation does not directly cause discarded event records or
+packets.
+
+See <<limitations,LIMITATIONS>> for important limitations regarding
+this command.
+
+
+Trace chunk archive naming
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+A trace chunk archive is a subdirectory of a tracing session's output
+directory (see the nloption:--output option in man:lttng-create(1))
+which contains, through tracing domain and possibly UID/PID
+subdirectories, metadata and data stream files.
+
+A trace chunk archive is, at the same time:
+
+* A self-contained LTTng trace.
+* A member of a set of trace chunk archives which form the complete
+  trace of a tracing session.
+
+In other words, an LTTng trace reader can read both the tracing
+session output directory (all the trace chunk archives), or a
+single trace chunk archive.
+
+When a tracing session rotation occurs, the created trace chunk
+archive is named:
+
+[verse]
+__BEGIN__-__END__-__ID__
+
+__BEGIN__::
+    Date and time of the beginning of the trace chunk archive with
+    the ISO 8601-compatible `YYYYmmddTHHMMSS±HHMM` form, where
+    `YYYYmmdd` is the date and `HHMMSS±HHMM` is the time with the
+    time zone offset from UTC.
++
+Example: `20171119T152407-0500`
+
+__END__::
+    Date and time of the end of the trace chunk archive with
+    the ISO 8601-compatible `YYYYmmddTHHMMSS±HHMM` form, where
+    `YYYYmmdd` is the date and `HHMMSS±HHMM` is the time with the
+    time zone offset from UTC.
++
+Example: `20180118T152407+0930`
+
+__ID__::
+    Unique numeric identifier of the trace chunk within its
+    tracing session.
+
+Trace chunk archive name example: `20171119T152407-0500-20171119T151422-0500-3`
+
+
+include::common-cmd-options-head.txt[]
+
+
+option:-n, option:--no-wait::
+    Do not ensure that the rotation is done before returning to
+    the prompt.
+
+
+include::common-cmd-help-options.txt[]
+
+
+[[limitations]]
+LIMITATIONS
+-----------
+The `lttng rotate` command only works when:
+
+* The tracing session is created in normal mode or in network streaming
+  mode (see man:lttng-create(1)).
+
+* No channel was created with a configured trace file count or size
+  limit (see the nloption:--tracefile-size and
+  nloption:--tracefile-count options in man:lttng-enable-channel(1)).
+
+* No manual rotation (`lttng rotate`) is currently happening.
+
+* No automatic rotation schedule is currently set (see
+  man:lttng-enable-rotation(1)).
++
+One way around this is to:
++
+--
+. Unset any automatic rotation schedule with
+  man:lttng-disable-rotation(1).
+. Perform the manual rotation with `lttng rotation`.
+. **If needed**, set the rotation schedule again
+  with man:lttng-enable-rotation(1).
+--
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng-enable-rotation(1),
+man:lttng-disable-rotation(1),
+man:lttng(1)

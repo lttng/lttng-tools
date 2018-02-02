@@ -31,6 +31,7 @@
 #include <lttng/save-internal.h>
 #include <lttng/channel-internal.h>
 #include <lttng/trigger/trigger-internal.h>
+#include <lttng/rotate-internal.h>
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
@@ -100,6 +101,12 @@ enum lttcomm_sessiond_command {
 	LTTNG_REGENERATE_STATEDUMP          = 42,
 	LTTNG_REGISTER_TRIGGER              = 43,
 	LTTNG_UNREGISTER_TRIGGER            = 44,
+	LTTNG_ROTATE_SESSION                = 45,
+	LTTNG_ROTATE_PENDING                = 46,
+	LTTNG_ROTATE_SETUP                  = 47,
+	LTTNG_ROTATE_GET_CURRENT_PATH       = 48,
+	LTTNG_ROTATE_GET_TIMER              = 49,
+	LTTNG_ROTATE_GET_SIZE               = 50,
 };
 
 enum lttcomm_relayd_command {
@@ -123,6 +130,14 @@ enum lttcomm_relayd_command {
 	RELAYD_STREAMS_SENT                 = 16,
 	/* Ask the relay to reset the metadata trace file (2.8+) */
 	RELAYD_RESET_METADATA               = 17,
+	/* Ask the relay to rotate a stream file (2.11+) */
+	RELAYD_ROTATE_STREAM                = 18,
+	/* Rename a chunk after the rotation is completed (2.11+) */
+	RELAYD_ROTATE_RENAME                = 19,
+	/* Check if a chunk has data pending (2.11+) */
+	RELAYD_ROTATE_PENDING               = 20,
+	/* Create a folder on the relayd FS (2.11+) */
+	RELAYD_MKDIR                        = 21,
 };
 
 /*
@@ -321,6 +336,13 @@ struct lttcomm_session_msg {
 		struct {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
+		struct {
+			uint64_t rotate_id;
+		} LTTNG_PACKED rotate_pending;
+		struct {
+			uint64_t timer_us;
+			uint64_t size;
+		} LTTNG_PACKED rotate_setup;
 	} u;
 } LTTNG_PACKED;
 
@@ -534,6 +556,33 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t session_id;
 		} LTTNG_PACKED regenerate_metadata;
+		struct {
+			char pathname[PATH_MAX];
+			uint32_t metadata; /* This is a metadata channel. */
+			uint64_t relayd_id; /* Relayd id if apply. */
+			uint64_t key;
+			uint64_t new_chunk_id;
+		} LTTNG_PACKED rotate_channel;
+		struct {
+			char current_path[PATH_MAX];
+			char new_path[PATH_MAX];
+			uint64_t relayd_id; /* Relayd id if apply. */
+			uint64_t session_id;
+			uint32_t uid;
+			uint32_t gid;
+		} LTTNG_PACKED rotate_rename;
+		struct {
+			uint64_t relayd_id;
+			uint64_t session_id;
+			uint64_t chunk_id;
+		} LTTNG_PACKED rotate_pending_relay;
+		struct {
+			char path[PATH_MAX];
+			uint64_t relayd_id; /* Relayd id if apply. */
+			uint64_t session_id;
+			uint32_t uid;
+			uint32_t gid;
+		} LTTNG_PACKED mkdir;
 	} u;
 } LTTNG_PACKED;
 
@@ -548,6 +597,10 @@ struct lttcomm_consumer_channel_monitor_msg {
 	 * Lowest and highest usage (bytes) at the moment the sample was taken.
 	 */
 	uint64_t lowest, highest;
+	/*
+	 * Sum of all the consumed positions for a channel.
+	 */
+	uint64_t total_consumed;
 } LTTNG_PACKED;
 
 /*

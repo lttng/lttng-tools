@@ -62,6 +62,11 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_LOST_PACKETS,
 	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
 	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
+	LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE,
+	LTTNG_CONSUMER_ROTATE_CHANNEL,
+	LTTNG_CONSUMER_ROTATE_RENAME,
+	LTTNG_CONSUMER_ROTATE_PENDING_RELAY,
+	LTTNG_CONSUMER_MKDIR,
 };
 
 /* State of each fd in consumer */
@@ -226,6 +231,20 @@ struct lttng_consumer_channel {
 	uint64_t lost_packets;
 
 	bool streams_sent_to_relayd;
+
+	/*
+	 * Account how many streams are waiting for their rotation to be
+	 * complete. When this number reaches 0, we inform the session
+	 * daemon that this channel has finished its rotation.
+	 */
+	uint64_t nr_stream_rotate_pending;
+
+	/*
+	 * The chunk id where we currently write the data. This value is sent
+	 * to the relay when we add a stream and when a stream rotates. This
+	 * allows to keep track of where each stream on the relay is writing.
+	 */
+	uint64_t current_chunk_id;
 };
 
 /*
@@ -413,6 +432,28 @@ struct lttng_consumer_stream {
 	pthread_cond_t metadata_rdv;
 	pthread_mutex_t metadata_rdv_lock;
 
+	/*
+	 * If rotate_position != 0, when we reach this position in the
+	 * ring-buffer, close this tracefile and create a new one in
+	 * chan->pathname.
+	 */
+	uint64_t rotate_position;
+
+	/*
+	 * Read-only copies of channel values. We cannot safely access the
+	 * channel from a stream, so we need to have a local copy of these
+	 * fields in the stream object. These fields should be removed from
+	 * the stream objects when we introduce refcounting.
+	 */
+	char channel_ro_pathname[PATH_MAX];
+	uint64_t channel_ro_tracefile_size;
+
+	/*
+	 * Flag to inform the data or metadata thread that a stream is
+	 * ready to be rotated.
+	 */
+	unsigned int rotate_ready:1;
+
 	/* Indicate if the stream still has some data to be read. */
 	unsigned int has_data:1;
 	/*
@@ -552,6 +593,11 @@ struct lttng_consumer_local_data {
 	 * to the session daemon (write-only).
 	 */
 	int channel_monitor_pipe;
+	/*
+	 * Pipe used to inform the session daemon that a stream has finished
+	 * its rotation (write-only).
+	 */
+	int channel_rotate_pipe;
 };
 
 /*
@@ -660,6 +706,13 @@ void lttng_consumer_cleanup(void);
  */
 int lttng_consumer_poll_socket(struct pollfd *kconsumer_sockpoll);
 
+/*
+ * Copy the fields from the channel that need to be accessed in read-only
+ * directly from the stream.
+ */
+void consumer_stream_copy_ro_channel_values(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_channel *channel);
+
 struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t stream_key,
 		enum lttng_consumer_stream_state state,
@@ -723,8 +776,11 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_stream *stream, unsigned long len,
 		unsigned long padding,
 		struct ctf_packet_index *index);
+int lttng_consumer_sample_snapshot_positions(struct lttng_consumer_stream *stream);
 int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream);
 int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
+		unsigned long *pos);
+int lttng_consumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos);
 int lttng_ustconsumer_get_wakeup_fd(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_close_wakeup_fd(struct lttng_consumer_stream *stream);
@@ -759,5 +815,19 @@ void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
 void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
+int lttng_consumer_rotate_channel(uint64_t key, char *path,
+		uint64_t relayd_id, uint32_t metadata,
+		uint64_t new_chunk_id, struct lttng_consumer_local_data *ctx);
+int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream);
+int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
+		struct lttng_consumer_stream *stream);
+int lttng_consumer_rotate_ready_streams(uint64_t key,
+		struct lttng_consumer_local_data *ctx);
+int lttng_consumer_rotate_rename(char *current_path, char *new_path,
+		uid_t uid, gid_t gid, uint64_t relayd_id);
+int lttng_consumer_rotate_pending_relay( uint64_t session_id,
+		uint64_t relayd_id, uint64_t chunk_id);
+void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);
+int lttng_consumer_mkdir(char *path, uid_t uid, gid_t gid, uint64_t relayd_id);
 
 #endif /* LIB_CONSUMER_H */

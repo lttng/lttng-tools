@@ -41,6 +41,7 @@
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/lttng-error.h>
 
 static unsigned int nr_notifications = 0;
 static unsigned int nr_expected_notifications = 0;
