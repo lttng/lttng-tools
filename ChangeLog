@@ -1,3 +1,18 @@
+2018-02-05 lttng-tools 2.9.7
+	* Fix: do not flag consumer as disabled on relayd comm failure
+	* Fix: cleanup inactive FDs in the consumer polling thread
+	* man: document dead-peer detection for lttng-relayd
+	* lttng-relayd: use TCP keep-alive mechanism to detect dead-peer
+	* Fix: unknown consumer type considered a libc error
+	* Fix warning: src/bin/lttng/utils.c: cast incompatible pointer
+	* Fix: src/common/pipe.h: include <sys/types.h> for ssize_t and mode_t
+	* Fix: detect dlmopen() and disable corresponding tests if not available
+	* Fix: resolve full path of LTTNG_UST_CLOCK_PLUGIN
+	* lttng-enable-event(1): filtering: specify that `$ctx.cpu_id` is available
+	* Fix: Make version.h generation work with dash
+	* Fix: buffer overflow warning in python bindings
+	* Tests fix: BT2 does not output the metadata of a trace collection
+
 2017-08-03 lttng-tools 2.9.6 (Watermelon Day)
 	* Fix: uninitialized return value on error path
 	* Fix: ensure kernel context is in a list before trying to delete it
