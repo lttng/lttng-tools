@@ -1654,6 +1654,16 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	char *app_ctx_provider_name = NULL, *app_ctx_name = NULL;
 
+	/*
+	 * Don't try to add a context if the session has been started at
+	 * some point in time before. The tracer does not allow it and would
+	 * result in a corrupted trace.
+	 */
+	if (session->has_been_started) {
+		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto end;
+	}
+
 	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
 		app_ctx_provider_name = ctx->u.app_ctx.provider_name;
 		app_ctx_name = ctx->u.app_ctx.ctx_name;
