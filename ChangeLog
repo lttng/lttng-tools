@@ -1,3 +1,38 @@
+2018-02-05 lttng-tools 2.10.2
+	* Fix: do not flag consumer as disabled on relayd comm failure
+	* Fix: cleanup inactive FDs in the consumer polling thread
+	* man: document dead-peer detection for lttng-relayd
+	* lttng-relayd: use TCP keep-alive mechanism to detect dead-peer
+	* Tests: race between consumer pause and trace start/stop
+	* Fix: notification thread not notified of channel creation on app error
+	* Fix: using putenv() and free()-ing the value is invalid
+	* Fix: unknown consumer type considered a libc error
+	* Fix: consumerd(64/32)_lib_dir can be NULL
+	* Fix: nonsensical message printed by lttng track/untrack
+	* Fix: O_CLOEXEC is erroneously used on pipe creation
+	* Fix: wrong parameter to fcntl in pipe_set_flag
+	* Fix: use lttng_clock_gettime instead of clock_gettime
+	* Fix: close channel monitor pipe after killing the metadata_timer_thread
+	* Fix: use file based synchronization for python logging test
+	* Test: add file based synchronization point for python test app
+	* Fix: wrong use of the relay_streams_sent in snapshot
+	* Fix: the return code of lttcomm_send_unix_sock is signed
+	* Fix warning: src/bin/lttng/utils.c: cast incompatible pointer
+	* Fix: src/common/pipe.h: include <sys/types.h> for ssize_t and mode_t
+	* Fix: detect dlmopen() and disable corresponding tests if not available
+	* Fix: Use tmpdir for intermediary files
+	* Fix: include scripts for distribution
+	* Fix: typo in lttng-consumerd file default
+	* Fix: missing NULL checks in logging statements
+	* Test: kernel testing for notification
+	* Fix: kernel consumerd sock paths need rundir substitution
+	* Fix: create lttng run dir regardless of user privilege
+	* Fix: Make version.h generation work with dash
+	* lttng-enable-event(1): filtering: specify that `$ctx.cpu_id` is available
+	* centralize sessiond config option handling
+	* Fix: buffer overflow warning in python bindings
+	* Tests fix: BT2 does not output the metadata of a trace collection
+
 2017-08-03 lttng-tools 2.10.1 (Watermelon Day)
 	* Typo: occured -> occurred
 	* Fix: uninitialized return value on error path
