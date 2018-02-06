@@ -67,7 +67,7 @@ libtp.so: libtp.la
 	@cp -f .libs/libtp.so libtp.so
 
 noinst_SCRIPTS = test_ust-dl test_ust-dl.py
-EXTRA_DIST = test_ust-dl test_ust-dl.py
+EXTRA_DIST = test_ust-dl.py
 
 all-local: libfoo.so libbar.so libzzz.so libtp.so
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
