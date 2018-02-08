@@ -820,6 +820,7 @@ static int close_metadata(uint64_t chan_key)
 {
 	int ret = 0;
 	struct lttng_consumer_channel *channel;
+	unsigned int channel_monitor;
 
 	DBG("UST consumer close metadata key %" PRIu64, chan_key);
 
@@ -838,13 +839,48 @@ static int close_metadata(uint64_t chan_key)
 
 	pthread_mutex_lock(&consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
-
+	channel_monitor = channel->monitor;
 	if (cds_lfht_is_node_deleted(&channel->node.node)) {
 		goto error_unlock;
 	}
 
 	lttng_ustconsumer_close_metadata(channel);
+	pthread_mutex_unlock(&channel->lock);
+	pthread_mutex_unlock(&consumer_data.lock);
 
+	/*
+	 * The ownership of a metadata channel depends on the type of
+	 * session to which it belongs. In effect, the monitor flag is checked
+	 * to determine if this metadata channel is in "snapshot" mode or not.
+	 *
+	 * In the non-snapshot case, the metadata channel is created along with
+	 * a single stream which will remain present until the metadata channel
+	 * is destroyed (on the destruction of its session). In this case, the
+	 * metadata stream in "monitored" by the metadata poll thread and holds
+	 * the ownership of its channel.
+	 *
+	 * Closing the metadata will cause the metadata stream's "metadata poll
+	 * pipe" to be closed. Closing this pipe will wake-up the metadata poll
+	 * thread which will teardown the metadata stream which, in return,
+	 * deletes the metadata channel.
+	 *
+	 * In the snapshot case, the metadata stream is created and destroyed
+	 * on every snapshot record. Since the channel doesn't have an owner
+	 * other than the session daemon, it is safe to destroy it immediately
+	 * on reception of the CLOSE_METADATA command.
+	 */
+	if (!channel_monitor) {
+		/*
+		 * The channel and consumer_data locks must be
+		 * released before this call since consumer_del_channel
+		 * re-acquires the channel and consumer_data locks to teardown
+		 * the channel and queue its reclamation by the "call_rcu"
+		 * worker thread.
+		 */
+		consumer_del_channel(channel);
+	}
+
+	return ret;
 error_unlock:
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
