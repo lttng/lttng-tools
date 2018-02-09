@@ -1,0 +1,262 @@
+#!/bin/bash
+#
+# Copyright (C) - 2018 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="UST - Dynamic loading and unloading of libraries"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+SESSION_NAME="multi_lib"
+
+EXEC_NAME_WITH_CALLSITES=./$CURDIR/exec-with-callsites
+EXEC_NAME_WITHOUT_CALLSITES=./$CURDIR/exec-without-callsites
+SO_DIR=$CURDIR/.libs/
+SO_PROBES_A=$SO_DIR/libprobes_a.so
+SO_PROBES_A_PRIME=$SO_DIR/libprobes_a_prime.so
+SO_PROBES_B=$SO_DIR/libprobes_b.so
+SO_PROBES_C=$SO_DIR/libprobes_c.so
+SO_PROBES_C_PRIME=$SO_DIR/libprobes_c_prime.so
+SO_PROBES_D=$SO_DIR/libprobes_d.so
+SO_CALLSITE_1=$SO_DIR/libcallsites_1.so
+SO_CALLSITE_2=$SO_DIR/libcallsites_2.so
+
+NUM_TESTS=55
+
+source $TESTDIR/utils/utils.sh
+
+test_dlopen_same_provider_name_same_event()
+{
+	local event_name="multi:tp"
+	diag "dlopen 2 providers, same event name, same payload"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_A $SO_PROBES_A_PRIME
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 2 $TRACE_PATH
+
+	# Expect a single event ID in the metadata
+	validate_metadata_event $event_name 1 $TRACE_PATH
+
+	return $?
+}
+
+test_dlopen_same_provider_name_different_event()
+{
+	local event_name="multi:tp"
+	# Regular expression for event tp with one argument: arg_long
+	local event_a_payload_exp="^.*$event_name.*arg_long_A.*"
+	# Regular expression for event tp with two arguments: arg_long and
+	# arg_float
+	local event_b_payload_exp="^.*$event_name.*arg_long_B.*arg_float_B.*"
+	diag "dlopen 2 providers, same event name, different payload"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_A $SO_PROBES_B
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 2 $TRACE_PATH
+
+	# Expect 2 events ID in the metadata
+	validate_metadata_event $event_name 2 $TRACE_PATH
+
+	# Expect 2 events with different payloads
+	validate_trace_exp $event_a_payload_exp $TRACE_PATH
+	validate_trace_exp $event_b_payload_exp $TRACE_PATH
+
+	return $?
+}
+
+test_dlopen_same_provider_name_same_enum()
+{
+	local event_name="multi:tp"
+	# Regular expression for event tp with one argument: arg_long
+	local event_c_payload_exp="^.*$event_name.*enum_int_C.*"
+	# Regular expression for event tp with two arguments: arg_long and
+	# arg_float
+	local event_d_payload_exp="^.*$event_name.*enum_int_D.*"
+	diag "dlopen 2 providers, same event name, same enum definition"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_C $SO_PROBES_C_PRIME
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 2 $TRACE_PATH
+
+	# Expect 2 events ID in the metadata
+	validate_metadata_event $event_name 1 $TRACE_PATH
+
+	return $?
+}
+
+test_dlopen_same_provider_name_different_enum()
+{
+	local event_name="multi:tp"
+	# Regular expression for event tp with one argument: arg_long
+	local event_c_payload_exp="^.*$event_name.*enum_int_C.*"
+	# Regular expression for event tp with two arguments: arg_long and
+	# arg_float
+	local event_d_payload_exp="^.*$event_name.*enum_int_D.*"
+	diag "dlopen 2 providers, same event name, different enum definition"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 0 $SO_PROBES_C $SO_PROBES_D
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 2 $TRACE_PATH
+
+	# Expect 2 events ID in the metadata
+	validate_metadata_event $event_name 2 $TRACE_PATH
+
+	# Expect 2 events with different payloads
+	validate_trace_exp $event_c_payload_exp $TRACE_PATH
+	validate_trace_exp $event_d_payload_exp $TRACE_PATH
+
+	return $?
+}
+
+test_upgrade_probes_dlopen_dclose()
+{
+	local event_name="multi:tp"
+	diag "Upgrade probe provider using dlopen/dlclose during tracing"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 1 $SO_PROBES_A $SO_PROBES_B
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 4 $TRACE_PATH
+
+	# Expect 2 events ID in the metadata
+	validate_metadata_event $event_name 2 $TRACE_PATH
+
+	return $?
+}
+
+test_upgrade_callsites_dlopen_dclose()
+{
+	local event_name="multi:tp"
+	diag "Upgrade callsite using dlopen/dlclose during tracing"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITHOUT_CALLSITES -t 2 $SO_CALLSITE_1 $SO_CALLSITE_2
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect 2 identical events in the trace
+	trace_match_only $event_name 3 $TRACE_PATH
+
+	# Expect 2 events ID in the metadata
+	validate_metadata_event $event_name 1 $TRACE_PATH
+
+	return $?
+}
+
+test_event_field_comparison()
+{
+	local event_name="multi:tp"
+	diag "Load mutliple events with slight variations in the field descriptions."
+
+	local library_prefix="libprobes_"
+	local nb_libs=0
+	local library_list=" "
+	# Concatenate all the probe libraries in a string.
+	for postfix in {a..p}; do
+		library_list="$library_list $SO_DIR/$library_prefix$postfix.so"
+		let nb_libs+=1
+	done
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$event_name"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	$EXEC_NAME_WITH_CALLSITES -t 0 $library_list
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Expect $nb_libs identical events in the trace
+	trace_match_only $event_name $nb_libs $TRACE_PATH
+
+	# Expect $nb_libs events ID in the metadata
+	validate_metadata_event $event_name $nb_libs $TRACE_PATH
+
+	return $?
+}
+
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+TESTS=(
+	"test_dlopen_same_provider_name_same_event"
+	"test_dlopen_same_provider_name_different_event"
+	"test_dlopen_same_provider_name_different_enum"
+	"test_dlopen_same_provider_name_same_enum"
+	"test_event_field_comparison"
+	"test_upgrade_probes_dlopen_dclose"
+	"test_upgrade_callsites_dlopen_dclose"
+)
+
+TEST_COUNT=${#TESTS[@]}
+i=0
+
+start_lttng_sessiond
+
+while [ "$i" -lt "$TEST_COUNT" ]; do
+
+	TRACE_PATH=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+
+	# Execute test
+	${TESTS[$i]}
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+
+	let "i++"
+done
+
+stop_lttng_sessiond

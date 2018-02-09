@@ -1088,6 +1088,7 @@ AC_CONFIG_FILES([
 	tests/regression/ust/buffers-pid/Makefile
 	tests/regression/ust/periodical-metadata-flush/Makefile
 	tests/regression/ust/multi-session/Makefile
+	tests/regression/ust/multi-lib/Makefile
 	tests/regression/ust/overlap/Makefile
 	tests/regression/ust/overlap/demo/Makefile
 	tests/regression/ust/linking/Makefile
