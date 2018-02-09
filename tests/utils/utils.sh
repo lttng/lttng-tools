@@ -1382,6 +1382,29 @@ function add_context_kernel_fail()
 	add_context_lttng 1 -k "$@"
 }
 
+function validate_metadata_event ()
+{
+	local event_name=$1
+	local nr_event_id=$2
+	local trace_path=$3
+
+	local metadata_file=$(find $trace_path | grep metadata)
+	local metadata_path=$(dirname $metadata_file)
+
+	which $BABELTRACE_BIN >/dev/null
+	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
+
+	local count=$($BABELTRACE_BIN --output-format=ctf-metadata $metadata_path | grep $event_name | wc -l)
+
+	if [ "$count" -ne "$nr_event_id" ]; then
+		fail "Metadata match with the metadata of $count event(s) named $event_name"
+		diag "$count matching event id found in metadata"
+	else
+		pass "Metadata match with the metadata of $count event(s) named $event_name"
+	fi
+
+}
+
 function trace_matches ()
 {
 	local event_name=$1
