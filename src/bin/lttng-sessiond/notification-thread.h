@@ -26,6 +26,7 @@
 #include <common/compat/poll.h>
 #include <common/hashtable/hashtable.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 struct notification_thread_handle {
 	/*
@@ -47,6 +48,10 @@ struct notification_thread_handle {
 		int ust64_consumer;
 		int kernel_consumer;
 	} channel_monitoring_pipes;
+	/*
+	 * To inform the rotation thread we are ready.
+	 */
+	sem_t *notification_thread_ready;
 };
 
 /**
@@ -185,7 +190,8 @@ struct notification_thread_state {
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe);
+		struct lttng_pipe *kernel_channel_monitor_pipe,
+		sem_t *notification_thread_ready);
 void notification_thread_handle_destroy(
 		struct notification_thread_handle *handle);
 

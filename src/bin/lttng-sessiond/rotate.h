@@ -18,6 +18,7 @@
 #ifndef ROTATE_H
 #define ROTATE_H
 
+#include <lttng/notification/channel-internal.h>
 #include "rotation-thread.h"
 
 /*
@@ -41,7 +42,9 @@ struct rotation_channel_info {
 	struct cds_lfht_node rotate_channels_ht_node;
 };
 
+
 extern struct cds_lfht *channel_pending_rotate_ht;
+extern struct lttng_notification_channel *rotate_notification_channel;
 
 unsigned long hash_channel_key(struct rotation_channel_key *key);
 
@@ -58,5 +61,14 @@ int relay_rotate_pending(struct ltt_session *session, uint64_t chunk_id);
  */
 int rotate_add_channel_pending(uint64_t key, enum lttng_domain_type domain,
 		struct ltt_session *session);
+
+/*
+ * Subscribe/unsubscribe the notification_channel from the rotation_thread to
+ * session usage notifications to perform size-based rotations.
+ */
+int subscribe_session_usage_rotation(struct ltt_session *session, uint64_t size,
+		struct notification_thread_handle *notification_thread_handle);
+void unsubscribe_session_usage_rotation(struct ltt_session *session,
+		struct notification_thread_handle *notification_thread_handle);
 
 #endif /* ROTATE_H */

@@ -40,6 +40,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 	OPT_TIMER,
+	OPT_SIZE,
 };
 
 static struct poptOption long_options[] = {
@@ -48,10 +49,11 @@ static struct poptOption long_options[] = {
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{"session",     's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"timer",        0,   POPT_ARG_INT, 0, OPT_TIMER, 0, 0},
+	{"size",         0,   POPT_ARG_INT, 0, OPT_SIZE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-static int setup_rotate(char *session_name, uint64_t timer)
+static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 {
 	int ret = 0;
 	struct lttng_rotation_schedule_attr *attr = NULL;
@@ -88,6 +90,18 @@ static int setup_rotate(char *session_name, uint64_t timer)
 		if (lttng_opt_mi) {
 			ret = mi_lttng_writer_write_element_unsigned_int(writer,
 					config_element_rotation_timer_interval, timer);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+	if (size) {
+		lttng_rotation_schedule_attr_set_size(attr, size);
+		MSG("Configuring session %s to rotate every %" PRIu64 " bytes written",
+				session_name, size);
+		if (lttng_opt_mi) {
+			ret = mi_lttng_writer_write_element_unsigned_int(writer,
+					config_element_rotation_size, size);
 			if (ret) {
 				goto end;
 			}
@@ -147,7 +161,7 @@ int cmd_enable_rotation(int argc, const char **argv)
 	static poptContext pc;
 	char *session_name = NULL;
 	char *opt_arg = NULL;
-	uint64_t timer = 0;
+	uint64_t timer = 0, size = 0;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
@@ -179,6 +193,16 @@ int cmd_enable_rotation(int argc, const char **argv)
 				goto end;
 			}
 			DBG("Rotation timer set to %" PRIu64, timer);
+			break;
+		case OPT_SIZE:
+			errno = 0;
+			opt_arg = poptGetOptArg(pc);
+			if (utils_parse_size_suffix(opt_arg, &size) < 0 || !size) {
+				ERR("Wrong value for --size option: %s", opt_arg);
+				ret = CMD_ERROR;
+				goto end;
+			}
+			DBG("Rotation size set to %" PRIu64, size);
 			break;
 		default:
 			ret = CMD_UNDEFINED;
@@ -221,12 +245,12 @@ int cmd_enable_rotation(int argc, const char **argv)
 	}
 
 	/* No config options, just rotate the session now */
-	if (timer == 0) {
-		ERR("No timer given");
+	if (timer == 0 && size == 0) {
+		ERR("No timer or size given");
 		success = 0;
 		command_ret = -1;
 	} else {
-		command_ret = setup_rotate(session_name, timer);
+		command_ret = setup_rotate(session_name, timer, size);
 	}
 
 	if (command_ret) {

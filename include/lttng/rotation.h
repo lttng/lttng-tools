@@ -113,6 +113,12 @@ void lttng_rotation_schedule_attr_set_timer_period(
 		struct lttng_rotation_schedule_attr *attr, uint64_t timer);
 
 /*
+ * Set the size to rotate the session (bytes, -1ULL to disable).
+ */
+void lttng_rotation_schedule_attr_set_size(
+		struct lttng_rotation_schedule_attr *attr, uint64_t size);
+
+/*
  * lttng rotate session handle functions.
  */
 /*

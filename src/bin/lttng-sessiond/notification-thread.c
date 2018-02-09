@@ -85,7 +85,8 @@ end:
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe)
+		struct lttng_pipe *kernel_channel_monitor_pipe,
+		sem_t *notification_thread_ready)
 {
 	int ret;
 	struct notification_thread_handle *handle;
@@ -141,6 +142,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	} else {
 		handle->channel_monitoring_pipes.kernel_consumer = -1;
 	}
+	handle->notification_thread_ready = notification_thread_ready;
 end:
 	return handle;
 error:
@@ -432,6 +434,7 @@ int init_thread_state(struct notification_thread_handle *handle,
 	if (!state->triggers_ht) {
 		goto error;
 	}
+	sem_post(handle->notification_thread_ready);
 end:
 	return 0;
 error:
