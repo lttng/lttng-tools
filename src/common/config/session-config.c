@@ -2519,12 +2519,14 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 {
 	int ret, started = -1, snapshot_mode = -1;
 	uint64_t live_timer_interval = UINT64_MAX,
-			 rotation_timer_interval = 0;
+			 rotation_timer_interval = 0,
+			 rotation_size = 0;
 	xmlChar *name = NULL;
 	xmlChar *shm_path = NULL;
 	xmlNodePtr domains_node = NULL;
 	xmlNodePtr output_node = NULL;
 	xmlNodePtr node;
+	xmlNodePtr attributes_child;
 	struct lttng_domain *kernel_domain = NULL;
 	struct lttng_domain *ust_domain = NULL;
 	struct lttng_domain *jul_domain = NULL;
@@ -2579,58 +2581,76 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 		} else {
 			/*
 			 * attributes, snapshot_mode, live_timer_interval, rotation_size,
-			 * rotation_timer_interval. */
-			xmlNodePtr attributes_child =
-				xmlFirstElementChild(node);
+			 * rotation_timer_interval.
+			 */
+			for (attributes_child = xmlFirstElementChild(node); attributes_child;
+					attributes_child = xmlNextElementSibling(attributes_child)) {
+				if (!strcmp((const char *) attributes_child->name,
+							config_element_snapshot_mode)) {
+					/* snapshot_mode */
+					xmlChar *snapshot_mode_content =
+						xmlNodeGetContent(attributes_child);
+					if (!snapshot_mode_content) {
+						ret = -LTTNG_ERR_NOMEM;
+						goto error;
+					}
 
-			if (!strcmp((const char *) attributes_child->name,
-				config_element_snapshot_mode)) {
-				/* snapshot_mode */
-				xmlChar *snapshot_mode_content =
-					xmlNodeGetContent(attributes_child);
-				if (!snapshot_mode_content) {
-					ret = -LTTNG_ERR_NOMEM;
-					goto error;
-				}
+					ret = parse_bool(snapshot_mode_content, &snapshot_mode);
+					free(snapshot_mode_content);
+					if (ret) {
+						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+						goto error;
+					}
+				} else if (!strcmp((const char *) attributes_child->name,
+							config_element_live_timer_interval)) {
+					/* live_timer_interval */
+					xmlChar *timer_interval_content =
+						xmlNodeGetContent(attributes_child);
+					if (!timer_interval_content) {
+						ret = -LTTNG_ERR_NOMEM;
+						goto error;
+					}
 
-				ret = parse_bool(snapshot_mode_content, &snapshot_mode);
-				free(snapshot_mode_content);
-				if (ret) {
-					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto error;
+					ret = parse_uint(timer_interval_content, &live_timer_interval);
+					free(timer_interval_content);
+					if (ret) {
+						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+						goto error;
+					}
 				}
-			} else if (!strcmp((const char *) attributes_child->name,
-						config_element_live_timer_interval)) {
-				/* live_timer_interval */
-				xmlChar *timer_interval_content =
-					xmlNodeGetContent(attributes_child);
-				if (!timer_interval_content) {
-					ret = -LTTNG_ERR_NOMEM;
-					goto error;
-				}
+				if (!strcmp((const char *) attributes_child->name,
+							config_element_rotation_timer_interval)) {
+					/* rotation_timer_interval */
+					xmlChar *timer_interval_content =
+						xmlNodeGetContent(attributes_child);
+					if (!timer_interval_content) {
+						ret = -LTTNG_ERR_NOMEM;
+						goto error;
+					}
 
-				ret = parse_uint(timer_interval_content, &live_timer_interval);
-				free(timer_interval_content);
-				if (ret) {
-					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto error;
+					ret = parse_uint(timer_interval_content, &rotation_timer_interval);
+					free(timer_interval_content);
+					if (ret) {
+						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+						goto error;
+					}
 				}
-			}
-			if (!strcmp((const char *) attributes_child->name,
-				config_element_rotation_timer_interval)) {
-				/* rotation_timer_interval */
-				xmlChar *timer_interval_content =
-					xmlNodeGetContent(attributes_child);
-				if (!timer_interval_content) {
-					ret = -LTTNG_ERR_NOMEM;
-					goto error;
-				}
+				if (!strcmp((const char *) attributes_child->name,
+							config_element_rotation_size)) {
+					/* rotation_size */
+					xmlChar *rotation_size_content =
+						xmlNodeGetContent(attributes_child);
+					if (!rotation_size_content) {
+						ret = -LTTNG_ERR_NOMEM;
+						goto error;
+					}
 
-				ret = parse_uint(timer_interval_content, &rotation_timer_interval);
-				free(timer_interval_content);
-				if (ret) {
-					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto error;
+					ret = parse_uint(rotation_size_content, &rotation_size);
+					free(rotation_size_content);
+					if (ret) {
+						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+						goto error;
+					}
 				}
 			}
 		}
@@ -2770,7 +2790,7 @@ domain_init_error:
 		}
 	}
 
-	if (rotation_timer_interval) {
+	if (rotation_timer_interval || rotation_size) {
 		struct lttng_rotation_schedule_attr *rotation_attr = lttng_rotation_schedule_attr_create();
 
 		if (!rotation_attr) {
@@ -2783,6 +2803,7 @@ domain_init_error:
 		}
 		lttng_rotation_schedule_attr_set_timer_period(rotation_attr,
 				rotation_timer_interval);
+		lttng_rotation_schedule_attr_set_size(rotation_attr, rotation_size);
 		ret = lttng_rotation_set_schedule(rotation_attr);
 		lttng_rotation_schedule_attr_destroy(rotation_attr);
 		if (ret) {

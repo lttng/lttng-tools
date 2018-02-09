@@ -149,6 +149,12 @@ end:
 	return status;
 }
 
+void lttng_rotation_schedule_attr_set_size(
+		struct lttng_rotation_schedule_attr *attr, uint64_t size)
+{
+	attr->size = size;
+}
+
 enum lttng_rotation_status lttng_rotation_handle_get_state(
 		struct lttng_rotation_handle *rotation_handle,
 		enum lttng_rotation_state *state)
@@ -323,6 +329,7 @@ int lttng_rotation_set_schedule(
 	lttng_ctl_copy_string(lsm.session.name, attr->session_name,
 			sizeof(lsm.session.name));
 	lsm.u.rotate_setup.timer_us = attr->timer_us;
+	lsm.u.rotate_setup.size = attr->size;
 
 	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
 
@@ -349,9 +356,7 @@ int lttng_rotation_schedule_get_timer_period(const char *session_name,
 	}
 
 	*rotate_timer = get_timer->rotate_timer;
-
 	ret = 0;
-
 end:
 	free(get_timer);
 	return ret;

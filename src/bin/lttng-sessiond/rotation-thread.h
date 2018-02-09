@@ -26,6 +26,7 @@
 #include <common/compat/poll.h>
 #include <common/hashtable/hashtable.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "session.h"
 
 /*
@@ -49,7 +50,13 @@ struct rotation_thread_handle {
 	int kernel_consumer;
 	/* quit pipe */
 	int thread_quit_pipe;
+
 	struct rotation_thread_timer_queue *rotation_timer_queue;
+
+	/* Access to the notification thread cmd_queue */
+	struct notification_thread_handle *notification_thread_handle;
+
+	sem_t *notification_thread_ready;
 };
 
 struct rotation_thread_handle *rotation_thread_handle_create(
@@ -57,7 +64,9 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 		struct lttng_pipe *ust64_channel_rotate_pipe,
 		struct lttng_pipe *kernel_channel_rotate_pipe,
 		int thread_quit_pipe,
-		struct rotation_thread_timer_queue *rotation_timer_queue);
+		struct rotation_thread_timer_queue *rotation_timer_queue,
+		struct notification_thread_handle *notification_thread_handle,
+		sem_t *notification_thread_ready);
 
 void rotation_thread_handle_destroy(
 		struct rotation_thread_handle *handle);

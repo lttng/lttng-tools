@@ -48,6 +48,8 @@ struct lttng_rotation_schedule_attr {
 	char session_name[LTTNG_NAME_MAX];
 	/* > 0 if a timer is set. */
 	uint64_t timer_us;
+	/* > 0 if the session should rotate when it has written that many bytes. */
+	uint64_t size;
 } LTTNG_PACKED;
 
 /*

@@ -186,6 +186,11 @@ struct ltt_session {
 	 * chunk.
 	 */
 	bool rotated_after_last_stop;
+	/*
+	 * Condition and trigger for size-based rotations.
+	 */
+	struct lttng_condition *rotate_condition;
+	struct lttng_trigger *rotate_trigger;
 };
 
 /* Prototypes */

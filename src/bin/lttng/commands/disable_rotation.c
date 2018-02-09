@@ -39,6 +39,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_LIST_OPTIONS,
 	OPT_TIMER,
+	OPT_SIZE,
 };
 
 static struct poptOption long_options[] = {
@@ -47,10 +48,11 @@ static struct poptOption long_options[] = {
 	{"list-options", 0, POPT_ARG_NONE, NULL, OPT_LIST_OPTIONS, NULL, NULL},
 	{"session",     's', POPT_ARG_STRING, &opt_session_name, 0, 0, 0},
 	{"timer",        0,   POPT_ARG_NONE, 0, OPT_TIMER, 0, 0},
+	{"size",         0,   POPT_ARG_NONE, 0, OPT_SIZE, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-static int setup_rotate(char *session_name, uint64_t timer)
+static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 {
 	int ret = 0;
 	struct lttng_rotation_schedule_attr *attr = NULL;
@@ -85,6 +87,10 @@ static int setup_rotate(char *session_name, uint64_t timer)
 	if (timer == -1ULL) {
 		lttng_rotation_schedule_attr_set_timer_period(attr, timer);
 		MSG("Disabling rotation timer on session %s", session_name);
+	}
+	if (size == -1ULL) {
+		lttng_rotation_schedule_attr_set_size(attr, size);
+		MSG("Disabling rotation based on size on session %s", session_name);
 	}
 
 	ret = lttng_rotation_set_schedule(attr);
@@ -140,7 +146,7 @@ int cmd_disable_rotation(int argc, const char **argv)
 	static poptContext pc;
 	char *session_name = NULL;
 	bool free_session_name = false;
-	uint64_t timer = 0;
+	uint64_t timer = 0, size = 0;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
@@ -160,6 +166,9 @@ int cmd_disable_rotation(int argc, const char **argv)
 			goto end;
 		case OPT_TIMER:
 			timer = -1ULL;
+			break;
+		case OPT_SIZE:
+			size = -1ULL;
 			break;
 		default:
 			ret = CMD_UNDEFINED;
@@ -203,12 +212,12 @@ int cmd_disable_rotation(int argc, const char **argv)
 	}
 
 	/* No config options, just rotate the session now */
-	if (timer == 0) {
-		ERR("No timer given");
+	if (timer == 0 && size == 0) {
+		ERR("Missing timer period (--timer) or size limit (--size) option");
 		success = 0;
 		command_ret = -1;
 	} else {
-		command_ret = setup_rotate(session_name, timer);
+		command_ret = setup_rotate(session_name, timer, size);
 	}
 
 	if (command_ret) {
