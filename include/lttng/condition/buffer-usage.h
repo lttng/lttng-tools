@@ -27,9 +27,6 @@
 extern "C" {
 #endif
 
-struct lttng_condition;
-struct lttng_evaluation;
-
 /**
  * Buffer usage conditions allows an action to be taken whenever a channel's
  * buffer usage crosses a set threshold.

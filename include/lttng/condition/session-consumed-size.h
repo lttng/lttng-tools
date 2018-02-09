@@ -27,9 +27,6 @@
 extern "C" {
 #endif
 
-struct lttng_condition;
-struct lttng_evaluation;
-
 /**
  * Session consumed size conditions allow an action to be taken whenever a
  * session's produced data size crosses a set threshold.
