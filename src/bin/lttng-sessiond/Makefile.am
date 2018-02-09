@@ -44,7 +44,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h ust-thread.c \
-			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h
+			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h \
+			ust-field-utils.h ust-field-utils.c
 endif
 
 # Add main.c at the end for compile order

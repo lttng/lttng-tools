@@ -64,6 +64,7 @@ UST_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 	       $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-registry.$(OBJEXT) \
+		   $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-metadata.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-app.$(OBJEXT) \
 		   $(top_builddir)/src/bin/lttng-sessiond/ust-consumer.$(OBJEXT) \
