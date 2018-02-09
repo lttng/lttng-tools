@@ -1496,7 +1496,7 @@ function validate_trace_exp()
 	which $BABELTRACE_BIN >/dev/null
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace validation"
 
-	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep ${event_exp} | wc -l)
+	traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep --extended-regexp ${event_exp} | wc -l)
 	if [ "$traced" -ne 0 ]; then
 		pass "Validate trace for expression '${event_exp}', $traced events"
 	else
@@ -1515,7 +1515,7 @@ function validate_trace_only_exp()
 	which $BABELTRACE_BIN >/dev/null
 	skip $? -ne 0 "Babeltrace binary not found. Skipping trace matches"
 
-	local count=$($BABELTRACE_BIN $trace_path | grep ${event_exp} | wc -l)
+	local count=$($BABELTRACE_BIN $trace_path | grep --extended-regexp ${event_exp} | wc -l)
 	local total=$($BABELTRACE_BIN $trace_path | wc -l)
 
 	if [ "$count" -ne 0 ] && [ "$total" -eq "$count" ]; then
