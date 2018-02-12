@@ -361,7 +361,7 @@ error:
 enum lttng_notification_channel_status
 lttng_notification_channel_has_pending_notification(
 		struct lttng_notification_channel *channel,
-		bool *_notification_pending)
+		int *_notification_pending)
 {
 	int ret;
 	enum lttng_notification_channel_status status =
@@ -380,7 +380,7 @@ lttng_notification_channel_has_pending_notification(
 	pthread_mutex_lock(&channel->lock);
 
 	if (channel->pending_notifications.count) {
-		*_notification_pending = true;
+		*_notification_pending = 1;
 		goto end_unlock;
 	}
 
@@ -412,7 +412,7 @@ lttng_notification_channel_has_pending_notification(
 
 	if (ret == 0) {
 		/* No data available. */
-		*_notification_pending = false;
+		*_notification_pending = 0;
 		goto end_unlock;
 	} else if (ret < 0) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
@@ -432,14 +432,14 @@ lttng_notification_channel_has_pending_notification(
 		if (ret) {
 			goto end;
 		}
-		*_notification_pending = true;
+		*_notification_pending = 1;
 		break;
 	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED:
 		ret = enqueue_dropped_notification(channel);
 		if (ret) {
 			goto end;
 		}
-		*_notification_pending = true;
+		*_notification_pending = 1;
 		break;
 	default:
 		/* Protocol error. */

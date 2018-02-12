@@ -107,7 +107,7 @@ lttng_notification_channel_get_next_notification(
 extern enum lttng_notification_channel_status
 lttng_notification_channel_has_pending_notification(
 		struct lttng_notification_channel *channel,
-		bool *notification_pending);
+		int *notification_pending);
 
 /*
  * Subscribe to notifications of a condition through a notification channel.
