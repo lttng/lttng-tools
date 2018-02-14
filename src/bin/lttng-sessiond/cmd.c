@@ -856,8 +856,11 @@ static int create_connect_relayd(struct lttng_uri *uri,
 
 		/* Check relayd version */
 		ret = relayd_version_check(rsock);
-		if (ret < 0) {
-			ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
+		if (ret == LTTNG_ERR_RELAYD_VERSION_FAIL) {
+			goto close_sock;
+		} else if (ret < 0) {
+			ERR("Unable to reach lttng-relayd");
+			ret = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 			goto close_sock;
 		}
 		consumer->relay_major_version = rsock->major;
