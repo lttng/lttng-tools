@@ -378,7 +378,8 @@ end:
  * If major versions are compatible, we assign minor_to_use to the
  * minor version of the procotol we are going to use for this session.
  *
- * Return 0 if compatible else negative value.
+ * Return 0 if the two daemons are compatible, LTTNG_ERR_RELAYD_VERSION_FAIL
+ * otherwise, or a negative value on network errors.
  */
 int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 {
@@ -420,7 +421,7 @@ int relayd_version_check(struct lttcomm_relayd_sock *rsock)
 	 */
 	if (msg.major != rsock->major) {
 		/* Not compatible */
-		ret = -1;
+		ret = LTTNG_ERR_RELAYD_VERSION_FAIL;
 		DBG2("Relayd version is NOT compatible. Relayd version %u != %u (us)",
 				msg.major, rsock->major);
 		goto error;
