@@ -1406,7 +1406,9 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	}
 
 	health_code_update();
+	pthread_mutex_lock(socket->lock);
 	ret = consumer_send_msg(socket, &msg);
+	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		goto error;
 	}
