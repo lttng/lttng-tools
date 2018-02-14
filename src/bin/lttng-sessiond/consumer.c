@@ -731,6 +731,8 @@ error:
 
 /*
  * Send file descriptor to consumer via sock.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd)
 {
@@ -755,6 +757,8 @@ error:
 
 /*
  * Consumer send communication message structure to consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_msg(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg)
@@ -778,6 +782,8 @@ error:
 
 /*
  * Consumer send channel communication message structure to consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg)
