@@ -763,6 +763,7 @@ int consumer_send_msg(struct consumer_socket *sock,
 
 	assert(msg);
 	assert(sock);
+	assert(pthread_mutex_trylock(sock->lock) == EBUSY);
 
 	ret = consumer_socket_send(sock, msg, sizeof(struct lttcomm_consumer_msg));
 	if (ret < 0) {
