@@ -886,6 +886,8 @@ error:
 
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 static int send_consumer_relayd_socket(enum lttng_domain_type domain,
 		unsigned int session_id, struct lttng_uri *relayd_uri,
@@ -958,6 +960,8 @@ relayd_comm_error:
  * Send both relayd sockets to a specific consumer and domain.  This is a
  * helper function to facilitate sending the information to the consumer for a
  * session.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
