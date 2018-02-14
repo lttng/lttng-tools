@@ -739,6 +739,7 @@ int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd)
 	assert(fds);
 	assert(sock);
 	assert(nb_fd > 0);
+	assert(pthread_mutex_trylock(sock->lock) == EBUSY);
 
 	ret = lttcomm_send_fds_unix_sock(*sock->fd_ptr, fds, nb_fd);
 	if (ret < 0) {
