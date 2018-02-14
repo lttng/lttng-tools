@@ -1270,6 +1270,7 @@ restart:
 	if (!cmd_socket_wrapper) {
 		goto error;
 	}
+	cmd_socket_wrapper->lock = &consumer_data->lock;
 
 	ret = consumer_send_channel_monitor_pipe(cmd_socket_wrapper,
 			consumer_data->channel_monitor_pipe);
