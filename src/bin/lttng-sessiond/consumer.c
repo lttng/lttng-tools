@@ -992,6 +992,8 @@ error:
 /*
  * Send relayd socket to consumer associated with a session name.
  *
+ * The consumer socket lock must be held by the caller.
+ *
  * On success return positive value. On error, negative value.
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
