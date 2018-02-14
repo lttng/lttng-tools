@@ -150,6 +150,8 @@ error:
 
 /*
  * Sending metadata to the consumer with command ADD_CHANNEL and ADD_STREAM.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int kernel_consumer_add_metadata(struct consumer_socket *sock,
 		struct ltt_kernel_session *session, unsigned int monitor)
@@ -308,6 +310,8 @@ error:
 
 /*
  * Send all stream fds of kernel channel to the consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session,
@@ -360,6 +364,8 @@ error:
 
 /*
  * Send all stream fds of the kernel session to the consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int kernel_consumer_send_session(struct consumer_socket *sock,
 		struct ltt_kernel_session *session)
