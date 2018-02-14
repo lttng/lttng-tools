@@ -3610,10 +3610,12 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
 			socket, node.node) {
+		pthread_mutex_lock(socket->lock);
 		ret = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket,
 				session->name, session->hostname,
 				session->live_timer);
+		pthread_mutex_unlock(socket->lock);
 		if (ret != LTTNG_OK) {
 			rcu_read_unlock();
 			goto error;
