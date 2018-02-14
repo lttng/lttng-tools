@@ -1593,6 +1593,7 @@ static int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret;
 	struct lttcomm_relayd_version reply, msg;
+	bool compatible = true;
 
 	conn->version_check_done = 1;
 
@@ -1617,9 +1618,7 @@ static int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 	if (reply.major != be32toh(msg.major)) {
 		DBG("Incompatible major versions (%u vs %u), deleting session",
 				reply.major, be32toh(msg.major));
-		connection_put(conn);
-		ret = 0;
-		goto end;
+		compatible = false;
 	}
 
 	conn->major = reply.major;
@@ -1636,6 +1635,11 @@ static int relay_send_version(struct lttcomm_relayd_hdr *recv_hdr,
 			sizeof(struct lttcomm_relayd_version), 0);
 	if (ret < 0) {
 		ERR("Relay sending version");
+	}
+
+	if (!compatible) {
+		ret = -1;
+		goto end;
 	}
 
 	DBG("Version check done using protocol %u.%u", conn->major,
