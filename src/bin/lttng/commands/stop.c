@@ -172,6 +172,7 @@ int cmd_stop(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
+	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -227,6 +228,13 @@ int cmd_stop(int argc, const char **argv)
 	}
 
 	opt_session_name = (char*) poptGetArg(pc);
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
+	}
 
 	command_ret = stop_tracing();
 	if (command_ret) {

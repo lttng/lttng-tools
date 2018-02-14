@@ -127,7 +127,7 @@ int cmd_save(int argc, const char **argv)
 {
 	int ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success;
 	int opt;
-	const char *session_name = NULL;
+	const char *session_name = NULL, *leftover = NULL;
 	poptContext pc;
 	struct lttng_save_session_attr *attr;
 
@@ -162,6 +162,13 @@ int cmd_save(int argc, const char **argv)
 			/* default to opt_save_all */
 			opt_save_all = true;
 		}
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	attr = lttng_save_session_attr_create();
