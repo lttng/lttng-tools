@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "utils.h"
+#include "signal-helper.h"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
@@ -39,6 +40,11 @@ int main(int argc, char **argv)
 	float flt = 2222.0;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
+
+	if (set_signal_handler()) {
+		ret = -1;
+		goto end;
+	}
 
 	if (argc >= 2) {
 		nr_iter = atoi(argv[1]);
@@ -66,6 +72,9 @@ int main(int argc, char **argv)
 				ret = -1;
 				goto end;
 			}
+		}
+		if (should_quit) {
+			break;
 		}
 	}
 
