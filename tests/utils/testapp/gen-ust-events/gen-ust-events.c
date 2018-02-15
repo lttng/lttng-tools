@@ -32,6 +32,7 @@
 #include <poll.h>
 #include <errno.h>
 #include "utils.h"
+#include "signal-helper.h"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
@@ -90,6 +91,11 @@ int main(int argc, char **argv)
 	char *after_first_event_file_path = NULL;
 	char *before_last_event_file_path = NULL;
 
+	if (set_signal_handler()) {
+		ret = -1;
+		goto end;
+	}
+
 	if (argc >= 2) {
 		/*
 		 * If nr_iter is negative, do an infinite tracing loop.
@@ -132,6 +138,9 @@ int main(int argc, char **argv)
 				ret = -1;
 				goto end;
 			}
+		}
+		if (should_quit) {
+			break;
 		}
 	}
 

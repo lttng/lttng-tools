@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include <lttng/tracef.h>
+#include "signal-helper.h"
 
 const char *str = "test string";
 
@@ -54,6 +55,10 @@ int main(int argc, char **argv)
 	useconds_t nr_usec = 0;
 	char *tmp_file_path = NULL;
 
+	if (set_signal_handler()) {
+		return 1;
+	}
+
 	if (argc >= 2) {
 		nr_iter = atoi(argv[1]);
 	}
@@ -78,6 +83,9 @@ int main(int argc, char **argv)
 			create_file(tmp_file_path);
 		}
 		usleep(nr_usec);
+		if (should_quit) {
+			break;
+		}
 	}
 
 	return 0;

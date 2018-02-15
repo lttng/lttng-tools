@@ -1,5 +1,5 @@
 /*
- * Copyright (C) - 2017 Philippe Proulx <pproulx@efficios.com>
+ * Copyright (C) - 2018 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -15,48 +15,43 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#define _LGPL_SOURCE
-#include <stdio.h>
-#include "signal-helper.h"
+#ifndef LTTNG_TESTAPP_SIGNAL_HELPER_H
+#define LTTNG_TESTAPP_SIGNAL_HELPER_H
 
-#define TRACEPOINT_DEFINE
-#include "tp.h"
+#include <signal.h>
 
-int main(int argc, char **argv)
+static volatile int should_quit;
+
+static
+void sighandler(int sig)
 {
-	int count;
-	int i;
-	int arg_i;
-
-	if (set_signal_handler()) {
-		return 1;
+	if (sig == SIGTERM) {
+		should_quit = 1;
 	}
-
-	if (argc <= 3) {
-		fprintf(stderr, "Usage: %s COUNT STRING [STRING]...\n",
-			argv[0]);
-		return 1;
-	}
-
-	if (argc >= 2) {
-		count = atoi(argv[1]);
-	}
-
-	if (count < 0) {
-		return 0;
-	}
-
-	for (i = 0, arg_i = 2; i < count; i++) {
-		tracepoint(tp, the_string, i, arg_i, argv[arg_i]);
-
-		arg_i++;
-		if (arg_i == argc) {
-			arg_i = 2;
-		}
-		if (should_quit) {
-			break;
-		}
-	}
-
-	return 0;
 }
+
+static
+int set_signal_handler(void)
+{
+	int ret;
+	struct sigaction sa = {
+		.sa_flags = 0,
+		.sa_handler = sighandler,
+	};
+
+	ret = sigemptyset(&sa.sa_mask);
+	if (ret) {
+		perror("sigemptyset");
+		goto end;
+	}
+
+	ret = sigaction(SIGTERM, &sa, NULL);
+	if (ret) {
+		perror("sigaction");
+		goto end;
+	}
+end:
+	return ret;
+}
+
+#endif /* LTTNG_TESTAPP_SIGNAL_HELPER_H */
