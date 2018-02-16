@@ -16,14 +16,10 @@
  */
 
 #define _LGPL_SOURCE
+
 #include <fcntl.h>
-#include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 #include <sys/syscall.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "utils.h"
