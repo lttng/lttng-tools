@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -51,29 +52,32 @@ int main(int argc, char **argv)
 
 	/*
 	 * Wait for the start_file to be created by an external process
-	 * (typically the test script) before executing the syscalls
+	 * (typically the test script) before executing the syscalls.
 	 */
 	ret = wait_on_file(start_file);
 	if (ret != 0) {
 		goto error;
 	}
 
-	/* Start syscalls */
-	fd = open("/proc/cpuinfo", O_RDONLY);
+	/*
+	 * Start generating syscalls. We use syscall(2) to prevent libc to change
+	 * the underlying syscall. e.g. calling openat(2) instead of open(2).
+	 */
+	fd = syscall(SYS_open, "/proc/cpuinfo", O_RDONLY);
 	if (fd < 0) {
 		perror("open");
 		ret = -1;
 		goto error;
 	}
 
-	ret = read(fd, buf, MAX_LEN);
+	ret = syscall(SYS_read, fd, buf, MAX_LEN);
 	if (ret < 0) {
 		perror("read");
 		ret = -1;
 		goto error;
 	}
 
-	ret = close(fd);
+	ret = syscall(SYS_close, fd);
 	if (ret == -1) {
 		perror("close");
 		ret = -1;
