@@ -249,6 +249,82 @@ end:
 	return exclusion_msg;
 }
 
+/* For debug purposes */
+static void print_userspace_probe_location(struct lttng_event *event)
+{
+	struct lttng_userspace_probe_location *location;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+
+	location = lttng_event_get_userspace_probe_location(event);
+	if (!location) {
+		MSG("Event has no userspace probe location");
+		return;
+	}
+
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(location);
+	if (!lookup_method) {
+		MSG("Event has no userspace probe location lookup method");
+		return;
+	}
+
+	MSG("%s%s (type: userspace-probe)%s", indent6, event->name, enabled_string(event->enabled));
+
+	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+
+	switch (lttng_userspace_probe_location_get_type(location)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
+		MSG("%sType: Unknown", indent8);
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	{
+		const char *function_name;
+		const char *binary_path;
+
+		MSG("%sType: Function", indent8);
+		function_name = lttng_userspace_probe_location_function_get_function_name(location);
+		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
+		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
+		MSG("%sFunction:      %s()", indent8, function_name ? function_name : "NULL");
+		switch (lookup_type) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			MSG("%sLookup method: ELF", indent8);
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
+			MSG("%sLookup method: default", indent8);
+			break;
+		default:
+			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
+			break;
+		}
+		break;
+	}
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+	{
+		const char *probe_name, *provider_name;
+		const char *binary_path;
+
+		MSG("%sType: Tracepoint", indent8);
+		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
+		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
+		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
+		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
+		MSG("%sTracepoint:    %s:%s", indent8, provider_name ? provider_name : "NULL", probe_name ? probe_name : "NULL");
+		switch (lookup_type) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			MSG("%sLookup method: SDT", indent8);
+			break;
+		default:
+			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
+			break;
+		}
+		break;
+	}
+	default:
+		ERR("INVALID PROBE TYPE ENCOUNTERED");
+	}
+}
+
 /*
  * Pretty print single event.
  */
@@ -323,6 +399,9 @@ static void print_events(struct lttng_event *event)
 			MSG("%soffset: 0x%" PRIx64, indent8, event->attr.probe.offset);
 			MSG("%ssymbol: %s", indent8, event->attr.probe.symbol_name);
 		}
+		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		print_userspace_probe_location(event);
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		MSG("%s%s (type: function)%s%s", indent6,

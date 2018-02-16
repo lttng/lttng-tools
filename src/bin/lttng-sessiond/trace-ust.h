@@ -194,11 +194,11 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 struct ltt_ust_session *trace_ust_create_session(uint64_t session_id);
 struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		enum lttng_domain_type domain);
-struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
-		bool internal_event);
+		bool internal_event, struct ltt_ust_event **ust_event);
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx);
 int trace_ust_match_context(struct ltt_ust_context *uctx,
@@ -254,13 +254,13 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 	return NULL;
 }
 static inline
-struct ltt_ust_event *trace_ust_create_event(struct lttng_event *ev,
+enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		const char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
-		bool internal_event)
+		bool internal_event, struct ltt_ust_event **ust_event)
 {
-	return NULL;
+	return LTTNG_ERR_NO_UST;
 }
 static inline
 void trace_ust_destroy_session(struct ltt_ust_session *session)

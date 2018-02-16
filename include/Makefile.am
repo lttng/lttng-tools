@@ -78,6 +78,7 @@ lttnginclude_HEADERS = \
 	lttng/save.h \
 	lttng/load.h \
 	lttng/endpoint.h \
+	lttng/userspace-probe.h \
 	version.h.tmpl
 
 lttngactioninclude_HEADERS= \
@@ -110,4 +111,6 @@ noinst_HEADERS = \
 	lttng/trigger/trigger-internal.h \
 	lttng/endpoint-internal.h \
 	lttng/notification/channel-internal.h \
-	lttng/channel-internal.h
+	lttng/channel-internal.h \
+	lttng/event-internal.h \
+	lttng/userspace-probe-internal.h

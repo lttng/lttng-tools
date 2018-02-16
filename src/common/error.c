@@ -190,6 +190,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_TRIGGER_EXISTS) ] = "Trigger already registered",
 	[ ERROR_INDEX(LTTNG_ERR_TRIGGER_NOT_FOUND) ] = "Trigger not found",
 	[ ERROR_INDEX(LTTNG_ERR_COMMAND_CANCELLED) ] = "Command cancelled",
+	[ ERROR_INDEX(LTTNG_ERR_PROBE_LOCATION_INVAL) ] = "Invalid userspace probe location",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

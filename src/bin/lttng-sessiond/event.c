@@ -119,23 +119,11 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	kevent = trace_kernel_find_event(event->name, kchan,
 			event->type, filter);
 	if (kevent == NULL) {
-		ret = kernel_create_event(event, kchan,
-			filter_expression, filter);
+		ret = kernel_create_event(event, kchan, filter_expression, filter);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
-		if (ret < 0) {
-			switch (-ret) {
-			case EEXIST:
-				ret = LTTNG_ERR_KERN_EVENT_EXIST;
-				break;
-			case ENOSYS:
-				ret = LTTNG_ERR_KERN_EVENT_ENOSYS;
-				break;
-			default:
-				ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-				break;
-			}
+		if (ret) {
 			goto end;
 		}
 	} else if (kevent->enabled == 0) {
@@ -174,7 +162,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event)
 {
-	int ret = LTTNG_OK, to_create = 0;
+	int ret, to_create = 0;
 	struct ltt_ust_event *uevent;
 
 	assert(usess);
@@ -186,14 +174,13 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
 			event->loglevel_type, event->loglevel, exclusion);
 	if (!uevent) {
-		uevent = trace_ust_create_event(event, filter_expression,
-				filter, exclusion, internal_event);
+		ret = trace_ust_create_event(event, filter_expression,
+				filter, exclusion, internal_event, &uevent);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
 		exclusion = NULL;
-		if (uevent == NULL) {
-			ret = LTTNG_ERR_UST_ENABLE_FAIL;
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 

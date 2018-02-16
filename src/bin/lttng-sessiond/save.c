@@ -217,6 +217,9 @@ const char *get_kernel_instrumentation_string(
 	case LTTNG_KERNEL_KPROBE:
 		instrumentation_string = config_event_type_kprobe;
 		break;
+	case LTTNG_KERNEL_UPROBE:
+		instrumentation_string = config_event_type_uprobe;
+		break;
 	case LTTNG_KERNEL_FUNCTION:
 		instrumentation_string = config_event_type_function;
 		break;
@@ -377,6 +380,119 @@ const char *get_loglevel_type_string(
 }
 
 static
+int save_kernel_function_event(struct config_writer *writer,
+							   struct ltt_kernel_event *event)
+{
+	int ret;
+	ret = config_writer_open_element(writer, config_element_function_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer, config_element_name,
+		event->event->u.ftrace.symbol_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* /function attributes */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+
+}
+
+static
+int save_kernel_kprobe_event(struct config_writer *writer,
+			   struct ltt_kernel_event *event)
+{
+	int ret;
+	const char *symbol_name;
+	uint64_t addr;
+	uint64_t offset;
+
+	if (event->event->instrumentation == LTTNG_KERNEL_KPROBE) {
+		/*
+		 * Comments in lttng-kernel.h mention that
+		 * either addr or symbol_name are set, not both.
+		 */
+		addr = event->event->u.kprobe.addr;
+		offset = event->event->u.kprobe.offset;
+		symbol_name = addr ? NULL : event->event->u.kprobe.symbol_name;
+	} else {
+		symbol_name = event->event->u.kretprobe.symbol_name;
+		addr = event->event->u.kretprobe.addr;
+		offset = event->event->u.kretprobe.offset;
+	}
+
+	ret = config_writer_open_element(writer, config_element_probe_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	if (symbol_name) {
+		ret = config_writer_write_element_string(writer,
+				 config_element_symbol_name, symbol_name);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	if (addr) {
+		ret = config_writer_write_element_unsigned_int( writer,
+				config_element_address, addr);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	if (offset) {
+		ret = config_writer_write_element_unsigned_int(writer,
+				   config_element_offset, offset);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+int save_kernel_uprobe_event(struct config_writer *writer,
+	struct ltt_kernel_event *event)
+{
+	int ret;
+	ret = config_writer_open_element(writer, config_element_userspace_probe_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
 int save_kernel_event(struct config_writer *writer,
 	struct ltt_kernel_event *event)
 {
@@ -431,6 +547,7 @@ int save_kernel_event(struct config_writer *writer,
 
 	if (event->event->instrumentation == LTTNG_KERNEL_FUNCTION ||
 		event->event->instrumentation == LTTNG_KERNEL_KPROBE ||
+		event->event->instrumentation == LTTNG_KERNEL_UPROBE ||
 		event->event->instrumentation == LTTNG_KERNEL_KRETPROBE) {
 
 		ret = config_writer_open_element(writer,
@@ -443,94 +560,24 @@ int save_kernel_event(struct config_writer *writer,
 		switch (event->event->instrumentation) {
 		case LTTNG_KERNEL_SYSCALL:
 		case LTTNG_KERNEL_FUNCTION:
-			ret = config_writer_open_element(writer,
-				config_element_function_attributes);
+			ret = save_kernel_function_event(writer, event);
 			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			ret = config_writer_write_element_string(writer,
-				config_element_name,
-				event->event->u.ftrace.symbol_name);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			/* /function attributes */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 			break;
 		case LTTNG_KERNEL_KPROBE:
 		case LTTNG_KERNEL_KRETPROBE:
-		{
-			const char *symbol_name;
-			uint64_t addr;
-			uint64_t offset;
-
-			if (event->event->instrumentation ==
-				LTTNG_KERNEL_KPROBE) {
-				/*
-				 * Comments in lttng-kernel.h mention that
-				 * either addr or symbol_name are set, not both.
-				 */
-				addr = event->event->u.kprobe.addr;
-				offset = event->event->u.kprobe.offset;
-				symbol_name = addr ? NULL :
-					event->event->u.kprobe.symbol_name;
-			} else {
-				symbol_name =
-					event->event->u.kretprobe.symbol_name;
-				addr = event->event->u.kretprobe.addr;
-				offset = event->event->u.kretprobe.offset;
-			}
-
-			ret = config_writer_open_element(writer,
-				config_element_probe_attributes);
+			ret = save_kernel_kprobe_event(writer, event);
 			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			if (symbol_name) {
-				ret = config_writer_write_element_string(writer,
-					config_element_symbol_name,
-					symbol_name);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			if (addr) {
-				ret = config_writer_write_element_unsigned_int(
-					writer, config_element_address, addr);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			if (offset) {
-				ret = config_writer_write_element_unsigned_int(
-					writer, config_element_offset, offset);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 			break;
-		}
+		case LTTNG_KERNEL_UPROBE:
+			ret = save_kernel_uprobe_event(writer, event);
+			if (ret) {
+				goto end;
+			}
+			break;
 		default:
 			ERR("Unsupported kernel instrumentation type.");
 			ret = LTTNG_ERR_INVALID;

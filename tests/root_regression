@@ -4,6 +4,7 @@ regression/kernel/test_syscall
 regression/kernel/test_clock_override
 regression/kernel/test_rotation_destroy_flush
 regression/kernel/test_select_poll_epoll
+regression/kernel/test_userspace_probe
 regression/tools/live/test_kernel
 regression/tools/live/test_lttng_kernel
 regression/tools/streaming/test_high_throughput_limits

@@ -79,9 +79,19 @@ void *zmalloc(size_t len)
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifndef min_t
+#define min_t(type, a, b)	((type) min(a, b))
+#endif
+
 #ifndef LTTNG_PACKED
 #define LTTNG_PACKED __attribute__((__packed__))
 #endif
+
+/*
+ * Align value to the next multiple of align. Returns val if it already is a
+ * multiple of align. Align must be a power of two.
+ */
+#define ALIGN_TO(value, align) ((value + (align - 1)) & ~(align - 1))
 
 /*
  * LTTNG_HIDDEN: set the hidden attribute for internal functions

@@ -158,5 +158,6 @@
 
 /* Event FD ioctl */
 #define LTTNG_KERNEL_FILTER			_IO(0xF6, 0x90)
+#define LTTNG_KERNEL_ADD_CALLSITE	_IO(0xF6, 0x91)
 
 #endif /* _LTT_KERNEL_IOCTL_H */

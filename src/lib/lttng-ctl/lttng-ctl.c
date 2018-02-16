@@ -1,5 +1,5 @@
 /*
- * liblttngctl.c
+ * lttng-ctl.c
  *
  * Linux Trace Toolkit Control Library
  *
@@ -34,11 +34,14 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <common/dynamic-buffer.h>
 #include <lttng/lttng.h>
 #include <lttng/health-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/endpoint.h>
 #include <lttng/channel-internal.h>
+#include <lttng/event-internal.h>
+#include <lttng/userspace-probe-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -168,6 +171,35 @@ static int send_session_varlen(const void *data, size_t len)
 	}
 
 	ret = lttcomm_send_unix_sock(sessiond_socket, data, len);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Send file descriptors to the session daemon.
+ *
+ * On success, returns the number of bytes sent (>=0)
+ * On error, returns -1
+ */
+static int send_session_fds(int *fds, size_t nb_fd)
+{
+	int ret;
+
+	if (!connected) {
+		ret = -LTTNG_ERR_NO_SESSIOND;
+		goto end;
+	}
+
+	if (!fds || !nb_fd) {
+		ret = 0;
+		goto end;
+	}
+
+	ret = lttcomm_send_fds_unix_sock(sessiond_socket, fds, nb_fd);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_FATAL;
 	}
@@ -445,13 +477,14 @@ end:
 
 /*
  * Ask the session daemon a specific command and put the data into buf.
- * Takes extra var. len. data as input to send to the session daemon.
+ * Takes extra var. len. data and file descriptors as input to send to the
+ * session daemon.
  *
  * Return size of data (only payload, not header) or a negative error code.
  */
 LTTNG_HIDDEN
-int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
-		const void *vardata, size_t vardata_len,
+int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
+		int *fds, size_t nb_fd, const void *vardata, size_t vardata_len,
 		void **user_payload_buf, void **user_cmd_header_buf,
 		size_t *user_cmd_header_len)
 {
@@ -473,6 +506,13 @@ int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
 	}
 	/* Send var len data */
 	ret = send_session_varlen(vardata, vardata_len);
+	if (ret < 0) {
+		/* Ret value is a valid lttng error code. */
+		goto end;
+	}
+
+	/* Send fds */
+	ret = send_session_fds(fds, nb_fd);
 	if (ret < 0) {
 		/* Ret value is a valid lttng error code. */
 		goto end;
@@ -993,8 +1033,9 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		int exclusion_count, char **exclusion_list)
 {
 	struct lttcomm_session_msg lsm;
-	char *varlen_data;
-	int ret = 0;
+	struct lttng_dynamic_buffer send_buffer;
+	int ret = 0, i, fd_to_send = -1;
+	bool send_fd = false;
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
 	/*
@@ -1046,21 +1087,10 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	lsm.u.enable.bytecode_len = 0;
 
 	/*
-	 * For the JUL domain, a filter is enforced except for the enable all
-	 * event. This is done to avoid having the event in all sessions thus
-	 * filtering by logger name.
-	 */
-	if (exclusion_count == 0 && filter_expression == NULL &&
-			(handle->domain.type != LTTNG_DOMAIN_JUL &&
-				handle->domain.type != LTTNG_DOMAIN_LOG4J &&
-				handle->domain.type != LTTNG_DOMAIN_PYTHON)) {
-		goto ask_sessiond;
-	}
-
-	/*
 	 * We have either a filter or some exclusions, so we need to set up
 	 * a variable-length memory block from where to send the data.
 	 */
+	lttng_dynamic_buffer_init(&send_buffer);
 
 	/* Parse filter expression. */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
@@ -1098,41 +1128,74 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		}
 	}
 
-	varlen_data = zmalloc(lsm.u.enable.bytecode_len
+	ret = lttng_dynamic_buffer_set_capacity(&send_buffer,
+		lsm.u.enable.bytecode_len
 			+ lsm.u.enable.expression_len
 			+ LTTNG_SYMBOL_NAME_LEN * exclusion_count);
-	if (!varlen_data) {
+	if (ret) {
 		ret = -LTTNG_ERR_EXCLUSION_NOMEM;
 		goto mem_error;
 	}
 
 	/* Put exclusion names first in the data. */
-	while (exclusion_count--) {
-		strncpy(varlen_data + LTTNG_SYMBOL_NAME_LEN * exclusion_count,
-			*(exclusion_list + exclusion_count),
-			LTTNG_SYMBOL_NAME_LEN - 1);
+	for (i = 0; i < exclusion_count; i++) {
+		size_t exclusion_len;
+
+		exclusion_len = strnlen(*(exclusion_list + i),
+				LTTNG_SYMBOL_NAME_LEN);
+		if (exclusion_len == LTTNG_SYMBOL_NAME_LEN) {
+			/* Exclusion is not NULL-terminated. */
+			ret = -LTTNG_ERR_INVALID;
+			goto mem_error;
+		}
+
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				*(exclusion_list + i),
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret) {
+			goto mem_error;
+		}
 	}
+
 	/* Add filter expression next. */
-	if (lsm.u.enable.expression_len != 0) {
-		memcpy(varlen_data
-			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count,
-			filter_expression,
-			lsm.u.enable.expression_len);
+	if (filter_expression) {
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				filter_expression, lsm.u.enable.expression_len);
+		if (ret) {
+			goto mem_error;
+		}
 	}
 	/* Add filter bytecode next. */
 	if (ctx && lsm.u.enable.bytecode_len != 0) {
-		memcpy(varlen_data
-			+ LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count
-			+ lsm.u.enable.expression_len,
-			&ctx->bytecode->b,
-			lsm.u.enable.bytecode_len);
+		ret = lttng_dynamic_buffer_append(&send_buffer,
+				&ctx->bytecode->b, lsm.u.enable.bytecode_len);
+		if (ret) {
+			goto mem_error;
+		}
+	}
+	if (ev->extended.ptr) {
+		struct lttng_event_extended *ev_ext =
+			(struct lttng_event_extended *) ev->extended.ptr;
+
+		if (ev_ext->probe_location) {
+			ret = lttng_userspace_probe_location_serialize(
+				ev_ext->probe_location, &send_buffer,
+				&fd_to_send);
+			if (ret < 0) {
+				goto mem_error;
+			}
+
+			send_fd = fd_to_send >= 0;
+			lsm.u.enable.userspace_probe_location_len =
+					send_buffer.size;
+		}
 	}
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, varlen_data,
-			(LTTNG_SYMBOL_NAME_LEN * lsm.u.enable.exclusion_count) +
-			lsm.u.enable.bytecode_len + lsm.u.enable.expression_len,
-			NULL);
-	free(varlen_data);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
+			send_fd ? &fd_to_send : NULL,
+			send_fd ? 1 : 0,
+			send_buffer.size ? send_buffer.data : NULL,
+			send_buffer.size, NULL, NULL, 0);
 
 mem_error:
 	if (filter_expression && ctx) {
@@ -1154,6 +1217,7 @@ error:
 	 * Return directly to the caller and don't ask the sessiond since
 	 * something went wrong in the parsing of data above.
 	 */
+	lttng_dynamic_buffer_reset(&send_buffer);
 	return ret;
 
 ask_sessiond:
@@ -1864,7 +1928,10 @@ int lttng_list_events(struct lttng_handle *handle,
 	struct lttcomm_event_command_header *cmd_header = NULL;
 	size_t cmd_header_len;
 	uint32_t nb_events, i;
-	void *extended_at;
+	void *comm_ext_at;
+	char *reception_buffer = NULL;
+	struct lttng_dynamic_buffer listing;
+	size_t storage_req;
 
 	/* Safety check. An handle and channel name are mandatory */
 	if (handle == NULL || channel_name == NULL) {
@@ -1879,137 +1946,215 @@ int lttng_list_events(struct lttng_handle *handle,
 			sizeof(lsm.u.list.channel_name));
 	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
 
-	ret = lttng_ctl_ask_sessiond_varlen(&lsm, NULL, 0, (void **) events,
-		(void **) &cmd_header, &cmd_header_len);
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+		(void **) &reception_buffer, (void **) &cmd_header,
+		&cmd_header_len);
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
 
 	/* Set number of events and free command header */
 	nb_events = cmd_header->nb_events;
 	if (nb_events > INT_MAX) {
 		ret = -EOVERFLOW;
-		goto error;
+		goto end;
 	}
-	ret = (int) nb_events;
 	free(cmd_header);
 	cmd_header = NULL;
 
-	/* Set extended info pointers */
-	extended_at = ((void*) (*events)) +
-			nb_events * sizeof(struct lttng_event);
+	/*
+	 * The buffer that is returned must contain a "flat" version of
+	 * the events that are returned. In other words, all pointers
+	 * within an lttng_event must point to a location within the returned
+	 * buffer so that the user may free everything by simply calling free()
+	 * on the returned buffer. This is needed in order to maintain API
+	 * compatibility.
+	 *
+	 * A first pass is performed to compute the size of the buffer that
+	 * must be allocated. A second pass is then performed to setup
+	 * the returned events so that their members always point within the
+	 * buffer.
+	 *
+	 * The layout of the returned buffer is as follows:
+	 *   - struct lttng_event[nb_events],
+	 *   - nb_events times the following:
+	 *     - struct lttng_event_extended,
+	 *     - flattened version of userspace_probe_location
+	 *     - filter_expression
+	 *     - exclusions
+	 *     - padding to align to 64-bits
+	 */
+	comm_ext_at = reception_buffer +
+		(nb_events * sizeof(struct lttng_event));
+	storage_req = nb_events * sizeof(struct lttng_event);
 
 	for (i = 0; i < nb_events; i++) {
-		struct lttcomm_event_extended_header *ext_header;
-		struct lttng_event *event = &(*events)[i];
+		struct lttcomm_event_extended_header *ext_comm =
+			(struct lttcomm_event_extended_header *) comm_ext_at;
+		int probe_storage_req = 0;
 
-		event->extended.ptr = extended_at;
-		ext_header =
-			(struct lttcomm_event_extended_header *) extended_at;
-		extended_at += sizeof(*ext_header);
-		extended_at += ext_header->filter_len;
-		extended_at +=
-			ext_header->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		comm_ext_at += sizeof(*ext_comm);
+		comm_ext_at += ext_comm->filter_len;
+		comm_ext_at +=
+			ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+
+		if (ext_comm->userspace_probe_location_len) {
+			struct lttng_userspace_probe_location *probe_location = NULL;
+			struct lttng_buffer_view probe_location_view;
+
+			probe_location_view = lttng_buffer_view_init(
+					comm_ext_at, 0,
+					ext_comm->userspace_probe_location_len);
+
+			/*
+			 * Create a temporary userspace probe location to
+			 * determine the size needed by a "flattened" version
+			 * of that same probe location.
+			 */
+			ret = lttng_userspace_probe_location_create_from_buffer(
+					&probe_location_view, &probe_location);
+			if (ret < 0) {
+				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto end;
+			}
+
+			ret = lttng_userspace_probe_location_flatten(
+					probe_location, NULL);
+			lttng_userspace_probe_location_destroy(probe_location);
+			if (ret < 0) {
+				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto end;
+			}
+
+			probe_storage_req = ret;
+			comm_ext_at += ext_comm->userspace_probe_location_len;
+			ret = 0;
+		}
+
+		storage_req += sizeof(struct lttng_event_extended);
+		storage_req += ext_comm->filter_len;
+		storage_req += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		/* Padding to ensure the flat probe is aligned. */
+		storage_req = ALIGN_TO(storage_req, sizeof(uint64_t));
+		storage_req += probe_storage_req;
 	}
 
-	return ret;
-error:
+	lttng_dynamic_buffer_init(&listing);
+	/*
+	 * We must ensure that "listing" is never resized so as to preserve
+	 * the validity of the flattened objects.
+	 */
+	ret = lttng_dynamic_buffer_set_capacity(&listing, storage_req);
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(&listing, reception_buffer,
+			nb_events * sizeof(struct lttng_event));
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto free_dynamic_buffer;
+	}
+
+	comm_ext_at = reception_buffer +
+			(nb_events * sizeof(struct lttng_event));
+	for (i = 0; i < nb_events; i++) {
+		struct lttng_event *event = (struct lttng_event *)
+			(listing.data + (sizeof(struct lttng_event) * i));
+		struct lttcomm_event_extended_header *ext_comm =
+			(struct lttcomm_event_extended_header *) comm_ext_at;
+		struct lttng_event_extended *event_extended =
+			(struct lttng_event_extended *)
+				(listing.data + listing.size);
+
+		/* Insert struct lttng_event_extended. */
+		ret = lttng_dynamic_buffer_set_size(&listing,
+				listing.size + sizeof(*event_extended));
+		if (ret) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto free_dynamic_buffer;
+		}
+		event->extended.ptr = event_extended;
+
+		comm_ext_at += sizeof(*ext_comm);
+
+		/* Insert filter expression. */
+		if (ext_comm->filter_len) {
+			event_extended->filter_expression = listing.data +
+					listing.size;
+			ret = lttng_dynamic_buffer_append(&listing, comm_ext_at,
+					ext_comm->filter_len);
+			if (ret) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto free_dynamic_buffer;
+			}
+			comm_ext_at += ext_comm->filter_len;
+		}
+
+		/* Insert exclusions. */
+		if (ext_comm->nb_exclusions) {
+			event_extended->exclusions.count =
+					ext_comm->nb_exclusions;
+			event_extended->exclusions.strings =
+					listing.data + listing.size;
+
+			ret = lttng_dynamic_buffer_append(&listing,
+					comm_ext_at,
+					ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN);
+			if (ret) {
+				ret = -LTTNG_ERR_NOMEM;
+			}
+			comm_ext_at += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
+		}
+
+		/* Insert padding to align to 64-bits. */
+		ret = lttng_dynamic_buffer_set_size(&listing,
+				ALIGN_TO(listing.size, sizeof(uint64_t)));
+		if (ret) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto free_dynamic_buffer;
+		}
+
+		/* Insert flattened userspace probe location. */
+		if (ext_comm->userspace_probe_location_len) {
+			struct lttng_userspace_probe_location *probe_location = NULL;
+			struct lttng_buffer_view probe_location_view;
+
+			probe_location_view = lttng_buffer_view_init(
+					comm_ext_at, 0,
+					ext_comm->userspace_probe_location_len);
+
+			ret = lttng_userspace_probe_location_create_from_buffer(
+					&probe_location_view, &probe_location);
+			if (ret < 0) {
+				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto free_dynamic_buffer;
+			}
+
+			event_extended->probe_location = (struct lttng_userspace_probe_location *)
+					(listing.data + listing.size);
+			ret = lttng_userspace_probe_location_flatten(
+					probe_location, &listing);
+			lttng_userspace_probe_location_destroy(probe_location);
+			if (ret < 0) {
+				ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+				goto free_dynamic_buffer;
+			}
+
+			comm_ext_at += ext_comm->userspace_probe_location_len;
+		}
+	}
+
+	/* Don't reset listing buffer as we return its content. */
+	*events = (struct lttng_event *) listing.data;
+	lttng_dynamic_buffer_init(&listing);
+	ret = (int) nb_events;
+free_dynamic_buffer:
+	lttng_dynamic_buffer_reset(&listing);
+end:
 	free(cmd_header);
-	free(*events);
-	return ret;
-}
-
-int lttng_event_get_filter_expression(struct lttng_event *event,
-	const char **filter_expression)
-{
-	int ret = 0;
-	struct lttcomm_event_extended_header *ext_header;
-
-	if (!event || !filter_expression) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ext_header = event->extended.ptr;
-
-	if (!ext_header) {
-		/*
-		 * This can happen since the lttng_event structure is
-		 * used for other tasks where this pointer is never set.
-		 */
-		*filter_expression = NULL;
-		goto end;
-	}
-
-	if (ext_header->filter_len) {
-		*filter_expression = ((const char *) (ext_header)) +
-				sizeof(*ext_header);
-	} else {
-		*filter_expression = NULL;
-	}
-
-end:
-	return ret;
-}
-
-int lttng_event_get_exclusion_name_count(struct lttng_event *event)
-{
-	int ret;
-	struct lttcomm_event_extended_header *ext_header;
-
-	if (!event) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ext_header = event->extended.ptr;
-	if (!ext_header) {
-		/*
-		 * This can happen since the lttng_event structure is
-		 * used for other tasks where this pointer is never set.
-		 */
-		ret = 0;
-		goto end;
-	}
-
-	if (ext_header->nb_exclusions > INT_MAX) {
-		ret = -LTTNG_ERR_OVERFLOW;
-		goto end;
-	}
-	ret = (int) ext_header->nb_exclusions;
-end:
-	return ret;
-}
-
-int lttng_event_get_exclusion_name(struct lttng_event *event,
-		size_t index, const char **exclusion_name)
-{
-	int ret = 0;
-	struct lttcomm_event_extended_header *ext_header;
-	void *at;
-
-	if (!event || !exclusion_name) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	ext_header = event->extended.ptr;
-	if (!ext_header) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	if (index >= ext_header->nb_exclusions) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end;
-	}
-
-	at = (void *) ext_header + sizeof(*ext_header);
-	at += ext_header->filter_len;
-	at += index * LTTNG_SYMBOL_NAME_LEN;
-	*exclusion_name = at;
-
-end:
+	free(reception_buffer);
 	return ret;
 }
 
