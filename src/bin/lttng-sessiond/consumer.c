@@ -1107,6 +1107,7 @@ int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE;
 
+	pthread_mutex_lock(consumer_sock->lock);
 	DBG3("Sending set_channel_rotate_pipe command to consumer");
 	ret = consumer_send_msg(consumer_sock, &msg);
 	if (ret < 0) {
@@ -1122,6 +1123,7 @@ int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
 
 	DBG2("Channel rotation pipe successfully sent");
 error:
+	pthread_mutex_unlock(consumer_sock->lock);
 	return ret;
 }
 
