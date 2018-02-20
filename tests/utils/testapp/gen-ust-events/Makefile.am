@@ -1,4 +1,5 @@
-AM_CPPFLAGS += -I$(top_srcdir)/tests/utils -I$(srcdir)
+AM_CPPFLAGS += -I$(top_srcdir)/tests/utils -I$(srcdir) \
+	-I$(top_srcdir)/tests/utils/testapp
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS = gen-ust-events

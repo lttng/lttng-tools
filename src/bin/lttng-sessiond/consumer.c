@@ -731,6 +731,8 @@ error:
 
 /*
  * Send file descriptor to consumer via sock.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd)
 {
@@ -739,6 +741,7 @@ int consumer_send_fds(struct consumer_socket *sock, int *fds, size_t nb_fd)
 	assert(fds);
 	assert(sock);
 	assert(nb_fd > 0);
+	assert(pthread_mutex_trylock(sock->lock) == EBUSY);
 
 	ret = lttcomm_send_fds_unix_sock(*sock->fd_ptr, fds, nb_fd);
 	if (ret < 0) {
@@ -754,6 +757,8 @@ error:
 
 /*
  * Consumer send communication message structure to consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_msg(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg)
@@ -762,6 +767,7 @@ int consumer_send_msg(struct consumer_socket *sock,
 
 	assert(msg);
 	assert(sock);
+	assert(pthread_mutex_trylock(sock->lock) == EBUSY);
 
 	ret = consumer_socket_send(sock, msg, sizeof(struct lttcomm_consumer_msg));
 	if (ret < 0) {
@@ -776,6 +782,8 @@ error:
 
 /*
  * Consumer send channel communication message structure to consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 int consumer_send_channel(struct consumer_socket *sock,
 		struct lttcomm_consumer_msg *msg)
@@ -990,6 +998,8 @@ error:
 /*
  * Send relayd socket to consumer associated with a session name.
  *
+ * The consumer socket lock must be held by the caller.
+ *
  * On success return positive value. On error, negative value.
  */
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
@@ -1064,6 +1074,7 @@ int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd_type = LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE;
 
+	pthread_mutex_lock(consumer_sock->lock);
 	DBG3("Sending set_channel_monitor_pipe command to consumer");
 	ret = consumer_send_msg(consumer_sock, &msg);
 	if (ret < 0) {
@@ -1079,6 +1090,7 @@ int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
 
 	DBG2("Channel monitoring pipe successfully sent");
 error:
+	pthread_mutex_unlock(consumer_sock->lock);
 	return ret;
 }
 
@@ -1436,7 +1448,9 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	}
 
 	health_code_update();
+	pthread_mutex_lock(socket->lock);
 	ret = consumer_send_msg(socket, &msg);
+	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		goto error;
 	}

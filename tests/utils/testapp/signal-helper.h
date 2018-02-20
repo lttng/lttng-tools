@@ -1,5 +1,5 @@
 /*
- * Copyright (C) - 2015 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright (C) - 2018 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -15,11 +15,43 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#ifndef TEST_UTILS_H
-#define TEST_UTILS_H
+#ifndef LTTNG_TESTAPP_SIGNAL_HELPER_H
+#define LTTNG_TESTAPP_SIGNAL_HELPER_H
 
-int usleep_safe(useconds_t usec);
-int create_file(const char *path);
-int wait_on_file(const char *path);
+#include <signal.h>
 
-#endif /* TEST_UTILS_H */
+static volatile int should_quit;
+
+static
+void sighandler(int sig)
+{
+	if (sig == SIGTERM) {
+		should_quit = 1;
+	}
+}
+
+static
+int set_signal_handler(void)
+{
+	int ret;
+	struct sigaction sa = {
+		.sa_flags = 0,
+		.sa_handler = sighandler,
+	};
+
+	ret = sigemptyset(&sa.sa_mask);
+	if (ret) {
+		perror("sigemptyset");
+		goto end;
+	}
+
+	ret = sigaction(SIGTERM, &sa, NULL);
+	if (ret) {
+		perror("sigaction");
+		goto end;
+	}
+end:
+	return ret;
+}
+
+#endif /* LTTNG_TESTAPP_SIGNAL_HELPER_H */

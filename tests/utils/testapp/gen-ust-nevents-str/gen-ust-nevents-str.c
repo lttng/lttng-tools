@@ -17,6 +17,7 @@
 
 #define _LGPL_SOURCE
 #include <stdio.h>
+#include "signal-helper.h"
 
 #define TRACEPOINT_DEFINE
 #include "tp.h"
@@ -26,6 +27,10 @@ int main(int argc, char **argv)
 	int count;
 	int i;
 	int arg_i;
+
+	if (set_signal_handler()) {
+		return 1;
+	}
 
 	if (argc <= 3) {
 		fprintf(stderr, "Usage: %s COUNT STRING [STRING]...\n",
@@ -47,6 +52,9 @@ int main(int argc, char **argv)
 		arg_i++;
 		if (arg_i == argc) {
 			arg_i = 2;
+		}
+		if (should_quit) {
+			break;
 		}
 	}
 

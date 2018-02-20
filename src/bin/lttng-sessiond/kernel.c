@@ -1029,12 +1029,10 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			pthread_mutex_lock(socket->lock);
 			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
 					nb_packets_per_stream);
-			pthread_mutex_unlock(socket->lock);
 			if (ret < 0) {
 				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 				(void) kernel_consumer_destroy_metadata(socket,
@@ -1044,11 +1042,9 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		}
 
 		/* Snapshot metadata, */
-		pthread_mutex_lock(socket->lock);
 		ret = consumer_snapshot_channel(socket, ksess->metadata->fd, output,
 				1, ksess->uid, ksess->gid,
 				DEFAULT_KERNEL_TRACE_DIR, wait, 0);
-		pthread_mutex_unlock(socket->lock);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			goto error_consumer;

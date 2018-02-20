@@ -79,6 +79,8 @@ most shells.
 Use the option:--list option without other arguments to list the
 available context field names.
 
+See the <<limitations,LIMITATIONS>> section below for a list of
+limitations to consider.
 
 include::common-cmd-options-head.txt[]
 
@@ -123,6 +125,12 @@ option:-t 'TYPE', option:--type='TYPE'::
 
 include::common-cmd-help-options.txt[]
 
+[[limitations]]
+LIMITATIONS
+-----------
+As of this version of LTTng, it is not possible to add context fields to
+a channel once its tracing session has been started (see man:lttng-start(1))
+at least once.
 
 include::common-cmd-footer.txt[]
 

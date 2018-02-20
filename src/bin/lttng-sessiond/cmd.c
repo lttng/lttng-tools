@@ -910,6 +910,8 @@ error:
 
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 static int send_consumer_relayd_socket(enum lttng_domain_type domain,
 		unsigned int session_id, struct lttng_uri *relayd_uri,
@@ -982,6 +984,8 @@ relayd_comm_error:
  * Send both relayd sockets to a specific consumer and domain.  This is a
  * helper function to facilitate sending the information to the consumer for a
  * session.
+ *
+ * The consumer socket lock must be held by the caller.
  */
 static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
@@ -1652,6 +1656,16 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	char *app_ctx_provider_name = NULL, *app_ctx_name = NULL;
+
+	/*
+	 * Don't try to add a context if the session has been started at
+	 * some point in time before. The tracer does not allow it and would
+	 * result in a corrupted trace.
+	 */
+	if (session->has_been_started) {
+		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto end;
+	}
 
 	if (ctx->ctx == LTTNG_EVENT_CONTEXT_APP_CONTEXT) {
 		app_ctx_provider_name = ctx->u.app_ctx.provider_name;
@@ -3709,10 +3723,12 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
 			socket, node.node) {
+		pthread_mutex_lock(socket->lock);
 		ret = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket,
 				session->name, session->hostname,
 				session->live_timer);
+		pthread_mutex_unlock(socket->lock);
 		if (ret != LTTNG_OK) {
 			rcu_read_unlock();
 			goto error;
