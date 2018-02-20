@@ -276,14 +276,8 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	assert(session->consumer);
 	assert(sock);
 
-	rcu_read_lock();
-	sess = session_find_by_id(session->id);
-	assert(session);
-
-	DBG("Sending stream %d of channel %s (fd: %d, key: %" PRIu64 ") in session %s to kernel consumer",
-			stream->fd, channel->channel->name, channel->fd, channel->key,
-			sess->name);
-	rcu_read_unlock();
+	DBG("Sending stream %d of channel %s to kernel consumer",
+			stream->fd, channel->channel->name);
 
 	/* Get consumer output pointer */
 	consumer = session->consumer;
