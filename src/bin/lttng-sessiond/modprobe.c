@@ -71,6 +71,7 @@ struct kern_modules_param kern_modules_probes_default[] = {
 	{ "lttng-probe-napi" },
 	{ "lttng-probe-net" },
 	{ "lttng-probe-power" },
+	{ "lttng-probe-preemptirq" },
 	{ "lttng-probe-printk" },
 	{ "lttng-probe-random" },
 	{ "lttng-probe-rcu" },
