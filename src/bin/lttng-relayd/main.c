@@ -2130,8 +2130,9 @@ static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret, send_ret;
 	struct relay_session *session = conn->session;
-	struct lttcomm_relayd_mkdir path_info;
+	struct lttcomm_relayd_mkdir *path_info = NULL;
 	struct lttcomm_relayd_generic_reply reply;
+	uint32_t received_length;
 	size_t len;
 	char *path = NULL;
 
@@ -2149,9 +2150,9 @@ static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	ret = conn->sock->ops->recvmsg(conn->sock, &path_info,
-			sizeof(path_info), 0);
-	if (ret < 0 || ret < sizeof(path_info)) {
+	ret = conn->sock->ops->recvmsg(conn->sock, &received_length,
+			sizeof(received_length), 0);
+	if (ret < 0 || ret < sizeof(received_length)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
@@ -2162,15 +2163,34 @@ static int relay_mkdir(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	len = lttng_strnlen(path_info.path, sizeof(path_info.path));
-	/* Ensure that NULL-terminated and fits in local path length. */
-	if (len == sizeof(path_info.path) || len >= LTTNG_PATH_MAX) {
+	len = be32toh(received_length);
+	/* Ensure that it fits in local path length. */
+	if (len >= LTTNG_PATH_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Path name too long");
 		goto end;
 	}
 
-	path = create_output_path(path_info.path);
+	path_info = zmalloc(sizeof(path_info->length) + len);
+	if (!path_info) {
+		PERROR("Alloc received path");
+		ret = -1;
+		goto end;
+	}
+
+	ret = conn->sock->ops->recvmsg(conn->sock, path_info->path, len, 0);
+	if (ret < 0 || ret < len) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_rename struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	path = create_output_path(path_info->path);
 	if (!path) {
 		ERR("Failed to create output path");
 		ret = -1;
@@ -2201,6 +2221,7 @@ end:
 
 end_no_session:
 	free(path);
+	free(path_info);
 	return ret;
 }
 

@@ -2416,15 +2416,15 @@ int domain_mkdir(struct consumer_output *output, struct ltt_session *session,
 		if (ret) {
 			ERR("Consumer mkdir");
 			ret = -1;
-			rcu_read_unlock();
-			goto end;
+			goto end_unlock;
 		}
 		break;
 	}
-	rcu_read_unlock();
 
 	ret = 0;
 
+end_unlock:
+	rcu_read_unlock();
 end:
 	free(path);
 	return ret;

@@ -945,22 +945,32 @@ error:
 int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 {
 	int ret;
-	struct lttcomm_relayd_mkdir msg;
+	struct lttcomm_relayd_mkdir *msg;
 	struct lttcomm_relayd_generic_reply reply;
+	size_t len;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);
 
 	DBG("Relayd mkdir path %s", path);
 
-	memset(&msg, 0, sizeof(msg));
-	if (lttng_strncpy(msg.path, path, sizeof(msg.path))) {
+	len = strnlen(path, PATH_MAX) + 1;
+	msg = zmalloc(sizeof(msg->length) + len);
+	if (!msg) {
+		PERROR("Alloc mkdir msg");
+		ret = -1;
+		goto error;
+	}
+	msg->length = htobe32(len);
+
+	if (lttng_strncpy(msg->path, path, len)) {
 		ret = -1;
 		goto error;
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_MKDIR, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(rsock, RELAYD_MKDIR, (void *) msg,
+			sizeof(msg->length) + len, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -985,6 +995,7 @@ int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 	DBG("Relayd mkdir completed successfully");
 
 error:
+	free(msg);
 	return ret;
 
 }

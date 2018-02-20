@@ -196,7 +196,9 @@ struct lttcomm_relayd_reset_metadata {
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_mkdir {
-	char path[LTTNG_PATH_MAX];
+	/* Includes trailing NULL */
+	uint32_t length;
+	char path[0];
 } LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */

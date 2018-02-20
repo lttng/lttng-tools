@@ -1576,6 +1576,10 @@ end:
 	return ret;
 }
 
+/*
+ * Ask the consumer to create a directory.
+ * Called with the socket lock held.
+ */
 int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 		struct consumer_output *output, char *path,
 		uid_t uid, gid_t gid)
