@@ -36,7 +36,6 @@
 /* Per-platform definitions of TCP socket options. */
 #if defined (__linux__)
 
-#define COMPAT_SOCKET_LEVEL SOL_TCP
 #define COMPAT_TCP_LEVEL SOL_TCP
 #define COMPAT_TCP_ABORT_THRESHOLD 0 /* Does not exist on linux. */
 #define COMPAT_TCP_KEEPIDLE TCP_KEEPIDLE
@@ -45,7 +44,6 @@
 
 #elif defined (__sun__) /* ! defined (__linux__) */
 
-#define COMPAT_SOCKET_LEVEL SOL_SOCKET
 #define COMPAT_TCP_LEVEL IPPROTO_TCP
 
 #ifdef TCP_KEEPALIVE_THRESHOLD
@@ -65,7 +63,6 @@
 
 #else /* ! defined (__linux__) && ! defined (__sun__) */
 
-#define COMPAT_SOCKET_LEVEL 0
 #define COMPAT_TCP_LEVEL 0
 #define COMPAT_TCP_ABORT_THRESHOLD 0
 #define COMPAT_TCP_KEEPIDLE 0
@@ -547,7 +544,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 		goto end;
 	}
 
-	ret = setsockopt(socket_fd, COMPAT_SOCKET_LEVEL, SO_KEEPALIVE, &val,
+	ret = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &val,
 			sizeof(val));
 	if (ret < 0) {
 		PERROR("setsockopt so_keepalive");
