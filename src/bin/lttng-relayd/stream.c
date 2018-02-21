@@ -361,6 +361,7 @@ void try_stream_close(struct relay_stream *stream)
 		 * a packet. Since those are sent in that order, we take
 		 * care of consumerd crashes.
 		 */
+		DBG("relay_index_close_partial_fd");
 		relay_index_close_partial_fd(stream);
 		/*
 		 * Use the highest net_seq_num we currently have pending
@@ -368,6 +369,7 @@ void try_stream_close(struct relay_stream *stream)
 		 * at -1ULL if we cannot find any index.
 		 */
 		stream->last_net_seq_num = relay_index_find_last(stream);
+		DBG("Updating stream->last_net_seq_num to %" PRIu64, stream->last_net_seq_num);
 		/* Fall-through into the next check. */
 	}
 

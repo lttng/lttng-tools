@@ -21,8 +21,9 @@
  */
 
 #include "lttng-relayd.h"
+#include <common/buffer-view.h>
 
-int cmd_recv_stream_2_1(struct relay_connection *conn,
+int cmd_recv_stream_2_1(const struct lttng_buffer_view *payload,
 		char **path_name, char **channel_name);
 
 #endif /* RELAYD_CMD_2_1_H */

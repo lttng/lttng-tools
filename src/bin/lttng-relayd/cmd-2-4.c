@@ -27,10 +27,10 @@
 #include <common/compat/string.h>
 #include <lttng/constant.h>
 
-#include "cmd-generic.h"
+#include "cmd-2-4.h"
 #include "lttng-relayd.h"
 
-int cmd_create_session_2_4(struct relay_connection *conn,
+int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,
 		uint32_t *live_timer, bool *snapshot)
 {
@@ -38,11 +38,14 @@ int cmd_create_session_2_4(struct relay_connection *conn,
 	struct lttcomm_relayd_create_session_2_4 session_info;
 	size_t len;
 
-	ret = cmd_recv(conn->sock, &session_info, sizeof(session_info));
-	if (ret < 0) {
-		ERR("Unable to recv session info version 2.4");
+	if (payload->size < sizeof(session_info)) {
+		ERR("Unexpected payload size in \"cmd_create_session_2_4\": expected >= %zu bytes, got %zu bytes",
+				sizeof(session_info), payload->size);
+		ret = -1;
 		goto error;
 	}
+	memcpy(&session_info, payload->data, sizeof(session_info));
+
 	len = lttng_strnlen(session_info.session_name, sizeof(session_info.session_name));
 	/* Ensure that NULL-terminated and fits in local filename length. */
 	if (len == sizeof(session_info.session_name) || len >= LTTNG_NAME_MAX) {

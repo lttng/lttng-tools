@@ -384,18 +384,22 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 		len_last = iov[0].iov_len;
 		ret = recvmsg(sock->fd, &msg, flags);
 		if (ret > 0) {
+			if (flags & MSG_DONTWAIT) {
+				goto end;
+			}
 			iov[0].iov_base += ret;
 			iov[0].iov_len -= ret;
 			assert(ret <= len_last);
 		}
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
+
 	if (ret < 0) {
 		PERROR("recvmsg inet");
 	} else if (ret > 0) {
 		ret = len;
 	}
 	/* Else ret = 0 meaning an orderly shutdown. */
-
+end:
 	return ret;
 }
 

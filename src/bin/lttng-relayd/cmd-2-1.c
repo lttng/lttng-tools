@@ -25,14 +25,13 @@
 #include <common/compat/string.h>
 #include <lttng/constant.h>
 
-#include "cmd-generic.h"
 #include "cmd-2-1.h"
 #include "utils.h"
 
 /*
  * cmd_recv_stream_2_1 allocates path_name and channel_name.
  */
-int cmd_recv_stream_2_1(struct relay_connection *conn,
+int cmd_recv_stream_2_1(const struct lttng_buffer_view *payload,
 		char **ret_path_name, char **ret_channel_name)
 {
 	int ret;
@@ -41,11 +40,13 @@ int cmd_recv_stream_2_1(struct relay_connection *conn,
 	char *channel_name = NULL;
 	size_t len;
 
-	ret = cmd_recv(conn->sock, &stream_info, sizeof(stream_info));
-	if (ret < 0) {
-		ERR("Unable to recv stream version 2.1");
+	if (payload->size < sizeof(stream_info)) {
+		ERR("Unexpected payload size in \"cmd_recv_stream_2_1\": expected >= %zu bytes, got %zu bytes",
+				sizeof(stream_info), payload->size);
+		ret = -1;
 		goto error;
 	}
+	memcpy(&stream_info, payload->data, sizeof(stream_info));
 
 	len = lttng_strnlen(stream_info.pathname, sizeof(stream_info.pathname));
 	/* Ensure that NULL-terminated and fits in local filename length. */

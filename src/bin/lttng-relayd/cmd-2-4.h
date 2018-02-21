@@ -21,8 +21,9 @@
  */
 
 #include "lttng-relayd.h"
+#include <common/buffer-view.h>
 
-int cmd_create_session_2_4(struct relay_connection *conn,
+int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,
 		uint32_t *live_timer, bool *snapshot);
 

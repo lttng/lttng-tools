@@ -20,7 +20,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "cmd-generic.h"
 #include "cmd-2-1.h"
 #include "cmd-2-2.h"
 #include "cmd-2-4.h"

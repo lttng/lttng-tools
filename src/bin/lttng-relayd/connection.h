@@ -29,6 +29,8 @@
 
 #include <common/hashtable/hashtable.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/sessiond-comm/relayd.h>
+#include <common/dynamic-buffer.h>
 
 #include "session.h"
 
@@ -38,6 +40,36 @@ enum connection_type {
 	RELAY_CONTROL               = 2,
 	RELAY_VIEWER_COMMAND        = 3,
 	RELAY_VIEWER_NOTIFICATION   = 4,
+};
+
+enum data_connection_state {
+	DATA_CONNECTION_STATE_RECEIVE_HEADER = 0,
+	DATA_CONNECTION_STATE_RECEIVE_PAYLOAD = 1,
+};
+
+enum ctrl_connection_state {
+	CTRL_CONNECTION_STATE_RECEIVE_HEADER = 0,
+	CTRL_CONNECTION_STATE_RECEIVE_PAYLOAD = 1,
+};
+
+struct data_connection_state_receive_header {
+	uint64_t received, left_to_receive;
+	char header_reception_buffer[sizeof(struct lttcomm_relayd_data_hdr)];
+};
+
+struct data_connection_state_receive_payload {
+	uint64_t received, left_to_receive;
+	struct lttcomm_relayd_data_hdr header;
+	bool rotate_index;
+};
+
+struct ctrl_connection_state_receive_header {
+	uint64_t received, left_to_receive;
+};
+
+struct ctrl_connection_state_receive_payload {
+	uint64_t received, left_to_receive;
+	struct lttcomm_relayd_hdr header;
 };
 
 /*
@@ -87,12 +119,31 @@ struct relay_connection {
 	bool in_socket_ht;
 	struct lttng_ht *socket_ht;	/* HACK: Contained within this hash table. */
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+
+	union {
+		struct {
+			enum data_connection_state state_id;
+			union {
+				struct data_connection_state_receive_header receive_header;
+				struct data_connection_state_receive_payload receive_payload;
+			} state;
+		} data;
+		struct {
+			enum ctrl_connection_state state_id;
+			union {
+				struct ctrl_connection_state_receive_header receive_header;
+				struct ctrl_connection_state_receive_payload receive_payload;
+			} state;
+			struct lttng_dynamic_buffer reception_buffer;
+		} ctrl;
+	} protocol;
 };
 
 struct relay_connection *connection_create(struct lttcomm_sock *sock,
 		enum connection_type type);
 struct relay_connection *connection_get_by_sock(struct lttng_ht *relay_connections_ht,
 		int sock);
+int connection_reset_protocol_state(struct relay_connection *connection);
 bool connection_get(struct relay_connection *connection);
 void connection_put(struct relay_connection *connection);
 void connection_ht_add(struct lttng_ht *relay_connections_ht,
