@@ -2381,6 +2381,7 @@ static int relay_rotate_session_stream(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	size_t len;
+	char *new_pathname = NULL;
 
 	DBG("Rotate stream received");
 
@@ -2396,9 +2397,15 @@ static int relay_rotate_session_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
+	memset(&stream_info, 0, sizeof(struct lttcomm_relayd_rotate_stream));
+
+	/*
+	 * Receive the struct up to the new_pathname member since we don't know
+	 * its size yet.
+	 */
 	ret = conn->sock->ops->recvmsg(conn->sock, &stream_info,
-			sizeof(stream_info), 0);
-	if (ret < sizeof(stream_info)) {
+			offsetof(struct lttcomm_relayd_rotate_stream, new_pathname), 0);
+	if (ret < offsetof(struct lttcomm_relayd_rotate_stream, new_pathname)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
@@ -2415,20 +2422,38 @@ static int relay_rotate_session_stream(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	len = lttng_strnlen(stream_info.new_pathname,
-			sizeof(stream_info.new_pathname));
-	/* Ensure that NULL-terminated and fits in local filename length. */
-	if (len == sizeof(stream_info.new_pathname) || len >= LTTNG_NAME_MAX) {
+	len = be32toh(stream_info.pathname_length);
+	/* Ensure it fits in local filename length. */
+	if (len >= LTTNG_NAME_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Path name too long");
 		goto end;
+	}
+
+	new_pathname = zmalloc(len * sizeof(char));
+	if (!new_pathname) {
+		PERROR("Alloc new pathname");
+		ret = -1;
+		goto end;
+	}
+
+	ret = conn->sock->ops->recvmsg(conn->sock, new_pathname, len, 0);
+	if (ret < len) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_stream struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
 	}
 
 	pthread_mutex_lock(&stream->lock);
 
 	/* Update the trace path (just the folder, the stream name does not change). */
 	free(stream->path_name);
-	stream->path_name = create_output_path(stream_info.new_pathname);
+	stream->path_name = create_output_path(new_pathname);
 	if (!stream->path_name) {
 		ERR("Failed to create a new output path");
 		goto end_stream_unlock;
@@ -2475,6 +2500,7 @@ end:
 	}
 
 end_no_session:
+	free(new_pathname);
 	return ret;
 }
 

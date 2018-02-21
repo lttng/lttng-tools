@@ -199,7 +199,10 @@ struct lttcomm_relayd_rotate_stream {
 	uint64_t stream_id;
 	uint64_t rotate_at_seq_num;
 	uint64_t new_chunk_id;
-	char new_pathname[LTTNG_PATH_MAX];
+	/* Includes trailing NULL. */
+	uint32_t pathname_length;
+	/* Must be the last member of this structure. */
+	char new_pathname[0];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_rotate_rename {

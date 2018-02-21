@@ -22,6 +22,7 @@
 
 #include <common/common.h>
 #include <common/utils.h>
+#include <common/compat/endian.h>
 
 #include "lttng-relayd.h"
 #include "stream.h"
