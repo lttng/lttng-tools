@@ -330,6 +330,7 @@ int cmd_enable_channels(int argc, const char **argv)
 	static poptContext pc;
 	char *session_name = NULL;
 	char *opt_arg = NULL;
+	const char *leftover = NULL;
 
 	init_channel_config();
 
@@ -540,6 +541,14 @@ int cmd_enable_channels(int argc, const char **argv)
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name.\n");
+		ret = CMD_ERROR;
+		success = 0;
+		goto mi_closing;
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
 		ret = CMD_ERROR;
 		success = 0;
 		goto mi_closing;

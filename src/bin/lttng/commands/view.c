@@ -409,6 +409,7 @@ int cmd_view(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
 	static poptContext pc;
+	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -432,6 +433,13 @@ int cmd_view(int argc, const char **argv)
 	}
 
 	opt_session_name = (char*) poptGetArg(pc);
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
+	}
 
 	ret = view_trace();
 

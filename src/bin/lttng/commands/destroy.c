@@ -168,6 +168,7 @@ int cmd_destroy(int argc, const char **argv)
 	int ret = CMD_SUCCESS , i, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *leftover = NULL;
 
 	struct lttng_session *sessions;
 	int count;
@@ -272,6 +273,14 @@ int cmd_destroy(int argc, const char **argv)
 			success = 0;
 			goto mi_closing;
 		}
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		success = 0;
+		goto mi_closing;
 	}
 
 mi_closing:

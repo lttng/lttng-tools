@@ -892,6 +892,7 @@ int cmd_add_context(int argc, const char **argv)
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
 	char *session_name = NULL;
+	const char *leftover = NULL;
 
 	if (argc < 2) {
 		ret = CMD_ERROR;
@@ -936,6 +937,13 @@ int cmd_add_context(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace +

@@ -1691,7 +1691,7 @@ end:
 int cmd_list(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS;
-	const char *session_name;
+	const char *session_name, *leftover = NULL;
 	static poptContext pc;
 	struct lttng_domain domain;
 	struct lttng_domain *domains = NULL;
@@ -1751,6 +1751,13 @@ int cmd_list(int argc, const char **argv)
 	/* Get session name (trailing argument) */
 	session_name = poptGetArg(pc);
 	DBG2("Session name: %s", session_name);
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
+	}
 
 	if (opt_kernel) {
 		domain.type = LTTNG_DOMAIN_KERNEL;

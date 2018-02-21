@@ -210,6 +210,7 @@ int cmd_disable_channels(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -240,6 +241,13 @@ int cmd_disable_channels(int argc, const char **argv)
 	opt_channels = (char*) poptGetArg(pc);
 	if (opt_channels == NULL) {
 		ERR("Missing channel name(s).\n");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
 		ret = CMD_ERROR;
 		goto end;
 	}

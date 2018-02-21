@@ -157,6 +157,7 @@ int cmd_load(int argc, const char **argv)
 	poptContext pc;
 	struct lttng_load_session_attr *session_attr = NULL;
 	char *input_path = NULL;
+	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, load_opts, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -198,6 +199,13 @@ int cmd_load(int argc, const char **argv)
 			/* Default to load_all */
 			opt_load_all = 1;
 		}
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */
