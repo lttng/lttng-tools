@@ -328,6 +328,7 @@ int cmd_disable_events(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *leftover = NULL;
 	int event_type = -1;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -394,6 +395,13 @@ int cmd_disable_events(int argc, const char **argv)
 	opt_event_list = (char*) poptGetArg(pc);
 	if (opt_event_list == NULL && opt_disable_all == 0) {
 		ERR("Missing event name(s).\n");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
 		ret = CMD_ERROR;
 		goto end;
 	}
