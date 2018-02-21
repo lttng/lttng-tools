@@ -2235,9 +2235,10 @@ static int relay_rotate_rename(struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret, send_ret;
 	struct relay_session *session = conn->session;
-	struct lttcomm_relayd_rotate_rename stream_info;
 	struct lttcomm_relayd_generic_reply reply;
-	size_t len;
+	uint32_t received_current_len, received_new_len;
+	char *received_current_path = NULL, *received_new_path = NULL;
+	uint32_t current_len, new_len;
 	char *old = NULL, *new = NULL;
 
 	DBG("Rotate rename received");
@@ -2254,9 +2255,9 @@ static int relay_rotate_rename(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	ret = conn->sock->ops->recvmsg(conn->sock, &stream_info,
-			sizeof(stream_info), 0);
-	if (ret < 0 || ret < sizeof(stream_info)) {
+	ret = conn->sock->ops->recvmsg(conn->sock, &received_current_len,
+			sizeof(received_current_len), 0);
+	if (ret < 0 || ret < sizeof(received_current_len)) {
 		if (ret == 0) {
 			/* Orderly shutdown. Not necessary to print an error. */
 			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
@@ -2267,32 +2268,79 @@ static int relay_rotate_rename(struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	len = lttng_strnlen(stream_info.current_path,
-			sizeof(stream_info.current_path));
-	/* Ensure that NULL-terminated and fits in local filename length. */
-	if (len == sizeof(stream_info.current_path) || len >= LTTNG_PATH_MAX) {
+	ret = conn->sock->ops->recvmsg(conn->sock, &received_new_len,
+			sizeof(received_new_len), 0);
+	if (ret < 0 || ret < sizeof(received_new_len)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_rename struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	current_len = be32toh(received_current_len);
+	new_len = be32toh(received_new_len);
+
+	/* Ensure it fits in local filename length. */
+	if (current_len >= LTTNG_PATH_MAX || new_len >= LTTNG_PATH_MAX) {
 		ret = -ENAMETOOLONG;
 		ERR("Path name too long");
 		goto end;
 	}
 
-	len = lttng_strnlen(stream_info.new_path,
-			sizeof(stream_info.new_path));
-	/* Ensure that NULL-terminated and fits in local filename length. */
-	if (len == sizeof(stream_info.new_path) || len >= LTTNG_PATH_MAX) {
-		ret = -ENAMETOOLONG;
-		ERR("Path name too long");
+	/* We need to add the \0 here since the sender does not include it. */
+	received_current_path = zmalloc((current_len + 1) * sizeof(char));
+	if (!received_current_path) {
+		PERROR("Alloc received current path");
+		ret = -1;
 		goto end;
 	}
 
-	old = create_output_path(stream_info.current_path);
+	ret = conn->sock->ops->recvmsg(conn->sock, received_current_path,
+			current_len * sizeof(char), 0);
+	if (ret < 0 || ret < current_len * sizeof(char)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_rename struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	/* We need to add the \0 here since the sender does not include it. */
+	received_new_path = zmalloc((new_len + 1) * sizeof(char));
+	if (!received_new_path) {
+		PERROR("Alloc received new path");
+		ret = -1;
+		goto end;
+	}
+
+	ret = conn->sock->ops->recvmsg(conn->sock, received_new_path,
+			new_len * sizeof(char), 0);
+	if (ret < 0 || ret < new_len * sizeof(char)) {
+		if (ret == 0) {
+			/* Orderly shutdown. Not necessary to print an error. */
+			DBG("Socket %d did an orderly shutdown", conn->sock->fd);
+		} else {
+			ERR("Relay didn't receive valid rotate_rename struct size : %d", ret);
+		}
+		ret = -1;
+		goto end_no_session;
+	}
+
+	old = create_output_path(received_current_path);
 	if (!old) {
 		ERR("Failed to create current output path");
 		ret = -1;
 		goto end;
 	}
 
-	new = create_output_path(stream_info.new_path);
+	new = create_output_path(received_new_path);
 	if (!new) {
 		ERR("Failed to create new output path");
 		ret = -1;
@@ -2333,6 +2381,8 @@ end:
 end_no_session:
 	free(old);
 	free(new);
+	free(received_current_path);
+	free(received_new_path);
 	return ret;
 }
 

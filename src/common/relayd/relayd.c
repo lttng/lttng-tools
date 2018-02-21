@@ -946,27 +946,44 @@ int relayd_rotate_rename(struct lttcomm_relayd_sock *rsock,
 		const char *current_path, const char *new_path)
 {
 	int ret;
-	struct lttcomm_relayd_rotate_rename msg;
+	struct lttcomm_relayd_rotate_rename *msg = NULL;
 	struct lttcomm_relayd_generic_reply reply;
+	size_t current_len, new_len;
+	int msg_len;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);
 
 	DBG("Relayd rename chunk %s to %s", current_path, new_path);
 
-	memset(&msg, 0, sizeof(msg));
-	if (lttng_strncpy(msg.current_path, current_path,
-				sizeof(msg.current_path))) {
+	/*
+	 * We don't take into account the \0 here because the two strings are
+	 * concatenated in one field, the receiver appends the \0.
+	 */
+	current_len = strnlen(current_path, PATH_MAX);
+	new_len = strnlen(new_path, PATH_MAX);
+
+	msg_len = sizeof(msg->current_length) + sizeof(msg->new_length) +
+			current_len + new_len;
+	msg = zmalloc(msg_len);
+	if (!msg) {
+		PERROR("Alloc mkdir msg");
 		ret = -1;
 		goto error;
 	}
-	if (lttng_strncpy(msg.new_path, new_path, sizeof(msg.new_path))) {
+	msg->current_length = htobe32(current_len);
+	msg->new_length = htobe32(new_len);
+
+	ret = snprintf(msg->current_new_path, 2 * PATH_MAX, "%s%s",
+			current_path, new_path);
+	if (ret < 0 || ret > 2 * PATH_MAX) {
+		PERROR("format current and new paths");
 		ret = -1;
 		goto error;
 	}
 
 	/* Send command */
-	ret = send_command(rsock, RELAYD_ROTATE_RENAME, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(rsock, RELAYD_ROTATE_RENAME, (void *) msg, msg_len, 0);
 	if (ret < 0) {
 		goto error;
 	}
@@ -991,6 +1008,7 @@ int relayd_rotate_rename(struct lttcomm_relayd_sock *rsock,
 	DBG("Relayd rotate rename completed successfully");
 
 error:
+	free(msg);
 	return ret;
 }
 
@@ -1049,5 +1067,4 @@ int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
 error:
 	free(msg);
 	return ret;
-
 }

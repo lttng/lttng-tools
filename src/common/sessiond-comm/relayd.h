@@ -196,8 +196,10 @@ struct lttcomm_relayd_reset_metadata {
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_rotate_rename {
-	char current_path[LTTNG_PATH_MAX];
-	char new_path[LTTNG_PATH_MAX];
+	uint32_t current_length;
+	uint32_t new_length;
+	/* Concatenation of the current path and the new path, no \0. */
+	char current_new_path[0];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_mkdir {
