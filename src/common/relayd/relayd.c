@@ -947,31 +947,42 @@ int relayd_rotate_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 		uint64_t seq_num)
 {
 	int ret;
-	struct lttcomm_relayd_rotate_stream msg;
+	struct lttcomm_relayd_rotate_stream *msg = NULL;
 	struct lttcomm_relayd_generic_reply reply;
+	size_t len;
+	int msg_len;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);
 
 	DBG("Relayd rotating stream id %" PRIu64, stream_id);
 
-	memset(&msg, 0, sizeof(msg));
-	msg.stream_id = htobe64(stream_id);
-	msg.new_chunk_id = htobe64(new_chunk_id);
-	/*
-	 * The seq_num is invalid for metadata streams, but it is ignored on
-	 * the relay.
-	 */
-	msg.rotate_at_seq_num = htobe64(seq_num);
-	if (lttng_strncpy(msg.new_pathname, new_pathname,
-				sizeof(msg.new_pathname))) {
+	/* Account for the trailing NULL. */
+	len = strnlen(new_pathname, LTTNG_PATH_MAX) + 1;
+	msg_len = offsetof(struct lttcomm_relayd_rotate_stream, new_pathname) + len;
+	msg = zmalloc(msg_len);
+	if (!msg) {
+		PERROR("alloc rotate stream");
+		ret = -1;
+		goto error;
+	}
+
+	if (lttng_strncpy(msg->new_pathname, new_pathname, len)) {
 		ret = -1;
 		ERR("Copy new pathname");
 		goto error;
 	}
+	msg->pathname_length = htobe32(len);
+	msg->stream_id = htobe64(stream_id);
+	msg->new_chunk_id = htobe64(new_chunk_id);
+	/*
+	 * The seq_num is invalid for metadata streams, but it is ignored on
+	 * the relay.
+	 */
+	msg->rotate_at_seq_num = htobe64(seq_num);
 
 	/* Send command. */
-	ret = send_command(rsock, RELAYD_ROTATE_STREAM, (void *) &msg, sizeof(msg), 0);
+	ret = send_command(rsock, RELAYD_ROTATE_STREAM, (void *) msg, msg_len, 0);
 	if (ret < 0) {
 		ERR("Send rotate command");
 		goto error;
@@ -998,6 +1009,7 @@ int relayd_rotate_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	DBG("Relayd rotated stream id %" PRIu64 " successfully", stream_id);
 
 error:
+	free(msg);
 	return ret;
 }
 
