@@ -174,6 +174,9 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 		goto success;
 	}
 
+	DBG("Asynchronous connect for sock %d, performing polling with"
+			" timeout: %lums", sock->fd, timeout);
+
 	/*
 	 * Perform poll loop following EINPROGRESS recommendation from
 	 * connect(2) man page.
@@ -200,12 +203,15 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 			ret = getsockopt(sock->fd, SOL_SOCKET,
 				SO_ERROR, &optval, &optval_len);
 			if (ret) {
+				PERROR("getsockopt");
 				goto error;
 			}
 			if (!optval) {
 				connect_ret = 0;
 				goto success;
 			} else {
+				/* Get actual connect() errno from opt_val */
+				errno = optval;
 				goto error;
 			}
 		}
