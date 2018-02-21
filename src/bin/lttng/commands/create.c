@@ -625,6 +625,7 @@ int cmd_create(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	char *opt_arg = NULL;
+	const char *leftover = NULL;
 	static poptContext pc;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
@@ -718,6 +719,13 @@ int cmd_create(int argc, const char **argv)
 		}
 	}
 	opt_session_name = (char*) poptGetArg(pc);
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
+	}
 
 	command_ret = create_session();
 	if (command_ret) {
