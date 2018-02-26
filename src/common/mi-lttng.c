@@ -375,6 +375,14 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 		return config_event_context_hostname;
 	case LTTNG_EVENT_CONTEXT_IP:
 		return config_event_context_ip;
+	case LTTNG_EVENT_CONTEXT_INTERRUPTIBLE:
+		return config_event_context_interruptible;
+	case LTTNG_EVENT_CONTEXT_PREEMPTIBLE:
+		return config_event_context_preemptible;
+	case LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE:
+		return config_event_context_need_reschedule;
+	case LTTNG_EVENT_CONTEXT_MIGRATABLE:
+		return config_event_context_migratable;
 	default:
 		return NULL;
 	}
