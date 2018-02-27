@@ -21,6 +21,7 @@ regression/tools/regen-statedump/test_ust
 regression/ust/before-after/test_before_after
 regression/ust/buffers-pid/test_buffers_pid
 regression/ust/multi-session/test_multi_session
+regression/ust/multi-lib/test_multi_lib
 regression/ust/nprocesses/test_nprocesses
 regression/ust/overlap/test_overlap
 regression/ust/java-jul/test_java_jul
