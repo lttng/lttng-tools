@@ -39,10 +39,12 @@
 #include <lttng/action/notify.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/buffer-usage.h>
+#include <lttng/condition/session-consumed-size.h>
 #include <lttng/condition/evaluation.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/rotation.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -20,13 +20,13 @@
 
 #include <stdint.h>
 
-unsigned long hash_key_ulong(void *_key, unsigned long seed);
-unsigned long hash_key_u64(void *_key, unsigned long seed);
-unsigned long hash_key_str(void *key, unsigned long seed);
-unsigned long hash_key_two_u64(void *key, unsigned long seed);
-int hash_match_key_ulong(void *key1, void *key2);
-int hash_match_key_u64(void *key1, void *key2);
-int hash_match_key_str(void *key1, void *key2);
-int hash_match_key_two_u64(void *key1, void *key2);
+unsigned long hash_key_ulong(const void *_key, unsigned long seed);
+unsigned long hash_key_u64(const void *_key, unsigned long seed);
+unsigned long hash_key_str(const void *key, unsigned long seed);
+unsigned long hash_key_two_u64(const void *key, unsigned long seed);
+int hash_match_key_ulong(const void *key1, const void *key2);
+int hash_match_key_u64(const void *key1, const void *key2);
+int hash_match_key_str(const void *key1, const void *key2);
+int hash_match_key_two_u64(const void *key1, const void *key2);
 
 #endif /* _LTT_HT_UTILS_H */

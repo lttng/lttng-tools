@@ -68,6 +68,7 @@ static int destroy_session(struct lttng_session *session)
 {
 	int ret;
 	char *session_name = NULL;
+	char *chunk_path = NULL;
 	bool session_was_stopped;
 
 	ret = lttng_stop_tracing_no_wait(session->name);
@@ -111,6 +112,17 @@ static int destroy_session(struct lttng_session *session)
 		 * already saw them when stopping the trace.
 		 */
 		print_session_stats(session->name);
+
+		ret = lttng_rotation_get_current_path(session->name, &chunk_path);
+		if (ret == 0) {
+			MSG("Current chunk directory: %s", chunk_path);
+			free(chunk_path);
+		} else if (ret < 0) {
+			ERR("Failed to get current chunk directory");
+		} else {
+			/* No rotation occured for this session, reset ret to 0. */
+			ret = 0;
+		}
 	}
 
 	ret = lttng_destroy_session_no_wait(session->name);

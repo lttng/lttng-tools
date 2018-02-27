@@ -80,6 +80,9 @@ extern const char * const mi_lttng_element_command_success;
 extern const char * const mi_lttng_element_command_track;
 extern const char * const mi_lttng_element_command_untrack;
 extern const char * const mi_lttng_element_command_version;
+extern const char * const mi_lttng_element_command_rotate;
+extern const char * const mi_lttng_element_command_enable_rotation;
+extern const char * const mi_lttng_element_command_disable_rotation;
 
 /* Strings related to version command */
 extern const char * const mi_lttng_element_version;
@@ -184,6 +187,14 @@ extern const char * const mi_lttng_element_snapshots;
 
 /* String related to track/untrack command */
 const char * const mi_lttng_element_track_untrack_all_wildcard;
+
+LTTNG_HIDDEN const char * const mi_lttng_element_session_name;
+
+/* String related to rotate command */
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotations;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule;
 
 /* Utility string function  */
 const char *mi_lttng_loglevel_string(int value, enum lttng_domain_type domain);

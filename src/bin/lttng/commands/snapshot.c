@@ -510,6 +510,7 @@ int cmd_snapshot(int argc, const char **argv)
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
 	char *session_name = NULL;
 	static poptContext pc;
+	const char *leftover = NULL;
 
 	pc = poptGetContext(NULL, argc, argv, snapshot_opts, 0);
 	poptReadDefaultConfig(pc, 0);
@@ -569,6 +570,13 @@ int cmd_snapshot(int argc, const char **argv)
 			ret = CMD_UNDEFINED;
 			goto end;
 		}
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	if (!opt_session_name) {

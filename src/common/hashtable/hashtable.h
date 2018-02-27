@@ -26,7 +26,7 @@
 
 extern unsigned long lttng_ht_seed;
 
-typedef unsigned long (*hash_fct)(void *_key, unsigned long seed);
+typedef unsigned long (*hash_fct)(const void *_key, unsigned long seed);
 typedef cds_lfht_match_fct hash_match_fct;
 
 enum lttng_ht_type {

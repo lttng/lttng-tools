@@ -22,6 +22,7 @@
 
 #include <common/common.h>
 #include <common/utils.h>
+#include <common/compat/endian.h>
 
 #include "lttng-relayd.h"
 #include "stream.h"
@@ -353,4 +354,59 @@ uint64_t relay_index_find_last(struct relay_stream *stream)
 	}
 	rcu_read_unlock();
 	return net_seq_num;
+}
+
+/*
+ * Update the index file of an already existing relay_index.
+ * Substracts the data offset by the old_data_offset.
+ */
+static
+int relay_index_switch_file(struct relay_index *index,
+		struct lttng_index_file *new_index_file, uint64_t old_data_offset)
+{
+	int ret = 0;
+	uint64_t offset;
+
+	pthread_mutex_lock(&index->lock);
+	if (!index->index_file) {
+		ERR("No index_file");
+		ret = 0;
+		goto end;
+	}
+
+	lttng_index_file_put(index->index_file);
+	lttng_index_file_get(new_index_file);
+	index->index_file = new_index_file;
+	offset = be64toh(index->index_data.offset);
+	index->index_data.offset = htobe64(offset - old_data_offset);
+
+end:
+	pthread_mutex_unlock(&index->lock);
+	return ret;
+}
+
+/*
+ * Switch the index file of all pending indexes for a stream and update the
+ * data offset by substracting the last safe position.
+ * Stream lock must be held.
+ */
+int relay_index_switch_all_file(struct relay_stream *stream)
+{
+	struct lttng_ht_iter iter;
+	struct relay_index *index;
+	int ret = 0;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
+			index, index_n.node) {
+		DBG("Update index to FD %d", stream->index_file->fd);
+		ret = relay_index_switch_file(index, stream->index_file,
+				stream->pos_after_last_complete_data_index);
+		if (ret) {
+			goto end;
+		}
+	}
+end:
+	rcu_read_unlock();
+	return ret;
 }

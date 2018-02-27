@@ -96,6 +96,7 @@ static int stop_tracing(void)
 {
 	int ret;
 	char *session_name;
+	char *chunk_path;
 
 	if (opt_session_name == NULL) {
 		session_name = get_session_name();
@@ -152,6 +153,16 @@ static int stop_tracing(void)
 		if (ret) {
 			goto free_name;
 		}
+	}
+	ret = lttng_rotation_get_current_path(session_name, &chunk_path);
+	if (ret == 0) {
+		MSG("Current trace chunk directory: %s", chunk_path);
+		free(chunk_path);
+	} else if (ret < 0) {
+		ERR("Failed to get current trace chunk directory");
+	} else {
+		/* No rotation occured for this session, reset ret to 0. */
+		ret = 0;
 	}
 
 free_name:

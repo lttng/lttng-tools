@@ -941,3 +941,244 @@ int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 error:
 	return ret;
 }
+
+int relayd_rotate_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
+		const char *new_pathname, uint64_t new_chunk_id,
+		uint64_t seq_num)
+{
+	int ret;
+	struct lttcomm_relayd_rotate_stream *msg = NULL;
+	struct lttcomm_relayd_generic_reply reply;
+	size_t len;
+	int msg_len;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd rotating stream id %" PRIu64, stream_id);
+
+	/* Account for the trailing NULL. */
+	len = strnlen(new_pathname, LTTNG_PATH_MAX) + 1;
+	msg_len = offsetof(struct lttcomm_relayd_rotate_stream, new_pathname) + len;
+	msg = zmalloc(msg_len);
+	if (!msg) {
+		PERROR("alloc rotate stream");
+		ret = -1;
+		goto error;
+	}
+
+	if (lttng_strncpy(msg->new_pathname, new_pathname, len)) {
+		ret = -1;
+		ERR("Copy new pathname");
+		goto error;
+	}
+	msg->pathname_length = htobe32(len);
+	msg->stream_id = htobe64(stream_id);
+	msg->new_chunk_id = htobe64(new_chunk_id);
+	/*
+	 * The seq_num is invalid for metadata streams, but it is ignored on
+	 * the relay.
+	 */
+	msg->rotate_at_seq_num = htobe64(seq_num);
+
+	/* Send command. */
+	ret = send_command(rsock, RELAYD_ROTATE_STREAM, (void *) msg, msg_len, 0);
+	if (ret < 0) {
+		ERR("Send rotate command");
+		goto error;
+	}
+
+	/* Receive response. */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		ERR("Receive rotate reply");
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd rotate stream replied error %d", reply.ret_code);
+	} else {
+		/* Success. */
+		ret = 0;
+	}
+
+	DBG("Relayd rotated stream id %" PRIu64 " successfully", stream_id);
+
+error:
+	free(msg);
+	return ret;
+}
+
+int relayd_rotate_rename(struct lttcomm_relayd_sock *rsock,
+		const char *current_path, const char *new_path)
+{
+	int ret;
+	struct lttcomm_relayd_rotate_rename *msg = NULL;
+	struct lttcomm_relayd_generic_reply reply;
+	size_t current_len, new_len;
+	int msg_len;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd rename chunk %s to %s", current_path, new_path);
+
+	/*
+	 * We don't take into account the \0 here because the two strings are
+	 * concatenated in one field, the receiver appends the \0.
+	 */
+	current_len = strnlen(current_path, PATH_MAX);
+	new_len = strnlen(new_path, PATH_MAX);
+
+	msg_len = sizeof(msg->current_length) + sizeof(msg->new_length) +
+			current_len + new_len;
+	msg = zmalloc(msg_len);
+	if (!msg) {
+		PERROR("Alloc mkdir msg");
+		ret = -1;
+		goto error;
+	}
+	msg->current_length = htobe32(current_len);
+	msg->new_length = htobe32(new_len);
+
+	ret = snprintf(msg->current_new_path, 2 * PATH_MAX, "%s%s",
+			current_path, new_path);
+	if (ret < 0 || ret > 2 * PATH_MAX) {
+		PERROR("format current and new paths");
+		ret = -1;
+		goto error;
+	}
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_ROTATE_RENAME, (void *) msg, msg_len, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd rotate rename replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd rotate rename completed successfully");
+
+error:
+	free(msg);
+	return ret;
+}
+
+int relayd_rotate_pending(struct lttcomm_relayd_sock *rsock, uint64_t chunk_id)
+{
+	int ret;
+	struct lttcomm_relayd_rotate_pending msg;
+	struct lttcomm_relayd_generic_reply reply;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd rotate pending");
+
+	memset(&msg, 0, sizeof(msg));
+	msg.chunk_id = htobe64(chunk_id);
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_ROTATE_PENDING, (void *) &msg, sizeof(msg), 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code >= LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd rotate pending replied error %d", reply.ret_code);
+	} else {
+		/* No error, just rotate pending state */
+		ret = reply.ret_code;
+	}
+
+	DBG("Relayd rotate pending completed successfully");
+
+error:
+	return ret;
+}
+
+int relayd_mkdir(struct lttcomm_relayd_sock *rsock, const char *path)
+{
+	int ret;
+	struct lttcomm_relayd_mkdir *msg;
+	struct lttcomm_relayd_generic_reply reply;
+	size_t len;
+
+	/* Code flow error. Safety net. */
+	assert(rsock);
+
+	DBG("Relayd mkdir path %s", path);
+
+	len = strnlen(path, PATH_MAX) + 1;
+	msg = zmalloc(sizeof(msg->length) + len);
+	if (!msg) {
+		PERROR("Alloc mkdir msg");
+		ret = -1;
+		goto error;
+	}
+	msg->length = htobe32(len);
+
+	if (lttng_strncpy(msg->path, path, len)) {
+		ret = -1;
+		goto error;
+	}
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_MKDIR, (void *) msg,
+			sizeof(msg->length) + len, 0);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Receive response */
+	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
+	if (ret < 0) {
+		goto error;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+
+	/* Return session id or negative ret code. */
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd mkdir replied error %d", reply.ret_code);
+	} else {
+		/* Success */
+		ret = 0;
+	}
+
+	DBG("Relayd mkdir completed successfully");
+
+error:
+	free(msg);
+	return ret;
+}

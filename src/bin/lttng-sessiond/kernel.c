@@ -33,6 +33,13 @@
 #include "kernel-consumer.h"
 #include "kern-modules.h"
 #include "utils.h"
+#include "rotate.h"
+
+/*
+ * Key used to reference a channel between the sessiond and the consumer. This
+ * is only read and updated with the session_list lock held.
+ */
+static uint64_t next_kernel_channel_key = 1;
 
 /*
  * Add context on a kernel channel.
@@ -169,8 +176,10 @@ int kernel_create_channel(struct ltt_kernel_session *session,
 	cds_list_add(&lkc->list, &session->channel_list.head);
 	session->channel_count++;
 	lkc->session = session;
+	lkc->key = next_kernel_channel_key++;
 
-	DBG("Kernel channel %s created (fd: %d)", lkc->channel->name, lkc->fd);
+	DBG("Kernel channel %s created (fd: %d, key: %" PRIu64 ")",
+			lkc->channel->name, lkc->fd, lkc->key);
 
 	return 0;
 
@@ -291,7 +300,8 @@ int kernel_disable_channel(struct ltt_kernel_channel *chan)
 	}
 
 	chan->enabled = 0;
-	DBG("Kernel channel %s disabled (fd: %d)", chan->channel->name, chan->fd);
+	DBG("Kernel channel %s disabled (fd: %d, key: %" PRIu64 ")",
+			chan->channel->name, chan->fd, chan->key);
 
 	return 0;
 
@@ -315,7 +325,8 @@ int kernel_enable_channel(struct ltt_kernel_channel *chan)
 	}
 
 	chan->enabled = 1;
-	DBG("Kernel channel %s enabled (fd: %d)", chan->channel->name, chan->fd);
+	DBG("Kernel channel %s enabled (fd: %d, key: %" PRIu64 ")",
+			chan->channel->name, chan->fd, chan->key);
 
 	return 0;
 
@@ -814,38 +825,38 @@ error:
 /*
  * Get kernel version and validate it.
  */
-int kernel_validate_version(int tracer_fd)
+int kernel_validate_version(int tracer_fd,
+		struct lttng_kernel_tracer_version *version,
+		struct lttng_kernel_tracer_abi_version *abi_version)
 {
 	int ret;
-	struct lttng_kernel_tracer_version version;
-	struct lttng_kernel_tracer_abi_version abi_version;
 
-	ret = kernctl_tracer_version(tracer_fd, &version);
+	ret = kernctl_tracer_version(tracer_fd, version);
 	if (ret < 0) {
 		ERR("Failed to retrieve the lttng-modules version");
 		goto error;
 	}
 
 	/* Validate version */
-	if (version.major != VERSION_MAJOR) {
+	if (version->major != VERSION_MAJOR) {
 		ERR("Kernel tracer major version (%d) is not compatible with lttng-tools major version (%d)",
-			version.major, VERSION_MAJOR);
+			version->major, VERSION_MAJOR);
 		goto error_version;
 	}
-	ret = kernctl_tracer_abi_version(tracer_fd, &abi_version);
+	ret = kernctl_tracer_abi_version(tracer_fd, abi_version);
 	if (ret < 0) {
 		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
 	}
-	if (abi_version.major != LTTNG_MODULES_ABI_MAJOR_VERSION) {
+	if (abi_version->major != LTTNG_MODULES_ABI_MAJOR_VERSION) {
 		ERR("Kernel tracer ABI version (%d.%d) does not match the expected ABI major version (%d.*)",
-			abi_version.major, abi_version.minor,
+			abi_version->major, abi_version->minor,
 			LTTNG_MODULES_ABI_MAJOR_VERSION);
 		goto error;
 	}
 	DBG2("Kernel tracer version validated (%d.%d, ABI %d.%d)",
-			version.major, version.minor,
-			abi_version.major, abi_version.minor);
+			version->major, version->minor,
+			abi_version->major, abi_version->minor);
 	return 0;
 
 error_version:
@@ -1120,5 +1131,83 @@ int kernel_supports_ring_buffer_snapshot_sample_positions(int tracer_fd)
 		ret = 0;
 	}
 error:
+	return ret;
+}
+
+/*
+ * Rotate a kernel session.
+ *
+ * Return 0 on success or else return a LTTNG_ERR code.
+ */
+int kernel_rotate_session(struct ltt_session *session)
+{
+	int ret;
+	struct consumer_socket *socket;
+	struct lttng_ht_iter iter;
+	struct ltt_kernel_session *ksess = session->kernel_session;
+
+	assert(ksess);
+	assert(ksess->consumer);
+
+	DBG("Rotate kernel session %s started (session %" PRIu64 ")",
+			session->name, session->id);
+
+	rcu_read_lock();
+
+	cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
+			socket, node.node) {
+		struct ltt_kernel_channel *chan;
+
+		/*
+		 * Account the metadata channel first to make sure the
+		 * number of channels waiting for a rotation cannot
+		 * reach 0 before we complete the iteration over all
+		 * the channels.
+		 */
+		ret = rotate_add_channel_pending(ksess->metadata->fd,
+				LTTNG_DOMAIN_KERNEL, session);
+		if (ret < 0) {
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			goto error;
+		}
+
+		/* For each channel, ask the consumer to rotate it. */
+		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
+			ret = rotate_add_channel_pending(chan->key,
+					LTTNG_DOMAIN_KERNEL, session);
+			if (ret < 0) {
+				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				goto error;
+			}
+
+			DBG("Rotate channel %" PRIu64 ", session %s", chan->key, session->name);
+			ret = consumer_rotate_channel(socket, chan->key,
+					ksess->uid, ksess->gid, ksess->consumer,
+					ksess->consumer->subdir, 0, session->rotate_count,
+					&session->rotate_pending_relay);
+			if (ret < 0) {
+				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				goto error;
+			}
+		}
+
+		/*
+		 * Rotate the metadata channel.
+		 */
+		ret = consumer_rotate_channel(socket, ksess->metadata->fd,
+				ksess->uid, ksess->gid, ksess->consumer,
+				ksess->consumer->subdir, 1,
+				session->rotate_count,
+				&session->rotate_pending_relay);
+		if (ret < 0) {
+			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			goto error;
+		}
+	}
+
+	ret = LTTNG_OK;
+
+error:
+	rcu_read_unlock();
 	return ret;
 }

@@ -195,4 +195,31 @@ struct lttcomm_relayd_reset_metadata {
 	uint64_t version;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_rotate_stream {
+	uint64_t stream_id;
+	uint64_t rotate_at_seq_num;
+	uint64_t new_chunk_id;
+	/* Includes trailing NULL. */
+	uint32_t pathname_length;
+	/* Must be the last member of this structure. */
+	char new_pathname[0];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_rename {
+	uint32_t current_length;
+	uint32_t new_length;
+	/* Concatenation of the current path and the new path, no \0. */
+	char current_new_path[0];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_pending {
+	uint64_t chunk_id;
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_mkdir {
+	/* Includes trailing NULL */
+	uint32_t length;
+	char path[0];
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

@@ -78,6 +78,7 @@ lttnginclude_HEADERS = \
 	lttng/save.h \
 	lttng/load.h \
 	lttng/endpoint.h \
+	lttng/rotation.h \
 	version.h.tmpl
 
 lttngactioninclude_HEADERS= \
@@ -87,6 +88,7 @@ lttngactioninclude_HEADERS= \
 lttngconditioninclude_HEADERS= \
 	lttng/condition/condition.h \
 	lttng/condition/buffer-usage.h \
+	lttng/condition/session-consumed-size.h \
 	lttng/condition/evaluation.h
 
 lttngnotificationinclude_HEADERS= \
@@ -105,9 +107,11 @@ noinst_HEADERS = \
 	lttng/action/notify-internal.h \
 	lttng/condition/condition-internal.h \
 	lttng/condition/buffer-usage-internal.h \
+	lttng/condition/session-consumed-size-internal.h \
 	lttng/condition/evaluation-internal.h \
 	lttng/notification/notification-internal.h \
 	lttng/trigger/trigger-internal.h \
 	lttng/endpoint-internal.h \
 	lttng/notification/channel-internal.h \
 	lttng/channel-internal.h
+	lttng/rotate-internal.h

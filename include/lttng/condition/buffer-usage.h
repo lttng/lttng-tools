@@ -27,9 +27,6 @@
 extern "C" {
 #endif
 
-struct lttng_condition;
-struct lttng_evaluation;
-
 /**
  * Buffer usage conditions allows an action to be taken whenever a channel's
  * buffer usage crosses a set threshold.
@@ -249,8 +246,8 @@ lttng_condition_buffer_usage_set_domain_type(
 /*
  * Get the buffer usage ratio property of a buffer usage evaluation.
  *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a threshold expressed as
- * as a ratio of the buffer's capacity, or LTTNG_CONDITION_STATUS_INVALID if
+ * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed as
+ * as a ratio of the buffer's capacity, or LTTNG_EVALUATION_STATUS_INVALID if
  * an invalid parameter is passed.
  */
 extern enum lttng_evaluation_status
@@ -261,8 +258,8 @@ lttng_evaluation_buffer_usage_get_usage_ratio(
 /*
  * Get the buffer usage property of a buffer usage evaluation.
  *
- * Returns LTTNG_CONDITION_STATUS_OK on success and a threshold expressed in
- * bytes, or LTTNG_CONDITION_STATUS_INVALID if an invalid parameter is passed.
+ * Returns LTTNG_EVALUATION_STATUS_OK on success and a threshold expressed in
+ * bytes, or LTTNG_EVALUATION_STATUS_INVALID if an invalid parameter is passed.
  */
 extern enum lttng_evaluation_status
 lttng_evaluation_buffer_usage_get_usage(

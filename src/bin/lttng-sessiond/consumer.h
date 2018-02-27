@@ -99,6 +99,11 @@ struct consumer_data {
 	 */
 	int channel_monitor_pipe;
 	/*
+	 * Write-end of the channel rotation pipe to be passed to the
+	 * consumer.
+	 */
+	int channel_rotate_pipe;
+	/*
 	 * The metadata socket object is handled differently and only created
 	 * locally in this object thus it's the only reference available in the
 	 * session daemon. For that reason, a variable for the fd is required and
@@ -140,6 +145,11 @@ struct consumer_net {
 
 	/* Data path for network streaming. */
 	struct lttng_uri data;
+
+	/*
+	 * <hostname>/<session-name>
+	 */
+	char base_dir[PATH_MAX];
 };
 
 /*
@@ -163,7 +173,8 @@ struct consumer_output {
 	uint32_t relay_minor_version;
 
 	/*
-	 * Subdirectory path name used for both local and network consumer.
+	 * Subdirectory path name used for both local and network
+	 * consumer (/kernel or /ust).
 	 */
 	char subdir[PATH_MAX];
 
@@ -178,9 +189,15 @@ struct consumer_output {
 	unsigned int snapshot:1;
 
 	union {
-		char trace_path[PATH_MAX];
+		char session_root_path[PATH_MAX];
 		struct consumer_net net;
 	} dst;
+
+	/*
+	 * Sub-directory below the session_root_path where the next chunk of
+	 * trace will be stored (\0 before the first session rotation).
+	 */
+	char chunk_path[PATH_MAX];
 };
 
 struct consumer_socket *consumer_find_socket(int key,
@@ -220,6 +237,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		enum lttng_stream_type type, uint64_t session_id,
 		char *session_name, char *hostname, int session_live_timer);
 int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
+		int pipe);
+int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
 		int pipe);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
 		struct consumer_output *consumer);
@@ -304,5 +323,19 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
 		const char *session_path, int wait, uint64_t nb_packets_per_stream);
+
+int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
+		uid_t uid, gid_t gid, struct consumer_output *output,
+		char *domain_path, uint32_t metadata, uint64_t new_chunk_id,
+		bool *rotate_pending_relay);
+int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *current_path, char *new_path,
+		uid_t uid, gid_t gid);
+int consumer_rotate_pending_relay(struct consumer_socket *socket,
+		struct consumer_output *output, uint64_t session_id,
+		uint64_t chunk_id);
+int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
+		struct consumer_output *output, char *path,
+		uid_t uid, gid_t gid);
 
 #endif /* _CONSUMER_H */

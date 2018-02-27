@@ -40,6 +40,13 @@ Destroying a tracing session does not destroy the recorded trace data,
 if any; it frees resources acquired by the session daemon and tracer
 side, making sure to flush all trace data.
 
+If at least one rotation occurred during the chosen tracing session's
+lifetime (see man:lttng-rotate(1) and man:lttng-enable-rotation(1)), and
+without the option:--no-wait option, all the tracing session's output
+directory's subdirectories are considered trace chunk archives once the
+command returns: it is safe to read them, modify them, move them, or
+remove them.
+
 
 include::common-cmd-options-head.txt[]
 
