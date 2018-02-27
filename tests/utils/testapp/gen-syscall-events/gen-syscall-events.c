@@ -15,8 +15,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#define _LGPL_SOURCE
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/syscall.h>
@@ -59,7 +57,7 @@ int main(int argc, char **argv)
 	 * Start generating syscalls. We use syscall(2) to prevent libc to change
 	 * the underlying syscall. e.g. calling openat(2) instead of open(2).
 	 */
-	fd = syscall(SYS_open, "/proc/cpuinfo", O_RDONLY);
+	fd = syscall(SYS_openat, AT_FDCWD, "/proc/cpuinfo", O_RDONLY);
 	if (fd < 0) {
 		perror("open");
 		ret = -1;
