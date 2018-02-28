@@ -52,6 +52,13 @@ static char *create_channel_path(struct consumer_output *consumer,
 		if (ret < 0) {
 			PERROR("snprintf kernel channel path");
 			goto error;
+		} else if (ret >= sizeof(tmp_path)) {
+			ERR("Kernel channel path exceeds the maximal allowed length of of %zu bytes (%i bytes required) with path \"%s%s%s\"",
+					sizeof(tmp_path), ret,
+					consumer->dst.session_root_path,
+					consumer->chunk_path,
+					consumer->subdir);
+			goto error;
 		}
 		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
 		if (!pathname) {
@@ -74,6 +81,12 @@ static char *create_channel_path(struct consumer_output *consumer,
 				consumer->subdir);
 		if (ret < 0) {
 			PERROR("snprintf kernel metadata path");
+			goto error;
+		} else if (ret >= sizeof(tmp_path)) {
+			ERR("Kernel channel path exceeds the maximal allowed length of of %zu bytes (%i bytes required) with path \"%s%s\"",
+					sizeof(tmp_path), ret,
+					consumer->dst.net.base_dir,
+					consumer->subdir);
 			goto error;
 		}
 		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
