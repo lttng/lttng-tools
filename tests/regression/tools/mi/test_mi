@@ -59,7 +59,7 @@ DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=228
+NUM_TESTS=230
 
 source $TESTDIR/utils/utils.sh
 
@@ -878,6 +878,18 @@ function test_track_untrack ()
 	destroy_lttng_sessions
 }
 
+function test_add_context_list()
+{
+	diag "Test context listing"
+
+	OUTPUT_FILE="list-context.xml"
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	lttng_add_context_list
+
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "Mi test: context listing validation"
+}
+
 start_lttng_sessiond $FOO_LOAD_DIR
 TESTS=(
 	test_version
@@ -894,6 +906,7 @@ TESTS=(
 	test_snapshot
 	test_track_untrack
 	test_list_session_long_path
+	test_add_context_list
 )
 
 

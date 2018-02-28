@@ -190,6 +190,9 @@ LTTNG_HIDDEN const char * const mi_lttng_element_rotations = "rotations";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status = "status";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule = "rotation_schedule";
 
+/* String related to add-context command */
+LTTNG_HIDDEN const char * const mi_lttng_element_context_symbol = "symbol";
+
 /* Deprecated symbols preserved for ABI compatibility. */
 const char * const mi_lttng_context_type_perf_counter;
 const char * const mi_lttng_context_type_perf_cpu_counter;

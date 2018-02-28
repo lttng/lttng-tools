@@ -482,20 +482,7 @@ struct ctx_type_list {
 	.head = CDS_LIST_HEAD_INIT(ctx_type_list.head),
 };
 
-/*
- * Pretty print context type.
- */
-static void print_ctx_type(FILE *ofp)
-{
-	int i = 0;
 
-	while (ctx_opts[i].symbol != NULL) {
-		if (!ctx_opts[i].hide_help) {
-			fprintf(ofp, "%s\n", ctx_opts[i].symbol);
-		}
-		i++;
-	}
-}
 
 /*
  * Find context numerical value from string.
@@ -535,6 +522,195 @@ enum lttng_domain_type get_domain(void)
 	}
 }
 
+static
+int mi_open(void)
+{
+	int ret;
+
+	/* MI check */
+	if (!lttng_opt_mi) {
+		ret = 0;
+		goto end;
+	}
+
+	ret = fileno(stdout);
+	if (ret < 0) {
+		PERROR("Unable to retrive fileno of stdout");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	writer = mi_lttng_writer_create(ret, lttng_opt_mi);
+	if (!writer) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Open command element */
+	ret = mi_lttng_writer_command_open(writer,
+			mi_lttng_element_command_add_context);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Open output element */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_command_output);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+int mi_close(enum cmd_error_code success)
+{
+	int ret;
+
+	/* MI closing */
+	if (!lttng_opt_mi) {
+		ret = 0;
+		goto end;
+	}
+	/* Close  output element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Success ? */
+	ret = mi_lttng_writer_write_element_bool(writer,
+			mi_lttng_element_command_success, !success);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/* Command element close */
+	ret = mi_lttng_writer_command_close(writer);
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+void populate_context(struct lttng_event_context *context,
+		const struct ctx_opts *opt)
+{
+	char *ptr;
+
+	context->ctx = (enum lttng_event_context_type) opt->ctx_type;
+	switch (context->ctx) {
+	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
+	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
+		context->u.perf_counter.type = opt->u.perf.type;
+		context->u.perf_counter.config = opt->u.perf.config;
+		strncpy(context->u.perf_counter.name, opt->symbol,
+				LTTNG_SYMBOL_NAME_LEN);
+		context->u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
+		/* Replace : and - by _ */
+		while ((ptr = strchr(context->u.perf_counter.name, '-')) != NULL) {
+			*ptr = '_';
+		}
+		while ((ptr = strchr(context->u.perf_counter.name, ':')) != NULL) {
+			*ptr = '_';
+		}
+		break;
+	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
+		context->u.app_ctx.provider_name =
+			opt->u.app_ctx.provider_name;
+		context->u.app_ctx.ctx_name =
+			opt->u.app_ctx.ctx_name;
+		break;
+	default:
+		break;
+	}
+}
+
+/*
+ * Pretty print context type.
+ */
+static
+int print_ctx_type(void)
+{
+
+	FILE *ofp = stdout;
+	int i = 0;
+	int ret;
+	struct lttng_event_context context;
+
+	memset(&context, 0, sizeof(context));
+
+	ret = mi_open();
+	if (ret) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	if (lttng_opt_mi) {
+		/* Open a contexts element */
+		ret = mi_lttng_writer_open_element(writer, config_element_contexts);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	while (ctx_opts[i].symbol != NULL) {
+		if (!ctx_opts[i].hide_help) {
+			if (lttng_opt_mi) {
+				populate_context(&context, &ctx_opts[i]);
+				ret = mi_lttng_context(writer, &context, 1);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				ret = mi_lttng_writer_write_element_string(
+						writer,
+						mi_lttng_element_context_symbol,
+						ctx_opts[i].symbol);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+
+				ret = mi_lttng_writer_close_element(writer);
+				if (ret) {
+					ret = CMD_ERROR;
+					goto end;
+				}
+			} else {
+				fprintf(ofp, "%s\n", ctx_opts[i].symbol);
+			}
+		}
+		i++;
+	}
+
+	if (lttng_opt_mi) {
+		/* Close contexts element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+	}
+
+end:
+	ret = mi_close(ret);
+	if (ret) {
+		ret = CMD_ERROR;
+	}
+	return ret;
+}
+
 /*
  * Add context to channel or event.
  */
@@ -544,7 +720,6 @@ static int add_context(char *session_name)
 	struct lttng_event_context context;
 	struct lttng_domain dom;
 	struct ctx_type *type;
-	char *ptr;
 
 	memset(&context, 0, sizeof(context));
 	memset(&dom, 0, sizeof(dom));
@@ -566,38 +741,21 @@ static int add_context(char *session_name)
 
 	/* Iterate over all the context types given */
 	cds_list_for_each_entry(type, &ctx_type_list.head, list) {
-		context.ctx = (enum lttng_event_context_type) type->opt->ctx_type;
-		switch (context.ctx) {
-		case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
-		case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
-		case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
-			context.u.perf_counter.type = type->opt->u.perf.type;
-			context.u.perf_counter.config = type->opt->u.perf.config;
-			strncpy(context.u.perf_counter.name, type->opt->symbol,
-				LTTNG_SYMBOL_NAME_LEN);
-			context.u.perf_counter.name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-			/* Replace : and - by _ */
-			while ((ptr = strchr(context.u.perf_counter.name, '-')) != NULL) {
-				*ptr = '_';
-			}
-			while ((ptr = strchr(context.u.perf_counter.name, ':')) != NULL) {
-				*ptr = '_';
-			}
-			break;
-		case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
-			context.u.app_ctx.provider_name =
-					type->opt->u.app_ctx.provider_name;
-			context.u.app_ctx.ctx_name =
-					type->opt->u.app_ctx.ctx_name;
-			break;
-		default:
-			break;
-		}
 		DBG("Adding context...");
+
+		populate_context(&context, type->opt);
 
 		if (lttng_opt_mi) {
 			/* We leave context open the update the success of the command */
 			ret = mi_lttng_context(writer, &context, 1);
+			if (ret) {
+				ret = CMD_ERROR;
+				goto error;
+			}
+
+			ret = mi_lttng_writer_write_element_string(writer,
+					mi_lttng_element_context_symbol,
+					type->opt->symbol);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -894,7 +1052,6 @@ not_found:
 int cmd_add_context(int argc, const char **argv)
 {
 	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS;
-	int success = 1;
 	static poptContext pc;
 	struct ctx_type *type, *tmptype;
 	char *session_name = NULL;
@@ -914,7 +1071,7 @@ int cmd_add_context(int argc, const char **argv)
 			SHOW_HELP();
 			goto end;
 		case OPT_LIST:
-			print_ctx_type(stdout);
+			ret = print_ctx_type();
 			goto end;
 		case OPT_TYPE:
 		{
@@ -975,59 +1132,15 @@ int cmd_add_context(int argc, const char **argv)
 		session_name = opt_session_name;
 	}
 
-	/* Mi check */
-	if (lttng_opt_mi) {
-		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
-		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
-		}
-
-		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
-				mi_lttng_element_command_add_context);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_command_output);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
+	ret = mi_open();
+	if (ret) {
+		goto end;
 	}
 
 	command_ret = add_context(session_name);
-	if (command_ret) {
-		success = 0;
-	}
-
-	/* Mi closing */
-	if (lttng_opt_mi) {
-		/* Close  output element */
-		ret = mi_lttng_writer_close_element(writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-
-		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer);
-		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
+	ret = mi_close(command_ret);
+	if (ret) {
+		goto end;
 	}
 
 end:

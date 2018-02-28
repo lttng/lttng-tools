@@ -482,11 +482,14 @@ THE SOFTWARE.
 
 	<!-- Maps to lttng_event_context -->
 	<xs:complexType name="context_type">
-		<xs:choice>
-			<xs:element name="type" type="tns:context_type_type"/>
-			<xs:element name="perf" type="tns:perf_counter_context_type"/>
-			<xs:element name="app" type="tns:app_context_type"/>
-		</xs:choice>
+		<xs:sequence>
+			<xs:choice>
+				<xs:element name="type" type="tns:context_type_type"/>
+				<xs:element name="perf" type="tns:perf_counter_context_type"/>
+				<xs:element name="app" type="tns:app_context_type"/>
+			</xs:choice>
+			<xs:element name="symbol" type="xs:string" minOccurs="0" />
+		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to an array of domain -->
