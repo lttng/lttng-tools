@@ -1460,6 +1460,16 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;
+		} else if (ret >= sizeof(msg.u.snapshot_channel.pathname)) {
+			ERR("Snapshot path exceeds the maximal allowed length of %zu bytes (%i bytes required) with path \"%s/%s/%s-%s-%" PRIu64 "%s\"",
+					sizeof(msg.u.snapshot_channel.pathname),
+					ret, output->consumer->dst.net.base_dir,
+					output->consumer->subdir,
+					output->name, output->datetime,
+					output->nb_snapshot,
+					session_path);
+			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			goto error;
 		}
 	} else {
 		ret = snprintf(msg.u.snapshot_channel.pathname,
@@ -1472,7 +1482,16 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		if (ret < 0) {
 			ret = -LTTNG_ERR_NOMEM;
 			goto error;
+		} else if (ret >= sizeof(msg.u.snapshot_channel.pathname)) {
+			ERR("Snapshot path exceeds the maximal allowed length of %zu bytes (%i bytes required) with path \"%s/%s-%s-%" PRIu64 "%s\"",
+					sizeof(msg.u.snapshot_channel.pathname),
+					ret, output->consumer->dst.session_root_path,
+					output->name, output->datetime, output->nb_snapshot,
+					session_path);
+			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			goto error;
 		}
+
 		msg.u.snapshot_channel.relayd_id = (uint64_t) -1ULL;
 
 		/* Create directory. Ignore if exist. */
