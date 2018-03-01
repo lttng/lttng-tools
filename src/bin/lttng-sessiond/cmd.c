@@ -47,7 +47,7 @@
 #include "kernel-consumer.h"
 #include "lttng-sessiond.h"
 #include "utils.h"
-#include "syscall.h"
+#include "lttng-syscall.h"
 #include "agent.h"
 #include "buffer-registry.h"
 #include "notification-thread.h"

@@ -74,7 +74,7 @@
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
 #include "rotation-thread.h"
-#include "syscall.h"
+#include "lttng-syscall.h"
 #include "agent.h"
 #include "ht-cleanup.h"
 #include "sessiond-config.h"

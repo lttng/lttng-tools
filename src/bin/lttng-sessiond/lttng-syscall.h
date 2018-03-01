@@ -15,8 +15,8 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef LTTNG_SYSCALL_H
+#define LTTNG_SYSCALL_H
 
 #include <common/hashtable/hashtable.h>
 #include <lttng/event.h>
@@ -54,4 +54,4 @@ extern struct syscall *syscall_table;
 int syscall_init_table(void);
 ssize_t syscall_table_list(struct lttng_event **events);
 
-#endif /* SYSCALL_H */
+#endif /* LTTNG_SYSCALL_H */

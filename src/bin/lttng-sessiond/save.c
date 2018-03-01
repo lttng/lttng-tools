@@ -32,7 +32,7 @@
 #include "kernel.h"
 #include "save.h"
 #include "session.h"
-#include "syscall.h"
+#include "lttng-syscall.h"
 #include "trace-ust.h"
 #include "agent.h"
 
