@@ -1039,7 +1039,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
+			ret = consumer_snapshot_channel(socket, chan->key, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
 					nb_packets_per_stream);
