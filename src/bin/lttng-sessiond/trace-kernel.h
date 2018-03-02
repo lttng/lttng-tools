@@ -81,6 +81,7 @@ struct ltt_kernel_channel {
 /* Metadata */
 struct ltt_kernel_metadata {
 	int fd;
+	uint64_t key; /* Key to reference this channel with the consumer. */
 	struct lttng_channel *conf;
 };
 

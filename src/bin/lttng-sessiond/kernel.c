@@ -535,6 +535,7 @@ int kernel_open_metadata(struct ltt_kernel_session *session)
 	}
 
 	lkm->fd = ret;
+	lkm->key = ++next_kernel_channel_key;
 	/* Prevent fd duplication after execlp() */
 	ret = fcntl(lkm->fd, F_SETFD, FD_CLOEXEC);
 	if (ret < 0) {
@@ -1039,7 +1040,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			ret = consumer_snapshot_channel(socket, chan->fd, output, 0,
+			ret = consumer_snapshot_channel(socket, chan->key, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
 					nb_packets_per_stream);
@@ -1052,7 +1053,7 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		}
 
 		/* Snapshot metadata, */
-		ret = consumer_snapshot_channel(socket, ksess->metadata->fd, output,
+		ret = consumer_snapshot_channel(socket, ksess->metadata->key, output,
 				1, ksess->uid, ksess->gid,
 				DEFAULT_KERNEL_TRACE_DIR, wait, 0);
 		if (ret < 0) {
