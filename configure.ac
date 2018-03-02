@@ -1002,7 +1002,7 @@ AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
-AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS"
+AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS -Wsign-compare"
 AC_SUBST(AM_CFLAGS)
 
 AM_CPPFLAGS="-I\$(top_srcdir)/include -I\$(top_builddir)/include -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
