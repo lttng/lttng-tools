@@ -169,7 +169,7 @@ struct consumer_output {
 	 * Subdirectory path name used for both local and network
 	 * consumer (/kernel or /ust).
 	 */
-	char subdir[PATH_MAX];
+	char subdir[LTTNG_PATH_MAX];
 
 	/*
 	 * Hashtable of consumer_socket index by the file descriptor value. For
@@ -182,7 +182,7 @@ struct consumer_output {
 	unsigned int snapshot:1;
 
 	union {
-		char session_root_path[PATH_MAX];
+		char session_root_path[LTTNG_PATH_MAX];
 		struct consumer_net net;
 	} dst;
 
@@ -190,7 +190,7 @@ struct consumer_output {
 	 * Sub-directory below the session_root_path where the next chunk of
 	 * trace will be stored (\0 before the first session rotation).
 	 */
-	char chunk_path[PATH_MAX];
+	char chunk_path[LTTNG_PATH_MAX];
 };
 
 struct consumer_socket *consumer_find_socket(int key,

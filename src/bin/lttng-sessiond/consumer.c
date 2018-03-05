@@ -561,7 +561,7 @@ struct consumer_output *consumer_copy_output(struct consumer_output *obj)
 	}
 	output->enabled = obj->enabled;
 	output->net_seq_index = obj->net_seq_index;
-	memcpy(output->subdir, obj->subdir, PATH_MAX);
+	memcpy(output->subdir, obj->subdir, sizeof(output->subdir));
 	output->snapshot = obj->snapshot;
 	output->relay_major_version = obj->relay_major_version;
 	output->relay_minor_version = obj->relay_minor_version;

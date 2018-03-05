@@ -53,8 +53,11 @@ static char *setup_trace_path(struct consumer_output *consumer,
 
 	health_code_update();
 
-	/* Allocate our self the string to make sure we never exceed PATH_MAX. */
-	pathname = zmalloc(PATH_MAX);
+	/*
+	 * Allocate the string ourself to make sure we never exceed
+	 * LTTNG_PATH_MAX.
+	 */
+	pathname = zmalloc(LTTNG_PATH_MAX);
 	if (!pathname) {
 		goto error;
 	}
@@ -62,7 +65,7 @@ static char *setup_trace_path(struct consumer_output *consumer,
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(pathname, PATH_MAX, "%s%s%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s%s%s",
 				consumer->dst.session_root_path,
 				consumer->chunk_path,
 				consumer->subdir, ua_sess->path);
@@ -81,7 +84,7 @@ static char *setup_trace_path(struct consumer_output *consumer,
 			}
 		}
 	} else {
-		ret = snprintf(pathname, PATH_MAX, "%s%s%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s%s%s",
 				consumer->dst.net.base_dir,
 				consumer->chunk_path,
 				consumer->subdir,

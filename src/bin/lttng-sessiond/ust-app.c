@@ -4420,18 +4420,18 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 			usess->consumer->dst.session_root_path[0] != '\0') {
 		char *tmp_path;
 
-		tmp_path = zmalloc(PATH_MAX * sizeof(char));
+		tmp_path = zmalloc(LTTNG_PATH_MAX);
 		if (!tmp_path) {
 			ERR("Alloc tmp_path");
 			goto error_unlock;
 		}
-		ret = snprintf(tmp_path, PATH_MAX, "%s%s%s",
+		ret = snprintf(tmp_path, LTTNG_PATH_MAX, "%s%s%s",
 				usess->consumer->dst.session_root_path,
 				usess->consumer->chunk_path,
 				usess->consumer->subdir);
-		if (ret >= PATH_MAX) {
+		if (ret >= LTTNG_PATH_MAX) {
 			ERR("Local destination path exceeds the maximal allowed length of %i bytes (needs %i bytes) with path = \"%s%s%s\"",
-					PATH_MAX, ret,
+					LTTNG_PATH_MAX, ret,
 					usess->consumer->dst.session_root_path,
 					usess->consumer->chunk_path,
 					usess->consumer->subdir);
