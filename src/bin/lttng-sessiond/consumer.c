@@ -1611,7 +1611,7 @@ int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 	if (output->type == CONSUMER_DST_NET) {
 		msg.u.mkdir.relayd_id = output->net_seq_index;
 	} else {
-		msg.u.mkdir.relayd_id = (uint64_t) -1ULL;
+		msg.u.mkdir.relayd_id = -1ULL;
 	}
 
 	health_code_update();
