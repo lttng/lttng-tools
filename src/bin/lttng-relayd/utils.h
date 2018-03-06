@@ -20,6 +20,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-char *create_output_path(char *path_name);
+char *create_output_path(const char *path_name);
 
 #endif /* RELAYD_UTILS_H */
