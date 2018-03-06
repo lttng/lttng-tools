@@ -29,7 +29,7 @@
 #include "lttng-relayd.h"
 #include "utils.h"
 
-static char *create_output_path_auto(char *path_name)
+static char *create_output_path_auto(const char *path_name)
 {
 	int ret;
 	char *traces_path = NULL;
@@ -58,7 +58,7 @@ exit:
 	return traces_path;
 }
 
-static char *create_output_path_noauto(char *path_name)
+static char *create_output_path_noauto(const char *path_name)
 {
 	int ret;
 	char *traces_path = NULL;
@@ -84,7 +84,7 @@ exit:
  *
  * Return the allocated string containing the path name or else NULL.
  */
-char *create_output_path(char *path_name)
+char *create_output_path(const char *path_name)
 {
 	assert(path_name);
 
