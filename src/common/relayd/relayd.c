@@ -72,14 +72,14 @@ static int send_command(struct lttcomm_relayd_sock *rsock,
 		memcpy(buf + sizeof(header), data, size);
 	}
 
+	DBG3("Relayd sending command %d of size %" PRIu64, (int) cmd, buf_size);
 	ret = rsock->sock.ops->sendmsg(&rsock->sock, buf, buf_size, flags);
 	if (ret < 0) {
+		PERROR("Failed to send command %d of size %" PRIu64,
+				(int) cmd, buf_size);
 		ret = -errno;
 		goto error;
 	}
-
-	DBG3("Relayd sending command %d of size %" PRIu64, cmd, buf_size);
-
 error:
 	free(buf);
 alloc_error:
