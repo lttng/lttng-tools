@@ -637,7 +637,7 @@ error:
  * Return 0 on success or else, a negative value is returned and the channel
  * MUST be destroyed by consumer_del_channel().
  */
-static int ask_channel(struct lttng_consumer_local_data *ctx, int sock,
+static int ask_channel(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *channel,
 		struct ustctl_consumer_channel_attr *attr)
 {
@@ -1490,7 +1490,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		ret = ask_channel(ctx, sock, channel, &attr);
+		ret = ask_channel(ctx, channel, &attr);
 		if (ret < 0) {
 			goto end_channel_error;
 		}
