@@ -88,7 +88,7 @@ static int channel_monitor_pipe = -1;
  * deadlocks.
  */
 static void metadata_switch_timer(struct lttng_consumer_local_data *ctx,
-		int sig, siginfo_t *si)
+		siginfo_t *si)
 {
 	int ret;
 	struct lttng_consumer_channel *channel;
@@ -321,7 +321,7 @@ end:
  * Execute action on a live timer
  */
 static void live_timer(struct lttng_consumer_local_data *ctx,
-		int sig, siginfo_t *si)
+		siginfo_t *si)
 {
 	int ret;
 	struct lttng_consumer_channel *channel;
@@ -827,14 +827,14 @@ void *consumer_timer_thread(void *data)
 			}
 			continue;
 		} else if (signr == LTTNG_CONSUMER_SIG_SWITCH) {
-			metadata_switch_timer(ctx, info.si_signo, &info);
+			metadata_switch_timer(ctx, &info);
 		} else if (signr == LTTNG_CONSUMER_SIG_TEARDOWN) {
 			cmm_smp_mb();
 			CMM_STORE_SHARED(timer_signal.qs_done, 1);
 			cmm_smp_mb();
 			DBG("Signal timer metadata thread teardown");
 		} else if (signr == LTTNG_CONSUMER_SIG_LIVE) {
-			live_timer(ctx, info.si_signo, &info);
+			live_timer(ctx, &info);
 		} else if (signr == LTTNG_CONSUMER_SIG_MONITOR) {
 			struct lttng_consumer_channel *channel;
 
