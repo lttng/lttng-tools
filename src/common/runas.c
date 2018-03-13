@@ -419,8 +419,7 @@ end:
  * This is for debugging ONLY and should not be considered secure.
  */
 static
-int run_as_noworker(enum run_as_cmd cmd,
-		struct run_as_data *data, uid_t uid, gid_t gid)
+int run_as_noworker(enum run_as_cmd cmd, struct run_as_data *data)
 {
 	int ret, saved_errno;
 	mode_t old_mask;
@@ -455,7 +454,7 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data, uid_t uid, gid_t gid)
 
 	} else {
 		DBG("Using run_as without worker");
-		ret = run_as_noworker(cmd, data, uid, gid);
+		ret = run_as_noworker(cmd, data);
 	}
 	return ret;
 }
