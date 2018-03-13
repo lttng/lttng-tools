@@ -89,7 +89,7 @@ void metadata_cache_reset(struct consumer_metadata_cache *cache)
  */
 static
 int metadata_cache_check_version(struct consumer_metadata_cache *cache,
-		struct lttng_consumer_channel *channel, uint64_t version)
+		uint64_t version)
 {
 	int ret = 0;
 
@@ -150,7 +150,7 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 
 	cache = channel->metadata_cache;
 
-	ret = metadata_cache_check_version(cache, channel, version);
+	ret = metadata_cache_check_version(cache, version);
 	if (ret < 0) {
 		goto end;
 	}
