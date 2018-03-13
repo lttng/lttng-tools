@@ -1153,7 +1153,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	}
 
 	/* Quiescent wait after starting trace */
-	kernel_wait_quiescent(kernel_tracer_fd);
+	kernel_wait_quiescent(wpipe);
 
 	ksess->active = 1;
 
