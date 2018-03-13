@@ -1475,7 +1475,7 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx)
  */
 static int write_relayd_metadata_id(int fd,
 		struct lttng_consumer_stream *stream,
-		struct consumer_relayd_sock_pair *relayd, unsigned long padding)
+		unsigned long padding)
 {
 	ssize_t ret;
 	struct lttcomm_relayd_metadata_payload hdr;
@@ -1610,7 +1610,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 
 		/* Write metadata stream id before payload */
 		if (stream->metadata_flag) {
-			ret = write_relayd_metadata_id(outfd, stream, relayd, padding);
+			ret = write_relayd_metadata_id(outfd, stream, padding);
 			if (ret < 0) {
 				relayd_hang_up = 1;
 				goto write_error;
@@ -1799,7 +1799,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 				}
 				stream->reset_metadata_flag = 0;
 			}
-			ret = write_relayd_metadata_id(splice_pipe[1], stream, relayd,
+			ret = write_relayd_metadata_id(splice_pipe[1], stream,
 					padding);
 			if (ret < 0) {
 				written = ret;
