@@ -823,7 +823,7 @@ error:
  *
  * Useful for CPU hotplug feature.
  */
-static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
+static int update_kernel_stream(int fd)
 {
 	int ret = 0;
 	struct ltt_session *session;
@@ -1057,7 +1057,7 @@ static void *thread_manage_kernel(void *data)
 					 * New CPU detected by the kernel. Adding kernel stream to
 					 * kernel session and updating the kernel consumer
 					 */
-					ret = update_kernel_stream(&kconsumer_data, pollfd);
+					ret = update_kernel_stream(pollfd);
 					if (ret < 0) {
 						continue;
 					}
