@@ -123,8 +123,8 @@ error:
  * support the live reading capability.
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
-		uint64_t *session_id, char *session_name, char *hostname,
-		int session_live_timer, unsigned int snapshot)
+		char *session_name, char *hostname, int session_live_timer,
+		unsigned int snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
@@ -154,8 +154,7 @@ error:
 /*
  * RELAYD_CREATE_SESSION from 2.1 to 2.3.
  */
-static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
-		uint64_t *session_id)
+static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock)
 {
 	int ret;
 
@@ -192,11 +191,11 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 		case 1:
 		case 2:
 		case 3:
-			ret = relayd_create_session_2_1(rsock, session_id);
+			ret = relayd_create_session_2_1(rsock);
 			break;
 		case 4:
 		default:
-			ret = relayd_create_session_2_4(rsock, session_id, session_name,
+			ret = relayd_create_session_2_4(rsock, session_name,
 					hostname, session_live_timer, snapshot);
 			break;
 	}
