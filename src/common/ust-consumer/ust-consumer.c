@@ -407,9 +407,7 @@ error_shm_open:
 	return -1;
 }
 
-static int open_ust_stream_fd(struct lttng_consumer_channel *channel,
-		struct ustctl_consumer_channel_attr *attr,
-		int cpu)
+static int open_ust_stream_fd(struct lttng_consumer_channel *channel, int cpu)
 {
 	char shm_path[PATH_MAX];
 	int ret;
@@ -464,7 +462,7 @@ static int create_ust_channel(struct lttng_consumer_channel *channel,
 		goto error_alloc;
 	}
 	for (i = 0; i < nr_stream_fds; i++) {
-		stream_fds[i] = open_ust_stream_fd(channel, attr, i);
+		stream_fds[i] = open_ust_stream_fd(channel, i);
 		if (stream_fds[i] < 0) {
 			ret = -1;
 			goto error_open;
