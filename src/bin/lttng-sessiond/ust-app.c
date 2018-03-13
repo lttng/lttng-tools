@@ -2347,8 +2347,7 @@ end:
  * Called with UST app session lock held and a RCU read side lock.
  */
 static
-int create_ust_app_channel_context(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan,
+int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 	        struct lttng_ust_context_attr *uctx,
 		struct ust_app *app)
 {
@@ -5224,7 +5223,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
 				node);
-		ret = create_ust_app_channel_context(ua_sess, ua_chan, &uctx->ctx, app);
+		ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
 		if (ret < 0) {
 			goto next_app;
 		}
