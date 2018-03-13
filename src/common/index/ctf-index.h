@@ -79,8 +79,7 @@ static inline size_t ctf_packet_index_len(uint32_t major, uint32_t minor)
 	abort();
 }
 
-static inline uint32_t lttng_to_index_major(uint32_t lttng_major,
-		uint32_t lttng_minor)
+static inline uint32_t lttng_to_index_major(uint32_t lttng_major)
 {
 	if (lttng_major == 2) {
 		return 1;

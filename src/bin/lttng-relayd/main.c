@@ -1508,7 +1508,7 @@ end:
 /*
  * Close the current index file if it is open, and create a new one.
  *
- * Return 0 on success, -1 on error.
+ * Return 0 on sccess, -1 on error.
  */
 static
 int create_rotate_index_file(struct relay_stream *stream)
@@ -1527,7 +1527,7 @@ int create_rotate_index_file(struct relay_stream *stream)
 			stream->channel_name,
 			-1, -1, stream->tracefile_size,
 			tracefile_array_get_file_index_head(stream->tfa),
-			lttng_to_index_major(major, minor),
+			lttng_to_index_major(major),
 			lttng_to_index_minor(major, minor));
 	if (!stream->index_file) {
 		ret = -1;
@@ -2233,7 +2233,7 @@ static int relay_recv_index(struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	msg_len = lttcomm_relayd_index_len(
-			lttng_to_index_major(conn->major, conn->minor),
+			lttng_to_index_major(conn->major),
 			lttng_to_index_minor(conn->major, conn->minor));
 	ret = conn->sock->ops->recvmsg(conn->sock, &index_info,
 			msg_len, 0);
