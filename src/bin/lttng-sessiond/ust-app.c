@@ -978,7 +978,7 @@ end:
  * Alloc new UST app session.
  */
 static
-struct ust_app_session *alloc_ust_app_session(struct ust_app *app)
+struct ust_app_session *alloc_ust_app_session(void)
 {
 	struct ust_app_session *ua_sess;
 
@@ -2170,7 +2170,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 	if (ua_sess == NULL) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 				app->pid, usess->id);
-		ua_sess = alloc_ust_app_session(app);
+		ua_sess = alloc_ust_app_session();
 		if (ua_sess == NULL) {
 			/* Only malloc can failed so something is really wrong */
 			ret = -ENOMEM;
