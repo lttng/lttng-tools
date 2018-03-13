@@ -6142,8 +6142,7 @@ int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
 	*lost = 0;
 
 	ret = buffer_reg_uid_consumer_channel_key(
-			buffer_reg_uid_list, ust_session_id,
-			uchan_id, &consumer_chan_key);
+			buffer_reg_uid_list, uchan_id, &consumer_chan_key);
 	if (ret < 0) {
 		/* Not found */
 		ret = 0;

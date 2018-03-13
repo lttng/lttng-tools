@@ -152,7 +152,6 @@ void buffer_reg_destroy_registries(void);
 
 int buffer_reg_uid_consumer_channel_key(
 		struct cds_list_head *buffer_reg_uid_list,
-		uint64_t usess_id, uint64_t chan_key,
-		uint64_t *consumer_chan_key);
+		uint64_t chan_key, uint64_t *consumer_chan_key);
 
 #endif /* LTTNG_BUFFER_REGISTRY_H */
