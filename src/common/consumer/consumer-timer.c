@@ -699,8 +699,7 @@ end:
  * Execute action on a monitor timer.
  */
 static
-void monitor_timer(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_channel *channel)
+void monitor_timer(struct lttng_consumer_channel *channel)
 {
 	int ret;
 	int channel_monitor_pipe =
@@ -839,7 +838,7 @@ void *consumer_timer_thread(void *data)
 			struct lttng_consumer_channel *channel;
 
 			channel = info.si_value.sival_ptr;
-			monitor_timer(ctx, channel);
+			monitor_timer(channel);
 		} else if (signr == LTTNG_CONSUMER_SIG_EXIT) {
 			assert(CMM_LOAD_SHARED(consumer_quit));
 			goto end;
