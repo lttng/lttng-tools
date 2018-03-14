@@ -5412,7 +5412,7 @@ error:
  *
  * On success 0 is returned else a negative value.
  */
-static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
+static int reply_ust_register_channel(int sock, int cobjd,
 		size_t nr_fields, struct ustctl_field *fields)
 {
 	int ret, ret_code = 0;
@@ -5790,7 +5790,7 @@ int ust_app_recv_notify(int sock)
 		 * that if needed it will be freed. After this, it's invalid to access
 		 * fields or clean it up.
 		 */
-		ret = reply_ust_register_channel(sock, sobjd, cobjd, nr_fields,
+		ret = reply_ust_register_channel(sock, cobjd, nr_fields,
 				fields);
 		if (ret < 0) {
 			goto error;
