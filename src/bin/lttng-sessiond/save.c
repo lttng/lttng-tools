@@ -780,7 +780,6 @@ end:
 
 static
 int save_agent_events(struct config_writer *writer,
-		struct ltt_ust_channel *chan,
 		struct agent *agent)
 {
 	int ret;
@@ -1254,7 +1253,7 @@ int save_ust_channel(struct config_writer *writer,
 		 * the "agent" events associated with this channel and serialize
 		 * them.
 		 */
-		ret = save_agent_events(writer, ust_chan, agent);
+		ret = save_agent_events(writer, agent);
 		if (ret) {
 			goto end;
 		}
