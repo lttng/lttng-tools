@@ -568,13 +568,6 @@ AC_CHECK_LIB([c], [fmemopen],
 ]
 )
 
-# Check for open_memstream
-AC_CHECK_LIB([c], [open_memstream],
-[
-	AC_DEFINE_UNQUOTED([LTTNG_HAVE_OPEN_MEMSTREAM], 1, [Has open_memstream support.])
-]
-)
-
 # check for libpfm
 AC_CHECK_LIB([pfm], [pfm_initialize],
 	     [
