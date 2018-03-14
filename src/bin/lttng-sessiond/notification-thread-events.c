@@ -295,7 +295,7 @@ unsigned long lttng_condition_buffer_usage_hash(
 
 		val = condition->threshold_ratio.value * (double) UINT32_MAX;
 		hash ^= hash_key_u64(&val, lttng_ht_seed);
-	} else if (condition->threshold_ratio.set) {
+	} else if (condition->threshold_bytes.set) {
 		uint64_t val;
 
 		val = condition->threshold_bytes.value;
