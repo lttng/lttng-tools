@@ -472,7 +472,7 @@ struct consumer_relayd_sock_pair {
 	/* Network sequence number. */
 	uint64_t net_seq_idx;
 	/* Number of stream associated with this relayd */
-	unsigned int refcount;
+	int refcount;
 
 	/*
 	 * This flag indicates whether or not we should destroy this object. The
