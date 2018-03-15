@@ -2806,7 +2806,7 @@ int relay_rotate_pending(struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_generic_reply reply;
 	struct lttng_ht_iter iter;
 	struct relay_stream *stream;
-	int ret;
+	int ret = 0;
 	ssize_t network_ret;
 	uint64_t chunk_id;
         bool rotate_pending = false;
