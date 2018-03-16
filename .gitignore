@@ -116,6 +116,7 @@ health_check
 /tests/utils/testapp/gen-ust-events/gen-ust-events
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
+/tests/utils/testapp/gen-ust-statedump-events/gen-ust-statedump-events
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/utils/testapp/gen-syscall-events/gen-syscall-events
 /tests/regression/tools/live/live_test

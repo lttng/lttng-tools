@@ -47,7 +47,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/test_event_tracef \
 	ust/test_event_perf \
 	ust/blocking/test_blocking \
-	ust/multi-lib/test_multi_lib
+	ust/multi-lib/test_multi_lib \
+	ust/statedump-notifier/test_statedump_notifier
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
