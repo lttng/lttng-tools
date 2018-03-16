@@ -1,0 +1,312 @@
+#!/bin/bash
+#
+# Copyright (C) - 2018 Geneviève Bastien <gbastien@versatic.net>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="UST - Statedump Notifier"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+SESSION_NAME="statedump_notifier"
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-statedump-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NUM_EVENT=1000000
+NUM_STDP_EVENTS=2
+EVENT_NAME="tp:tpteststdmp"
+CHANNEL_NAME="testchan"
+PAGE_SIZE=$(getconf PAGE_SIZE)
+SIZE_LIMIT=$PAGE_SIZE
+NUM_TESTS=76
+
+# Ensure the daemons invoke abort on error.
+export LTTNG_ABORT_ON_ERROR=1
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+function run_app_bg()
+{
+	file_termination=$1
+	local file_initialization=$(mktemp -u)
+
+	$TESTAPP_BIN ${STATEDUMP_FILE} ${file_initialization} ${file_termination}  &
+	ok $? "Running application in background"
+
+	while [ ! -f "${file_initialization}" ]; do
+		sleep 0.5
+	done
+
+	rm -f ${file_initialization}
+}
+
+function run_app_fg()
+{
+	$TESTAPP_BIN ${STATEDUMP_FILE}
+	while [ ! -f "${STATEDUMP_FILE}" ]; do
+		sleep 0.5
+	done
+	ok $? "Ran application in foreground"
+}
+
+function test_statedump_notifier_enable_all_ust()
+{
+
+	diag "Test statedump notifier enabling all ust events"
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME "-a"
+	start_lttng_tracing_ok $SESSION_NAME
+
+	run_app_fg
+
+	# stop and destroy
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Validate the statedump events are present
+	trace_matches $EVENT_NAME $NUM_STDP_EVENTS $TRACE_PATH
+
+	stop_lttng_sessiond
+}
+
+function test_statedump_regenerate()
+{
+	diag "Test regenerating the statedump"
+	local file_termination=$(mktemp -u)
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME "-a"
+	start_lttng_tracing_ok $SESSION_NAME
+
+	# Run the app in the background to regenerate statedump
+	run_app_bg ${file_termination}
+	while [ ! -f "${STATEDUMP_FILE}" ]; do
+		sleep 0.5
+	done
+
+	rm $STATEDUMP_FILE
+
+	# stop and destroy
+	regenerate_statedump_ok $SESSION_NAME
+	while [ ! -f "${STATEDUMP_FILE}" ]; do
+		sleep 0.5
+	done
+
+	touch ${file_termination}
+	wait
+
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	NUM_EVENTS=$((2*$NUM_STDP_EVENTS))
+
+	# Validate the statedump events are present
+	trace_matches $EVENT_NAME $NUM_EVENTS $TRACE_PATH
+
+	rm -f ${file_termination}
+	stop_lttng_sessiond
+}
+
+function test_statedump_enable_only_this()
+{
+	diag "Test statedump notifier enabling only statedump events"
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	run_app_fg
+
+	# stop and destroy
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Validate the statedump events are present
+	trace_match_only $EVENT_NAME $NUM_STDP_EVENTS $TRACE_PATH
+
+	stop_lttng_sessiond
+}
+
+function test_statedump_enable_others()
+{
+	diag "Test statedump notifier when the events are not enabled"
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME "lttng_ust_statedump:*"
+	start_lttng_tracing_ok $SESSION_NAME
+
+	run_app_fg
+
+	# stop and destroy
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Validate the statedump events are present
+	trace_matches $EVENT_NAME 0 $TRACE_PATH
+
+	stop_lttng_sessiond
+}
+
+function test_statedump_multi_session()
+{
+	diag "Test statedump with multiple sessions, with only one having the app statedump enabled"
+
+	start_lttng_sessiond
+
+	# BEFORE application is spawned, start 2 sessions
+	# Session 0 enables statedump events
+	create_lttng_session_ok "$SESSION_NAME-0" "$TRACE_PATH/0"
+	enable_ust_lttng_event_ok "$SESSION_NAME-0" "$EVENT_NAME"
+	start_lttng_tracing_ok "$SESSION_NAME-0"
+
+	# Session 1 enables other ust events
+	create_lttng_session_ok "$SESSION_NAME-1" "$TRACE_PATH/1"
+	enable_ust_lttng_event_ok "$SESSION_NAME-1" "lttng_ust_statedump:*"
+	start_lttng_tracing_ok "$SESSION_NAME-1"
+
+	# Run the app in foreground
+	run_app_fg
+
+	# Close and destroy sessions
+	stop_lttng_tracing_ok "$SESSION_NAME-0"
+	destroy_lttng_session_ok "$SESSION_NAME-0"
+	stop_lttng_tracing_ok "$SESSION_NAME-1"
+	destroy_lttng_session_ok "$SESSION_NAME-1"
+
+	# Validate traces
+	trace_match_only $EVENT_NAME $NUM_STDP_EVENTS $TRACE_PATH/0
+	trace_matches $EVENT_NAME 0 $TRACE_PATH/1
+
+	stop_lttng_sessiond
+}
+
+function test_statedump_app_already_alive()
+{
+	diag "Test the statedump notifier when the application was already started"
+
+	# Run the app in the background to regenerate statedump
+	local file_termination=$(mktemp -u)
+	run_app_bg ${file_termination}
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+
+	while [ ! -f "${STATEDUMP_FILE}" ]; do
+		sleep 0.5
+	done
+
+	# Kill the application
+	touch ${file_termination}
+	wait
+
+	# stop and destroy
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Validate the statedump events are present
+	trace_match_only $EVENT_NAME $NUM_STDP_EVENTS $TRACE_PATH
+
+	stop_lttng_sessiond
+	rm -f ${file_termination}
+}
+
+function test_statedump_app_running_multi_session()
+{
+
+	diag "Test the statedump notifier, application already started, multi-session"
+
+	# Run the app in the background
+	local file_termination=$(mktemp -u)
+	run_app_bg ${file_termination}
+
+	start_lttng_sessiond
+
+	# Start 2 sessions
+	# Session 0 enables statedump events
+	create_lttng_session_ok "$SESSION_NAME-0" "$TRACE_PATH/0"
+	enable_ust_lttng_event_ok "$SESSION_NAME-0" "$EVENT_NAME"
+	start_lttng_tracing_ok "$SESSION_NAME-0"
+
+	# Session 1 enables other ust events
+	create_lttng_session_ok "$SESSION_NAME-1" "$TRACE_PATH/1"
+	enable_ust_lttng_event_ok "$SESSION_NAME-1" "lttng_ust_statedump:*"
+	start_lttng_tracing_ok "$SESSION_NAME-1"
+
+	while [ ! -f "${STATEDUMP_FILE}" ]; do
+		sleep 0.5
+	done
+
+	# Kill the application
+	touch ${file_termination}
+	wait
+
+	# Close and destroy sessions
+	stop_lttng_tracing_ok "$SESSION_NAME-0"
+	destroy_lttng_session_ok "$SESSION_NAME-0"
+	stop_lttng_tracing_ok "$SESSION_NAME-1"
+	destroy_lttng_session_ok "$SESSION_NAME-1"
+
+	# Validate traces
+	trace_match_only $EVENT_NAME $NUM_STDP_EVENTS $TRACE_PATH/0
+	trace_matches $EVENT_NAME 0 $TRACE_PATH/1
+
+	stop_lttng_sessiond
+	rm -f ${file_termination}
+}
+
+TESTS=(
+	"test_statedump_notifier_enable_all_ust"
+	"test_statedump_regenerate"
+	"test_statedump_enable_only_this"
+	"test_statedump_enable_others"
+	"test_statedump_multi_session"
+	"test_statedump_app_already_alive"
+	"test_statedump_app_running_multi_session"
+)
+
+TEST_COUNT=${#TESTS[@]}
+i=0
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+while [ "$i" -lt "$TEST_COUNT" ]; do
+
+	trap signal_cleanup SIGTERM SIGINT
+
+	TRACE_PATH=$(mktemp -d)
+	STATEDUMP_FILE=$(mktemp -u)
+
+	# Execute test
+	${TESTS[$i]}
+
+  rm $STATEDUMP_FILE
+	rm -rf $TRACE_PATH
+
+	let "i++"
+done
