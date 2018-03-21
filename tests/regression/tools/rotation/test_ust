@@ -243,5 +243,3 @@ done
 
 stop_lttng_sessiond
 stop_lttng_relayd
-
-exit $out

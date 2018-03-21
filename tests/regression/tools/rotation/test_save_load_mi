@@ -117,5 +117,3 @@ do
 done
 
 stop_lttng_sessiond
-
-exit $out
