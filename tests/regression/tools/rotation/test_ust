@@ -95,7 +95,7 @@ function test_ust_streaming_uid ()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/uid/*/*/" 0
-	rm -rf ${TRACE_PATH}/${HOSTNAME}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_local_uid ()
@@ -105,7 +105,7 @@ function test_ust_local_uid ()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	rotate_ust_test "${TRACE_PATH}" "ust/uid/*/*/" 0
-	rm -rf ${TRACE_PATH}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_streaming_pid ()
@@ -116,7 +116,7 @@ function test_ust_streaming_pid ()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
 	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/pid/*/" 1
-	rm -rf ${TRACE_PATH}/${HOSTNAME}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_local_pid ()
@@ -127,7 +127,7 @@ function test_ust_local_pid ()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
 	rotate_ust_test "${TRACE_PATH}" "ust/pid/*/" 1
-	rm -rf ${TRACE_PATH}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_local_timer_uid ()
@@ -141,7 +141,7 @@ function test_ust_local_timer_uid ()
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}" 0
-	rm -rf ${TRACE_PATH}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_streaming_timer_uid ()
@@ -155,7 +155,7 @@ function test_ust_streaming_timer_uid ()
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
-	rm -rf ${TRACE_PATH}/${HOSTNAME}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_local_timer_pid ()
@@ -170,7 +170,7 @@ function test_ust_local_timer_pid ()
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}" 1
-	rm -rf ${TRACE_PATH}
+	clean_path $TRACE_PATH
 }
 
 function test_ust_streaming_timer_pid ()
@@ -185,7 +185,7 @@ function test_ust_streaming_timer_pid ()
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 1
-	rm -rf ${TRACE_PATH}/${HOSTNAME}
+	clean_path $TRACE_PATH
 }
 
 function test_incompatible_sessions ()
@@ -243,3 +243,6 @@ done
 
 stop_lttng_sessiond
 stop_lttng_relayd
+
+# Remove tmp dir
+rm -rf $TRACE_PATH

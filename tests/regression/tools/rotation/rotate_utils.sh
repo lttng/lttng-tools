@@ -1,3 +1,14 @@
+# Clean everything under directory but keep directory
+function clean_path ()
+{
+	local path=$1
+	# Use -u from bash top prevent empty expansion of variable yielding a
+	# list of current directory from find.
+	set -u
+	find $path -mindepth 1 -maxdepth 1 -exec rm -rf '{}' \;
+	set +u
+}
+
 function set_chunk_pattern ()
 {
 	# Need to call this function after $today has been set.
@@ -65,12 +76,6 @@ function validate_test_chunks ()
 	test -z "$(\ls -A $local_path)"
 	empty=$?
 	ok $empty "Trace folder is now empty"
-	if [ $empty -eq 0 ]; then
-	# Only delete if successful
-		rm -rf $local_path/
-	else
-		find $local_path
-	fi
 }
 
 function rotate_timer_test ()
@@ -122,8 +127,6 @@ function rotate_timer_test ()
 		while [ $i -le $expected_chunks ]; do
 			validate_trace_empty $local_path/${chunk_pattern}-$i
 			i=$(($i+1))
-	done
-fi
-
-	rm -rf $local_path
+		done
+	fi
 }
