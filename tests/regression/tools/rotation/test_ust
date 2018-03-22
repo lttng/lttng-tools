@@ -38,7 +38,7 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function enable_channel_per_pid()
+function enable_channel_per_pid ()
 {
 	sess_name=$1
 	channel_name=$2
@@ -46,7 +46,7 @@ function enable_channel_per_pid()
 	enable_ust_lttng_channel_ok $sess_name $channel_name --buffers-pid
 }
 
-function lttng_create_session_uri
+function lttng_create_session_uri ()
 {
 	# Create session with default path
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
