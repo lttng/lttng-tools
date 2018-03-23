@@ -417,6 +417,8 @@ THE SOFTWARE.
 			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
 			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
 			<xs:element name="snapshots" type="tns:snapshots_type" minOccurs="0" />
+			<xs:element name="rotation_schedule_size" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
+			<xs:element name="rotation_schedule_timer_period" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- usec -->
 		</xs:all>
 	</xs:complexType>
 
@@ -562,6 +564,32 @@ THE SOFTWARE.
 		</xs:sequence>
 	</xs:complexType>
 
+	<!-- Maps to the rotate command -->
+	<xs:complexType name="rotation_type">
+		<xs:all>
+			<xs:element name="session_name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="status" type="xs:string" />
+			<xs:element name="path" type="xs:string" minOccurs="0" />
+		</xs:all>
+	</xs:complexType>
+
+	<!-- Maps to an array of rotations -->
+	<xs:complexType name="rotations_type">
+		<xs:sequence>
+			<xs:element name="rotation" type="tns:rotation_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Maps to the enable-rotation command -->
+	<xs:complexType name="rotation_schedule_type">
+		<xs:sequence>
+			<xs:element name="session_name" type="tns:name_type" minOccurs="0" />
+			<xs:element name="rotation_schedule_size" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- bytes -->
+			<xs:element name="rotation_schedule_timer_period" type="tns:uint64_type" default="0" minOccurs="0" /> <!-- usec -->
+			<xs:element name="status" type="xs:string" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+
 	<xs:complexType name="output_type">
 		<xs:choice>
 			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
@@ -581,6 +609,7 @@ THE SOFTWARE.
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
 			<xs:element name="rotations" type="tns:rotations_type" minOccurs="0" />
+			<xs:element name="rotation_schedule" type="tns:rotation_schedule_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
@@ -608,6 +637,8 @@ THE SOFTWARE.
 			<xs:enumeration value="metadata" />
 			<xs:enumeration value="regenerate" />
 			<xs:enumeration value="rotate" />
+			<xs:enumeration value="enable-rotation" />
+			<xs:enumeration value="disable-rotation" />
 		</xs:restriction>
 	</xs:simpleType>
 
