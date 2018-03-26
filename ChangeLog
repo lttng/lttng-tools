@@ -1,3 +1,24 @@
+2018-03-26 lttng-tools 2.9.8 (Purple Day)
+	* Fix: set errno with value from SO_ERROR on error.
+	* Fix: missing value handling for lttng_event_context_type
+	* Fix: Use SOL_SOCKET level for SO_KEEPALIVE on all platform
+	* Fix: error out on leftover arguments
+	* Fix: reply to version check even on protocol mismatch
+	* Fix: error handling on relay version check
+	* Document add-context limitation for started session
+	* Fix: add-context cannot be performed after a session has been started
+	* Fix: duplicated kernel consumer socket locking
+	* Fix: remove unused event types in MI XML schema
+	* Tests: cleanly exit from test apps on reception of SIGTERM
+	* Document consumer socket locking assumptions
+	* Fix: consumer socket lock not held during snapshot record
+	* Fix: set_relayd_for_snapshot does not acquire the consumer socket lock
+	* Document the locking assumptions of consumerd-relayd socket passing
+	* Assert that the consumer lock is held while sending FDs to consumerd
+	* Assert that the consumer socket lock is taken during communication
+	* Tests: refuse to run test suite if lttng processes are present
+	* Fix: metadata channel leak when using the snapshot tracing mode
+
 2018-02-05 lttng-tools 2.9.7
 	* Fix: do not flag consumer as disabled on relayd comm failure
 	* Fix: cleanup inactive FDs in the consumer polling thread
