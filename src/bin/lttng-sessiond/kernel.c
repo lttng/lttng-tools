@@ -1169,7 +1169,7 @@ int kernel_rotate_session(struct ltt_session *session)
 		 * reach 0 before we complete the iteration over all
 		 * the channels.
 		 */
-		ret = rotate_add_channel_pending(ksess->metadata->fd,
+		ret = rotate_add_channel_pending(ksess->metadata->key,
 				LTTNG_DOMAIN_KERNEL, session);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
@@ -1201,7 +1201,7 @@ int kernel_rotate_session(struct ltt_session *session)
 		/*
 		 * Rotate the metadata channel.
 		 */
-		ret = consumer_rotate_channel(socket, ksess->metadata->fd,
+		ret = consumer_rotate_channel(socket, ksess->metadata->key,
 				ksess->uid, ksess->gid, ksess->consumer,
 				ksess->consumer->subdir,
 				/* is_metadata_channel */ true,
