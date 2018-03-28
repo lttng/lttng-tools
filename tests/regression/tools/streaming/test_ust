@@ -37,14 +37,6 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function lttng_create_session_uri
-{
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
-	ok $? "Create session with default path"
-}
-
-
 # MUST set TESTDIR before calling those functions
 
 function test_ust_before_start ()
@@ -53,7 +45,7 @@ function test_ust_before_start ()
 	local file_sync_before_last=$(mktemp -u)
 
 	diag "Test UST streaming BEFORE tracing starts"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
 	# Run 5 times with a 1 second delay
@@ -77,7 +69,7 @@ function test_ust_after_start ()
 	local file_sync_after_first=$(mktemp -u)
 
 	diag "Test UST streaming AFTER tracing starts"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 

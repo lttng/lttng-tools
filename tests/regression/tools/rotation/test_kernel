@@ -29,14 +29,6 @@ NUM_TESTS=68
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
 
-function lttng_create_session_uri
-{
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
-
-	ok $? "Create session $SESSION_NAME"
-}
-
 function rotate_kernel_test ()
 {
 	local_path=$1
@@ -72,7 +64,7 @@ function rotate_kernel_test ()
 function test_kernel_streaming ()
 {
 	diag "Test kernel streaming with session rotation"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	rotate_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	clean_path $TRACE_PATH
 }
@@ -99,7 +91,7 @@ function test_kernel_local_timer ()
 function test_kernel_streaming_timer ()
 {
 	diag "Test kernel remote with session rotation timer"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME

@@ -40,15 +40,6 @@ function enable_channel_per_uid()
     ok $? "Enable channel $channel_name per UID for session $sess_name"
 }
 
-function lttng_create_session_uri
-{
-	local name=$1
-
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $name -U net://localhost >/dev/null 2>&1
-	ok $? "Create session on net://localhost"
-}
-
 function check_sessiond()
 {
 	if [ -z "$(pgrep --full lt-lttng-sessiond)" ]; then
@@ -111,7 +102,7 @@ test_stress()
 {
 	for b in $(seq 1 $NR_LOOP); do
 		for a in $(seq 1 $NR_SESSION); do
-			lttng_create_session_uri $SESSION_NAME-$a
+			create_lttng_session_uri $SESSION_NAME-$a net://localhost
 			check_sessiond
 			check_relayd
 			enable_channel_per_uid $SESSION_NAME-$a $CHANNEL_NAME

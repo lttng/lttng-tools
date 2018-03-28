@@ -723,6 +723,15 @@ function create_lttng_session_no_output ()
 	ok $? "Create session $sess_name in no-output mode"
 }
 
+function create_lttng_session_uri () {
+	local sess_name=$1
+	local uri=$2
+	local opts="${@:3}"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -U $uri $opts 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Create session $sess_name with uri:$uri and opts: $opts"
+}
+
 function create_lttng_session ()
 {
 	local withtap=$1

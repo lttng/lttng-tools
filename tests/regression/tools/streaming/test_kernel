@@ -28,18 +28,10 @@ NUM_TESTS=10
 
 source $TESTDIR/utils/utils.sh
 
-function lttng_create_session_uri
-{
-	# Create session with default path
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME -U net://localhost >/dev/null 2>&1
-
-	ok $? "Create session $SESSION_NAME"
-}
-
 function test_kernel_before_start ()
 {
 	diag "Test kernel streaming with event enable BEFORE start"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	# Give a second
@@ -53,7 +45,7 @@ function test_kernel_before_start ()
 function test_kernel_after_start ()
 {
 	diag "Test kernel streaming with event enable AFTER start"
-	lttng_create_session_uri
+	create_lttng_session_uri $SESSION_NAME net://localhost
 	start_lttng_tracing_ok $SESSION_NAME
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	# Give a second
