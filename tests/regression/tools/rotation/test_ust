@@ -29,7 +29,7 @@ PID_RELAYD=0
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=146
+NUM_TESTS=150
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -185,19 +185,19 @@ function test_incompatible_sessions ()
 
 	diag "Live session with rotate timer"
 	# Should not be able to enable a rotation timer with a live session
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live >/dev/null 2>&1
+	create_lttng_session_uri $SESSION_NAME net://localhost --live
 	lttng_enable_rotation_timer_fail $SESSION_NAME 500ms
 	destroy_lttng_session_ok $SESSION_NAME
 
 	diag "Snapshot session with rotate timer"
 	# Should not be able to enable a rotation timer with a snapshot session
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --snapshot >/dev/null 2>&1
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH --snapshot
 	lttng_enable_rotation_timer_fail $SESSION_NAME 500ms
 	destroy_lttng_session_ok $SESSION_NAME
 
 	diag "Live session with rotate"
 	# Should not be able to rotate a live session
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --live >/dev/null 2>&1
+	create_lttng_session_uri $SESSION_NAME net://localhost --live
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	rotate_session_fail $SESSION_NAME
@@ -205,7 +205,7 @@ function test_incompatible_sessions ()
 
 	diag "Snapshot session with rotate"
 	# Should not be able to rotate a snapshot session
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $SESSION_NAME --snapshot >/dev/null 2>&1
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH --snapshot
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	rotate_session_fail $SESSION_NAME

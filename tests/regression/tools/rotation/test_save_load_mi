@@ -23,16 +23,13 @@ SESSION_NAME="stream"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=14
+NUM_TESTS=22
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
 
 #Overwrite the lttng_bin to get mi output
 LTTNG_BIN="lttng --mi xml"
-
-#Global declaration for simplification
-LTTNG=$TESTDIR/../src/bin/lttng/$LTTNG_BIN
 
 XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
 
@@ -43,7 +40,7 @@ XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"
 XPATH_ROTATE_SETUP="$XPATH_CMD_OUTPUT/lttng:rotation_schedule"
 
-function test_save_load ()
+function test_save_load_mi ()
 {
 	tmp_xml_output=$(mktemp -u)
 	tmp_save_output=$(mktemp -d)
@@ -53,49 +50,60 @@ function test_save_load ()
 	enable_ust_lttng_event_ok $SESSION_NAME -a
 
 	# Enable a rotation timer and check the MI output of the command
-	$LTTNG enable-rotation -s $SESSION_NAME --timer 500ms >${tmp_xml_output}
+
+	OUTPUT_DEST=${tmp_xml_output}
+	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation timer XML"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_timer_period)
 	test $value = 500000
 	ok $? "Found the right rotation timer value in XML"
 
 	# Enable a rotation size and check the MI output of the command
-	$LTTNG enable-rotation -s $SESSION_NAME --size 500k >${tmp_xml_output}
+	lttng_enable_rotation_size_ok $SESSION_NAME 500k
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation size XML"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_size)
 	test $value = 512000
 	ok $? "Found the right rotation size value in XML"
 
 	# Check the output of lttng list with the 2 rotation parameters
-	$LTTNG list $SESSION_NAME >${tmp_xml_output}
+	list_lttng_with_opts $SESSION_NAME
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
 	test $value = 500000
 	ok $? "Found the right rotation timer value in list XML"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
 	test $value = 512000
 	ok $? "Found the right rotation size value in list XML"
 
 	# save, destroy and reload the same session
-	$LTTNG save -o $tmp_save_output$SESSION_NAME >/dev/null
-	$LTTNG destroy $SESSION_NAME >/dev/null
-	$LTTNG load -i $tmp_save_output$SESSION_NAME >/dev/null
+	OUTPUT_DEST=/dev/null
+	lttng_save $SESSION_NAME "-o $tmp_save_output$SESSION_NAME"
+	destroy_lttng_session_ok $SESSION_NAME
+	lttng_load_ok "-i $tmp_save_output$SESSION_NAME"
 
+	OUTPUT_DEST=${tmp_xml_output}
 	# Check the output of lttng list with the 2 rotation parameters after the load
-	$LTTNG list $SESSION_NAME >${tmp_xml_output}
+	list_lttng_with_opts $SESSION_NAME
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML after load"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
 	test $value = 500000
 	ok $? "Found the right rotation timer value in list XML after load"
+
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
 	test $value = 512000
 	ok $? "Found the right rotation size value in list XML after load"
 
-	$LTTNG destroy $SESSION_NAME >/dev/null
+	OUTPUT_DEST=/dev/null
+	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf ${TRACE_PATH}
 	rm $tmp_xml_output
@@ -108,7 +116,7 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-tests=( test_save_load )
+tests=( test_save_load_mi )
 
 for fct_test in ${tests[@]};
 do
