@@ -21,14 +21,12 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 SESSION_NAME="stream"
 
-TRACE_PATH=$(mktemp -d)
-
 NUM_TESTS=22
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
 
-#Overwrite the lttng_bin to get mi output
+# Overwrite the lttng_bin to get mi output
 LTTNG_BIN="lttng --mi xml"
 
 XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
@@ -44,9 +42,10 @@ function test_save_load_mi ()
 {
 	tmp_xml_output=$(mktemp -u)
 	tmp_save_output=$(mktemp -d)
+	trace_path=$(mktemp -d)
 
 	diag "Test save/load/list/MI with rotation"
-	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	create_lttng_session_ok $SESSION_NAME $trace_path
 	enable_ust_lttng_event_ok $SESSION_NAME -a
 
 	# Enable a rotation timer and check the MI output of the command
@@ -105,7 +104,7 @@ function test_save_load_mi ()
 	OUTPUT_DEST=/dev/null
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rm -rf ${TRACE_PATH}
+	rm -rf ${trace_path}
 	rm $tmp_xml_output
 	rm -rf $tmp_save_output
 }
