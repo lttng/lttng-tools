@@ -28,12 +28,6 @@ NUM_TESTS=10
 
 source $TESTDIR/utils/utils.sh
 
-# LTTng kernel modules check
-out=`ls /lib/modules/$(uname -r)/extra | grep lttng`
-if [ -z "$out" ]; then
-	BAIL_OUT "LTTng modules not detected."
-fi
-
 function lttng_create_session_uri
 {
 	# Create session with default path
@@ -80,6 +74,8 @@ fi
 
 skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
 {
+	validate_lttng_modules_present
+
 	start_lttng_relayd "-o $TRACE_PATH"
 	start_lttng_sessiond
 

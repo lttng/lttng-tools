@@ -29,12 +29,6 @@ NUM_TESTS=2060
 
 source $TESTDIR/utils/utils.sh
 
-# LTTng kernel modules check
-out=`ls /lib/modules/$(uname -r)/extra | grep lttng`
-if [ -z "$out" ]; then
-	BAIL_OUT "LTTng modules not detected."
-fi
-
 function test_kernel_local_snapshot ()
 {
 	diag "Test local kernel snapshots"
@@ -241,6 +235,9 @@ fi
 
 skip $isroot "Root access is needed. Skipping all kernel snapshot tests." $NUM_TESTS ||
 {
+
+	validate_lttng_modules_present
+
 	start_lttng_sessiond
 
 	#tests=( test_kernel_1000_local_snapshots )
