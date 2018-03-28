@@ -19,7 +19,6 @@ TEST_DESC="Rotation - Kernel tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
-SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d)
 
