@@ -19,7 +19,6 @@ TEST_DESC="Snapshots - Kernel tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="sched_switch"
-PID_RELAYD=0
 SESSION_NAME=""
 CHANNEL_NAME="snapchan"
 

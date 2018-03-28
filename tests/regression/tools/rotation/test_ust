@@ -18,14 +18,12 @@ TEST_DESC="Rotation - User space tracing"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-NR_ITER=1
 NR_USEC_WAIT=0
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
-PID_RELAYD=0
 
 TRACE_PATH=$(mktemp -d)
 

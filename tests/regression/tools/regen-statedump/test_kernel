@@ -19,7 +19,6 @@ TEST_DESC="Regenerate the statedump - Kernel tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
-PID_RELAYD=0
 SESSION_NAME=""
 EVENT_NAME="lttng_statedump_start,lttng_statedump_end"
 

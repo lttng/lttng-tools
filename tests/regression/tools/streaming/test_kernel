@@ -19,7 +19,6 @@ TEST_DESC="Streaming - Kernel tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="sched_switch"
-PID_RELAYD=0
 SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d)

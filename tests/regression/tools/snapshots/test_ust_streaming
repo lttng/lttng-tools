@@ -19,7 +19,6 @@ TEST_DESC="Streaming - Snapshot UST tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="tp:tptest"
-PID_RELAYD=0
 SESSION_NAME=""
 CHANNEL_NAME="chan1"
 BIN_NAME="gen-nevents"
