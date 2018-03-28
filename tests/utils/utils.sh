@@ -125,6 +125,16 @@ function conf_proc_count()
 	echo
 }
 
+# Check if base lttng-modules are present.
+# Bail out on failure
+function validate_lttng_modules_present ()
+{
+	modprobe -n lttng-tracer 2>/dev/null
+	if [ $? -ne 0  ]; then
+		BAIL_OUT "LTTng modules not detected."
+	fi
+}
+
 function enable_kernel_lttng_event
 {
 	local withtap="$1"
