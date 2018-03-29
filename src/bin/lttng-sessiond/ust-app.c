@@ -6334,7 +6334,9 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 					reg->registry->reg.ust->metadata_key,
 					LTTNG_DOMAIN_UST, session);
 			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				ret = reg->bits_per_long == 32 ?
+						-LTTNG_ERR_UST_CONSUMER32_FAIL :
+						-LTTNG_ERR_UST_CONSUMER64_FAIL;
 				goto error;
 			}
 
@@ -6353,7 +6355,9 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 						reg_chan->consumer_key,
 						LTTNG_DOMAIN_UST, session);
 				if (ret < 0) {
-					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+					ret = reg->bits_per_long == 32 ?
+							-LTTNG_ERR_UST_CONSUMER32_FAIL :
+							-LTTNG_ERR_UST_CONSUMER64_FAIL;
 					goto error;
 				}
 				ret = consumer_rotate_channel(socket,
@@ -6430,7 +6434,9 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 			ret = rotate_add_channel_pending(registry->metadata_key,
 					LTTNG_DOMAIN_UST, session);
 			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				ret = app->bits_per_long == 32 ?
+						-LTTNG_ERR_UST_CONSUMER32_FAIL :
+						-LTTNG_ERR_UST_CONSUMER64_FAIL;
 				goto error;
 			}
 
@@ -6441,7 +6447,9 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 						ua_chan->key, LTTNG_DOMAIN_UST,
 						session);
 				if (ret < 0) {
-					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+					ret = app->bits_per_long == 32 ?
+							-LTTNG_ERR_UST_CONSUMER32_FAIL :
+							-LTTNG_ERR_UST_CONSUMER64_FAIL;
 					goto error;
 				}
 				ret = consumer_rotate_channel(socket, ua_chan->key,
