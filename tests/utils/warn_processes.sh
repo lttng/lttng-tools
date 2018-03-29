@@ -1,6 +1,8 @@
 #!/bin/bash
 
-PGREP="$1"
+if [ -z $PGREP ]; then
+	PGREP=pgrep
+fi
 
 if [ x$LTTNG_TOOLS_TESTS_DISABLE_WARN_LTTNG_PROCESSES == x1 ]; then
 	exit
