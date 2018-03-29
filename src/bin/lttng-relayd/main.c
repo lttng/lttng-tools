@@ -1722,7 +1722,8 @@ int try_rotate_stream(struct relay_stream *stream)
 		goto end;
 	}
 
-	if (stream->prev_seq < stream->rotate_at_seq_num) {
+	if (stream->prev_seq < stream->rotate_at_seq_num ||
+			stream->prev_seq == -1ULL) {
 		DBG("Stream %" PRIu64 " no yet ready for rotation",
 				stream->stream_handle);
 		goto end;
