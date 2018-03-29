@@ -1588,6 +1588,7 @@ static
 int rotate_truncate_stream(struct relay_stream *stream)
 {
 	int ret, new_fd;
+	off_t lseek_ret;
 	uint64_t diff, pos = 0;
 	char buf[FILE_COPY_BUFFER_SIZE];
 
@@ -1614,10 +1615,11 @@ int rotate_truncate_stream(struct relay_stream *stream)
 	 * Rewind the current tracefile to the position at which the rotation
 	 * should have occured.
 	 */
-	ret = lseek(stream->stream_fd->fd,
+	lseek_ret = lseek(stream->stream_fd->fd,
 			stream->pos_after_last_complete_data_index, SEEK_SET);
-	if (ret < 0) {
+	if (lseek_ret < 0) {
 		PERROR("seek truncate stream");
+		ret = -1;
 		goto end;
 	}
 

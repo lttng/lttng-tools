@@ -3647,10 +3647,12 @@ static
 int clear_metadata_file(int fd)
 {
 	int ret;
+	off_t lseek_ret;
 
-	ret = lseek(fd, 0, SEEK_SET);
-	if (ret < 0) {
+	lseek_ret = lseek(fd, 0, SEEK_SET);
+	if (lseek_ret < 0) {
 		PERROR("lseek");
+		ret = -1;
 		goto end;
 	}
 
