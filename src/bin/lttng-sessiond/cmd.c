@@ -917,8 +917,8 @@ error:
  *
  * The consumer socket lock must be held by the caller.
  */
-static int send_consumer_relayd_socket(enum lttng_domain_type domain,
-		unsigned int session_id, struct lttng_uri *relayd_uri,
+static int send_consumer_relayd_socket(unsigned int session_id,
+		struct lttng_uri *relayd_uri,
 		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
 		char *session_name, char *hostname, int session_live_timer)
@@ -1003,7 +1003,7 @@ static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
 
 	/* Sending control relayd socket. */
 	if (!sock->control_sock_sent) {
-		ret = send_consumer_relayd_socket(domain, session_id,
+		ret = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.control, consumer, sock,
 				session_name, hostname, session_live_timer);
 		if (ret != LTTNG_OK) {
@@ -1013,7 +1013,7 @@ static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
 
 	/* Sending data relayd socket. */
 	if (!sock->data_sock_sent) {
-		ret = send_consumer_relayd_socket(domain, session_id,
+		ret = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.data, consumer, sock,
 				session_name, hostname, session_live_timer);
 		if (ret != LTTNG_OK) {
@@ -1152,7 +1152,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	}
 
 	/* Quiescent wait after starting trace */
-	kernel_wait_quiescent(kernel_tracer_fd);
+	kernel_wait_quiescent(wpipe);
 
 	ksess->active = 1;
 

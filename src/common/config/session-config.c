@@ -1340,10 +1340,6 @@ end:
 
 static
 int create_session(const char *name,
-	struct lttng_domain *kernel_domain,
-	struct lttng_domain *ust_domain,
-	struct lttng_domain *jul_domain,
-	struct lttng_domain *log4j_domain,
 	xmlNodePtr output_node,
 	uint64_t live_timer_interval,
 	const struct config_load_session_override_attr *overrides)
@@ -2715,13 +2711,11 @@ domain_init_error:
 				overrides);
 	} else if (live_timer_interval &&
 		live_timer_interval != UINT64_MAX) {
-		ret = create_session((const char *) name, kernel_domain,
-				ust_domain, jul_domain, log4j_domain,
+		ret = create_session((const char *) name,
 				output_node, live_timer_interval, overrides);
 	} else {
 		/* regular session */
-		ret = create_session((const char *) name, kernel_domain,
-				ust_domain, jul_domain, log4j_domain,
+		ret = create_session((const char *) name,
 				output_node, UINT64_MAX, overrides);
 	}
 	if (ret) {

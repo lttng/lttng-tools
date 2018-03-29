@@ -157,7 +157,6 @@ struct channel_state_sample {
 static unsigned long hash_channel_key(struct channel_key *key);
 static int evaluate_condition(struct lttng_condition *condition,
 		struct lttng_evaluation **evaluation,
-		struct notification_thread_state *state,
 		struct channel_state_sample *previous_sample,
 		struct channel_state_sample *latest_sample,
 		uint64_t buffer_capacity);
@@ -466,7 +465,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 		goto end;
 	}
 
-	ret = evaluate_condition(condition, &evaluation, state, NULL,
+	ret = evaluate_condition(condition, &evaluation, NULL,
 			last_sample, channel_info->capacity);
 	if (ret) {
 		WARN("[notification-thread] Fatal error occurred while evaluating a newly subscribed-to condition");
@@ -2017,7 +2016,6 @@ end:
 static
 int evaluate_condition(struct lttng_condition *condition,
 		struct lttng_evaluation **evaluation,
-		struct notification_thread_state *state,
 		struct channel_state_sample *previous_sample,
 		struct channel_state_sample *latest_sample,
 		uint64_t buffer_capacity)
@@ -2063,8 +2061,7 @@ end:
 }
 
 static
-int client_enqueue_dropped_notification(struct notification_client *client,
-		struct notification_thread_state *state)
+int client_enqueue_dropped_notification(struct notification_client *client)
 {
 	int ret;
 	struct lttng_notification_channel_message msg = {
@@ -2160,7 +2157,7 @@ int send_evaluation_to_clients(struct lttng_trigger *trigger,
 			if (!client->communication.outbound.dropped_notification) {
 				client->communication.outbound.dropped_notification = true;
 				ret = client_enqueue_dropped_notification(
-						client, state);
+						client);
 				if (ret) {
 					goto end;
 				}
@@ -2342,7 +2339,7 @@ int handle_notification_thread_channel_sample(
 			continue;
 		}
 
-		ret = evaluate_condition(condition, &evaluation, state,
+		ret = evaluate_condition(condition, &evaluation,
 				previous_sample_available ? &previous_sample : NULL,
 				&latest_sample, channel_info->capacity);
 		if (ret) {

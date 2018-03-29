@@ -979,7 +979,7 @@ end:
  * Alloc new UST app session.
  */
 static
-struct ust_app_session *alloc_ust_app_session(struct ust_app *app)
+struct ust_app_session *alloc_ust_app_session(void)
 {
 	struct ust_app_session *ua_sess;
 
@@ -2171,7 +2171,7 @@ static int create_ust_app_session(struct ltt_ust_session *usess,
 	if (ua_sess == NULL) {
 		DBG2("UST app pid: %d session id %" PRIu64 " not found, creating it",
 				app->pid, usess->id);
-		ua_sess = alloc_ust_app_session(app);
+		ua_sess = alloc_ust_app_session();
 		if (ua_sess == NULL) {
 			/* Only malloc can failed so something is really wrong */
 			ret = -ENOMEM;
@@ -2347,8 +2347,7 @@ end:
  * Called with UST app session lock held and a RCU read side lock.
  */
 static
-int create_ust_app_channel_context(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan,
+int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
 	        struct lttng_ust_context_attr *uctx,
 		struct ust_app *app)
 {
@@ -5218,7 +5217,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 		}
 		ua_chan = caa_container_of(ua_chan_node, struct ust_app_channel,
 				node);
-		ret = create_ust_app_channel_context(ua_sess, ua_chan, &uctx->ctx, app);
+		ret = create_ust_app_channel_context(ua_chan, &uctx->ctx, app);
 		if (ret < 0) {
 			goto next_app;
 		}
@@ -5414,7 +5413,7 @@ error:
  *
  * On success 0 is returned else a negative value.
  */
-static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
+static int reply_ust_register_channel(int sock, int cobjd,
 		size_t nr_fields, struct ustctl_field *fields)
 {
 	int ret, ret_code = 0;
@@ -5792,7 +5791,7 @@ int ust_app_recv_notify(int sock)
 		 * that if needed it will be freed. After this, it's invalid to access
 		 * fields or clean it up.
 		 */
-		ret = reply_ust_register_channel(sock, sobjd, cobjd, nr_fields,
+		ret = reply_ust_register_channel(sock, cobjd, nr_fields,
 				fields);
 		if (ret < 0) {
 			goto error;
@@ -6143,8 +6142,7 @@ int ust_app_uid_get_channel_runtime_stats(uint64_t ust_session_id,
 	*lost = 0;
 
 	ret = buffer_reg_uid_consumer_channel_key(
-			buffer_reg_uid_list, ust_session_id,
-			uchan_id, &consumer_chan_key);
+			buffer_reg_uid_list, uchan_id, &consumer_chan_key);
 	if (ret < 0) {
 		/* Not found */
 		ret = 0;
