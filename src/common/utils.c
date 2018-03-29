@@ -1335,15 +1335,17 @@ LTTNG_HIDDEN
 int utils_truncate_stream_file(int fd, off_t length)
 {
 	int ret;
+	off_t lseek_ret;
 
 	ret = ftruncate(fd, length);
 	if (ret < 0) {
 		PERROR("ftruncate");
 		goto end;
 	}
-	ret = lseek(fd, length, SEEK_SET);
-	if (ret < 0) {
+	lseek_ret = lseek(fd, length, SEEK_SET);
+	if (lseek_ret < 0) {
 		PERROR("lseek");
+		ret = -1;
 		goto end;
 	}
 end:
