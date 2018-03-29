@@ -315,7 +315,7 @@ function test_multi_app_ust ()
 
 	test_multi_app ust $generator_pid
 
-	kill -9 $generator_pid 2> /dev/null
+	kill -s SIGTERM $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 }
@@ -331,7 +331,7 @@ function test_multi_app_kernel ()
 	test_multi_app kernel $generator_pid
 
 
-	kill -9 $generator_pid 2>/dev/null
+	kill -s SIGTERM $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -348,7 +348,7 @@ function test_on_register_evaluation_ust ()
 
 	test_on_register_evaluation ust $generator_pid
 
-	kill -9 $generator_pid 2> /dev/null
+	kill -s SIGTERM $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -366,7 +366,7 @@ function test_on_register_evaluation_kernel()
 	test_on_register_evaluation kernel $generator_pid
 
 
-	kill -9 $generator_pid 2> /dev/null
+	kill -s SIGTERM $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -458,7 +458,7 @@ function test_on_register_evaluation ()
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	kill -9 $generator_pid
+	kill -s SIGTERM $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 
 	for pipe in "${consumerd_pipe[@]}"; do
