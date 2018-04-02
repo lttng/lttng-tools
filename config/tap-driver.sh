@@ -52,7 +52,7 @@ Usage:
                 [--expect-failure={yes|no}] [--color-tests={yes|no}]
                 [--enable-hard-errors={yes|no}] [--ignore-exit]
                 [--diagnostic-string=STRING] [--merge|--no-merge]
-                [--comments|--no-comments] [--] TEST-COMMAND
+                [--comments|--no-comments] [--post-script] [--] TEST-COMMAND
 The '--test-name', '-log-file' and '--trs-file' options are mandatory.
 END
 }
@@ -62,6 +62,7 @@ END
 test_name= # Used for reporting.
 log_file=  # Where to save the result and output of the test script.
 trs_file=  # Where to save the metadata of the test run.
+post_script= # Script to be run after the test.
 expect_failure=0
 color_tests=0
 merge=0
@@ -84,6 +85,7 @@ while test $# -gt 0; do
   --comments) comments=1;;
   --no-comments) comments=0;;
   --diagnostic-string) diag_string=$2; shift;;
+  --post-script) post_script=$2; shift;;
   --) shift; break;;
   -*) usage_error "invalid option: '$1'";;
   esac
@@ -639,6 +641,11 @@ exit 0
 } 3>"$log_file"
 
 test $? -eq 0 || fatal "I/O or internal error"
+
+if test ! -z $post_script ; then
+  $post_script
+  test $? -eq 0 || fatal "Post script returned an error. See $log_file"
+fi
 
 # Local Variables:
 # mode: shell-script
