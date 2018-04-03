@@ -4564,9 +4564,12 @@ int cmd_rotate_session(struct ltt_session *session,
 		ret = domain_mkdir(session->ust_session->consumer, session,
 				session->ust_session->uid,
 				session->ust_session->gid);
+		if (ret) {
+			ret = -LTTNG_ERR_CREATE_DIR_FAIL;
+			goto end;
+		}
 		ret = ust_app_rotate_session(session, &ust_active);
 		if (ret != LTTNG_OK) {
-			ret = -LTTNG_ERR_CREATE_DIR_FAIL;
 			goto end;
 		}
 		/*
