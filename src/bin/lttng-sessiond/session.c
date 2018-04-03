@@ -401,6 +401,7 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	}
 
 	new_session->rotate_pending = false;
+	new_session->rotation_state = LTTNG_ROTATION_STATE_NO_ROTATION;
 	new_session->rotate_pending_relay = false;
 	new_session->rotate_relay_pending_timer_enabled = false;
 	new_session->rotate_timer = false;

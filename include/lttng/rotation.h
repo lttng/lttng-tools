@@ -30,14 +30,18 @@ extern "C" {
  */
 enum lttng_rotation_state {
 	/*
+	 * Session has not been rotated.
+	 */
+	LTTNG_ROTATION_STATE_NO_ROTATION = 0,
+	/*
 	 * Rotation is ongoing, but has not been completed yet.
 	 */
-	LTTNG_ROTATION_STATE_ONGOING = 0,
+	LTTNG_ROTATION_STATE_ONGOING = 1,
 	/*
 	 * Rotation has been completed and the resulting chunk
 	 * can now safely be read.
 	 */
-	LTTNG_ROTATION_STATE_COMPLETED = 1,
+	LTTNG_ROTATION_STATE_COMPLETED = 2,
 	/*
 	 * The rotation has expired.
 	 *
@@ -48,11 +52,11 @@ enum lttng_rotation_state {
 	 * Note that this state does not guarantee the the rotation was
 	 * completed successfully.
 	 */
-	LTTNG_ROTATION_STATE_EXPIRED = 2,
+	LTTNG_ROTATION_STATE_EXPIRED = 3,
 	/*
 	 * The rotation could not be completed due to an error.
 	 */
-	LTTNG_ROTATION_STATE_ERROR = 3,
+	LTTNG_ROTATION_STATE_ERROR = 4,
 };
 
 enum lttng_rotation_status {
