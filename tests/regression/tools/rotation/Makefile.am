@@ -1,5 +1,5 @@
-noinst_SCRIPTS = test_kernel test_ust test_save_load_mi
-EXTRA_DIST = test_kernel test_ust test_save_load_mi
+noinst_SCRIPTS = test_kernel test_ust test_save_load_mi rotate_utils.sh
+EXTRA_DIST = test_kernel test_ust test_save_load_mi rotate_utils.sh
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
