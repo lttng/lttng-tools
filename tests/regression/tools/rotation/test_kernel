@@ -64,7 +64,6 @@ function test_kernel_streaming ()
 	diag "Test kernel streaming with session rotation"
 	create_lttng_session_uri $SESSION_NAME net://localhost
 	rotate_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
-	clean_path $TRACE_PATH
 }
 
 function test_kernel_local ()
@@ -95,7 +94,6 @@ function test_kernel_streaming_timer ()
 	start_lttng_tracing_ok $SESSION_NAME
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
-	clean_path $TRACE_PATH
 }
 
 plan_tests $NUM_TESTS
@@ -122,6 +120,7 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 	do
 		SESSION_NAME=$(randstring 16 0)
 		${fct_test}
+		clean_path $TRACE_PATH
 	done
 
 	rmmod lttng-test
