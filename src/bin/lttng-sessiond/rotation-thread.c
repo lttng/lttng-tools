@@ -395,7 +395,6 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 			goto end_unlock_session;
 		}
 		session->rotate_pending = false;
-		session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
 		session->last_chunk_start_ts = session->current_chunk_start_ts;
 		if (session->rotate_pending_relay) {
 			ret = sessiond_timer_rotate_pending_start(
@@ -406,6 +405,8 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 				ret = -1;
 				goto end_unlock_session;
 			}
+		} else {
+			session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
 		}
 		DBG("Rotation completed for session %s", session->name);
 	}
@@ -445,6 +446,7 @@ int rotate_pending_relay_timer(struct ltt_session *session)
 		 * rotations can start now.
 		 */
 		session->rotate_pending_relay = false;
+		session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
 	} else if (ret == 1) {
 		DBG("[rotation-thread] Rotation still pending on the relay for "
 				"session %" PRIu64, session->id);
