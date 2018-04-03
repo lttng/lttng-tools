@@ -4204,12 +4204,10 @@ error_add_context:
 				cmd_ctx->lsm->u.rotate_setup.timer_us,
 				cmd_ctx->lsm->u.rotate_setup.size,
 				notification_thread_handle);
-		if (ret < 0) {
-			ret = -ret;
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
-		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD:

@@ -332,7 +332,6 @@ int lttng_rotation_set_schedule(
 	lsm.u.rotate_setup.size = attr->size;
 
 	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
-
 end:
 	return ret;
 }
