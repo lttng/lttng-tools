@@ -26,7 +26,10 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/regen-statedump/test_ust \
 	tools/notification/test_notification_ust \
 	tools/notification/test_notification_kernel \
-	tools/notification/test_notification_multi_app
+	tools/notification/test_notification_multi_app \
+	tools/rotation/test_ust \
+	tools/rotation/test_kernel \
+	tools/rotation/test_save_load_mi
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
