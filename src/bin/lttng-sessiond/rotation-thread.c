@@ -796,7 +796,7 @@ void *thread_rotation(void *data)
 				ret = handle_channel_rotation_pipe(fd,
 						revents, handle, &state);
 				if (ret) {
-					ERR("[rotation-thread] Handle channel rotation pipe");
+					ERR("[rotation-thread] Failed to handle channel rotation pipe");
 					goto error;
 				}
 			} else if (fd == rotate_notification_channel->socket) {
