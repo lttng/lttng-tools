@@ -284,35 +284,29 @@ int enqueue_timer_rotate_job(struct timer_thread_parameters *ctx,
 		struct ltt_session *session, unsigned int signal)
 {
 	int ret;
-	bool has_duplicate_timer_job;
 	char *c = "!";
+	struct sessiond_rotation_timer *timer_data = NULL;
 
 	pthread_mutex_lock(&ctx->rotation_timer_queue->lock);
-	has_duplicate_timer_job = check_duplicate_timer_job(ctx, session,
-			signal);
-
-	if (!has_duplicate_timer_job) {
-		struct sessiond_rotation_timer *timer_data = NULL;
-
-		timer_data = zmalloc(sizeof(struct sessiond_rotation_timer));
-		if (!timer_data) {
-			PERROR("Allocation of timer data");
-			goto error;
-		}
-		timer_data->session_id = session->id;
-		timer_data->signal = signal;
-		cds_list_add_tail(&timer_data->head,
-				&ctx->rotation_timer_queue->list);
-	} else {
+	if (check_duplicate_timer_job(ctx, session, signal)) {
 		/*
 		 * This timer job is already pending, we don't need to add
 		 * it.
 		 */
-		pthread_mutex_unlock(&ctx->rotation_timer_queue->lock);
 		ret = 0;
 		goto end;
 	}
-	pthread_mutex_unlock(&ctx->rotation_timer_queue->lock);
+
+	timer_data = zmalloc(sizeof(struct sessiond_rotation_timer));
+	if (!timer_data) {
+		PERROR("Allocation of timer data");
+		ret = -1;
+		goto end;
+	}
+	timer_data->session_id = session->id;
+	timer_data->signal = signal;
+	cds_list_add_tail(&timer_data->head,
+			&ctx->rotation_timer_queue->list);
 
 	ret = lttng_write(
 			lttng_pipe_get_writefd(ctx->rotation_timer_queue->event_pipe),
@@ -328,15 +322,13 @@ int enqueue_timer_rotate_job(struct timer_thread_parameters *ctx,
 			goto end;
 		}
 		PERROR("Timer wakeup rotation thread");
-		goto error;
+		goto end;
 	}
 
 	ret = 0;
-	goto end;
 
-error:
-	ret = -1;
 end:
+	pthread_mutex_unlock(&ctx->rotation_timer_queue->lock);
 	return ret;
 }
 
