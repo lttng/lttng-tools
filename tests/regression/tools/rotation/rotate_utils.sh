@@ -67,10 +67,10 @@ function validate_test_chunks ()
 
 	# Make sure we don't have anything else in the first 2 chunk directories
 	# besides the kernel folder.
-	nr_stale=$(\ls $local_path/${chunk_pattern}-1 | grep -v $domain | wc -l)
-	ok $nr_stale "No stale folders in chunk 1 directory"
-	nr_stale=$(\ls $local_path/${chunk_pattern}-2 | grep -v $domain | wc -l)
-	ok $nr_stale "No stale folders in chunk 2 directory"
+	for chunk in $(seq 1 2); do
+		nr_stale=$(ls -A $local_path/${chunk_pattern}-${chunk} | grep -v $domain | wc -l)
+		ok $nr_stale "No stale folders in chunk ${chunk} directory"
+	done
 
 	# We expect a complete session of 30 events
 	validate_trace_count $EVENT_NAME $local_path 30
