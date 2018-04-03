@@ -43,14 +43,27 @@ function validate_test_chunks ()
 	per_pid=$5
 
 	set_chunk_pattern
+	local path=
 
-	# Check if the 3 chunk folders exist and they contain a ${app_path}/metadata file.
-	ls $local_path/${chunk_pattern}-1/${app_path}/metadata >/dev/null
-	ok $? "Chunk 1 exists"
-	ls $local_path/${chunk_pattern}-2/${app_path}/metadata >/dev/null
-	ok $? "Chunk 2 exists"
-	ls $local_path/${chunk_pattern}-3/${domain} >/dev/null
-	ok $? "Chunk 3 exists"
+	# Validate that only 3 chunks are present
+	nb_chunk=$(ls -A $local_path | wc -l)
+	test $nb_chunk -eq 3
+	ok $? "${local_path} contains 3 chunks only"
+
+	# Check if the first and second chunk folders exist and they contain a ${app_path}/metadata file.
+	for chunk in $(seq 1 2); do
+		path=$(ls $local_path/${chunk_pattern}-${chunk}/${app_path}/metadata)
+		ok $? "Chunk ${chunk} exists based on path $path"
+	done
+
+	# In per-pid the last chunk (3) must be empty.
+	if [ "${per_pid}" -eq "1" ]; then
+		test -z "$(ls -A $local_path/${chunk_pattern}-3/${domain})"
+		ok $? "Chunk 3 is empty per-pid mode"
+	else
+		path=$(ls $local_path/${chunk_pattern}-3/${app_path}/metadata)
+		ok $? "Chunk 3 exists based on path $path"
+	fi
 
 	# Make sure we don't have anything else in the first 2 chunk directories
 	# besides the kernel folder.
@@ -59,40 +72,21 @@ function validate_test_chunks ()
 	nr_stale=$(\ls $local_path/${chunk_pattern}-2 | grep -v $domain | wc -l)
 	ok $nr_stale "No stale folders in chunk 2 directory"
 
-	# We expect a session of 30 events
+	# We expect a complete session of 30 events
 	validate_trace_count $EVENT_NAME $local_path 30
 
 	# Chunk 1: 10 events
 	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-1 10
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $local_path/${chunk_pattern}-1
-	fi
 
 	# Chunk 2: 20 events
 	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-2 20
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $local_path/${chunk_pattern}-2
-	fi
 
 	# Chunk 3: 0 event
-	# Do not check in per-pid, because the folder is really empty, no metadata
-	# or stream files.
-	if test $per_pid = 1; then
-		rm -rf $local_path/${chunk_pattern}-3
-	else
+	# Trace for chunk number 3 can only be read in per-uid mode since in
+	# per-pid mode it is empty (no metadata or stream files).
+	if test $per_pid = 0; then
 		validate_trace_empty $local_path/${chunk_pattern}-3
-		if [ $? -eq 0 ]; then
-			# Only delete if successful
-			rm -rf $local_path/${chunk_pattern}-3
-		fi
 	fi
-
-	# The session folder after all chunks have been removed is empty
-	test -z "$(\ls -A $local_path)"
-	empty=$?
-	ok $empty "Trace folder is now empty"
 }
 
 function rotate_timer_test ()
