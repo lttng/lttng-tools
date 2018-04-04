@@ -22,7 +22,7 @@ EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=68
+NUM_TESTS=64
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
@@ -47,14 +47,6 @@ function rotate_kernel_test ()
 	rotate_session_ok $SESSION_NAME
 
 	destroy_lttng_session_ok $SESSION_NAME
-
-	# The tests on the chunk folder rely on the date staying the same during
-	# the duration of the test, if this fail we will now why the other checks
-	# fail afterwards. There is a short window of time where an automated test
-	# could fail because of that.
-	now=$(date +%Y%m%d)
-	test $today = $now
-	ok $? "Date did not change during the test"
 
 	validate_test_chunks $local_path $today kernel kernel 0
 }
