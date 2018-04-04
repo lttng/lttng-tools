@@ -152,6 +152,7 @@ static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 error:
 	ret = -1;
 end:
+	lttng_rotation_schedule_attr_destroy(attr);
 	return ret;
 }
 
