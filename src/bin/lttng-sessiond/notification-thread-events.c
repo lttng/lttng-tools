@@ -403,7 +403,7 @@ void session_info_destroy(void *_data)
 	if (session_info->channel_infos_ht) {
 		ret = cds_lfht_destroy(session_info->channel_infos_ht, NULL);
 		if (ret) {
-			ERR("Channel information hash table destroy");
+			ERR("[notification-thread] Failed to destroy channel information hash table");
 		}
 	}
 	free(session_info->name);
