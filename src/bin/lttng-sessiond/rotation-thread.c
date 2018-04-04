@@ -732,11 +732,6 @@ int handle_notification_channel(int fd, uint32_t revents,
 
 end:
 	lttng_notification_destroy(notification);
-	if (ret != 0) {
-		goto end;
-	}
-
-
 	return ret;
 }
 
