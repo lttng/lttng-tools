@@ -397,10 +397,14 @@ static
 void session_info_destroy(void *_data)
 {
 	struct session_info *session_info = _data;
+	int ret;
 
 	assert(session_info);
 	if (session_info->channel_infos_ht) {
-		cds_lfht_destroy(session_info->channel_infos_ht, NULL);
+		ret = cds_lfht_destroy(session_info->channel_infos_ht, NULL);
+		if (ret) {
+			ERR("Channel information hash table destroy");
+		}
 	}
 	free(session_info->name);
 	free(session_info);
