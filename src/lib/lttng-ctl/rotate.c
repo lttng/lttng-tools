@@ -21,6 +21,7 @@
 
 #include <lttng/lttng-error.h>
 #include <lttng/rotation.h>
+#include <lttng/location-internal.h>
 #include <lttng/rotate-internal.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/macros.h>
@@ -155,13 +156,39 @@ void lttng_rotation_schedule_attr_set_size(
 	attr->size = size;
 }
 
+static
+struct lttng_trace_archive_location *
+create_trace_archive_location_from_get_info(
+		const struct lttng_rotation_get_info_return *info)
+{
+	struct lttng_trace_archive_location *location;
+
+	switch (info->location_type) {
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
+		location = lttng_trace_archive_location_local_create(
+				info->location.local.absolute_path);
+		break;
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
+		location = lttng_trace_archive_location_relay_create(
+				info->location.relay.host,
+				info->location.relay.protocol,
+				info->location.relay.ports.control,
+				info->location.relay.ports.data,
+				info->location.relay.relative_path);
+		break;
+	default:
+		location = NULL;
+		break;
+	}
+	return location;
+}
+
 enum lttng_rotation_status lttng_rotation_handle_get_state(
 		struct lttng_rotation_handle *rotation_handle,
 		enum lttng_rotation_state *state)
 {
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	struct lttng_rotation_get_info_return *info = NULL;
-	int ret;
 
 	if (!rotation_handle || !state) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
@@ -174,7 +201,7 @@ enum lttng_rotation_status lttng_rotation_handle_get_state(
 	}
 
 	*state = (enum lttng_rotation_state) info->status;
-	if (rotation_handle->archive_location.is_set ||
+	if (rotation_handle->archive_location ||
 			*state != LTTNG_ROTATION_STATE_COMPLETED) {
 		/*
 		 * The path is only provided by the sessiond once
@@ -187,35 +214,32 @@ enum lttng_rotation_status lttng_rotation_handle_get_state(
 	 * Cache the location since the rotation may expire before the user
 	 * has a chance to query it.
 	 */
-	ret = lttng_strncpy(rotation_handle->archive_location.path,
-			info->path,
-			sizeof(rotation_handle->archive_location.path));
-	if (ret) {
+	rotation_handle->archive_location =
+			create_trace_archive_location_from_get_info(info);
+	if (!rotation_handle->archive_location) {
 		status = LTTNG_ROTATION_STATUS_ERROR;
 		goto end;
 	}
-	rotation_handle->archive_location.is_set = true;
 end:
 	free(info);
 	return status;
 }
 
-enum lttng_rotation_status lttng_rotation_handle_get_completed_archive_location(
+enum lttng_rotation_status lttng_rotation_handle_get_archive_location(
 		struct lttng_rotation_handle *rotation_handle,
-		const char **path)
+		const struct lttng_trace_archive_location **location)
 {
-	int ret;
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	struct lttng_rotation_get_info_return *info = NULL;
 
-	if (!rotation_handle || !path) {
+	if (!rotation_handle || !location) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
 
 	/* Use the cached location we got from a previous query. */
-	if (rotation_handle->archive_location.is_set) {
-		*path = rotation_handle->archive_location.path;
+	if (rotation_handle->archive_location) {
+		*location = rotation_handle->archive_location;
 		goto end;
 	}
 
@@ -230,14 +254,12 @@ enum lttng_rotation_status lttng_rotation_handle_get_completed_archive_location(
 		goto end;
 	}
 
-	ret = lttng_strncpy(rotation_handle->archive_location.path,
-			info->path,
-			sizeof(rotation_handle->archive_location.path));
-	if (ret) {
+	rotation_handle->archive_location =
+			create_trace_archive_location_from_get_info(info);
+	if (!rotation_handle->archive_location) {
 		status = LTTNG_ROTATION_STATUS_ERROR;
 		goto end;
 	}
-	rotation_handle->archive_location.is_set = true;
 end:
 	free(info);
 	return status;
@@ -246,6 +268,7 @@ end:
 void lttng_rotation_handle_destroy(
 		struct lttng_rotation_handle *rotation_handle)
 {
+	lttng_trace_archive_location_destroy(rotation_handle->archive_location);
 	free(rotation_handle);
 }
 

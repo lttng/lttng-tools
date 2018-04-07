@@ -4635,16 +4635,59 @@ int cmd_rotate_get_info(struct ltt_session *session,
 				rotation_id, session->name);
 		break;
 	case LTTNG_ROTATION_STATE_COMPLETED:
-		ret = lttng_strncpy(info_return->path,
+	{
+		char *current_tracing_path_reply;
+		size_t current_tracing_path_reply_len;
+
+		switch (session_get_consumer_destination_type(session)) {
+		case CONSUMER_DST_LOCAL:
+			current_tracing_path_reply =
+					info_return->location.local.absolute_path;
+			current_tracing_path_reply_len =
+					sizeof(info_return->location.local.absolute_path);
+			info_return->location_type =
+					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL;
+			break;
+		case CONSUMER_DST_NET:
+			current_tracing_path_reply =
+					info_return->location.relay.relative_path;
+			current_tracing_path_reply_len =
+					sizeof(info_return->location.relay.relative_path);
+			/* Currently the only supported relay protocol. */
+			info_return->location.relay.protocol =
+					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP;
+
+			ret = lttng_strncpy(info_return->location.relay.host,
+					session_get_net_consumer_hostname(session),
+					sizeof(info_return->location.relay.host));
+			if (ret) {
+				ERR("Failed to host name to rotate_get_info reply");
+				info_return->status = LTTNG_ROTATION_STATUS_ERROR;
+				ret = -LTTNG_ERR_UNK;
+				goto end;
+			}
+
+			session_get_net_consumer_ports(session,
+					&info_return->location.relay.ports.control,
+					&info_return->location.relay.ports.data);
+			info_return->location_type =
+					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY;
+			break;
+		default:
+			abort();
+		}
+		ret = lttng_strncpy(current_tracing_path_reply,
 				session->rotation_chunk.current_rotate_path,
-				sizeof(info_return->path));
+				current_tracing_path_reply_len);
 		if (ret) {
-			ERR("Failed to copy active tracing path to rotate_get_info reply");
+			ERR("Failed to copy current tracing path to rotate_get_info reply");
 			info_return->status = LTTNG_ROTATION_STATUS_ERROR;
 			ret = -LTTNG_ERR_UNK;
 			goto end;
 		}
+
 		break;
+	}
 	case LTTNG_ROTATION_STATE_ERROR:
 		DBG("Reporting that an error occurred during rotation %" PRIu64 " of session %s",
 				rotation_id, session->name);

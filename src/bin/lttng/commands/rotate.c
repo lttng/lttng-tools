@@ -32,6 +32,7 @@
 
 #include "../command.h"
 #include <lttng/rotation.h>
+#include <lttng/location.h>
 
 static char *opt_session_name;
 static int opt_no_wait;
@@ -97,6 +98,111 @@ static int mi_output_rotate(const char *status, const char *path,
 	}
 
 end:
+	return ret;
+}
+
+static int output_trace_archive_location(
+		const struct lttng_trace_archive_location *location,
+		const char *session_name)
+{
+	int ret = 0;
+	enum lttng_trace_archive_location_type location_type;
+	enum lttng_trace_archive_location_status status;
+	bool printed_location = false;
+
+	location_type = lttng_trace_archive_location_get_type(location);
+
+	_MSG("Trace chunk archive for session %s is now readable",
+			session_name);
+	switch (location_type) {
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
+	{
+		const char *absolute_path;
+
+		status = lttng_trace_archive_location_local_get_absolute_path(
+				location, &absolute_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+		MSG(" at %s", absolute_path);
+		ret = mi_output_rotate("completed", absolute_path,
+				session_name);
+		if (ret) {
+			goto end;
+		}
+		printed_location = true;
+		break;
+	}
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
+	{
+		uint16_t control_port, data_port;
+		const char *host, *relative_path, *protocol_str;
+		enum lttng_trace_archive_location_relay_protocol_type protocol;
+
+		/* Fetch all relay location parameters. */
+		status = lttng_trace_archive_location_relay_get_protocol_type(
+				location, &protocol);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_host(
+				location, &host);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_control_port(
+				location, &control_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_data_port(
+				location, &data_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_relative_path(
+				location, &relative_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		switch (protocol) {
+		case LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP:
+			protocol_str = "tcp";
+			break;
+		default:
+			protocol_str = "unknown";
+			break;
+		}
+
+		MSG(" on relay %s://%s/%s [control port %" PRIu16 ", data port %"
+				PRIu16 "]", protocol_str, host,
+				relative_path, control_port, data_port);
+		printed_location = true;
+		ret = mi_output_rotate("completed", relative_path,
+				session_name);
+		if (ret) {
+			goto end;
+		}
+		break;
+	}
+	default:
+		break;
+	}
+end:
+	if (!printed_location) {
+		MSG(" at an unknown location");
+	}
 	return ret;
 }
 
@@ -176,17 +282,15 @@ static int rotate_tracing(char *session_name)
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_COMPLETED:
 	{
-		const char *path;
+		const struct lttng_trace_archive_location *location;
 
-		rotation_status = lttng_rotation_handle_get_completed_archive_location(
-				handle, &path);
+		rotation_status = lttng_rotation_handle_get_archive_location(
+				handle, &location);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
 			ERR("Failed to retrieve the rotation's completed chunk archive location");
 			goto error;
 		}
-		MSG("Trace chunk archive for session %s is now readable at %s",
-				session_name, path);
-		ret = mi_output_rotate("completed", path, session_name);
+		ret = output_trace_archive_location(location, session_name);
 		if (ret) {
 			goto error;
 		}

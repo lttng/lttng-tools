@@ -31,6 +31,7 @@
 
 #include "session.h"
 #include "utils.h"
+#include "trace-ust.h"
 
 /*
  * NOTES:
@@ -139,6 +140,74 @@ void session_lock_list(void)
 void session_unlock_list(void)
 {
 	pthread_mutex_unlock(&ltt_session_list.lock);
+}
+
+/*
+ * Get the session's consumer destination type.
+ *
+ * The caller must hold the session lock.
+ */
+enum consumer_dst_type session_get_consumer_destination_type(
+		const struct ltt_session *session)
+{
+	/*
+	 * The output information is duplicated in both of those session types.
+	 * Hence, it doesn't matter from which it is retrieved. However, it is
+	 * possible for only one of them to be set.
+	 */
+	return session->kernel_session ?
+			session->kernel_session->consumer->type :
+			session->ust_session->consumer->type;
+}
+
+/*
+ * Get the session's consumer network hostname.
+ * The caller must ensure that the destination is of type "net".
+ *
+ * The caller must hold the session lock.
+ */
+const char *session_get_net_consumer_hostname(const struct ltt_session *session)
+{
+	const char *hostname = NULL;
+	const struct consumer_output *output;
+
+	output = session->kernel_session ?
+			session->kernel_session->consumer :
+			session->ust_session->consumer;
+
+	/*
+	 * hostname is assumed to be the same for both control and data
+	 * connections.
+	 */
+	switch (output->dst.net.control.dtype) {
+	case LTTNG_DST_IPV4:
+		hostname = output->dst.net.control.dst.ipv4;
+		break;
+	case LTTNG_DST_IPV6:
+		hostname = output->dst.net.control.dst.ipv6;
+		break;
+	default:
+		abort();
+	}
+	return hostname;
+}
+
+/*
+ * Get the session's consumer network control and data ports.
+ * The caller must ensure that the destination is of type "net".
+ *
+ * The caller must hold the session lock.
+ */
+void session_get_net_consumer_ports(const struct ltt_session *session,
+		uint16_t *control_port, uint16_t *data_port)
+{
+	const struct consumer_output *output;
+
+	output = session->kernel_session ?
+			session->kernel_session->consumer :
+			session->ust_session->consumer;
+	*control_port = output->dst.net.control.port;
+	*data_port = output->dst.net.data.port;
 }
 
 /*

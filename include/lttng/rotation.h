@@ -20,6 +20,7 @@
 #define LTTNG_ROTATION_H
 
 #include <stdint.h>
+#include <lttng/location.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -162,16 +163,14 @@ extern enum lttng_rotation_status lttng_rotation_handle_get_state(
  * Get the location of the rotation's resulting archive.
  *
  * The rotation must be completed in order for this call to succeed.
- * The path returned is owned by the rotation handle.
+ * The location returned remains owned by the rotation handle.
  *
- * Note that path will not be set in case of error, or if the session
- * rotation has expired.
- *
- * FIXME: Return an lttng_location object instead of a path.
+ * Note that location will not be set in case of error, or if the session
+ * rotation handle has expired.
  */
-extern enum lttng_rotation_status lttng_rotation_handle_get_completed_archive_location(
+extern enum lttng_rotation_status lttng_rotation_handle_get_archive_location(
 		struct lttng_rotation_handle *rotation_handle,
-		const char **path);
+		const struct lttng_trace_archive_location **location);
 
 /*
  * Destroy an lttng_rotate_session handle.

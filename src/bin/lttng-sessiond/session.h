@@ -27,6 +27,7 @@
 
 #include "snapshot.h"
 #include "trace-kernel.h"
+#include "consumer.h"
 
 struct ltt_ust_session;
 
@@ -201,6 +202,14 @@ void session_lock(struct ltt_session *session);
 void session_lock_list(void);
 void session_unlock(struct ltt_session *session);
 void session_unlock_list(void);
+
+enum consumer_dst_type session_get_consumer_destination_type(
+		const struct ltt_session *session);
+const char *session_get_net_consumer_hostname(
+		const struct ltt_session *session);
+void session_get_net_consumer_ports(
+		const struct ltt_session *session,
+		uint16_t *control_port, uint16_t *data_port);
 
 struct ltt_session *session_find_by_name(const char *name);
 struct ltt_session *session_find_by_id(uint64_t id);

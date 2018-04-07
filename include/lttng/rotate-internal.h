@@ -69,10 +69,7 @@ struct lttng_rotation_handle {
 	 * Where the rotated (readable) trace has been stored when the
 	 * rotation is completed.
 	 */
-	struct {
-		bool is_set;
-		char path[LTTNG_PATH_MAX];
-	} archive_location;
+	struct lttng_trace_archive_location *archive_location;
 };
 
 /*
@@ -89,7 +86,26 @@ struct lttng_rotate_session_return {
 struct lttng_rotation_get_info_return {
 	/* Represents values defined in enum lttng_rotation_state. */
 	int32_t status;
-	char path[LTTNG_PATH_MAX];
+	/* Represents values defined in enum lttng_rotation_state. */
+	uint8_t location_type;
+	union {
+		struct {
+			char absolute_path[LTTNG_PATH_MAX];
+		} LTTNG_PACKED local;
+		struct {
+			char host[LTTNG_HOST_NAME_MAX];
+			/*
+			 * Represents values defined in
+			 * enum lttng_trace_archive_location_relay_protocol_type.
+			 */
+			uint8_t protocol;
+			struct {
+				uint16_t control;
+				uint16_t data;
+			} LTTNG_PACKED ports;
+			char relative_path[LTTNG_PATH_MAX];
+		} LTTNG_PACKED relay;
+	} location;
 } LTTNG_PACKED;
 
 /* For the LTTNG_SESSION_GET_CURRENT_OUTPUT command. */
