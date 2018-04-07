@@ -56,7 +56,14 @@
 
 #define LTTNG_NAME_MAX				255
 
-#define LTTNG_HOST_NAME_MAX			64
+/*
+ * POSIX guarantees that a host name will not exceed 255 characters.
+ * Moreover, RFC 1035 limits the length of a fully qualified domain name (FQDN)
+ * to 255 characters.
+ *
+ * 256 is used to include a trailing NULL character.
+ */
+#define LTTNG_HOST_NAME_MAX			256
 
 #define LTTNG_PATH_MAX				4096
 
