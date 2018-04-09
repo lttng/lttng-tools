@@ -32,6 +32,10 @@ lttng_userspace_probe_location_lookup_method_get_type(
 void lttng_userspace_probe_location_lookup_method_destroy(
 		struct lttng_userspace_probe_location_lookup_method *lookup_method)
 {
+	if (!lookup_method){
+		return;
+	}
+
 	switch (lookup_method->type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 	{
@@ -99,10 +103,14 @@ static
 void lttng_userspace_probe_location_function_destroy(
 		struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_function *location_function =
-		container_of(location,
-			struct lttng_userspace_probe_location_function,
-			parent);
+	struct lttng_userspace_probe_location_function *location_function = NULL;
+
+	assert(location);
+
+	location_function = container_of(location,
+			struct lttng_userspace_probe_location_function, parent);
+
+	assert(location_function);
 
 	free(location_function->function_name);
 	free(location_function->binary_path);
@@ -118,10 +126,15 @@ static
 void lttng_userspace_probe_location_tracepoint_destroy(
 		struct lttng_userspace_probe_location *location)
 {
-	struct lttng_userspace_probe_location_tracepoint *location_tracepoint =
-		container_of(location,
+	struct lttng_userspace_probe_location_tracepoint *location_tracepoint = NULL;
+
+	assert(location);
+
+	location_tracepoint = container_of(location,
 			struct lttng_userspace_probe_location_tracepoint,
 			parent);
+
+	assert(location_tracepoint);
 
 	free(location_tracepoint->probe_name);
 	free(location_tracepoint->provider_name);
@@ -335,6 +348,8 @@ lttng_userspace_probe_location_lookup_method_function_name_elf_copy(
 {
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
+
+	assert(lookup_method);
 	assert(lookup_method->type ==
 		   LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
@@ -360,6 +375,8 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 {
 	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
 	struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method;
+
+	assert(lookup_method);
 	assert(lookup_method->type ==
 		   LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
@@ -389,6 +406,7 @@ lttng_userspace_probe_location_function_copy(struct lttng_userspace_probe_locati
 	char *function_name = NULL;
 	int fd;
 
+	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
 	 /* Duplicate probe location fields */
@@ -473,6 +491,7 @@ lttng_userspace_probe_location_tracepoint_copy(struct lttng_userspace_probe_loca
 	char *provider_name = NULL;
 	int fd;
 
+	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	 /* Duplicate probe location fields */
@@ -1558,7 +1577,9 @@ lttng_userspace_probe_location_copy(struct lttng_userspace_probe_location *locat
 	struct lttng_userspace_probe_location *new_location = NULL;
 	enum lttng_userspace_probe_location_type type;
 
-	assert(location);
+	if (!location) {
+		goto err;
+	}
 
 	type = lttng_userspace_probe_location_get_type(location);
 	switch (type) {
