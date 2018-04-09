@@ -342,11 +342,22 @@ extern int lttng_event_get_exclusion_name(struct lttng_event *event,
 		size_t index, const char **exclusion_name);
 
 
-/* TODO Docs: Ownership of the probe location is NOT transferred to the caller. */
+/*
+ * Get the userspace probe location of a specific LTTng event.
+ * If the call is successful, then a pointer to the probe location is returned.
+ * If the event has no probe location a NULL pointer is returned. The caller
+ * does not own the returned probe location.
+ */
 extern struct lttng_userspace_probe_location *
 lttng_event_get_userspace_probe_location(struct lttng_event *event);
 
-/* TODO Docs: Ownership of probe_location is transferred to the event. */
+/*
+ * Set an LTTng event's userspace probe location.
+ * If the call is successful, then the probe location is set to the event. The
+ * ownership of the probe_location is given to the event.
+ *
+ * Returns 0 on success, or a negative LTTng error code on error.
+ */
 extern int lttng_event_set_userspace_probe_location(struct lttng_event *event,
 		struct lttng_userspace_probe_location *probe_location);
 
