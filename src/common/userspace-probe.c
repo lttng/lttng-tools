@@ -1427,6 +1427,8 @@ int lttng_userspace_probe_location_function_flatten(
 		}
 	}
 
+	memset(&flat_probe, 0, sizeof(flat_probe));
+
 	flat_probe_start = buffer->data + buffer->size;
 	flat_probe.parent.type = location->type;
 	/*
@@ -1475,6 +1477,7 @@ int lttng_userspace_probe_location_function_flatten(
 		goto end;
 	}
 
+	memset(&flat_lookup_method, 0, sizeof(flat_lookup_method));
 	flat_lookup_method.parent.type =
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF;
 	ret = lttng_dynamic_buffer_append(buffer,
@@ -1492,15 +1495,17 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 		struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer)
 {
-	int ret = 0;
-	int storage_needed = 0;
-	char *flat_probe_start;
-	size_t padding_needed = 0;
-
+	struct lttng_userspace_probe_location_lookup_method_sdt flat_lookup_method;
 	struct lttng_userspace_probe_location_tracepoint *probe_tracepoint;
 	struct lttng_userspace_probe_location_tracepoint flat_probe;
-	struct lttng_userspace_probe_location_lookup_method_sdt flat_lookup_method;
 	size_t probe_name_len, provider_name_len, binary_path_len;
+	size_t padding_needed = 0;
+	int storage_needed = 0;
+	char *flat_probe_start;
+	int ret = 0;
+
+	assert(location);
+	assert(buffer);
 
 	/* Only SDT tracepoints are supported at the moment */
 	if (location->lookup_method && location->lookup_method->type !=
@@ -1554,6 +1559,8 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 			goto end;
 		}
 	}
+
+	memset(&flat_probe, 0, sizeof(flat_probe));
 
 	flat_probe_start = buffer->data + buffer->size;
 	flat_probe.parent.type = location->type;
@@ -1609,6 +1616,8 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 		ret = storage_needed;
 		goto end;
 	}
+
+	memset(&flat_lookup_method, 0, sizeof(flat_lookup_method));
 
 	flat_lookup_method.parent.type =
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT;

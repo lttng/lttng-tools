@@ -23,8 +23,8 @@
 #include <assert.h>
 #include <stddef.h>
 
-#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/error.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/event-internal.h>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
@@ -93,9 +93,13 @@ void lttng_event_destroy(struct lttng_event *event)
 	}
 
 	event_extended = (struct lttng_event_extended *) event->extended.ptr;
-	if (event_extended && event_extended->probe_location) {
-		lttng_userspace_probe_location_destroy(
-			event_extended->probe_location);
+
+	if (event_extended) {
+		if (event_extended->probe_location) {
+			lttng_userspace_probe_location_destroy(
+				event_extended->probe_location);
+		}
+		free(event);
 	}
 	free(event);
 }
