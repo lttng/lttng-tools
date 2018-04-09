@@ -1414,7 +1414,7 @@ int lttng_userspace_probe_location_function_flatten(
 		storage_needed += sizeof(struct lttng_userspace_probe_location_lookup_method_elf);
 	}
 
-	if (!buffer || !buffer->data) {
+	if (!buffer) {
 		ret = storage_needed;
 		goto end;
 	}
@@ -1505,7 +1505,6 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	int ret = 0;
 
 	assert(location);
-	assert(buffer);
 
 	/* Only SDT tracepoints are supported at the moment */
 	if (location->lookup_method && location->lookup_method->type !=

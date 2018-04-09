@@ -99,7 +99,7 @@ void lttng_event_destroy(struct lttng_event *event)
 			lttng_userspace_probe_location_destroy(
 				event_extended->probe_location);
 		}
-		free(event);
+		free(event_extended);
 	}
 	free(event);
 }
