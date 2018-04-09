@@ -40,6 +40,7 @@
 #define STRING_TAB_SECTION_NAME ".strtab"
 #define NOTE_STAPSDT_SECTION_NAME ".note.stapsdt"
 #define NOTE_STAPSDT_NAME "stapsdt"
+#define NOTE_STAPSDT_TYPE 3
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define NATIVE_ELF_ENDIANNESS ELFDATA2LSB
@@ -230,6 +231,7 @@ int populate_section_header(struct lttng_elf * elf, struct lttng_elf_shdr *shdr,
 		Elf32_Shdr elf_shdr;
 
 		if (lttng_read(elf->fd, &elf_shdr, sizeof(elf_shdr)) < sizeof(elf_shdr)) {
+			PERROR("read");
 			ret = -1;
 			goto error;
 		}
@@ -241,6 +243,7 @@ int populate_section_header(struct lttng_elf * elf, struct lttng_elf_shdr *shdr,
 		Elf64_Shdr elf_shdr;
 
 		if (lttng_read(elf->fd, &elf_shdr, sizeof(elf_shdr)) < sizeof(elf_shdr)) {
+			PERROR("read");
 			ret = -1;
 			goto error;
 		}
@@ -378,6 +381,7 @@ char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 		}
 		read_len = lttng_read(elf->fd, buf, min_t(size_t, BUF_LEN, to_read));
 		if (read_len <= 0) {
+			PERROR("read");
 			goto error;
 		}
 		for (i = 0; i < read_len; i++) {
@@ -392,6 +396,7 @@ char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 end:
 	name = zmalloc(sizeof(char) * (len + 1));	/* + 1 for \0 */
 	if (!name) {
+		PERROR("zmalloc");
 		goto error;
 	}
 	if (lseek(elf->fd, elf->section_names_offset + offset, SEEK_SET) < 0) {
@@ -399,6 +404,7 @@ end:
 		goto error;
 	}
 	if (lttng_read(elf->fd, name, len + 1) < len + 1) {
+		PERROR("read");
 		goto error;
 	}
 
@@ -491,7 +497,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 
 	elf->ehdr = zmalloc(sizeof(struct lttng_elf_ehdr));
 	if (!elf->ehdr) {
-		ERR("Error allocating ELF header.");
+		PERROR("zmalloc");
 		ret = LTTNG_ERR_NOMEM;
 		goto end;
 	}
@@ -504,13 +510,15 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 		ERR("Error reading ELF header,");
 		goto free_elf_error;
 	}
-end:
-	return ret;
+
+	goto end;
 
 free_elf_error:
 	free(elf->ehdr);
 	elf->ehdr = NULL;
 	goto end;
+end:
+	return ret;
 }
 
 /*
@@ -532,10 +540,15 @@ struct lttng_elf *lttng_elf_create(int fd)
 
 	elf = zmalloc(sizeof(struct lttng_elf));
 	if (!elf) {
+		PERROR("zmalloc");
 		goto error;
 	}
 
 	elf->fd = dup(fd);
+	if (elf->fd < 0) {
+		PERROR("dup");
+		goto error;
+	}
 
 	ret = lttng_elf_validate_and_populate(elf);
 	if (ret) {
@@ -560,6 +573,7 @@ error:
 		}
 		if (elf->fd >= 0) {
 			if (close(elf->fd)) {
+				PERROR("close");
 				abort();
 			}
 		}
@@ -580,6 +594,7 @@ void lttng_elf_destroy(struct lttng_elf *elf)
 
 	free(elf->ehdr);
 	if (close(elf->fd)) {
+		PERROR("close");
 		abort();
 	}
 	free(elf);
@@ -625,8 +640,9 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 		goto error;
 	}
 
-	data = malloc(shdr->sh_size);
+	data = zmalloc(shdr->sh_size);
 	if (!data) {
+		PERROR("zmalloc");
 		goto error;
 	}
 	ret = lttng_read(elf->fd, data, shdr->sh_size);

@@ -20,13 +20,15 @@
  */
 
 #define _LGPL_SOURCE
+#include <assert.h>
+#include <stddef.h>
+
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/error.h>
+#include <lttng/event-internal.h>
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
 #include <lttng/userspace-probe-internal.h>
-#include <lttng/event-internal.h>
-#include <stddef.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <assert.h>
 
 struct lttng_event *lttng_event_create(void)
 {

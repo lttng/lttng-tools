@@ -241,7 +241,7 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 
 		/*
 		 * Build the tentative path to the binary using the current search
-		 * directoyry and the name of the binary.
+		 * directory and the name of the binary.
 		 */
 		strncat(tentative_binary_path, curr_search_dir, LTTNG_PATH_MAX);
 		strncat(tentative_binary_path, slash, LTTNG_PATH_MAX);

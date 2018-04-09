@@ -297,8 +297,7 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-enum lttng_error_code
-trace_kernel_create_event(
+enum lttng_error_code trace_kernel_create_event(
 		struct lttng_event *ev, char *filter_expression,
 		struct lttng_filter_bytecode *filter,
 		struct ltt_kernel_event **kernel_event)

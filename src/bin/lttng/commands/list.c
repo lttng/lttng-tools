@@ -249,7 +249,6 @@ end:
 	return exclusion_msg;
 }
 
-/* For debug purposes */
 static void print_userspace_probe_location(struct lttng_event *event)
 {
 	struct lttng_userspace_probe_location *location;
