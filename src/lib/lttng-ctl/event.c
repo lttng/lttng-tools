@@ -57,6 +57,7 @@ struct lttng_event *lttng_event_copy(struct lttng_event *event)
 
 	new_event = zmalloc(sizeof(*event));
 	if (!event) {
+		PERROR("zmalloc");
 		goto end;
 	}
 
@@ -69,6 +70,7 @@ struct lttng_event *lttng_event_copy(struct lttng_event *event)
 	 */
 	new_event_extended = zmalloc(sizeof(*new_event_extended));
 	if (!new_event_extended) {
+		PERROR("zmalloc");
 		goto error;
 	}
 

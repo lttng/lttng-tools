@@ -2955,7 +2955,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	 */
 	lttng_dynamic_buffer_init(&probe_location_buffer);
 	ret = lttng_dynamic_buffer_set_size( &probe_location_buffer,
-				 cmd_ctx->lsm->u.enable.userspace_probe_location_len);
+			cmd_ctx->lsm->u.enable.userspace_probe_location_len);
 	if (ret) {
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -2964,9 +2964,8 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	/*
 	 * Receive the probe location.
 	 */
-	ret = lttcomm_recv_unix_sock(sock,
-								 probe_location_buffer.data,
-								 probe_location_buffer.size);
+	ret = lttcomm_recv_unix_sock(sock, probe_location_buffer.data,
+			probe_location_buffer.size);
 	if (ret <= 0) {
 		DBG("Nothing recv() from client var len data... continuing");
 		*sock_error = 1;
@@ -2976,7 +2975,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	}
 
 	buffer_view = lttng_buffer_view_from_dynamic_buffer(
-						&probe_location_buffer, 0, probe_location_buffer.size);
+			&probe_location_buffer, 0, probe_location_buffer.size);
 
 	/*
 	 * Extract the probe location from the serialized version.

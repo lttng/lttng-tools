@@ -266,9 +266,9 @@ end:
  */
 static
 int extract_userspace_probe_offset_tracepoint_sdt(
-				struct lttng_userspace_probe_location *probe_location,
-				struct ltt_kernel_session *session, uint64_t **offsets,
-				uint32_t *num_offset)
+		struct lttng_userspace_probe_location *probe_location,
+		struct ltt_kernel_session *session, uint64_t **offsets,
+		uint32_t *num_offset)
 {
 	int ret, fd;
 	const char *probe_name = NULL, *provider_name = NULL;
@@ -278,7 +278,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	ret = 0;
 
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
-				LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
+			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
 	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
 	if (!lookup) {
@@ -290,18 +290,18 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 		lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	assert(lookup_method_type ==
-				LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
+			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
 
 
 	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
-					probe_location);
+			probe_location);
 	if (!probe_name) {
 		ret = -1;
 		goto end;
 	}
 
 	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
-					probe_location);
+			probe_location);
 	if (!provider_name) {
 		ret = -1;
 		goto end;
@@ -314,10 +314,10 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	}
 
 	ret = run_as_extract_sdt_probe_offsets(fd, provider_name, probe_name,
-					session->uid, session->gid, offsets, num_offset);
+			session->uid, session->gid, offsets, num_offset);
 	if (ret < 0) {
-		DBG("userspace probe offset calculation failed for sdt probe %s:%s",
-				provider_name, probe_name);
+		DBG("userspace probe offset calculation failed for sdt "
+			"probe %s:%s", provider_name, probe_name);
 		goto end;
 	}
 
@@ -389,7 +389,7 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		 * by the caller
 		 */
 		ret = extract_userspace_probe_offset_tracepoint_sdt(location, session,
-					&offsets, &num_offset);
+				&offsets, &num_offset);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
