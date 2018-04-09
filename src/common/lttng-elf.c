@@ -516,7 +516,6 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 free_elf_error:
 	free(elf->ehdr);
 	elf->ehdr = NULL;
-	goto end;
 end:
 	return ret;
 }
