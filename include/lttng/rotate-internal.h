@@ -87,7 +87,7 @@ struct lttng_rotation_get_info_return {
 	/* Represents values defined in enum lttng_rotation_state. */
 	int32_t status;
 	/* Represents values defined in enum lttng_rotation_state. */
-	uint8_t location_type;
+	int8_t location_type;
 	union {
 		struct {
 			char absolute_path[LTTNG_PATH_MAX];
@@ -98,7 +98,7 @@ struct lttng_rotation_get_info_return {
 			 * Represents values defined in
 			 * enum lttng_trace_archive_location_relay_protocol_type.
 			 */
-			uint8_t protocol;
+			int8_t protocol;
 			struct {
 				uint16_t control;
 				uint16_t data;

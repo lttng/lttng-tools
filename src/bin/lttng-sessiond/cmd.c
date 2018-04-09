@@ -4648,7 +4648,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 			current_tracing_path_reply_len =
 					sizeof(info_return->location.local.absolute_path);
 			info_return->location_type =
-					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL;
+					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL;
 			break;
 		case CONSUMER_DST_NET:
 			current_tracing_path_reply =
@@ -4657,7 +4657,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 					sizeof(info_return->location.relay.relative_path);
 			/* Currently the only supported relay protocol. */
 			info_return->location.relay.protocol =
-					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP;
+					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP;
 
 			ret = lttng_strncpy(info_return->location.relay.host,
 					session_get_net_consumer_hostname(session),
@@ -4673,7 +4673,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 					&info_return->location.relay.ports.control,
 					&info_return->location.relay.ports.data);
 			info_return->location_type =
-					(uint8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY;
+					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY;
 			break;
 		default:
 			abort();
