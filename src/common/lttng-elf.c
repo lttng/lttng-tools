@@ -781,12 +781,12 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 		goto free_symbol_table_data;
 	}
 
-	struct lttng_elf_sym curr_sym;
 	/* Get the number of symbol in the table for the iteration. */
 	sym_count = symtab_hdr->sh_size / symtab_hdr->sh_entsize;
 
 	/* Loop over all symbol. */
 	for (sym_idx = 0; sym_idx < sym_count; sym_idx++) {
+		struct lttng_elf_sym curr_sym;
 		/* Get the symbol at the current index. */
 		if (is_elf_32_bit(elf)) {
 			Elf32_Sym tmp = ((Elf32_Sym *) symbol_table_data)[sym_idx];
@@ -883,7 +883,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 
 	/* Get the stap note section header. */
 	ret = lttng_elf_get_section_hdr_by_name(elf, NOTE_STAPSDT_SECTION_NAME,
-				&stap_note_section_hdr);
+			&stap_note_section_hdr);
 	if (ret) {
 		ERR("Cannot get ELF stap note section.");
 		goto destroy_elf_error;
@@ -904,7 +904,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 	*offsets = NULL;
 	while (1) {
 		curr_data_ptr = next_note_ptr;
-		/* Have we reached the end of the note section ? */
+		/* Check if we have reached the end of the note section. */
 		if (curr_data_ptr >=
 				curr_note_section_begin + stap_note_section_hdr->sh_size) {
 
@@ -919,7 +919,8 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 
 		/* Sanity check; a zero name_size is reserved. */
 		if (name_size == 0) {
-			ERR("Invalid name size field in SDT probe descriptions section.");
+			ERR("Invalid name size field in SDT probe descriptions"
+				"section.");
 			ret = -1;
 			goto realloc_error;
 		}
@@ -934,16 +935,20 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 		curr_data_ptr += sizeof(uint32_t);
 
 		/*
-		 * Move the pointer to the next note to be ready for the next iteration
+		 * Move the pointer to the next note to be ready for the next
+		 * iteration. The current note is made of 3 unsigned 32bit
+		 * integers (name size, descriptor size and note type), the
+		 * name and the descriptor. To move to the next note, we move
+		 * the pointer according to those values.
 		 */
-		next_note_ptr = next_note_ptr + (3 * sizeof(uint32_t)) +
-							desc_size + name_size;
+		next_note_ptr = next_note_ptr +
+			(3 * sizeof(uint32_t)) + desc_size + name_size;
 
 		/*
-		 * Move ptr to the end of the name string (we don't need it) and go to
-		 * the next 4 byte alignement.
+		 * Move ptr to the end of the name string (we don't need it)
+		 * and go to the next 4 byte alignement.
 		 */
-		if (note_type != 3 ||
+		if (note_type != NOTE_STAPSDT_TYPE ||
 			strncmp(curr_data_ptr, NOTE_STAPSDT_NAME, name_size) != 0) {
 			continue;
 		}

@@ -240,7 +240,7 @@ int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 
 static
 int _extract_elf_symbol_offset(struct run_as_data *data,
-							   struct run_as_ret *ret_value)
+		struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	ret_value->_error = false;
@@ -258,7 +258,7 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 
 static
 int _extract_sdt_probe_offsets(struct run_as_data *data,
-							   struct run_as_ret *ret_value)
+		struct run_as_ret *ret_value)
 {
 	int ret = 0;
 	uint64_t *offsets = NULL;
@@ -286,7 +286,7 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 
 	/* Copy the content of the offsets array to the ret struct. */
 	memcpy(ret_value->u.extract_sdt_probe_offsets.offsets,
-				offsets, num_offset * sizeof(uint64_t));
+			offsets, num_offset * sizeof(uint64_t));
 
 	ret_value->u.extract_sdt_probe_offsets.num_offset = num_offset;
 
@@ -908,7 +908,7 @@ int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 
 LTTNG_HIDDEN
 int run_as_extract_elf_symbol_offset(int fd, const char* function,
-				    uid_t uid, gid_t gid, uint64_t *offset)
+		uid_t uid, gid_t gid, uint64_t *offset)
 {
 	struct run_as_data data;
 	struct run_as_ret ret;
@@ -926,7 +926,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 
 	errno = ret._errno;
 
-	if (ret._error != 0) {
+	if (ret._error) {
 		return -1;
 	}
 
@@ -935,8 +935,9 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 }
 
 LTTNG_HIDDEN
-int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name, const char* probe_name,
-				    uid_t uid, gid_t gid, uint64_t **offsets, uint32_t *num_offset)
+int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
+		const char* probe_name, uid_t uid, gid_t gid,
+		uint64_t **offsets, uint32_t *num_offset)
 {
 	struct run_as_data data;
 	struct run_as_ret ret;
@@ -957,7 +958,7 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name, const ch
 
 	errno = ret._errno;
 
-	if (ret._error != 0) {
+	if (ret._error) {
 		return -1;
 	}
 
