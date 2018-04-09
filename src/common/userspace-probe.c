@@ -1042,14 +1042,21 @@ int lttng_userspace_probe_location_function_create_from_buffer(
 		const struct lttng_buffer_view *buffer,
 		struct lttng_userspace_probe_location **location)
 {
+	struct lttng_userspace_probe_location_function_comm *location_function_comm;
+	const char *function_name_src, *binary_path_src;
+	char *function_name = NULL, *binary_path = NULL;
 	int ret = 0;
-	struct lttng_userspace_probe_location_function_comm *location_function_comm =
-			(struct lttng_userspace_probe_location_function_comm *) buffer->data;
+
+	assert(buffer);
+	assert(buffer->data);
+	assert(location);
+
+	location_function_comm =
+		(struct lttng_userspace_probe_location_function_comm *) buffer->data;
+
 	const size_t expected_size = sizeof(*location_function_comm) +
 			location_function_comm->function_name_len +
 			location_function_comm->binary_path_len;
-	const char *function_name_src, *binary_path_src;
-	char *function_name = NULL, *binary_path = NULL;
 
 	if (buffer->size < expected_size) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1070,7 +1077,16 @@ int lttng_userspace_probe_location_function_create_from_buffer(
 	}
 
 	function_name = strdup(function_name_src);
+	if (!function_name) {
+		PERROR("strdup");
+		goto end;
+	}
+
 	binary_path = strdup(binary_path_src);
+	if (!binary_path) {
+		PERROR("strdup");
+		goto end;
+	}
 
 	*location = lttng_userspace_probe_location_function_create_no_check(
 			binary_path, function_name, NULL, false);
@@ -1091,15 +1107,22 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 		const struct lttng_buffer_view *buffer,
 		struct lttng_userspace_probe_location **location)
 {
+	struct lttng_userspace_probe_location_tracepoint_comm *location_tracepoint_comm;
+	const char *probe_name_src, *provider_name_src, *binary_path_src;
+	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
 	int ret = 0;
-	struct lttng_userspace_probe_location_tracepoint_comm *location_tracepoint_comm =
-			(struct lttng_userspace_probe_location_tracepoint_comm *) buffer->data;
+
+	assert(buffer);
+	assert(buffer->data);
+	assert(location);
+
+	location_tracepoint_comm =
+		(struct lttng_userspace_probe_location_tracepoint_comm *) buffer->data;
+
 	const size_t expected_size = sizeof(*location_tracepoint_comm) +
 			location_tracepoint_comm->probe_name_len +
 			location_tracepoint_comm->provider_name_len +
 			location_tracepoint_comm->binary_path_len;
-	const char *probe_name_src, *provider_name_src, *binary_path_src;
-	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
 
 	if (buffer->size < expected_size) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1128,8 +1151,21 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 	}
 
 	probe_name = strdup(probe_name_src);
+	if (!probe_name) {
+		PERROR("strdup");
+		goto end;
+	}
 	provider_name = strdup(provider_name_src);
+	if (!provider_name) {
+		PERROR("strdup");
+		goto end;
+	}
+
 	binary_path = strdup(binary_path_src);
+	if (!binary_path) {
+		PERROR("strdup");
+		goto end;
+	}
 
 	*location = lttng_userspace_probe_location_tracepoint_create_no_check(
 			binary_path, provider_name, probe_name, NULL, false);
@@ -1156,6 +1192,7 @@ int lttng_userspace_probe_location_lookup_method_create_from_buffer(
 	enum lttng_userspace_probe_location_lookup_method_type type;
 
 	assert(buffer);
+	assert(buffer->data);
 	assert(lookup_method);
 
 	if (buffer->size < sizeof(*lookup_comm)) {
@@ -1172,14 +1209,16 @@ int lttng_userspace_probe_location_lookup_method_create_from_buffer(
 		*lookup_method = NULL;
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		*lookup_method = lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+		*lookup_method =
+			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
 		if (!(*lookup_method)) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		*lookup_method = lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
+		*lookup_method =
+			lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
 		if (!(*lookup_method)) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
@@ -1200,16 +1239,19 @@ int lttng_userspace_probe_location_create_from_buffer(
 		const struct lttng_buffer_view *buffer,
 		struct lttng_userspace_probe_location **location)
 {
-	int ret;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	struct lttng_userspace_probe_location_comm *probe_location_comm;
 	enum lttng_userspace_probe_location_type type;
 	struct lttng_buffer_view lookup_method_view;
 	int consumed = 0;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method =
-			NULL;
+	int ret;
+
 
 	assert(buffer);
+	assert(buffer->data);
 	assert(location);
+
+	lookup_method = NULL;
 
 	if (buffer->size <= sizeof(*probe_location_comm)) {
 		ret = -LTTNG_ERR_INVALID;
@@ -1217,7 +1259,7 @@ int lttng_userspace_probe_location_create_from_buffer(
 	}
 
 	probe_location_comm =
-			(struct lttng_userspace_probe_location_comm *) buffer->data;
+		(struct lttng_userspace_probe_location_comm *) buffer->data;
 	type = (enum lttng_userspace_probe_location_type) probe_location_comm->type;
 	consumed += sizeof(*probe_location_comm);
 
@@ -1329,15 +1371,16 @@ int lttng_userspace_probe_location_function_flatten(
 		struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer)
 {
-	int ret;
-	int storage_needed = 0;
-	char *flat_probe_start;
-	size_t padding_needed = 0;
-
+	struct lttng_userspace_probe_location_lookup_method_elf flat_lookup_method;
 	struct lttng_userspace_probe_location_function *probe_function;
 	struct lttng_userspace_probe_location_function flat_probe;
-	struct lttng_userspace_probe_location_lookup_method_elf flat_lookup_method;
 	size_t function_name_len, binary_path_len;
+	size_t padding_needed = 0;
+	char *flat_probe_start;
+	int storage_needed = 0;
+	int ret;
+
+	assert(location);
 
 	if (location->lookup_method && location->lookup_method->type !=
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF) {
@@ -1371,7 +1414,7 @@ int lttng_userspace_probe_location_function_flatten(
 		storage_needed += sizeof(struct lttng_userspace_probe_location_lookup_method_elf);
 	}
 
-	if (!buffer) {
+	if (!buffer || !buffer->data) {
 		ret = storage_needed;
 		goto end;
 	}
