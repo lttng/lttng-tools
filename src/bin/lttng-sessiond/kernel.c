@@ -203,8 +203,8 @@ error:
  */
 static
 int extract_userspace_probe_offset_function_elf(
-				struct lttng_userspace_probe_location *probe_location,
-				struct ltt_kernel_session *session, uint64_t *offset)
+		struct lttng_userspace_probe_location *probe_location,
+		struct ltt_kernel_session *session, uint64_t *offset)
 {
 	int ret, fd;
 	const char *symbol = NULL;
@@ -214,10 +214,10 @@ int extract_userspace_probe_offset_function_elf(
 	ret = 0;
 
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
-				LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
 	lookup = lttng_userspace_probe_location_get_lookup_method(
-					probe_location);
+			probe_location);
 	if (!lookup) {
 		ret = -1;
 		goto end;
@@ -227,11 +227,11 @@ int extract_userspace_probe_offset_function_elf(
 		lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	assert(lookup_method_type ==
-				LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
+			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
 
 	symbol = lttng_userspace_probe_location_function_get_function_name(
-					probe_location);
+			probe_location);
 	if (!symbol) {
 		ret = -1;
 		goto end;
@@ -244,9 +244,10 @@ int extract_userspace_probe_offset_function_elf(
 	}
 
 	ret = run_as_extract_elf_symbol_offset(fd, symbol, session->uid,
-				session->gid, offset);
+			session->gid, offset);
 	if (ret < 0) {
-		DBG("userspace probe offset calculation failed for function %s", symbol);
+		DBG("userspace probe offset calculation failed for "
+			"function %s", symbol);
 		goto end;
 	}
 
