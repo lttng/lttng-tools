@@ -544,6 +544,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 		goto end;
 	}
 
+	DBG("TCP keep-alive enabled for socket %d", socket_fd);
 	ret = setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &val,
 			sizeof(val));
 	if (ret < 0) {
@@ -553,6 +554,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 
 	/* TCP keep-alive idle time */
 	if (support.idle_time_supported && config.idle_time > 0) {
+		DBG("TCP keep-alive keep idle: %d enabled for socket %d", config.idle_time, socket_fd);
 		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPIDLE, &config.idle_time,
 				sizeof(config.idle_time));
 		if (ret < 0) {
@@ -562,6 +564,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 	/* TCP keep-alive probe interval */
 	if (support.probe_interval_supported && config.probe_interval > 0) {
+		DBG("TCP keep-alive probe_interval: %d enabled for socket %d", config.probe_interval, socket_fd);
 		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPINTVL, &config.probe_interval,
 				sizeof(config.probe_interval));
 		if (ret < 0) {
@@ -572,6 +575,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 
 	/* TCP keep-alive max probe count */
 	if (support.max_probe_count_supported && config.max_probe_count > 0) {
+		DBG("TCP keep-alive max_probe: %d enabled for socket %d", config.max_probe_count, socket_fd);
 		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPCNT, &config.max_probe_count,
 				sizeof(config.max_probe_count));
 		if (ret < 0) {
@@ -582,6 +586,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 
 	/* TCP keep-alive abort threshold */
 	if (support.abort_threshold_supported && config.abort_threshold > 0) {
+		DBG("TCP keep-alive abort threshold: %d enabled for socket %d", config.abort_threshold, socket_fd);
 		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_ABORT_THRESHOLD, &config.abort_threshold,
 				sizeof(config.max_probe_count));
 		if (ret < 0) {
