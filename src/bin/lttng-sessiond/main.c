@@ -82,8 +82,6 @@
 #include "sessiond-config.h"
 #include "sessiond-timer.h"
 
-#define CONSUMERD_FILE	"lttng-consumerd"
-
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
 #include <lttng-sessiond.8.h>
@@ -2941,7 +2939,7 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 }
 
 static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
-			   int *sock_error, struct lttng_event *event)
+		int *sock_error, struct lttng_event *event)
 {
 	int fd, ret;
 	struct lttng_userspace_probe_location *probe_location;
@@ -2995,7 +2993,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	DBG("Receiving userspace probe target FD from client ...");
 	ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 	if (ret <= 0) {
-		DBG("Nothing recv() from client userspace probe fd ... continuing");
+		DBG("Nothing recv() from client userspace probe fd... continuing");
 		*sock_error = 1;
 		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 		goto error;
@@ -3034,9 +3032,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 		goto error;
 	}
 
-	/*
-	 * Attach the probe location to the event
-	 */
+	/* Attach the probe location to the event. */
 	ret = lttng_event_set_userspace_probe_location(event, probe_location);
 	if (ret) {
 		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
@@ -3047,7 +3043,6 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 error:
 	return ret;
 }
-
 
 /*
  * Check if the current kernel tracer supports the session rotation feature.
@@ -3693,7 +3688,8 @@ error_add_context:
 
 		ev = lttng_event_copy(&cmd_ctx->lsm->u.enable.event);
 		if (!ev) {
-			DBG("Failed to copy event");
+			DBG("Failed to copy event: %s",
+					cmd_ctx->lsm->u.enable.event.name);
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}

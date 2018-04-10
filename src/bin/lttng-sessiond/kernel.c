@@ -206,12 +206,12 @@ int extract_userspace_probe_offset_function_elf(
 		struct lttng_userspace_probe_location *probe_location,
 		struct ltt_kernel_session *session, uint64_t *offset)
 {
-	int ret, fd;
+	int fd;
+	int ret = 0;
 	const char *symbol = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
 
-	ret = 0;
 
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
@@ -224,7 +224,7 @@ int extract_userspace_probe_offset_function_elf(
 	}
 
 	lookup_method_type =
-		lttng_userspace_probe_location_lookup_method_get_type(lookup);
+			lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	assert(lookup_method_type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
@@ -246,7 +246,7 @@ int extract_userspace_probe_offset_function_elf(
 			session->gid, offset);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for "
-			"function %s", symbol);
+				"function %s", symbol);
 		goto end;
 	}
 
@@ -268,14 +268,13 @@ static
 int extract_userspace_probe_offset_tracepoint_sdt(
 		struct lttng_userspace_probe_location *probe_location,
 		struct ltt_kernel_session *session, uint64_t **offsets,
-		uint32_t *num_offset)
+		uint32_t *offsets_count)
 {
-	int ret, fd;
-	const char *probe_name = NULL, *provider_name = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
-
-	ret = 0;
+	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	const char *probe_name = NULL, *provider_name = NULL;
+	int ret = 0;
+	int fd, i;
 
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
@@ -287,7 +286,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	}
 
 	lookup_method_type =
-		lttng_userspace_probe_location_lookup_method_get_type(lookup);
+			lttng_userspace_probe_location_lookup_method_get_type(lookup);
 
 	assert(lookup_method_type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT);
@@ -314,16 +313,22 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	}
 
 	ret = run_as_extract_sdt_probe_offsets(fd, provider_name, probe_name,
-			session->uid, session->gid, offsets, num_offset);
+			session->uid, session->gid, offsets, offsets_count);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for sdt "
-			"probe %s:%s", provider_name, probe_name);
+				"probe %s:%s", provider_name, probe_name);
 		goto end;
 	}
 
-	for (int i = 0; i < *num_offset; i++) {
-		DBG("userspace probe sdt offsets found for %s:%s at 0x%lx.",
-				provider_name, probe_name, (*offsets)[i]);
+	if (*offsets_count == 0) {
+		DBG("no userspace probe offset found");
+		goto end;
+	}
+
+	DBG("%u userspace probe SDT offsets found for %s:%s at:",
+			*offsets_count, provider_name, probe_name);
+	for (i = 0; i < *offsets_count; i++) {
+		DBG("\t0x%lx", (*offsets)[i]);
 	}
 end:
 	return ret;
@@ -337,11 +342,10 @@ static
 int userspace_probe_add_callsites(struct lttng_event *ev,
 			struct ltt_kernel_session *session, int fd)
 {
-	int ret;
-
-	struct lttng_userspace_probe_location *location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type type;
+	struct lttng_userspace_probe_location *location = NULL;
+	int ret;
 
 	assert(ev);
 	assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
@@ -352,18 +356,19 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		goto end;
 	}
 	lookup_method =
-		lttng_userspace_probe_location_get_lookup_method(location);
+			lttng_userspace_probe_location_get_lookup_method(location);
 	if (!lookup_method) {
 		ret = -1;
 		goto end;
 	}
-	type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
 
+	type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 	{
 		struct lttng_kernel_event_callsite callsite;
 		uint64_t offset;
+
 		ret = extract_userspace_probe_offset_function_elf(location, session, &offset);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
@@ -371,7 +376,6 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		}
 
 		callsite.u.uprobe.offset = offset;
-
 		ret = kernctl_add_callsite(fd, &callsite);
 		if (ret) {
 			WARN("Adding callsite to userspace probe "
@@ -385,19 +389,20 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 	{
 		int i;
 		uint64_t *offsets = NULL;
-		uint32_t num_offset;
+		uint32_t offsets_count;
 		struct lttng_kernel_event_callsite callsite;
+
 		/*
 		 * This call allocates the offsets buffer. This buffer must be freed
 		 * by the caller
 		 */
 		ret = extract_userspace_probe_offset_tracepoint_sdt(location, session,
-				&offsets, &num_offset);
+				&offsets, &offsets_count);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
 		}
-		for (i = 0; i < num_offset; i++) {
+		for (i = 0; i < offsets_count; i++) {
 			callsite.u.uprobe.offset = offsets[i];
 			ret = kernctl_add_callsite(fd, &callsite);
 			if (ret) {
@@ -412,8 +417,8 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		break;
 	}
 	default:
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-			goto end;
+		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+		goto end;
 	}
 end:
 	return ret;
@@ -489,7 +494,7 @@ int kernel_create_event(struct lttng_event *ev,
 
 	if (ev->type == LTTNG_EVENT_USERSPACE_PROBE) {
 		ret = userspace_probe_add_callsites(ev, channel->session, event->fd);
-		if (ret != 0) {
+		if (ret) {
 			goto add_callsite_error;
 		}
 	}

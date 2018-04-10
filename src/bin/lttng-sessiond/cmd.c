@@ -361,7 +361,7 @@ end:
 
 static int increment_extended_len(const char *filter_expression,
 		struct lttng_event_exclusion *exclusion,
-		struct lttng_userspace_probe_location *probe_location,
+		const struct lttng_userspace_probe_location *probe_location,
 		size_t *extended_len)
 {
 	int ret = 0;
@@ -400,7 +400,6 @@ static int append_extended_info(const char *filter_expression,
 	size_t userspace_probe_location_len = 0;
 	struct lttng_dynamic_buffer location_buffer;
 	struct lttcomm_event_extended_header extended_header;
-
 
 	if (filter_expression) {
 		filter_len = strlen(filter_expression) + 1;

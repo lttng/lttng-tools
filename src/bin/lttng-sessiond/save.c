@@ -387,9 +387,10 @@ const char *get_loglevel_type_string(
 
 static
 int save_kernel_function_event(struct config_writer *writer,
-							   struct ltt_kernel_event *event)
+		struct ltt_kernel_event *event)
 {
 	int ret;
+
 	ret = config_writer_open_element(writer, config_element_function_attributes);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -397,7 +398,7 @@ int save_kernel_function_event(struct config_writer *writer,
 	}
 
 	ret = config_writer_write_element_string(writer, config_element_name,
-		event->event->u.ftrace.symbol_name);
+			event->event->u.ftrace.symbol_name);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
@@ -411,19 +412,19 @@ int save_kernel_function_event(struct config_writer *writer,
 	}
 end:
 	return ret;
-
 }
 
 static
 int save_kernel_kprobe_event(struct config_writer *writer,
-			   struct ltt_kernel_event *event)
+		struct ltt_kernel_event *event)
 {
 	int ret;
 	const char *symbol_name;
 	uint64_t addr;
 	uint64_t offset;
 
-	if (event->event->instrumentation == LTTNG_KERNEL_KPROBE) {
+	switch (event->event->instrumentation) {
+	case LTTNG_KERNEL_KPROBE:
 		/*
 		 * Comments in lttng-kernel.h mention that
 		 * either addr or symbol_name are set, not both.
@@ -431,10 +432,14 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 		addr = event->event->u.kprobe.addr;
 		offset = event->event->u.kprobe.offset;
 		symbol_name = addr ? NULL : event->event->u.kprobe.symbol_name;
-	} else {
-		symbol_name = event->event->u.kretprobe.symbol_name;
+		break;
+	case LTTNG_KERNEL_KRETPROBE:
 		addr = event->event->u.kretprobe.addr;
 		offset = event->event->u.kretprobe.offset;
+		symbol_name = event->event->u.kretprobe.symbol_name;
+		break;
+	default:
+		assert(1);
 	}
 
 	ret = config_writer_open_element(writer, config_element_probe_attributes);
@@ -481,9 +486,10 @@ end:
 
 static
 int save_kernel_uprobe_event(struct config_writer *writer,
-	struct ltt_kernel_event *event)
+		struct ltt_kernel_event *event)
 {
 	int ret;
+
 	ret = config_writer_open_element(writer, config_element_userspace_probe_attributes);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -500,7 +506,7 @@ end:
 
 static
 int save_kernel_event(struct config_writer *writer,
-	struct ltt_kernel_event *event)
+		struct ltt_kernel_event *event)
 {
 	int ret;
 	const char *instrumentation_type;

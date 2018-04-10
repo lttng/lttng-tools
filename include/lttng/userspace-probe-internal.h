@@ -71,7 +71,7 @@ struct lttng_userspace_probe_location_function_comm {
 } LTTNG_PACKED;
 
 struct lttng_userspace_probe_location_tracepoint_comm {
-	/* Both lengths include the trailing \0. */
+	/* The three lengths include the trailing \0. */
 	uint32_t probe_name_len;
 	uint32_t provider_name_len;
 	uint32_t binary_path_len;
@@ -109,7 +109,7 @@ struct lttng_userspace_probe_location_tracepoint {
 
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
-		struct lttng_userspace_probe_location *location,
+		const struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer,
 		int *binary_fd);
 
@@ -133,11 +133,11 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd(
  */
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_flatten(
-		struct lttng_userspace_probe_location *location,
+		const struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer);
 
 LTTNG_HIDDEN
-struct lttng_userspace_probe_location *
-lttng_userspace_probe_location_copy(struct lttng_userspace_probe_location *location);
+struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
+		const struct lttng_userspace_probe_location *location);
 
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */

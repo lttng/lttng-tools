@@ -338,11 +338,12 @@ enum lttng_error_code trace_kernel_create_event(
 		}
 
 		/*
-		 * From this point on, the specific term 'uprobe' is used instead of the
-		 * generic 'userspace probe' because it's the technology used at the
-		 * moment for this instrumentation. LTTng currently implement userspace
-		 * probes using uprobes. In the interactions with the kernel tracer, we
-		 * use the uprobe term.
+		 * From this point on, the specific term 'uprobe' is used
+		 * instead of the generic 'userspace probe' because it's the
+		 * technology used at the moment for this instrumentation.
+		 * LTTng currently implements userspace probes using uprobes.
+		 * In the interactions with the kernel tracer, we use the
+		 * uprobe term.
 		 */
 		attr->instrumentation = LTTNG_KERNEL_UPROBE;
 
@@ -357,44 +358,41 @@ enum lttng_error_code trace_kernel_create_event(
 		}
 
 		/*
-		 * From the kernel tracer's perspective, all userspace probe event types
-		 * are all the same: a file and an offset.
+		 * From the kernel tracer's perspective, all userspace probe
+		 * event types are all the same: a file and an offset.
 		 */
 		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-			/*
-			 * Get the file descriptor on the target binary.
-			 */
+			/* Get the file descriptor on the target binary. */
 			attr->u.uprobe.fd =
-				lttng_userspace_probe_location_function_get_binary_fd(location);
+					lttng_userspace_probe_location_function_get_binary_fd(location);
 
 			/*
-			 * Save a reference to the probe location used during the listing of
-			 * events. Close its FD since it won't be needed for listing.
+			 * Save a reference to the probe location used during
+			 * the listing of events. Close its FD since it won't
+			 * be needed for listing.
 			 */
 			userspace_probe_location =
-				lttng_userspace_probe_location_copy(location);
+					lttng_userspace_probe_location_copy(location);
 			ret = lttng_userspace_probe_location_function_set_binary_fd(
-				userspace_probe_location, -1);
+					userspace_probe_location, -1);
 			if (ret) {
 				goto error;
 			}
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-			/*
-			 * Get the file descriptor on the target binary.
-			 */
+			/* Get the file descriptor on the target binary. */
 			attr->u.uprobe.fd =
-				lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+					lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
 
 			/*
 			 * Save a reference to the probe location used during the listing of
 			 * events. Close its FD since it won't be needed for listing.
 			 */
 			userspace_probe_location =
-				lttng_userspace_probe_location_copy(location);
+					lttng_userspace_probe_location_copy(location);
 			ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
-				userspace_probe_location, -1);
+					userspace_probe_location, -1);
 			if (ret) {
 				goto error;
 			}

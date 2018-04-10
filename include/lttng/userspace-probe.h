@@ -40,7 +40,7 @@ enum lttng_userspace_probe_location_lookup_method_type {
  */
 extern enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
-		struct lttng_userspace_probe_location_lookup_method *lookup_method);
+		const struct lttng_userspace_probe_location_lookup_method *lookup_method);
 
 /*
  * Destroy a lookup method.
@@ -80,7 +80,7 @@ enum lttng_userspace_probe_location_type {
  */
 extern enum lttng_userspace_probe_location_type
 lttng_userspace_probe_location_get_type(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Destroy the userspace probe location.
@@ -105,20 +105,20 @@ lttng_userspace_probe_location_function_create(const char *binary_path,
  * Get the target binary path of the probe location of the function type.
  */
 extern const char *lttng_userspace_probe_location_function_get_binary_path(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target function type of the probe location of the function type.
  */
 extern const char *lttng_userspace_probe_location_function_get_function_name(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the FD to the target binary file to the probe location of the function
  * type.
  */
 extern int lttng_userspace_probe_location_function_get_binary_fd(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the lookup method of the given userspace probe location.
@@ -128,7 +128,7 @@ extern int lttng_userspace_probe_location_function_get_binary_fd(
  */
 extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Create a probe location of the tracepoint type.
@@ -148,27 +148,27 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
  * Get the target binary path of the probe location of the tracepoint type.
  */
 extern const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target probe name of the probe location of the tracepoint type.
  */
 extern const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the target probe provider name of the probe location of the tracepoint
  * type.
  */
 extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * Get the FD to the target binary file to the probe location of the tracepoint
  * type.
  */
 extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
-		struct lttng_userspace_probe_location *location);
+		const struct lttng_userspace_probe_location *location);
 
 #ifdef __cplusplus
 }
