@@ -268,6 +268,9 @@ end:
 void lttng_rotation_handle_destroy(
 		struct lttng_rotation_handle *rotation_handle)
 {
+	if (!rotation_handle) {
+		return;
+	}
 	lttng_trace_archive_location_destroy(rotation_handle->archive_location);
 	free(rotation_handle);
 }
