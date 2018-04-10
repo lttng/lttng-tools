@@ -4929,7 +4929,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 	} else if (string_match(optname, "no-kernel")) {
 		config.no_kernel = true;
 	} else if (string_match(optname, "quiet") || opt == 'q') {
-		lttng_opt_quiet = true;
+		config.quiet = true;
 	} else if (string_match(optname, "verbose") || opt == 'v') {
 		/* Verbose level can increase using multiple -v */
 		if (arg) {
