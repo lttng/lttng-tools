@@ -496,7 +496,9 @@ int ust_consumer_metadata_request(struct consumer_socket *socket)
 
 			memset(&msg, 0, sizeof(msg));
 			msg.cmd_type = LTTNG_ERR_UND;
+			pthread_mutex_lock(socket->lock);
 			(void) consumer_send_msg(socket, &msg);
+			pthread_mutex_unlock(socket->lock);
 			/*
 			 * This is possible since the session might have been destroyed
 			 * during a consumer metadata request. So here, return gracefully
