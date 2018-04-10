@@ -189,13 +189,12 @@ end:
  */
 int walk_command_search_path(const char *binary, char *binary_full_path)
 {
-	int ret = 0;
-	char *command_search_path = NULL;
-	char *curr_search_dir = NULL;
-	char *curr_search_dir_end = NULL;
 	char *tentative_binary_path = NULL;
-	const char *slash = "/";
+	char *command_search_path = NULL;
+	char *curr_search_dir_end = NULL;
+	char *curr_search_dir = NULL;
 	struct stat stat_output;
+	int ret = 0;
 
 	command_search_path = lttng_secure_getenv("PATH");
 	if (!command_search_path) {
@@ -214,11 +213,10 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 	}
 
 	/*
-	 * This char array is used to concatenate 3 path elements of unknown length.
-	 * We cap it at 3 times the maximum path length for now, but we trim back
-	 * the max length before returning.
+	 * This char array is used to concatenate path to binary to look for
+	 * the binary.
 	 */
-	tentative_binary_path = zmalloc(3 * LTTNG_PATH_MAX * sizeof(char));
+	tentative_binary_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
 	if (!tentative_binary_path) {
 		ret = -1;
 		goto alloc_error;
@@ -226,12 +224,15 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 
 	curr_search_dir = command_search_path;
 	do {
-		/* Split on ':' */
+		/*
+		 * Split on ':'. The return value of this call points to the
+		 * matching character.
+		 */
 		curr_search_dir_end = strchr(curr_search_dir, ':');
 		if (curr_search_dir_end != NULL) {
 			/*
-			 * Add a NULL byte to the end of the char array so it can be used as
-			 * a string.
+			 * Add a NULL byte to the end of the first token so it
+			 * can be used as a string.
 			 */
 			curr_search_dir_end[0] = '\0';
 		}
@@ -240,28 +241,25 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 		memset(tentative_binary_path, 0, LTTNG_PATH_MAX * sizeof(char));
 
 		/*
-		 * Build the tentative path to the binary using the current search
-		 * directory and the name of the binary.
+		 * Build the tentative path to the binary using the current
+		 * search directory and the name of the binary.
 		 */
-		strncat(tentative_binary_path, curr_search_dir, LTTNG_PATH_MAX);
-		strncat(tentative_binary_path, slash, LTTNG_PATH_MAX);
-		strncat(tentative_binary_path, binary, LTTNG_PATH_MAX);
-
-		 /*
-		  * Use STAT(2) to see if the file exists.
-		 */
-		ret = stat(tentative_binary_path, &stat_output);
-		if (ret == 0) {
-			/*
-			 * Found a match, set the out parameter and return success. Make
-			 * sure the path is not larger than the max path.
-			 */
-			if (strlen(tentative_binary_path) > LTTNG_PATH_MAX) {
-				ret = -1;
+		ret = snprintf(tentative_binary_path, LTTNG_PATH_MAX, "%s/%s",
+				curr_search_dir, binary);
+		if (ret < LTTNG_PATH_MAX) {
+		 	 /*
+		  	  * Use STAT(2) to see if the file exists.
+		 	 */
+			ret = stat(tentative_binary_path, &stat_output);
+			if (ret == 0) {
+				/*
+			 	 * Found a match, set the out parameter and
+			 	 * return success.
+			 	 */
+				strncpy(binary_full_path, tentative_binary_path,
+						LTTNG_PATH_MAX);
 				goto free_binary_path;
 			}
-			strncpy(binary_full_path, tentative_binary_path, LTTNG_PATH_MAX);
-			goto free_binary_path;
 		}
 		/* Go to the next entry in the $PATH variable. */
 		curr_search_dir = curr_search_dir_end + 1;
@@ -288,6 +286,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 
 	char **tokens;
 	char *target_path = NULL;
+	char *unescaped_target_path = NULL;
 	char *real_target_path = NULL;
 	char *symbol_name = NULL, *probe_name = NULL, *provider_name = NULL;
 	struct lttng_userspace_probe_location *probe_location = NULL;
@@ -300,7 +299,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/*
-	 * userspace probe fields are seperated by ':'.
+	 * userspace probe fields are separated by ':'.
 	 */
 	tokens = strutils_split(opt, ':', 1);
 	num_token = strutils_array_of_strings_len(tokens);
@@ -364,27 +363,30 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		goto end_string;
 	}
 
-	target_path = strutils_unescape_string(target_path, 0);
-
-	/* Find the full path of the target binary. */
-
-	/* First, expand any shell-like elements (e.g. tilde and wildcards). */
-	ret = wordexp(target_path, &expanded_path, 0);
-
-	/* Check for error */
-	if (ret != 0) {
+	/* strutils_unescape_string allocates a new char *. */
+	unescaped_target_path = strutils_unescape_string(target_path, 0);
+	if (!unescaped_target_path) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end_string;
 	}
 
-	/* Make sure there is only one match */
+	/* Find the full path of the target binary. */
+
+	/* First, expand any shell-like elements (e.g. tilde and wildcards). */
+	ret = wordexp(unescaped_target_path, &expanded_path, 0);
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end_unescaped_string;;
+	}
+
+	/* Make sure there is only one match. */
 	if (expanded_path.we_wordc != 1) {
 		ERR("Ambiguous path to binary.");
 		ret = -LTTNG_ERR_INVALID;
 		goto end_free_wordexp;
 	}
 
-	/* Take a pointer to the first and only match */
+	/* Take a pointer to the first and only match. */
 	target_path = expanded_path.we_wordv[0];
 	if (!target_path) {
 		ret = -LTTNG_ERR_INVALID;
@@ -476,6 +478,8 @@ end_free_path:
 	free(real_target_path);
 end_free_wordexp:
 	wordfree(&expanded_path);
+end_unescaped_string:
+	free(unescaped_target_path);
 end_string:
 	strutils_free_null_terminated_array_of_strings(tokens);
 end:

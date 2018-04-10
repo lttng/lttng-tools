@@ -2954,7 +2954,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	 * location.
 	 */
 	lttng_dynamic_buffer_init(&probe_location_buffer);
-	ret = lttng_dynamic_buffer_set_size( &probe_location_buffer,
+	ret = lttng_dynamic_buffer_set_size(&probe_location_buffer,
 			cmd_ctx->lsm->u.enable.userspace_probe_location_len);
 	if (ret) {
 		ret = LTTNG_ERR_NOMEM;
@@ -3594,13 +3594,6 @@ error_add_context:
 		struct lttng_filter_bytecode *bytecode = NULL;
 		char *filter_expression = NULL;
 
-		ev = lttng_event_copy(&cmd_ctx->lsm->u.enable.event);
-		if (!ev) {
-			DBG("Failed to copy event");
-			ret = LTTNG_ERR_NOMEM;
-			goto error;
-		}
-
 		/* Handle exclusion events and receive it from the client. */
 		if (cmd_ctx->lsm->u.enable.exclusion_count > 0) {
 			size_t count = cmd_ctx->lsm->u.enable.exclusion_count;
@@ -3609,7 +3602,6 @@ error_add_context:
 					(count * LTTNG_SYMBOL_NAME_LEN));
 			if (!exclusion) {
 				ret = LTTNG_ERR_EXCLUSION_NOMEM;
-				lttng_event_destroy(ev);
 				goto error;
 			}
 
@@ -3620,7 +3612,6 @@ error_add_context:
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
-				lttng_event_destroy(ev);
 				free(exclusion);
 				ret = LTTNG_ERR_EXCLUSION_INVAL;
 				goto error;
@@ -3634,7 +3625,6 @@ error_add_context:
 
 			if (expression_len > LTTNG_FILTER_MAX_LEN) {
 				ret = LTTNG_ERR_FILTER_INVAL;
-				lttng_event_destroy(ev);
 				free(exclusion);
 				goto error;
 			}
@@ -3642,7 +3632,6 @@ error_add_context:
 			filter_expression = zmalloc(expression_len);
 			if (!filter_expression) {
 				free(exclusion);
-				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_NOMEM;
 				goto error;
 			}
@@ -3656,7 +3645,6 @@ error_add_context:
 				*sock_error = 1;
 				free(filter_expression);
 				free(exclusion);
-				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
@@ -3670,7 +3658,6 @@ error_add_context:
 				ret = LTTNG_ERR_FILTER_INVAL;
 				free(filter_expression);
 				free(exclusion);
-				lttng_event_destroy(ev);
 				goto error;
 			}
 
@@ -3678,7 +3665,6 @@ error_add_context:
 			if (!bytecode) {
 				free(filter_expression);
 				free(exclusion);
-				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_NOMEM;
 				goto error;
 			}
@@ -3692,7 +3678,6 @@ error_add_context:
 				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
-				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
@@ -3701,11 +3686,18 @@ error_add_context:
 				free(filter_expression);
 				free(bytecode);
 				free(exclusion);
-				lttng_event_destroy(ev);
 				ret = LTTNG_ERR_FILTER_INVAL;
 				goto error;
 			}
 		}
+
+		ev = lttng_event_copy(&cmd_ctx->lsm->u.enable.event);
+		if (!ev) {
+			DBG("Failed to copy event");
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+
 
 		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
 			/* Expect a userspace probe description. */

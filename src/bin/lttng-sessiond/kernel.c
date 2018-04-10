@@ -229,7 +229,6 @@ int extract_userspace_probe_offset_function_elf(
 	assert(lookup_method_type ==
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
 
-
 	symbol = lttng_userspace_probe_location_function_get_function_name(
 			probe_location);
 	if (!symbol) {
@@ -375,6 +374,9 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 
 		ret = kernctl_add_callsite(fd, &callsite);
 		if (ret) {
+			WARN("Adding callsite to userspace probe "
+					"event %s failed.", ev->name);
+			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			goto end;
 		}
 		break;
@@ -399,6 +401,9 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 			callsite.u.uprobe.offset = offsets[i];
 			ret = kernctl_add_callsite(fd, &callsite);
 			if (ret) {
+				WARN("Adding callsite to userspace probe "
+						"event %s failed.", ev->name);
+				ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 				free(offsets);
 				goto end;
 			}

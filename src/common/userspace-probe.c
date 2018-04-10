@@ -15,11 +15,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <lttng/userspace-probe-internal.h>
-#include <common/macros.h>
-#include <common/error.h>
 #include <assert.h>
+#include <common/error.h>
+#include <common/macros.h>
 #include <fcntl.h>
+#include <lttng/constant.h>
+#include <lttng/userspace-probe-internal.h>
 
 enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
@@ -199,9 +200,9 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 		binary_fd = -1;
 	}
 
-	function_name_copy = strdup(function_name);
+	function_name_copy = strndup(function_name, LTTNG_SYMBOL_NAME_LEN);
 	if (!function_name_copy) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto error;
 	}
 
@@ -261,15 +262,15 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 		binary_fd = -1;
 	}
 
-	probe_name_copy = strdup(probe_name);
+	probe_name_copy = strndup(probe_name, LTTNG_SYMBOL_NAME_LEN);
 	if (!probe_name_copy) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto error;
 	}
 
-	provider_name_copy = strdup(provider_name);
+	provider_name_copy = strndup(provider_name, LTTNG_SYMBOL_NAME_LEN);
 	if (!provider_name_copy) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto error;
 	}
 
@@ -377,12 +378,11 @@ lttng_userspace_probe_location_lookup_method_function_name_elf_copy(
 	elf_method->parent.type = lookup_method->type;
 	parent = &elf_method->parent;
 
-end:
-	return parent;
-
+	goto end;
 error:
 	parent = NULL;
-	goto end;
+end:
+	return parent;
 }
 
 static struct lttng_userspace_probe_location_lookup_method *
@@ -405,12 +405,12 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_copy(
 	sdt_method->parent.type = lookup_method->type;
 	parent = &sdt_method->parent;
 
-end:
-	return parent;
+	goto end;
 
 error:
 	parent = NULL;
-	goto end;
+end:
+	return parent;
 }
 
 static struct lttng_userspace_probe_location *
@@ -428,23 +428,25 @@ lttng_userspace_probe_location_function_copy(struct lttng_userspace_probe_locati
 
 	 /* Duplicate probe location fields */
 	binary_path =
-		strdup(lttng_userspace_probe_location_function_get_binary_path(location));
+		strndup(lttng_userspace_probe_location_function_get_binary_path(location),
+				LTTNG_PATH_MAX);
 	if (!binary_path) {
 		goto error;
 	}
 
 	function_name =
-		strdup(lttng_userspace_probe_location_function_get_function_name(location));
+		strndup(lttng_userspace_probe_location_function_get_function_name(location),
+				LTTNG_SYMBOL_NAME_LEN);
 	if (!function_name) {
-		PERROR("strdup");
-		goto free_binary_path;
+		PERROR("strndup");
+		goto error;
 	}
 
 	/* Duplicate the binary fd */
 	fd = dup(lttng_userspace_probe_location_function_get_binary_fd(location));
 	if (fd == -1) {
 		PERROR("dup");
-		goto free_function_name;
+		goto error;
 	}
 
 	/*
@@ -469,7 +471,6 @@ lttng_userspace_probe_location_function_copy(struct lttng_userspace_probe_locati
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_function_create_no_check(
 			binary_path, function_name, lookup_method, true);
-
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
@@ -489,11 +490,9 @@ close_fd:
 	if (close(fd) < 0) {
 		PERROR("close");
 	}
-free_function_name:
-	free(function_name);
-free_binary_path:
-	free(binary_path);
 error:
+	free(function_name);
+	free(binary_path);
 	new_location = NULL;
 end:
 	return new_location;
@@ -515,31 +514,34 @@ lttng_userspace_probe_location_tracepoint_copy(struct lttng_userspace_probe_loca
 
 	 /* Duplicate probe location fields */
 	binary_path =
-		strdup(lttng_userspace_probe_location_tracepoint_get_binary_path(location));
+		strndup(lttng_userspace_probe_location_tracepoint_get_binary_path(location),
+				LTTNG_PATH_MAX);
 	if (!binary_path) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto error;
 	}
 
 	probe_name =
-		strdup(lttng_userspace_probe_location_tracepoint_get_probe_name(location));
+		strndup(lttng_userspace_probe_location_tracepoint_get_probe_name(location),
+				LTTNG_SYMBOL_NAME_LEN);
 	if (!probe_name) {
-		PERROR("strdup");
-		goto free_binary_path;
+		PERROR("strndup");
+		goto error;
 	}
 
 	provider_name =
-		strdup(lttng_userspace_probe_location_tracepoint_get_provider_name(location));
+		strndup(lttng_userspace_probe_location_tracepoint_get_provider_name(location),
+				LTTNG_SYMBOL_NAME_LEN);
 	if (!provider_name) {
-		PERROR("strdup");
-		goto free_probe_name;
+		PERROR("strndup");
+		goto error;
 	}
 
 	/* Duplicate the binary fd */
 	fd = dup(lttng_userspace_probe_location_tracepoint_get_binary_fd(location));
 	if (fd == -1) {
 		PERROR("dup");
-		goto free_provider_name;
+		goto error;
 	}
 
 	/*
@@ -564,7 +566,6 @@ lttng_userspace_probe_location_tracepoint_copy(struct lttng_userspace_probe_loca
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_tracepoint_create_no_check(
 			binary_path, provider_name, probe_name, lookup_method, true);
-
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
@@ -584,13 +585,10 @@ close_fd:
 	if (close(fd) < 0) {
 		PERROR("close");
 	}
-free_provider_name:
-	free(provider_name);
-free_probe_name:
-	free(probe_name);
-free_binary_path:
-	free(binary_path);
 error:
+	free(provider_name);
+	free(probe_name);
+	free(binary_path);
 	new_location = NULL;
 end:
 	return new_location;
@@ -788,6 +786,7 @@ lttng_userspace_probe_location_get_lookup_method(
 	}
 	return ret;
 }
+
 static
 int lttng_userspace_probe_location_lookup_method_serialize(
 		struct lttng_userspace_probe_location_lookup_method *method,
@@ -1076,15 +1075,15 @@ int lttng_userspace_probe_location_function_create_from_buffer(
 		goto end;
 	}
 
-	function_name = strdup(function_name_src);
+	function_name = strndup(function_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!function_name) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto end;
 	}
 
-	binary_path = strdup(binary_path_src);
+	binary_path = strndup(binary_path_src, LTTNG_PATH_MAX);
 	if (!binary_path) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto end;
 	}
 
@@ -1150,20 +1149,20 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 		goto end;
 	}
 
-	probe_name = strdup(probe_name_src);
+	probe_name = strndup(probe_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!probe_name) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto end;
 	}
-	provider_name = strdup(provider_name_src);
+	provider_name = strndup(provider_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!provider_name) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto end;
 	}
 
-	binary_path = strdup(binary_path_src);
+	binary_path = strndup(binary_path_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!binary_path) {
-		PERROR("strdup");
+		PERROR("strndup");
 		goto end;
 	}
 
@@ -1332,6 +1331,7 @@ int lttng_userspace_probe_location_function_set_binary_fd(
 		ret = close(function_location->binary_fd);
 		if (ret) {
 			PERROR("close");
+			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 	}
@@ -1357,6 +1357,7 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd(
 		ret = close(tracepoint_location->binary_fd);
 		if (ret) {
 			PERROR("close");
+			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
 	}

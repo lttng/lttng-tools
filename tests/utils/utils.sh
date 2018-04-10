@@ -270,6 +270,41 @@ function lttng_disable_kernel_syscall_fail()
 	lttng_disable_kernel_syscall 1 "$@"
 }
 
+function lttng_enable_kernel_userspace_probe_event ()
+{
+	local expected_to_fail="$1"
+	local sess_name="$2"
+	local target="$3"
+	local event_name="$4"
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event --kernel --userspace-probe="$target" "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test $ret -ne "0"
+		ok $? "Enable kernel userspace probe event for session $sess_name failed as expected"
+	else
+		ok $ret "Enable kernel userspace probe event for session $sess_name"
+	fi
+}
+
+function lttng_enable_kernel_userspace_probe_event_fail ()
+{
+	lttng_enable_kernel_userspace_probe_event 1 "$@"
+}
+
+function lttng_enable_kernel_userspace_probe_event_ok ()
+{
+	lttng_enable_kernel_userspace_probe_event 0 "$@"
+}
+
+function disable_kernel_lttng_userspace_probe_event_ok ()
+{
+	local sess_name="$1"
+	local event_name="$2"
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" disable-event --kernel "$event_name" -s "$sess_name" > "$OUTPUT_DEST" 2> "$ERROR_OUTPUT_DEST"
+	ok $? "Disable kernel event $target for session $sess_name"
+}
 function lttng_enable_kernel_channel()
 {
 	local withtap=$1

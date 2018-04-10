@@ -350,7 +350,7 @@ enum lttng_error_code trace_kernel_create_event(
 		 * Only the elf lookup method is supported at the moment.
 		 */
 		lookup = lttng_userspace_probe_location_get_lookup_method(
-						location);
+				location);
 		if (!lookup) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
@@ -374,8 +374,11 @@ enum lttng_error_code trace_kernel_create_event(
 			 */
 			userspace_probe_location =
 				lttng_userspace_probe_location_copy(location);
-			lttng_userspace_probe_location_function_set_binary_fd(
+			ret = lttng_userspace_probe_location_function_set_binary_fd(
 				userspace_probe_location, -1);
+			if (ret) {
+				goto error;
+			}
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 			/*
@@ -390,8 +393,11 @@ enum lttng_error_code trace_kernel_create_event(
 			 */
 			userspace_probe_location =
 				lttng_userspace_probe_location_copy(location);
-			lttng_userspace_probe_location_tracepoint_set_binary_fd(
+			ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
 				userspace_probe_location, -1);
+			if (ret) {
+				goto error;
+			}
 			break;
 		default:
 			DBG("Unsupported lookup method type");

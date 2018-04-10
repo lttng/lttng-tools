@@ -379,7 +379,6 @@ static int increment_extended_len(const char *filter_expression,
 	if (probe_location) {
 		ret = lttng_userspace_probe_location_serialize(probe_location,
 				NULL, NULL);
-
 		if (ret < 0) {
 			goto end;
 		}
@@ -498,7 +497,7 @@ static int list_lttng_agent_events(struct agent *agt,
 				&extended_len);
 		if (ret) {
 			DBG("Error computing the length of extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
 	}
@@ -529,7 +528,7 @@ static int list_lttng_agent_events(struct agent *agt,
 				&extended_at);
 		if (ret) {
 			DBG("Error appending extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
 	}
@@ -593,7 +592,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 			uevent->exclusion, NULL, &extended_len);
 		if (ret) {
 			DBG("Error computing the length of extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto end;
 		}
 	}
@@ -659,7 +658,7 @@ static int list_lttng_ust_global_events(char *channel_name,
 			uevent->exclusion, NULL, &extended_at);
 		if (ret) {
 			DBG("Error appending extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto end;
 		}
 	}
@@ -708,7 +707,7 @@ static int list_lttng_kernel_events(char *channel_name,
 			&extended_len);
 		if (ret) {
 			DBG("Error computing the length of extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
 	}
@@ -716,7 +715,7 @@ static int list_lttng_kernel_events(char *channel_name,
 	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
 	*events = zmalloc(*total_size);
 	if (*events == NULL) {
-		ret = LTTNG_ERR_FATAL;
+		ret = -LTTNG_ERR_FATAL;
 		goto error;
 	}
 
@@ -770,7 +769,7 @@ static int list_lttng_kernel_events(char *channel_name,
 			event->userspace_probe_location, &extended_at);
 		if (ret) {
 			DBG("Error appending extended info message");
-			ret = LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
 	}
