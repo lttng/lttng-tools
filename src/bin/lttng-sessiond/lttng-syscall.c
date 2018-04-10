@@ -24,7 +24,7 @@
 
 #include "lttng-sessiond.h"
 #include "kernel.h"
-#include "syscall.h"
+#include "lttng-syscall.h"
 #include "utils.h"
 
 /* Global syscall table. */
