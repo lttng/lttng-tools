@@ -1454,7 +1454,7 @@ function regenerate_statedump ()
 		test "$ret" -ne "0"
 		ok $? "Expected fail on regenerate statedump $sess_name"
 	else
-		ok $ret "Metadata regenerate $sess_name"
+		ok $ret "Statedump regenerate $sess_name"
 	fi
 }
 
