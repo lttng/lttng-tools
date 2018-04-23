@@ -32,6 +32,8 @@
 #include "session.h"
 #include "utils.h"
 
+static int agent_tracing_enabled = -1;
+
 /*
  * Note that there is not port here. It's set after this URI is parsed so we
  * can let the user define a custom one. However, localhost is ALWAYS the
@@ -223,6 +225,15 @@ error:
 	return ret;
 }
 
+bool agent_tracing_is_enabled(void)
+{
+	int enabled;
+
+	enabled = uatomic_read(&agent_tracing_enabled);
+	assert(enabled != -1);
+	return enabled == 1;
+}
+
 /*
  * This thread manage application notify communication.
  */
@@ -248,6 +259,12 @@ void *agent_thread_manage_registration(void *data)
 	}
 
 	reg_sock = init_tcp_socket();
+	uatomic_set(&agent_tracing_enabled, !!reg_sock);
+
+	/*
+	 * Signal that the agent thread is ready. The command thread
+	 * may start to query whether or not agent tracing is enabled.
+	 */
 	sessiond_notify_ready();
 	if (!reg_sock) {
 		goto error_tcp_socket;
@@ -348,6 +365,7 @@ restart:
 	}
 
 exit:
+	uatomic_set(&agent_tracing_enabled, 0);
 	/* Whatever happens, try to delete it and exit. */
 	(void) lttng_poll_del(&events, reg_sock->fd);
 error:

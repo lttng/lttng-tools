@@ -145,6 +145,7 @@ enum lttng_error_code {
 	LTTNG_ERR_REGEN_STATEDUMP_FAIL   = 122, /* Failed to regenerate the state dump */
 	LTTNG_ERR_REGEN_STATEDUMP_NOMEM  = 123, /* Failed to regenerate the state dump, not enough memory */
 	LTTNG_ERR_NOT_SNAPSHOT_SESSION   = 124, /* Session is not in snapshot mode. */
+	LTTNG_ERR_AGENT_TRACING_DISABLED = 139, /* Agent tracing disabled. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

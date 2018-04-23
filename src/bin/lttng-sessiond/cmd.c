@@ -41,6 +41,7 @@
 #include "syscall.h"
 #include "agent.h"
 #include "buffer-registry.h"
+#include "agent-thread.h"
 
 #include "cmd.h"
 
@@ -1344,6 +1345,21 @@ int cmd_enable_channel(struct ltt_session *session,
 		attr->attr.switch_timer_interval = 0;
 	}
 
+	/* Check for feature support */
+	switch (domain->type) {
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
+		if (!agent_tracing_is_enabled()) {
+			DBG("Attempted to enable a channel in an agent domain but the agent thread is not running");
+			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			goto error;
+		}
+		break;
+	default:
+		break;
+	}
+
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
@@ -2076,6 +2092,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		if (!agent_tracing_is_enabled()) {
+			DBG("Attempted to enable an event in an agent domain but the agent thread is not running");
+			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			goto error;
+		}
 
 		agt = trace_ust_find_agent(usess, domain->type);
 		if (!agt) {
