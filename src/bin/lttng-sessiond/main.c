@@ -4287,10 +4287,39 @@ static void *thread_manage_clients(void *data)
 	}
 
 	sessiond_notify_ready();
+
 	ret = sem_post(&load_info->message_thread_ready);
 	if (ret) {
 		PERROR("sem_post message_thread_ready");
 		goto error;
+	}
+
+	/*
+	 * Wait until all support threads are initialized before accepting
+	 * commands.
+	 */
+	while (uatomic_read(&lttng_sessiond_ready) != 0) {
+		fd_set read_fds;
+		struct timeval timeout;
+
+		FD_ZERO(&read_fds);
+		FD_SET(thread_quit_pipe[0], &read_fds);
+		memset(&timeout, 0, sizeof(timeout));
+		timeout.tv_usec = 1000;
+
+		/*
+		 * If a support thread failed to launch, it may signal that
+		 * we must exit and the sessiond would never be marked as
+		 * "ready".
+		 *
+		 * The timeout is set to 1ms, which serves as a way to
+		 * pace down this check.
+		 */
+		ret = select(thread_quit_pipe[0] + 1, &read_fds, NULL, NULL,
+				&timeout);
+		if (ret > 0 || (ret < 0 && errno != EINTR)) {
+			goto exit;
+		}
 	}
 
 	/* This testpoint is after we signal readiness to the parent. */

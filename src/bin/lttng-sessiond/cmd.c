@@ -51,6 +51,7 @@
 #include "buffer-registry.h"
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
+#include "agent-thread.h"
 
 #include "cmd.h"
 
@@ -1380,9 +1381,15 @@ int cmd_enable_channel(struct ltt_session *session,
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
+		break;
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_PYTHON:
+		if (!agent_tracing_is_enabled()) {
+			DBG("Attempted to enable a channel in an agent domain but the agent thread is not running");
+			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			goto error;
+		}
 		break;
 	default:
 		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
@@ -2089,6 +2096,12 @@ static int _cmd_enable_event(struct ltt_session *session,
 		struct ltt_ust_session *usess = session->ust_session;
 
 		assert(usess);
+
+		if (!agent_tracing_is_enabled()) {
+			DBG("Attempted to enable an event in an agent domain but the agent thread is not running");
+			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			goto error;
+		}
 
 		agt = trace_ust_find_agent(usess, domain->type);
 		if (!agt) {
