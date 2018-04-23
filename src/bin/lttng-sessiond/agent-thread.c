@@ -248,6 +248,7 @@ void *agent_thread_manage_registration(void *data)
 	}
 
 	reg_sock = init_tcp_socket();
+	sessiond_notify_ready();
 	if (!reg_sock) {
 		goto error_tcp_socket;
 	}

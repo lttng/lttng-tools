@@ -304,7 +304,7 @@ struct lttng_ht *agent_apps_ht_by_sock = NULL;
  * NR_LTTNG_SESSIOND_READY must match the number of calls to
  * sessiond_notify_ready().
  */
-#define NR_LTTNG_SESSIOND_READY		5
+#define NR_LTTNG_SESSIOND_READY		6
 int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
