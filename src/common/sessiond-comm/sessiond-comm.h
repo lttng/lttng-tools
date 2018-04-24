@@ -657,30 +657,30 @@ struct lttcomm_ust_reply {
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
-extern const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
+LTTNG_HIDDEN const char *lttcomm_get_readable_code(enum lttcomm_return_code code);
 
-extern int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
+LTTNG_HIDDEN int lttcomm_init_inet_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port);
-extern int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
+LTTNG_HIDDEN int lttcomm_init_inet6_sockaddr(struct lttcomm_sockaddr *sockaddr,
 		const char *ip, unsigned int port);
 
-extern struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto);
-extern int lttcomm_create_sock(struct lttcomm_sock *sock);
-extern struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri);
-extern void lttcomm_destroy_sock(struct lttcomm_sock *sock);
-extern struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src);
-extern void lttcomm_copy_sock(struct lttcomm_sock *dst,
+LTTNG_HIDDEN struct lttcomm_sock *lttcomm_alloc_sock(enum lttcomm_sock_proto proto);
+LTTNG_HIDDEN int lttcomm_create_sock(struct lttcomm_sock *sock);
+LTTNG_HIDDEN struct lttcomm_sock *lttcomm_alloc_sock_from_uri(struct lttng_uri *uri);
+LTTNG_HIDDEN void lttcomm_destroy_sock(struct lttcomm_sock *sock);
+LTTNG_HIDDEN struct lttcomm_sock *lttcomm_alloc_copy_sock(struct lttcomm_sock *src);
+LTTNG_HIDDEN void lttcomm_copy_sock(struct lttcomm_sock *dst,
 		struct lttcomm_sock *src);
 
 /* Relayd socket object. */
-extern struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
+LTTNG_HIDDEN struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
 		struct lttng_uri *uri, uint32_t major, uint32_t minor);
 
-extern int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec);
-extern int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec);
+LTTNG_HIDDEN int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec);
+LTTNG_HIDDEN int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec);
 
-extern void lttcomm_init(void);
+LTTNG_HIDDEN void lttcomm_init(void);
 /* Get network timeout, in milliseconds */
-extern unsigned long lttcomm_get_network_timeout(void);
+LTTNG_HIDDEN unsigned long lttcomm_get_network_timeout(void);
 
 #endif	/* _LTTNG_SESSIOND_COMM_H */
