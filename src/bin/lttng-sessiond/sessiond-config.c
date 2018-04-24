@@ -32,7 +32,7 @@ struct sessiond_config sessiond_config_build_defaults = {
 	.verbose = 				0,
 	.verbose_consumer = 			0,
 
-	.agent_tcp_port = 			DEFAULT_AGENT_TCP_PORT,
+	.agent_tcp_port = 			{ .begin = DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN, .end = DEFAULT_AGENT_TCP_PORT_RANGE_END },
 	.app_socket_timeout = 			DEFAULT_APP_SOCKET_RW_TIMEOUT,
 
 	.no_kernel = 				false,
@@ -494,7 +494,13 @@ void sessiond_config_log(struct sessiond_config *config)
 	DBG_NO_LOC("\tverbose:                      %i", config->verbose);
 	DBG_NO_LOC("\tverbose consumer:             %i", config->verbose_consumer);
 	DBG_NO_LOC("\tquiet mode:                   %s", config->quiet ? "True" : "False");
-	DBG_NO_LOC("\tagent_tcp_port:               %i", config->agent_tcp_port);
+	if (config->agent_tcp_port.begin == config->agent_tcp_port.end) {
+		DBG_NO_LOC("\tagent_tcp_port:               %i", config->agent_tcp_port.begin);
+	} else {
+		DBG_NO_LOC("\tagent_tcp_port:               [%i, %i]",
+				config->agent_tcp_port.begin,
+				config->agent_tcp_port.end);
+	}
 	DBG_NO_LOC("\tapplication socket timeout:   %i", config->app_socket_timeout);
 	DBG_NO_LOC("\tno-kernel:                    %s", config->no_kernel ? "True" : "False");
 	DBG_NO_LOC("\tbackground:                   %s", config->background ? "True" : "False");

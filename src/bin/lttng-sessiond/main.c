@@ -5062,8 +5062,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ERR("Port overflow in --agent-tcp-port parameter: %s", arg);
 				return -1;
 			}
-			config.agent_tcp_port = (uint32_t) v;
-			DBG3("Agent TCP port set to non default: %u", config.agent_tcp_port);
+			config.agent_tcp_port.begin = config.agent_tcp_port.end = (int) v;
+			DBG3("Agent TCP port set to non default: %i", (int) v);
 		}
 	} else if (string_match(optname, "load") || opt == 'l') {
 		if (!arg || *arg == '\0') {
@@ -5655,15 +5655,6 @@ static int write_pidfile(void)
         return utils_create_pid_file(getpid(), config.pid_file_path.value);
 }
 
-/*
- * Write agent TCP port using the rundir.
- */
-static int write_agent_port(void)
-{
-	return utils_create_pid_file(config.agent_tcp_port,
-			config.agent_port_file_path.value);
-}
-
 static int set_clock_plugin_env(void)
 {
 	int ret = 0;
@@ -6122,12 +6113,6 @@ int main(int argc, char **argv)
 	ret = write_pidfile();
 	if (ret) {
 		ERR("Error in write_pidfile");
-		retval = -1;
-		goto exit_init_data;
-	}
-	ret = write_agent_port();
-	if (ret) {
-		ERR("Error in write_agent_port");
 		retval = -1;
 		goto exit_init_data;
 	}

@@ -679,6 +679,14 @@ LTTNG_HIDDEN struct lttcomm_relayd_sock *lttcomm_alloc_relayd_sock(
 LTTNG_HIDDEN int lttcomm_setsockopt_rcv_timeout(int sock, unsigned int msec);
 LTTNG_HIDDEN int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec);
 
+LTTNG_HIDDEN int lttcomm_sock_get_port(const struct lttcomm_sock *sock,
+		uint16_t *port);
+/*
+ * Set a port to an lttcomm_sock. This will have no effect is the socket is
+ * already bound.
+ */
+LTTNG_HIDDEN int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port);
+
 LTTNG_HIDDEN void lttcomm_init(void);
 /* Get network timeout, in milliseconds */
 LTTNG_HIDDEN unsigned long lttcomm_get_network_timeout(void);

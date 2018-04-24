@@ -26,6 +26,10 @@ struct config_string {
 	bool should_free;
 };
 
+struct config_int_range {
+	int begin, end;
+};
+
 /* Config string takes ownership of value. */
 LTTNG_HIDDEN
 void config_string_set(struct config_string *string, char *value);
@@ -33,8 +37,8 @@ void config_string_set(struct config_string *string, char *value);
 struct sessiond_config {
 	int verbose;
 	int verbose_consumer;
-	/* Agent TCP port for registration. Used by the agent thread. */
-	int agent_tcp_port;
+	/* Agent TCP port range for registration. Used by the agent thread. */
+	struct config_int_range agent_tcp_port;
 	/* Socket timeout for receiving and sending (in seconds). */
 	int app_socket_timeout;
 

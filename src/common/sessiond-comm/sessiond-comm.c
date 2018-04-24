@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <common/common.h>
 
@@ -411,6 +412,53 @@ int lttcomm_setsockopt_snd_timeout(int sock, unsigned int msec)
 	}
 
 	return ret;
+}
+
+LTTNG_HIDDEN
+int lttcomm_sock_get_port(const struct lttcomm_sock *sock, uint16_t *port)
+{
+	assert(sock);
+	assert(port);
+	assert(sock->sockaddr.type == LTTCOMM_INET ||
+			sock->sockaddr.type == LTTCOMM_INET6);
+	assert(sock->proto == LTTCOMM_SOCK_TCP ||
+			sock->proto == LTTCOMM_SOCK_UDP);
+
+	switch (sock->sockaddr.type) {
+	case LTTCOMM_INET:
+		*port = ntohs(sock->sockaddr.addr.sin.sin_port);
+		break;
+	case LTTCOMM_INET6:
+		*port = ntohs(sock->sockaddr.addr.sin6.sin6_port);
+		break;
+	default:
+		abort();
+	}
+
+	return 0;
+}
+
+LTTNG_HIDDEN
+int lttcomm_sock_set_port(struct lttcomm_sock *sock, uint16_t port)
+{
+	assert(sock);
+	assert(sock->sockaddr.type == LTTCOMM_INET ||
+			sock->sockaddr.type == LTTCOMM_INET6);
+	assert(sock->proto == LTTCOMM_SOCK_TCP ||
+			sock->proto == LTTCOMM_SOCK_UDP);
+
+	switch (sock->sockaddr.type) {
+	case LTTCOMM_INET:
+		sock->sockaddr.addr.sin.sin_port = htons(port);
+		break;
+	case LTTCOMM_INET6:
+		sock->sockaddr.addr.sin6.sin6_port = htons(port);
+		break;
+	default:
+		abort();
+	}
+
+	return 0;
 }
 
 LTTNG_HIDDEN

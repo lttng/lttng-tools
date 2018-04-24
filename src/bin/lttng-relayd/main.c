@@ -751,6 +751,7 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri)
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
+		PERROR("Failed to bind socket");
 		goto error;
 	}
 

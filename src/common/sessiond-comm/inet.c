@@ -100,15 +100,9 @@ error:
 LTTNG_HIDDEN
 int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 {
-	int ret;
-
-	ret = bind(sock->fd, (const struct sockaddr *) &sock->sockaddr.addr.sin,
+	return bind(sock->fd,
+			(const struct sockaddr *) &sock->sockaddr.addr.sin,
 			sizeof(sock->sockaddr.addr.sin));
-	if (ret < 0) {
-		PERROR("bind inet");
-	}
-
-	return ret;
 }
 
 static
