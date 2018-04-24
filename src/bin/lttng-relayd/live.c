@@ -452,10 +452,11 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri)
 	if (ret < 0) {
 		goto error;
 	}
-	DBG("Listening on sock %d for live", sock->fd);
+	DBG("Listening on sock %d for lttng-live", sock->fd);
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
+		PERROR("Failed to bind lttng-live socket");
 		goto error;
 	}
 

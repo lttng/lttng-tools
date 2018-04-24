@@ -1,6 +1,7 @@
 [attributes]
 # default values
-default_agent_tcp_port="@DEFAULT_AGENT_TCP_PORT@"
+default_agent_tcp_port_range_begin="@DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN@"
+default_agent_tcp_port_range_end="@DEFAULT_AGENT_TCP_PORT_RANGE_END@"
 default_app_socket_rw_timeout="@DEFAULT_APP_SOCKET_RW_TIMEOUT@"
 default_channel_subbuf_size="@DEFAULT_CHANNEL_SUBBUF_SIZE@"
 default_channel_tracefile_count="@DEFAULT_CHANNEL_TRACEFILE_COUNT@"

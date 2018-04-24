@@ -83,6 +83,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	int ret;
 	struct lttng_uri *uri = NULL;
 	struct lttcomm_sock *sock = NULL;
+	unsigned int port;
+	bool bind_succeeded = false;
 
 	/*
 	 * This should never fail since the URI is hardcoded and the port is set
@@ -90,8 +92,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	 */
 	ret = uri_parse(default_reg_uri, &uri);
 	assert(ret);
-	assert(config.agent_tcp_port);
-	uri->port = config.agent_tcp_port;
+	assert(config.agent_tcp_port.begin > 0);
+	uri->port = config.agent_tcp_port.begin;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
@@ -105,11 +107,43 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	ret = sock->ops->bind(sock);
-	if (ret < 0) {
-		WARN("Another session daemon is using this agent port. Agent support "
-				"will be deactivated to prevent interfering with the tracing.");
-		goto error;
+	for (port = config.agent_tcp_port.begin;
+			port <= config.agent_tcp_port.end; port++) {
+		ret = lttcomm_sock_set_port(sock, (uint16_t) port);
+		if (ret) {
+			ERR("[agent-thread] Failed to set port %u on socket",
+					port);
+			goto error;
+		}
+		DBG3("[agent-thread] Trying to bind on port %u", port);
+		ret = sock->ops->bind(sock);
+		if (!ret) {
+			bind_succeeded = true;
+			break;
+		}
+
+		if (errno == EADDRINUSE) {
+			DBG("Failed to bind to port %u since it is already in use",
+					port);
+		} else {
+			PERROR("Failed to bind to port %u", port);
+			goto error;
+		}
+	}
+
+	if (!bind_succeeded) {
+		if (config.agent_tcp_port.begin == config.agent_tcp_port.end) {
+			WARN("Another process is already using the agent port %i. "
+					"Agent support will be deactivated.",
+					config.agent_tcp_port.begin);
+			goto error;
+		} else {
+			WARN("All ports in the range [%i, %i] are already in use. "
+					"Agent support will be deactivated.",
+					config.agent_tcp_port.begin,
+					config.agent_tcp_port.end);
+			goto error;
+		}
 	}
 
 	ret = sock->ops->listen(sock, -1);
@@ -118,7 +152,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	}
 
 	DBG("[agent-thread] Listening on TCP port %u and socket %d",
-			config.agent_tcp_port, sock->fd);
+			port, sock->fd);
 
 	return sock;
 
@@ -134,9 +168,19 @@ error:
  */
 static void destroy_tcp_socket(struct lttcomm_sock *sock)
 {
+	int ret;
+	uint16_t port;
+
 	assert(sock);
 
-	DBG3("[agent-thread] Destroy TCP socket on port %u", config.agent_tcp_port);
+	ret = lttcomm_sock_get_port(sock, &port);
+	if (ret) {
+		ERR("[agent-thread] Failed to get port of agent TCP socket");
+		port = 0;
+	}
+
+	DBG3("[agent-thread] Destroy TCP socket on port %" PRIu16,
+			port);
 
 	/* This will return gracefully if fd is invalid. */
 	sock->ops->close(sock);
@@ -235,6 +279,15 @@ bool agent_tracing_is_enabled(void)
 }
 
 /*
+ * Write agent TCP port using the rundir.
+ */
+static int write_agent_port(uint16_t port)
+{
+	return utils_create_pid_file((pid_t) port,
+			config.agent_port_file_path.value);
+}
+
+/*
  * This thread manage application notify communication.
  */
 void *agent_thread_manage_registration(void *data)
@@ -259,16 +312,30 @@ void *agent_thread_manage_registration(void *data)
 	}
 
 	reg_sock = init_tcp_socket();
-	uatomic_set(&agent_tracing_enabled, !!reg_sock);
+	if (reg_sock) {
+		uint16_t port;
+
+		assert(lttcomm_sock_get_port(reg_sock, &port) == 0);
+
+		ret = write_agent_port(port);
+		if (ret) {
+			ERR("[agent-thread] Failed to create agent port file: agent tracing will be unavailable");
+			/* Don't prevent the launch of the sessiond on error. */
+			sessiond_notify_ready();
+			goto error;
+		}
+	} else {
+		/* Don't prevent the launch of the sessiond on error. */
+		sessiond_notify_ready();
+		goto error_tcp_socket;
+	}
 
 	/*
 	 * Signal that the agent thread is ready. The command thread
 	 * may start to query whether or not agent tracing is enabled.
 	 */
+	uatomic_set(&agent_tracing_enabled, 1);
 	sessiond_notify_ready();
-	if (!reg_sock) {
-		goto error_tcp_socket;
-	}
 
 	/* Add TCP socket to poll set. */
 	ret = lttng_poll_add(&events, reg_sock->fd,
@@ -365,7 +432,6 @@ restart:
 	}
 
 exit:
-	uatomic_set(&agent_tracing_enabled, 0);
 	/* Whatever happens, try to delete it and exit. */
 	(void) lttng_poll_del(&events, reg_sock->fd);
 error:
@@ -373,6 +439,7 @@ error:
 error_tcp_socket:
 	lttng_poll_clean(&events);
 error_poll_create:
+	uatomic_set(&agent_tracing_enabled, 0);
 	DBG("[agent-thread] is cleaning up and stopping.");
 
 	rcu_thread_offline();

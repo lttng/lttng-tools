@@ -269,8 +269,9 @@
 #define DEFAULT_NETWORK_DATA_PORT           CONFIG_DEFAULT_NETWORK_DATA_PORT
 #define DEFAULT_NETWORK_VIEWER_PORT         CONFIG_DEFAULT_NETWORK_VIEWER_PORT
 
-/* Agent registration TCP port. */
-#define DEFAULT_AGENT_TCP_PORT              CONFIG_DEFAULT_AGENT_TCP_PORT
+/* Agent registration TCP port range. */
+#define DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN  CONFIG_DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN
+#define DEFAULT_AGENT_TCP_PORT_RANGE_END    CONFIG_DEFAULT_AGENT_TCP_PORT_RANGE_END
 
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad
