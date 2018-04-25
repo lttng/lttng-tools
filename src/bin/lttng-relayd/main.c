@@ -1808,7 +1808,7 @@ static int relay_recv_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	size_ret = write_padding_to_file(metadata_stream->stream_fd->fd,
 			metadata_payload_header.padding_size);
-	if (size_ret < 0) {
+	if (size_ret < (int64_t) metadata_payload_header.padding_size) {
 		ret = -1;
 		goto end_put;
 	}
@@ -3068,8 +3068,7 @@ static int relay_process_control_receive_header(struct relay_connection *conn)
 			conn->sock->fd, header.cmd, header.cmd_version,
 			header.data_size);
 
-	/* FIXME temporary arbitrary limit on data size. */
-	if (header.data_size > (128 * 1024 * 1024)) {
+	if (header.data_size > DEFAULT_NETWORK_RELAYD_CTRL_MAX_PAYLOAD_SIZE) {
 		ERR("Command header indicates a payload (%" PRIu64 " bytes) that exceeds the maximal payload size allowed on a control connection.",
 				header.data_size);
 		ret = -1;
