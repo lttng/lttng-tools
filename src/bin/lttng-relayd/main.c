@@ -2242,8 +2242,12 @@ static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
 	index_info.timestamp_end = be64toh(index_info.timestamp_end);
 	index_info.events_discarded = be64toh(index_info.events_discarded);
 	index_info.stream_id = be64toh(index_info.stream_id);
-	index_info.stream_instance_id = be64toh(index_info.stream_instance_id);
-	index_info.packet_seq_num = be64toh(index_info.packet_seq_num);
+
+	if (conn->minor >= 8) {
+		index_info.stream_instance_id =
+				be64toh(index_info.stream_instance_id);
+		index_info.packet_seq_num = be64toh(index_info.packet_seq_num);
+	}
 
 	stream = stream_get_by_id(index_info.relay_stream_id);
 	if (!stream) {
