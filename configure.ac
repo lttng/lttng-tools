@@ -40,6 +40,11 @@ AM_CONDITIONAL([HAVE_OBJCOPY], [test "x$OBJCOPY" != xno])
 AC_PATH_PROG([PGREP], [pgrep], [no])
 AM_CONDITIONAL([HAVE_PGREP], [test "x$PGREP" != "xno"])
 
+# set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
+# is not distributed in tarballs
+AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
+AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
+
 # check for bison
 AC_PROG_YACC
 BISON=$YACC
@@ -685,11 +690,6 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 		fi
 	fi
 fi
-
-# set $IN_GIT_REPO if we're in the Git repository; the `bootstrap` file
-# is not distributed in tarballs
-AS_IF([test -f "$srcdir/bootstrap"], [in_git_repo=yes], [in_git_repo=no])
-AM_CONDITIONAL([IN_GIT_REPO], [test "x$in_git_repo" = "xyes"])
 
 # enable building man pages (user's intention)
 AC_ARG_ENABLE(
