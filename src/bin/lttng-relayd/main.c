@@ -3256,7 +3256,6 @@ static enum relay_connection_status relay_process_data_receive_header(
 		DBG3("Partial reception of data connection header (received %" PRIu64 " bytes, %" PRIu64 " bytes left to receive, fd = %i)",
 				state->received, state->left_to_receive,
 				conn->sock->fd);
-		ret = 0;
 		goto end;
 	}
 
@@ -3323,7 +3322,6 @@ static enum relay_connection_status relay_process_data_receive_header(
 		conn->protocol.data.state.receive_payload.rotate_index = true;
 	}
 
-	ret = 0;
 end_stream_unlock:
 	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
