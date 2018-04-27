@@ -18,6 +18,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define GIT_VERSION	""
+#include "version.i"
 
 #endif /* VERSION_H */

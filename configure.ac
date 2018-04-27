@@ -593,15 +593,6 @@ AC_CHECK_LIB([pfm], [pfm_initialize],
 	      ])
 AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBPFM], [test "x$have_libpfm" = "xyes"])
 
-AC_ARG_ENABLE([git-version],
-              [AC_HELP_STRING([--disable-git-version],
-                              [Do not use the git version for the build])],
-              [have_git_version=$enableval], [have_git_version=yes]
-)
-
-AM_CONDITIONAL([LTTNG_TOOLS_BUILD_GIT_SOURCE],
-	[test "x${have_git_version}" = "xyes"])
-
 # For Python
 # SWIG version needed or newer:
 swig_version=2.0.0
