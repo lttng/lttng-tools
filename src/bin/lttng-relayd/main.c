@@ -3426,7 +3426,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 
 	ret = write_padding_to_file(stream->stream_fd->fd,
 			state->header.padding_size);
-	if (ret < 0) {
+	if ((int64_t) ret < (int64_t) state->header.padding_size) {
 		ERR("write_padding_to_file: fail stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
 				stream->stream_handle,
 				state->header.net_seq_num, ret);
