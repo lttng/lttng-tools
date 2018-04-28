@@ -148,5 +148,7 @@ bool connection_get(struct relay_connection *connection);
 void connection_put(struct relay_connection *connection);
 void connection_ht_add(struct lttng_ht *relay_connections_ht,
 		struct relay_connection *conn);
+int connection_set_session(struct relay_connection *conn,
+		struct relay_session *session);
 
 #endif /* _CONNECTION_H */

@@ -182,16 +182,8 @@ int session_close(struct relay_session *session)
 	pthread_mutex_lock(&session->lock);
 	DBG("closing session %" PRIu64 ": is conn already closed %d",
 			session->id, session->connection_closed);
-	if (session->connection_closed) {
-		ret = -1;
-		goto unlock;
-	}
 	session->connection_closed = true;
-unlock:
 	pthread_mutex_unlock(&session->lock);
-	if (ret) {
-		return ret;
-	}
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ctf_traces_ht->ht,
@@ -226,13 +218,7 @@ int session_abort(struct relay_session *session)
 
 	pthread_mutex_lock(&session->lock);
 	DBG("aborting session %" PRIu64, session->id);
-	if (session->aborted) {
-		ERR("session %" PRIu64 " is already aborted", session->id);
-		ret = -1;
-		goto unlock;
-	}
 	session->aborted = true;
-unlock:
 	pthread_mutex_unlock(&session->lock);
 	return ret;
 }

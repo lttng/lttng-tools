@@ -176,3 +176,27 @@ void connection_ht_add(struct lttng_ht *relay_connections_ht,
 	conn->in_socket_ht = 1;
 	conn->socket_ht = relay_connections_ht;
 }
+
+int connection_set_session(struct relay_connection *conn,
+		struct relay_session *session)
+{
+	int ret = 0;
+
+	assert(conn);
+	assert(session);
+	assert(!conn->session);
+
+	if (connection_get(conn)) {
+		if (session_get(session)) {
+			conn->session = session;
+		} else {
+			ERR("Failed to get session reference in connection_set_session()");
+			ret = -1;
+		}
+		connection_put(conn);
+	} else {
+		ERR("Failed to get connection reference in connection_set_session()");
+		ret = -1;
+	}
+	return ret;
+}
