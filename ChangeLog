@@ -1,3 +1,24 @@
+2018-04-30 lttng-tools 2.10.4 (CERN announces WWW protocols will be free)
+	* Fix build: in_git_repo is used before being set
+	* Add DBG statement for TCP keep-alive options
+	* Fix: unprivilieged sessiond agent port clashes with root sessiond
+	* Fix: erroneous use of extern keyword
+	* Fix: failure to launch agent thread is not reported
+	* Fix: agent may not be ready on launch
+	* Fix: checking for existing session daemon is done after daemonizing
+	* Fix: lttng logs nanoseconds
+	* Fix: stream_per_chan_id_ht should allow duplicates
+	* Fix: relayd send_command() util not logging on failure
+	* Fix: create_output_path() relayd util is not const-correct
+	* Fix: kernel snapshot handling of EAGAIN
+	* Fix validate_trace_empty test check
+	* Fix: circular inclusion of lttng.h results in warning
+	* Fix: channel lock must be taken to check for pending notifications
+	* Fix: quiet option is not set in sessiond-config
+	* Fix: hold consumer socket lock for consumer_send_msg
+	* Fix: use off_t type for lseek function return value to avoid overflow
+	* Fix: double similar condition
+
 2018-03-26 lttng-tools 2.10.3 (Purple Day)
 	* Fix: set errno with value from SO_ERROR on error.
 	* Fix: missing value handling for lttng_event_context_type
