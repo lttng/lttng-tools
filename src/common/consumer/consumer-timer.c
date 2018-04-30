@@ -637,7 +637,7 @@ int sample_channel_positions(struct lttng_consumer_channel *channel,
 		sample_positions_cb sample, get_consumed_cb get_consumed,
 		get_produced_cb get_produced)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_stream *stream;
 	bool empty_channel = true;
