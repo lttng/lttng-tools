@@ -2075,7 +2075,7 @@ exit:
 error:
 	lttng_poll_clean(&events);
 
-	/* Cleanup reamaining connection object. */
+	/* Cleanup remaining connection object. */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(viewer_connections_ht->ht, &iter.iter,
 			destroy_conn,

@@ -3796,7 +3796,7 @@ restart:
 
 exit:
 error:
-	/* Cleanup reamaining connection object. */
+	/* Cleanup remaining connection object. */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(relay_connections_ht->ht, &iter.iter,
 			destroy_conn,
