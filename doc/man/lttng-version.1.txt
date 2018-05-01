@@ -17,7 +17,7 @@ DESCRIPTION
 -----------
 The `lttng version` command outputs the version of LTTng-tools.
 
-The output of `lttng version` is broke down into the following parts:
+The output of `lttng version` is broken down into the following parts:
 
 * Major, minor, and patch numbers
 * Git commit information, if available
