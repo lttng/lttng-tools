@@ -2154,7 +2154,7 @@ error:
  * Returns 0 on success or else a negative code which is either -ENOMEM or
  * -ENOTCONN which is the default code if the ustctl_create_session fails.
  */
-static int create_ust_app_session(struct ltt_ust_session *usess,
+static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		struct ust_app *app, struct ust_app_session **ua_sess_ptr,
 		int *is_created)
 {
@@ -4165,7 +4165,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		 * that if session exist, it will simply return a pointer to the ust
 		 * app session.
 		 */
-		ret = create_ust_app_session(usess, app, &ua_sess, &created);
+		ret = find_or_create_ust_app_session(usess, app, &ua_sess, &created);
 		if (ret < 0) {
 			switch (ret) {
 			case -ENOTCONN:
@@ -5041,7 +5041,7 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 	struct ust_app_ctx *ua_ctx;
 	int is_created = 0;
 
-	ret = create_ust_app_session(usess, app, &ua_sess, &is_created);
+	ret = find_or_create_ust_app_session(usess, app, &ua_sess, &is_created);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
 		goto error;
