@@ -540,11 +540,11 @@ error:
 }
 
 /*
- * Send channel to sessiond.
+ * Send channel to sessiond and relayd if applicable.
  *
  * Return 0 on success or else a negative value.
  */
-static int send_sessiond_channel(int sock,
+static int send_channel_to_sessiond_and_relayd(int sock,
 		struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx, int *relayd_error)
 {
@@ -564,6 +564,8 @@ static int send_sessiond_channel(int sock,
 			health_code_update();
 
 			/* Try to send the stream to the relayd if one is available. */
+			DBG("Sending stream %" PRIu64 " of channel \"%s\" to relayd",
+					stream->key, channel->name);
 			ret = consumer_send_relayd_stream(stream, stream->chan->pathname);
 			if (ret < 0) {
 				/*
@@ -1577,8 +1579,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		/* Send everything to sessiond. */
-		ret = send_sessiond_channel(sock, channel, ctx, &relayd_err);
+		/* Send the channel to sessiond (and relayd, if applicable). */
+		ret = send_channel_to_sessiond_and_relayd(sock, channel, ctx,
+				&relayd_err);
 		if (ret < 0) {
 			if (relayd_err) {
 				/*
