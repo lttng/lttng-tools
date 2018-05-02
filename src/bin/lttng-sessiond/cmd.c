@@ -2613,7 +2613,7 @@ int rename_active_chunk(struct ltt_session *session)
 {
 	int ret;
 
-	session->rotate_count++;
+	session->current_archive_id++;
 
 	/*
 	 * The currently active tracing path is now the folder we
@@ -2646,7 +2646,7 @@ int rename_active_chunk(struct ltt_session *session)
 		goto end;
 	}
 end:
-	session->rotate_count--;
+	session->current_archive_id--;
 	return ret;
 }
 
@@ -2682,7 +2682,7 @@ int cmd_stop_trace(struct ltt_session *session)
 		sessiond_rotate_timer_stop(session);
 	}
 
-	if (session->rotate_count > 0 && !session->rotate_pending) {
+	if (session->current_archive_id > 0 && !session->rotate_pending) {
 		ret = rename_active_chunk(session);
 		if (ret) {
 			/*
@@ -4443,7 +4443,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	/* Special case for the first rotation. */
-	if (session->rotate_count == 0) {
+	if (session->current_archive_id == 0) {
 		const char *base_path = NULL;
 
 		/* Either one of the two sessions is enough to get the root path. */
@@ -4479,7 +4479,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 	DBG("Current rotate path %s", session->rotation_chunk.current_rotate_path);
 
-	session->rotate_count++;
+	session->current_archive_id++;
 	session->rotate_pending = true;
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 
@@ -4516,7 +4516,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				sizeof(session->rotation_chunk.active_tracing_path),
 				"%s/%s-%" PRIu64,
 				session_get_base_path(session),
-				datetime, session->rotate_count + 1);
+				datetime, session->current_archive_id + 1);
 		if (ret < 0 || ret == sizeof(session->rotation_chunk.active_tracing_path)) {
 			ERR("Failed to format active kernel tracing path in rotate session command");
 			ret = -LTTNG_ERR_UNK;
@@ -4529,7 +4529,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		ret = snprintf(session->kernel_session->consumer->chunk_path,
 				sizeof(session->kernel_session->consumer->chunk_path),
 				"/%s-%" PRIu64, datetime,
-				session->rotate_count + 1);
+				session->current_archive_id + 1);
 		if (ret < 0 || ret == sizeof(session->kernel_session->consumer->chunk_path)) {
 			ERR("Failed to format the kernel consumer's sub-directory in rotate session command");
 			ret = -LTTNG_ERR_UNK;
@@ -4558,7 +4558,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		ret = snprintf(session->rotation_chunk.active_tracing_path,
 				PATH_MAX, "%s/%s-%" PRIu64,
 				session_get_base_path(session),
-				datetime, session->rotate_count + 1);
+				datetime, session->current_archive_id + 1);
 		if (ret < 0) {
 			ERR("Failed to format active UST tracing path in rotate session command");
 			ret = -LTTNG_ERR_UNK;
@@ -4566,7 +4566,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		}
 		ret = snprintf(session->ust_session->consumer->chunk_path,
 				PATH_MAX, "/%s-%" PRIu64, datetime,
-				session->rotate_count + 1);
+				session->current_archive_id + 1);
 		if (ret < 0) {
 			ERR("Failed to format the UST consumer's sub-directory in rotate session command");
 			ret = -LTTNG_ERR_UNK;
@@ -4609,11 +4609,11 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	if (rotate_return) {
-		rotate_return->rotation_id = session->rotate_count;
+		rotate_return->rotation_id = session->current_archive_id;
 	}
 
-	DBG("Cmd rotate session %s, rotate_id %" PRIu64 " sent", session->name,
-			session->rotate_count);
+	DBG("Cmd rotate session %s, current_archive_id %" PRIu64 " sent",
+			session->name, session->current_archive_id);
 	ret = LTTNG_OK;
 
 end:
@@ -4636,9 +4636,9 @@ int cmd_rotate_get_info(struct ltt_session *session,
 	assert(session);
 
 	DBG("Cmd rotate_get_info session %s, rotation id %" PRIu64, session->name,
-			session->rotate_count);
+			session->current_archive_id);
 
-	if (session->rotate_count != rotation_id) {
+	if (session->current_archive_id != rotation_id) {
 		info_return->status = (int32_t) LTTNG_ROTATION_STATE_EXPIRED;
 		ret = LTTNG_OK;
 		goto end;
@@ -4827,7 +4827,7 @@ int cmd_session_get_current_output(struct ltt_session *session,
 	const char *path;
 
 	if (!session->snapshot_mode) {
-		if (session->rotate_count == 0) {
+		if (session->current_archive_id == 0) {
 			if (session->kernel_session) {
 				path = session_get_base_path(session);
 			} else if (session->ust_session) {

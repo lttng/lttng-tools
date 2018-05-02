@@ -232,7 +232,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 		goto end;
 	}
 
-	if (session->rotate_count == 1) {
+	if (session->current_archive_id == 1) {
 		char start_time[21];
 
 		timeinfo = localtime(&session->last_chunk_start_ts);
@@ -258,7 +258,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 		ret = snprintf(new_path, sizeof(new_path), "%s/%s-%s-%" PRIu64,
 				session->rotation_chunk.current_rotate_path,
 				start_time,
-				datetime, session->rotate_count);
+				datetime, session->current_archive_id);
 		if (ret < 0 || ret >= sizeof(new_path)) {
 			ERR("Failed to format new chunk path while renaming session \"%s\"'s first chunk",
 					session->name);
@@ -315,7 +315,7 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 		ret = snprintf(new_path, sizeof(new_path), "%s/%s-%s-%" PRIu64,
 				session_get_base_path(session),
 				start_datetime,
-				datetime, session->rotate_count);
+				datetime, session->current_archive_id);
 		if (ret < 0 || ret >= sizeof(new_path)) {
 			ERR("Failed to format new chunk path while renaming chunk of session \"%s\"",
 					session->name);

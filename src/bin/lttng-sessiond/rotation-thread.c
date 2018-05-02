@@ -433,7 +433,7 @@ int rotate_pending_relay_timer(struct ltt_session *session)
 
 	DBG("[rotation-thread] Check rotate pending on session %" PRIu64,
 			session->id);
-	ret = relay_rotate_pending(session, session->rotate_count - 1);
+	ret = relay_rotate_pending(session, session->current_archive_id - 1);
 	if (ret < 0) {
 		ERR("[rotation-thread] Check relay rotate pending");
 		goto end;

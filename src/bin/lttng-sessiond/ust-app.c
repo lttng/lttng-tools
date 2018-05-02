@@ -6365,7 +6365,7 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 						usess->uid, usess->gid,
 						usess->consumer, pathname,
 						/* is_metadata_channel */ false,
-						session->rotate_count,
+						session->current_archive_id,
 						&session->rotate_pending_relay);
 				if (ret < 0) {
 					goto error;
@@ -6379,7 +6379,7 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 					usess->uid, usess->gid,
 					usess->consumer, pathname,
 					/* is_metadata_channel */ true,
-					session->rotate_count,
+					session->current_archive_id,
 					&session->rotate_pending_relay);
 			if (ret < 0) {
 				goto error;
@@ -6456,7 +6456,7 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 						ua_sess->euid, ua_sess->egid,
 						ua_sess->consumer, pathname,
 						/* is_metadata_channel */ false,
-						session->rotate_count,
+						session->current_archive_id,
 						&session->rotate_pending_relay);
 				if (ret < 0) {
 					goto error;
@@ -6469,7 +6469,7 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 					ua_sess->euid, ua_sess->egid,
 					ua_sess->consumer, pathname,
 					/* is_metadata_channel */ true,
-					session->rotate_count,
+					session->current_archive_id,
 					&session->rotate_pending_relay);
 			if (ret < 0) {
 				goto error;

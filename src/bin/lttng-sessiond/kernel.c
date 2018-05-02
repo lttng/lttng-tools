@@ -1190,7 +1190,7 @@ int kernel_rotate_session(struct ltt_session *session)
 					ksess->uid, ksess->gid, ksess->consumer,
 					ksess->consumer->subdir,
 					/* is_metadata_channel */ false,
-					session->rotate_count,
+					session->current_archive_id,
 					&session->rotate_pending_relay);
 			if (ret < 0) {
 				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
@@ -1205,7 +1205,7 @@ int kernel_rotate_session(struct ltt_session *session)
 				ksess->uid, ksess->gid, ksess->consumer,
 				ksess->consumer->subdir,
 				/* is_metadata_channel */ true,
-				session->rotate_count,
+				session->current_archive_id,
 				&session->rotate_pending_relay);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
