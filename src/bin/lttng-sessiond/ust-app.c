@@ -2858,7 +2858,6 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *reg_chan;
-	bool created = false;
 
 	assert(app);
 	assert(usess);
@@ -2877,51 +2876,50 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	reg_chan = buffer_reg_channel_find(ua_chan->tracing_channel_id,
 			reg_uid);
-	if (!reg_chan) {
-		/* Create the buffer registry channel object. */
-		ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &reg_chan);
-		if (ret < 0) {
-			ERR("Error creating the UST channel \"%s\" registry instance",
-				ua_chan->name);
-			goto error;
-		}
-		assert(reg_chan);
-
-		/*
-		 * Create the buffers on the consumer side. This call populates the
-		 * ust app channel object with all streams and data object.
-		 */
-		ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
-				app->bits_per_long, reg_uid->registry->reg.ust);
-		if (ret < 0) {
-			ERR("Error creating UST channel \"%s\" on the consumer daemon",
-				ua_chan->name);
-
-			/*
-			 * Let's remove the previously created buffer registry channel so
-			 * it's not visible anymore in the session registry.
-			 */
-			ust_registry_channel_del_free(reg_uid->registry->reg.ust,
-					ua_chan->tracing_channel_id, false);
-			buffer_reg_channel_remove(reg_uid->registry, reg_chan);
-			buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
-			goto error;
-		}
-
-		/*
-		 * Setup the streams and add it to the session registry.
-		 */
-		ret = setup_buffer_reg_channel(reg_uid->registry,
-				ua_chan, reg_chan, app);
-		if (ret < 0) {
-			ERR("Error setting up UST channel \"%s\"",
-				ua_chan->name);
-			goto error;
-		}
-		created = true;
+	if (reg_chan) {
+		goto send_channel;
 	}
 
-	if (created) {
+	/* Create the buffer registry channel object. */
+	ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &reg_chan);
+	if (ret < 0) {
+		ERR("Error creating the UST channel \"%s\" registry instance",
+				ua_chan->name);
+		goto error;
+	}
+
+	/*
+	 * Create the buffers on the consumer side. This call populates the
+	 * ust app channel object with all streams and data object.
+	 */
+	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
+			app->bits_per_long, reg_uid->registry->reg.ust);
+	if (ret < 0) {
+		ERR("Error creating UST channel \"%s\" on the consumer daemon",
+				ua_chan->name);
+
+		/*
+		 * Let's remove the previously created buffer registry channel so
+		 * it's not visible anymore in the session registry.
+		 */
+		ust_registry_channel_del_free(reg_uid->registry->reg.ust,
+				ua_chan->tracing_channel_id, false);
+		buffer_reg_channel_remove(reg_uid->registry, reg_chan);
+		buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
+		goto error;
+	}
+
+	/*
+	 * Setup the streams and add it to the session registry.
+	 */
+	ret = setup_buffer_reg_channel(reg_uid->registry,
+			ua_chan, reg_chan, app);
+	if (ret < 0) {
+		ERR("Error setting up UST channel \"%s\"", ua_chan->name);
+		goto error;
+	}
+
+	{
 		enum lttng_error_code cmd_ret;
 		struct ltt_session *session;
 		uint64_t chan_reg_key;
@@ -2956,6 +2954,7 @@ static int create_channel_per_uid(struct ust_app *app,
 		}
 	}
 
+send_channel:
 	/* Send buffers to the application. */
 	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
 	if (ret < 0) {
