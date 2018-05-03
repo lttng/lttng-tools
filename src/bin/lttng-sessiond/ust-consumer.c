@@ -243,7 +243,6 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		struct consumer_socket *socket, struct ust_registry_session *registry)
 {
 	int ret;
-	struct ltt_session *session;
 
 	assert(ua_sess);
 	assert(ua_chan);
@@ -256,9 +255,6 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 		DBG3("Consumer is disabled");
 		goto error;
 	}
-
-	session = session_find_by_id(ua_sess->tracing_id);
-	assert(session);
 
 	pthread_mutex_lock(socket->lock);
 	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);
