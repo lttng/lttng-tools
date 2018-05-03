@@ -212,6 +212,7 @@ int session_destroy(struct ltt_session *session);
 
 void session_lock(struct ltt_session *session);
 void session_lock_list(void);
+int session_trylock_list(void);
 void session_unlock(struct ltt_session *session);
 void session_unlock_list(void);
 

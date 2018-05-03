@@ -135,6 +135,14 @@ void session_lock_list(void)
 }
 
 /*
+ * Try to acquire session list lock
+ */
+int session_trylock_list(void)
+{
+	return pthread_mutex_trylock(&ltt_session_list.lock);
+}
+
+/*
  * Release session list lock
  */
 void session_unlock_list(void)

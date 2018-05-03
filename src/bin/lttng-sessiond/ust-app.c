@@ -2847,6 +2847,7 @@ error:
  * Create and send to the application the created buffers with per UID buffers.
  *
  * This MUST be called with a RCU read side lock acquired.
+ * The session list lock and the session's lock must be acquired.
  *
  * Return 0 on success else a negative value.
  */
@@ -2939,6 +2940,8 @@ static int create_channel_per_uid(struct ust_app *app,
 		session = session_find_by_id(ua_sess->tracing_id);
 		assert(session);
 
+		assert(pthread_mutex_trylock(&session->lock));
+		assert(session_trylock_list());
 		cmd_ret = notification_thread_command_add_channel(
 				notification_thread_handle, session->name,
 				ua_sess->euid, ua_sess->egid,
@@ -2970,6 +2973,7 @@ error:
  * Create and send to the application the created buffers with per PID buffers.
  *
  * Called with UST app session lock held.
+ * The session list lock and the session's lock must be acquired.
  *
  * Return 0 on success else a negative value.
  */
@@ -3031,6 +3035,9 @@ static int create_channel_per_pid(struct ust_app *app,
 	assert(chan_reg);
 	chan_reg->consumer_key = ua_chan->key;
 	pthread_mutex_unlock(&registry->lock);
+
+	assert(pthread_mutex_trylock(&session->lock));
+	assert(session_trylock_list());
 
 	cmd_ret = notification_thread_command_add_channel(
 			notification_thread_handle, session->name,
