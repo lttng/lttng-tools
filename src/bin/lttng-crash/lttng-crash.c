@@ -227,9 +227,10 @@ static void usage(void)
 static void version(FILE *ofp)
 {
 	fprintf(ofp, "%s (LTTng Crash Trace Viewer) " VERSION " - " VERSION_NAME
-"%s\n",
+"%s%s\n",
 			progname,
-			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
+			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+			EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 
 /*

@@ -104,9 +104,10 @@ static struct cmd_struct commands[] =  {
 
 static void version(FILE *ofp)
 {
-	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME "%s\n",
+	fprintf(ofp, "%s (LTTng Trace Control) " VERSION" - " VERSION_NAME "%s%s\n",
 			progname,
-			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION);
+			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+			EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
 }
 
 /*
