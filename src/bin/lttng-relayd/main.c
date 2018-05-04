@@ -60,6 +60,7 @@
 #include <common/buffer-view.h>
 #include <urcu/rculist.h>
 
+#include "version.h"
 #include "cmd.h"
 #include "ctf-trace.h"
 #include "index.h"
@@ -93,7 +94,7 @@ enum relay_connection_status {
 
 /* command line options */
 char *opt_output_path;
-static int opt_daemon, opt_background;
+static int opt_daemon, opt_background, opt_print_version;
 
 /*
  * We need to wait for listener and live listener threads, as well as
@@ -183,6 +184,20 @@ static struct option long_options[] = {
 };
 
 static const char *config_ignore_options[] = { "help", "config", "version" };
+
+static void print_version(void) {
+	fprintf(stdout, "%s\n", VERSION);
+}
+
+static void relayd_config_log(void)
+{
+	DBG("LTTng-relayd " VERSION " - " VERSION_NAME "%s%s",
+			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
+			EXTRA_VERSION_NAME[0] == '\0' ? "" : " - " EXTRA_VERSION_NAME);
+	if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
+		DBG("LTTng-relayd extra version description:\n\t" EXTRA_VERSION_DESCRIPTION "\n");
+	}
+}
 
 /*
  * Take an option from the getopt output and set it in the right variable to be
@@ -274,8 +289,8 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		exit(EXIT_FAILURE);
 	case 'V':
-		fprintf(stdout, "%s\n", VERSION);
-		exit(EXIT_SUCCESS);
+		opt_print_version = 1;
+		break;
 	case 'o':
 		if (lttng_is_setuid_setgid()) {
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
@@ -3911,6 +3926,14 @@ int main(int argc, char **argv)
 
 	if (set_signal_handler()) {
 		retval = -1;
+		goto exit_options;
+	}
+
+	relayd_config_log();
+
+	if (opt_print_version) {
+		print_version();
+		retval = 0;
 		goto exit_options;
 	}
 

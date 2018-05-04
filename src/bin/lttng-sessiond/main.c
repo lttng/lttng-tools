@@ -92,6 +92,7 @@ const char *progname;
 static pid_t ppid;          /* Parent PID for --sig-parent option */
 static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static int lockfile_fd = -1;
+static int opt_print_version;
 
 /* Set to 1 when a SIGUSR1 signal is received. */
 static int recv_child_signal;
@@ -4895,8 +4896,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 		}
 		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
 	} else if (string_match(optname, "version") || opt == 'V') {
-		fprintf(stdout, "%s\n", VERSION);
-		exit(EXIT_SUCCESS);
+		opt_print_version = 1;
 	} else if (string_match(optname, "sig-parent") || opt == 'S') {
 		config.sig_parent = true;
 	} else if (string_match(optname, "kconsumerd-err-sock")) {
@@ -5249,6 +5249,10 @@ static int config_entry_handler(const struct config_entry *entry, void *unused)
 
 end:
 	return ret;
+}
+
+static void print_version(void) {
+	fprintf(stdout, "%s\n", VERSION);
 }
 
 /*
@@ -5879,6 +5883,12 @@ int main(int argc, char **argv)
 	set_clock_plugin_env();
 
 	sessiond_config_log(&config);
+
+	if (opt_print_version) {
+		print_version();
+		retval = 0;
+		goto exit_options;
+	}
 
 	if (create_lttng_rundir()) {
 		retval = -1;
