@@ -157,4 +157,6 @@ health_check
 /include/version.i
 /include/version.i.tmp
 
+/version
+
 classnoinst.stamp

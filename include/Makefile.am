@@ -20,11 +20,21 @@
 ## overwrite the git version with an empty string in "version.i.tmp".
 ##
 ## If we don't have a "version.i.tmp" nor a "version.i", generate an empty
-## string as a failover.
+## string as a failover. If a "version.i" is present, for example when building
+## from a distribution tarball, get the git_version using grep.
 ##
-## If we don't have a "version.i" or we have both files and they are different,
-## copy "version.i.tmp" over "version.i". This way the dependent targets are
-## only rebuilt when the version string changes.
+## Fetch the EXTRA_VERSION_NAME define from "version/extra_version_name" and output it
+## to "version.i.tmp".
+##
+## Fetch the EXTRA_VERSION_DESCRIPTION define from "version/extra_version_description",
+## sanitize and format it with a sed script to replace all non-alpha-numeric values
+## with "-" and join all lines by replacing "\n" with litteral string c-style "\n\t" and
+## output it to "version.i.tmp".
+##
+## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
+## and they are different, copy "version.i.tmp" over "version.i".
+## This way the dependent targets are only rebuilt when the git version
+## string or either one of extra version string change.
 ##
 version_verbose = $(version_verbose_@AM_V@)
 version_verbose_ = $(version_verbose_@AM_DEFAULT_V@)
@@ -43,10 +53,15 @@ version.i:
 		fi; \
 	fi; \
 	if test ! -f version.i.tmp; then \
-		if test ! -f version.i; then \
-			echo '#define GIT_VERSION ""' > version.i; \
+		if test -f version.i; then \
+			$(GREP) "^#define \bGIT_VERSION\b.*" version.i > version.i.tmp; \
+		else \
+			echo '#define GIT_VERSION ""' > version.i.tmp; \
 		fi; \
-	elif test ! -f version.i || \
+	fi; \
+	echo "#define EXTRA_VERSION_NAME \"`$(SED) -n '1p' "$(top_srcdir)/version/extra_version_name" 2> /dev/null`\"" >> version.i.tmp; \
+	echo "#define EXTRA_VERSION_DESCRIPTION \"`$(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.,]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' "$(top_srcdir)/version/extra_version_description" 2> /dev/null`\"" >> version.i.tmp; \
+	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \
 	fi; \
