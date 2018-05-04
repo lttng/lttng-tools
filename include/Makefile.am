@@ -20,11 +20,26 @@
 ## overwrite the git version with an empty string in "version.i.tmp".
 ##
 ## If we don't have a "version.i.tmp" nor a "version.i", generate an empty
-## string as a failover.
+## string as a failover. If a "version.i" is present, for example when building
+## from a distribution tarball, get the git_version using grep.
 ##
-## If we don't have a "version.i" or we have both files and they are different,
-## copy "version.i.tmp" over "version.i". This way the dependent targets are
-## only rebuilt when the version string changes.
+## Look for a "custom_version_name" file, if present read the first line and
+## print to "version.i.tmp" its value. If "custom_version_name" is not
+## present look for presence of "version.i". If present fetch the value from it
+## else generate an empty as a failover. Store the result in "version.i.tmp"
+##
+## Repeat the same logic for the "custom_version_details" file.
+## Data fetched from "custom_version_details" must be sanitized and
+## formatted.
+## The sanitize step consist of using sed with a script replacing all
+## non-alpha-numeric values to "-".
+## The formatting step consist of using sed with a script that join all lines
+## by replacing "\n" with litteral string c-style "\n\t".
+##
+## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
+## and they are different, copy "version.i.tmp" over "version.i".
+## This way the dependent targets are only rebuilt when the git version
+## string or either one of custom version string change.
 ##
 version_verbose = $(version_verbose_@AM_V@)
 version_verbose_ = $(version_verbose_@AM_DEFAULT_V@)
@@ -43,10 +58,43 @@ version.i:
 		fi; \
 	fi; \
 	if test ! -f version.i.tmp; then \
-		if test ! -f version.i; then \
-			echo '#define GIT_VERSION ""' > version.i; \
+		if test -f version.i; then \
+			$(GREP) "^#define \bGIT_VERSION\b.*" version.i > version.i.tmp; \
+		else \
+			echo '#define GIT_VERSION ""' > version.i.tmp; \
 		fi; \
-	elif test ! -f version.i || \
+	fi; \
+	custom_version_name_path="$(top_srcdir)/custom_version_name"; \
+	custom_version_details_path="$(top_srcdir)/custom_version_details"; \
+	if test -f "$${custom_version_name_path}" ; then \
+		custom_version_name="$$($(SED) -n 1p '$${custom_version_name_path}')" ; \
+		custom_version_name="#define CUSTOM_VERSION \"$${custom_version_name}\"" ; \
+	else \
+		if test -f version.i; then \
+			custom_version_name=$$($(GREP) "^#define \bCUSTOM_VERSION\b.*" version.i) ; \
+			if test "$$?" -ne "0"; then \
+				custom_version_name="#define CUSTOM_VERSION \"\""; \
+			fi; \
+		else \
+			custom_version_name="#define CUSTOM_VERSION \"\""; \
+		fi; \
+	fi; \
+	if test -f "$${custom_version_details_path}" ; then \
+		custom_version_list=$$(cat "$${custom_version_details_path}" | $(SED) "s/[^a-zA-Z0-9]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
+		custom_version_list="#define CUSTOM_VERSION_DETAILS \"$${custom_version_list}\"" ; \
+	else \
+		if test -f version.i; then \
+			custom_version_list=$$($(GREP) "^#define \bCUSTOM_VERSION_DETAILS\b.*" version.i) ; \
+			if test "$$?" -ne "0"; then \
+				custom_version_list="#define CUSTOM_VERSION_DETAILS \"\""; \
+			fi; \
+		else \
+			custom_version_list="#define CUSTOM_VERSION_DETAILS \"\""; \
+		fi; \
+	fi; \
+	echo "$${custom_version_name}" >> version.i.tmp; \
+	echo "$${custom_version_list}" >> version.i.tmp; \
+	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \
 	fi; \
