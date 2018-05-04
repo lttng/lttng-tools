@@ -1,0 +1,16 @@
+On version.i generation, check the content of the following files :
+
+  * "extra_version_name"
+
+    The first line is used to populate the EXTRA_VERSION_NAME pre-processor
+    define statement.
+
+  * "extra_version_description"
+
+    The content is used to populate the EXTRA_VERSION_DESCRIPTION pre-processor
+    define statement.
+
+    It should contain the description of local modifications done to the tree.
+    This can be used by distribution packager to specify what changes were
+    applied locally. Mostly in the form of patch/commit name. All non-alpha
+    numeric characters are converted to "-".
