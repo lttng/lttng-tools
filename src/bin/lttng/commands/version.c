@@ -161,6 +161,12 @@ int cmd_version(int argc, const char **argv)
 		MSG("\n" VERSION_DESCRIPTION "\n");
 		MSG("Web site: https://lttng.org");
 		MSG("\n%s", lttng_license);
+		if (EXTRA_VERSION_NAME[0] != '\0') {
+			MSG("\nExtra version name: " EXTRA_VERSION_NAME);
+		}
+		if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
+			MSG("\nExtra version description:\n\t" EXTRA_VERSION_DESCRIPTION);
+		}
 	}
 
 end:
