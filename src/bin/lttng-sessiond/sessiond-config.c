@@ -15,6 +15,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "version.h"
 #include "sessiond-config.h"
 #include <assert.h>
 #include "lttng-ust-ctl.h"
@@ -491,6 +492,16 @@ LTTNG_HIDDEN
 void sessiond_config_log(struct sessiond_config *config)
 {
 	DBG_NO_LOC("[sessiond configuration]");
+	DBG_NO_LOC("\tversion                       %s", VERSION);
+	if (GIT_VERSION[0] != '\0') {
+		DBG_NO_LOC("\tgit version                   %s", GIT_VERSION);
+	}
+	if (CUSTOM_VERSION[0] != '\0') {
+		DBG_NO_LOC("\tcustom version name           %s", CUSTOM_VERSION);
+	}
+	if (CUSTOM_VERSION_DETAILS[0] != '\0') {
+		DBG_NO_LOC("\tcustom version details:\n\t%s", CUSTOM_VERSION_DETAILS);
+	}
 	DBG_NO_LOC("\tverbose:                      %i", config->verbose);
 	DBG_NO_LOC("\tverbose consumer:             %i", config->verbose_consumer);
 	DBG_NO_LOC("\tquiet mode:                   %s", config->quiet ? "True" : "False");

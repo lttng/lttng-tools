@@ -160,6 +160,12 @@ int cmd_version(int argc, const char **argv)
 		MSG("\n" VERSION_DESCRIPTION "\n");
 		MSG("Web site: http://lttng.org");
 		MSG("\n%s", lttng_license);
+		if (CUSTOM_VERSION[0] != '\0') {
+			MSG("Custom version name: " CUSTOM_VERSION);
+		}
+		if (CUSTOM_VERSION_DETAILS[0] != '\0') {
+			MSG("Custom known local patches:\n\t" CUSTOM_VERSION_DETAILS);
+		}
 	}
 
 end:
