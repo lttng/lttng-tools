@@ -21,7 +21,7 @@
 
 #include "trace-kernel.h"
 
-int kernel_consumer_send_channel_stream(struct consumer_socket *sock,
+int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel, struct ltt_kernel_session *session,
 		unsigned int monitor);
 

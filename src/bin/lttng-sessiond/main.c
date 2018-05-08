@@ -860,7 +860,7 @@ static int update_kernel_stream(struct consumer_data *consumer_data, int fd)
 			cds_lfht_for_each_entry(ksess->consumer->socks->ht,
 					&iter.iter, socket, node.node) {
 				pthread_mutex_lock(socket->lock);
-				ret = kernel_consumer_send_channel_stream(socket,
+				ret = kernel_consumer_send_channel_streams(socket,
 						channel, ksess,
 						session->output_traces ? 1 : 0);
 				pthread_mutex_unlock(socket->lock);
