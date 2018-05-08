@@ -374,7 +374,7 @@ int lttcomm_close_unix_sock(int sock)
  * Returns the size of data sent, or negative error value.
  */
 LTTNG_HIDDEN
-ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd)
+ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 {
 	struct msghdr msg;
 	struct cmsghdr *cmptr;

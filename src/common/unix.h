@@ -39,7 +39,7 @@ int lttcomm_close_unix_sock(int sock);
 
 /* Send a message accompanied by fd(s) over a unix socket. */
 LTTNG_HIDDEN
-ssize_t lttcomm_send_fds_unix_sock(int sock, int *fds, size_t nb_fd);
+ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd);
 /* Recv a message accompanied by fd(s) from a unix socket */
 LTTNG_HIDDEN
 ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
