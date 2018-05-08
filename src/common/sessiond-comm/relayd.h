@@ -29,6 +29,11 @@
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
 #define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
 
+#define RELAYD_COMM_LTTNG_HOST_NAME_MAX_2_4	64
+#define RELAYD_COMM_LTTNG_NAME_MAX_2_4	255
+#define RELAYD_COMM_LTTNG_PATH_MAX	4096
+#define RELAYD_COMM_DEFAULT_STREAM_NAME_LEN	264 /* 256 + 8 */
+
 /*
  * lttng-relayd communication header.
  */
@@ -64,8 +69,8 @@ struct lttcomm_relayd_status_session {
  * Used to add a stream on the relay daemon.
  */
 struct lttcomm_relayd_add_stream {
-	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[LTTNG_PATH_MAX];
+	char channel_name[RELAYD_COMM_DEFAULT_STREAM_NAME_LEN];
+	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
 } LTTNG_PACKED;
 
 /*
@@ -73,8 +78,8 @@ struct lttcomm_relayd_add_stream {
  * Protocol version 2.2
  */
 struct lttcomm_relayd_add_stream_2_2 {
-	char channel_name[DEFAULT_STREAM_NAME_LEN];
-	char pathname[LTTNG_PATH_MAX];
+	char channel_name[RELAYD_COMM_DEFAULT_STREAM_NAME_LEN];
+	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
 } LTTNG_PACKED;
@@ -180,8 +185,8 @@ static inline size_t lttcomm_relayd_index_len(uint32_t major, uint32_t minor)
  * Create session in 2.4 adds additionnal parameters for live reading.
  */
 struct lttcomm_relayd_create_session_2_4 {
-	char session_name[LTTNG_NAME_MAX];
-	char hostname[LTTNG_HOST_NAME_MAX];
+	char session_name[RELAYD_COMM_LTTNG_NAME_MAX_2_4];
+	char hostname[RELAYD_COMM_LTTNG_HOST_NAME_MAX_2_4];
 	uint32_t live_timer;
 	uint32_t snapshot;
 } LTTNG_PACKED;
