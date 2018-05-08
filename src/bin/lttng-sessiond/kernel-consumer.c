@@ -145,8 +145,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	}
 
 	/* Prep channel message structure */
-	consumer_init_channel_comm_msg(&lkm,
-			LTTNG_CONSUMER_ADD_CHANNEL,
+	consumer_init_add_channel_comm_msg(&lkm,
 			channel->key,
 			ksession->id,
 			pathname,
@@ -229,8 +228,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	}
 
 	/* Prep channel message structure */
-	consumer_init_channel_comm_msg(&lkm,
-			LTTNG_CONSUMER_ADD_CHANNEL,
+	consumer_init_add_channel_comm_msg(&lkm,
 			session->metadata->key,
 			session->id,
 			pathname,

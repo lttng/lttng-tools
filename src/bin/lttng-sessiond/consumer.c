@@ -890,8 +890,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 /*
  * Init channel communication message structure.
  */
-void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
-		enum lttng_consumer_command cmd,
+void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t channel_key,
 		uint64_t session_id,
 		const char *pathname,
@@ -914,7 +913,7 @@ void consumer_init_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	memset(msg, 0, sizeof(struct lttcomm_consumer_msg));
 
 	/* Send channel */
-	msg->cmd_type = cmd;
+	msg->cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
 	msg->u.channel.channel_key = channel_key;
 	msg->u.channel.session_id = session_id;
 	msg->u.channel.uid = uid;
