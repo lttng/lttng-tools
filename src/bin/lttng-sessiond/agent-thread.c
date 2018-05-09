@@ -308,6 +308,7 @@ void *agent_thread_manage_registration(void *data)
 	/* Create pollset with size 2, quit pipe and socket. */
 	ret = sessiond_set_thread_pollset(&events, 2);
 	if (ret < 0) {
+		sessiond_notify_ready();
 		goto error_poll_create;
 	}
 
