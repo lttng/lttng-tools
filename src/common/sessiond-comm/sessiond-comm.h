@@ -456,6 +456,13 @@ struct lttcomm_consumer_msg {
 			int32_t cpu;	/* On which CPU this stream is assigned. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t no_monitor;
+			/*
+			 * The archive id that was "current" at the time this
+			 * stream was created. This is used to determine
+			 * whether a rotation request was sent before or after
+			 * the creation of a stream.
+			 */
+			uint64_t trace_archive_id;
 		} LTTNG_PACKED stream;	/* Only used by Kernel. */
 		struct {
 			uint64_t net_index;
@@ -505,6 +512,13 @@ struct lttcomm_consumer_msg {
 			 */
 			uint32_t ust_app_uid;
 			int64_t blocking_timeout;
+			/*
+			 * The archive id that was "current" at the time this
+			 * channel was created. This is used to determine
+			 * whether a rotation request was sent before or after
+			 * the creation of a channel.
+			 */
+			uint64_t trace_archive_id;
 			char root_shm_path[PATH_MAX];
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED ask_channel;
@@ -540,6 +554,12 @@ struct lttcomm_consumer_msg {
 			uint64_t relayd_id;		/* Relayd id if apply. */
 			uint64_t key;
 			uint64_t nb_packets_per_stream;
+			/*
+			 * The session's current trace archive id is propagated
+			 * since a snapshot triggers the creation of an
+			 * ephemeral metadata stream.
+			 */
+			uint64_t trace_archive_id;
 		} LTTNG_PACKED snapshot_channel;
 		struct {
 			uint64_t channel_key;

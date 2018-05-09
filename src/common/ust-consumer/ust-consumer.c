@@ -147,7 +147,8 @@ static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
  */
 static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 		struct lttng_consumer_channel *channel,
-		struct lttng_consumer_local_data *ctx, int *_alloc_ret)
+		struct lttng_consumer_local_data *ctx, int *_alloc_ret,
+		uint64_t trace_archive_id)
 {
 	int alloc_ret;
 	struct lttng_consumer_stream *stream = NULL;
@@ -166,7 +167,8 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 			cpu,
 			&alloc_ret,
 			channel->type,
-			channel->monitor);
+			channel->monitor,
+			trace_archive_id);
 	if (stream == NULL) {
 		switch (alloc_ret) {
 		case -ENOENT:
@@ -267,7 +269,8 @@ end:
  * Return 0 on success else a negative value.
  */
 static int create_ust_streams(struct lttng_consumer_channel *channel,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx,
+		uint64_t trace_archive_id)
 {
 	int ret, cpu = 0;
 	struct ustctl_consumer_stream *ustream;
@@ -298,7 +301,8 @@ static int create_ust_streams(struct lttng_consumer_channel *channel,
 		}
 
 		/* Allocate consumer stream object. */
-		stream = allocate_stream(cpu, wait_fd, channel, ctx, &ret);
+		stream = allocate_stream(cpu, wait_fd, channel, ctx, &ret,
+				trace_archive_id);
 		if (!stream) {
 			goto error_alloc;
 		}
@@ -641,7 +645,8 @@ error:
  */
 static int ask_channel(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_channel *channel,
-		struct ustctl_consumer_channel_attr *attr)
+		struct ustctl_consumer_channel_attr *attr,
+		uint64_t trace_archive_id)
 {
 	int ret;
 
@@ -682,7 +687,7 @@ static int ask_channel(struct lttng_consumer_local_data *ctx,
 	}
 
 	/* Open all streams for this channel. */
-	ret = create_ust_streams(channel, ctx);
+	ret = create_ust_streams(channel, ctx, trace_archive_id);
 	if (ret < 0) {
 		goto end;
 	}
@@ -986,7 +991,8 @@ end:
  * Returns 0 on success, < 0 on error
  */
 static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx,
+		uint64_t trace_archive_id)
 {
 	int ret = 0;
 	struct lttng_consumer_channel *metadata_channel;
@@ -1026,7 +1032,7 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 	 * The metadata stream is NOT created in no monitor mode when the channel
 	 * is created on a sessiond ask channel command.
 	 */
-	ret = create_ust_streams(metadata_channel, ctx);
+	ret = create_ust_streams(metadata_channel, ctx, trace_archive_id);
 	if (ret < 0) {
 		goto error;
 	}
@@ -1081,7 +1087,8 @@ error:
  * Returns 0 on success, < 0 on error
  */
 static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
-		uint64_t nb_packets_per_stream, struct lttng_consumer_local_data *ctx)
+		uint64_t nb_packets_per_stream,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	unsigned use_relayd = 0;
@@ -1492,7 +1499,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		ret = ask_channel(ctx, channel, &attr);
+		ret = ask_channel(ctx, channel, &attr,
+				msg.u.ask_channel.trace_archive_id);
 		if (ret < 0) {
 			goto end_channel_error;
 		}
@@ -1747,7 +1755,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			ret = snapshot_metadata(msg.u.snapshot_channel.key,
 					msg.u.snapshot_channel.pathname,
 					msg.u.snapshot_channel.relayd_id,
-					ctx);
+					ctx,
+					msg.u.snapshot_channel.trace_archive_id);
 			if (ret < 0) {
 				ERR("Snapshot metadata failed");
 				ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;

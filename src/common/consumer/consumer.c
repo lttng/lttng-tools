@@ -562,7 +562,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		int cpu,
 		int *alloc_ret,
 		enum consumer_channel_type type,
-		unsigned int monitor)
+		unsigned int monitor,
+		uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttng_consumer_stream *stream;
@@ -589,6 +590,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
 	stream->index_file = NULL;
 	stream->last_sequence_number = -1ULL;
+	stream->trace_archive_id = trace_archive_id;
 	pthread_mutex_init(&stream->lock, NULL);
 	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
 

@@ -108,8 +108,11 @@ error:
  * Consumer socket lock MUST be acquired before calling this.
  */
 static int ask_channel_creation(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct consumer_output *consumer,
-		struct consumer_socket *socket, struct ust_registry_session *registry)
+		struct ust_app_channel *ua_chan,
+		struct consumer_output *consumer,
+		struct consumer_socket *socket,
+		struct ust_registry_session *registry,
+		uint64_t trace_archive_id)
 {
 	int ret, output;
 	uint32_t chan_id;
@@ -201,7 +204,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_sess->output_traces,
 			ua_sess->uid,
 			ua_chan->attr.blocking_timeout,
-			root_shm_path, shm_path);
+			root_shm_path, shm_path,
+			trace_archive_id);
 
 	health_code_update();
 
@@ -239,8 +243,11 @@ error:
  * Returns 0 on success else a negative value.
  */
 int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
-		struct ust_app_channel *ua_chan, struct consumer_output *consumer,
-		struct consumer_socket *socket, struct ust_registry_session *registry)
+		struct ust_app_channel *ua_chan,
+		struct consumer_output *consumer,
+		struct consumer_socket *socket,
+		struct ust_registry_session *registry,
+		uint64_t trace_archive_id)
 {
 	int ret;
 
@@ -257,7 +264,8 @@ int ust_consumer_ask_channel(struct ust_app_session *ua_sess,
 	}
 
 	pthread_mutex_lock(socket->lock);
-	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry);
+	ret = ask_channel_creation(ua_sess, ua_chan, consumer, socket, registry,
+			trace_archive_id);
 	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
 		ERR("ask_channel_creation consumer command failed");

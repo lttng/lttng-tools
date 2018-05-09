@@ -644,7 +644,8 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.stream.cpu,
 				&alloc_ret,
 				channel->type,
-				channel->monitor);
+				channel->monitor,
+				msg.u.stream.trace_archive_id);
 		if (new_stream == NULL) {
 			switch (alloc_ret) {
 			case -ENOMEM:

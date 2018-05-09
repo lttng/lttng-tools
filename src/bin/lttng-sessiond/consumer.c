@@ -834,7 +834,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint32_t ust_app_uid,
 		int64_t blocking_timeout,
 		const char *root_shm_path,
-		const char *shm_path)
+		const char *shm_path,
+		uint64_t trace_archive_id)
 {
 	assert(msg);
 
@@ -863,6 +864,7 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.monitor = monitor;
 	msg->u.ask_channel.ust_app_uid = ust_app_uid;
 	msg->u.ask_channel.blocking_timeout = blocking_timeout;
+	msg->u.ask_channel.trace_archive_id = trace_archive_id;
 
 	memcpy(msg->u.ask_channel.uuid, uuid, sizeof(msg->u.ask_channel.uuid));
 
@@ -939,20 +941,21 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 /*
  * Init stream communication message structure.
  */
-void consumer_init_stream_comm_msg(struct lttcomm_consumer_msg *msg,
-		enum lttng_consumer_command cmd,
+void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t channel_key,
 		uint64_t stream_key,
-		int cpu)
+		int32_t cpu,
+		uint64_t trace_archive_id)
 {
 	assert(msg);
 
 	memset(msg, 0, sizeof(struct lttcomm_consumer_msg));
 
-	msg->cmd_type = cmd;
+	msg->cmd_type = LTTNG_CONSUMER_ADD_STREAM;
 	msg->u.stream.channel_key = channel_key;
 	msg->u.stream.stream_key = stream_key;
 	msg->u.stream.cpu = cpu;
+	msg->u.stream.trace_archive_id = trace_archive_id;
 }
 
 void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
@@ -1429,7 +1432,8 @@ end:
  */
 int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		const char *session_path, int wait, uint64_t nb_packets_per_stream)
+		const char *session_path, int wait, uint64_t nb_packets_per_stream,
+		uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1445,6 +1449,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	msg.u.snapshot_channel.key = key;
 	msg.u.snapshot_channel.nb_packets_per_stream = nb_packets_per_stream;
 	msg.u.snapshot_channel.metadata = metadata;
+	msg.u.snapshot_channel.trace_archive_id = trace_archive_id;
 
 	if (output->consumer->type == CONSUMER_DST_NET) {
 		msg.u.snapshot_channel.relayd_id = output->consumer->net_seq_index;

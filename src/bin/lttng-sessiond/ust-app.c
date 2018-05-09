@@ -2483,7 +2483,8 @@ error:
  */
 static int do_consumer_create_channel(struct ltt_ust_session *usess,
 		struct ust_app_session *ua_sess, struct ust_app_channel *ua_chan,
-		int bitness, struct ust_registry_session *registry)
+		int bitness, struct ust_registry_session *registry,
+		uint64_t trace_archive_id)
 {
 	int ret;
 	unsigned int nb_fd = 0;
@@ -2518,7 +2519,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * stream we have to expect.
 	 */
 	ret = ust_consumer_ask_channel(ua_sess, ua_chan, usess->consumer, socket,
-			registry);
+			registry, trace_archive_id);
 	if (ret < 0) {
 		goto error_ask;
 	}
@@ -2857,6 +2858,9 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *reg_chan;
+	struct ltt_session *session;
+	enum lttng_error_code notification_ret;
+	struct ust_registry_channel *chan_reg;
 
 	assert(app);
 	assert(usess);
@@ -2887,12 +2891,18 @@ static int create_channel_per_uid(struct ust_app *app,
 		goto error;
 	}
 
+	session = session_find_by_id(ua_sess->tracing_id);
+	assert(session);
+	assert(pthread_mutex_trylock(&session->lock));
+	assert(session_trylock_list());
+
 	/*
 	 * Create the buffers on the consumer side. This call populates the
 	 * ust app channel object with all streams and data object.
 	 */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
-			app->bits_per_long, reg_uid->registry->reg.ust);
+			app->bits_per_long, reg_uid->registry->reg.ust,
+			session->current_archive_id);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 				ua_chan->name);
@@ -2918,39 +2928,26 @@ static int create_channel_per_uid(struct ust_app *app,
 		goto error;
 	}
 
-	{
-		enum lttng_error_code cmd_ret;
-		struct ltt_session *session;
-		uint64_t chan_reg_key;
-		struct ust_registry_channel *chan_reg;
+	/* Notify the notification subsystem of the channel's creation. */
+	pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
+	chan_reg = ust_registry_channel_find(reg_uid->registry->reg.ust,
+			ua_chan->tracing_channel_id);
+	assert(chan_reg);
+	chan_reg->consumer_key = ua_chan->key;
+	chan_reg = NULL;
+	pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
 
-		chan_reg_key = ua_chan->tracing_channel_id;
-
-		pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
-		chan_reg = ust_registry_channel_find(reg_uid->registry->reg.ust,
-				chan_reg_key);
-		assert(chan_reg);
-		chan_reg->consumer_key = ua_chan->key;
-		chan_reg = NULL;
-		pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
-
-		session = session_find_by_id(ua_sess->tracing_id);
-		assert(session);
-
-		assert(pthread_mutex_trylock(&session->lock));
-		assert(session_trylock_list());
-		cmd_ret = notification_thread_command_add_channel(
-				notification_thread_handle, session->name,
-				ua_sess->euid, ua_sess->egid,
-				ua_chan->name,
-				ua_chan->key,
-				LTTNG_DOMAIN_UST,
-				ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
-		if (cmd_ret != LTTNG_OK) {
-			ret = - (int) cmd_ret;
-			ERR("Failed to add channel to notification thread");
-			goto error;
-		}
+	notification_ret = notification_thread_command_add_channel(
+			notification_thread_handle, session->name,
+			ua_sess->euid, ua_sess->egid,
+			ua_chan->name,
+			ua_chan->key,
+			LTTNG_DOMAIN_UST,
+			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
+	if (notification_ret != LTTNG_OK) {
+		ret = - (int) notification_ret;
+		ERR("Failed to add channel to notification thread");
+		goto error;
 	}
 
 send_channel:
@@ -3007,9 +3004,16 @@ static int create_channel_per_pid(struct ust_app *app,
 		goto error;
 	}
 
+	session = session_find_by_id(ua_sess->tracing_id);
+	assert(session);
+
+	assert(pthread_mutex_trylock(&session->lock));
+	assert(session_trylock_list());
+
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
-			app->bits_per_long, registry);
+			app->bits_per_long, registry,
+			session->current_archive_id);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			ua_chan->name);
@@ -3024,18 +3028,12 @@ static int create_channel_per_pid(struct ust_app *app,
 		goto error;
 	}
 
-	session = session_find_by_id(ua_sess->tracing_id);
-	assert(session);
-
 	chan_reg_key = ua_chan->key;
 	pthread_mutex_lock(&registry->lock);
 	chan_reg = ust_registry_channel_find(registry, chan_reg_key);
 	assert(chan_reg);
 	chan_reg->consumer_key = ua_chan->key;
 	pthread_mutex_unlock(&registry->lock);
-
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
 
 	cmd_ret = notification_thread_command_add_channel(
 			notification_thread_handle, session->name,
@@ -3242,6 +3240,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
 	struct ust_registry_session *registry;
+	struct ltt_session *session;
 
 	assert(ua_sess);
 	assert(app);
@@ -3291,6 +3290,12 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 */
 	registry->metadata_key = metadata->key;
 
+	session = session_find_by_id(ua_sess->tracing_id);
+	assert(session);
+
+	assert(pthread_mutex_trylock(&session->lock));
+	assert(session_trylock_list());
+
 	/*
 	 * Ask the metadata channel creation to the consumer. The metadata object
 	 * will be created by the consumer and kept their. However, the stream is
@@ -3298,7 +3303,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 * consumer.
 	 */
 	ret = ust_consumer_ask_channel(ua_sess, metadata, consumer, socket,
-			registry);
+			registry, session->current_archive_id);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		registry->metadata_key = 0;
@@ -5946,11 +5951,19 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
+	struct ltt_session *session;
+	uint64_t trace_archive_id;
 
 	assert(usess);
 	assert(output);
 
 	rcu_read_lock();
+
+	session = session_find_by_id(usess->id);
+	assert(session);
+	assert(pthread_mutex_trylock(&session->lock));
+	assert(session_trylock_list());
+	trace_archive_id = session->current_archive_id;
 
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
@@ -5981,16 +5994,20 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			/* Add the UST default trace dir to path. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
-				ret = consumer_snapshot_channel(socket, reg_chan->consumer_key,
-						output, 0, usess->uid, usess->gid, pathname, wait,
-						nb_packets_per_stream);
+				ret = consumer_snapshot_channel(socket,
+						reg_chan->consumer_key,
+						output, 0, usess->uid,
+						usess->gid, pathname, wait,
+						nb_packets_per_stream,
+						trace_archive_id);
 				if (ret < 0) {
 					goto error;
 				}
 			}
 			ret = consumer_snapshot_channel(socket,
 					reg->registry->reg.ust->metadata_key, output, 1,
-					usess->uid, usess->gid, pathname, wait, 0);
+					usess->uid, usess->gid, pathname, wait, 0,
+					trace_archive_id);
 			if (ret < 0) {
 				goto error;
 			}
@@ -6031,9 +6048,12 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
-				ret = consumer_snapshot_channel(socket, ua_chan->key, output,
-						0, ua_sess->euid, ua_sess->egid, pathname, wait,
-						nb_packets_per_stream);
+				ret = consumer_snapshot_channel(socket,
+						ua_chan->key, output,
+						0, ua_sess->euid, ua_sess->egid,
+						pathname, wait,
+						nb_packets_per_stream,
+						trace_archive_id);
 				if (ret < 0) {
 					goto error;
 				}
@@ -6045,8 +6065,11 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 				ret = -1;
 				goto error;
 			}
-			ret = consumer_snapshot_channel(socket, registry->metadata_key, output,
-					1, ua_sess->euid, ua_sess->egid, pathname, wait, 0);
+			ret = consumer_snapshot_channel(socket,
+					registry->metadata_key, output,
+					1, ua_sess->euid, ua_sess->egid,
+					pathname, wait, 0,
+					trace_archive_id);
 			if (ret < 0) {
 				goto error;
 			}

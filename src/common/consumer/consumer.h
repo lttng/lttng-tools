@@ -417,6 +417,11 @@ struct lttng_consumer_stream {
 	/* Copy of the sequence number of the last packet extracted. */
 	uint64_t last_sequence_number;
 	/*
+	 * Session's current trace archive id at the time of the creation of
+	 * this stream.
+	 */
+	uint64_t trace_archive_id;
+	/*
 	 * Index file object of the index file for this stream.
 	 */
 	struct lttng_index_file *index_file;
@@ -728,7 +733,8 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		int cpu,
 		int *alloc_ret,
 		enum consumer_channel_type type,
-		unsigned int monitor);
+		unsigned int monitor,
+		uint64_t trace_archive_id);
 struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t session_id,
 		const char *pathname,
