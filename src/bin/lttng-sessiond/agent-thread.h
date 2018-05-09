@@ -30,6 +30,7 @@ bool agent_tracing_is_enabled(void);
 static inline
 void *agent_thread_manage_registration(void *data)
 {
+	sessiond_notify_ready();
 	return NULL;
 }
 static inline
