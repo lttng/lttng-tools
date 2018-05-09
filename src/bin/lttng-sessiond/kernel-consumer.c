@@ -277,6 +277,7 @@ error:
 /*
  * Sending a single stream to the consumer with command ADD_STREAM.
  */
+static
 int kernel_consumer_add_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel, struct ltt_kernel_stream *stream,
 		struct ltt_kernel_session *session, unsigned int monitor)
