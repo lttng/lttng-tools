@@ -157,7 +157,7 @@ static int destroy_one_session(struct ltt_session *session)
 	int ret;
 	char session_name[NAME_MAX];
 
-	strncpy(session_name, session->name, sizeof(session->name));
+	strncpy(session_name, session->name, sizeof(session_name));
 	session_name[sizeof(session_name) - 1] = '\0';
 
 	ret = session_destroy(session);
