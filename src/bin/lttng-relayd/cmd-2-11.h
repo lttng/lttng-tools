@@ -24,4 +24,8 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,
 		uint32_t *live_timer, bool *snapshot);
 
+int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
+		char **ret_path_name, char **ret_channel_name,
+		uint64_t *tracefile_size, uint64_t *tracefile_count);
+
 #endif /* RELAYD_CMD_2_11_H */

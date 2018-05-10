@@ -84,6 +84,14 @@ struct lttcomm_relayd_add_stream_2_2 {
 	uint64_t tracefile_count;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_add_stream_2_11 {
+	uint32_t channel_name_len;
+	uint32_t pathname_len;
+	uint64_t tracefile_size;
+	uint64_t tracefile_count;
+	char names[];
+} LTTNG_PACKED;
+
 /*
  * Answer from an add stream command.
  */
