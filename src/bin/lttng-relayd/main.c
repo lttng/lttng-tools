@@ -1205,17 +1205,20 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	switch (session->minor) {
-	case 1: /* LTTng sessiond 2.1. Allocates path_name and channel_name. */
+	if (session->minor == 1) {
+		/* For 2.1 */
 		ret = cmd_recv_stream_2_1(payload, &path_name,
 			&channel_name);
-		break;
-	case 2: /* LTTng sessiond 2.2. Allocates path_name and channel_name. */
-	default:
+	} else if (session->minor > 1 && session->minor < 11) {
+		/* From 2.2 to 2.10 */
 		ret = cmd_recv_stream_2_2(payload, &path_name,
 			&channel_name, &tracefile_size, &tracefile_count);
-		break;
+	} else {
+		/* From 2.11 to ... */
+		ret = cmd_recv_stream_2_11(payload, &path_name,
+			&channel_name, &tracefile_size, &tracefile_count);
 	}
+
 	if (ret < 0) {
 		goto send_reply;
 	}
