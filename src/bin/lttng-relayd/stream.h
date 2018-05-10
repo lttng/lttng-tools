@@ -31,6 +31,11 @@
 #include "stream-fd.h"
 #include "tracefile-array.h"
 
+struct relay_stream_chunk_id {
+	bool is_set;
+	uint64_t value;
+};
+
 /*
  * Represents a stream in the relay
  */
@@ -150,14 +155,17 @@ struct relay_stream {
 	 * atomically with rotate_at_seq_num.
 	 *
 	 * Always access with stream lock held.
+	 *
+	 * This attribute is not set if the stream is created by a pre-2.11
+	 * consumer.
 	 */
-	uint64_t chunk_id;
+	struct relay_stream_chunk_id current_chunk_id;
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,
 	uint64_t stream_handle, char *path_name,
 	char *channel_name, uint64_t tracefile_size,
-	uint64_t tracefile_count);
+	uint64_t tracefile_count, const struct relay_stream_chunk_id *chunk_id);
 
 struct relay_stream *stream_get_by_id(uint64_t stream_id);
 bool stream_get(struct relay_stream *stream);

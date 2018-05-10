@@ -68,7 +68,8 @@ end:
 struct relay_stream *stream_create(struct ctf_trace *trace,
 	uint64_t stream_handle, char *path_name,
 	char *channel_name, uint64_t tracefile_size,
-	uint64_t tracefile_count)
+	uint64_t tracefile_count,
+	const struct relay_stream_chunk_id *chunk_id)
 {
 	int ret;
 	struct relay_stream *stream = NULL;
@@ -94,6 +95,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	urcu_ref_init(&stream->ref);
 	ctf_trace_get(trace);
 	stream->trace = trace;
+	stream->current_chunk_id = *chunk_id;
 
 	stream->indexes_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!stream->indexes_ht) {

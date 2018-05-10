@@ -1198,6 +1198,7 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 	uint64_t stream_handle = -1ULL;
 	char *path_name = NULL, *channel_name = NULL;
 	uint64_t tracefile_size = 0, tracefile_count = 0;
+	struct relay_stream_chunk_id stream_chunk_id = { 0 };
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to add a stream before version check");
@@ -1237,7 +1238,8 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	/* We pass ownership of path_name and channel_name. */
 	stream = stream_create(trace, stream_handle, path_name,
-			channel_name, tracefile_size, tracefile_count);
+		channel_name, tracefile_size, tracefile_count,
+		&stream_chunk_id);
 	path_name = NULL;
 	channel_name = NULL;
 
@@ -2483,7 +2485,8 @@ static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr
 		goto end_stream_unlock;
 	}
 
-	stream->chunk_id = stream_info.new_chunk_id;
+	assert(stream->current_chunk_id.is_set);
+	stream->current_chunk_id.value = stream_info.new_chunk_id;
 
 	if (stream->is_metadata) {
 		/*
@@ -2839,7 +2842,7 @@ int relay_rotate_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 			rotate_pending = true;
 			DBG("Stream %" PRIu64 " is still rotating",
 					stream->stream_handle);
-		} else if (stream->chunk_id < chunk_id) {
+		} else if (stream->current_chunk_id.value < chunk_id) {
 			/*
 			 * Stream closed on the consumer but still active on the
 			 * relay.
