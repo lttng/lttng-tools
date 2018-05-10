@@ -191,6 +191,15 @@ struct lttcomm_relayd_create_session_2_4 {
 	uint32_t snapshot;
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_create_session_2_11 {
+	uint32_t session_name_len;
+	uint32_t hostname_len;
+	uint32_t live_timer;
+	uint32_t snapshot;
+	/* Contains the session_name and hostname */
+	char names[];
+} LTTNG_PACKED;
+
 /*
  * Used to ask the relay to reset the metadata trace file (regeneration).
  * Send the new version of the metadata (starts at 0).

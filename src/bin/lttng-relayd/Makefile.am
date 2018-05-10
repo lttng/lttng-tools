@@ -12,6 +12,7 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        cmd-2-1.c cmd-2-1.h \
                        cmd-2-2.c cmd-2-2.h \
                        cmd-2-4.c cmd-2-4.h \
+                       cmd-2-11.c cmd-2-11.h \
                        health-relayd.c health-relayd.h \
                        lttng-viewer-abi.h testpoint.h \
                        viewer-stream.h viewer-stream.c \
