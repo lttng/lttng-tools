@@ -2820,7 +2820,8 @@ int relay_rotate_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	chunk_id = be64toh(msg.chunk_id);
 
-	DBG("Evaluating rotate pending for chunk id %" PRIu64, chunk_id);
+	DBG("Evaluating rotate pending for session \"%s\" and  chunk id %" PRIu64,
+			session->session_name, chunk_id);
 
 	/*
 	 * Iterate over all the streams in the session and check if they are
