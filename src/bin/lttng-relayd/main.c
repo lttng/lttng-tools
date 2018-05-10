@@ -1216,7 +1216,9 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 	} else {
 		/* From 2.11 to ... */
 		ret = cmd_recv_stream_2_11(payload, &path_name,
-			&channel_name, &tracefile_size, &tracefile_count);
+			&channel_name, &tracefile_size, &tracefile_count,
+			&stream_chunk_id.value);
+		stream_chunk_id.is_set = true;
 	}
 
 	if (ret < 0) {

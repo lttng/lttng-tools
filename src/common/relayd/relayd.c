@@ -404,7 +404,8 @@ error:
  */
 int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id,
-		uint64_t tracefile_size, uint64_t tracefile_count)
+		uint64_t tracefile_size, uint64_t tracefile_count,
+		uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttcomm_relayd_status_stream reply;

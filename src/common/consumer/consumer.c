@@ -808,7 +808,8 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream,
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_add_stream(&relayd->control_sock, stream->name,
 				path, &stream->relayd_stream_id,
-				stream->chan->tracefile_size, stream->chan->tracefile_count);
+				stream->chan->tracefile_size, stream->chan->tracefile_count,
+				stream->trace_archive_id);
 		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		if (ret < 0) {
 			goto end;

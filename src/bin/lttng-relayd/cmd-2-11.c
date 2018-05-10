@@ -112,7 +112,8 @@ error:
  */
 int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 		char **ret_path_name, char **ret_channel_name,
-		uint64_t *tracefile_size, uint64_t *tracefile_count)
+		uint64_t *tracefile_size, uint64_t *tracefile_count,
+		uint64_t *trace_archive_id)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_11 header;
@@ -136,6 +137,7 @@ int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 	header.pathname_len = be32toh(header.pathname_len);
 	header.tracefile_size = be64toh(header.tracefile_size);
 	header.tracefile_count = be64toh(header.tracefile_count);
+	header.trace_archive_id = be64toh(header.trace_archive_id);
 
 	received_names_size = header.channel_name_len + header.pathname_len;
 	if (payload->size < header_len + received_names_size) {
@@ -191,6 +193,7 @@ int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 
 	*tracefile_size = header.tracefile_size;
 	*tracefile_count = header.tracefile_count;
+	*trace_archive_id = header.trace_archive_id;
 	*ret_path_name = path_name;
 	*ret_channel_name = channel_name;
 	/* Move ownership to caller */
