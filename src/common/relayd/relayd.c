@@ -119,7 +119,62 @@ error:
 }
 
 /*
- * Starting at 2.4, RELAYD_CREATE_SESSION takes additional parameters to
+ * Starting from 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
+ * have no length restriction on the sender side.
+ * Length for both payloads is stored in the msg struct. A new dynamic size
+ * payload size is introduced.
+ */
+static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
+		char *session_name, char *hostname,
+		int session_live_timer, unsigned int snapshot)
+{
+	int ret;
+	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
+	size_t session_name_len;
+	size_t hostname_len;
+	size_t msg_length;
+
+	/* The two names are sent with a '\0' delimiter between them. */
+	session_name_len = strlen(session_name) + 1;
+	hostname_len = strlen(hostname) + 1;
+
+	msg_length = sizeof(*msg) + session_name_len + hostname_len;
+	msg = zmalloc(msg_length);
+	if (!msg) {
+		PERROR("zmalloc create_session_2_11 command message");
+		ret = -1;
+		goto error;
+	}
+
+	assert(session_name_len <= UINT32_MAX);
+	msg->session_name_len = htobe32(session_name_len);
+
+	assert(hostname_len <= UINT32_MAX);
+	msg->hostname_len = htobe32(hostname_len);
+
+	if (lttng_strncpy(msg->names, session_name, session_name_len)) {
+		ret = -1;
+		goto error;
+	}
+	if (lttng_strncpy(msg->names + session_name_len, hostname, hostname_len)) {
+		ret = -1;
+		goto error;
+	}
+
+	msg->live_timer = htobe32(session_live_timer);
+	msg->snapshot = !!snapshot;
+
+	/* Send command */
+	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
+	if (ret < 0) {
+		goto error;
+	}
+error:
+	free(msg);
+	return ret;
+}
+/*
+ * From 2.4 to 2.10, RELAYD_CREATE_SESSION takes additional parameters to
  * support the live reading capability.
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
@@ -187,17 +242,17 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 
 	DBG("Relayd create session");
 
-	switch(rsock->minor) {
-		case 1:
-		case 2:
-		case 3:
-			ret = relayd_create_session_2_1(rsock);
-			break;
-		case 4:
-		default:
-			ret = relayd_create_session_2_4(rsock, session_name,
-					hostname, session_live_timer, snapshot);
-			break;
+	if (rsock->minor < 4) {
+		/* From 2.1 to 2.3 */
+		ret = relayd_create_session_2_1(rsock);
+	} else if (rsock->minor >= 4 && rsock->minor < 11) {
+		/* From 2.4 to 2.10 */
+		ret = relayd_create_session_2_4(rsock, session_name,
+				hostname, session_live_timer, snapshot);
+	} else {
+		/* From 2.11 to ... */
+		ret = relayd_create_session_2_11(rsock, session_name,
+				hostname, session_live_timer, snapshot);
 	}
 
 	if (ret < 0) {
