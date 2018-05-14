@@ -1,0 +1,8 @@
+This directory and its content is used to generate the
+EXTRA_VERSION_PATCHES constant used in "include/version.i".
+
+A third party can create a file inside this directory and its name will be
+propagated in all "version" output of the following lttng-executable:
+    lttng-relayd
+    lttng-sessiond
+    lttng

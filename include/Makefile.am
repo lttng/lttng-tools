@@ -31,6 +31,15 @@
 ## with "-" and join all lines by replacing "\n" with litteral string c-style "\n\t" and
 ## output it to "version.i.tmp".
 ##
+## Repeat the same logic for the "version/extra_patches" directory.
+## Data fetched from "version/extra_patches" must be sanitized and
+## formatted.
+## The data is fetched using "ls" with an ignore pattern for the README file.
+## The sanitize step uses sed with a script to replace all
+## non-alpha-numeric values, except " " (space), to "-".
+## The formatting step uses sed with a script to join all lines
+## by replacing "\n" with litteral string c-style "\n\t".
+##
 ## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
 ## and they are different, copy "version.i.tmp" over "version.i".
 ## This way the dependent targets are only rebuilt when the git version
@@ -61,6 +70,7 @@ version.i:
 	fi; \
 	echo "#define EXTRA_VERSION_NAME \"`$(SED) -n '1p' "$(top_srcdir)/version/extra_version_name" 2> /dev/null`\"" >> version.i.tmp; \
 	echo "#define EXTRA_VERSION_DESCRIPTION \"`$(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.,]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' "$(top_srcdir)/version/extra_version_description" 2> /dev/null`\"" >> version.i.tmp; \
+	echo "#define EXTRA_VERSION_PATCHES \"`ls --ignore='README' -1 "$(top_srcdir)/version/extra_patches" | $(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' 2> /dev/null`\"" >> version.i.tmp; \
 	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \

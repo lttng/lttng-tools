@@ -167,6 +167,9 @@ int cmd_version(int argc, const char **argv)
 		if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
 			MSG("\nExtra version description:\n\t" EXTRA_VERSION_DESCRIPTION);
 		}
+		if (EXTRA_VERSION_PATCHES[0] != '\0') {
+			MSG("\nExtra version patches:\n\t" EXTRA_VERSION_PATCHES);
+		}
 	}
 
 end:
