@@ -34,6 +34,15 @@
 ## The formatting step consist of using sed with a script that join all lines
 ## by replacing "\n" with litteral string c-style "\n\t".
 ##
+## Repeat the same logic for the "version/extra_modifications" directory.
+## Data fetched from "version/extra_modifications" must be sanitized and
+## formatted.
+## The data is fetched using "ls" with an ignore pattern for the README file.
+## The sanitize step uses sed with a script to replace all
+## non-alpha-numeric values, except " " (space), to "-".
+## The formatting step uses sed with a script to join all lines
+## by replacing "\n" with litteral string c-style "\n\t".
+##
 ## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
 ## and they are different, copy "version.i.tmp" over "version.i".
 ## This way the dependent targets are only rebuilt when the git version
@@ -68,8 +77,16 @@ version.i:
 	extra_version_description_path="$(top_srcdir)/version/extra_version_description"; \
 	extra_version_description_value=$$(cat "$${extra_version_description_path}" | $(SED) "s/[^a-zA-Z0-9]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
 	extra_version_description_define="#define EXTRA_VERSION_DESCRIPTION \"$${extra_version_description_value}\"" ; \
+	extra_version_modifications_path="$(top_srcdir)/version/extra_modifications"; \
+	if test $$(ls --ignore='README' -1 "$${extra_version_modifications_path}" | wc -l) -gt 0 ; then\
+		extra_version_modifications_values=$$(ls --ignore='README' -1 "$${extra_version_modifications_path}" | $(SED) "s/[^a-zA-Z0-9 ]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
+		extra_version_modifications_define="#define EXTRA_VERSION_MODIFICATIONS \"$${extra_version_modifications_values}\"" ; \
+	else \
+		extra_version_modifications_define="#define EXTRA_VERSION_MODIFICATIONS \"\""; \
+	fi; \
 	echo "$${extra_version_name_define}" >> version.i.tmp; \
 	echo "$${extra_version_description_define}" >> version.i.tmp; \
+	echo "$${extra_version_modifications_define}" >> version.i.tmp; \
 	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \

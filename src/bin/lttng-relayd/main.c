@@ -197,6 +197,9 @@ static void relayd_config_log(void)
 	if (EXTRA_VERSION_DESCRIPTION[0] != '\0') {
 		DBG("LTTng-relayd extra version description:\n\t" EXTRA_VERSION_DESCRIPTION "\n");
 	}
+	if (EXTRA_VERSION_MODIFICATIONS[0] != '\0') {
+		DBG("LTTng-relayd extra modifications:\n\t" EXTRA_VERSION_MODIFICATIONS "\n");
+	}
 }
 
 /*
