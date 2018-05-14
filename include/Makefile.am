@@ -36,6 +36,15 @@
 ## The formatting step consist of using sed with a script that join all lines
 ## by replacing "\n" with litteral string c-style "\n\t".
 ##
+## Repeat the same logic for the "custom_modifications" directory.
+## Data fetched from "custom_modifications" must be sanitized and
+## formatted.
+## The data is fectched using "ls" with an ignore pattern for the README file.
+## The sanitize step consist of using sed with a script replacing all
+## non-alpha-numeric values, except " " (space), to "-".
+## The formatting step consist of using sed with a script that join all lines
+## by replacing "\n" with litteral string c-style "\n\t".
+##
 ## If we don't have a "version.i" or we have both files (version.i, version.i.tmp)
 ## and they are different, copy "version.i.tmp" over "version.i".
 ## This way the dependent targets are only rebuilt when the git version
@@ -66,6 +75,7 @@ version.i:
 	fi; \
 	custom_version_name_path="$(top_srcdir)/custom_version_name"; \
 	custom_version_details_path="$(top_srcdir)/custom_version_details"; \
+	custom_version_modifications_path="$(top_srcdir)/custom_modifications"; \
 	if test -f "$${custom_version_name_path}" ; then \
 		custom_version_name="$$($(SED) -n 1p '$${custom_version_name_path}')" ; \
 		custom_version_name="#define CUSTOM_VERSION \"$${custom_version_name}\"" ; \
@@ -92,8 +102,22 @@ version.i:
 			custom_version_list="#define CUSTOM_VERSION_DETAILS \"\""; \
 		fi; \
 	fi; \
+	if test $$(ls --ignore='README' -1 "$${custom_version_modifications_path}" | wc -l) -gt 0 ; then\
+		custom_version_modifications=$$(ls --ignore='README' -1 "$${custom_version_modifications_path}" | $(SED) "s/[^a-zA-Z0-9 ]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
+		custom_version_modifications="#define CUSTOM_VERSION_MODIFICATIONS \"$${custom_version_modifications}\"" ; \
+	else \
+		if test -f version.i; then \
+			custom_version_modifications=$$($(GREP) "^#define \bCUSTOM_VERSION_MODIFICATIONS\b.*" version.i) ; \
+			if test "$$?" -ne "0"; then \
+				custom_version_modifications="#define CUSTOM_VERSION_MODIFICATIONS \"\""; \
+			fi; \
+		else \
+			custom_version_modifications="#define CUSTOM_VERSION_MODIFICATIONS \"\""; \
+		fi; \
+	fi; \
 	echo "$${custom_version_name}" >> version.i.tmp; \
 	echo "$${custom_version_list}" >> version.i.tmp; \
+	echo "$${custom_version_modifications}" >> version.i.tmp; \
 	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \

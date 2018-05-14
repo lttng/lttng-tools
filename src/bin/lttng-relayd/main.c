@@ -195,7 +195,10 @@ static void relayd_config_log(void)
 			GIT_VERSION[0] == '\0' ? "" : " - " GIT_VERSION,
 			CUSTOM_VERSION[0] == '\0' ? "" : " - " CUSTOM_VERSION);
 	if (CUSTOM_VERSION_DETAILS[0] != '\0') {
-		DBG("LTTng-relayd custom known local patches:\n\t" CUSTOM_VERSION_DETAILS "\n");
+		DBG("LTTng-relayd custom version details:\n\t" CUSTOM_VERSION_DETAILS "\n");
+	}
+	if (CUSTOM_VERSION_MODIFICATIONS[0] != '\0') {
+		DBG("LTTng-relayd custom modifications:\n\t" CUSTOM_VERSION_MODIFICATIONS "\n");
 	}
 }
 

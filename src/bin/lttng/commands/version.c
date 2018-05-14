@@ -164,7 +164,10 @@ int cmd_version(int argc, const char **argv)
 			MSG("Custom version name: " CUSTOM_VERSION);
 		}
 		if (CUSTOM_VERSION_DETAILS[0] != '\0') {
-			MSG("Custom known local patches:\n\t" CUSTOM_VERSION_DETAILS);
+			MSG("Custom version details:\n\t" CUSTOM_VERSION_DETAILS);
+		}
+		if (CUSTOM_VERSION_MODIFICATIONS[0] != '\0') {
+			MSG("Custom known modifications:\n\t" CUSTOM_VERSION_MODIFICATIONS);
 		}
 	}
 

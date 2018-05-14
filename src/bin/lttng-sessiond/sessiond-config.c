@@ -502,6 +502,9 @@ void sessiond_config_log(struct sessiond_config *config)
 	if (CUSTOM_VERSION_DETAILS[0] != '\0') {
 		DBG_NO_LOC("\tcustom version details:\n\t%s", CUSTOM_VERSION_DETAILS);
 	}
+	if (CUSTOM_VERSION_MODIFICATIONS[0] != '\0') {
+		DBG_NO_LOC("\tcustom version modifications:\n\t%s", CUSTOM_VERSION_MODIFICATIONS);
+	}
 	DBG_NO_LOC("\tverbose:                      %i", config->verbose);
 	DBG_NO_LOC("\tverbose consumer:             %i", config->verbose_consumer);
 	DBG_NO_LOC("\tquiet mode:                   %s", config->quiet ? "True" : "False");
