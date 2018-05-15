@@ -1039,12 +1039,12 @@ int viewer_attach_session(struct relay_connection *conn)
 	session = session_get_by_id(be64toh(request.session_id));
 	if (!session) {
 		DBG("Relay session %" PRIu64 " not found",
-				be64toh(request.session_id));
+				(uint64_t) be64toh(request.session_id));
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
 		goto send_reply;
 	}
 	DBG("Attach session ID %" PRIu64 " received",
-		be64toh(request.session_id));
+		(uint64_t) be64toh(request.session_id));
 
 	if (session->live_timer == 0) {
 		DBG("Not live session");
@@ -1301,7 +1301,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 	vstream = viewer_stream_get_by_id(be64toh(request_index.stream_id));
 	if (!vstream) {
 		DBG("Client requested index of unknown stream id %" PRIu64,
-				be64toh(request_index.stream_id));
+				(uint64_t) be64toh(request_index.stream_id));
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
 		goto send_reply;
 	}
@@ -1415,7 +1415,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 	 */
 	DBG("Sending viewer index for stream %" PRIu64 " offset %" PRIu64,
 		rstream->stream_handle,
-		be64toh(packet_index.offset));
+		(uint64_t) be64toh(packet_index.offset));
 	viewer_index.offset = packet_index.offset;
 	viewer_index.packet_size = packet_index.packet_size;
 	viewer_index.content_size = packet_index.content_size;
@@ -1510,7 +1510,7 @@ int viewer_get_packet(struct relay_connection *conn)
 	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
 	if (!vstream) {
 		DBG("Client requested packet of unknown stream id %" PRIu64,
-				be64toh(get_packet_info.stream_id));
+				(uint64_t) be64toh(get_packet_info.stream_id));
 		reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 		goto send_reply_nolock;
 	} else {
@@ -1530,7 +1530,7 @@ int viewer_get_packet(struct relay_connection *conn)
 			SEEK_SET);
 	if (lseek_ret < 0) {
 		PERROR("lseek fd %d to offset %" PRIu64, vstream->stream_fd->fd,
-			be64toh(get_packet_info.offset));
+			(uint64_t) be64toh(get_packet_info.offset));
 		goto error;
 	}
 	read_len = lttng_read(vstream->stream_fd->fd,
@@ -1539,7 +1539,7 @@ int viewer_get_packet(struct relay_connection *conn)
 	if (read_len < packet_data_len) {
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
 				vstream->stream_fd->fd,
-				be64toh(get_packet_info.offset));
+				(uint64_t) be64toh(get_packet_info.offset));
 		goto error;
 	}
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
@@ -1573,7 +1573,7 @@ send_reply_nolock:
 	}
 
 	DBG("Sent %u bytes for stream %" PRIu64, reply_size,
-			be64toh(get_packet_info.stream_id));
+			(uint64_t) be64toh(get_packet_info.stream_id));
 
 end_free:
 	free(reply);
@@ -1625,7 +1625,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * find it.
 		 */
 		DBG("Client requested metadata of unknown stream id %" PRIu64,
-				be64toh(request.stream_id));
+				(uint64_t) be64toh(request.stream_id));
 		reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 		goto send_reply;
 	}
@@ -1711,7 +1711,7 @@ send_reply:
 	}
 
 	DBG("Sent %" PRIu64 " bytes of metadata for stream %" PRIu64, len,
-			be64toh(request.stream_id));
+			(uint64_t) be64toh(request.stream_id));
 
 	DBG("Metadata sent");
 
@@ -1800,7 +1800,7 @@ int viewer_detach_session(struct relay_connection *conn)
 	session = session_get_by_id(be64toh(request.session_id));
 	if (!session) {
 		DBG("Relay session %" PRIu64 " not found",
-				be64toh(request.session_id));
+				(uint64_t) be64toh(request.session_id));
 		response.status = htobe32(LTTNG_VIEWER_DETACH_SESSION_UNK);
 		goto send_reply;
 	}
