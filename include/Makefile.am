@@ -30,7 +30,7 @@
 ## Data fetched from "version/extra_version_description" must be sanitized and
 ## formatted.
 ## The sanitize step uses sed with a script to replace all
-## non-alpha-numeric values to "-".
+## non-alpha-numeric, except " " (space), values to "-".
 ## The formatting step consist of using sed with a script that join all lines
 ## by replacing "\n" with litteral string c-style "\n\t".
 ##
@@ -75,7 +75,7 @@ version.i:
 	extra_version_name_value=$$($(SED) -n 1p "$${extra_version_name_path}") ; \
 	extra_version_name_define="#define EXTRA_VERSION_NAME \"$${extra_version_name_value}\"" ; \
 	extra_version_description_path="$(top_srcdir)/version/extra_version_description"; \
-	extra_version_description_value=$$(cat "$${extra_version_description_path}" | $(SED) "s/[^a-zA-Z0-9]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
+	extra_version_description_value=$$(cat "$${extra_version_description_path}" | $(SED) "s/[^a-zA-Z0-9 ]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
 	extra_version_description_define="#define EXTRA_VERSION_DESCRIPTION \"$${extra_version_description_value}\"" ; \
 	extra_version_modifications_path="$(top_srcdir)/version/extra_modifications"; \
 	if test $$(ls --ignore='README' -1 "$${extra_version_modifications_path}" | wc -l) -gt 0 ; then\
