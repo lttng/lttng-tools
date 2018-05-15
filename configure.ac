@@ -1002,7 +1002,13 @@ AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)
 
-AM_CPPFLAGS="-I\$(top_srcdir)/include -I\$(top_builddir)/include -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
+# The order in which the include folders are searched is important.
+# The top_builddir should always be searched first in the event that a build
+# time generated file is included. An example of this is the "version.i" file.
+# In a scenario where lttng-tools is built from a distribution tarball and in a
+# out-of-tree manner, the generated "version.i" has priority on the one from
+# the source (distribution tarball) and must be found first.
+AM_CPPFLAGS="-I\$(top_builddir)/include -I\$(top_srcdir)/include -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
 AC_SUBST(AM_CPPFLAGS)
 
 lttngincludedir="${includedir}/lttng"
