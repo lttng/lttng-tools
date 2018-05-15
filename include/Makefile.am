@@ -90,7 +90,7 @@ version.i:
 		fi; \
 	fi; \
 	if test -f "$${custom_version_details_path}" ; then \
-		custom_version_list=$$(cat "$${custom_version_details_path}" | $(SED) "s/[^a-zA-Z0-9]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
+		custom_version_list=$$(cat "$${custom_version_details_path}" | $(SED) "s/[^a-zA-Z0-9 ]/-/g" | $(SED) -E ':a;N;$$!ba;s/\r{0,1}\n/\\n\\t/g'); \
 		custom_version_list="#define CUSTOM_VERSION_DETAILS \"$${custom_version_list}\"" ; \
 	else \
 		if test -f version.i; then \
