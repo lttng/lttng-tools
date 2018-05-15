@@ -51,6 +51,9 @@ version_verbose_0 = @echo "  GEN       " $@;
 
 version.i:
 	$(version_verbose)rm -f version.i.tmp; \
+	if (test ! -f version.i && test -f "$(top_srcdir)/include/version.i"); then \
+		cp "$(top_srcdir)/include/version.i" version.i; \
+	fi; \
 	if (test -r "$(top_srcdir)/bootstrap" && test -r "$(top_srcdir)/.git") && \
 			test -x "`which git 2>&1;true`"; then \
 		GIT_VERSION_STR="`cd "$(top_srcdir)" && git describe --tags --dirty`"; \
