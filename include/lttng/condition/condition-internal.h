@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <urcu/list.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 typedef void (*condition_destroy_cb)(struct lttng_condition *condition);
 typedef bool (*condition_validate_cb)(const struct lttng_condition *condition);

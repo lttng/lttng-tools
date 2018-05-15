@@ -22,6 +22,7 @@
 #include <common/macros.h>
 #include <common/buffer-view.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 typedef void (*evaluation_destroy_cb)(struct lttng_evaluation *evaluation);
 typedef ssize_t (*evaluation_serialize_cb)(struct lttng_evaluation *evaluation,
