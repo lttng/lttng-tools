@@ -67,5 +67,6 @@ int utils_truncate_stream_file(int fd, off_t length);
 int utils_show_help(int section, const char *page_name, const char *help_msg);
 int utils_get_memory_available(size_t *value);
 int utils_get_memory_total(size_t *value);
+int utils_change_working_dir(const char *path);
 
 #endif /* _COMMON_UTILS_H */

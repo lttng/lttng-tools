@@ -95,7 +95,7 @@ enum relay_connection_status {
 };
 
 /* command line options */
-char *opt_output_path;
+char *opt_output_path, *opt_working_directory;
 static int opt_daemon, opt_background;
 
 /*
@@ -183,6 +183,7 @@ static struct option long_options[] = {
 	{ "verbose", 0, 0, 'v', },
 	{ "config", 1, 0, 'f' },
 	{ "version", 0, 0, 'V' },
+	{ "working-directory", 1, 0, 'w', },
 	{ NULL, 0, 0, 0, },
 };
 
@@ -293,6 +294,20 @@ static int set_option(int opt, const char *arg, const char *optname)
 			}
 		}
 		break;
+	case 'w':
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-w, --working-directory");
+		} else {
+			ret = asprintf(&opt_working_directory, "%s", arg);
+			if (ret < 0) {
+				ret = -errno;
+				PERROR("asprintf working_directory");
+				goto end;
+			}
+		}
+		break;
+
 	case 'v':
 		/* Verbose level can increase using multiple -v */
 		if (arg) {
@@ -3691,6 +3706,15 @@ int main(int argc, char **argv)
 			(void) close(i);
 		}
 	}
+
+	if (opt_working_directory) {
+		ret = utils_change_working_dir(opt_working_directory);
+		if (ret) {
+			ERR("Changing working directory");
+			goto exit_options;
+		}
+	}
+
 
 	sessiond_trace_chunk_registry = sessiond_trace_chunk_registry_create();
 	if (!sessiond_trace_chunk_registry) {

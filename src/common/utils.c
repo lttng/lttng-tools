@@ -1566,3 +1566,33 @@ int utils_get_memory_total(size_t *value)
 {
 	return read_proc_meminfo_field(PROC_MEMINFO_MEMTOTAL_LINE, value);
 }
+
+LTTNG_HIDDEN
+int utils_change_working_dir(const char *path)
+{
+	int ret;
+
+	assert(path);
+
+	ret = chdir(path);
+	if (ret) {
+		PERROR("Failed to change working directory: %s", path);
+		goto end;
+	}
+
+	/* Check for write access */
+	if (access(path, W_OK)) {
+		if (errno == EACCES) {
+			/*
+			 * Do not treat this as an error since the permission
+			 * might change in the lifetime of the process
+			 */
+			DBG("Working directory is not writable: %s", path);
+		} else {
+			PERROR("access");
+		}
+	}
+
+end:
+	return ret;
+}
