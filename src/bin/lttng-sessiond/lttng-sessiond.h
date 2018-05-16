@@ -125,5 +125,6 @@ extern struct sessiond_config config;
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 void sessiond_notify_ready(void);
+void sessiond_signal_parents(void);
 
 #endif /* _LTT_SESSIOND_H */
