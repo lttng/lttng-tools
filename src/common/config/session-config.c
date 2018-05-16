@@ -2432,9 +2432,30 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	/* create all channels */
 	for (node = xmlFirstElementChild(channels_node); node;
 		node = xmlNextElementSibling(node)) {
+		const enum lttng_domain_type original_domain = domain.type;
 		xmlNodePtr contexts_node = NULL;
 		xmlNodePtr events_node = NULL;
 		xmlNodePtr channel_attr_node;
+
+		/*
+		 * Channels of the "agent" types cannot be created directly.
+		 * They are meant to be created implicitly through the
+		 * activation of events in their domain. However, a user
+		 * can override the default channel configuration attributes
+		 * by creating the underlying UST channel _before_ enabling
+		 * an agent domain event.
+		 *
+		 * Hence, the channel's type is substituted before the creation
+		 * and restored by the time the events are created.
+		 */
+		switch (domain.type) {
+		case LTTNG_DOMAIN_JUL:
+		case LTTNG_DOMAIN_LOG4J:
+		case LTTNG_DOMAIN_PYTHON:
+			domain.type = LTTNG_DOMAIN_UST;
+		default:
+			break;
+		}
 
 		channel = lttng_channel_create(&domain);
 		if (!channel) {
@@ -2456,6 +2477,9 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 		if (ret < 0) {
 			goto end;
 		}
+
+		/* Restore the original channel domain. */
+		domain.type = original_domain;
 
 		ret = process_events_node(events_node, handle, channel->name);
 		if (ret) {
