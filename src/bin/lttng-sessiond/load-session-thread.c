@@ -103,6 +103,6 @@ void *thread_load_session(void *data)
 	}
 
 end:
-	sessiond_notify_ready();
+	sessiond_signal_parents();
 	return NULL;
 }

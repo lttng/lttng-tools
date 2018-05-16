@@ -309,12 +309,38 @@ struct load_session_thread_data *load_info;
 struct lttng_ht *agent_apps_ht_by_sock = NULL;
 
 /*
- * Whether sessiond is ready for commands/health check requests.
- * NR_LTTNG_SESSIOND_READY must match the number of calls to
- * sessiond_notify_ready().
+ * The initialization of the session daemon is done in multiple phases.
+ *
+ * While all threads are launched near-simultaneously, only some of them
+ * are needed to ensure the session daemon can start to respond to client
+ * requests.
+ *
+ * There are two important guarantees that we wish to offer with respect
+ * to the initialisation of the session daemon:
+ *   - When the daemonize/background launcher process exits, the sessiond
+ *     is fully able to respond to client requests,
+ *   - Auto-loaded sessions are visible to clients.
+ *
+ * In order to achieve this, a number of support threads have to be launched
+ * to allow the "client" thread to function properly. Moreover, since the
+ * "load session" thread needs the client thread, we must provide a way
+ * for the "load session" thread to know that the "client" thread is up
+ * and running.
+ *
+ * Hence, the support threads decrement the lttng_sessiond_ready counter
+ * while the "client" threads waits for it to reach 0. Once the "client" thread
+ * unblocks, it posts the message_thread_ready semaphore which allows the
+ * "load session" thread to progress.
+ *
+ * This implies that the "load session" thread is the last to be initialized
+ * and will explicitly call sessiond_signal_parents(), which signals the parents
+ * that the session daemon is fully initialized.
+ *
+ * The two (2) support threads are:
+ *  - agent_thread
+ *  - health_thread
  */
-#define NR_LTTNG_SESSIOND_READY		4
-int lttng_sessiond_ready = NR_LTTNG_SESSIOND_READY;
+int lttng_sessiond_ready = 2;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 {
@@ -323,26 +349,34 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 
 /* Notify parents that we are ready for cmd and health check */
 LTTNG_HIDDEN
+void sessiond_signal_parents(void)
+{
+	/*
+	 * Notify parent pid that we are ready to accept command
+	 * for client side.  This ppid is the one from the
+	 * external process that spawned us.
+	 */
+	if (opt_sig_parent) {
+		kill(ppid, SIGUSR1);
+	}
+
+	/*
+	 * Notify the parent of the fork() process that we are
+	 * ready.
+	 */
+	if (opt_daemon || opt_background) {
+		kill(child_ppid, SIGUSR1);
+	}
+}
+
+LTTNG_HIDDEN
 void sessiond_notify_ready(void)
 {
-	if (uatomic_sub_return(&lttng_sessiond_ready, 1) == 0) {
-		/*
-		 * Notify parent pid that we are ready to accept command
-		 * for client side.  This ppid is the one from the
-		 * external process that spawned us.
-		 */
-		if (opt_sig_parent) {
-			kill(ppid, SIGUSR1);
-		}
-
-		/*
-		 * Notify the parent of the fork() process that we are
-		 * ready.
-		 */
-		if (opt_daemon || opt_background) {
-			kill(child_ppid, SIGUSR1);
-		}
-	}
+	/*
+	 * The _return variant is used since the implied memory barriers are
+	 * required.
+	 */
+	(void) uatomic_sub_return(&lttng_sessiond_ready, 1);
 }
 
 static
@@ -4375,8 +4409,6 @@ static void *thread_manage_clients(void *data)
 		goto error;
 	}
 
-	sessiond_notify_ready();
-
 	ret = sem_post(&load_info->message_thread_ready);
 	if (ret) {
 		PERROR("sem_post message_thread_ready");
@@ -4409,6 +4441,7 @@ static void *thread_manage_clients(void *data)
 		if (ret > 0 || (ret < 0 && errno != EINTR)) {
 			goto exit;
 		}
+		cmm_smp_rmb();
 	}
 
 	/* This testpoint is after we signal readiness to the parent. */
