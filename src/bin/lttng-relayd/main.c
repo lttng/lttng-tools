@@ -96,7 +96,7 @@ enum relay_connection_status {
 };
 
 /* command line options */
-char *opt_output_path;
+char *opt_output_path, *opt_working_directory;
 static int opt_daemon, opt_background, opt_print_version;
 
 /*
@@ -184,6 +184,7 @@ static struct option long_options[] = {
 	{ "verbose", 0, 0, 'v', },
 	{ "config", 1, 0, 'f' },
 	{ "version", 0, 0, 'V' },
+	{ "working-directory", 1, 0, 'w', },
 	{ NULL, 0, 0, 0, },
 };
 
@@ -311,6 +312,20 @@ static int set_option(int opt, const char *arg, const char *optname)
 			}
 		}
 		break;
+	case 'w':
+		if (lttng_is_setuid_setgid()) {
+			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
+				"-w, --working-directory");
+		} else {
+			ret = asprintf(&opt_working_directory, "%s", arg);
+			if (ret < 0) {
+				ret = -errno;
+				PERROR("asprintf opt_working_directory");
+				goto end;
+			}
+		}
+		break;
+
 	case 'v':
 		/* Verbose level can increase using multiple -v */
 		if (arg) {
@@ -541,8 +556,8 @@ static void relayd_cleanup(void)
 	if (sessions_ht)
 		lttng_ht_destroy(sessions_ht);
 
-	/* free the dynamically allocated opt_output_path */
 	free(opt_output_path);
+	free(opt_working_directory);
 
 	/* Close thread quit pipes */
 	utils_close_pipe(thread_quit_pipe);
@@ -3726,6 +3741,14 @@ int main(int argc, char **argv)
 		 */
 		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
 			(void) close(i);
+		}
+	}
+
+	if (opt_working_directory) {
+		ret = utils_change_working_directory(opt_working_directory);
+		if (ret) {
+			/* All errors are already logged. */
+			goto exit_options;
 		}
 	}
 
