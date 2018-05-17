@@ -4,7 +4,7 @@ lttng-disable-rotation(1)
 
 NAME
 ----
-lttng-disable-rotation - Unset a tracing session's automatic rotation schedule
+lttng-disable-rotation - Unset a tracing session's rotation schedule
 
 
 SYNOPSIS
@@ -16,33 +16,32 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng disable-rotation` command unsets an automatic rotation
-schedule for the current tracing session, or for the tracing session
-named 'SESSION' if provided, previously set with the
-man:lttng-enable-rotation(1) command.
+The `lttng disable-rotation` command unsets a rotation schedule for the
+current tracing session, or for the tracing session named 'SESSION' if
+provided, previously set with the man:lttng-enable-rotation(1) command.
 
 
 include::common-cmd-options-head.txt[]
 
 
-Automatic rotation schedule condition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Rotation schedule condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 One of:
 
 option:--size::
-    Unset the automatic rotation schedule previously set with the
-    nloption:--size option of the man:lttng-enable-rotation(1) command.
+    Unset the rotation schedule previously set with the nloption:--size
+    option of the man:lttng-enable-rotation(1) command.
 
 option:--timer::
-    Unset the automatic rotation schedule previously set with the
-    nloption:--timer option of the man:lttng-enable-rotation(1) command.
+    Unset the rotation schedule previously set with the nloption:--timer
+    option of the man:lttng-enable-rotation(1) command.
 
 
 Target
 ~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Unset an automatic rotation schedule in the tracing session named
-    'SESSION' instead of the current tracing session.
+    Unset a rotation schedule in the tracing session named 'SESSION'
+    instead of the current tracing session.
 
 
 include::common-cmd-help-options.txt[]
