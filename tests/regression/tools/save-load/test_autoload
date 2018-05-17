@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# Copyright (C) - 2018 Anders Wallin <wallinux@gmail.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Auto load session(s)"
+
+CURDIR=$(dirname $0)/
+CONFIG_DIR="${CURDIR}/configuration"
+TESTDIR=$CURDIR/../../../
+SESSIOND_BIN="lttng-sessiond"
+RELAYD_BIN="lttng-relayd"
+LTTNG_BIN="lttng"
+export LTTNG_SESSION_CONFIG_XSD_PATH=$(readlink -m ${TESTDIR}../src/common/config/)
+
+DIR=$(readlink -f $TESTDIR)
+
+NUM_TESTS=9
+
+source $TESTDIR/utils/utils.sh
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+function test_auto_load_file()
+{
+	diag "Test auto load file"
+
+	start_lttng_sessiond $CURDIR/load-42.lttng
+	list_lttng_with_opts load-42
+	stop_lttng_sessiond
+}
+
+function test_auto_load_dir()
+{
+	diag "Test auto load directory"
+
+	cp -f $CURDIR/load-42.lttng $LTTNG_DIR/
+
+	start_lttng_sessiond $LTTNG_DIR
+	list_lttng_with_opts load-42
+	stop_lttng_sessiond
+}
+
+function test_auto_load_lttng_home()
+{
+	diag "Test auto load by setting LTTNG_HOME"
+
+	mkdir -p $LTTNG_HOME/.lttng/sessions/auto
+	cp -f $CURDIR/load-42.lttng $LTTNG_HOME/.lttng/sessions/auto
+
+	start_lttng_sessiond
+	list_lttng_with_opts load-42
+	stop_lttng_sessiond
+}
+
+TESTS=(
+	test_auto_load_file
+	test_auto_load_dir
+	test_auto_load_lttng_home
+)
+
+for fct_test in ${TESTS[@]};
+do
+	export LTTNG_HOME=$(mktemp -d)
+	export LTTNG_DIR=$(mktemp -d)
+
+	${fct_test}
+	rm -rf $LTTNG_DIR
+	rm -rf $LTTNG_HOME
+	if [ $? -ne 0 ]; then
+		break;
+	fi
+done
