@@ -33,7 +33,7 @@ The _current trace chunk_ of a given tracing session includes:
   event amongst:
 ** The first time the tracing session was started with
    man:lttng-start(1).
-** The last rotation, either a manual one with `lttng rotate`, or an
+** The last rotation, either an immediate one with `lttng rotate`, or an
    automatic one from a rotation schedule previously set with
    man:lttng-enable-rotation(1).
 * The content of all the non-flushed sub-buffers of the tracing
@@ -135,17 +135,16 @@ The `lttng rotate` command only works when:
   limit (see the nloption:--tracefile-size and
   nloption:--tracefile-count options in man:lttng-enable-channel(1)).
 
-* No manual rotation (`lttng rotate`) is currently happening.
+* No immediate rotation (`lttng rotate`) is currently happening.
 
-* No automatic rotation schedule is currently set (see
+* No rotation schedule is currently set (see
   man:lttng-enable-rotation(1)).
 +
 One way around this is to:
 +
 --
-. Unset any automatic rotation schedule with
-  man:lttng-disable-rotation(1).
-. Perform the manual rotation with `lttng rotation`.
+. Unset any rotation schedule with man:lttng-disable-rotation(1).
+. Perform the immediate rotation with `lttng rotation`.
 . **If needed**, set the rotation schedule again
   with man:lttng-enable-rotation(1).
 --
