@@ -13,6 +13,7 @@ regression/tools/snapshots/test_ust_fast
 regression/tools/snapshots/test_ust_streaming
 regression/tools/save-load/test_save
 regression/tools/save-load/test_load
+regression/tools/save-load/test_autoload
 regression/tools/mi/test_mi
 regression/tools/wildcard/test_event_wildcard
 regression/tools/crash/test_crash
