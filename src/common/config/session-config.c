@@ -3032,7 +3032,7 @@ int load_session_from_path(const char *path, const char *session_name,
 			errno = 0;
 			result = readdir(directory);
 
-			/* Reached end of dir stream or error out */
+			/* Reached end of dir stream or error out. */
 			if (!result) {
 				if (errno) {
 					PERROR("Failed to enumerate the contents of path \"%s\" while loading session, readdir returned", path);
