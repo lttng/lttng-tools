@@ -332,7 +332,8 @@ struct lttng_ht *agent_apps_ht_by_sock = NULL;
  *  - rotation_thread
  *  - health_thread
  */
-int lttng_sessiond_ready = 4;
+#define NR_LTTNG_SESSIOND_SUPPORT_THREADS 4
+int lttng_sessiond_ready = NR_LTTNG_SESSIOND_SUPPORT_THREADS;
 
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 {
