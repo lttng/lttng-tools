@@ -4352,8 +4352,17 @@ static void *thread_manage_clients(void *data)
 		if (ret > 0 || (ret < 0 && errno != EINTR)) {
 			goto exit;
 		}
-		cmm_smp_rmb();
 	}
+	/*
+	 * This barrier is paired with the one in sessiond_notify_ready() to
+	 * ensure that loads accessing data initialized by the other threads,
+	 * on which this thread was waiting, are not performed before this point.
+	 *
+	 * Note that this could be a 'read' memory barrier, but a full barrier
+	 * is used in case the code changes. The performance implications of
+	 * this choice are minimal since this is a slow path.
+	 */
+	cmm_smp_mb();
 
 	/* This testpoint is after we signal readiness to the parent. */
 	if (testpoint(sessiond_thread_manage_clients)) {
