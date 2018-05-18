@@ -366,10 +366,21 @@ LTTNG_HIDDEN
 void sessiond_notify_ready(void)
 {
 	/*
-	 * The _return variant is used since the implied memory barriers are
-	 * required.
+	 * This memory barrier is paired with the one performed by
+	 * the client thread after it has seen that 'lttng_sessiond_ready' is 0.
+	 *
+	 * The purpose of these memory barriers is to ensure that all
+	 * initialization operations of the various threads that call this
+	 * function to signal that they are ready are commited/published
+	 * before the client thread can see the 'lttng_sessiond_ready' counter
+	 * reach 0.
+	 *
+	 * Note that this could be a 'write' memory barrier, but a full barrier
+	 * is used in case the code using this utility changes. The performance
+	 * implications of this choice are minimal since this is a slow path.
 	 */
-	(void) uatomic_sub_return(&lttng_sessiond_ready, 1);
+	cmm_smp_mb();
+	uatomic_sub(&lttng_sessiond_ready, 1);
 }
 
 static
