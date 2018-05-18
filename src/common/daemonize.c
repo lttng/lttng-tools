@@ -118,7 +118,7 @@ int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 
 		/*
 		 * From this point on, the parent can exit and the child
-		 * is now an operationnal session daemon ready to serve
+		 * is now an operational session daemon ready to serve
 		 * clients and applications.
 		 */
 		exit(EXIT_SUCCESS);

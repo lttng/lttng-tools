@@ -397,22 +397,23 @@ function lttng_disable_kernel_channel_fail()
 function start_lttng_relayd_opt()
 {
 	local withtap=$1
-	local opt=$2
+	local process_mode=$2
+	local opt=$3
 
 	DIR=$(readlink -f "$TESTDIR")
 
-	if [ -z "$(pgrep "$RELAYD_MATCH")" ]; then
+	if [ -z $(pgrep $RELAYD_MATCH) ]; then
 		# shellcheck disable=SC2086
-		"$DIR/../src/bin/lttng-relayd/$RELAYD_BIN" -b $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
-		#"$DIR/../src/bin/lttng-relayd/$RELAYD_BIN" $opt -vvv >>/tmp/relayd.log 2>&1 &
+		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
 		if [ $? -eq 1 ]; then
-			if [ "$withtap" -eq "1" ]; then
-				fail "Start lttng-relayd (opt: $opt)"
+			if [ $withtap -eq "1" ]; then
+				fail "Start lttng-relayd (process mode: $process_mode opt: $opt)"
 			fi
 			return 1
 		else
-			if [ "$withtap" -eq "1" ]; then
-				pass "Start lttng-relayd (opt: $opt)"
+			if [ $withtap -eq "1" ]; then
+				pass "Start lttng-relayd (process mode: $process_mode opt: $opt)"
 			fi
 		fi
 	else
@@ -422,12 +423,12 @@ function start_lttng_relayd_opt()
 
 function start_lttng_relayd()
 {
-	start_lttng_relayd_opt 1 "$@"
+	start_lttng_relayd_opt 1 "-b" "$@"
 }
 
 function start_lttng_relayd_notap()
 {
-	start_lttng_relayd_opt 0 "$@"
+	start_lttng_relayd_opt 0 "-b" "$@"
 }
 
 function stop_lttng_relayd_opt()
