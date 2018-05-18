@@ -5831,6 +5831,12 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 * Init config from environment variables.
+	 * Command line option override env configuration per-doc. Do env first.
+	 */
+	sessiond_config_apply_env_config(&config);
+
+	/*
 	 * Parse arguments and load the daemon configuration file.
 	 *
 	 * We have an exit_options exit path to free memory reserved by
@@ -5843,9 +5849,6 @@ int main(int argc, char **argv)
 		retval = -1;
 		goto exit_options;
 	}
-
-	/* Init config from environment variables. */
-	sessiond_config_apply_env_config(&config);
 
 	/*
 	 * Resolve all paths received as arguments, configuration option, or
