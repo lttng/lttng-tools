@@ -221,6 +221,11 @@ Supported on Linux only.
 +
 Search for `tcp_keepalive_intvl` in man:tcp(7) for more information.
 
+`LTTNG_RELAYD_WORKING_DIRECTORY`::
+    Working directory of the processes this relay daemon creates.
++
+The option:--working-directory option overrides this variable.
+
 
 FILES
 -----
