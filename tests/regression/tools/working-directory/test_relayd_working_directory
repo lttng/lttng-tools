@@ -22,10 +22,9 @@ TESTDIR=$CURDIR/../../../
 
 DIR=$(readlink -f "$TESTDIR")
 
-NUM_TESTS=27
+NUM_TESTS=35
 
 source $TESTDIR/utils/utils.sh
-
 
 #MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -223,6 +222,58 @@ function test_relayd_failure()
 	rm -rf "$working_dir"
 }
 
+function test_relayd_env()
+{
+	local working_dir
+	local cwd
+	local pid
+
+	working_dir=$(mktemp -d)
+
+	diag "Test lttng-relayd change working directory from env. variable"
+
+	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir}
+	start_lttng_relayd_opt 1 "-b" ""
+
+	pid=$(pgrep "$RELAYD_MATCH")
+	ok $? "Found lttng-relayd"
+
+	cwd=$(readlink "/proc/$pid/cwd")
+
+	is "$cwd" "$working_dir" "Working directory changed"
+
+	stop_lttng_relayd
+	rm -rf "$working_dir"
+	unset LTTNG_RELAYD_WORKING_DIRECTORY
+}
+
+function test_relayd_cmdline_overwrite_env()
+{
+	local working_dir_env
+	local working_dir_cmdline
+	local cwd
+	local pid
+
+	working_dir_env=$(mktemp -d)
+	working_dir_cmdline=$(mktemp -d)
+
+	diag "Test lttng-relayd change working directory command line overwrite env variable"
+
+	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir_env}
+	start_lttng_relayd_opt 1 "-b" "--working-dir ${working_dir_cmdline}"
+
+	pid=$(pgrep "$RELAYD_MATCH")
+	ok $? "Found lttng-relayd"
+
+	cwd=$(readlink "/proc/$pid/cwd")
+
+	is "$cwd" "$working_dir_cmdline" "Working directory is the one from command line"
+
+	stop_lttng_relayd
+	rm -rf "$working_dir_env" "$working_dir_cmdline"
+	unset LTTNG_RELAYD_WORKING_DIRECTORY
+}
+
 TESTS=(
 	test_relayd
 	test_relayd_daemon
@@ -231,6 +282,8 @@ TESTS=(
 	test_relayd_background_no_working_dir
 	test_relayd_debug_permission
 	test_relayd_failure
+	test_relayd_env
+	test_relayd_cmdline_overwrite_env
 )
 
 for fct_test in "${TESTS[@]}";

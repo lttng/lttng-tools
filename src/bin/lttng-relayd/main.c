@@ -406,6 +406,23 @@ end:
 	return ret;
 }
 
+static int parse_env_options(void)
+{
+	int ret = 0;
+	char *value = NULL;
+
+	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_WORKING_DIRECTORY_ENV);
+	if (value) {
+		opt_working_directory = strdup(value);
+		if (!opt_working_directory) {
+			ERR("Failed to allocate working directory string (\"%s\")",
+					value);
+			ret = -1;
+		}
+	}
+	return ret;
+}
+
 static int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
@@ -3686,7 +3703,17 @@ int main(int argc, char **argv)
 	int ret = 0, retval = 0;
 	void *status;
 
-	/* Parse arguments */
+	/* Parse environment variables */
+	ret = parse_env_options();
+	if (ret) {
+		retval = -1;
+		goto exit_options;
+	}
+
+	/*
+	 * Parse arguments.
+	 * Command line arguments overwrite environment.
+	 */
 	progname = argv[0];
 	if (set_options(argc, argv)) {
 		retval = -1;
