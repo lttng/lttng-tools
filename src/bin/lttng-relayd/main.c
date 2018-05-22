@@ -388,6 +388,16 @@ end:
 	return ret;
 }
 
+static void parse_env_options(void)
+{
+	char *value = NULL;
+
+	value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_WORKING_DIRECTORY_ENV);
+	if (value) {
+		opt_working_directory = value;
+	}
+}
+
 static int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
@@ -3657,7 +3667,13 @@ int main(int argc, char **argv)
 	int ret = 0, retval = 0;
 	void *status;
 
-	/* Parse arguments */
+	/* Parse environment variables */
+	parse_env_options();
+
+	/*
+	 * Parse arguments.
+	 * Command line arguments overwrite environment.
+	 */
 	progname = argv[0];
 	if (set_options(argc, argv)) {
 		retval = -1;
