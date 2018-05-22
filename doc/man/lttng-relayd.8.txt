@@ -13,6 +13,7 @@ SYNOPSIS
 *lttng-relayd* [option:--background | option:--daemonize]
              [option:--control-port='URL'] [option:--data-port='URL'] [option:--live-port='URL']
              [option:--output='PATH'] [option:-v | option:-vv | option:-vvv]
+             [option:--working-directory='PATH']
 
 
 DESCRIPTION
@@ -113,6 +114,9 @@ option:-o 'PATH', option:--output='PATH'::
 +
 See the <<output-directory,Output directory>> section above for more
 information.
+
+option:-w 'PATH', option:--working-directory='PATH'::
+    Set the working directory of the processes this relay daemon creates.
 
 option:-v, option:--verbose::
     Increase verbosity.
