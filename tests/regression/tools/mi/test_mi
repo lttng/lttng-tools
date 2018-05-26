@@ -32,7 +32,7 @@ NR_ITER=10000
 
 #Temp file output
 OUTPUT_DIR=$(mktemp -d)
-FOO_LOAD_DIR=$(mktemp -d)
+SESSIOND_LOAD_DIR=$(mktemp -d)
 OUTPUT_FILE="default.xml"
 
 #Path to custom xml utilities
@@ -890,7 +890,7 @@ function test_add_context_list()
 	ok $? "Mi test: context listing validation"
 }
 
-start_lttng_sessiond $FOO_LOAD_DIR
+start_lttng_sessiond $SESSIOND_LOAD_DIR
 TESTS=(
 	test_version
 	test_create_session
