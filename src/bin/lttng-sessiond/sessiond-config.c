@@ -491,32 +491,45 @@ LTTNG_HIDDEN
 void sessiond_config_log(struct sessiond_config *config)
 {
 	DBG_NO_LOC("[sessiond configuration]");
-	DBG_NO_LOC("\tverbose:                      %i", config->verbose);
-	DBG_NO_LOC("\tverbose consumer:             %i", config->verbose_consumer);
-	DBG_NO_LOC("\tquiet mode:                   %s", config->quiet ? "True" : "False");
+	DBG_NO_LOC("\tverbose:                       %i", config->verbose);
+	DBG_NO_LOC("\tverbose consumer:              %i", config->verbose_consumer);
+	DBG_NO_LOC("\tquiet mode:                    %s", config->quiet ? "True" : "False");
 	if (config->agent_tcp_port.begin == config->agent_tcp_port.end) {
-		DBG_NO_LOC("\tagent_tcp_port:               %i", config->agent_tcp_port.begin);
+		DBG_NO_LOC("\tagent_tcp_port:                %i", config->agent_tcp_port.begin);
 	} else {
-		DBG_NO_LOC("\tagent_tcp_port:               [%i, %i]",
+		DBG_NO_LOC("\tagent_tcp_port:                [%i, %i]",
 				config->agent_tcp_port.begin,
 				config->agent_tcp_port.end);
 	}
-	DBG_NO_LOC("\tapplication socket timeout:   %i", config->app_socket_timeout);
-	DBG_NO_LOC("\tno-kernel:                    %s", config->no_kernel ? "True" : "False");
-	DBG_NO_LOC("\tbackground:                   %s", config->background ? "True" : "False");
-	DBG_NO_LOC("\tdaemonize:                    %s", config->daemonize ? "True" : "False");
-	DBG_NO_LOC("\tsignal parent on start:       %s", config->sig_parent ? "True" : "False");
-	DBG_NO_LOC("\ttracing group name:           %s", config->tracing_group_name.value ? : "Unknown");
-	DBG_NO_LOC("\tkmod_probe_list:              %s", config->kmod_probes_list.value ? : "None");
-	DBG_NO_LOC("\tkmod_extra_probe_list:        %s", config->kmod_extra_probes_list.value ? : "None");
-	DBG_NO_LOC("\trundir:                       %s", config->rundir.value ? : "Unknown");
-	DBG_NO_LOC("\tapplication socket path:      %s", config->apps_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tclient socket path:           %s", config->client_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\twait shm path:                %s", config->wait_shm_path.value ? : "Unknown");
-	DBG_NO_LOC("\thealth socket path:           %s", config->health_unix_sock_path.value ? : "Unknown");
-	DBG_NO_LOC("\tLTTNG_UST_CLOCK_PLUGIN:       %s", config->lttng_ust_clock_plugin.value ? : "None");
-	DBG_NO_LOC("\tpid file path:                %s", config->pid_file_path.value ? : "Unknown");
-	DBG_NO_LOC("\tlock file path:               %s", config->lock_file_path.value ? : "Unknown");
-	DBG_NO_LOC("\tsession load path:            %s", config->load_session_path.value ? : "None");
-	DBG_NO_LOC("\tagent port file path:         %s", config->agent_port_file_path.value ? : "Unknown");
+	DBG_NO_LOC("\tapplication socket timeout:    %i", config->app_socket_timeout);
+	DBG_NO_LOC("\tno-kernel:                     %s", config->no_kernel ? "True" : "False");
+	DBG_NO_LOC("\tbackground:                    %s", config->background ? "True" : "False");
+	DBG_NO_LOC("\tdaemonize:                     %s", config->daemonize ? "True" : "False");
+	DBG_NO_LOC("\tsignal parent on start:        %s", config->sig_parent ? "True" : "False");
+	DBG_NO_LOC("\ttracing group name:            %s", config->tracing_group_name.value ? : "Unknown");
+	DBG_NO_LOC("\tkmod_probe_list:               %s", config->kmod_probes_list.value ? : "None");
+	DBG_NO_LOC("\tkmod_extra_probe_list:         %s", config->kmod_extra_probes_list.value ? : "None");
+	DBG_NO_LOC("\trundir:                        %s", config->rundir.value ? : "Unknown");
+	DBG_NO_LOC("\tapplication socket path:       %s", config->apps_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tclient socket path:            %s", config->client_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\twait shm path:                 %s", config->wait_shm_path.value ? : "Unknown");
+	DBG_NO_LOC("\thealth socket path:            %s", config->health_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tLTTNG_UST_CLOCK_PLUGIN:        %s", config->lttng_ust_clock_plugin.value ? : "None");
+	DBG_NO_LOC("\tpid file path:                 %s", config->pid_file_path.value ? : "Unknown");
+	DBG_NO_LOC("\tlock file path:                %s", config->lock_file_path.value ? : "Unknown");
+	DBG_NO_LOC("\tsession load path:             %s", config->load_session_path.value ? : "None");
+	DBG_NO_LOC("\tagent port file path:          %s", config->agent_port_file_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd32 path:              %s", config->consumerd32_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd32 bin path:          %s", config->consumerd32_bin_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd32 lib dir:           %s", config->consumerd32_lib_dir.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd32 err unix sock path:%s", config->consumerd32_err_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd32 cmd unix sock path:%s", config->consumerd32_cmd_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd64 path:              %s", config->consumerd64_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd64 bin path:          %s", config->consumerd64_bin_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd64 lib dir:           %s", config->consumerd64_lib_dir.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd64 err unix sock path:%s", config->consumerd64_err_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tconsumerd64 cmd unix sock path:%s", config->consumerd64_cmd_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tkconsumerd path:               %s", config->kconsumerd_path.value ? : "Unknown");
+	DBG_NO_LOC("\tkconsumerd err unix sock path: %s", config->kconsumerd_err_unix_sock_path.value ? : "Unknown");
+	DBG_NO_LOC("\tkconsumerd cmd unix sock path: %s", config->kconsumerd_cmd_unix_sock_path.value ? : "Unknown");
 }
