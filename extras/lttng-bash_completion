@@ -18,7 +18,7 @@
 # Generates COMPREPLY with the existing session names
 _lttng_complete_sessions() {
 	local sessions
-	sessions=$(lttng --mi xml list |  xmllint --xpath "//command/output/sessions/session/name" - 2>/dev/null | sed  -e 's/<name>//g' -e $'s/<\/name>/\\n/g')
+	sessions=$(lttng --mi xml list | sed '2 s/xmlns/ignore/g' | xmllint --xpath "//command/output/sessions/session/name" - 2>/dev/null | sed  -e 's/<name>//g' -e $'s/<\/name>/\\n/g')
 	COMPREPLY=( $(compgen -W "${sessions}" -- $cur) )
 	return
 }
@@ -27,7 +27,7 @@ _lttng_complete_sessions() {
 # Generates COMPREPLY with the available kernel event
 _lttng_complete_kernel_events() {
 	local kernel_event
-	kernel_event=$(lttng --mi xml list -k | xmllint --xpath "//command/output/domains/domain[./type = 'KERNEL']/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	kernel_event=$(lttng --mi xml list -k |sed '2 s/xmlns/ignore/g' | xmllint --xpath "//command/output/domains/domain[./type = 'KERNEL']/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
 	COMPREPLY=( $(compgen -W "${kernel_event}" -- $cur) )
 	return
 }
@@ -35,7 +35,7 @@ _lttng_complete_kernel_events() {
 # Generates COMPREPLY with the available ust event
 _lttng_complete_ust_events() {
 	local ust_event
-	ust_event=$(lttng --mi xml list -u | xmllint --xpath "//command/output/domains/domain[./type = 'UST']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	ust_event=$(lttng --mi xml list -u | sed '2 s/xmlns/ignore/g' | xmllint --xpath "//command/output/domains/domain[./type = 'UST']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
 	COMPREPLY=( $(compgen -W "${ust_event}" -- $cur) )
 	return
 }
@@ -43,7 +43,7 @@ _lttng_complete_ust_events() {
 # Generates COMPREPLY with the available jul event
 _lttng_complete_jul_events() {
 	local jul_event
-	jul_event=$(lttng --mi xml list -j | xmllint --xpath "//command/output/domains/domain[./type = 'JUL']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
+	jul_event=$(lttng --mi xml list -j | sed '2 s/xmlns/ignore/g' | xmllint --xpath "//command/output/domains/domain[./type = 'JUL']/pids/pid/events/event/name" - 2>/dev/null | sed -e "s/<name>//g" -e $"s/<\/name>/\\n/g")
 	COMPREPLY=( $(compgen -W "${jul_event}" -- $cur) )
 	return
 }
