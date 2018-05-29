@@ -1436,12 +1436,12 @@ function trace_match_only()
 	local count=$($BABELTRACE_BIN $trace_path | grep $event_name | wc -l)
 	local total=$($BABELTRACE_BIN $trace_path | wc -l)
 
-    if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
-        pass "Trace match with $total event $event_name"
-    else
-        fail "Trace match"
-        diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
-    fi
+	if [ "$nr_iter" -eq "$count" ] && [ "$total" -eq "$nr_iter" ]; then
+		pass "Trace match with $total event $event_name"
+	else
+		fail "Trace match"
+		diag "$total event(s) found, expecting $nr_iter of event $event_name and only found $count"
+	fi
 }
 
 function validate_trace
