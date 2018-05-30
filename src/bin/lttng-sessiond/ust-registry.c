@@ -90,7 +90,7 @@ no_match:
 static unsigned long ht_hash_event(void *_key, unsigned long seed)
 {
 	uint64_t hashed_key;
-	const struct ust_registry_event *key = _key;
+	struct ust_registry_event *key = _key;
 
 	assert(key);
 
