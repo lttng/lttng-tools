@@ -125,7 +125,7 @@ error:
  * payload size is introduced.
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
-		uint64_t *session_id, char *session_name, char *hostname,
+		char *session_name, char *hostname,
 		int session_live_timer, unsigned int snapshot)
 {
 	int ret;
@@ -162,7 +162,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	}
 
 	msg->live_timer = htobe32(session_live_timer);
-	msg->snapshot = htobe32(snapshot);
+	msg->snapshot = !!snapshot;
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);

@@ -203,7 +203,7 @@ struct lttcomm_relayd_create_session_2_11 {
 	uint32_t session_name_len;
 	uint32_t hostname_len;
 	uint32_t live_timer;
-	uint32_t snapshot;
+	uint8_t snapshot;
 	/* Contains the session_name and hostname */
 	char names[];
 } LTTNG_PACKED;
