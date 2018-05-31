@@ -119,7 +119,7 @@ error:
 }
 
 /*
- * Starting at 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
+ * Starting from 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
  * have no length restriction on the sender side.
  * Length for both payload is stored in the msg struct. A new dynamic size
  * payload size is introduced.
