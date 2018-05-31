@@ -73,12 +73,12 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		goto error;
 	}
 
-	/* Validate that names are NULL terminated. */
 	session_name_view = lttng_buffer_view_from_view(payload, header_len,
-			    header.session_name_len);
+			header.session_name_len);
 	hostname_view = lttng_buffer_view_from_view(payload,
 			header_len + header.session_name_len, header.hostname_len);
 
+	/* Validate that names are NULL terminated. */
 	if (session_name_view.data[session_name_view.size - 1] != '\0') {
 		ERR("cmd_create_session_2_11 session_name is invalid (not NULL terminated)");
 		ret = -1;
