@@ -95,7 +95,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	strcpy(hostname, hostname_view.data);
 
 	*live_timer = header.live_timer;
-	*snapshot = header.snapshot;
+	*snapshot = !!header.snapshot;
 
 	ret = 0;
 
