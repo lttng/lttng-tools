@@ -117,6 +117,7 @@ static int recv_reply(struct lttcomm_relayd_sock *rsock, void *data, size_t size
 error:
 	return ret;
 }
+
 /*
  * Starting at 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
  * have no length restriction on the sender side.
