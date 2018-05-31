@@ -73,7 +73,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		goto error;
 	}
 
-	/* Validate that names are (NULL terminated. */
+	/* Validate that names are NULL terminated. */
 	session_name_view = lttng_buffer_view_from_view(payload, header_len,
 			    header.session_name_len);
 	hostname_view = lttng_buffer_view_from_view(payload,
