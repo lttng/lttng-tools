@@ -121,7 +121,7 @@ error:
 /*
  * Starting from 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
  * have no length restriction on the sender side.
- * Length for both payload is stored in the msg struct. A new dynamic size
+ * Length for both payloads is stored in the msg struct. A new dynamic size
  * payload size is introduced.
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
