@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 - Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+ * Copyright (C) 2018 - Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
