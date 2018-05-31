@@ -91,6 +91,10 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		goto error;
 	}
 
+	/*
+	 * Length and null-termination check are already performed.
+	 * LTTNG_NAME_MAX and LTTNG_HOST_NAME_MAX max size are expected.
+	 */
 	strcpy(session_name, session_name_view.data);
 	strcpy(hostname, hostname_view.data);
 
