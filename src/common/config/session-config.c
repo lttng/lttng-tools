@@ -677,13 +677,12 @@ char *get_session_config_xsd_path()
 		goto end;
 	}
 
-	strncpy(xsd_path, base_path, max_path_len);
+	strcpy(xsd_path, base_path);
 	if (xsd_path[base_path_len - 1] != '/') {
 		xsd_path[base_path_len++] = '/';
 	}
 
-	strncpy(xsd_path + base_path_len, DEFAULT_SESSION_CONFIG_XSD_FILENAME,
-		max_path_len - base_path_len);
+	strcpy(xsd_path + base_path_len, DEFAULT_SESSION_CONFIG_XSD_FILENAME);
 end:
 	return xsd_path;
 }
