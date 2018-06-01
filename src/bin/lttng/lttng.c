@@ -32,6 +32,7 @@
 #include <common/utils.h>
 
 #include "command.h"
+#include "version.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP

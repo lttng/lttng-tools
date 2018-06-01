@@ -28,7 +28,6 @@
 
 #include "session.h"
 #include "ust-app.h"
-#include "version.h"
 #include "notification-thread.h"
 #include "sessiond-config.h"
 

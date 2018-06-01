@@ -27,6 +27,7 @@
 #include <common/mi-lttng.h>
 
 #include "../command.h"
+#include "version.h"
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
