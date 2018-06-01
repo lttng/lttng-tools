@@ -106,17 +106,11 @@ void *zmalloc(size_t len)
 static inline
 int lttng_strncpy(char *dst, const char *src, size_t dst_len)
 {
-	if (lttng_strnlen(src, dst_len) == dst_len) {
+	if (lttng_strnlen(src, dst_len) >= dst_len) {
 		/* Fail since copying would result in truncation. */
 		return -1;
 	}
-	strncpy(dst, src, dst_len);
-	/*
-	 * Be extra careful and put final \0 at the end after strncpy(),
-	 * even though we checked the length before. This makes Coverity
-	 * happy.
-	 */
-	dst[dst_len - 1] = '\0';
+	strcpy(dst, src);
 	return 0;
 }
 
