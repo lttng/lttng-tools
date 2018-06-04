@@ -755,7 +755,11 @@ static int utils_stream_file_name(char *path,
 		strncpy(path, path_name_suffix, PATH_MAX - 1);
 		path[PATH_MAX - 1] = '\0';
 	} else {
-		strncpy(path, full_path, PATH_MAX - 1);
+		ret = lttng_strncpy(path, full_path, PATH_MAX);
+		if (ret) {
+			ERR("Failed to copy stream file name");
+			goto error_free_suffix;
+		}
 	}
 	path[PATH_MAX - 1] = '\0';
 	ret = 0;
