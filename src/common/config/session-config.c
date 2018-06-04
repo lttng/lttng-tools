@@ -1495,7 +1495,6 @@ int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
 	} else if (!strcmp((const char *) probe_attribute_node->name,
 		config_element_symbol_name)) {
 		xmlChar *content;
-		size_t name_len;
 
 		/* symbol_name */
 		content = xmlNodeGetContent(probe_attribute_node);
@@ -1504,15 +1503,18 @@ int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
 			goto end;
 		}
 
-		name_len = strlen((char *) content);
-		if (name_len >= LTTNG_SYMBOL_NAME_LEN) {
-			WARN("symbol_name too long.");
+		ret = lttng_strncpy(attr->symbol_name,
+				(const char *) content,
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret == -1) {
+		        ERR("symbol name \"%s\"'s length (%zu) exceeds the maximal permitted length (%d) in session configuration",
+					(const char *) content,
+					strlen((const char *) content),
+					LTTNG_SYMBOL_NAME_LEN);
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			free(content);
 			goto end;
 		}
-
-		strncpy(attr->symbol_name, (const char *) content, name_len);
 		free(content);
 	}
 	ret = 0;
@@ -1561,7 +1563,6 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 		node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name, config_element_name)) {
 			xmlChar *content;
-			size_t name_len;
 
 			/* name */
 			content = xmlNodeGetContent(node);
@@ -1570,15 +1571,18 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			name_len = strlen((char *) content);
-			if (name_len >= LTTNG_SYMBOL_NAME_LEN) {
-				WARN("Channel name too long.");
+			ret = lttng_strncpy(event.name,
+					(const char *) content,
+					LTTNG_SYMBOL_NAME_LEN);
+			if (ret == -1) {
+				WARN("Event \"%s\"'s name length (%zu) exceeds the maximal permitted length (%d) in session configuration",
+						(const char *) content,
+						strlen((const char *) content),
+						LTTNG_SYMBOL_NAME_LEN);
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 				free(content);
 				goto end;
 			}
-
-			strncpy(event.name, (const char *) content, name_len);
 			free(content);
 		} else if (!strcmp((const char *) node->name,
 			config_element_enabled)) {
@@ -1769,8 +1773,14 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 					goto end;
 				}
 
-				strncpy(event.attr.ftrace.symbol_name, (char *) content,
-						sym_len);
+				ret = lttng_strncpy(
+						event.attr.ftrace.symbol_name,
+						(char *) content, sym_len);
+				if (ret == -1) {
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					free(content);
+					goto end;
+				}
 				free(content);
 			}
 		}
@@ -1785,6 +1795,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 			goto end;
 		}
 	}
+	ret = 0;
 end:
 	for (i = 0; i < exclusion_count; i++) {
 		free(exclusions[i]);
@@ -1854,7 +1865,6 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 
 	if (!strcmp((const char *) attr_node->name, config_element_name)) {
 		xmlChar *content;
-		size_t name_len;
 
 		/* name */
 		content = xmlNodeGetContent(attr_node);
@@ -1863,15 +1873,18 @@ int process_channel_attr_node(xmlNodePtr attr_node,
 			goto end;
 		}
 
-		name_len = strlen((char *) content);
-		if (name_len >= LTTNG_SYMBOL_NAME_LEN) {
-			WARN("Channel name too long.");
+		ret = lttng_strncpy(channel->name,
+				(const char *) content,
+				LTTNG_SYMBOL_NAME_LEN);
+		if (ret == -1) {
+			WARN("Channel \"%s\"'s name length (%zu) exceeds the maximal permitted length (%d) in session configuration",
+					(const char *) content,
+					strlen((const char *) content),
+					LTTNG_SYMBOL_NAME_LEN);
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			free(content);
 			goto end;
 		}
-
-		strncpy(channel->name, (const char *) content, name_len);
 		free(content);
 	} else if (!strcmp((const char *) attr_node->name,
 			config_element_enabled)) {
@@ -2239,7 +2252,6 @@ int process_context_node(xmlNodePtr context_node,
 			} else if (!strcmp((const char *) perf_attr_node->name,
 				config_element_name)) {
 				xmlChar *content;
-				size_t name_len;
 
 				/* name */
 				content = xmlNodeGetContent(perf_attr_node);
@@ -2248,16 +2260,18 @@ int process_context_node(xmlNodePtr context_node,
 					goto end;
 				}
 
-				name_len = strlen((char *) content);
-				if (name_len >= LTTNG_SYMBOL_NAME_LEN) {
-					WARN("perf context name too long.");
+				ret = lttng_strncpy(context.u.perf_counter.name,
+						(const char *) content,
+						LTTNG_SYMBOL_NAME_LEN);
+				if (ret == -1) {
+					WARN("Perf counter \"%s\"'s name length (%zu) exceeds the maximal permitted length (%d) in session configuration",
+							(const char *) content,
+							strlen((const char *) content),
+							LTTNG_SYMBOL_NAME_LEN);
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 					free(content);
 					goto end;
 				}
-
-				strncpy(context.u.perf_counter.name, (const char *) content,
-						name_len);
 				free(content);
 			}
 		}
