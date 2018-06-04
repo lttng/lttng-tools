@@ -1106,16 +1106,19 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	memset(&reply, 0, sizeof(reply));
 
-	switch (conn->minor) {
-	case 1:
-	case 2:
-	case 3:
-		break;
-	case 4: /* LTTng sessiond 2.4 */
-	default:
+	if (conn->minor < 4) {
+		/* From 2.1 to 2.3 */
+		ret = 0;
+	} else if (conn->minor >= 4 && conn->minor < 11) {
+		/* From 2.4 to 2.10 */
 		ret = cmd_create_session_2_4(payload, session_name,
 			hostname, &live_timer, &snapshot);
+	} else {
+		/* From 2.11 to ... */
+		ret = cmd_create_session_2_11(payload, session_name,
+			hostname, &live_timer, &snapshot);
 	}
+
 	if (ret < 0) {
 		goto send_reply;
 	}
@@ -1202,17 +1205,20 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_no_session;
 	}
 
-	switch (session->minor) {
-	case 1: /* LTTng sessiond 2.1. Allocates path_name and channel_name. */
+	if (session->minor == 1) {
+		/* For 2.1 */
 		ret = cmd_recv_stream_2_1(payload, &path_name,
 			&channel_name);
-		break;
-	case 2: /* LTTng sessiond 2.2. Allocates path_name and channel_name. */
-	default:
+	} else if (session->minor > 1 && session->minor < 11) {
+		/* From 2.2 to 2.10 */
 		ret = cmd_recv_stream_2_2(payload, &path_name,
 			&channel_name, &tracefile_size, &tracefile_count);
-		break;
+	} else {
+		/* From 2.11 to ... */
+		ret = cmd_recv_stream_2_11(payload, &path_name,
+			&channel_name, &tracefile_size, &tracefile_count);
 	}
+
 	if (ret < 0) {
 		goto send_reply;
 	}

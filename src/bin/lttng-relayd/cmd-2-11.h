@@ -1,10 +1,5 @@
-#ifndef RELAYD_CMD_H
-#define RELAYD_CMD_H
-
 /*
- * Copyright (C) 2013 - Julien Desfossez <jdesfossez@efficios.com>
- *                      David Goulet <dgoulet@efficios.com>
- *               2015 - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2018 - Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -19,10 +14,18 @@
  * this program; if not, write to the Free Software Foundation, Inc., 51
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+#ifndef RELAYD_CMD_2_11_H
+#define RELAYD_CMD_2_11_H
 
-#include "cmd-2-1.h"
-#include "cmd-2-2.h"
-#include "cmd-2-4.h"
-#include "cmd-2-11.h"
+#include "lttng-relayd.h"
+#include <common/buffer-view.h>
 
-#endif /* RELAYD_CMD_H */
+int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
+		char *session_name, char *hostname,
+		uint32_t *live_timer, bool *snapshot);
+
+int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
+		char **ret_path_name, char **ret_channel_name,
+		uint64_t *tracefile_size, uint64_t *tracefile_count);
+
+#endif /* RELAYD_CMD_2_11_H */
