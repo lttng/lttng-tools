@@ -2922,7 +2922,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	request.key = channel->key;
 
 	DBG("Sending metadata request to sessiond, session id %" PRIu64
-			", per-pid %" PRIu64 ", app UID %u and channek key %" PRIu64,
+			", per-pid %" PRIu64 ", app UID %u and channel key %" PRIu64,
 			request.session_id, request.session_id_per_pid, request.uid,
 			request.key);
 
