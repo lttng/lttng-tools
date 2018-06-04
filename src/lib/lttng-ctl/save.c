@@ -99,7 +99,12 @@ int lttng_save_session_attr_set_session_name(
 			goto error;
 		}
 
-		strncpy(attr->session_name, session_name, len);
+		ret = lttng_strncpy(attr->session_name, session_name,
+				sizeof(attr->session_name));
+		if (ret) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
 	} else {
 		attr->session_name[0] = '\0';
 	}
