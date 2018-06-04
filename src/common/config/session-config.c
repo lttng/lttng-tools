@@ -32,6 +32,7 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/utils.h>
+#include <common/dynamic-buffer.h>
 #include <common/compat/getenv.h>
 #include <lttng/lttng-error.h>
 #include <libxml/parser.h>
@@ -2976,9 +2977,19 @@ int load_session_from_path(const char *path, const char *session_name,
 {
 	int ret, session_found = !session_name;
 	DIR *directory = NULL;
+	struct lttng_dynamic_buffer file_path;
+	size_t path_len;
 
 	assert(path);
 	assert(validation_ctx);
+	path_len = strlen(path);
+	lttng_dynamic_buffer_init(&file_path);
+	if (path_len >= LTTNG_PATH_MAX) {
+		ERR("Session configuration load path \"%s\" length (%zu) exceeds the maximal length allowed (%d)",
+				path, path_len, LTTNG_PATH_MAX);
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
 
 	directory = opendir(path);
 	if (!directory) {
@@ -2997,11 +3008,12 @@ int load_session_from_path(const char *path, const char *session_name,
 	if (directory) {
 		struct dirent *entry;
 		struct dirent *result;
-		char *file_path = NULL;
-		size_t path_len = strlen(path);
+		size_t file_path_root_len;
 
-		if (path_len >= PATH_MAX) {
-			ret = -LTTNG_ERR_INVALID;
+		ret = lttng_dynamic_buffer_set_capacity(&file_path,
+				LTTNG_PATH_MAX);
+		if (ret) {
+			ret = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
 
@@ -3011,19 +3023,22 @@ int load_session_from_path(const char *path, const char *session_name,
 			goto end;
 		}
 
-		file_path = zmalloc(PATH_MAX);
-		if (!file_path) {
+	        ret = lttng_dynamic_buffer_append(&file_path, path, path_len);
+		if (ret) {
 			ret = -LTTNG_ERR_NOMEM;
 			free(entry);
 			goto end;
 		}
 
-		strncpy(file_path, path, path_len);
-		if (file_path[path_len - 1] != '/') {
-			file_path[path_len++] = '/';
+		if (file_path.data[file_path.size - 1] != '/') {
+		        ret = lttng_dynamic_buffer_append(&file_path, "/", 1);
+			if (ret) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto end;
+			}
 		}
+		file_path_root_len = file_path.size;
 
-		ret = 0;
 		/* Search for *.lttng files */
 		while (!readdir_r(directory, entry, &result) && result) {
 			size_t file_name_len = strlen(result->d_name);
@@ -3033,29 +3048,48 @@ int load_session_from_path(const char *path, const char *session_name,
 				continue;
 			}
 
-			if (path_len + file_name_len >= PATH_MAX) {
+			if (file_path.size + file_name_len >= LTTNG_PATH_MAX) {
+				WARN("Ignoring file \"%s\" since the path's length (%zu) would exceed the maximal permitted size (%d)",
+						result->d_name,
+						/* +1 to account for NULL terminator. */
+						file_path.size + file_name_len + 1,
+						LTTNG_PATH_MAX);
 				continue;
 			}
 
+			/* Does the file end with .lttng? */
 			if (strcmp(DEFAULT_SESSION_CONFIG_FILE_EXTENSION,
-				result->d_name + file_name_len - sizeof(
-				DEFAULT_SESSION_CONFIG_FILE_EXTENSION) + 1)) {
+					result->d_name + file_name_len - sizeof(
+					DEFAULT_SESSION_CONFIG_FILE_EXTENSION) + 1)) {
 				continue;
 			}
 
-			strncpy(file_path + path_len, result->d_name, file_name_len);
-			file_path[path_len + file_name_len] = '\0';
+			ret = lttng_dynamic_buffer_append(&file_path, result->d_name,
+					file_name_len + 1);
+			if (ret) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto end;
+			}
 
-			ret = load_session_from_file(file_path, session_name,
+			ret = load_session_from_file(file_path.data, session_name,
 				validation_ctx, overwrite, overrides);
 			if (session_name && !ret) {
 				session_found = 1;
 				break;
 			}
+			/*
+			 * Reset the buffer's size to the location of the
+			 * path's trailing '/'.
+			 */
+			ret = lttng_dynamic_buffer_set_size(&file_path,
+					file_path_root_len);
+			if (ret) {
+				ret = -LTTNG_ERR_UNK;
+				goto end;
+			}
 		}
 
 		free(entry);
-		free(file_path);
 	} else {
 		ret = load_session_from_file(path, session_name,
 			validation_ctx, overwrite, overrides);
@@ -3072,11 +3106,10 @@ end:
 			PERROR("closedir");
 		}
 	}
-
 	if (session_found && !ret) {
 		ret = 0;
 	}
-
+	lttng_dynamic_buffer_reset(&file_path);
 	return ret;
 }
 
