@@ -2953,23 +2953,6 @@ end:
 	return ret;
 }
 
-/* Allocate dirent as recommended by READDIR(3), NOTES on readdir_r */
-static
-struct dirent *alloc_dirent(const char *path)
-{
-	size_t len;
-	long name_max;
-	struct dirent *entry;
-
-	name_max = pathconf(path, _PC_NAME_MAX);
-	if (name_max == -1) {
-		name_max = PATH_MAX;
-	}
-	len = offsetof(struct dirent, d_name) + name_max + 1;
-	entry = zmalloc(len);
-	return entry;
-}
-
 static
 int load_session_from_path(const char *path, const char *session_name,
 	struct session_config_validation_ctx *validation_ctx, int overwrite,
@@ -3006,8 +2989,6 @@ int load_session_from_path(const char *path, const char *session_name,
 		}
 	}
 	if (directory) {
-		struct dirent *entry;
-		struct dirent *result;
 		size_t file_path_root_len;
 
 		ret = lttng_dynamic_buffer_set_capacity(&file_path,
@@ -3017,16 +2998,9 @@ int load_session_from_path(const char *path, const char *session_name,
 			goto end;
 		}
 
-		entry = alloc_dirent(path);
-		if (!entry) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
-		}
-
 	        ret = lttng_dynamic_buffer_append(&file_path, path, path_len);
 		if (ret) {
 			ret = -LTTNG_ERR_NOMEM;
-			free(entry);
 			goto end;
 		}
 
@@ -3040,8 +3014,35 @@ int load_session_from_path(const char *path, const char *session_name,
 		file_path_root_len = file_path.size;
 
 		/* Search for *.lttng files */
-		while (!readdir_r(directory, entry, &result) && result) {
-			size_t file_name_len = strlen(result->d_name);
+		for (;;) {
+			size_t file_name_len;
+			struct dirent *result;
+
+			/*
+			 * When the end of the directory stream is reached, NULL
+			 * is returned and errno is kept unchanged. When an
+			 * error occurs, NULL is returned and errno is set
+			 * accordingly. To distinguish between the two, set
+			 * errno to zero before calling readdir().
+			 *
+			 * On success, readdir() returns a pointer to a dirent
+			 * structure. This structure may be statically
+			 * allocated, do not attempt to free(3) it.
+			 */
+			errno = 0;
+			result = readdir(directory);
+
+			/* Reached end of dir stream or error out */
+			if (!result) {
+				if (errno) {
+					PERROR("Failed to enumerate the contents of path \"%s\" while loading session, readdir returned", path);
+					ret = -LTTNG_ERR_LOAD_IO_FAIL;
+					goto end;
+				}
+				break;
+			}
+
+			file_name_len = strlen(result->d_name);
 
 			if (file_name_len <=
 				sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION)) {
@@ -3089,7 +3090,6 @@ int load_session_from_path(const char *path, const char *session_name,
 			}
 		}
 
-		free(entry);
 	} else {
 		ret = load_session_from_file(path, session_name,
 			validation_ctx, overwrite, overrides);
