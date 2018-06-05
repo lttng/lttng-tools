@@ -132,5 +132,7 @@ extern const char * const config_event_context_interruptible;
 extern const char * const config_event_context_preemptible;
 extern const char * const config_event_context_need_reschedule;
 extern const char * const config_event_context_migratable;
+extern const char * const config_event_context_callstack_user;
+extern const char * const config_event_context_callstack_kernel;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */
