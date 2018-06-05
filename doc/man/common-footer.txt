@@ -6,8 +6,8 @@ https://bugs.lttng.org/projects/lttng-tools[LTTng bug tracker].
 
 RESOURCES
 ---------
-* http://lttng.org[LTTng project website]
-* http://lttng.org/docs[LTTng documentation]
+* https://lttng.org[LTTng project website]
+* https://lttng.org/docs[LTTng documentation]
 * http://git.lttng.org[Git repositories]
 * http://github.com/lttng[GitHub organization]
 * http://ci.lttng.org/[Continuous integration]

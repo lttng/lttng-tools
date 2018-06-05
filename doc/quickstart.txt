@@ -17,7 +17,7 @@ See the README.md file for installation procedure or use the various Linux
 distribution packages.
 
 In order to trace the kernel, you'll need the lttng-modules 2.0 compiled and
-installed. See http://lttng.org/lttng2.0 for more instructions for that part.
+installed. See https://lttng.org/lttng2.0 for more instructions for that part.
 For user-space tracing, you'll need an instrumented application with lttng-ust
 2.0.
 
@@ -161,7 +161,7 @@ applications. However, if you run the session daemon under non-root user
 rights, only applications of that user will be traced.
 
 So, after instrumenting you applications with LTTng-ust 2.0
-(http://lttng.org/lttng2.0), upon startup, it will automatically register to
+(https://lttng.org/lttng2.0), upon startup, it will automatically register to
 the session daemon. If there is none running, it will simply wait on a seperate
 thread for a session daemon to appear and then register.
 

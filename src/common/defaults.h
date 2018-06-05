@@ -325,7 +325,7 @@
 #define DEFAULT_RUN_AS_WORKER_NAME			"lttng-runas"
 
 /* Default LTTng MI XML namespace. */
-#define DEFAULT_LTTNG_MI_NAMESPACE		"http://lttng.org/xml/ns/lttng-mi"
+#define DEFAULT_LTTNG_MI_NAMESPACE		"https://lttng.org/xml/ns/lttng-mi"
 
 /* Default thread stack size; the default mandated by pthread_create(3) */
 #define DEFAULT_LTTNG_THREAD_STACK_SIZE		2097152

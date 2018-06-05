@@ -36,7 +36,7 @@ LTTNG_HIDDEN const char * const mi_lttng_w3_schema_uri = "http://www.w3.org/2001
 LTTNG_HIDDEN const char * const mi_lttng_schema_location = "xsi:schemaLocation";
 LTTNG_HIDDEN const char * const mi_lttng_schema_location_uri =
 	DEFAULT_LTTNG_MI_NAMESPACE " "
-	"http://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
+	"https://lttng.org/xml/schemas/lttng-mi/" XSTR(MI_SCHEMA_MAJOR_VERSION)
 	"/lttng-mi-" XSTR(MI_SCHEMA_MAJOR_VERSION) "."
 	XSTR(MI_SCHEMA_MINOR_VERSION) ".xsd";
 LTTNG_HIDDEN const char * const mi_lttng_schema_version = "schemaVersion";

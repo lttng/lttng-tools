@@ -17,7 +17,7 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The http://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
+The https://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
 source software package used for correlated tracing of the Linux kernel,
 user applications, and user libraries.
 

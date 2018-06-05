@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-	targetNamespace="http://lttng.org/xml/ns/lttng-mi"
-	xmlns:tns="http://lttng.org/xml/ns/lttng-mi"
+	targetNamespace="https://lttng.org/xml/ns/lttng-mi"
+	xmlns:tns="https://lttng.org/xml/ns/lttng-mi"
 	elementFormDefault="qualified" version="3.0">
 
 	<!-- Maps to the uint32_t type -->
