@@ -185,6 +185,8 @@ LTTNG_HIDDEN const char * const config_event_context_interruptible = "INTERRUPTI
 LTTNG_HIDDEN const char * const config_event_context_preemptible = "PREEMPTIBLE";
 LTTNG_HIDDEN const char * const config_event_context_need_reschedule = "NEED_RESCHEDULE";
 LTTNG_HIDDEN const char * const config_event_context_migratable = "MIGRATABLE";
+LTTNG_HIDDEN const char * const config_event_context_callstack_user= "CALLSTACK_USER";
+LTTNG_HIDDEN const char * const config_event_context_callstack_kernel = "CALLSTACK_KERNEL";
 
 /* Deprecated symbols */
 const char * const config_element_perf;
@@ -1018,6 +1020,12 @@ int get_context_type(xmlChar *context_type)
 	} else if (!strcmp((char *) context_type,
 		config_event_context_migratable)) {
 		ret = LTTNG_EVENT_CONTEXT_MIGRATABLE;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_callstack_user)) {
+		ret = LTTNG_EVENT_CONTEXT_CALLSTACK_USER;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_callstack_kernel)) {
+		ret = LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL;
 	} else {
 		goto error;
 	}

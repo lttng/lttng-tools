@@ -116,6 +116,8 @@ THE SOFTWARE.
 			<xs:enumeration value="PREEMPTIBLE" />
 			<xs:enumeration value="NEED_RESCHEDULE" />
 			<xs:enumeration value="MIGRATABLE" />
+			<xs:enumeration value="CALLSTACK_USER" />
+			<xs:enumeration value="CALLSTACK_KERNEL" />
 		</xs:restriction>
 	</xs:simpleType>
 

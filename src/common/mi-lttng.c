@@ -397,6 +397,10 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 		return config_event_context_need_reschedule;
 	case LTTNG_EVENT_CONTEXT_MIGRATABLE:
 		return config_event_context_migratable;
+	case LTTNG_EVENT_CONTEXT_CALLSTACK_USER:
+		return config_event_context_callstack_user;
+	case LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL:
+		return config_event_context_callstack_kernel;
 	default:
 		return NULL;
 	}
