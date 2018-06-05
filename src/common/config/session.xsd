@@ -159,6 +159,10 @@ elementFormDefault="qualified" version="2.8">
 		<xs:enumeration value="HOSTNAME"/>
 		<xs:enumeration value="IP"/>
 		<xs:enumeration value="APP"/>
+		<xs:enumeration value="INTERRUPTIBLE" />
+		<xs:enumeration value="PREEMPTIBLE" />
+		<xs:enumeration value="NEED_RESCHEDULE" />
+		<xs:enumeration value="MIGRATABLE" />
 	</xs:restriction>
 </xs:simpleType>
 
