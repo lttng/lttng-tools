@@ -512,6 +512,7 @@ struct consumer_relayd_sock_pair {
 	/* Session id on both sides for the sockets. */
 	uint64_t relayd_session_id;
 	uint64_t sessiond_session_id;
+	struct lttng_consumer_local_data *ctx;
 };
 
 /*
@@ -840,5 +841,6 @@ int lttng_consumer_rotate_pending_relay( uint64_t session_id,
 void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);
 int lttng_consumer_mkdir(const char *path, uid_t uid, gid_t gid,
 		uint64_t relayd_id);
+void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd);
 
 #endif /* LIB_CONSUMER_H */
