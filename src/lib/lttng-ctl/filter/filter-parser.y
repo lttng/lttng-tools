@@ -336,6 +336,8 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 %type <gs> s_char s_char_sequence c_char c_char_sequence
 
 %type <n> primary_expression
+%type <n> prefix_expression
+%type <n> prefix_expression_rec
 %type <n> postfix_expression
 %type <n> unary_expression
 %type <n> unary_operator
@@ -350,6 +352,7 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 %type <n> logical_and_expression
 %type <n> logical_or_expression
 %type <n> expression
+%type <n> identifiers
 
 %%
 
@@ -390,21 +393,8 @@ s_char:
 		}
 	;
 
-primary_expression
-	:	IDENTIFIER
-		{
-			$$ = make_node(parser_ctx, NODE_EXPRESSION);
-			$$->u.expression.type = AST_EXP_IDENTIFIER;
-			$$->u.expression.u.identifier = yylval.gs->s;
-		}
-	|	GLOBAL_IDENTIFIER
-		{
-			$$ = make_node(parser_ctx, NODE_EXPRESSION);
-			$$->u.expression.type = AST_EXP_GLOBAL_IDENTIFIER;
-			$$->u.expression.u.identifier = yylval.gs->s;
-		}
-
-	|	DECIMAL_CONSTANT
+primary_expression:
+		DECIMAL_CONSTANT
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_CONSTANT;
@@ -468,29 +458,70 @@ primary_expression
 		}
 	;
 
-postfix_expression
-	: primary_expression
-		{	$$ = $1;					}
-	| postfix_expression DOT IDENTIFIER
+identifiers
+	:	IDENTIFIER
 		{
 			$$ = make_node(parser_ctx, NODE_EXPRESSION);
 			$$->u.expression.type = AST_EXP_IDENTIFIER;
+			$$->u.expression.u.identifier = yylval.gs->s;
+		}
+	|	GLOBAL_IDENTIFIER
+		{
+			$$ = make_node(parser_ctx, NODE_EXPRESSION);
+			$$->u.expression.type = AST_EXP_GLOBAL_IDENTIFIER;
+			$$->u.expression.u.identifier = yylval.gs->s;
+		}
+	;
+
+prefix_expression_rec
+	: LSBRAC unary_expression RSBRAC
+		{
+			$$ = $2;
+		}
+	| LSBRAC unary_expression RSBRAC prefix_expression_rec
+		{
+			$$ = $2;
+			$$->u.expression.pre_op = AST_LINK_BRACKET;
+			$$->u.expression.prev = $4;
+		}
+	;
+
+prefix_expression
+	: identifiers
+		{
+			$$ = $1;
+		}
+	| identifiers prefix_expression_rec
+		{
+			$$ = $1;
+			$$->u.expression.pre_op = AST_LINK_BRACKET;
+			$$->u.expression.next_bracket = $2;
+		}
+	;
+
+postfix_expression
+	: prefix_expression
+		{
+			$$ = $1;
+		}
+	| postfix_expression DOT prefix_expression
+		{
+			$$ = $3;
 			$$->u.expression.post_op = AST_LINK_DOT;
-			$$->u.expression.u.identifier = $3->s;
 			$$->u.expression.prev = $1;
 		}
-	| postfix_expression RARROW IDENTIFIER
+	| postfix_expression RARROW prefix_expression
 		{
-			$$ = make_node(parser_ctx, NODE_EXPRESSION);
-			$$->u.expression.type = AST_EXP_IDENTIFIER;
+			$$ = $3;
 			$$->u.expression.post_op = AST_LINK_RARROW;
-			$$->u.expression.u.identifier = $3->s;
 			$$->u.expression.prev = $1;
 		}
 	;
 
 unary_expression
 	: postfix_expression
+		{	$$ = $1;					}
+	| primary_expression
 		{	$$ = $1;					}
 	| unary_operator unary_expression
 		{
@@ -518,7 +549,7 @@ unary_operator
 	| NOT_BIN
 		{
 			$$ = make_node(parser_ctx, NODE_UNARY_OP);
-			$$->u.unary_op.type = AST_UNARY_BIN_NOT;
+			$$->u.unary_op.type = AST_UNARY_BIT_NOT;
 		}
 	;
 
@@ -557,30 +588,57 @@ shift_expression
 		{	$$ = $1;					}
 	| shift_expression LEFT_OP additive_expression
 		{
-			$$ = make_op_node(parser_ctx, AST_OP_LSHIFT, $1, $3);
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_LSHIFT, $1, $3);
 		}
 	| shift_expression RIGHT_OP additive_expression
 		{
-			$$ = make_op_node(parser_ctx, AST_OP_RSHIFT, $1, $3);
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_RSHIFT, $1, $3);
+		}
+	;
+
+and_expression
+	: shift_expression
+		{	$$ = $1;					}
+	| and_expression AND_BIN shift_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_AND, $1, $3);
+		}
+	;
+
+exclusive_or_expression
+	: and_expression
+		{	$$ = $1;					}
+	| exclusive_or_expression XOR_BIN and_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_XOR, $1, $3);
+		}
+	;
+
+inclusive_or_expression
+	: exclusive_or_expression
+		{	$$ = $1;					}
+	| inclusive_or_expression OR_BIN exclusive_or_expression
+		{
+			$$ = make_op_node(parser_ctx, AST_OP_BIT_OR, $1, $3);
 		}
 	;
 
 relational_expression
-	: shift_expression
+	: inclusive_or_expression
 		{	$$ = $1;					}
-	| relational_expression LT_OP shift_expression
+	| relational_expression LT_OP inclusive_or_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_LT, $1, $3);
 		}
-	| relational_expression GT_OP shift_expression
+	| relational_expression GT_OP inclusive_or_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_GT, $1, $3);
 		}
-	| relational_expression LE_OP shift_expression
+	| relational_expression LE_OP inclusive_or_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_LE, $1, $3);
 		}
-	| relational_expression GE_OP shift_expression
+	| relational_expression GE_OP inclusive_or_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_GE, $1, $3);
 		}
@@ -599,37 +657,10 @@ equality_expression
 		}
 	;
 
-and_expression
+logical_and_expression
 	: equality_expression
 		{	$$ = $1;					}
-	| and_expression AND_BIN equality_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_BIN_AND, $1, $3);
-		}
-	;
-
-exclusive_or_expression
-	: and_expression
-		{	$$ = $1;					}
-	| exclusive_or_expression XOR_BIN and_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_BIN_XOR, $1, $3);
-		}
-	;
-
-inclusive_or_expression
-	: exclusive_or_expression
-		{	$$ = $1;					}
-	| inclusive_or_expression OR_BIN exclusive_or_expression
-		{
-			$$ = make_op_node(parser_ctx, AST_OP_BIN_OR, $1, $3);
-		}
-	;
-
-logical_and_expression
-	: inclusive_or_expression
-		{	$$ = $1;					}
-	| logical_and_expression AND_OP inclusive_or_expression
+	| logical_and_expression AND_OP equality_expression
 		{
 			$$ = make_op_node(parser_ctx, AST_OP_AND, $1, $3);
 		}

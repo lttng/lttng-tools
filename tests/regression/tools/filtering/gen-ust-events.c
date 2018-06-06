@@ -32,6 +32,7 @@ int main(int argc, char **argv)
 {
 	int i, netint;
 	long values[] = { 1, 2, 3 };
+	uint32_t net_values[] = { 1, 2, 3 };
 	char text[10] = "test";
 	char escape[10] = "\\*";
 	double dbl = 2.0;
@@ -49,9 +50,14 @@ int main(int argc, char **argv)
 		nr_usec = atoi(argv[2]);
 	}
 
+	for (i = 0; i < 3; i++) {
+		net_values[i] = htonl(net_values[i]);
+	}
+
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
-		tracepoint(tp, tptest, i, netint, values, text, strlen(text), escape, dbl, flt);
+		tracepoint(tp, tptest, i, netint, values, text, strlen(text), escape, dbl, flt,
+			net_values);
 		usleep(nr_usec);
 	}
 

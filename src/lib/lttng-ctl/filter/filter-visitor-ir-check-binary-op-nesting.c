@@ -53,10 +53,6 @@ int check_bin_op_nesting_recursive(struct ir_op *node, int nesting)
 	{
 		int ret;
 
-		if (nesting > 0) {
-			fprintf(stderr, "[error] Nesting of binary operators is not allowed, except for logical operators.\n");
-			return -EINVAL;
-		}
 		ret = check_bin_op_nesting_recursive(node->u.binary.left,
 				nesting + 1);
 		if (ret)
