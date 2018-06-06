@@ -4222,10 +4222,14 @@ int rotate_relay_stream(struct lttng_consumer_local_data *ctx,
 			stream->channel_read_only_attributes.path,
 			stream->chan->current_chunk_id,
 			stream->last_sequence_number);
-	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+	if (ret < 0) {
+		ERR("Relayd rotate stream failed. Cleaning up relayd %" PRIu64".", relayd->net_seq_idx);
+		lttng_consumer_cleanup_relayd(relayd);
+	}
 	if (ret) {
 		ERR("Rotate relay stream");
 	}
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 
 end:
 	return ret;
@@ -4396,6 +4400,10 @@ int rotate_rename_relay(const char *old_path, const char *new_path,
 
 	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 	ret = relayd_rotate_rename(&relayd->control_sock, old_path, new_path);
+	if (ret < 0) {
+		ERR("Relayd rotate rename failed. Cleaning up relayd %" PRIu64".", relayd->net_seq_idx);
+		lttng_consumer_cleanup_relayd(relayd);
+	}
 	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 end:
 	return ret;
@@ -4426,6 +4434,10 @@ int lttng_consumer_rotate_pending_relay(uint64_t session_id,
 
 	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 	ret = relayd_rotate_pending(&relayd->control_sock, chunk_id);
+	if (ret < 0) {
+		ERR("Relayd rotate pending failed. Cleaning up relayd %" PRIu64".", relayd->net_seq_idx);
+		lttng_consumer_cleanup_relayd(relayd);
+	}
 	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 
 end:
@@ -4463,6 +4475,10 @@ int mkdir_relay(const char *path, uint64_t relayd_id)
 
 	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 	ret = relayd_mkdir(&relayd->control_sock, path);
+	if (ret < 0) {
+		ERR("Relayd mkdir failed. Cleaning up relayd %" PRIu64".", relayd->net_seq_idx);
+		lttng_consumer_cleanup_relayd(relayd);
+	}
 	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 
 end:
