@@ -457,6 +457,7 @@ struct consumer_relayd_sock_pair {
 	/* Session id on both sides for the sockets. */
 	uint64_t relayd_session_id;
 	uint64_t sessiond_session_id;
+	struct lttng_consumer_local_data *ctx;
 };
 
 /*
@@ -739,5 +740,6 @@ void consumer_del_stream_for_data(struct lttng_consumer_stream *stream);
 int consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
+void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd);
 
 #endif /* LIB_CONSUMER_H */
