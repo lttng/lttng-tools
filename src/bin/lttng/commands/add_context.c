@@ -243,7 +243,9 @@ const struct ctx_opts {
 	{ "need_reschedule", CONTEXT_NEED_RESCHEDULE },
 	{ "migratable", CONTEXT_MIGRATABLE },
 	{ "callstack-kernel", CONTEXT_CALLSTACK_KERNEL },
+#if defined(__i386) || defined(__x86_64)
 	{ "callstack-user", CONTEXT_CALLSTACK_USER },
+#endif
 
 	/* Perf options */
 
