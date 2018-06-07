@@ -40,6 +40,7 @@ long __attribute__ ((noinline))
 my_gettid(void)
 {
     long ret;
+#ifdef __x86_64
     asm volatile
     (
         "syscall"
@@ -47,6 +48,17 @@ my_gettid(void)
         : "0"(__NR_gettid)
         : "cc", "rcx", "r11", "memory"
     );
+#elif __i386
+    asm volatile
+    (
+        "int $0x80"
+        : "=a" (ret)
+        : "0"(__NR_gettid)
+        : "cc", "edi", "esi", "memory"
+    );
+#else
+#error "Userspace callstack test not supported for this architecture."
+#endif
     return ret;
 }
 
