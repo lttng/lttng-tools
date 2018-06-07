@@ -52,7 +52,6 @@ def extract_user_func_names(executable, raw_callstack):
     recorded_callstack = set()
 
     # Remove commas and split on spaces
-    ip_not_found = True
     for index, addr in enumerate(raw_callstack.replace(',', '').split(' ')):
         # Consider only the elements starting with '0x' which are the
         # addresses recorded in the callstack
@@ -76,8 +75,9 @@ def extract_kernel_func_names(raw_callstack):
     # We read kallsyms file and save the output
     with open('/proc/kallsyms') as kallsyms_f:
         for line in kallsyms_f:
-            addr = line.split()[0]
-            symbol = line.split()[2]
+            line_tokens = line.split()
+            addr = line_tokens[0]
+            symbol = line_tokens[2]
             addresses.append(int(addr, 16))
             syms.append({'addr':int(addr, 16), 'symbol':symbol})
 
@@ -112,9 +112,9 @@ def main():
     recorded_callstack = set()
     cs_type=None
 
-    if len(sys.argv) <= 4:
+    if len(sys.argv) <= 2:
         print(sys.argv)
-        raise ValueError('USAGE: ./parse (--kernel|--user EXE) FUNC-NAMES')
+        raise ValueError('USAGE: ./{} (--kernel|--user EXE) FUNC-NAMES'.format(sys.argv[0]))
 
     # If the `--user` option is passed, save the next argument as the path
     # to the executable
