@@ -259,6 +259,12 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_MIGRATABLE:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_MIGRATABLE;
 		break;
+	case LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CALLSTACK_KERNEL;
+		break;
+	case LTTNG_EVENT_CONTEXT_CALLSTACK_USER:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CALLSTACK_USER;
+		break;
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 		goto error;

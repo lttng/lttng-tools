@@ -84,6 +84,8 @@ enum context_type {
 	CONTEXT_PREEMPTIBLE  = 17,
 	CONTEXT_NEED_RESCHEDULE = 18,
 	CONTEXT_MIGRATABLE   = 19,
+	CONTEXT_CALLSTACK_KERNEL = 20,
+	CONTEXT_CALLSTACK_USER = 21,
 };
 
 /*
@@ -240,6 +242,10 @@ const struct ctx_opts {
 	{ "preemptible", CONTEXT_PREEMPTIBLE },
 	{ "need_reschedule", CONTEXT_NEED_RESCHEDULE },
 	{ "migratable", CONTEXT_MIGRATABLE },
+	{ "callstack-kernel", CONTEXT_CALLSTACK_KERNEL },
+#if defined(__i386) || defined(__x86_64)
+	{ "callstack-user", CONTEXT_CALLSTACK_USER },
+#endif
 
 	/* Perf options */
 

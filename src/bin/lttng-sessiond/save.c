@@ -285,6 +285,12 @@ const char *get_kernel_context_type_string(
 	case LTTNG_KERNEL_CONTEXT_MIGRATABLE:
 		context_type_string = config_event_context_migratable;
 		break;
+	case LTTNG_KERNEL_CONTEXT_CALLSTACK_USER:
+		context_type_string = config_event_context_callstack_user;
+		break;
+	case LTTNG_KERNEL_CONTEXT_CALLSTACK_KERNEL:
+		context_type_string = config_event_context_callstack_kernel;
+		break;
 	default:
 		context_type_string = NULL;
 	}
