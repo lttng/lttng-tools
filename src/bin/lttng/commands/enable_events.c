@@ -320,7 +320,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	num_token = strutils_array_of_strings_len(tokens);
 
 	/*
-	 * Early sanity check that the number of parameter is between 2 and 3
+	 * Early sanity check that the number of parameter is between 2 and 4
 	 * inclusively.
 	 * elf:PATH:SYMBOL
 	 * PATH:SYMBOL (same behavior as above^)
