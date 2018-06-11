@@ -222,7 +222,7 @@ int populate_section_header(struct lttng_elf * elf, struct lttng_elf_shdr *shdr,
 			+ (off_t) index * elf->ehdr->e_shentsize;
 
 	if (lseek(elf->fd, offset, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking to the beginning of ELF section header");
 		ret = -1;
 		goto error;
 	}
@@ -231,7 +231,7 @@ int populate_section_header(struct lttng_elf * elf, struct lttng_elf_shdr *shdr,
 		Elf32_Shdr elf_shdr;
 
 		if (lttng_read(elf->fd, &elf_shdr, sizeof(elf_shdr)) < sizeof(elf_shdr)) {
-			PERROR("read");
+			PERROR("Error reading ELF section header");
 			ret = -1;
 			goto error;
 		}
@@ -243,7 +243,7 @@ int populate_section_header(struct lttng_elf * elf, struct lttng_elf_shdr *shdr,
 		Elf64_Shdr elf_shdr;
 
 		if (lttng_read(elf->fd, &elf_shdr, sizeof(elf_shdr)) < sizeof(elf_shdr)) {
-			PERROR("read");
+			PERROR("Error reading ELF section header");
 			ret = -1;
 			goto error;
 		}
@@ -267,7 +267,7 @@ int populate_elf_header(struct lttng_elf *elf)
 	 * and copy it in our structure.
 	 */
 	if (lseek(elf->fd, 0, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking to the beginning of the file");
 		ret = -1;
 		goto error;
 	}
@@ -353,7 +353,7 @@ static
 char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 {
 	char *name = NULL;
-	size_t len = 0, to_read;	/* len does not include \0 */
+	size_t name_length = 0, to_read;	/* name_length does not include \0 */
 
 	if (!elf) {
 		goto error;
@@ -364,13 +364,13 @@ char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 	}
 
 	if (lseek(elf->fd, elf->section_names_offset + offset, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking to the beginning of ELF string table section");
 		goto error;
 	}
 
 	to_read = elf->section_names_size - offset;
 
-	/* Find first \0 after or at current location, remember len. */
+	/* Find first \0 after or at current location, remember name_length. */
 	for (;;) {
 		char buf[BUF_LEN];
 		ssize_t read_len;
@@ -381,30 +381,34 @@ char *lttng_elf_get_section_name(struct lttng_elf *elf, off_t offset)
 		}
 		read_len = lttng_read(elf->fd, buf, min_t(size_t, BUF_LEN, to_read));
 		if (read_len <= 0) {
-			PERROR("read");
+			PERROR("Error reading ELF string table section");
 			goto error;
 		}
 		for (i = 0; i < read_len; i++) {
 			if (buf[i] == '\0') {
-				len += i;
+				name_length += i;
 				goto end;
 			}
 		}
-		len += read_len;
+		name_length += read_len;
 		to_read -= read_len;
 	}
 end:
-	name = zmalloc(sizeof(char) * (len + 1));	/* + 1 for \0 */
+	/*
+	 * We found the length of the section name, now seek back to the
+	 * beginning of the name and copy it in the newly allocated buffer.
+	 */
+	name = zmalloc(sizeof(char) * (name_length + 1));	/* + 1 for \0 */
 	if (!name) {
-		PERROR("zmalloc");
+		PERROR("Error allocating ELF section name buffer");
 		goto error;
 	}
 	if (lseek(elf->fd, elf->section_names_offset + offset, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking to the offset of the ELF section name");
 		goto error;
 	}
-	if (lttng_read(elf->fd, name, len + 1) < len + 1) {
-		PERROR("read");
+	if (lttng_read(elf->fd, name, name_length + 1) < name_length + 1) {
+		PERROR("Error reading the ELF section name");
 		goto error;
 	}
 
@@ -436,15 +440,15 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 */
 
 	if (lseek(elf->fd, 0, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking the beginning of ELF file");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
 	ret = lttng_read(elf->fd, e_ident, EI_NIDENT);
 	if (ret < EI_NIDENT) {
-		DBG("Error reading the ELF id fields");
+		DBG("Error reading the ELF identification fields");
 		if (ret == -1) {
-			PERROR("read");
+			PERROR("Error reading the ELF identification fields");
 		}
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
@@ -497,7 +501,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 
 	elf->ehdr = zmalloc(sizeof(struct lttng_elf_ehdr));
 	if (!elf->ehdr) {
-		PERROR("zmalloc");
+		PERROR("Error allocation buffer for ELF header");
 		ret = LTTNG_ERR_NOMEM;
 		goto end;
 	}
@@ -539,13 +543,13 @@ struct lttng_elf *lttng_elf_create(int fd)
 
 	elf = zmalloc(sizeof(struct lttng_elf));
 	if (!elf) {
-		PERROR("zmalloc");
+		PERROR("Error allocating struct lttng_elf");
 		goto error;
 	}
 
 	elf->fd = dup(fd);
 	if (elf->fd < 0) {
-		PERROR("dup");
+		PERROR("Error duplicating file descriptor to binary");
 		goto error;
 	}
 
@@ -572,7 +576,7 @@ error:
 		}
 		if (elf->fd >= 0) {
 			if (close(elf->fd)) {
-				PERROR("close");
+				PERROR("Error closing file descriptor in error path");
 				abort();
 			}
 		}
@@ -593,7 +597,7 @@ void lttng_elf_destroy(struct lttng_elf *elf)
 
 	free(elf->ehdr);
 	if (close(elf->fd)) {
-		PERROR("close");
+		PERROR("Error closing file description in error path");
 		abort();
 	}
 	free(elf);
@@ -634,18 +638,18 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 
 	section_offset = shdr->sh_offset;
 	if (lseek(elf->fd, section_offset, SEEK_SET) < 0) {
-		PERROR("lseek");
+		PERROR("Error seeking to section offset");
 		goto error;
 	}
 
 	data = zmalloc(shdr->sh_size);
 	if (!data) {
-		PERROR("zmalloc");
+		PERROR("Error allocating buffer for ELF section data");
 		goto error;
 	}
 	ret = lttng_read(elf->fd, data, shdr->sh_size);
 	if (ret == -1) {
-		PERROR("read");
+		PERROR("Error reading ELF section data");
 		goto free_error;
 	}
 

@@ -247,7 +247,6 @@ function test_userspace_probe_enable_colon_in_path ()
 
 	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_WITH_COLON_IN_NAME
 
-	echo $ENABLE_EXPR
 	diag "Userspace probe with binary with colon in name enabled successfully"
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
