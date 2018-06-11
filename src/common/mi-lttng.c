@@ -1248,31 +1248,32 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 	{
 		const char *function_name;
 		const char *binary_path;
+
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_type,
-					config_element_userspace_probe_type_function);
+				config_element_userspace_probe_type,
+				config_element_userspace_probe_type_function);
 		if (ret) {
 			goto end;
 		}
 		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_binary_path, binary_path);
+				config_element_userspace_probe_binary_path, binary_path);
 		if (ret) {
 			goto end;
 		}
 		switch (lookup_type) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 			ret = mi_lttng_writer_write_element_string(writer,
-						config_element_userspace_probe_lookup,
-						config_element_userspace_probe_lookup_elf);
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_elf);
 			if (ret) {
 				goto end;
 			}
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
 			ret = mi_lttng_writer_write_element_string(writer,
-						config_element_userspace_probe_lookup,
-						config_element_userspace_probe_lookup_default);
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_default);
 			if (ret) {
 				goto end;
 			}
@@ -1287,7 +1288,7 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 
 		function_name = lttng_userspace_probe_location_function_get_function_name(location);
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_function_name, function_name);
+				config_element_userspace_probe_function_name, function_name);
 		if (ret) {
 			goto end;
 		}
@@ -1300,14 +1301,14 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 		const char *binary_path;
 
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_type,
-					config_element_userspace_probe_type_tracepoint);
+				config_element_userspace_probe_type,
+				config_element_userspace_probe_type_tracepoint);
 		if (ret) {
 			goto end;
 		}
 		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_binary_path, binary_path);
+				config_element_userspace_probe_binary_path, binary_path);
 		if (ret) {
 			goto end;
 		}
@@ -1318,22 +1319,22 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 
 		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_tracepoint_provider, provider_name);
+				config_element_userspace_probe_tracepoint_provider, provider_name);
 		if (ret) {
 			goto end;
 		}
 
 		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
 		ret = mi_lttng_writer_write_element_string(writer,
-					config_element_userspace_probe_tracepoint_probename, probe_name);
+				config_element_userspace_probe_tracepoint_probename, probe_name);
 		if (ret) {
 			goto end;
 		}
 		switch (lookup_type) {
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 			ret = mi_lttng_writer_write_element_string(writer,
-						config_element_userspace_probe_lookup,
-						config_element_userspace_probe_lookup_sdt);
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_sdt);
 			if (ret) {
 				goto end;
 			}
@@ -1344,7 +1345,7 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 		break;
 	}
 	default:
-		ERR("INVALID PROBE TYPE ENCOUNTERED");
+		ERR("Invalid probe type encountered");
 	}
 	/* Close probe_attributes and attributes */
 	ret = mi_lttng_close_multi_element(writer, 2);

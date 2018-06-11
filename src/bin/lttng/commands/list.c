@@ -320,7 +320,7 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		break;
 	}
 	default:
-		ERR("INVALID PROBE TYPE ENCOUNTERED");
+		ERR("Invalid probe type encountered");
 	}
 }
 

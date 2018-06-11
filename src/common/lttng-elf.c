@@ -311,7 +311,7 @@ error:
  */
 static
 struct lttng_elf_shdr *lttng_elf_get_section_hdr(struct lttng_elf *elf,
-			uint16_t index)
+		uint16_t index)
 {
 	struct lttng_elf_shdr *section_header = NULL;
 	int ret = 0;
@@ -332,7 +332,7 @@ struct lttng_elf_shdr *lttng_elf_get_section_hdr(struct lttng_elf *elf,
 	ret = populate_section_header(elf, section_header, index);
 	if (ret) {
 		ret = LTTNG_ERR_ELF_PARSING;
-		ERR("Error populating section header.");
+		DBG("Error populating section header.");
 		goto error;
 	}
 	return section_header;
@@ -424,7 +424,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	int ret = 0;
 
 	if (elf->fd == -1) {
-		ERR("fd error");
+		DBG("fd error");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
@@ -442,7 +442,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	}
 	ret = lttng_read(elf->fd, e_ident, EI_NIDENT);
 	if (ret < EI_NIDENT) {
-		ERR("Error reading the ELF id fields");
+		DBG("Error reading the ELF id fields");
 		if (ret == -1) {
 			PERROR("read");
 		}
@@ -463,7 +463,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 * Check the magic number.
 	 */
 	if (memcmp(magic_number, ELFMAG, SELFMAG) != 0) {
-		ERR("Error check ELF magic number.");
+		DBG("Error check ELF magic number.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
@@ -472,7 +472,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 * Check the bitness is either ELFCLASS32 or ELFCLASS64.
 	 */
 	if (elf->bitness <= ELFCLASSNONE || elf->bitness >= ELFCLASSNUM) {
-		ERR("ELF class error.");
+		DBG("ELF class error.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
@@ -481,7 +481,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 * Check the endianness is either ELFDATA2LSB or ELFDATA2MSB.
 	 */
 	if (elf->endianness <= ELFDATANONE || elf->endianness >= ELFDATANUM) {
-		ERR("ELF endianness error.");
+		DBG("ELF endianness error.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
@@ -490,7 +490,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 * Check the version is ELF_CURRENT.
 	 */
 	if (version <= EV_NONE || version >= EV_NUM) {
-		ERR("Wrong ELF version.");
+		DBG("Wrong ELF version.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto end;
 	}
@@ -507,7 +507,7 @@ int lttng_elf_validate_and_populate(struct lttng_elf *elf)
 	 */
 	ret = populate_elf_header(elf);
 	if (ret) {
-		ERR("Error reading ELF header,");
+		DBG("Error reading ELF header,");
 		goto free_elf_error;
 	}
 
@@ -601,15 +601,14 @@ void lttng_elf_destroy(struct lttng_elf *elf)
 
 static
 int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
-		  const char *section_name, struct lttng_elf_shdr **section_hdr)
+		const char *section_name, struct lttng_elf_shdr **section_hdr)
 {
 	int i;
 	char *curr_section_name;
 	for (i = 0; i < elf->ehdr->e_shnum; ++i) {
-
 		*section_hdr = lttng_elf_get_section_hdr(elf, i);
 		curr_section_name = lttng_elf_get_section_name(elf,
-							   (*section_hdr)->sh_name);
+				(*section_hdr)->sh_name);
 
 		if (!curr_section_name) {
 			continue;
@@ -623,7 +622,7 @@ int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
 
 static
 char *lttng_elf_get_section_data(struct lttng_elf *elf,
-			 struct lttng_elf_shdr *shdr)
+		struct lttng_elf_shdr *shdr)
 {
 	int ret;
 	off_t section_offset;
@@ -667,7 +666,7 @@ error:
  */
 static
 int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
-		 size_t addr, uint64_t *offset)
+		size_t addr, uint64_t *offset)
 {
 	int ret = 0;
 	off_t text_section_offset;
@@ -677,16 +676,16 @@ int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
 	struct lttng_elf_shdr *text_section_hdr = NULL;
 
 	if (!elf_handle) {
-		ERR("Invalid ELF handle.");
+		DBG("Invalid ELF handle.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto error;
 	}
 
 	/* Get a pointer to the .text section header. */
 	ret = lttng_elf_get_section_hdr_by_name(elf_handle,
-				TEXT_SECTION_NAME, &text_section_hdr);
+			TEXT_SECTION_NAME, &text_section_hdr);
 	if (ret) {
-		ERR("Text section not found in binary.");
+		DBG("Text section not found in binary.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto error;
 	}
@@ -699,7 +698,7 @@ int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
 	 * Verify that the address is within the .text section boundaries.
 	 */
 	if (addr < text_section_addr_beg || addr > text_section_addr_end) {
-		ERR("Address found is outside of the .text section addr=%lu, "
+		DBG("Address found is outside of the .text section addr=%lu, "
 			".text section=[%lu - %lu].", addr, text_section_addr_beg,
 			text_section_addr_end);
 		ret = LTTNG_ERR_ELF_PARSING;
@@ -751,32 +750,32 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 
 	/* Get the symbol table section header. */
 	ret = lttng_elf_get_section_hdr_by_name(elf, SYMBOL_TAB_SECTION_NAME,
-				&symtab_hdr);
+			&symtab_hdr);
 	if (ret) {
-		ERR("Cannot get ELF Symbol Table section.");
+		DBG("Cannot get ELF Symbol Table section.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto destroy_elf;
 	}
 	/* Get the data associated with the symbol table section. */
 	symbol_table_data = lttng_elf_get_section_data(elf, symtab_hdr);
 	if (symbol_table_data == NULL) {
-		ERR("Cannot get ELF Symbol Table data.");
+		DBG("Cannot get ELF Symbol Table data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto destroy_elf;
 	}
 
 	/* Get the string table section header. */
 	ret = lttng_elf_get_section_hdr_by_name(elf, STRING_TAB_SECTION_NAME,
-				&strtab_hdr);
+			&strtab_hdr);
 	if (ret) {
-		ERR("Cannot get ELF string table section.");
+		DBG("Cannot get ELF string table section.");
 		goto free_symbol_table_data;
 	}
 
 	/* Get the data associated with the string table section. */
 	string_table_data = lttng_elf_get_section_data(elf, strtab_hdr);
 	if (string_table_data == NULL) {
-		ERR("Cannot get ELF string table section data.");
+		DBG("Cannot get ELF string table section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto free_symbol_table_data;
 	}
@@ -787,6 +786,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	/* Loop over all symbol. */
 	for (sym_idx = 0; sym_idx < sym_count; sym_idx++) {
 		struct lttng_elf_sym curr_sym;
+
 		/* Get the symbol at the current index. */
 		if (is_elf_32_bit(elf)) {
 			Elf32_Sym tmp = ((Elf32_Sym *) symbol_table_data)[sym_idx];
@@ -829,7 +829,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	}
 
 	if (!sym_found) {
-		ERR("Symbol not found.");
+		DBG("Symbol not found.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto free_string_table_data;
 	}
@@ -840,7 +840,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	 */
 	ret = lttng_elf_convert_addr_in_text_to_offset(elf, addr, offset);
 	if (ret) {
-		ERR("Cannot convet addr to offset.");
+		DBG("Cannot convet addr to offset.");
 		goto free_string_table_data;
 	}
 
@@ -869,14 +869,14 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 	uint64_t *probe_locs = NULL, *new_probe_locs = NULL;
 
 	if (!provider_name || !probe_name || !nb_probe || !offsets) {
-		ERR("Invalid arguments.");
+		DBG("Invalid arguments.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto error;
 	}
 
 	elf = lttng_elf_create(fd);
 	if (!elf) {
-		ERR("Error allocation ELF.");
+		DBG("Error allocation ELF.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto error;
 	}
@@ -885,14 +885,14 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 	ret = lttng_elf_get_section_hdr_by_name(elf, NOTE_STAPSDT_SECTION_NAME,
 			&stap_note_section_hdr);
 	if (ret) {
-		ERR("Cannot get ELF stap note section.");
+		DBG("Cannot get ELF stap note section.");
 		goto destroy_elf_error;
 	}
 
 	/* Get the data associated with the stap note section. */
 	stap_note_section_data = lttng_elf_get_section_data(elf, stap_note_section_hdr);
 	if (stap_note_section_data == NULL) {
-		ERR("Cannot get ELF stap note section data.");
+		DBG("Cannot get ELF stap note section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
 		goto destroy_elf_error;
 	}
@@ -907,7 +907,6 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 		/* Check if we have reached the end of the note section. */
 		if (curr_data_ptr >=
 				curr_note_section_begin + stap_note_section_hdr->sh_size) {
-
 			*nb_probe = nb_match;
 			*offsets = probe_locs;
 			ret = 0;
@@ -919,7 +918,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 
 		/* Sanity check; a zero name_size is reserved. */
 		if (name_size == 0) {
-			ERR("Invalid name size field in SDT probe descriptions"
+			DBG("Invalid name size field in SDT probe descriptions"
 				"section.");
 			ret = -1;
 			goto realloc_error;
@@ -928,7 +927,6 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 		/* Get description size field. */
 		desc_size = next_4bytes_boundary(*(uint32_t*) curr_data_ptr);
 		curr_data_ptr += sizeof(uint32_t);
-
 
 		/* Get type field. */
 		note_type = *(uint32_t *) curr_data_ptr;
@@ -980,7 +978,8 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 
 		/* Check if the provider and probe name match */
 		if (strcmp(provider_name, curr_provider) == 0 &&
-			strcmp(probe_name, curr_probe) == 0) {
+				strcmp(probe_name, curr_probe) == 0) {
+			int new_size;
 
 			/*
 			 * We currently don't support SDT probes with semaphores. Return
@@ -992,7 +991,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 				goto end;
 			}
 
-			int new_size = ++nb_match * sizeof(uint64_t);
+			new_size = (++nb_match) * sizeof(uint64_t);
 
 			/*
 			 * Found a match with not semaphore, we need to copy the
@@ -1001,7 +1000,7 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 			new_probe_locs = realloc(probe_locs, new_size);
 			if (!new_probe_locs) {
 				/* Error allocating a larger buffer */
-				ERR("Allocation error in SDT.");
+				DBG("Allocation error in SDT.");
 				ret = LTTNG_ERR_NOMEM;
 				goto realloc_error;
 			}
@@ -1013,9 +1012,9 @@ int lttng_elf_get_sdt_description(int fd, const char *provider_name,
 			 * this probe from the beginning of the executable file.
 			 */
 			ret = lttng_elf_convert_addr_in_text_to_offset(elf,
-						curr_probe_location, &curr_probe_offset);
+					curr_probe_location, &curr_probe_offset);
 			if (ret) {
-				ERR("Conversion error in SDT.");
+				DBG("Conversion error in SDT.");
 				goto realloc_error;
 			}
 

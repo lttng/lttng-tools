@@ -28,7 +28,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 SESSION_NAME=userspace_probe_test_session
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=120
+NUM_TESTS=127
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -233,6 +233,36 @@ function test_userspace_probe_enable_full_path ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_colon_in_path ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_colon_in_path"
+	ELF_SYMBOL="test_function"
+	COLON_FILE_PATH=$(mktemp -d)
+	ELF_BIN_WITH_COLON_IN_NAME="$COLON_FILE_PATH/colon_:_in_name"
+	ELF_BIN_WITH_COLON_IN_NAME_ESCAPED="$COLON_FILE_PATH/colon_\:_in_name"
+	ENABLE_EXPR="elf:\"$ELF_BIN_WITH_COLON_IN_NAME_ESCAPED\":$ELF_SYMBOL"
+
+	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_WITH_COLON_IN_NAME
+
+	echo $ENABLE_EXPR
+	diag "Userspace probe with binary with colon in name enabled successfully"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+	rm -rf "$COLON_FILE_PATH"
 }
 
 function test_userspace_probe_elf ()
@@ -597,6 +627,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_userspace_probe_enable_in_path
 	test_userspace_probe_enable_full_path
 	test_userspace_probe_enable_elf_symbol_exists
+	test_userspace_probe_enable_colon_in_path
 
 	# Successful event tracing
 	test_userspace_probe_elf

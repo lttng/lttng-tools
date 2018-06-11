@@ -181,13 +181,14 @@ end:
 
 /*
  * Walk the directories in the PATH environment variable to find the target
- * binary pass as parameter.
+ * binary passed as parameter.
  *
  * On success, the full path of the binary is copied in binary_full_path out
- * parameter.
+ * parameter. This buffer is allocated by the caller and must be at least
+ * LTTNG_PATH_MAX bytes long.
  * On failure, returns -1;
  */
-int walk_command_search_path(const char *binary, char *binary_full_path)
+static int walk_command_search_path(const char *binary, char *binary_full_path)
 {
 	char *tentative_binary_path = NULL;
 	char *command_search_path = NULL;
@@ -246,19 +247,34 @@ int walk_command_search_path(const char *binary, char *binary_full_path)
 		 */
 		ret = snprintf(tentative_binary_path, LTTNG_PATH_MAX, "%s/%s",
 				curr_search_dir, binary);
+		if (ret < 0) {
+			goto free_binary_path;
+		}
 		if (ret < LTTNG_PATH_MAX) {
-		 	 /*
-		  	  * Use STAT(2) to see if the file exists.
-		 	 */
+			 /*
+			  * Use STAT(2) to see if the file exists.
+			 */
 			ret = stat(tentative_binary_path, &stat_output);
 			if (ret == 0) {
 				/*
-			 	 * Found a match, set the out parameter and
-			 	 * return success.
-			 	 */
-				strncpy(binary_full_path, tentative_binary_path,
-						LTTNG_PATH_MAX);
-				goto free_binary_path;
+				 * Verify that it is regular file or a symlink
+				 * and not a special file (e.g. device).
+				 */
+				if (S_ISREG(stat_output.st_mode)
+						|| S_ISLNK(stat_output.st_mode)) {
+					/*
+					 * Found a match, set the out parameter
+					 * and return success.
+					 */
+					ret = lttng_strncpy(binary_full_path,
+							tentative_binary_path,
+							LTTNG_PATH_MAX);
+					if (ret == -1) {
+						ERR("Source path does not fit "
+							"in destination buffer.");
+					}
+					goto free_binary_path;
+				}
 			}
 		}
 		/* Go to the next entry in the $PATH variable. */
@@ -283,7 +299,6 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	int ret = CMD_SUCCESS;
 	int num_token;
 	wordexp_t expanded_path;
-
 	char **tokens;
 	char *target_path = NULL;
 	char *unescaped_target_path = NULL;
@@ -456,7 +471,6 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		goto end_string;
 	}
 
-
 	switch (ev->type) {
 	case LTTNG_EVENT_USERSPACE_PROBE:
 		break;
@@ -485,6 +499,7 @@ end_string:
 end:
 	return ret;
 }
+
 /*
  * Maps LOG4j loglevel from string to value
  */
@@ -1413,7 +1428,7 @@ static int enable_events(char *session_name)
 					break;
 				}
 				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
-					ERR("SDT probe %s guarded by semaphore not supported (channel %s, session %s)",
+					ERR("SDT probes %s guarded by semaphores are not supported (channel %s, session %s)",
 							event_name, print_channel_name(channel_name),
 							session_name);
 					error = 1;

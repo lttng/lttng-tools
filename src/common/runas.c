@@ -263,6 +263,7 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 	int ret = 0;
 	uint64_t *offsets = NULL;
 	uint32_t num_offset;
+
 	ret_value->_error = false;
 
 	/* On sucess, this call allocates the offsets paramater. */
@@ -773,36 +774,31 @@ static
 int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 		   struct run_as_ret *ret_value, uid_t uid, gid_t gid)
 {
-	int ret, retry, saved_errno;
+	int ret, saved_errno;
 
 	if (use_clone()) {
 		DBG("Using run_as worker");
-		do {
-			retry = 0;
-			pthread_mutex_lock(&worker_lock);
-			assert(global_worker);
+		pthread_mutex_lock(&worker_lock);
+		assert(global_worker);
 
-			ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
-			saved_errno = ret_value->_errno;
+		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
+		saved_errno = ret_value->_errno;
 
-			pthread_mutex_unlock(&worker_lock);
-			/*
-			 * If the worker thread crashed the errno is set to EIO. So we start
-			 * a new worker process and retry the command.
-			 */
-			if (ret == -1 && saved_errno == EIO) {
-				DBG("Socket closed unexpectedly... "
+		pthread_mutex_unlock(&worker_lock);
+		/*
+		 * If the worker thread crashed the errno is set to EIO. we log
+		 * the error and  start a new worker process.
+		 */
+		if (ret == -1 && saved_errno == EIO) {
+			DBG("Socket closed unexpectedly... "
 					"Restarting the worker process");
-				ret = run_as_restart_worker(global_worker);
+			ret = run_as_restart_worker(global_worker);
 
-				if (ret == -1) {
-					ERR("Failed to restart worker process.");
-					goto err;
-				}
-
-				retry = 1;
+			if (ret == -1) {
+				ERR("Failed to restart worker process.");
+				goto err;
 			}
-		} while (retry);
+		}
 	} else {
 		DBG("Using run_as without worker");
 		ret = run_as_noworker(cmd, data, ret_value, uid, gid);
@@ -914,7 +910,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 	struct run_as_ret ret;
 
 	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
-	     "with for uid %d and gid %d", fd, function, (int) uid, (int) gid);
+		"with for uid %d and gid %d", fd, function, (int) uid, (int) gid);
 
 	data.fd = fd;
 
@@ -943,8 +939,8 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 	struct run_as_ret ret;
 
 	DBG3("extract_sdt_probe_offsets() on fd=%d, probe_name=%s and "
-		 "provider_name=%s with for uid %d and gid %d", fd, probe_name,
-		 provider_name, (int) uid, (int) gid);
+		"provider_name=%s with for uid %d and gid %d", fd, probe_name,
+		provider_name, (int) uid, (int) gid);
 
 	data.fd = fd;
 
