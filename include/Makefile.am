@@ -83,8 +83,7 @@ lttnginclude_HEADERS = \
 	lttng/endpoint.h \
 	lttng/rotation.h \
 	lttng/location.h \
-	lttng/userspace-probe.h \
-	version.h.tmpl
+	lttng/userspace-probe.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
