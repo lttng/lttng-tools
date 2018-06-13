@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
+#include <sys/stat.h>
 
 #include <common/defaults.h>
 #include <common/common.h>
@@ -58,6 +59,30 @@
 #include "agent-thread.h"
 
 #include "cmd.h"
+
+/* Sleep for 100ms between each check for the shm path's deletion. */
+#define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
+
+static enum lttng_error_code wait_on_path(void *path);
+
+/*
+ * Command completion handler that is used by the destroy command
+ * when a session that has a non-default shm_path is being destroyed.
+ *
+ * See comment in cmd_destroy_session() for the rationale.
+ */
+static struct destroy_completion_handler {
+	struct cmd_completion_handler handler;
+	char shm_path[member_sizeof(struct ltt_session, shm_path)];
+} destroy_completion_handler = {
+	.handler = {
+		.run = wait_on_path,
+		.data = destroy_completion_handler.shm_path
+	},
+	.shm_path = { 0 },
+};
+
+static struct cmd_completion_handler *current_completion_handler;
 
 /*
  * Used to keep a unique index for each relayd socket created where this value
@@ -3030,6 +3055,59 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe,
 		PERROR("write kernel poll pipe");
 	}
 
+	if (session->shm_path[0]) {
+		/*
+		 * When a session is created with an explicit shm_path,
+		 * the consumer daemon will create its shared memory files
+		 * at that location and will *not* unlink them. This is normal
+		 * as the intention of that feature is to make it possible
+		 * to retrieve the content of those files should a crash occur.
+		 *
+		 * To ensure the content of those files can be used, the
+		 * sessiond daemon will replicate the content of the metadata
+		 * cache in a metadata file.
+		 *
+		 * On clean-up, it is expected that the consumer daemon will
+		 * unlink the shared memory files and that the session daemon
+		 * will unlink the metadata file. Then, the session's directory
+		 * in the shm path can be removed.
+		 *
+		 * Unfortunately, a flaw in the design of the sessiond's and
+		 * consumerd's tear down of channels makes it impossible to
+		 * determine when the sessiond _and_ the consumerd have both
+		 * destroyed their representation of a channel. For one, the
+		 * unlinking, close, and rmdir happen in deferred 'call_rcu'
+		 * callbacks in both daemons.
+		 *
+		 * However, it is also impossible for the sessiond to know when
+		 * the consumer daemon is done destroying its channel(s) since
+		 * it occurs as a reaction to the closing of the channel's file
+		 * descriptor. There is no resulting communication initiated
+		 * from the consumerd to the sessiond to confirm that the
+		 * operation is completed (and was successful).
+		 *
+		 * Until this is all fixed, the session daemon checks for the
+		 * removal of the session's shm path which makes it possible
+		 * to safely advertise a session as having been destroyed.
+		 *
+		 * Prior to this fix, it was not possible to reliably save
+		 * a session making use of the --shm-path option, destroy it,
+		 * and load it again. This is because the creation of the
+		 * session would fail upon seeing the session's shm path
+		 * already in existence.
+		 *
+		 * Note that none of the error paths in the check for the
+		 * directory's existence return an error. This is normal
+		 * as there isn't much that can be done. The session will
+		 * be destroyed properly, except that we can't offer the
+		 * guarantee that the same session can be re-created.
+		 */
+		current_completion_handler = &destroy_completion_handler.handler;
+		ret = lttng_strncpy(destroy_completion_handler.shm_path,
+				session->shm_path,
+				sizeof(destroy_completion_handler.shm_path));
+		assert(!ret);
+	}
 	ret = session_destroy(session);
 
 	return ret;
@@ -4862,6 +4940,49 @@ int cmd_session_get_current_output(struct ltt_session *session,
 	ret = LTTNG_OK;
 end:
 	return ret;
+}
+
+/* Wait for a given path to be removed before continuing. */
+static enum lttng_error_code wait_on_path(void *path_data)
+{
+	const char *shm_path = path_data;
+
+	DBG("Waiting for the shm path at %s to be removed before completing session destruction",
+			shm_path);
+	while (true) {
+		int ret;
+		struct stat st;
+
+		ret = stat(shm_path, &st);
+		if (ret) {
+			if (errno != ENOENT) {
+				PERROR("stat() returned an error while checking for the existence of the shm path");
+			} else {
+				DBG("shm path no longer exists, completing the destruction of session");
+			}
+			break;
+		} else {
+			if (!S_ISDIR(st.st_mode)) {
+				ERR("The type of shm path %s returned by stat() is not a directory; aborting the wait for shm path removal",
+						shm_path);
+				break;
+			}
+		}
+		usleep(SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US);
+	}
+	return LTTNG_OK;
+}
+
+/*
+ * Returns a pointer to a handler to run on completion of a command.
+ * Returns NULL if no handler has to be run for the last command executed.
+ */
+const struct cmd_completion_handler *cmd_pop_completion_handler(void)
+{
+	struct cmd_completion_handler *handler = current_completion_handler;
+
+	current_completion_handler = NULL;
+	return handler;
 }
 
 /*

@@ -4598,6 +4598,8 @@ static void *thread_manage_clients(void *data)
 	health_code_update();
 
 	while (1) {
+		const struct cmd_completion_handler *cmd_completion_handler;
+
 		DBG("Accepting client command ...");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -4738,6 +4740,18 @@ static void *thread_manage_clients(void *data)
 			 */
 			clean_command_ctx(&cmd_ctx);
 			continue;
+		}
+
+		cmd_completion_handler = cmd_pop_completion_handler();
+		if (cmd_completion_handler) {
+			enum lttng_error_code completion_code;
+
+			completion_code = cmd_completion_handler->run(
+					cmd_completion_handler->data);
+			if (completion_code != LTTNG_OK) {
+				clean_command_ctx(&cmd_ctx);
+				continue;
+			}
 		}
 
 		health_code_update();

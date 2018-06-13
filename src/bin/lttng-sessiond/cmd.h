@@ -24,6 +24,20 @@
 struct notification_thread_handle;
 
 /*
+ * A callback (and associated user data) that should be run after a command
+ * has been executed. No locks should be taken while executing this handler.
+ *
+ * The command's reply should not be sent until the handler has run and
+ * completed successfully. On failure, the handler's return code should
+ * be the only reply sent to the client.
+ */
+typedef enum lttng_error_code (*completion_handler_function)(void *);
+struct cmd_completion_handler {
+	completion_handler_function run;
+	void *data;
+};
+
+/*
  * Init the command subsystem. Must be called before using any of the functions
  * above. This is called in the main() of the session daemon.
  */
@@ -129,5 +143,7 @@ int cmd_session_get_current_output(struct ltt_session *session,
 int cmd_rotation_set_schedule(struct ltt_session *session, uint64_t timer_us,
 		uint64_t size,
 		struct notification_thread_handle *notification_thread_handle);
+
+const struct cmd_completion_handler *cmd_pop_completion_handler(void);
 
 #endif /* CMD_H */
