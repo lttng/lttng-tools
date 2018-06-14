@@ -157,7 +157,7 @@ static void destroy_session(struct relay_session *session)
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 
-void session_release(struct urcu_ref *ref)
+static void session_release(struct urcu_ref *ref)
 {
 	struct relay_session *session =
 			caa_container_of(ref, struct relay_session, ref);
