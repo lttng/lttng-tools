@@ -543,7 +543,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 
 	/* Find the channel associated with the trigger. */
 	cds_lfht_for_each_entry(state->channel_triggers_ht, &iter,
-			channel_trigger_list , channel_triggers_ht_node) {
+			channel_trigger_list, channel_triggers_ht_node) {
 		struct lttng_trigger_list_element *element;
 
 		cds_list_for_each_entry(element, &channel_trigger_list->list, node) {
