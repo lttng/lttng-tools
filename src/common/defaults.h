@@ -93,6 +93,8 @@
 #define DEFAULT_RELAYD_RUNDIR			"%s"
 #define DEFAULT_RELAYD_PATH			DEFAULT_RELAYD_RUNDIR "/relayd"
 
+#define DEFAULT_RELAYD_MINIMAL_FD_CAP		30
+
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_HOME_ENV_VAR              "LTTNG_HOME"
 #define DEFAULT_LTTNG_FALLBACK_HOME_ENV_VAR	"HOME"
