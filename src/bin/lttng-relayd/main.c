@@ -3968,6 +3968,11 @@ int main(int argc, char **argv)
 		goto exit_options;
 	}
 
+	ret = fclose(stdin);
+	if (ret) {
+		PERROR("Failed to close stdin");
+		goto exit_options;
+	}
 	/* Try to create directory if -o, --output is specified. */
 	if (opt_output_path) {
 		if (*opt_output_path != '/') {
