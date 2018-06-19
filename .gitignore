@@ -76,6 +76,7 @@ TAGS
 /tests/unit/test_utils_parse_time_suffix
 /tests/unit/test_utils_expand_path
 /tests/unit/test_notification
+/tests/unit/test_fd_tracker
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard

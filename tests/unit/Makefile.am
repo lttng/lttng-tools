@@ -14,12 +14,14 @@ TESTS = test_kernel_data \
 	test_utils_expand_path \
 	test_string_utils \
 	test_notification \
-	ini_config/test_ini_config
+	ini_config/test_ini_config \
+	test_fd_tracker
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
+LIBFDTRACKER=$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
@@ -28,7 +30,8 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 # Define test programs
 noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
-                  test_utils_expand_path test_string_utils test_notification
+                  test_utils_expand_path test_string_utils test_notification \
+                  test_fd_tracker
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -122,3 +125,7 @@ test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
 # Notification api
 test_notification_SOURCES = test_notification.c
 test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
+
+# fd tracker unit test
+test_fd_tracker_SOURCES = test_fd_tracker.c
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON) $(LIBHASHTABLE)
