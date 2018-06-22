@@ -193,7 +193,7 @@ function test_ust_local_snapshot ()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
@@ -224,7 +224,7 @@ function test_ust_local_snapshot_small_discard_buffers ()
 	enable_mmap_small_discard_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Run test apps, wait for them to complete.
 	start_test_app
@@ -269,7 +269,7 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 	enable_mmap_small_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Run test apps, wait for them to complete.
 	start_test_app
@@ -367,7 +367,7 @@ function test_ust_local_snapshot_large_metadata ()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $LM_EVENT $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 	$LM_BIN 1 1
 	ok $? "Start application to trace"
 	lttng_snapshot_record $SESSION_NAME
@@ -400,7 +400,7 @@ function test_ust_per_uid_local_snapshot ()
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
@@ -429,7 +429,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
@@ -457,7 +457,7 @@ function test_ust_local_snapshots ()
 	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
-	lttng_snapshot_add_output_ok $SESSION_NAME $TRACE_PATH
+	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
 
 	# Returns once the application has at least fired ONE tracepoint.
 	start_test_app
