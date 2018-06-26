@@ -31,6 +31,7 @@
 #include <common/compat/string.h>
 #include <common/compat/getenv.h>
 #include <common/string-utils/string-utils.h>
+#include <common/utils.h>
 
 #include <lttng/constant.h>
 /* Mi dependancy */
@@ -257,8 +258,9 @@ static int walk_command_search_path(const char *binary, char *binary_full_path)
 			ret = stat(tentative_binary_path, &stat_output);
 			if (ret == 0) {
 				/*
-				 * Verify that it is regular file or a symlink
-				 * and not a special file (e.g. device).
+				 * Verify that it is a regular file or a
+				 * symlink and not a special file (e.g.
+				 * device).
 				 */
 				if (S_ISREG(stat_output.st_mode)
 						|| S_ISLNK(stat_output.st_mode)) {
@@ -298,7 +300,6 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 {
 	int ret = CMD_SUCCESS;
 	int num_token;
-	wordexp_t expanded_path;
 	char **tokens;
 	char *target_path = NULL;
 	char *unescaped_target_path = NULL;
@@ -349,11 +350,11 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 			goto end_string;
 		}
 		lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+			lttng_userspace_probe_location_lookup_method_function_elf_create();
 		if (!lookup_method) {
 			WARN("Failed to create ELF lookup method");
 			ret = CMD_ERROR;
-			goto end_free_path;
+			goto end_string;
 		}
 		break;
 	case 4:
@@ -370,7 +371,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		if (!lookup_method) {
 			WARN("Failed to create ELF lookup method");
 			ret = CMD_ERROR;
-			goto end_free_path;
+			goto end_string;
 		}
 		break;
 	default:
@@ -385,45 +386,42 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		goto end_string;
 	}
 
-	/* Find the full path of the target binary. */
-
-	/* First, expand any shell-like elements (e.g. tilde and wildcards). */
-	ret = wordexp(unescaped_target_path, &expanded_path, 0);
-	if (ret != 0) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end_unescaped_string;;
-	}
-
-	/* Make sure there is only one match. */
-	if (expanded_path.we_wordc != 1) {
-		ERR("Ambiguous path to binary.");
-		ret = -LTTNG_ERR_INVALID;
-		goto end_free_wordexp;
-	}
-
-	/* Take a pointer to the first and only match. */
-	target_path = expanded_path.we_wordv[0];
-	if (!target_path) {
-		ret = -LTTNG_ERR_INVALID;
-		goto end_free_wordexp;
-	}
-
 	/*
-	 * Use realpath(3) to expand symlinks and references to `/./` and `/../`
+	 * If there is not forward slash in the path. Walk the $PATH else
+	 * expand.
 	 */
-	real_target_path = realpath(target_path, NULL);
-	if (!real_target_path) {
-		/* realpath() call failed. Try walking the PATH. */
+	if (strchr(target_path, '/') == NULL) {
+		/* Walk the $PATH variable to find the targeted binary. */
 		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
 		if (!real_target_path) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end_free_wordexp;
+			PERROR("Error allocating path buffer");
+			ret = CMD_ERROR;
+			goto end_unescaped_string;
 		}
-
-		/* Walk the $PATH variable to find the targeted binary. */
 		ret = walk_command_search_path(target_path, real_target_path);
 		if (ret) {
 			ERR("Binary not found.");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+	} else {
+		/*
+		 * Expand references to `/./` and `/../`. This function does not check
+		 * if the file exists.
+		 */
+		real_target_path = utils_expand_path_keep_symlink(target_path);
+		if (!real_target_path) {
+			ERR("Error expanding the path to binary.");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+
+		/*
+		 * Check if the file exists using access(2). If it does not, walk the
+		 * $PATH.
+		 */
+		ret = access(real_target_path, F_OK);
+		if (ret) {
 			ret = CMD_ERROR;
 			goto end_free_path;
 		}
@@ -438,6 +436,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end_destroy_lookup_method;
 		}
+
 		/* Ownership transferred to probe_location. */
 		lookup_method = NULL;
 
@@ -456,6 +455,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 			ret = CMD_ERROR;
 			goto end_destroy_lookup_method;
 		}
+
 		/* Ownership transferred to probe_location. */
 		lookup_method = NULL;
 
@@ -490,8 +490,6 @@ end_free_path:
 	 * the PATH.
 	 */
 	free(real_target_path);
-end_free_wordexp:
-	wordfree(&expanded_path);
 end_unescaped_string:
 	free(unescaped_target_path);
 end_string:

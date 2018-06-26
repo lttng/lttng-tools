@@ -28,7 +28,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 SESSION_NAME=userspace_probe_test_session
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=127
+NUM_TESTS=138
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -241,11 +241,11 @@ function test_userspace_probe_enable_colon_in_path ()
 	SESSION_NAME="test_userspace_probe_enable_colon_in_path"
 	ELF_SYMBOL="test_function"
 	COLON_FILE_PATH=$(mktemp -d)
-	ELF_BIN_WITH_COLON_IN_NAME="$COLON_FILE_PATH/colon_:_in_name"
+	ELF_BIN_SYMLINK="$COLON_FILE_PATH/colon_:_in_name"
 	ELF_BIN_WITH_COLON_IN_NAME_ESCAPED="$COLON_FILE_PATH/colon_\:_in_name"
-	ENABLE_EXPR="elf:\"$ELF_BIN_WITH_COLON_IN_NAME_ESCAPED\":$ELF_SYMBOL"
+	ENABLE_EXPR="elf:"$ELF_BIN_WITH_COLON_IN_NAME_ESCAPED":$ELF_SYMBOL"
 
-	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_WITH_COLON_IN_NAME
+	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_SYMLINK
 
 	diag "Userspace probe with binary with colon in name enabled successfully"
 
@@ -337,6 +337,74 @@ function test_userspace_probe_elf_list ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_save_load ()
+{
+	# Test that the load and save works for userspace probes AND that when
+	# a userspace probe is placed on a symlink by the user the save command
+	# saves the path to the link and not to the actual file. This is to
+	# support instrumentation of shared objects that are often accessed
+	# through symlinks and updated.
+	TRACE_PATH=$(mktemp -d)
+	TMP_LINK_DIR=$(mktemp -d)
+	TMP_SAVE_DIR=$(mktemp -d)
+
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	PROVIDER="foobar"
+	PROBE="tp1"
+
+	ELF_BIN_SYMLINK="$TMP_LINK_DIR"/bin_elf_symlink
+	SDT_BIN_SYMLINK="$TMP_LINK_DIR"/bin_sdt_symlink
+
+	ENABLE_EXPR_ELF="elf:$ELF_BIN_SYMLINK:$ELF_SYMBOL"
+	ENABLE_EXPR_SDT="sdt:$SDT_BIN_SYMLINK:$PROVIDER:$PROBE"
+	PROBE_EVENT_NAME_ELF="$PROBE_EVENT_NAME"_elf
+	PROBE_EVENT_NAME_SDT="$PROBE_EVENT_NAME"_sdt
+
+	# Create symlinks to the target binaries.
+	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_SYMLINK
+	ln -s $(realpath $SDT_TEST_BIN) $SDT_BIN_SYMLINK
+
+	diag "Userspace probes are saved and loaded"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# Enable userspace prove events.
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR_ELF" "$PROBE_EVENT_NAME_ELF"
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR_SDT" "$PROBE_EVENT_NAME_SDT"
+
+	# Confirm that the events were enabled.
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME $SDT_TEST_BIN_NAME
+
+	# Save the session to a file.
+	lttng_save $SESSION_NAME "--output-path=$TMP_SAVE_DIR"
+
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Confirm that the userspace probe are save to the xml file.
+	local count=$(cat $TMP_SAVE_DIR/* | grep --count -E "$ELF_BIN_SYMLINK|$SDT_BIN_SYMLINK")
+	if [[ $count -eq "2" ]]; then
+		pass "Symlink found in saved session"
+	else
+		fail "Symlink to binary not found in saved session"
+	fi
+
+	# Load the saved session.
+	lttng_load_ok "--input-path=$TMP_SAVE_DIR"
+
+	# Confirm that the userspace probes event are enabled in the newly
+	# loaded session.
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME $SDT_TEST_BIN_NAME
+
+	# Cleanup temp files and folders.
+	rm -rf "$TRACE_PATH"
+	rm -rf "$TMP_LINK_DIR"
+	rm -rf "$TMP_SAVE_DIR"
 }
 
 function test_userspace_probe_sdt ()
@@ -646,6 +714,8 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	# Successful listing of event
 	test_userspace_probe_sdt_list
 	test_userspace_probe_elf_list
+
+	test_userspace_probe_save_load
 
 	stop_lttng_sessiond
 }

@@ -53,7 +53,7 @@ extern void lttng_userspace_probe_location_lookup_method_destroy(
  * Return NULL on failure.
  */
 extern struct lttng_userspace_probe_location_lookup_method *
-lttng_userspace_probe_location_lookup_method_function_name_elf_create(void);
+lttng_userspace_probe_location_lookup_method_function_elf_create(void);
 
 /*
  * Create a tracepoint SDT tracepoint lookup method struct.

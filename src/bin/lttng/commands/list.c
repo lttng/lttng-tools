@@ -282,7 +282,8 @@ static void print_userspace_probe_location(struct lttng_event *event)
 
 		MSG("%sType: Function", indent8);
 		function_name = lttng_userspace_probe_location_function_get_function_name(location);
-		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
+		binary_path = realpath(lttng_userspace_probe_location_function_get_binary_path(location), NULL);
+
 		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
 		MSG("%sFunction:      %s()", indent8, function_name ? function_name : "NULL");
 		switch (lookup_type) {
@@ -306,7 +307,7 @@ static void print_userspace_probe_location(struct lttng_event *event)
 		MSG("%sType: Tracepoint", indent8);
 		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
 		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
-		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
+		binary_path = realpath(lttng_userspace_probe_location_tracepoint_get_binary_path(location), NULL);
 		MSG("%sBinary path:   %s", indent8, binary_path ? binary_path : "NULL");
 		MSG("%sTracepoint:    %s:%s", indent8, provider_name ? provider_name : "NULL", probe_name ? probe_name : "NULL");
 		switch (lookup_type) {

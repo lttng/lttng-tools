@@ -60,7 +60,7 @@ void lttng_userspace_probe_location_lookup_method_destroy(
 }
 
 struct lttng_userspace_probe_location_lookup_method *
-lttng_userspace_probe_location_lookup_method_function_name_elf_create(void)
+lttng_userspace_probe_location_lookup_method_function_elf_create(void)
 {
 	struct lttng_userspace_probe_location_lookup_method *ret = NULL;
 	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
@@ -179,21 +179,14 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 		bool open_binary)
 {
 	int binary_fd = -1;
-	char *full_binary_path = NULL;
-	char *function_name_copy = NULL;
+	char *function_name_copy = NULL, *binary_path_copy = NULL;
 	struct lttng_userspace_probe_location *ret = NULL;
 	struct lttng_userspace_probe_location_function *location;
 
-	full_binary_path = realpath(binary_path, NULL);
-	if (!full_binary_path) {
-		PERROR("realpath");
-		goto error;
-	}
-
 	if (open_binary) {
-		binary_fd = open(full_binary_path, O_RDONLY);
+		binary_fd = open(binary_path, O_RDONLY);
 		if (binary_fd < 0) {
-			PERROR("open");
+			PERROR("Error opening the binary");
 			goto error;
 		}
 	} else {
@@ -202,18 +195,24 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 
 	function_name_copy = strndup(function_name, LTTNG_SYMBOL_NAME_LEN);
 	if (!function_name_copy) {
-		PERROR("strndup");
+		PERROR("Error duplicating the function name");
+		goto error;
+	}
+
+	binary_path_copy = strndup(binary_path, LTTNG_PATH_MAX);
+	if (!binary_path_copy) {
+		PERROR("Error duplicating the function name");
 		goto error;
 	}
 
 	location = zmalloc(sizeof(*location));
 	if (!location) {
-		PERROR("zmalloc");
+		PERROR("Error allocating userspace probe location");
 		goto error;
 	}
 
 	location->function_name = function_name_copy;
-	location->binary_path = full_binary_path;
+	location->binary_path = binary_path_copy;
 	location->binary_fd = binary_fd;
 
 	ret = &location->parent;
@@ -222,8 +221,8 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 	goto end;
 
 error:
-	free(full_binary_path);
 	free(function_name_copy);
+	free(binary_path_copy);
 	if (binary_fd >= 0) {
 		if (close(binary_fd)) {
 			PERROR("close");
@@ -240,20 +239,14 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 		bool open_binary)
 {
 	int binary_fd = -1;
-	char *full_binary_path = NULL;
 	char *probe_name_copy = NULL;
 	char *provider_name_copy = NULL;
+	char *binary_path_copy = NULL;
 	struct lttng_userspace_probe_location *ret = NULL;
 	struct lttng_userspace_probe_location_tracepoint *location;
 
-	full_binary_path = realpath(binary_path, NULL);
-	if (!full_binary_path) {
-		PERROR("realpath");
-		goto error;
-	}
-
 	if (open_binary) {
-		binary_fd = open(full_binary_path, O_RDONLY);
+		binary_fd = open(binary_path, O_RDONLY);
 		if (binary_fd < 0) {
 			PERROR("open");
 			goto error;
@@ -274,6 +267,12 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 		goto error;
 	}
 
+	binary_path_copy = strndup(binary_path, LTTNG_PATH_MAX);
+	if (!binary_path_copy) {
+		PERROR("strndup");
+		goto error;
+	}
+
 	location = zmalloc(sizeof(*location));
 	if (!location) {
 		PERROR("zmalloc");
@@ -282,7 +281,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 
 	location->probe_name = probe_name_copy;
 	location->provider_name = provider_name_copy;
-	location->binary_path = full_binary_path;
+	location->binary_path = binary_path_copy;
 	location->binary_fd = binary_fd;
 
 	ret = &location->parent;
@@ -291,7 +290,6 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 	goto end;
 
 error:
-	free(full_binary_path);
 	free(probe_name_copy);
 	free(provider_name_copy);
 	if (binary_fd >= 0) {
@@ -1211,7 +1209,7 @@ int lttng_userspace_probe_location_lookup_method_create_from_buffer(
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 		*lookup_method =
-			lttng_userspace_probe_location_lookup_method_function_name_elf_create();
+			lttng_userspace_probe_location_lookup_method_function_elf_create();
 		if (!(*lookup_method)) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;

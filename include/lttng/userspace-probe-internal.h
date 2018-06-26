@@ -34,7 +34,7 @@ struct lttng_userspace_probe_location_lookup_method_comm {
 	char payload[];
 };
 
-/* Common ancestor of all probe location lookup methods. */
+/* Common ancestor of all userspace probe location lookup methods. */
 struct lttng_userspace_probe_location_lookup_method {
 	enum lttng_userspace_probe_location_lookup_method_type type;
 };
