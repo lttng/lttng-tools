@@ -732,6 +732,17 @@ static int init_thread_quit_pipe(void)
 }
 
 /*
+ * Init health quit pipe.
+ *
+ * Return -1 on error or 0 if all pipes are created.
+ */
+static int init_health_quit_pipe(void)
+{
+	return fd_tracker_util_pipe_open_cloexec(the_fd_tracker,
+			"Health quit pipe", health_quit_pipe);
+}
+
+/*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
 static int create_thread_poll_set(struct lttng_poll_event *events, int size)
@@ -4057,7 +4068,7 @@ int main(int argc, char **argv)
 		goto exit_init_data;
 	}
 
-	ret = utils_create_pipe(health_quit_pipe);
+	ret = init_health_quit_pipe();
 	if (ret) {
 		retval = -1;
 		goto exit_health_quit_pipe;
@@ -4153,7 +4164,7 @@ exit_dispatcher_thread:
 	}
 exit_health_thread:
 
-	utils_close_pipe(health_quit_pipe);
+	(void) fd_tracker_util_pipe_close(the_fd_tracker, health_quit_pipe);
 exit_health_quit_pipe:
 
 exit_init_data:
