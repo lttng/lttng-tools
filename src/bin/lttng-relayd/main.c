@@ -564,7 +564,7 @@ static void relayd_cleanup(void)
 	free(opt_output_path);
 
 	/* Close thread quit pipes */
-	utils_close_pipe(thread_quit_pipe);
+	(void) fd_tracker_util_pipe_close(the_fd_tracker, thread_quit_pipe);
 
 	uri_free(control_uri);
 	uri_free(data_uri);
@@ -727,11 +727,8 @@ void lttng_relay_notify_ready(void)
  */
 static int init_thread_quit_pipe(void)
 {
-	int ret;
-
-	ret = utils_create_pipe_cloexec(thread_quit_pipe);
-
-	return ret;
+	return fd_tracker_util_pipe_open_cloexec(the_fd_tracker,
+			"Quit pipe", thread_quit_pipe);
 }
 
 /*
