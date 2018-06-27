@@ -201,6 +201,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_AGENT_TRACING_DISABLED) ] = "Session daemon agent tracing is disabled",
 	[ ERROR_INDEX(LTTNG_ERR_PROBE_LOCATION_INVAL) ] = "Invalid userspace probe location",
 	[ ERROR_INDEX(LTTNG_ERR_ELF_PARSING) ] = "ELF parsing error",
+	[ ERROR_INDEX(LTTNG_ERR_SDT_PROBE_SEMAPHORE) ] = "SDT probe guarded by a semaphore",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
