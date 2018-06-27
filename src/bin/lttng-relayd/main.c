@@ -172,6 +172,9 @@ struct lttng_ht *sessions_ht;
 /* Relayd health monitoring */
 struct health_app *health_relayd;
 
+/* Global fd tracker. */
+struct fd_tracker *the_fd_tracker;
+
 static struct option long_options[] = {
 	{ "control-port", 1, 0, 'C', },
 	{ "data-port", 1, 0, 'D', },
@@ -536,13 +539,9 @@ exit:
 
 static void print_global_objects(void)
 {
-	rcu_register_thread();
-
 	print_viewer_streams();
 	print_relay_streams();
 	print_sessions();
-
-	rcu_unregister_thread();
 }
 
 /*
@@ -574,6 +573,7 @@ static void relayd_cleanup(void)
 	if (tracing_group_name_override) {
 		free((void *) tracing_group_name);
 	}
+	fd_tracker_log(the_fd_tracker);
 }
 
 /*
@@ -4006,6 +4006,20 @@ int main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 * The RCU thread registration (and use, through the fd-tracker's
+	 * creation) is done after the daemonization to allow us to not
+	 * deal with liburcu's fork() management as the call RCU needs to
+	 * be restored.
+	 */
+	rcu_register_thread();
+
+	the_fd_tracker = fd_tracker_create(lttng_opt_fd_cap);
+	if (!the_fd_tracker) {
+		retval = -1;
+		goto exit_options;
+	}
+
 	/* Initialize thread health monitoring */
 	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
 	if (!health_relayd) {
@@ -4167,6 +4181,9 @@ exit_options:
 
 	/* Ensure all prior call_rcu are done. */
 	rcu_barrier();
+
+	fd_tracker_destroy(the_fd_tracker);
+	rcu_unregister_thread();
 
 	if (!retval) {
 		exit(EXIT_SUCCESS);

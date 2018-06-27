@@ -25,6 +25,7 @@
 #include <urcu/wfcqueue.h>
 
 #include <common/hashtable/hashtable.h>
+#include <common/fd-tracker/fd-tracker.h>
 
 /*
  * Queue used to enqueue relay requests
@@ -49,6 +50,8 @@ extern const char *tracing_group_name;
 extern const char * const config_section_name;
 
 extern int thread_quit_pipe[2];
+
+extern struct fd_tracker *the_fd_tracker;
 
 void lttng_relay_notify_ready(void);
 int lttng_relay_stop_threads(void);
