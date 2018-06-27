@@ -111,4 +111,8 @@ int lttng_userspace_probe_location_flatten(
 		const struct lttng_userspace_probe_location *location,
 		struct lttng_dynamic_buffer *buffer);
 
+LTTNG_HIDDEN
+struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
+		const struct lttng_userspace_probe_location *location);
+
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */

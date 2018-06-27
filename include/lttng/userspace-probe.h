@@ -105,6 +105,13 @@ extern const char *lttng_userspace_probe_location_function_get_function_name(
 		const struct lttng_userspace_probe_location *location);
 
 /*
+ * Get the FD to the target binary file to the probe location of the function
+ * type.
+ */
+extern int lttng_userspace_probe_location_function_get_binary_fd(
+		const struct lttng_userspace_probe_location *location);
+
+/*
  * Get the lookup method of the given userspace probe location.
  * Returns NULL if the probe location type is unsupported.
  *
