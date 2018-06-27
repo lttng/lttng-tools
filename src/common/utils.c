@@ -196,6 +196,107 @@ error:
 	return NULL;
 }
 
+static
+char *expand_double_slashes_dot_and_dotdot(char *path)
+{
+	size_t expanded_path_len, path_len;
+	const char *curr_char, *path_last_char, *next_slash, *prev_slash;
+
+	path_len = strlen(path);
+	path_last_char = &path[path_len];
+
+	if (path_len == 0) {
+		path = NULL;
+		goto error;
+	}
+
+	expanded_path_len = 0;
+
+	/* We iterate over the provided path to expand the "//", "../" and "./" */
+	for (curr_char = path; curr_char <= path_last_char; curr_char = next_slash + 1) {
+		/* Find the next forward slash. */
+		size_t curr_token_len;
+
+		if (curr_char == path_last_char) {
+			expanded_path_len++;
+			break;
+		}
+
+		next_slash = memchr(curr_char, '/', path_last_char - curr_char);
+		if (next_slash == NULL) {
+			/* Reached the end of the provided path. */
+			next_slash = path_last_char;
+		}
+
+		/* Compute how long is the previous token. */
+		curr_token_len = next_slash - curr_char;
+		switch(curr_token_len) {
+		case 0:
+			/*
+			 * The pointer has not move meaning that curr_char is
+			 * pointing to a slash. It that case there is no token
+			 * to copy, so continue the iteration to find the next
+			 * token
+			 */
+			continue;
+		case 1:
+			/*
+			 * The pointer moved 1 character. Check if that
+			 * character is a dot ('.'), if it is: omit it, else
+			 * copy the token to the normalized path.
+			 */
+			if (curr_char[0] == '.') {
+				continue;
+			}
+			break;
+		case 2:
+			/*
+			 * The pointer moved 2 characters. Check if these
+			 * characters are double dots ('..'). If that is the
+			 * case, we need to remove the last token of the
+			 * normalized path.
+			 */
+			if (curr_char[0] == '.' && curr_char[1] == '.') {
+				/*
+				 * Find the previous path component by
+				 * using the memrchr function to find the
+				 * previous forward slash and substract that
+				 * len to the resulting path.
+				 */
+				prev_slash = lttng_memrchr(path, '/', expanded_path_len);
+				/*
+				 * If prev_slash is NULL, we reached the
+				 * beginning of the path. We can't go back any
+				 * further.
+				 */
+				if (prev_slash != NULL) {
+					expanded_path_len = prev_slash - path;
+				}
+				continue;
+			}
+			break;
+		default:
+			break;
+		}
+
+		/*
+		 * Copy the current token which is neither a '.' nor a '..'.
+		 */
+		path[expanded_path_len++] = '/';
+		memcpy(&path[expanded_path_len], curr_char, curr_token_len);
+		expanded_path_len += curr_token_len;
+	}
+
+	if (expanded_path_len == 0) {
+		path[expanded_path_len++] = '/';
+	}
+
+	path[expanded_path_len] = '\0';
+
+error:
+	return path;
+}
+
 /*
  * Make a full resolution of the given path even if it doesn't exist.
  * This function uses the utils_partial_realpath function to resolve
@@ -207,9 +308,9 @@ error:
  * the responsibility of the caller to free this memory.
  */
 LTTNG_HIDDEN
-char *utils_expand_path(const char *path)
+char *_utils_expand_path(const char *path, bool keep_symlink)
 {
-	char *next, *previous, *slash, *start_path, *absolute_path = NULL;
+	char *absolute_path = NULL;
 	char *last_token;
 	int is_dot, is_dotdot;
 
@@ -225,61 +326,36 @@ char *utils_expand_path(const char *path)
 		goto error;
 	}
 
-	/*
-	 * If the path is not already absolute nor explicitly relative,
-	 * consider we're in the current directory
-	 */
-	if (*path != '/' && strncmp(path, "./", 2) != 0 &&
-			strncmp(path, "../", 3) != 0) {
-		snprintf(absolute_path, PATH_MAX, "./%s", path);
-	/* Else, we just copy the path */
-	} else {
+	if (path[0] == '/') {
 		strncpy(absolute_path, path, PATH_MAX);
-	}
-
-	/* Resolve partially our path */
-	absolute_path = utils_partial_realpath(absolute_path,
-			absolute_path, PATH_MAX);
-
-	/* As long as we find '/./' in the working_path string */
-	while ((next = strstr(absolute_path, "/./"))) {
-
-		/* We prepare the start_path not containing it */
-		start_path = lttng_strndup(absolute_path, next - absolute_path);
-		if (!start_path) {
-			PERROR("lttng_strndup");
+	} else {
+		/*
+		 * This is a relative path. We need to get the present working
+		 * directory and start the path walk from there.
+		 */
+		char current_working_dir[PATH_MAX];
+		char *cwd_ret;
+		cwd_ret = getcwd(current_working_dir, sizeof(current_working_dir));
+		if (!cwd_ret) {
+			absolute_path = NULL;
 			goto error;
 		}
-		/* And we concatenate it with the part after this string */
-		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 2);
-
-		free(start_path);
+		/*
+		 * Get the number of character in the CWD and allocate an array
+		 * to can hold it and the path provided by the caller.
+		 */
+		snprintf(absolute_path, PATH_MAX, "%s/%s", current_working_dir, path);
 	}
 
-	/* As long as we find '/../' in the working_path string */
-	while ((next = strstr(absolute_path, "/../"))) {
-		/* We find the last level of directory */
-		previous = absolute_path;
-		while ((slash = strpbrk(previous, "/")) && slash != next) {
-			previous = slash + 1;
-		}
-
-		/* Then we prepare the start_path not containing it */
-		start_path = lttng_strndup(absolute_path, previous - absolute_path);
-		if (!start_path) {
-			PERROR("lttng_strndup");
-			goto error;
-		}
-
-		/* And we concatenate it with the part after the '/../' */
-		snprintf(absolute_path, PATH_MAX, "%s%s", start_path, next + 4);
-
-		/* We can free the memory used for the start path*/
-		free(start_path);
-
-		/* Then we verify for symlinks using partial_realpath */
+	if (keep_symlink) {
+		/* Resolve partially our path */
 		absolute_path = utils_partial_realpath(absolute_path,
 				absolute_path, PATH_MAX);
+	}
+
+	absolute_path = expand_double_slashes_dot_and_dotdot(absolute_path);
+	if (!absolute_path) {
+		goto error;
 	}
 
 	/* Identify the last token */
@@ -313,7 +389,17 @@ error:
 	free(absolute_path);
 	return NULL;
 }
+LTTNG_HIDDEN
+char *utils_expand_path(const char *path)
+{
+	return _utils_expand_path(path, true);
+}
 
+LTTNG_HIDDEN
+char *utils_expand_path_keep_symlink(const char *path)
+{
+	return _utils_expand_path(path, false);
+}
 /*
  * Create a pipe in dst.
  */
