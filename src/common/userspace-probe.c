@@ -207,6 +207,119 @@ end:
 	return ret;
 }
 
+static struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_lookup_method_function_elf_copy(
+		const struct lttng_userspace_probe_location_lookup_method *lookup_method)
+{
+	struct lttng_userspace_probe_location_lookup_method *parent = NULL;
+	struct lttng_userspace_probe_location_lookup_method_elf *elf_method;
+
+	assert(lookup_method);
+	assert(lookup_method->type ==
+			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF);
+
+	elf_method = zmalloc(sizeof(*elf_method));
+	if (!elf_method) {
+		PERROR("Error allocating ELF userspace probe lookup method");
+		goto error;
+	}
+
+	elf_method->parent.type = lookup_method->type;
+	parent = &elf_method->parent;
+
+	goto end;
+error:
+	parent = NULL;
+end:
+	return parent;
+}
+
+static struct lttng_userspace_probe_location *
+lttng_userspace_probe_location_function_copy(
+		const struct lttng_userspace_probe_location *location)
+{
+	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+	struct lttng_userspace_probe_location *new_location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	char *binary_path = NULL;
+	char *function_name = NULL;
+	int fd;
+
+	assert(location);
+	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
+
+	 /* Duplicate probe location fields */
+	binary_path =
+		lttng_strndup(lttng_userspace_probe_location_function_get_binary_path(location),
+				LTTNG_PATH_MAX);
+	if (!binary_path) {
+		goto error;
+	}
+
+	function_name =
+		lttng_strndup(lttng_userspace_probe_location_function_get_function_name(location),
+				LTTNG_SYMBOL_NAME_LEN);
+	if (!function_name) {
+		PERROR("Error duplicating function name string");
+		goto error;
+	}
+
+	/* Duplicate the binary fd */
+	fd = dup(lttng_userspace_probe_location_function_get_binary_fd(location));
+	if (fd == -1) {
+		PERROR("Error duplicating file descriptor to binary");
+		goto error;
+	}
+
+	/*
+	 * Duplicate probe location method fields
+	 */
+	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(
+			location->lookup_method);
+	switch (lookup_type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_function_elf_copy(
+					location->lookup_method);
+		if (!lookup_method) {
+			goto close_fd;
+		}
+		break;
+	default:
+		/* Invalid probe location lookup method. */
+		goto close_fd;
+	}
+
+	/* Create the probe_location */
+	new_location = lttng_userspace_probe_location_function_create_no_check(
+			binary_path, function_name, lookup_method, true);
+	if (!new_location) {
+		goto destroy_lookup_method;
+	}
+
+	/* Set the duplicated fd to the new probe_location */
+	if (lttng_userspace_probe_location_function_set_binary_fd(new_location, fd) < 0) {
+		goto destroy_probe_location;
+	}
+
+	goto end;
+
+destroy_probe_location:
+	lttng_userspace_probe_location_destroy(new_location);
+destroy_lookup_method:
+	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
+close_fd:
+	if (close(fd) < 0) {
+		PERROR("Error closing duplicated file descriptor in error path");
+	}
+error:
+	free(function_name);
+	free(binary_path);
+	new_location = NULL;
+end:
+	return new_location;
+}
+
 const char *lttng_userspace_probe_location_function_get_binary_path(
 		const struct lttng_userspace_probe_location *location)
 {
@@ -804,4 +917,32 @@ int lttng_userspace_probe_location_flatten(
 
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
+		const struct lttng_userspace_probe_location *location)
+{
+	struct lttng_userspace_probe_location *new_location = NULL;
+	enum lttng_userspace_probe_location_type type;
+
+	if (!location) {
+		goto err;
+	}
+
+	type = lttng_userspace_probe_location_get_type(location);
+	switch (type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+		new_location =
+			lttng_userspace_probe_location_function_copy(location);
+		if (!new_location) {
+			goto err;
+		}
+		break;
+	default:
+		new_location = NULL;
+		goto err;
+	}
+err:
+	return new_location;
 }
