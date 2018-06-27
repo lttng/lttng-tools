@@ -331,8 +331,10 @@ void *thread_manage_health(void *data)
 		goto error;
 	}
 
-	/* Size is set to 1 for the consumer_channel pipe */
-	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
+	/* Size is set to 2 for the unix socket and quit pipe. */
+	ret = fd_tracker_util_poll_create(the_fd_tracker,
+			"Health management thread epoll", &events, 2,
+			LTTNG_CLOEXEC);
 	if (ret < 0) {
 		ERR("Poll set creation failed");
 		goto error;
@@ -490,7 +492,7 @@ exit:
 	 * other processes using them.
 	 */
 
-	lttng_poll_clean(&events);
+	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 
 	rcu_unregister_thread();
 	return NULL;
