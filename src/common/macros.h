@@ -79,6 +79,10 @@ void *zmalloc(size_t len)
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifndef min_t
+#define min_t(type, a, b)	((type) min(a, b))
+#endif
+
 #ifndef LTTNG_PACKED
 #define LTTNG_PACKED __attribute__((__packed__))
 #endif
