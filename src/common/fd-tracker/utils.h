@@ -29,6 +29,13 @@ struct lttng_poll_event;
 int fd_tracker_util_close_fd(void *, int *fd);
 
 /*
+ * Create a pipe and track its underlying fds.
+ */
+int fd_tracker_util_pipe_open_cloexec(struct fd_tracker *tracker,
+		const char *name, int *pipe);
+int fd_tracker_util_pipe_close(struct fd_tracker *tracker, int *pipe);
+
+/*
  * Create a poll event and track its underlying fd, if applicable.
  */
 int fd_tracker_util_poll_create(struct fd_tracker *tracker, const char *name,
