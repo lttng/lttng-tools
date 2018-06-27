@@ -48,6 +48,8 @@
 #define NATIVE_ELF_ENDIANNESS ELFDATA2MSB
 #endif
 
+#define next_4bytes_boundary(x) (typeof(x)) ((((uint64_t)x) + 3) & ~0x03)
+
 #define bswap(x)				\
 	do {					\
 		switch (sizeof(x)) {		\
@@ -855,4 +857,190 @@ destroy_elf:
 	lttng_elf_destroy(elf);
 end:
 	return ret;
+}
+
+/*
+ * Compute the offsets of SDT probes from the begining of the ELF binary.
+ *
+ * On success, returns 0 and the nb_probes parameter is set to the number of
+ * offsets found and the offsets parameter points to an array of offsets where
+ * the SDT probes are.
+ * On failure, returns -1.
+ */
+int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
+		const char *probe_name, uint64_t **offsets, uint32_t *nb_probes)
+{
+	int ret = 0, nb_match = 0;
+	struct lttng_elf_shdr *stap_note_section_hdr = NULL;
+	struct lttng_elf *elf = NULL;
+	char *stap_note_section_data = NULL;
+	char *curr_note_section_begin, *curr_data_ptr, *curr_probe, *curr_provider;
+	char *next_note_ptr, *curr_desc_beg;
+	uint32_t name_size, desc_size, note_type;
+	uint64_t curr_probe_location, curr_probe_offset, curr_semaphore_location;
+	uint64_t *probe_locs = NULL, *new_probe_locs = NULL;
+
+	if (!provider_name || !probe_name || !nb_probes || !offsets) {
+		DBG("Invalid arguments.");
+		ret = LTTNG_ERR_ELF_PARSING;
+		goto error;
+	}
+
+	elf = lttng_elf_create(fd);
+	if (!elf) {
+		DBG("Error allocation ELF.");
+		ret = LTTNG_ERR_ELF_PARSING;
+		goto error;
+	}
+
+	/* Get the stap note section header. */
+	ret = lttng_elf_get_section_hdr_by_name(elf, NOTE_STAPSDT_SECTION_NAME,
+			&stap_note_section_hdr);
+	if (ret) {
+		DBG("Cannot get ELF stap note section.");
+		goto destroy_elf_error;
+	}
+
+	/* Get the data associated with the stap note section. */
+	stap_note_section_data = lttng_elf_get_section_data(elf, stap_note_section_hdr);
+	if (stap_note_section_data == NULL) {
+		DBG("Cannot get ELF stap note section data.");
+		ret = LTTNG_ERR_ELF_PARSING;
+		goto destroy_elf_error;
+	}
+
+	curr_data_ptr = stap_note_section_data;
+	next_note_ptr = stap_note_section_data;
+	curr_note_section_begin = stap_note_section_data;
+
+	*offsets = NULL;
+	while (1) {
+		curr_data_ptr = next_note_ptr;
+		/* Check if we have reached the end of the note section. */
+		if (curr_data_ptr >=
+				curr_note_section_begin + stap_note_section_hdr->sh_size) {
+			*nb_probes = nb_match;
+			*offsets = probe_locs;
+			ret = 0;
+			break;
+		}
+		/* Get name size field. */
+		name_size = next_4bytes_boundary(*(uint32_t*) curr_data_ptr);
+		curr_data_ptr += sizeof(uint32_t);
+
+		/* Sanity check; a zero name_size is reserved. */
+		if (name_size == 0) {
+			DBG("Invalid name size field in SDT probe descriptions"
+				"section.");
+			ret = -1;
+			goto realloc_error;
+		}
+
+		/* Get description size field. */
+		desc_size = next_4bytes_boundary(*(uint32_t*) curr_data_ptr);
+		curr_data_ptr += sizeof(uint32_t);
+
+		/* Get type field. */
+		note_type = *(uint32_t *) curr_data_ptr;
+		curr_data_ptr += sizeof(uint32_t);
+
+		/*
+		 * Move the pointer to the next note to be ready for the next
+		 * iteration. The current note is made of 3 unsigned 32bit
+		 * integers (name size, descriptor size and note type), the
+		 * name and the descriptor. To move to the next note, we move
+		 * the pointer according to those values.
+		 */
+		next_note_ptr = next_note_ptr +
+			(3 * sizeof(uint32_t)) + desc_size + name_size;
+
+		/*
+		 * Move ptr to the end of the name string (we don't need it)
+		 * and go to the next 4 byte alignement.
+		 */
+		if (note_type != NOTE_STAPSDT_TYPE ||
+			strncmp(curr_data_ptr, NOTE_STAPSDT_NAME, name_size) != 0) {
+			continue;
+		}
+
+		curr_data_ptr += name_size;
+
+		/* Get description field. */
+		curr_desc_beg = curr_data_ptr;
+
+		/* Get probe location.  */
+		curr_probe_location = *(uint64_t *) curr_data_ptr;
+		curr_data_ptr += sizeof(uint64_t);
+
+		/* Pass over the base. Not needed. */
+		curr_data_ptr += sizeof(uint64_t);
+
+		/* Get semaphore location. */
+		curr_semaphore_location = *(uint64_t *) curr_data_ptr;
+		curr_data_ptr += sizeof(uint64_t);
+		/* Get provider name. */
+		curr_provider = curr_data_ptr;
+		curr_data_ptr += strlen(curr_provider) + 1;
+
+		/* Get probe name. */
+		curr_probe = curr_data_ptr;
+		curr_data_ptr += strlen(curr_probe) + 1;
+
+		curr_data_ptr = curr_desc_beg + desc_size;
+
+		/* Check if the provider and probe name match */
+		if (strcmp(provider_name, curr_provider) == 0 &&
+				strcmp(probe_name, curr_probe) == 0) {
+			int new_size;
+
+			/*
+			 * We currently don't support SDT probes with semaphores. Return
+			 * success as we found a matching probe but it's guarded by a
+			 * semaphore.
+			 */
+			if (curr_semaphore_location != 0) {
+				ret = LTTNG_ERR_SDT_PROBE_SEMAPHORE;
+				goto end;
+			}
+
+			new_size = (++nb_match) * sizeof(uint64_t);
+
+			/*
+			 * Found a match with not semaphore, we need to copy the
+			 * probe_location to the output parameter.
+			 */
+			new_probe_locs = realloc(probe_locs, new_size);
+			if (!new_probe_locs) {
+				/* Error allocating a larger buffer */
+				DBG("Allocation error in SDT.");
+				ret = LTTNG_ERR_NOMEM;
+				goto realloc_error;
+			}
+			probe_locs = new_probe_locs;
+			new_probe_locs = NULL;
+
+			/*
+			 * Use the virtual address of the probe to compute the offset of
+			 * this probe from the beginning of the executable file.
+			 */
+			ret = lttng_elf_convert_addr_in_text_to_offset(elf,
+					curr_probe_location, &curr_probe_offset);
+			if (ret) {
+				DBG("Conversion error in SDT.");
+				goto realloc_error;
+			}
+
+			probe_locs[nb_match - 1] = curr_probe_offset;
+		}
+	}
+
+end:
+	free(stap_note_section_data);
+destroy_elf_error:
+	lttng_elf_destroy(elf);
+error:
+	return ret;
+realloc_error:
+	free(probe_locs);
+	goto end;
 }
