@@ -1018,9 +1018,8 @@ restart:
 				} else {
 					assert(pollfd == control_sock->fd);
 					type = RELAY_CONTROL;
-					newsock = control_sock->ops->accept(control_sock);
-					DBG("Relay control connection accepted, socket %d",
-							newsock->fd);
+					newsock = accept_relayd_sock(control_sock,
+							"Control socket to relayd");
 				}
 				if (!newsock) {
 					PERROR("accepting sock");
