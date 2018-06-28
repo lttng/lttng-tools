@@ -32,6 +32,7 @@ enum lttng_userspace_probe_location_lookup_method_type {
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_UNKNOWN	    = -1,
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT  = 0,
 	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF	    = 1,
+	LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT    = 2,
 };
 
 /*
@@ -54,6 +55,13 @@ extern void lttng_userspace_probe_location_lookup_method_destroy(
 extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_lookup_method_function_elf_create(void);
 
+/*
+ * Create a tracepoint SDT tracepoint lookup method struct.
+ * Return NULL on failure.
+ */
+extern struct lttng_userspace_probe_location_lookup_method *
+lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void);
+
 
 /*
  * Contains all the information needed to compute the instrumentation point in
@@ -64,6 +72,7 @@ struct lttng_userspace_probe_location;
 enum lttng_userspace_probe_location_type {
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN	= -1,
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION	= 0,
+	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT	= 1,
 };
 
 /*
@@ -119,6 +128,46 @@ extern int lttng_userspace_probe_location_function_get_binary_fd(
  */
 extern struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
+		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Create a probe location of the tracepoint type.
+ * Receives the target binary file path, probename and probe provider to
+ * instrument.
+ * On failure, NULL is returned.
+ *
+ * The ownership of the lookup method is transferred to the created probe
+ * location.
+ */
+extern struct lttng_userspace_probe_location *
+lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
+		const char *probe_name, const char *provider_name,
+		struct lttng_userspace_probe_location_lookup_method *lookup_method);
+
+/*
+ * Get the target binary path of the probe location of the tracepoint type.
+ */
+extern const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
+		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Get the target probe name of the probe location of the tracepoint type.
+ */
+extern const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
+		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Get the target probe provider name of the probe location of the tracepoint
+ * type.
+ */
+extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
+		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Get the FD to the target binary file to the probe location of the tracepoint
+ * type.
+ */
+extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);
 
 #ifdef __cplusplus
