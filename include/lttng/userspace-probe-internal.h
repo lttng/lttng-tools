@@ -44,6 +44,10 @@ struct lttng_userspace_probe_location_lookup_method_elf {
 	struct lttng_userspace_probe_location_lookup_method parent;
 };
 
+struct lttng_userspace_probe_location_lookup_method_sdt {
+	struct lttng_userspace_probe_location_lookup_method parent;
+};
+
 struct lttng_userspace_probe_location_comm {
 	/* enum lttng_userspace_probe_location_type */
 	int8_t type;
@@ -62,6 +66,20 @@ struct lttng_userspace_probe_location_function_comm {
 	/*
 	 * Payload is composed of, in that order,
 	 *   - function name (with trailing \0),
+	 *   - absolute binary path (with trailing \0)
+	 */
+	char payload[];
+} LTTNG_PACKED;
+
+struct lttng_userspace_probe_location_tracepoint_comm {
+	/* The three lengths include the trailing \0. */
+	uint32_t probe_name_len;
+	uint32_t provider_name_len;
+	uint32_t binary_path_len;
+	/*
+	 * Payload is composed of, in that order,
+	 *   - probe name (with trailing \0),
+	 *   - provider name (with trailing \0),
 	 *   - absolute binary path (with trailing \0)
 	 */
 	char payload[];
@@ -86,6 +104,20 @@ struct lttng_userspace_probe_location_function {
 	int binary_fd;
 };
 
+struct lttng_userspace_probe_location_tracepoint {
+	struct lttng_userspace_probe_location parent;
+	char *probe_name;
+	char *provider_name;
+	char *binary_path;
+	/*
+	 * binary_fd is a file descriptor to the executable file. It's open
+	 * early on to keep the backing inode valid over the course of the
+	 * intrumentation and use. It prevents deletion and reuse races.
+	 * Set to -1 if not open.
+	 */
+	int binary_fd;
+};
+
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		const struct lttng_userspace_probe_location *location,
@@ -99,6 +131,10 @@ int lttng_userspace_probe_location_create_from_buffer(
 
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_function_set_binary_fd(
+		struct lttng_userspace_probe_location *location, int binary_fd);
+
+LTTNG_HIDDEN
+int lttng_userspace_probe_location_tracepoint_set_binary_fd(
 		struct lttng_userspace_probe_location *location, int binary_fd);
 
 /*
