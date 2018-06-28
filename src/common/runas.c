@@ -42,7 +42,8 @@
 #include "runas.h"
 
 struct run_as_data;
-typedef int (*run_as_fct)(struct run_as_data *data);
+struct run_as_ret;
+typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
 
 struct run_as_mkdir_data {
 	char path[PATH_MAX];
@@ -63,6 +64,22 @@ struct run_as_rmdir_recursive_data {
 	char path[PATH_MAX];
 };
 
+struct run_as_mkdir_ret {
+	int ret;
+};
+
+struct run_as_open_ret {
+	int ret;
+};
+
+struct run_as_unlink_ret {
+	int ret;
+};
+
+struct run_as_rmdir_recursive_ret {
+	int ret;
+};
+
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_OPEN,
@@ -73,6 +90,7 @@ enum run_as_cmd {
 
 struct run_as_data {
 	enum run_as_cmd cmd;
+	int fd;
 	union {
 		struct run_as_mkdir_data mkdir;
 		struct run_as_open_data open;
@@ -83,9 +101,31 @@ struct run_as_data {
 	gid_t gid;
 };
 
+/*
+ * The run_as_ret structure holds the returned value and status of the command.
+ *
+ * The `u` union field holds the return value of the command; in most cases it
+ * represents the success or the failure of the command. In more complex
+ * commands, it holds a computed value.
+ *
+ * The _errno field is the errno recorded after the execution of the command.
+ *
+ * The _error fields is used the signify that return status of the command. For
+ * simple commands returning `int` the _error field will be the same as the
+ * ret_int field. In complex commands, it signify the success or failure of the
+ * command.
+ *
+ */
 struct run_as_ret {
-	int ret;
+	int fd;
+	union {
+		struct run_as_mkdir_ret mkdir;
+		struct run_as_open_ret open;
+		struct run_as_unlink_ret unlink;
+		struct run_as_rmdir_recursive_ret rmdir_recursive;
+	} u;
 	int _errno;
+	bool _error;
 };
 
 struct run_as_worker {
@@ -120,7 +160,7 @@ int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode);
  * Create recursively directory using the FULL path.
  */
 static
-int _mkdir_recursive(struct run_as_data *data)
+int _mkdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
@@ -129,31 +169,47 @@ int _mkdir_recursive(struct run_as_data *data)
 	mode = data->u.mkdir.mode;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	return _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->u.mkdir.ret = _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
+	return ret_value->u.mkdir.ret;
 }
 
 static
-int _mkdir(struct run_as_data *data)
+int _mkdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	ret_value->u.mkdir.ret = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
+	return ret_value->u.mkdir.ret;
 }
 
 static
-int _open(struct run_as_data *data)
+int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->u.open.ret = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->fd = ret_value->u.open.ret;
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.open.ret) ? true : false;
+	return ret_value->u.open.ret;
 }
 
 static
-int _unlink(struct run_as_data *data)
+int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return unlink(data->u.unlink.path);
+	ret_value->u.unlink.ret = unlink(data->u.unlink.path);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.unlink.ret) ? true : false;
+	return ret_value->u.unlink.ret;
 }
 
 static
-int _rmdir_recursive(struct run_as_data *data)
+int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	return utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	ret_value->u.rmdir_recursive.ret = utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.rmdir_recursive.ret) ? true : false;
+	return ret_value->u.rmdir_recursive.ret;
 }
 
 static
@@ -177,48 +233,35 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 }
 
 static
-int do_send_fd(struct run_as_worker *worker,
-		enum run_as_cmd cmd, int fd)
+int do_send_fd(int sock, int fd)
 {
 	ssize_t len;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-		break;
-	default:
-		return 0;
-	}
 	if (fd < 0) {
+		ERR("Invalid file description");
 		return 0;
 	}
-	len = lttcomm_send_fds_unix_sock(worker->sockpair[1], &fd, 1);
+
+	len = lttcomm_send_fds_unix_sock(sock, &fd, 1);
 	if (len < 0) {
 		PERROR("lttcomm_send_fds_unix_sock");
-		return -1;
-	}
-	if (close(fd) < 0) {
-		PERROR("close");
 		return -1;
 	}
 	return 0;
 }
 
 static
-int do_recv_fd(struct run_as_worker *worker,
-		enum run_as_cmd cmd, int *fd)
+int do_recv_fd(int sock, int *fd)
 {
 	ssize_t len;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-		break;
-	default:
-		return 0;
-	}
 	if (*fd < 0) {
+		ERR("Invalid file description");
 		return 0;
 	}
-	len = lttcomm_recv_fds_unix_sock(worker->sockpair[0], fd, 1);
+
+	len = lttcomm_recv_fds_unix_sock(sock, fd, 1);
+
 	if (!len) {
 		return -1;
 	} else if (len < 0) {
@@ -228,6 +271,109 @@ int do_recv_fd(struct run_as_worker *worker,
 	return 0;
 }
 
+static
+int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = do_send_fd(worker->sockpair[0], fd);
+	if (ret < 0) {
+		PERROR("do_send_fd");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+{
+	int ret = 0, ret_close = 0;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+
+	ret = do_send_fd(worker->sockpair[1], fd);
+	if (ret < 0) {
+		PERROR("do_send_fd error");
+		ret = -1;
+	}
+
+	ret_close = close(fd);
+	if (ret_close < 0) {
+		PERROR("close");
+	}
+
+	return ret;
+}
+
+static
+int recv_fd_from_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case RUN_AS_OPEN:
+		break;
+	default:
+		return 0;
+	}
+
+	ret = do_recv_fd(worker->sockpair[0], fd);
+	if (ret < 0) {
+		PERROR("do_recv_fd error");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = do_recv_fd(worker->sockpair[1], fd);
+	if (ret < 0) {
+		PERROR("do_recv_fd error");
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static
+int cleanup_received_fd(enum run_as_cmd cmd, int fd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	default:
+		return 0;
+	}
+
+	ret = close(fd);
+	if (ret < 0) {
+		PERROR("close error");
+		ret = -1;
+	}
+
+	return ret;
+}
 /*
  * Return < 0 on error, 0 if OK, 1 on hangup.
  */
@@ -241,7 +387,11 @@ int handle_one_cmd(struct run_as_worker *worker)
 	run_as_fct cmd;
 	uid_t prev_euid;
 
-	/* Read data */
+	/*
+	 * Stage 1: Receive run_as_data struct from the master.
+	 * The structure contains the command type and all the parameters needed for
+	 * its execution
+	 */
 	readlen = lttcomm_recv_unix_sock(worker->sockpair[1], &data,
 			sizeof(data));
 	if (readlen == 0) {
@@ -261,6 +411,18 @@ int handle_one_cmd(struct run_as_worker *worker)
 		goto end;
 	}
 
+	/*
+	 * Stage 2: Receive file descriptor from master.
+	 * Some commands need a file descriptor as input so if it's needed we
+	 * receive the fd using the Unix socket.
+	 */
+	ret = recv_fd_from_master(worker, data.cmd, &data.fd);
+	if (ret < 0) {
+		PERROR("recv_fd_from_master error");
+		ret = -1;
+		goto end;
+	}
+
 	prev_euid = getuid();
 	if (data.gid != getegid()) {
 		ret = setegid(data.gid);
@@ -276,16 +438,31 @@ int handle_one_cmd(struct run_as_worker *worker)
 			goto write_return;
 		}
 	}
+
 	/*
 	 * Also set umask to 0 for mkdir executable bit.
 	 */
 	umask(0);
-	ret = (*cmd)(&data);
+
+	/*
+	 * Stage 3: Execute the command
+	 */
+	ret = (*cmd)(&data, &sendret);
+	if (ret < 0) {
+		DBG("Execution of command returned an error");
+	}
 
 write_return:
-	sendret.ret = ret;
-	sendret._errno = errno;
-	/* send back return value */
+	ret = cleanup_received_fd(data.cmd, data.fd);
+	if (ret < 0) {
+		ERR("Error cleaning up FD");
+		goto end;
+	}
+
+	/*
+	 * Stage 4: Send run_as_ret structure to the master.
+	 * This structure contain the return value of the command and the errno.
+	 */
 	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
 			sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
@@ -293,12 +470,18 @@ write_return:
 		ret = -1;
 		goto end;
 	}
-	ret = do_send_fd(worker, data.cmd, ret);
-	if (ret) {
-		PERROR("do_send_fd error");
-		ret = -1;
+
+	/*
+	 * Stage 5: Send file descriptor to the master
+	 * Some commands return a file descriptor so if it's needed we pass it back
+	 * to the master using the Unix socket.
+	 */
+	ret = send_fd_to_master(worker, data.cmd, sendret.fd);
+	if (ret < 0) {
+		DBG("Sending FD to master returned an error");
 		goto end;
 	}
+
 	if (seteuid(prev_euid) < 0) {
 		PERROR("seteuid");
 		ret = -1;
@@ -331,8 +514,8 @@ int run_as_worker(struct run_as_worker *worker)
 		PERROR("prctl PR_SET_NAME");
 	}
 
-	sendret.ret = 0;
-	sendret._errno = 0;
+	memset(&sendret, 0, sizeof(sendret));
+
 	writelen = lttcomm_send_unix_sock(worker->sockpair[1], &sendret,
 			sizeof(sendret));
 	if (writelen < sizeof(sendret)) {
@@ -361,18 +544,19 @@ static
 int run_as_cmd(struct run_as_worker *worker,
 		enum run_as_cmd cmd,
 		struct run_as_data *data,
+		struct run_as_ret *ret_value,
 		uid_t uid, gid_t gid)
 {
+	int ret = 0;
 	ssize_t readlen, writelen;
-	struct run_as_ret recvret;
 
 	/*
 	 * If we are non-root, we can only deal with our own uid.
 	 */
 	if (geteuid() != 0) {
 		if (uid != geteuid()) {
-			recvret.ret = -1;
-			recvret._errno = EPERM;
+			ret = -1;
+			ret_value->_errno = EPERM;
 			ERR("Client (%d)/Server (%d) UID mismatch (and sessiond is not root)",
 				(int) uid, (int) geteuid());
 			goto end;
@@ -383,43 +567,71 @@ int run_as_cmd(struct run_as_worker *worker,
 	data->uid = uid;
 	data->gid = gid;
 
+	/*
+	 * Stage 1: Send the run_as_data struct to the worker process
+	 */
 	writelen = lttcomm_send_unix_sock(worker->sockpair[0], data,
 			sizeof(*data));
 	if (writelen < sizeof(*data)) {
 		PERROR("Error writing message to run_as");
-		recvret.ret = -1;
-		recvret._errno = errno;
+		ret = -1;
+		ret_value->_errno = EIO;
 		goto end;
 	}
 
-	/* receive return value */
-	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], &recvret,
-			sizeof(recvret));
+	/*
+	 * Stage 2: Send file descriptor to the worker process if needed
+	 */
+	ret = send_fd_to_worker(worker, data->cmd, data->fd);
+	if (ret) {
+		PERROR("do_send_fd error");
+		ret = -1;
+		ret_value->_errno = EIO;
+		goto end;
+	}
+
+	/*
+	 * Stage 3: Wait for the execution of the command
+	 */
+
+	/*
+	 * Stage 4: Receive the run_as_ret struct containing the return value and
+	 * errno
+	 */
+	readlen = lttcomm_recv_unix_sock(worker->sockpair[0], ret_value,
+			sizeof(*ret_value));
 	if (!readlen) {
 		ERR("Run-as worker has hung-up during run_as_cmd");
-		recvret.ret = -1;
-		recvret._errno = EIO;
+		ret = -1;
+		ret_value->_errno = EIO;
 		goto end;
-	} else if (readlen < sizeof(recvret)) {
+	} else if (readlen < sizeof(*ret_value)) {
 		PERROR("Error reading response from run_as");
-		recvret.ret = -1;
-		recvret._errno = errno;
+		ret = -1;
+		ret_value->_errno = errno;
 	}
-	if (do_recv_fd(worker, cmd, &recvret.ret)) {
-		recvret.ret = -1;
-		recvret._errno = EIO;
+
+	/*
+	 * Stage 5: Receive file descriptor if needed
+	 */
+	ret = recv_fd_from_worker(worker, data->cmd, &ret_value->fd);
+	if (ret < 0) {
+		ERR("Error receiving fd");
+		ret = -1;
+		ret_value->_errno = EIO;
 	}
 
 end:
-	errno = recvret._errno;
-	return recvret.ret;
+	return ret;
 }
 
 /*
  * This is for debugging ONLY and should not be considered secure.
  */
 static
-int run_as_noworker(enum run_as_cmd cmd, struct run_as_data *data)
+int run_as_noworker(enum run_as_cmd cmd,
+		struct run_as_data *data, struct run_as_ret *ret_value,
+		uid_t uid, gid_t gid)
 {
 	int ret, saved_errno;
 	mode_t old_mask;
@@ -432,8 +644,8 @@ int run_as_noworker(enum run_as_cmd cmd, struct run_as_data *data)
 		goto end;
 	}
 	old_mask = umask(0);
-	ret = fct(data);
-	saved_errno = errno;
+	ret = fct(data, ret_value);
+	saved_errno = ret_value->_errno;
 	umask(old_mask);
 	errno = saved_errno;
 end:
@@ -441,21 +653,61 @@ end:
 }
 
 static
-int run_as(enum run_as_cmd cmd, struct run_as_data *data, uid_t uid, gid_t gid)
+int run_as_restart_worker(struct run_as_worker *worker)
 {
-	int ret;
+	int ret = 0;
+	char *procname = NULL;
+
+	procname = worker->procname;
+
+	/* Close socket to run_as worker process and clean up the zombie process */
+	run_as_destroy_worker();
+
+	/* Create a new run_as worker process*/
+	ret = run_as_create_worker(procname);
+	if (ret < 0 ) {
+		ERR("Restarting the worker process failed");
+		ret = -1;
+		goto err;
+	}
+err:
+	return ret;
+}
+
+static
+int run_as(enum run_as_cmd cmd, struct run_as_data *data,
+		   struct run_as_ret *ret_value, uid_t uid, gid_t gid)
+{
+	int ret, saved_errno;
 
 	if (use_clone()) {
 		DBG("Using run_as worker");
 		pthread_mutex_lock(&worker_lock);
 		assert(global_worker);
-		ret = run_as_cmd(global_worker, cmd, data, uid, gid);
-		pthread_mutex_unlock(&worker_lock);
 
+		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
+		saved_errno = ret_value->_errno;
+
+		pthread_mutex_unlock(&worker_lock);
+		/*
+		 * If the worker thread crashed the errno is set to EIO. we log
+		 * the error and  start a new worker process.
+		 */
+		if (ret == -1 && saved_errno == EIO) {
+			DBG("Socket closed unexpectedly... "
+					"Restarting the worker process");
+			ret = run_as_restart_worker(global_worker);
+
+			if (ret == -1) {
+				ERR("Failed to restart worker process.");
+				goto err;
+			}
+		}
 	} else {
 		DBG("Using run_as without worker");
-		ret = run_as_noworker(cmd, data);
+		ret = run_as_noworker(cmd, data, ret_value, uid, gid);
 	}
+err:
 	return ret;
 }
 
@@ -463,68 +715,95 @@ LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
 	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(RUN_AS_MKDIR_RECURSIVE, &data, uid, gid);
+
+	run_as(RUN_AS_MKDIR_RECURSIVE, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.mkdir.ret;
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
 			path, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
 	data.u.mkdir.path[PATH_MAX - 1] = '\0';
 	data.u.mkdir.mode = mode;
-	return run_as(RUN_AS_MKDIR, &data, uid, gid);
+	run_as(RUN_AS_MKDIR, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.mkdir.ret;
 }
 
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
 			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
-	return run_as(RUN_AS_OPEN, &data, uid, gid);
+	run_as(RUN_AS_OPEN, &data, &ret, uid, gid);
+	errno = ret._errno;
+	ret.u.open.ret = ret.fd;
+	return ret.u.open.ret;
 }
 
 LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("unlink() %s with for uid %d and gid %d",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
-	return run_as(RUN_AS_UNLINK, &data, uid, gid);
+	run_as(RUN_AS_UNLINK, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.unlink.ret;
 }
 
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
+	struct run_as_ret ret;
+
+	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
 
 	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
 	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
-	return run_as(RUN_AS_RMDIR_RECURSIVE, &data, uid, gid);
+	run_as(RUN_AS_RMDIR_RECURSIVE, &data, &ret, uid, gid);
+	errno = ret._errno;
+	return ret.u.rmdir_recursive.ret;
 }
 
 static
@@ -628,6 +907,7 @@ int run_as_create_worker(char *procname)
 		ret = -1;
 		goto error_sock;
 	}
+
 	/* Fork worker. */
 	pid = fork();
 	if (pid < 0) {
@@ -648,6 +928,17 @@ int run_as_create_worker(char *procname)
 			PERROR("close");
 			exit(EXIT_FAILURE);
 		}
+
+		/*
+		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
+		 * Sockpair[1] is used as a control channel with the master
+		 */
+		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+			if (i != worker->sockpair[1]) {
+				(void) close(i);
+			}
+		}
+
 		worker->sockpair[0] = -1;
 		ret = run_as_worker(worker);
 		if (lttcomm_close_unix_sock(worker->sockpair[1])) {
