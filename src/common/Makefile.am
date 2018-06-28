@@ -12,7 +12,7 @@ DIST_SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
 noinst_LTLIBRARIES = libcommon.la
 EXTRA_DIST = mi-lttng-3.0.xsd
 
-libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h runas.c \
+libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h \
                        common.h futex.c futex.h uri.c uri.h defaults.c \
                        pipe.c pipe.h readwrite.c readwrite.h \
                        mi-lttng.h mi-lttng.c \
@@ -32,6 +32,12 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h runas.c \
 libcommon_la_LIBADD = \
 		$(top_builddir)/src/common/config/libconfig.la \
 		$(UUID_LIBS)
+
+if BUILD_LIB_RUNAS
+libcommon_la_SOURCES += runas.c lttng-elf.h lttng-elf.c
+else
+libcommon_la_SOURCES += runas-stub.c
+endif
 
 if BUILD_LIB_UNIX
 libcommon_la_SOURCES += unix.c
