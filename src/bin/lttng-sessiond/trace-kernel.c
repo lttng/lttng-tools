@@ -292,18 +292,22 @@ error:
  *
  * Return pointer to structure or NULL.
  */
-struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
-		char *filter_expression, struct lttng_filter_bytecode *filter)
+enum lttng_error_code trace_kernel_create_event(
+		struct lttng_event *ev, char *filter_expression,
+		struct lttng_filter_bytecode *filter,
+		struct ltt_kernel_event **kernel_event)
 {
-	struct ltt_kernel_event *lke;
+	enum lttng_error_code ret;
 	struct lttng_kernel_event *attr;
+	struct ltt_kernel_event *local_kernel_event;
 
 	assert(ev);
 
-	lke = zmalloc(sizeof(struct ltt_kernel_event));
+	local_kernel_event = zmalloc(sizeof(struct ltt_kernel_event));
 	attr = zmalloc(sizeof(struct lttng_kernel_event));
-	if (lke == NULL || attr == NULL) {
+	if (local_kernel_event == NULL || attr == NULL) {
 		PERROR("kernel event zmalloc");
+		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
@@ -341,6 +345,7 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 		break;
 	default:
 		ERR("Unknown kernel instrumentation type (%d)", ev->type);
+		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -349,20 +354,22 @@ struct ltt_kernel_event *trace_kernel_create_event(struct lttng_event *ev,
 	attr->name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 
 	/* Setting up a kernel event */
-	lke->fd = -1;
-	lke->event = attr;
-	lke->enabled = 1;
-	lke->filter_expression = filter_expression;
-	lke->filter = filter;
+	local_kernel_event->fd = -1;
+	local_kernel_event->event = attr;
+	local_kernel_event->enabled = 1;
+	local_kernel_event->filter_expression = filter_expression;
+	local_kernel_event->filter = filter;
 
-	return lke;
+	*kernel_event = local_kernel_event;
+
+	return LTTNG_OK;
 
 error:
 	free(filter_expression);
 	free(filter);
-	free(lke);
+	free(local_kernel_event);
 	free(attr);
-	return NULL;
+	return ret;
 }
 
 /*
