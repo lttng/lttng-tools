@@ -201,60 +201,73 @@ int kernel_create_event(struct lttng_event *ev,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter)
 {
-	int ret;
+	int err, fd;
+	enum lttng_error_code ret;
 	struct ltt_kernel_event *event;
 
 	assert(ev);
 	assert(channel);
 
 	/* We pass ownership of filter_expression and filter */
-	event = trace_kernel_create_event(ev, filter_expression,
-			filter);
-	if (event == NULL) {
-		ret = -1;
+	ret = trace_kernel_create_event(ev, filter_expression,
+			filter, &event);
+	if (ret != LTTNG_OK) {
 		goto error;
 	}
 
-	ret = kernctl_create_event(channel->fd, event->event);
-	if (ret < 0) {
-		switch (-ret) {
+	fd = kernctl_create_event(channel->fd, event->event);
+	if (fd < 0) {
+		switch (-fd) {
 		case EEXIST:
+			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
 		case ENOSYS:
 			WARN("Event type not implemented");
+			ret = LTTNG_ERR_KERN_EVENT_ENOSYS;
 			break;
 		case ENOENT:
 			WARN("Event %s not found!", ev->name);
+			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			break;
 		default:
+			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			PERROR("create event ioctl");
 		}
 		goto free_event;
 	}
 
 	event->type = ev->type;
-	event->fd = ret;
+	event->fd = fd;
 	/* Prevent fd duplication after execlp() */
-	ret = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
-	if (ret < 0) {
+	err = fcntl(event->fd, F_SETFD, FD_CLOEXEC);
+	if (err < 0) {
 		PERROR("fcntl session fd");
 	}
 
 	if (filter) {
-		ret = kernctl_filter(event->fd, filter);
-		if (ret) {
+		err = kernctl_filter(event->fd, filter);
+		if (err < 0) {
+			switch (-err) {
+			case ENOMEM:
+				ret = LTTNG_ERR_FILTER_NOMEM;
+				break;
+			default:
+				ret = LTTNG_ERR_FILTER_INVAL;
+				break;
+			}
 			goto filter_error;
 		}
 	}
 
-	ret = kernctl_enable(event->fd);
-	if (ret < 0) {
-		switch (-ret) {
+	err = kernctl_enable(event->fd);
+	if (err < 0) {
+		switch (-err) {
 		case EEXIST:
 			ret = LTTNG_ERR_KERN_EVENT_EXIST;
 			break;
 		default:
 			PERROR("enable kernel event");
+			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			break;
 		}
 		goto enable_error;

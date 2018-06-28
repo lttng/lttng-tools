@@ -119,23 +119,11 @@ int event_kernel_enable_event(struct ltt_kernel_channel *kchan,
 	kevent = trace_kernel_find_event(event->name, kchan,
 			event->type, filter);
 	if (kevent == NULL) {
-		ret = kernel_create_event(event, kchan,
-			filter_expression, filter);
+		ret = kernel_create_event(event, kchan, filter_expression, filter);
 		/* We have passed ownership */
 		filter_expression = NULL;
 		filter = NULL;
-		if (ret < 0) {
-			switch (-ret) {
-			case EEXIST:
-				ret = LTTNG_ERR_KERN_EVENT_EXIST;
-				break;
-			case ENOSYS:
-				ret = LTTNG_ERR_KERN_EVENT_ENOSYS;
-				break;
-			default:
-				ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-				break;
-			}
+		if (ret) {
 			goto end;
 		}
 	} else if (kevent->enabled == 0) {
