@@ -885,7 +885,7 @@ static void *relay_thread_listener(void *data)
 		goto error_sock_control;
 	}
 
-	data_sock = relay_socket_create(data_uri);
+	data_sock = relay_socket_create(data_uri, "Data listener");
 	if (!data_sock) {
 		goto error_sock_relay;
 	}
@@ -1039,7 +1039,9 @@ error_testpoint:
 	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 error_create_poll:
 	if (data_sock->fd >= 0) {
-		ret = data_sock->ops->close(data_sock);
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+				&data_sock->fd, 1, close_sock,
+				data_sock);
 		if (ret) {
 			PERROR("close");
 		}
