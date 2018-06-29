@@ -28,8 +28,11 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/string.h>
+#include <common/compat/getenv.h>
 #include <common/string-utils/string-utils.h>
+#include <common/utils.h>
 
+#include <lttng/constant.h>
 /* Mi dependancy */
 #include <common/mi-lttng.h>
 
@@ -169,6 +172,117 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	/* No match */
 	ret = CMD_ERROR;
 
+end:
+	return ret;
+}
+
+/*
+ * Walk the directories in the PATH environment variable to find the target
+ * binary passed as parameter.
+ *
+ * On success, the full path of the binary is copied in binary_full_path out
+ * parameter. This buffer is allocated by the caller and must be at least
+ * LTTNG_PATH_MAX bytes long.
+ * On failure, returns -1;
+ */
+static int walk_command_search_path(const char *binary, char *binary_full_path)
+{
+	char *tentative_binary_path = NULL;
+	char *command_search_path = NULL;
+	char *curr_search_dir_end = NULL;
+	char *curr_search_dir = NULL;
+	struct stat stat_output;
+	int ret = 0;
+
+	command_search_path = lttng_secure_getenv("PATH");
+	if (!command_search_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * Duplicate the $PATH string as the char pointer returned by getenv() should
+	 * not be modified.
+	 */
+	command_search_path = strdup(command_search_path);
+	if (!command_search_path) {
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * This char array is used to concatenate path to binary to look for
+	 * the binary.
+	 */
+	tentative_binary_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
+	if (!tentative_binary_path) {
+		ret = -1;
+		goto alloc_error;
+	}
+
+	curr_search_dir = command_search_path;
+	do {
+		/*
+		 * Split on ':'. The return value of this call points to the
+		 * matching character.
+		 */
+		curr_search_dir_end = strchr(curr_search_dir, ':');
+		if (curr_search_dir_end != NULL) {
+			/*
+			 * Add a NULL byte to the end of the first token so it
+			 * can be used as a string.
+			 */
+			curr_search_dir_end[0] = '\0';
+		}
+
+		/* Empty the tentative path */
+		memset(tentative_binary_path, 0, LTTNG_PATH_MAX * sizeof(char));
+
+		/*
+		 * Build the tentative path to the binary using the current
+		 * search directory and the name of the binary.
+		 */
+		ret = snprintf(tentative_binary_path, LTTNG_PATH_MAX, "%s/%s",
+				curr_search_dir, binary);
+		if (ret < 0) {
+			goto free_binary_path;
+		}
+		if (ret < LTTNG_PATH_MAX) {
+			 /*
+			  * Use STAT(2) to see if the file exists.
+			 */
+			ret = stat(tentative_binary_path, &stat_output);
+			if (ret == 0) {
+				/*
+				 * Verify that it is a regular file or a
+				 * symlink and not a special file (e.g.
+				 * device).
+				 */
+				if (S_ISREG(stat_output.st_mode)
+						|| S_ISLNK(stat_output.st_mode)) {
+					/*
+					 * Found a match, set the out parameter
+					 * and return success.
+					 */
+					ret = lttng_strncpy(binary_full_path,
+							tentative_binary_path,
+							LTTNG_PATH_MAX);
+					if (ret == -1) {
+						ERR("Source path does not fit "
+							"in destination buffer.");
+					}
+					goto free_binary_path;
+				}
+			}
+		}
+		/* Go to the next entry in the $PATH variable. */
+		curr_search_dir = curr_search_dir_end + 1;
+	} while (curr_search_dir_end != NULL);
+
+free_binary_path:
+	free(tentative_binary_path);
+alloc_error:
+	free(command_search_path);
 end:
 	return ret;
 }
