@@ -1539,7 +1539,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 {
 	int ret = 0, i;
 	xmlNodePtr node;
-	struct lttng_event event;
+	struct lttng_event *event;
 	char **exclusions = NULL;
 	unsigned long exclusion_count = 0;
 	char *filter_expression = NULL;
@@ -1548,23 +1548,27 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 	assert(handle);
 	assert(channel_name);
 
-	memset(&event, 0, sizeof(event));
+	event = lttng_event_create();
+	if (!event) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
 	/* Initialize default log level which varies by domain */
 	switch (handle->domain.type)
 	{
 	case LTTNG_DOMAIN_JUL:
-		event.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+		event->loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 		break;
 	case LTTNG_DOMAIN_LOG4J:
-		event.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+		event->loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
 		break;
 	case LTTNG_DOMAIN_PYTHON:
-		event.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
+		event->loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 		break;
 	case LTTNG_DOMAIN_UST:
 	case LTTNG_DOMAIN_KERNEL:
-		event.loglevel = LTTNG_LOGLEVEL_DEBUG;
+		event->loglevel = LTTNG_LOGLEVEL_DEBUG;
 		break;
 	default:
 		assert(0);
@@ -1582,7 +1586,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			ret = lttng_strncpy(event.name,
+			ret = lttng_strncpy(event->name,
 					(const char *) content,
 					LTTNG_SYMBOL_NAME_LEN);
 			if (ret == -1) {
@@ -1605,7 +1609,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			ret = parse_bool(content, &event.enabled);
+			ret = parse_bool(content, &event->enabled);
 			free(content);
 			if (ret) {
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -1628,7 +1632,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.type = ret;
+			event->type = ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel_type)) {
 			xmlChar *content = xmlNodeGetContent(node);
@@ -1646,7 +1650,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.loglevel_type = ret;
+			event->loglevel_type = ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel)) {
 			xmlChar *content;
@@ -1672,7 +1676,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.loglevel = loglevel;
+			event->loglevel = loglevel;
 		} else if (!strcmp((const char *) node->name,
 			config_element_filter)) {
 			xmlChar *content =
@@ -1737,7 +1741,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				exclusion_index++;
 			}
 
-			event.exclusion = 1;
+			event->exclusion = 1;
 		} else if (!strcmp((const char *) node->name,
 			config_element_attributes)) {
 			xmlNodePtr attribute_node = xmlFirstElementChild(node);
@@ -1759,7 +1763,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 							probe_attribute_node)) {
 
 					ret = process_probe_attribute_node(probe_attribute_node,
-							&event.attr.probe);
+							&event->attr.probe);
 					if (ret) {
 						goto end;
 					}
@@ -1785,7 +1789,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				}
 
 				ret = lttng_strncpy(
-						event.attr.ftrace.symbol_name,
+						event->attr.ftrace.symbol_name,
 						(char *) content, sym_len);
 				if (ret == -1) {
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -1797,11 +1801,11 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 		}
 	}
 
-	if ((event.enabled && phase == ENABLE) || phase == CREATION) {
-		ret = lttng_enable_event_with_exclusions(handle, &event, channel_name,
+	if ((event->enabled && phase == ENABLE) || phase == CREATION) {
+		ret = lttng_enable_event_with_exclusions(handle, event, channel_name,
 				filter_expression, exclusion_count, exclusions);
 		if (ret < 0) {
-			WARN("Enabling event (name:%s) on load failed.", event.name);
+			WARN("Enabling event (name:%s) on load failed.", event->name);
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			goto end;
 		}
