@@ -39,6 +39,7 @@
 #include <lttng/channel-internal.h>
 #include <lttng/rotate-internal.h>
 #include <lttng/location-internal.h>
+#include <lttng/userspace-probe-internal.h>
 #include <common/string-utils/string-utils.h>
 
 #include "channel.h"
@@ -384,9 +385,13 @@ end:
 	}
 }
 
-static void increment_extended_len(const char *filter_expression,
-		struct lttng_event_exclusion *exclusion, size_t *extended_len)
+static int increment_extended_len(const char *filter_expression,
+		struct lttng_event_exclusion *exclusion,
+		const struct lttng_userspace_probe_location *probe_location,
+		size_t *extended_len)
 {
+	int ret = 0;
+
 	*extended_len += sizeof(struct lttcomm_event_extended_header);
 
 	if (filter_expression) {
@@ -396,14 +401,31 @@ static void increment_extended_len(const char *filter_expression,
 	if (exclusion) {
 		*extended_len += exclusion->count * LTTNG_SYMBOL_NAME_LEN;
 	}
+
+	if (probe_location) {
+		ret = lttng_userspace_probe_location_serialize(probe_location,
+				NULL, NULL);
+		if (ret < 0) {
+			goto end;
+		}
+		*extended_len += ret;
+	}
+	ret = 0;
+end:
+	return ret;
 }
 
-static void append_extended_info(const char *filter_expression,
-		struct lttng_event_exclusion *exclusion, void **extended_at)
+static int append_extended_info(const char *filter_expression,
+		struct lttng_event_exclusion *exclusion,
+		struct lttng_userspace_probe_location *probe_location,
+		void **extended_at)
 {
-	struct lttcomm_event_extended_header extended_header;
+	int ret = 0;
 	size_t filter_len = 0;
 	size_t nb_exclusions = 0;
+	size_t userspace_probe_location_len = 0;
+	struct lttng_dynamic_buffer location_buffer;
+	struct lttcomm_event_extended_header extended_header;
 
 	if (filter_expression) {
 		filter_len = strlen(filter_expression) + 1;
@@ -413,9 +435,21 @@ static void append_extended_info(const char *filter_expression,
 		nb_exclusions = exclusion->count;
 	}
 
+	if (probe_location) {
+		lttng_dynamic_buffer_init(&location_buffer);
+		ret = lttng_userspace_probe_location_serialize(probe_location,
+				&location_buffer, NULL);
+		if (ret < 0) {
+			ret = -1;
+			goto end;
+		}
+		userspace_probe_location_len = location_buffer.size;
+	}
+
 	/* Set header fields */
 	extended_header.filter_len = filter_len;
 	extended_header.nb_exclusions = nb_exclusions;
+	extended_header.userspace_probe_location_len = userspace_probe_location_len;
 
 	/* Copy header */
 	memcpy(*extended_at, &extended_header, sizeof(extended_header));
@@ -434,6 +468,15 @@ static void append_extended_info(const char *filter_expression,
 		memcpy(*extended_at, &exclusion->names, len);
 		*extended_at += len;
 	}
+
+	if (probe_location) {
+		memcpy(*extended_at, location_buffer.data, location_buffer.size);
+		*extended_at += location_buffer.size;
+		lttng_dynamic_buffer_reset(&location_buffer);
+	}
+	ret = 0;
+end:
+	return ret;
 }
 
 /*
@@ -475,8 +518,13 @@ static int list_lttng_agent_events(struct agent *agt,
 	 */
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
-		increment_extended_len(event->filter_expression, NULL,
+		ret = increment_extended_len(event->filter_expression, NULL, NULL,
 				&extended_len);
+		if (ret) {
+			DBG("Error computing the length of extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
 	}
 	rcu_read_unlock();
 
@@ -501,16 +549,21 @@ static int list_lttng_agent_events(struct agent *agt,
 		i++;
 
 		/* Append extended info */
-		append_extended_info(event->filter_expression, NULL,
+		ret = append_extended_info(event->filter_expression, NULL, NULL,
 				&extended_at);
+		if (ret) {
+			DBG("Error appending extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
 	}
-	rcu_read_unlock();
 
 	*events = tmp_events;
 	ret = nb_event;
+	assert(nb_event == i);
 
 error:
-	assert(nb_event == i);
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -560,8 +613,13 @@ static int list_lttng_ust_global_events(char *channel_name,
 			continue;
 		}
 
-		increment_extended_len(uevent->filter_expression,
-			uevent->exclusion, &extended_len);
+		ret = increment_extended_len(uevent->filter_expression,
+			uevent->exclusion, NULL, &extended_len);
+		if (ret) {
+			DBG("Error computing the length of extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
+		}
 	}
 	if (nb_event == 0) {
 		/* All events are internal, skip. */
@@ -621,8 +679,13 @@ static int list_lttng_ust_global_events(char *channel_name,
 		i++;
 
 		/* Append extended info */
-		append_extended_info(uevent->filter_expression,
-			uevent->exclusion, &extended_at);
+		ret = append_extended_info(uevent->filter_expression,
+			uevent->exclusion, NULL, &extended_at);
+		if (ret) {
+			DBG("Error appending extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
+		}
 	}
 
 	ret = nb_event;
@@ -664,14 +727,20 @@ static int list_lttng_kernel_events(char *channel_name,
 
 	/* Compute required extended infos size */
 	cds_list_for_each_entry(event, &kchan->events_list.head, list) {
-		increment_extended_len(event->filter_expression, NULL,
+		ret = increment_extended_len(event->filter_expression, NULL,
+			event->userspace_probe_location,
 			&extended_len);
+		if (ret) {
+			DBG("Error computing the length of extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
 	}
 
 	*total_size = nb_event * sizeof(struct lttng_event) + extended_len;
 	*events = zmalloc(*total_size);
 	if (*events == NULL) {
-		ret = LTTNG_ERR_FATAL;
+		ret = -LTTNG_ERR_FATAL;
 		goto error;
 	}
 
@@ -720,8 +789,13 @@ static int list_lttng_kernel_events(char *channel_name,
 		i++;
 
 		/* Append extended info */
-		append_extended_info(event->filter_expression, NULL,
-			&extended_at);
+		ret = append_extended_info(event->filter_expression, NULL,
+			event->userspace_probe_location, &extended_at);
+		if (ret) {
+			DBG("Error appending extended info message");
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
 	}
 
 end:
