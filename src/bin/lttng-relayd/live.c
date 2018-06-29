@@ -1459,12 +1459,8 @@ int viewer_get_next_index(struct relay_connection *conn)
 		if (ret < 0) {
 			goto error_put;
 		}
-		ret = open(fullpath, O_RDONLY);
-		if (ret < 0) {
-			PERROR("Relay opening trace file");
-			goto error_put;
-		}
-		vstream->stream_fd = stream_fd_create(ret);
+
+		vstream->stream_fd = stream_fd_open(fullpath);
 		if (!vstream->stream_fd) {
 			if (close(ret)) {
 				PERROR("close");
@@ -1565,7 +1561,7 @@ error_put:
 static
 int viewer_get_packet(struct relay_connection *conn)
 {
-	int ret;
+	int ret, stream_fd;
 	off_t lseek_ret;
 	char *reply = NULL;
 	struct lttng_viewer_get_packet get_packet_info;
@@ -1608,26 +1604,32 @@ int viewer_get_packet(struct relay_connection *conn)
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
-	lseek_ret = lseek(vstream->stream_fd->fd, be64toh(get_packet_info.offset),
-			SEEK_SET);
-	if (lseek_ret < 0) {
-		PERROR("lseek fd %d to offset %" PRIu64, vstream->stream_fd->fd,
-			(uint64_t) be64toh(get_packet_info.offset));
-		goto error;
+	stream_fd = stream_fd_get_fd(vstream->stream_fd);
+	if (stream_fd < 0) {
+		ERR("Failed to get viewer stream file descriptor");
+		goto error_put_fd;
 	}
-	read_len = lttng_read(vstream->stream_fd->fd,
+	lseek_ret = lseek(stream_fd, be64toh(get_packet_info.offset), SEEK_SET);
+	if (lseek_ret < 0) {
+		PERROR("lseek fd %d to offset %" PRIu64, stream_fd,
+			(uint64_t) be64toh(get_packet_info.offset));
+		goto error_put_fd;
+	}
+	read_len = lttng_read(stream_fd,
 			reply + sizeof(reply_header),
 			packet_data_len);
 	if (read_len < packet_data_len) {
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
-				vstream->stream_fd->fd,
+				stream_fd,
 				(uint64_t) be64toh(get_packet_info.offset));
-		goto error;
+		goto error_put_fd;
 	}
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
 	reply_header.len = htobe32(packet_data_len);
 	goto send_reply;
 
+error_put_fd:
+	stream_fd_put_fd(vstream->stream_fd);
 error:
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
@@ -1674,7 +1676,7 @@ end:
 static
 int viewer_get_metadata(struct relay_connection *conn)
 {
-	int ret = 0;
+	int ret = 0, stream_fd = -1;
 	ssize_t read_len;
 	uint64_t len = 0;
 	char *data = NULL;
@@ -1734,16 +1736,9 @@ int viewer_get_metadata(struct relay_connection *conn)
 		if (ret < 0) {
 			goto error;
 		}
-		ret = open(fullpath, O_RDONLY);
-		if (ret < 0) {
-			PERROR("Relay opening metadata file");
-			goto error;
-		}
-		vstream->stream_fd = stream_fd_create(ret);
+		vstream->stream_fd = stream_fd_open(fullpath);
 		if (!vstream->stream_fd) {
-			if (close(ret)) {
-				PERROR("close");
-			}
+			PERROR("Failed to open viewer stream file at %s", fullpath);
 			goto error;
 		}
 	}
@@ -1755,10 +1750,14 @@ int viewer_get_metadata(struct relay_connection *conn)
 		goto error;
 	}
 
-	read_len = lttng_read(vstream->stream_fd->fd, data, len);
+	stream_fd = stream_fd_get_fd(vstream->stream_fd);
+	if (stream_fd < 0) {
+		goto error_put_fd;
+	}
+	read_len = lttng_read(stream_fd, data, len);
 	if (read_len < len) {
 		PERROR("Relay reading metadata file");
-		goto error;
+		goto error_put_fd;
 	}
 	vstream->metadata_sent += read_len;
 	if (vstream->metadata_sent == vstream->stream->metadata_received
@@ -1770,7 +1769,8 @@ int viewer_get_metadata(struct relay_connection *conn)
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_OK);
 
 	goto send_reply;
-
+error_put_fd:
+	(void) stream_fd_put_fd(vstream->stream_fd);
 error:
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 

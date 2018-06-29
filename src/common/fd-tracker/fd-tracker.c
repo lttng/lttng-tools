@@ -797,6 +797,7 @@ int fs_handle_close(struct fs_handle *handle)
 	pthread_mutex_lock(&handle->lock);
 	fd_tracker_untrack(handle->tracker, handle);
 	if (handle->fd >= 0) {
+		assert(!handle->in_use);
 		/*
 		 * The return value of close() is not propagated as there
 		 * isn't much the user can do about it.

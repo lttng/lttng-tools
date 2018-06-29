@@ -712,7 +712,8 @@ int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
  *
  * Return 0 on success or else a negative value.
  */
-static int utils_stream_file_name(char *path,
+LTTNG_HIDDEN
+int utils_stream_file_name(char *path,
 		const char *path_name, const char *file_name,
 		uint64_t size, uint64_t count,
 		const char *suffix)
@@ -839,31 +840,10 @@ error:
 	return ret;
 }
 
-/*
- * Change the output tracefile according to the given size and count The
- * new_count pointer is set during this operation.
- *
- * From the consumer, the stream lock MUST be held before calling this function
- * because we are modifying the stream status.
- *
- * Return 0 on success or else a negative value.
- */
 LTTNG_HIDDEN
-int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
-		int *stream_fd)
+void utils_stream_file_rotation_get_new_count(uint64_t count,
+		uint64_t *new_count, bool *should_unlink)
 {
-	int ret;
-
-	assert(stream_fd);
-
-	ret = close(out_fd);
-	if (ret < 0) {
-		PERROR("Closing tracefile");
-		goto error;
-	}
-	*stream_fd = -1;
-
 	if (count > 0) {
 		/*
 		 * In tracefile rotation, for the relay daemon we need
@@ -881,14 +861,49 @@ int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
 		if (new_count) {
 			*new_count = (*new_count + 1) % count;
 		}
+		*should_unlink = true;
+	} else {
+		if (new_count) {
+			(*new_count)++;
+		}
+		*should_unlink = false;
+	}
+}
+
+/*
+ * Change the output tracefile according to the given size and count The
+ * new_count pointer is set during this operation.
+ *
+ * From the consumer, the stream lock MUST be held before calling this function
+ * because we are modifying the stream status.
+ *
+ * Return 0 on success or else a negative value.
+ */
+LTTNG_HIDDEN
+int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
+		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
+		int *stream_fd)
+{
+	int ret;
+	bool should_unlink;
+
+	assert(stream_fd);
+
+	utils_stream_file_rotation_get_new_count(count, new_count,
+			&should_unlink);
+
+	ret = close(out_fd);
+	if (ret < 0) {
+		PERROR("Closing tracefile");
+		goto error;
+	}
+	*stream_fd = -1;
+
+	if (should_unlink) {
 		ret = utils_unlink_stream_file(path_name, file_name, size,
 				new_count ? *new_count : 0, uid, gid, 0);
 		if (ret < 0 && errno != ENOENT) {
 			goto error;
-		}
-	} else {
-		if (new_count) {
-			(*new_count)++;
 		}
 	}
 

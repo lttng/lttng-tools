@@ -115,13 +115,8 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	 * No need to use run_as API here because whatever we receive,
 	 * the relayd uses its own credentials for the stream files.
 	 */
-	ret = utils_create_stream_file(stream->path_name, stream->channel_name,
-			stream->tracefile_size, 0, -1, -1, NULL);
-	if (ret < 0) {
-		ERR("Create output file");
-		goto end;
-	}
-	stream->stream_fd = stream_fd_create(ret);
+	stream->stream_fd = stream_fd_create(stream->path_name,
+			stream->channel_name, stream->tracefile_size, 0, NULL);
 	if (!stream->stream_fd) {
 		if (close(ret)) {
 			PERROR("Error closing file %d", ret);
