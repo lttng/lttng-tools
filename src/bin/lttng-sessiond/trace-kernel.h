@@ -58,6 +58,7 @@ struct ltt_kernel_event {
 	struct cds_list_head list;
 	char *filter_expression;
 	struct lttng_filter_bytecode *filter;
+	struct lttng_userspace_probe_location *userspace_probe_location;
 };
 
 /* Kernel channel */
