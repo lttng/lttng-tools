@@ -21,6 +21,12 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 AC_PROG_CC
 AC_PROG_CC_STDC
+AC_PROG_CXX
+rw_PROG_CXX_WORKS
+AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
+
+ax_CHECK_SDT_WORKS
+AM_CONDITIONAL([SDT_WORKS], [test "x$ax_check_sdt_works" = "xyes"])
 
 # Checks for programs.
 AC_PROG_GREP
@@ -1166,6 +1172,9 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/gen-ust-nevents-str/Makefile
 	tests/utils/testapp/gen-syscall-events/Makefile
 	tests/utils/testapp/gen-ust-tracef/Makefile
+	tests/utils/testapp/userspace-probe-elf-binary/Makefile
+	tests/utils/testapp/userspace-probe-elf-cxx-binary/Makefile
+	tests/utils/testapp/userspace-probe-sdt-binary/Makefile
 ])
 
 # Inject variable into python test script.
