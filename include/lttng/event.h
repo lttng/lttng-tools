@@ -37,6 +37,7 @@ enum lttng_event_type {
 	LTTNG_EVENT_FUNCTION_ENTRY            = 3,
 	LTTNG_EVENT_NOOP                      = 4,
 	LTTNG_EVENT_SYSCALL                   = 5,
+	LTTNG_EVENT_USERSPACE_PROBE           = 6,
 };
 
 /*

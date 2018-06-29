@@ -343,6 +343,8 @@ static void print_events(struct lttng_event *event)
 				safe_string(filter_msg));
 		break;
 	case LTTNG_EVENT_ALL:
+		/* Fall-through. */
+	default:
 		/* We should never have "all" events in list. */
 		assert(0);
 		break;
