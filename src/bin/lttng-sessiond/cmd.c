@@ -712,6 +712,8 @@ static int list_lttng_kernel_events(char *channel_name,
 			(*events)[i].type = LTTNG_EVENT_SYSCALL;
 			break;
 		case LTTNG_KERNEL_ALL:
+			/* fall-through. */
+		default:
 			assert(0);
 			break;
 		}
