@@ -769,6 +769,9 @@ static int list_lttng_kernel_events(char *channel_name,
 			memcpy(&(*events)[i].attr.probe, &event->event->u.kprobe,
 					sizeof(struct lttng_kernel_kprobe));
 			break;
+		case LTTNG_KERNEL_UPROBE:
+			(*events)[i].type = LTTNG_EVENT_USERSPACE_PROBE;
+			break;
 		case LTTNG_KERNEL_FUNCTION:
 			(*events)[i].type = LTTNG_EVENT_FUNCTION;
 			memcpy(&((*events)[i].attr.ftrace), &event->event->u.ftrace,
