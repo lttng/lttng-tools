@@ -73,6 +73,7 @@ THE SOFTWARE.
 			<xs:enumeration value="FUNCTION_ENTRY" />
 			<xs:enumeration value="NOOP" />
 			<xs:enumeration value="SYSCALL" />
+			<xs:enumeration value="USERSPACE_PROBE" />
 		</xs:restriction>
 	</xs:simpleType>
 
