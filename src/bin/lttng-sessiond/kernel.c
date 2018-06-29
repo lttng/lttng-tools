@@ -492,6 +492,13 @@ int kernel_create_event(struct lttng_event *ev,
 		}
 	}
 
+	if (ev->type == LTTNG_EVENT_USERSPACE_PROBE) {
+		ret = userspace_probe_add_callsites(ev, channel->session, event->fd);
+		if (ret) {
+			goto add_callsite_error;
+		}
+	}
+
 	err = kernctl_enable(event->fd);
 	if (err < 0) {
 		switch (-err) {
@@ -514,6 +521,7 @@ int kernel_create_event(struct lttng_event *ev,
 
 	return 0;
 
+add_callsite_error:
 enable_error:
 filter_error:
 	{
