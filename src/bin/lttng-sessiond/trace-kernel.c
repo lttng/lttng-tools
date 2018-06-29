@@ -21,6 +21,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <lttng/event.h>
+#include <lttng/lttng-error.h>
+#include <lttng/userspace-probe.h>
+#include <lttng/userspace-probe-internal.h>
+
 #include <common/common.h>
 #include <common/defaults.h>
 
@@ -300,6 +305,7 @@ enum lttng_error_code trace_kernel_create_event(
 	enum lttng_error_code ret;
 	struct lttng_kernel_event *attr;
 	struct ltt_kernel_event *local_kernel_event;
+	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
 
 	assert(ev);
 
@@ -320,6 +326,84 @@ enum lttng_error_code trace_kernel_create_event(
 				ev->attr.probe.symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
 		attr->u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+	{
+		struct lttng_userspace_probe_location* location = NULL;
+		struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+
+		location = lttng_event_get_userspace_probe_location(ev);
+		if (!location) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+
+		/*
+		 * From this point on, the specific term 'uprobe' is used
+		 * instead of the generic 'userspace probe' because it's the
+		 * technology used at the moment for this instrumentation.
+		 * LTTng currently implements userspace probes using uprobes.
+		 * In the interactions with the kernel tracer, we use the
+		 * uprobe term.
+		 */
+		attr->instrumentation = LTTNG_KERNEL_UPROBE;
+
+		/*
+		 * Only the elf lookup method is supported at the moment.
+		 */
+		lookup = lttng_userspace_probe_location_get_lookup_method(
+				location);
+		if (!lookup) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+
+		/*
+		 * From the kernel tracer's perspective, all userspace probe
+		 * event types are all the same: a file and an offset.
+		 */
+		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			/* Get the file descriptor on the target binary. */
+			attr->u.uprobe.fd =
+					lttng_userspace_probe_location_function_get_binary_fd(location);
+
+			/*
+			 * Save a reference to the probe location used during
+			 * the listing of events. Close its FD since it won't
+			 * be needed for listing.
+			 */
+			userspace_probe_location =
+					lttng_userspace_probe_location_copy(location);
+			ret = lttng_userspace_probe_location_function_set_binary_fd(
+					userspace_probe_location, -1);
+			if (ret) {
+				goto error;
+			}
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			/* Get the file descriptor on the target binary. */
+			attr->u.uprobe.fd =
+					lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+
+			/*
+			 * Save a reference to the probe location used during the listing of
+			 * events. Close its FD since it won't be needed for listing.
+			 */
+			userspace_probe_location =
+					lttng_userspace_probe_location_copy(location);
+			ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
+					userspace_probe_location, -1);
+			if (ret) {
+				goto error;
+			}
+			break;
+		default:
+			DBG("Unsupported lookup method type");
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+		break;
+	}
 	case LTTNG_EVENT_FUNCTION:
 		attr->instrumentation = LTTNG_KERNEL_KRETPROBE;
 		attr->u.kretprobe.addr = ev->attr.probe.addr;
@@ -359,6 +443,7 @@ enum lttng_error_code trace_kernel_create_event(
 	local_kernel_event->enabled = 1;
 	local_kernel_event->filter_expression = filter_expression;
 	local_kernel_event->filter = filter;
+	local_kernel_event->userspace_probe_location = userspace_probe_location;
 
 	*kernel_event = local_kernel_event;
 

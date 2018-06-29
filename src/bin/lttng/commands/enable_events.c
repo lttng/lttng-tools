@@ -54,6 +54,7 @@ static int opt_log4j;
 static int opt_python;
 static int opt_enable_all;
 static char *opt_probe;
+static char *opt_userspace_probe;
 static char *opt_function;
 static char *opt_channel_name;
 static char *opt_filter;
@@ -69,6 +70,7 @@ enum {
 	OPT_HELP = 1,
 	OPT_TRACEPOINT,
 	OPT_PROBE,
+	OPT_USERSPACE_PROBE,
 	OPT_FUNCTION,
 	OPT_SYSCALL,
 	OPT_USERSPACE,
@@ -95,6 +97,7 @@ static struct poptOption long_options[] = {
 	{"python",         'p', POPT_ARG_VAL, &opt_python, 1, 0, 0},
 	{"tracepoint",     0,   POPT_ARG_NONE, 0, OPT_TRACEPOINT, 0, 0},
 	{"probe",          0,   POPT_ARG_STRING, &opt_probe, OPT_PROBE, 0, 0},
+	{"userspace-probe",0,   POPT_ARG_STRING, &opt_userspace_probe, OPT_USERSPACE_PROBE, 0, 0},
 	{"function",       0,   POPT_ARG_STRING, &opt_function, OPT_FUNCTION, 0, 0},
 	{"syscall",        0,   POPT_ARG_NONE, 0, OPT_SYSCALL, 0, 0},
 	{"loglevel",       0,     POPT_ARG_STRING, 0, OPT_LOGLEVEL, 0, 0},
@@ -283,6 +286,214 @@ free_binary_path:
 	free(tentative_binary_path);
 alloc_error:
 	free(command_search_path);
+end:
+	return ret;
+}
+
+/*
+ * Parse userspace probe options
+ * Set the userspace probe fields in the lttng_event struct and set the
+ * target_path to the path to the binary.
+ */
+static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
+{
+	int ret = CMD_SUCCESS;
+	int num_token;
+	char **tokens;
+	char *target_path = NULL;
+	char *unescaped_target_path = NULL;
+	char *real_target_path = NULL;
+	char *symbol_name = NULL, *probe_name = NULL, *provider_name = NULL;
+	struct lttng_userspace_probe_location *probe_location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method =
+			NULL;
+
+	if (opt == NULL) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	/*
+	 * userspace probe fields are separated by ':'.
+	 */
+	tokens = strutils_split(opt, ':', 1);
+	num_token = strutils_array_of_strings_len(tokens);
+
+	/*
+	 * Early sanity check that the number of parameter is between 2 and 4
+	 * inclusively.
+	 * elf:PATH:SYMBOL
+	 * std:PATH:PROVIDER_NAME:PROBE_NAME
+	 * PATH:SYMBOL (same behavior as ELF)
+	 */
+	if (num_token < 2 || num_token > 4) {
+		ret = CMD_ERROR;
+		goto end_string;
+	}
+
+	/*
+	 * Looking up the first parameter will tell the technique to use to
+	 * interpret the userspace probe/function description.
+	 */
+	switch (num_token) {
+	case 2:
+		/* When the probe type is omitted we assume ELF for now. */
+	case 3:
+		if (num_token == 3 && strcmp(tokens[0], "elf") == 0) {
+			target_path = tokens[1];
+			symbol_name = tokens[2];
+		} else if (num_token == 2) {
+			target_path = tokens[0];
+			symbol_name = tokens[1];
+		} else {
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_function_elf_create();
+		if (!lookup_method) {
+			WARN("Failed to create ELF lookup method");
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		break;
+	case 4:
+		if (strcmp(tokens[0], "sdt") == 0) {
+			target_path = tokens[1];
+			provider_name = tokens[2];
+			probe_name = tokens[3];
+		} else {
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		lookup_method =
+			lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
+		if (!lookup_method) {
+			WARN("Failed to create ELF lookup method");
+			ret = CMD_ERROR;
+			goto end_string;
+		}
+		break;
+	default:
+		ret = CMD_ERROR;
+		goto end_string;
+	}
+
+	/* strutils_unescape_string allocates a new char *. */
+	unescaped_target_path = strutils_unescape_string(target_path, 0);
+	if (!unescaped_target_path) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end_string;
+	}
+
+	/*
+	 * If there is not forward slash in the path. Walk the $PATH else
+	 * expand.
+	 */
+	if (strchr(target_path, '/') == NULL) {
+		/* Walk the $PATH variable to find the targeted binary. */
+		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
+		if (!real_target_path) {
+			PERROR("Error allocating path buffer");
+			ret = CMD_ERROR;
+			goto end_unescaped_string;
+		}
+		ret = walk_command_search_path(target_path, real_target_path);
+		if (ret) {
+			ERR("Binary not found.");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+	} else {
+		/*
+		 * Expand references to `/./` and `/../`. This function does not check
+		 * if the file exists.
+		 */
+		real_target_path = utils_expand_path_keep_symlink(target_path);
+		if (!real_target_path) {
+			ERR("Error expanding the path to binary.");
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+
+		/*
+		 * Check if the file exists using access(2). If it does not, walk the
+		 * $PATH.
+		 */
+		ret = access(real_target_path, F_OK);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end_free_path;
+		}
+	}
+
+	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup_method)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		probe_location = lttng_userspace_probe_location_function_create(
+				real_target_path, symbol_name, lookup_method);
+		if (!probe_location) {
+			WARN("Failed to create function probe location");
+			ret = CMD_ERROR;
+			goto end_destroy_lookup_method;
+		}
+
+		/* Ownership transferred to probe_location. */
+		lookup_method = NULL;
+
+		ret = lttng_event_set_userspace_probe_location(ev, probe_location);
+		if (ret) {
+			WARN("Failed to set probe location on event");
+			ret = CMD_ERROR;
+			goto end_destroy_location;
+		}
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+		probe_location = lttng_userspace_probe_location_tracepoint_create(
+				real_target_path, provider_name, probe_name, lookup_method);
+		if (!probe_location) {
+			WARN("Failed to create function probe location");
+			ret = CMD_ERROR;
+			goto end_destroy_lookup_method;
+		}
+
+		/* Ownership transferred to probe_location. */
+		lookup_method = NULL;
+
+		ret = lttng_event_set_userspace_probe_location(ev, probe_location);
+		if (ret) {
+			WARN("Failed to set probe location on event");
+			ret = CMD_ERROR;
+			goto end_destroy_location;
+		}
+		break;
+	default:
+		ret = CMD_ERROR;
+		goto end_string;
+	}
+
+	switch (ev->type) {
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		break;
+	default:
+		assert(0);
+	}
+
+	goto end;
+
+end_destroy_location:
+	lttng_userspace_probe_location_destroy(probe_location);
+end_destroy_lookup_method:
+	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
+end_free_path:
+	/*
+	 * Free path that was allocated by the call to realpath() or when walking
+	 * the PATH.
+	 */
+	free(real_target_path);
+end_unescaped_string:
+	free(unescaped_target_path);
+end_string:
+	strutils_free_null_terminated_array_of_strings(tokens);
 end:
 	return ret;
 }
@@ -1058,6 +1269,14 @@ static int enable_events(char *session_name)
 					goto error;
 				}
 				break;
+			case LTTNG_EVENT_USERSPACE_PROBE:
+				ret = parse_userspace_probe_opts(ev, opt_userspace_probe);
+				if (ret) {
+					ERR("Unable to parse userspace probe options");
+					ret = CMD_ERROR;
+					goto error;
+				}
+				break;
 			case LTTNG_EVENT_FUNCTION:
 				ret = parse_probe_opts(ev, opt_function);
 				if (ret) {
@@ -1092,6 +1311,7 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_PROBE:
 			case LTTNG_EVENT_FUNCTION:
 			case LTTNG_EVENT_SYSCALL:
+			case LTTNG_EVENT_USERSPACE_PROBE:
 			default:
 				ERR("Event type not available for user-space tracing");
 				ret = CMD_UNSUPPORTED;
@@ -1205,6 +1425,12 @@ static int enable_events(char *session_name)
 					error = 1;
 					break;
 				}
+				case LTTNG_ERR_SDT_PROBE_SEMAPHORE:
+					ERR("SDT probes %s guarded by semaphores are not supported (channel %s, session %s)",
+							event_name, print_channel_name(channel_name),
+							session_name);
+					error = 1;
+					break;
 				default:
 					ERR("Event %s%s: %s (channel %s, session %s)", event_name,
 							exclusion_string,
@@ -1403,6 +1629,9 @@ int cmd_enable_events(int argc, const char **argv)
 			break;
 		case OPT_PROBE:
 			opt_event_type = LTTNG_EVENT_PROBE;
+			break;
+		case OPT_USERSPACE_PROBE:
+			opt_event_type = LTTNG_EVENT_USERSPACE_PROBE;
 			break;
 		case OPT_FUNCTION:
 			opt_event_type = LTTNG_EVENT_FUNCTION;
