@@ -25,7 +25,12 @@
 #ifndef LTTNG_INDEX_H
 #define LTTNG_INDEX_H
 
+#include <common/compat/endian.h>
+#include <common/macros.h>
+
+#include <stdint.h>
 #include <limits.h>
+#include <stddef.h>
 
 #define CTF_INDEX_MAGIC 0xC1F1DCC1
 #define CTF_INDEX_MAJOR 1
@@ -99,6 +104,18 @@ static inline uint32_t lttng_to_index_minor(uint32_t lttng_major,
 		}
 	}
 	abort();
+}
+
+static inline void ctf_packet_index_file_hdr_init(
+		struct ctf_packet_index_file_hdr *hdr,
+		uint32_t idx_major, uint32_t idx_minor)
+{
+	memset(hdr, 0, sizeof(*hdr));
+	hdr->magic = htobe32(CTF_INDEX_MAGIC);
+	hdr->index_major = htobe32(idx_major);
+	hdr->index_minor = htobe32(idx_minor);
+	hdr->packet_index_len = htobe32(
+			ctf_packet_index_len(idx_major, idx_minor));
 }
 
 #endif /* LTTNG_INDEX_H */

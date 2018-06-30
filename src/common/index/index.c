@@ -88,11 +88,7 @@ struct lttng_index_file *lttng_index_file_create(char *path_name,
 	}
 	fd = ret;
 
-	hdr.magic = htobe32(CTF_INDEX_MAGIC);
-	hdr.index_major = htobe32(major);
-	hdr.index_minor = htobe32(minor);
-	hdr.packet_index_len = htobe32(element_len);
-
+	ctf_packet_index_file_hdr_init(&hdr, major, minor);
 	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
 	if (size_ret < sizeof(hdr)) {
 		PERROR("write index header");
