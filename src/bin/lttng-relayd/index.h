@@ -22,10 +22,11 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <urcu/ref.h>
 
 #include <common/hashtable/hashtable.h>
-#include <common/index/index.h>
 
+#include "index-file.h"
 #include "stream-fd.h"
 
 struct relay_stream;
@@ -42,7 +43,7 @@ struct relay_index {
 	 * index file on which to write the index data. May differ from
 	 * stream->index_file due to tracefile rotation.
 	 */
-	struct lttng_index_file *index_file;
+	struct relay_index_file *index_file;
 
 	/* Index packet data. This is the data that is written on disk. */
 	struct ctf_packet_index index_data;
@@ -66,7 +67,7 @@ struct relay_index *relay_index_get_by_id_or_create(struct relay_stream *stream,
 		uint64_t net_seq_num);
 void relay_index_put(struct relay_index *index);
 int relay_index_set_file(struct relay_index *index,
-		struct lttng_index_file *index_file,
+		struct relay_index_file *index_file,
 		uint64_t data_offset);
 int relay_index_set_data(struct relay_index *index,
                 const struct ctf_packet_index *data);

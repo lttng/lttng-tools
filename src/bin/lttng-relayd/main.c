@@ -1668,14 +1668,14 @@ int create_rotate_index_file(struct relay_stream *stream)
 
 	/* Put ref on previous index_file. */
 	if (stream->index_file) {
-		lttng_index_file_put(stream->index_file);
+		relay_index_file_put(stream->index_file);
 		stream->index_file = NULL;
 	}
 	major = stream->trace->session->major;
 	minor = stream->trace->session->minor;
-	stream->index_file = lttng_index_file_create(stream->path_name,
+	stream->index_file = relay_index_file_create(stream->path_name,
 			stream->channel_name,
-			-1, -1, stream->tracefile_size,
+			stream->tracefile_size,
 			tracefile_array_get_file_index_head(stream->tfa),
 			lttng_to_index_major(major, minor),
 			lttng_to_index_minor(major, minor));

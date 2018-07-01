@@ -29,6 +29,7 @@
 #include "ctf-trace.h"
 #include "lttng-viewer-abi.h"
 #include "stream.h"
+#include "index-file.h"
 
 struct relay_stream;
 
@@ -52,7 +53,7 @@ struct relay_viewer_stream {
 	/* FD from which to read the stream data. */
 	struct stream_fd *stream_fd;
 	/* index file from which to read the index data. */
-	struct lttng_index_file *index_file;
+	struct relay_index_file *index_file;
 
 	char *path_name;
 	char *channel_name;

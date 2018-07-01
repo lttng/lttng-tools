@@ -30,6 +30,7 @@
 #include "session.h"
 #include "stream-fd.h"
 #include "tracefile-array.h"
+#include "index-file.h"
 
 struct relay_stream_chunk_id {
 	bool is_set;
@@ -58,7 +59,7 @@ struct relay_stream {
 	/* FD on which to write the stream data. */
 	struct stream_fd *stream_fd;
 	/* index file on which to write the index data. */
-	struct lttng_index_file *index_file;
+	struct relay_index_file *index_file;
 
 	char *path_name;
 	char *channel_name;

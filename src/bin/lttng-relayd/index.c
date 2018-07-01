@@ -157,7 +157,7 @@ end:
 }
 
 int relay_index_set_file(struct relay_index *index,
-		struct lttng_index_file *index_file,
+		struct relay_index_file *index_file,
 		uint64_t data_offset)
 {
 	int ret = 0;
@@ -167,7 +167,7 @@ int relay_index_set_file(struct relay_index *index,
 		ret = -1;
 		goto end;
 	}
-	lttng_index_file_get(index_file);
+	relay_index_file_get(index_file);
 	index->index_file = index_file;
 	index->index_data.offset = data_offset;
 end:
@@ -220,7 +220,7 @@ static void index_release(struct urcu_ref *ref)
 	struct lttng_ht_iter iter;
 
 	if (index->index_file) {
-		lttng_index_file_put(index->index_file);
+		relay_index_file_put(index->index_file);
 		index->index_file = NULL;
 	}
 	if (index->in_hash_table) {
@@ -272,7 +272,6 @@ int relay_index_try_flush(struct relay_index *index)
 {
 	int ret = 1;
 	bool flushed = false;
-	int fd;
 
 	pthread_mutex_lock(&index->lock);
 	if (index->flushed) {
@@ -282,13 +281,12 @@ int relay_index_try_flush(struct relay_index *index)
 	if (!index->has_index_data || !index->index_file) {
 		goto skip;
 	}
-	fd = index->index_file->fd;
-	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64
-			" on fd %d", index->stream->stream_handle,
-			index->index_n.key, fd);
+	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64,
+			index->stream->stream_handle,
+			index->index_n.key);
 	flushed = true;
 	index->flushed = true;
-	ret = lttng_index_file_write(index->index_file, &index->index_data);
+	ret = relay_index_file_write(index->index_file, &index->index_data);
 skip:
 	pthread_mutex_unlock(&index->lock);
 
@@ -362,7 +360,7 @@ uint64_t relay_index_find_last(struct relay_stream *stream)
  */
 static
 int relay_index_switch_file(struct relay_index *index,
-		struct lttng_index_file *new_index_file,
+		struct relay_index_file *new_index_file,
 		uint64_t removed_data_count)
 {
 	int ret = 0;
@@ -375,8 +373,8 @@ int relay_index_switch_file(struct relay_index *index,
 		goto end;
 	}
 
-	lttng_index_file_put(index->index_file);
-	lttng_index_file_get(new_index_file);
+	relay_index_file_put(index->index_file);
+	relay_index_file_get(new_index_file);
 	index->index_file = new_index_file;
 	offset = be64toh(index->index_data.offset);
 	index->index_data.offset = htobe64(offset - removed_data_count);
@@ -400,7 +398,7 @@ int relay_index_switch_all_files(struct relay_stream *stream)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
 			index, index_n.node) {
-		DBG("Update index to fd %d", stream->index_file->fd);
+		DBG("Update index");
 		ret = relay_index_switch_file(index, stream->index_file,
 				stream->pos_after_last_complete_data_index);
 		if (ret) {

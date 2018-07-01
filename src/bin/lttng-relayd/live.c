@@ -47,7 +47,6 @@
 #include <common/compat/endian.h>
 #include <common/defaults.h>
 #include <common/futex.h>
-#include <common/index/index.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/sessiond-comm/inet.h>
 #include <common/sessiond-comm/relayd.h>
@@ -67,6 +66,7 @@
 #include "ctf-trace.h"
 #include "connection.h"
 #include "viewer-session.h"
+#include "index-file.h"
 
 #define SESSION_BUF_DEFAULT_COUNT	16
 
@@ -1232,7 +1232,7 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 		ret = -ENOENT;
 		goto end;
 	}
-	vstream->index_file = lttng_index_file_open(vstream->path_name,
+	vstream->index_file = relay_index_file_open(vstream->path_name,
 			vstream->channel_name,
 			vstream->stream->tracefile_count,
 			vstream->current_tracefile_id);
@@ -1477,10 +1477,9 @@ int viewer_get_next_index(struct relay_connection *conn)
 		viewer_index.flags |= LTTNG_VIEWER_FLAG_NEW_STREAM;
 	}
 
-	ret = lttng_index_file_read(vstream->index_file, &packet_index);
+	ret = relay_index_file_read(vstream->index_file, &packet_index);
 	if (ret) {
-		ERR("Relay error reading index file %d",
-				vstream->index_file->fd);
+		ERR("Relay error reading index file");
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
 		goto send_reply;
 	} else {

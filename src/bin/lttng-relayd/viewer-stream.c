@@ -19,11 +19,11 @@
 
 #define _LGPL_SOURCE
 #include <common/common.h>
-#include <common/index/index.h>
 #include <common/compat/string.h>
 
 #include "lttng-relayd.h"
 #include "viewer-stream.h"
+#include "index-file.h"
 
 static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 {
@@ -118,7 +118,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	if (stream->index_received_seqcount == 0) {
 		vstream->index_file = NULL;
 	} else {
-		vstream->index_file = lttng_index_file_open(vstream->path_name,
+		vstream->index_file = relay_index_file_open(vstream->path_name,
 				vstream->channel_name,
 				stream->tracefile_count,
 				vstream->current_tracefile_id);
@@ -128,10 +128,10 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	}
 
 	if (seek_t == LTTNG_VIEWER_SEEK_LAST && vstream->index_file) {
-		off_t lseek_ret;
+		int ret;
 
-		lseek_ret = lseek(vstream->index_file->fd, 0, SEEK_END);
-		if (lseek_ret < 0) {
+		ret = relay_index_file_seek_end(vstream->index_file);
+		if (ret < 0) {
 			goto error_unlock;
 		}
 	}
@@ -183,7 +183,7 @@ static void viewer_stream_release(struct urcu_ref *ref)
 		vstream->stream_fd = NULL;
 	}
 	if (vstream->index_file) {
-		lttng_index_file_put(vstream->index_file);
+		relay_index_file_put(vstream->index_file);
 		vstream->index_file = NULL;
 	}
 	if (vstream->stream) {
@@ -285,7 +285,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 	}
 
 	if (vstream->index_file) {
-		lttng_index_file_put(vstream->index_file);
+		relay_index_file_put(vstream->index_file);
 		vstream->index_file = NULL;
 	}
 	if (vstream->stream_fd) {
@@ -293,7 +293,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 		vstream->stream_fd = NULL;
 	}
 
-	vstream->index_file = lttng_index_file_open(vstream->path_name,
+	vstream->index_file = relay_index_file_open(vstream->path_name,
 			vstream->channel_name,
 			stream->tracefile_count,
 			vstream->current_tracefile_id);

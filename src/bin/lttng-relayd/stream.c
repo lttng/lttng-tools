@@ -290,7 +290,7 @@ static void stream_release(struct urcu_ref *ref)
 		stream->stream_fd = NULL;
 	}
 	if (stream->index_file) {
-		lttng_index_file_put(stream->index_file);
+		relay_index_file_put(stream->index_file);
 		stream->index_file = NULL;
 	}
 	if (stream->trace) {
