@@ -159,7 +159,7 @@ static uint64_t last_relay_stream_id;
 static struct relay_conn_queue relay_conn_queue;
 
 /* Cap of file desriptors to be in simultaneous use by the relay daemon. */
-static unsigned int lttng_opt_fd_cap;
+static unsigned int lttng_opt_fd_pool_size = -1;
 
 /* Global relay stream hash table. */
 struct lttng_ht *relay_streams_ht;
@@ -183,7 +183,7 @@ static struct option long_options[] = {
 	{ "daemonize", 0, 0, 'd', },
 	{ "background", 0, 0, 'b', },
 	{ "group", 1, 0, 'g', },
-	{ "fd-cap", 1, 0, '\0', },
+	{ "fd-pool-size", 1, 0, '\0', },
 	{ "help", 0, 0, 'h', },
 	{ "output", 1, 0, 'o', },
 	{ "verbose", 0, 0, 'v', },
@@ -206,28 +206,22 @@ static int set_option(int opt, const char *arg, const char *optname)
 
 	switch (opt) {
 	case 0:
-		if (!strcmp(optname, "fd-cap")) {
+		if (!strcmp(optname, "fd-pool-size")) {
 			unsigned long v;
 
 			errno = 0;
 			v = strtoul(arg, NULL, 0);
 			if (errno != 0 || !isdigit(arg[0])) {
-				ERR("Wrong value in --fd-cap parameter: %s", arg);
+				ERR("Wrong value in --fd-pool-size parameter: %s", arg);
 				ret = -1;
 				goto end;
-			}
-			if (v < DEFAULT_RELAYD_MINIMAL_FD_CAP) {
-				ERR("File descriptor cap must be set to at least %d",
-						DEFAULT_RELAYD_MINIMAL_FD_CAP);
 			}
 			if (v >= UINT_MAX) {
-				ERR("File descriptor cap overflow in --fd-cap parameter: %s", arg);
+				ERR("File descriptor cap overflow in --fd-pool-size parameter: %s", arg);
 				ret = -1;
 				goto end;
 			}
-			lttng_opt_fd_cap = (unsigned int) v;
-			DBG3("File descriptor cap set to %u", lttng_opt_fd_cap);
-
+			lttng_opt_fd_pool_size = (unsigned int) v;
 		} else {
 			fprintf(stderr, "unknown option %s", optname);
 			if (arg) {
@@ -403,6 +397,56 @@ end:
 	return ret;
 }
 
+static int set_fd_pool_size(void)
+{
+	int ret = 0;
+	struct rlimit rlimit;
+
+	ret = getrlimit(RLIMIT_NOFILE, &rlimit);
+	if (ret) {
+		PERROR("Failed to get file descriptor limit");
+		ret = -1;
+		goto end;
+	}
+
+	DBG("File descriptor count limits are %lu (soft) and %lu (hard)",
+			rlimit.rlim_cur, rlimit.rlim_max);
+	if (lttng_opt_fd_pool_size == -1) {
+		/* Use default value (soft limit - reserve). */
+		if (rlimit.rlim_cur < DEFAULT_RELAYD_MIN_FD_POOL_SIZE) {
+			ERR("The process' file number limit is too low (%lu). The process' file number limit must be set to at least %i.",
+					rlimit.rlim_cur, DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
+			ret = -1;
+			goto end;
+		}
+		lttng_opt_fd_pool_size = rlimit.rlim_cur -
+				DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE;
+		goto end;
+	}
+
+	if (lttng_opt_fd_pool_size < DEFAULT_RELAYD_MIN_FD_POOL_SIZE) {
+		ERR("File descriptor pool size must be set to at least %d",
+				DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
+		ret = -1;
+		goto end;
+	}
+
+	if (lttng_opt_fd_pool_size > rlimit.rlim_cur) {
+		ERR("File descriptor pool size argument (%u) exceeds the process' soft limit (%lu).",
+				lttng_opt_fd_pool_size, rlimit.rlim_cur);
+		ret = -1;
+		goto end;
+	}
+
+
+	DBG("File descriptor pool size argument (%u) adjusted to %u to accomodate transient fd uses",
+			lttng_opt_fd_pool_size,
+			lttng_opt_fd_pool_size - DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE);
+	lttng_opt_fd_pool_size -= DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE;
+end:
+	return ret;
+}
+
 static int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
@@ -520,17 +564,10 @@ static int set_options(int argc, char **argv)
 			goto exit;
 		}
 	}
-	if (lttng_opt_fd_cap == 0) {
-		int ret;
-		struct rlimit rlimit;
-
-		ret = getrlimit(RLIMIT_NOFILE, &rlimit);
-		if (ret) {
-			PERROR("Failed to get file descriptor limit");
-			retval = -1;
-		}
-
-		lttng_opt_fd_cap = rlimit.rlim_cur;
+	ret = set_fd_pool_size();
+	if (ret) {
+		retval = -1;
+		goto exit;
 	}
 
 exit:
@@ -4163,7 +4200,7 @@ int main(int argc, char **argv)
 	 */
 	rcu_register_thread();
 
-	the_fd_tracker = fd_tracker_create(lttng_opt_fd_cap);
+	the_fd_tracker = fd_tracker_create(lttng_opt_fd_pool_size);
 	if (!the_fd_tracker) {
 		retval = -1;
 		goto exit_options;
@@ -4172,7 +4209,7 @@ int main(int argc, char **argv)
 	ret = track_stdio();
 	if (ret) {
 		retval = -1;
-		goto exit_options;
+		goto exit_tracker;
 	}
 
 	/* Initialize thread health monitoring */
@@ -4325,7 +4362,7 @@ exit_health_quit_pipe:
 exit_init_data:
 	health_app_destroy(health_relayd);
 exit_health_app_create:
-exit_options:
+
 	/*
 	 * Wait for all pending call_rcu work to complete before tearing
 	 * down data structures. call_rcu worker may be trying to
@@ -4336,7 +4373,7 @@ exit_options:
 
 	/* Ensure all prior call_rcu are done. */
 	rcu_barrier();
-
+exit_tracker:
 	untrack_stdio();
 	/*
 	 * fd_tracker_destroy() will log the contents of the fd-tracker
@@ -4344,7 +4381,7 @@ exit_options:
 	 */
 	fd_tracker_destroy(the_fd_tracker);
 	rcu_unregister_thread();
-
+exit_options:
 	if (!retval) {
 		exit(EXIT_SUCCESS);
 	} else {
