@@ -365,6 +365,8 @@ struct fd_tracker *fd_tracker_create(unsigned int capacity)
 	tracker->capacity = capacity;
 	tracker->unsuspendable_fds = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
 			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	DBG("File descriptor tracker created with a limit of %u simultaneously-opened FDs",
+			capacity);
 end:
 	return tracker;
 }
