@@ -157,8 +157,6 @@ function enable_mmap_small_overwrite_ust_channel ()
 function test_ust_list_output ()
 {
 	output_names=("randomname" "somesnapshot")
-	NR_ITER=2000000
-	NR_USEC_WAIT=100
 
 	diag "Test UST snapshot output listing"
 	create_lttng_session_no_output $SESSION_NAME
@@ -188,7 +186,7 @@ function test_ust_list_output ()
 
 function test_ust_local_snapshot ()
 {
-	NR_ITER=2000000
+	NR_ITER=-1
 	NR_USEC_WAIT=100
 
 	diag "Test local UST snapshots"
@@ -307,7 +305,7 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 
 function test_ust_local_snapshot_max_size ()
 {
-	NR_ITER=2000000
+	NR_ITER=-1
 	NR_USEC_WAIT=100
 	page_size=`getconf PAGE_SIZE`
 	num_cpus=$(conf_proc_count)
@@ -360,8 +358,6 @@ function test_ust_local_snapshot_max_size ()
 
 function test_ust_local_snapshot_large_metadata ()
 {
-	NR_ITER=2000000
-	NR_USEC_WAIT=100
 	LM_EVENT="tp:tptest1,tp:tptest2,tp:tptest3,tp:tptest4,tp:tptest5"
 	LM_PATH="$TESTDIR/utils/testapp"
 	LM_NAME="gen-ust-nevents"
@@ -389,8 +385,6 @@ function test_ust_local_snapshot_large_metadata ()
 
 function enable_channel_per_uid_mmap_overwrite()
 {
-	NR_ITER=2000000
-	NR_USEC_WAIT=100
 	sess_name=$1
 	channel_name=$2
 
@@ -400,6 +394,8 @@ function enable_channel_per_uid_mmap_overwrite()
 
 function test_ust_per_uid_local_snapshot ()
 {
+	NR_ITER=-1
+	NR_USEC_WAIT=100
 	diag "Test per-uid local UST snapshots"
 	create_lttng_session_no_output $SESSION_NAME
 	enable_channel_per_uid_mmap_overwrite $SESSION_NAME $CHANNEL_NAME
@@ -426,7 +422,7 @@ function test_ust_per_uid_local_snapshot ()
 
 function test_ust_per_uid_local_snapshot_post_mortem ()
 {
-	NR_ITER=2000000
+	NR_ITER=-1
 	NR_USEC_WAIT=100
 
 	diag "Test local UST snapshots post-mortem"
@@ -454,7 +450,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 
 function test_ust_local_snapshots ()
 {
-	NR_ITER=2000000
+	NR_ITER=-1
 	NR_USEC_WAIT=100
 
 	diag "Test $NR_SNAPSHOT local UST snapshots"
