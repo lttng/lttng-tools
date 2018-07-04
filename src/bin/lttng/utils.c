@@ -41,6 +41,12 @@ static const char *str_ust = "UST";
 static const char *str_jul = "JUL";
 static const char *str_log4j = "LOG4J";
 static const char *str_python = "Python";
+static const char *str_all = "ALL";
+static const char *str_tracepoint = "Tracepoint";
+static const char *str_syscall = "Syscall";
+static const char *str_probe = "Probe";
+static const char *str_userspace_probe = "Userspace Probe";
+static const char *str_function = "Function";
 
 static
 char *_get_session_name(int quiet)
@@ -309,6 +315,37 @@ const char *get_domain_str(enum lttng_domain_type domain)
 	}
 
 	return str_dom;
+}
+
+const char *get_event_type_str(enum lttng_event_type type)
+{
+	const char *str_event_type;
+
+	switch (type) {
+	case LTTNG_EVENT_ALL:
+		str_event_type = str_all;
+		break;
+	case LTTNG_EVENT_TRACEPOINT:
+		str_event_type = str_tracepoint;
+		break;
+	case LTTNG_EVENT_SYSCALL:
+		str_event_type = str_syscall;
+		break;
+	case LTTNG_EVENT_PROBE:
+		str_event_type = str_probe;
+		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		str_event_type = str_userspace_probe;
+		break;
+	case LTTNG_EVENT_FUNCTION:
+		str_event_type = str_function;
+		break;
+	default:
+		/* Should not have an unknown event type or else define it. */
+		assert(0);
+	}
+
+	return str_event_type;
 }
 
 /*
