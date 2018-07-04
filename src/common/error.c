@@ -179,8 +179,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_MI_NOT_IMPLEMENTED) ] = "Mi feature not implemented",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_EVENT_NAME) ] = "Invalid event name",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_CHANNEL_NAME) ] = "Invalid channel name",
-	[ ERROR_INDEX(LTTNG_ERR_PID_TRACKED) ] = "PID already tracked",
-	[ ERROR_INDEX(LTTNG_ERR_PID_NOT_TRACKED) ] = "PID not tracked",
+	[ ERROR_INDEX(LTTNG_ERR_ID_TRACKED) ] = "ID already tracked",
+	[ ERROR_INDEX(LTTNG_ERR_ID_NOT_TRACKED) ] = "ID not tracked",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_CHANNEL_DOMAIN) ] = "Invalid channel domain",
 	[ ERROR_INDEX(LTTNG_ERR_OVERFLOW) ] = "Overflow occurred",
 	[ ERROR_INDEX(LTTNG_ERR_SESSION_NOT_STARTED) ] = "Session not started",
@@ -225,6 +225,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY) ] = "Clearing a session is not supported by the relay daemon",
 	[ ERROR_INDEX(LTTNG_ERR_CLEAR_FAIL_CONSUMER) ] = "Consumer failed to clear the session",
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR) ] = "Session was already cleared since it became inactive",
+	[ ERROR_INDEX(LTTNG_ERR_USER_NOT_FOUND) ] = "User not found",
+	[ ERROR_INDEX(LTTNG_ERR_GROUP_NOT_FOUND) ] = "Group not found",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

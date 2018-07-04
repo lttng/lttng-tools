@@ -134,8 +134,8 @@ enum lttng_error_code {
 	LTTNG_ERR_EXCLUSION_NOMEM        = 111, /* Lack of memory while processing event exclusions */
 	LTTNG_ERR_INVALID_EVENT_NAME     = 112, /* Invalid event name */
 	LTTNG_ERR_INVALID_CHANNEL_NAME   = 113, /* Invalid channel name */
-	LTTNG_ERR_PID_TRACKED            = 114, /* PID already tracked */
-	LTTNG_ERR_PID_NOT_TRACKED        = 115, /* PID not tracked */
+	LTTNG_ERR_ID_TRACKED             = 114, /* ID already tracked */
+	LTTNG_ERR_ID_NOT_TRACKED         = 115, /* ID not tracked */
 	LTTNG_ERR_INVALID_CHANNEL_DOMAIN = 116, /* Invalid channel domain */
 	LTTNG_ERR_OVERFLOW		 = 117, /* Overflow occurred. */
 	LTTNG_ERR_SESSION_NOT_STARTED    = 118, /* Session not started */
@@ -180,6 +180,11 @@ enum lttng_error_code {
 	LTTNG_ERR_CLEAR_NOT_AVAILABLE_RELAY = 157, /* Clearing a session is not supported by the relay daemon. */
 	LTTNG_ERR_CLEAR_FAIL_CONSUMER    = 158, /* Clear failure on consumer */
 	LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR = 159, /* Session was already cleared since it became inactive. */
+	LTTNG_ERR_USER_NOT_FOUND         = 160, /* User not found. */
+	LTTNG_ERR_GROUP_NOT_FOUND        = 161, /* Group not found. */
+
+	LTTNG_ERR_PID_TRACKED            = LTTNG_ERR_ID_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_TRACKED */
+	LTTNG_ERR_PID_NOT_TRACKED        = LTTNG_ERR_ID_NOT_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_NOT_TRACKED */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
