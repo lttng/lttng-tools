@@ -965,6 +965,30 @@ static int enable_events(char *session_name)
 		}
 	}
 
+	/*
+	 * Adding a filter to a probe, function or userspace-probe would be
+	 * denied by the kernel tracer as it's not supported at the moment. We
+	 * do an early check here to warn the user.
+	 */
+	if (opt_filter && opt_kernel) {
+		switch (opt_event_type) {
+		case LTTNG_EVENT_ALL:
+		case LTTNG_EVENT_TRACEPOINT:
+		case LTTNG_EVENT_SYSCALL:
+			break;
+		case LTTNG_EVENT_PROBE:
+		case LTTNG_EVENT_USERSPACE_PROBE:
+		case LTTNG_EVENT_FUNCTION:
+			ERR("Filter expressions are not supported for %s events",
+					get_event_type_str(opt_event_type));
+			ret = CMD_ERROR;
+			goto error;
+		default:
+			ret = CMD_UNDEFINED;
+			goto error;
+		}
+	}
+
 	channel_name = opt_channel_name;
 
 	handle = lttng_create_handle(session_name, &dom);
