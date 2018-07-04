@@ -213,4 +213,20 @@ struct lttng_kernel_session_creation_time {
 	char iso8601[LTTNG_KERNEL_SESSION_CREATION_TIME_ISO8601_LEN];
 } LTTNG_PACKED;
 
+enum lttng_kernel_tracker_type {
+	LTTNG_KERNEL_TRACKER_UNKNOWN		= -1,
+
+	LTTNG_KERNEL_TRACKER_PID		= 0,
+	LTTNG_KERNEL_TRACKER_VPID		= 1,
+	LTTNG_KERNEL_TRACKER_UID		= 2,
+	LTTNG_KERNEL_TRACKER_VUID		= 3,
+	LTTNG_KERNEL_TRACKER_GID		= 4,
+	LTTNG_KERNEL_TRACKER_VGID		= 5,
+};
+
+struct lttng_kernel_tracker_args {
+	enum lttng_kernel_tracker_type type;
+	int32_t id;
+};
+
 #endif /* _LTTNG_KERNEL_H */

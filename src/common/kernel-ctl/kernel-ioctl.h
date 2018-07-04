@@ -171,4 +171,12 @@
 #define LTTNG_KERNEL_FILTER			_IO(0xF6, 0x90)
 #define LTTNG_KERNEL_ADD_CALLSITE	_IO(0xF6, 0x91)
 
+/* Session FD ioctl (continued) */
+#define LTTNG_KERNEL_SESSION_LIST_TRACKER_IDS	\
+	_IOR(0xF6, 0xA0, struct lttng_kernel_tracker_args)
+#define LTTNG_KERNEL_SESSION_TRACK_ID		\
+	_IOR(0xF6, 0xA1, struct lttng_kernel_tracker_args)
+#define LTTNG_KERNEL_SESSION_UNTRACK_ID		\
+	_IOR(0xF6, 0xA2, struct lttng_kernel_tracker_args)
+
 #endif /* _LTT_KERNEL_IOCTL_H */
