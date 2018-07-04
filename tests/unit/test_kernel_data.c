@@ -143,6 +143,7 @@ static void test_create_kernel_channel(void)
 
 static void test_create_kernel_event(void)
 {
+	enum lttng_error_code ret;
 	struct ltt_kernel_event *event;
 	struct lttng_event ev;
 
@@ -153,8 +154,8 @@ static void test_create_kernel_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	event = trace_kernel_create_event(&ev, NULL, NULL);
-	ok(event != NULL, "Create kernel event");
+	ret = trace_kernel_create_event(&ev, NULL, NULL, &event);
+	ok(ret == LTTNG_OK, "Create kernel event");
 
 	if (!event) {
 		skip(1, "Event is null");

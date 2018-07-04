@@ -22,8 +22,11 @@
 
 #include <stdint.h>
 #include <common/macros.h>
+#include <lttng/constant.h>
+#include <lttng/event.h>
 
 #define LTTNG_KERNEL_SYM_NAME_LEN  256
+#define LTTNG_KERNEL_MAX_UPROBE_NUM  32
 
 /*
  * LTTng DebugFS ABI structures.
@@ -39,6 +42,7 @@ enum lttng_kernel_instrumentation {
 	LTTNG_KERNEL_KRETPROBE     = 3,
 	LTTNG_KERNEL_NOOP          = 4,    /* not hooked */
 	LTTNG_KERNEL_SYSCALL       = 5,
+	LTTNG_KERNEL_UPROBE        = 6,
 };
 
 enum lttng_kernel_context_type {
@@ -99,6 +103,20 @@ struct lttng_kernel_kprobe {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 } LTTNG_PACKED;
 
+struct lttng_kernel_uprobe {
+	int fd;
+} LTTNG_PACKED;
+
+struct lttng_kernel_event_callsite_uprobe {
+	uint64_t offset;
+} LTTNG_PACKED;
+
+struct lttng_kernel_event_callsite {
+	union {
+		struct lttng_kernel_event_callsite_uprobe uprobe;
+	} u;
+} LTTNG_PACKED;
+
 /* Function tracer */
 struct lttng_kernel_function {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
@@ -115,6 +133,7 @@ struct lttng_kernel_event {
 	union {
 		struct lttng_kernel_kretprobe kretprobe;
 		struct lttng_kernel_kprobe kprobe;
+		struct lttng_kernel_uprobe uprobe;
 		struct lttng_kernel_function ftrace;
 		char padding[LTTNG_KERNEL_EVENT_PADDING2];
 	} u;

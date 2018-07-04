@@ -348,6 +348,8 @@ const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 		return config_event_type_tracepoint;
 	case LTTNG_EVENT_PROBE:
 		return config_event_type_probe;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		return config_event_type_userspace_probe;
 	case LTTNG_EVENT_FUNCTION:
 		return config_event_type_function;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
@@ -1216,6 +1218,139 @@ end:
 }
 
 LTTNG_HIDDEN
+int mi_lttng_event_userspace_probe(struct mi_writer *writer,
+		struct lttng_event *event)
+{
+	int ret;
+	struct lttng_userspace_probe_location *location;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+
+	location = lttng_event_get_userspace_probe_location(event);
+	if (!location) {
+		goto end;
+	}
+
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(location);
+	if (!lookup_method) {
+		goto end;
+	}
+
+	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+
+	ret = mi_lttng_writer_open_element(writer, config_element_attributes);
+	if (ret) {
+		goto end;
+	}
+
+	switch (lttng_userspace_probe_location_get_type(location)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	{
+		const char *function_name;
+		const char *binary_path;
+
+		ret = mi_lttng_writer_open_element(writer,
+				config_element_userspace_probe_function_attributes);
+		if (ret) {
+			goto end;
+		}
+
+		switch (lookup_type) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			ret = mi_lttng_writer_write_element_string(writer,
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_function_elf);
+			if (ret) {
+				goto end;
+			}
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
+			ret = mi_lttng_writer_write_element_string(writer,
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_function_default);
+			if (ret) {
+				goto end;
+			}
+			break;
+		default:
+			goto end;
+		}
+
+		binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_userspace_probe_location_binary_path, binary_path);
+		if (ret) {
+			goto end;
+		}
+
+		function_name = lttng_userspace_probe_location_function_get_function_name(location);
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_userspace_probe_function_location_function_name,
+				function_name);
+		if (ret) {
+			goto end;
+		}
+
+		break;
+	}
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+	{
+		const char *probe_name, *provider_name;
+		const char *binary_path;
+
+		ret = mi_lttng_writer_open_element(writer,
+				config_element_userspace_probe_function_attributes);
+		if (ret) {
+			goto end;
+		}
+
+		switch (lookup_type) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			ret = mi_lttng_writer_write_element_string(writer,
+					config_element_userspace_probe_lookup,
+					config_element_userspace_probe_lookup_tracepoint_sdt);
+			if (ret) {
+				goto end;
+			}
+			break;
+		default:
+			goto end;
+		}
+
+		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_userspace_probe_location_binary_path,
+				binary_path);
+		if (ret) {
+			goto end;
+		}
+
+		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_userspace_probe_tracepoint_location_provider_name,
+				provider_name);
+		if (ret) {
+			goto end;
+		}
+
+		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
+		ret = mi_lttng_writer_write_element_string(writer,
+				config_element_userspace_probe_tracepoint_location_probe_name, probe_name);
+		if (ret) {
+			goto end;
+		}
+		break;
+	}
+	default:
+		ERR("Invalid probe type encountered");
+	}
+	/* Close probe_attributes and attributes */
+	ret = mi_lttng_close_multi_element(writer, 2);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
 int mi_lttng_event_function_entry(struct mi_writer *writer,
 		struct lttng_event *event)
 {
@@ -1278,6 +1413,9 @@ int mi_lttng_event(struct mi_writer *writer,
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
 		ret = mi_lttng_event_function_entry(writer, event);
+		break;
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		ret = mi_lttng_event_userspace_probe(writer, event);
 		break;
 	case LTTNG_EVENT_ALL:
 		/* Fallthrough */

@@ -1,0 +1,721 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Erica Bugden <erica.bugden@efficios.com>
+# Copyright (C) - 2017 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Userspace probe - Testing userspace probe on ELF symbol"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../..
+ELF_TEST_BIN_DIR="$TESTDIR/utils/testapp/userspace-probe-elf-binary/"
+ELF_TEST_BIN_NAME="userspace-probe-elf-binary"
+ELF_TEST_BIN="$ELF_TEST_BIN_DIR/$ELF_TEST_BIN_NAME"
+SDT_TEST_BIN_DIR="$TESTDIR/utils/testapp/userspace-probe-sdt-binary/.libs/"
+SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
+SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
+SESSION_NAME=userspace_probe_test_session
+PROBE_EVENT_NAME=userspace_probe_test_event
+NUM_TESTS=138
+OUTPUT_DEST=/dev/null
+ERROR_OUTPUT_DEST=/dev/null
+
+source "$TESTDIR/utils/utils.sh"
+
+function validate_list()
+{
+	local session_name=$1
+	local event_name=$2
+
+	out=$("$TESTDIR/../src/bin/lttng/$LTTNG_BIN" list "$session_name" | grep "$event_name")
+	if [ -z "$out" ]; then
+		fail "Validate userspace probe listing"
+		diag "$event_name not found when listing $session_name"
+	else
+		pass "Validate userspace probe listing. Found $event_name."
+	fi
+}
+
+function test_userspace_probe_enable_file_noexist ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_file_noexist"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:/etc/file-not-exist:$ELF_SYMBOL"
+
+	diag "Userspace probe enable on non-existant file"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME $ENABLE_EXPR $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_file_not_elf ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_file_not_elf"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:/etc/passwd:$ELF_SYMBOL"
+
+	diag "Userspace probe enable on a non ELF file"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME $ENABLE_EXPR $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_elf_missing_symbol_name ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_elf_missing_symbol"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:"
+
+	diag "Userspace probe enable with unspecified ELF symbol"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_elf_nonexistant_symbol ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_elf_nonexistant_symbol"
+	ELF_SYMBOL="function_doesnt_exist"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enable with nonexistant ELF symbol"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_elf_symbol_not_function ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_elf_symbol_not_function"
+	ELF_SYMBOL="not_a_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enable with non-function ELF symbol"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_implicit_probe_type ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_implicit_probe_type"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enabled successfully with implicit probe type"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_elf_symbol_exists ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_elf_symbol_exists"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enabled successfully"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_in_path ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_in_path"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN_NAME:$ELF_SYMBOL"
+
+	diag "Userspace probe on binary in PATH enabled successfully"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# Save old PATH and add the test directory to the PATH.
+	OLDPATH="$PATH"
+	export PATH="$PATH:$(realpath $ELF_TEST_BIN_DIR)"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	# Reset the previously saved PATH.
+	export PATH="$OLDPATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_full_path ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_full_path"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$(realpath $ELF_TEST_BIN):$ELF_SYMBOL"
+	diag "Userspace probe with full path enabled successfully"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_colon_in_path ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_enable_colon_in_path"
+	ELF_SYMBOL="test_function"
+	COLON_FILE_PATH=$(mktemp -d)
+	ELF_BIN_SYMLINK="$COLON_FILE_PATH/colon_:_in_name"
+	ELF_BIN_WITH_COLON_IN_NAME_ESCAPED="$COLON_FILE_PATH/colon_\:_in_name"
+	ENABLE_EXPR="elf:"$ELF_BIN_WITH_COLON_IN_NAME_ESCAPED":$ELF_SYMBOL"
+
+	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_SYMLINK
+
+	diag "Userspace probe with binary with colon in name enabled successfully"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+	rm -rf "$COLON_FILE_PATH"
+}
+
+function test_userspace_probe_elf ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enabled and traced"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$ELF_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_elf_disable ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe enabled and traced"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# Activate and disable event
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+	disable_kernel_lttng_userspace_probe_event_ok $SESSION_NAME $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$ELF_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Verify that the trace contains zero event.
+	validate_trace_empty "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_elf_list ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
+
+	diag "Userspace probe ELF enabled and listed"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $PROBE_EVENT_NAME
+	validate_list  $SESSION_NAME $ELF_SYMBOL
+	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "ELF"
+	validate_list  $SESSION_NAME "Function"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_save_load ()
+{
+	# Test that the load and save works for userspace probes AND that when
+	# a userspace probe is placed on a symlink by the user the save command
+	# saves the path to the link and not to the actual file. This is to
+	# support instrumentation of shared objects that are often accessed
+	# through symlinks and updated.
+	TRACE_PATH=$(mktemp -d)
+	TMP_LINK_DIR=$(mktemp -d)
+	TMP_SAVE_DIR=$(mktemp -d)
+
+	SESSION_NAME="test_userprobe"
+	ELF_SYMBOL="test_function"
+	PROVIDER="foobar"
+	PROBE="tp1"
+
+	ELF_BIN_SYMLINK="$TMP_LINK_DIR"/bin_elf_symlink
+	SDT_BIN_SYMLINK="$TMP_LINK_DIR"/bin_sdt_symlink
+
+	ENABLE_EXPR_ELF="elf:$ELF_BIN_SYMLINK:$ELF_SYMBOL"
+	ENABLE_EXPR_SDT="sdt:$SDT_BIN_SYMLINK:$PROVIDER:$PROBE"
+	PROBE_EVENT_NAME_ELF="$PROBE_EVENT_NAME"_elf
+	PROBE_EVENT_NAME_SDT="$PROBE_EVENT_NAME"_sdt
+
+	# Create symlinks to the target binaries.
+	ln -s $(realpath $ELF_TEST_BIN) $ELF_BIN_SYMLINK
+	ln -s $(realpath $SDT_TEST_BIN) $SDT_BIN_SYMLINK
+
+	diag "Userspace probes are saved and loaded"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# Enable userspace prove events.
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR_ELF" "$PROBE_EVENT_NAME_ELF"
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR_SDT" "$PROBE_EVENT_NAME_SDT"
+
+	# Confirm that the events were enabled.
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME $SDT_TEST_BIN_NAME
+
+	# Save the session to a file.
+	lttng_save $SESSION_NAME "--output-path=$TMP_SAVE_DIR"
+
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	# Confirm that the userspace probe are save to the xml file.
+	local count=$(cat $TMP_SAVE_DIR/* | grep --count -E "$ELF_BIN_SYMLINK|$SDT_BIN_SYMLINK")
+	if [[ $count -eq "2" ]]; then
+		pass "Symlink found in saved session"
+	else
+		fail "Symlink to binary not found in saved session"
+	fi
+
+	# Load the saved session.
+	lttng_load_ok "--input-path=$TMP_SAVE_DIR"
+
+	# Confirm that the userspace probes event are enabled in the newly
+	# loaded session.
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME $SDT_TEST_BIN_NAME
+
+	# Cleanup temp files and folders.
+	rm -rf "$TRACE_PATH"
+	rm -rf "$TMP_LINK_DIR"
+	rm -rf "$TMP_SAVE_DIR"
+}
+
+function test_userspace_probe_sdt ()
+{
+	TRACE_PATH=$(mktemp -d)
+	PROVIDER="foobar"
+	PROBE="tp1"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe on SDT tracepoint enabled and traced"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_list ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp1"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT enabled and listed"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	validate_list  $SESSION_NAME $PROBE_EVENT_NAME
+	validate_list  $SESSION_NAME $PROVIDER
+	validate_list  $SESSION_NAME $PROBE
+	validate_list  $SESSION_NAME $SDT_TEST_BIN_NAME
+	validate_list  $SESSION_NAME "SDT"
+	validate_list  $SESSION_NAME "Tracepoint"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_sdt_nonexistant_provider ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="not_provider"
+	PROBE="tp1"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint non existant provider"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_sdt_nonexistant_probe ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="not_a_tracepoint"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on non existant probe"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_enable_sdt_with_sema ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp_with_semaphore"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on non existant probe"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_one_probe ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp1"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint with one callsite"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_two_probes ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp2"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint with two callsites"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_in_shared_object ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp_in_shared_object"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN_DIR/libfoo.so:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint in shared object"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_in_shared_object_dlopen ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp_in_dlopen"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN_DIR/libbar.so:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint in dlopen()ed shared object"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_in_shared_object_ldpreload ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp_in_ldpreload"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN_DIR/libzzz.so:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint in an LD_PRELOADed shared object"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	LD_PRELOAD="$SDT_TEST_BIN_DIR/libzzz.so" eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_sdt_with_arg ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe"
+	PROVIDER="foobar"
+	PROBE="tp_with_arg"
+	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
+
+	diag "Userspace probe SDT on tracepoint with argument"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$SDT_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+plan_tests $NUM_TESTS
+print_test_banner "$TEST_DESC"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
+{
+	start_lttng_sessiond
+
+	# Unsuccessful event enabling
+	test_userspace_probe_enable_file_noexist
+	test_userspace_probe_enable_file_not_elf
+
+	test_userspace_probe_enable_elf_missing_symbol_name
+	test_userspace_probe_enable_elf_nonexistant_symbol
+	test_userspace_probe_enable_elf_symbol_not_function
+
+	test_userspace_probe_enable_sdt_nonexistant_provider
+	test_userspace_probe_enable_sdt_nonexistant_probe
+	test_userspace_probe_enable_sdt_with_sema
+
+	# Successful event enabling
+	test_userspace_probe_enable_implicit_probe_type
+	test_userspace_probe_enable_in_path
+	test_userspace_probe_enable_full_path
+	test_userspace_probe_enable_elf_symbol_exists
+	test_userspace_probe_enable_colon_in_path
+
+	# Successful event tracing
+	test_userspace_probe_elf
+
+	#test_userspace_probe_elf_cxx
+
+	test_userspace_probe_sdt_one_probe
+	test_userspace_probe_sdt_two_probes
+	test_userspace_probe_sdt_with_arg
+	test_userspace_probe_sdt_in_shared_object
+	test_userspace_probe_sdt_in_shared_object_dlopen
+	test_userspace_probe_sdt_in_shared_object_ldpreload
+
+	# Disable userspace-probe event
+	test_userspace_probe_elf_disable
+
+	# Successful listing of event
+	test_userspace_probe_sdt_list
+	test_userspace_probe_elf_list
+
+	test_userspace_probe_save_load
+
+	stop_lttng_sessiond
+}

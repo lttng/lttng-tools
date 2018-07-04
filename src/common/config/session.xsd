@@ -85,6 +85,7 @@ by its signed 32-bit representation when converted to msec.
 		<xs:enumeration value="ALL"/>
 		<xs:enumeration value="TRACEPOINT"/>
 		<xs:enumeration value="PROBE"/>
+		<xs:enumeration value="USERSPACE_PROBE"/>
 		<xs:enumeration value="FUNCTION"/>
 		<xs:enumeration value="FUNCTION_ENTRY"/>
 		<xs:enumeration value="NOOP"/>
@@ -102,6 +103,31 @@ by its signed 32-bit representation when converted to msec.
 	</xs:all>
 </xs:complexType>
 
+<xs:simpleType name="userspace_probe_lookup_method">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="DEFAULT"/>
+		<xs:enumeration value="ELF"/>
+		<xs:enumeration value="SDT"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="event_userspace_probe_function_attributes_type">
+	<xs:all>
+		<xs:element name="lookup_method" type="userspace_probe_lookup_method"/>
+		<xs:element name="binary_path" type="xs:string"/>
+		<xs:element name="function_name" type="xs:string"/>
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="event_userspace_probe_tracepoint_attributes_type">
+	<xs:all>
+		<xs:element name="lookup_method" type="userspace_probe_lookup_method"/>
+		<xs:element name="binary_path" type="xs:string"/>
+		<xs:element name="probe_name" type="xs:string"/>
+		<xs:element name="provider_name" type="xs:string"/>
+	</xs:all>
+</xs:complexType>
+
 <xs:complexType name="event_ftrace_attributes_type">
 	<xs:all>
 		<xs:element name="symbol_name" type="name_type"/>
@@ -112,6 +138,8 @@ by its signed 32-bit representation when converted to msec.
 	<xs:choice>
 		<xs:element name="probe_attributes" type="event_probe_attributes_type"/>
 		<xs:element name="function_attributes" type="event_ftrace_attributes_type"/>
+		<xs:element name="userspace_probe_function_attributes" type="event_userspace_probe_function_attributes_type"/>
+		<xs:element name="userspace_probe_tracepoint_attributes" type="event_userspace_probe_tracepoint_attributes_type"/>
 	</xs:choice>
 </xs:complexType>
 

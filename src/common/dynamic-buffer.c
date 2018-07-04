@@ -108,22 +108,12 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 	}
 
 	if (new_size > buffer->_capacity) {
-		size_t original_size = buffer->size;
-		size_t original_capacity = buffer->_capacity;
-
 		ret = lttng_dynamic_buffer_set_capacity(buffer, new_size);
 		if (ret) {
 			goto end;
 		}
 
-		/*
-		 * Zero-initialize the space that was left in the buffer at the
-		 * before we increased its capacity (original capacity - original size).
-		 * The newly acquired capacity (new capacity - original capacity)
-		 * is zeroed by lttng_dynamic_buffer_set_capacity().
-		 */
-		memset(buffer->data + original_size, 0,
-				original_capacity - original_size);
+		memset(buffer->data + buffer->size, 0, new_size - buffer->size);
 	} else if (new_size > buffer->size) {
 		memset(buffer->data + buffer->size, 0, new_size - buffer->size);
 	} else {
@@ -148,7 +138,8 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 {
 	int ret = 0;
 	void *new_buf;
-	size_t new_capacity = round_to_power_of_2(demanded_capacity);
+	size_t new_capacity = demanded_capacity ?
+			round_to_power_of_2(demanded_capacity) : 0;
 
 	if (!buffer || demanded_capacity < buffer->size) {
 		/*
@@ -185,4 +176,14 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 	buffer->size = 0;
 	buffer->_capacity = 0;
 	free(buffer->data);
+}
+
+LTTNG_HIDDEN
+size_t lttng_dynamic_buffer_get_capacity_left(
+		struct lttng_dynamic_buffer *buffer)
+{
+	if (!buffer) {
+		return 0;
+	}
+	return buffer->_capacity - buffer->size;
 }

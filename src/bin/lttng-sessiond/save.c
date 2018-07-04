@@ -217,6 +217,9 @@ const char *get_kernel_instrumentation_string(
 	case LTTNG_KERNEL_KPROBE:
 		instrumentation_string = config_event_type_kprobe;
 		break;
+	case LTTNG_KERNEL_UPROBE:
+		instrumentation_string = config_event_type_userspace_probe;
+		break;
 	case LTTNG_KERNEL_FUNCTION:
 		instrumentation_string = config_event_type_function;
 		break;
@@ -383,8 +386,373 @@ const char *get_loglevel_type_string(
 }
 
 static
+int save_kernel_function_event(struct config_writer *writer,
+		struct ltt_kernel_event *event)
+{
+	int ret;
+
+	ret = config_writer_open_element(writer, config_element_function_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer, config_element_name,
+			event->event->u.ftrace.symbol_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* /function attributes */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+int save_kernel_kprobe_event(struct config_writer *writer,
+		struct ltt_kernel_event *event)
+{
+	int ret;
+	const char *symbol_name;
+	uint64_t addr;
+	uint64_t offset;
+
+	switch (event->event->instrumentation) {
+	case LTTNG_KERNEL_KPROBE:
+		/*
+		 * Comments in lttng-kernel.h mention that
+		 * either addr or symbol_name are set, not both.
+		 */
+		addr = event->event->u.kprobe.addr;
+		offset = event->event->u.kprobe.offset;
+		symbol_name = addr ? NULL : event->event->u.kprobe.symbol_name;
+		break;
+	case LTTNG_KERNEL_KRETPROBE:
+		addr = event->event->u.kretprobe.addr;
+		offset = event->event->u.kretprobe.offset;
+		symbol_name = event->event->u.kretprobe.symbol_name;
+		break;
+	default:
+		assert(1);
+	}
+
+	ret = config_writer_open_element(writer, config_element_probe_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	if (symbol_name) {
+		ret = config_writer_write_element_string(writer,
+				 config_element_symbol_name, symbol_name);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	if (addr) {
+		ret = config_writer_write_element_unsigned_int( writer,
+				config_element_address, addr);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	if (offset) {
+		ret = config_writer_write_element_unsigned_int(writer,
+				   config_element_offset, offset);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+	}
+
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+/*
+ * Save the userspace probe tracepoint event associated with the event to the
+ * config writer.
+ */
+static
+int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
+		struct ltt_kernel_event *event)
+{
+	int ret = 0;
+	const char *probe_name, *provider_name, *binary_path;
+	struct lttng_userspace_probe_location *userspace_probe_location;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+
+	/* Get userspace probe location from the event. */
+	userspace_probe_location = event->userspace_probe_location;
+	if (!userspace_probe_location) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Get lookup method and lookup method type. */
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(userspace_probe_location);
+	if (!lookup_method) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+
+	/* Get the binary path, probe name and provider name. */
+	binary_path =
+		lttng_userspace_probe_location_tracepoint_get_binary_path(
+				userspace_probe_location);
+	if (!binary_path) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	probe_name =
+		lttng_userspace_probe_location_tracepoint_get_probe_name(
+				userspace_probe_location);
+	if (!probe_name) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	provider_name =
+		lttng_userspace_probe_location_tracepoint_get_provider_name(
+				userspace_probe_location);
+	if (!provider_name) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Open a userspace probe tracepoint attribute. */
+	ret = config_writer_open_element(writer, config_element_userspace_probe_tracepoint_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	switch (lookup_type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+		ret = config_writer_write_element_string(writer,
+				config_element_userspace_probe_lookup,
+				config_element_userspace_probe_lookup_tracepoint_sdt);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+		break;
+	default:
+		ERR("Unsupported kernel userspace probe tracepoint lookup method.");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Write the binary path, provider name and the probe name. */
+	ret = config_writer_write_element_string(writer,
+			config_element_userspace_probe_location_binary_path,
+			binary_path);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_userspace_probe_tracepoint_location_provider_name,
+			provider_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_userspace_probe_tracepoint_location_probe_name,
+			probe_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Close the userspace probe tracepoint attribute. */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+/*
+ * Save the userspace probe function event associated with the event to the
+ * config writer.
+ */
+static
+int save_kernel_userspace_probe_function_event(struct config_writer *writer,
+		struct ltt_kernel_event *event)
+{
+	int ret = 0;
+	const char *function_name, *binary_path;
+	struct lttng_userspace_probe_location *userspace_probe_location;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
+
+	/* Get userspace probe location from the event. */
+	userspace_probe_location = event->userspace_probe_location;
+	if (!userspace_probe_location) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Get lookup method and lookup method type. */
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(
+			userspace_probe_location);
+	if (!lookup_method) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Get the binary path and the function name. */
+	binary_path =
+		lttng_userspace_probe_location_function_get_binary_path(
+				userspace_probe_location);
+	if (!binary_path) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	function_name =
+		lttng_userspace_probe_location_function_get_function_name(
+				userspace_probe_location);
+	if (!function_name) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Open a userspace probe function attribute. */
+	ret = config_writer_open_element(writer,
+			config_element_userspace_probe_function_attributes);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	lookup_type = lttng_userspace_probe_location_lookup_method_get_type(lookup_method);
+	switch (lookup_type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		ret = config_writer_write_element_string(writer,
+				config_element_userspace_probe_lookup,
+				config_element_userspace_probe_lookup_function_elf);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
+		ret = config_writer_write_element_string(writer,
+				config_element_userspace_probe_lookup,
+				config_element_userspace_probe_lookup_function_default);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+		break;
+	default:
+		ERR("Unsupported kernel userspace probe function lookup method.");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Write the binary path and the function name. */
+	ret = config_writer_write_element_string(writer,
+			config_element_userspace_probe_location_binary_path,
+			binary_path);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	ret = config_writer_write_element_string(writer,
+			config_element_userspace_probe_function_location_function_name,
+			function_name);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	/* Close the userspace probe function attribute. */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
+int save_kernel_userspace_probe_event(struct config_writer *writer,
+		struct ltt_kernel_event *event)
+{
+	int ret;
+	struct lttng_userspace_probe_location *userspace_probe_location;
+
+	/* Get userspace probe location from the event. */
+	userspace_probe_location = event->userspace_probe_location;
+	if (!userspace_probe_location) {
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		goto end;
+	}
+
+	switch(lttng_userspace_probe_location_get_type(userspace_probe_location)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+	{
+		ret = save_kernel_userspace_probe_function_event(writer, event);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+		break;
+	}
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+	{
+		ret = save_kernel_userspace_probe_tracepoint_event(writer, event);
+		if (ret) {
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			goto end;
+		}
+		break;
+	}
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN:
+	default:
+		ERR("Unsupported kernel userspace probe location type.");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
 int save_kernel_event(struct config_writer *writer,
-	struct ltt_kernel_event *event)
+		struct ltt_kernel_event *event)
 {
 	int ret;
 	const char *instrumentation_type;
@@ -437,6 +805,7 @@ int save_kernel_event(struct config_writer *writer,
 
 	if (event->event->instrumentation == LTTNG_KERNEL_FUNCTION ||
 		event->event->instrumentation == LTTNG_KERNEL_KPROBE ||
+		event->event->instrumentation == LTTNG_KERNEL_UPROBE ||
 		event->event->instrumentation == LTTNG_KERNEL_KRETPROBE) {
 
 		ret = config_writer_open_element(writer,
@@ -449,94 +818,24 @@ int save_kernel_event(struct config_writer *writer,
 		switch (event->event->instrumentation) {
 		case LTTNG_KERNEL_SYSCALL:
 		case LTTNG_KERNEL_FUNCTION:
-			ret = config_writer_open_element(writer,
-				config_element_function_attributes);
+			ret = save_kernel_function_event(writer, event);
 			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			ret = config_writer_write_element_string(writer,
-				config_element_name,
-				event->event->u.ftrace.symbol_name);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			/* /function attributes */
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 			break;
 		case LTTNG_KERNEL_KPROBE:
 		case LTTNG_KERNEL_KRETPROBE:
-		{
-			const char *symbol_name;
-			uint64_t addr;
-			uint64_t offset;
-
-			if (event->event->instrumentation ==
-				LTTNG_KERNEL_KPROBE) {
-				/*
-				 * Comments in lttng-kernel.h mention that
-				 * either addr or symbol_name are set, not both.
-				 */
-				addr = event->event->u.kprobe.addr;
-				offset = event->event->u.kprobe.offset;
-				symbol_name = addr ? NULL :
-					event->event->u.kprobe.symbol_name;
-			} else {
-				symbol_name =
-					event->event->u.kretprobe.symbol_name;
-				addr = event->event->u.kretprobe.addr;
-				offset = event->event->u.kretprobe.offset;
-			}
-
-			ret = config_writer_open_element(writer,
-				config_element_probe_attributes);
+			ret = save_kernel_kprobe_event(writer, event);
 			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-
-			if (symbol_name) {
-				ret = config_writer_write_element_string(writer,
-					config_element_symbol_name,
-					symbol_name);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			if (addr) {
-				ret = config_writer_write_element_unsigned_int(
-					writer, config_element_address, addr);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			if (offset) {
-				ret = config_writer_write_element_unsigned_int(
-					writer, config_element_offset, offset);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-			}
-
-			ret = config_writer_close_element(writer);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
 			break;
-		}
+		case LTTNG_KERNEL_UPROBE:
+			ret = save_kernel_userspace_probe_event(writer, event);
+			if (ret) {
+				goto end;
+			}
+			break;
 		default:
 			ERR("Unsupported kernel instrumentation type.");
 			ret = LTTNG_ERR_INVALID;
