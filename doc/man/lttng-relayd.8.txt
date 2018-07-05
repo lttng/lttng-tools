@@ -12,9 +12,9 @@ SYNOPSIS
 --------
 [verse]
 *lttng-relayd* [option:--background | option:--daemonize]
-             [option:--control-port='URL'] [option:--data-port='URL'] [option:--live-port='URL']
-             [option:--output='PATH'] [option:-v | option:-vv | option:-vvv]
-             [option:--working-directory='PATH']
+             [option:--control-port='URL'] [option:--data-port='URL'] [option:--fd-pool-size='COUNT']
+             [option:--live-port='URL'] [option:--output='PATH']
+             [option:-v | option:-vv | option:-vvv] [option:--working-directory='PATH']
              [option:--group-output-by-session | option:--group-output-by-host]
 
 DESCRIPTION
@@ -120,6 +120,12 @@ option:-d, option:--daemonize::
     Start as Unix daemon, and close file descriptors (console). Use the
     option:--background option instead to keep the file descriptors
     open.
+
+option:--fd-pool-size='SIZE'::
+    Set the size of the file descriptor pool. This effectively sets a
+    limit on the number of file descriptors that may be kept open
+    simultaneously by the daemon (default: the soft `RLIMIT_NOFILE` resource
+    limit of the process).
 
 option:-g 'GROUP', option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
