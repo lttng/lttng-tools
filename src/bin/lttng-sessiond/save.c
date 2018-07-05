@@ -174,13 +174,13 @@ const char *get_kernel_instrumentation_string(
 		instrumentation_string = config_event_type_tracepoint;
 		break;
 	case LTTNG_KERNEL_KPROBE:
-		instrumentation_string = config_event_type_kprobe;
+		instrumentation_string = config_event_type_probe;
 		break;
 	case LTTNG_KERNEL_FUNCTION:
-		instrumentation_string = config_event_type_function;
+		instrumentation_string = config_event_type_function_entry;
 		break;
 	case LTTNG_KERNEL_KRETPROBE:
-		instrumentation_string = config_event_type_kretprobe;
+		instrumentation_string = config_event_type_function;
 		break;
 	case LTTNG_KERNEL_NOOP:
 		instrumentation_string = config_event_type_noop;
