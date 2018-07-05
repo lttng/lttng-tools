@@ -27,7 +27,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 CHANNEL_NAME="my_channel"
 
-XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
+XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
 
 XML_VALIDATE="$TESTDIR/regression/tools/mi/validate_xml $XSD_PATH"
 XML_EXTRACT="$TESTDIR/regression/tools/mi/extract_xml"

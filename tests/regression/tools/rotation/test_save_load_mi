@@ -29,7 +29,7 @@ source $CURDIR/rotate_utils.sh
 # Overwrite the lttng_bin to get mi output
 LTTNG_BIN="lttng --mi xml"
 
-XSD_PATH=$TESTDIR/../src/common/mi-lttng-3.0.xsd
+XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
 
 XML_VALIDATE="$TESTDIR/regression/tools/mi/validate_xml $XSD_PATH"
 XML_EXTRACT="$TESTDIR/regression/tools/mi/extract_xml"

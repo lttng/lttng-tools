@@ -22,7 +22,7 @@ DIST_SUBDIRS = \
 
 # Common library
 noinst_LTLIBRARIES = libcommon.la
-EXTRA_DIST = mi-lttng-3.0.xsd
+EXTRA_DIST = mi-lttng-4.0.xsd
 
 libcommon_la_SOURCES = \
 	action.c \
