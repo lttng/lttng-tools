@@ -796,6 +796,18 @@ void fs_handle_put_fd(struct fs_handle *handle)
 	pthread_mutex_unlock(&handle->lock);
 }
 
+int fs_handle_unlink(struct fs_handle *handle)
+{
+	int ret;
+
+	pthread_mutex_lock(&handle->tracker->lock);
+	pthread_mutex_lock(&handle->lock);
+	ret = lttng_inode_defer_unlink(handle->inode);
+	pthread_mutex_unlock(&handle->lock);
+	pthread_mutex_unlock(&handle->tracker->lock);
+	return ret;
+}
+
 int fs_handle_close(struct fs_handle *handle)
 {
 	int ret = 0;

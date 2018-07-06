@@ -157,6 +157,20 @@ int fs_handle_get_fd(struct fs_handle *handle);
 void fs_handle_put_fd(struct fs_handle *handle);
 
 /*
+ * Unlink the file associated to an fs_handle. Note that the unlink
+ * operation will not be performed immediately. It will only be performed
+ * once all references to the underlying file (through other fs_handle objects)
+ * have been released.
+ *
+ * However, note that the file will be renamed so as to provide the observable
+ * effect of an unlink(), that is removing a name from the filesystem.
+ *
+ * Returns 0 on success, otherwise a negative value will be returned
+ * if the operation failed.
+ */
+int fs_handle_unlink(struct fs_handle *handle);
+
+/*
  * Frees the handle and discards the underlying fd.
  */
 int fs_handle_close(struct fs_handle *handle);
