@@ -510,11 +510,6 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		goto error_destroy;
 	}
 
-	/*
-	 * Clear the create flag from the open flags as it would make no sense
-	 * to use it when restoring a fs handle.
-	 */
-	properties.flags &= ~O_CREAT;
 	handle->properties = properties;
 	properties.path = NULL;
 
