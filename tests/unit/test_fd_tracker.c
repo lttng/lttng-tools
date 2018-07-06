@@ -30,6 +30,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <urcu.h>
+
 #include <common/fd-tracker/fd-tracker.h>
 #include <common/error.h>
 
@@ -635,6 +637,8 @@ int main(int argc, char **argv)
 	plan_tests(NUM_TESTS);
 	diag("File descriptor tracker unit tests");
 
+	rcu_register_thread();
+
 	unknown_fds_count = fd_count() - STDIO_FD_COUNT;
 	assert(unknown_fds_count >= 0);
 
@@ -657,5 +661,6 @@ int main(int argc, char **argv)
 	diag("Mixed - check that file descritptor limit is enforced");
 	test_mixed_limit();
 
+	rcu_unregister_thread();
 	return exit_status();
 }
