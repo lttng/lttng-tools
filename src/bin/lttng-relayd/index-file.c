@@ -33,18 +33,54 @@
 #include <fcntl.h>
 
 struct relay_index_file {
-	bool suspendable;
-	union {
-		/* Suspendable. */
-		struct fs_handle *handle;
-		/* Unsuspendable. */
-		int fd;
-	} u;
+	struct fs_handle *handle;
 	uint32_t major;
 	uint32_t minor;
 	uint32_t element_len;
 	struct urcu_ref ref;
 };
+
+/*
+ * This unlink wrapper allows the fd_tracker to check if any other
+ * fs_handle references the index before unlinking it. If the relay holds
+ * this file open, it is essential to unlink it through an fs_handle as this
+ * will delay the actual unlink() until all handles have released this file.
+ *
+ * The file is renamed and unlinked once the last handle to its inode has been
+ * released.
+ */
+static
+int unlink_through_handle(const char *path)
+{
+	int ret = 0, close_ret;
+	struct fs_handle *handle;
+	/*
+	 * Since this operation is only performed to perform the unlink
+	 * through the fs_handle and fd-tracker system, the flag is opened
+	 * without the O_CREAT. There is no need to perform the unlink if
+	 * the file doesn't already exist.
+	 */
+	int flags = O_RDONLY;
+
+	DBG("Unlinking index at %s through a filesystem handle", path);
+	handle = fd_tracker_open_fs_handle(the_fd_tracker, path, flags, NULL);
+	if (!handle) {
+		/* There is nothing to do. */
+		DBG("File %s does not exist, ignoring unlink", path);
+		goto end;
+	}
+
+	ret = fs_handle_unlink(handle);
+	close_ret = fs_handle_close(handle);
+	if (close_ret) {
+		ERR("Failed to close handle after performing an unlink operation on a filesystem handle");
+	}
+end:
+	if (ret) {
+		DBG("Unlinking index at %s failed with error code %i", path, ret);
+	}
+	return ret;
+}
 
 /*
  * Create the index file associated with a trace file.
@@ -75,13 +111,6 @@ struct relay_index_file *relay_index_file_create(const char *path_name,
 		PERROR("allocating relay_index_file");
 		goto error;
 	}
-
-	/*
-	 * The receiving end of the relay daemon is not expected to try
-	 * to append to an index file. It is thus safe to create it as
-	 * suspendable.
-	 */
-	index_file->suspendable = true;
 
 	ret = snprintf(idx_dir_path, sizeof(idx_dir_path), "%s/" DEFAULT_INDEX_DIR,
 			path_name);
@@ -114,9 +143,8 @@ struct relay_index_file *relay_index_file_create(const char *path_name,
 	 * stays valid even if we re-create a new file with the
 	 * same name afterwards.
 	 */
-	unlink(idx_file_path);
-	if (ret < 0 && errno != ENOENT) {
-		PERROR("Failed to unlink index file");
+	ret = unlink_through_handle(idx_file_path);
+	if (ret < 0) {
 		goto error;
 	}
 
@@ -125,7 +153,7 @@ struct relay_index_file *relay_index_file_create(const char *path_name,
 	if (!fs_handle) {
 		goto error;
 	}
-	index_file->u.handle = fs_handle;
+	index_file->handle = fs_handle;
 
 	fd = fs_handle_get_fd(fs_handle);
 	if (fd < 0) {
@@ -164,33 +192,18 @@ error:
 	return NULL;
 }
 
-static
-int open_file(void *data, int *out_fd)
-{
-	int ret;
-	const char *path = data;
-
-	ret = open(path, O_RDONLY);
-	if (ret < 0) {
-		goto end;
-	}
-	*out_fd = ret;
-	ret = 0;
-end:
-	return ret;
-}
-
 struct relay_index_file *relay_index_file_open(const char *path_name,
 		const char *channel_name, uint64_t tracefile_count,
 		uint64_t tracefile_count_current)
 {
 	struct relay_index_file *index_file;
-	int ret, fd;
+	int ret, fd = -1;
 	ssize_t read_len;
 	char fullpath[PATH_MAX];
-	char *path_param = fullpath;
 	struct ctf_packet_index_file_hdr hdr;
 	uint32_t major, minor, element_len;
+	int flags = O_RDONLY;
+	struct fs_handle *handle = NULL;
 
 	assert(path_name);
 	assert(channel_name);
@@ -200,8 +213,6 @@ struct relay_index_file *relay_index_file_open(const char *path_name,
 		PERROR("Failed to allocate relay_index_file");
 		goto error;
 	}
-
-	index_file->suspendable = false;
 
 	if (tracefile_count > 0) {
 		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s_%"
@@ -216,12 +227,17 @@ struct relay_index_file *relay_index_file_open(const char *path_name,
 		goto error;
 	}
 
-	DBG("Index opening file %s in read only", fullpath);
-	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &fd,
-			(const char **) &path_param, 1,
-			open_file, (void *) fullpath);
-	if (ret < 0) {
+	DBG("Index opening file %s in read only mode", fullpath);
+	handle = fd_tracker_open_fs_handle(the_fd_tracker, fullpath, flags,
+			NULL);
+	if (!handle) {
 		PERROR("Failed to open index file at %s", fullpath);
+		goto error;
+	}
+
+	fd = fs_handle_get_fd(handle);
+	if (fd < 0) {
+		PERROR("Failed to get fd of index file at %s", fullpath);
 		goto error;
 	}
 
@@ -251,7 +267,8 @@ struct relay_index_file *relay_index_file_open(const char *path_name,
 		goto error_close;
 	}
 
-	index_file->u.fd = fd;
+	fs_handle_put_fd(handle);
+	index_file->handle = handle;
 	index_file->major = major;
 	index_file->minor = minor;
 	index_file->element_len = element_len;
@@ -260,10 +277,13 @@ struct relay_index_file *relay_index_file_open(const char *path_name,
 	return index_file;
 
 error_close:
-	ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &fd,
-			1, fd_tracker_util_close_fd, NULL);
+	if (fd >= 0) {
+		fs_handle_put_fd(handle);
+	}
+	ret = fs_handle_close(handle);
 	if (ret < 0) {
-		PERROR("Failed to close index fd %d", fd);
+		PERROR("Failed to close index filesystem handle to %s",
+				fullpath);
 	}
 
 error:
@@ -280,9 +300,7 @@ int relay_index_file_write(const struct relay_index_file *index_file,
 	assert(index_file);
 	assert(element);
 
-	fd = index_file->suspendable ?
-			fs_handle_get_fd(index_file->u.handle) :
-			index_file->u.fd;
+	fd = fs_handle_get_fd(index_file->handle);
 	if (fd < 0) {
 		ret = fd;
 		goto end;
@@ -295,9 +313,7 @@ int relay_index_file_write(const struct relay_index_file *index_file,
 	}
 	ret = 0;
 
-	if (index_file->suspendable) {
-		fs_handle_put_fd(index_file->u.handle);
-	}
+	fs_handle_put_fd(index_file->handle);
 end:
 	return ret;
 }
@@ -311,9 +327,7 @@ int relay_index_file_read(const struct relay_index_file *index_file,
 	assert(index_file);
 	assert(element);
 
-	fd = index_file->suspendable ?
-			fs_handle_get_fd(index_file->u.handle) :
-			index_file->u.fd;
+	fd = fs_handle_get_fd(index_file->handle);
 	if (fd < 0) {
 		ret = fd;
 		goto end;
@@ -326,9 +340,7 @@ int relay_index_file_read(const struct relay_index_file *index_file,
 	}
 	ret = 0;
 
-	if (index_file->suspendable) {
-		fs_handle_put_fd(index_file->u.handle);
-	}
+	fs_handle_put_fd(index_file->handle);
 end:
 	return ret;
 }
@@ -338,9 +350,7 @@ int relay_index_file_seek_end(struct relay_index_file *index_file)
 	int fd, ret = 0;
 	off_t lseek_ret;
 
-	fd = index_file->suspendable ?
-			fs_handle_get_fd(index_file->u.handle) :
-			index_file->u.fd;
+	fd = fs_handle_get_fd(index_file->handle);
 	if (fd < 0) {
 		ret = fd;
 		goto end;
@@ -351,9 +361,7 @@ int relay_index_file_seek_end(struct relay_index_file *index_file)
 		ret = lseek_ret;
 	}
 
-	if (index_file->suspendable) {
-		fs_handle_put_fd(index_file->u.handle);
-	}
+	fs_handle_put_fd(index_file->handle);
 end:
 	return ret;
 }
@@ -370,12 +378,7 @@ void relay_index_file_release(struct urcu_ref *ref)
 	struct relay_index_file *index_file = caa_container_of(ref,
 			struct relay_index_file, ref);
 
-	if (index_file->suspendable) {
-		ret = fs_handle_close(index_file->u.handle);
-	} else {
-		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &index_file->u.fd,
-				1, fd_tracker_util_close_fd, NULL);
-	}
+	ret = fs_handle_close(index_file->handle);
 	if (ret < 0) {
 		PERROR("Failed to close index file");
 	}
