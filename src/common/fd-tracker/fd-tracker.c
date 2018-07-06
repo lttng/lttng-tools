@@ -15,7 +15,6 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <urcu/ref.h>
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
