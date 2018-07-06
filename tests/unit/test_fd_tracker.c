@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <urcu.h>
 
@@ -41,7 +42,7 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 35
+#define NUM_TESTS 49
 /* 3 for stdin, stdout, and stderr */
 #define STDIO_FD_COUNT 3
 #define TRACKER_FD_LIMIT 50
@@ -361,14 +362,36 @@ int open_files(struct fd_tracker *tracker, const char *dir, unsigned int count,
 	unsigned int i;
 
 	for (i = 0; i < count; i++) {
-		int ret;
+		int p_ret;
 	        char *file_path;
 		struct fs_handle *handle;
 		mode_t mode = S_IWUSR | S_IRUSR;
 
-		ret = asprintf(&file_path, "%s/file-%u", dir, i);
-		assert(ret >= 0);
+		p_ret = asprintf(&file_path, "%s/file-%u", dir, i);
+		assert(p_ret >= 0);
 	        file_paths[i] = file_path;
+
+		handle = fd_tracker_open_fs_handle(tracker, file_path,
+				O_RDWR | O_CREAT, &mode);
+		if (!handle) {
+			ret = -1;
+			break;
+		}
+		handles[i] = handle;
+	}
+	return ret;
+}
+
+static
+int open_same_file(struct fd_tracker *tracker, const char *file_path,
+		unsigned int count, struct fs_handle **handles)
+{
+	int ret = 0;
+	unsigned int i;
+
+	for (i = 0; i < count; i++) {
+		struct fs_handle *handle;
+		mode_t mode = S_IWUSR | S_IRUSR;
 
 		handle = fd_tracker_open_fs_handle(tracker, file_path,
 				O_RDWR | O_CREAT, &mode);
@@ -632,6 +655,101 @@ skip_write:
 	fd_tracker_destroy(tracker);	
 }
 
+static
+void test_unlink(void)
+{
+	int ret;
+	struct fd_tracker *tracker;
+	const int handles_to_open = 2;
+	char tmp_path_pattern[] = TMP_DIR_PATTERN;
+	const char *output_dir;
+	struct fs_handle *handles[handles_to_open];
+	struct fs_handle *new_handle;
+	char *file_path;
+	char *unlinked_file_path;
+	char *unlinked_file_path_suffix;
+	struct stat statbuf;
+
+        tracker = fd_tracker_create(1);
+	if (!tracker) {
+		return;
+	}
+        output_dir = mkdtemp(tmp_path_pattern);
+	if (!output_dir) {
+		diag("Failed to create temporary path of the form %s",
+				TMP_DIR_PATTERN);
+		return;
+	}
+	ret = asprintf(&file_path, "%s/my_file", output_dir);
+	if (ret < 0) {
+		diag("Failed to allocate path string");
+		return;
+	}
+	ret = asprintf(&unlinked_file_path, "%s-deleted", file_path);
+	if (ret < 0) {
+		diag("Failed to allocate path string");
+		return;
+	}
+	ret = asprintf(&unlinked_file_path_suffix, "%s-1", unlinked_file_path);
+	if (ret < 0) {
+		diag("Failed to allocate path string");
+		return;
+	}
+
+	/* Open two handles to the same file. */
+	ret = open_same_file(tracker, file_path, handles_to_open, handles);
+	ok(!ret, "Successfully %i handles to %s", handles_to_open);
+	if (ret) {
+		return;
+	}
+
+	/*
+	 * Unlinking the first handle should cause the file to be renamed
+	 * to 'my_file-deleted'.
+	 */
+	ret = fs_handle_unlink(handles[0]);
+	ok(!ret, "Successfully unlinked the first handle to %s", file_path);
+
+	/*
+	 * The original file should no longer exist on the file system, and a
+	 * new file, with the '-deleted' suffix should exist.
+	 */
+	ok(stat(file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after unlink", file_path);
+	ok(stat(unlinked_file_path, &statbuf) == 0, "%s exists on file system after unlink", unlinked_file_path);
+
+	/* The second unlink should fail with -ENOENT. */
+	ret = fs_handle_unlink(handles[1]);
+	ok(ret == -ENOENT, "ENOENT is reported when attempting to unlink the second handle to %s", file_path);
+
+	/*
+	 * Opening a new handle to 'my_file' should succeed.
+	 */
+	ret = open_same_file(tracker, file_path, 1, &new_handle);
+	ok(!ret, "Successfully opened a new handle to previously unlinked file %s", file_path);
+
+	/*
+	 * Unlinking the new handle should cause the file to be renamed
+	 * to 'my_file-deleted-1' since 'my_file-deleted' already exists.
+	 */
+	ret = fs_handle_unlink(new_handle);
+	ok(!ret, "Successfully unlinked the new handle handle to %s", file_path);
+	ok(stat(unlinked_file_path_suffix, &statbuf) == 0, "%s exists on file system after unlink", unlinked_file_path_suffix);
+
+	ret = fs_handle_close(handles[0]);
+	ok(!ret, "Successfully closed the first handle");
+	ret = fs_handle_close(handles[1]);
+	ok(!ret, "Successfully closed the second handle");
+	ret = fs_handle_close(new_handle);
+	ok(!ret, "Successfully closed the third handle");
+
+	ok(stat(file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", file_path);
+	ok(stat(unlinked_file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", unlinked_file_path);
+	ok(stat(unlinked_file_path_suffix, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", unlinked_file_path_suffix);
+
+	(void) rmdir(output_dir);
+	fd_tracker_destroy(tracker);
+}
+
 int main(int argc, char **argv)
 {
 	plan_tests(NUM_TESTS);
@@ -660,6 +778,9 @@ int main(int argc, char **argv)
 
 	diag("Mixed - check that file descritptor limit is enforced");
 	test_mixed_limit();
+
+	diag("Suspendable - Unlinking test");
+	test_unlink();
 
 	rcu_unregister_thread();
 	return exit_status();
