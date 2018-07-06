@@ -754,6 +754,17 @@ int fs_handle_get_fd(struct fs_handle *handle)
 {
 	int ret;
 
+	/*
+	 * TODO This should be optimized as it is a fairly hot path.
+	 * The fd-tracker's lock should only be taken when a fs_handle is
+	 * restored (slow path). On the fast path (fs_handle is active),
+	 * the only effect on the fd_tracker is marking the handle as the
+	 * most recently used. Currently, it is done by a call to the
+	 * track/untrack helpers, but it should be done atomically.
+	 *
+	 * Note that the lock's nesting order must still be respected here.
+	 * The handle's lock nests inside the tracker's lock.
+	 */
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
 	assert(!handle->in_use);
