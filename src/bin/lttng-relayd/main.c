@@ -409,13 +409,14 @@ static int set_fd_pool_size(void)
 		goto end;
 	}
 
-	DBG("File descriptor count limits are %lu (soft) and %lu (hard)",
-			rlimit.rlim_cur, rlimit.rlim_max);
+	DBG("File descriptor count limits are %" PRIu64 " (soft) and %" PRIu64 " (hard)",
+			(uint64_t) rlimit.rlim_cur, (uint64_t) rlimit.rlim_max);
 	if (lttng_opt_fd_pool_size == -1) {
 		/* Use default value (soft limit - reserve). */
 		if (rlimit.rlim_cur < DEFAULT_RELAYD_MIN_FD_POOL_SIZE) {
-			ERR("The process' file number limit is too low (%lu). The process' file number limit must be set to at least %i.",
-					rlimit.rlim_cur, DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
+			ERR("The process' file number limit is too low (%" PRIu64 "). The process' file number limit must be set to at least %i.",
+					(uint64_t) rlimit.rlim_cur,
+					DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
 			ret = -1;
 			goto end;
 		}
