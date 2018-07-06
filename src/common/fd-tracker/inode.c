@@ -103,6 +103,9 @@ void lttng_inode_destroy(struct lttng_inode *inode)
 			PERROR("Failed to unlink %s", inode->path);
 		}
 	}
+	rcu_read_lock();
+	cds_lfht_del(inode->registry_ht, &inode->registry_node);
+	rcu_read_unlock();
 	call_rcu(&inode->rcu_head, lttng_inode_delete);
 }
 
@@ -249,6 +252,7 @@ struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	cds_lfht_node_init(&inode->registry_node);
 	inode->id = *id;
 	inode->path = strdup(path);
+	inode->registry_ht = ht;
 	if (!inode->path) {
 		goto error;
 	}
