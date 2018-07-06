@@ -129,6 +129,7 @@ struct unsuspendable_fd {
 	int fd;
 	char *name;
 	struct cds_lfht_node tracker_node;
+	struct rcu_head rcu_head;
 };
 
 static struct {
@@ -170,13 +171,22 @@ int match_fd(struct cds_lfht_node *node, const void *key)
 }
 
 static
+void delete_unsuspendable_fd(struct rcu_head *head)
+{
+	struct unsuspendable_fd *fd = caa_container_of(head,
+			struct unsuspendable_fd, rcu_head);
+
+	free(fd->name);
+	free(fd);
+}
+
+static
 void unsuspendable_fd_destroy(struct unsuspendable_fd *entry)
 {
 	if (!entry) {
 		return;
 	}
-	free(entry->name);
-	free(entry);
+	call_rcu(&entry->rcu_head, delete_unsuspendable_fd);
 }
 
 static
