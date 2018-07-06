@@ -475,6 +475,8 @@ int fd_tracker_destroy(struct fd_tracker *tracker)
 		ret = cds_lfht_destroy(tracker->unsuspendable_fds, NULL);
 		assert(!ret);
 	}
+
+	lttng_inode_registry_destroy(tracker->inode_registry);
 	pthread_mutex_destroy(&tracker->lock);
 	free(tracker);
 end:
@@ -517,12 +519,13 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	if (!handle) {
 		goto end;
 	}
+	handle->tracker = tracker;
 
 	ret = pthread_mutex_init(&handle->lock, NULL);
 	if (ret) {
 		PERROR("Failed to initialize handle mutex while creating fs handle");
 		free(handle);
-		goto end;
+		goto error_free;
 	}
 
 	handle->fd = open_from_properties(path, &properties);
@@ -550,13 +553,17 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	handle->ino = fd_stat.st_ino;
 
 	fd_tracker_track(tracker, handle);
-	handle->tracker = tracker;
 	pthread_mutex_unlock(&tracker->lock);
 end:
 	return handle;
 error_destroy:
+	pthread_mutex_destroy(&handle->lock);
+error_free:
+	if (handle->inode) {
+		lttng_inode_put(handle->inode);
+	}
+	free(handle);
 	pthread_mutex_unlock(&tracker->lock);
-	(void) fs_handle_close(handle);
 	handle = NULL;
 	goto end;
 }
@@ -844,7 +851,7 @@ int fs_handle_unlink(struct fs_handle *handle)
 int fs_handle_close(struct fs_handle *handle)
 {
 	int ret = 0;
-	const char *path;
+	const char *path = NULL;
 
 	if (!handle) {
 		ret = -EINVAL;
@@ -853,7 +860,9 @@ int fs_handle_close(struct fs_handle *handle)
 
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
-	path = lttng_inode_get_path(handle->inode);
+	if (handle->inode) {
+		path = lttng_inode_get_path(handle->inode);
+	}
 	fd_tracker_untrack(handle->tracker, handle);
 	if (handle->fd >= 0) {
 		assert(!handle->in_use);
@@ -863,7 +872,7 @@ int fs_handle_close(struct fs_handle *handle)
 		 */
 		if (close(handle->fd)) {
 			PERROR("Failed to close the file descritptor (%d) of fs handle to %s, close() returned",
-					handle->fd, path);
+					handle->fd, path ? path : "Unknown");
 		}
 		handle->fd = -1;
 	}
