@@ -30,13 +30,7 @@
 #include "lttng-relayd.h"
 
 struct stream_fd {
-	bool suspendable;
-	union {
-		/* Suspendable. */
-		struct fs_handle *handle;
-		/* Unsuspendable. */
-		int fd;
-	} u;
+	struct fs_handle *handle;
 	struct urcu_ref ref;
 };
 
@@ -61,82 +55,38 @@ static struct stream_fd *stream_fd_suspendable_create(struct fs_handle *handle)
 		goto end;
 	}
 
-	stream_fd->suspendable = true;
-	stream_fd->u.handle = handle;
+	stream_fd->handle = handle;
 end:
 	return stream_fd;
 }
 
-static struct stream_fd *stream_fd_unsuspendable_create(int fd)
-{
-	struct stream_fd *stream_fd = _stream_fd_alloc();
-
-	if (!stream_fd) {
-		goto end;
-	}
-
-	stream_fd->suspendable = false;
-	stream_fd->u.fd = fd;
-end:
-	return stream_fd;
-}
-
-static int open_file(void *data, int *out_fd)
-{
-	int ret;
-	const char *path = data;
-
-	ret = open(path, O_RDONLY);
-	if (ret < 0) {
-		goto end;
-	}
-	*out_fd = ret;
-	ret = 0;
-end:
-	return ret;
-}
-
-/*
- * Stream files are opened (read-only) on the live end of the relayd.
- * In live mode, it is expected that a client is able to consume a
- * complete file even if it is replaced (in file rotation mode).
- *
- * Thus, it is not possible to open those files as suspendable file
- * handles. This means that live clients can keep a large number of
- * open file descriptors. As a work-around, we could create hard links
- * to the files to make the files suspendable. The original file would be
- * replaced, but the viewer's hard-link would ensure that the inode is
- * still available for restoration.
- *
- * The main roadblock to this approach is validating that the trace
- * directory resides in a filesystem that supports hard-links. Otherwise,
- * a cooperative mechanism could allow the viewer end to mark a file as
- * being in use and it could be renamed rather than unlinked by the
- * receiving end.
- */
 struct stream_fd *stream_fd_open(const char *path)
 {
-	int ret, fd;
 	struct stream_fd *stream_fd = NULL;
+	int flags = O_RDONLY;
+	struct fs_handle *handle;
 
-	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &fd,
-			(const char **) &path, 1,
-			open_file, (void *) path);
-	if (ret) {
+	handle = fd_tracker_open_fs_handle(the_fd_tracker, path,
+			flags, NULL);
+	if (!handle) {
 		goto end;
 	}
 
-	stream_fd = stream_fd_unsuspendable_create(fd);
+	stream_fd = stream_fd_suspendable_create(handle);
 	if (!stream_fd) {
-		(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker, &fd, 1,
-				fd_tracker_util_close_fd, NULL);
+		int close_ret;
+
+		close_ret = fs_handle_close(handle);
+		if (close_ret) {
+			ERR("Failed to close filesystem handle of stream at %s", path);
+		}
 	}
 end:
 	return stream_fd;
 }
 
 static
-struct fs_handle *create_fs_handle(const char *path)
+struct fs_handle *create_write_fs_handle(const char *path)
 {
 	struct fs_handle *handle;
 	/*
@@ -147,7 +97,7 @@ struct fs_handle *create_fs_handle(const char *path)
 	/* Open with 660 mode */
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
-	handle =  fd_tracker_open_fs_handle(the_fd_tracker, path, flags, &mode);
+	handle = fd_tracker_open_fs_handle(the_fd_tracker, path, flags, &mode);
 	if (!handle) {
 		ERR("Failed to open fs handle to %s", path);
 	}
@@ -177,18 +127,65 @@ struct stream_fd *stream_fd_create(const char *path_name, const char *file_name,
 		goto end;
 	}
 
-	handle = create_fs_handle(path);
+	handle = create_write_fs_handle(path);
 	if (!handle) {
 		goto end;
 	}
 
 	stream_fd = stream_fd_suspendable_create(handle);
 	if (!stream_fd) {
-		(void) fs_handle_close(handle);
+		int close_ret;
+
+		close_ret = fs_handle_close(handle);
+		if (close_ret) {
+			ERR("Failed to close filesystem handle of stream at %s", path);
+		}
 	}
 	
 end:
 	return stream_fd;
+}
+
+/*
+ * This unlink wrapper allows the fd_tracker to check if any other
+ * fs_handle references the stream before unlinking it. If the relay holds
+ * this file open, it is essential to unlink it through an fs_handle as this
+ * will delay the actual unlink() until all handles have released this file.
+ *
+ * The file is renamed and unlinked once the last handle to its inode has been
+ * released.
+ */
+static
+int unlink_through_handle(const char *path)
+{
+	int ret = 0, close_ret;
+	struct fs_handle *handle;
+	/*
+	 * Since this operation is only performed to perform the unlink
+	 * through the fs_handle and fd-tracker system, the flag is opened
+	 * without the O_CREAT. There is no need to perform the unlink if
+	 * the file doesn't already exist.
+	 */
+	int flags = O_RDONLY;
+
+	DBG("Unlinking stream at %s through a filesystem handle", path);
+	handle = fd_tracker_open_fs_handle(the_fd_tracker, path, flags, NULL);
+	if (!handle) {
+		/* There is nothing to do. */
+		DBG("File %s does not exist, ignoring unlink", path);
+		goto end;
+	}
+
+	ret = fs_handle_unlink(handle);
+	close_ret = fs_handle_close(handle);
+	if (close_ret) {
+		ERR("Failed to close handle after performing an unlink operation on a filesystem handle");
+	}
+end:
+	if (ret) {
+		DBG("Unlinking stream at %s failed with error code %i", path, ret);
+	}
+	return ret;
 }
 
 int stream_fd_rotate(struct stream_fd *stream_fd, const char *path_name,
@@ -200,7 +197,6 @@ int stream_fd_rotate(struct stream_fd *stream_fd, const char *path_name,
 	char path[PATH_MAX];
 
 	assert(stream_fd);
-	assert(stream_fd->suspendable);
 
 	utils_stream_file_rotation_get_new_count(count, new_count,
 			&should_unlink);
@@ -211,16 +207,16 @@ int stream_fd_rotate(struct stream_fd *stream_fd, const char *path_name,
 		goto error;
 	}
 
-	ret = fs_handle_close(stream_fd->u.handle);
-	stream_fd->u.handle = NULL;
+	ret = fs_handle_close(stream_fd->handle);
+	stream_fd->handle = NULL;
 	if (ret < 0) {
 		PERROR("Closing stream tracefile handle");
 		goto error;
 	}
-	
+
 	if (should_unlink) {
-		unlink(path);
-		if (ret < 0 && errno != ENOENT) {
+		ret = unlink_through_handle(path);
+		if (ret < 0) {
 			goto error;
 		}
 	}
@@ -231,8 +227,8 @@ int stream_fd_rotate(struct stream_fd *stream_fd, const char *path_name,
 		goto error;
 	}
 
-	stream_fd->u.handle = create_fs_handle(path);
-	if (!stream_fd->u.handle) {
+	stream_fd->handle = create_write_fs_handle(path);
+	if (!stream_fd->handle) {
 		ret = -1;
 		goto error;
 	}
@@ -253,12 +249,7 @@ static void stream_fd_release(struct urcu_ref *ref)
 	struct stream_fd *sf = caa_container_of(ref, struct stream_fd, ref);
 	int ret;
 
-	if (sf->suspendable) {
-		ret = fs_handle_close(sf->u.handle);
-	} else {
-		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &sf->u.fd,
-				1, fd_tracker_util_close_fd, NULL);
-	}
+	ret = fs_handle_close(sf->handle);
 	if (ret) {
 		PERROR("Error closing stream handle");
 	}
@@ -272,12 +263,10 @@ void stream_fd_put(struct stream_fd *sf)
 
 int stream_fd_get_fd(struct stream_fd *sf)
 {
-	return sf->suspendable ? fs_handle_get_fd(sf->u.handle) : sf->u.fd;
+	return fs_handle_get_fd(sf->handle);
 }
 
 void stream_fd_put_fd(struct stream_fd *sf)
 {
-	if (sf->suspendable) {
-		fs_handle_put_fd(sf->u.handle);
-	}
+	fs_handle_put_fd(sf->handle);
 }
