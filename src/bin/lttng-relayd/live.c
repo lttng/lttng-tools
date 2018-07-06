@@ -1560,7 +1560,7 @@ error_put:
 static
 int viewer_get_packet(struct relay_connection *conn)
 {
-	int ret, stream_fd;
+	int ret, stream_fd = -1;
 	off_t lseek_ret;
 	char *reply = NULL;
 	struct lttng_viewer_get_packet get_packet_info;
@@ -1606,13 +1606,13 @@ int viewer_get_packet(struct relay_connection *conn)
 	stream_fd = stream_fd_get_fd(vstream->stream_fd);
 	if (stream_fd < 0) {
 		ERR("Failed to get viewer stream file descriptor");
-		goto error_put_fd;
+		goto error;
 	}
 	lseek_ret = lseek(stream_fd, be64toh(get_packet_info.offset), SEEK_SET);
 	if (lseek_ret < 0) {
 		PERROR("lseek fd %d to offset %" PRIu64, stream_fd,
 			(uint64_t) be64toh(get_packet_info.offset));
-		goto error_put_fd;
+		goto error;
 	}
 	read_len = lttng_read(stream_fd,
 			reply + sizeof(reply_header),
@@ -1621,14 +1621,12 @@ int viewer_get_packet(struct relay_connection *conn)
 		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
 				stream_fd,
 				(uint64_t) be64toh(get_packet_info.offset));
-		goto error_put_fd;
+		goto error;
 	}
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_OK);
 	reply_header.len = htobe32(packet_data_len);
 	goto send_reply;
 
-error_put_fd:
-	stream_fd_put_fd(vstream->stream_fd);
 error:
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
@@ -1661,6 +1659,9 @@ send_reply_nolock:
 end_free:
 	free(reply);
 end:
+	if (stream_fd >= 0) {
+		stream_fd_put_fd(vstream->stream_fd);
+	}
 	if (vstream) {
 		viewer_stream_put(vstream);
 	}
@@ -1751,12 +1752,12 @@ int viewer_get_metadata(struct relay_connection *conn)
 
 	stream_fd = stream_fd_get_fd(vstream->stream_fd);
 	if (stream_fd < 0) {
-		goto error_put_fd;
+		goto error;
 	}
 	read_len = lttng_read(stream_fd, data, len);
 	if (read_len < len) {
 		PERROR("Relay reading metadata file");
-		goto error_put_fd;
+		goto error;
 	}
 	vstream->metadata_sent += read_len;
 	if (vstream->metadata_sent == vstream->stream->metadata_received
@@ -1768,8 +1769,6 @@ int viewer_get_metadata(struct relay_connection *conn)
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_OK);
 
 	goto send_reply;
-error_put_fd:
-	(void) stream_fd_put_fd(vstream->stream_fd);
 error:
 	reply.status = htobe32(LTTNG_VIEWER_METADATA_ERR);
 
@@ -1799,6 +1798,9 @@ send_reply:
 end_free:
 	free(data);
 end:
+	if (stream_fd >= 0) {
+		stream_fd_put_fd(vstream->stream_fd);
+	}
 	if (vstream) {
 		viewer_stream_put(vstream);
 	}
