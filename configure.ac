@@ -112,6 +112,10 @@ AS_IF([test "x$ax_cv___attribute__" = "xyes"],
 
 AX_PTHREAD(,[AC_MSG_ERROR([Could not configure pthreads support])])
 
+# Check if linker has the -no-pie option.
+AX_CHECK_LINK_FLAG([-no-pie], [linker_have_no_pie_option=yes])
+AM_CONDITIONAL([LINKER_HAVE_NO_PIE_OPTION], [test "x$linker_have_no_pie_option" = "xyes"])
+
 AX_LIB_SOCKET_NSL
 
 LT_NO_UNDEFINED=""
