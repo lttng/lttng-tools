@@ -1468,8 +1468,8 @@ function lttng_load_fail()
 
 function lttng_track()
 {
-	local expected_to_fail=$1
-	local opts=$2
+	local expected_to_fail="$1"
+	local opts="$@"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >$OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1492,8 +1492,8 @@ function lttng_track_fail()
 
 function lttng_untrack()
 {
-	local expected_to_fail=$1
-	local opts=$2
+	local expected_to_fail="$1"
+	local opts="$@"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >$OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
@@ -1525,6 +1525,46 @@ function lttng_untrack_kernel_all_ok()
 {
 	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" untrack --kernel --pid --all 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ok $? "Lttng untrack all pid on the kernel domain"
+}
+
+function lttng_track_ust_ok()
+{
+	lttng_track_ok -u "$@"
+}
+
+function lttng_track_ust_fail()
+{
+	lttng_track_fail -u "$@"
+}
+
+function lttng_track_kernel_ok()
+{
+	lttng_track_ok -k "$@"
+}
+
+function lttng_track_kernel_fail()
+{
+	lttng_track_fail -k "$@"
+}
+
+function lttng_untrack_ust_ok()
+{
+	lttng_untrack_ok -u "$@"
+}
+
+function lttng_untrack_ust_fail()
+{
+	lttng_untrack_fail -u "$@"
+}
+
+function lttng_untrack_kernel_ok()
+{
+	lttng_untrack_ok -k "$@"
+}
+
+function lttng_untrack_kernel_fail()
+{
+	lttng_untrack_fail -k "$@"
 }
 
 function lttng_add_context_list()
@@ -1834,6 +1874,24 @@ function validate_trace_empty()
 	fi
 	ret=$?
 	return $ret
+}
+
+function validate_folder_is_empty()
+{
+	local folder=$1
+
+	test -z "$(ls -A "$folder")"
+	ok $? "Folder ${folder} is empty"
+}
+
+function validate_trace_session_ust_empty()
+{
+	validate_folder_is_empty "$1"/ust
+}
+
+function validate_trace_session_kernel_empty()
+{
+	validate_trace_empty "$1"/kernel
 }
 
 function regenerate_metadata ()

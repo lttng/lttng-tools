@@ -1128,6 +1128,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/rotation/Makefile
 	tests/regression/tools/base-path/Makefile
 	tests/regression/tools/metadata/Makefile
+	tests/regression/tools/tracker/Makefile
 	tests/regression/tools/working-directory/Makefile
 	tests/regression/tools/relayd-grouping/Makefile
 	tests/regression/tools/clear/Makefile
@@ -1166,6 +1167,7 @@ AC_CONFIG_FILES([
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ns-events/Makefile
+	tests/utils/testapp/gen-kernel-test-events/Makefile
 	tests/utils/testapp/gen-ust-events/Makefile
 	tests/utils/testapp/gen-ust-events-ns/Makefile
 	tests/utils/testapp/gen-syscall-events-callstack/Makefile

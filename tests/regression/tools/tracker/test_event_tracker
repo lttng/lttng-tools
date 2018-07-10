@@ -1,0 +1,517 @@
+#!/bin/bash
+#
+# Copyright (C) - 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) - 2015-2018 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+#
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License, version 2 only, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+# more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc., 51
+# Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+TEST_DESC="LTTng - Event traker test"
+
+CURDIR=$(dirname "$0")/
+TESTDIR="$CURDIR/../../.."
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_KERNEL_NAME="gen-kernel-test-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+TESTAPP_KERNEL_BIN="$TESTAPP_PATH/$TESTAPP_KERNEL_NAME/$TESTAPP_KERNEL_NAME"
+SESSION_NAME="tracker"
+NR_ITER=100
+NUM_GLOBAL_TESTS=2
+NUM_UST_TESTS=256
+NUM_KERNEL_TESTS=462
+NUM_TESTS=$((NUM_UST_TESTS+NUM_KERNEL_TESTS+NUM_GLOBAL_TESTS))
+
+NR_USEC_WAIT=0	#for UST gen events
+
+SCRIPT_UID="$(id -u)"
+SCRIPT_GID="$(id -g)"
+SCRIPT_USERNAME="$(id -un)"
+SCRIPT_GROUPNAME="$(id -gn)"
+
+CHILD_PID=-1
+WAIT_PATH=
+AFTER_FIRST_PATH=
+BEFORE_LAST_PATH=
+
+source $TESTDIR/utils/utils.sh
+
+function prepare_ust_app
+{
+	AFTER_FIRST_PATH=$(mktemp -u)
+	BEFORE_LAST_PATH=$(mktemp -u)
+
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT -a "$AFTER_FIRST_PATH" -b "$BEFORE_LAST_PATH" &
+	CHILD_PID=$!
+}
+
+function trace_ust_app
+{
+	touch "$BEFORE_LAST_PATH"
+	wait
+	ok $? "Traced application stopped."
+	rm "$BEFORE_LAST_PATH"
+	rm "$AFTER_FIRST_PATH"
+}
+
+function prepare_kernel_app
+{
+	WAIT_PATH=$(mktemp -u)
+
+	"$TESTAPP_KERNEL_BIN" "$WAIT_PATH" $NR_ITER &
+	CHILD_PID=$!
+}
+
+function trace_kernel_app
+{
+	touch "$WAIT_PATH"
+	wait
+	ok $? "Traced application stopped."
+	rm "$WAIT_PATH"
+}
+
+function test_event_tracker()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local tracker="$4"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	start_lttng_tracing_ok
+
+	lttng_track_"$domain"_ok "${tracker}"
+
+	prepare_"$domain"_app
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		trace_matches "$EVENT_NAME" $NR_ITER "$trace_path"
+	else
+		validate_trace_session_"$domain"_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+function test_event_vpid_tracker()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	prepare_"$domain"_app
+
+	start_lttng_tracing_ok
+
+	if [ "$expect_event" -eq 1 ]; then
+		lttng_track_"$domain"_ok "--vpid ${CHILD_PID}"
+	else
+		lttng_track_"$domain"_ok "--vpid $((CHILD_PID+1))"
+	fi
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		validate_trace "$EVENT_NAME" "$trace_path"
+	else
+		validate_trace_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+function test_event_pid_tracker()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	prepare_"$domain"_app
+
+	start_lttng_tracing_ok
+
+	if [ "$expect_event" -eq 1 ]; then
+		lttng_track_"$domain"_ok "--pid ${CHILD_PID}"
+	else
+		lttng_track_"$domain"_ok "--pid $((CHILD_PID+1))"
+	fi
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		validate_trace "$EVENT_NAME" "$trace_path"
+	else
+		validate_trace_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+
+function test_event_tracker_fail()
+{
+	local trace_path
+	local domain="$1"
+	local wildcard="$2"
+	local tracker="$3"
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard"
+	lttng_track_"$domain"_fail "${tracker}"
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$trace_path"
+}
+
+function test_event_track_untrack()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local tracker="$4"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	start_lttng_tracing_ok
+
+	lttng_track_"$domain"_ok "${tracker}"
+	lttng_untrack_"$domain"_ok "${tracker}"
+
+	prepare_"$domain"_app
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		trace_matches "$EVENT_NAME" $NR_ITER "$trace_path"
+	else
+		validate_trace_session_"$domain"_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+function test_event_vpid_track_untrack()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	prepare_"$domain"_app
+
+	start_lttng_tracing_ok
+
+	lttng_track_"$domain"_ok "--vpid ${CHILD_PID}"
+	lttng_untrack_"$domain"_ok "--vpid ${CHILD_PID}"
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		validate_trace "$EVENT_NAME" "$trace_path"
+	else
+		validate_trace_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+function test_event_pid_track_untrack()
+{
+	local trace_path
+	local domain="$1"
+	local expect_event="$2"
+	local wildcard="$3"
+	local channel=''
+
+	trace_path=$(mktemp -d)
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path"
+
+	if [ "$domain" = kernel ]; then
+		channel=chan
+		lttng_enable_kernel_channel 1 0 $SESSION_NAME $channel "--subbuf-size=8M --num-subbuf=4"
+	fi
+
+	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard" "$channel"
+
+	prepare_"$domain"_app
+
+	start_lttng_tracing_ok
+
+	lttng_track_"$domain"_ok "--pid ${CHILD_PID}"
+	lttng_untrack_"$domain"_ok "--pid ${CHILD_PID}"
+
+	trace_"$domain"_app
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	if [ "$expect_event" -eq 1 ]; then
+		validate_trace "$EVENT_NAME" "$trace_path"
+	else
+		validate_trace_empty "$trace_path"
+	fi
+
+	rm -rf "$trace_path"
+}
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+diag "Test UST tracker"
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+EVENT_NAME="tp:tptest"
+
+#vuid, vgid
+
+# non-matching
+test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" "--vgid $((SCRIPT_GID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid $((SCRIPT_GID+1))"
+test_event_tracker ust 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid ${SCRIPT_GID}"
+test_event_tracker ust 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid $((SCRIPT_GID+1))"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vuid --all"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid --all"
+
+# matching
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid ${SCRIPT_GID}"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME}"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME}"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID},$((SCRIPT_UID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID},$((SCRIPT_GID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vuid --all"
+test_event_tracker ust 1 "${EVENT_NAME}" "--vgid --all"
+
+#fail
+test_event_tracker_fail ust "${EVENT_NAME}" "--vuid lttng_unexisting_user"
+test_event_tracker_fail ust "${EVENT_NAME}" "--vgid lttng_unexisting_group"
+
+
+#vpid
+
+#non-matching
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vpid --all"
+test_event_vpid_tracker ust 0 "${EVENT_NAME}"
+test_event_vpid_track_untrack ust 0 "${EVENT_NAME}"
+
+#matching
+test_event_tracker ust 1 "${EVENT_NAME}" "--vpid --all"
+test_event_vpid_tracker ust 1 "${EVENT_NAME}"
+
+#pid (backward compat)
+
+#non-matching
+test_event_pid_tracker ust 0 "${EVENT_NAME}"
+test_event_pid_track_untrack ust 0 "${EVENT_NAME}"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--pid --all"	# backward compat
+
+#matching
+test_event_tracker ust 1 "${EVENT_NAME}" "--pid --all"	# backward compat
+test_event_pid_tracker ust 1 "${EVENT_NAME}"
+
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+else
+	isroot=0
+fi
+
+skip $isroot "Root access is needed. Skipping all kernel tracker tests." $NUM_KERNEL_TESTS ||
+{
+	diag "Test kernel tracker"
+
+	modprobe lttng-test
+	ok $? "Loading lttng-test module"
+
+	EVENT_NAME="lttng_test_filter_event"
+
+	# vuid, vgid, vpid
+
+	# non-matching
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--vgid $((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid $((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid $((SCRIPT_UID+1)) --vgid ${SCRIPT_GID}"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid $((SCRIPT_GID+1))"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vuid --all"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vgid --all"
+
+	# matching
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID} --vgid ${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_UID},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GID},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vuid --all"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vgid --all"
+
+	#fail
+	test_event_tracker_fail kernel "${EVENT_NAME}" "--vuid lttng_unexisting_user"
+	test_event_tracker_fail kernel "${EVENT_NAME}" "--vgid lttng_unexisting_group"
+
+
+	#uid, gid
+
+	# non-matching
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--gid $((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1)) --gid $((SCRIPT_GID+1))"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid $((SCRIPT_UID+1)) --gid ${SCRIPT_GID}"
+	test_event_tracker kernel 0 "${EVENT_NAME}" "--uid ${SCRIPT_UID} --gid $((SCRIPT_GID+1))"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--uid ${SCRIPT_UID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--gid ${SCRIPT_GID}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--uid --all"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--gid --all"
+
+	# matching
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID} --gid ${SCRIPT_GID}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_USERNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GROUPNAME}"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_UID},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GID},$((SCRIPT_GID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--uid ${SCRIPT_USERNAME},$((SCRIPT_UID+1))"
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--gid ${SCRIPT_GROUPNAME},$((SCRIPT_GID+1))"
+
+	#fail
+	test_event_tracker_fail kernel "${EVENT_NAME}" "--uid lttng_unexisting_user"
+	test_event_tracker_fail kernel "${EVENT_NAME}" "--gid lttng_unexisting_group"
+
+
+	#vpid
+
+	#non-matching
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--vpid --all"
+	test_event_vpid_tracker kernel 0 "${EVENT_NAME}"
+	test_event_vpid_track_untrack kernel 0 "${EVENT_NAME}"
+
+	#matching
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--vpid --all"
+	test_event_vpid_tracker kernel 1 "${EVENT_NAME}"
+
+	#pid
+
+	#non-matching
+	test_event_pid_tracker kernel 0 "${EVENT_NAME}"
+	test_event_pid_track_untrack kernel 0 "${EVENT_NAME}"
+	test_event_track_untrack kernel 0 "${EVENT_NAME}" "--pid --all"
+
+	#matching
+	test_event_tracker kernel 1 "${EVENT_NAME}" "--pid --all"
+	test_event_pid_tracker kernel 1 "${EVENT_NAME}"
+
+	rmmod lttng-test
+	ok $? "Unloading lttng-test module"
+}
+
+stop_lttng_sessiond
