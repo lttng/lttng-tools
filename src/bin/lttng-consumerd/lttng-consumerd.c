@@ -252,7 +252,7 @@ static int parse_args(int argc, char **argv)
 			lttng_opt_quiet = 1;
 			break;
 		case 'v':
-			lttng_opt_verbose = 1;
+			lttng_opt_verbose = 3;
 			break;
 		case 'V':
 			fprintf(stdout, "%s\n", VERSION);
