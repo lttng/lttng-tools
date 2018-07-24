@@ -1,3 +1,20 @@
+2018-07-23 lttng-tools 2.9.10 (National Vanilla Ice Cream Day)
+	* Fix: missing context enum values in session xml schema
+	* Tests: add session auto-loading test cases
+	* Bash completion: ignore namespace for xmllint parsing
+	* Typo in ust consumer log message (channek -> channel)
+	* Fix: use signed variable for refcounting of consumer_relayd_sock_pair
+	* Fix: warning due to hash_key_str() being not const-correct
+	* Fix: calling ht_{hash, match}_enum with wrong argument
+	* Fix: probes should be compared strictly by events metadata
+	* Fix: test_ust-dl is generated at configure-time
+	* Fix: perform the initialization memory barrier out of loop body
+	* Port: fix format warnings on Cygwin
+	* Fix: don't wait for the load thread before serving client commands
+	* Fix: sessiond fails to launch on --without-ust configuration
+	* Fix: agent thread poll set creation failure results in deadlock
+	* Fix: test uses sizeof() on the wrong operand of strncpy
+
 2018-04-30 lttng-tools 2.9.9 (CERN announces WWW protocols will be free)
 	* Add DBG statement for TCP keep-alive options
 	* Fix: failure to launch agent thread is not reported
