@@ -1,3 +1,25 @@
+2018-07-23 lttng-tools 2.10.5 (National Vanilla Ice Cream Day)
+	* Fix: missing context enum values in session xml schema
+	* Tests: add session auto-loading test cases
+	* Bash completion: ignore namespace for xmllint parsing
+	* Typo in ust consumer log message (channek -> channel)
+	* Fix: use signed variable for refcounting of consumer_relayd_sock_pair
+	* Fix: warning due to hash_key_str() being not const-correct
+	* Print consumerd32/64/kernel configuration
+	* Fix: calling ht_{hash, match}_enum with wrong argument
+	* Fix: probes should be compared strictly by events metadata
+	* Fix: test_ust-dl is generated at configure-time
+	* Fix: cmd line options overwrite env variable config options
+	* Fix: perform the initialization memory barrier out of loop body
+	* Port: fix format warnings on Cygwin
+	* Add missing include for ssize_t on Cygwin
+	* Fix: sessions with agent channels fail to load
+	* Fix: don't wait for the load thread before serving client commands
+	* Fix: sessiond fails to launch on --without-ust configuration
+	* Fix: agent thread poll set creation failure results in deadlock
+	* Fix: test uses sizeof() on the wrong operand of strncpy
+	* Fix: ret may be used uninitialized in sample_channel_positions()
+
 2018-04-30 lttng-tools 2.10.4 (CERN announces WWW protocols will be free)
 	* Fix build: in_git_repo is used before being set
 	* Add DBG statement for TCP keep-alive options
