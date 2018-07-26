@@ -1,4 +1,4 @@
-noinst_SCRIPTS = test_save test_load
+noinst_SCRIPTS = test_save test_load test_autoload
 EXTRA_DIST = $(noinst_SCRIPTS) load-42.lttng load-42-complex.lttng \
 	load-42-trackers.lttng
 
