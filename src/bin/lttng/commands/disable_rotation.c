@@ -77,11 +77,6 @@ static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 		}
 	}
 
-	ret = lttng_rotation_schedule_attr_set_session_name(attr, session_name);
-	if (ret < 0) {
-		goto error;
-	}
-
 	if (lttng_opt_mi) {
 		ret = mi_lttng_writer_write_element_string(writer,
 				mi_lttng_element_session_name, session_name);
@@ -99,7 +94,7 @@ static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 		MSG("Disabling rotation based on size on session %s", session_name);
 	}
 
-	ret = lttng_rotation_set_schedule(attr);
+	ret = lttng_rotation_set_schedule(session_name, attr);
 	if (ret) {
 		ERR("%s", lttng_strerror(ret));
 		if (lttng_opt_mi) {

@@ -69,11 +69,6 @@ static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 		goto error;
 	}
 
-	ret = lttng_rotation_schedule_attr_set_session_name(attr, session_name);
-	if (ret < 0) {
-		goto error;
-	}
-
 	if (lttng_opt_mi) {
 		/* Open rotation_schedule element */
 		ret = mi_lttng_writer_open_element(writer,
@@ -114,7 +109,7 @@ static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
 		}
 	}
 
-	ret = lttng_rotation_set_schedule(attr);
+	ret = lttng_rotation_set_schedule(session_name, attr);
 	if (ret) {
 		ERR("%s", lttng_strerror(ret));
 		if (lttng_opt_mi) {

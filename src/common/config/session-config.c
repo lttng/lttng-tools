@@ -2831,20 +2831,18 @@ domain_init_error:
 	}
 
 	if (rotation_timer_interval || rotation_size) {
-		struct lttng_rotation_schedule_attr *rotation_attr = lttng_rotation_schedule_attr_create();
+		struct lttng_rotation_schedule_attr *rotation_attr =
+				lttng_rotation_schedule_attr_create();
 
 		if (!rotation_attr) {
 			goto error;
 		}
-		ret = lttng_rotation_schedule_attr_set_session_name(rotation_attr, (const char *) name);
-		if (ret) {
-			lttng_rotation_schedule_attr_destroy(rotation_attr);
-			goto error;
-		}
 		lttng_rotation_schedule_attr_set_timer_period(rotation_attr,
 				rotation_timer_interval);
-		lttng_rotation_schedule_attr_set_size(rotation_attr, rotation_size);
-		ret = lttng_rotation_set_schedule(rotation_attr);
+		lttng_rotation_schedule_attr_set_size(rotation_attr,
+				rotation_size);
+		ret = lttng_rotation_set_schedule((const char *) name,
+				rotation_attr);
 		lttng_rotation_schedule_attr_destroy(rotation_attr);
 		if (ret) {
 			goto error;

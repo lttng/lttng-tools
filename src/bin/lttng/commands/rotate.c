@@ -209,25 +209,13 @@ end:
 static int rotate_tracing(char *session_name)
 {
 	int ret;
-	struct lttng_rotation_immediate_attr *attr = NULL;
 	struct lttng_rotation_handle *handle = NULL;
 	enum lttng_rotation_status rotation_status;
 	enum lttng_rotation_state rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 
 	DBG("Rotating the output files of session %s", session_name);
 
-	attr = lttng_rotation_immediate_attr_create();
-	if (!attr) {
-		goto error;
-	}
-
-	ret = lttng_rotation_immediate_attr_set_session_name(attr, session_name);
-	if (ret < 0) {
-		ERR("Session name exceeds the maximal allowed length");
-		goto error;
-	}
-
-	ret = lttng_rotate_session(attr, &handle);
+	ret = lttng_rotate_session(session_name, NULL, &handle);
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTNG_ERR_SESSION_NOT_STARTED:
@@ -314,7 +302,6 @@ error:
 	ret = CMD_ERROR;
 end:
 	lttng_rotation_handle_destroy(handle);
-	lttng_rotation_immediate_attr_destroy(attr);
 	return ret;
 }
 

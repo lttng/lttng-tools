@@ -32,8 +32,6 @@
  * This is opaque to the public library.
  */
 struct lttng_rotation_immediate_attr {
-	/* Session name to rotate. */
-	char session_name[LTTNG_NAME_MAX];
 	/* For the rotate pending request. */
 	uint64_t rotate_id;
 };
@@ -44,8 +42,6 @@ struct lttng_rotation_immediate_attr {
  * This is opaque to the public library.
  */
 struct lttng_rotation_schedule_attr {
-	/* Session name to rotate. */
-	char session_name[LTTNG_NAME_MAX];
 	/* > 0 if a timer is set. */
 	uint64_t timer_us;
 	/* > 0 if the session should rotate when it has written that many bytes. */
