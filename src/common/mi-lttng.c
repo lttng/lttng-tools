@@ -186,9 +186,15 @@ LTTNG_HIDDEN const char * const mi_lttng_element_session_name = "session_name";
 
 /* String related to rotate command */
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation = "rotation";
-LTTNG_HIDDEN const char * const mi_lttng_element_rotations = "rotations";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status = "status";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule = "rotation_schedule";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedules = "rotation_schedules";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_result = "rotation_schedule_result";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_results = "rotation_schedule_results";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic = "periodic";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic_time_us = "time_us";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold = "size_threshold";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes = "bytes";
 
 /* String related to add-context command */
 LTTNG_HIDDEN const char * const mi_lttng_element_context_symbol = "symbol";
@@ -1834,6 +1840,111 @@ int mi_lttng_snapshot_record(struct mi_writer *writer,
 	/* Close record_snapshot element */
 	ret = mi_lttng_writer_close_element(writer);
 
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_rotation_schedule(struct mi_writer *writer,
+		const struct lttng_rotation_schedule *schedule)
+{
+	int ret = 0;
+	enum lttng_rotation_status status;
+	uint64_t value;
+	const char *element_name;
+	const char *value_name;
+	bool empty_schedule = false;
+
+	switch (lttng_rotation_schedule_get_type(schedule)) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		status = lttng_rotation_schedule_periodic_get_period(schedule,
+				&value);
+		element_name = mi_lttng_element_rotation_schedule_periodic;
+	        value_name = mi_lttng_element_rotation_schedule_periodic_time_us;
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		status = lttng_rotation_schedule_size_threshold_get_threshold(
+				schedule, &value);
+		element_name = mi_lttng_element_rotation_schedule_size_threshold;
+	        value_name = mi_lttng_element_rotation_schedule_size_threshold_bytes;
+		break;
+	default:
+		ret = -1;
+		goto end;
+	}
+
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		if (status == LTTNG_ROTATION_STATUS_UNAVAILABLE) {
+			empty_schedule = true;
+		} else {
+			ret = -1;
+			goto end;
+		}
+	}
+
+	ret = mi_lttng_writer_open_element(writer, element_name);
+	if (ret) {
+		goto end;
+	}
+
+	if (!empty_schedule) {
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				value_name, value);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	/* Close schedule descriptor element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
+		const struct lttng_rotation_schedule *schedule,
+		bool success)
+{
+	int ret = 0;
+
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_rotation_schedule_result);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_rotation_schedule);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_rotation_schedule(writer, schedule);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close rotation_schedule element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_bool(writer,
+			mi_lttng_element_command_success, success);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close rotation_schedule_result element */
+        ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
 end:
 	return ret;
 }

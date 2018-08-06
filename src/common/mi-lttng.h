@@ -192,9 +192,15 @@ LTTNG_HIDDEN const char * const mi_lttng_element_session_name;
 
 /* String related to rotate command */
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotations;
 LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status;
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedules;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic_time_us;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_result;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_results;
 
 /* String related to add-context command */
 LTTNG_HIDDEN extern const char * const mi_lttng_element_context_symbol;
@@ -805,5 +811,45 @@ int mi_lttng_snapshot_add_output(struct mi_writer *writer,
 int mi_lttng_snapshot_record(struct mi_writer *writer,
 		const char *current_session_name, const char *url,
 		const char *cmdline_ctrl_url, const char *cmdline_data_url);
+
+/*
+ * Machine interface representation of a session rotation schedule.
+ *
+ * The machine interface serializes the provided schedule as one of the choices
+ * from 'rotation_schedule_type'.
+ *
+ * writer: An instance of a machine interface writer.
+ *
+ * schedule: An lttng rotation schedule descriptor object.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_rotation_schedule(struct mi_writer *writer,
+		const struct lttng_rotation_schedule *schedule);
+
+/*
+ * Machine interface of a session rotation schedule result.
+ * This is an element that is part of the output of the enable-rotation and
+ * disable-rotation commands.
+ *
+ * The machine interface provides the following information:
+ * - schedule: the session rotation schedule descriptor.
+ * - success: whether the sub-command succeeded.
+ *
+ * writer: An instance of a machine interface writer.
+ *
+ * session_name: The session to which the command applies.
+ *
+ * schedule: An lttng rotation schedule descriptor object.
+ *
+ * success: Whether the sub-command suceeded.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
+		const struct lttng_rotation_schedule *schedule,
+		bool success);
 
 #endif /* _MI_LTTNG_H */

@@ -28,19 +28,6 @@
 
 #include "lttng-ctl-helper.h"
 
-struct lttng_rotation_schedule_attr *lttng_rotation_schedule_attr_create(void)
-{
-	return zmalloc(sizeof(struct lttng_rotation_schedule_attr));
-}
-
-void lttng_rotation_schedule_attr_destroy(struct lttng_rotation_schedule_attr *attr)
-{
-	if (attr) {
-		free(attr);
-		attr = NULL;
-	}
-}
-
 static
 enum lttng_rotation_status ask_rotation_info(
 		struct lttng_rotation_handle *rotation_handle,
@@ -75,28 +62,6 @@ enum lttng_rotation_status ask_rotation_info(
 end:
 	return status;
 
-}
-
-enum lttng_rotation_status lttng_rotation_schedule_attr_set_timer_period(
-		struct lttng_rotation_schedule_attr *attr,
-		uint64_t timer)
-{
-	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
-
-	if (!attr) {
-		status = LTTNG_ROTATION_STATUS_INVALID;
-		goto end;
-	}
-
-	attr->timer_us = timer;
-end:
-	return status;
-}
-
-void lttng_rotation_schedule_attr_set_size(
-		struct lttng_rotation_schedule_attr *attr, uint64_t size)
-{
-	attr->size = size;
 }
 
 static
@@ -221,8 +186,7 @@ void lttng_rotation_handle_destroy(
 static
 int init_rotation_handle(struct lttng_rotation_handle *rotation_handle,
 		const char *session_name,
-		struct lttng_rotate_session_return *rotate_return,
-		struct lttng_rotation_immediate_attr *attr)
+		struct lttng_rotate_session_return *rotate_return)
 {
 	int ret;
 
@@ -243,7 +207,7 @@ end:
  * Return 0 on success else a negative LTTng error code.
  */
 int lttng_rotate_session(const char *session_name,
-		struct lttng_rotation_immediate_attr *attr,
+		struct lttng_rotation_immediate_descriptor *descriptor,
 		struct lttng_rotation_handle **rotation_handle)
 {
 	struct lttcomm_session_msg lsm;
@@ -280,8 +244,7 @@ int lttng_rotate_session(const char *session_name,
 		goto end;
 	}
 
-	init_rotation_handle(*rotation_handle, session_name, rotate_return,
-			attr);
+	init_rotation_handle(*rotation_handle, session_name, rotate_return);
 
 	ret = 0;
 
@@ -291,21 +254,39 @@ end:
 }
 
 /*
- * Configure the automatic rotate parameters.
+ * Update the automatic rotation parameters.
+ * 'add' as true enables the provided schedule, false removes the shedule.
+ *
+ * The external API makes it appear as though arbitrary schedules can
+ * be added or removed at will. However, the session daemon is
+ * currently limited to one schedule per type (per session).
+ *
+ * The additional flexibility of the public API is offered for future
+ * rotation schedules that could indicate more precise criteria than
+ * size and time (e.g. a domain) where it could make sense to add
+ * multiple schedules of a given type to a session.
+ *
+ * Hence, the exact schedule that the user wishes to remove (and not
+ * just its type) must be passed so that the session daemon can
+ * validate that is exists before clearing it.
  */
-int lttng_rotation_set_schedule(const char *session_name,
-		struct lttng_rotation_schedule_attr *attr)
+static
+enum lttng_rotation_status lttng_rotation_update_schedule(
+		const char *session_name,
+		const struct lttng_rotation_schedule *schedule,
+		bool add)
 {
 	struct lttcomm_session_msg lsm;
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	int ret;
 
-	if (!attr || !session_name) {
-		ret = -LTTNG_ERR_INVALID;
+	if (!session_name || !schedule) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
 
 	if (strlen(session_name) >= sizeof(lsm.session.name)) {
-		ret = -LTTNG_ERR_INVALID;
+		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
 
@@ -313,62 +294,356 @@ int lttng_rotation_set_schedule(const char *session_name,
 	lsm.cmd_type = LTTNG_ROTATION_SET_SCHEDULE;
 	lttng_ctl_copy_string(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
-	lsm.u.rotate_setup.timer_us = attr->timer_us;
-	lsm.u.rotate_setup.size = attr->size;
+
+	lsm.u.rotation_set_schedule.type = (uint32_t) schedule->type;
+	switch (schedule->type) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+	{
+		status = lttng_rotation_schedule_size_threshold_get_threshold(
+				schedule, &lsm.u.rotation_set_schedule.value);
+		if (status != LTTNG_ROTATION_STATUS_OK) {
+			goto end;
+		}
+
+		lsm.u.rotation_set_schedule.set = !!add;
+		break;
+	}
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+	{
+		status = lttng_rotation_schedule_periodic_get_period(
+				schedule, &lsm.u.rotation_set_schedule.value);
+		if (status != LTTNG_ROTATION_STATUS_OK) {
+			goto end;
+		}
+
+		lsm.u.rotation_set_schedule.set = !!add;
+		break;
+	}
+	default:
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
 
 	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
-end:
-	return ret;
-}
-
-int lttng_rotation_schedule_get_timer_period(const char *session_name,
-		uint64_t *rotate_timer)
-{
-	struct lttcomm_session_msg lsm;
-	struct lttng_rotation_schedule_get_timer_period *get_timer = NULL;
-	int ret;
-
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD;
-	lttng_ctl_copy_string(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
-
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &get_timer);
-	if (ret < 0) {
-		ret = -1;
+	if (ret >= 0) {
 		goto end;
 	}
 
-	*rotate_timer = get_timer->rotate_timer;
-	ret = 0;
+	switch (-ret) {
+	case LTTNG_ERR_ROTATION_SCHEDULE_SET:
+		status = LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET;
+		break;
+	case LTTNG_ERR_ROTATION_SCHEDULE_NOT_SET:
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		break;
+	default:
+		status = LTTNG_ROTATION_STATUS_ERROR;
+	}
 end:
-	free(get_timer);
-	return ret;
+	return status;
 }
 
-int lttng_rotation_schedule_get_size(const char *session_name,
-		uint64_t *rotate_size)
+static
+struct lttng_rotation_schedules *lttng_rotation_schedules_create(void)
 {
-	struct lttcomm_session_msg lsm;
-	struct lttng_rotation_schedule_get_size *get_size = NULL;
+	return zmalloc(sizeof(struct lttng_rotation_schedules));
+}
+
+static
+void lttng_schedules_add(struct lttng_rotation_schedules *schedules,
+		struct lttng_rotation_schedule *schedule)
+{
+	schedules->schedules[schedules->count++] = schedule;
+}
+
+static
+int get_schedules(const char *session_name,
+		struct lttng_rotation_schedules **_schedules)
+{
 	int ret;
+	struct lttcomm_session_msg lsm;
+	struct lttng_session_list_schedules_return *schedules_comm;
+	struct lttng_rotation_schedules *schedules = NULL;
+	struct lttng_rotation_schedule *periodic = NULL, *size = NULL;
 
 	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_ROTATION_SCHEDULE_GET_SIZE;
+	lsm.cmd_type = LTTNG_SESSION_LIST_ROTATION_SCHEDULES;
 	lttng_ctl_copy_string(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
 
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &get_size);
+	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &schedules_comm);
 	if (ret < 0) {
-		ret = -1;
 		goto end;
 	}
 
-	*rotate_size = get_size->rotate_size;
+	schedules = lttng_rotation_schedules_create();
+	if (!schedules) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
-	ret = 0;
+	if (schedules_comm->periodic.set == 1) {
+		enum lttng_rotation_status status;
 
+		periodic = lttng_rotation_schedule_periodic_create();
+		if (!periodic) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		status = lttng_rotation_schedule_periodic_set_period(
+				periodic, schedules_comm->periodic.value);
+		if (status != LTTNG_ROTATION_STATUS_OK) {
+			/*
+			 * This would imply that the session daemon returned
+			 * an invalid periodic rotation schedule value.
+			 */
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		lttng_schedules_add(schedules, periodic);
+		periodic = NULL;
+	}
+
+	if (schedules_comm->size.set == 1) {
+		enum lttng_rotation_status status;
+
+		size = lttng_rotation_schedule_size_threshold_create();
+		if (!size) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		status = lttng_rotation_schedule_size_threshold_set_threshold(
+				size, schedules_comm->size.value);
+		if (status != LTTNG_ROTATION_STATUS_OK) {
+			/*
+			 * This would imply that the session daemon returned
+			 * an invalid size threshold schedule value.
+			 */
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		lttng_schedules_add(schedules, size);
+		size = NULL;
+	}
+
+	ret = LTTNG_OK;
 end:
-	free(get_size);
+	free(schedules_comm);
+	free(periodic);
+	free(size);
+	*_schedules = schedules;
 	return ret;
+}
+
+enum lttng_rotation_schedule_type lttng_rotation_schedule_get_type(
+		const struct lttng_rotation_schedule *schedule)
+{
+	return schedule ? schedule->type : LTTNG_ROTATION_SCHEDULE_TYPE_UNKNOWN;
+}
+
+struct lttng_rotation_schedule *
+lttng_rotation_schedule_size_threshold_create(void)
+{
+	struct lttng_rotation_schedule_size_threshold *schedule;
+
+	schedule = zmalloc(sizeof(*schedule));
+	if (!schedule) {
+		goto end;
+	}
+
+	schedule->parent.type = LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD;
+end:
+	return &schedule->parent;
+}
+
+enum lttng_rotation_status
+lttng_rotation_schedule_size_threshold_get_threshold(
+		const struct lttng_rotation_schedule *schedule,
+		uint64_t *size_threshold_bytes)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+	struct lttng_rotation_schedule_size_threshold *size_schedule;
+
+	if (!schedule || !size_threshold_bytes) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	size_schedule = container_of(schedule,
+			struct lttng_rotation_schedule_size_threshold,
+			parent);
+	if (size_schedule->size.set) {
+		*size_threshold_bytes = size_schedule->size.bytes;
+	} else {
+		status = LTTNG_ROTATION_STATUS_UNAVAILABLE;
+		goto end;
+	}
+end:
+	return status;
+}
+
+enum lttng_rotation_status
+lttng_rotation_schedule_size_threshold_set_threshold(
+		struct lttng_rotation_schedule *schedule,
+		uint64_t size_threshold_bytes)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+	struct lttng_rotation_schedule_size_threshold *size_schedule;
+
+	if (!schedule || size_threshold_bytes == 0 ||
+			size_threshold_bytes == -1ULL) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	size_schedule = container_of(schedule,
+			struct lttng_rotation_schedule_size_threshold,
+			parent);
+	size_schedule->size.bytes = size_threshold_bytes;
+	size_schedule->size.set = true;
+end:
+	return status;
+}
+
+struct lttng_rotation_schedule *
+lttng_rotation_schedule_periodic_create(void)
+{
+	struct lttng_rotation_schedule_periodic *schedule;
+
+	schedule = zmalloc(sizeof(*schedule));
+	if (!schedule) {
+		goto end;
+	}
+
+	schedule->parent.type = LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC;
+end:
+	return &schedule->parent;
+}
+
+enum lttng_rotation_status
+lttng_rotation_schedule_periodic_get_period(
+		const struct lttng_rotation_schedule *schedule,
+		uint64_t *period_us)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+	struct lttng_rotation_schedule_periodic *periodic_schedule;
+
+	if (!schedule || !period_us) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	periodic_schedule = container_of(schedule,
+			struct lttng_rotation_schedule_periodic,
+			parent);
+	if (periodic_schedule->period.set) {
+		*period_us = periodic_schedule->period.us;
+	} else {
+		status = LTTNG_ROTATION_STATUS_UNAVAILABLE;
+		goto end;
+	}
+end:
+	return status;
+}
+
+enum lttng_rotation_status
+lttng_rotation_schedule_periodic_set_period(
+		struct lttng_rotation_schedule *schedule,
+		uint64_t period_us)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+	struct lttng_rotation_schedule_periodic *periodic_schedule;
+
+	if (!schedule || period_us == 0 || period_us == -1ULL) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	periodic_schedule = container_of(schedule,
+			struct lttng_rotation_schedule_periodic,
+			parent);
+	periodic_schedule->period.us = period_us;
+	periodic_schedule->period.set = true;
+end:
+	return status;
+}
+
+void lttng_rotation_schedule_destroy(struct lttng_rotation_schedule *schedule)
+{
+	if (!schedule) {
+		return;
+	}
+	free(schedule);
+}
+
+void lttng_rotation_schedules_destroy(
+		struct lttng_rotation_schedules *schedules)
+{
+	unsigned int i;
+
+	if (!schedules) {
+		return;
+	}
+
+	for (i = 0; i < schedules->count; i++) {
+		lttng_rotation_schedule_destroy(schedules->schedules[i]);
+	}
+	free(schedules);
+}
+
+
+enum lttng_rotation_status lttng_rotation_schedules_get_count(
+		const struct lttng_rotation_schedules *schedules,
+		unsigned int *count)
+{
+	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
+
+	if (!schedules || !count) {
+		status = LTTNG_ROTATION_STATUS_INVALID;
+		goto end;
+	}
+
+	*count = schedules->count;
+end:
+	return status;
+}
+
+const struct lttng_rotation_schedule *lttng_rotation_schedules_get_at_index(
+		const struct lttng_rotation_schedules *schedules,
+		unsigned int index)
+{
+	const struct lttng_rotation_schedule *schedule = NULL;
+
+	if (!schedules || index >= schedules->count) {
+		goto end;
+	}
+
+	schedule = schedules->schedules[index];
+end:
+	return schedule;
+}
+
+enum lttng_rotation_status lttng_session_add_rotation_schedule(
+		const char *session_name,
+		const struct lttng_rotation_schedule *schedule)
+{
+	return lttng_rotation_update_schedule(session_name, schedule, true);
+}
+
+enum lttng_rotation_status lttng_session_remove_rotation_schedule(
+		const char *session_name,
+		const struct lttng_rotation_schedule *schedule)
+{
+	return lttng_rotation_update_schedule(session_name, schedule, false);
+}
+
+int lttng_session_list_rotation_schedules(
+		const char *session_name,
+		struct lttng_rotation_schedules **schedules)
+{
+	return get_schedules(session_name, schedules);
 }

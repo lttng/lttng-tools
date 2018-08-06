@@ -377,7 +377,7 @@ int cmd_rotate(int argc, const char **argv)
 
 		/* Open rotations element */
 		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_rotations);
+				mi_lttng_element_rotation_schedules);
 		if (ret) {
 			goto end;
 		}
@@ -391,12 +391,12 @@ int cmd_rotate(int argc, const char **argv)
 
 	/* Mi closing */
 	if (lttng_opt_mi) {
-		/* Close  rotations element */
+		/* Close rotations element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
 			goto end;
 		}
-		/* Close  output element */
+		/* Close output element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
 			goto end;

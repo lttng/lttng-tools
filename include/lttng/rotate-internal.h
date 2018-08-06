@@ -27,28 +27,6 @@
 #include <common/macros.h>
 
 /*
- * Object used as input parameter to the rotate session API for immediate
- * rotations.
- * This is opaque to the public library.
- */
-struct lttng_rotation_immediate_attr {
-	/* For the rotate pending request. */
-	uint64_t rotate_id;
-};
-
-/*
- * Object used as input parameter to the lttng_rotate_schedule API for
- * automatic rotations.
- * This is opaque to the public library.
- */
-struct lttng_rotation_schedule_attr {
-	/* > 0 if a timer is set. */
-	uint64_t timer_us;
-	/* > 0 if the session should rotate when it has written that many bytes. */
-	uint64_t size;
-} LTTNG_PACKED;
-
-/*
  * Object returned by the rotate session API.
  * This is opaque to the public library.
  */
@@ -66,6 +44,35 @@ struct lttng_rotation_handle {
 	 * rotation is completed.
 	 */
 	struct lttng_trace_archive_location *archive_location;
+};
+
+struct lttng_rotation_schedule {
+	enum lttng_rotation_schedule_type type;
+};
+
+struct lttng_rotation_schedule_size_threshold {
+	struct lttng_rotation_schedule parent;
+	struct {
+		bool set;
+		uint64_t bytes;
+	} size;
+};
+
+struct lttng_rotation_schedule_periodic {
+	struct lttng_rotation_schedule parent;
+	struct {
+		bool set;
+		uint64_t us;
+	} period;
+};
+
+struct lttng_rotation_schedules {
+	/*
+	 * Only one rotation schedule per type is supported for now.
+	 * Schedules are owned by this object.
+	 */
+	unsigned int count;
+	struct lttng_rotation_schedule *schedules[2];
 };
 
 /*
@@ -109,14 +116,16 @@ struct lttng_session_get_current_output_return {
 	char path[LTTNG_PATH_MAX];
 } LTTNG_PACKED;
 
-/* For the LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD command. */
-struct lttng_rotation_schedule_get_timer_period {
-	uint64_t rotate_timer;
-} LTTNG_PACKED;
-
-/* For the LTTNG_ROTATION_SCHEDULE_GET_SIZE command. */
-struct lttng_rotation_schedule_get_size {
-	uint64_t rotate_size;
+/* For the LTTNG_SESSION_LIST_SCHEDULES command. */
+struct lttng_session_list_schedules_return {
+	struct {
+		uint8_t set;
+		uint64_t value;
+	} periodic;
+	struct {
+		uint8_t set;
+		uint64_t value;
+	} size;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_ROTATE_INTERNAL_ABI_H */

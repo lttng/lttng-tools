@@ -2555,6 +2555,82 @@ end:
 }
 
 static
+int add_periodic_rotation(const char *name, uint64_t time_us)
+{
+	int ret;
+	enum lttng_rotation_status status;
+	struct lttng_rotation_schedule *periodic =
+			lttng_rotation_schedule_periodic_create();
+
+	if (!periodic) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	status = lttng_rotation_schedule_periodic_set_period(periodic,
+			time_us);
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	status = lttng_session_add_rotation_schedule(name, periodic);
+	switch (status) {
+	case LTTNG_ROTATION_STATUS_OK:
+		ret = LTTNG_OK;
+		break;
+	case LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET:
+	case LTTNG_ROTATION_STATUS_INVALID:
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		break;
+	default:
+		ret = -LTTNG_ERR_UNK;
+		break;
+	}
+error:
+	lttng_rotation_schedule_destroy(periodic);
+	return ret;
+}
+
+static
+int add_size_rotation(const char *name, uint64_t size_bytes)
+{
+	int ret;
+	enum lttng_rotation_status status;
+	struct lttng_rotation_schedule *size =
+			lttng_rotation_schedule_size_threshold_create();
+
+	if (!size) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	status = lttng_rotation_schedule_size_threshold_set_threshold(size,
+			size_bytes);
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	status = lttng_session_add_rotation_schedule(name, size);
+	switch (status) {
+	case LTTNG_ROTATION_STATUS_OK:
+		ret = LTTNG_OK;
+		break;
+	case LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET:
+	case LTTNG_ROTATION_STATUS_INVALID:
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+		break;
+	default:
+		ret = -LTTNG_ERR_UNK;
+		break;
+	}
+error:
+	lttng_rotation_schedule_destroy(size);
+	return ret;
+}
+
+static
 int process_session_node(xmlNodePtr session_node, const char *session_name,
 		int overwrite,
 		const struct config_load_session_override_attr *overrides)
@@ -2830,21 +2906,17 @@ domain_init_error:
 		}
 	}
 
-	if (rotation_timer_interval || rotation_size) {
-		struct lttng_rotation_schedule_attr *rotation_attr =
-				lttng_rotation_schedule_attr_create();
-
-		if (!rotation_attr) {
+	if (rotation_timer_interval) {
+		ret = add_periodic_rotation((const char *) name,
+				rotation_timer_interval);
+		if (ret < 0) {
 			goto error;
 		}
-		lttng_rotation_schedule_attr_set_timer_period(rotation_attr,
-				rotation_timer_interval);
-		lttng_rotation_schedule_attr_set_size(rotation_attr,
+	}
+	if (rotation_size) {
+		ret = add_size_rotation((const char *) name,
 				rotation_size);
-		ret = lttng_rotation_set_schedule((const char *) name,
-				rotation_attr);
-		lttng_rotation_schedule_attr_destroy(rotation_attr);
-		if (ret) {
+		if (ret < 0) {
 			goto error;
 		}
 	}

@@ -58,55 +58,54 @@
 
 enum lttcomm_sessiond_command {
 	/* Tracer command */
-	LTTNG_ADD_CONTEXT                   = 0,
+	LTTNG_ADD_CONTEXT                     = 0,
 	/* LTTNG_CALIBRATE used to be here */
-	LTTNG_DISABLE_CHANNEL               = 2,
-	LTTNG_DISABLE_EVENT                 = 3,
-	LTTNG_LIST_SYSCALLS                 = 4,
-	LTTNG_ENABLE_CHANNEL                = 5,
-	LTTNG_ENABLE_EVENT                  = 6,
+	LTTNG_DISABLE_CHANNEL                 = 2,
+	LTTNG_DISABLE_EVENT                   = 3,
+	LTTNG_LIST_SYSCALLS                   = 4,
+	LTTNG_ENABLE_CHANNEL                  = 5,
+	LTTNG_ENABLE_EVENT                    = 6,
 	/* 7 */
 	/* Session daemon command */
-	LTTNG_CREATE_SESSION                = 8,
-	LTTNG_DESTROY_SESSION               = 9,
-	LTTNG_LIST_CHANNELS                 = 10,
-	LTTNG_LIST_DOMAINS                  = 11,
-	LTTNG_LIST_EVENTS                   = 12,
-	LTTNG_LIST_SESSIONS                 = 13,
-	LTTNG_LIST_TRACEPOINTS              = 14,
-	LTTNG_REGISTER_CONSUMER             = 15,
-	LTTNG_START_TRACE                   = 16,
-	LTTNG_STOP_TRACE                    = 17,
-	LTTNG_LIST_TRACEPOINT_FIELDS        = 18,
+	LTTNG_CREATE_SESSION                  = 8,
+	LTTNG_DESTROY_SESSION                 = 9,
+	LTTNG_LIST_CHANNELS                   = 10,
+	LTTNG_LIST_DOMAINS                    = 11,
+	LTTNG_LIST_EVENTS                     = 12,
+	LTTNG_LIST_SESSIONS                   = 13,
+	LTTNG_LIST_TRACEPOINTS                = 14,
+	LTTNG_REGISTER_CONSUMER               = 15,
+	LTTNG_START_TRACE                     = 16,
+	LTTNG_STOP_TRACE                      = 17,
+	LTTNG_LIST_TRACEPOINT_FIELDS          = 18,
 
 	/* Consumer */
-	LTTNG_DISABLE_CONSUMER              = 19,
-	LTTNG_ENABLE_CONSUMER               = 20,
-	LTTNG_SET_CONSUMER_URI              = 21,
+	LTTNG_DISABLE_CONSUMER                = 19,
+	LTTNG_ENABLE_CONSUMER                 = 20,
+	LTTNG_SET_CONSUMER_URI                = 21,
 	/* 22 */
 	/* 23 */
-	LTTNG_DATA_PENDING                  = 24,
-	LTTNG_SNAPSHOT_ADD_OUTPUT           = 25,
-	LTTNG_SNAPSHOT_DEL_OUTPUT           = 26,
-	LTTNG_SNAPSHOT_LIST_OUTPUT          = 27,
-	LTTNG_SNAPSHOT_RECORD               = 28,
-	LTTNG_CREATE_SESSION_SNAPSHOT       = 29,
-	LTTNG_CREATE_SESSION_LIVE           = 30,
-	LTTNG_SAVE_SESSION                  = 31,
-	LTTNG_TRACK_PID                     = 32,
-	LTTNG_UNTRACK_PID                   = 33,
-	LTTNG_LIST_TRACKER_PIDS             = 34,
-	LTTNG_SET_SESSION_SHM_PATH          = 40,
-	LTTNG_REGENERATE_METADATA           = 41,
-	LTTNG_REGENERATE_STATEDUMP          = 42,
-	LTTNG_REGISTER_TRIGGER              = 43,
-	LTTNG_UNREGISTER_TRIGGER            = 44,
-	LTTNG_ROTATE_SESSION                = 45,
-	LTTNG_ROTATION_GET_INFO             = 46,
-	LTTNG_ROTATION_SET_SCHEDULE         = 47,
-	LTTNG_SESSION_GET_CURRENT_OUTPUT    = 48,
-	LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD = 49,
-	LTTNG_ROTATION_SCHEDULE_GET_SIZE    = 50,
+	LTTNG_DATA_PENDING                    = 24,
+	LTTNG_SNAPSHOT_ADD_OUTPUT             = 25,
+	LTTNG_SNAPSHOT_DEL_OUTPUT             = 26,
+	LTTNG_SNAPSHOT_LIST_OUTPUT            = 27,
+	LTTNG_SNAPSHOT_RECORD                 = 28,
+	LTTNG_CREATE_SESSION_SNAPSHOT         = 29,
+	LTTNG_CREATE_SESSION_LIVE             = 30,
+	LTTNG_SAVE_SESSION                    = 31,
+	LTTNG_TRACK_PID                       = 32,
+	LTTNG_UNTRACK_PID                     = 33,
+	LTTNG_LIST_TRACKER_PIDS               = 34,
+	LTTNG_SET_SESSION_SHM_PATH            = 40,
+	LTTNG_REGENERATE_METADATA             = 41,
+	LTTNG_REGENERATE_STATEDUMP            = 42,
+	LTTNG_REGISTER_TRIGGER                = 43,
+	LTTNG_UNREGISTER_TRIGGER              = 44,
+	LTTNG_ROTATE_SESSION                  = 45,
+	LTTNG_ROTATION_GET_INFO               = 46,
+	LTTNG_ROTATION_SET_SCHEDULE           = 47,
+	LTTNG_SESSION_GET_CURRENT_OUTPUT      = 48,
+	LTTNG_SESSION_LIST_ROTATION_SCHEDULES = 49,
 };
 
 enum lttcomm_relayd_command {
@@ -340,9 +339,15 @@ struct lttcomm_session_msg {
 			uint64_t rotation_id;
 		} LTTNG_PACKED get_rotation_info;
 		struct {
-			uint64_t timer_us;
-			uint64_t size;
-		} LTTNG_PACKED rotate_setup;
+			/* enum lttng_rotation_schedule_type */
+			uint8_t type;
+			/*
+			 * If set == 1, set schedule to value, if set == 0,
+			 * clear this schedule type.
+			 */
+			uint8_t set;
+			uint64_t value;
+		} LTTNG_PACKED rotation_set_schedule;
 	} u;
 } LTTNG_PACKED;
 

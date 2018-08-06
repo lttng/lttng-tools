@@ -1520,55 +1520,165 @@ end:
 	return ret;
 }
 
-/*
- * List the rotate settings (timer/size if any).
- */
-static int list_rotate_settings(const char *session_name)
+static enum cmd_error_code print_periodic_rotation_schedule(
+		const struct lttng_rotation_schedule *schedule)
 {
-	int ret;
-	uint64_t size, timer;
+	enum cmd_error_code ret;
+	enum lttng_rotation_status status;
+	uint64_t value;
 
-	ret = lttng_rotation_schedule_get_timer_period(session_name, &timer);
-	if (ret) {
+	status = lttng_rotation_schedule_periodic_get_period(schedule,
+			&value);
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		ERR("Failed to retrieve period parameter from periodic rotation schedule.");
+		ret = CMD_ERROR;
 		goto end;
 	}
 
-	ret = lttng_rotation_schedule_get_size(session_name, &size);
-	if (ret) {
-		goto end;
-	}
+	MSG("    timer period: %" PRIu64" µs", value);
+	if (lttng_opt_mi) {
+		int mi_ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				config_element_rotation_timer_interval, value);
 
-	if (!timer && !size) {
-		ret = 0;
-		goto end;
-	}
-
-	_MSG("Automatic rotation schedule settings:\n");
-
-	if (timer) {
-		_MSG("    timer period: %" PRIu64" µs\n", timer);
-		if (lttng_opt_mi) {
-			ret = mi_lttng_writer_write_element_unsigned_int(writer,
-					config_element_rotation_timer_interval, timer);
-			if (ret) {
-				goto end;
-			}
+		if (mi_ret) {
+			ret = CMD_ERROR;
+			goto end;
 		}
 	}
-	if (size) {
-		_MSG("    size threshold:  %" PRIu64" bytes\n", size);
-		if (lttng_opt_mi) {
-			ret = mi_lttng_writer_write_element_unsigned_int(writer,
-					config_element_rotation_size, size);
-			if (ret) {
-				goto end;
-			}
-		}
-	}
-	_MSG("\n");
 
+	ret = CMD_SUCCESS;
 end:
 	return ret;
+}
+
+static enum cmd_error_code print_size_threshold_rotation_schedule(
+		const struct lttng_rotation_schedule *schedule)
+{
+	enum cmd_error_code ret;
+	enum lttng_rotation_status status;
+	uint64_t value;
+
+	status = lttng_rotation_schedule_size_threshold_get_threshold(schedule,
+			&value);
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		ERR("Failed to retrieve size parameter from size-based rotation schedule.");
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	MSG("    size threshold: %" PRIu64" bytes", value);
+	if (lttng_opt_mi) {
+		int mi_ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				config_element_rotation_size, value);
+
+		if (mi_ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	ret = CMD_SUCCESS;
+end:
+	return ret;
+}
+
+static enum cmd_error_code print_rotation_schedule(
+		const struct lttng_rotation_schedule *schedule)
+{
+	enum cmd_error_code ret;
+
+	switch (lttng_rotation_schedule_get_type(schedule)) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		ret = print_size_threshold_rotation_schedule(schedule);
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		ret = print_periodic_rotation_schedule(schedule);
+		break;
+	default:
+		ret = CMD_ERROR;
+	}
+	return ret;
+}
+
+/*
+ * List the automatic rotation settings.
+ */
+static enum cmd_error_code list_rotate_settings(const char *session_name)
+{
+	int ret;
+	enum cmd_error_code cmd_ret = CMD_SUCCESS;
+	unsigned int count, i;
+	struct lttng_rotation_schedules *schedules = NULL;
+	enum lttng_rotation_status status;
+
+	ret = lttng_session_list_rotation_schedules(session_name, &schedules);
+	if (ret != LTTNG_OK) {
+		ERR("Failed to list session rotation schedules: %s", lttng_strerror(ret));
+		cmd_ret = CMD_ERROR;
+		goto end;
+	}
+
+	status = lttng_rotation_schedules_get_count(schedules, &count);
+	if (status != LTTNG_ROTATION_STATUS_OK) {
+		ERR("Failed to retrieve the number of session rotation schedules.");
+		cmd_ret = CMD_ERROR;
+		goto end;
+	}
+
+	if (count == 0) {
+		cmd_ret = CMD_SUCCESS;
+		goto end;
+	}
+
+	MSG("Automatic rotation schedules:");
+	if (lttng_opt_mi) {
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_rotation_schedules);
+		if (ret) {
+			cmd_ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	for (i = 0; i < count; i++) {
+		enum cmd_error_code tmp_ret = CMD_SUCCESS;
+		const struct lttng_rotation_schedule *schedule;
+
+		schedule = lttng_rotation_schedules_get_at_index(schedules, i);
+		if (!schedule) {
+			ERR("Failed to retrieve session rotation schedule.");
+			cmd_ret = CMD_ERROR;
+			goto end;
+		}
+
+		if (lttng_opt_mi) {
+			ret = mi_lttng_rotation_schedule(writer, schedule);
+			if (ret) {
+				tmp_ret = CMD_ERROR;
+			}
+		} else {
+			tmp_ret = print_rotation_schedule(schedule);
+		}
+
+		/*
+		 * Report an error if the serialization of any of the
+		 * descriptors failed.
+		 */
+		cmd_ret = cmd_ret ? cmd_ret : tmp_ret;
+	}
+
+	_MSG("\n");
+	if (lttng_opt_mi) {
+		/* Close the rotation_schedules element. */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			cmd_ret = CMD_ERROR;
+			goto end;
+		}
+	}
+end:
+	lttng_rotation_schedules_destroy(schedules);
+	return cmd_ret;
 }
 
 /*

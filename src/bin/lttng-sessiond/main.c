@@ -3000,8 +3000,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_ROTATION_GET_INFO:
 	case LTTNG_SESSION_GET_CURRENT_OUTPUT:
 	case LTTNG_ROTATION_SET_SCHEDULE:
-	case LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD:
-	case LTTNG_ROTATION_SCHEDULE_GET_SIZE:
+	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 		need_domain = 0;
 		break;
 	default:
@@ -3046,8 +3045,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATION_GET_INFO:
-	case LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD:
-	case LTTNG_ROTATION_SCHEDULE_GET_SIZE:
+	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -4226,15 +4224,24 @@ error_add_context:
 	}
 	case LTTNG_ROTATION_SET_SCHEDULE:
 	{
+		bool set_schedule;
+		enum lttng_rotation_schedule_type schedule_type;
+		uint64_t value;
+
 		if (cmd_ctx->session->kernel_session && !check_rotate_compatible()) {
 			DBG("Kernel tracer version does not support session rotations");
 			ret = LTTNG_ERR_ROTATION_WRONG_VERSION;
 			goto error;
 		}
 
+		set_schedule = cmd_ctx->lsm->u.rotation_set_schedule.set == 1;
+		schedule_type = (enum lttng_rotation_schedule_type) cmd_ctx->lsm->u.rotation_set_schedule.type;
+		value = cmd_ctx->lsm->u.rotation_set_schedule.value;
+
 		ret = cmd_rotation_set_schedule(cmd_ctx->session,
-				cmd_ctx->lsm->u.rotate_setup.timer_us,
-				cmd_ctx->lsm->u.rotate_setup.size,
+				set_schedule,
+				schedule_type,
+				value,
 				notification_thread_handle);
 		if (ret != LTTNG_OK) {
 			goto error;
@@ -4242,42 +4249,17 @@ error_add_context:
 
 		break;
 	}
-	case LTTNG_ROTATION_SCHEDULE_GET_TIMER_PERIOD:
+	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 	{
-		struct lttng_rotation_schedule_get_timer_period *get_timer;
+		struct lttng_session_list_schedules_return schedules = {
+			.periodic.set = !!cmd_ctx->session->rotate_timer_period,
+			.periodic.value = cmd_ctx->session->rotate_timer_period,
+			.size.set = !!cmd_ctx->session->rotate_size,
+			.size.value = cmd_ctx->session->rotate_size,
+		};
 
-		get_timer = zmalloc(sizeof(struct lttng_rotation_schedule_get_timer_period));
-		if (!get_timer) {
-			ret = ENOMEM;
-			goto error;
-		}
-		get_timer->rotate_timer = cmd_ctx->session->rotate_timer_period;
-
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_timer,
-				sizeof(struct lttng_rotation_schedule_get_timer_period));
-		free(get_timer);
-		if (ret < 0) {
-			ret = -ret;
-			goto error;
-		}
-
-		ret = LTTNG_OK;
-		break;
-	}
-	case LTTNG_ROTATION_SCHEDULE_GET_SIZE:
-	{
-		struct lttng_rotation_schedule_get_size *get_size;
-
-		get_size = zmalloc(sizeof(struct lttng_rotation_schedule_get_size));
-		if (!get_size) {
-			ret = ENOMEM;
-			goto error;
-		}
-		get_size->rotate_size = cmd_ctx->session->rotate_size;
-
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, get_size,
-				sizeof(struct lttng_rotation_schedule_get_size));
-		free(get_size);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &schedules,
+				sizeof(schedules));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;

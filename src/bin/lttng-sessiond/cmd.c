@@ -4799,15 +4799,19 @@ end:
  * Command LTTNG_ROTATION_SET_SCHEDULE from the lttng-ctl library.
  *
  * Configure the automatic rotation parameters.
- * Set to -1ULL to disable them.
+ * 'activate' to true means activate the rotation schedule type with 'new_value'.
+ * 'activate' to false means deactivate the rotation schedule and validate that
+ * 'new_value' has the same value as the currently active value.
  *
- * Return 0 on success or else an LTTNG_ERR code.
+ * Return 0 on success or else a positive LTTNG_ERR code.
  */
 int cmd_rotation_set_schedule(struct ltt_session *session,
-		uint64_t timer_us, uint64_t size,
+		bool activate, enum lttng_rotation_schedule_type schedule_type,
+		uint64_t new_value,
 		struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
+	uint64_t *parameter_value;
 
 	assert(session);
 
@@ -4815,71 +4819,116 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 
 	if (session->live_timer || session->snapshot_mode ||
 			!session->output_traces) {
+		DBG("Failing ROTATION_SET_SCHEDULE command as the rotation feature is not available for this session");
 		ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
 	}
 
-	/* Trying to override an already active timer. */
-	if (timer_us && timer_us != -1ULL && session->rotate_timer_period) {
-		ret = LTTNG_ERR_ROTATION_TIMER_SET;
-		goto end;
-	/* Trying to disable an inactive timer. */
-	} else if (timer_us == -1ULL && !session->rotate_timer_period) {
-		ret = LTTNG_ERR_ROTATION_NO_TIMER_SET;
-		goto end;
-	}
-
-	if (size && size != -1ULL && session->rotate_size) {
-		ret = LTTNG_ERR_ROTATION_SIZE_SET;
-		goto end;
-	} else if (size == -1ULL && !session->rotate_size) {
-		ret = LTTNG_ERR_ROTATION_NO_SIZE_SET;
-		goto end;
-	}
-
-	if (timer_us && !session->rotate_timer_period) {
-		if (timer_us > UINT_MAX) {
+	switch (schedule_type) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		parameter_value = &session->rotate_size;
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		parameter_value = &session->rotate_timer_period;
+		if (new_value >= UINT_MAX) {
+			DBG("Failing ROTATION_SET_SCHEDULE command as the value requested for a periodic rotation schedule is invalid: %" PRIu64 " > %u (UINT_MAX)",
+					new_value, UINT_MAX);
 			ret = LTTNG_ERR_INVALID;
 			goto end;
 		}
+		break;
+	default:
+		WARN("Failing ROTATION_SET_SCHEDULE command on unknown schedule type");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
 
-		session->rotate_timer_period = timer_us;
-		/*
-		 * Only start the timer if the session is active, otherwise
-		 * it will be started when the session starts.
-		 */
-		if (session->active) {
-			ret = sessiond_rotate_timer_start(session, timer_us);
+	/* Improper use of the API. */
+	if (new_value == -1ULL) {
+		WARN("Failing ROTATION_SET_SCHEDULE command as the value requested is -1");
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/*
+	 * As indicated in struct ltt_session's comments, a value of == 0 means
+	 * this schedule rotation type is not in use.
+	 *
+	 * Reject the command if we were asked to activate a schedule that was
+	 * already active.
+	 */
+	if (activate && *parameter_value != 0) {
+		DBG("Failing ROTATION_SET_SCHEDULE (activate) command as the schedule is already active");
+		ret = LTTNG_ERR_ROTATION_SCHEDULE_SET;
+		goto end;
+	}
+
+	/*
+	 * Reject the command if we were asked to deactivate a schedule that was
+	 * not active.
+	 */
+	if (!activate && *parameter_value == 0) {
+		DBG("Failing ROTATION_SET_SCHEDULE (deactivate) command as the schedule is already inactive");
+		ret = LTTNG_ERR_ROTATION_SCHEDULE_NOT_SET;
+		goto end;
+	}
+
+	/*
+	 * Reject the command if we were asked to deactivate a schedule that
+	 * doesn't exist.
+	 */
+	if (!activate && *parameter_value != new_value) {
+		DBG("Failing ROTATION_SET_SCHEDULE (deactivate) command as an inexistant schedule was provided");
+		ret = LTTNG_ERR_ROTATION_SCHEDULE_NOT_SET;
+		goto end;
+	}
+
+	*parameter_value = activate ? new_value : 0;
+
+	switch (schedule_type) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		if (activate && session->active) {
+			/*
+			 * Only start the timer if the session is active,
+			 * otherwise it will be started when the session starts.
+			 */
+			ret = sessiond_rotate_timer_start(session, new_value);
 			if (ret) {
-				ERR("Failed to enable rotate timer");
+				ERR("Failed to enable session rotation timer in ROTATION_SET_SCHEDULE command");
 				ret = LTTNG_ERR_UNK;
 				goto end;
 			}
+		} else {
+			ret = sessiond_rotate_timer_stop(session);
+			if (ret) {
+				ERR("Failed to disable session rotation timer in ROTATION_SET_SCHEDULE command");
+				ret = LTTNG_ERR_UNK;
+			}
 		}
-	} else if (timer_us == -1ULL && session->rotate_timer_period > 0) {
-		sessiond_rotate_timer_stop(session);
-		session->rotate_timer_period = 0;
-	}
-
-	if (size > 0) {
-		if (size == -1ULL) {
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		if (activate) {
+			ret = subscribe_session_consumed_size_rotation(session,
+					new_value, notification_thread_handle);
+			if (ret) {
+				ERR("Failed to enable consumed-size notification in ROTATION_SET_SCHEDULE command");
+				ret = LTTNG_ERR_UNK;
+				goto end;
+			}
+		} else {
 			ret = unsubscribe_session_consumed_size_rotation(session,
 					notification_thread_handle);
 			if (ret) {
+				ERR("Failed to disable consumed-size notification in ROTATION_SET_SCHEDULE command");
 				ret = LTTNG_ERR_UNK;
 				goto end;
 			}
-			session->rotate_size = 0;
-		} else {
-			ret = subscribe_session_consumed_size_rotation(session,
-					size, notification_thread_handle);
-			if (ret) {
-				PERROR("Subscribe to session usage");
-				ret = LTTNG_ERR_UNK;
-				goto end;
-			}
-			session->rotate_size = size;
+
 		}
+		break;
+	default:
+		/* Would have been caught before. */
+		abort();
 	}
 
 	ret = LTTNG_OK;

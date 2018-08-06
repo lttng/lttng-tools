@@ -59,95 +59,109 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-static int setup_rotate(char *session_name, uint64_t timer, uint64_t size)
+static const char *schedule_type_str[] = {
+	[LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC] = "periodic",
+	[LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD] = "size-based",
+};
+
+static enum cmd_error_code add_schedule(const char *session_name,
+		enum lttng_rotation_schedule_type schedule_type, uint64_t value)
 {
-	int ret = 0;
-	struct lttng_rotation_schedule_attr *attr = NULL;
+	enum cmd_error_code ret = CMD_SUCCESS;
+	struct lttng_rotation_schedule *schedule = NULL;
+	enum lttng_rotation_status status;
+	const char *schedule_type_name;
 
-	attr = lttng_rotation_schedule_attr_create();
-	if (!attr) {
-		goto error;
+	switch (schedule_type) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		schedule = lttng_rotation_schedule_periodic_create();
+		if (!schedule) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+		status = lttng_rotation_schedule_periodic_set_period(schedule,
+				value);
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		schedule = lttng_rotation_schedule_size_threshold_create();
+		if (!schedule) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+		status = lttng_rotation_schedule_size_threshold_set_threshold(
+				schedule, value);
+		break;
+	default:
+		ERR("Unknown schedule type");
+		abort();
+	}
+
+	schedule_type_name = schedule_type_str[schedule_type];
+
+	switch (status) {
+	case LTTNG_ROTATION_STATUS_OK:
+		break;
+	case LTTNG_ROTATION_STATUS_INVALID:
+		ERR("Invalid value for %s option", schedule_type_name);
+		ret = CMD_ERROR;
+		goto end;
+	default:
+		ERR("Unknown error occured setting %s rotation schedule",
+				schedule_type_name);
+		ret = CMD_ERROR;
+		goto end;
+	}
+
+	status = lttng_session_add_rotation_schedule(session_name, schedule);
+	switch (status) {
+	case LTTNG_ROTATION_STATUS_OK:
+		ret = CMD_SUCCESS;
+		switch (schedule_type) {
+		case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+			MSG("Enabled %s rotations every %" PRIu64 " µs on session %s",
+					schedule_type_name, value, session_name);
+			break;
+		case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+			MSG("Enabled %s rotations every %" PRIu64 " bytes written on session %s",
+					schedule_type_name, value, session_name);
+			break;
+		default:
+			abort();
+		}
+		break;
+	case LTTNG_ROTATION_STATUS_INVALID:
+		ERR("Invalid parameter for %s rotation schedule",
+				schedule_type_name);
+		ret = CMD_ERROR;
+		break;
+	case LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET:
+		ERR("A %s rotation schedule is already set on session %s",
+				schedule_type_name,
+				session_name);
+		ret = CMD_ERROR;
+		break;
+	case LTTNG_ROTATION_STATUS_ERROR:
+	default:
+		ERR("Failed to enable %s rotation schedule on session %s",
+				schedule_type_name,
+				session_name);
+		ret = CMD_ERROR;
+		break;
 	}
 
 	if (lttng_opt_mi) {
-		/* Open rotation_schedule element */
-		ret = mi_lttng_writer_open_element(writer,
-				config_element_rotation_schedule);
-		if (ret) {
-			goto error;
-		}
+		int mi_ret;
 
-		ret = mi_lttng_writer_write_element_string(writer,
-				mi_lttng_element_session_name, session_name);
-		if (ret) {
-			goto error;
-		}
-	}
-
-	if (timer) {
-		lttng_rotation_schedule_attr_set_timer_period(attr, timer);
-		MSG("Configuring session %s to rotate every %" PRIu64 " us",
-				session_name, timer);
-		if (lttng_opt_mi) {
-			ret = mi_lttng_writer_write_element_unsigned_int(writer,
-					config_element_rotation_timer_interval, timer);
-			if (ret) {
-				goto end;
-			}
-		}
-	}
-	if (size) {
-		lttng_rotation_schedule_attr_set_size(attr, size);
-		MSG("Configuring session %s to rotate every %" PRIu64 " bytes written",
-				session_name, size);
-		if (lttng_opt_mi) {
-			ret = mi_lttng_writer_write_element_unsigned_int(writer,
-					config_element_rotation_size, size);
-			if (ret) {
-				goto end;
-			}
-		}
-	}
-
-	ret = lttng_rotation_set_schedule(session_name, attr);
-	if (ret) {
-		ERR("%s", lttng_strerror(ret));
-		if (lttng_opt_mi) {
-			ret = mi_lttng_writer_write_element_string(writer,
-					mi_lttng_element_rotate_status, "error");
-			if (ret) {
-				goto end;
-			}
-			/* Close rotation_schedule element */
-			ret = mi_lttng_writer_close_element(writer);
-			if (ret) {
-				goto end;
-			}
-		}
-		goto error;
-	}
-
-	if (lttng_opt_mi) {
-		ret = mi_lttng_writer_write_element_string(writer,
-				mi_lttng_element_rotate_status, "success");
-		if (ret) {
-			goto end;
-		}
-
-		/* Close rotation_schedule element */
-		ret = mi_lttng_writer_close_element(writer);
-		if (ret) {
+		mi_ret = mi_lttng_rotation_schedule_result(writer,
+				schedule, ret == CMD_SUCCESS);
+		if (mi_ret < 0) {
+			ret = CMD_ERROR;
 			goto end;
 		}
 	}
 
-	ret = 0;
-	goto end;
-
-error:
-	ret = -1;
 end:
-	lttng_rotation_schedule_attr_destroy(attr);
+	lttng_rotation_schedule_destroy(schedule);
 	return ret;
 }
 
@@ -158,20 +172,20 @@ end:
  */
 int cmd_enable_rotation(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
-	int popt_ret;
+	int popt_ret, opt, ret = 0;
+	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
 	char *opt_arg = NULL;
 	bool free_session_name = false;
-	uint64_t timer = 0, size = 0;
+	uint64_t timer_us = 0, size_bytes = 0;
+	bool periodic_rotation = false, size_rotation = false;
 
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
-		ret = CMD_ERROR;
 		ERR("poptReadDefaultConfig");
-		goto end;
+		goto error;
 	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -186,29 +200,34 @@ int cmd_enable_rotation(int argc, const char **argv)
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
 			if (errno != 0 || !isdigit(opt_arg[0])) {
-				ERR("Wrong value for --timer option: %s", opt_arg);
-				ret = CMD_ERROR;
-				goto end;
+				ERR("Invalid value for --timer option: %s", opt_arg);
+				goto error;
 			}
-			if (utils_parse_time_suffix(opt_arg, &timer) < 0 || timer == 0) {
-				ERR("Wrong value for --timer option: %s", opt_arg);
-				ret = CMD_ERROR;
-				goto end;
+			if (utils_parse_time_suffix(opt_arg, &timer_us) < 0) {
+				ERR("Invalid value for --timer option: %s", opt_arg);
+				goto error;
 			}
-			DBG("Rotation timer set to %" PRIu64, timer);
+			if (periodic_rotation) {
+				ERR("Only one periodic rotation schedule may be set on a session.");
+				goto error;
+			}
+			periodic_rotation = true;
 			break;
 		case OPT_SIZE:
 			errno = 0;
 			opt_arg = poptGetOptArg(pc);
-			if (utils_parse_size_suffix(opt_arg, &size) < 0 || !size) {
-				ERR("Wrong value for --size option: %s", opt_arg);
-				ret = CMD_ERROR;
-				goto end;
+			if (utils_parse_size_suffix(opt_arg, &size_bytes) < 0) {
+				ERR("Invalid value for --size option: %s", opt_arg);
+				goto error;
 			}
-			DBG("Rotation size set to %" PRIu64, size);
+			if (size_rotation) {
+				ERR("Only one size-based rotation schedule may be set on a session.");
+				goto error;
+			}
+			size_rotation = true;
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			cmd_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -216,7 +235,7 @@ int cmd_enable_rotation(int argc, const char **argv)
 	if (opt_session_name == NULL) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			goto end;
+			goto error;
 		}
 		free_session_name = true;
 	} else {
@@ -227,76 +246,106 @@ int cmd_enable_rotation(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			goto error;
 		}
 
 		/* Open command element */
 		ret = mi_lttng_writer_command_open(writer,
 				mi_lttng_element_command_enable_rotation);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 
 		/* Open output element */
 		ret = mi_lttng_writer_open_element(writer,
 				mi_lttng_element_command_output);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 	}
 
-	/* No config options, just rotate the session now */
-	if (timer == 0 && size == 0) {
-		ERR("No timer or size given");
-		success = 0;
-		command_ret = -1;
-	} else {
-		command_ret = setup_rotate(session_name, timer, size);
+	if (!periodic_rotation && !size_rotation) {
+		ERR("No session rotation schedule parameter provided.");
+		cmd_ret = CMD_ERROR;
+		goto close_command;
 	}
 
-	if (command_ret) {
-		ERR("%s", lttng_strerror(command_ret));
-		success = 0;
-	}
-
-	/* Mi closing */
 	if (lttng_opt_mi) {
-		/* Close  output element */
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_rotation_schedule_results);
+		if (ret) {
+			goto error;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_session_name,
+				session_name);
+		if (ret) {
+			goto error;
+		}
+	}
+
+	if (periodic_rotation) {
+		/*
+		 * Continue processing even on error as multiple schedules can
+		 * be specified at once.
+		 */
+		cmd_ret = add_schedule(session_name,
+				LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
+				timer_us);
+	}
+
+	if (size_rotation) {
+		enum lttng_error_code tmp_ret;
+
+		/* Don't overwrite cmd_ret if it already indicates an error. */
+		tmp_ret = add_schedule(session_name,
+				LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD,
+				size_bytes);
+		cmd_ret = cmd_ret ? cmd_ret : tmp_ret;
+	}
+
+	if (lttng_opt_mi) {
+		/* Close rotation schedule results element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
-			goto end;
+			goto error;
 		}
+	}
+
+close_command:
+	/* Mi closing */
+	if (lttng_opt_mi) {
+		/* Close output element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto error;
+		}
+
 		/* Success ? */
 		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+				mi_lttng_element_command_success,
+				cmd_ret == CMD_SUCCESS);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 
 		/* Command element close */
 		ret = mi_lttng_writer_command_close(writer);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 	}
 
 end:
-	/* Mi clean-up */
-	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
-	}
-
-	/* Overwrite ret if an error occurred with start_tracing */
-	ret = command_ret ? command_ret : ret;
+	(void) mi_lttng_writer_destroy(writer);
 	poptFreeContext(pc);
 	if (free_session_name) {
 		free(session_name);
 	}
-	return ret;
+	return cmd_ret;
+
+error:
+	cmd_ret = CMD_ERROR;
+	goto end;
 }

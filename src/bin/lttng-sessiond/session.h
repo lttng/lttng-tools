@@ -189,8 +189,9 @@ struct ltt_session {
 	/* Timer to periodically rotate a session. */
 	bool rotate_timer_enabled;
 	timer_t rotate_timer;
+	/* Value for periodic rotations, 0 if disabled. */
 	uint64_t rotate_timer_period;
-	/* Value for size-based rotation, 0 if disabled. */
+	/* Value for size-based rotations, 0 if disabled. */
 	uint64_t rotate_size;
 	/*
 	 * Keep a state if this session was rotated after the last stop command.

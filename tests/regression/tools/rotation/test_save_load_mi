@@ -36,7 +36,11 @@ XML_EXTRACT="$TESTDIR/regression/tools/mi/extract_xml"
 
 XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"
-XPATH_ROTATE_SETUP="$XPATH_CMD_OUTPUT/lttng:rotation_schedule"
+XPATH_ENABLE_ROTATE_TIMER="$XPATH_CMD_OUTPUT/lttng:rotation_schedule_results/lttng:rotation_schedule_result/lttng:rotation_schedule/lttng:periodic/lttng:time_us"
+XPATH_ENABLE_ROTATE_SIZE="$XPATH_CMD_OUTPUT/lttng:rotation_schedule_results/lttng:rotation_schedule_result/lttng:rotation_schedule/lttng:size_threshold/lttng:bytes"
+
+XPATH_LIST_ROTATE_TIMER="$XPATH_SESSION/lttng:rotation_schedules/lttng:periodic/lttng:time_us"
+XPATH_LIST_ROTATE_SIZE="$XPATH_SESSION/lttng:rotation_schedules/lttng:size_threshold/lttng:bytes"
 
 function test_save_load_mi ()
 {
@@ -55,7 +59,7 @@ function test_save_load_mi ()
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation timer XML"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_timer_period)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ENABLE_ROTATE_TIMER})
 	test $value = 500000
 	ok $? "Found the right rotation timer value in XML"
 
@@ -64,7 +68,7 @@ function test_save_load_mi ()
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation size XML"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ROTATE_SETUP}/lttng:rotation_schedule_size)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ENABLE_ROTATE_SIZE})
 	test $value = 512000
 	ok $? "Found the right rotation size value in XML"
 
@@ -73,11 +77,11 @@ function test_save_load_mi ()
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_TIMER})
 	test $value = 500000
 	ok $? "Found the right rotation timer value in list XML"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_SIZE})
 	test $value = 512000
 	ok $? "Found the right rotation size value in list XML"
 
@@ -93,11 +97,11 @@ function test_save_load_mi ()
 	$XML_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML after load"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_timer_period)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_TIMER})
 	test $value = 500000
 	ok $? "Found the right rotation timer value in list XML after load"
 
-	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_SESSION}/lttng:rotation_schedule_size)
+	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_SIZE})
 	test $value = 512000
 	ok $? "Found the right rotation size value in list XML after load"
 
