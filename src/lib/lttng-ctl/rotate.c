@@ -302,6 +302,9 @@ enum lttng_rotation_status lttng_rotation_update_schedule(
 		status = lttng_rotation_schedule_size_threshold_get_threshold(
 				schedule, &lsm.u.rotation_set_schedule.value);
 		if (status != LTTNG_ROTATION_STATUS_OK) {
+			if (status == LTTNG_ROTATION_STATUS_UNAVAILABLE) {
+				status = LTTNG_ROTATION_STATUS_INVALID;
+			}
 			goto end;
 		}
 
@@ -313,6 +316,9 @@ enum lttng_rotation_status lttng_rotation_update_schedule(
 		status = lttng_rotation_schedule_periodic_get_period(
 				schedule, &lsm.u.rotation_set_schedule.value);
 		if (status != LTTNG_ROTATION_STATUS_OK) {
+			if (status == LTTNG_ROTATION_STATUS_UNAVAILABLE) {
+				status = LTTNG_ROTATION_STATUS_INVALID;
+			}
 			goto end;
 		}
 
@@ -468,7 +474,8 @@ lttng_rotation_schedule_size_threshold_get_threshold(
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	struct lttng_rotation_schedule_size_threshold *size_schedule;
 
-	if (!schedule || !size_threshold_bytes) {
+	if (!schedule || !size_threshold_bytes ||
+			schedule->type != LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
@@ -495,7 +502,8 @@ lttng_rotation_schedule_size_threshold_set_threshold(
 	struct lttng_rotation_schedule_size_threshold *size_schedule;
 
 	if (!schedule || size_threshold_bytes == 0 ||
-			size_threshold_bytes == -1ULL) {
+			size_threshold_bytes == -1ULL ||
+			schedule->type != LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
@@ -532,7 +540,8 @@ lttng_rotation_schedule_periodic_get_period(
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	struct lttng_rotation_schedule_periodic *periodic_schedule;
 
-	if (!schedule || !period_us) {
+	if (!schedule || !period_us ||
+			schedule->type != LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
@@ -558,7 +567,8 @@ lttng_rotation_schedule_periodic_set_period(
 	enum lttng_rotation_status status = LTTNG_ROTATION_STATUS_OK;
 	struct lttng_rotation_schedule_periodic *periodic_schedule;
 
-	if (!schedule || period_us == 0 || period_us == -1ULL) {
+	if (!schedule || period_us == 0 || period_us == -1ULL ||
+			schedule->type != LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC) {
 		status = LTTNG_ROTATION_STATUS_INVALID;
 		goto end;
 	}
