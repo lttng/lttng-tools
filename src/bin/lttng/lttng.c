@@ -253,6 +253,23 @@ end:
 	return ret;
 }
 
+static bool command_exists(const char *command)
+{
+	const struct cmd_struct *cmd = commands;
+	bool exists = false;
+
+	while (cmd->name != NULL) {
+		if (!strcmp(command, cmd->name)) {
+			exists = true;
+			goto end;
+		}
+		cmd++;
+	}
+
+end:
+	return exists;
+}
+
 static void show_basic_help(void)
 {
 	puts("Usage: lttng [--group=GROUP] [--mi=TYPE] [--no-sessiond | --sessiond-path=PATH]");
@@ -403,19 +420,19 @@ static int parse_args(int argc, char **argv)
 	ret = handle_command(argc - optind, argv + optind);
 	switch (ret) {
 	case CMD_WARNING:
-		WARN("Some command(s) went wrong");
-		break;
 	case CMD_ERROR:
-		ERR("Command error");
 		break;
 	case CMD_UNDEFINED:
-		ERR("Undefined command or invalid arguments");
+		if (!command_exists(*(argv + optind))) {
+			MSG("lttng: %s is not an lttng command. See 'lttng --help'.",
+					*(argv + optind));
+		} else {
+			ERR("Unrecognized argument used with \'%s\' command",
+					*(argv + optind));
+		}
 		break;
 	case CMD_FATAL:
-		ERR("Fatal error");
-		break;
 	case CMD_UNSUPPORTED:
-		ERR("Unsupported command");
 		break;
 	case -1:
 		ret = 1;
