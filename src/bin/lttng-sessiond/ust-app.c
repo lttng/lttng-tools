@@ -6343,6 +6343,11 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			struct buffer_reg_channel *reg_chan;
 			struct consumer_socket *socket;
 
+			if (!reg->registry->reg.ust->metadata_key) {
+				/* Skip since no metadata is present */
+				continue;
+			}
+
 			/* Get consumer socket to use to push the metadata.*/
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 					usess->consumer);

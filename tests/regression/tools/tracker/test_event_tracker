@@ -28,7 +28,7 @@ TESTAPP_KERNEL_BIN="$TESTAPP_PATH/$TESTAPP_KERNEL_NAME/$TESTAPP_KERNEL_NAME"
 SESSION_NAME="tracker"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=256
+NUM_UST_TESTS=265
 NUM_KERNEL_TESTS=462
 NUM_TESTS=$((NUM_UST_TESTS+NUM_KERNEL_TESTS+NUM_GLOBAL_TESTS))
 
@@ -345,6 +345,36 @@ function test_event_pid_track_untrack()
 	rm -rf "$trace_path"
 }
 
+function test_event_ust_vpid_untrack_snapshot()
+{
+	local trace_path
+
+	trace_path=$(mktemp -d)
+
+	diag "Test_event_ust_vpid_untrack_snapshot"
+
+	create_lttng_session_ok $SESSION_NAME "$trace_path" "--snapshot"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "$EVENT_NAME"
+
+	prepare_ust_app
+
+	lttng_untrack_ust_ok "--vpid --all"
+
+	start_lttng_tracing_ok
+
+	trace_ust_app
+	lttng_snapshot_record $SESSION_NAME
+
+	stop_lttng_tracing_ok
+	destroy_lttng_session_ok $SESSION_NAME
+
+	snapshot_count=$(find "$trace_path" -name metadata | wc -l)
+	is "$snapshot_count" 0 "Number of snapshot is zero"
+
+	rm -rf "$trace_path"
+}
+
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
 
@@ -401,6 +431,10 @@ test_event_vpid_track_untrack ust 0 "${EVENT_NAME}"
 #matching
 test_event_tracker ust 1 "${EVENT_NAME}" "--vpid --all"
 test_event_vpid_tracker ust 1 "${EVENT_NAME}"
+
+#snapshot untrack vpid
+
+test_event_ust_vpid_untrack_snapshot
 
 #pid (backward compat)
 
