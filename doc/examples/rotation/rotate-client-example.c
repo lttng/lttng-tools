@@ -87,7 +87,7 @@ int setup_session(const char *session_name, const char *path)
 	ret = lttng_enable_event_with_exclusions(chan_handle, &ev, "mychan", NULL,
 			0, NULL);
 	if (ret < 0) {
-		fprintf(stderr, "Failed to enable events\n");
+		fprintf(stderr, "Failed to enable events (ret = %i)\n", ret);
 		goto end;
 	}
 	printf("Enabled all system call kernel events\n");
@@ -155,83 +155,88 @@ static
 int rotate_session(const char *session_name, const char *ext_program)
 {
 	int ret;
-	char *path = NULL;
-	struct lttng_rotation_manual_attr *attr = NULL;
 	struct lttng_rotation_handle *handle = NULL;
 	enum lttng_rotation_status rotation_status;
+	enum lttng_rotation_state rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 	char cmd[PATH_MAX];
-
-	attr = lttng_rotation_manual_attr_create();
-	if (!attr) {
-		fprintf(stderr, "Failed to create rotate attr\n");
-		ret = -1;
-		goto end;
-	}
-
-	ret = lttng_rotation_manual_attr_set_session_name(attr, session_name);
-	if (ret < 0) {
-		fprintf(stderr, "Failed to set rotate attr session name\n");
-		goto end;
-	}
 
 	printf("Rotating the output files of session %s", session_name);
 
-	ret = lttng_rotate_session(attr, &handle);
+	ret = lttng_rotate_session(session_name, NULL, &handle);
 	if (ret < 0) {
 		fprintf(stderr, "Failed to rotate session, %s\n", lttng_strerror(ret));
 		goto end;
 	}
 
 	fflush(stdout);
+
 	do {
-		ret = lttng_rotation_is_pending(handle);
-		if (ret < 0) {
-			fprintf(stderr, "Rotate pending failed\n");
+		rotation_status = lttng_rotation_handle_get_state(handle,
+				&rotation_state);
+		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
+			ret = -1;
+			fprintf(stderr, "Failed to get the current rotation's state\n");
 			goto end;
 		}
 
 		/*
-		 * Data sleep time before retrying (in usec). Don't sleep if the call
-		 * returned value indicates availability.
+		 * Data sleep time before retrying (in usec). Don't
+		 * sleep if the call returned value indicates
+		 * availability.
 		 */
-		if (ret) {
+		if (rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
 			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
 			printf(".");
 			fflush(stdout);
 		}
-	} while (ret == 1);
+	} while (rotation_state == LTTNG_ROTATION_STATE_ONGOING);
 	printf("\n");
 
-	rotation_status = lttng_rotation_handle_get_status(handle);
-	switch(rotation_status) {
-	case LTTNG_ROTATION_STATUS_COMPLETED:
-		lttng_rotation_handle_get_output_path(handle, &path);
-		printf("Output files of session %s rotated to %s\n", session_name, path);
-		ret = snprintf(cmd, PATH_MAX, "%s %s", ext_program, path);
+	switch (rotation_state) {
+	case LTTNG_ROTATION_STATE_COMPLETED:
+	{
+		const struct lttng_trace_archive_location *location;
+		const char *absolute_path;
+		enum lttng_trace_archive_location_status location_status;
+
+		rotation_status = lttng_rotation_handle_get_archive_location(
+				handle, &location);
+		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
+			fprintf(stderr, "Failed to retrieve the rotation's completed chunk archive location\n");
+			ret = -1;
+			goto end;
+		}
+
+		location_status = lttng_trace_archive_location_local_get_absolute_path(
+				location, &absolute_path);
+		if (location_status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			fprintf(stderr, "Failed to get absolute path of completed chunk archive");
+			ret = -1;
+			goto end;
+		}
+
+		printf("Output files of session %s rotated to %s\n",
+				session_name, absolute_path);
+		ret = snprintf(cmd, PATH_MAX, "%s %s", ext_program, absolute_path);
 		if (ret < 0) {
 			fprintf(stderr, "Failed to prepare command string\n");
 			goto end;
 		}
 		ret = system(cmd);
 		goto end;
-	case LTTNG_ROTATION_STATUS_STARTED:
-		/* Should not happen after a rotate_pending. */
-		printf("Rotation started for session %s\n", session_name);
+	}
+	case LTTNG_ROTATION_STATE_EXPIRED:
+		printf("Output files of session %s rotated, but the handle expired\n", session_name);
 		ret = 0;
 		goto end;
-	case LTTNG_ROTATION_STATUS_EXPIRED:
-		printf("Output files of session %s rotated, but handle expired", session_name);
-		ret = 0;
-		goto end;
-	case LTTNG_ROTATION_STATUS_ERROR:
-		fprintf(stderr, "An error occurred with the rotation of session %s", session_name);
+	case LTTNG_ROTATION_STATE_ERROR:
+		fprintf(stderr, "An error occurred with the rotation of session %s\n", session_name);
 		ret = -1;
 		goto end;
 	}
 
 end:
 	lttng_rotation_handle_destroy(handle);
-	lttng_rotation_manual_attr_destroy(attr);
 	return ret;
 }
 
