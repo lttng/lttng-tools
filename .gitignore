@@ -135,6 +135,9 @@ health_check
 /doc/man/asciidoc-attrs.conf
 !/doc/man/lttng-health-check.3
 
+# examples
+/doc/examples/rotation/rotate-client
+
 /benchmark/
 
 /include/version.i
