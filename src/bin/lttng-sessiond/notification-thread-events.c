@@ -414,6 +414,21 @@ unsigned long lttng_condition_session_consumed_size_hash(
 	return hash;
 }
 
+static
+unsigned long lttng_condition_session_rotation_hash(
+	const struct lttng_condition *_condition)
+{
+	unsigned long hash, condition_type;
+	struct lttng_condition_session_rotation *condition;
+
+	condition = container_of(_condition,
+			struct lttng_condition_session_rotation, parent);
+	condition_type = (unsigned long) condition->parent.type;
+	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
+	assert(condition->session_name);
+	hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
+	return hash;
+}
 
 /*
  * The lttng_condition hashing code is kept in this file (rather than
@@ -429,6 +444,9 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 		return lttng_condition_buffer_usage_hash(condition);
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
 		return lttng_condition_session_consumed_size_hash(condition);
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		return lttng_condition_session_rotation_hash(condition);
 	default:
 		ERR("[notification-thread] Unexpected condition type caught");
 		abort();
