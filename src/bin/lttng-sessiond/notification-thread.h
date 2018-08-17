@@ -120,12 +120,14 @@ struct notification_thread_handle {
  *   3) registration of a trigger,
  *   4) unregistration of a trigger,
  *   5) reception of a channel monitor sample from the consumer daemon.
+ *   6) Session rotation ongoing
+ *   7) Session rotation completed
  *
  * Events specific to notification-emitting triggers:
- *   6) connection of a notification client,
- *   7) disconnection of a notification client,
- *   8) subscription of a client to a conditions' notifications,
- *   9) unsubscription of a client from a conditions' notifications,
+ *   8) connection of a notification client,
+ *   9) disconnection of a notification client,
+ *   10) subscription of a client to a conditions' notifications,
+ *   11) unsubscription of a client from a conditions' notifications,
  *
  *
  * 1) Creation of a tracing channel
@@ -172,22 +174,26 @@ struct notification_thread_handle {
  *        "notify", query the notification_trigger_clients_ht and send
  *        a notification to the clients.
  *
- * 6) Connection of a client
+ * 6) Session rotation ongoing
+ *
+ * 7) Session rotation completed
+ *
+ * 8) Connection of a client
  *    - add client socket to the client_socket_ht.
  *
- * 7) Disconnection of a client
+ * 9) Disconnection of a client
  *    - remove client socket from the client_socket_ht,
  *    - traverse all conditions to which the client is subscribed and remove
  *      the client from the notification_trigger_clients_ht.
  *
- * 8) Subscription of a client to a condition's notifications
+ * 10) Subscription of a client to a condition's notifications
  *    - Add the condition to the client's list of subscribed conditions,
  *    - Look-up notification_trigger_clients_ht and add the client to
  *      list of clients.
  *    - Evaluate the condition for the client that subscribed if the trigger
  *      was already registered.
  *
- * 9) Unsubscription of a client to a condition's notifications
+ * 11) Unsubscription of a client to a condition's notifications
  *    - Remove the condition from the client's list of subscribed conditions,
  *    - Look-up notification_trigger_clients_ht and remove the client
  *      from the list of clients.

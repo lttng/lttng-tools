@@ -42,6 +42,12 @@ struct session_info {
 	/* Node in the notification thread state's sessions_ht. */
 	struct cds_lfht_node sessions_ht_node;
 	uint64_t consumed_data_size;
+	struct {
+		/* Whether a rotation is ongoing for this session. */
+		bool ongoing;
+		/* Identifier of the currently ongoing rotation. */
+		uint64_t id;
+	} rotation;
 };
 
 struct channel_info {

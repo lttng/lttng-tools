@@ -51,6 +51,13 @@
 #define CLIENT_POLL_MASK_IN (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)
 
+enum lttng_object_type {
+	LTTNG_OBJECT_TYPE_UNKNOWN,
+	LTTNG_OBJECT_TYPE_NONE,
+	LTTNG_OBJECT_TYPE_CHANNEL,
+	LTTNG_OBJECT_TYPE_SESSION,
+};
+
 struct lttng_trigger_list_element {
 	/* No ownership of the trigger object is assumed. */
 	const struct lttng_trigger *trigger;
@@ -277,6 +284,18 @@ int match_channel_trigger_list(struct cds_lfht_node *node, const void *key)
 
 	return !!((channel_key->key == trigger_list->channel_key.key) &&
 			(channel_key->domain == trigger_list->channel_key.domain));
+}
+
+static
+int match_session_trigger_list(struct cds_lfht_node *node, const void *key)
+{
+	const char *session_name = (const char *) key;
+	struct lttng_session_trigger_list *trigger_list;
+
+	trigger_list = caa_container_of(node, struct lttng_session_trigger_list,
+			session_triggers_ht_node);
+
+	return !!(strcmp(trigger_list->session_name, session_name) == 0);
 }
 
 static
@@ -969,8 +988,8 @@ end:
 
 static
 bool buffer_usage_condition_applies_to_channel(
-		struct lttng_condition *condition,
-		struct channel_info *channel_info)
+		const struct lttng_condition *condition,
+		const struct channel_info *channel_info)
 {
 	enum lttng_condition_status status;
 	enum lttng_domain_type condition_domain;
@@ -1006,8 +1025,8 @@ fail:
 
 static
 bool session_consumed_size_condition_applies_to_channel(
-		struct lttng_condition *condition,
-		struct channel_info *channel_info)
+		const struct lttng_condition *condition,
+		const struct channel_info *channel_info)
 {
 	enum lttng_condition_status status;
 	const char *condition_session_name = NULL;
@@ -1025,14 +1044,42 @@ fail:
 	return false;
 }
 
+/*
+ * Get the type of object to which a given trigger applies. Binding lets
+ * the notification system evaluate a trigger's condition when a given
+ * object's state is updated.
+ *
+ * For instance, a condition bound to a channel will be evaluated everytime
+ * the channel's state is changed by a channel monitoring sample.
+ */
 static
-bool trigger_applies_to_channel(struct lttng_trigger *trigger,
-		struct channel_info *channel_info)
+enum lttng_object_type get_trigger_binding_object(
+		const struct lttng_trigger *trigger)
 {
-	struct lttng_condition *condition;
+	const struct lttng_condition *condition;
+
+	condition = lttng_trigger_get_const_condition(trigger);
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+	        return LTTNG_OBJECT_TYPE_CHANNEL;
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		return LTTNG_OBJECT_TYPE_SESSION;
+	default:
+		return LTTNG_OBJECT_TYPE_UNKNOWN;
+	}
+}
+
+static
+bool trigger_applies_to_channel(const struct lttng_trigger *trigger,
+		const struct channel_info *channel_info)
+{
+	const struct lttng_condition *condition;
 	bool trigger_applies;
 
-	condition = lttng_trigger_get_condition(trigger);
+	condition = lttng_trigger_get_const_condition(trigger);
 	if (!condition) {
 		goto fail;
 	}
@@ -1507,13 +1554,118 @@ end:
 	return ret;
 }
 
+/* Must be called with RCU read lock held. */
+static
+int bind_trigger_to_matching_session(const struct lttng_trigger *trigger,
+		struct notification_thread_state *state)
+{
+	int ret = 0;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+	const struct lttng_condition *condition;
+	const char *session_name;
+	struct lttng_session_trigger_list *trigger_list;
+
+	condition = lttng_trigger_get_const_condition(trigger);
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+	{
+		enum lttng_condition_status status;
+
+		status = lttng_condition_session_rotation_get_session_name(
+				condition, &session_name);
+		if (status != LTTNG_CONDITION_STATUS_OK) {
+			ERR("[notification-thread] Failed to bind trigger to session: unable to get 'session_rotation' condition's session name");
+			ret = -1;
+			goto end;
+		}
+		break;
+	}
+	default:
+		ret = -1;
+		goto end;
+	}
+
+	cds_lfht_lookup(state->session_triggers_ht,
+			hash_key_str(session_name, lttng_ht_seed),
+			match_session_trigger_list,
+			session_name,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (!node) {
+		/*
+		 * Not an error, the list of triggers applying to that session
+		 * will be initialized when the session is created.
+		 */
+		DBG("[notification-thread] Unable to bind trigger applying to session \"%s\" as it is not yet known to the notification system",
+				session_name);
+		goto end;
+	}
+
+	trigger_list = caa_container_of(node,
+			struct lttng_session_trigger_list,
+			session_triggers_ht_node);
+
+	DBG("[notification-thread] Newly registered trigger bound to session \"%s\"",
+			session_name);
+	ret = lttng_session_trigger_list_add(trigger_list, trigger);
+end:
+	return ret;
+}
+
+/* Must be called with RCU read lock held. */
+static
+int bind_trigger_to_matching_channels(const struct lttng_trigger *trigger,
+		struct notification_thread_state *state)
+{
+	int ret = 0;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+	struct channel_info *channel;
+
+	cds_lfht_for_each_entry(state->channels_ht, &iter, channel,
+			channels_ht_node) {
+		struct lttng_trigger_list_element *trigger_list_element;
+		struct lttng_channel_trigger_list *trigger_list;
+
+		if (!trigger_applies_to_channel(trigger, channel)) {
+			continue;
+		}
+
+		cds_lfht_lookup(state->channel_triggers_ht,
+				hash_channel_key(&channel->key),
+				match_channel_trigger_list,
+				&channel->key,
+				&iter);
+		node = cds_lfht_iter_get_node(&iter);
+		assert(node);
+		trigger_list = caa_container_of(node,
+				struct lttng_channel_trigger_list,
+				channel_triggers_ht_node);
+
+		trigger_list_element = zmalloc(sizeof(*trigger_list_element));
+		if (!trigger_list_element) {
+			ret = -1;
+			goto end;
+		}
+		CDS_INIT_LIST_HEAD(&trigger_list_element->node);
+		trigger_list_element->trigger = trigger;
+		cds_list_add(&trigger_list_element->node, &trigger_list->list);
+		DBG("[notification-thread] Newly registered trigger bound to channel \"%s\"",
+				channel->name);
+	}
+end:
+	return ret;
+}
+
 /*
  * FIXME A client's credentials are not checked when registering a trigger, nor
  *       are they stored alongside with the trigger.
  *
  * The effects of this are benign since:
  *     - The client will succeed in registering the trigger, as it is valid,
- *     - The trigger will, internally, be bound to the channel,
+ *     - The trigger will, internally, be bound to the channel/session,
  *     - The notifications will not be sent since the client's credentials
  *       are checked against the channel at that moment.
  *
@@ -1537,7 +1689,6 @@ int handle_notification_thread_command_register_trigger(
 	struct notification_client_list_element *client_list_element, *tmp;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
-	struct channel_info *channel;
 	bool free_trigger = true;
 
 	rcu_read_lock();
@@ -1619,38 +1770,29 @@ int handle_notification_thread_command_register_trigger(
 			lttng_condition_hash(condition),
 			&client_list->notification_trigger_ht_node);
 
-	/*
-	 * Add the trigger to list of triggers bound to the channels currently
-	 * known.
-	 */
-	cds_lfht_for_each_entry(state->channels_ht, &iter, channel,
-			channels_ht_node) {
-		struct lttng_trigger_list_element *trigger_list_element;
-		struct lttng_channel_trigger_list *trigger_list;
-
-		if (!trigger_applies_to_channel(trigger, channel)) {
-			continue;
-		}
-
-		cds_lfht_lookup(state->channel_triggers_ht,
-				hash_channel_key(&channel->key),
-				match_channel_trigger_list,
-				&channel->key,
-				&iter);
-		node = cds_lfht_iter_get_node(&iter);
-		assert(node);
-		trigger_list = caa_container_of(node,
-				struct lttng_channel_trigger_list,
-				channel_triggers_ht_node);
-
-		trigger_list_element = zmalloc(sizeof(*trigger_list_element));
-		if (!trigger_list_element) {
-			ret = -1;
+	switch (get_trigger_binding_object(trigger)) {
+	case LTTNG_OBJECT_TYPE_SESSION:
+		/* Add the trigger to the list if it matches a known session. */
+		ret = bind_trigger_to_matching_session(trigger, state);
+		if (ret) {
 			goto error_free_client_list;
 		}
-		CDS_INIT_LIST_HEAD(&trigger_list_element->node);
-		trigger_list_element->trigger = trigger;
-		cds_list_add(&trigger_list_element->node, &trigger_list->list);
+	case LTTNG_OBJECT_TYPE_CHANNEL:
+		/*
+		 * Add the trigger to list of triggers bound to the channels
+		 * currently known.
+		 */
+		ret = bind_trigger_to_matching_channels(trigger, state);
+		if (ret) {
+			goto error_free_client_list;
+		}
+		break;
+	case LTTNG_OBJECT_TYPE_NONE:
+		break;
+	default:
+		ERR("[notification-thread] Unknown object type on which to bind a newly registered trigger was encountered");
+		ret = -1;
+		goto error_free_client_list;
 	}
 
 	/*
