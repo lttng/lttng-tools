@@ -195,6 +195,25 @@ LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic = "p
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic_time_us = "time_us";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold = "size_threshold";
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes = "bytes";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_state = "state";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location = "location";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local = "local";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local_absolute_path = "absolute_path";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay = "relay";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_host = "host";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_control_port = "control_port";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_data_port = "data_port";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_protocol = "protocol";
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_relative_path = "relative_path";
+
+/* String related to enum lttng_rotation_state */
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_ongoing = "ONGOING";
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_completed = "COMPLETED";
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_expired = "EXPIRED";
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_error = "ERROR";
+
+/* String related to enum lttng_trace_archive_location_relay_protocol_type */
+LTTNG_HIDDEN const char * const mi_lttng_rotation_location_relay_protocol_str_tcp = "TCP";
 
 /* String related to add-context command */
 LTTNG_HIDDEN const char * const mi_lttng_element_context_symbol = "symbol";
@@ -463,6 +482,39 @@ const char *mi_lttng_buffertype_string(enum lttng_buffer_type value)
 		return config_buffer_type_global;
 	default:
 		/* Should not have an unknow buffer type */
+		assert(0);
+		return NULL;
+	}
+}
+
+LTTNG_HIDDEN
+const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value)
+{
+	switch (value) {
+	case LTTNG_ROTATION_STATE_ONGOING:
+		return mi_lttng_rotation_state_str_ongoing;
+	case LTTNG_ROTATION_STATE_COMPLETED:
+		return mi_lttng_rotation_state_str_completed;
+	case LTTNG_ROTATION_STATE_EXPIRED:
+		return mi_lttng_rotation_state_str_expired;
+	case LTTNG_ROTATION_STATE_ERROR:
+		return mi_lttng_rotation_state_str_error;
+	default:
+		/* Should not have an unknow rotation state. */
+		assert(0);
+		return NULL;
+	}
+}
+
+LTTNG_HIDDEN
+const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
+		enum lttng_trace_archive_location_relay_protocol_type value)
+{
+	switch (value) {
+	case LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP:
+		return mi_lttng_rotation_location_relay_protocol_str_tcp;
+	default:
+		/* Should not have an unknow relay protocol. */
 		assert(0);
 		return NULL;
 	}
@@ -1942,6 +1994,207 @@ int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
 
 	/* Close rotation_schedule_result element */
         ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+int mi_lttng_location(struct mi_writer *writer,
+		const struct lttng_trace_archive_location *location)
+{
+	int ret = 0;
+	enum lttng_trace_archive_location_type location_type;
+	enum lttng_trace_archive_location_status status;
+
+	location_type = lttng_trace_archive_location_get_type(location);
+
+	switch (location_type) {
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
+	{
+		const char *absolute_path;
+
+		status = lttng_trace_archive_location_local_get_absolute_path(
+				location, &absolute_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_rotation_location_local);
+		if (ret) {
+			goto end;
+		}
+
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_rotation_location_local_absolute_path,
+				absolute_path);
+		if (ret) {
+			goto end;
+		}
+
+		/* Close local element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+		break;
+	}
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
+	{
+		uint16_t control_port, data_port;
+		const char *host, *relative_path;
+		enum lttng_trace_archive_location_relay_protocol_type protocol;
+
+		/* Fetch all relay location parameters. */
+		status = lttng_trace_archive_location_relay_get_protocol_type(
+				location, &protocol);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_host(
+				location, &host);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_control_port(
+				location, &control_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_data_port(
+				location, &data_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_relative_path(
+				location, &relative_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		ret = mi_lttng_writer_open_element(writer,
+				mi_lttng_element_rotation_location_relay);
+		if (ret) {
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_rotation_location_relay_host,
+				host);
+		if (ret) {
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				mi_lttng_element_rotation_location_relay_control_port,
+				control_port);
+		if (ret) {
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				mi_lttng_element_rotation_location_relay_data_port,
+				data_port);
+		if (ret) {
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_rotation_location_relay_protocol,
+				mi_lttng_trace_archive_location_relay_protocol_type_string(protocol));
+		if (ret) {
+			goto end;
+		}
+
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_rotation_location_relay_relative_path,
+				relative_path);
+		if (ret) {
+			goto end;
+		}
+
+		/* Close relay element */
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+		break;
+	}
+	default:
+		abort();
+	}
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int mi_lttng_rotate(struct mi_writer *writer,
+		const char *session_name,
+		enum lttng_rotation_state rotation_state,
+		const struct lttng_trace_archive_location *location)
+{
+	int ret;
+
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_rotation);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_session_name,
+			session_name);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_rotation_state,
+			mi_lttng_rotation_state_string(rotation_state));
+	if (ret) {
+		goto end;
+	}
+
+	if (!location) {
+		/* Not a serialization error. */
+		goto close_rotation;
+	}
+
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_rotation_location);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_location(writer, location);
+	if (ret) {
+		goto close_location;
+	}
+
+close_location:
+	/* Close location element */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+	
+close_rotation:
+	/* Close rotation element */
+	ret = mi_lttng_writer_close_element(writer);
 	if (ret) {
 		goto end;
 	}

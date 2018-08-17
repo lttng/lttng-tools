@@ -57,50 +57,6 @@ static struct poptOption long_options[] = {
 	{0, 0, 0, 0, 0, 0, 0}
 };
 
-static int mi_output_rotate(const char *status, const char *path,
-		const char *session_name)
-{
-	int ret;
-
-	if (!lttng_opt_mi) {
-		ret = 0;
-		goto end;
-	}
-
-	ret = mi_lttng_writer_open_element(writer,
-			mi_lttng_element_rotation);
-	if (ret) {
-		goto end;
-	}
-
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_session_name, session_name);
-	if (ret) {
-		goto end;
-	}
-
-	ret = mi_lttng_writer_write_element_string(writer,
-			mi_lttng_element_rotate_status, status);
-	if (ret) {
-		goto end;
-	}
-	if (path) {
-		ret = mi_lttng_writer_write_element_string(writer,
-				config_element_path, path);
-		if (ret) {
-			goto end;
-		}
-	}
-	/* Close rotation element */
-	ret = mi_lttng_writer_close_element(writer);
-	if (ret) {
-		goto end;
-	}
-
-end:
-	return ret;
-}
-
 static int output_trace_archive_location(
 		const struct lttng_trace_archive_location *location,
 		const char *session_name)
@@ -126,11 +82,6 @@ static int output_trace_archive_location(
 			goto end;
 		}
 		MSG(" at %s", absolute_path);
-		ret = mi_output_rotate("completed", absolute_path,
-				session_name);
-		if (ret) {
-			goto end;
-		}
 		printed_location = true;
 		break;
 	}
@@ -189,11 +140,6 @@ static int output_trace_archive_location(
 				PRIu16 "]", protocol_str, host,
 				relative_path, control_port, data_port);
 		printed_location = true;
-		ret = mi_output_rotate("completed", relative_path,
-				session_name);
-		if (ret) {
-			goto end;
-		}
 		break;
 	}
 	default:
@@ -209,9 +155,12 @@ end:
 static int rotate_tracing(char *session_name)
 {
 	int ret;
+	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	struct lttng_rotation_handle *handle = NULL;
 	enum lttng_rotation_status rotation_status;
 	enum lttng_rotation_state rotation_state = LTTNG_ROTATION_STATE_ONGOING;
+	const struct lttng_trace_archive_location *location = NULL;
+	bool print_location = true;
 
 	DBG("Rotating the output files of session %s", session_name);
 
@@ -220,89 +169,95 @@ static int rotate_tracing(char *session_name)
 		switch (-ret) {
 		case LTTNG_ERR_SESSION_NOT_STARTED:
 			WARN("Tracing session %s not started yet", session_name);
-			break;
+			cmd_ret = CMD_WARNING;
+			goto end;
 		default:
 			ERR("%s", lttng_strerror(ret));
-			break;
+			goto error;
 		}
+	}
+
+	if (opt_no_wait) {
+		rotation_state = LTTNG_ROTATION_STATE_ONGOING;
+		goto skip_wait;
+	}
+
+	_MSG("Waiting for rotation to complete");
+	ret = fflush(stdout);
+	if (ret) {
+		PERROR("fflush");
 		goto error;
 	}
 
-	if (!opt_no_wait) {
-		_MSG("Waiting for rotation to complete");
-		ret = fflush(stdout);
-		if (ret) {
-			PERROR("fflush");
+	do {
+		rotation_status = lttng_rotation_handle_get_state(handle,
+				&rotation_state);
+		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
+			ERR("Failed to query the state of the rotation.");
 			goto error;
 		}
 
-		do {
-			rotation_status = lttng_rotation_handle_get_state(handle,
-					&rotation_state);
-			if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
-				ERR("Failed to query the state of the rotation");
+		if (rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
+			ret = usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+			if (ret) {
+				PERROR("usleep");
 				goto error;
 			}
+			_MSG(".");
 
-			/*
-			 * Data sleep time before retrying (in usec). Don't
-			 * sleep if the call returned value indicates
-			 * availability.
-			 */
-			if (rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
-				ret = usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
-				if (ret) {
-					PERROR("usleep");
-					goto error;
-				}
-				_MSG(".");
-
-				ret = fflush(stdout);
-				if (ret) {
-					PERROR("fflush");
-					goto error;
-				}
+			ret = fflush(stdout);
+			if (ret) {
+				PERROR("fflush");
+				goto error;
 			}
-		} while (rotation_state == LTTNG_ROTATION_STATE_ONGOING);
-		MSG("");
-	}
+		}
+	} while (rotation_state == LTTNG_ROTATION_STATE_ONGOING);
+	MSG("");
 
+skip_wait:
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_COMPLETED:
-	{
-		const struct lttng_trace_archive_location *location;
-
 		rotation_status = lttng_rotation_handle_get_archive_location(
 				handle, &location);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
-			ERR("Failed to retrieve the rotation's completed chunk archive location");
-			goto error;
+			ERR("Failed to retrieve the rotation's completed chunk archive location.");
+			cmd_ret = CMD_ERROR;
 		}
-		ret = output_trace_archive_location(location, session_name);
-		if (ret) {
-			goto error;
-		}
-		ret = CMD_SUCCESS;
-		goto end;
-	}
+		break;
 	case LTTNG_ROTATION_STATE_EXPIRED:
-		MSG("Session %s rotated, but handle expired", session_name);
-		ret = mi_output_rotate("expired", NULL, session_name);
-		if (ret) {
-			goto error;
-		}
-		ret = CMD_SUCCESS;
-		goto end;
+		break;
+	case LTTNG_ROTATION_STATE_ERROR:
+		ERR("Failed to retrieve rotation state.");
+		print_location = false;
+		goto error;
+	case LTTNG_ROTATION_STATE_ONGOING:
+		MSG("Rotation ongoing for session %s", session_name);
+		print_location = false;
+		break;
 	default:
-		ERR("Unexpected rotation state received, aborting...");
+		ERR("Unexpected rotation state encountered.");
+		print_location = false;
 		goto error;
 	}
 
-error:
-	ret = CMD_ERROR;
+	if (!lttng_opt_mi && print_location) {
+		ret = output_trace_archive_location(location,
+				session_name);
+	} else if (lttng_opt_mi) {
+		ret = mi_lttng_rotate(writer, session_name, rotation_state,
+				location);
+	}
+
+	if (ret < 0) {
+		cmd_ret = CMD_ERROR;
+	}
+
 end:
 	lttng_rotation_handle_destroy(handle);
-	return ret;
+	return cmd_ret;
+error:
+	cmd_ret = CMD_ERROR;
+	goto end;
 }
 
 /*
@@ -312,7 +267,8 @@ end:
  */
 int cmd_rotate(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
+	int opt, ret;
+	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	int popt_ret;
 	static poptContext pc;
 	char *session_name = NULL;
@@ -321,9 +277,8 @@ int cmd_rotate(int argc, const char **argv)
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
-		ret = CMD_ERROR;
 		ERR("poptReadDefaultConfig");
-		goto end;
+		goto error;
 	}
 
 	while ((opt = poptGetNextOpt(pc)) != -1) {
@@ -335,7 +290,7 @@ int cmd_rotate(int argc, const char **argv)
 			list_cmd_options(stdout, long_options);
 			goto end;
 		default:
-			ret = CMD_UNDEFINED;
+			cmd_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -345,7 +300,7 @@ int cmd_rotate(int argc, const char **argv)
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (!session_name) {
-			goto end;
+			goto error;
 		}
 		free_session_name = true;
 	} else {
@@ -356,79 +311,60 @@ int cmd_rotate(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
+			goto error;
 		}
 
 		/* Open rotate command */
 		ret = mi_lttng_writer_command_open(writer,
 				mi_lttng_element_command_rotate);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 
 		/* Open output element */
 		ret = mi_lttng_writer_open_element(writer,
 				mi_lttng_element_command_output);
 		if (ret) {
-			goto end;
+			goto error;
 		}
-
-		/* Open rotations element */
-		ret = mi_lttng_writer_open_element(writer,
-				mi_lttng_element_rotation_schedules);
-		if (ret) {
-			goto end;
-		}
-
 	}
 
-	command_ret = rotate_tracing(session_name);
-	if (command_ret) {
-		success = 0;
-	}
+	cmd_ret = rotate_tracing(session_name);
 
 	/* Mi closing */
 	if (lttng_opt_mi) {
-		/* Close rotations element */
-		ret = mi_lttng_writer_close_element(writer);
-		if (ret) {
-			goto end;
-		}
 		/* Close output element */
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
-			goto end;
+			goto error;
 		}
 		/* Success ? */
 		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
+				mi_lttng_element_command_success,
+				cmd_ret == CMD_SUCCESS);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 
 		/* Command element close */
 		ret = mi_lttng_writer_command_close(writer);
 		if (ret) {
-			ret = CMD_ERROR;
-			goto end;
+			goto error;
 		}
 	}
 
-end:
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+		goto error;
 	}
-
-	/* Overwrite ret if an error occurred with start_tracing */
-	ret = command_ret ? command_ret : ret;
+end:
 	poptFreeContext(pc);
 	if (free_session_name) {
 		free(session_name);
 	}
-	return ret;
+
+	return cmd_ret;
+error:
+	cmd_ret = CMD_ERROR;
+	goto end;
 }

@@ -201,6 +201,25 @@ LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshol
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_result;
 LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_results;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_state;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local_absolute_path;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_host;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_control_port;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_data_port;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_protocol;
+LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_relative_path;
+
+/* String related to enum lttng_rotation_state */
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_ongoing;
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_completed;
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_expired;
+LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_error;
+
+/* String related to enum lttng_trace_archive_location_relay_protocol_type */
+LTTNG_HIDDEN const char * const mi_lttng_rotation_location_relay_protocol_str_tcp;
 
 /* String related to add-context command */
 LTTNG_HIDDEN extern const char * const mi_lttng_element_context_symbol;
@@ -211,6 +230,9 @@ const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value);
 const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type value);
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value);
 const char *mi_lttng_buffertype_string(enum lttng_buffer_type value);
+const char *mi_lttng_rotation_state_string(enum lttng_rotation_state value);
+const char *mi_lttng_trace_archive_location_relay_protocol_type_string(
+		enum lttng_trace_archive_location_relay_protocol_type value);
 
 /*
  * Create an instance of a machine interface writer.
@@ -839,8 +861,6 @@ int mi_lttng_rotation_schedule(struct mi_writer *writer,
  *
  * writer: An instance of a machine interface writer.
  *
- * session_name: The session to which the command applies.
- *
  * schedule: An lttng rotation schedule descriptor object.
  *
  * success: Whether the sub-command suceeded.
@@ -851,5 +871,30 @@ int mi_lttng_rotation_schedule(struct mi_writer *writer,
 int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
 		const struct lttng_rotation_schedule *schedule,
 		bool success);
+
+/*
+ * Machine interface of a session rotation result.
+ * This is an element that is part of the output of the rotate command.
+ *
+ * The machine interface provides the following information:
+ * - session_name: the session to be rotated.
+ * - state: the session rotation state.
+ * - location: the location of the completed chunk archive.
+ *
+ * writer: An instance of a machine interface writer.
+ *
+ * session_name: The session to which the rotate command applies.
+ *
+ * location: A location descriptor object.
+ *
+ * success: Whether the sub-command suceeded.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_rotate(struct mi_writer *writer,
+		const char *session_name,
+		enum lttng_rotation_state rotation_state,
+		const struct lttng_trace_archive_location *location);
 
 #endif /* _MI_LTTNG_H */

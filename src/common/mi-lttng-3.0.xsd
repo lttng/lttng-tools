@@ -167,6 +167,23 @@ THE SOFTWARE.
 		</xs:restriction>
 	</xs:simpleType>
 
+	<!-- Maps to enum lttng_rotation_state -->
+	<xs:simpleType name="rotation_state_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ONGOING" />
+			<xs:enumeration value="COMPLETED" />
+			<xs:enumeration value="EXPIRED" />
+			<xs:enumeration value="ERROR" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Maps to enum lttng_trace_archive_location_relay_protocol_type -->
+	<xs:simpleType name="location_relay_protocol_type">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="TCP" />
+		</xs:restriction>
+	</xs:simpleType>
+
 	<!-- Maps to the lttng_calibrate_type enum -->
 	<xs:simpleType name="calibrate_type_type">
 		<xs:restriction base="xs:string">
@@ -589,12 +606,36 @@ THE SOFTWARE.
 		</xs:sequence>
 	</xs:complexType>
 
+	<xs:complexType name="local_location_type">
+		<xs:sequence>
+			<xs:element name="absolute_path" type="xs:string" minOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="relay_location_type">
+		<xs:sequence>
+			<xs:element name="host" type="xs:string" minOccurs="1" />
+			<xs:element name="control_port" type="xs:int" minOccurs="0" />
+			<xs:element name="data_port" type="xs:int" minOccurs="0" />
+			<xs:element name="protocol" type="tns:location_relay_protocol_type" minOccurs="1" />
+			<xs:element name="relative_path" type="xs:string" minOccurs="0" />
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="location_type">
+		<xs:choice>
+			<xs:element name="local" type="tns:local_location_type" minOccurs="0" />
+			<xs:element name="relay" type="tns:relay_location_type" minOccurs="0" />
+		</xs:choice>
+	</xs:complexType>
+
 	<!-- Maps to the rotate command -->
-	<xs:complexType name="rotation_type">
-		<xs:all>
-			<xs:element name="status" type="xs:string" />
-			<xs:element name="path" type="xs:string" minOccurs="0" />
-		</xs:all>
+	<xs:complexType name="rotate_type">
+		<xs:sequence>
+			<xs:element name="session_name" type="tns:name_type" minOccurs="1" />
+			<xs:element name="state" type="tns:rotation_state_type" minOccurs="1" />
+			<xs:element name="location" type="tns:location_type" minOccurs="0" />
+		</xs:sequence>
 	</xs:complexType>
 
 	<xs:complexType name="rotation_schedule_result_type">
@@ -630,7 +671,7 @@ THE SOFTWARE.
 			<xs:element name="targets" type="tns:targets_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
-			<xs:element name="rotation" type="tns:rotation_type" minOccurs="0" />
+			<xs:element name="rotation" type="tns:rotate_type" minOccurs="0" />
 			<xs:element name="rotation_schedule_results" type="tns:rotation_schedule_cmd_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
