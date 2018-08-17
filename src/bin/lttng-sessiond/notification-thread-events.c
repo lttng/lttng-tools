@@ -294,12 +294,15 @@ static
 unsigned long lttng_condition_buffer_usage_hash(
 	const struct lttng_condition *_condition)
 {
-	unsigned long hash = 0;
+	unsigned long hash;
+	unsigned long condition_type;
 	struct lttng_condition_buffer_usage *condition;
 
 	condition = container_of(_condition,
 			struct lttng_condition_buffer_usage, parent);
 
+	condition_type = (unsigned long) condition->parent.type;
+	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	if (condition->session_name) {
 		hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
 	}
@@ -329,13 +332,16 @@ static
 unsigned long lttng_condition_session_consumed_size_hash(
 	const struct lttng_condition *_condition)
 {
-	unsigned long hash = 0;
+	unsigned long hash;
+	unsigned long condition_type =
+			(unsigned long) LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE;
 	struct lttng_condition_session_consumed_size *condition;
 	uint64_t val;
 
 	condition = container_of(_condition,
 			struct lttng_condition_session_consumed_size, parent);
 
+	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
 	if (condition->session_name) {
 		hash ^= hash_key_str(condition->session_name, lttng_ht_seed);
 	}
@@ -343,6 +349,7 @@ unsigned long lttng_condition_session_consumed_size_hash(
 	hash ^= hash_key_u64(&val, lttng_ht_seed);
 	return hash;
 }
+
 
 /*
  * The lttng_condition hashing code is kept in this file (rather than

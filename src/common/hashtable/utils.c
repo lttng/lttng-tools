@@ -469,6 +469,7 @@ unsigned long hash_key_u64(const void *_key, unsigned long seed)
 #if (CAA_BITS_PER_LONG == 64)
 /*
  * Hash function for number value.
+ * Pass the value itself as the key, not its address.
  */
 LTTNG_HIDDEN
 unsigned long hash_key_ulong(const void *_key, unsigned long seed)
@@ -479,6 +480,7 @@ unsigned long hash_key_ulong(const void *_key, unsigned long seed)
 #else
 /*
  * Hash function for number value.
+ * Pass the value itself as the key, not its address.
  */
 LTTNG_HIDDEN
 unsigned long hash_key_ulong(const void *_key, unsigned long seed)
