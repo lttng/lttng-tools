@@ -73,6 +73,7 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
                        filter.c filter.h context.c context.h \
                        action.c notify.c condition.c buffer-usage.c \
                        session-consumed-size.c \
+                       session-rotation.c \
                        evaluation.c notification.c trigger.c endpoint.c \
                        dynamic-buffer.h dynamic-buffer.c \
                        buffer-view.h buffer-view.c \

@@ -42,6 +42,10 @@ struct lttng_evaluation {
 };
 
 LTTNG_HIDDEN
+void lttng_evaluation_init(struct lttng_evaluation *evaluation,
+		enum lttng_condition_type type);
+
+LTTNG_HIDDEN
 ssize_t lttng_evaluation_create_from_buffer(const struct lttng_buffer_view *view,
 		struct lttng_evaluation **evaluation);
 

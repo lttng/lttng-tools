@@ -40,6 +40,7 @@
 #include <lttng/condition/condition.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/session-consumed-size.h>
+#include <lttng/condition/session-rotation.h>
 #include <lttng/condition/evaluation.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
