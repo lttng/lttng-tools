@@ -51,7 +51,8 @@
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)
 
 struct lttng_trigger_list_element {
-	struct lttng_trigger *trigger;
+	/* No ownership of the trigger object is assumed. */
+	const struct lttng_trigger *trigger;
 	struct cds_list_head node;
 };
 
