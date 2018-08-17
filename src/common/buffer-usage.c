@@ -88,6 +88,10 @@ bool lttng_condition_buffer_usage_validate(
 		ERR("Invalid buffer condition: a threshold must be set.");
 		goto end;
 	}
+	if (!usage->domain.set) {
+		ERR("Invalid buffer usage condition: a domain must be set.");
+		goto end;
+	}
 
 	valid = true;
 end:
@@ -194,35 +198,23 @@ bool lttng_condition_buffer_usage_is_equal(const struct lttng_condition *_a,
 		}
 	}
 
-	if ((a->session_name && !b->session_name) ||
-			(!a->session_name && b->session_name)) {
+	/* Condition is not valid if this is not true. */
+	assert(a->session_name);
+	assert(b->session_name);
+	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
 
-	if (a->channel_name && b->channel_name) {
-		if (strcmp(a->channel_name, b->channel_name)) {
-			goto end;
-		}
-	}	if ((a->channel_name && !b->channel_name) ||
-			(!a->channel_name && b->channel_name)) {
+	assert(a->channel_name);
+	assert(b->channel_name);
+	if (strcmp(a->channel_name, b->channel_name)) {
 		goto end;
 	}
 
-	if (a->channel_name && b->channel_name) {
-		if (strcmp(a->channel_name, b->channel_name)) {
-			goto end;
-		}
-	}
-
-	if ((a->domain.set && !b->domain.set) ||
-			(!a->domain.set && b->domain.set)) {
+	assert(a->domain.set);
+	assert(b->domain.set);
+	if (a->domain.type != b->domain.type) {
 		goto end;
-	}
-
-	if (a->domain.set && b->domain.set) {
-		if (a->domain.type != b->domain.type) {
-			goto end;
-		}
 	}
 	is_equal = true;
 end:

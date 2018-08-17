@@ -136,8 +136,9 @@ bool lttng_condition_session_consumed_size_is_equal(const struct lttng_condition
 		}
 	}
 
-	if ((a->session_name && !b->session_name) ||
-			(!a->session_name && b->session_name)) {
+	assert(a->session_name);
+	assert(b->session_name);
+	if (strcmp(a->session_name, b->session_name)) {
 		goto end;
 	}
 
