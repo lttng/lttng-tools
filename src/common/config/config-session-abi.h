@@ -135,4 +135,10 @@ extern const char * const config_event_context_migratable;
 extern const char * const config_event_context_callstack_user;
 extern const char * const config_event_context_callstack_kernel;
 
+extern const char * const config_element_rotation_schedules;
+extern const char * const config_element_rotation_schedule_periodic;
+extern const char * const config_element_rotation_schedule_periodic_time_us;
+extern const char * const config_element_rotation_schedule_size_threshold;
+extern const char * const config_element_rotation_schedule_size_threshold_bytes;
+
 #endif /* CONFIG_SESSION_INTERNAL_H */

@@ -1886,6 +1886,83 @@ end:
 	return ret;
 }
 
+static
+int save_session_rotation_schedule(struct config_writer *writer,
+		enum lttng_rotation_schedule_type type, uint64_t value)
+{
+	int ret = 0;
+	const char *element_name;
+	const char *value_name;
+
+	switch (type) {
+	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
+		element_name = config_element_rotation_schedule_periodic;
+	        value_name = config_element_rotation_schedule_periodic_time_us;
+		break;
+	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
+		element_name = config_element_rotation_schedule_size_threshold;
+	        value_name = config_element_rotation_schedule_size_threshold_bytes;
+		break;
+	default:
+		ret = -1;
+		goto end;
+	}
+
+	ret = config_writer_open_element(writer, element_name);
+	if (ret) {
+		goto end;
+	}
+
+	ret = config_writer_write_element_unsigned_int(writer,
+			value_name, value);
+	if (ret) {
+		goto end;
+	}
+
+	/* Close schedule descriptor element. */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static
+int save_session_rotation_schedules(struct config_writer *writer,
+	struct ltt_session *session)
+{
+	int ret;
+
+	ret = config_writer_open_element(writer,
+			config_element_rotation_schedules);
+	if (session->rotate_timer_period) {
+		ret = save_session_rotation_schedule(writer,
+				LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
+				session->rotate_timer_period);
+		if (ret) {
+			goto close_schedules;
+		}
+	}
+	if (session->rotate_size) {
+		ret = save_session_rotation_schedule(writer,
+				LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD,
+				session->rotate_size);
+		if (ret) {
+			goto close_schedules;
+		}
+	}
+
+close_schedules:
+	/* Close rotation schedules element. */
+	ret = config_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
 /*
  * Save the given session.
  *
@@ -2061,20 +2138,9 @@ int save_session(struct ltt_session *session,
 				goto end;
 			}
 		}
-		if (session->rotate_timer_period) {
-			ret = config_writer_write_element_unsigned_int(writer,
-					config_element_rotation_timer_interval,
-					session->rotate_timer_period);
-			if (ret) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-		}
-
-		if (session->rotate_size) {
-			ret = config_writer_write_element_unsigned_int(writer,
-					config_element_rotation_size,
-					session->rotate_size);
+		if (session->rotate_timer_period || session->rotate_size) {
+			ret = save_session_rotation_schedules(writer,
+					session);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;

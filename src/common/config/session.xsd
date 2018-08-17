@@ -280,12 +280,32 @@ by its signed 32-bit representation when converted to msec.
 	</xs:all>
 </xs:complexType>
 
+<xs:complexType name="periodic_rotation_schedule_type">
+	<xs:all>
+		<xs:element name="time_us" type="uint64_type" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="size_threshold_rotation_schedule_type">
+	<xs:all>
+		<xs:element name="bytes" type="uint64_type" minOccurs="0" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="rotation_schedule_type">
+	<xs:sequence>
+		<xs:choice maxOccurs="unbounded">
+			<xs:element name="periodic" type="periodic_rotation_schedule_type" maxOccurs="unbounded" />
+			<xs:element name="size_threshold" type="size_threshold_rotation_schedule_type" maxOccurs="unbounded" />
+		</xs:choice>
+	</xs:sequence>
+</xs:complexType>
+
 <xs:complexType name="session_attributes_type">
 	<xs:all>
 		<xs:element name="snapshot_mode" type="xs:boolean" minOccurs="0"/>
 		<xs:element name="live_timer_interval" type="uint32_type" minOccurs="0"/> <!-- usec -->
-		<xs:element name="rotation_schedule_timer_period" type="uint64_type" minOccurs="0"/> <!-- usec -->
-		<xs:element name="rotation_schedule_size" type="uint64_type" minOccurs="0"/> <!-- bytes -->
+		<xs:element name="rotation_schedules" type="rotation_schedule_type" minOccurs="0" />
 	</xs:all>
 </xs:complexType>
 

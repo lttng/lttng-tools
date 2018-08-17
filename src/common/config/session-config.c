@@ -133,9 +133,11 @@ const char * const config_element_trackers = "trackers";
 const char * const config_element_targets = "targets";
 const char * const config_element_target_pid = "pid_target";
 
-LTTNG_HIDDEN const char * const config_element_rotation_timer_interval = "rotation_schedule_timer_period";
-LTTNG_HIDDEN const char * const config_element_rotation_size = "rotation_schedule_size";
-LTTNG_HIDDEN const char * const config_element_rotation_schedule = "rotation_schedule";
+LTTNG_HIDDEN const char * const config_element_rotation_schedules = "rotation_schedules";
+LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic = "periodic";
+LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic_time_us = "time_us";
+LTTNG_HIDDEN const char * const config_element_rotation_schedule_size_threshold = "size_threshold";
+LTTNG_HIDDEN const char * const config_element_rotation_schedule_size_threshold_bytes = "bytes";
 
 const char * const config_domain_type_kernel = "KERNEL";
 const char * const config_domain_type_ust = "UST";
@@ -2577,7 +2579,7 @@ int add_periodic_rotation(const char *name, uint64_t time_us)
 	status = lttng_session_add_rotation_schedule(name, periodic);
 	switch (status) {
 	case LTTNG_ROTATION_STATUS_OK:
-		ret = LTTNG_OK;
+		ret = 0;
 		break;
 	case LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET:
 	case LTTNG_ROTATION_STATUS_INVALID:
@@ -2615,7 +2617,7 @@ int add_size_rotation(const char *name, uint64_t size_bytes)
 	status = lttng_session_add_rotation_schedule(name, size);
 	switch (status) {
 	case LTTNG_ROTATION_STATUS_OK:
-		ret = LTTNG_OK;
+		ret = 0;
 		break;
 	case LTTNG_ROTATION_STATUS_SCHEDULE_ALREADY_SET:
 	case LTTNG_ROTATION_STATUS_INVALID:
@@ -2627,6 +2629,77 @@ int add_size_rotation(const char *name, uint64_t size_bytes)
 	}
 error:
 	lttng_rotation_schedule_destroy(size);
+	return ret;
+}
+
+static
+int process_session_rotation_schedules_node(
+		xmlNodePtr schedules_node,
+		uint64_t *rotation_timer_interval,
+		uint64_t *rotation_size)
+{
+	int ret = 0;
+	xmlNodePtr child;
+
+	for (child = xmlFirstElementChild(schedules_node);
+			child;
+			child = xmlNextElementSibling(child)) {
+		if (!strcmp((const char *) child->name,
+				config_element_rotation_schedule_periodic)) {
+			xmlChar *content;
+			xmlNodePtr time_us_node;
+
+			/* periodic rotation schedule */
+			time_us_node = xmlFirstElementChild(child);
+			if (!time_us_node ||
+					strcmp((const char *) time_us_node->name,
+						config_element_rotation_schedule_periodic_time_us)) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+			/* time_us child */
+			content = xmlNodeGetContent(time_us_node);
+			if (!content) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto end;
+			}
+			ret = parse_uint(content, rotation_timer_interval);
+			free(content);
+			if (ret) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+		} else if (!strcmp((const char *) child->name,
+				config_element_rotation_schedule_size_threshold)) {
+			xmlChar *content;
+			xmlNodePtr bytes_node;
+
+			/* size_threshold rotation schedule */
+			bytes_node = xmlFirstElementChild(child);
+			if (!bytes_node ||
+					strcmp((const char *) bytes_node->name,
+						config_element_rotation_schedule_size_threshold_bytes)) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+
+			/* bytes child */
+			content = xmlNodeGetContent(bytes_node);
+			if (!content) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto end;
+			}
+			ret = parse_uint(content, rotation_size);
+			free(content);
+			if (ret) {
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
+			}
+		}
+	}
+
+end:
 	return ret;
 }
 
@@ -2735,40 +2808,17 @@ int process_session_node(xmlNodePtr session_node, const char *session_name,
 						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 						goto error;
 					}
-				}
-				if (!strcmp((const char *) attributes_child->name,
-							config_element_rotation_timer_interval)) {
-					/* rotation_timer_interval */
-					xmlChar *timer_interval_content =
-						xmlNodeGetContent(attributes_child);
-					if (!timer_interval_content) {
-						ret = -LTTNG_ERR_NOMEM;
-						goto error;
-					}
-
-					ret = parse_uint(timer_interval_content, &rotation_timer_interval);
-					free(timer_interval_content);
+				} else if (!strcmp((const char *) attributes_child->name,
+							config_element_rotation_schedules)) {
+					ret = process_session_rotation_schedules_node(
+							attributes_child,
+							&rotation_timer_interval,
+							&rotation_size);
 					if (ret) {
 						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 						goto error;
 					}
-				}
-				if (!strcmp((const char *) attributes_child->name,
-							config_element_rotation_size)) {
-					/* rotation_size */
-					xmlChar *rotation_size_content =
-						xmlNodeGetContent(attributes_child);
-					if (!rotation_size_content) {
-						ret = -LTTNG_ERR_NOMEM;
-						goto error;
-					}
 
-					ret = parse_uint(rotation_size_content, &rotation_size);
-					free(rotation_size_content);
-					if (ret) {
-						ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
-						goto error;
-					}
 				}
 			}
 		}

@@ -1536,16 +1536,6 @@ static enum cmd_error_code print_periodic_rotation_schedule(
 	}
 
 	MSG("    timer period: %" PRIu64" µs", value);
-	if (lttng_opt_mi) {
-		int mi_ret = mi_lttng_writer_write_element_unsigned_int(writer,
-				config_element_rotation_timer_interval, value);
-
-		if (mi_ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
-
 	ret = CMD_SUCCESS;
 end:
 	return ret;
@@ -1567,16 +1557,6 @@ static enum cmd_error_code print_size_threshold_rotation_schedule(
 	}
 
 	MSG("    size threshold: %" PRIu64" bytes", value);
-	if (lttng_opt_mi) {
-		int mi_ret = mi_lttng_writer_write_element_unsigned_int(writer,
-				config_element_rotation_size, value);
-
-		if (mi_ret) {
-			ret = CMD_ERROR;
-			goto end;
-		}
-	}
-
 	ret = CMD_SUCCESS;
 end:
 	return ret;
