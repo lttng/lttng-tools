@@ -229,7 +229,7 @@ function test_lttng_crash()
 
 	# Generate 10 events
 	$TESTAPP_BIN 10 0
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	crash_recup_count=$($LTTNG_CRASH $shm_path | wc -l)
 	test $crash_recup_count -eq "10"
@@ -267,7 +267,7 @@ function test_lttng_crash_extraction()
 	start_lttng_tracing_ok $session_name
 	# Generate 10 events
 	$TESTAPP_BIN 10 0
-	stop_lttng_tracing
+	stop_lttng_tracing_ok
 
 	$LTTNG_CRASH -x $extraction_path $shm_path
 	ok $? "Extraction of crashed buffers to path"

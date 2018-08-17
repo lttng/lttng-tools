@@ -1081,54 +1081,76 @@ function disable_python_lttng_event ()
 	ok $? "Disable Python event $event_name for session $sess_name"
 }
 
-function start_lttng_tracing ()
+function start_lttng_tracing_opt ()
 {
-	local expected_to_fail=$1
-	local sess_name=$2
+	local withtap=$1
+	local expected_to_fail=$2
+	local sess_name=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN start $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
-		ok $? "Start tracing for session $sess_name failed as expected"
+		ret=$?
+		if [ $withtap -eq "1" ]; then
+			ok $? "Start tracing for session $sess_name failed as expected"
+		fi
 	else
-		ok $ret "Start tracing for session $sess_name"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Start tracing for session $sess_name"
+		fi
 	fi
 }
 
 function start_lttng_tracing_ok ()
 {
-	start_lttng_tracing 0 "$@"
+	start_lttng_tracing_opt 1 0 "$@"
 }
 
 function start_lttng_tracing_fail ()
 {
-	start_lttng_tracing 1 "$@"
+	start_lttng_tracing_opt 1 1 "$@"
 }
 
-function stop_lttng_tracing ()
+function start_lttng_tracing_notap ()
 {
-	local expected_to_fail=$1
-	local sess_name=$2
+	start_lttng_tracing_opt 0 1 "$@"
+}
+
+function stop_lttng_tracing_opt ()
+{
+	local withtap=$1
+	local expected_to_fail=$2
+	local sess_name=$3
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN stop $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
-		ok $? "Stop lttng tracing for session $sess_name failed as expected"
+		ret=$?
+		if [ $withtap -eq "1" ]; then
+			ok $? "Stop lttng tracing for session $sess_name failed as expected"
+		fi
 	else
-		ok $ret "Stop lttng tracing for session $sess_name"
+		if [ $withtap -eq "1" ]; then
+			ok $ret "Stop lttng tracing for session $sess_name"
+		fi
 	fi
 }
 
 function stop_lttng_tracing_ok ()
 {
-	stop_lttng_tracing 0 "$@"
+	stop_lttng_tracing_opt 1 0 "$@"
 }
 
 function stop_lttng_tracing_fail ()
 {
-	stop_lttng_tracing 1 "$@"
+	stop_lttng_tracing_opt 1 1 "$@"
+}
+
+function stop_lttng_tracing_notap ()
+{
+	stop_lttng_tracing_opt 0 0 "$@"
 }
 
 function destroy_lttng_session ()

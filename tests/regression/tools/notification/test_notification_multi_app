@@ -265,7 +265,7 @@ function test_multi_app ()
 			resume_consumerd "${pipe}"
 		done
 		# Stop tracing forcing full buffer consumption
-		stop_lttng_tracing $SESSION_NAME
+		stop_lttng_tracing_ok $SESSION_NAME
 
 		# Check for notifications reception
 		wait_for_message $output_dir "${low_output_file_pattern}" "notification: low $i"
