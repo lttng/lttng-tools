@@ -33,7 +33,7 @@ struct session_info {
 	uid_t uid;
 	gid_t gid;
 	/*
-	 * Back-ref (weak) to all channels in this session.
+	 * Hashtable containing back-refs (weak) to all channels in this session.
 	 * The hashtable's key is a hash of (struct channel_key) and
 	 * the value is of type (struct channel_info *).
 	 */
