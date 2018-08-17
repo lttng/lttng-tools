@@ -50,7 +50,7 @@ struct lttng_evaluation_session_consumed_size_comm {
 
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
-		enum lttng_condition_type type, uint64_t consumed);
+		uint64_t consumed);
 
 LTTNG_HIDDEN
 ssize_t lttng_condition_session_consumed_size_create_from_buffer(

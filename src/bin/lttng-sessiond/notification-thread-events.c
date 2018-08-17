@@ -2344,7 +2344,6 @@ int evaluate_condition(const struct lttng_condition *condition,
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
 		*evaluation = lttng_evaluation_session_consumed_size_create(
-				condition_type,
 				latest_session_consumed_total);
 		break;
 	default:
