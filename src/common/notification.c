@@ -40,13 +40,12 @@ struct lttng_notification *lttng_notification_create(
 
 	notification->condition = condition;
 	notification->evaluation = evaluation;
-	notification->owns_elements = false;
 end:
 	return notification;
 }
 
 LTTNG_HIDDEN
-int lttng_notification_serialize(struct lttng_notification *notification,
+int lttng_notification_serialize(const struct lttng_notification *notification,
 		struct lttng_dynamic_buffer *buf)
 {
 	int ret;
@@ -134,7 +133,6 @@ ssize_t lttng_notification_create_from_buffer(
 		goto error;
 	}
 	ret = notification_size;
-	(*notification)->owns_elements = true;
 end:
 	return ret;
 error:
@@ -149,10 +147,8 @@ void lttng_notification_destroy(struct lttng_notification *notification)
 		return;
 	}
 
-	if (notification->owns_elements) {
-		lttng_condition_destroy(notification->condition);
-		lttng_evaluation_destroy(notification->evaluation);
-	}
+	lttng_condition_destroy(notification->condition);
+	lttng_evaluation_destroy(notification->evaluation);
 	free(notification);
 }
 

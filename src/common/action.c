@@ -25,6 +25,13 @@ enum lttng_action_type lttng_action_get_type(struct lttng_action *action)
 	return action ? action->type : LTTNG_ACTION_TYPE_UNKNOWN;
 }
 
+LTTNG_HIDDEN
+enum lttng_action_type lttng_action_get_type_const(
+		const struct lttng_action *action)
+{
+	return action->type;
+}
+
 void lttng_action_destroy(struct lttng_action *action)
 {
 	if (!action) {

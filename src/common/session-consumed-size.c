@@ -402,7 +402,7 @@ end:
 
 static
 int lttng_evaluation_session_consumed_size_serialize(
-		struct lttng_evaluation *evaluation,
+		const struct lttng_evaluation *evaluation,
 		struct lttng_dynamic_buffer *buf)
 {
 	struct lttng_evaluation_session_consumed_size *consumed;

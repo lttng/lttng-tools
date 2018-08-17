@@ -32,7 +32,7 @@ void lttng_evaluation_init(struct lttng_evaluation *evaluation,
 }
 
 LTTNG_HIDDEN
-int lttng_evaluation_serialize(struct lttng_evaluation *evaluation,
+int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
 		struct lttng_dynamic_buffer *buf)
 {
 	int ret;

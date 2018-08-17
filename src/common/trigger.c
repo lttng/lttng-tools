@@ -64,10 +64,24 @@ struct lttng_condition *lttng_trigger_get_condition(
 	return trigger ? trigger->condition : NULL;
 }
 
+LTTNG_HIDDEN
+const struct lttng_condition *lttng_trigger_get_const_condition(
+		const struct lttng_trigger *trigger)
+{
+	return trigger->condition;
+}
+
 struct lttng_action *lttng_trigger_get_action(
 		struct lttng_trigger *trigger)
 {
 	return trigger ? trigger->action : NULL;
+}
+
+LTTNG_HIDDEN
+const struct lttng_action *lttng_trigger_get_const_action(
+		const struct lttng_trigger *trigger)
+{
+	return trigger->action;
 }
 
 void lttng_trigger_destroy(struct lttng_trigger *trigger)

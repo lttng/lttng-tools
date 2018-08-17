@@ -26,7 +26,8 @@
 #include <sys/types.h>
 
 typedef void (*evaluation_destroy_cb)(struct lttng_evaluation *evaluation);
-typedef int (*evaluation_serialize_cb)(struct lttng_evaluation *evaluation,
+typedef int (*evaluation_serialize_cb)(
+		const struct lttng_evaluation *evaluation,
 		struct lttng_dynamic_buffer *buf);
 
 struct lttng_evaluation_comm {
@@ -50,7 +51,7 @@ ssize_t lttng_evaluation_create_from_buffer(const struct lttng_buffer_view *view
 		struct lttng_evaluation **evaluation);
 
 LTTNG_HIDDEN
-int lttng_evaluation_serialize(struct lttng_evaluation *evaluation,
+int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
 		struct lttng_dynamic_buffer *buf);
 
 #endif /* LTTNG_EVALUATION_INTERNAL_H */

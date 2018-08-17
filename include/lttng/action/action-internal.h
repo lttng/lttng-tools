@@ -53,4 +53,8 @@ LTTNG_HIDDEN
 ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
 		struct lttng_action **action);
 
+LTTNG_HIDDEN
+enum lttng_action_type lttng_action_get_type_const(
+		const struct lttng_action *action);
+
 #endif /* LTTNG_ACTION_INTERNAL_H */
