@@ -104,6 +104,11 @@ bool lttng_condition_is_equal(const struct lttng_condition *a,
 		goto end;
 	}
 
+	if (a == b) {
+		is_equal = true;
+		goto end;
+	}
+
 	is_equal = a->equal ? a->equal(a, b) : true;
 end:
 	return is_equal;
