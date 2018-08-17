@@ -49,7 +49,7 @@ extern enum lttng_condition_type lttng_condition_get_type(
 		const struct lttng_condition *condition);
 
 /*
- * Destroy (frees) a condition object.
+ * Destroy (release) a condition object.
  */
 extern void lttng_condition_destroy(struct lttng_condition *condition);
 
