@@ -1025,6 +1025,9 @@ struct session_info *find_or_create_session_info(
 				name, uid, gid);
 		goto end;
 	}
+
+	cds_lfht_add(state->sessions_ht, hash_key_str(name, lttng_ht_seed),
+			&sessions->sessions_ht_node);
 end:
 	rcu_read_unlock();
 	return session;
