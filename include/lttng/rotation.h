@@ -57,7 +57,7 @@ enum lttng_rotation_state {
 	/*
 	 * The rotation could not be completed due to an error.
 	 */
-	LTTNG_ROTATION_STATE_ERROR = 4,
+	LTTNG_ROTATION_STATE_ERROR = -1,
 };
 
 enum lttng_rotation_status {
