@@ -359,6 +359,14 @@ void fini_thread_state(struct notification_thread_state *state)
 		ret = cds_lfht_destroy(state->sessions_ht, NULL);
 		assert(!ret);
 	}
+	/*
+	 * Must be destroyed after all channels have been destroyed.
+	 * See comment in struct lttng_session_trigger_list.
+	 */
+	if (state->session_triggers_ht) {
+		ret = cds_lfht_destroy(state->session_triggers_ht, NULL);
+		assert(!ret);
+	}
 	if (state->notification_channel_socket >= 0) {
 		notification_channel_socket_destroy(
 				state->notification_channel_socket);
@@ -404,6 +412,12 @@ int init_thread_state(struct notification_thread_handle *handle,
 	state->channel_triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
 			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->channel_triggers_ht) {
+		goto error;
+	}
+
+	state->session_triggers_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
+			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	if (!state->session_triggers_ht) {
 		goto error;
 	}
 

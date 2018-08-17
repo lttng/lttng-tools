@@ -33,6 +33,7 @@
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/buffer-usage-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
+#include <lttng/condition/session-rotation-internal.h>
 #include <lttng/notification/channel-internal.h>
 
 #include <time.h>
@@ -58,8 +59,51 @@ struct lttng_trigger_list_element {
 
 struct lttng_channel_trigger_list {
 	struct channel_key channel_key;
+	/* List of struct lttng_trigger_list_element. */
 	struct cds_list_head list;
+	/* Node in the channel_triggers_ht */
 	struct cds_lfht_node channel_triggers_ht_node;
+};
+
+/*
+ * List of triggers applying to a given session.
+ *
+ * See:
+ *   - lttng_session_trigger_list_create()
+ *   - lttng_session_trigger_list_build()
+ *   - lttng_session_trigger_list_destroy()
+ *   - lttng_session_trigger_list_add()
+ */
+struct lttng_session_trigger_list {
+	/*
+	 * Not owned by this; points to the session_info structure's
+	 * session name.
+	 */
+	const char *session_name;
+	/* List of struct lttng_trigger_list_element. */
+	struct cds_list_head list;
+	/* Node in the session_triggers_ht */
+	struct cds_lfht_node session_triggers_ht_node;
+	/*
+	 * Weak reference to the notification system's session triggers
+	 * hashtable.
+	 *
+	 * The session trigger list structure structure is owned by
+	 * the session's session_info.
+	 *
+	 * The session_info is kept alive the the channel_infos holding a
+	 * reference to it (reference counting). When those channels are
+	 * destroyed (at runtime or on teardown), the reference they hold
+	 * to the session_info are released. On destruction of session_info,
+	 * session_info_destroy() will remove the list of triggers applying
+	 * to this session from the notification system's state.
+	 *
+	 * This implies that the session_triggers_ht must be destroyed
+	 * after the channels.
+	 */
+	struct cds_lfht *session_triggers_ht;
+	/* Used for delayed RCU reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct lttng_trigger_ht_element {
@@ -174,6 +218,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		uid_t channel_uid, gid_t channel_gid);
 
 
+/* session_info API */
 static
 void session_info_destroy(void *_data);
 static
@@ -182,13 +227,31 @@ static
 void session_info_put(struct session_info *session_info);
 static
 struct session_info *session_info_create(const char *name,
-		uid_t uid, gid_t gid);
+		uid_t uid, gid_t gid,
+		struct lttng_session_trigger_list *trigger_list);
 static
 void session_info_add_channel(struct session_info *session_info,
 		struct channel_info *channel_info);
 static
 void session_info_remove_channel(struct session_info *session_info,
 		struct channel_info *channel_info);
+
+/* lttng_session_trigger_list API */
+static
+struct lttng_session_trigger_list *lttng_session_trigger_list_create(
+		const char *session_name,
+		struct cds_lfht *session_triggers_ht);
+static
+struct lttng_session_trigger_list *lttng_session_trigger_list_build(
+		const struct notification_thread_state *state,
+		const char *session_name);
+static
+void lttng_session_trigger_list_destroy(
+		struct lttng_session_trigger_list *list);
+static
+int lttng_session_trigger_list_add(struct lttng_session_trigger_list *list,
+		const struct lttng_trigger *trigger);
+
 
 static
 int match_client(struct cds_lfht_node *node, const void *key)
@@ -414,6 +477,7 @@ void session_info_destroy(void *_data)
 			ERR("[notification-thread] Failed to destroy channel information hash table");
 		}
 	}
+	lttng_session_trigger_list_destroy(session_info->trigger_list);
 	free(session_info->name);
 	free(session_info);
 }
@@ -437,7 +501,8 @@ void session_info_put(struct session_info *session_info)
 }
 
 static
-struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid)
+struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
+		struct lttng_session_trigger_list *trigger_list)
 {
 	struct session_info *session_info;
 
@@ -462,6 +527,7 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid)
 	}
 	session_info->uid = uid;
 	session_info->gid = gid;
+	session_info->trigger_list = trigger_list;
 end:
 	return session_info;
 error:
@@ -1001,6 +1067,166 @@ int match_session(struct cds_lfht_node *node, const void *key)
 	return !strcmp(session_info->name, name);
 }
 
+/*
+ * Allocate an empty lttng_session_trigger_list for the session named
+ * 'session_name'.
+ *
+ * No ownership of 'session_name' is assumed by the session trigger list.
+ * It is the caller's responsability to ensure the session name is alive
+ * for as long as this list is.
+ */
+static
+struct lttng_session_trigger_list *lttng_session_trigger_list_create(
+		const char *session_name,
+		struct cds_lfht *session_triggers_ht)
+{
+	struct lttng_session_trigger_list *list;
+
+	list = zmalloc(sizeof(*list));
+	if (!list) {
+		goto end;
+	}
+	list->session_name = session_name;
+	CDS_INIT_LIST_HEAD(&list->list);
+	cds_lfht_node_init(&list->session_triggers_ht_node);
+	list->session_triggers_ht = session_triggers_ht;
+
+	rcu_read_lock();
+	/* Publish the list through the session_triggers_ht. */
+	cds_lfht_add(session_triggers_ht,
+			hash_key_str(session_name, lttng_ht_seed),
+			&list->session_triggers_ht_node);
+	rcu_read_unlock();
+end:
+	return list;
+}
+
+static
+void free_session_trigger_list_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct lttng_session_trigger_list,
+			rcu_node));
+}
+
+static
+void lttng_session_trigger_list_destroy(struct lttng_session_trigger_list *list)
+{
+	struct lttng_trigger_list_element *trigger_list_element, *tmp;
+
+	/* Empty the list element by element, and then free the list itself. */
+	cds_list_for_each_entry_safe(trigger_list_element, tmp,
+			&list->list, node) {
+		cds_list_del(&trigger_list_element->node);
+		free(trigger_list_element);
+	}
+	rcu_read_lock();
+	/* Unpublish the list from the session_triggers_ht. */
+	cds_lfht_del(list->session_triggers_ht,
+			&list->session_triggers_ht_node);
+	rcu_read_unlock();
+	call_rcu(&list->rcu_node, free_session_trigger_list_rcu);
+}
+
+static
+int lttng_session_trigger_list_add(struct lttng_session_trigger_list *list,
+		const struct lttng_trigger *trigger)
+{
+	int ret = 0;
+	struct lttng_trigger_list_element *new_element =
+			zmalloc(sizeof(*new_element));
+
+	if (!new_element) {
+		ret = -1;
+		goto end;
+	}
+	CDS_INIT_LIST_HEAD(&new_element->node);
+	new_element->trigger = trigger;
+	cds_list_add(&new_element->node, &list->list);
+end:
+	return ret;
+}
+
+static
+bool trigger_applies_to_session(const struct lttng_trigger *trigger,
+		const char *session_name)
+{
+	bool applies = false;
+	const struct lttng_condition *condition;
+
+	condition = lttng_trigger_get_const_condition(trigger);
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+	{
+		enum lttng_condition_status condition_status;
+		const char *condition_session_name;
+
+		condition_status = lttng_condition_session_rotation_get_session_name(
+			condition, &condition_session_name);
+		if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+			ERR("[notification-thread] Failed to retrieve session rotation condition's session name");
+			goto end;
+		}
+
+		assert(condition_session_name);
+		applies = !strcmp(condition_session_name, session_name);
+		break;
+	}
+	default:
+		goto end;
+	}
+end:
+	return applies;
+}
+
+/*
+ * Allocate and initialize an lttng_session_trigger_list which contains
+ * all triggers that apply to the session named 'session_name'.
+ *
+ * No ownership of 'session_name' is assumed by the session trigger list.
+ * It is the caller's responsability to ensure the session name is alive
+ * for as long as this list is.
+ */
+static
+struct lttng_session_trigger_list *lttng_session_trigger_list_build(
+		const struct notification_thread_state *state,
+		const char *session_name)
+{
+	int trigger_count = 0;
+	struct lttng_session_trigger_list *session_trigger_list = NULL;
+	struct lttng_trigger_ht_element *trigger_ht_element = NULL;
+	struct cds_lfht_iter iter;
+
+	session_trigger_list = lttng_session_trigger_list_create(session_name,
+			state->session_triggers_ht);
+
+	/* Add all triggers applying to the session named 'session_name'. */
+	cds_lfht_for_each_entry(state->triggers_ht, &iter, trigger_ht_element,
+			node) {
+		int ret;
+
+		if (!trigger_applies_to_session(trigger_ht_element->trigger,
+				session_name)) {
+			continue;
+		}
+
+		ret = lttng_session_trigger_list_add(session_trigger_list,
+				trigger_ht_element->trigger);
+		if (ret) {
+			goto error;
+		}
+
+		trigger_count++;
+	}
+
+	DBG("[notification-thread] Found %i triggers that apply to newly created session",
+			trigger_count);
+	return session_trigger_list;
+error:
+	lttng_session_trigger_list_destroy(session_trigger_list);
+	return NULL;
+}
+
 static
 struct session_info *find_or_create_session_info(
 		struct notification_thread_state *state,
@@ -1009,6 +1235,7 @@ struct session_info *find_or_create_session_info(
 	struct session_info *session = NULL;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
+	struct lttng_session_trigger_list *trigger_list;
 
 	rcu_read_lock();
 	cds_lfht_lookup(state->sessions_ht,
@@ -1024,21 +1251,30 @@ struct session_info *find_or_create_session_info(
 				sessions_ht_node);
 		assert(session->uid == uid);
 		assert(session->gid == gid);
-		goto end;
+		goto error;
 	}
 
-	session = session_info_create(name, uid, gid);
+	trigger_list = lttng_session_trigger_list_build(state, name);
+	if (!trigger_list) {
+		goto error;
+	}
+
+	session = session_info_create(name, uid, gid, trigger_list);
 	if (!session) {
 		ERR("[notification-thread] Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
 				name, uid, gid);
-		goto end;
+		goto error;
 	}
+	trigger_list = NULL;
 
 	cds_lfht_add(state->sessions_ht, hash_key_str(name, lttng_ht_seed),
 			&session->sessions_ht_node);
-end:
 	rcu_read_unlock();
 	return session;
+error:
+	rcu_read_unlock();
+	session_info_put(session);
+	return NULL;
 }
 
 static

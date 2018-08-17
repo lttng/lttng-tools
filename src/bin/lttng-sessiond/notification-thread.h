@@ -67,11 +67,21 @@ struct notification_thread_handle {
  *   - channel_triggers_ht:
  *             associates a channel key to a list of
  *             struct lttng_trigger_list_nodes. The triggers in this list are
- *             those that have conditions that apply to this channel.
+ *             those that have conditions that apply to a particular channel.
  *             A channel entry is only created when a channel is added; the
  *             list of triggers applying to such a channel is built at that
  *             moment.
  *             This hash table owns the list, but not the triggers themselves.
+ *
+ *   - session_triggers_ht:
+ *             associates a session name to a list of
+ *             struct lttng_trigger_list_nodes. The triggers in this list are
+ *             those that have conditions that apply to a particular session.
+ *             A session entry is only created when a session is created; the
+ *             list of triggers applying to this new session is built at that
+ *             moment. This happens at the time of creation of a session_info.
+ *             Likewise, the list is destroyed at the time of the session_info's
+ *             destruction.
  *
  *   - channel_state_ht:
  *             associates a pair (channel key, channel domain) to its last
@@ -123,12 +133,18 @@ struct notification_thread_handle {
  *      triggers which apply to this new channel,
  *      - triggers identified are added to the channel_triggers_ht.
  *    - add channel to channels_ht
+ *    - if it is the first channel of a session, a session_info is created and
+ *      added to the sessions_ht. A list of the triggers associated with that
+ *      session is built, and it is added to session_triggers_ht.
  *
  * 2) Destruction of a tracing channel
  *    - remove entry from channel_triggers_ht, releasing the list wrapper and
  *      elements,
  *    - remove entry from the channel_state_ht.
  *    - remove channel from channels_ht
+ *    - if it was the last known channel of a session, the session_info
+ *      structure is torndown, which in return destroys the list of triggers
+ *      applying to that session.
  *
  * 3) Registration of a trigger
  *    - if the trigger's action is of type "notify",
@@ -137,6 +153,7 @@ struct notification_thread_handle {
  *        - add list of clients (even if it is empty) to the
  *          notification_trigger_clients_ht,
  *    - add trigger to channel_triggers_ht (if applicable),
+ *    - add trigger to session_triggers_ht (if applicable),
  *    - add trigger to triggers_ht
  *    - evaluate the trigger's condition right away to react if that condition
  *      is true from the beginning.
@@ -145,6 +162,7 @@ struct notification_thread_handle {
  *    - if the trigger's action is of type "notify",
  *      - remove the trigger from the notification_trigger_clients_ht,
  *    - remove trigger from channel_triggers_ht (if applicable),
+ *    - remove trigger from session_triggers_ht (if applicable),
  *    - remove trigger from triggers_ht
  *
  * 5) Reception of a channel monitor sample from the consumer daemon
@@ -179,6 +197,7 @@ struct notification_thread_state {
 	struct lttng_poll_event events;
 	struct cds_lfht *client_socket_ht;
 	struct cds_lfht *channel_triggers_ht;
+	struct cds_lfht *session_triggers_ht;
 	struct cds_lfht *channel_state_ht;
 	struct cds_lfht *notification_trigger_clients_ht;
 	struct cds_lfht *channels_ht;

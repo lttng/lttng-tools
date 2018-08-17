@@ -38,6 +38,7 @@ struct session_info {
 	 * the value is of type (struct channel_info *).
 	 */
 	struct cds_lfht *channel_infos_ht;
+	struct lttng_session_trigger_list *trigger_list;
 	/* Node in the notification thread state's sessions_ht. */
 	struct cds_lfht_node sessions_ht_node;
 	uint64_t consumed_data_size;
