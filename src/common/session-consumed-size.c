@@ -59,11 +59,11 @@ bool lttng_condition_session_consumed_size_validate(
 	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
 			parent);
 	if (!consumed->session_name) {
-		ERR("Invalid buffer condition: a target session name must be set.");
+		ERR("Invalid session consumed size condition: a target session name must be set.");
 		goto end;
 	}
 	if (!consumed->consumed_threshold_bytes.set) {
-		ERR("Invalid session condition: a threshold must be set.");
+		ERR("Invalid session consumed size condition: a threshold must be set.");
 		goto end;
 	}
 
@@ -199,7 +199,7 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 	status = lttng_condition_session_consumed_size_set_threshold(condition,
 			condition_comm->consumed_threshold_bytes);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
-		ERR("Failed to initialize session consumed condition threshold");
+		ERR("Failed to initialize session consumed size condition threshold");
 		ret = -1;
 		goto end;
 	}
@@ -214,7 +214,7 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 	status = lttng_condition_session_consumed_size_set_session_name(condition,
 			session_name);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
-		ERR("Failed to set buffer consumed session name");
+		ERR("Failed to set session consumed size condition's session name");
 		ret = -1;
 		goto end;
 	}
