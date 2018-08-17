@@ -1,0 +1,73 @@
+#!/bin/bash
+#
+# Copyright (C) - 2017 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../../
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+SESSION_NAME="my_session"
+TMP_DIR=$(mktemp -d)
+SESSION_OUTPUT_PATH=$TMP_DIR/output
+EVENT_NAME="tp:tptest"
+
+PAGE_SIZE=$(getconf PAGE_SIZE)
+SUBBUF_SIZE=$(expr $PAGE_SIZE \* 8)
+
+FILE_SYNC_AFTER_FIRST_EVENT=$(mktemp -u)
+
+NR_ITER=-1
+NR_USEC_WAIT=5
+
+DIR=$(readlink -f $TESTDIR)
+
+source $TESTDIR/utils/utils.sh
+start_lttng_sessiond_notap
+
+create_lttng_session_notap $SESSION_NAME $SESSION_OUTPUT_PATH
+
+enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size=$SUBBUF_SIZE
+enable_ust_lttng_event_notap $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+
+start_lttng_tracing_notap $SESSION_NAME
+
+$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $FILE_SYNC_AFTER_FIRST_EVENT &
+APP_PID=$!
+while [ ! -f "${FILE_SYNC_AFTER_FIRST_EVENT}" ]; do
+	sleep 0.5
+done
+
+# The rotation application handles the actual testing once the tracing session
+# has been setup.
+$CURDIR/rotation $SESSION_NAME $SESSION_OUTPUT_PATH
+if [ $? -ne 0 ]; then
+	diag "Failed to run rotation notification client"
+fi
+
+stop_lttng_tracing_notap $SESSION_NAME
+
+stop_lttng_sessiond_notap
+
+# On ungraceful kill the app is cleaned up via the full_cleanup call
+# Suppress kill message
+kill -9 $APP_PID
+wait $APP_PID 2> /dev/null
+
+rm -rf $TMP_DIR
+rm $FILE_SYNC_AFTER_FIRST_EVENT 2> /dev/null

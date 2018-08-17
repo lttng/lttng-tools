@@ -5,7 +5,7 @@ AM_LDFLAGS =
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIB_LTTNG_CTL = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
-noinst_PROGRAMS = base_client notification
+noinst_PROGRAMS = base_client notification rotation
 
 if NO_SHARED
 
@@ -30,8 +30,11 @@ base_client_LDADD = $(LIB_LTTNG_CTL)
 notification_SOURCES = notification.c
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-noinst_SCRIPTS = test_notification_ust test_notification_ust test_notification_multi_app
-EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app
+rotation_SOURCES = rotation.c
+rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
+
+noinst_SCRIPTS = test_notification_ust test_notification_ust test_notification_multi_app test_rotation
+EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app test_rotation
 
 
 all-local:
