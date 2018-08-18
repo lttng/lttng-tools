@@ -235,7 +235,8 @@ void session_info_put(struct session_info *session_info);
 static
 struct session_info *session_info_create(const char *name,
 		uid_t uid, gid_t gid,
-		struct lttng_session_trigger_list *trigger_list);
+		struct lttng_session_trigger_list *trigger_list,
+		struct cds_lfht *sessions_ht);
 static
 void session_info_add_channel(struct session_info *session_info,
 		struct channel_info *channel_info);
@@ -515,6 +516,11 @@ void session_info_destroy(void *_data)
 		}
 	}
 	lttng_session_trigger_list_destroy(session_info->trigger_list);
+
+	rcu_read_lock();
+	cds_lfht_del(session_info->sessions_ht,
+			&session_info->sessions_ht_node);
+	rcu_read_unlock();
 	free(session_info->name);
 	free(session_info);
 }
@@ -539,7 +545,8 @@ void session_info_put(struct session_info *session_info)
 
 static
 struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
-		struct lttng_session_trigger_list *trigger_list)
+		struct lttng_session_trigger_list *trigger_list,
+		struct cds_lfht *sessions_ht)
 {
 	struct session_info *session_info;
 
@@ -565,6 +572,7 @@ struct session_info *session_info_create(const char *name, uid_t uid, gid_t gid,
 	session_info->uid = uid;
 	session_info->gid = gid;
 	session_info->trigger_list = trigger_list;
+	session_info->sessions_ht = sessions_ht;
 end:
 	return session_info;
 error:
@@ -1316,7 +1324,8 @@ struct session_info *find_or_create_session_info(
 				sessions_ht_node);
 		assert(session->uid == uid);
 		assert(session->gid == gid);
-		goto error;
+		session_info_get(session);
+		goto end;
 	}
 
 	trigger_list = lttng_session_trigger_list_build(state, name);
@@ -1324,7 +1333,8 @@ struct session_info *find_or_create_session_info(
 		goto error;
 	}
 
-	session = session_info_create(name, uid, gid, trigger_list);
+	session = session_info_create(name, uid, gid, trigger_list,
+			state->sessions_ht);
 	if (!session) {
 		ERR("[notification-thread] Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
 				name, uid, gid);
@@ -1334,6 +1344,7 @@ struct session_info *find_or_create_session_info(
 
 	cds_lfht_add(state->sessions_ht, hash_key_str(name, lttng_ht_seed),
 			&session->sessions_ht_node);
+end:
 	rcu_read_unlock();
 	return session;
 error:
@@ -1425,6 +1436,7 @@ int handle_notification_thread_command_add_channel(
 			hash_channel_key(&new_channel_info->key),
 			&channel_trigger_list->channel_triggers_ht_node);
 	rcu_read_unlock();
+	session_info_put(session_info);
 	*cmd_result = LTTNG_OK;
 	return 0;
 error:

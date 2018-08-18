@@ -41,6 +41,11 @@ struct session_info {
 	struct lttng_session_trigger_list *trigger_list;
 	/* Node in the notification thread state's sessions_ht. */
 	struct cds_lfht_node sessions_ht_node;
+	/*
+	 * Weak reference to the thread state's sessions_ht. Used for removal on
+	 * destruction.
+	 */
+	struct cds_lfht *sessions_ht;
 	uint64_t consumed_data_size;
 	struct {
 		/* Whether a rotation is ongoing for this session. */
