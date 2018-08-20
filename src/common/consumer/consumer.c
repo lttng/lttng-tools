@@ -2576,7 +2576,9 @@ void *consumer_thread_data_poll(void *data)
 	/* local view of the streams */
 	struct lttng_consumer_stream **local_stream = NULL, *new_stream = NULL;
 	/* local view of consumer_data.fds_count */
-	int nb_fd = 0, nb_pipes_fd;
+	int nb_fd = 0;
+	/* 2 for the consumer_data_pipe and wake up pipe */
+	const int nb_pipes_fd = 2;
 	/* Number of FDs with CONSUMER_ENDPOINT_INACTIVE but still open. */
 	int nb_inactive_fd = 0;
 	struct lttng_consumer_local_data *ctx = data;
@@ -2616,12 +2618,7 @@ void *consumer_thread_data_poll(void *data)
 			free(local_stream);
 			local_stream = NULL;
 
-			/*
-			 * Allocate for all fds + 2:
-			 *   +1 for the consumer_data_pipe
-			 *   +1 for wake up pipe
-			 */
-			nb_pipes_fd = 2;
+			/* Allocate for all fds */
 			pollfd = zmalloc((consumer_data.stream_count + nb_pipes_fd) * sizeof(struct pollfd));
 			if (pollfd == NULL) {
 				PERROR("pollfd malloc");
