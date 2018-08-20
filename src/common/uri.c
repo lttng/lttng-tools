@@ -644,10 +644,12 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 
 		set_default_uri_attr(&data_uris[0], LTTNG_STREAM_DATA);
 
-		ret = compare_destination(&ctrl_uris[0], &data_uris[0]);
-		if (ret != 0) {
-			ERR("Control and data destination mismatch");
-			goto error;
+		if (ctrl_uris) {
+			ret = compare_destination(&ctrl_uris[0], &data_uris[0]);
+			if (ret != 0) {
+				ERR("Control and data destination mismatch");
+				goto error;
+			}
 		}
 	}
 
