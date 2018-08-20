@@ -270,7 +270,7 @@ int sessiond_config_init(struct sessiond_config *config)
 		ret = config_set_paths_non_root(config);
 	}
 	if (ret < 0) {
-		goto end;
+		goto error;
 	}
 
 	/* 32 bits consumerd path setup */
@@ -278,7 +278,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd32_path, str);
 	str = NULL;
@@ -287,7 +287,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer error socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd32_err_unix_sock_path, str);
 	str = NULL;
@@ -296,7 +296,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 32-bit consumer command socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd32_cmd_unix_sock_path, str);
 	str = NULL;
@@ -306,7 +306,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd64_path, str);
 	str = NULL;
@@ -315,7 +315,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer error socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd64_err_unix_sock_path, str);
 	str = NULL;
@@ -324,7 +324,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set 64-bit consumer command socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->consumerd64_cmd_unix_sock_path, str);
 	str = NULL;
@@ -334,7 +334,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->kconsumerd_path, str);
 	str = NULL;
@@ -343,7 +343,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer error socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->kconsumerd_err_unix_sock_path, str);
 	str = NULL;
@@ -352,7 +352,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			config->rundir.value);
 	if (ret < 0) {
 		ERR("Failed to set kernel consumer command socket path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->kconsumerd_cmd_unix_sock_path, str);
 	str = NULL;
@@ -361,7 +361,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			DEFAULT_LTTNG_SESSIOND_PIDFILE);
 	if (ret < 0) {
 		ERR("Failed to set PID file path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->pid_file_path, str);
 	str = NULL;
@@ -370,7 +370,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			DEFAULT_LTTNG_SESSIOND_LOCKFILE);
 	if (ret < 0) {
 		ERR("Failed to set lock file path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->lock_file_path, str);
 	str = NULL;
@@ -379,7 +379,7 @@ int sessiond_config_init(struct sessiond_config *config)
 			DEFAULT_LTTNG_SESSIOND_AGENTPORT_FILE);
 	if (ret < 0) {
 		ERR("Failed to set agent port file path");
-		goto end;
+		goto error;
 	}
 	config_string_set(&config->agent_port_file_path, str);
 	str = NULL;
@@ -403,7 +403,9 @@ int sessiond_config_init(struct sessiond_config *config)
 #error "Unknown bitness"
 #endif
 	ret = 0;
-end:
+	return ret;
+error:
+	sessiond_config_fini(config);
 	return ret;
 }
 
