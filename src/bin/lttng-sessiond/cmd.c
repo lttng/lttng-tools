@@ -4903,6 +4903,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 			if (ret) {
 				ERR("Failed to disable session rotation timer in ROTATION_SET_SCHEDULE command");
 				ret = LTTNG_ERR_UNK;
+				goto end;
 			}
 		}
 		break;
