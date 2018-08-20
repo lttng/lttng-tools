@@ -2340,7 +2340,6 @@ int consumer_post_rotation(struct lttng_consumer_stream *stream,
 				stream->chan->name);
 		ret = rotate_notify_sessiond(ctx, stream->chan->key);
 	}
-	assert(stream->chan->nr_stream_rotate_pending >= 0);
 	pthread_mutex_unlock(&stream->chan->lock);
 
 	return ret;
