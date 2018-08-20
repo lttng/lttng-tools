@@ -715,6 +715,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 			client, state)) {
 		WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
 		ret = -1;
+		free(client_list_element);
 		goto end_unlock;
 	}
 
