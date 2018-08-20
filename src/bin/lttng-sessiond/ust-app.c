@@ -4446,6 +4446,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 					usess->consumer->dst.session_root_path,
 					usess->consumer->chunk_path,
 					usess->consumer->subdir);
+			free(tmp_path);
 			goto error_unlock;
 		}
 
