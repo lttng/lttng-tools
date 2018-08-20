@@ -608,7 +608,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 
 		if (ctrl_uris[0].dtype == LTTNG_DST_PATH &&
 				(data_url && *data_url != '\0')) {
-			ERR("Can not have a data URL when destination is file://");
+			ERR("Cannot have a data URL when destination is file://");
 			goto error;
 		}
 
