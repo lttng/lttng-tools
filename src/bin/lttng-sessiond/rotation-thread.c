@@ -261,8 +261,11 @@ error:
 static
 void fini_thread_state(struct rotation_thread_state *state)
 {
+	int ret;
+
 	lttng_poll_clean(&state->events);
-	cds_lfht_destroy(channel_pending_rotate_ht, NULL);
+	ret = cds_lfht_destroy(channel_pending_rotate_ht, NULL);
+	assert(!ret);
 	if (rotate_notification_channel) {
 		lttng_notification_channel_destroy(rotate_notification_channel);
 	}
