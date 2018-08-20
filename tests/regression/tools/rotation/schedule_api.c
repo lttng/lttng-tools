@@ -109,6 +109,7 @@ void test_add_null_session(void)
 	status = lttng_session_add_rotation_schedule(NULL, size_schedule);
 	ok(status == LTTNG_ROTATION_STATUS_INVALID,
 			"NULL session name rejected by lttng_session_add_rotation_schedule()");
+	lttng_rotation_schedule_destroy(size_schedule);
 }
 
 void test_add_null_schedule(void)
@@ -156,6 +157,7 @@ void test_remove_null_session(void)
 	status = lttng_session_remove_rotation_schedule(NULL, size_schedule);
 	ok(status == LTTNG_ROTATION_STATUS_INVALID,
 			"NULL session name rejected by lttng_session_remove_rotation_schedule()");
+	lttng_rotation_schedule_destroy(size_schedule);
 }
 
 void test_remove_null_schedule(void)
