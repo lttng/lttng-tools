@@ -591,15 +591,9 @@ static void sessiond_cleanup(void)
 	 */
 	utils_close_pipe(thread_quit_pipe);
 
-	/*
-	 * If config.pid_file_path.value is undefined, the default file will be
-	 * wiped when removing the rundir.
-	 */
-	if (config.pid_file_path.value) {
-		ret = remove(config.pid_file_path.value);
-		if (ret < 0) {
-			PERROR("remove pidfile %s", config.pid_file_path.value);
-		}
+	ret = remove(config.pid_file_path.value);
+	if (ret < 0) {
+		PERROR("remove pidfile %s", config.pid_file_path.value);
 	}
 
 	DBG("Removing sessiond and consumerd content of directory %s",
