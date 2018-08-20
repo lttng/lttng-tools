@@ -269,6 +269,9 @@ int sessiond_config_init(struct sessiond_config *config)
 	} else {
 		ret = config_set_paths_non_root(config);
 	}
+	if (ret < 0) {
+		goto end;
+	}
 
 	/* 32 bits consumerd path setup */
 	ret = asprintf(&str, DEFAULT_USTCONSUMERD32_PATH,
