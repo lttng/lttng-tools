@@ -1183,19 +1183,20 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_ROTATE_PENDING_RELAY:
 	{
+		int pending;
 		uint32_t pending_reply;
 
 		DBG("Consumer rotate pending on relay for session %" PRIu64,
 				msg.u.rotate_pending_relay.session_id);
-		ret = lttng_consumer_rotate_pending_relay(
+		pending = lttng_consumer_rotate_pending_relay(
 				msg.u.rotate_pending_relay.session_id,
 				msg.u.rotate_pending_relay.relayd_id,
 				msg.u.rotate_pending_relay.chunk_id);
-		if (ret < 0) {
+		if (pending < 0) {
 			ERR("Rotate pending relay failed");
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			pending_reply = !!ret;
+			pending_reply = !!pending;
 		}
 
 		health_code_update();
@@ -1204,6 +1205,15 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
+		}
+
+		if (pending < 0) {
+			/*
+			 * An error occured while running the command;
+			 * don't send the 'pending' flag as the sessiond
+			 * will not read it.
+			 */
+			break;
 		}
 
 		/* Send back returned value to session daemon */
