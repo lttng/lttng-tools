@@ -141,43 +141,39 @@ error:
 }
 
 /*
- * Returns the size of a trigger (header + condition + action).
  * Both elements are stored contiguously, see their "*_comm" structure
  * for the detailed format.
  */
 LTTNG_HIDDEN
-ssize_t lttng_trigger_serialize(struct lttng_trigger *trigger, char *buf)
+int lttng_trigger_serialize(struct lttng_trigger *trigger,
+		struct lttng_dynamic_buffer *buf)
 {
+	int ret;
+	size_t header_offset, size_before_payload;
 	struct lttng_trigger_comm trigger_comm = { 0 };
-	ssize_t action_size, condition_size, offset = 0, ret;
+	struct lttng_trigger_comm *header;
 
-	if (!trigger) {
-		ret = -1;
+	header_offset = buf->size;
+	ret = lttng_dynamic_buffer_append(buf, &trigger_comm,
+			sizeof(trigger_comm));
+	if (ret) {
 		goto end;
 	}
 
-	offset += sizeof(trigger_comm);
-	condition_size = lttng_condition_serialize(trigger->condition,
-			buf ? (buf + offset) : NULL);
-	if (condition_size < 0) {
-		ret = -1;
+	size_before_payload = buf->size;
+	ret = lttng_condition_serialize(trigger->condition, buf);
+	if (ret) {
 		goto end;
 	}
-	offset += condition_size;
 
-	action_size = lttng_action_serialize(trigger->action,
-			buf ? (buf + offset) : NULL);
-	if (action_size < 0) {
-		ret = -1;
+	ret = lttng_action_serialize(trigger->action, buf);
+	if (ret) {
 		goto end;
 	}
-	offset += action_size;
 
-	if (buf) {
-		trigger_comm.length = (uint32_t) (condition_size + action_size);
-		memcpy(buf, &trigger_comm, sizeof(trigger_comm));
-	}
-	ret = offset;
+	/* Update payload size. */
+	header = (struct lttng_trigger_comm *) ((char *) buf->data + header_offset);
+	header->length = buf->size - size_before_payload;
 end:
 	return ret;
 }

@@ -63,32 +63,29 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_serialize(const struct lttng_condition *condition,
-		char *buf)
+int lttng_condition_serialize(const struct lttng_condition *condition,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret, condition_size;
-	struct lttng_condition_comm condition_comm = {
-		.condition_type = (int8_t) (condition ?
-				condition->type : LTTNG_CONDITION_TYPE_UNKNOWN)
-	};
+	int ret;
+	struct lttng_condition_comm condition_comm = { 0 };
 
 	if (!condition) {
 		ret = -1;
 		goto end;
 	}
 
-	ret = sizeof(struct lttng_condition_comm);
-	if (buf) {
-		memcpy(buf, &condition_comm, ret);
-		buf += ret;
-	}
+	condition_comm.condition_type = (int8_t) condition->type;
 
-	condition_size = condition->serialize(condition, buf);
-	if (condition_size < 0) {
-		ret = condition_size;
+	ret = lttng_dynamic_buffer_append(buf, &condition_comm,
+			sizeof(condition_comm));
+	if (ret) {
 		goto end;
 	}
-	ret += condition_size;
+
+	ret = condition->serialize(condition, buf);
+	if (ret) {
+		goto end;
+	}
 end:
 	return ret;
 }

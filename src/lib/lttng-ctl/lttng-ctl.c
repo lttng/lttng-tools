@@ -2666,9 +2666,9 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	char *trigger_buf = NULL;
-	ssize_t trigger_size;
+	struct lttng_dynamic_buffer buffer;
 
+	lttng_dynamic_buffer_init(&buffer);
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2679,30 +2679,19 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	trigger_size = lttng_trigger_serialize(trigger, NULL);
-	if (trigger_size < 0) {
+	ret = lttng_trigger_serialize(trigger, &buffer);
+	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
-		goto end;
-	}
-
-	trigger_buf = zmalloc(trigger_size);
-	if (!trigger_buf) {
-		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_REGISTER_TRIGGER;
-	if (lttng_trigger_serialize(trigger, trigger_buf) < 0) {
-		ret = -LTTNG_ERR_UNK;
-		goto end;
-	}
-
-	lsm.u.trigger.length = (uint32_t) trigger_size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, trigger_buf,
-			trigger_size, NULL);
+	lsm.u.trigger.length = (uint32_t) buffer.size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data,
+			buffer.size, NULL);
 end:
-	free(trigger_buf);
+	lttng_dynamic_buffer_reset(&buffer);
 	return ret;
 }
 
@@ -2710,43 +2699,32 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	char *trigger_buf = NULL;
-	ssize_t trigger_size;
+	struct lttng_dynamic_buffer buffer;
 
+	lttng_dynamic_buffer_init(&buffer);
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
 	if (!lttng_trigger_validate(trigger)) {
-		ret = -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID_TRIGGER;
 		goto end;
 	}
 
-	trigger_size = lttng_trigger_serialize(trigger, NULL);
-	if (trigger_size < 0) {
+	ret = lttng_trigger_serialize(trigger, &buffer);
+	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
-		goto end;
-	}
-
-	trigger_buf = zmalloc(trigger_size);
-	if (!trigger_buf) {
-		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
-	if (lttng_trigger_serialize(trigger, trigger_buf) < 0) {
-		ret = -LTTNG_ERR_UNK;
-		goto end;
-	}
-
-	lsm.u.trigger.length = (uint32_t) trigger_size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, trigger_buf,
-			trigger_size, NULL);
+	lsm.u.trigger.length = (uint32_t) buffer.size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data,
+			buffer.size, NULL);
 end:
-	free(trigger_buf);
+	lttng_dynamic_buffer_reset(&buffer);
 	return ret;
 }
 

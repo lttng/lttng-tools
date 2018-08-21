@@ -57,29 +57,24 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_action_serialize(struct lttng_action *action, char *buf)
+int lttng_action_serialize(struct lttng_action *action,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret, action_size;
-	struct lttng_action_comm action_comm;
+	int ret;
+	struct lttng_action_comm action_comm = {
+		.action_type = (int8_t) action->type,
+	};
 
-	if (!action) {
-		ret = -1;
+	ret = lttng_dynamic_buffer_append(buf, &action_comm,
+			sizeof(action_comm));
+	if (ret) {
 		goto end;
 	}
 
-	action_comm.action_type = (int8_t) action->type;
-	ret = sizeof(struct lttng_action_comm);
-	if (buf) {
-		memcpy(buf, &action_comm, ret);
-		buf += ret;
-	}
-
-	action_size = action->serialize(action, buf);
-	if (action_size < 0) {
-		ret = action_size;
+	ret = action->serialize(action, buf);
+	if (ret) {
 		goto end;
 	}
-	ret += action_size;
 end:
 	return ret;
 }

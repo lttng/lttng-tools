@@ -2387,8 +2387,9 @@ int send_evaluation_to_clients(struct lttng_trigger *trigger,
 	struct notification_client_list_element *client_list_element, *tmp;
 	struct lttng_notification *notification;
 	struct lttng_condition *condition;
-	ssize_t expected_notification_size, notification_size;
-	struct lttng_notification_channel_message msg;
+	struct lttng_notification_channel_message msg_header = {
+		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
+	};
 
 	lttng_dynamic_buffer_init(&msg_buffer);
 
@@ -2401,34 +2402,22 @@ int send_evaluation_to_clients(struct lttng_trigger *trigger,
 		goto end;
 	}
 
-	expected_notification_size = lttng_notification_serialize(notification,
-			NULL);
-	if (expected_notification_size < 0) {
-		ERR("[notification-thread] Failed to get size of serialized notification");
-		ret = -1;
-		goto end;
-	}
-
-	msg.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION;
-	msg.size = (uint32_t) expected_notification_size;
-	ret = lttng_dynamic_buffer_append(&msg_buffer, &msg, sizeof(msg));
+	ret = lttng_dynamic_buffer_append(&msg_buffer, &msg_header,
+			sizeof(msg_header));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_set_size(&msg_buffer,
-			msg_buffer.size + expected_notification_size);
+	ret = lttng_notification_serialize(notification, &msg_buffer);
 	if (ret) {
-		goto end;
-	}
-
-	notification_size = lttng_notification_serialize(notification,
-			msg_buffer.data + sizeof(msg));
-	if (notification_size != expected_notification_size) {
 		ERR("[notification-thread] Failed to serialize notification");
 		ret = -1;
 		goto end;
 	}
+
+	/* Update payload size. */
+	((struct lttng_notification_channel_message * ) msg_buffer.data)->size =
+			(uint32_t) (msg_buffer.size - sizeof(msg_header));
 
 	cds_list_for_each_entry_safe(client_list_element, tmp,
 			&client_list->list, node) {

@@ -73,40 +73,45 @@ end:
 }
 
 static
-ssize_t lttng_condition_session_consumed_size_serialize(
-		const struct lttng_condition *condition, char *buf)
+int lttng_condition_session_consumed_size_serialize(
+		const struct lttng_condition *condition,
+		struct lttng_dynamic_buffer *buf)
 {
-	struct lttng_condition_session_consumed_size *consumed;
-	ssize_t ret, size;
+	int ret;
 	size_t session_name_len;
+	struct lttng_condition_session_consumed_size *consumed;
+	struct lttng_condition_session_consumed_size_comm consumed_comm;
 
 	if (!condition || !IS_CONSUMED_SIZE_CONDITION(condition)) {
 		ret = -1;
 		goto end;
 	}
 
-	DBG("Serializing session consumed condition");
-	consumed = container_of(condition, struct lttng_condition_session_consumed_size,
+	DBG("Serializing session consumed size condition");
+	consumed = container_of(condition,
+			struct lttng_condition_session_consumed_size,
 			parent);
-	size = sizeof(struct lttng_condition_session_consumed_size_comm);
+
 	session_name_len = strlen(consumed->session_name) + 1;
 	if (session_name_len > LTTNG_NAME_MAX) {
 		ret = -1;
 		goto end;
 	}
-	size += session_name_len;
-	if (buf) {
-		struct lttng_condition_session_consumed_size_comm consumed_comm = {
-			.consumed_threshold_bytes = consumed->consumed_threshold_bytes.value,
-			.session_name_len = session_name_len,
-		};
 
-		memcpy(buf, &consumed_comm, sizeof(consumed_comm));
-		buf += sizeof(consumed_comm);
-		memcpy(buf, consumed->session_name, session_name_len);
-		buf += session_name_len;
+	consumed_comm.consumed_threshold_bytes =
+			consumed->consumed_threshold_bytes.value;
+	consumed_comm.session_name_len = (uint32_t) session_name_len;
+
+	ret = lttng_dynamic_buffer_append(buf, &consumed_comm,
+			sizeof(consumed_comm));
+	if (ret) {
+		goto end;
 	}
-	ret = size;
+	ret = lttng_dynamic_buffer_append(buf, consumed->session_name,
+			session_name_len);
+	if (ret) {
+		goto end;
+	}
 end:
 	return ret;
 }
@@ -397,24 +402,17 @@ end:
 }
 
 static
-ssize_t lttng_evaluation_session_consumed_size_serialize(
-		struct lttng_evaluation *evaluation, char *buf)
+int lttng_evaluation_session_consumed_size_serialize(
+		struct lttng_evaluation *evaluation,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret;
 	struct lttng_evaluation_session_consumed_size *consumed;
+	struct lttng_evaluation_session_consumed_size_comm comm;
 
 	consumed = container_of(evaluation, struct lttng_evaluation_session_consumed_size,
 			parent);
-	if (buf) {
-		struct lttng_evaluation_session_consumed_size_comm comm = {
-			.session_consumed = consumed->session_consumed,
-		};
-
-		memcpy(buf, &comm, sizeof(comm));
-	}
-
-	ret = sizeof(struct lttng_evaluation_session_consumed_size_comm);
-	return ret;
+	comm.session_consumed = consumed->session_consumed;
+	return lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
 }
 
 static

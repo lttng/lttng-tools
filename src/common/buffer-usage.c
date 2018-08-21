@@ -95,12 +95,14 @@ end:
 }
 
 static
-ssize_t lttng_condition_buffer_usage_serialize(
-		const struct lttng_condition *condition, char *buf)
+int lttng_condition_buffer_usage_serialize(
+		const struct lttng_condition *condition,
+		struct lttng_dynamic_buffer *buf)
 {
+	int ret;
 	struct lttng_condition_buffer_usage *usage;
-	ssize_t ret, size;
 	size_t session_name_len, channel_name_len;
+	struct lttng_condition_buffer_usage_comm usage_comm;
 
 	if (!condition || !IS_USAGE_CONDITION(condition)) {
 		ret = -1;
@@ -110,7 +112,7 @@ ssize_t lttng_condition_buffer_usage_serialize(
 	DBG("Serializing buffer usage condition");
 	usage = container_of(condition, struct lttng_condition_buffer_usage,
 			parent);
-	size = sizeof(struct lttng_condition_buffer_usage_comm);
+
 	session_name_len = strlen(usage->session_name) + 1;
 	channel_name_len = strlen(usage->channel_name) + 1;
 	if (session_name_len > LTTNG_NAME_MAX ||
@@ -118,36 +120,41 @@ ssize_t lttng_condition_buffer_usage_serialize(
 		ret = -1;
 		goto end;
 	}
-	size += session_name_len + channel_name_len;
-	if (buf) {
-		struct lttng_condition_buffer_usage_comm usage_comm = {
-			.threshold_set_in_bytes = usage->threshold_bytes.set ? 1 : 0,
-			.session_name_len = session_name_len,
-			.channel_name_len = channel_name_len,
-			.domain_type = (int8_t) usage->domain.type,
-		};
 
-		if (usage->threshold_bytes.set) {
-			usage_comm.threshold = usage->threshold_bytes.value;
-		} else {
-			uint64_t val = double_to_fixed(
-					usage->threshold_ratio.value);
+	usage_comm.threshold_set_in_bytes = !!usage->threshold_bytes.set;
+	usage_comm.session_name_len = session_name_len;
+	usage_comm.channel_name_len = channel_name_len;
+	usage_comm.domain_type = (int8_t) usage->domain.type;
 
-			if (val > UINT32_MAX) {
-				/* overflow. */
-				ret = -1;
-				goto end;
-			}
-			usage_comm.threshold = val;
+	if (usage->threshold_bytes.set) {
+		usage_comm.threshold = usage->threshold_bytes.value;
+	} else {
+		uint64_t val = double_to_fixed(
+				usage->threshold_ratio.value);
+
+		if (val > UINT32_MAX) {
+			/* overflow. */
+			ret = -1;
+			goto end;
 		}
-
-		memcpy(buf, &usage_comm, sizeof(usage_comm));
-		buf += sizeof(usage_comm);
-		memcpy(buf, usage->session_name, session_name_len);
-		buf += session_name_len;
-		memcpy(buf, usage->channel_name, channel_name_len);
+		usage_comm.threshold = val;
 	}
-	ret = size;
+
+	ret = lttng_dynamic_buffer_append(buf, &usage_comm,
+			sizeof(usage_comm));
+	if (ret) {
+		goto end;
+	}
+	ret = lttng_dynamic_buffer_append(buf, usage->session_name,
+			session_name_len);
+	if (ret) {
+		goto end;
+	}
+	ret = lttng_dynamic_buffer_append(buf, usage->channel_name,
+			channel_name_len);
+	if (ret) {
+		goto end;
+	}
 end:
 	return ret;
 }
@@ -739,25 +746,19 @@ end:
 }
 
 static
-ssize_t lttng_evaluation_buffer_usage_serialize(
-		struct lttng_evaluation *evaluation, char *buf)
+int lttng_evaluation_buffer_usage_serialize(
+		struct lttng_evaluation *evaluation,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret;
 	struct lttng_evaluation_buffer_usage *usage;
+	struct lttng_evaluation_buffer_usage_comm comm;
 
 	usage = container_of(evaluation, struct lttng_evaluation_buffer_usage,
 			parent);
-	if (buf) {
-		struct lttng_evaluation_buffer_usage_comm comm = {
-			.buffer_use = usage->buffer_use,
-			.buffer_capacity = usage->buffer_capacity,
-		};
+	comm.buffer_use = usage->buffer_use;
+	comm.buffer_capacity = usage->buffer_capacity;
 
-		memcpy(buf, &comm, sizeof(comm));
-	}
-
-	ret = sizeof(struct lttng_evaluation_buffer_usage_comm);
-	return ret;
+	return lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
 }
 
 static

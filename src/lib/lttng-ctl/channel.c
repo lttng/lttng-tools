@@ -575,13 +575,15 @@ enum lttng_notification_channel_status send_condition_command(
 		const struct lttng_condition *condition)
 {
 	int socket;
-	ssize_t command_size, ret;
+	ssize_t ret;
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
-	char *command_buffer = NULL;
-	struct lttng_notification_channel_message cmd_message = {
-		.type = type,
+	struct lttng_dynamic_buffer buffer;
+	struct lttng_notification_channel_message cmd_header = {
+		.type = (int8_t) type,
 	};
+
+	lttng_dynamic_buffer_init(&buffer);
 
 	if (!channel) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
@@ -598,28 +600,24 @@ enum lttng_notification_channel_status send_condition_command(
 		goto end_unlock;
 	}
 
-	ret = lttng_condition_serialize(condition, NULL);
-	if (ret < 0) {
+	ret = lttng_dynamic_buffer_append(&buffer, &cmd_header,
+			sizeof(cmd_header));
+	if (ret) {
+		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+		goto end_unlock;
+	}
+
+	ret = lttng_condition_serialize(condition, &buffer);
+	if (ret) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
 		goto end_unlock;
 	}
-	assert(ret < UINT32_MAX);
-	cmd_message.size = (uint32_t) ret;
-	command_size = ret + sizeof(
-			struct lttng_notification_channel_message);
-	command_buffer = zmalloc(command_size);
-	if (!command_buffer) {
-		goto end_unlock;
-	}
 
-	memcpy(command_buffer, &cmd_message, sizeof(cmd_message));
-	ret = lttng_condition_serialize(condition,
-			command_buffer + sizeof(cmd_message));
-	if (ret < 0) {
-		goto end_unlock;
-	}
+	/* Update payload length. */
+	((struct lttng_notification_channel_message *) buffer.data)->size =
+			(uint32_t) (buffer.size - sizeof(cmd_header));
 
-	ret = lttcomm_send_unix_sock(socket, command_buffer, command_size);
+	ret = lttcomm_send_unix_sock(socket, buffer.data, buffer.size);
 	if (ret < 0) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 		goto end_unlock;
@@ -633,7 +631,7 @@ enum lttng_notification_channel_status send_condition_command(
 end_unlock:
 	pthread_mutex_unlock(&channel->lock);
 end:
-	free(command_buffer);
+	lttng_dynamic_buffer_reset(&buffer);
 	return status;
 }
 

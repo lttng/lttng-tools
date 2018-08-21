@@ -46,40 +46,33 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_notification_serialize(struct lttng_notification *notification,
-		char *buf)
+int lttng_notification_serialize(struct lttng_notification *notification,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret, condition_size, evaluation_size, offset = 0;
+	int ret;
+	size_t header_offset, size_before_payload;
 	struct lttng_notification_comm notification_comm = { 0 };
+	struct lttng_notification_comm *header;
 
-	if (!notification) {
-		ret = -1;
+	header_offset = buf->size;
+	ret = lttng_dynamic_buffer_append(buf, &notification_comm,
+			sizeof(notification_comm));
+
+	size_before_payload = buf->size;
+	ret = lttng_condition_serialize(notification->condition,
+			buf);
+	if (ret) {
 		goto end;
 	}
 
-	offset += sizeof(notification_comm);
-	condition_size = lttng_condition_serialize(notification->condition,
-			buf ? (buf + offset) : NULL);
-	if (condition_size < 0) {
-		ret = condition_size;
+	ret = lttng_evaluation_serialize(notification->evaluation, buf);
+	if (ret) {
 		goto end;
 	}
-	offset += condition_size;
 
-	evaluation_size = lttng_evaluation_serialize(notification->evaluation,
-			buf ? (buf + offset) : NULL);
-	if (evaluation_size < 0) {
-		ret = evaluation_size;
-		goto end;
-	}
-	offset += evaluation_size;
-
-	if (buf) {
-		notification_comm.length =
-				(uint32_t) (condition_size + evaluation_size);
-		memcpy(buf, &notification_comm, sizeof(notification_comm));
-	}
-	ret = offset;
+	/* Update payload size. */
+	header = (struct lttng_notification_comm *) ((char *) buf->data + header_offset);
+	header->length = (uint32_t) (buf->size - size_before_payload);
 end:
 	return ret;
 

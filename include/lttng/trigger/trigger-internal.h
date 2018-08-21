@@ -21,6 +21,7 @@
 #include <lttng/trigger/trigger.h>
 #include <common/macros.h>
 #include <common/buffer-view.h>
+#include <common/dynamic-buffer.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -42,7 +43,8 @@ ssize_t lttng_trigger_create_from_buffer(const struct lttng_buffer_view *view,
 		struct lttng_trigger **trigger);
 
 LTTNG_HIDDEN
-ssize_t lttng_trigger_serialize(struct lttng_trigger *trigger, char *buf);
+int lttng_trigger_serialize(struct lttng_trigger *trigger,
+		struct lttng_dynamic_buffer *buf);
 
 LTTNG_HIDDEN
 bool lttng_trigger_validate(struct lttng_trigger *trigger);

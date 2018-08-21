@@ -21,6 +21,7 @@
 #include <lttng/condition/condition.h>
 #include <common/macros.h>
 #include <common/buffer-view.h>
+#include <common/dynamic-buffer.h>
 #include <stdbool.h>
 #include <urcu/list.h>
 #include <stdint.h>
@@ -28,8 +29,9 @@
 
 typedef void (*condition_destroy_cb)(struct lttng_condition *condition);
 typedef bool (*condition_validate_cb)(const struct lttng_condition *condition);
-typedef ssize_t (*condition_serialize_cb)(
-		const struct lttng_condition *condition, char *buf);
+typedef int (*condition_serialize_cb)(
+		const struct lttng_condition *condition,
+		struct lttng_dynamic_buffer *buf);
 typedef bool (*condition_equal_cb)(const struct lttng_condition *a,
 		const struct lttng_condition *b);
 typedef ssize_t (*condition_create_from_buffer_cb)(
@@ -63,8 +65,8 @@ ssize_t lttng_condition_create_from_buffer(
 		struct lttng_condition **condition);
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_serialize(const struct lttng_condition *condition,
-		char *buf);
+int lttng_condition_serialize(const struct lttng_condition *condition,
+		struct lttng_dynamic_buffer *buf);
 
 LTTNG_HIDDEN
 bool lttng_condition_is_equal(const struct lttng_condition *a,

@@ -27,7 +27,8 @@ void lttng_action_notify_destroy(struct lttng_action *action)
 }
 
 static
-ssize_t lttng_action_notify_serialize(struct lttng_action *action, char *buf)
+int lttng_action_notify_serialize(struct lttng_action *action,
+		struct lttng_dynamic_buffer *buf)
 {
 	return 0;
 }

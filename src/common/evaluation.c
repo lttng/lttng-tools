@@ -24,29 +24,26 @@
 #include <assert.h>
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_serialize(struct lttng_evaluation *evaluation,
-		char *buf)
+int lttng_evaluation_serialize(struct lttng_evaluation *evaluation,
+		struct lttng_dynamic_buffer *buf)
 {
-	ssize_t ret, offset = 0;
+	int ret;
 	struct lttng_evaluation_comm evaluation_comm = {
 		.type = (int8_t) evaluation->type
 	};
 
-	if (buf) {
-		memcpy(buf, &evaluation_comm, sizeof(evaluation_comm));
+	ret = lttng_dynamic_buffer_append(buf, &evaluation_comm,
+			sizeof(evaluation_comm));
+	if (ret) {
+		goto end;
 	}
-	offset += sizeof(evaluation_comm);
 
 	if (evaluation->serialize) {
-		ret = evaluation->serialize(evaluation,
-				buf ? (buf + offset) : NULL);
-		if (ret < 0) {
+		ret = evaluation->serialize(evaluation, buf);
+		if (ret) {
 			goto end;
 		}
-		offset += ret;
 	}
-
-	ret = offset;
 end:
 	return ret;
 }

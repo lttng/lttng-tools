@@ -21,6 +21,7 @@
 #include <lttng/notification/notification.h>
 #include <common/macros.h>
 #include <common/buffer-view.h>
+#include <common/dynamic-buffer.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -58,8 +59,8 @@ struct lttng_notification *lttng_notification_create(
 		struct lttng_evaluation *evaluation);
 
 LTTNG_HIDDEN
-ssize_t lttng_notification_serialize(struct lttng_notification *notification,
-		char *buf);
+int lttng_notification_serialize(struct lttng_notification *notification,
+		struct lttng_dynamic_buffer *buf);
 
 LTTNG_HIDDEN
 ssize_t lttng_notification_create_from_buffer(
