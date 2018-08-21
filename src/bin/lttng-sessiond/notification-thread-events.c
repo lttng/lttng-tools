@@ -1528,6 +1528,27 @@ end:
 }
 
 static
+int handle_notification_thread_command_session_rotation_ongoing(
+	struct notification_thread_state *state,
+	const char *session_name, uint64_t trace_archive_chunk_id,
+	enum lttng_error_code *cmd_result)
+{
+	*cmd_result = LTTNG_OK;
+	return 0;
+}
+
+static
+int handle_notification_thread_command_session_rotation_completed(
+	struct notification_thread_state *state,
+	const char *session_name, uint64_t trace_archive_chunk_id,
+	const struct lttng_trace_archive_location *location,
+	enum lttng_error_code *cmd_result)
+{
+	*cmd_result = LTTNG_OK;
+	return 0;
+}
+
+static
 int condition_is_supported(struct lttng_condition *condition)
 {
 	int ret;
@@ -2016,6 +2037,23 @@ int handle_notification_thread_command(
 		ret = handle_notification_thread_command_remove_channel(
 				state, cmd->parameters.remove_channel.key,
 				cmd->parameters.remove_channel.domain,
+				&cmd->reply_code);
+		break;
+	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING:
+		DBG("[notification-thread] Received session rotation ongoing command");
+		ret = handle_notification_thread_command_session_rotation_ongoing(
+				state,
+				cmd->parameters.session_rotation_ongoing.session_name,
+				cmd->parameters.session_rotation_ongoing.trace_archive_chunk_id,
+				&cmd->reply_code);
+		break;
+	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED:
+		DBG("[notification-thread] Received session rotation completed command");
+		ret = handle_notification_thread_command_session_rotation_completed(
+				state,
+				cmd->parameters.session_rotation_completed.session_name,
+				cmd->parameters.session_rotation_completed.trace_archive_chunk_id,
+				cmd->parameters.session_rotation_completed.location,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_QUIT:

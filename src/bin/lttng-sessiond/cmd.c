@@ -4560,6 +4560,13 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->current_archive_id++;
 	session->rotate_pending = true;
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
+	ret = notification_thread_command_session_rotation_ongoing(
+			notification_thread_handle,
+			session->name, session->current_archive_id);
+	if (ret) {
+		ret = LTTNG_ERR_UNK;
+		goto end;
+	}
 
 	/*
 	 * Create the path name for the next chunk.
