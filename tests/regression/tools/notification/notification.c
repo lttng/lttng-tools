@@ -567,10 +567,10 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Subscribing to an invalid condition");
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, dummy_invalid_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Unsubscribing to an invalid condition");
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Unsubscribing from an invalid condition");
 
 	nc_status = lttng_notification_channel_unsubscribe(notification_channel, dummy_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION, "Unsubscribing to an valid unknown condition");
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION, "Unsubscribing from a valid unknown condition");
 
 	/* Subscribe a valid low condition */
 	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
