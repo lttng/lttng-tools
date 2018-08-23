@@ -28,6 +28,7 @@
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <lttng/location-internal.h>
 
 #include "session.h"
 #include "utils.h"
@@ -216,6 +217,48 @@ void session_get_net_consumer_ports(const struct ltt_session *session,
 			session->ust_session->consumer;
 	*control_port = output->dst.net.control.port;
 	*data_port = output->dst.net.data.port;
+}
+
+/*
+ * Get the location of the latest trace archive produced by a rotation.
+ *
+ * The caller must hold the session lock.
+ */
+struct lttng_trace_archive_location *session_get_trace_archive_location(
+		struct ltt_session *session)
+{
+	struct lttng_trace_archive_location *location = NULL;
+
+	if (session->rotation_state != LTTNG_ROTATION_STATE_COMPLETED) {
+		goto end;
+	}
+
+	switch (session_get_consumer_destination_type(session)) {
+	case CONSUMER_DST_LOCAL:
+		location = lttng_trace_archive_location_local_create(
+				session->rotation_chunk.current_rotate_path);
+		break;
+	case CONSUMER_DST_NET:
+	{
+		const char *hostname;
+		uint16_t control_port, data_port;
+
+		hostname = session_get_net_consumer_hostname(session);
+		session_get_net_consumer_ports(session,
+				&control_port,
+				&data_port);
+		location = lttng_trace_archive_location_relay_create(
+				hostname,
+				LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP,
+				control_port, data_port,
+				session->rotation_chunk.current_rotate_path);
+		break;
+	}
+	default:
+		abort();
+	}
+end:
+	return location;
 }
 
 /*

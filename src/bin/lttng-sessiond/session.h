@@ -24,6 +24,7 @@
 
 #include <common/hashtable/hashtable.h>
 #include <lttng/rotation.h>
+#include <lttng/location.h>
 
 #include "snapshot.h"
 #include "trace-kernel.h"
@@ -224,6 +225,8 @@ const char *session_get_net_consumer_hostname(
 void session_get_net_consumer_ports(
 		const struct ltt_session *session,
 		uint16_t *control_port, uint16_t *data_port);
+struct lttng_trace_archive_location *session_get_trace_archive_location(
+		struct ltt_session *session);
 
 struct ltt_session *session_find_by_name(const char *name);
 struct ltt_session *session_find_by_id(uint64_t id);
