@@ -211,7 +211,6 @@ ssize_t lttng_trace_archive_location_serialize(
 {
 	int ret;
 	struct lttng_trace_archive_location_comm location_comm;
-	const size_t original_buffer_size = buffer->size;
 
 	location_comm.type = (int8_t) location->type;
 
@@ -269,7 +268,7 @@ ssize_t lttng_trace_archive_location_serialize(
 		abort();
 	}
 
-	return buffer->size - original_buffer_size;
+	return 0;
 error:
 	return -1;
 }
