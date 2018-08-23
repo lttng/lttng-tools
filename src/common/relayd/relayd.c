@@ -26,6 +26,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/compat/endian.h>
+#include <common/compat/string.h>
 #include <common/sessiond-comm/relayd.h>
 #include <common/index/ctf-index.h>
 
@@ -1102,7 +1103,7 @@ int relayd_rotate_stream(struct lttcomm_relayd_sock *rsock, uint64_t stream_id,
 	DBG("Sending rotate stream id %" PRIu64 " command to relayd", stream_id);
 
 	/* Account for the trailing NULL. */
-	len = strnlen(new_pathname, LTTNG_PATH_MAX) + 1;
+	len = lttng_strnlen(new_pathname, LTTNG_PATH_MAX) + 1;
 	if (len > LTTNG_PATH_MAX) {
 		ERR("Path used in relayd rotate stream command exceeds the maximal allowed length");
 		ret = -1;
