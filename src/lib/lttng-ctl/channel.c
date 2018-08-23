@@ -430,14 +430,14 @@ lttng_notification_channel_has_pending_notification(
 	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION:
 		ret = enqueue_notification_from_current_message(channel);
 		if (ret) {
-			goto end;
+			goto end_unlock;
 		}
 		*_notification_pending = true;
 		break;
 	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION_DROPPED:
 		ret = enqueue_dropped_notification(channel);
 		if (ret) {
-			goto end;
+			goto end_unlock;
 		}
 		*_notification_pending = true;
 		break;
