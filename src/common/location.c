@@ -199,6 +199,7 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 		goto error;
 	}
 
+	return offset;
 error:
 	return -1;
 }
