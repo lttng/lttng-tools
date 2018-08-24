@@ -21,6 +21,12 @@ AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 AC_PROG_CC
 AC_PROG_CC_STDC
+AC_PROG_CXX
+rw_PROG_CXX_WORKS
+AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
+
+ax_CHECK_SDT_WORKS
+AM_CONDITIONAL([SDT_WORKS], [test "x$ax_check_sdt_works" = "xyes"])
 
 # Checks for programs.
 AC_PROG_GREP
@@ -194,7 +200,7 @@ AC_CHECK_HEADERS([ \
 # Basic functions check
 AC_CHECK_FUNCS([ \
 	atexit bzero clock_gettime dup2 fdatasync fls ftruncate \
-	gethostbyname gethostname getpagesize localtime_r memchr memset \
+	gethostbyname gethostname getpagesize localtime_r memchr memrchr memset \
 	mkdir munmap putenv realpath rmdir socket strchr strcspn strdup \
 	strncasecmp strndup strnlen strpbrk strrchr strstr strtol strtoul \
 	strtoull dirfd gethostbyname2 getipnodebyname epoll_create1 \
@@ -867,6 +873,8 @@ build_lib_compat=no
 build_lib_consumer=no
 build_lib_hashtable=no
 build_lib_health=no
+build_lib_runas=no
+build_lib_unix=no
 build_lib_index=no
 build_lib_kernel_consumer=no
 build_lib_kernel_ctl=no
@@ -923,7 +931,8 @@ AS_IF([test x$enable_bin_lttng_sessiond != xno],
        build_lib_relayd=yes
        build_lib_testpoint=yes
        build_lib_health=yes
-       build_lib_health=yes
+       build_lib_runas=yes
+       build_lib_unix=yes
       ]
 )
 
@@ -1032,6 +1041,8 @@ AM_CONDITIONAL([BUILD_LIB_CONFIG], [test x$build_lib_config = xyes])
 AM_CONDITIONAL([BUILD_LIB_CONSUMER], [test x$build_lib_consumer = xyes])
 AM_CONDITIONAL([BUILD_LIB_HASHTABLE], [test x$build_lib_hashtable = xyes])
 AM_CONDITIONAL([BUILD_LIB_HEALTH], [test x$build_lib_health = xyes])
+AM_CONDITIONAL([BUILD_LIB_RUNAS], [test x$build_lib_runas = xyes])
+AM_CONDITIONAL([BUILD_LIB_UNIX], [test x$build_lib_unix = xyes])
 AM_CONDITIONAL([BUILD_LIB_INDEX], [test x$build_lib_index = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CONSUMER], [test x$build_lib_kernel_consumer = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CTL], [test x$build_lib_kernel_ctl = xyes])
@@ -1161,6 +1172,9 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/gen-ust-nevents-str/Makefile
 	tests/utils/testapp/gen-syscall-events/Makefile
 	tests/utils/testapp/gen-ust-tracef/Makefile
+	tests/utils/testapp/userspace-probe-elf-binary/Makefile
+	tests/utils/testapp/userspace-probe-elf-cxx-binary/Makefile
+	tests/utils/testapp/userspace-probe-sdt-binary/Makefile
 ])
 
 # Inject variable into python test script.

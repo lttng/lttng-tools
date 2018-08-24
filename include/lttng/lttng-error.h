@@ -158,6 +158,9 @@ enum lttng_error_code {
 	LTTNG_ERR_NO_SESSION_OUTPUT        = 135, /* Session has no output configured. */
 	LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY = 136, /* Rotate feature not available on the relay. */
 	LTTNG_ERR_AGENT_TRACING_DISABLED = 137, /* Agent tracing disabled. */
+	LTTNG_ERR_PROBE_LOCATION_INVAL   = 138, /* Invalid userspace probe location. */
+	LTTNG_ERR_ELF_PARSING            = 139, /* ELF parsing error. */
+	LTTNG_ERR_SDT_PROBE_SEMAPHORE    = 140, /* SDT probe guarded by a semaphore. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

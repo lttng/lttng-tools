@@ -150,6 +150,7 @@ static void test_create_ust_event(void)
 {
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
+	enum lttng_error_code ret;
 
 	memset(&ev, 0, sizeof(ev));
 	ok(lttng_strncpy(ev.name, get_random_string(),
@@ -158,9 +159,9 @@ static void test_create_ust_event(void)
 	ev.type = LTTNG_EVENT_TRACEPOINT;
 	ev.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 
-	event = trace_ust_create_event(&ev, NULL, NULL, NULL, false);
+	ret = trace_ust_create_event(&ev, NULL, NULL, NULL, false, &event);
 
-	ok(event != NULL, "Create UST event");
+	ok(ret == LTTNG_OK, "Create UST event");
 
 	if (!event) {
 		skip(1, "UST event is null");
@@ -178,6 +179,7 @@ static void test_create_ust_event(void)
 
 static void test_create_ust_event_exclusion(void)
 {
+	enum lttng_error_code ret;
 	struct ltt_ust_event *event;
 	struct lttng_event ev;
 	char *name;
@@ -212,10 +214,10 @@ static void test_create_ust_event_exclusion(void)
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), random_name,
 		LTTNG_SYMBOL_NAME_LEN);
 
-	event = trace_ust_create_event(&ev, NULL, NULL, exclusion, false);
+	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
 	exclusion = NULL;
 
-	ok(!event, "Create UST event with identical exclusion names fails");
+	ok(ret != LTTNG_OK, "Create UST event with identical exclusion names fails");
 
 	exclusion = zmalloc(sizeof(*exclusion) +
 		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
@@ -231,8 +233,8 @@ static void test_create_ust_event_exclusion(void)
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
 		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
 
-	event = trace_ust_create_event(&ev, NULL, NULL, exclusion, false);
-	ok(event != NULL, "Create UST event with different exclusion names");
+	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
+	ok(ret == LTTNG_OK, "Create UST event with different exclusion names");
 
 	if (!event) {
 		skip(1, "UST event with exclusion is null");

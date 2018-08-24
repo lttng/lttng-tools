@@ -41,22 +41,33 @@ void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
  * Return the size of the received data on success or else a negative lttng
  * error code. If buf is NULL, 0 is returned on success.
  */
-int lttng_ctl_ask_sessiond_varlen(struct lttcomm_session_msg *lsm,
+int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
+		int *fds, size_t nb_fd,
 		const void *vardata, size_t vardata_len,
 		void **user_payload_buf, void **user_cmd_header_buf,
 		size_t *user_cmd_header_len);
 
 /*
- * Calls lttng_ctl_ask_sessiond_varlen() with no expected command header.
+ * Calls lttng_ctl_ask_sessiond_fds_varlen() with no expected command header.
  */
 static inline
 int lttng_ctl_ask_sessiond_varlen_no_cmd_header(struct lttcomm_session_msg *lsm,
 		void *vardata, size_t vardata_len, void **user_payload_buf)
 {
-	return lttng_ctl_ask_sessiond_varlen(lsm, vardata,
+	return lttng_ctl_ask_sessiond_fds_varlen(lsm, NULL, 0, vardata,
 		vardata_len, user_payload_buf, NULL, NULL);
 }
 
+/*
+ * Calls lttng_ctl_ask_sessiond_fds_varlen() with fds and no expected command header.
+ */
+static inline
+int lttng_ctl_ask_sessiond_fds_no_cmd_header(struct lttcomm_session_msg *lsm,
+		int *fds, size_t nb_fd, void **buf)
+{
+	return lttng_ctl_ask_sessiond_fds_varlen(lsm, fds, nb_fd, NULL,
+		0, NULL, NULL, NULL);
+}
 /*
  * Use this if no variable length data needs to be sent.
  */

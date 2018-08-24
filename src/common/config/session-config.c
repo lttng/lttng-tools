@@ -42,9 +42,12 @@
 #include <lttng/lttng.h>
 #include <lttng/snapshot.h>
 #include <lttng/rotation.h>
+#include <lttng/userspace-probe.h>
 
 #include "session-config.h"
 #include "config-internal.h"
+
+#define CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN 7
 
 struct handler_filter_args {
 	const char* section;
@@ -86,6 +89,18 @@ const char * const config_element_probe_attributes = "probe_attributes";
 const char * const config_element_symbol_name = "symbol_name";
 const char * const config_element_address = "address";
 const char * const config_element_offset = "offset";
+
+const char * const config_element_userspace_probe_lookup = "lookup_method";
+const char * const config_element_userspace_probe_lookup_function_default = "DEFAULT";
+const char * const config_element_userspace_probe_lookup_function_elf = "ELF";
+const char * const config_element_userspace_probe_lookup_tracepoint_sdt = "SDT";
+const char * const config_element_userspace_probe_location_binary_path = "binary_path";
+const char * const config_element_userspace_probe_function_attributes = "userspace_probe_function_attributes";
+const char * const config_element_userspace_probe_function_location_function_name = "function_name";
+const char * const config_element_userspace_probe_tracepoint_attributes = "userspace_probe_tracepoint_attributes";
+const char * const config_element_userspace_probe_tracepoint_location_provider_name = "provider_name";
+const char * const config_element_userspace_probe_tracepoint_location_probe_name = "probe_name";
+
 const char * const config_element_name = "name";
 const char * const config_element_enabled = "enabled";
 const char * const config_element_overwrite_mode = "overwrite_mode";
@@ -162,6 +177,7 @@ const char * const config_loglevel_type_single = "SINGLE";
 const char * const config_event_type_all = "ALL";
 const char * const config_event_type_tracepoint = "TRACEPOINT";
 const char * const config_event_type_probe = "PROBE";
+const char * const config_event_type_userspace_probe = "USERSPACE_PROBE";
 const char * const config_event_type_function = "FUNCTION";
 const char * const config_event_type_function_entry = "FUNCTION_ENTRY";
 const char * const config_event_type_noop = "NOOP";
@@ -919,10 +935,13 @@ int get_event_type(xmlChar *event_type)
 		ret = LTTNG_EVENT_TRACEPOINT;
 	} else if (!strcmp((char *) event_type, config_event_type_probe)) {
 		ret = LTTNG_EVENT_PROBE;
+	} else if (!strcmp((char *) event_type,
+				config_event_type_userspace_probe)) {
+		ret = LTTNG_EVENT_USERSPACE_PROBE;
 	} else if (!strcmp((char *) event_type, config_event_type_function)) {
 		ret = LTTNG_EVENT_FUNCTION;
 	} else if (!strcmp((char *) event_type,
-		config_event_type_function_entry)) {
+				config_event_type_function_entry)) {
 		ret = LTTNG_EVENT_FUNCTION_ENTRY;
 	} else if (!strcmp((char *) event_type, config_event_type_noop)) {
 		ret = LTTNG_EVENT_NOOP;
@@ -1454,6 +1473,228 @@ end:
 	free(output.data_uri);
 	return ret;
 }
+
+static
+struct lttng_userspace_probe_location *
+process_userspace_probe_function_attribute_node(
+		xmlNodePtr attribute_node)
+{
+	xmlChar *content;
+	xmlNodePtr function_attribute_node;
+	char *function_name = NULL, *binary_path = NULL, *lookup_method_name;
+	struct lttng_userspace_probe_location *location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+
+	/*
+	 * Process userspace probe location function attributes. The order of
+	 * the fields are not guaranteed so we need to iterate over all fields
+	 * and check at the end if everything we need for this location type is
+	 * there.
+	 */
+	for (function_attribute_node =
+			xmlFirstElementChild(attribute_node);
+			function_attribute_node;
+			function_attribute_node = xmlNextElementSibling(
+				function_attribute_node)) {
+		/* Handle function name, binary path and lookup method. */
+		if (!strcmp((const char *) function_attribute_node->name,
+					config_element_userspace_probe_function_location_function_name)) {
+			content = xmlNodeGetContent(function_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			function_name = lttng_strndup((char *) content, LTTNG_SYMBOL_NAME_LEN);
+			free(content);
+			if (!function_name) {
+				PERROR("Error duplicating function name");
+				goto error;
+			}
+		} else if (!strcmp((const char *) function_attribute_node->name,
+					config_element_userspace_probe_location_binary_path)) {
+			content = xmlNodeGetContent(function_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			binary_path = lttng_strndup((char *) content, LTTNG_PATH_MAX);
+			free(content);
+			if (!binary_path) {
+				PERROR("Error duplicating binary path");
+				goto error;
+			}
+		} else if (!strcmp((const char *) function_attribute_node->name,
+					config_element_userspace_probe_lookup)) {
+			content = xmlNodeGetContent(function_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			lookup_method_name = lttng_strndup((char *) content,
+					CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN);
+			free(content);
+			if (!lookup_method_name) {
+				PERROR("Error duplicating lookup method name");
+				goto error;
+			}
+
+			/*
+			 * function_default lookup method defaults to
+			 * function_elf lookup method at the moment.
+			 */
+			if (!strcmp(lookup_method_name, config_element_userspace_probe_lookup_function_elf)
+					|| !strcmp(lookup_method_name, config_element_userspace_probe_lookup_function_default)) {
+				lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
+				if (!lookup_method) {
+					PERROR("Error creating function default/ELF lookup method");
+					free(lookup_method_name);
+					goto error;
+				}
+			} else {
+				WARN("Unknown function lookup method.");
+				free(lookup_method_name);
+				goto error;
+			}
+		} else {
+			goto error;
+		}
+
+		/* Check if all the necessary fields were found. */
+		if (binary_path && function_name && lookup_method) {
+			location =
+				lttng_userspace_probe_location_function_create(
+						binary_path, function_name,
+						lookup_method);
+			goto end;
+		}
+	}
+error:
+	free(binary_path);
+	free(function_name);
+	if (lookup_method) {
+		lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
+	}
+end:
+	return location;
+}
+
+static
+struct lttng_userspace_probe_location *
+process_userspace_probe_tracepoint_attribute_node(
+		xmlNodePtr attribute_node)
+{
+	xmlChar *content;
+	xmlNodePtr tracepoint_attribute_node;
+	char *lookup_method_name = NULL;
+	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
+	struct lttng_userspace_probe_location *location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+
+	/*
+	 * Process userspace probe location tracepoint attributes. The order of
+	 * the fields are not guaranteed so we need to iterate over all fields
+	 * and check at the end if everything we need for this location type is
+	 * there.
+	 */
+	for (tracepoint_attribute_node =
+		xmlFirstElementChild(attribute_node); tracepoint_attribute_node;
+		tracepoint_attribute_node = xmlNextElementSibling(
+				tracepoint_attribute_node)) {
+		if (!strcmp((const char *) tracepoint_attribute_node->name,
+					config_element_userspace_probe_tracepoint_location_probe_name)) {
+			content = xmlNodeGetContent(tracepoint_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			probe_name = lttng_strndup((char*) content, LTTNG_SYMBOL_NAME_LEN);
+			free(content);
+			if (!probe_name) {
+				PERROR("Error duplicating probe name");
+				goto error;
+			}
+		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
+					config_element_userspace_probe_tracepoint_location_provider_name)) {
+			content = xmlNodeGetContent(tracepoint_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			provider_name = lttng_strndup((char*) content, LTTNG_SYMBOL_NAME_LEN);
+			free(content);
+			if (!provider_name) {
+				PERROR("Error duplicating provider name");
+				goto error;
+			}
+		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
+					config_element_userspace_probe_location_binary_path)) {
+			content = xmlNodeGetContent(tracepoint_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			binary_path = lttng_strndup((char*) content, LTTNG_PATH_MAX);
+
+			free(content);
+
+			if (!binary_path) {
+				PERROR("Error duplicating binary path");
+				goto error;
+			}
+		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
+					config_element_userspace_probe_lookup)) {
+			content = xmlNodeGetContent(tracepoint_attribute_node);
+			if (!content) {
+				goto error;
+			}
+
+			lookup_method_name = lttng_strndup((char *) content,
+					CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN);
+			free(content);
+
+			if (!lookup_method_name) {
+				PERROR("Error duplicating lookup method name");
+				goto error;
+			}
+
+			if (!strcmp(lookup_method_name,
+						config_element_userspace_probe_lookup_tracepoint_sdt)) {
+				lookup_method =
+					lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
+				if (!lookup_method) {
+					PERROR("Error creating tracepoint SDT lookup method");
+					free(lookup_method_name);
+					goto error;
+				}
+			} else {
+				WARN("Unknown tracepoint lookup method.");
+				goto error;
+			}
+		} else {
+			WARN("Unknown tracepoint attribute.");
+			goto error;
+		}
+
+		/* Check if all the necessary fields were found. */
+		if (binary_path && provider_name && probe_name && lookup_method) {
+			location =
+				lttng_userspace_probe_location_tracepoint_create(
+						binary_path, provider_name,
+						probe_name, lookup_method);
+			goto end;
+		}
+	}
+error:
+	free(binary_path);
+	free(probe_name);
+	free(provider_name);
+	if (lookup_method) {
+		lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
+	}
+end:
+	return location;
+}
+
 static
 int process_probe_attribute_node(xmlNodePtr probe_attribute_node,
 	struct lttng_event_probe_attr *attr)
@@ -1539,7 +1780,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 {
 	int ret = 0, i;
 	xmlNodePtr node;
-	struct lttng_event event;
+	struct lttng_event *event;
 	char **exclusions = NULL;
 	unsigned long exclusion_count = 0;
 	char *filter_expression = NULL;
@@ -1548,23 +1789,27 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 	assert(handle);
 	assert(channel_name);
 
-	memset(&event, 0, sizeof(event));
+	event = lttng_event_create();
+	if (!event) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
 	/* Initialize default log level which varies by domain */
 	switch (handle->domain.type)
 	{
 	case LTTNG_DOMAIN_JUL:
-		event.loglevel = LTTNG_LOGLEVEL_JUL_ALL;
+		event->loglevel = LTTNG_LOGLEVEL_JUL_ALL;
 		break;
 	case LTTNG_DOMAIN_LOG4J:
-		event.loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
+		event->loglevel = LTTNG_LOGLEVEL_LOG4J_ALL;
 		break;
 	case LTTNG_DOMAIN_PYTHON:
-		event.loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
+		event->loglevel = LTTNG_LOGLEVEL_PYTHON_DEBUG;
 		break;
 	case LTTNG_DOMAIN_UST:
 	case LTTNG_DOMAIN_KERNEL:
-		event.loglevel = LTTNG_LOGLEVEL_DEBUG;
+		event->loglevel = LTTNG_LOGLEVEL_DEBUG;
 		break;
 	default:
 		assert(0);
@@ -1582,7 +1827,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			ret = lttng_strncpy(event.name,
+			ret = lttng_strncpy(event->name,
 					(const char *) content,
 					LTTNG_SYMBOL_NAME_LEN);
 			if (ret == -1) {
@@ -1605,7 +1850,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			ret = parse_bool(content, &event.enabled);
+			ret = parse_bool(content, &event->enabled);
 			free(content);
 			if (ret) {
 				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -1628,7 +1873,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.type = ret;
+			event->type = ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel_type)) {
 			xmlChar *content = xmlNodeGetContent(node);
@@ -1646,7 +1891,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.loglevel_type = ret;
+			event->loglevel_type = ret;
 		} else if (!strcmp((const char *) node->name,
 			config_element_loglevel)) {
 			xmlChar *content;
@@ -1672,7 +1917,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			event.loglevel = loglevel;
+			event->loglevel = loglevel;
 		} else if (!strcmp((const char *) node->name,
 			config_element_filter)) {
 			xmlChar *content =
@@ -1737,7 +1982,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				exclusion_index++;
 			}
 
-			event.exclusion = 1;
+			event->exclusion = 1;
 		} else if (!strcmp((const char *) node->name,
 			config_element_attributes)) {
 			xmlNodePtr attribute_node = xmlFirstElementChild(node);
@@ -1748,7 +1993,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				goto end;
 			}
 
-			if (!strcmp((const char *) node->name,
+			if (!strcmp((const char *) attribute_node->name,
 						config_element_probe_attributes)) {
 				xmlNodePtr probe_attribute_node;
 
@@ -1759,12 +2004,13 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 							probe_attribute_node)) {
 
 					ret = process_probe_attribute_node(probe_attribute_node,
-							&event.attr.probe);
+							&event->attr.probe);
 					if (ret) {
 						goto end;
 					}
 				}
-			} else {
+			} else if (!strcmp((const char *) attribute_node->name,
+						config_element_function_attributes)) {
 				size_t sym_len;
 				xmlChar *content;
 				xmlNodePtr symbol_node = xmlFirstElementChild(attribute_node);
@@ -1785,7 +2031,7 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 				}
 
 				ret = lttng_strncpy(
-						event.attr.ftrace.symbol_name,
+						event->attr.ftrace.symbol_name,
 						(char *) content, sym_len);
 				if (ret == -1) {
 					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
@@ -1793,15 +2039,60 @@ int process_event_node(xmlNodePtr event_node, struct lttng_handle *handle,
 					goto end;
 				}
 				free(content);
+			} else if (!strcmp((const char *) attribute_node->name,
+						config_element_userspace_probe_tracepoint_attributes)) {
+				struct lttng_userspace_probe_location *location;
+
+				location = process_userspace_probe_tracepoint_attribute_node(attribute_node);
+				if (!location) {
+					WARN("Error processing userspace probe tracepoint attribute");
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+				ret = lttng_event_set_userspace_probe_location(
+						event, location);
+				if (ret) {
+					WARN("Error setting userspace probe location field");
+					lttng_userspace_probe_location_destroy(
+							location);
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+			} else if (!strcmp((const char *) attribute_node->name,
+						config_element_userspace_probe_function_attributes)) {
+				struct lttng_userspace_probe_location *location;
+
+				location =
+					process_userspace_probe_function_attribute_node(
+							attribute_node);
+				if (!location) {
+					WARN("Error processing userspace probe function attribute");
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
+				ret = lttng_event_set_userspace_probe_location(
+						event, location);
+				if (ret) {
+					WARN("Error setting userspace probe location field");
+					lttng_userspace_probe_location_destroy(
+							location);
+					ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+			} else {
+				/* Unknown event attribute. */
+				ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
+				goto end;
 			}
 		}
 	}
 
-	if ((event.enabled && phase == ENABLE) || phase == CREATION) {
-		ret = lttng_enable_event_with_exclusions(handle, &event, channel_name,
+	if ((event->enabled && phase == ENABLE) || phase == CREATION) {
+		ret = lttng_enable_event_with_exclusions(handle, event, channel_name,
 				filter_expression, exclusion_count, exclusions);
 		if (ret < 0) {
-			WARN("Enabling event (name:%s) on load failed.", event.name);
+			WARN("Enabling event (name:%s) on load failed.", event->name);
 			ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 			goto end;
 		}

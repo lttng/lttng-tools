@@ -7,6 +7,43 @@ SUBDIRS = string-utils
 DIST_SUBDIRS = compat health hashtable kernel-ctl sessiond-comm relayd \
 	  kernel-consumer ust-consumer testpoint index config consumer \
 	  string-utils
+#
+# Common library
+noinst_LTLIBRARIES = libcommon.la
+EXTRA_DIST = mi-lttng-3.0.xsd
+
+libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h \
+                       common.h futex.c futex.h uri.c uri.h defaults.c \
+                       pipe.c pipe.h readwrite.c readwrite.h \
+                       mi-lttng.h mi-lttng.c \
+                       daemonize.c daemonize.h \
+                       unix.h \
+                       filter.c filter.h context.c context.h \
+                       action.c notify.c condition.c buffer-usage.c \
+                       session-consumed-size.c \
+                       session-rotation.c \
+                       evaluation.c notification.c trigger.c endpoint.c \
+                       dynamic-buffer.h dynamic-buffer.c \
+                       buffer-view.h buffer-view.c \
+                       location.c \
+                       waiter.h waiter.c \
+                       userspace-probe.c
+
+libcommon_la_LIBADD = \
+		$(top_builddir)/src/common/config/libconfig.la \
+		$(UUID_LIBS)
+
+if BUILD_LIB_RUNAS
+libcommon_la_SOURCES += runas.c lttng-elf.h lttng-elf.c
+else
+libcommon_la_SOURCES += runas-stub.c
+endif
+
+if BUILD_LIB_UNIX
+libcommon_la_SOURCES += unix.c
+else
+libcommon_la_SOURCES += unix-stub.c
+endif
 
 if BUILD_LIB_COMPAT
 SUBDIRS += compat
@@ -59,30 +96,6 @@ endif
 noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 				 uri.h utils.h lttng-kernel-old.h \
 				 align.h bitfield.h bug.h time.h
-
-# Common library
-noinst_LTLIBRARIES = libcommon.la
-EXTRA_DIST = mi-lttng-3.0.xsd
-
-libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.c runas.h \
-                       common.h futex.c futex.h uri.c uri.h defaults.c \
-                       pipe.c pipe.h readwrite.c readwrite.h \
-                       mi-lttng.h mi-lttng.c \
-                       daemonize.c daemonize.h \
-                       unix.c unix.h \
-                       filter.c filter.h context.c context.h \
-                       action.c notify.c condition.c buffer-usage.c \
-                       session-consumed-size.c \
-                       session-rotation.c \
-                       evaluation.c notification.c trigger.c endpoint.c \
-                       dynamic-buffer.h dynamic-buffer.c \
-                       buffer-view.h buffer-view.c \
-                       location.c \
-                       waiter.h waiter.c
-
-libcommon_la_LIBADD = \
-		$(top_builddir)/src/common/config/libconfig.la \
-		$(UUID_LIBS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

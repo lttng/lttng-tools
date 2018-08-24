@@ -123,4 +123,25 @@ static inline int lttng_fls(int val)
 }
 #endif /* HAVE_FLS */
 
+#if HAVE_MEMRCHR
+static inline
+void *lttng_memrchr(const void *s, int c, size_t n)
+{
+	return memrchr(s, c, n);
+}
+#else
+static inline
+void *lttng_memrchr(const void *s, int c, size_t n)
+{
+	int i;
+	const char *str = s;
+	for (i = n-1; i >= 0; i--) {
+		if (str[i] == (char)c) {
+			return (void *)(str+i);
+		}
+	}
+	return NULL;
+}
+#endif /* HAVE_MEMRCHR */
+
 #endif /* _COMPAT_STRING_H */

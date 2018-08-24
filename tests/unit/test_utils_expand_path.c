@@ -53,6 +53,7 @@ struct symlink_test_input {
 /* Valid test cases */
 static struct valid_test_input valid_tests_inputs[] = {
 	{ "/a/b/c/d/e",			"",		"/a/b/c/d/e"	},
+	{ "/a//b//c/d/e",		"",		"/a/b/c/d/e"	},
 	{ "./a/b/c/d/e",		".",		"/a/b/c/d/e"	},
 	{ "../a/b/c/d/../e",		"..",		"/a/b/c/e"	},
 	{ ".././a/b/c/d/./e",		"..",		"/a/b/c/d/e"	},
