@@ -2093,8 +2093,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			ret = validate_ust_event_name(event->name);
 			if (ret) {
 			        WARN("Userspace event name %s failed validation.",
-						event->name ?
-						event->name : "NULL");
+						event->name);
 				ret = LTTNG_ERR_INVALID_EVENT_NAME;
 				goto error;
 			}
