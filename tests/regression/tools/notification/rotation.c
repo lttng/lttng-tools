@@ -322,10 +322,11 @@ int test_notification(
 
 	location_status = lttng_trace_archive_location_local_get_absolute_path(
 			location, &chunk_path);
-	ok(location_status == LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK,
+	ok(location_status == LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK && chunk_path,
 			"Retrieved path from location returned by the session rotation completed notification");
 	diag("Chunk available at %s", chunk_path ? chunk_path : "NULL");
-	ok(!strncmp(session->output_path, chunk_path, strlen(session->output_path)),
+
+	ok(chunk_path && !strncmp(session->output_path, chunk_path, strlen(session->output_path)),
 			"Returned path from location starts with the output path");
 
 end:
