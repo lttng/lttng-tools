@@ -194,7 +194,7 @@ struct lttng_condition *lttng_condition_session_rotation_create(
 	}
 
 	memcpy(&condition->parent, &rotation_condition_template,
-			sizeof(*condition));
+			sizeof(condition->parent));
 	lttng_condition_init(&condition->parent, type);
 	return &condition->parent;
 }
@@ -341,7 +341,7 @@ struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 	}
 
 	memcpy(&evaluation->parent, &rotation_evaluation_template,
-			sizeof(*evaluation));
+			sizeof(evaluation->parent));
 	lttng_evaluation_init(&evaluation->parent, type);
 	evaluation->id = id;
 	evaluation->location = location;
