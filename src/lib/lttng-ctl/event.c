@@ -60,7 +60,7 @@ struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 	struct lttng_event_extended *new_event_extended;
 
 	new_event = zmalloc(sizeof(*event));
-	if (!event) {
+	if (!new_event) {
 		PERROR("Error allocating event structure");
 		goto end;
 	}
@@ -82,7 +82,7 @@ struct lttng_event *lttng_event_copy(const struct lttng_event *event)
 end:
 	return new_event;
 error:
-	free(event);
+	free(new_event);
 	goto end;
 }
 
