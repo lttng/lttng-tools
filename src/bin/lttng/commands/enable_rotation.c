@@ -296,7 +296,7 @@ int cmd_enable_rotation(int argc, const char **argv)
 	}
 
 	if (size_rotation) {
-		enum lttng_error_code tmp_ret;
+		enum cmd_error_code tmp_ret;
 
 		/* Don't overwrite cmd_ret if it already indicates an error. */
 		tmp_ret = add_schedule(session_name,
