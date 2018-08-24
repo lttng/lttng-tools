@@ -42,6 +42,7 @@
 #include "cmd.h"
 #include "session.h"
 #include "sessiond-timer.h"
+#include "notification-thread-commands.h"
 
 #include <urcu.h>
 #include <urcu/list.h>
@@ -409,7 +410,23 @@ int handle_channel_rotation_pipe(int fd, uint32_t revents,
 				goto end_unlock_session;
 			}
 		} else {
+			struct lttng_trace_archive_location *location;
+
 			session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
+			/* Ownership of location is transferred. */
+			location = session_get_trace_archive_location(session);
+			ret = notification_thread_command_session_rotation_completed(
+					notification_thread_handle,
+					session->name,
+					session->uid,
+					session->gid,
+					session->current_archive_id,
+					location);
+			if (ret != LTTNG_OK) {
+				ERR("Failed to notify notification thread that rotation is complete for session %s",
+						session->name);
+			}
+
 		}
 		DBG("Rotation completed for session %s", session->name);
 	}
@@ -442,6 +459,8 @@ int rotate_pending_relay_timer(struct ltt_session *session)
 		goto end;
 	}
 	if (ret == 0) {
+		struct lttng_trace_archive_location *location;
+
 		DBG("[rotation-thread] Rotation completed on the relay for "
 				"session %" PRIu64, session->id);
 		/*
@@ -450,6 +469,21 @@ int rotate_pending_relay_timer(struct ltt_session *session)
 		 */
 		session->rotate_pending_relay = false;
 		session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
+
+		session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
+		/* Ownership of location is transferred. */
+		location = session_get_trace_archive_location(session);
+		ret = notification_thread_command_session_rotation_completed(
+				notification_thread_handle,
+				session->name,
+				session->uid,
+				session->gid,
+				session->current_archive_id,
+				location);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to notify notification thread that rotation is complete for session %s",
+					session->name);
+		}
 	} else if (ret == 1) {
 		DBG("[rotation-thread] Rotation still pending on the relay for "
 				"session %" PRIu64, session->id);

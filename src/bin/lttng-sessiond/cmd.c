@@ -38,6 +38,7 @@
 #include <lttng/channel.h>
 #include <lttng/channel-internal.h>
 #include <lttng/rotate-internal.h>
+#include <lttng/location-internal.h>
 #include <common/string-utils/string-utils.h>
 
 #include "channel.h"
@@ -4562,10 +4563,11 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 	ret = notification_thread_command_session_rotation_ongoing(
 			notification_thread_handle,
-			session->name, session->current_archive_id);
-	if (ret) {
-		ret = LTTNG_ERR_UNK;
-		goto end;
+			session->name, session->uid, session->gid,
+			session->current_archive_id);
+	if (ret != LTTNG_OK) {
+		ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",
+				session->name);
 	}
 
 	/*
@@ -4679,13 +4681,29 @@ int cmd_rotate_session(struct ltt_session *session,
 		 * session_list locks.
 		 */
 		if (!session->kernel_session && !ust_active) {
+			struct lttng_trace_archive_location *location;
+
+			session->rotate_pending = false;
+			session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
 			ret = rename_complete_chunk(session, now);
 			if (ret < 0) {
 				ERR("Failed to rename completed rotation chunk");
 				goto end;
 			}
-			session->rotate_pending = false;
-			session->rotation_state = LTTNG_ROTATION_STATE_COMPLETED;
+
+			/* Ownership of location is transferred. */
+			location = session_get_trace_archive_location(session);
+			ret = notification_thread_command_session_rotation_completed(
+					notification_thread_handle,
+					session->name,
+					session->uid,
+					session->gid,
+					session->current_archive_id,
+					location);
+			if (ret != LTTNG_OK) {
+				ERR("Failed to notify notification thread that rotation is complete for session %s",
+						session->name);
+			}
 		}
 	}
 
