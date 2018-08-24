@@ -126,7 +126,7 @@ extern int lttng_userspace_probe_location_function_get_binary_fd(
  *
  * The ownership of the lookup method is NOT transferred to the caller.
  */
-extern struct lttng_userspace_probe_location_lookup_method *
+extern const struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
 		const struct lttng_userspace_probe_location *location);
 

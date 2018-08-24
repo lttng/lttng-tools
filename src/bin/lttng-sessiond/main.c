@@ -2937,7 +2937,7 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 {
 	int fd, ret;
 	struct lttng_userspace_probe_location *probe_location;
-	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	struct lttng_dynamic_buffer probe_location_buffer;
 	struct lttng_buffer_view buffer_view;
 

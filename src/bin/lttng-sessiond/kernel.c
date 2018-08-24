@@ -203,15 +203,14 @@ error:
  */
 static
 int extract_userspace_probe_offset_function_elf(
-		struct lttng_userspace_probe_location *probe_location,
+		const struct lttng_userspace_probe_location *probe_location,
 		struct ltt_kernel_session *session, uint64_t *offset)
 {
 	int fd;
 	int ret = 0;
 	const char *symbol = NULL;
-	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
-
 
 	assert(lttng_userspace_probe_location_get_type(probe_location) ==
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
@@ -266,12 +265,12 @@ end:
  */
 static
 int extract_userspace_probe_offset_tracepoint_sdt(
-		struct lttng_userspace_probe_location *probe_location,
+		const struct lttng_userspace_probe_location *probe_location,
 		struct ltt_kernel_session *session, uint64_t **offsets,
 		uint32_t *offsets_count)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
-	struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 	const char *probe_name = NULL, *provider_name = NULL;
 	int ret = 0;
 	int fd, i;
@@ -342,9 +341,9 @@ static
 int userspace_probe_add_callsites(struct lttng_event *ev,
 			struct ltt_kernel_session *session, int fd)
 {
-	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type type;
-	struct lttng_userspace_probe_location *location = NULL;
+	const struct lttng_userspace_probe_location *location = NULL;
 	int ret;
 
 	assert(ev);

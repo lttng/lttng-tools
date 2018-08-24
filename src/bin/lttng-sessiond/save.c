@@ -504,8 +504,8 @@ int save_kernel_userspace_probe_tracepoint_event(struct config_writer *writer,
 {
 	int ret = 0;
 	const char *probe_name, *provider_name, *binary_path;
-	struct lttng_userspace_probe_location *userspace_probe_location;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	const struct lttng_userspace_probe_location *userspace_probe_location;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 
 	/* Get userspace probe location from the event. */
@@ -618,8 +618,8 @@ int save_kernel_userspace_probe_function_event(struct config_writer *writer,
 {
 	int ret = 0;
 	const char *function_name, *binary_path;
-	struct lttng_userspace_probe_location *userspace_probe_location;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	const struct lttng_userspace_probe_location *userspace_probe_location;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 
 	/* Get userspace probe location from the event. */

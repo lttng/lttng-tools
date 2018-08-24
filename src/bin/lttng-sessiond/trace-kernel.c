@@ -328,8 +328,8 @@ enum lttng_error_code trace_kernel_create_event(
 		break;
 	case LTTNG_EVENT_USERSPACE_PROBE:
 	{
-		struct lttng_userspace_probe_location* location = NULL;
-		struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+		const struct lttng_userspace_probe_location* location = NULL;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 
 		location = lttng_event_get_userspace_probe_location(ev);
 		if (!location) {

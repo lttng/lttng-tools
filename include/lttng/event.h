@@ -348,8 +348,8 @@ extern int lttng_event_get_exclusion_name(struct lttng_event *event,
  * If the event has no probe location a NULL pointer is returned. The caller
  * does not own the returned probe location.
  */
-extern struct lttng_userspace_probe_location *
-lttng_event_get_userspace_probe_location(struct lttng_event *event);
+extern const struct lttng_userspace_probe_location *
+lttng_event_get_userspace_probe_location(const struct lttng_event *event);
 
 /*
  * Set an LTTng event's userspace probe location.

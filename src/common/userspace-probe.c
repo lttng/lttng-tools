@@ -764,7 +764,7 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location_lookup_method *
+const struct lttng_userspace_probe_location_lookup_method *
 lttng_userspace_probe_location_get_lookup_method(
 		const struct lttng_userspace_probe_location *location)
 {

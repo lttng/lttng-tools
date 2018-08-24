@@ -197,8 +197,8 @@ end:
 	return ret;
 }
 
-struct lttng_userspace_probe_location *
-lttng_event_get_userspace_probe_location(struct lttng_event *event)
+const struct lttng_userspace_probe_location *
+lttng_event_get_userspace_probe_location(const struct lttng_event *event)
 {
 	struct lttng_userspace_probe_location *probe_location = NULL;
 	struct lttng_event_extended *event_extended;

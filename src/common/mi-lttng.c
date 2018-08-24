@@ -1280,8 +1280,8 @@ int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 		struct lttng_event *event)
 {
 	int ret;
-	struct lttng_userspace_probe_location *location;
-	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	const struct lttng_userspace_probe_location *location;
+	const struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 
 	location = lttng_event_get_userspace_probe_location(event);
