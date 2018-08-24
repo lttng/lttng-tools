@@ -373,9 +373,6 @@ int main(int argc, const char *argv[])
 	session.output_path = argv[2];
 
 	plan_tests(TEST_COUNT);
-	if (ret) {
-		goto error;
-	}
 
 	notification_channel = lttng_notification_channel_create(
 			lttng_session_daemon_notification_endpoint);
