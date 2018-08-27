@@ -710,6 +710,7 @@ int run_as_cmd(struct run_as_worker *worker,
 		PERROR("Error reading response from run_as");
 		ret = -1;
 		ret_value->_errno = errno;
+		goto end;
 	}
 
 	/*
