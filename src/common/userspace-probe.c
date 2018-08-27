@@ -150,7 +150,7 @@ void lttng_userspace_probe_location_destroy(
 		lttng_userspace_probe_location_tracepoint_destroy(location);
 		break;
 	default:
-		free(location);
+		abort();
 	}
 }
 
