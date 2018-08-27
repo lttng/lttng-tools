@@ -402,26 +402,23 @@ lttng_userspace_probe_location_function_copy(
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 	struct lttng_userspace_probe_location *new_location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	char *binary_path = NULL;
-	char *function_name = NULL;
+	const char *binary_path = NULL;
+	const char *function_name = NULL;
 	int fd;
 
 	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
 
-	 /* Duplicate probe location fields */
-	binary_path =
-		lttng_strndup(lttng_userspace_probe_location_function_get_binary_path(location),
-				LTTNG_PATH_MAX);
+	 /* Get probe location fields */
+	binary_path = lttng_userspace_probe_location_function_get_binary_path(location);
 	if (!binary_path) {
+		ERR("Userspace probe binary path is NULL");
 		goto error;
 	}
 
-	function_name =
-		lttng_strndup(lttng_userspace_probe_location_function_get_function_name(location),
-				LTTNG_SYMBOL_NAME_LEN);
+	function_name = lttng_userspace_probe_location_function_get_function_name(location);
 	if (!function_name) {
-		PERROR("Error duplicating function name string");
+		ERR("Userspace probe function name is NULL");
 		goto error;
 	}
 
@@ -453,7 +450,7 @@ lttng_userspace_probe_location_function_copy(
 
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_function_create_no_check(
-			binary_path, function_name, lookup_method, true);
+			binary_path, function_name, lookup_method, false);
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
@@ -474,8 +471,6 @@ close_fd:
 		PERROR("Error closing duplicated file descriptor in error path");
 	}
 error:
-	free(function_name);
-	free(binary_path);
 	new_location = NULL;
 end:
 	return new_location;
@@ -488,43 +483,37 @@ lttng_userspace_probe_location_tracepoint_copy(
 	enum lttng_userspace_probe_location_lookup_method_type lookup_type;
 	struct lttng_userspace_probe_location *new_location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
-	char *binary_path = NULL;
-	char *probe_name = NULL;
-	char *provider_name = NULL;
+	const char *binary_path = NULL;
+	const char *probe_name = NULL;
+	const char *provider_name = NULL;
 	int fd;
 
 	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
 
-	 /* Duplicate probe location fields */
-	binary_path =
-		lttng_strndup(lttng_userspace_probe_location_tracepoint_get_binary_path(location),
-				LTTNG_PATH_MAX);
+	 /* Get probe location fields */
+	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(location);
 	if (!binary_path) {
-		PERROR("lttng_strndup");
+		ERR("Userspace probe binary path is NULL");
 		goto error;
 	}
 
-	probe_name =
-		lttng_strndup(lttng_userspace_probe_location_tracepoint_get_probe_name(location),
-				LTTNG_SYMBOL_NAME_LEN);
+	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
 	if (!probe_name) {
-		PERROR("lttng_strndup");
+		ERR("Userspace probe probe name is NULL");
 		goto error;
 	}
 
-	provider_name =
-		lttng_strndup(lttng_userspace_probe_location_tracepoint_get_provider_name(location),
-				LTTNG_SYMBOL_NAME_LEN);
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(location);
 	if (!provider_name) {
-		PERROR("lttng_strndup");
+		ERR("Userspace probe provider name is NULL");
 		goto error;
 	}
 
 	/* Duplicate the binary fd */
 	fd = dup(lttng_userspace_probe_location_tracepoint_get_binary_fd(location));
 	if (fd == -1) {
-		PERROR("dup");
+		PERROR("Error duplicating file descriptor to binary");
 		goto error;
 	}
 
@@ -549,7 +538,7 @@ lttng_userspace_probe_location_tracepoint_copy(
 
 	/* Create the probe_location */
 	new_location = lttng_userspace_probe_location_tracepoint_create_no_check(
-			binary_path, provider_name, probe_name, lookup_method, true);
+			binary_path, provider_name, probe_name, lookup_method, false);
 	if (!new_location) {
 		goto destroy_lookup_method;
 	}
@@ -567,12 +556,9 @@ destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 close_fd:
 	if (close(fd) < 0) {
-		PERROR("close");
+		PERROR("Error closing duplicated file descriptor in error path");
 	}
 error:
-	free(provider_name);
-	free(probe_name);
-	free(binary_path);
 	new_location = NULL;
 end:
 	return new_location;
