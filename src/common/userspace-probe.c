@@ -38,26 +38,7 @@ void lttng_userspace_probe_location_lookup_method_destroy(
 		return;
 	}
 
-	switch (lookup_method->type) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-	{
-		struct lttng_userspace_probe_location_lookup_method_elf *elf_method =
-			container_of(lookup_method,
-				struct lttng_userspace_probe_location_lookup_method_elf, parent);
-		free(elf_method);
-		break;
-	}
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-	{
-		struct lttng_userspace_probe_location_lookup_method_sdt *sdt_method =
-			container_of(lookup_method,
-				struct lttng_userspace_probe_location_lookup_method_sdt, parent);
-		free(sdt_method);
-		break;
-	}
-	default:
-		break;
-	}
+	free(lookup_method);
 }
 
 struct lttng_userspace_probe_location_lookup_method *
