@@ -468,7 +468,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		break;
 	default:
 		ret = CMD_ERROR;
-		goto end_string;
+		goto end_free_path;
 	}
 
 	switch (ev->type) {
