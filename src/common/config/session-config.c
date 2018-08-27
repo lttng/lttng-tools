@@ -90,16 +90,16 @@ const char * const config_element_symbol_name = "symbol_name";
 const char * const config_element_address = "address";
 const char * const config_element_offset = "offset";
 
-const char * const config_element_userspace_probe_lookup = "lookup_method";
-const char * const config_element_userspace_probe_lookup_function_default = "DEFAULT";
-const char * const config_element_userspace_probe_lookup_function_elf = "ELF";
-const char * const config_element_userspace_probe_lookup_tracepoint_sdt = "SDT";
-const char * const config_element_userspace_probe_location_binary_path = "binary_path";
-const char * const config_element_userspace_probe_function_attributes = "userspace_probe_function_attributes";
-const char * const config_element_userspace_probe_function_location_function_name = "function_name";
-const char * const config_element_userspace_probe_tracepoint_attributes = "userspace_probe_tracepoint_attributes";
-const char * const config_element_userspace_probe_tracepoint_location_provider_name = "provider_name";
-const char * const config_element_userspace_probe_tracepoint_location_probe_name = "probe_name";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup = "lookup_method";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_function_default = "DEFAULT";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_function_elf = "ELF";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_lookup_tracepoint_sdt = "SDT";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_location_binary_path = "binary_path";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_function_attributes = "userspace_probe_function_attributes";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_function_location_function_name = "function_name";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_attributes = "userspace_probe_tracepoint_attributes";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_location_provider_name = "provider_name";
+LTTNG_HIDDEN const char * const config_element_userspace_probe_tracepoint_location_probe_name = "probe_name";
 
 const char * const config_element_name = "name";
 const char * const config_element_enabled = "enabled";
