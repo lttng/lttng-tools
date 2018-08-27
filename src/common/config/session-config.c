@@ -1479,9 +1479,8 @@ struct lttng_userspace_probe_location *
 process_userspace_probe_function_attribute_node(
 		xmlNodePtr attribute_node)
 {
-	xmlChar *content;
 	xmlNodePtr function_attribute_node;
-	char *function_name = NULL, *binary_path = NULL, *lookup_method_name;
+	char *function_name = NULL, *binary_path = NULL;
 	struct lttng_userspace_probe_location *location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 
@@ -1499,42 +1498,23 @@ process_userspace_probe_function_attribute_node(
 		/* Handle function name, binary path and lookup method. */
 		if (!strcmp((const char *) function_attribute_node->name,
 					config_element_userspace_probe_function_location_function_name)) {
-			content = xmlNodeGetContent(function_attribute_node);
-			if (!content) {
-				goto error;
-			}
-
-			function_name = lttng_strndup((char *) content, LTTNG_SYMBOL_NAME_LEN);
-			free(content);
+			function_name = (char *) xmlNodeGetContent(function_attribute_node);
 			if (!function_name) {
-				PERROR("Error duplicating function name");
 				goto error;
 			}
 		} else if (!strcmp((const char *) function_attribute_node->name,
 					config_element_userspace_probe_location_binary_path)) {
-			content = xmlNodeGetContent(function_attribute_node);
-			if (!content) {
-				goto error;
-			}
-
-			binary_path = lttng_strndup((char *) content, LTTNG_PATH_MAX);
-			free(content);
+			binary_path = (char *) xmlNodeGetContent(function_attribute_node);
 			if (!binary_path) {
-				PERROR("Error duplicating binary path");
 				goto error;
 			}
 		} else if (!strcmp((const char *) function_attribute_node->name,
 					config_element_userspace_probe_lookup)) {
-			content = xmlNodeGetContent(function_attribute_node);
-			if (!content) {
-				goto error;
-			}
+			char *lookup_method_name;
 
-			lookup_method_name = lttng_strndup((char *) content,
-					CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN);
-			free(content);
+			lookup_method_name = (char *) xmlNodeGetContent(
+					function_attribute_node);
 			if (!lookup_method_name) {
-				PERROR("Error duplicating lookup method name");
 				goto error;
 			}
 
@@ -1547,12 +1527,13 @@ process_userspace_probe_function_attribute_node(
 				lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
 				if (!lookup_method) {
 					PERROR("Error creating function default/ELF lookup method");
-					free(lookup_method_name);
-					goto error;
 				}
 			} else {
-				WARN("Unknown function lookup method.");
-				free(lookup_method_name);
+				WARN("Unknown function lookup method");
+			}
+
+			free(lookup_method_name);
+			if (!lookup_method) {
 				goto error;
 			}
 		} else {
@@ -1561,20 +1542,19 @@ process_userspace_probe_function_attribute_node(
 
 		/* Check if all the necessary fields were found. */
 		if (binary_path && function_name && lookup_method) {
+			/* Ownership of lookup_method is transferred. */
 			location =
 				lttng_userspace_probe_location_function_create(
 						binary_path, function_name,
 						lookup_method);
-			goto end;
+			lookup_method = NULL;
+			goto error;
 		}
 	}
 error:
+	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 	free(binary_path);
 	free(function_name);
-	if (lookup_method) {
-		lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
-	}
-end:
 	return location;
 }
 
@@ -1583,9 +1563,7 @@ struct lttng_userspace_probe_location *
 process_userspace_probe_tracepoint_attribute_node(
 		xmlNodePtr attribute_node)
 {
-	xmlChar *content;
 	xmlNodePtr tracepoint_attribute_node;
-	char *lookup_method_name = NULL;
 	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
 	struct lttng_userspace_probe_location *location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
@@ -1602,58 +1580,29 @@ process_userspace_probe_tracepoint_attribute_node(
 				tracepoint_attribute_node)) {
 		if (!strcmp((const char *) tracepoint_attribute_node->name,
 					config_element_userspace_probe_tracepoint_location_probe_name)) {
-			content = xmlNodeGetContent(tracepoint_attribute_node);
-			if (!content) {
-				goto error;
-			}
-
-			probe_name = lttng_strndup((char*) content, LTTNG_SYMBOL_NAME_LEN);
-			free(content);
+			probe_name = (char *) xmlNodeGetContent(tracepoint_attribute_node);
 			if (!probe_name) {
-				PERROR("Error duplicating probe name");
 				goto error;
 			}
 		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
 					config_element_userspace_probe_tracepoint_location_provider_name)) {
-			content = xmlNodeGetContent(tracepoint_attribute_node);
-			if (!content) {
-				goto error;
-			}
-
-			provider_name = lttng_strndup((char*) content, LTTNG_SYMBOL_NAME_LEN);
-			free(content);
+			provider_name = (char *) xmlNodeGetContent(tracepoint_attribute_node);
 			if (!provider_name) {
-				PERROR("Error duplicating provider name");
 				goto error;
 			}
 		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
 					config_element_userspace_probe_location_binary_path)) {
-			content = xmlNodeGetContent(tracepoint_attribute_node);
-			if (!content) {
-				goto error;
-			}
-
-			binary_path = lttng_strndup((char*) content, LTTNG_PATH_MAX);
-
-			free(content);
-
+			binary_path = (char *) xmlNodeGetContent(tracepoint_attribute_node);
 			if (!binary_path) {
-				PERROR("Error duplicating binary path");
 				goto error;
 			}
 		} else if (!strcmp((const char *) tracepoint_attribute_node->name,
 					config_element_userspace_probe_lookup)) {
-			content = xmlNodeGetContent(tracepoint_attribute_node);
-			if (!content) {
-				goto error;
-			}
+			char *lookup_method_name;
 
-			lookup_method_name = lttng_strndup((char *) content,
-					CONFIG_USERSPACE_PROBE_LOOKUP_METHOD_NAME_MAX_LEN);
-			free(content);
-
+		        lookup_method_name = (char *) xmlNodeGetContent(
+					tracepoint_attribute_node);
 			if (!lookup_method_name) {
-				PERROR("Error duplicating lookup method name");
 				goto error;
 			}
 
@@ -1663,35 +1612,35 @@ process_userspace_probe_tracepoint_attribute_node(
 					lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
 				if (!lookup_method) {
 					PERROR("Error creating tracepoint SDT lookup method");
-					free(lookup_method_name);
-					goto error;
 				}
 			} else {
-				WARN("Unknown tracepoint lookup method.");
+				WARN("Unknown tracepoint lookup method");
+			}
+
+			free(lookup_method_name);
+			if (!lookup_method) {
 				goto error;
 			}
 		} else {
-			WARN("Unknown tracepoint attribute.");
+			WARN("Unknown tracepoint attribute");
 			goto error;
 		}
 
 		/* Check if all the necessary fields were found. */
 		if (binary_path && provider_name && probe_name && lookup_method) {
+			/* Ownership of lookup_method is transferred. */
 			location =
 				lttng_userspace_probe_location_tracepoint_create(
 						binary_path, provider_name,
 						probe_name, lookup_method);
-			goto end;
+			goto error;
 		}
 	}
 error:
+	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 	free(binary_path);
-	free(probe_name);
 	free(provider_name);
-	if (lookup_method) {
-		lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
-	}
-end:
+	free(probe_name);
 	return location;
 }
 
