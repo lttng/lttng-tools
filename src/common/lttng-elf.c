@@ -875,7 +875,7 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 	struct lttng_elf *elf = NULL;
 	char *stap_note_section_data = NULL;
 	char *curr_note_section_begin, *curr_data_ptr, *curr_probe, *curr_provider;
-	char *next_note_ptr, *curr_desc_beg;
+	char *next_note_ptr;
 	uint32_t name_size, desc_size, note_type;
 	uint64_t curr_probe_location, curr_probe_offset, curr_semaphore_location;
 	uint64_t *probe_locs = NULL, *new_probe_locs = NULL;
@@ -965,9 +965,6 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 
 		curr_data_ptr += name_size;
 
-		/* Get description field. */
-		curr_desc_beg = curr_data_ptr;
-
 		/* Get probe location.  */
 		curr_probe_location = *(uint64_t *) curr_data_ptr;
 		curr_data_ptr += sizeof(uint64_t);
@@ -984,9 +981,6 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 
 		/* Get probe name. */
 		curr_probe = curr_data_ptr;
-		curr_data_ptr += strlen(curr_probe) + 1;
-
-		curr_data_ptr = curr_desc_beg + desc_size;
 
 		/* Check if the provider and probe name match */
 		if (strcmp(provider_name, curr_provider) == 0 &&
