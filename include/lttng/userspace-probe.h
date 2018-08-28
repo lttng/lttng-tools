@@ -69,9 +69,15 @@ lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create(void);
  */
 struct lttng_userspace_probe_location;
 
+enum lttng_userspace_probe_location_status {
+	LTTNG_USERSPACE_PROBE_LOCATION_STATUS_OK 	= 0,
+	/* Invalid parameters provided. */
+	LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID 	= -1,
+};
+
 enum lttng_userspace_probe_location_type {
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN	= -1,
-	/* Function entry. */
+	/* Function. */
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION	= 0,
 	/* SDT probe's callsites. */
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT	= 1,
@@ -89,6 +95,13 @@ lttng_userspace_probe_location_get_type(
  */
 extern void lttng_userspace_probe_location_destroy(
 		struct lttng_userspace_probe_location *location);
+
+
+enum lttng_userspace_probe_location_function_instrumentation_type {
+	LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_UNKNOWN = -1,
+	/* Only instrument the function's entry. */
+	LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY = 0,
+};
 
 /*
  * Create a probe location of the function type.
@@ -121,6 +134,27 @@ extern const char *lttng_userspace_probe_location_function_get_function_name(
  */
 extern int lttng_userspace_probe_location_function_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Get the instrumentation type of the function probe location.
+ */
+extern enum lttng_userspace_probe_location_function_instrumentation_type
+lttng_userspace_probe_location_function_get_instrumentation_type(
+		const struct lttng_userspace_probe_location *location);
+
+/*
+ * Get the instrumentation type of the function probe location.
+ * Defaults to
+ * LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY.
+ *
+ * Returns LTTNG_USERSPACE_PROBE_LOCATION_STATUS_OK on success,
+ * LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID if invalid parameters
+ * are provided.
+ */
+extern enum lttng_userspace_probe_location_status
+lttng_userspace_probe_location_function_set_instrumentation_type(
+		const struct lttng_userspace_probe_location *location,
+		enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type);
 
 /*
  * Get the lookup method of the given userspace probe location.

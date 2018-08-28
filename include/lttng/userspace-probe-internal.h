@@ -102,6 +102,7 @@ struct lttng_userspace_probe_location_function {
 	 * Set to -1 if not open.
 	 */
 	int binary_fd;
+	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type;
 };
 
 struct lttng_userspace_probe_location_tracepoint {

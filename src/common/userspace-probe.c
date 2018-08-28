@@ -196,6 +196,8 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 	location->function_name = function_name_copy;
 	location->binary_path = binary_path_copy;
 	location->binary_fd = binary_fd;
+	location->instrumentation_type =
+			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY;
 
 	ret = &location->parent;
 	ret->lookup_method = lookup_method;
@@ -690,6 +692,52 @@ int lttng_userspace_probe_location_function_get_binary_fd(
 	ret = function_location->binary_fd;
 end:
 	return ret;
+}
+
+enum lttng_userspace_probe_location_function_instrumentation_type
+lttng_userspace_probe_location_function_get_instrumentation_type(
+		const struct lttng_userspace_probe_location *location)
+{
+	enum lttng_userspace_probe_location_function_instrumentation_type type;
+	struct lttng_userspace_probe_location_function *function_location;
+
+	if (!location || lttng_userspace_probe_location_get_type(location) !=
+			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
+		ERR("Invalid argument(s)");
+		type = LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_UNKNOWN;
+		goto end;
+	}
+
+	function_location = container_of(location,
+		struct lttng_userspace_probe_location_function, parent);
+	type = function_location->instrumentation_type;
+end:
+	return type;
+}
+
+enum lttng_userspace_probe_location_status
+lttng_userspace_probe_location_function_set_instrumentation_type(
+		const struct lttng_userspace_probe_location *location,
+		enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type)
+{
+	enum lttng_userspace_probe_location_status status =
+			LTTNG_USERSPACE_PROBE_LOCATION_STATUS_OK;
+	struct lttng_userspace_probe_location_function *function_location;
+
+	if (!location || lttng_userspace_probe_location_get_type(location) !=
+			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION ||
+			instrumentation_type !=
+			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY) {
+		ERR("Invalid argument(s)");
+		status = LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID;
+		goto end;
+	}
+
+	function_location = container_of(location,
+		struct lttng_userspace_probe_location_function, parent);
+	function_location->instrumentation_type = instrumentation_type;
+end:
+	return status;
 }
 
 int lttng_userspace_probe_location_tracepoint_get_binary_fd(
