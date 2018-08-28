@@ -51,6 +51,7 @@
 #include <common/config/session-config.h>
 #include <common/dynamic-buffer.h>
 #include <lttng/userspace-probe-internal.h>
+#include <lttng/event-internal.h>
 
 #include "lttng-sessiond.h"
 #include "buffer-registry.h"

@@ -22,6 +22,9 @@
 #ifndef LTTNG_EVENT_INTERNAL_H
 #define LTTNG_EVENT_INTERNAL_H
 
+#include <common/macros.h>
+#include <lttng/event.h>
+
 struct lttng_userspace_probe_location;
 
 struct lttng_event_extended {
@@ -39,5 +42,8 @@ struct lttng_event_extended {
 	} exclusions;
 	struct lttng_userspace_probe_location *probe_location;
 };
+
+LTTNG_HIDDEN
+struct lttng_event *lttng_event_copy(const struct lttng_event *event);
 
 #endif /* LTTNG_EVENT_INTERNAL_H */

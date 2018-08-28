@@ -321,8 +321,6 @@ extern int lttng_list_events(struct lttng_handle *handle,
  */
 extern struct lttng_event *lttng_event_create(void);
 
-extern struct lttng_event *lttng_event_copy(const struct lttng_event *event);
-
 /*
  * Destroy an lttng_event.
  *

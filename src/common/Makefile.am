@@ -27,7 +27,7 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h \
                        buffer-view.h buffer-view.c \
                        location.c \
                        waiter.h waiter.c \
-                       userspace-probe.c
+                       userspace-probe.c event.c
 
 libcommon_la_LIBADD = \
 		$(top_builddir)/src/common/config/libconfig.la \
