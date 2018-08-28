@@ -185,6 +185,7 @@ static void test_create_ust_event_exclusion(void)
 	char *name;
 	char *random_name;
 	struct lttng_event_exclusion *exclusion;
+	struct lttng_event_exclusion *exclusion_copy = NULL;
 	const int exclusion_count = 2;
 
 	memset(&ev, 0, sizeof(ev));
@@ -227,11 +228,30 @@ static void test_create_ust_event_exclusion(void)
 		goto end;
 	}
 
+	exclusion_copy = zmalloc(sizeof(*exclusion) +
+		LTTNG_SYMBOL_NAME_LEN * exclusion_count);
+	if (!exclusion_copy) {
+		skip(2, "zmalloc failed");
+		goto end;
+	}
+
+	/*
+	 * We are giving ownership of the exclusion struct to the
+	 * trace_ust_create_event() function. Make a copy of the exclusion struct
+	 * so we can compare it later.
+	 */
+
 	exclusion->count = exclusion_count;
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0),
 		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
 	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1),
 		get_random_string(), LTTNG_SYMBOL_NAME_LEN);
+
+	exclusion_copy->count = exclusion_count;
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 0),
+		LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 0), LTTNG_SYMBOL_NAME_LEN);
+	strncpy(LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion_copy, 1),
+		LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), LTTNG_SYMBOL_NAME_LEN);
 
 	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
 	ok(ret == LTTNG_OK, "Create UST event with different exclusion names");
@@ -246,13 +266,14 @@ static void test_create_ust_event_exclusion(void)
 	   strcmp(event->attr.name, ev.name) == 0 &&
 	   event->exclusion != NULL &&
 	   event->exclusion->count == exclusion_count &&
-	   !memcmp(event->exclusion->names, exclusion->names,
+	   !memcmp(event->exclusion->names, exclusion_copy->names,
 	   	LTTNG_SYMBOL_NAME_LEN * exclusion_count) &&
 	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
 	   "Validate UST event and exclusion");
 
 	trace_ust_destroy_event(event);
 end:
+	free(exclusion_copy);
 	return;
 }
 
