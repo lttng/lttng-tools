@@ -313,6 +313,13 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		goto end;
 	}
 
+	switch (ev->type) {
+	case LTTNG_EVENT_USERSPACE_PROBE:
+		break;
+	default:
+		assert(0);
+	}
+
 	/*
 	 * userspace probe fields are separated by ':'.
 	 */
@@ -383,37 +390,38 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	unescaped_target_path = strutils_unescape_string(target_path, 0);
 	if (!unescaped_target_path) {
 		ret = -LTTNG_ERR_INVALID;
-		goto end_string;
+		goto end_destroy_lookup_method;
 	}
 
 	/*
 	 * If there is not forward slash in the path. Walk the $PATH else
 	 * expand.
 	 */
-	if (strchr(target_path, '/') == NULL) {
+	if (strchr(unescaped_target_path, '/') == NULL) {
 		/* Walk the $PATH variable to find the targeted binary. */
 		real_target_path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
 		if (!real_target_path) {
 			PERROR("Error allocating path buffer");
 			ret = CMD_ERROR;
-			goto end_unescaped_string;
+			goto end_destroy_lookup_method;
 		}
-		ret = walk_command_search_path(target_path, real_target_path);
+		ret = walk_command_search_path(unescaped_target_path, real_target_path);
 		if (ret) {
 			ERR("Binary not found.");
 			ret = CMD_ERROR;
-			goto end_free_path;
+			goto end_destroy_lookup_method;
 		}
 	} else {
 		/*
 		 * Expand references to `/./` and `/../`. This function does not check
-		 * if the file exists.
+		 * if the file exists. This call returns an allocated buffer on
+		 * success.
 		 */
-		real_target_path = utils_expand_path_keep_symlink(target_path);
+		real_target_path = utils_expand_path_keep_symlink(unescaped_target_path);
 		if (!real_target_path) {
 			ERR("Error expanding the path to binary.");
 			ret = CMD_ERROR;
-			goto end_free_path;
+			goto end_destroy_lookup_method;
 		}
 
 		/*
@@ -423,7 +431,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		ret = access(real_target_path, F_OK);
 		if (ret) {
 			ret = CMD_ERROR;
-			goto end_free_path;
+			goto end_destroy_lookup_method;
 		}
 	}
 
@@ -468,32 +476,24 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		break;
 	default:
 		ret = CMD_ERROR;
-		goto end_free_path;
+		goto end_destroy_lookup_method;
 	}
 
-	switch (ev->type) {
-	case LTTNG_EVENT_USERSPACE_PROBE:
-		break;
-	default:
-		assert(0);
-	}
-
-	goto end;
+	/* Successful parsing, now clean up everything and return. */
+	goto end_string;
 
 end_destroy_location:
 	lttng_userspace_probe_location_destroy(probe_location);
 end_destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
-end_free_path:
-	/*
-	 * Free path that was allocated by the call to realpath() or when walking
-	 * the PATH.
-	 */
-	free(real_target_path);
-end_unescaped_string:
-	free(unescaped_target_path);
 end_string:
 	strutils_free_null_terminated_array_of_strings(tokens);
+	/*
+	 * Freeing both char * here makes the error handling simplier. free()
+	 * performs not action if the pointer is NULL.
+	 */
+	free(real_target_path);
+	free(unescaped_target_path);
 end:
 	return ret;
 }
