@@ -303,10 +303,32 @@ struct lttng_event_field {
 extern int lttng_list_events(struct lttng_handle *handle,
 		const char *channel_name, struct lttng_event **events);
 
+/*
+ * Create an lttng_event.
+ *
+ * This creation function, introduced in LTTng 2.11, works around
+ * the fact that the layout of the 'lttng_event' is publicly exposed.
+ *
+ * It allocates a larger object which exposes the same public fields
+ * as a 'struct lttng_event', but also allows the use of the following extended
+ * attribute setters:
+ *   - lttng_event_set_userspace_probe_location();
+ *
+ * Events created through this function must be destroyed using
+ * lttng_event_destroy().
+ *
+ * Returns a zeroed lttng_event on success, NULL on error.
+ */
 extern struct lttng_event *lttng_event_create(void);
 
 extern struct lttng_event *lttng_event_copy(const struct lttng_event *event);
 
+/*
+ * Destroy an lttng_event.
+ *
+ * This destruction function, introduced in LTTng 2.11, should only
+ * be used with events created by lttng_event_create().
+  */
 extern void lttng_event_destroy(struct lttng_event *event);
 
 /*
@@ -341,7 +363,6 @@ extern int lttng_event_get_exclusion_name_count(struct lttng_event *event);
 extern int lttng_event_get_exclusion_name(struct lttng_event *event,
 		size_t index, const char **exclusion_name);
 
-
 /*
  * Get the userspace probe location of a specific LTTng event.
  * If the call is successful, then a pointer to the probe location is returned.
@@ -353,8 +374,12 @@ lttng_event_get_userspace_probe_location(const struct lttng_event *event);
 
 /*
  * Set an LTTng event's userspace probe location.
+ *
  * If the call is successful, then the probe location is set to the event. The
  * ownership of the probe_location is given to the event.
+ *
+ * Note that the event must have been created using 'lttng_event_create()' in
+ * order for this call to succeed.
  *
  * Returns 0 on success, or a negative LTTng error code on error.
  */
