@@ -402,7 +402,7 @@ lttng_userspace_probe_location_function_copy(
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	const char *binary_path = NULL;
 	const char *function_name = NULL;
-	int fd;
+	int fd, new_fd;
 
 	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION);
@@ -421,8 +421,14 @@ lttng_userspace_probe_location_function_copy(
 	}
 
 	/* Duplicate the binary fd */
-	fd = dup(lttng_userspace_probe_location_function_get_binary_fd(location));
+	fd = lttng_userspace_probe_location_function_get_binary_fd(location);
 	if (fd == -1) {
+		ERR("Error getting file descriptor to binary");
+		goto error;
+	}
+
+	new_fd = dup(fd);
+	if (new_fd == -1) {
 		PERROR("Error duplicating file descriptor to binary");
 		goto error;
 	}
@@ -454,7 +460,7 @@ lttng_userspace_probe_location_function_copy(
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_function_set_binary_fd(new_location, fd) < 0) {
+	if (lttng_userspace_probe_location_function_set_binary_fd(new_location, new_fd) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -465,7 +471,7 @@ destroy_probe_location:
 destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 close_fd:
-	if (close(fd) < 0) {
+	if (close(new_fd) < 0) {
 		PERROR("Error closing duplicated file descriptor in error path");
 	}
 error:
@@ -484,7 +490,7 @@ lttng_userspace_probe_location_tracepoint_copy(
 	const char *binary_path = NULL;
 	const char *probe_name = NULL;
 	const char *provider_name = NULL;
-	int fd;
+	int fd, new_fd;
 
 	assert(location);
 	assert(location->type == LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT);
@@ -509,8 +515,14 @@ lttng_userspace_probe_location_tracepoint_copy(
 	}
 
 	/* Duplicate the binary fd */
-	fd = dup(lttng_userspace_probe_location_tracepoint_get_binary_fd(location));
+	fd = lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
 	if (fd == -1) {
+		ERR("Error getting file descriptor to binary");
+		goto error;
+	}
+
+	new_fd = dup(fd);
+	if (new_fd == -1) {
 		PERROR("Error duplicating file descriptor to binary");
 		goto error;
 	}
@@ -542,7 +554,7 @@ lttng_userspace_probe_location_tracepoint_copy(
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_tracepoint_set_binary_fd(new_location, fd) < 0) {
+	if (lttng_userspace_probe_location_tracepoint_set_binary_fd(new_location, new_fd) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -553,7 +565,7 @@ destroy_probe_location:
 destroy_lookup_method:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 close_fd:
-	if (close(fd) < 0) {
+	if (close(new_fd) < 0) {
 		PERROR("Error closing duplicated file descriptor in error path");
 	}
 error:
