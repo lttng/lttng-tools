@@ -71,9 +71,9 @@ struct lttng_userspace_probe_location;
 
 enum lttng_userspace_probe_location_type {
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_UNKNOWN	= -1,
-	/* Traces a function's entry and exit. */
+	/* Function entry. */
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION	= 0,
-	/* Trace a single point. */
+	/* SDT probe's callsites. */
 	LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT	= 1,
 };
 
