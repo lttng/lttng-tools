@@ -17,6 +17,9 @@
  */
 
 #include "test_class.h"
+test_class::test_class() {
+	test_member = 1;
+}
 
 void test_class::test_method() {
 	test_member += 1;
