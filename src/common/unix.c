@@ -490,11 +490,6 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	 * message.
 	 */
 	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-		if (!cmsg) {
-			fprintf(stderr, "Error: Invalid control message header\n");
-			ret = -1;
-			goto end;
-		}
 		if (cmsg->cmsg_level != SOL_SOCKET) {
 			fprintf(stderr, "Error: The socket needs to be of type SOL_SOCKET\n");
 			ret = -1;
