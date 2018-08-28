@@ -2052,6 +2052,7 @@ end:
 		free(exclusions[i]);
 	}
 
+	lttng_event_destroy(event);
 	free(exclusions);
 	free(filter_expression);
 	return ret;
