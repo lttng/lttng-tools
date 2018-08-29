@@ -310,6 +310,7 @@ error:
 LTTNG_HIDDEN
 char *_utils_expand_path(const char *path, bool keep_symlink)
 {
+	int ret;
 	char *absolute_path = NULL;
 	char *last_token;
 	int is_dot, is_dotdot;
@@ -320,21 +321,26 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 	}
 
 	/* Allocate memory for the absolute_path */
-	absolute_path = zmalloc(PATH_MAX);
+	absolute_path = zmalloc(LTTNG_PATH_MAX);
 	if (absolute_path == NULL) {
 		PERROR("zmalloc expand path");
 		goto error;
 	}
 
 	if (path[0] == '/') {
-		strncpy(absolute_path, path, PATH_MAX);
+		ret = lttng_strncpy(absolute_path, path, LTTNG_PATH_MAX);
+		if (ret) {
+			ERR("Path exceeds maximal size of %i bytes", LTTNG_PATH_MAX);
+			goto error;
+		}
 	} else {
 		/*
 		 * This is a relative path. We need to get the present working
 		 * directory and start the path walk from there.
 		 */
-		char current_working_dir[PATH_MAX];
+		char current_working_dir[LTTNG_PATH_MAX];
 		char *cwd_ret;
+
 		cwd_ret = getcwd(current_working_dir, sizeof(current_working_dir));
 		if (!cwd_ret) {
 			goto error;
@@ -343,13 +349,19 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 		 * Get the number of character in the CWD and allocate an array
 		 * to can hold it and the path provided by the caller.
 		 */
-		snprintf(absolute_path, PATH_MAX, "%s/%s", current_working_dir, path);
+		ret = snprintf(absolute_path, LTTNG_PATH_MAX, "%s/%s",
+				current_working_dir, path);
+		if (ret >= LTTNG_PATH_MAX) {
+			ERR("Concatenating current working directory %s and path %s exceeds maximal size of %i bytes",
+					current_working_dir, path, LTTNG_PATH_MAX);
+			goto error;
+		}
 	}
 
 	if (keep_symlink) {
 		/* Resolve partially our path */
 		absolute_path = utils_partial_realpath(absolute_path,
-				absolute_path, PATH_MAX);
+				absolute_path, LTTNG_PATH_MAX);
 	}
 
 	absolute_path = expand_double_slashes_dot_and_dotdot(absolute_path);
