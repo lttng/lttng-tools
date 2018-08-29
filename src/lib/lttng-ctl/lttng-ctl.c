@@ -2558,7 +2558,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 	int enabled = 1;
 	struct lttcomm_session_msg lsm;
 	size_t nr_pids;
-	int32_t *pids;
+	int32_t *pids = NULL;
 
 	if (handle == NULL) {
 		return -LTTNG_ERR_INVALID;
