@@ -2744,6 +2744,9 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		return ret;
 	}
 	nr_pids = ret / sizeof(int32_t);
+	if (nr_pids > 0 && !pids) {
+		return -LTTNG_ERR_UNK;
+	}
 	if (nr_pids == 1 && pids[0] == -1) {
 		free(pids);
 		pids = NULL;
