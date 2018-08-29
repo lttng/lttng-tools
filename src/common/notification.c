@@ -56,6 +56,9 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 	header_offset = buf->size;
 	ret = lttng_dynamic_buffer_append(buf, &notification_comm,
 			sizeof(notification_comm));
+	if (ret) {
+		goto end;
+	}
 
 	size_before_payload = buf->size;
 	ret = lttng_condition_serialize(notification->condition,
