@@ -1087,7 +1087,7 @@ int delete_dir_recursive(const char *path)
 	if (!dir) {
 		PERROR("Cannot open '%s' path", path);
 		ret = -errno;
-	        goto end;
+	        goto end_no_closedir;
 	}
 
 	path_len = strlen(path);
@@ -1170,6 +1170,7 @@ end:
 	if (closeret) {
 		PERROR("closedir");
 	}
+end_no_closedir:
 	return ret;
 }
 
