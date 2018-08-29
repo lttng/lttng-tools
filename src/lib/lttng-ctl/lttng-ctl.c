@@ -2114,6 +2114,7 @@ int lttng_list_events(struct lttng_handle *handle,
 					ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN);
 			if (ret) {
 				ret = -LTTNG_ERR_NOMEM;
+				goto free_dynamic_buffer;
 			}
 			comm_ext_at += ext_comm->nb_exclusions * LTTNG_SYMBOL_NAME_LEN;
 		}
