@@ -1959,6 +1959,11 @@ int lttng_list_events(struct lttng_handle *handle,
 		goto end;
 	}
 
+	if (!cmd_header) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
 	/* Set number of events and free command header */
 	nb_events = cmd_header->nb_events;
 	if (nb_events > INT_MAX) {
