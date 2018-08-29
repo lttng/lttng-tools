@@ -2005,7 +2005,6 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.rotate_channel.key, ctx);
 		if (ret < 0) {
 			ERR("Rotate channel failed");
-			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		}
 		break;
 	}
