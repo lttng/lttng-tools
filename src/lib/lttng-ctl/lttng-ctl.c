@@ -2039,7 +2039,6 @@ int lttng_list_events(struct lttng_handle *handle,
 
 			probe_storage_req = ret;
 			comm_ext_at += ext_comm->userspace_probe_location_len;
-			ret = 0;
 		}
 
 		storage_req += sizeof(struct lttng_event_extended);
