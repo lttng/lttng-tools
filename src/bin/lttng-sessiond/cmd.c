@@ -490,7 +490,7 @@ static int list_lttng_agent_events(struct agent *agt,
 	int i = 0, ret = 0;
 	unsigned int nb_event = 0;
 	struct agent_event *event;
-	struct lttng_event *tmp_events;
+	struct lttng_event *tmp_events = NULL;
 	struct lttng_ht_iter iter;
 	size_t extended_len = 0;
 	void *extended_at;
@@ -562,9 +562,12 @@ static int list_lttng_agent_events(struct agent *agt,
 	ret = nb_event;
 	assert(nb_event == i);
 
-error:
+end:
 	rcu_read_unlock();
 	return ret;
+error:
+	free(tmp_events);
+	goto end;
 }
 
 /*
