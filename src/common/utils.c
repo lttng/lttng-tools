@@ -197,7 +197,7 @@ error:
 }
 
 static
-char *expand_double_slashes_dot_and_dotdot(char *path)
+int expand_double_slashes_dot_and_dotdot(char *path)
 {
 	size_t expanded_path_len, path_len;
 	const char *curr_char, *path_last_char, *next_slash, *prev_slash;
@@ -206,7 +206,6 @@ char *expand_double_slashes_dot_and_dotdot(char *path)
 	path_last_char = &path[path_len];
 
 	if (path_len == 0) {
-		path = NULL;
 		goto error;
 	}
 
@@ -292,9 +291,9 @@ char *expand_double_slashes_dot_and_dotdot(char *path)
 	}
 
 	path[expanded_path_len] = '\0';
-
+	return 0;
 error:
-	return path;
+	return -1;
 }
 
 /*
@@ -313,7 +312,7 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 	int ret;
 	char *absolute_path = NULL;
 	char *last_token;
-	int is_dot, is_dotdot;
+	bool is_dot, is_dotdot;
 
 	/* Safety net */
 	if (path == NULL) {
@@ -364,8 +363,8 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 				absolute_path, LTTNG_PATH_MAX);
 	}
 
-	absolute_path = expand_double_slashes_dot_and_dotdot(absolute_path);
-	if (!absolute_path) {
+	ret = expand_double_slashes_dot_and_dotdot(absolute_path);
+	if (ret) {
 		goto error;
 	}
 
