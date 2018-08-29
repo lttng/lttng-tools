@@ -1633,6 +1633,7 @@ process_userspace_probe_tracepoint_attribute_node(
 				lttng_userspace_probe_location_tracepoint_create(
 						binary_path, provider_name,
 						probe_name, lookup_method);
+			lookup_method = NULL;
 			goto error;
 		}
 	}
