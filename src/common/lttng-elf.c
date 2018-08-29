@@ -994,7 +994,7 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 			 */
 			if (curr_semaphore_location != 0) {
 				ret = LTTNG_ERR_SDT_PROBE_SEMAPHORE;
-				goto end;
+				goto realloc_error;
 			}
 
 			new_size = (++nb_match) * sizeof(uint64_t);
