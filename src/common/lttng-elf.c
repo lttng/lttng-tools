@@ -331,7 +331,6 @@ struct lttng_elf_shdr *lttng_elf_get_section_hdr(struct lttng_elf *elf,
 
 	ret = populate_section_header(elf, section_header, index);
 	if (ret) {
-		ret = LTTNG_ERR_ELF_PARSING;
 		DBG("Error populating section header.");
 		goto error;
 	}
