@@ -82,12 +82,14 @@ static int metadata_regenerate(int argc, const char **argv)
 	int ret;
 
 	if (argc > 1) {
-		ret = -LTTNG_ERR_INVALID;
+		ret = CMD_UNDEFINED;
 		goto end;
 	}
 	ret = lttng_regenerate_metadata(session_name);
 	if (ret == 0) {
 		MSG("Metadata successfully regenerated for session %s", session_name);
+	} else {
+		ERR("%s", lttng_strerror(ret));
 	}
 
 end:
@@ -100,8 +102,8 @@ static int handle_command(const char **argv)
 	int ret = CMD_SUCCESS, i = 0, argc, command_ret = CMD_SUCCESS;
 
 	if (argv == NULL) {
-		ERR("argv is null");
-		command_ret = CMD_ERROR;
+		ERR("No action specified for metadata command.");
+		ret = CMD_ERROR;
 		goto end;
 	}
 
@@ -221,12 +223,7 @@ int cmd_metadata(int argc, const char **argv)
 
 	command_ret = handle_command(poptGetArgs(pc));
 	if (command_ret) {
-		switch (-command_ret) {
-		default:
-			ERR("%s", lttng_strerror(command_ret));
-			success = 0;
-			break;
-		}
+		success = 0;
 	}
 
 	if (lttng_opt_mi) {
