@@ -488,6 +488,9 @@ int handle_one_cmd(struct run_as_worker *worker)
 	run_as_fct cmd;
 	uid_t prev_euid;
 
+	memset(&sendret, 0, sizeof(sendret));
+	sendret.fd = -1;
+
 	/*
 	 * Stage 1: Receive run_as_data struct from the master.
 	 * The structure contains the command type and all the parameters needed for
