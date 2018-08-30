@@ -528,6 +528,8 @@ int handle_one_cmd(struct run_as_worker *worker)
 	if (data.gid != getegid()) {
 		ret = setegid(data.gid);
 		if (ret < 0) {
+			sendret._error = true;
+			sendret._errno = errno;
 			PERROR("setegid");
 			goto write_return;
 		}
@@ -535,6 +537,8 @@ int handle_one_cmd(struct run_as_worker *worker)
 	if (data.uid != prev_euid) {
 		ret = seteuid(data.uid);
 		if (ret < 0) {
+			sendret._error = true;
+			sendret._errno = errno;
 			PERROR("seteuid");
 			goto write_return;
 		}
