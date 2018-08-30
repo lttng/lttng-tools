@@ -48,5 +48,6 @@ end:
 	return new_event;
 error:
 	free(new_event);
+	new_event = NULL;
 	goto end;
 }

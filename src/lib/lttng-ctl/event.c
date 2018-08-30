@@ -51,6 +51,7 @@ end:
 	return event;
 error:
 	free(event);
+	event = NULL;
 	goto end;
 }
 

@@ -1033,6 +1033,9 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	bool send_fd = false;
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
+
+	memset(&send_buffer, 0, sizeof(send_buffer));
+
 	/*
 	 * Cast as non-const since we may replace the filter expression
 	 * by a dynamically allocated string. Otherwise, the original

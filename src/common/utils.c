@@ -337,7 +337,6 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 		char *cwd_ret;
 		cwd_ret = getcwd(current_working_dir, sizeof(current_working_dir));
 		if (!cwd_ret) {
-			absolute_path = NULL;
 			goto error;
 		}
 		/*
