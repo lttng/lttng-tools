@@ -137,18 +137,6 @@ The `lttng rotate` command only works when:
 
 * No immediate rotation (`lttng rotate`) is currently happening.
 
-* No rotation schedule is currently set (see
-  man:lttng-enable-rotation(1)).
-+
-One way around this is to:
-+
---
-. Unset any rotation schedule with man:lttng-disable-rotation(1).
-. Perform the immediate rotation with `lttng rotation`.
-. **If needed**, set the rotation schedule again
-  with man:lttng-enable-rotation(1).
---
-
 
 include::common-cmd-footer.txt[]
 
