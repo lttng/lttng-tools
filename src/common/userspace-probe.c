@@ -276,6 +276,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 error:
 	free(probe_name_copy);
 	free(provider_name_copy);
+	free(binary_path_copy);
 	if (binary_fd >= 0) {
 		if (close(binary_fd)) {
 			PERROR("Error closing binary fd in error path");
