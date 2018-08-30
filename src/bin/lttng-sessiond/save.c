@@ -2245,6 +2245,9 @@ int save_session_rotation_schedules(struct config_writer *writer,
 
 	ret = config_writer_open_element(writer,
 			config_element_rotation_schedules);
+	if (ret) {
+		goto end;
+	}
 	if (session->rotate_timer_period) {
 		ret = save_session_rotation_schedule(writer,
 				LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC,
