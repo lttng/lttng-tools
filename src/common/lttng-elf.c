@@ -908,7 +908,6 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 		goto destroy_elf_error;
 	}
 
-	curr_data_ptr = stap_note_section_data;
 	next_note_ptr = stap_note_section_data;
 	curr_note_section_begin = stap_note_section_data;
 
