@@ -2502,7 +2502,8 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			} else if (stat(INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE, &st) == 0) {
 				DBG3("Found location #2");
 				consumer_to_use = INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE;
-			} else if (stat(config.consumerd32_bin_path.value, &st) == 0) {
+			} else if (config.consumerd32_bin_path.value &&
+					stat(config.consumerd32_bin_path.value, &st) == 0) {
 				DBG3("Found location #3");
 				consumer_to_use = config.consumerd32_bin_path.value;
 			} else {
