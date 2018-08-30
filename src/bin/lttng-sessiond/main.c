@@ -3102,7 +3102,6 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATION_GET_INFO:
-	case LTTNG_SESSION_GET_CURRENT_OUTPUT:
 	case LTTNG_ROTATION_SET_SCHEDULE:
 	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 		need_domain = 0;
@@ -4316,28 +4315,6 @@ error_add_context:
 
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &get_info_return,
 				sizeof(get_info_return));
-		if (ret < 0) {
-			ret = -ret;
-			goto error;
-		}
-
-		ret = LTTNG_OK;
-		break;
-	}
-	case LTTNG_SESSION_GET_CURRENT_OUTPUT:
-	{
-		struct lttng_session_get_current_output_return output_return;
-
-		memset(&output_return, 0, sizeof(output_return));
-		ret = cmd_session_get_current_output(cmd_ctx->session,
-				&output_return);
-		if (ret < 0) {
-			ret = -ret;
-			goto error;
-		}
-
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &output_return,
-				sizeof(output_return));
 		if (ret < 0) {
 			ret = -ret;
 			goto error;

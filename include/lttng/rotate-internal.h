@@ -111,11 +111,6 @@ struct lttng_rotation_get_info_return {
 	} location;
 } LTTNG_PACKED;
 
-/* For the LTTNG_SESSION_GET_CURRENT_OUTPUT command. */
-struct lttng_session_get_current_output_return {
-	char path[LTTNG_PATH_MAX];
-} LTTNG_PACKED;
-
 /* For the LTTNG_SESSION_LIST_SCHEDULES command. */
 struct lttng_session_list_schedules_return {
 	struct {

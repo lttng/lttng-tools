@@ -138,8 +138,6 @@ int cmd_rotate_session(struct ltt_session *session,
 int cmd_rotate_get_info(struct ltt_session *session,
 		struct lttng_rotation_get_info_return *info_return,
 		uint64_t rotate_id);
-int cmd_session_get_current_output(struct ltt_session *session,
-		struct lttng_session_get_current_output_return *output_return);
 int cmd_rotation_set_schedule(struct ltt_session *session,
 		bool activate, enum lttng_rotation_schedule_type schedule_type,
 		uint64_t value,

@@ -5047,58 +5047,6 @@ end:
 	return ret;
 }
 
-/*
- * Command ROTATE_GET_CURRENT_PATH from the lttng-ctl library.
- *
- * Configure the automatic rotation parameters.
- * Set to -1ULL to disable them.
- *
- * Return LTTNG_OK on success or else a LTTNG_ERR code.
- */
-int cmd_session_get_current_output(struct ltt_session *session,
-		struct lttng_session_get_current_output_return *output_return)
-{
-	int ret;
-	const char *path;
-
-	if (!session->snapshot_mode) {
-		if (session->current_archive_id == 0) {
-			if (session->kernel_session) {
-				path = session_get_base_path(session);
-			} else if (session->ust_session) {
-				path = session_get_base_path(session);
-			} else {
-				abort();
-			}
-			assert(path);
-		} else {
-			path = session->rotation_chunk.active_tracing_path;
-		}
-	} else {
-		/*
-		 * A snapshot session does not have a "current" trace archive
-		 * location.
-		 */
-		path = "";
-	}
-
-	DBG("Cmd get current output for session %s, returning %s",
-			session->name, path);
-
-	ret = lttng_strncpy(output_return->path,
-			path,
-			sizeof(output_return->path));
-	if (ret) {
-		ERR("Failed to copy trace output path to session get current output command reply");
-		ret = -LTTNG_ERR_UNK;
-		goto end;
-	}
-
-	ret = LTTNG_OK;
-end:
-	return ret;
-}
-
 /* Wait for a given path to be removed before continuing. */
 static enum lttng_error_code wait_on_path(void *path_data)
 {
