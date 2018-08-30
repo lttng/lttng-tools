@@ -44,9 +44,6 @@ The naming convention of a trace chunk archive which an automatic
 rotation creates is the same as with the immediate rotation command,
 man:lttng-rotate(1).
 
-For a given tracing session, you cannot set multiple rotation schedules
-with the option:--timer or the option:--size option.
-
 You can unset a rotation schedule with the man:lttng-disable-rotation(1)
 command.
 
