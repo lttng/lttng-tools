@@ -225,7 +225,7 @@ int cmd_disable_rotation(int argc, const char **argv)
 	pc = poptGetContext(NULL, argc, argv, long_options, 0);
 	popt_ret = poptReadDefaultConfig(pc, 0);
 	if (popt_ret) {
-		ret = CMD_ERROR;
+		cmd_ret = CMD_ERROR;
 		ERR("poptReadDefaultConfig");
 		goto end;
 	}
@@ -245,7 +245,7 @@ int cmd_disable_rotation(int argc, const char **argv)
 			size_rotation = true;
 			break;
 		default:
-			ret = CMD_UNDEFINED;
+			cmd_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
