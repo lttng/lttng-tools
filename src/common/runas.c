@@ -922,6 +922,9 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 	struct run_as_data data;
 	struct run_as_ret ret;
 
+	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
+
 	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
 		"with for uid %d and gid %d", fd, function, (int) uid, (int) gid);
 
@@ -950,6 +953,9 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 {
 	struct run_as_data data;
 	struct run_as_ret ret;
+
+	memset(&data, 0, sizeof(data));
+	memset(&ret, 0, sizeof(ret));
 
 	DBG3("extract_sdt_probe_offsets() on fd=%d, probe_name=%s and "
 		"provider_name=%s with for uid %d and gid %d", fd, probe_name,
