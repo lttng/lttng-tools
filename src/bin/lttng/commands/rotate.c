@@ -228,7 +228,6 @@ skip_wait:
 		break;
 	case LTTNG_ROTATION_STATE_ERROR:
 		ERR("Failed to retrieve rotation state.");
-		print_location = false;
 		goto error;
 	case LTTNG_ROTATION_STATE_ONGOING:
 		MSG("Rotation ongoing for session %s", session_name);
@@ -236,7 +235,6 @@ skip_wait:
 		break;
 	default:
 		ERR("Unexpected rotation state encountered.");
-		print_location = false;
 		goto error;
 	}
 
