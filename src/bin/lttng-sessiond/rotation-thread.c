@@ -691,7 +691,6 @@ int handle_condition(
 	ret = cmd_rotate_session(session, NULL);
 	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
 		DBG("Rotate already pending, subscribe to the next threshold value");
-		ret = 0;
 	} else if (ret != LTTNG_OK) {
 		ERR("[rotation-thread] Failed to rotate on size notification with error: %s",
 				lttng_strerror(ret));
