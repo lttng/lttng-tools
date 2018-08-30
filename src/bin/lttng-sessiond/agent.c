@@ -143,7 +143,7 @@ static int ht_match_event(struct cds_lfht_node *node,
 	}
 
 	/* Filter expression */
-	if (!!event->filter_expression ^ !!key->filter_expression) {
+	if (!!event->filter_expression != !!key->filter_expression) {
 		/* One has a filter expression, the other does not */
 		goto no_match;
 	}
