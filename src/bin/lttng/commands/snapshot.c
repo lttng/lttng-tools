@@ -430,56 +430,91 @@ static int cmd_record(int argc, const char **argv)
 	return ret;
 }
 
-static int handle_command(const char **argv)
+static enum cmd_error_code handle_command(const char **argv)
 {
-	int ret = CMD_SUCCESS, i = 0, argc, command_ret =  CMD_SUCCESS;
+	int mi_ret, i = 0, argc;
+	enum cmd_error_code cmd_ret;
 	struct cmd_struct *cmd;
 
-	if (argv == NULL || (!opt_ctrl_url && opt_data_url) ||
+	if (!argv) {
+		ERR("No action specified for snapshot command.");
+		cmd_ret = CMD_ERROR;
+		goto end;
+	}
+
+	if ((!opt_ctrl_url && opt_data_url) ||
 			(opt_ctrl_url && !opt_data_url)) {
-		command_ret = CMD_ERROR;
+		ERR("URLs must be specified for both data and control");
+		cmd_ret = CMD_ERROR;
 		goto end;
 	}
 
 	argc = count_arguments(argv);
+	/* popt should have passed NULL if no arguments are present. */
+	assert(argc > 0);
 
 	cmd = &actions[i];
 	while (cmd->func != NULL) {
 		/* Find command */
 		if (strcmp(argv[0], cmd->name) == 0) {
+			int result;
+
 			if (lttng_opt_mi) {
 				/* Action element */
-				ret = mi_lttng_writer_open_element(writer,
+				mi_ret = mi_lttng_writer_open_element(writer,
 						mi_lttng_element_command_action);
-				if (ret) {
-					ret = CMD_ERROR;
+				if (mi_ret) {
+					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 
 				/* Name of the action */
-				ret = mi_lttng_writer_write_element_string(writer,
+				mi_ret = mi_lttng_writer_write_element_string(writer,
 						config_element_name, argv[0]);
-				if (ret) {
-					ret = CMD_ERROR;
+				if (mi_ret) {
+					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 
 				/* Open output element */
-				ret = mi_lttng_writer_open_element(writer,
+				mi_ret = mi_lttng_writer_open_element(writer,
 						mi_lttng_element_command_output);
-				if (ret) {
-					ret = CMD_ERROR;
+				if (mi_ret) {
+					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 			}
 
-			command_ret = cmd->func(argc, argv);
+			result = cmd->func(argc, argv);
+			if (result) {
+				switch (-result) {
+				case LTTNG_ERR_SNAPSHOT_NODATA:
+					WARN("%s", lttng_strerror(result));
+
+					/*  A warning is fine since the user has no control on
+					 *  whether or not applications (or the kernel) have
+					 *  produced any event between the start of the tracing
+					 *  session and the recording of the snapshot. MI wise
+					 *  the command is not a success since nothing was
+					 *  recorded.
+					 */
+					cmd_ret = CMD_SUCCESS;
+					break;
+				default:
+					ERR("%s", lttng_strerror(result));
+					cmd_ret = CMD_ERROR;
+					break;
+				}
+			} else {
+				cmd_ret = CMD_SUCCESS;
+			}
+
 
 			if (lttng_opt_mi) {
 				/* Close output and action element */
-				ret = mi_lttng_close_multi_element(writer, 2);
-				if (ret) {
-					ret = CMD_ERROR;
+				mi_ret = mi_lttng_close_multi_element(writer, 2);
+				if (mi_ret) {
+					cmd_ret = CMD_ERROR;
 					goto end;
 				}
 			}
@@ -489,19 +524,19 @@ static int handle_command(const char **argv)
 		cmd = &actions[i];
 	}
 
-	ret = CMD_UNDEFINED;
+	cmd_ret = CMD_UNDEFINED;
 
 end:
-	/* Overwrite ret if an error occurred in cmd->func() */
-	ret = command_ret ? command_ret : ret;
-	return ret;
+	return cmd_ret;
 }
 /*
  * The 'snapshot <cmd> <options>' first level command
  */
 int cmd_snapshot(int argc, const char **argv)
 {
-	int opt, ret = CMD_SUCCESS, command_ret = CMD_SUCCESS, success = 1;
+	int opt;
+	int mi_ret;
+	enum cmd_error_code cmd_ret = CMD_SUCCESS;
 	char *session_name = NULL;
 	static poptContext pc;
 
@@ -512,23 +547,23 @@ int cmd_snapshot(int argc, const char **argv)
 	if (lttng_opt_mi) {
 		writer = mi_lttng_writer_create(fileno(stdout), lttng_opt_mi);
 		if (!writer) {
-			ret = -LTTNG_ERR_NOMEM;
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open command element */
-		ret = mi_lttng_writer_command_open(writer,
+		mi_ret = mi_lttng_writer_command_open(writer,
 				mi_lttng_element_command_snapshot);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_ret) {
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Open output element */
-		ret = mi_lttng_writer_open_element(writer,
+		mi_ret = mi_lttng_writer_open_element(writer,
 				mi_lttng_element_command_output);
-		if (ret) {
-			ret = CMD_ERROR;
+		if (mi_ret) {
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -536,8 +571,14 @@ int cmd_snapshot(int argc, const char **argv)
 	while ((opt = poptGetNextOpt(pc)) != -1) {
 		switch (opt) {
 		case OPT_HELP:
+		{
+			int ret;
+
+			/* SHOW_HELP assigns to ret. */
 			SHOW_HELP();
+			cmd_ret = ret;
 			goto end;
+		}
 		case OPT_LIST_OPTIONS:
 			list_cmd_options(stdout, snapshot_opts);
 			goto end;
@@ -551,7 +592,7 @@ int cmd_snapshot(int argc, const char **argv)
 
 			if (utils_parse_size_suffix((char *) opt, &val) < 0) {
 				ERR("Unable to handle max-size value %s", opt);
-				ret = CMD_ERROR;
+				cmd_ret = CMD_ERROR;
 				goto end;
 			}
 
@@ -560,7 +601,7 @@ int cmd_snapshot(int argc, const char **argv)
 			break;
 		}
 		default:
-			ret = CMD_UNDEFINED;
+			cmd_ret = CMD_UNDEFINED;
 			goto end;
 		}
 	}
@@ -568,7 +609,7 @@ int cmd_snapshot(int argc, const char **argv)
 	if (!opt_session_name) {
 		session_name = get_session_name();
 		if (session_name == NULL) {
-			ret = CMD_ERROR;
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 		current_session_name = session_name;
@@ -576,48 +617,29 @@ int cmd_snapshot(int argc, const char **argv)
 		current_session_name = opt_session_name;
 	}
 
-	command_ret = handle_command(poptGetArgs(pc));
-	if (command_ret) {
-		switch (-command_ret) {
-		case LTTNG_ERR_SNAPSHOT_NODATA:
-			WARN("%s", lttng_strerror(command_ret));
-
-			/*  A warning is fine since the user has no control on
-			 *  whether or not applications (or the kernel) have
-			 *  produced any event between the start of the tracing
-			 *  session and the recording of the snapshot. MI wise
-			 *  the command is not a success since nothing was
-			 *  recorded.
-			 */
-			command_ret = 0;
-			break;
-		default:
-			ERR("%s", lttng_strerror(command_ret));
-			break;
-		}
-		success = 0;
-	}
+	cmd_ret = handle_command(poptGetArgs(pc));
 
 	if (lttng_opt_mi) {
 		/* Close output element */
-		ret = mi_lttng_writer_close_element(writer);
-		if (ret) {
-			ret = CMD_ERROR;
+		mi_ret = mi_lttng_writer_close_element(writer);
+		if (mi_ret) {
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Success ? */
-		ret = mi_lttng_writer_write_element_bool(writer,
-				mi_lttng_element_command_success, success);
-		if (ret) {
-			ret = CMD_ERROR;
+		mi_ret = mi_lttng_writer_write_element_bool(writer,
+				mi_lttng_element_command_success,
+				cmd_ret == CMD_SUCCESS);
+		if (mi_ret) {
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 
 		/* Command element close */
-		ret = mi_lttng_writer_command_close(writer);
-		if (ret) {
-			ret = CMD_ERROR;
+		mi_ret = mi_lttng_writer_command_close(writer);
+		if (mi_ret) {
+			cmd_ret = CMD_ERROR;
 			goto end;
 		}
 	}
@@ -625,16 +647,13 @@ int cmd_snapshot(int argc, const char **argv)
 end:
 	/* Mi clean-up */
 	if (writer && mi_lttng_writer_destroy(writer)) {
-		/* Preserve original error code */
-		ret = ret ? ret : -LTTNG_ERR_MI_IO_FAIL;
+		cmd_ret = CMD_ERROR;
 	}
 
 	if (!opt_session_name) {
 		free(session_name);
 	}
 
-	/* Overwrite ret if an error occurred during handle_command */
-	ret = command_ret ? command_ret : ret;
 	poptFreeContext(pc);
-	return ret;
+	return cmd_ret;
 }
