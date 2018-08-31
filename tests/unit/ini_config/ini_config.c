@@ -19,6 +19,7 @@
 #include <common/config/session-config.h>
 #include <common/utils.h>
 #include <string.h>
+#include <lttng/constant.h>
 
 struct state {
 	int section_1;
@@ -81,6 +82,11 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	if (strlen(argv[1]) >= LTTNG_PATH_MAX) {
+		diag("The provided path exceeds the maximal permitted length of %i bytes",
+				LTTNG_PATH_MAX);
+		goto end;
+	}
 	path = utils_expand_path(argv[1]);
 	if (!path) {
 		fail("Failed to resolve sample INI file path")
