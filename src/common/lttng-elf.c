@@ -38,6 +38,8 @@
 #define TEXT_SECTION_NAME 	".text"
 #define SYMBOL_TAB_SECTION_NAME ".symtab"
 #define STRING_TAB_SECTION_NAME ".strtab"
+#define DYNAMIC_SYMBOL_TAB_SECTION_NAME ".dynsym"
+#define DYNAMIC_STRING_TAB_SECTION_NAME ".dynstr"
 #define NOTE_STAPSDT_SECTION_NAME ".note.stapsdt"
 #define NOTE_STAPSDT_NAME "stapsdt"
 #define NOTE_STAPSDT_TYPE 3
@@ -736,6 +738,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	char *curr_sym_str = NULL;
 	char *symbol_table_data = NULL;
 	char *string_table_data = NULL;
+	char *string_table_name = NULL;
 	struct lttng_elf_shdr *symtab_hdr = NULL;
 	struct lttng_elf_shdr *strtab_hdr = NULL;
 	struct lttng_elf *elf = NULL;
@@ -751,14 +754,29 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 		goto end;
 	}
 
-	/* Get the symbol table section header. */
+	/*
+	 * The .symtab section might not exist on stripped binaries.
+	 * Try to get the symbol table section header first. If it's absent,
+	 * try to get the dynamic symbol table. All symbols in the dynamic
+	 * symbol tab are in the (normal) symbol table if it exists.
+	 */
 	ret = lttng_elf_get_section_hdr_by_name(elf, SYMBOL_TAB_SECTION_NAME,
 			&symtab_hdr);
 	if (ret) {
-		DBG("Cannot get ELF Symbol Table section.");
-		ret = LTTNG_ERR_ELF_PARSING;
-		goto destroy_elf;
+		DBG("Cannot get ELF Symbol Table section. Trying to get ELF Dynamic Symbol Table section.");
+		/* Get the dynamic symbol table section header. */
+		ret = lttng_elf_get_section_hdr_by_name(elf, DYNAMIC_SYMBOL_TAB_SECTION_NAME,
+				&symtab_hdr);
+		if (ret) {
+			DBG("Cannot get ELF Symbol Table and Dynamic Symbol Table sections.");
+			ret = LTTNG_ERR_ELF_PARSING;
+			goto destroy_elf;
+		}
+		string_table_name = DYNAMIC_STRING_TAB_SECTION_NAME;
+	} else {
+		string_table_name = STRING_TAB_SECTION_NAME;
 	}
+
 	/* Get the data associated with the symbol table section. */
 	symbol_table_data = lttng_elf_get_section_data(elf, symtab_hdr);
 	if (symbol_table_data == NULL) {
@@ -768,7 +786,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	}
 
 	/* Get the string table section header. */
-	ret = lttng_elf_get_section_hdr_by_name(elf, STRING_TAB_SECTION_NAME,
+	ret = lttng_elf_get_section_hdr_by_name(elf, string_table_name,
 			&strtab_hdr);
 	if (ret) {
 		DBG("Cannot get ELF string table section.");

@@ -21,7 +21,7 @@ TEST_DESC="Userspace probe - Testing userspace probe on ELF symbol"
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../..
 TESTAPP_DIR="$TESTDIR/utils/testapp/"
-ELF_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-elf-binary/"
+ELF_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-elf-binary/.libs/"
 ELF_TEST_BIN_NAME="userspace-probe-elf-binary"
 ELF_TEST_BIN="$ELF_TEST_BIN_DIR/$ELF_TEST_BIN_NAME"
 ELF_CXX_TEST_BIN_DIR="$TESTAPP_DIR/userspace-probe-elf-cxx-binary/"
@@ -32,7 +32,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 ELF_SYMBOL="test_function"
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=81
+NUM_TESTS=87
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -268,6 +268,30 @@ function test_userspace_probe_elf ()
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
 
 	diag "Userspace probe on Elf symbol enabled and traced"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	start_lttng_tracing_ok $SESSION_NAME
+	eval "$ELF_TEST_BIN"  > /dev/null
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_elf_dynamic_symbol ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userprobe_elf"
+	LIBFOO_PATH="$ELF_TEST_BIN_DIR/libfoo.so"
+	ENABLE_EXPR="elf:$LIBFOO_PATH:dynamic_symbol"
+
+	diag "Userspace probe on Elf dynamic symbol enabled and traced"
 
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
@@ -802,6 +826,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	# Successful tracing userspace probe elf
 	test_userspace_probe_elf
+	test_userspace_probe_elf_dynamic_symbol
 
 	# Disable userspace-probe elf
 	test_userspace_probe_elf_disable
