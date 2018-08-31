@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017  Francis Deslauriers <francis.deslauriers@efficios.com>
+ * Copyright (C) 2018  Francis Deslauriers <francis.deslauriers@efficios.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,15 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include "foo.h"
-volatile int not_a_function = 0;
-void __attribute__ ((noinline))  test_function()
+int dynamic_symbol(int a)
 {
-	not_a_function += 1;
-}
-int main(int argc, char *argv[])
-{
-	test_function();
-	dynamic_symbol(42);
-	return 0;
+	return a+a;
 }
