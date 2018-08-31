@@ -466,6 +466,9 @@ int cleanup_received_fd(enum run_as_cmd cmd, int fd)
 		return 0;
 	}
 
+	if (fd < 0) {
+		return 0;
+	}
 	ret = close(fd);
 	if (ret < 0) {
 		PERROR("close error");
