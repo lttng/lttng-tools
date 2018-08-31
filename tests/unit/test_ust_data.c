@@ -263,14 +263,14 @@ static void test_create_ust_event_exclusion(void)
 	}
 
 	ok(event->enabled == 0 &&
-	   event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
-	   strcmp(event->attr.name, ev.name) == 0 &&
-	   event->exclusion != NULL &&
-	   event->exclusion->count == exclusion_count &&
-	   !memcmp(event->exclusion->names, exclusion_copy->names,
-	   	LTTNG_SYMBOL_NAME_LEN * exclusion_count) &&
-	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
-	   "Validate UST event and exclusion");
+		event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
+		strcmp(event->attr.name, ev.name) == 0 &&
+		event->exclusion != NULL &&
+		event->exclusion->count == exclusion_count &&
+		!memcmp(event->exclusion->names, exclusion_copy->names,
+			LTTNG_SYMBOL_NAME_LEN * exclusion_count) &&
+		event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
+		"Validate UST event and exclusion");
 
 	trace_ust_destroy_event(event);
 end:
