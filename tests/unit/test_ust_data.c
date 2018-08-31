@@ -184,7 +184,7 @@ static void test_create_ust_event_exclusion(void)
 	struct lttng_event ev;
 	char *name;
 	char *random_name;
-	struct lttng_event_exclusion *exclusion;
+	struct lttng_event_exclusion *exclusion = NULL;
 	struct lttng_event_exclusion *exclusion_copy = NULL;
 	const int exclusion_count = 2;
 
@@ -254,6 +254,7 @@ static void test_create_ust_event_exclusion(void)
 		LTTNG_EVENT_EXCLUSION_NAME_AT(exclusion, 1), LTTNG_SYMBOL_NAME_LEN);
 
 	ret = trace_ust_create_event(&ev, NULL, NULL, exclusion, false, &event);
+	exclusion = NULL;
 	ok(ret == LTTNG_OK, "Create UST event with different exclusion names");
 
 	if (!event) {
@@ -273,6 +274,7 @@ static void test_create_ust_event_exclusion(void)
 
 	trace_ust_destroy_event(event);
 end:
+	free(exclusion);
 	free(exclusion_copy);
 	return;
 }
