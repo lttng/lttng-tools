@@ -3683,6 +3683,9 @@ error_add_context:
 		if (!ev) {
 			DBG("Failed to copy event: %s",
 					cmd_ctx->lsm->u.enable.event.name);
+			free(filter_expression);
+			free(bytecode);
+			free(exclusion);
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
@@ -3692,6 +3695,9 @@ error_add_context:
 			/* Expect a userspace probe description. */
 			ret = receive_userspace_probe(cmd_ctx, sock, sock_error, ev);
 			if (ret) {
+				free(filter_expression);
+				free(bytecode);
+				free(exclusion);
 				lttng_event_destroy(ev);
 				goto error;
 			}
