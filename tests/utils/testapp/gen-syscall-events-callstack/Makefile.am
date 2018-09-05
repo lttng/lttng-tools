@@ -1,5 +1,5 @@
 AM_CFLAGS += -I$(top_srcdir)/tests/utils/
-AM_CFLAGS += -fno-omit-frame-pointer
+AM_CFLAGS += -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer
 #  The feature called Position Independent Execution (PIE) may be enabled by
 #  default on some systems. Supporting this feature for this testapp would
 #  increase the complexity of the testcases using this testapp as it would make
