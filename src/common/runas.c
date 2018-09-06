@@ -329,7 +329,8 @@ int do_send_fd(int sock, int fd)
 	ssize_t len;
 
 	if (fd < 0) {
-		ERR("Invalid file description");
+		ERR("Attempt to send invalid file descriptor to master (fd = %i)", fd);
+		/* Return 0 as this is not a fatal error. */
 		return 0;
 	}
 
@@ -346,11 +347,6 @@ int do_recv_fd(int sock, int *fd)
 {
 	ssize_t len;
 
-	if (*fd < 0) {
-		ERR("Invalid file description");
-		return 0;
-	}
-
 	len = lttcomm_recv_fds_unix_sock(sock, fd, 1);
 
 	if (!len) {
@@ -359,6 +355,12 @@ int do_recv_fd(int sock, int *fd)
 		PERROR("lttcomm_recv_fds_unix_sock");
 		return -1;
 	}
+	if (*fd < 0) {
+		ERR("Invalid file descriptor received from worker (fd = %i)", *fd);
+		/* Return 0 as this is not a fatal error. */
+		return 0;
+	}
+
 	return 0;
 }
 
@@ -373,6 +375,11 @@ int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 		break;
 	default:
 		return 0;
+	}
+
+	if (fd < 0) {
+		ERR("Refusing to send invalid fd to worker (fd = %i)", fd);
+		return -1;
 	}
 
 	ret = do_send_fd(worker->sockpair[0], fd);
@@ -396,20 +403,21 @@ int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 		return 0;
 	}
 
+	if (fd < 0) {
+		DBG("Not sending file descriptor to master as it is invalid (fd = %i)", fd);
+		return 0;
+	}
 	ret = do_send_fd(worker->sockpair[1], fd);
 	if (ret < 0) {
 		PERROR("do_send_fd error");
 		ret = -1;
 	}
 
-	if (fd < 0) {
-		goto end;
-	}
 	ret_close = close(fd);
 	if (ret_close < 0) {
 		PERROR("close");
 	}
-end:
+
 	return ret;
 }
 
@@ -723,6 +731,11 @@ int run_as_cmd(struct run_as_worker *worker,
 		PERROR("Error reading response from run_as");
 		ret = -1;
 		ret_value->_errno = errno;
+		goto end;
+	}
+
+	if (ret_value->_error) {
+		/* Skip stage 5 on error as there will be no fd to receive. */
 		goto end;
 	}
 
