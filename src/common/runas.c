@@ -402,11 +402,14 @@ int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 		ret = -1;
 	}
 
+	if (fd < 0) {
+		goto end;
+	}
 	ret_close = close(fd);
 	if (ret_close < 0) {
 		PERROR("close");
 	}
-
+end:
 	return ret;
 }
 
