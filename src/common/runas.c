@@ -812,7 +812,6 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 			DBG("Socket closed unexpectedly... "
 					"Restarting the worker process");
 			ret = run_as_restart_worker(global_worker);
-
 			if (ret == -1) {
 				ERR("Failed to restart worker process.");
 				goto err;
