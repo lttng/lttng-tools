@@ -1089,7 +1089,7 @@ int viewer_attach_session(struct relay_connection *conn)
 	if (closed) {
 		send_streams = 0;
 		response.streams_count = 0;
-		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_HUP);
+		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
 		goto send_reply;
 	}
 
