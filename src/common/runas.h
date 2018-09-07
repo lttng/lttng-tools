@@ -41,7 +41,7 @@ int run_as_extract_sdt_probe_offsets(int fd, const char *provider_name,
 		const char* probe_name, uid_t uid, gid_t gid,
 		uint64_t **offsets, uint32_t *num_offset);
 LTTNG_HIDDEN
-int run_as_create_worker(char *procname);
+int run_as_create_worker(const char *procname);
 LTTNG_HIDDEN
 void run_as_destroy_worker(void);
 
