@@ -218,7 +218,7 @@ int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 	ret_value->u.open.ret = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
 	ret_value->fd = ret_value->u.open.ret;
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.open.ret) ? true : false;
+	ret_value->_error = ret_value->u.open.ret < 0;
 	return ret_value->u.open.ret;
 }
 
