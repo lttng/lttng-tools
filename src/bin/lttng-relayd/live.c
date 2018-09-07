@@ -834,6 +834,11 @@ int viewer_list_sessions(struct relay_connection *conn)
 
 		health_code_update();
 
+		if (session->connection_closed) {
+			/* Skip closed session */
+			continue;
+		}
+
 		if (count >= buf_count) {
 			struct lttng_viewer_session *newbuf;
 			uint32_t new_buf_count = buf_count << 1;
