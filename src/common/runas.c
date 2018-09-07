@@ -877,7 +877,7 @@ int run_as_create_worker_no_lock(const char *procname)
 	worker->procname = strdup(procname);
 	if (!worker->procname) {
 		ret = -ENOMEM;
-		goto end;
+		goto error_procname_alloc;
 	}
 	/* Create unix socket. */
 	if (lttcomm_create_anon_unix_socketpair(worker->sockpair) < 0) {
@@ -960,6 +960,8 @@ error_fork:
 		worker->sockpair[i] = -1;
 	}
 error_sock:
+	free(worker->procname);
+error_procname_alloc:
 	free(worker);
 	return ret;
 }
