@@ -781,6 +781,190 @@ end:
 }
 
 static
+int reset_sighandler(void)
+{
+	int sig;
+
+	DBG("Resetting run_as worker signal handlers to default");
+	for (sig = 1; sig <= 31; sig++) {
+		(void) signal(sig, SIG_DFL);
+	}
+	return 0;
+}
+
+static
+void worker_sighandler(int sig)
+{
+	const char *signame;
+
+	/*
+	 * The worker will inherit its parent's signals since they are part of
+	 * the same process group. However, in the case of SIGINT and SIGTERM,
+	 * we want to give the worker a chance to teardown gracefully when its
+	 * parent closes the command socket.
+	 */
+	switch (sig) {
+	case SIGINT:
+		signame = "SIGINT";
+		break;
+	case SIGTERM:
+		signame = "SIGTERM";
+		break;
+	default:
+		signame = NULL;
+	}
+
+	if (signame) {
+		DBG("run_as worker received signal %s", signame);
+	} else {
+		DBG("run_as_worker received signal %d", sig);
+	}
+}
+
+static
+int set_worker_sighandlers(void)
+{
+	int ret = 0;
+	sigset_t sigset;
+	struct sigaction sa;
+
+	if ((ret = sigemptyset(&sigset)) < 0) {
+		PERROR("sigemptyset");
+		goto end;
+	}
+
+	sa.sa_handler = worker_sighandler;
+	sa.sa_mask = sigset;
+	sa.sa_flags = 0;
+	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
+		PERROR("sigaction SIGINT");
+		goto end;
+	}
+
+	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
+		PERROR("sigaction SIGTERM");
+		goto end;
+	}
+
+	DBG("run_as signal handler set for SIGTERM and SIGINT");
+end:
+	return ret;
+}
+
+static
+int run_as_create_worker_no_lock(const char *procname)
+{
+	pid_t pid;
+	int i, ret = 0;
+	ssize_t readlen;
+	struct run_as_ret recvret;
+	struct run_as_worker *worker;
+
+	assert(!global_worker);
+	if (!use_clone()) {
+		/*
+		 * Don't initialize a worker, all run_as tasks will be performed
+		 * in the current process.
+		 */
+		ret = 0;
+		goto end;
+	}
+	worker = zmalloc(sizeof(*worker));
+	if (!worker) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	worker->procname = strdup(procname);
+	if (!worker->procname) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	/* Create unix socket. */
+	if (lttcomm_create_anon_unix_socketpair(worker->sockpair) < 0) {
+		ret = -1;
+		goto error_sock;
+	}
+
+	/* Fork worker. */
+	pid = fork();
+	if (pid < 0) {
+		PERROR("fork");
+		ret = -1;
+		goto error_fork;
+	} else if (pid == 0) {
+		/* Child */
+
+		reset_sighandler();
+
+		set_worker_sighandlers();
+
+		/* Just close, no shutdown. */
+		if (close(worker->sockpair[0])) {
+			PERROR("close");
+			exit(EXIT_FAILURE);
+		}
+
+		/*
+		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
+		 * Sockpair[1] is used as a control channel with the master
+		 */
+		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
+			if (i != worker->sockpair[1]) {
+				(void) close(i);
+			}
+		}
+
+		worker->sockpair[0] = -1;
+		ret = run_as_worker(worker);
+		if (lttcomm_close_unix_sock(worker->sockpair[1])) {
+			PERROR("close");
+			ret = -1;
+		}
+		worker->sockpair[1] = -1;
+		LOG(ret ? PRINT_ERR : PRINT_DBG, "run_as worker exiting (ret = %d)", ret);
+		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
+	} else {
+		/* Parent */
+
+		/* Just close, no shutdown. */
+		if (close(worker->sockpair[1])) {
+			PERROR("close");
+			ret = -1;
+			goto error_fork;
+		}
+		worker->sockpair[1] = -1;
+		worker->pid = pid;
+		/* Wait for worker to become ready. */
+		readlen = lttcomm_recv_unix_sock(worker->sockpair[0],
+				&recvret, sizeof(recvret));
+		if (readlen < sizeof(recvret)) {
+			ERR("readlen: %zd", readlen);
+			PERROR("Error reading response from run_as at creation");
+			ret = -1;
+			goto error_fork;
+		}
+		global_worker = worker;
+	}
+end:
+	return ret;
+
+	/* Error handling. */
+error_fork:
+	for (i = 0; i < 2; i++) {
+		if (worker->sockpair[i] < 0) {
+			continue;
+		}
+		if (lttcomm_close_unix_sock(worker->sockpair[i])) {
+			PERROR("close");
+		}
+		worker->sockpair[i] = -1;
+	}
+error_sock:
+	free(worker);
+	return ret;
+}
+
+static
 int run_as_restart_worker(struct run_as_worker *worker)
 {
 	int ret = 0;
@@ -792,7 +976,7 @@ int run_as_restart_worker(struct run_as_worker *worker)
 	run_as_destroy_worker();
 
 	/* Create a new run_as worker process*/
-	ret = run_as_create_worker(procname);
+	ret = run_as_create_worker_no_lock(procname);
 	if (ret < 0 ) {
 		ERR("Restarting the worker process failed");
 		ret = -1;
@@ -808,15 +992,15 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 {
 	int ret, saved_errno;
 
+	pthread_mutex_lock(&worker_lock);
 	if (use_clone()) {
 		DBG("Using run_as worker");
-		pthread_mutex_lock(&worker_lock);
+
 		assert(global_worker);
 
 		ret = run_as_cmd(global_worker, cmd, data, ret_value, uid, gid);
 		saved_errno = ret_value->_errno;
 
-		pthread_mutex_unlock(&worker_lock);
 		/*
 		 * If the worker thread crashed the errno is set to EIO. we log
 		 * the error and  start a new worker process.
@@ -835,6 +1019,7 @@ int run_as(enum run_as_cmd cmd, struct run_as_data *data,
 		ret = run_as_noworker(cmd, data, ret_value, uid, gid);
 	}
 err:
+	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }
 
@@ -1006,187 +1191,13 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 	return 0;
 }
 
-static
-int reset_sighandler(void)
-{
-	int sig;
-
-	DBG("Resetting run_as worker signal handlers to default");
-	for (sig = 1; sig <= 31; sig++) {
-		(void) signal(sig, SIG_DFL);
-	}
-	return 0;
-}
-
-static
-void worker_sighandler(int sig)
-{
-	const char *signame;
-
-	/*
-	 * The worker will inherit its parent's signals since they are part of
-	 * the same process group. However, in the case of SIGINT and SIGTERM,
-	 * we want to give the worker a chance to teardown gracefully when its
-	 * parent closes the command socket.
-	 */
-	switch (sig) {
-	case SIGINT:
-		signame = "SIGINT";
-		break;
-	case SIGTERM:
-		signame = "SIGTERM";
-		break;
-	default:
-		signame = NULL;
-	}
-
-	if (signame) {
-		DBG("run_as worker received signal %s", signame);
-	} else {
-		DBG("run_as_worker received signal %d", sig);
-	}
-}
-
-static
-int set_worker_sighandlers(void)
-{
-	int ret = 0;
-	sigset_t sigset;
-	struct sigaction sa;
-
-	if ((ret = sigemptyset(&sigset)) < 0) {
-		PERROR("sigemptyset");
-		goto end;
-	}
-
-	sa.sa_handler = worker_sighandler;
-	sa.sa_mask = sigset;
-	sa.sa_flags = 0;
-	if ((ret = sigaction(SIGINT, &sa, NULL)) < 0) {
-		PERROR("sigaction SIGINT");
-		goto end;
-	}
-
-	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
-		PERROR("sigaction SIGTERM");
-		goto end;
-	}
-
-	DBG("run_as signal handler set for SIGTERM and SIGINT");
-end:
-	return ret;
-}
-
 LTTNG_HIDDEN
-int run_as_create_worker(char *procname)
+int run_as_create_worker(const char *procname)
 {
-	pid_t pid;
-	int i, ret = 0;
-	ssize_t readlen;
-	struct run_as_ret recvret;
-	struct run_as_worker *worker;
+	int ret;
 
 	pthread_mutex_lock(&worker_lock);
-	assert(!global_worker);
-	if (!use_clone()) {
-		/*
-		 * Don't initialize a worker, all run_as tasks will be performed
-		 * in the current process.
-		 */
-		ret = 0;
-		goto end;
-	}
-	worker = zmalloc(sizeof(*worker));
-	if (!worker) {
-		ret = -ENOMEM;
-		goto end;
-	}
-	worker->procname = procname;
-	/* Create unix socket. */
-	if (lttcomm_create_anon_unix_socketpair(worker->sockpair) < 0) {
-		ret = -1;
-		goto error_sock;
-	}
-
-	/* Fork worker. */
-	pid = fork();
-	if (pid < 0) {
-		PERROR("fork");
-		ret = -1;
-		goto error_fork;
-	} else if (pid == 0) {
-		/* Child */
-
-		reset_sighandler();
-
-		set_worker_sighandlers();
-
-		/* The child has no use for this lock. */
-		pthread_mutex_unlock(&worker_lock);
-		/* Just close, no shutdown. */
-		if (close(worker->sockpair[0])) {
-			PERROR("close");
-			exit(EXIT_FAILURE);
-		}
-
-		/*
-		 * Close all FDs aside from STDIN, STDOUT, STDERR and sockpair[1]
-		 * Sockpair[1] is used as a control channel with the master
-		 */
-		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
-			if (i != worker->sockpair[1]) {
-				(void) close(i);
-			}
-		}
-
-		worker->sockpair[0] = -1;
-		ret = run_as_worker(worker);
-		if (lttcomm_close_unix_sock(worker->sockpair[1])) {
-			PERROR("close");
-			ret = -1;
-		}
-		worker->sockpair[1] = -1;
-		LOG(ret ? PRINT_ERR : PRINT_DBG, "run_as worker exiting (ret = %d)", ret);
-		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
-	} else {
-		/* Parent */
-
-		/* Just close, no shutdown. */
-		if (close(worker->sockpair[1])) {
-			PERROR("close");
-			ret = -1;
-			goto error_fork;
-		}
-		worker->sockpair[1] = -1;
-		worker->pid = pid;
-		/* Wait for worker to become ready. */
-		readlen = lttcomm_recv_unix_sock(worker->sockpair[0],
-				&recvret, sizeof(recvret));
-		if (readlen < sizeof(recvret)) {
-			ERR("readlen: %zd", readlen);
-			PERROR("Error reading response from run_as at creation");
-			ret = -1;
-			goto error_fork;
-		}
-		global_worker = worker;
-	}
-end:
-	pthread_mutex_unlock(&worker_lock);
-	return ret;
-
-	/* Error handling. */
-error_fork:
-	for (i = 0; i < 2; i++) {
-		if (worker->sockpair[i] < 0) {
-			continue;
-		}
-		if (lttcomm_close_unix_sock(worker->sockpair[i])) {
-			PERROR("close");
-		}
-		worker->sockpair[i] = -1;
-	}
-error_sock:
-	free(worker);
+	ret = run_as_create_worker_no_lock(procname);
 	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }
@@ -1232,6 +1243,7 @@ void run_as_destroy_worker(void)
 			break;
 		}
 	}
+	free(worker->procname);
 	free(worker);
 	global_worker = NULL;
 end:
