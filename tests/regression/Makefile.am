@@ -19,6 +19,7 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/snapshots/test_ust_streaming \
 	tools/save-load/test_save \
 	tools/save-load/test_load \
+	tools/save-load/test_autoload \
 	tools/mi/test_mi \
 	tools/wildcard/test_event_wildcard \
 	tools/crash/test_crash \
