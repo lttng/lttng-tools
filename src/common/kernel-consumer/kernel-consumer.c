@@ -331,7 +331,7 @@ end:
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
+static int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 		uint64_t relayd_id, struct lttng_consumer_local_data *ctx)
 {
 	int ret, use_relayd = 0;
@@ -350,11 +350,12 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 	if (!metadata_channel) {
 		ERR("Kernel snapshot metadata not found for key %" PRIu64, key);
 		ret = -1;
-		goto error;
+		goto error_no_channel;
 	}
 
 	metadata_stream = metadata_channel->metadata_stream;
 	assert(metadata_stream);
+	pthread_mutex_lock(&metadata_stream->lock);
 
 	/* Flag once that we have a valid relayd for the stream. */
 	if (relayd_id != (uint64_t) -1ULL) {
@@ -364,7 +365,7 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 	if (use_relayd) {
 		ret = consumer_send_relayd_stream(metadata_stream, path);
 		if (ret < 0) {
-			goto error;
+			goto error_snapshot;
 		}
 	} else {
 		ret = utils_create_stream_file(path, metadata_stream->name,
@@ -372,7 +373,7 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 				metadata_stream->tracefile_count_current,
 				metadata_stream->uid, metadata_stream->gid, NULL);
 		if (ret < 0) {
-			goto error;
+			goto error_snapshot;
 		}
 		metadata_stream->out_fd = ret;
 	}
@@ -385,7 +386,8 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 			if (ret_read != -EAGAIN) {
 				ERR("Kernel snapshot reading metadata subbuffer (ret: %zd)",
 						ret_read);
-				goto error;
+				ret = ret_read;
+				goto error_snapshot;
 			}
 			/* ret_read is negative at this point so we will exit the loop. */
 			continue;
@@ -410,11 +412,12 @@ int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 	}
 
 	ret = 0;
-
+error_snapshot:
+	pthread_mutex_unlock(&metadata_stream->lock);
 	cds_list_del(&metadata_stream->send_node);
 	consumer_stream_destroy(metadata_stream, NULL);
 	metadata_channel->metadata_stream = NULL;
-error:
+error_no_channel:
 	rcu_read_unlock();
 	return ret;
 }
