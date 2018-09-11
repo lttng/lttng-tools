@@ -3539,34 +3539,6 @@ error_nosignal:
 }
 
 /*
- * Try to lock the stream mutex.
- *
- * On success, 1 is returned else 0 indicating that the mutex is NOT lock.
- */
-static int stream_try_lock(struct lttng_consumer_stream *stream)
-{
-	int ret;
-
-	assert(stream);
-
-	/*
-	 * Try to lock the stream mutex. On failure, we know that the stream is
-	 * being used else where hence there is data still being extracted.
-	 */
-	ret = pthread_mutex_trylock(&stream->lock);
-	if (ret) {
-		/* For both EBUSY and EINVAL error, the mutex is NOT locked. */
-		ret = 0;
-		goto end;
-	}
-
-	ret = 1;
-
-end:
-	return ret;
-}
-
-/*
  * Search for a relayd associated to the session id and return the reference.
  *
  * A rcu read side lock MUST be acquire before calling this function and locked
@@ -3651,11 +3623,7 @@ int consumer_data_pending(uint64_t id)
 			ht->hash_fct(&id, lttng_ht_seed),
 			ht->match_fct, &id,
 			&iter.iter, stream, node_session_id.node) {
-		/* If this call fails, the stream is being used hence data pending. */
-		ret = stream_try_lock(stream);
-		if (!ret) {
-			goto data_pending;
-		}
+		pthread_mutex_lock(&stream->lock);
 
 		/*
 		 * A removed node from the hash table indicates that the stream has
