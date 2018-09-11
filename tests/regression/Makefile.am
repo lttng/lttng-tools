@@ -19,6 +19,7 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/snapshots/test_ust_streaming \
 	tools/save-load/test_save \
 	tools/save-load/test_load \
+	tools/save-load/test_autoload \
 	tools/mi/test_mi \
 	tools/wildcard/test_event_wildcard \
 	tools/crash/test_crash \
@@ -48,7 +49,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/test_event_tracef \
 	ust/test_event_perf \
 	ust/blocking/test_blocking \
-	ust/multi-lib/test_multi_lib
+	ust/multi-lib/test_multi_lib \
+	ust/rotation-destroy-flush/test_rotation_destroy_flush
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
