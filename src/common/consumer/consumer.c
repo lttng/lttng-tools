@@ -320,6 +320,7 @@ static void free_relayd_rcu(struct rcu_head *head)
 	(void) relayd_close(&relayd->control_sock);
 	(void) relayd_close(&relayd->data_sock);
 
+	pthread_mutex_destroy(&relayd->ctrl_sock_mutex);
 	free(relayd);
 }
 
