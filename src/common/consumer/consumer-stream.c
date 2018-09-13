@@ -71,15 +71,11 @@ void consumer_stream_relayd_close(struct lttng_consumer_stream *stream,
 	ret = relayd_send_close_stream(&relayd->control_sock,
 			stream->relayd_stream_id,
 			stream->next_net_seq_num - 1);
-	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 	if (ret < 0) {
-		DBG("Unable to close stream on the relayd. Continuing");
-		/*
-		 * Continue here. There is nothing we can do for the relayd.
-		 * Chances are that the relayd has closed the socket so we just
-		 * continue cleaning up.
-		 */
+		ERR("Relayd send close stream failed. Cleaning up relayd %" PRIu64 ".", relayd->net_seq_idx);
+		lttng_consumer_cleanup_relayd(relayd);
 	}
+	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 
 	/* Both conditions are met, we destroy the relayd. */
 	if (uatomic_read(&relayd->refcount) == 0 &&
@@ -371,6 +367,15 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			ret = relayd_send_index(&relayd->control_sock, element,
 				stream->relayd_stream_id, stream->next_net_seq_num - 1);
+			if (ret < 0) {
+				/*
+				 * Communication error with lttng-relayd,
+				 * perform cleanup now
+				 */
+				ERR("Relayd send index failed. Cleaning up relayd %" PRIu64 ".", relayd->net_seq_idx);
+				lttng_consumer_cleanup_relayd(relayd);
+				ret = -1;
+			}
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		} else {
 			ERR("Stream %" PRIu64 " relayd ID %" PRIu64 " unknown. Can't write index.",
