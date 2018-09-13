@@ -4978,10 +4978,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 				"-l, --load");
 		} else {
 			free(opt_load_session_path);
-			opt_load_session_path = strdup(arg);
+			opt_load_session_path = utils_expand_path(arg);
 			if (!opt_load_session_path) {
-				PERROR("strdup");
-				ret = -ENOMEM;
+				ERR("Failed to expand load path %s", arg);
+				ret = -EINVAL;
 			}
 		}
 	} else if (string_match(optname, "kmod-probes")) {
