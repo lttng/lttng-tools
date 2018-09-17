@@ -152,7 +152,7 @@ Paths and ports
 ~~~~~~~~~~~~~~~
 option:--agent-tcp-port='PORT'::
     Listen on TCP port 'PORT' for agent application registrations
-    (default: a port withinin the range
+    (default: a port within the range
     [{default_agent_tcp_port_range_begin},{nbsp}{default_agent_tcp_port_range_end}]).
 
 option:-a 'PATH', option:--apps-sock='PATH'::
