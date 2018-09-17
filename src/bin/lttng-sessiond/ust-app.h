@@ -137,7 +137,11 @@ struct ust_app_channel {
 	int handle;
 	/* Channel and streams were sent to the UST tracer. */
 	int is_sent;
-	/* Unique key used to identify the channel on the consumer side. */
+	/*
+	 * Unique key used to identify the channel on the consumer side.
+	 * 0 is a reserved 'invalid' value used to indicate that the consumer
+	 * does not know about this channel (i.e. an error occured).
+	 */
 	uint64_t key;
 	/* Id of the tracing channel set on creation. */
 	uint64_t tracing_channel_id;
