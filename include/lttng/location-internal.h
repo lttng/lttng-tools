@@ -22,6 +22,7 @@
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 #include <common/macros.h>
+#include <stddef.h>
 
 struct lttng_trace_archive_location {
 	enum lttng_trace_archive_location_type type;
