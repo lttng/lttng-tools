@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 - Julien Desfossez <jdesfossez@efficios.com>
+ * Copyright (C) 2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -47,44 +48,6 @@
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
-
-unsigned long hash_channel_key(struct rotation_channel_key *key)
-{
-	return hash_key_u64(&key->key, lttng_ht_seed) ^ hash_key_ulong(
-			(void *) (unsigned long) key->domain, lttng_ht_seed);
-}
-
-int rotate_add_channel_pending(uint64_t key, enum lttng_domain_type domain,
-		struct ltt_session *session)
-{
-	int ret;
-	struct rotation_channel_info *new_info;
-	struct rotation_channel_key channel_key = { .key = key,
-		.domain = domain };
-
-	new_info = zmalloc(sizeof(struct rotation_channel_info));
-	if (!new_info) {
-		goto error;
-	}
-
-	new_info->channel_key.key = key;
-	new_info->channel_key.domain = domain;
-	new_info->session_id = session->id;
-	cds_lfht_node_init(&new_info->rotate_channels_ht_node);
-
-	session->nr_chan_rotate_pending++;
-	cds_lfht_add(channel_pending_rotate_ht,
-			hash_channel_key(&channel_key),
-			&new_info->rotate_channels_ht_node);
-
-	ret = 0;
-	goto end;
-
-error:
-	ret = -1;
-end:
-	return ret;
-}
 
 /* The session's lock must be held by the caller. */
 static
@@ -208,7 +171,7 @@ error:
  *
  * Returns 0 on success, a negative value on error.
  */
-int rename_complete_chunk(struct ltt_session *session, time_t ts)
+int rename_completed_chunk(struct ltt_session *session, time_t ts)
 {
 	struct tm *timeinfo;
 	char new_path[LTTNG_PATH_MAX];
@@ -353,53 +316,6 @@ int rename_complete_chunk(struct ltt_session *session, time_t ts)
 
 error:
 	session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
-end:
-	return ret;
-}
-
-int relay_rotate_pending(struct ltt_session *session, uint64_t chunk_id)
-{
-	int ret;
-	struct consumer_socket *socket;
-	struct consumer_output *output;
-	struct lttng_ht_iter iter;
-
-	/*
-	 * Either one of the sessions is enough to find the consumer_output
-	 * and uid/gid.
-	 */
-	if (session->kernel_session) {
-		output = session->kernel_session->consumer;
-	} else if (session->ust_session) {
-		output = session->ust_session->consumer;
-	} else {
-		assert(0);
-	}
-
-	if (!output || !output->socks) {
-		ERR("No consumer output found");
-		ret = -1;
-		goto end;
-	}
-
-	ret = -1;
-
-	rcu_read_lock();
-	/*
-	 * We have to iterate to find a socket, but we only need to send the
-	 * rotate pending command to one consumer, so we break after the first
-	 * one.
-	 */
-	cds_lfht_for_each_entry(output->socks->ht, &iter.iter, socket,
-			node.node) {
-		pthread_mutex_lock(socket->lock);
-		ret = consumer_rotate_pending_relay(socket, output, session->id,
-				chunk_id);
-		pthread_mutex_unlock(socket->lock);
-		break;
-	}
-	rcu_read_unlock();
-
 end:
 	return ret;
 }

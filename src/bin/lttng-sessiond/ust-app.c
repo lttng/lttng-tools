@@ -6328,7 +6328,7 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
  *
  * Return 0 on success or else a negative value.
  */
-int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
+int ust_app_rotate_session(struct ltt_session *session)
 {
 	int ret = 0;
 	struct lttng_ht_iter iter;
@@ -6357,22 +6357,6 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 				goto error;
 			}
 
-			/*
-			 * Account the metadata channel first to make sure the
-			 * number of channels waiting for a rotation cannot
-			 * reach 0 before we complete the iteration over all
-			 * the channels.
-			 */
-			ret = rotate_add_channel_pending(
-					reg->registry->reg.ust->metadata_key,
-					LTTNG_DOMAIN_UST, session);
-			if (ret < 0) {
-				ret = reg->bits_per_long == 32 ?
-						-LTTNG_ERR_UST_CONSUMER32_FAIL :
-						-LTTNG_ERR_UST_CONSUMER64_FAIL;
-				goto error;
-			}
-
 			ret = snprintf(pathname, sizeof(pathname),
 					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
 					reg->uid, reg->bits_per_long);
@@ -6384,22 +6368,12 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
-				ret = rotate_add_channel_pending(
-						reg_chan->consumer_key,
-						LTTNG_DOMAIN_UST, session);
-				if (ret < 0) {
-					ret = reg->bits_per_long == 32 ?
-							-LTTNG_ERR_UST_CONSUMER32_FAIL :
-							-LTTNG_ERR_UST_CONSUMER64_FAIL;
-					goto error;
-				}
 				ret = consumer_rotate_channel(socket,
 						reg_chan->consumer_key,
 						usess->uid, usess->gid,
 						usess->consumer, pathname,
 						/* is_metadata_channel */ false,
-						session->current_archive_id,
-						&session->rotate_pending_relay);
+						session->current_archive_id);
 				if (ret < 0) {
 					goto error;
 				}
@@ -6412,12 +6386,10 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 					usess->uid, usess->gid,
 					usess->consumer, pathname,
 					/* is_metadata_channel */ true,
-					session->current_archive_id,
-					&session->rotate_pending_relay);
+					session->current_archive_id);
 			if (ret < 0) {
 				goto error;
 			}
-			*ust_active = true;
 		}
 		break;
 	}
@@ -6458,39 +6430,15 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 				goto error;
 			}
 
-			/*
-			 * Account the metadata channel first to make sure the
-			 * number of channels waiting for a rotation cannot
-			 * reach 0 before we complete the iteration over all
-			 * the channels.
-			 */
-			ret = rotate_add_channel_pending(registry->metadata_key,
-					LTTNG_DOMAIN_UST, session);
-			if (ret < 0) {
-				ret = app->bits_per_long == 32 ?
-						-LTTNG_ERR_UST_CONSUMER32_FAIL :
-						-LTTNG_ERR_UST_CONSUMER64_FAIL;
-				goto error;
-			}
 
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
-				ret = rotate_add_channel_pending(
-						ua_chan->key, LTTNG_DOMAIN_UST,
-						session);
-				if (ret < 0) {
-					ret = app->bits_per_long == 32 ?
-							-LTTNG_ERR_UST_CONSUMER32_FAIL :
-							-LTTNG_ERR_UST_CONSUMER64_FAIL;
-					goto error;
-				}
 				ret = consumer_rotate_channel(socket, ua_chan->key,
 						ua_sess->euid, ua_sess->egid,
 						ua_sess->consumer, pathname,
 						/* is_metadata_channel */ false,
-						session->current_archive_id,
-						&session->rotate_pending_relay);
+						session->current_archive_id);
 				if (ret < 0) {
 					goto error;
 				}
@@ -6502,12 +6450,10 @@ int ust_app_rotate_session(struct ltt_session *session, bool *ust_active)
 					ua_sess->euid, ua_sess->egid,
 					ua_sess->consumer, pathname,
 					/* is_metadata_channel */ true,
-					session->current_archive_id,
-					&session->rotate_pending_relay);
+					session->current_archive_id);
 			if (ret < 0) {
 				goto error;
 			}
-			*ust_active = true;
 		}
 		break;
 	}

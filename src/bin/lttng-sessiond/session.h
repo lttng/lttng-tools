@@ -136,24 +136,19 @@ struct ltt_session {
 	 */
 	uint64_t current_archive_id;
 	/*
-	 * Rotation is pending between the time it starts until the consumer has
-	 * finished extracting the data. If the session uses a relay, data related
-	 * to a rotation can still be in flight after that, see
-	 * rotate_pending_relay.
+	 * Rotation is considered pending between the time it is launched up
+	 * until the moment when the data has been writen at the destination
+	 * and the trace archive has been renamed.
+	 *
+	 * When tracing locally, only 'rotation_pending_local' is used since
+	 * no remote checks are needed. However, when tracing to a relay daemon,
+	 * a second check is needed to ensure that the data has been
+	 * commited at the remote destination.
 	 */
-	bool rotate_pending;
-	/*
-	 * True until the relay has finished the rotation of all the streams.
-	 */
-	bool rotate_pending_relay;
+	bool rotation_pending_local;
+	bool rotation_pending_relay;
 	/* Current state of a rotation. */
 	enum lttng_rotation_state rotation_state;
-	/*
-	 * Number of channels waiting for a rotation.
-	 * When this number reaches 0, we can handle the rename of the chunk
-	 * folder and inform the client that the rotate is finished.
-	 */
-	unsigned int nr_chan_rotate_pending;
 	struct {
 		/*
 		 * When the rotation is in progress, the temporary path name is
@@ -182,14 +177,14 @@ struct ltt_session {
 	 */
 	time_t current_chunk_start_ts;
 	/*
-	 * Timer to check periodically if a relay has completed the last
-	 * rotation.
+	 * Timer to check periodically if a relay and/or consumer has completed
+	 * the last rotation.
 	 */
-	bool rotate_relay_pending_timer_enabled;
-	timer_t rotate_relay_pending_timer;
+	bool rotation_pending_check_timer_enabled;
+	timer_t rotation_pending_check_timer;
 	/* Timer to periodically rotate a session. */
-	bool rotate_timer_enabled;
-	timer_t rotate_timer;
+	bool rotation_schedule_timer_enabled;
+	timer_t rotation_schedule_timer;
 	/* Value for periodic rotations, 0 if disabled. */
 	uint64_t rotate_timer_period;
 	/* Value for size-based rotations, 0 if disabled. */

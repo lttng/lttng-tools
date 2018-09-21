@@ -437,7 +437,7 @@ struct lttcomm_lttng_output_id {
  * operation.
  */
 struct lttcomm_consumer_msg {
-	uint32_t cmd_type;	/* enum consumerd_command */
+	uint32_t cmd_type;	/* enum lttng_consumer_command */
 	union {
 		struct {
 			uint64_t channel_key;
@@ -603,10 +603,14 @@ struct lttcomm_consumer_msg {
 			uint32_t gid;
 		} LTTNG_PACKED rotate_rename;
 		struct {
+			uint64_t session_id;
+			uint64_t chunk_id;
+		} LTTNG_PACKED check_rotation_pending_local;
+		struct {
 			uint64_t relayd_id;
 			uint64_t session_id;
 			uint64_t chunk_id;
-		} LTTNG_PACKED rotate_pending_relay;
+		} LTTNG_PACKED check_rotation_pending_relay;
 		struct {
 			char path[LTTNG_PATH_MAX];
 			uint64_t relayd_id; /* Relayd id if apply. */

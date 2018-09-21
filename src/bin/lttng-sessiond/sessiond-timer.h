@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 - Julien Desfossez <jdesfossez@efficios.com>
+ * Copyright (C) 2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -22,46 +23,25 @@
 
 #include "session.h"
 
-#define LTTNG_SESSIOND_SIG_TEARDOWN		SIGRTMIN + 10
-#define LTTNG_SESSIOND_SIG_EXIT			SIGRTMIN + 11
-#define LTTNG_SESSIOND_SIG_ROTATE_PENDING	SIGRTMIN + 12
-#define LTTNG_SESSIOND_SIG_ROTATE_TIMER		SIGRTMIN + 13
-
-#define CLOCKID CLOCK_MONOTONIC
-
-/*
- * Handle timer teardown race wrt memory free of private data by sessiond
- * signals are handled by a single thread, which permits a synchronization
- * point between handling of each signal. Internal lock ensures mutual
- * exclusion.
- */
-struct timer_signal_data {
-	/* Thread managing signals. */
-	pthread_t tid;
-	int qs_done;
-	pthread_mutex_t lock;
-};
-
 struct timer_thread_parameters {
-	struct rotation_thread_timer_queue *rotation_timer_queue;
+	struct rotation_thread_timer_queue *rotation_thread_job_queue;
 };
 
-struct sessiond_rotation_timer {
-	uint64_t session_id;
-	unsigned int signal;
-	/* List member in struct rotation_thread_timer_queue. */
-	struct cds_list_head head;
-};
+int timer_signal_init(void);
+void *timer_thread_func(void *data);
 
-void *sessiond_timer_thread(void *data);
-int sessiond_timer_signal_init(void);
+void timer_exit(void);
 
-int sessiond_timer_rotate_pending_start(struct ltt_session *session,
+/* Start a session's rotation pending check timer (one-shot mode). */
+int timer_session_rotation_pending_check_start(struct ltt_session *session,
 		unsigned int interval_us);
-int sessiond_timer_rotate_pending_stop(struct ltt_session *session);
+/* Stop a session's rotation pending check timer. */
+int timer_session_rotation_pending_check_stop(struct ltt_session *session);
 
-int sessiond_rotate_timer_start(struct ltt_session *session,
+/* Start a session's rotation schedule timer. */
+int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 		unsigned int interval_us);
-int sessiond_rotate_timer_stop(struct ltt_session *session);
+/* Stop a session's rotation schedule timer. */
+int timer_session_rotation_schedule_timer_stop(struct ltt_session *session);
 
 #endif /* SESSIOND_TIMER_H */

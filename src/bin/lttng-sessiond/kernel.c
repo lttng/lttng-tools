@@ -1426,35 +1426,15 @@ int kernel_rotate_session(struct ltt_session *session)
 			socket, node.node) {
 		struct ltt_kernel_channel *chan;
 
-		/*
-		 * Account the metadata channel first to make sure the
-		 * number of channels waiting for a rotation cannot
-		 * reach 0 before we complete the iteration over all
-		 * the channels.
-		 */
-		ret = rotate_add_channel_pending(ksess->metadata->key,
-				LTTNG_DOMAIN_KERNEL, session);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
-			goto error;
-		}
-
 		/* For each channel, ask the consumer to rotate it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			ret = rotate_add_channel_pending(chan->key,
-					LTTNG_DOMAIN_KERNEL, session);
-			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
-				goto error;
-			}
-
-			DBG("Rotate channel %" PRIu64 ", session %s", chan->key, session->name);
+			DBG("Rotate kernel channel %" PRIu64 ", session %s",
+					chan->key, session->name);
 			ret = consumer_rotate_channel(socket, chan->key,
 					ksess->uid, ksess->gid, ksess->consumer,
 					ksess->consumer->subdir,
 					/* is_metadata_channel */ false,
-					session->current_archive_id,
-					&session->rotate_pending_relay);
+					session->current_archive_id);
 			if (ret < 0) {
 				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 				goto error;
@@ -1468,8 +1448,7 @@ int kernel_rotate_session(struct ltt_session *session)
 				ksess->uid, ksess->gid, ksess->consumer,
 				ksess->consumer->subdir,
 				/* is_metadata_channel */ true,
-				session->current_archive_id,
-				&session->rotate_pending_relay);
+				session->current_archive_id);
 		if (ret < 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			goto error;
