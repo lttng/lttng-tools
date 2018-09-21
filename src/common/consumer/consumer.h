@@ -2,6 +2,7 @@
  * Copyright (C) 2011 - Julien Desfossez <julien.desfossez@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
  *               2012 - David Goulet <dgoulet@efficios.com>
+ *               2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -62,10 +63,10 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_LOST_PACKETS,
 	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
 	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
-	LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE,
 	LTTNG_CONSUMER_ROTATE_CHANNEL,
 	LTTNG_CONSUMER_ROTATE_RENAME,
-	LTTNG_CONSUMER_ROTATE_PENDING_RELAY,
+	LTTNG_CONSUMER_CHECK_ROTATION_PENDING_LOCAL,
+	LTTNG_CONSUMER_CHECK_ROTATION_PENDING_RELAY,
 	LTTNG_CONSUMER_MKDIR,
 };
 
@@ -417,8 +418,9 @@ struct lttng_consumer_stream {
 	/* Copy of the sequence number of the last packet extracted. */
 	uint64_t last_sequence_number;
 	/*
-	 * Session's current trace archive id at the time of the creation of
-	 * this stream.
+	 * A stream is created with a trace_archive_id matching the session's
+	 * current trace archive id at the time of the creation of the stream.
+	 * It is incremented when the rotate_position is reached.
 	 */
 	uint64_t trace_archive_id;
 	/*
@@ -602,11 +604,6 @@ struct lttng_consumer_local_data {
 	 * to the session daemon (write-only).
 	 */
 	int channel_monitor_pipe;
-	/*
-	 * Pipe used to inform the session daemon that a stream has finished
-	 * its rotation (write-only).
-	 */
-	int channel_rotate_pipe;
 };
 
 /*
@@ -673,6 +670,24 @@ extern int consumer_quit;
 
 /* Flag used to temporarily pause data consumption from testpoints. */
 extern int data_consumption_paused;
+
+/* Return a human-readable consumer type string that is suitable for logging. */
+static inline
+const char *lttng_consumer_type_str(enum lttng_consumer_type type)
+{
+	switch (type) {
+	case LTTNG_CONSUMER_UNKNOWN:
+		return "unknown";
+	case LTTNG_CONSUMER_KERNEL:
+		return "kernel";
+	case LTTNG_CONSUMER32_UST:
+		return "32-bit user space";
+	case LTTNG_CONSUMER64_UST:
+		return "64-bit user space";
+	default:
+		abort();
+	}
+}
 
 /*
  * Init consumer data structures.
@@ -836,7 +851,9 @@ int lttng_consumer_rotate_ready_streams(uint64_t key,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_rotate_rename(const char *current_path, const char *new_path,
 		uid_t uid, gid_t gid, uint64_t relayd_id);
-int lttng_consumer_rotate_pending_relay( uint64_t session_id,
+int lttng_consumer_check_rotation_pending_local(uint64_t session_id,
+		uint64_t chunk_id);
+int lttng_consumer_check_rotation_pending_relay(uint64_t session_id,
 		uint64_t relayd_id, uint64_t chunk_id);
 void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);
 int lttng_consumer_mkdir(const char *path, uid_t uid, gid_t gid,

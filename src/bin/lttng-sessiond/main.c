@@ -111,7 +111,6 @@ static struct consumer_data kconsumer_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
-	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -122,7 +121,6 @@ static struct consumer_data ustconsumer64_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
-	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -133,7 +131,6 @@ static struct consumer_data ustconsumer32_data = {
 	.err_sock = -1,
 	.cmd_sock = -1,
 	.channel_monitor_pipe = -1,
-	.channel_rotate_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 	.cond = PTHREAD_COND_INITIALIZER,
@@ -529,24 +526,6 @@ static void close_consumer_sockets(void)
 		ret = close(ustconsumer64_data.channel_monitor_pipe);
 		if (ret < 0) {
 			PERROR("UST consumerd64 channel monitor pipe close");
-		}
-	}
-	if (kconsumer_data.channel_rotate_pipe >= 0) {
-		ret = close(kconsumer_data.channel_rotate_pipe);
-		if (ret < 0) {
-			PERROR("kernel consumer channel rotate pipe close");
-		}
-	}
-	if (ustconsumer32_data.channel_rotate_pipe >= 0) {
-		ret = close(ustconsumer32_data.channel_rotate_pipe);
-		if (ret < 0) {
-			PERROR("UST consumerd32 channel rotate pipe close");
-		}
-	}
-	if (ustconsumer64_data.channel_rotate_pipe >= 0) {
-		ret = close(ustconsumer64_data.channel_rotate_pipe);
-		if (ret < 0) {
-			PERROR("UST consumerd64 channel rotate pipe close");
 		}
 	}
 }
@@ -1325,8 +1304,7 @@ restart:
 
 	/*
 	 * Transfer the write-end of the channel monitoring and rotate pipe
-	 * to the consumer by issuing a SET_CHANNEL_MONITOR_PIPE and
-	 * SET_CHANNEL_ROTATE_PIPE commands.
+	 * to the consumer by issuing a SET_CHANNEL_MONITOR_PIPE command.
 	 */
 	cmd_socket_wrapper = consumer_allocate_socket(&consumer_data->cmd_sock);
 	if (!cmd_socket_wrapper) {
@@ -1336,12 +1314,6 @@ restart:
 
 	ret = consumer_send_channel_monitor_pipe(cmd_socket_wrapper,
 			consumer_data->channel_monitor_pipe);
-	if (ret) {
-		goto error;
-	}
-
-	ret = consumer_send_channel_rotate_pipe(cmd_socket_wrapper,
-			consumer_data->channel_rotate_pipe);
 	if (ret) {
 		goto error;
 	}
@@ -3366,7 +3338,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 			}
 
 			/*
-			 * Setup socket for consumer 64 bit. No need for atomic access
+			 * Setup socket for consumer 32 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
 			ret = consumer_create_socket(&ustconsumer32_data,
@@ -5842,48 +5814,6 @@ end:
 	return ret;
 }
 
-static
-struct rotation_thread_timer_queue *create_rotate_timer_queue(void)
-{
-	struct rotation_thread_timer_queue *queue = NULL;
-
-	queue = zmalloc(sizeof(struct rotation_thread_timer_queue));
-	if (!queue) {
-		PERROR("Failed to allocate timer rotate queue");
-		goto end;
-	}
-
-	queue->event_pipe = lttng_pipe_open(FD_CLOEXEC | O_NONBLOCK);
-	CDS_INIT_LIST_HEAD(&queue->list);
-	pthread_mutex_init(&queue->lock, NULL);
-
-end:
-	return queue;
-}
-
-static
-void destroy_rotate_timer_queue(struct rotation_thread_timer_queue *queue)
-{
-	struct sessiond_rotation_timer *node, *tmp_node;
-
-	if (!queue) {
-		return;
-	}
-
-	lttng_pipe_destroy(queue->event_pipe);
-
-	pthread_mutex_lock(&queue->lock);
-	/* Empty wait queue. */
-	cds_list_for_each_entry_safe(node, tmp_node, &queue->list, head) {
-		cds_list_del(&node->head);
-		free(node);
-	}
-	pthread_mutex_unlock(&queue->lock);
-
-	pthread_mutex_destroy(&queue->lock);
-	free(queue);
-}
-
 /*
  * main
  */
@@ -5898,9 +5828,6 @@ int main(int argc, char **argv)
 	bool notification_thread_launched = false;
 	bool rotation_thread_launched = false;
 	bool timer_thread_launched = false;
-	struct lttng_pipe *ust32_channel_rotate_pipe = NULL,
-			*ust64_channel_rotate_pipe = NULL,
-			*kernel_channel_rotate_pipe = NULL;
 	struct timer_thread_parameters timer_thread_ctx;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
@@ -5915,7 +5842,7 @@ int main(int argc, char **argv)
 		goto exit_set_signal_handler;
 	}
 
-	if (sessiond_timer_signal_init()) {
+	if (timer_signal_init()) {
 		retval = -1;
 		goto exit_set_signal_handler;
 	}
@@ -6069,19 +5996,6 @@ int main(int argc, char **argv)
 			retval = -1;
 			goto exit_init_data;
 		}
-		kernel_channel_rotate_pipe = lttng_pipe_open(0);
-		if (!kernel_channel_rotate_pipe) {
-			ERR("Failed to create kernel consumer channel rotate pipe");
-			retval = -1;
-			goto exit_init_data;
-		}
-		kconsumer_data.channel_rotate_pipe =
-				lttng_pipe_release_writefd(
-					kernel_channel_rotate_pipe);
-		if (kconsumer_data.channel_rotate_pipe < 0) {
-			retval = -1;
-			goto exit_init_data;
-		}
 	}
 
 	/* Set consumer initial state */
@@ -6100,30 +6014,18 @@ int main(int argc, char **argv)
 		retval = -1;
 		goto exit_init_data;
 	}
-	ust32_channel_rotate_pipe = lttng_pipe_open(0);
-	if (!ust32_channel_rotate_pipe) {
-		ERR("Failed to create 32-bit user space consumer channel rotate pipe");
-		retval = -1;
-		goto exit_init_data;
-	}
-	ustconsumer32_data.channel_rotate_pipe = lttng_pipe_release_writefd(
-			ust32_channel_rotate_pipe);
-	if (ustconsumer32_data.channel_rotate_pipe < 0) {
-		retval = -1;
-		goto exit_init_data;
-	}
 
 	/*
-	 * The rotation_timer_queue structure is shared between the sessiond timer
-	 * thread and the rotation thread. The main() keeps the ownership and
-	 * destroys it when both threads have quit.
+	 * The rotation_thread_timer_queue structure is shared between the
+	 * sessiond timer thread and the rotation thread. The main thread keeps
+	 * its ownership and destroys it when both threads have been joined.
 	 */
-	rotation_timer_queue = create_rotate_timer_queue();
+	rotation_timer_queue = rotation_thread_timer_queue_create();
 	if (!rotation_timer_queue) {
 		retval = -1;
 		goto exit_init_data;
 	}
-	timer_thread_ctx.rotation_timer_queue = rotation_timer_queue;
+	timer_thread_ctx.rotation_thread_job_queue = rotation_timer_queue;
 
 	ust64_channel_monitor_pipe = lttng_pipe_open(0);
 	if (!ust64_channel_monitor_pipe) {
@@ -6134,18 +6036,6 @@ int main(int argc, char **argv)
 	ustconsumer64_data.channel_monitor_pipe = lttng_pipe_release_writefd(
 			ust64_channel_monitor_pipe);
 	if (ustconsumer64_data.channel_monitor_pipe < 0) {
-		retval = -1;
-		goto exit_init_data;
-	}
-	ust64_channel_rotate_pipe = lttng_pipe_open(0);
-	if (!ust64_channel_rotate_pipe) {
-		ERR("Failed to create 64-bit user space consumer channel rotate pipe");
-		retval = -1;
-		goto exit_init_data;
-	}
-	ustconsumer64_data.channel_rotate_pipe = lttng_pipe_release_writefd(
-			ust64_channel_rotate_pipe);
-	if (ustconsumer64_data.channel_rotate_pipe < 0) {
 		retval = -1;
 		goto exit_init_data;
 	}
@@ -6333,7 +6223,7 @@ int main(int argc, char **argv)
 
 	/* Create timer thread. */
 	ret = pthread_create(&timer_thread, default_pthread_attr(),
-			sessiond_timer_thread, &timer_thread_ctx);
+			timer_thread_func, &timer_thread_ctx);
 	if (ret) {
 		errno = ret;
 		PERROR("pthread_create timer");
@@ -6345,9 +6235,6 @@ int main(int argc, char **argv)
 
 	/* rotation_thread_data acquires the pipes' read side. */
 	rotation_thread_handle = rotation_thread_handle_create(
-			ust32_channel_rotate_pipe,
-			ust64_channel_rotate_pipe,
-			kernel_channel_rotate_pipe,
 			thread_quit_pipe[0],
 			rotation_timer_queue,
 			notification_thread_handle,
@@ -6601,7 +6488,7 @@ exit_init_data:
 	}
 
 	if (timer_thread_launched) {
-		kill(getpid(), LTTNG_SESSIOND_SIG_EXIT);
+		timer_exit();
 		ret = pthread_join(timer_thread, &status);
 		if (ret) {
 			errno = ret;
@@ -6614,7 +6501,7 @@ exit_init_data:
 	 * After the rotation and timer thread have quit, we can safely destroy
 	 * the rotation_timer_queue.
 	 */
-	destroy_rotate_timer_queue(rotation_timer_queue);
+	rotation_thread_timer_queue_destroy(rotation_timer_queue);
 
 	rcu_thread_offline();
 	rcu_unregister_thread();
@@ -6626,9 +6513,6 @@ exit_init_data:
 	lttng_pipe_destroy(ust32_channel_monitor_pipe);
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);
-	lttng_pipe_destroy(ust32_channel_rotate_pipe);
-	lttng_pipe_destroy(ust64_channel_rotate_pipe);
-	lttng_pipe_destroy(kernel_channel_rotate_pipe);
 exit_ht_cleanup:
 
 	health_app_destroy(health_sessiond);

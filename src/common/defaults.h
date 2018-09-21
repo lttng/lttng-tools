@@ -347,7 +347,7 @@
  * Default timer value in usec for the rotate pending polling check on the
  * relay when a rotation has completed on the consumer.
  */
-#define DEFAULT_ROTATE_PENDING_RELAY_TIMER	CONFIG_DEFAULT_ROTATE_PENDING_RELAY_TIMER
+#define DEFAULT_ROTATE_PENDING_TIMER	CONFIG_DEFAULT_ROTATE_PENDING_TIMER
 
 /*
  * Returns the default subbuf size.

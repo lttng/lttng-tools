@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 - Julien Desfossez <jdesfossez@efficios.com>
+ * Copyright (C) 2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -28,41 +29,23 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "session.h"
+#include "notification-thread.h"
 
-/*
- * The timer thread enqueues struct sessiond_rotation_timer objects in the list
- * and wake up the rotation thread. When the rotation thread wakes up, it
- * empties the queue.
- */
-struct rotation_thread_timer_queue {
-	struct lttng_pipe *event_pipe;
-	struct cds_list_head list;
-	pthread_mutex_t lock;
+extern struct lttng_notification_channel *rotate_notification_channel;
+
+enum rotation_thread_job_type {
+	ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,
+	ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION
 };
 
-struct rotation_thread_handle {
-	/*
-	 * Read side of pipes used to communicate with the rotation thread.
-	 */
-	/* Notification from the consumers */
-	int ust32_consumer;
-	int ust64_consumer;
-	int kernel_consumer;
-	/* quit pipe */
-	int thread_quit_pipe;
+struct rotation_thread_timer_queue;
+struct rotation_thread_handle;
 
-	struct rotation_thread_timer_queue *rotation_timer_queue;
-
-	/* Access to the notification thread cmd_queue */
-	struct notification_thread_handle *notification_thread_handle;
-
-	sem_t *notification_thread_ready;
-};
+struct rotation_thread_timer_queue *rotation_thread_timer_queue_create(void);
+void rotation_thread_timer_queue_destroy(
+		struct rotation_thread_timer_queue *queue);
 
 struct rotation_thread_handle *rotation_thread_handle_create(
-		struct lttng_pipe *ust32_channel_rotate_pipe,
-		struct lttng_pipe *ust64_channel_rotate_pipe,
-		struct lttng_pipe *kernel_channel_rotate_pipe,
 		int thread_quit_pipe,
 		struct rotation_thread_timer_queue *rotation_timer_queue,
 		struct notification_thread_handle *notification_thread_handle,
@@ -70,6 +53,9 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 
 void rotation_thread_handle_destroy(
 		struct rotation_thread_handle *handle);
+
+void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
+		enum rotation_thread_job_type job_type, uint64_t session_id);
 
 void *thread_rotation(void *data);
 

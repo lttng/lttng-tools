@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 - David Goulet <dgoulet@efficios.com>
+ *               2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -1081,10 +1082,6 @@ int consumer_send_pipe(struct consumer_socket *consumer_sock,
 		pipe_name = "channel monitor";
 		command_name = "SET_CHANNEL_MONITOR_PIPE";
 		break;
-	case LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE:
-		pipe_name = "channel rotate";
-		command_name = "SET_CHANNEL_ROTATE_PIPE";
-		break;
 	default:
 		ERR("Unexpected command received in %s (cmd = %d)", __func__,
 				(int) cmd);
@@ -1122,13 +1119,6 @@ int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
 {
 	return consumer_send_pipe(consumer_sock,
 			LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE, pipe);
-}
-
-int consumer_send_channel_rotate_pipe(struct consumer_socket *consumer_sock,
-		int pipe)
-{
-	return consumer_send_pipe(consumer_sock,
-			LTTNG_CONSUMER_SET_CHANNEL_ROTATE_PIPE, pipe);
 }
 
 /*
@@ -1649,8 +1639,7 @@ end:
 int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 		uid_t uid, gid_t gid, struct consumer_output *output,
 		char *domain_path, bool is_metadata_channel,
-		uint64_t new_chunk_id,
-		bool *rotate_pending_relay)
+		uint64_t new_chunk_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1677,7 +1666,6 @@ int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 			ret = -1;
 			goto error;
 		}
-		*rotate_pending_relay = true;
 	} else {
 		msg.u.rotate_channel.relayd_id = (uint64_t) -1ULL;
 		ret = snprintf(msg.u.rotate_channel.pathname,
@@ -1760,14 +1748,56 @@ error:
 }
 
 /*
- * Ask the relay if a rotation is still pending. Must be called with the socket
- * lock held.
+ * Ask the consumer if a rotation is locally pending. Must be called with the
+ * socket lock held.
  *
  * Return 1 if the rotation is still pending, 0 if finished, a negative value
  * on error.
  */
-int consumer_rotate_pending_relay(struct consumer_socket *socket,
-		struct consumer_output *output, uint64_t session_id,
+int consumer_check_rotation_pending_local(struct consumer_socket *socket,
+		uint64_t session_id, uint64_t chunk_id)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+	uint32_t pending = 0;
+
+	assert(socket);
+
+	DBG("Asking consumer to locally check for pending rotation for session %" PRIu64 ", chunk id %" PRIu64,
+			session_id, chunk_id);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_CHECK_ROTATION_PENDING_LOCAL;
+	msg.u.check_rotation_pending_local.session_id = session_id;
+	msg.u.check_rotation_pending_local.chunk_id = chunk_id;
+
+	health_code_update();
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = consumer_socket_recv(socket, &pending, sizeof(pending));
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = pending;
+
+error:
+	health_code_update();
+	return ret;
+}
+
+/*
+ * Ask the consumer if a rotation is pending on the relayd. Must be called with
+ * the socket lock held.
+ *
+ * Return 1 if the rotation is still pending, 0 if finished, a negative value
+ * on error.
+ */
+int consumer_check_rotation_pending_relay(struct consumer_socket *socket,
+		const struct consumer_output *output, uint64_t session_id,
 		uint64_t chunk_id)
 {
 	int ret;
@@ -1776,15 +1806,15 @@ int consumer_rotate_pending_relay(struct consumer_socket *socket,
 
 	assert(socket);
 
-	DBG("Consumer rotate pending on relay for session %" PRIu64 ", chunk id %" PRIu64,
+	DBG("Asking consumer to check for pending rotation on relay for session %" PRIu64 ", chunk id %" PRIu64,
 			session_id, chunk_id);
 	assert(output->type == CONSUMER_DST_NET);
 
 	memset(&msg, 0, sizeof(msg));
-	msg.cmd_type = LTTNG_CONSUMER_ROTATE_PENDING_RELAY;
-	msg.u.rotate_pending_relay.session_id = session_id;
-	msg.u.rotate_pending_relay.relayd_id = output->net_seq_index;
-	msg.u.rotate_pending_relay.chunk_id = chunk_id;
+	msg.cmd_type = LTTNG_CONSUMER_CHECK_ROTATION_PENDING_RELAY;
+	msg.u.check_rotation_pending_relay.session_id = session_id;
+	msg.u.check_rotation_pending_relay.relayd_id = output->net_seq_index;
+	msg.u.check_rotation_pending_relay.chunk_id = chunk_id;
 
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
