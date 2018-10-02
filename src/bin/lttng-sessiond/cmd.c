@@ -57,7 +57,7 @@
 #include "notification-thread-commands.h"
 #include "rotate.h"
 #include "rotation-thread.h"
-#include "sessiond-timer.h"
+#include "timer.h"
 #include "agent-thread.h"
 
 #include "cmd.h"

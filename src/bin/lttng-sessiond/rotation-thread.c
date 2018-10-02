@@ -42,7 +42,7 @@
 #include "rotate.h"
 #include "cmd.h"
 #include "session.h"
-#include "sessiond-timer.h"
+#include "timer.h"
 #include "notification-thread-commands.h"
 
 #include <urcu.h>
