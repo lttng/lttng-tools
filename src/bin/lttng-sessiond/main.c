@@ -81,7 +81,7 @@
 #include "agent.h"
 #include "ht-cleanup.h"
 #include "sessiond-config.h"
-#include "sessiond-timer.h"
+#include "timer.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP

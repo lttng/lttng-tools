@@ -39,7 +39,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        sessiond-config.h sessiond-config.c \
                        rotate.h rotate.c \
                        rotation-thread.h rotation-thread.c \
-                       sessiond-timer.c sessiond-timer.h
+                       timer.c timer.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \

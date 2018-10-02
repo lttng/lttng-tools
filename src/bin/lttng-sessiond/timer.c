@@ -21,7 +21,7 @@
 #include <inttypes.h>
 #include <signal.h>
 
-#include "sessiond-timer.h"
+#include "timer.h"
 #include "health-sessiond.h"
 #include "rotation-thread.h"
 
