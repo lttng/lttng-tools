@@ -394,7 +394,7 @@ int check_session_rotation_pending_local_on_consumer(
 static
 int check_session_rotation_pending_local(struct ltt_session *session)
 {
-	int ret;
+	int ret = 0;
 	struct consumer_socket *socket;
 	struct cds_lfht_iter iter;
 	bool rotation_completed = true;
