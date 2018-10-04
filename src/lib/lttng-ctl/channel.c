@@ -211,6 +211,7 @@ lttng_notification_channel_get_next_notification(
 	struct lttng_notification *notification = NULL;
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
+	fd_set read_fds;
 
 	if (!channel || !_notification) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
@@ -236,6 +237,28 @@ lttng_notification_channel_get_next_notification(
 		cds_list_del(&pending_notification->node);
 		channel->pending_notifications.count--;
 		free(pending_notification);
+		goto end_unlock;
+	}
+
+	/*
+	 * Block on select() instead of the message reception itself as the
+	 * recvmsg() wrappers always restard on EINTR. We choose to wait
+	 * using select() in order to:
+	 *   1) Return if a signal occurs,
+	 *   2) Not deal with partially received messages.
+	 *
+	 * The drawback to this approach is that we assume that messages
+	 * are complete/well formed. If a message is shorter than its
+	 * announced length, receive_message() will block on recvmsg()
+	 * and never return (even if a signal is received).
+	 */
+	FD_ZERO(&read_fds);
+	FD_SET(channel->socket, &read_fds);
+	ret = select(channel->socket + 1, &read_fds, NULL, NULL, NULL);
+	if (ret == -1) {
+		status = errno == EINTR ?
+			LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED :
+			LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 		goto end_unlock;
 	}
 
