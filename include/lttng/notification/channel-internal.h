@@ -74,7 +74,7 @@ struct pending_notification {
 };
 
 /*
- * The notification channel protocol is bidirectional and accomodates
+ * The notification channel protocol is bidirectional and accommodates
  * synchronous and asynchronous communication modes:
  *
  *   - Synchronous: commands emitted by the client to which a reply is expected
