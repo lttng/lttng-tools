@@ -129,7 +129,7 @@ struct notification_client_list_element {
 };
 
 struct notification_client_list {
-	struct lttng_trigger *trigger;
+	const struct lttng_trigger *trigger;
 	struct cds_list_head list;
 	struct cds_lfht_node notification_trigger_ht_node;
 };
@@ -345,15 +345,25 @@ int match_client_list_condition(struct cds_lfht_node *node, const void *key)
 {
 	struct lttng_condition *condition_key = (struct lttng_condition *) key;
 	struct notification_client_list *client_list;
-	struct lttng_condition *condition;
+	const struct lttng_condition *condition;
 
 	assert(condition_key);
 
 	client_list = caa_container_of(node, struct notification_client_list,
 			notification_trigger_ht_node);
-	condition = lttng_trigger_get_condition(client_list->trigger);
+	condition = lttng_trigger_get_const_condition(client_list->trigger);
 
 	return !!lttng_condition_is_equal(condition_key, condition);
+}
+
+static
+int match_session(struct cds_lfht_node *node, const void *key)
+{
+	const char *name = key;
+	struct session_info *session_info = caa_container_of(
+		node, struct session_info, sessions_ht_node);
+
+	return !strcmp(session_info->name, name);
 }
 
 static
@@ -463,6 +473,31 @@ unsigned long hash_channel_key(struct channel_key *key)
 		(void *) (unsigned long) key->domain, lttng_ht_seed);
 
 	return key_hash ^ domain_hash;
+}
+
+/*
+ * Get the type of object to which a given condition applies. Bindings let
+ * the notification system evaluate a trigger's condition when a given
+ * object's state is updated.
+ *
+ * For instance, a condition bound to a channel will be evaluated everytime
+ * the channel's state is changed by a channel monitoring sample.
+ */
+static
+enum lttng_object_type get_condition_binding_object(
+		const struct lttng_condition *condition)
+{
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+	        return LTTNG_OBJECT_TYPE_CHANNEL;
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		return LTTNG_OBJECT_TYPE_SESSION;
+	default:
+		return LTTNG_OBJECT_TYPE_UNKNOWN;
+	}
 }
 
 static
@@ -642,10 +677,11 @@ struct notification_client_list *get_client_list_from_condition(
 
 /* This function must be called with the RCU read lock held. */
 static
-int evaluate_condition_for_client(struct lttng_trigger *trigger,
-		struct lttng_condition *condition,
-		struct notification_client *client,
-		struct notification_thread_state *state)
+int evaluate_channel_condition_for_client(
+		const struct lttng_condition *condition,
+		struct notification_thread_state *state,
+		struct lttng_evaluation **evaluation,
+		uid_t *session_uid, gid_t *session_gid)
 {
 	int ret;
 	struct cds_lfht_iter iter;
@@ -654,23 +690,15 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 	struct channel_key *channel_key = NULL;
 	struct channel_state_sample *last_sample = NULL;
 	struct lttng_channel_trigger_list *channel_trigger_list = NULL;
-	struct lttng_evaluation *evaluation = NULL;
-	struct notification_client_list client_list = { 0 };
-	struct notification_client_list_element client_list_element = { 0 };
 
-	assert(trigger);
-	assert(condition);
-	assert(client);
-	assert(state);
-
-	/* Find the channel associated with the trigger. */
+	/* Find the channel associated with the condition. */
 	cds_lfht_for_each_entry(state->channel_triggers_ht, &iter,
-			channel_trigger_list , channel_triggers_ht_node) {
+			channel_trigger_list, channel_triggers_ht_node) {
 		struct lttng_trigger_list_element *element;
 
 		cds_list_for_each_entry(element, &channel_trigger_list->list, node) {
 			const struct lttng_condition *current_condition =
-				lttng_trigger_get_const_condition(
+					lttng_trigger_get_const_condition(
 						element->trigger);
 
 			assert(current_condition);
@@ -691,7 +719,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 
 	if (!channel_key){
 		/* No channel found; normal exit. */
-		DBG("[notification-thread] No channel associated with newly subscribed-to condition");
+		DBG("[notification-thread] No known channel associated with newly subscribed-to condition");
 		ret = 0;
 		goto end;
 	}
@@ -725,12 +753,156 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 		goto end;
 	}
 
-	ret = evaluate_buffer_condition(condition, &evaluation, state,
+	ret = evaluate_buffer_condition(condition, evaluation, state,
 			NULL, last_sample,
 			0, channel_info->session_info->consumed_data_size,
 			channel_info);
 	if (ret) {
 		WARN("[notification-thread] Fatal error occurred while evaluating a newly subscribed-to condition");
+		goto end;
+	}
+
+	*session_uid = channel_info->session_info->uid;
+	*session_gid = channel_info->session_info->gid;
+end:
+	return ret;
+}
+
+static
+const char *get_condition_session_name(const struct lttng_condition *condition)
+{
+	const char *session_name = NULL;
+	enum lttng_condition_status status;
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+		status = lttng_condition_buffer_usage_get_session_name(
+				condition, &session_name);
+		break;
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+		status = lttng_condition_session_consumed_size_get_session_name(
+				condition, &session_name);
+		break;
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		status = lttng_condition_session_rotation_get_session_name(
+				condition, &session_name);
+		break;
+	default:
+		abort();
+	}
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ERR("[notification-thread] Failed to retrieve session rotation condition's session name");
+		goto end;
+	}
+end:
+	return session_name;
+}
+
+/* This function must be called with the RCU read lock held. */
+static
+int evaluate_session_condition_for_client(
+		const struct lttng_condition *condition,
+		struct notification_thread_state *state,
+		struct lttng_evaluation **evaluation,
+		uid_t *session_uid, gid_t *session_gid)
+{
+	int ret;
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	const char *session_name;
+	struct session_info *session_info = NULL;
+
+	session_name = get_condition_session_name(condition);
+
+	/* Find the session associated with the trigger. */
+	cds_lfht_lookup(state->sessions_ht,
+			hash_key_str(session_name, lttng_ht_seed),
+			match_session,
+			session_name,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (!node) {
+		DBG("[notification-thread] No known session matching name \"%s\"",
+				session_name);
+		ret = 0;
+		goto end;
+	}
+
+	session_info = caa_container_of(node, struct session_info,
+			sessions_ht_node);
+	session_info_get(session_info);
+
+	/*
+	 * Evaluation is performed in-line here since only one type of
+	 * session-bound condition is handled for the moment.
+	 */
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+		if (!session_info->rotation.ongoing) {
+			goto end_session_put;
+		}
+
+		*evaluation = lttng_evaluation_session_rotation_ongoing_create(
+				session_info->rotation.id);
+		if (!*evaluation) {
+			/* Fatal error. */
+			ERR("[notification-thread] Failed to create session rotation ongoing evaluation for session \"%s\"",
+					session_info->name);
+			ret = -1;
+			goto end_session_put;
+		}
+		ret = 0;
+		break;
+	default:
+		ret = 0;
+		goto end;
+	}
+
+	*session_uid = session_info->uid;
+	*session_gid = session_info->gid;
+
+end_session_put:
+	session_info_put(session_info);
+end:
+	return ret;
+}
+
+/* This function must be called with the RCU read lock held. */
+static
+int evaluate_condition_for_client(const struct lttng_trigger *trigger,
+		const struct lttng_condition *condition,
+		struct notification_client *client,
+		struct notification_thread_state *state)
+{
+	int ret;
+	struct lttng_evaluation *evaluation = NULL;
+	struct notification_client_list client_list = { 0 };
+	struct notification_client_list_element client_list_element = { 0 };
+	uid_t object_uid = 0;
+	gid_t object_gid = 0;
+
+	assert(trigger);
+	assert(condition);
+	assert(client);
+	assert(state);
+
+	switch (get_condition_binding_object(condition)) {
+	case LTTNG_OBJECT_TYPE_SESSION:
+		ret = evaluate_session_condition_for_client(condition, state,
+				&evaluation, &object_uid, &object_gid);
+		break;
+	case LTTNG_OBJECT_TYPE_CHANNEL:
+		ret = evaluate_channel_condition_for_client(condition, state,
+				&evaluation, &object_uid, &object_gid);
+		break;
+	case LTTNG_OBJECT_TYPE_NONE:
+		ret = 0;
+		goto end;
+	case LTTNG_OBJECT_TYPE_UNKNOWN:
+	default:
+		ret = -1;
 		goto end;
 	}
 
@@ -756,8 +928,7 @@ int evaluate_condition_for_client(struct lttng_trigger *trigger,
 	/* Send evaluation result to the newly-subscribed client. */
 	DBG("[notification-thread] Newly subscribed-to condition evaluated to true, notifying client");
 	ret = send_evaluation_to_clients(trigger, evaluation, &client_list,
-			state, channel_info->session_info->uid,
-			channel_info->session_info->gid);
+			state, object_uid, object_gid);
 
 end:
 	return ret;
@@ -1037,34 +1208,6 @@ fail:
 	return false;
 }
 
-/*
- * Get the type of object to which a given trigger applies. Binding lets
- * the notification system evaluate a trigger's condition when a given
- * object's state is updated.
- *
- * For instance, a condition bound to a channel will be evaluated everytime
- * the channel's state is changed by a channel monitoring sample.
- */
-static
-enum lttng_object_type get_trigger_binding_object(
-		const struct lttng_trigger *trigger)
-{
-	const struct lttng_condition *condition;
-
-	condition = lttng_trigger_get_const_condition(trigger);
-	switch (lttng_condition_get_type(condition)) {
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-	        return LTTNG_OBJECT_TYPE_CHANNEL;
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		return LTTNG_OBJECT_TYPE_SESSION;
-	default:
-		return LTTNG_OBJECT_TYPE_UNKNOWN;
-	}
-}
-
 static
 bool trigger_applies_to_channel(const struct lttng_trigger *trigger,
 		const struct channel_info *channel_info)
@@ -1113,16 +1256,6 @@ bool trigger_applies_to_client(struct lttng_trigger *trigger,
 		}
 	}
 	return applies;
-}
-
-static
-int match_session(struct cds_lfht_node *node, const void *key)
-{
-	const char *name = key;
-	struct session_info *session_info = caa_container_of(
-		node, struct session_info, sessions_ht_node);
-
-	return !strcmp(session_info->name, name);
 }
 
 /* Must be called with RCU read lock held. */
@@ -1893,13 +2026,14 @@ int handle_notification_thread_command_register_trigger(
 			lttng_condition_hash(condition),
 			&client_list->notification_trigger_ht_node);
 
-	switch (get_trigger_binding_object(trigger)) {
+	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_SESSION:
 		/* Add the trigger to the list if it matches a known session. */
 		ret = bind_trigger_to_matching_session(trigger, state);
 		if (ret) {
 			goto error_free_client_list;
 		}
+		break;
 	case LTTNG_OBJECT_TYPE_CHANNEL:
 		/*
 		 * Add the trigger to list of triggers bound to the channels
