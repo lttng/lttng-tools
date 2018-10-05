@@ -289,10 +289,8 @@ lttng_notification_channel_get_next_notification(
 
 end_unlock:
 	pthread_mutex_unlock(&channel->lock);
+	*_notification = notification;
 end:
-	if (_notification) {
-		*_notification = notification;
-	}
 	return status;
 }
 
