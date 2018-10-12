@@ -82,7 +82,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	}
 
 	stream->stream_handle = stream_handle;
-	stream->prev_seq = -1ULL;
+	stream->prev_data_seq = -1ULL;
 	stream->prev_index_seq = -1ULL;
 	stream->last_net_seq_num = -1ULL;
 	stream->ctf_stream_id = -1ULL;
@@ -377,7 +377,7 @@ void try_stream_close(struct relay_stream *stream)
 	}
 
 	if (stream->last_net_seq_num != -1ULL &&
-			((int64_t) (stream->prev_seq - stream->last_net_seq_num)) < 0
+			((int64_t) (stream->prev_data_seq - stream->last_net_seq_num)) < 0
 			&& !session_aborted) {
 		/*
 		 * Don't close since we still have data pending. This

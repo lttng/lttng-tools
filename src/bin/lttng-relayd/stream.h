@@ -52,10 +52,12 @@ struct relay_stream {
 	 * inside the ctf_trace lock.
 	 */
 	pthread_mutex_t lock;
-	uint64_t prev_seq;		/* previous data sequence number encountered. */
+	/* previous data sequence number written to disk. */
+	uint64_t prev_data_seq;
 	/* previous index sequence number written to disk. */
 	uint64_t prev_index_seq;
-	uint64_t last_net_seq_num;	/* seq num to encounter before closing. */
+	/* seq num to encounter before closing. */
+	uint64_t last_net_seq_num;
 
 	/* FD on which to write the stream data. */
 	struct stream_fd *stream_fd;

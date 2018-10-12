@@ -358,7 +358,7 @@ int make_viewer_streams(struct relay_session *session,
 					}
 				} else {
 					if (!stream->closed ||
-						!(((int64_t) (stream->prev_seq - stream->last_net_seq_num)) >= 0)) {
+						!(((int64_t) (stream->prev_data_seq - stream->last_net_seq_num)) >= 0)) {
 
 						(*nb_total)++;
 					}
