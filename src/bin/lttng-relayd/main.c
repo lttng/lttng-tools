@@ -1746,18 +1746,27 @@ static
 int try_rotate_stream(struct relay_stream *stream)
 {
 	int ret = 0;
+	uint64_t trace_seq;
 
 	/* No rotation expected. */
 	if (stream->rotate_at_seq_num == -1ULL) {
 		goto end;
 	}
 
-	if (stream->prev_seq < stream->rotate_at_seq_num ||
-			stream->prev_seq == -1ULL) {
-		DBG("Stream %" PRIu64 " no yet ready for rotation",
-				stream->stream_handle);
+	trace_seq = min(stream->prev_seq, stream->prev_index_seq);
+	if (stream->prev_seq == -1ULL || stream->prev_index_seq == -1ULL ||
+			trace_seq < stream->rotate_at_seq_num) {
+		DBG("Stream %" PRIu64 " not yet ready for rotation (rotate_at_seq_num = %" PRIu64 ", prev_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
+				stream->stream_handle,
+				stream->rotate_at_seq_num,
+				stream->prev_seq,
+				stream->prev_index_seq);
 		goto end;
 	} else if (stream->prev_seq > stream->rotate_at_seq_num) {
+		/*
+		 * prev_seq is checked here since indexes and rotation
+		 * commands are serialized with respect to each other.
+		 */
 		DBG("Rotation after too much data has been written in tracefile "
 				"for stream %" PRIu64 ", need to truncate before "
 				"rotating", stream->stream_handle);
@@ -1767,7 +1776,20 @@ int try_rotate_stream(struct relay_stream *stream)
 			goto end;
 		}
 	} else {
-		/* stream->prev_seq == stream->rotate_at_seq_num */
+		if (trace_seq != stream->rotate_at_seq_num) {
+			/*
+			 * Unexpected, protocol error/bug.
+			 * It could mean that we received a rotation position
+			 * that is in the past.
+			 */
+			ERR("Stream %" PRIu64 " is in an inconsistent state (rotate_at_seq_num = %" PRIu64 ", prev_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
+				stream->stream_handle,
+				stream->rotate_at_seq_num,
+				stream->prev_seq,
+				stream->prev_index_seq);
+			ret = -1;
+			goto end;
+		}
 		DBG("Stream %" PRIu64 " ready for rotation",
 				stream->stream_handle);
 		ret = do_rotate_stream(stream);
