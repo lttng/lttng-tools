@@ -1753,18 +1753,18 @@ int try_rotate_stream(struct relay_stream *stream)
 		goto end;
 	}
 
-	trace_seq = min(stream->prev_seq, stream->prev_index_seq);
-	if (stream->prev_seq == -1ULL || stream->prev_index_seq == -1ULL ||
+	trace_seq = min(stream->prev_data_seq, stream->prev_index_seq);
+	if (stream->prev_data_seq == -1ULL || stream->prev_index_seq == -1ULL ||
 			trace_seq < stream->rotate_at_seq_num) {
-		DBG("Stream %" PRIu64 " not yet ready for rotation (rotate_at_seq_num = %" PRIu64 ", prev_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
+		DBG("Stream %" PRIu64 " not yet ready for rotation (rotate_at_seq_num = %" PRIu64 ", prev_data_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
 				stream->stream_handle,
 				stream->rotate_at_seq_num,
-				stream->prev_seq,
+				stream->prev_data_seq,
 				stream->prev_index_seq);
 		goto end;
-	} else if (stream->prev_seq > stream->rotate_at_seq_num) {
+	} else if (stream->prev_data_seq > stream->rotate_at_seq_num) {
 		/*
-		 * prev_seq is checked here since indexes and rotation
+		 * prev_data_seq is checked here since indexes and rotation
 		 * commands are serialized with respect to each other.
 		 */
 		DBG("Rotation after too much data has been written in tracefile "
@@ -1782,10 +1782,10 @@ int try_rotate_stream(struct relay_stream *stream)
 			 * It could mean that we received a rotation position
 			 * that is in the past.
 			 */
-			ERR("Stream %" PRIu64 " is in an inconsistent state (rotate_at_seq_num = %" PRIu64 ", prev_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
+			ERR("Stream %" PRIu64 " is in an inconsistent state (rotate_at_seq_num = %" PRIu64 ", prev_data_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
 				stream->stream_handle,
 				stream->rotate_at_seq_num,
-				stream->prev_seq,
+				stream->prev_data_seq,
 				stream->prev_index_seq);
 			ret = -1;
 			goto end;
@@ -1991,14 +1991,14 @@ static int relay_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 		 * Ensure that both the index and stream data have been
 		 * flushed up to the requested point.
 		 */
-		stream_seq = min(stream->prev_seq, stream->prev_index_seq);
+		stream_seq = min(stream->prev_data_seq, stream->prev_index_seq);
 	} else {
-		stream_seq = stream->prev_seq;
+		stream_seq = stream->prev_data_seq;
 	}
-	DBG("Data pending for stream id %" PRIu64 ": prev_seq %" PRIu64
+	DBG("Data pending for stream id %" PRIu64 ": prev_data_seq %" PRIu64
 			", prev_index_seq %" PRIu64
 			", and last_seq %" PRIu64, msg.stream_id,
-			stream->prev_seq, stream->prev_index_seq,
+			stream->prev_data_seq, stream->prev_index_seq,
 			msg.last_net_seq_num);
 
 	/* Avoid wrapping issue */
@@ -2229,9 +2229,9 @@ static int relay_end_data_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 				 * Ensure that both the index and stream data have been
 				 * flushed up to the requested point.
 				 */
-				stream_seq = min(stream->prev_seq, stream->prev_index_seq);
+				stream_seq = min(stream->prev_data_seq, stream->prev_index_seq);
 			} else {
-				stream_seq = stream->prev_seq;
+				stream_seq = stream->prev_data_seq;
 			}
 			if (!stream->closed || !(((int64_t) (stream_seq - stream->last_net_seq_num)) >= 0)) {
 				is_data_inflight = 1;
@@ -3527,7 +3527,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	stream->tracefile_size_current += state->header.data_size +
 			state->header.padding_size;
 
-	if (stream->prev_seq == -1ULL) {
+	if (stream->prev_data_seq == -1ULL) {
 		new_stream = true;
 	}
 	if (index_flushed) {
@@ -3536,7 +3536,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 		stream->prev_index_seq = state->header.net_seq_num;
 	}
 
-	stream->prev_seq = state->header.net_seq_num;
+	stream->prev_data_seq = state->header.net_seq_num;
 
 	/*
 	 * Resetting the protocol state (to RECEIVE_HEADER) will trash the
