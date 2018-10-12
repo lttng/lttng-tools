@@ -65,6 +65,20 @@ struct relay_stream {
 	struct lttng_index_file *index_file;
 
 	char *path_name;
+	/*
+	 * prev_path_name is only used for session rotation support.
+	 * It is essentially used to work around the fact that index
+	 * files are always created from the 'data' connection.
+	 *
+	 * Hence, it is possible to receive a ROTATE_STREAM command
+	 * which affects the stream's path_name before the creation of
+	 * an index file. In this situation, the index file of the
+	 * 'previous' chunk would be created in the new destination folder.
+	 *
+	 * It would then be unlinked when the actual index of the new chunk
+	 * is created.
+	 */
+	char *prev_path_name;
 	char *channel_name;
 
 	/* On-disk circular buffer of tracefiles. */

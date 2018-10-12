@@ -35,7 +35,7 @@
  *
  * Return allocated struct lttng_index_file, NULL on error.
  */
-struct lttng_index_file *lttng_index_file_create(char *path_name,
+struct lttng_index_file *lttng_index_file_create(const char *path_name,
 		char *stream_name, int uid, int gid,
 		uint64_t size, uint64_t count, uint32_t major, uint32_t minor)
 {
