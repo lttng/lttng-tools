@@ -2650,6 +2650,7 @@ static int relay_mkdir(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	DBG("MKDIR command has path \"%s\", changed to \"%s\"", path_view.data, path);
 	ret = utils_mkdir_recursive(path, S_IRWXU | S_IRWXG, -1, -1);
 	if (ret < 0) {
 		ERR("relay creating output directory");
@@ -2773,6 +2774,8 @@ static int relay_rotate_rename(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	DBG("ROTATE_RENAME command has argument old path = \"%s\", new_path = \"%s\"",
+			old_path_view.data, new_path_view.data);
 	complete_old_path = create_output_path(old_path_view.data);
 	if (!complete_old_path) {
 		ERR("Failed to build old output path in rotate_rename command");
@@ -2786,6 +2789,8 @@ static int relay_rotate_rename(const struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end;
 	}
+	DBG("Expanded ROTATE_RENAME arguments to old path = \"%s\", new_path = \"%s\"",
+			complete_old_path, complete_new_path);
 
 	ret = utils_mkdir_recursive(complete_new_path, S_IRWXU | S_IRWXG,
 			-1, -1);
