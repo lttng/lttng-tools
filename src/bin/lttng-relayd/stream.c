@@ -83,6 +83,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 
 	stream->stream_handle = stream_handle;
 	stream->prev_seq = -1ULL;
+	stream->prev_index_seq = -1ULL;
 	stream->last_net_seq_num = -1ULL;
 	stream->ctf_stream_id = -1ULL;
 	stream->tracefile_size = tracefile_size;
