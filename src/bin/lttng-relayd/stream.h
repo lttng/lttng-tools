@@ -53,6 +53,8 @@ struct relay_stream {
 	 */
 	pthread_mutex_t lock;
 	uint64_t prev_seq;		/* previous data sequence number encountered. */
+	/* previous index sequence number written to disk. */
+	uint64_t prev_index_seq;
 	uint64_t last_net_seq_num;	/* seq num to encounter before closing. */
 
 	/* FD on which to write the stream data. */

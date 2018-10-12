@@ -2314,6 +2314,7 @@ static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
 		tracefile_array_commit_seq(stream->tfa);
 		stream->index_received_seqcount++;
 		stream->pos_after_last_complete_data_index += index->total_size;
+		stream->prev_index_seq = index_info.net_seq_num;
 	} else if (ret > 0) {
 		/* no flush. */
 		ret = 0;
@@ -3482,6 +3483,7 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	if (index_flushed) {
 		stream->pos_after_last_complete_data_index =
 				stream->tracefile_size_current;
+		stream->prev_index_seq = state->header.net_seq_num;
 	}
 
 	stream->prev_seq = state->header.net_seq_num;
