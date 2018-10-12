@@ -37,7 +37,7 @@ struct lttng_index_file {
  * create and open have refcount of 1. Use put to decrement the
  * refcount. Destroys when reaching 0. Use "get" to increment refcount.
  */
-struct lttng_index_file *lttng_index_file_create(char *path_name,
+struct lttng_index_file *lttng_index_file_create(const char *path_name,
 		char *stream_name, int uid, int gid, uint64_t size,
 		uint64_t count, uint32_t major, uint32_t minor);
 struct lttng_index_file *lttng_index_file_open(const char *path_name,

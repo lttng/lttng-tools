@@ -1539,7 +1539,8 @@ end:
  * Return 0 on success, -1 on error.
  */
 static
-int create_rotate_index_file(struct relay_stream *stream)
+int create_rotate_index_file(struct relay_stream *stream,
+		const char *stream_path)
 {
 	int ret;
 	uint32_t major, minor;
@@ -1551,7 +1552,7 @@ int create_rotate_index_file(struct relay_stream *stream)
 	}
 	major = stream->trace->session->major;
 	minor = stream->trace->session->minor;
-	stream->index_file = lttng_index_file_create(stream->path_name,
+	stream->index_file = lttng_index_file_create(stream_path,
 			stream->channel_name,
 			-1, -1, stream->tracefile_size,
 			tracefile_array_get_file_index_head(stream->tfa),
@@ -1587,7 +1588,7 @@ int do_rotate_stream(struct relay_stream *stream)
 
 	/* Rotate also the index if the stream is not a metadata stream. */
 	if (!stream->is_metadata) {
-		ret = create_rotate_index_file(stream);
+		ret = create_rotate_index_file(stream, stream->path_name);
 		if (ret < 0) {
 			ERR("Failed to rotate index file");
 			goto end;
@@ -1709,7 +1710,7 @@ int rotate_truncate_stream(struct relay_stream *stream)
 		goto end;
 	}
 
-	ret = create_rotate_index_file(stream);
+	ret = create_rotate_index_file(stream, stream->path_name);
 	if (ret < 0) {
 		ERR("Rotate stream index file");
 		goto end;
@@ -2526,7 +2527,8 @@ static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr
 	 * Update the trace path (just the folder, the stream name does not
 	 * change).
 	 */
-	free(stream->path_name);
+	free(stream->prev_path_name);
+	stream->prev_path_name = stream->path_name;
 	stream->path_name = create_output_path(new_path_view.data);
 	if (!stream->path_name) {
 		ERR("Failed to create a new output path");
@@ -3250,7 +3252,34 @@ static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
 	}
 
 	if (rotate_index || !stream->index_file) {
-		ret = create_rotate_index_file(stream);
+		const char *stream_path;
+
+		/*
+		 * The data connection creates the stream's first index file.
+		 *
+		 * This can happen _after_ a ROTATE_STREAM command. In
+		 * other words, the data of the first packet of this stream
+		 * can be received after a ROTATE_STREAM command.
+		 *
+		 * The ROTATE_STREAM command changes the stream's path_name
+		 * to point to the "next" chunk. If a rotation is pending for
+		 * this stream, as indicated by "rotate_at_seq_num != -1ULL",
+		 * it means that we are still receiving data that belongs in the
+		 * stream's former path.
+		 *
+		 * In this very specific case, we must ensure that the index
+		 * file is created in the streams's former path,
+		 * "prev_path_name".
+		 *
+		 * All other rotations beyond the first one are not affected
+		 * by this problem since the actual rotation operation creates
+		 * the new chunk's index file.
+		 */
+		stream_path = stream->rotate_at_seq_num == -1ULL ?
+				stream->path_name:
+				stream->prev_path_name;
+
+		ret = create_rotate_index_file(stream, stream_path);
 		if (ret < 0) {
 			ERR("Failed to rotate index");
 			/* Put self-ref for this index due to error. */
