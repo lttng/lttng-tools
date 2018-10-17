@@ -5324,7 +5324,7 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 		size_t nr_fields, struct ustctl_field *fields)
 {
 	int ret, ret_code = 0;
-	uint32_t chan_id, reg_count;
+	uint32_t chan_id;
 	uint64_t chan_reg_key;
 	enum ustctl_channel_header type;
 	struct ust_app *app;
@@ -5376,13 +5376,12 @@ static int reply_ust_register_channel(int sock, int sobjd, int cobjd,
 	assert(chan_reg);
 
 	if (!chan_reg->register_done) {
-		reg_count = ust_registry_get_event_count(chan_reg);
-		if (reg_count < 31) {
-			type = USTCTL_CHANNEL_HEADER_COMPACT;
-		} else {
-			type = USTCTL_CHANNEL_HEADER_LARGE;
-		}
-
+		/*
+		 * TODO: eventually use the registry event count for
+		 * this channel to better guess header type for per-pid
+		 * buffers.
+		 */
+		type = USTCTL_CHANNEL_HEADER_LARGE;
 		chan_reg->nr_ctx_fields = nr_fields;
 		chan_reg->ctx_fields = fields;
 		fields = NULL;
