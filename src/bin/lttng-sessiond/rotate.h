@@ -22,6 +22,7 @@
 #include "rotation-thread.h"
 #include <stdint.h>
 
+int rename_active_chunk(struct ltt_session *session);
 int rename_completed_chunk(struct ltt_session *session, time_t ts);
 
 /*

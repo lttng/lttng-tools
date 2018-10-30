@@ -598,6 +598,44 @@ int check_session_rotation_pending(struct ltt_session *session,
 				session->name);
 	}
 
+	if (!session->active) {
+		/*
+		 * A stop command was issued during the rotation, it is
+		 * up to the rotation completion check to perform the
+		 * renaming of the last chunk that was produced.
+		 */
+		ret = notification_thread_command_session_rotation_ongoing(
+				notification_thread_handle,
+				session->name,
+				session->uid,
+				session->gid,
+				session->current_archive_id);
+		if (ret != LTTNG_OK) {
+			ERR("[rotation-thread] Failed to notify notification thread of completed rotation for session %s",
+					session->name);
+		}
+
+		ret = rename_active_chunk(session);
+		if (ret < 0) {
+			ERR("[rotation-thread] Failed to rename active rotation chunk");
+			goto end;
+		}
+
+		/* Ownership of location is transferred. */
+		location = session_get_trace_archive_location(session);
+		ret = notification_thread_command_session_rotation_completed(
+				notification_thread_handle,
+				session->name,
+				session->uid,
+				session->gid,
+				session->current_archive_id,
+				location);
+		if (ret != LTTNG_OK) {
+			ERR("[rotation-thread] Failed to notify notification thread of completed rotation for session %s",
+					session->name);
+		}
+	}
+
 	ret = 0;
 end:
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
