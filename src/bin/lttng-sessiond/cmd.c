@@ -2716,48 +2716,6 @@ error:
 	return ret;
 }
 
-static
-int rename_active_chunk(struct ltt_session *session)
-{
-	int ret;
-
-	session->current_archive_id++;
-
-	/*
-	 * The currently active tracing path is now the folder we
-	 * want to rename.
-	 */
-	ret = lttng_strncpy(session->rotation_chunk.current_rotate_path,
-			session->rotation_chunk.active_tracing_path,
-			sizeof(session->rotation_chunk.current_rotate_path));
-	if (ret) {
-		ERR("Failed to copy active tracing path");
-		goto end;
-	}
-
-	ret = rename_completed_chunk(session, time(NULL));
-	if (ret < 0) {
-		ERR("Failed to rename current rotation's path");
-		goto end;
-	}
-
-	/*
-	 * We just renamed, the folder, we didn't do an actual rotation, so
-	 * the active tracing path is now the renamed folder and we have to
-	 * restore the rotate count.
-	 */
-	ret = lttng_strncpy(session->rotation_chunk.active_tracing_path,
-			session->rotation_chunk.current_rotate_path,
-			sizeof(session->rotation_chunk.active_tracing_path));
-	if (ret) {
-		ERR("Failed to rename active session chunk tracing path");
-		goto end;
-	}
-end:
-	session->current_archive_id--;
-	return ret;
-}
-
 /*
  * Command LTTNG_STOP_TRACE processed by the client thread.
  */
@@ -2782,13 +2740,6 @@ int cmd_stop_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	if (session->rotation_pending_check_timer_enabled) {
-		if (timer_session_rotation_pending_check_stop(session)) {
-			ERR("Failed to stop the \"rotation pending check\" timer of session %s",
-					session->name);
-		}
-	}
-
 	if (session->rotation_schedule_timer_enabled) {
 		if (timer_session_rotation_schedule_timer_stop(
 				session)) {
@@ -2797,6 +2748,12 @@ int cmd_stop_trace(struct ltt_session *session)
 		}
 	}
 
+	/*
+	 * A rotation is still ongoing. The check timer will continue to wait
+	 * for the rotation to complete. When the rotation finally completes,
+	 * a check will be performed to rename the "active" chunk to the
+	 * expected "timestamp_begin-timestamp_end" format.
+	 */
 	if (session->current_archive_id > 0 &&
 			session->rotation_state != LTTNG_ROTATION_STATE_ONGOING) {
 		ret = rename_active_chunk(session);

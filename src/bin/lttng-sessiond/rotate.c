@@ -320,6 +320,47 @@ end:
 	return ret;
 }
 
+int rename_active_chunk(struct ltt_session *session)
+{
+	int ret;
+
+	session->current_archive_id++;
+
+	/*
+	 * The currently active tracing path is now the folder we
+	 * want to rename.
+	 */
+	ret = lttng_strncpy(session->rotation_chunk.current_rotate_path,
+			session->rotation_chunk.active_tracing_path,
+			sizeof(session->rotation_chunk.current_rotate_path));
+	if (ret) {
+		ERR("Failed to copy active tracing path");
+		goto end;
+	}
+
+	ret = rename_completed_chunk(session, time(NULL));
+	if (ret < 0) {
+		ERR("Failed to rename current rotation's path");
+		goto end;
+	}
+
+	/*
+	 * We just renamed, the folder, we didn't do an actual rotation, so
+	 * the active tracing path is now the renamed folder and we have to
+	 * restore the rotate count.
+	 */
+	ret = lttng_strncpy(session->rotation_chunk.active_tracing_path,
+			session->rotation_chunk.current_rotate_path,
+			sizeof(session->rotation_chunk.active_tracing_path));
+	if (ret) {
+		ERR("Failed to rename active session chunk tracing path");
+		goto end;
+	}
+end:
+	session->current_archive_id--;
+	return ret;
+}
+
 int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64_t size,
 		struct notification_thread_handle *notification_thread_handle)
 {
