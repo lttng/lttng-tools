@@ -22,7 +22,6 @@
 #include "rotation-thread.h"
 #include <stdint.h>
 
-int rotate_add_pending_rotation(struct ltt_session *session, uint64_t chunk_id);
 int rename_completed_chunk(struct ltt_session *session, time_t ts);
 
 /*
