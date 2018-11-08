@@ -30,13 +30,14 @@ so that an automatic rotation occurs every time the total size of the
 flushed part of the current trace chunk is at least 'SIZE' (bytes
 without a unit suffix).
 
-With both the option:--timer and option:--size options, LTTng checks the
+For both option:--timer and option:--size options, LTTng checks the
 schedule condition periodically using the monitor timers of the tracing
 session's channels. This means that, with the option:--timer option, the
 automatic rotation can occur when the elapsed time since the last
 automatic rotation is greater than 'PERIOD', and with the option:--size
 option, the automatic rotation can occur when the size of the flushed
-part of the current trace chunk is greater than 'SIZE'. See the
+part of the current trace chunk is greater than 'SIZE'. Therefore the
+'PERIOD' and 'SIZE' arguments are approximations. See the
 nloption:--monitor-timer option in man:lttng-enable-channel(1) for more
 information about the monitor timer.
 
