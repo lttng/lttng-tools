@@ -69,9 +69,9 @@ this command.
 Trace chunk archive naming
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 A trace chunk archive is a subdirectory of a tracing session's output
-directory (see the nloption:--output option in man:lttng-create(1))
-which contains, through tracing domain and possibly UID/PID
-subdirectories, metadata and data stream files.
+directory (see the nloption:--output option in man:lttng-create(1) and
+man:lttng-relayd(8)) which contains, through tracing domain and possibly
+UID/PID subdirectories, metadata and data stream files.
 
 A trace chunk archive is, at the same time:
 
