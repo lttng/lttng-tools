@@ -3984,7 +3984,6 @@ int lttng_consumer_rotate_channel(uint64_t key, const char *path,
 		if (consumed_pos == stream->rotate_position) {
 			stream->rotate_ready = true;
 		}
-		channel->nr_stream_rotate_pending++;
 
 		ret = consumer_flush_buffer(stream, 1);
 		if (ret < 0) {
