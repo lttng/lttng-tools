@@ -234,13 +234,6 @@ struct lttng_consumer_channel {
 	bool streams_sent_to_relayd;
 
 	/*
-	 * Account how many streams are waiting for their rotation to be
-	 * complete. When this number reaches 0, we inform the session
-	 * daemon that this channel has finished its rotation.
-	 */
-	uint64_t nr_stream_rotate_pending;
-
-	/*
 	 * The chunk id where we currently write the data. This value is sent
 	 * to the relay when we add a stream and when a stream rotates. This
 	 * allows to keep track of where each stream on the relay is writing.
