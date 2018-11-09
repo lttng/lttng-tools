@@ -10,8 +10,8 @@ lttng-disable-rotation - Unset a tracing session's rotation schedule
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-rotation* (option:--timer | option:--size)
-      [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-rotation* [option:--session='SESSION']
+      (option:--timer | option:--size | option:--timer option:--size)
 
 
 DESCRIPTION
@@ -26,8 +26,6 @@ include::common-cmd-options-head.txt[]
 
 Rotation schedule condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-One of:
-
 option:--size::
     Unset the rotation schedule previously set with the nloption:--size
     option of the man:lttng-enable-rotation(1) command.
