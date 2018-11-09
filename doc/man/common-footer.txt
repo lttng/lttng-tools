@@ -35,13 +35,3 @@ de Montréal for the LTTng journey.
 
 Also thanks to the Ericsson teams working on tracing which helped us
 greatly with detailed bug reports and unusual test cases.
-
-
-AUTHORS
--------
-LTTng-tools was originally written by Mathieu Desnoyers,
-Julien Desfossez, and David Goulet. More people have since
-contributed to it.
-
-LTTng-tools is currently maintained by
-mailto:jeremie.galarneau@efficios.com[Jérémie Galarneau].
