@@ -45,12 +45,18 @@ of a given tracing session. When a snapshot is taken, the memory dump
 is sent to the registered snapshot outputs.
 
 The tracing session should be created in _snapshot mode_ to make sure
-taking snapshots is allowed. This is done at tracing session creation
-time using the man:lttng-create(1) command.
+that taking snapshots is allowed. This is done at tracing session
+creation time using the man:lttng-create(1) command's
+nloption:--snapshot option.
 
 Note that, when a snapshot is taken, the sub-buffers are not cleared.
 This means that different recorded snapshots may contain the same
 events.
+
+If you want, instead, to keep all the trace data, but divide it into
+archived chunks which are then free to process (just like snapshots),
+see the lttng-rotate(1) and lttng-enable-rotation(1) commands. Trace
+chunk archives do not overlap like snapshots can.
 
 
 Snapshot outputs
