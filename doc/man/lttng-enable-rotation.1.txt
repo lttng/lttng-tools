@@ -10,8 +10,8 @@ lttng-enable-rotation - Set a tracing session's rotation schedule
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-rotation* (option:--timer='PERIOD' | option:--size='SIZE')
-      [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-rotation* [option:--session='SESSION']
+      (option:--timer='PERIOD' | option:--size='SIZE' | option:--timer='PERIOD' option:--size='SIZE')
 
 
 DESCRIPTION
@@ -41,6 +41,8 @@ part of the current trace chunk is greater than 'SIZE'. Therefore the
 nloption:--monitor-timer option in man:lttng-enable-channel(1) for more
 information about the monitor timer.
 
+You can combine the option:--timer and option:--size options.
+
 The naming convention of a trace chunk archive which an automatic
 rotation creates is the same as with the immediate rotation command,
 man:lttng-rotate(1).
@@ -57,8 +59,6 @@ include::common-cmd-options-head.txt[]
 
 Rotation schedule condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-One of:
-
 option:--size='SIZE'::
     Set a rotation schedule so that an automatic rotation occurs every
     time the total size of the flushed part of the current trace chunk
