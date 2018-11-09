@@ -13,7 +13,8 @@ Create or enable Linux kernel event rules:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* option:--kernel
-      [option:--probe='SOURCE' | option:--function='SOURCE' | option:--syscall]
+      [option:--probe='SOURCE' | option:--function='SOURCE' | option:--syscall |
+       option:--userspace-probe='SOURCE']
       [option:--filter='EXPR'] [option:--session='SESSION']
       [option:--channel='CHANNEL'] 'EVENT'[,'EVENT']...
 
@@ -23,7 +24,7 @@ Create or enable an "all" Linux kernel event rule:
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event* option:--kernel option:--all [option:--syscall]
       [option:--filter='EXPR'] [option:--session='SESSION'] [option:--channel='CHANNEL']
 
-Create or enable application event rules:
+Create or enable application/library event rules:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *enable-event*
@@ -39,10 +40,10 @@ The `lttng enable-event` command can create a new event rule, or enable
 one or more existing and disabled ones.
 
 An event rule created by `lttng enable-event` is a set of conditions
-that must be satisfied in order for an actual event to be emitted by
-an LTTng tracer when the execution of an application or the Linux kernel
-reaches an event source (tracepoint, system call, dynamic probe).
-Event sources can be listed with the man:lttng-list(1) command.
+that must be satisfied in order for an actual event to be emitted by an
+LTTng tracer when the execution of an application or a library or the
+Linux kernel reaches an event source (tracepoint, system call, dynamic
+probe). Event sources can be listed with the man:lttng-list(1) command.
 
 The man:lttng-disable-event(1) command can be used to disable
 existing event rules.
@@ -61,7 +62,7 @@ Events can be enabled while tracing is active
 
 Event source types
 ~~~~~~~~~~~~~~~~~~
-Four types of event sources are available in the Linux kernel tracing
+Five types of event sources are available in the Linux kernel tracing
 domain (option:--kernel option):
 
 Tracepoint (option:--tracepoint option; default)::
@@ -70,10 +71,19 @@ Tracepoint (option:--tracepoint option; default)::
     and placed in the source code by developers and record useful
     payload fields.
 
-Dynamic probe (option:--probe option)::
+Dynamic kernel probe (option:--probe option)::
     A Linux kernel kprobe, that is, an instrumentation point placed
     dynamically in the compiled kernel code. Dynamic probe events do not
     record any payload field.
+
+Dynamic user space probe (option:--userspace-probe option)::
+    A Linux kernel uprobe, that is, an instrumentation point placed
+    dynamically in the compiled user space application/library through
+    the kernel. Dynamic user space probe events do not record any
+    payload field.
++
+See the <<userspace-probe,Dynamic user space probes>> section for more
+information.
 
 Function probe (option:--function option)::
     A Linux kernel kretprobe, that is, two instrumentation points placed
@@ -127,11 +137,10 @@ application's execution, only one event is emitted.
 
 The available conditions for the Linux kernel domain are:
 
-* Tracepoint/system call name ('EVENT' argument with
-  option:--tracepoint or option:--syscall options) or
-  dynamic probe/function name/address
-  (option:--probe or option:--function option's argument) which must
-  match event source's equivalent.
+* Tracepoint/system call name ('EVENT' argument with option:--tracepoint
+  or option:--syscall options) or dynamic probe/function name/address
+  (option:--probe, option:--userspace-probe, and option:--function
+  option's argument) which must match event source's equivalent.
 +
 You can use `*` characters at any place in the tracepoint or system
 call name as wildcards to match zero or more characters. To use a
@@ -396,6 +405,89 @@ Python domain (option:--python option)::
 * `PYTHON_NOTSET` (0)
 
 
+[[userspace-probe]]
+Dynamic user space probes
+~~~~~~~~~~~~~~~~~~~~~~~~~
+With the option:--userspace-probe option, you can instrument function
+entries of any user space binary (application or library) using either
+an available symbol name or a SystemTap SDT probe's provider and probe
+names.
+
+The option:--userspace-probe option must be specified with the
+option:--kernel option because it uses Linux's uprobe feature to
+dynamically instrument a user space application or library.
+
+As of this version, dynamic probe events do not record any payload
+field.
+
+The two available option:--userspace-probe option's argument formats
+are:
+
+option:--userspace-probe=`[elf:]PATH:SYMBOL`::
+    Dynamically instrument an available symbol within a user space
+    executable.
++
+--
+'PATH'::
+    Application or library path.
++
+This can be:
++
+* An absolute path.
+* A relative path.
+* An executable's name as found in the directories listed in the
+  `PATH` environment variable.
+
+'SYMBOL'::
+    Symbol name of the function of which to instrument the entry.
++
+This can be any defined code symbol listed by the man:nm(1) command
+(including with its nloption:--dynamic option which lists dynamic
+symbols).
+--
++
+As of this version, not specifying `elf:` is equivalent to specifying
+it.
++
+Examples:
++
+* `--userspace-probe=/usr/lib/libc.so.6:malloc`
+* `--userspace-probe=./myapp:createUser`
+* `--userspace-probe=httpd:ap_run_open_htaccess`
+
+option:--userspace-probe=`sdt:PATH:PROVIDER:NAME`::
+    Dynamically instrument an SDT probe within a user space executable.
++
+--
+'PATH'::
+    Application or library path.
++
+This can be:
++
+* An absolute path.
+* A relative path.
+* An executable's name as found in the directories listed in the
+  `PATH` environment variable.
+
+__PROVIDER__:__NAME__::
+    SDT provider and probe names.
++
+For example, with the following SDT probe:
++
+[source,c]
+----
+DTRACE_PROBE2("server", "accept_request",
+              request_id, ip_addr);
+----
++
+The provider/probe name pair is `server:accept_request`.
+--
++
+Example:
++
+* `--userspace-probe=sdt:./build/server:server:accept_request`
+
+
 include::common-cmd-options-head.txt[]
 
 
@@ -450,6 +542,13 @@ option:--probe='SOURCE'::
 * Address (`0x` prefix supported)
 * Symbol
 * Symbol and offset (`SYMBOL+OFFSET` format)
+
+option:--userspace-probe='SOURCE'::
+    Linux kernel uprobe. Only available with the option:--kernel
+    domain option.
++
+See the <<userspace-probe,Dynamic user space probes>> section for more
+information about the option's argument 'SOURCE'.
 
 option:--syscall::
     Linux kernel system call. Only available with the option:--kernel
