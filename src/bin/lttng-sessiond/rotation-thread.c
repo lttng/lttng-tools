@@ -922,7 +922,7 @@ void *thread_rotation(void *data)
 
 	ret = init_thread_state(handle, &thread);
 	if (ret) {
-		goto end;
+		goto error;
 	}
 
 	/* Ready to handle client connections. */
