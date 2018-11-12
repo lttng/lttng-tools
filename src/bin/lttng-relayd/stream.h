@@ -167,6 +167,14 @@ struct relay_stream {
 	 */
 	uint64_t rotate_at_seq_num;
 	/*
+	 * When rotate_at_seq_num != -1ULL, meaning that a rotation is ongoing,
+	 * data_rotated and index_rotated respectively indicate if the stream's
+	 * data and index have been rotated. A rotation is considered completed
+	 * when both rotations have occurred.
+	 */
+	bool data_rotated;
+	bool index_rotated;
+	/*
 	 * This is the id of the chunk where we are writing to if no rotation is
 	 * pending (rotate_at_seq_num == -1ULL). If a rotation is pending, this
 	 * is the chunk_id we will have after the rotation. It must be updated
