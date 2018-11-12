@@ -815,7 +815,7 @@ int handle_condition(const struct lttng_condition *condition,
 	ret = unsubscribe_session_consumed_size_rotation(session,
 			notification_thread_handle);
 	if (ret) {
-		goto end;
+		goto end_unlock;
 	}
 
 	ret = cmd_rotate_session(session, NULL);
