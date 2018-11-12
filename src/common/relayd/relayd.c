@@ -349,7 +349,8 @@ error:
 
 static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *channel_name, const char *pathname,
-		uint64_t tracefile_size, uint64_t tracefile_count)
+		uint64_t tracefile_size, uint64_t tracefile_count,
+		uint64_t trace_archive_id)
 {
 	int ret;
 	struct lttcomm_relayd_add_stream_2_11 *msg = NULL;
@@ -386,6 +387,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 
 	msg->tracefile_size = htobe64(tracefile_size);
 	msg->tracefile_count = htobe64(tracefile_count);
+	msg->trace_archive_id = htobe64(trace_archive_id);
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) msg, msg_length, 0);
@@ -430,7 +432,8 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	} else {
 		/* From 2.11 to ...*/
 		ret = relayd_add_stream_2_11(rsock, channel_name, pathname,
-				tracefile_size, tracefile_count);
+				tracefile_size, tracefile_count,
+				trace_archive_id);
 	}
 
 	if (ret) {
