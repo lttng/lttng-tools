@@ -72,7 +72,7 @@ void *zmalloc(size_t len)
 #endif
 
 #ifndef max_t
-#define max_t(type, a, b)	((type) max(a, b))
+#define max_t(type, a, b)	max((type) a, (type) b)
 #endif
 
 #ifndef min
@@ -80,7 +80,7 @@ void *zmalloc(size_t len)
 #endif
 
 #ifndef min_t
-#define min_t(type, a, b)	((type) min(a, b))
+#define min_t(type, a, b)	min((type) a, (type) b)
 #endif
 
 #ifndef LTTNG_PACKED
