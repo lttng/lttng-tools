@@ -410,10 +410,10 @@ Dynamic user space probes
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 With the option:--userspace-probe option, you can instrument function
 entries of any user space binary (application or library) using either
-an available symbol name or a SystemTap Statically Defined Tracepoints
+an available symbol name or a SystemTap Statically Defined Tracepoint
 (SDT, a DTrace-style marker) probe's provider and probe names. As of
 this version, only SDT probes that are :not: surrounded by a reference
-counter (semaphore).
+counter (semaphore) are supported.
 
 The option:--userspace-probe option must be specified with the
 option:--kernel option because it uses Linux's uprobe feature to
