@@ -19,9 +19,24 @@
 #ifndef LTTNG_TIME_H
 #define LTTNG_TIME_H
 
+#include <time.h>
+
 #define MSEC_PER_SEC	1000ULL
 #define NSEC_PER_SEC	1000000000ULL
 #define NSEC_PER_MSEC	1000000ULL
 #define NSEC_PER_USEC	1000ULL
+
+/*
+ * timespec_to_ms: Convert timespec to milliseconds.
+ *
+ * Returns 0 on success, else -1 on error. errno is set to EOVERFLOW if
+ * input would overflow the output in milliseconds.
+ */
+int timespec_to_ms(struct timespec ts, unsigned long *ms);
+
+/*
+ * timespec_abs_diff: Absolute difference between timespec.
+ */
+struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
 
 #endif /* LTTNG_TIME_H */
