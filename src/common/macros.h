@@ -63,7 +63,7 @@ void *zmalloc(size_t len)
 #endif
 
 #ifndef max_t
-#define max_t(type, a, b)	((type) max(a, b))
+#define max_t(type, a, b)	max((type) a, (type) b)
 #endif
 
 #ifndef min
