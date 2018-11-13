@@ -116,31 +116,13 @@ int connect_no_timeout(struct lttcomm_sock *sock)
 			sizeof(sock->sockaddr.addr.sin6));
 }
 
-/*
- * Return time_a - time_b  in milliseconds.
- */
-static
-unsigned long time_diff_ms(struct timespec *time_a,
-		struct timespec *time_b)
-{
-	time_t sec_diff;
-	long nsec_diff;
-	unsigned long result_ms;
-
-	sec_diff = time_a->tv_sec - time_b->tv_sec;
-	nsec_diff = time_a->tv_nsec - time_b->tv_nsec;
-
-	result_ms = sec_diff * MSEC_PER_SEC;
-	result_ms += nsec_diff / NSEC_PER_MSEC;
-	return result_ms;
-}
-
 static
 int connect_with_timeout(struct lttcomm_sock *sock)
 {
 	unsigned long timeout = lttcomm_get_network_timeout();
 	int ret, flags, connect_ret;
 	struct timespec orig_time, cur_time;
+	unsigned long diff_ms;
 
 	ret = fcntl(sock->fd, F_GETFL, 0);
 	if (ret == -1) {
@@ -222,7 +204,12 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 			connect_ret = ret;
 			goto error;
 		}
-	} while (time_diff_ms(&cur_time, &orig_time) < timeout);
+		if (timespec_to_ms(timespec_abs_diff(cur_time, orig_time), &diff_ms) < 0) {
+			ERR("timespec_to_ms input overflows milliseconds output");
+			connect_ret = -1;
+			goto error;
+		}
+	} while (diff_ms < timeout);
 
 	/* Timeout */
 	errno = ETIMEDOUT;
