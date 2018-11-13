@@ -23,5 +23,6 @@
 #include "macros.h"
 #include "runas.h"
 #include "readwrite.h"
+#include "time.h"
 
 #endif /* _COMMON_H */
