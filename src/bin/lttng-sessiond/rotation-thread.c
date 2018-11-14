@@ -508,7 +508,7 @@ int check_session_rotation_pending_relay(struct ltt_session *session)
 	rcu_read_unlock();
 
 	if (rotation_completed) {
-		DBG("[rotation-thread] Totation of trace archive %" PRIu64 " of session \"%s\" is complete on the relay",
+		DBG("[rotation-thread] Rotation of trace archive %" PRIu64 " of session \"%s\" is complete on the relay",
 				session->current_archive_id - 1,
 				session->name);
 		session->rotation_pending_relay = false;
