@@ -1401,11 +1401,12 @@ error:
 /*
  * Rotate a kernel session.
  *
- * Return 0 on success or else return a LTTNG_ERR code.
+ * Return LTTNG_OK on success or else an LTTng error code.
  */
-int kernel_rotate_session(struct ltt_session *session)
+enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 {
 	int ret;
+	enum lttng_error_code status = LTTNG_OK;
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_session *ksess = session->kernel_session;
@@ -1436,7 +1437,7 @@ int kernel_rotate_session(struct ltt_session *session)
 					/* is_metadata_channel */ false,
 					session->current_archive_id);
 			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				status = LTTNG_ERR_KERN_CONSUMER_FAIL;
 				goto error;
 			}
 		}
@@ -1450,14 +1451,12 @@ int kernel_rotate_session(struct ltt_session *session)
 				/* is_metadata_channel */ true,
 				session->current_archive_id);
 		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			status = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			goto error;
 		}
 	}
 
-	ret = LTTNG_OK;
-
 error:
 	rcu_read_unlock();
-	return ret;
+	return status;
 }
