@@ -4521,12 +4521,13 @@ int cmd_set_session_shm_path(struct ltt_session *session,
  * Ask the consumer to rotate the session output directory.
  * The session lock must be held.
  *
- * Return LTTNG_OK on success or else a LTTNG_ERR code.
+ * Returns LTTNG_OK on success or else a negative LTTng error code.
  */
 int cmd_rotate_session(struct ltt_session *session,
 		struct lttng_rotate_session_return *rotate_return)
 {
 	int ret;
+	enum lttng_error_code cmd_ret = LTTNG_OK;
 	size_t strf_ret;
 	struct tm *timeinfo;
 	char datetime[21];
@@ -4540,13 +4541,13 @@ int cmd_rotate_session(struct ltt_session *session,
 	assert(session);
 
 	if (!session->has_been_started) {
-		ret = -LTTNG_ERR_START_SESSION_ONCE;
+		cmd_ret = LTTNG_ERR_START_SESSION_ONCE;
 		goto end;
 	}
 
 	if (session->live_timer || session->snapshot_mode ||
 			!session->output_traces) {
-		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
 	}
 
@@ -4556,14 +4557,14 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (session->consumer->type == CONSUMER_DST_NET &&
 			(session->consumer->relay_major_version == 2 &&
 			session->consumer->relay_minor_version < 11)) {
-		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY;
+		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY;
 		goto end;
 	}
 
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
-		ret = -LTTNG_ERR_ROTATION_PENDING;
 		DBG("Refusing to launch a rotation; a rotation is already in progress for session %s",
 				session->name);
+		cmd_ret = LTTNG_ERR_ROTATION_PENDING;
 		goto end;
 	}
 
@@ -4574,7 +4575,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (session->rotated_after_last_stop) {
 		DBG("Session \"%s\" was already rotated after stop, refusing rotation",
 				session->name);
-		ret = -LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP;
+		cmd_ret = LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP;
 		goto end;
 	}
 
@@ -4592,7 +4593,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				sizeof(session->rotation_chunk.current_rotate_path));
 		if (ret) {
 			ERR("Failed to copy session base path to current rotation chunk path");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	} else {
@@ -4605,7 +4606,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				sizeof(session->rotation_chunk.current_rotate_path));
 		if (ret) {
 			ERR("Failed to copy the active tracing path to the current rotate path");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto end;
 		}
 	}
@@ -4619,7 +4620,7 @@ int cmd_rotate_session(struct ltt_session *session,
 
 	now = time(NULL);
 	if (now == (time_t) -1) {
-		ret = -LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
 	}
 
@@ -4633,14 +4634,14 @@ int cmd_rotate_session(struct ltt_session *session,
 	timeinfo = localtime(&now);
 	if (!timeinfo) {
 		PERROR("Failed to sample local time in rotate session command");
-		ret = -LTTNG_ERR_UNK;
+		cmd_ret = LTTNG_ERR_UNK;
 		goto end;
 	}
 	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z",
 			timeinfo);
 	if (!strf_ret) {
 		ERR("Failed to format local time timestamp in rotate session command");
-		ret = -LTTNG_ERR_UNK;
+		cmd_ret = LTTNG_ERR_UNK;
 		goto end;
 	}
 
@@ -4665,7 +4666,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				datetime, session->current_archive_id + 1);
 		if (ret < 0 || ret == sizeof(session->rotation_chunk.active_tracing_path)) {
 			ERR("Failed to format active kernel tracing path in rotate session command");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 		/*
@@ -4678,7 +4679,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				session->current_archive_id + 1);
 		if (ret < 0 || ret == sizeof(session->kernel_session->consumer->chunk_path)) {
 			ERR("Failed to format the kernel consumer's sub-directory in rotate session command");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 		/*
@@ -4691,12 +4692,11 @@ int cmd_rotate_session(struct ltt_session *session,
 		if (ret) {
 			ERR("Failed to create kernel session tracing path at %s",
 					session->kernel_session->consumer->chunk_path);
-			ret = -LTTNG_ERR_CREATE_DIR_FAIL;
+			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
 		}
-		ret = kernel_rotate_session(session);
-		if (ret != LTTNG_OK) {
-			ret = -ret;
+		cmd_ret = kernel_rotate_session(session);
+		if (cmd_ret != LTTNG_OK) {
 			goto error;
 		}
 	}
@@ -4707,7 +4707,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				datetime, session->current_archive_id + 1);
 		if (ret < 0) {
 			ERR("Failed to format active UST tracing path in rotate session command");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 		ret = snprintf(session->ust_session->consumer->chunk_path,
@@ -4715,7 +4715,7 @@ int cmd_rotate_session(struct ltt_session *session,
 				session->current_archive_id + 1);
 		if (ret < 0) {
 			ERR("Failed to format the UST consumer's sub-directory in rotate session command");
-			ret = -LTTNG_ERR_UNK;
+			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 		/*
@@ -4726,11 +4726,15 @@ int cmd_rotate_session(struct ltt_session *session,
 				session->ust_session->uid,
 				session->ust_session->gid);
 		if (ret) {
-			ret = -LTTNG_ERR_CREATE_DIR_FAIL;
+			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
 		}
-		ret = ust_app_rotate_session(session);
-		if (ret != LTTNG_OK) {
+		/*
+		 * TODO: ust_app_rotate_session must be adapted to return
+		 * an lttng_error_code, like its kernel counterpart.
+		 */
+		cmd_ret = ust_app_rotate_session(session);
+		if (cmd_ret != LTTNG_OK) {
 			goto error;
 		}
 	}
@@ -4738,6 +4742,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	ret = timer_session_rotation_pending_check_start(session,
 			DEFAULT_ROTATE_PENDING_TIMER);
 	if (ret) {
+		cmd_ret = LTTNG_ERR_UNK;
 		goto error;
 	}
 
@@ -4756,13 +4761,13 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (ret != LTTNG_OK) {
 		ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",
 				session->name);
+		cmd_ret = ret;
 	}
 
 	DBG("Cmd rotate session %s, archive_id %" PRIu64 " sent",
 			session->name, session->current_archive_id - 1);
-	ret = LTTNG_OK;
-
 end:
+	ret = (cmd_ret == LTTNG_OK) ? cmd_ret : -((int) cmd_ret);
 	return ret;
 error:
 	session->last_chunk_start_ts = original_last_chunk_start_ts;
