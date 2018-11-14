@@ -431,7 +431,12 @@ end:
 		session->rotation_pending_local = false;
 	}
 	if (ret) {
-		session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
+		ret = session_reset_rotation_state(session,
+				LTTNG_ROTATION_STATE_ERROR);
+		if (ret) {
+			ERR("Failed to reset rotation state of session \"%s\"",
+					session->name);
+		}
 	}
 	return 0;
 }
@@ -491,7 +496,12 @@ int check_session_rotation_pending_relay(struct ltt_session *session)
 		ERR("[rotation-thread] Encountered an error when checking if rotation of trace archive %" PRIu64 " of session \"%s\" is pending on the relay",
 				session->current_archive_id - 1,
 				session->name);
-		session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
+		ret = session_reset_rotation_state(session,
+				LTTNG_ROTATION_STATE_ERROR);
+		if (ret) {
+			ERR("Failed to reset rotation state of session \"%s\"",
+					session->name);
+		}
 		rotation_completed = false;
 	}
 
@@ -555,7 +565,12 @@ int check_session_rotation_pending(struct ltt_session *session,
 	/* Rename the completed trace archive's location. */
 	now = time(NULL);
 	if (now == (time_t) -1) {
-		session->rotation_state = LTTNG_ROTATION_STATE_ERROR;
+		ret = session_reset_rotation_state(session,
+				LTTNG_ROTATION_STATE_ERROR);
+		if (ret) {
+			ERR("Failed to reset rotation state of session \"%s\"",
+					session->name);
+		}
 		ret = LTTNG_ERR_UNK;
 		goto end;
 	}

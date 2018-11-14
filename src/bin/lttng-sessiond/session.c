@@ -571,3 +571,36 @@ int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid)
 		return 1;
 	}
 }
+
+/*
+ * Set a session's rotation state and reset all associated state.
+ *
+ * This function resets the rotation state (check timers, pending
+ * flags, etc.) and sets the result of the last rotation. The result
+ * can be queries by a liblttng-ctl client.
+ *
+ * Be careful of the result passed to this function. For instance,
+ * on failure to launch a rotation, a client will expect the rotation
+ * state to be set to "NO_ROTATION". If an error occured while the
+ * rotation was "ONGOING", result should be set to "ERROR", which will
+ * allow a client to report it.
+ *
+ * Must be called with the session and session_list locks held.
+ */
+int session_reset_rotation_state(struct ltt_session *session,
+		enum lttng_rotation_state result)
+{
+	int ret = 0;
+
+	ASSERT_LOCKED(ltt_session_list.lock);
+	ASSERT_LOCKED(session->lock);
+
+	session->rotation_pending_local = false;
+	session->rotation_pending_relay = false;
+	session->rotated_after_last_stop = false;
+	session->rotation_state = result;
+	if (session->rotation_pending_check_timer_enabled) {
+		ret = timer_session_rotation_pending_check_stop(session);
+	}
+	return ret;
+}

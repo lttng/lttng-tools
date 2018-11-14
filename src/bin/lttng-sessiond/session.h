@@ -229,4 +229,7 @@ struct ltt_session_list *session_get_list(void);
 
 int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid);
 
+int session_reset_rotation_state(struct ltt_session *session,
+		enum lttng_rotation_state result);
+
 #endif /* _LTT_SESSION_H */
