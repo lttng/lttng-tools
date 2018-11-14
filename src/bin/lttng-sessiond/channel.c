@@ -342,6 +342,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	struct ltt_ust_channel *uchan = NULL;
 	struct lttng_channel *defattr = NULL;
 	enum lttng_domain_type domain = LTTNG_DOMAIN_UST;
+	bool chan_published = false;
 
 	assert(usess);
 
@@ -476,6 +477,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	if (strncmp(uchan->name, DEFAULT_METADATA_NAME,
 				sizeof(uchan->name))) {
 		lttng_ht_add_unique_str(usess->domain_global.channels, &uchan->node);
+		chan_published = true;
 	} else {
 		/*
 		 * Copy channel attribute to session if this is metadata so if NO
@@ -495,7 +497,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 			agt = agent_create(domain);
 			if (!agt) {
 				ret = LTTNG_ERR_NOMEM;
-				goto error_free_chan;
+				goto error_remove_chan;
 			}
 			agent_add(agt, usess->agents);
 		}
@@ -504,11 +506,11 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	channel_attr_destroy(defattr);
 	return LTTNG_OK;
 
+error_remove_chan:
+	if (chan_published) {
+		trace_ust_delete_channel(usess->domain_global.channels, uchan);
+	}
 error_free_chan:
-	/*
-	 * No need to remove the channel from the hash table because at this point
-	 * it was not added hence the direct call and no call_rcu().
-	 */
 	trace_ust_destroy_channel(uchan);
 error:
 	channel_attr_destroy(defattr);
