@@ -161,6 +161,13 @@ enum lttng_error_code {
 	LTTNG_ERR_PROBE_LOCATION_INVAL   = 138, /* Invalid userspace probe location. */
 	LTTNG_ERR_ELF_PARSING            = 139, /* ELF parsing error. */
 	LTTNG_ERR_SDT_PROBE_SEMAPHORE    = 140, /* SDT probe guarded by a semaphore. */
+	LTTNG_ERR_ROTATION_FAIL_CONSUMER = 141, /* Rotation failure on consumer */
+	LTTNG_ERR_ROTATE_RENAME_FAIL_CONSUMER = 142, /* Rotation rename failure on consumer */
+	LTTNG_ERR_ROTATION_PENDING_LOCAL_FAIL_CONSUMER = 143, /* Rotation pending check (local) failure on consumer */
+	LTTNG_ERR_ROTATION_PENDING_RELAY_FAIL_CONSUMER = 144, /* Rotation pending check (relay) failure on consumer */
+	LTTNG_ERR_MKDIR_FAIL_CONSUMER    = 145, /* mkdir failure on consumer */
+	LTTNG_ERR_CHAN_NOT_FOUND         = 146, /* Channel not found */
+
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

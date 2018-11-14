@@ -1663,7 +1663,7 @@ int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 				output->chunk_path, domain_path);
 		if (ret < 0 || ret == sizeof(msg.u.rotate_channel.pathname)) {
 			ERR("Failed to format channel path name when asking consumer to rotate channel");
-			ret = -1;
+			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
 	} else {
@@ -1674,7 +1674,7 @@ int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 				output->chunk_path, domain_path);
 		if (ret < 0 || ret == sizeof(msg.u.rotate_channel.pathname)) {
 			ERR("Failed to format channel path name when asking consumer to rotate channel");
-			ret = -1;
+			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
 	}
@@ -1682,9 +1682,16 @@ int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
 	if (ret < 0) {
+		switch (-ret) {
+		case LTTCOMM_CONSUMERD_CHAN_NOT_FOUND:
+			ret = -LTTNG_ERR_CHAN_NOT_FOUND;
+			break;
+		default:
+			ret = -LTTNG_ERR_ROTATION_FAIL_CONSUMER;
+			break;
+		}
 		goto error;
 	}
-
 error:
 	pthread_mutex_unlock(socket->lock);
 	health_code_update();
@@ -1710,7 +1717,7 @@ int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
 	if (old_path_length >= sizeof(msg.u.rotate_rename.old_path)) {
 		ERR("consumer_rotate_rename: old path length (%zu bytes) exceeds the maximal length allowed by the consumer protocol (%zu bytes)",
 				old_path_length + 1, sizeof(msg.u.rotate_rename.old_path));
-		ret = -1;
+		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -1718,7 +1725,7 @@ int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
 	if (new_path_length >= sizeof(msg.u.rotate_rename.new_path)) {
 		ERR("consumer_rotate_rename: new path length (%zu bytes) exceeds the maximal length allowed by the consumer protocol (%zu bytes)",
 				new_path_length + 1, sizeof(msg.u.rotate_rename.new_path));
-		ret = -1;
+		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -1739,6 +1746,7 @@ int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_ROTATE_RENAME_FAIL_CONSUMER;
 		goto error;
 	}
 
@@ -1774,6 +1782,7 @@ int consumer_check_rotation_pending_local(struct consumer_socket *socket,
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_ROTATION_PENDING_LOCAL_FAIL_CONSUMER;
 		goto error;
 	}
 
@@ -1819,6 +1828,7 @@ int consumer_check_rotation_pending_relay(struct consumer_socket *socket,
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_ROTATION_PENDING_RELAY_FAIL_CONSUMER;
 		goto error;
 	}
 
@@ -1858,7 +1868,7 @@ int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 	ret = snprintf(msg.u.mkdir.path, sizeof(msg.u.mkdir.path), "%s", path);
 	if (ret < 0 || ret >= sizeof(msg.u.mkdir.path)) {
 		ERR("Format path");
-		ret = -1;
+		ret = -LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -1871,6 +1881,7 @@ int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);
 	if (ret < 0) {
+		ret = -LTTNG_ERR_MKDIR_FAIL_CONSUMER;
 		goto error;
 	}
 
