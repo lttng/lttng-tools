@@ -987,15 +987,17 @@ end:
 
 /*
  * Snapshot the whole metadata.
+ * RCU read-side lock must be held across this function to ensure existence of
+ * metadata_channel.
  *
  * Returns 0 on success, < 0 on error
  */
-static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
+static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
+		uint64_t key, char *path, uint64_t relayd_id,
 		struct lttng_consumer_local_data *ctx,
 		uint64_t trace_archive_id)
 {
 	int ret = 0;
-	struct lttng_consumer_channel *metadata_channel;
 	struct lttng_consumer_stream *metadata_stream;
 
 	assert(path);
@@ -1006,13 +1008,6 @@ static int snapshot_metadata(uint64_t key, char *path, uint64_t relayd_id,
 
 	rcu_read_lock();
 
-	metadata_channel = consumer_find_channel(key);
-	if (!metadata_channel) {
-		ERR("UST snapshot metadata channel not found for key %" PRIu64,
-			key);
-		ret = -1;
-		goto error;
-	}
 	assert(!metadata_channel->monitor);
 
 	health_code_update();
@@ -1083,17 +1078,19 @@ error:
 
 /*
  * Take a snapshot of all the stream of a channel.
+ * RCU read-side lock must be held across this function to ensure existence of
+ * channel.
  *
  * Returns 0 on success, < 0 on error
  */
-static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
+static int snapshot_channel(struct lttng_consumer_channel *channel,
+		uint64_t key, char *path, uint64_t relayd_id,
 		uint64_t nb_packets_per_stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
 	unsigned use_relayd = 0;
 	unsigned long consumed_pos, produced_pos;
-	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 
 	assert(path);
@@ -1105,12 +1102,6 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 		use_relayd = 1;
 	}
 
-	channel = consumer_find_channel(key);
-	if (!channel) {
-		ERR("UST snapshot channel not found for key %" PRIu64, key);
-		ret = -1;
-		goto error;
-	}
 	assert(!channel->monitor);
 	DBG("UST consumer snapshot channel %" PRIu64, key);
 
@@ -1247,7 +1238,6 @@ error_close_stream:
 	consumer_stream_close(stream);
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
-error:
 	rcu_read_unlock();
 	return ret;
 }
@@ -1751,28 +1741,36 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
-		if (msg.u.snapshot_channel.metadata) {
-			ret = snapshot_metadata(msg.u.snapshot_channel.key,
-					msg.u.snapshot_channel.pathname,
-					msg.u.snapshot_channel.relayd_id,
-					ctx,
-					msg.u.snapshot_channel.trace_archive_id);
-			if (ret < 0) {
-				ERR("Snapshot metadata failed");
-				ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
-			}
+		struct lttng_consumer_channel *channel;
+		uint64_t key = msg.u.snapshot_channel.key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			DBG("UST snapshot channel not found for key %" PRIu64, key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			ret = snapshot_channel(msg.u.snapshot_channel.key,
-					msg.u.snapshot_channel.pathname,
-					msg.u.snapshot_channel.relayd_id,
-					msg.u.snapshot_channel.nb_packets_per_stream,
-					ctx);
-			if (ret < 0) {
-				ERR("Snapshot channel failed");
-				ret_code = LTTCOMM_CONSUMERD_CHANNEL_FAIL;
+			if (msg.u.snapshot_channel.metadata) {
+				ret = snapshot_metadata(channel, key,
+						msg.u.snapshot_channel.pathname,
+						msg.u.snapshot_channel.relayd_id,
+						ctx,
+						msg.u.snapshot_channel.trace_archive_id);
+				if (ret < 0) {
+					ERR("Snapshot metadata failed");
+					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
+				}
+			} else {
+				ret = snapshot_channel(channel, key,
+						msg.u.snapshot_channel.pathname,
+						msg.u.snapshot_channel.relayd_id,
+						msg.u.snapshot_channel.nb_packets_per_stream,
+						ctx);
+				if (ret < 0) {
+					ERR("Snapshot channel failed");
+					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
+				}
 			}
 		}
-
 		health_code_update();
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {

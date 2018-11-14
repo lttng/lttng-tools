@@ -124,27 +124,21 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 
 /*
  * Take a snapshot of all the stream of a channel
+ * RCU read-side lock must be held across this function to ensure existence of
+ * channel.
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_snapshot_channel(uint64_t key, char *path,
-		uint64_t relayd_id, uint64_t nb_packets_per_stream,
+int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
+		uint64_t key, char *path, uint64_t relayd_id, uint64_t nb_packets_per_stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
-	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 
 	DBG("Kernel consumer snapshot channel %" PRIu64, key);
 
 	rcu_read_lock();
-
-	channel = consumer_find_channel(key);
-	if (!channel) {
-		ERR("No channel found for key %" PRIu64, key);
-		ret = -1;
-		goto end;
-	}
 
 	/* Splice is not supported yet for channel snapshot. */
 	if (channel->output != CONSUMER_CHANNEL_MMAP) {
@@ -333,15 +327,17 @@ end:
 
 /*
  * Read the whole metadata available for a snapshot.
+ * RCU read-side lock must be held across this function to ensure existence of
+ * metadata_channel.
  *
  * Returns 0 on success, < 0 on error
  */
-static int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
-		uint64_t relayd_id, struct lttng_consumer_local_data *ctx)
+static int lttng_kconsumer_snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
+		uint64_t key, char *path, uint64_t relayd_id,
+		struct lttng_consumer_local_data *ctx)
 {
 	int ret, use_relayd = 0;
 	ssize_t ret_read;
-	struct lttng_consumer_channel *metadata_channel;
 	struct lttng_consumer_stream *metadata_stream;
 
 	assert(ctx);
@@ -350,13 +346,6 @@ static int lttng_kconsumer_snapshot_metadata(uint64_t key, char *path,
 			key, path);
 
 	rcu_read_lock();
-
-	metadata_channel = consumer_find_channel(key);
-	if (!metadata_channel) {
-		ERR("Kernel snapshot metadata not found for key %" PRIu64, key);
-		ret = -1;
-		goto error_no_channel;
-	}
 
 	metadata_stream = metadata_channel->metadata_stream;
 	assert(metadata_stream);
@@ -422,7 +411,6 @@ error_snapshot:
 	cds_list_del(&metadata_stream->send_node);
 	consumer_stream_destroy(metadata_stream, NULL);
 	metadata_channel->metadata_stream = NULL;
-error_no_channel:
 	rcu_read_unlock();
 	return ret;
 }
@@ -900,26 +888,34 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
-		if (msg.u.snapshot_channel.metadata == 1) {
-			ret = lttng_kconsumer_snapshot_metadata(msg.u.snapshot_channel.key,
-					msg.u.snapshot_channel.pathname,
-					msg.u.snapshot_channel.relayd_id, ctx);
-			if (ret < 0) {
-				ERR("Snapshot metadata failed");
-				ret_code = LTTCOMM_CONSUMERD_ERROR_METADATA;
-			}
+		struct lttng_consumer_channel *channel;
+		uint64_t key = msg.u.snapshot_channel.key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			ERR("Channel %" PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			ret = lttng_kconsumer_snapshot_channel(msg.u.snapshot_channel.key,
-					msg.u.snapshot_channel.pathname,
-					msg.u.snapshot_channel.relayd_id,
-					msg.u.snapshot_channel.nb_packets_per_stream,
-					ctx);
-			if (ret < 0) {
-				ERR("Snapshot channel failed");
-				ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			if (msg.u.snapshot_channel.metadata == 1) {
+				ret = lttng_kconsumer_snapshot_metadata(channel, key,
+						msg.u.snapshot_channel.pathname,
+						msg.u.snapshot_channel.relayd_id, ctx);
+				if (ret < 0) {
+					ERR("Snapshot metadata failed");
+					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
+				}
+			} else {
+				ret = lttng_kconsumer_snapshot_channel(channel, key,
+						msg.u.snapshot_channel.pathname,
+						msg.u.snapshot_channel.relayd_id,
+						msg.u.snapshot_channel.nb_packets_per_stream,
+						ctx);
+				if (ret < 0) {
+					ERR("Snapshot channel failed");
+					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
+				}
 			}
 		}
-
 		health_code_update();
 
 		ret = consumer_send_status_msg(sock, ret_code);
