@@ -3896,15 +3896,16 @@ end:
  * is already at the rotate position (produced == consumed), we flag it as
  * ready for rotation. The rotation of ready streams occurs after we have
  * replied to the session daemon that we have finished sampling the positions.
+ * Must be called with RCU read-side lock held to ensure existence of channel.
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_consumer_rotate_channel(uint64_t key, const char *path,
-		uint64_t relayd_id, uint32_t metadata, uint64_t new_chunk_id,
+int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
+		uint64_t key, const char *path, uint64_t relayd_id,
+		uint32_t metadata, uint64_t new_chunk_id,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
-	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
@@ -3912,13 +3913,6 @@ int lttng_consumer_rotate_channel(uint64_t key, const char *path,
 	DBG("Consumer sample rotate position for channel %" PRIu64, key);
 
 	rcu_read_lock();
-
-	channel = consumer_find_channel(key);
-	if (!channel) {
-		ERR("No channel found for key %" PRIu64, key);
-		ret = -1;
-		goto end;
-	}
 
 	pthread_mutex_lock(&channel->lock);
 	channel->current_chunk_id = new_chunk_id;
@@ -4232,14 +4226,15 @@ error:
  * This is especially important for low throughput streams that have already
  * been consumed, we cannot wait for their next packet to perform the
  * rotation.
+ * Need to be called with RCU read-side lock held to ensure existence of
+ * channel.
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_consumer_rotate_ready_streams(uint64_t key,
-		struct lttng_consumer_local_data *ctx)
+int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
+		uint64_t key, struct lttng_consumer_local_data *ctx)
 {
 	int ret;
-	struct lttng_consumer_channel *channel;
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
 	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
@@ -4247,13 +4242,6 @@ int lttng_consumer_rotate_ready_streams(uint64_t key,
 	rcu_read_lock();
 
 	DBG("Consumer rotate ready streams in channel %" PRIu64, key);
-
-	channel = consumer_find_channel(key);
-	if (!channel) {
-		ERR("No channel found for key %" PRIu64, key);
-		ret = -1;
-		goto end;
-	}
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 			ht->hash_fct(&channel->key, lttng_ht_seed),

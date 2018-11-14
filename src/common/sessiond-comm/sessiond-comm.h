@@ -164,6 +164,11 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_CHANNEL_FAIL,             /* Channel creation failed. */
 	LTTCOMM_CONSUMERD_CHAN_NOT_FOUND,           /* Channel not found. */
 	LTTCOMM_CONSUMERD_ALREADY_SET,              /* Resource already set. */
+	LTTCOMM_CONSUMERD_ROTATION_FAIL,            /* Rotation has failed. */
+	LTTCOMM_CONSUMERD_ROTATE_RENAME_FAILED,     /* Rotation rename has failed. */
+	LTTCOMM_CONSUMERD_ROTATION_PENDING_LOCAL_FAILED, /* Rotation pending relay failed. */
+	LTTCOMM_CONSUMERD_ROTATION_PENDING_RELAY_FAILED, /* Rotation pending relay failed. */
+	LTTCOMM_CONSUMERD_MKDIR_FAILED,             /* mkdir has failed. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
