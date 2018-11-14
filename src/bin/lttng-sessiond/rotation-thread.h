@@ -46,7 +46,6 @@ void rotation_thread_timer_queue_destroy(
 		struct rotation_thread_timer_queue *queue);
 
 struct rotation_thread_handle *rotation_thread_handle_create(
-		int thread_quit_pipe,
 		struct rotation_thread_timer_queue *rotation_timer_queue,
 		struct notification_thread_handle *notification_thread_handle,
 		sem_t *notification_thread_ready);

@@ -92,8 +92,6 @@ NULL
 ;
 
 const char *progname;
-static pid_t ppid;          /* Parent PID for --sig-parent option */
-static pid_t child_ppid;    /* Internal parent PID use with daemonize. */
 static int lockfile_fd = -1;
 
 /* Set to 1 when a SIGUSR1 signal is received. */
@@ -170,8 +168,6 @@ static const struct option long_options[] = {
 	{ NULL, 0, 0, 0 }
 };
 
-struct sessiond_config config;
-
 /* Command line options to ignore from configuration file */
 static const char *config_ignore_options[] = { "help", "version", "config" };
 
@@ -181,22 +177,13 @@ static int dispatch_thread_exit;
 /* Sockets and FDs */
 static int client_sock = -1;
 static int apps_sock = -1;
-int kernel_tracer_fd = -1;
 static int kernel_poll_pipe[2] = { -1, -1 };
-
-/*
- * Quit pipe for all threads. This permits a single cancellation point
- * for all threads when receiving an event on the pipe.
- */
-static int thread_quit_pipe[2] = { -1, -1 };
 
 /*
  * This pipe is used to inform the thread managing application communication
  * that a command is queued and ready to be processed.
  */
 static int apps_cmd_pipe[2] = { -1, -1 };
-
-int apps_cmd_notify_pipe[2] = { -1, -1 };
 
 /* Pthread, Mutexes and Semaphores */
 static pthread_t apps_thread;
@@ -236,9 +223,6 @@ static struct ust_cmd_queue ust_cmd_queue;
  */
 static struct ltt_session_list *session_list_ptr;
 
-int ust_consumerd64_fd = -1;
-int ust_consumerd32_fd = -1;
-
 static const char *module_proc_lttng = "/proc/lttng";
 
 /*
@@ -275,178 +259,19 @@ enum consumerd_state {
 static enum consumerd_state ust_consumerd_state;
 static enum consumerd_state kernel_consumerd_state;
 
-/* Set in main() with the current page size. */
-long page_size;
-
-/* Application health monitoring */
-struct health_app *health_sessiond;
-
-/* Am I root or not. */
-int is_root;			/* Set to 1 if the daemon is running as root */
-
-const char * const config_section_name = "sessiond";
-
 /* Load session thread information to operate. */
-struct load_session_thread_data *load_info;
+static struct load_session_thread_data *load_info;
 
-/* Notification thread handle. */
-struct notification_thread_handle *notification_thread_handle;
+/*
+ * Section name to look for in the daemon configuration file.
+ */
+static const char * const config_section_name = "sessiond";
+
+/* Am I root or not. Set to 1 if the daemon is running as root */
+static int is_root;
 
 /* Rotation thread handle. */
-struct rotation_thread_handle *rotation_thread_handle;
-
-/* Global hash tables */
-struct lttng_ht *agent_apps_ht_by_sock = NULL;
-
-/*
- * The initialization of the session daemon is done in multiple phases.
- *
- * While all threads are launched near-simultaneously, only some of them
- * are needed to ensure the session daemon can start to respond to client
- * requests.
- *
- * There are two important guarantees that we wish to offer with respect
- * to the initialisation of the session daemon:
- *   - When the daemonize/background launcher process exits, the sessiond
- *     is fully able to respond to client requests,
- *   - Auto-loaded sessions are visible to clients.
- *
- * In order to achieve this, a number of support threads have to be launched
- * to allow the "client" thread to function properly. Moreover, since the
- * "load session" thread needs the client thread, we must provide a way
- * for the "load session" thread to know that the "client" thread is up
- * and running.
- *
- * Hence, the support threads decrement the lttng_sessiond_ready counter
- * while the "client" threads waits for it to reach 0. Once the "client" thread
- * unblocks, it posts the message_thread_ready semaphore which allows the
- * "load session" thread to progress.
- *
- * This implies that the "load session" thread is the last to be initialized
- * and will explicitly call sessiond_signal_parents(), which signals the parents
- * that the session daemon is fully initialized.
- *
- * The four (4) support threads are:
- *  - agent_thread
- *  - notification_thread
- *  - rotation_thread
- *  - health_thread
- */
-#define NR_LTTNG_SESSIOND_SUPPORT_THREADS 4
-int lttng_sessiond_ready = NR_LTTNG_SESSIOND_SUPPORT_THREADS;
-
-int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
-{
-	return (fd == thread_quit_pipe[0] && (events & LPOLLIN)) ? 1 : 0;
-}
-
-/* Notify parents that we are ready for cmd and health check */
-LTTNG_HIDDEN
-void sessiond_signal_parents(void)
-{
-	/*
-	 * Notify parent pid that we are ready to accept command
-	 * for client side.  This ppid is the one from the
-	 * external process that spawned us.
-	 */
-	if (config.sig_parent) {
-		kill(ppid, SIGUSR1);
-	}
-
-	/*
-	 * Notify the parent of the fork() process that we are
-	 * ready.
-	 */
-	if (config.daemonize || config.background) {
-		kill(child_ppid, SIGUSR1);
-	}
-}
-
-LTTNG_HIDDEN
-void sessiond_notify_ready(void)
-{
-	/*
-	 * This memory barrier is paired with the one performed by
-	 * the client thread after it has seen that 'lttng_sessiond_ready' is 0.
-	 *
-	 * The purpose of these memory barriers is to ensure that all
-	 * initialization operations of the various threads that call this
-	 * function to signal that they are ready are commited/published
-	 * before the client thread can see the 'lttng_sessiond_ready' counter
-	 * reach 0.
-	 *
-	 * Note that this could be a 'write' memory barrier, but a full barrier
-	 * is used in case the code using this utility changes. The performance
-	 * implications of this choice are minimal since this is a slow path.
-	 */
-	cmm_smp_mb();
-	uatomic_sub(&lttng_sessiond_ready, 1);
-}
-
-static
-int __sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size,
-		int *a_pipe)
-{
-	int ret;
-
-	assert(events);
-
-	ret = lttng_poll_create(events, size, LTTNG_CLOEXEC);
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Add quit pipe */
-	ret = lttng_poll_add(events, a_pipe[0], LPOLLIN | LPOLLERR);
-	if (ret < 0) {
-		goto error;
-	}
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
- */
-int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
-{
-	return __sessiond_set_thread_pollset(events, size, thread_quit_pipe);
-}
-
-/*
- * Init thread quit pipe.
- *
- * Return -1 on error or 0 if all pipes are created.
- */
-static int __init_thread_quit_pipe(int *a_pipe)
-{
-	int ret, i;
-
-	ret = pipe(a_pipe);
-	if (ret < 0) {
-		PERROR("thread quit pipe");
-		goto error;
-	}
-
-	for (i = 0; i < 2; i++) {
-		ret = fcntl(a_pipe[i], F_SETFD, FD_CLOEXEC);
-		if (ret < 0) {
-			PERROR("fcntl");
-			goto error;
-		}
-	}
-
-error:
-	return ret;
-}
-
-static int init_thread_quit_pipe(void)
-{
-	return __init_thread_quit_pipe(thread_quit_pipe);
-}
+static struct rotation_thread_handle *rotation_thread_handle;
 
 /*
  * Stop all threads by closing the thread quit pipe.
@@ -457,7 +282,7 @@ static void stop_threads(void)
 
 	/* Stopping all threads */
 	DBG("Terminating all threads");
-	ret = notify_thread_pipe(thread_quit_pipe[1]);
+	ret = sessiond_notify_quit_pipe();
 	if (ret < 0) {
 		ERR("write error on thread quit pipe");
 	}
@@ -571,7 +396,7 @@ static void sessiond_cleanup(void)
 	 * Close the thread quit pipe. It has already done its job,
 	 * since we are now called.
 	 */
-	utils_close_pipe(thread_quit_pipe);
+	sessiond_close_quit_pipe();
 
 	ret = remove(config.pid_file_path.value);
 	if (ret < 0) {
@@ -4614,14 +4439,6 @@ static void *thread_manage_clients(void *data)
 	 * commands.
 	 */
 	while (uatomic_read(&lttng_sessiond_ready) != 0) {
-		fd_set read_fds;
-		struct timeval timeout;
-
-		FD_ZERO(&read_fds);
-		FD_SET(thread_quit_pipe[0], &read_fds);
-		memset(&timeout, 0, sizeof(timeout));
-		timeout.tv_usec = 1000;
-
 		/*
 		 * If a support thread failed to launch, it may signal that
 		 * we must exit and the sessiond would never be marked as
@@ -4630,9 +4447,8 @@ static void *thread_manage_clients(void *data)
 		 * The timeout is set to 1ms, which serves as a way to
 		 * pace down this check.
 		 */
-		ret = select(thread_quit_pipe[0] + 1, &read_fds, NULL, NULL,
-				&timeout);
-		if (ret > 0 || (ret < 0 && errno != EINTR)) {
+		ret = sessiond_wait_for_quit_pipe(1000);
+		if (ret > 0) {
 			goto exit;
 		}
 	}
@@ -5973,7 +5789,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread quit pipe */
-	if (init_thread_quit_pipe()) {
+	if (sessiond_init_thread_quit_pipe()) {
 		retval = -1;
 		goto exit_init_data;
 	}
@@ -6235,7 +6051,6 @@ int main(int argc, char **argv)
 
 	/* rotation_thread_data acquires the pipes' read side. */
 	rotation_thread_handle = rotation_thread_handle_create(
-			thread_quit_pipe[0],
 			rotation_timer_queue,
 			notification_thread_handle,
 			&notification_thread_ready);

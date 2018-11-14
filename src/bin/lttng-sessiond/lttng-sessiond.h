@@ -39,6 +39,7 @@ extern const char default_home_dir[],
 /* Set in main.c at boot time of the daemon */
 extern int kernel_tracer_fd;
 
+/* Notification thread handle. */
 extern struct notification_thread_handle *notification_thread_handle;
 
 /*
@@ -105,23 +106,30 @@ extern int ht_cleanup_pipe[2];
 
 /*
  * Populated when the daemon starts with the current page size of the system.
+ * Set in main() with the current page size.
  */
 extern long page_size;
 
 /* Application health monitoring */
 extern struct health_app *health_sessiond;
 
-/*
- * Section name to look for in the daemon configuration file.
- */
-extern const char * const config_section_name;
-
-/* Is this daemon root or not. */
-extern int is_root;
-
 extern struct sessiond_config config;
 
+extern int lttng_sessiond_ready;
+
+extern int ust_consumerd64_fd, ust_consumerd32_fd;
+
+/* Parent PID for --sig-parent option */
+extern pid_t ppid;
+/* Internal parent PID use with daemonize. */
+extern pid_t child_ppid;
+
+int sessiond_init_thread_quit_pipe(void);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
+int sessiond_wait_for_quit_pipe(unsigned int timeout_us);
+int sessiond_notify_quit_pipe(void);
+void sessiond_close_quit_pipe(void);
+
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
 void sessiond_notify_ready(void);
 void sessiond_signal_parents(void);

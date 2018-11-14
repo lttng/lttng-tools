@@ -36,7 +36,6 @@
 #include <lttng/lttng.h>
 
 #include <urcu/list.h>
-#include <bin/lttng-sessiond/session.h>
 #include <common/common.h>
 
 #include <bin/lttng-relayd/lttng-viewer-abi.h>
