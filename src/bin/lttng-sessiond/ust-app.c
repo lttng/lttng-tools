@@ -3012,7 +3012,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			ua_chan->name);
-		goto error;
+		goto error_remove_from_registry;
 	}
 
 	ret = send_channel_pid_to_ust(app, ua_sess, ua_chan);
@@ -3020,7 +3020,7 @@ static int create_channel_per_pid(struct ust_app *app,
 		if (ret != -ENOTCONN) {
 			ERR("Error sending channel to application");
 		}
-		goto error;
+		goto error_remove_from_registry;
 	}
 
 	session = session_find_by_id(ua_sess->tracing_id);
@@ -3043,9 +3043,13 @@ static int create_channel_per_pid(struct ust_app *app,
 	if (cmd_ret != LTTNG_OK) {
 		ret = - (int) cmd_ret;
 		ERR("Failed to add channel to notification thread");
-		goto error;
+		goto error_remove_from_registry;
 	}
 
+error_remove_from_registry:
+	if (ret) {
+		ust_registry_channel_del_free(registry, ua_chan->key, false);
+	}
 error:
 	rcu_read_unlock();
 	return ret;
