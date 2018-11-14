@@ -6424,7 +6424,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 
 			registry = get_session_registry(ua_sess);
 			if (!registry) {
-				DBG("Application session is being torn down. Abort snapshot record.");
+				DBG("Application session is being torn down. Abort session rotation.");
 				ret = -1;
 				goto error;
 			}
