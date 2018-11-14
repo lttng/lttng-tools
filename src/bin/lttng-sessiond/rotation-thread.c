@@ -642,7 +642,7 @@ end:
 	return ret;
 }
 
-/* Call with the session lock held. */
+/* Call with the session and session_list locks held. */
 static
 int launch_session_rotation(struct ltt_session *session)
 {
@@ -736,10 +736,9 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		}
 
 		session_lock(session);
-		session_unlock_list();
-
 	        ret = run_job(job, session, handle->notification_thread_handle);
 		session_unlock(session);
+		session_unlock_list();
 		free(job);
 		if (ret) {
 			goto end;
