@@ -6336,11 +6336,12 @@ int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
 /*
  * Rotate all the channels of a session.
  *
- * Return 0 on success or else a negative value.
+ * Return LTTNG_OK on success or else an LTTng error code.
  */
-int ust_app_rotate_session(struct ltt_session *session)
+enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 {
-	int ret = 0;
+	int ret;
+	enum lttng_error_code cmd_ret = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ltt_ust_session *usess = session->ust_session;
@@ -6363,7 +6364,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 					usess->consumer);
 			if (!socket) {
-				ret = -EINVAL;
+				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
@@ -6372,6 +6373,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 					reg->uid, reg->bits_per_long);
 			if (ret < 0 || ret == sizeof(pathname)) {
 				PERROR("Failed to format rotation path");
+				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
@@ -6385,6 +6387,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 						/* is_metadata_channel */ false,
 						session->current_archive_id);
 				if (ret < 0) {
+					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 					goto error;
 				}
 			}
@@ -6398,6 +6401,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 					/* is_metadata_channel */ true,
 					session->current_archive_id);
 			if (ret < 0) {
+				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
 		}
@@ -6422,6 +6426,7 @@ int ust_app_rotate_session(struct ltt_session *session)
 					ua_sess->path);
 			if (ret < 0 || ret == sizeof(pathname)) {
 				PERROR("Failed to format rotation path");
+				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
@@ -6429,15 +6434,14 @@ int ust_app_rotate_session(struct ltt_session *session)
 			socket = consumer_find_socket_by_bitness(app->bits_per_long,
 					usess->consumer);
 			if (!socket) {
-				ret = -EINVAL;
+				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
 			registry = get_session_registry(ua_sess);
 			if (!registry) {
-				DBG("Application session is being torn down. Abort session rotation.");
-				ret = -1;
-				goto error;
+				DBG("Application session is being torn down. Skip application.");
+				continue;
 			}
 
 
@@ -6450,6 +6454,10 @@ int ust_app_rotate_session(struct ltt_session *session)
 						/* is_metadata_channel */ false,
 						session->current_archive_id);
 				if (ret < 0) {
+					/* Per-PID buffer and application going away. */
+					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
+						continue;
+					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 					goto error;
 				}
 			}
@@ -6462,6 +6470,10 @@ int ust_app_rotate_session(struct ltt_session *session)
 					/* is_metadata_channel */ true,
 					session->current_archive_id);
 			if (ret < 0) {
+				/* Per-PID buffer and application going away. */
+				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
+					continue;
+				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
 		}
@@ -6472,9 +6484,9 @@ int ust_app_rotate_session(struct ltt_session *session)
 		break;
 	}
 
-	ret = LTTNG_OK;
+	cmd_ret = LTTNG_OK;
 
 error:
 	rcu_read_unlock();
-	return ret;
+	return cmd_ret;
 }
