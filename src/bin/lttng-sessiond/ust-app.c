@@ -487,9 +487,11 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		registry = get_session_registry(ua_chan->session);
 		if (registry) {
 			ust_registry_channel_del_free(registry, ua_chan->key,
-				true);
+				sock >= 0);
 		}
-		save_per_pid_lost_discarded_counters(ua_chan);
+		if (sock >= 0) {
+			save_per_pid_lost_discarded_counters(ua_chan);
+		}
 	}
 
 	if (ua_chan->obj != NULL) {
