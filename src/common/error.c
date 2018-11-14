@@ -202,6 +202,12 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_PROBE_LOCATION_INVAL) ] = "Invalid userspace probe location",
 	[ ERROR_INDEX(LTTNG_ERR_ELF_PARSING) ] = "ELF parsing error",
 	[ ERROR_INDEX(LTTNG_ERR_SDT_PROBE_SEMAPHORE) ] = "SDT probe guarded by a semaphore",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_FAIL_CONSUMER) ] = "Rotation failure on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATE_RENAME_FAIL_CONSUMER) ] = "Rotation rename failure on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_PENDING_LOCAL_FAIL_CONSUMER) ] = "Rotation pending check (local) failure on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_PENDING_RELAY_FAIL_CONSUMER) ] = "Rotation pending check (relay) failure on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_MKDIR_FAIL_CONSUMER) ] = "mkdir failure on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_CHAN_NOT_FOUND) ] = "Channel not found",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
