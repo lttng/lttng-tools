@@ -106,6 +106,8 @@ void *zmalloc(size_t len)
 
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
+#define ASSERT_LOCKED(lock) assert(pthread_mutex_trylock(&lock))
+
 /*
  * lttng_strncpy returns 0 on success, or nonzero on failure.
  * It checks that the @src string fits into @dst_len before performing
