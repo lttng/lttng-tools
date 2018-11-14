@@ -6066,15 +6066,17 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 						nb_packets_per_stream,
 						trace_archive_id);
 				if (ret < 0) {
+					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+						continue;
+					}
 					goto error;
 				}
 			}
 
 			registry = get_session_registry(ua_sess);
 			if (!registry) {
-				DBG("Application session is being torn down. Abort snapshot record.");
-				ret = -1;
-				goto error;
+				DBG("Application session is being torn down. Skip application.");
+				continue;
 			}
 			ret = consumer_snapshot_channel(socket,
 					registry->metadata_key, output,
@@ -6082,6 +6084,9 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 					pathname, wait, 0,
 					trace_archive_id);
 			if (ret < 0) {
+				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+					continue;
+				}
 				goto error;
 			}
 		}

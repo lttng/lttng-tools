@@ -1505,6 +1505,14 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	ret = consumer_send_msg(socket, &msg);
 	pthread_mutex_unlock(socket->lock);
 	if (ret < 0) {
+		switch (-ret) {
+		case LTTCOMM_CONSUMERD_CHAN_NOT_FOUND:
+			ret = -LTTNG_ERR_CHAN_NOT_FOUND;
+			break;
+		default:
+			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			break;
+		}
 		goto error;
 	}
 
