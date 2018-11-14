@@ -1931,22 +1931,31 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_ROTATE_CHANNEL:
 	{
-		/*
-		 * Sample the rotate position of all the streams in this channel.
-		 */
-		ret = lttng_consumer_rotate_channel(msg.u.rotate_channel.key,
-				msg.u.rotate_channel.pathname,
-				msg.u.rotate_channel.relayd_id,
-				msg.u.rotate_channel.metadata,
-				msg.u.rotate_channel.new_chunk_id,
-				ctx);
-		if (ret < 0) {
-			ERR("Rotate channel failed");
+		struct lttng_consumer_channel *channel;
+		uint64_t key = msg.u.rotate_channel.key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			DBG("Channel %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		} else {
+			/*
+			 * Sample the rotate position of all the streams in
+			 * this channel.
+			 */
+			ret = lttng_consumer_rotate_channel(channel, key,
+					msg.u.rotate_channel.pathname,
+					msg.u.rotate_channel.relayd_id,
+					msg.u.rotate_channel.metadata,
+					msg.u.rotate_channel.new_chunk_id,
+					ctx);
+			if (ret < 0) {
+				ERR("Rotate channel failed");
+				ret_code = LTTCOMM_CONSUMERD_ROTATION_FAIL;
+			}
+
+			health_code_update();
 		}
-
-		health_code_update();
-
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
@@ -1960,10 +1969,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * handle this, but it needs to be after the
 		 * consumer_send_status_msg() call.
 		 */
-		ret = lttng_consumer_rotate_ready_streams(
-				msg.u.rotate_channel.key, ctx);
-		if (ret < 0) {
-			ERR("Rotate channel failed");
+		if (channel) {
+			ret = lttng_consumer_rotate_ready_streams(
+					channel, key, ctx);
+			if (ret < 0) {
+				ERR("Rotate channel failed");
+			}
 		}
 		break;
 	}
@@ -1978,7 +1989,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.rotate_rename.relayd_id);
 		if (ret < 0) {
 			ERR("Rotate rename failed");
-			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
+			ret_code = LTTCOMM_CONSUMERD_ROTATE_RENAME_FAILED;
 		}
 
 		health_code_update();
@@ -2002,7 +2013,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.check_rotation_pending_local.chunk_id);
 		if (pending < 0) {
 			ERR("Local rotation pending check failed with code %i", pending);
-			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			ret_code = LTTCOMM_CONSUMERD_ROTATION_PENDING_LOCAL_FAILED;
 		} else {
 			pending_reply = !!pending;
 		}
@@ -2046,7 +2057,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.check_rotation_pending_relay.chunk_id);
 		if (pending < 0) {
 			ERR("Relayd rotation pending check failed with code %i", pending);
-			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+			ret_code = LTTCOMM_CONSUMERD_ROTATION_PENDING_RELAY_FAILED;
 		} else {
 			pending_reply = !!pending;
 		}
@@ -2088,7 +2099,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				msg.u.mkdir.relayd_id);
 		if (ret < 0) {
 			ERR("consumer mkdir failed");
-			ret_code = LTTCOMM_CONSUMERD_RELAYD_FAIL;
+			ret_code = LTTCOMM_CONSUMERD_MKDIR_FAILED;
 		}
 
 		health_code_update();
