@@ -8,8 +8,7 @@ LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
 
-LIVE=$(top_builddir)/src/bin/lttng-sessiond/session.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
+LIVE= $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT)
 

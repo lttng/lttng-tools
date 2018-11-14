@@ -33,6 +33,7 @@
 #include "session.h"
 #include "utils.h"
 #include "trace-ust.h"
+#include "timer.h"
 
 /*
  * NOTES:

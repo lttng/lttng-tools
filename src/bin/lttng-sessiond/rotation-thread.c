@@ -72,7 +72,6 @@ struct rotation_thread_timer_queue {
 };
 
 struct rotation_thread_handle {
-	int quit_pipe;
 	struct rotation_thread_timer_queue *rotation_timer_queue;
 	/* Access to the notification thread cmd_queue */
 	struct notification_thread_handle *notification_thread_handle;
@@ -169,7 +168,6 @@ void rotation_thread_handle_destroy(
 }
 
 struct rotation_thread_handle *rotation_thread_handle_create(
-		int quit_pipe,
 		struct rotation_thread_timer_queue *rotation_timer_queue,
 		struct notification_thread_handle *notification_thread_handle,
 		sem_t *notification_thread_ready)
@@ -181,7 +179,6 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 		goto end;
 	}
 
-	handle->quit_pipe = quit_pipe;
 	handle->rotation_timer_queue = rotation_timer_queue;
 	handle->notification_thread_handle = notification_thread_handle;
 	handle->notification_thread_ready = notification_thread_ready;
@@ -276,15 +273,8 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 	 *	- quit pipe,
 	 *	- rotation thread timer queue pipe,
 	 */
-	ret = lttng_poll_create(poll_set, 2, LTTNG_CLOEXEC);
-	if (ret < 0) {
-		goto end;
-	}
-
-	ret = lttng_poll_add(poll_set, handle->quit_pipe,
-			LPOLLIN | LPOLLERR);
-	if (ret < 0) {
-		ERR("[rotation-thread] Failed to add quit_pipe fd to pollset");
+	ret = sessiond_set_thread_pollset(poll_set, 2);
+	if (ret) {
 		goto error;
 	}
 	ret = lttng_poll_add(poll_set,
@@ -295,7 +285,6 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 		goto error;
 	}
 
-end:
 	return ret;
 error:
 	lttng_poll_clean(poll_set);
@@ -960,7 +949,7 @@ void *thread_rotation(void *data)
 				goto error;
 			}
 
-			if (fd == handle->quit_pipe) {
+			if (sessiond_check_thread_quit_pipe(fd, revents)) {
 				DBG("[rotation-thread] Quit pipe activity");
 				/* TODO flush the queue. */
 				goto exit;
