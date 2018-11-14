@@ -4729,10 +4729,6 @@ int cmd_rotate_session(struct ltt_session *session,
 			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
 		}
-		/*
-		 * TODO: ust_app_rotate_session must be adapted to return
-		 * an lttng_error_code, like its kernel counterpart.
-		 */
 		cmd_ret = ust_app_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
 			goto error;
