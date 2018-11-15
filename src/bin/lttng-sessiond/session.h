@@ -123,7 +123,7 @@ struct ltt_session {
 	struct lttng_ht_node_u64 node;
 	/*
 	 * The current archive id corresponds to the number of session rotations
-	 * that have occured for this session. The archive id
+	 * that have occurred for this session. The archive id
 	 * is used to tag the "generation" of a stream. This tag allows the
 	 * consumer and relay daemons to track when a given stream was created
 	 * during the lifetime of a session.
@@ -192,7 +192,7 @@ struct ltt_session {
 	/*
 	 * Keep a state if this session was rotated after the last stop command.
 	 * We only allow one rotation after a stop. At destroy, we also need to
-	 * know if a rotation occured since the last stop to rename the current
+	 * know if a rotation occurred since the last stop to rename the current
 	 * chunk.
 	 */
 	bool rotated_after_last_stop;

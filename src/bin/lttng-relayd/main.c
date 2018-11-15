@@ -85,7 +85,7 @@ NULL
 
 enum relay_connection_status {
 	RELAY_CONNECTION_STATUS_OK,
-	/* An error occured while processing an event on the connection. */
+	/* An error occurred while processing an event on the connection. */
 	RELAY_CONNECTION_STATUS_ERROR,
 	/* Connection closed/shutdown cleanly. */
 	RELAY_CONNECTION_STATUS_CLOSED,
@@ -1640,7 +1640,7 @@ int rotate_truncate_stream(struct relay_stream *stream)
 
 	/*
 	 * Rewind the current tracefile to the position at which the rotation
-	 * should have occured.
+	 * should have occurred.
 	 */
 	lseek_ret = lseek(stream->stream_fd->fd,
 			stream->pos_after_last_complete_data_index, SEEK_SET);
