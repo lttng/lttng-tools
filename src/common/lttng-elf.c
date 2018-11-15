@@ -861,7 +861,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	 */
 	ret = lttng_elf_convert_addr_in_text_to_offset(elf, addr, offset);
 	if (ret) {
-		DBG("Cannot convet addr to offset.");
+		DBG("Cannot convert addr to offset.");
 		goto free_string_table_data;
 	}
 
