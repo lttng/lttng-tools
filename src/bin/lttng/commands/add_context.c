@@ -541,7 +541,7 @@ int mi_open(void)
 
 	ret = fileno(stdout);
 	if (ret < 0) {
-		PERROR("Unable to retrive fileno of stdout");
+		PERROR("Unable to retrieve fileno of stdout");
 		ret = CMD_ERROR;
 		goto end;
 	}
