@@ -1174,7 +1174,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		if (pending < 0) {
 			/*
-			 * An error occured while running the command;
+			 * An error occurred while running the command;
 			 * don't send the 'pending' flag as the sessiond
 			 * will not read it.
 			 */
@@ -1218,7 +1218,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		if (pending < 0) {
 			/*
-			 * An error occured while running the command;
+			 * An error occurred while running the command;
 			 * don't send the 'pending' flag as the sessiond
 			 * will not read it.
 			 */

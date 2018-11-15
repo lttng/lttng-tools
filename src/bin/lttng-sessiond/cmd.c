@@ -2732,7 +2732,7 @@ int cmd_stop_trace(struct ltt_session *session)
 	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
-	bool error_occured = false;
+	bool error_occurred = false;
 
 	assert(session);
 
@@ -2769,7 +2769,7 @@ int cmd_stop_trace(struct ltt_session *session)
 			 * This error should not prevent the user from stopping
 			 * the session. However, it will be reported at the end.
 			 */
-			error_occured = true;
+			error_occurred = true;
 		}
 	}
 
@@ -2822,7 +2822,7 @@ int cmd_stop_trace(struct ltt_session *session)
 
 	/* Flag inactive after a successful stop. */
 	session->active = 0;
-	ret = !error_occured ? LTTNG_OK : LTTNG_ERR_UNK;
+	ret = !error_occurred ? LTTNG_OK : LTTNG_ERR_UNK;
 
 error:
 	return ret;

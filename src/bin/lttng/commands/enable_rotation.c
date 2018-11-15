@@ -106,7 +106,7 @@ static enum cmd_error_code add_schedule(const char *session_name,
 		ret = CMD_ERROR;
 		goto end;
 	default:
-		ERR("Unknown error occured setting %s rotation schedule",
+		ERR("Unknown error occurred setting %s rotation schedule",
 				schedule_type_name);
 		ret = CMD_ERROR;
 		goto end;

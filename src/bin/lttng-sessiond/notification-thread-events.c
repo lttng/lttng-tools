@@ -1533,7 +1533,7 @@ int handle_notification_thread_command_add_channel(
 	session_info = find_or_create_session_info(state, session_name,
 			session_uid, session_gid);
 	if (!session_info) {
-		/* Allocation error or an internal error occured. */
+		/* Allocation error or an internal error occurred. */
 		goto error;
 	}
 
@@ -1698,7 +1698,7 @@ int handle_notification_thread_command_session_rotation(
 	session_info = find_or_create_session_info(state, session_name,
 			session_uid, session_gid);
 	if (!session_info) {
-		/* Allocation error or an internal error occured. */
+		/* Allocation error or an internal error occurred. */
 		ret = -1;
 		cmd_result = LTTNG_ERR_NOMEM;
 		goto end;

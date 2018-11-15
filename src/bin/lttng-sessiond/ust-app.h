@@ -140,7 +140,7 @@ struct ust_app_channel {
 	/*
 	 * Unique key used to identify the channel on the consumer side.
 	 * 0 is a reserved 'invalid' value used to indicate that the consumer
-	 * does not know about this channel (i.e. an error occured).
+	 * does not know about this channel (i.e. an error occurred).
 	 */
 	uint64_t key;
 	/* Id of the tracing channel set on creation. */
