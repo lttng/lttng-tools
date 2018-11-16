@@ -954,19 +954,20 @@ error:
  * Create a socket to the relayd using the URI.
  *
  * On success, the relayd_sock pointer is set to the created socket.
- * Else, it's stays untouched and a lttcomm error code is returned.
+ * Else, it remains untouched and an LTTng error code is returned.
  */
-static int create_connect_relayd(struct lttng_uri *uri,
+static enum lttng_error_code create_connect_relayd(struct lttng_uri *uri,
 		struct lttcomm_relayd_sock **relayd_sock,
 		struct consumer_output *consumer)
 {
 	int ret;
+	enum lttng_error_code status = LTTNG_OK;
 	struct lttcomm_relayd_sock *rsock;
 
 	rsock = lttcomm_alloc_relayd_sock(uri, RELAYD_VERSION_COMM_MAJOR,
 			RELAYD_VERSION_COMM_MINOR);
 	if (!rsock) {
-		ret = LTTNG_ERR_FATAL;
+		status = LTTNG_ERR_FATAL;
 		goto error;
 	}
 
@@ -980,7 +981,7 @@ static int create_connect_relayd(struct lttng_uri *uri,
 	health_poll_exit();
 	if (ret < 0) {
 		ERR("Unable to reach lttng-relayd");
-		ret = LTTNG_ERR_RELAYD_CONNECT_FAIL;
+		status = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 		goto free_sock;
 	}
 
@@ -991,10 +992,11 @@ static int create_connect_relayd(struct lttng_uri *uri,
 		/* Check relayd version */
 		ret = relayd_version_check(rsock);
 		if (ret == LTTNG_ERR_RELAYD_VERSION_FAIL) {
+			status = LTTNG_ERR_RELAYD_VERSION_FAIL;
 			goto close_sock;
 		} else if (ret < 0) {
 			ERR("Unable to reach lttng-relayd");
-			ret = LTTNG_ERR_RELAYD_CONNECT_FAIL;
+			status = LTTNG_ERR_RELAYD_CONNECT_FAIL;
 			goto close_sock;
 		}
 		consumer->relay_major_version = rsock->major;
@@ -1004,13 +1006,13 @@ static int create_connect_relayd(struct lttng_uri *uri,
 	} else {
 		/* Command is not valid */
 		ERR("Relayd invalid stream type: %d", uri->stype);
-		ret = LTTNG_ERR_INVALID;
+		status = LTTNG_ERR_INVALID;
 		goto close_sock;
 	}
 
 	*relayd_sock = rsock;
 
-	return LTTNG_OK;
+	return status;
 
 close_sock:
 	/* The returned value is not useful since we are on an error path. */
@@ -1018,15 +1020,18 @@ close_sock:
 free_sock:
 	free(rsock);
 error:
-	return ret;
+	return status;
 }
 
 /*
  * Connect to the relayd using URI and send the socket to the right consumer.
  *
  * The consumer socket lock must be held by the caller.
+ *
+ * Returns LTTNG_OK on success or an LTTng error code on failure.
  */
-static int send_consumer_relayd_socket(unsigned int session_id,
+static enum lttng_error_code send_consumer_relayd_socket(
+		unsigned int session_id,
 		struct lttng_uri *relayd_uri,
 		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
@@ -1034,10 +1039,11 @@ static int send_consumer_relayd_socket(unsigned int session_id,
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = NULL;
+	enum lttng_error_code status;
 
 	/* Connect to relayd and make version check if uri is the control. */
-	ret = create_connect_relayd(relayd_uri, &rsock, consumer);
-	if (ret != LTTNG_OK) {
+	status = create_connect_relayd(relayd_uri, &rsock, consumer);
+	if (status != LTTNG_OK) {
 		goto relayd_comm_error;
 	}
 	assert(rsock);
@@ -1059,7 +1065,7 @@ static int send_consumer_relayd_socket(unsigned int session_id,
 			relayd_uri->stype, session_id,
 			session_name, hostname, session_live_timer);
 	if (ret < 0) {
-		ret = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
+		status = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
 	}
 
@@ -1070,15 +1076,13 @@ static int send_consumer_relayd_socket(unsigned int session_id,
 		consumer_sock->data_sock_sent = 1;
 	}
 
-	ret = LTTNG_OK;
-
 	/*
 	 * Close socket which was dup on the consumer side. The session daemon does
 	 * NOT keep track of the relayd socket(s) once transfer to the consumer.
 	 */
 
 close_sock:
-	if (ret != LTTNG_OK) {
+	if (status != LTTNG_OK) {
 		/*
 		 * The consumer output for this session should not be used anymore
 		 * since the relayd connection failed thus making any tracing or/and
@@ -1090,7 +1094,7 @@ close_sock:
 	free(rsock);
 
 relayd_comm_error:
-	return ret;
+	return status;
 }
 
 /*
@@ -1099,39 +1103,42 @@ relayd_comm_error:
  * session.
  *
  * The consumer socket lock must be held by the caller.
+ *
+ * Returns LTTNG_OK, or an LTTng error code on failure.
  */
-static int send_consumer_relayd_sockets(enum lttng_domain_type domain,
+static enum lttng_error_code send_consumer_relayd_sockets(
+		enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
 		struct consumer_socket *sock, char *session_name,
 		char *hostname, int session_live_timer)
 {
-	int ret = LTTNG_OK;
+	enum lttng_error_code status = LTTNG_OK;
 
 	assert(consumer);
 	assert(sock);
 
 	/* Sending control relayd socket. */
 	if (!sock->control_sock_sent) {
-		ret = send_consumer_relayd_socket(session_id,
+		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.control, consumer, sock,
 				session_name, hostname, session_live_timer);
-		if (ret != LTTNG_OK) {
+		if (status != LTTNG_OK) {
 			goto error;
 		}
 	}
 
 	/* Sending data relayd socket. */
 	if (!sock->data_sock_sent) {
-		ret = send_consumer_relayd_socket(session_id,
+		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.data, consumer, sock,
 				session_name, hostname, session_live_timer);
-		if (ret != LTTNG_OK) {
+		if (status != LTTNG_OK) {
 			goto error;
 		}
 	}
 
 error:
-	return ret;
+	return status;
 }
 
 /*
@@ -4093,12 +4100,14 @@ end:
  * Send relayd sockets from snapshot output to consumer. Ignore request if the
  * snapshot output is *not* set with a remote destination.
  *
- * Return 0 on success or a LTTNG_ERR code.
+ * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
-static int set_relayd_for_snapshot(struct consumer_output *consumer,
-		struct snapshot_output *snap_output, struct ltt_session *session)
+static enum lttng_error_code set_relayd_for_snapshot(
+		struct consumer_output *consumer,
+		struct snapshot_output *snap_output,
+		struct ltt_session *session)
 {
-	int ret = LTTNG_OK;
+	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
 
@@ -4121,12 +4130,12 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
 			socket, node.node) {
 		pthread_mutex_lock(socket->lock);
-		ret = send_consumer_relayd_sockets(0, session->id,
+		status = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket,
 				session->name, session->hostname,
 				session->live_timer);
 		pthread_mutex_unlock(socket->lock);
-		if (ret != LTTNG_OK) {
+		if (status != LTTNG_OK) {
 			rcu_read_unlock();
 			goto error;
 		}
@@ -4134,7 +4143,7 @@ static int set_relayd_for_snapshot(struct consumer_output *consumer,
 	rcu_read_unlock();
 
 error:
-	return ret;
+	return status;
 }
 
 /*
@@ -4142,16 +4151,16 @@ error:
  *
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
-static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
+static enum lttng_error_code record_kernel_snapshot(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, struct ltt_session *session,
 		int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
+	enum lttng_error_code status;
 
 	assert(ksess);
 	assert(output);
 	assert(session);
-
 
 	/*
 	 * Copy kernel session sockets so we can communicate with the right
@@ -4159,21 +4168,20 @@ static int record_kernel_snapshot(struct ltt_kernel_session *ksess,
 	 */
 	ret = consumer_copy_sockets(output->consumer, ksess->consumer);
 	if (ret < 0) {
-		ret = LTTNG_ERR_NOMEM;
+		status = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
-	ret = set_relayd_for_snapshot(ksess->consumer, output, session);
-	if (ret != LTTNG_OK) {
+	status = set_relayd_for_snapshot(ksess->consumer, output, session);
+	if (status != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
-	ret = kernel_snapshot_record(ksess, output, wait, nb_packets_per_stream);
-	if (ret != LTTNG_OK) {
+	status = kernel_snapshot_record(ksess, output, wait, nb_packets_per_stream);
+	if (status != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
-	ret = LTTNG_OK;
 	goto end;
 
 error_snapshot:
@@ -4181,19 +4189,20 @@ error_snapshot:
 	consumer_destroy_output_sockets(output->consumer);
 error:
 end:
-	return ret;
+	return status;
 }
 
 /*
  * Record a UST snapshot.
  *
- * Return 0 on success or a LTTNG_ERR error code.
+ * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
-static int record_ust_snapshot(struct ltt_ust_session *usess,
+static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 		struct snapshot_output *output, struct ltt_session *session,
 		int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
+	enum lttng_error_code status;
 
 	assert(usess);
 	assert(output);
@@ -4205,35 +4214,25 @@ static int record_ust_snapshot(struct ltt_ust_session *usess,
 	 */
 	ret = consumer_copy_sockets(output->consumer, usess->consumer);
 	if (ret < 0) {
-		ret = LTTNG_ERR_NOMEM;
+		status = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
-	ret = set_relayd_for_snapshot(usess->consumer, output, session);
-	if (ret != LTTNG_OK) {
+	status = set_relayd_for_snapshot(usess->consumer, output, session);
+	if (status != LTTNG_OK) {
 		goto error_snapshot;
 	}
 
-	ret = ust_app_snapshot_record(usess, output, wait, nb_packets_per_stream);
-	if (ret < 0) {
-		switch (-ret) {
-		case EINVAL:
-			ret = LTTNG_ERR_INVALID;
-			break;
-		default:
-			ret = LTTNG_ERR_SNAPSHOT_FAIL;
-			break;
-		}
+	status = ust_app_snapshot_record(usess, output, wait, nb_packets_per_stream);
+	if (status != LTTNG_OK) {
 		goto error_snapshot;
 	}
-
-	ret = LTTNG_OK;
 
 error_snapshot:
 	/* Clean up copied sockets so this output can use some other later on. */
 	consumer_destroy_output_sockets(output->consumer);
 error:
-	return ret;
+	return status;
 }
 
 static
@@ -4333,7 +4332,8 @@ int64_t get_session_nb_packets_per_stream(struct ltt_session *session, uint64_t 
 int cmd_snapshot_record(struct ltt_session *session,
 		struct lttng_snapshot_output *output, int wait)
 {
-	int ret = LTTNG_OK;
+	enum lttng_error_code cmd_ret = LTTNG_OK;
+	int ret;
 	unsigned int use_tmp_output = 0;
 	struct snapshot_output tmp_output;
 	unsigned int snapshot_success = 0;
@@ -4348,7 +4348,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 	ret = utils_get_current_time_str("%Y%m%d-%H%M%S", datetime,
 			sizeof(datetime));
 	if (!ret) {
-		ret = LTTNG_ERR_INVALID;
+		cmd_ret = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
@@ -4357,13 +4357,13 @@ int cmd_snapshot_record(struct ltt_session *session,
 	 * set in no output mode.
 	 */
 	if (session->output_traces) {
-		ret = LTTNG_ERR_NOT_SNAPSHOT_SESSION;
+		cmd_ret = LTTNG_ERR_NOT_SNAPSHOT_SESSION;
 		goto error;
 	}
 
 	/* The session needs to be started at least once. */
 	if (!session->has_been_started) {
-		ret = LTTNG_ERR_START_SESSION_ONCE;
+		cmd_ret = LTTNG_ERR_START_SESSION_ONCE;
 		goto error;
 	}
 
@@ -4374,9 +4374,9 @@ int cmd_snapshot_record(struct ltt_session *session,
 				&tmp_output, NULL);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
-				ret = LTTNG_ERR_NOMEM;
+				cmd_ret = LTTNG_ERR_NOMEM;
 			} else {
-				ret = LTTNG_ERR_INVALID;
+				cmd_ret = LTTNG_ERR_INVALID;
 			}
 			goto error;
 		}
@@ -4394,24 +4394,24 @@ int cmd_snapshot_record(struct ltt_session *session,
 		nb_packets_per_stream = get_session_nb_packets_per_stream(session,
 				tmp_output.max_size);
 		if (nb_packets_per_stream < 0) {
-			ret = LTTNG_ERR_MAX_SIZE_INVALID;
+			cmd_ret = LTTNG_ERR_MAX_SIZE_INVALID;
 			goto error;
 		}
 
 		if (session->kernel_session) {
-			ret = record_kernel_snapshot(session->kernel_session,
+			cmd_ret = record_kernel_snapshot(session->kernel_session,
 					&tmp_output, session,
 					wait, nb_packets_per_stream);
-			if (ret != LTTNG_OK) {
+			if (cmd_ret != LTTNG_OK) {
 				goto error;
 			}
 		}
 
 		if (session->ust_session) {
-			ret = record_ust_snapshot(session->ust_session,
+			cmd_ret = record_ust_snapshot(session->ust_session,
 					&tmp_output, session,
 					wait, nb_packets_per_stream);
-			if (ret != LTTNG_OK) {
+			if (cmd_ret != LTTNG_OK) {
 				goto error;
 			}
 		}
@@ -4440,7 +4440,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
 					tmp_output.max_size);
 			if (nb_packets_per_stream < 0) {
-				ret = LTTNG_ERR_MAX_SIZE_INVALID;
+				cmd_ret = LTTNG_ERR_MAX_SIZE_INVALID;
 				rcu_read_unlock();
 				goto error;
 			}
@@ -4449,7 +4449,7 @@ int cmd_snapshot_record(struct ltt_session *session,
 			if (*output->name != '\0') {
 				if (lttng_strncpy(tmp_output.name, output->name,
 						sizeof(tmp_output.name))) {
-					ret = LTTNG_ERR_INVALID;
+					cmd_ret = LTTNG_ERR_INVALID;
 					rcu_read_unlock();
 					goto error;
 				}
@@ -4459,20 +4459,20 @@ int cmd_snapshot_record(struct ltt_session *session,
 			memcpy(tmp_output.datetime, datetime, sizeof(datetime));
 
 			if (session->kernel_session) {
-				ret = record_kernel_snapshot(session->kernel_session,
+				cmd_ret = record_kernel_snapshot(session->kernel_session,
 						&tmp_output, session,
 						wait, nb_packets_per_stream);
-				if (ret != LTTNG_OK) {
+				if (cmd_ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
 				}
 			}
 
 			if (session->ust_session) {
-				ret = record_ust_snapshot(session->ust_session,
+				cmd_ret = record_ust_snapshot(session->ust_session,
 						&tmp_output, session,
 						wait, nb_packets_per_stream);
-				if (ret != LTTNG_OK) {
+				if (cmd_ret != LTTNG_OK) {
 					rcu_read_unlock();
 					goto error;
 				}
@@ -4485,11 +4485,11 @@ int cmd_snapshot_record(struct ltt_session *session,
 	if (snapshot_success) {
 		session->snapshot.nb_snapshot++;
 	} else {
-		ret = LTTNG_ERR_SNAPSHOT_FAIL;
+		cmd_ret = LTTNG_ERR_SNAPSHOT_FAIL;
 	}
 
 error:
-	return ret;
+	return cmd_ret;
 }
 
 /*

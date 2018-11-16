@@ -1418,14 +1418,15 @@ end:
 /*
  * Ask the consumer to snapshot a specific channel using the key.
  *
- * Return 0 on success or else a negative error.
+ * Returns LTTNG_OK on success or else an LTTng error code.
  */
-int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
-		struct snapshot_output *output, int metadata, uid_t uid, gid_t gid,
-		const char *session_path, int wait, uint64_t nb_packets_per_stream,
-		uint64_t trace_archive_id)
+enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
+		uint64_t key, struct snapshot_output *output, int metadata,
+		uid_t uid, gid_t gid, const char *session_path, int wait,
+		uint64_t nb_packets_per_stream, uint64_t trace_archive_id)
 {
 	int ret;
+	enum lttng_error_code status = LTTNG_OK;
 	struct lttcomm_consumer_msg msg;
 
 	assert(socket);
@@ -1453,7 +1454,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 				output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
-			ret = -LTTNG_ERR_NOMEM;
+			status = LTTNG_ERR_INVALID;
 			goto error;
 		} else if (ret >= sizeof(msg.u.snapshot_channel.pathname)) {
 			ERR("Snapshot path exceeds the maximal allowed length of %zu bytes (%i bytes required) with path \"%s/%s/%s-%s-%" PRIu64 "%s\"",
@@ -1463,7 +1464,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 					output->name, output->datetime,
 					output->nb_snapshot,
 					session_path);
-			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			status = LTTNG_ERR_SNAPSHOT_FAIL;
 			goto error;
 		}
 	} else {
@@ -1475,7 +1476,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 				output->nb_snapshot,
 				session_path);
 		if (ret < 0) {
-			ret = -LTTNG_ERR_NOMEM;
+			status = LTTNG_ERR_NOMEM;
 			goto error;
 		} else if (ret >= sizeof(msg.u.snapshot_channel.pathname)) {
 			ERR("Snapshot path exceeds the maximal allowed length of %zu bytes (%i bytes required) with path \"%s/%s-%s-%" PRIu64 "%s\"",
@@ -1483,7 +1484,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 					ret, output->consumer->dst.session_root_path,
 					output->name, output->datetime, output->nb_snapshot,
 					session_path);
-			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			status = LTTNG_ERR_SNAPSHOT_FAIL;
 			goto error;
 		}
 
@@ -1494,7 +1495,8 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 				S_IRWXU | S_IRWXG, uid, gid);
 		if (ret < 0) {
 			if (errno != EEXIST) {
-				ERR("Trace directory creation error");
+				status = LTTNG_ERR_CREATE_DIR_FAIL;
+				PERROR("Trace directory creation error");
 				goto error;
 			}
 		}
@@ -1507,10 +1509,10 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 	if (ret < 0) {
 		switch (-ret) {
 		case LTTCOMM_CONSUMERD_CHAN_NOT_FOUND:
-			ret = -LTTNG_ERR_CHAN_NOT_FOUND;
+			status = LTTNG_ERR_CHAN_NOT_FOUND;
 			break;
 		default:
-			ret = -LTTNG_ERR_SNAPSHOT_FAIL;
+			status = LTTNG_ERR_SNAPSHOT_FAIL;
 			break;
 		}
 		goto error;
@@ -1518,7 +1520,7 @@ int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
 
 error:
 	health_code_update();
-	return ret;
+	return status;
 }
 
 /*
