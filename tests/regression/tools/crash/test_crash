@@ -31,7 +31,7 @@ NR_ITER=-1
 # Temp file output
 OUTPUT_DIR=$(mktemp -d)
 
-NUM_TESTS=73
+NUM_TESTS=77
 
 source $TESTDIR/utils/utils.sh
 
@@ -106,6 +106,8 @@ function test_shm_path_per_pid()
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffers-pid"
 
+	start_lttng_tracing_ok $session_name
+
 	diag "Shm: clean state"
 	file_count=$(find $shm_path -mindepth 1 -maxdepth 1 | wc -l)
 	test $file_count -eq "0"
@@ -173,6 +175,8 @@ function test_shm_path_per_uid()
 	start_lttng_sessiond
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffers-uid"
+
+	start_lttng_tracing_ok $session_name
 
 	diag "Shm: test clean state"
 	file_count=$(find $shm_path -mindepth 1 -maxdepth 1 | wc -l)
@@ -295,6 +299,8 @@ function test_shm_path_per_pid_sigint()
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffers-pid"
 
+	start_lttng_tracing_ok $session_name
+
 	start_test_app
 	start_test_app
 	shm_session_path=$(find $shm_path -mindepth 1 -maxdepth 1)
@@ -323,6 +329,8 @@ function test_shm_path_per_uid_sigint()
 	start_lttng_sessiond
 	create_lttng_session_ok $session_name $OUTPUT_DIR "--shm-path $shm_path"
 	enable_ust_lttng_channel_ok $session_name $channel_name "--buffers-uid"
+
+	start_lttng_tracing_ok $session_name
 
 	start_test_app
 	start_test_app
