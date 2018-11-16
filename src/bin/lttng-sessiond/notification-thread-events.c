@@ -857,7 +857,7 @@ int evaluate_session_condition_for_client(
 		break;
 	default:
 		ret = 0;
-		goto end;
+		goto end_session_put;
 	}
 
 	*session_uid = session_info->uid;
