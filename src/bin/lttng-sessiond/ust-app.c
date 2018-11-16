@@ -489,6 +489,11 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 			ust_registry_channel_del_free(registry, ua_chan->key,
 				sock >= 0);
 		}
+		/*
+		 * A negative socket can be used by the caller when
+		 * cleaning-up a ua_chan in an error path. Skip the
+		 * accounting in this case.
+		 */
 		if (sock >= 0) {
 			save_per_pid_lost_discarded_counters(ua_chan);
 		}
