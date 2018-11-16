@@ -5952,13 +5952,14 @@ void ust_app_destroy(struct ust_app *app)
  * Take a snapshot for a given UST session. The snapshot is sent to the given
  * output.
  *
- * Return 0 on success or else a negative value.
+ * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
-int ust_app_snapshot_record(struct ltt_ust_session *usess,
+enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
 		struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int ret = 0;
+	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
@@ -5994,7 +5995,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 					usess->consumer);
 			if (!socket) {
-				ret = -EINVAL;
+				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
@@ -6004,27 +6005,28 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 					reg->uid, reg->bits_per_long);
 			if (ret < 0) {
 				PERROR("snprintf snapshot path");
+				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
 			/* Add the UST default trace dir to path. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
-				ret = consumer_snapshot_channel(socket,
+				status = consumer_snapshot_channel(socket,
 						reg_chan->consumer_key,
 						output, 0, usess->uid,
 						usess->gid, pathname, wait,
 						nb_packets_per_stream,
 						trace_archive_id);
-				if (ret < 0) {
+				if (status != LTTNG_OK) {
 					goto error;
 				}
 			}
-			ret = consumer_snapshot_channel(socket,
+			status = consumer_snapshot_channel(socket,
 					reg->registry->reg.ust->metadata_key, output, 1,
 					usess->uid, usess->gid, pathname, wait, 0,
 					trace_archive_id);
-			if (ret < 0) {
+			if (status != LTTNG_OK) {
 				goto error;
 			}
 		}
@@ -6049,7 +6051,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			socket = consumer_find_socket_by_bitness(app->bits_per_long,
 					output->consumer);
 			if (!socket) {
-				ret = -EINVAL;
+				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
 
@@ -6058,22 +6060,25 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
 					ua_sess->path);
 			if (ret < 0) {
+				status = LTTNG_ERR_INVALID;
 				PERROR("snprintf snapshot path");
 				goto error;
 			}
 
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
-				ret = consumer_snapshot_channel(socket,
+				status = consumer_snapshot_channel(socket,
 						ua_chan->key, output,
 						0, ua_sess->euid, ua_sess->egid,
 						pathname, wait,
 						nb_packets_per_stream,
 						trace_archive_id);
-				if (ret < 0) {
-					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
-						continue;
-					}
+				switch (status) {
+				case LTTNG_OK:
+					break;
+				case LTTNG_ERR_CHAN_NOT_FOUND:
+					continue;
+				default:
 					goto error;
 				}
 			}
@@ -6083,15 +6088,17 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 				DBG("Application session is being torn down. Skip application.");
 				continue;
 			}
-			ret = consumer_snapshot_channel(socket,
+			status = consumer_snapshot_channel(socket,
 					registry->metadata_key, output,
 					1, ua_sess->euid, ua_sess->egid,
 					pathname, wait, 0,
 					trace_archive_id);
-			if (ret < 0) {
-				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
-					continue;
-				}
+			switch (status) {
+			case LTTNG_OK:
+				break;
+			case LTTNG_ERR_CHAN_NOT_FOUND:
+				continue;
+			default:
 				goto error;
 			}
 		}
@@ -6104,7 +6111,7 @@ int ust_app_snapshot_record(struct ltt_ust_session *usess,
 
 error:
 	rcu_read_unlock();
-	return ret;
+	return status;
 }
 
 /*

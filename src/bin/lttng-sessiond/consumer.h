@@ -312,8 +312,8 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 		struct consumer_output *consumer, uint64_t *lost);
 
 /* Snapshot command. */
-int consumer_snapshot_channel(struct consumer_socket *socket, uint64_t key,
-		struct snapshot_output *output, int metadata,
+enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
+		uint64_t key, struct snapshot_output *output, int metadata,
 		uid_t uid, gid_t gid, const char *session_path, int wait,
 		uint64_t nb_packets_per_stream, uint64_t trace_archive_id);
 

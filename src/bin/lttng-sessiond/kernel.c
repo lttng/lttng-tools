@@ -1233,13 +1233,14 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
 /*
  * Take a snapshot for a given kernel session.
  *
- * Return 0 on success or else return a LTTNG_ERR code.
+ * Return LTTNG_OK on success or else return a LTTNG_ERR code.
  */
-int kernel_snapshot_record(struct ltt_kernel_session *ksess,
+enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
+	enum lttng_error_code status = LTTNG_OK;
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
@@ -1266,13 +1267,13 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 
 	ret = kernel_open_metadata(ksess);
 	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_META_FAIL;
+		status = LTTNG_ERR_KERN_META_FAIL;
 		goto error;
 	}
 
 	ret = kernel_open_metadata_stream(ksess);
 	if (ret < 0) {
-		ret = LTTNG_ERR_KERN_META_FAIL;
+		status = LTTNG_ERR_KERN_META_FAIL;
 		goto error_open_stream;
 	}
 
@@ -1296,19 +1297,18 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		/* Put back the saved consumer output into the session. */
 		ksess->consumer = saved_output;
 		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			status = LTTNG_ERR_KERN_CONSUMER_FAIL;
 			goto error_consumer;
 		}
 
 		/* For each channel, ask the consumer to snapshot it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
-			ret = consumer_snapshot_channel(socket, chan->key, output, 0,
+			status = consumer_snapshot_channel(socket, chan->key, output, 0,
 					ksess->uid, ksess->gid,
 					DEFAULT_KERNEL_TRACE_DIR, wait,
 					nb_packets_per_stream,
 					trace_archive_id);
-			if (ret < 0) {
-				ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			if (status != LTTNG_OK) {
 				(void) kernel_consumer_destroy_metadata(socket,
 						ksess->metadata);
 				goto error_consumer;
@@ -1316,12 +1316,11 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		}
 
 		/* Snapshot metadata, */
-		ret = consumer_snapshot_channel(socket, ksess->metadata->key, output,
+		status = consumer_snapshot_channel(socket, ksess->metadata->key, output,
 				1, ksess->uid, ksess->gid,
 				DEFAULT_KERNEL_TRACE_DIR, wait, 0,
 				trace_archive_id);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
+		if (status != LTTNG_OK) {
 			goto error_consumer;
 		}
 
@@ -1331,8 +1330,6 @@ int kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		 */
 		(void) kernel_consumer_destroy_metadata(socket, ksess->metadata);
 	}
-
-	ret = LTTNG_OK;
 
 error_consumer:
 	/* Close newly opened metadata stream. It's now on the consumer side. */
@@ -1349,7 +1346,7 @@ error:
 	ksess->metadata_stream_fd = saved_metadata_fd;
 
 	rcu_read_unlock();
-	return ret;
+	return status;
 }
 
 /*

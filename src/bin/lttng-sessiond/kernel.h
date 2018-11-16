@@ -59,7 +59,7 @@ int kernel_validate_version(int tracer_fd,
 		struct lttng_kernel_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
-int kernel_snapshot_record(struct ltt_kernel_session *ksess,
+enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
