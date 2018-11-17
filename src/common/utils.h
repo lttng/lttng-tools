@@ -61,5 +61,7 @@ int utils_create_lock_file(const char *filepath);
 int utils_recursive_rmdir(const char *path);
 int utils_truncate_stream_file(int fd, off_t length);
 int utils_show_help(int section, const char *page_name, const char *help_msg);
+int utils_get_memory_available(size_t *value);
+int utils_get_memory_total(size_t *value);
 
 #endif /* _COMMON_UTILS_H */

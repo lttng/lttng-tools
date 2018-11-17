@@ -183,6 +183,7 @@ int _config_read_session_name(char *path, char **name)
 	int ret = 0;
 	FILE *fp;
 	char var[NAME_MAX], *session_name;
+
 #if (NAME_MAX == 255)
 #define NAME_MAX_SCANF_IS_A_BROKEN_API	"254"
 #endif

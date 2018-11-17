@@ -1,4 +1,5 @@
 regression/kernel/test_all_events
+regression/kernel/test_channel
 regression/kernel/test_event_basic
 regression/kernel/test_syscall
 regression/kernel/test_clock_override
