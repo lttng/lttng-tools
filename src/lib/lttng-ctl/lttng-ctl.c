@@ -287,6 +287,50 @@ end:
 	return ret;
 }
 
+static int check_enough_available_memory(size_t num_bytes_requested_per_cpu)
+{
+	int ret;
+	long num_cpu;
+	size_t best_mem_info;
+	size_t num_bytes_requested_total;
+
+	/*
+	 * Get the number of CPU currently online to compute the amount of
+	 * memory needed to create a buffer for every CPU.
+	 */
+	num_cpu = sysconf(_SC_NPROCESSORS_ONLN);
+	if (num_cpu == -1) {
+		goto error;
+	}
+
+	num_bytes_requested_total = num_bytes_requested_per_cpu * num_cpu;
+
+	/*
+	 * Try to get the `MemAvail` field of `/proc/meminfo`. This is the most
+	 * reliable estimate we can get but it is only exposed by the kernel
+	 * since 3.14. (See Linux kernel commit:
+	 * 34e431b0ae398fc54ea69ff85ec700722c9da773)
+	 */
+	ret = utils_get_memory_available(&best_mem_info);
+	if (ret >= 0) {
+		goto success;
+	}
+
+	/*
+	 * As a backup plan, use `MemTotal` field of `/proc/meminfo`. This
+	 * is a sanity check for obvious user error.
+	 */
+	ret = utils_get_memory_total(&best_mem_info);
+	if (ret >= 0) {
+		goto success;
+	}
+
+error:
+	return -1;
+success:
+	return best_mem_info >= num_bytes_requested_total;
+}
+
 /*
  * Try connect to session daemon with sock_path.
  *
@@ -1475,6 +1519,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 		struct lttng_channel *in_chan)
 {
 	struct lttcomm_session_msg lsm;
+	size_t total_buffer_size_needed_per_cpu = 0;
 
 	/* NULL arguments are forbidden. No default values. */
 	if (handle == NULL || in_chan == NULL) {
@@ -1508,6 +1553,16 @@ int lttng_enable_channel(struct lttng_handle *handle,
 		extended = (struct lttng_channel_extended *)
 				in_chan->attr.extended.ptr;
 		memcpy(&lsm.u.channel.extended, extended, sizeof(*extended));
+	}
+
+	/*
+	 * Verify that the amount of memory required to create the requested
+	 * buffer is available on the system at the moment.
+	 */
+	total_buffer_size_needed_per_cpu = lsm.u.channel.chan.attr.num_subbuf *
+		lsm.u.channel.chan.attr.subbuf_size;
+	if (!check_enough_available_memory(total_buffer_size_needed_per_cpu)) {
+		return -LTTNG_ERR_NOMEM;
 	}
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;

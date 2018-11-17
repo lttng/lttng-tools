@@ -33,6 +33,7 @@
 #include <unistd.h>
 
 #include <common/common.h>
+#include <common/readwrite.h>
 #include <common/runas.h>
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
@@ -42,6 +43,19 @@
 #include "utils.h"
 #include "defaults.h"
 #include "time.h"
+
+#define PROC_MEMINFO_PATH               "/proc/meminfo"
+#define PROC_MEMINFO_MEMAVAILABLE_LINE  "MemAvailable:"
+#define PROC_MEMINFO_MEMTOTAL_LINE      "MemTotal:"
+
+/* The length of the longest field of `/proc/meminfo`. */
+#define PROC_MEMINFO_FIELD_MAX_NAME_LEN	20
+
+#if (PROC_MEMINFO_FIELD_MAX_NAME_LEN == 20)
+#define MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "19"
+#else
+#error MAX_NAME_LEN_SCANF_IS_A_BROKEN_API must be updated to match (PROC_MEMINFO_FIELD_MAX_NAME_LEN - 1)
+#endif
 
 /*
  * Return a partial realpath(3) of the path even if the full path does not
@@ -1672,4 +1686,78 @@ int utils_show_help(int section, const char *page_name,
 
 end:
 	return ret;
+}
+
+static
+int read_proc_meminfo_field(const char *field, size_t *value)
+{
+	int ret;
+	FILE *proc_meminfo;
+	char name[PROC_MEMINFO_FIELD_MAX_NAME_LEN] = {};
+
+	proc_meminfo = fopen(PROC_MEMINFO_PATH, "r");
+	if (!proc_meminfo) {
+		PERROR("Failed to fopen() " PROC_MEMINFO_PATH);
+		ret = -1;
+		goto fopen_error;
+	 }
+
+	/*
+	 * Read the contents of /proc/meminfo line by line to find the right
+	 * field.
+	 */
+	while (!feof(proc_meminfo)) {
+		unsigned long value_kb;
+
+		ret = fscanf(proc_meminfo,
+				"%" MAX_NAME_LEN_SCANF_IS_A_BROKEN_API "s %lu kB\n",
+				name, &value_kb);
+		if (ret == EOF) {
+			/*
+			 * fscanf() returning EOF can indicate EOF or an error.
+			 */
+			if (ferror(proc_meminfo)) {
+				PERROR("Failed to parse " PROC_MEMINFO_PATH);
+			}
+			break;
+		}
+
+		if (ret == 2 && strcmp(name, field) == 0) {
+			/*
+			 * This number is displayed in kilo-bytes. Return the
+			 * number of bytes.
+			 */
+			*value = ((size_t) value_kb) * 1024;
+			ret = 0;
+			goto found;
+		}
+	}
+	/* Reached the end of the file without finding the right field. */
+	ret = -1;
+
+found:
+	fclose(proc_meminfo);
+fopen_error:
+	return ret;
+}
+
+/*
+ * Returns an estimate of the number of bytes of memory available based on the
+ * the information in `/proc/meminfo`. The number returned by this function is
+ * a best guess.
+ */
+LTTNG_HIDDEN
+int utils_get_memory_available(size_t *value)
+{
+	return read_proc_meminfo_field(PROC_MEMINFO_MEMAVAILABLE_LINE, value);
+}
+
+/*
+ * Returns the total size of the memory on the system in bytes based on the
+ * the information in `/proc/meminfo`.
+ */
+LTTNG_HIDDEN
+int utils_get_memory_total(size_t *value)
+{
+	return read_proc_meminfo_field(PROC_MEMINFO_MEMTOTAL_LINE, value);
 }
