@@ -33,6 +33,7 @@
 #include <unistd.h>
 
 #include <common/common.h>
+#include <common/readwrite.h>
 #include <common/runas.h>
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
@@ -42,6 +43,11 @@
 #include "utils.h"
 #include "defaults.h"
 #include "time.h"
+
+#define PROC_MEMINFO_PATH	"/proc/meminfo"
+#define PROC_MEMINFO_MEMAVAILABLE_LINE	"MemAvailable:"
+#define PROC_MEMINFO_MEMTOTAL_LINE	"MemTotal:"
+#define PROC_MEMINFO_MAX_NAME_LEN	20
 
 /*
  * Return a partial realpath(3) of the path even if the full path does not
@@ -1680,4 +1686,76 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	res.tv_sec = diff / (uint64_t) NSEC_PER_SEC;
 	res.tv_nsec = diff % (uint64_t) NSEC_PER_SEC;
 	return res;
+}
+
+static
+size_t read_proc_meminfo_field(const char *field)
+{
+	size_t ret, value_kb, value;
+	char *name = NULL;
+	FILE *proc_meminfo;
+
+	/* Allocate the buffer to read the content of /proc/meminfo. */
+	name = zmalloc(sizeof(char) * PROC_MEMINFO_MAX_NAME_LEN);
+	if (!name) {
+		value = -1;
+		goto alloc_error;
+	}
+
+	proc_meminfo = fopen(PROC_MEMINFO_PATH, "r");
+	if (!proc_meminfo) {
+		PERROR("Failed to fopen /proc/meminfo");
+		value = -1;
+		goto fopen_error;
+	 }
+
+	/*
+	 * Read the content of /proc/meminfo line by line to find the right
+	 * field.
+	 */
+	while (!feof(proc_meminfo)) {
+		ret = fscanf(proc_meminfo, "%s %lu kB\n", name, &value_kb);
+		if(ret == EOF) {
+			break;
+		}
+
+		if (ret == 2 && strcmp(name, field)) {
+			/*
+			 * This number is displayed in kilo-bytes. Return the
+			 * number of bytes.
+			 */
+			value = value_kb * 1024;
+			goto end;
+		}
+	}
+	/* Reached the end of the file without finding the right field. */
+	value = -1;
+
+end:
+	fclose(proc_meminfo);
+fopen_error:
+	free(name);
+alloc_error:
+	return value;
+}
+
+/*
+ * Returns an estimate of the number of bytes of memory available based on the
+ * the information in `/proc/meminfo`. The number returned by this function is
+ * a best guess.
+ */
+LTTNG_HIDDEN
+size_t utils_get_memory_available(void)
+{
+	return read_proc_meminfo_field(PROC_MEMINFO_MEMAVAILABLE_LINE);
+}
+
+/*
+ * Returns the total size of the memory on the system in bytes based on the
+ * the information in `/proc/meminfo`.
+ */
+LTTNG_HIDDEN
+size_t utils_get_memory_total(void)
+{
+	return read_proc_meminfo_field(PROC_MEMINFO_MEMTOTAL_LINE);
 }
