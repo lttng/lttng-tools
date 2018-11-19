@@ -4012,6 +4012,10 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 	DBG2("UST app disabling channel %s from global domain for session id %" PRIu64,
 			uchan->name, usess->id);
 
+	if (!usess->active) {
+		goto end;
+	}
+
 	rcu_read_lock();
 
 	/* For every registered applications */
@@ -4050,6 +4054,7 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_unlock();
 
 error:
+end:
 	return ret;
 }
 
@@ -4072,6 +4077,10 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 
 	DBG2("UST app enabling channel %s to global domain for session id %" PRIu64,
 			uchan->name, usess->id);
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -4100,6 +4109,7 @@ int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
 	rcu_read_unlock();
 
 error:
+end:
 	return ret;
 }
 
@@ -4120,6 +4130,10 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	DBG("UST app disabling event %s for all apps in channel "
 			"%s for session id %" PRIu64,
 			uevent->attr.name, uchan->name, usess->id);
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -4165,7 +4179,7 @@ int ust_app_disable_event_glb(struct ltt_ust_session *usess,
 	}
 
 	rcu_read_unlock();
-
+end:
 	return ret;
 }
 
@@ -4186,6 +4200,10 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 
 	DBG2("UST app adding channel %s to UST domain for session id %" PRIu64,
 			uchan->name, usess->id);
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -4266,6 +4284,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 
 error_rcu_unlock:
 	rcu_read_unlock();
+end:
 	return ret;
 }
 
@@ -4285,6 +4304,10 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 	DBG("UST app enabling event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	/*
 	 * NOTE: At this point, this function is called only if the session and
@@ -4351,6 +4374,7 @@ int ust_app_enable_event_glb(struct ltt_ust_session *usess,
 
 error:
 	rcu_read_unlock();
+end:
 	return ret;
 }
 
@@ -4370,6 +4394,10 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 
 	DBG("UST app creating event %s for all apps for session id %" PRIu64,
 			uevent->attr.name, usess->id);
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -4417,7 +4445,7 @@ int ust_app_create_event_glb(struct ltt_ust_session *usess,
 	}
 
 	rcu_read_unlock();
-
+end:
 	return ret;
 }
 
@@ -5013,6 +5041,10 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 	(void) ust_app_clear_quiescent_session(usess);
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		ust_app_global_update(usess, app);
+	}
+
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ret = ust_app_start_trace(usess, app);
 		if (ret < 0) {
 			/* Continue to next apps even on error */
@@ -5106,6 +5138,9 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 		/* App session already created. */
 		goto end;
 	}
+	if (!usess->active) {
+		goto end;
+	}
 	assert(ua_sess);
 
 	pthread_mutex_lock(&ua_sess->lock);
@@ -5159,14 +5194,12 @@ void ust_app_global_create(struct ltt_ust_session *usess, struct ust_app *app)
 
 	pthread_mutex_unlock(&ua_sess->lock);
 
-	if (usess->active) {
-		ret = ust_app_start_trace(usess, app);
-		if (ret < 0) {
-			goto error;
-		}
-
-		DBG2("UST trace started for app pid %d", app->pid);
+	ret = ust_app_start_trace(usess, app);
+	if (ret < 0) {
+		goto error;
 	}
+
+	DBG2("UST trace started for app pid %d", app->pid);
 end:
 	/* Everything went well at this point. */
 	return;
@@ -5208,7 +5241,9 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 	if (!app->compatible) {
 		return;
 	}
-
+	if (!usess->active) {
+		return;
+	}
 	if (trace_ust_pid_tracker_lookup(usess, app->pid)) {
 		ust_app_global_create(usess, app);
 	} else {
@@ -5224,6 +5259,9 @@ void ust_app_global_update_all(struct ltt_ust_session *usess)
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 
+	if (!usess->active) {
+		return;
+	}
 	rcu_read_lock();
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ust_app_global_update(usess, app);
@@ -5243,6 +5281,10 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	struct ust_app_channel *ua_chan = NULL;
 	struct ust_app_session *ua_sess;
 	struct ust_app *app;
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	rcu_read_lock();
 
@@ -5283,6 +5325,7 @@ int ust_app_add_ctx_channel_glb(struct ltt_ust_session *usess,
 	}
 
 	rcu_read_unlock();
+end:
 	return ret;
 }
 
