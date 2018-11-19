@@ -4996,6 +4996,12 @@ int ust_app_start_trace_all(struct ltt_ust_session *usess)
 
 	DBG("Starting all UST traces");
 
+	/*
+	 * Even though the start trace might fail, flag this session active so
+	 * other application coming in are started by default.
+	 */
+	usess->active = 1;
+
 	rcu_read_lock();
 
 	/*
@@ -5030,6 +5036,12 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess)
 	struct ust_app *app;
 
 	DBG("Stopping all UST traces");
+
+	/*
+	 * Even though the stop trace might fail, flag this session inactive so
+	 * other application coming in are not started by default.
+	 */
+	usess->active = 0;
 
 	rcu_read_lock();
 

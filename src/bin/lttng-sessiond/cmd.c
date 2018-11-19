@@ -2684,12 +2684,6 @@ int cmd_start_trace(struct ltt_session *session)
 
 	/* Flag session that trace should start automatically */
 	if (usess) {
-		/*
-		 * Even though the start trace might fail, flag this session active so
-		 * other application coming in are started by default.
-		 */
-		usess->active = 1;
-
 		ret = ust_app_start_trace_all(usess);
 		if (ret < 0) {
 			ret = LTTNG_ERR_UST_START_FAIL;
@@ -2781,12 +2775,6 @@ int cmd_stop_trace(struct ltt_session *session)
 	}
 
 	if (usess && usess->active) {
-		/*
-		 * Even though the stop trace might fail, flag this session inactive so
-		 * other application coming in are not started by default.
-		 */
-		usess->active = 0;
-
 		ret = ust_app_stop_trace_all(usess);
 		if (ret < 0) {
 			ret = LTTNG_ERR_UST_STOP_FAIL;
