@@ -2973,7 +2973,7 @@ int relay_rotate_pending(const struct lttcomm_relayd_hdr *recv_hdr,
 			rotate_pending = true;
 			DBG("Stream %" PRIu64 " is still rotating",
 					stream->stream_handle);
-		} else if (stream->current_chunk_id.value < chunk_id) {
+		} else if (stream->current_chunk_id.value <= chunk_id) {
 			/*
 			 * Stream closed on the consumer but still active on the
 			 * relay.
