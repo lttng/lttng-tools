@@ -149,7 +149,7 @@ void timer_signal_thread_qs(unsigned int signr)
  * a positive value if no timer was created (not an error).
  */
 static
-int timer_start(timer_t *timer_id, uint64_t session_id,
+int timer_start(timer_t *timer_id, struct ltt_session *session,
 		unsigned int timer_interval_us, int signal, bool one_shot)
 {
 	int ret = 0, delete_ret;
@@ -158,7 +158,7 @@ int timer_start(timer_t *timer_id, uint64_t session_id,
 
 	sev.sigev_notify = SIGEV_SIGNAL;
 	sev.sigev_signo = signal;
-	sev.sigev_value.sival_ptr = UINT_TO_PTR(session_id);
+	sev.sigev_value.sival_ptr = session;
 	ret = timer_create(CLOCK_MONOTONIC, &sev, timer_id);
 	if (ret == -1) {
 		PERROR("timer_create");
@@ -214,6 +214,10 @@ int timer_session_rotation_pending_check_start(struct ltt_session *session,
 {
 	int ret;
 
+	if (!session_get(session)) {
+		ret = -1;
+		goto end;
+	}
 	DBG("Enabling session rotation pending check timer on session %" PRIu64,
 			session->id);
 	/*
@@ -226,13 +230,13 @@ int timer_session_rotation_pending_check_start(struct ltt_session *session,
 	 * no need to go through the whole signal teardown scheme everytime.
 	 */
 	ret = timer_start(&session->rotation_pending_check_timer,
-			session->id, interval_us,
+			session, interval_us,
 			LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK,
 			/* one-shot */ true);
 	if (ret == 0) {
 		session->rotation_pending_check_timer_enabled = true;
 	}
-
+end:
 	return ret;
 }
 
@@ -253,6 +257,10 @@ int timer_session_rotation_pending_check_stop(struct ltt_session *session)
 		ERR("Failed to stop rotate_pending_check timer");
 	} else {
 		session->rotation_pending_check_timer_enabled = false;
+		/*
+		 * The timer's reference to the session can be released safely.
+		 */
+		session_put(session);
 	}
 	return ret;
 }
@@ -265,9 +273,13 @@ int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 {
 	int ret;
 
+	if (!session_get(session)) {
+		ret = -1;
+		goto end;
+	}
 	DBG("Enabling scheduled rotation timer on session \"%s\" (%ui µs)", session->name,
 			interval_us);
-	ret = timer_start(&session->rotation_schedule_timer, session->id,
+	ret = timer_start(&session->rotation_schedule_timer, session,
 			interval_us, LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION,
 			/* one-shot */ false);
 	if (ret < 0) {
@@ -301,6 +313,8 @@ int timer_session_rotation_schedule_timer_stop(struct ltt_session *session)
 	}
 
 	session->rotation_schedule_timer_enabled = false;
+	/* The timer's reference to the session can be released safely. */
+	session_put(session);
 	ret = 0;
 end:
 	return ret;
@@ -370,13 +384,25 @@ void *timer_thread_func(void *data)
 		} else if (signr == LTTNG_SESSIOND_SIG_EXIT) {
 			goto end;
 		} else if (signr == LTTNG_SESSIOND_SIG_PENDING_ROTATION_CHECK) {
+			struct ltt_session *session =
+					(struct ltt_session *) info.si_value.sival_ptr;
+
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
 					ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION,
-					/* session_id */ PTR_TO_UINT(info.si_value.sival_ptr));
+					session);
+			session_lock_list();
+			session_put(session);
+			session_unlock_list();
 		} else if (signr == LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION) {
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
 					ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,
-					/* session_id */ PTR_TO_UINT(info.si_value.sival_ptr));
+					(struct ltt_session *) info.si_value.sival_ptr);
+			/*
+			 * The scheduled periodic rotation timer is not in
+			 * "one-shot" mode. The reference to the session is not
+			 * released since the timer is still enabled and can
+			 * still fire.
+			 */
 		} else {
 			ERR("Unexpected signal %d\n", info.si_signo);
 		}

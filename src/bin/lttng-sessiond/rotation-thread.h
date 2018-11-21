@@ -54,7 +54,8 @@ void rotation_thread_handle_destroy(
 		struct rotation_thread_handle *handle);
 
 void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
-		enum rotation_thread_job_type job_type, uint64_t session_id);
+		enum rotation_thread_job_type job_type,
+		struct ltt_session *session);
 
 void *thread_rotation(void *data);
 

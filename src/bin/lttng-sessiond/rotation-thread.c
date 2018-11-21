@@ -56,7 +56,7 @@ struct rotation_thread {
 
 struct rotation_thread_job {
 	enum rotation_thread_job_type type;
-	uint64_t session_id;
+	struct ltt_session *session;
 	/* List member in struct rotation_thread_timer_queue. */
 	struct cds_list_head head;
 };
@@ -131,8 +131,8 @@ void log_job_destruction(const struct rotation_thread_job *job)
 		abort();
 	}
 
-	LOG(log_level, "Rotation thread timer queue still contains job of type %s targeting session %" PRIu64 " on destruction",
-			job_type_str, job->session_id);
+	LOG(log_level, "Rotation thread timer queue still contains job of type %s targeting session \"%s\" on destruction",
+			job_type_str, job->session->name);
 }
 
 void rotation_thread_timer_queue_destroy(
@@ -193,13 +193,14 @@ end:
  */
 static
 bool timer_job_exists(const struct rotation_thread_timer_queue *queue,
-		enum rotation_thread_job_type job_type, uint64_t session_id)
+		enum rotation_thread_job_type job_type,
+		struct ltt_session *session)
 {
 	bool exists = false;
 	struct rotation_thread_job *job;
 
 	cds_list_for_each_entry(job, &queue->list, head) {
-		if (job->session_id == session_id && job->type == job_type) {
+		if (job->session == session && job->type == job_type) {
 			exists = true;
 			goto end;
 		}
@@ -209,7 +210,8 @@ end:
 }
 
 void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
-		enum rotation_thread_job_type job_type, uint64_t session_id)
+		enum rotation_thread_job_type job_type,
+		struct ltt_session *session)
 {
 	int ret;
 	const char * const dummy = "!";
@@ -217,7 +219,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 	const char *job_type_str = get_job_type_str(job_type);
 
 	pthread_mutex_lock(&queue->lock);
-	if (timer_job_exists(queue, session_id, job_type)) {
+	if (timer_job_exists(queue, job_type, session)) {
 		/*
 		 * This timer job is already pending, we don't need to add
 		 * it.
@@ -227,12 +229,15 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 
 	job = zmalloc(sizeof(struct rotation_thread_job));
 	if (!job) {
-		PERROR("Failed to allocate rotation thread job of type \"%s\" for session id %" PRIu64,
-				job_type_str, session_id);
+		PERROR("Failed to allocate rotation thread job of type \"%s\" for session \"%s\"",
+				job_type_str, session->name);
 		goto end;
 	}
+	/* No reason for this to fail as the caller must hold a reference. */
+	(void) session_get(session);
+
+	job->session = session;
 	job->type = job_type;
-	job->session_id = session_id;
 	cds_list_add_tail(&job->head, &queue->list);
 
 	ret = lttng_write(lttng_pipe_get_writefd(queue->event_pipe), dummy,
@@ -253,8 +258,8 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 			DBG("Wake-up pipe of rotation thread job queue is full");
 			goto end;
 		}
-		PERROR("Failed to wake-up the rotation thread after pushing a job of type \"%s\" for session id %" PRIu64,
-				job_type_str, session_id);
+		PERROR("Failed to wake-up the rotation thread after pushing a job of type \"%s\" for session \"%s\"",
+				job_type_str, session->name);
 		goto end;
 	}
 
@@ -731,10 +736,10 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		pthread_mutex_unlock(&queue->lock);
 
 		session_lock_list();
-		session = session_find_by_id(job->session_id);
+		session = job->session;
 		if (!session) {
-			DBG("[rotation-thread] Session %" PRIu64 " not found",
-					job->session_id);
+			DBG("[rotation-thread] Session \"%s\" not found",
+					session->name);
 			/*
 			 * This is a non-fatal error, and we cannot report it to
 			 * the user (timer), so just print the error and
