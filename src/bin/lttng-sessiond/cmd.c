@@ -2747,32 +2747,6 @@ int cmd_stop_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	if (session->rotation_schedule_timer_enabled) {
-		if (timer_session_rotation_schedule_timer_stop(
-				session)) {
-			ERR("Failed to stop the \"rotation schedule\" timer of session %s",
-					session->name);
-		}
-	}
-
-	/*
-	 * A rotation is still ongoing. The check timer will continue to wait
-	 * for the rotation to complete. When the rotation finally completes,
-	 * a check will be performed to rename the "active" chunk to the
-	 * expected "timestamp_begin-timestamp_end" format.
-	 */
-	if (session->current_archive_id > 0 &&
-			session->rotation_state != LTTNG_ROTATION_STATE_ONGOING) {
-		ret = rename_active_chunk(session);
-		if (ret) {
-			/*
-			 * This error should not prevent the user from stopping
-			 * the session. However, it will be reported at the end.
-			 */
-			error_occurred = true;
-		}
-	}
-
 	/* Kernel tracer */
 	if (ksession && ksession->active) {
 		DBG("Stop kernel tracing");
@@ -3056,13 +3030,6 @@ int cmd_destroy_session(struct ltt_session *session,
 
 	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name, session->id);
 
-	if (session->rotation_pending_check_timer_enabled) {
-		if (timer_session_rotation_pending_check_stop(session)) {
-			ERR("Failed to stop the \"rotation pending check\" timer of session %s",
-					session->name);
-		}
-	}
-
 	if (session->rotation_schedule_timer_enabled) {
 		if (timer_session_rotation_schedule_timer_stop(
 				session)) {
@@ -3076,13 +3043,27 @@ int cmd_destroy_session(struct ltt_session *session,
 		session->rotate_size = 0;
 	}
 
-	/*
-	 * The rename of the current chunk is performed at stop, but if we rotated
-	 * the session after the previous stop command, we need to rename the
-	 * new (and empty) chunk that was started in between.
-	 */
-	if (session->rotated_after_last_stop) {
-		rename_active_chunk(session);
+	if (session->current_archive_id != 0) {
+		if (!session->rotated_after_last_stop) {
+			ret = cmd_rotate_session(session, NULL);
+			if (ret != LTTNG_OK) {
+				ERR("Failed to perform an implicit rotation as part of the rotation: %s", lttng_strerror(-ret));
+			}
+		} else {
+			/*
+			 * Rename the active chunk to ensure it has a name
+			 * of the form ts_begin-ts_end-id.
+			 *
+			 * Note that no trace data has been produced since
+			 * the last rotation; the directory should be
+			 * removed.
+			 */
+			ret = rename_active_chunk(session);
+			if (ret) {
+				ERR("Failed to rename active chunk during the destruction of session \"%s\"",
+						session->name);
+			}
+		}
 	}
 
 	if (session->shm_path[0]) {
