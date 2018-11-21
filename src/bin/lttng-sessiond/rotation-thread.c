@@ -706,7 +706,6 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 {
 	int ret = 0;
 	int fd = lttng_pipe_get_readfd(queue->event_pipe);
-	struct ltt_session *session;
 	char buf;
 
 	ret = lttng_read(fd, &buf, 1);
@@ -717,6 +716,7 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 	}
 
 	for (;;) {
+		struct ltt_session *session;
 		struct rotation_thread_job *job;
 
 		/* Take the queue lock only to pop an element from the list. */
@@ -747,12 +747,14 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 			 */
 			session_unlock_list();
 			free(job);
+			session_put(session);
 			continue;
 		}
 
 		session_lock(session);
 	        ret = run_job(job, session, handle->notification_thread_handle);
 		session_unlock(session);
+		session_put(session);
 		session_unlock_list();
 		free(job);
 		if (ret) {
@@ -841,6 +843,7 @@ int handle_condition(const struct lttng_condition *condition,
 
 end_unlock:
 	session_unlock(session);
+	session_put(session);
 end:
 	return ret;
 }

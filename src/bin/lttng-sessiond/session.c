@@ -29,6 +29,8 @@
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/location-internal.h>
+#include "lttng-sessiond.h"
+#include "kernel.h"
 
 #include "session.h"
 #include "utils.h"
@@ -383,29 +385,120 @@ void session_unlock(struct ltt_session *session)
 	pthread_mutex_unlock(&session->lock);
 }
 
+static
+void session_release(struct urcu_ref *ref)
+{
+	int ret;
+	struct ltt_ust_session *usess;
+	struct ltt_kernel_session *ksess;
+	struct ltt_session *session = container_of(ref, typeof(*session), ref);
+
+	usess = session->ust_session;
+	ksess = session->kernel_session;
+
+	/* Clean kernel session teardown */
+	kernel_destroy_session(ksess);
+
+	/* UST session teardown */
+	if (usess) {
+		/* Close any relayd session */
+		consumer_output_send_destroy_relayd(usess->consumer);
+
+		/* Destroy every UST application related to this session. */
+		ret = ust_app_destroy_trace_all(usess);
+		if (ret) {
+			ERR("Error in ust_app_destroy_trace_all");
+		}
+
+		/* Clean up the rest. */
+		trace_ust_destroy_session(usess);
+	}
+
+	/*
+	 * Must notify the kernel thread here to update it's poll set in order to
+	 * remove the channel(s)' fd just destroyed.
+	 */
+	ret = notify_thread_pipe(kernel_poll_pipe[1]);
+	if (ret < 0) {
+		PERROR("write kernel poll pipe");
+	}
+
+	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);
+	pthread_mutex_destroy(&session->lock);
+
+	consumer_output_put(session->consumer);
+	snapshot_destroy(&session->snapshot);
+	del_session_list(session);
+	del_session_ht(session);
+	free(session);
+}
+
+/*
+ * Acquire a reference to a session.
+ * This function may fail (return false); its return value must be checked.
+ */
+bool session_get(struct ltt_session *session)
+{
+	return urcu_ref_get_unless_zero(&session->ref);
+}
+
+/*
+ * Release a reference to a session.
+ */
+void session_put(struct ltt_session *session)
+{
+	/*
+	 * The session list lock must be held as any session_put()
+	 * may cause the removal of the session from the session_list.
+	 */
+	ASSERT_LOCKED(ltt_session_list.lock);
+	assert(session->ref.refcount);
+	urcu_ref_put(&session->ref, session_release);
+}
+
+/*
+ * Destroy a session.
+ *
+ * This method does not immediately release/free the session as other
+ * components may still hold a reference to the session. However,
+ * the session should no longer be presented to the user.
+ *
+ * Releases the session list's reference to the session
+ * and marks it as destroyed. Iterations on the session list should be
+ * mindful of the "destroyed" flag.
+ */
+void session_destroy(struct ltt_session *session)
+{
+	assert(!session->destroyed);
+	session->destroyed = true;
+	session_put(session);
+}
+
 /*
  * Return a ltt_session structure ptr that matches name. If no session found,
  * NULL is returned. This must be called with the session list lock held using
  * session_lock_list and session_unlock_list.
+ * A reference to the session is implicitly acquired by this function.
  */
 struct ltt_session *session_find_by_name(const char *name)
 {
 	struct ltt_session *iter;
 
 	assert(name);
+	ASSERT_LOCKED(ltt_session_list.lock);
 
 	DBG2("Trying to find session by name %s", name);
 
 	cds_list_for_each_entry(iter, &ltt_session_list.head, list) {
-		if (strncmp(iter->name, name, NAME_MAX) == 0) {
+		if (!strncmp(iter->name, name, NAME_MAX) &&
+				!iter->destroyed) {
 			goto found;
 		}
 	}
 
-	iter = NULL;
-
+	return NULL;
 found:
-	return iter;
+	return session_get(iter) ? iter : NULL;
 }
 
 /*
@@ -419,6 +512,8 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	struct lttng_ht_iter iter;
 	struct ltt_session *ls;
 
+	ASSERT_LOCKED(ltt_session_list.lock);
+
 	if (!ltt_sessions_ht_by_id) {
 		goto end;
 	}
@@ -431,34 +526,11 @@ struct ltt_session *session_find_by_id(uint64_t id)
 	ls = caa_container_of(node, struct ltt_session, node);
 
 	DBG3("Session %" PRIu64 " found by id.", id);
-	return ls;
+	return session_get(ls) ? ls : NULL;
 
 end:
 	DBG3("Session %" PRIu64 " NOT found by id", id);
 	return NULL;
-}
-
-/*
- * Delete session from the session list and free the memory.
- *
- * Return -1 if no session is found.  On success, return 1;
- * Should *NOT* be called with RCU read-side lock held.
- */
-int session_destroy(struct ltt_session *session)
-{
-	/* Safety check */
-	assert(session);
-
-	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);
-	del_session_list(session);
-	pthread_mutex_destroy(&session->lock);
-	del_session_ht(session);
-
-	consumer_output_put(session->consumer);
-	snapshot_destroy(&session->snapshot);
-	free(session);
-
-	return LTTNG_OK;
 }
 
 /*
@@ -476,6 +548,8 @@ int session_create(char *name, uid_t uid, gid_t gid)
 		ret = LTTNG_ERR_FATAL;
 		goto error_malloc;
 	}
+
+	urcu_ref_init(&new_session->ref);
 
 	/* Define session name */
 	if (name != NULL) {

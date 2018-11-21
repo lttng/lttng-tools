@@ -104,6 +104,8 @@ extern int apps_cmd_notify_pipe[2];
  */
 extern int ht_cleanup_pipe[2];
 
+extern int kernel_poll_pipe[2];
+
 /*
  * Populated when the daemon starts with the current page size of the system.
  * Set in main() with the current page size.

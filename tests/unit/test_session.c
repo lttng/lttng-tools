@@ -112,9 +112,11 @@ static void empty_session_list(void)
 {
 	struct ltt_session *iter, *tmp;
 
+	session_lock_list();
 	cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
 		session_destroy(iter);
 	}
+	session_unlock_list();
 
 	/* Session list must be 0 */
 	assert(!session_list_count());
@@ -160,19 +162,18 @@ static int destroy_one_session(struct ltt_session *session)
 	strncpy(session_name, session->name, sizeof(session_name));
 	session_name[sizeof(session_name) - 1] = '\0';
 
-	ret = session_destroy(session);
-	if (ret == LTTNG_OK) {
-		ret = find_session_name(session_name);
-		if (ret < 0) {
-			/* Success, -1 means that the sesion is NOT found */
-			return 0;
-		} else {
-			/* Fail */
-			return -1;
-		}
-	}
+	session_destroy(session);
+	session_put(session);
 
-	return 0;
+	ret = find_session_name(session_name);
+	if (ret < 0) {
+		/* Success, -1 means that the sesion is NOT found */
+		ret = 0;
+	} else {
+		/* Fail */
+		ret = -1;
+	}
+	return ret;
 }
 
 /*
@@ -187,17 +188,27 @@ static int two_session_same_name(void)
 	ret = create_one_session(SESSION1);
 	if (ret < 0) {
 		/* Fail */
-		return -1;
+		ret = -1;
+		goto end;
 	}
 
+	session_lock_list();
 	sess = session_find_by_name(SESSION1);
 	if (sess) {
 		/* Success */
-		return 0;
+		session_put(sess);
+		session_unlock_list();
+		ret = 0;
+		goto end_unlock;
+	} else {
+		/* Fail */
+		ret = -1;
+		goto end_unlock;
 	}
-
-	/* Fail */
-	return -1;
+end_unlock:
+	session_unlock_list();
+end:
+	return ret;
 }
 
 void test_session_list(void)
@@ -217,6 +228,7 @@ void test_validate_session(void)
 {
 	struct ltt_session *tmp;
 
+	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
 	ok(tmp != NULL,
@@ -228,12 +240,15 @@ void test_validate_session(void)
 
 	session_lock(tmp);
 	session_unlock(tmp);
+	session_put(tmp);
+	session_unlock_list();
 }
 
 void test_destroy_session(void)
 {
 	struct ltt_session *tmp;
 
+	session_lock_list();
 	tmp = session_find_by_name(SESSION1);
 
 	ok(tmp != NULL,
@@ -242,6 +257,7 @@ void test_destroy_session(void)
 	ok(destroy_one_session(tmp) == 0,
 	   "Destroying session: %s destroyed",
 	   SESSION1);
+	session_unlock_list();
 }
 
 void test_duplicate_session(void)
@@ -279,8 +295,10 @@ void test_large_session_number(void)
 
 	failed = 0;
 
+	session_lock_list();
 	for (i = 0; i < MAX_SESSIONS; i++) {
 		cds_list_for_each_entry_safe(iter, tmp, &session_list->head, list) {
+			assert(session_get(iter));
 			ret = destroy_one_session(iter);
 			if (ret < 0) {
 				diag("session %d destroy failed", i);
@@ -288,6 +306,7 @@ void test_large_session_number(void)
 			}
 		}
 	}
+	session_unlock_list();
 
 	ok(failed == 0 && session_list_count() == 0,
 	   "Large sessions number: destroyed %u sessions",

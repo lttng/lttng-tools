@@ -117,7 +117,7 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 	enum lttng_error_code status;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	struct lttng_channel_extended *channel_attr_extended;
 
 	/* Safety net */
@@ -191,6 +191,9 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	channel->published_to_notification_thread = true;
 
 error:
+	if (session) {
+		session_put(session);
+	}
 	free(pathname);
 	return ret;
 }
@@ -207,7 +210,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	char *pathname;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 
 	rcu_read_lock();
 
@@ -284,6 +287,9 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 error:
 	rcu_read_unlock();
 	free(pathname);
+	if (session) {
+		session_put(session);
+	}
 	return ret;
 }
 
@@ -379,7 +385,7 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 {
 	int ret = LTTNG_OK;
 	struct ltt_kernel_stream *stream;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 
 	/* Safety net */
 	assert(channel);
@@ -428,6 +434,9 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 
 error:
 	rcu_read_unlock();
+	if (session) {
+		session_put(session);
+	}
 	return ret;
 }
 

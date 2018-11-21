@@ -2910,39 +2910,31 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 		size_t nb_uri, lttng_sock_cred *creds, unsigned int live_timer)
 {
 	int ret;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 
 	assert(name);
 	assert(creds);
 
-	/*
-	 * Verify if the session already exist
-	 *
-	 * XXX: There is no need for the session lock list here since the caller
-	 * (process_client_msg) is holding it. We might want to change that so a
-	 * single command does not lock the entire session list.
-	 */
+	/* Check if the session already exists. */
+	session_lock_list();
 	session = session_find_by_name(name);
+	session_unlock_list();
 	if (session != NULL) {
 		ret = LTTNG_ERR_EXIST_SESS;
-		goto find_error;
+		goto end;
 	}
 
 	/* Create tracing session in the registry */
 	ret = session_create(name, LTTNG_SOCK_GET_UID_CRED(creds),
 			LTTNG_SOCK_GET_GID_CRED(creds));
 	if (ret != LTTNG_OK) {
-		goto session_error;
+		goto end;
 	}
 
-	/*
-	 * Get the newly created session pointer back
-	 *
-	 * XXX: There is no need for the session lock list here since the caller
-	 * (process_client_msg) is holding it. We might want to change that so a
-	 * single command does not lock the entire session list.
-	 */
+	/* Get the newly created session pointer back. */
+	session_lock_list();
 	session = session_find_by_name(name);
+	session_unlock_list();
 	assert(session);
 
 	session->live_timer = live_timer;
@@ -2950,13 +2942,13 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 	session->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
 	if (session->consumer == NULL) {
 		ret = LTTNG_ERR_FATAL;
-		goto consumer_error;
+		goto end;
 	}
 
 	if (uris) {
 		ret = cmd_set_consumer_uri(session, nb_uri, uris);
 		if (ret != LTTNG_OK) {
-			goto consumer_error;
+			goto end;
 		}
 		session->output_traces = 1;
 	} else {
@@ -2966,12 +2958,13 @@ int cmd_create_session_uri(char *name, struct lttng_uri *uris,
 
 	session->consumer->enabled = 1;
 
-	return LTTNG_OK;
-
-consumer_error:
-	session_destroy(session);
-session_error:
-find_error:
+	ret = LTTNG_OK;
+end:
+	if (session) {
+		session_lock_list();
+		session_put(session);
+		session_unlock_list();
+	}
 	return ret;
 }
 
@@ -2982,7 +2975,7 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 		size_t nb_uri, lttng_sock_cred *creds)
 {
 	int ret;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	struct snapshot_output *new_output = NULL;
 
 	assert(name);
@@ -2994,11 +2987,13 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 	 */
 	ret = cmd_create_session_uri(name, NULL, 0, creds, 0);
 	if (ret != LTTNG_OK) {
-		goto error;
+		goto end;
 	}
 
 	/* Get the newly created session pointer back. This should NEVER fail. */
+	session_lock_list();
 	session = session_find_by_name(name);
+	session_unlock_list();
 	assert(session);
 
 	/* Flag session for snapshot mode. */
@@ -3006,6 +3001,7 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 
 	/* Skip snapshot output creation if no URI is given. */
 	if (nb_uri == 0) {
+		/* Not an error. */
 		goto end;
 	}
 
@@ -3030,14 +3026,18 @@ int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
 	snapshot_add_output(&session->snapshot, new_output);
 	rcu_read_unlock();
 
-end:
-	return LTTNG_OK;
+	ret = LTTNG_OK;
+	goto end;
 
 error_snapshot:
 	snapshot_output_destroy(new_output);
 error_snapshot_alloc:
-	session_destroy(session);
-error:
+end:
+	if (session) {
+		session_lock_list();
+		session_put(session);
+		session_unlock_list();
+	}
 	return ret;
 }
 
@@ -3046,18 +3046,13 @@ error:
  *
  * Called with session lock held.
  */
-int cmd_destroy_session(struct ltt_session *session, int wpipe,
+int cmd_destroy_session(struct ltt_session *session,
 		struct notification_thread_handle *notification_thread_handle)
 {
 	int ret;
-	struct ltt_ust_session *usess;
-	struct ltt_kernel_session *ksess;
 
 	/* Safety net */
 	assert(session);
-
-	usess = session->ust_session;
-	ksess = session->kernel_session;
 
 	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name, session->id);
 
@@ -3088,33 +3083,6 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe,
 	 */
 	if (session->rotated_after_last_stop) {
 		rename_active_chunk(session);
-	}
-
-	/* Clean kernel session teardown */
-	kernel_destroy_session(ksess);
-
-	/* UST session teardown */
-	if (usess) {
-		/* Close any relayd session */
-		consumer_output_send_destroy_relayd(usess->consumer);
-
-		/* Destroy every UST application related to this session. */
-		ret = ust_app_destroy_trace_all(usess);
-		if (ret) {
-			ERR("Error in ust_app_destroy_trace_all");
-		}
-
-		/* Clean up the rest. */
-		trace_ust_destroy_session(usess);
-	}
-
-	/*
-	 * Must notify the kernel thread here to update it's poll set in order to
-	 * remove the channel(s)' fd just destroyed.
-	 */
-	ret = notify_thread_pipe(wpipe);
-	if (ret < 0) {
-		PERROR("write kernel poll pipe");
 	}
 
 	if (session->shm_path[0]) {
@@ -3170,7 +3138,14 @@ int cmd_destroy_session(struct ltt_session *session, int wpipe,
 				sizeof(destroy_completion_handler.shm_path));
 		assert(!ret);
 	}
-	ret = session_destroy(session);
+
+	/*
+	 * The session is destroyed. However, note that the command context
+	 * still holds a reference to the session, thus delaying its destruction
+	 * _at least_ up to the point when that reference is released.
+	 */
+	session_destroy(session);
+	ret = LTTNG_OK;
 
 	return ret;
 }
@@ -3475,10 +3450,15 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 	 * the buffer.
 	 */
 	cds_list_for_each_entry(session, &list->head, list) {
+		if (!session_get(session)) {
+			continue;
+		}
 		/*
 		 * Only list the sessions the user can control.
 		 */
-		if (!session_access_ok(session, uid, gid)) {
+		if (!session_access_ok(session, uid, gid) ||
+				session->destroyed) {
+			session_put(session);
 			continue;
 		}
 
@@ -3496,6 +3476,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		}
 		if (ret < 0) {
 			PERROR("snprintf session path");
+			session_put(session);
 			continue;
 		}
 
@@ -3505,6 +3486,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		sessions[i].snapshot_mode = session->snapshot_mode;
 		sessions[i].live_timer_interval = session->live_timer;
 		i++;
+		session_put(session);
 	}
 }
 

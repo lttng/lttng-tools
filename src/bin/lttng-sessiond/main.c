@@ -177,7 +177,6 @@ static int dispatch_thread_exit;
 /* Sockets and FDs */
 static int client_sock = -1;
 static int apps_sock = -1;
-static int kernel_poll_pipe[2] = { -1, -1 };
 
 /*
  * This pipe is used to inform the thread managing application communication
@@ -210,18 +209,6 @@ static pthread_t timer_thread;
  * close that triggers an unregistration of the application.
  */
 static struct ust_cmd_queue ust_cmd_queue;
-
-/*
- * Pointer initialized before thread creation.
- *
- * This points to the tracing session list containing the session count and a
- * mutex lock. The lock MUST be taken if you iterate over the list. The lock
- * MUST NOT be taken if you call a public function in session.c.
- *
- * The lock is nested inside the structure: session_list_ptr->lock. Please use
- * session_lock_list and session_unlock_list for lock acquisition.
- */
-static struct ltt_session_list *session_list_ptr;
 
 static const char *module_proc_lttng = "/proc/lttng";
 
@@ -389,6 +376,7 @@ static void sessiond_cleanup(void)
 {
 	int ret;
 	struct ltt_session *sess, *stmp;
+	struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Cleanup sessiond");
 
@@ -437,15 +425,19 @@ static void sessiond_cleanup(void)
 	DBG("Cleaning up all sessions");
 
 	/* Destroy session list mutex */
-	if (session_list_ptr != NULL) {
-		pthread_mutex_destroy(&session_list_ptr->lock);
-
+	if (session_list) {
+		session_lock_list();
 		/* Cleanup ALL session */
 		cds_list_for_each_entry_safe(sess, stmp,
-				&session_list_ptr->head, list) {
-			cmd_destroy_session(sess, kernel_poll_pipe[1],
+				&session_list->head, list) {
+			if (sess->destroyed) {
+				continue;
+			}
+			cmd_destroy_session(sess,
 					notification_thread_handle);
 		}
+		session_unlock_list();
+		pthread_mutex_destroy(&session_list->lock);
 	}
 
 	wait_consumer(&kconsumer_data);
@@ -619,16 +611,21 @@ static int setup_lttng_msg_no_cmd_header(struct command_ctx *cmd_ctx,
 static int update_kernel_poll(struct lttng_poll_event *events)
 {
 	int ret;
-	struct ltt_session *session;
 	struct ltt_kernel_channel *channel;
+	struct ltt_session *session;
+	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Updating kernel poll set");
 
 	session_lock_list();
-	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+	cds_list_for_each_entry(session, &session_list->head, list) {
+		if (!session_get(session)) {
+			continue;
+		}
 		session_lock(session);
 		if (session->kernel_session == NULL) {
 			session_unlock(session);
+			session_put(session);
 			continue;
 		}
 
@@ -638,6 +635,7 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			ret = lttng_poll_add(events, channel->fd, LPOLLIN | LPOLLRDNORM);
 			if (ret < 0) {
 				session_unlock(session);
+				session_put(session);
 				goto error;
 			}
 			DBG("Channel fd %d added to kernel set", channel->fd);
@@ -665,14 +663,19 @@ static int update_kernel_stream(int fd)
 	struct ltt_session *session;
 	struct ltt_kernel_session *ksess;
 	struct ltt_kernel_channel *channel;
+	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Updating kernel streams for channel fd %d", fd);
 
 	session_lock_list();
-	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
+	cds_list_for_each_entry(session, &session_list->head, list) {
+		if (!session_get(session)) {
+			continue;
+		}
 		session_lock(session);
 		if (session->kernel_session == NULL) {
 			session_unlock(session);
+			session_put(session);
 			continue;
 		}
 		ksess = session->kernel_session;
@@ -720,12 +723,14 @@ static int update_kernel_stream(int fd)
 			rcu_read_unlock();
 		}
 		session_unlock(session);
+		session_put(session);
 	}
 	session_unlock_list();
 	return ret;
 
 error:
 	session_unlock(session);
+	session_put(session);
 	session_unlock_list();
 	return ret;
 }
@@ -737,6 +742,7 @@ error:
 static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
+	const struct ltt_session_list *session_list = session_get_list();
 
 	/* Consumer is in an ERROR state. Stop any application update. */
 	if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
@@ -745,9 +751,12 @@ static void update_ust_app(int app_sock)
 	}
 
 	/* For all tracing session(s) */
-	cds_list_for_each_entry_safe(sess, stmp, &session_list_ptr->head, list) {
+	cds_list_for_each_entry_safe(sess, stmp, &session_list->head, list) {
 		struct ust_app *app;
 
+		if (!session_get(sess)) {
+			continue;
+		}
 		session_lock(sess);
 		if (!sess->ust_session) {
 			goto unlock_session;
@@ -771,6 +780,7 @@ static void update_ust_app(int app_sock)
 		rcu_read_unlock();
 	unlock_session:
 		session_unlock(sess);
+		session_put(sess);
 	}
 }
 
@@ -2716,17 +2726,22 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 {
 	unsigned int i = 0;
 	struct ltt_session *session;
+	const struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Counting number of available session for UID %d GID %d",
 			uid, gid);
-	cds_list_for_each_entry(session, &session_list_ptr->head, list) {
-		/*
-		 * Only list the sessions the user can control.
-		 */
-		if (!session_access_ok(session, uid, gid)) {
+	cds_list_for_each_entry(session, &session_list->head, list) {
+		if (!session_get(session)) {
 			continue;
 		}
-		i++;
+		session_lock(session);
+		/* Only count the sessions the user can control. */
+		if (session_access_ok(session, uid, gid) &&
+				!session->destroyed) {
+			i++;
+		}
+		session_unlock(session);
+		session_put(session);
 	}
 	return i;
 }
@@ -3213,7 +3228,8 @@ skip_domain:
 	if (need_tracing_session) {
 		if (!session_access_ok(cmd_ctx->session,
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
-				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds))) {
+				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds)) ||
+				cmd_ctx->session->destroyed) {
 			ret = LTTNG_ERR_EPERM;
 			goto error;
 		}
@@ -3728,11 +3744,8 @@ error_add_context:
 	}
 	case LTTNG_DESTROY_SESSION:
 	{
-		ret = cmd_destroy_session(cmd_ctx->session, kernel_poll_pipe[1],
+		ret = cmd_destroy_session(cmd_ctx->session,
 				notification_thread_handle);
-
-		/* Set session to NULL so we do not unlock it after free. */
-		cmd_ctx->session = NULL;
 		break;
 	}
 	case LTTNG_LIST_DOMAINS:
@@ -4189,6 +4202,7 @@ error:
 setup_error:
 	if (cmd_ctx->session) {
 		session_unlock(cmd_ctx->session);
+		session_put(cmd_ctx->session);
 	}
 	if (need_tracing_session) {
 		session_unlock_list();
@@ -5960,12 +5974,6 @@ int main(int argc, char **argv)
 
 	/* Init UST command queue. */
 	cds_wfcq_init(&ust_cmd_queue.head, &ust_cmd_queue.tail);
-
-	/*
-	 * Get session list pointer. This pointer MUST NOT be free'd. This list
-	 * is statically declared in session.c
-	 */
-	session_list_ptr = session_get_list();
 
 	cmd_init();
 

@@ -1244,7 +1244,7 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	uint64_t trace_archive_id;
 
 	assert(ksess);
@@ -1344,7 +1344,9 @@ error:
 	/* Restore metadata state.*/
 	ksess->metadata = saved_metadata;
 	ksess->metadata_stream_fd = saved_metadata_fd;
-
+	if (session) {
+		session_put(session);
+	}
 	rcu_read_unlock();
 	return status;
 }
