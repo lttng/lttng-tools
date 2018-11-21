@@ -841,6 +841,7 @@ int evaluate_session_condition_for_client(
 	switch (lttng_condition_get_type(condition)) {
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 		if (!session_info->rotation.ongoing) {
+			ret = 0;
 			goto end_session_put;
 		}
 
