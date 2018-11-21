@@ -79,7 +79,6 @@ int test_condition(struct lttng_condition *condition, const char *type_name)
 	ok(out_session_name && !strcmp(session_name, out_session_name),
 			"Session name returned by %s condition matches the expected name",
 			type_name);
-end:
 	return ret;
 }
 
