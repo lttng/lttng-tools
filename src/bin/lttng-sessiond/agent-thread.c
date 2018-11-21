@@ -59,6 +59,10 @@ static void update_agent_app(struct agent_app *app)
 
 	session_lock_list();
 	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
+		if (!session_get(session)) {
+			continue;
+		}
+
 		session_lock(session);
 		if (session->ust_session) {
 			struct agent *agt;
@@ -71,6 +75,7 @@ static void update_agent_app(struct agent_app *app)
 			rcu_read_unlock();
 		}
 		session_unlock(session);
+		session_put(session);
 	}
 	session_unlock_list();
 }

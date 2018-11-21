@@ -67,6 +67,7 @@ struct ltt_session {
 	char hostname[HOST_NAME_MAX]; /* Local hostname. */
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
+	struct urcu_ref ref;
 	/*
 	 * Protect any read/write on this session data structure. This lock must be
 	 * acquired *before* using any public functions declared below. Use
@@ -75,6 +76,8 @@ struct ltt_session {
 	pthread_mutex_t lock;
 	struct cds_list_head list;
 	uint64_t id;		/* session unique identifier */
+	/* Indicates if a destroy command has been applied to this session. */
+	bool destroyed;
 	/* UID/GID of the user owning the session */
 	uid_t uid;
 	gid_t gid;
@@ -205,13 +208,17 @@ struct ltt_session {
 
 /* Prototypes */
 int session_create(char *name, uid_t uid, gid_t gid);
-int session_destroy(struct ltt_session *session);
 
 void session_lock(struct ltt_session *session);
 void session_lock_list(void);
 int session_trylock_list(void);
 void session_unlock(struct ltt_session *session);
 void session_unlock_list(void);
+
+void session_destroy(struct ltt_session *session);
+
+bool session_get(struct ltt_session *session);
+void session_put(struct ltt_session *session);
 
 enum consumer_dst_type session_get_consumer_destination_type(
 		const struct ltt_session *session);

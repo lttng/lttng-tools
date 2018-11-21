@@ -437,6 +437,9 @@ void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 
 end:
 	rcu_read_unlock();
+	if (session) {
+		session_put(session);
+	}
 }
 
 /*
@@ -2865,7 +2868,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	int ret;
 	struct buffer_reg_uid *reg_uid;
 	struct buffer_reg_channel *reg_chan;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	enum lttng_error_code notification_ret;
 	struct ust_registry_channel *chan_reg;
 
@@ -2968,6 +2971,9 @@ send_channel:
 	}
 
 error:
+	if (session) {
+		session_put(session);
+	}
 	return ret;
 }
 
@@ -2986,7 +2992,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	int ret;
 	struct ust_registry_session *registry;
 	enum lttng_error_code cmd_ret;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	uint64_t chan_reg_key;
 	struct ust_registry_channel *chan_reg;
 
@@ -3061,6 +3067,9 @@ error_remove_from_registry:
 	}
 error:
 	rcu_read_unlock();
+	if (session) {
+		session_put(session);
+	}
 	return ret;
 }
 
@@ -3251,7 +3260,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	struct ust_app_channel *metadata;
 	struct consumer_socket *socket;
 	struct ust_registry_session *registry;
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 
 	assert(ua_sess);
 	assert(app);
@@ -3342,6 +3351,9 @@ error_consumer:
 	delete_ust_app_channel(-1, metadata, app);
 error:
 	pthread_mutex_unlock(&registry->lock);
+	if (session) {
+		session_put(session);
+	}
 	return ret;
 }
 
@@ -5963,7 +5975,7 @@ enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
-	struct ltt_session *session;
+	struct ltt_session *session = NULL;
 	uint64_t trace_archive_id;
 
 	assert(usess);
@@ -6111,6 +6123,9 @@ enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
 
 error:
 	rcu_read_unlock();
+	if (session) {
+		session_put(session);
+	}
 	return status;
 }
 

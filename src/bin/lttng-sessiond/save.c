@@ -2301,7 +2301,7 @@ int save_session(struct ltt_session *session,
 
 	if (!session_access_ok(session,
 		LTTNG_SOCK_GET_UID_CRED(creds),
-		LTTNG_SOCK_GET_GID_CRED(creds))) {
+		LTTNG_SOCK_GET_GID_CRED(creds)) || session->destroyed) {
 		ret = LTTNG_ERR_EPERM;
 		goto end;
 	}
@@ -2527,6 +2527,7 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr,
 		session_lock(session);
 		ret = save_session(session, attr, creds);
 		session_unlock(session);
+		session_put(session);
 		if (ret) {
 			goto end;
 		}
@@ -2534,10 +2535,13 @@ int cmd_save_sessions(struct lttng_save_session_attr *attr,
 		struct ltt_session_list *list = session_get_list();
 
 		cds_list_for_each_entry(session, &list->head, list) {
+			if (!session_get(session)) {
+				continue;
+			}
 			session_lock(session);
 			ret = save_session(session, attr, creds);
 			session_unlock(session);
-
+			session_put(session);
 			/* Don't abort if we don't have the required permissions. */
 			if (ret && ret != LTTNG_ERR_EPERM) {
 				goto end;

@@ -33,6 +33,7 @@ struct lttng_ht *agent_apps_ht_by_sock = NULL;
 int kernel_tracer_fd = -1;
 
 int apps_cmd_notify_pipe[2] = { -1, -1 };
+int kernel_poll_pipe[2] = { -1, -1 };
 
 pid_t ppid;
 pid_t child_ppid;
