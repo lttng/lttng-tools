@@ -24,9 +24,7 @@
 
 int main(int argc, char **argv)
 {
-	int count;
-	int i;
-	int arg_i;
+	int count = 0, i = 0, arg_i = 0;
 
 	if (set_signal_handler()) {
 		return 1;
