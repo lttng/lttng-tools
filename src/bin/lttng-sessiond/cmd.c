@@ -4602,7 +4602,7 @@ int cmd_rotate_session(struct ltt_session *session,
 
 	now = time(NULL);
 	if (now == (time_t) -1) {
-		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
+		cmd_ret = LTTNG_ERR_UNK;
 		goto end;
 	}
 
