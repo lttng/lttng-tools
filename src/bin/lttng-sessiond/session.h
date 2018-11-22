@@ -47,6 +47,11 @@ struct ltt_session_list {
 	 * iterate or/and do any actions on that list.
 	 */
 	pthread_mutex_t lock;
+	/*
+	 * This condition variable is signaled on every removal from
+	 * the session list.
+	 */
+	pthread_cond_t removal_cond;
 
 	/*
 	 * Session unique ID generator. The session list lock MUST be
@@ -232,7 +237,9 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 
 struct ltt_session *session_find_by_name(const char *name);
 struct ltt_session *session_find_by_id(uint64_t id);
+
 struct ltt_session_list *session_get_list(void);
+void session_list_wait_empty(void);
 
 int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid);
 

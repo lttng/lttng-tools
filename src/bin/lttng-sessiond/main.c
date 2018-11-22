@@ -375,7 +375,6 @@ static void wait_consumer(struct consumer_data *consumer_data)
 static void sessiond_cleanup(void)
 {
 	int ret;
-	struct ltt_session *sess, *stmp;
 	struct ltt_session_list *session_list = session_get_list();
 
 	DBG("Cleanup sessiond");
@@ -422,23 +421,7 @@ static void sessiond_cleanup(void)
 	DBG("Removing directory %s", config.consumerd64_path.value);
 	(void) rmdir(config.consumerd64_path.value);
 
-	DBG("Cleaning up all sessions");
-
-	/* Destroy session list mutex */
-	if (session_list) {
-		session_lock_list();
-		/* Cleanup ALL session */
-		cds_list_for_each_entry_safe(sess, stmp,
-				&session_list->head, list) {
-			if (sess->destroyed) {
-				continue;
-			}
-			cmd_destroy_session(sess,
-					notification_thread_handle);
-		}
-		session_unlock_list();
-		pthread_mutex_destroy(&session_list->lock);
-	}
+	pthread_mutex_destroy(&session_list->lock);
 
 	wait_consumer(&kconsumer_data);
 	wait_consumer(&ustconsumer64_data);
@@ -4488,6 +4471,9 @@ static void *thread_manage_clients(void *data)
 
 	health_code_update();
 
+	/* Set state as running. */
+	sessiond_set_client_thread_state(true);
+
 	while (1) {
 		const struct cmd_completion_handler *cmd_completion_handler;
 
@@ -4722,6 +4708,9 @@ error_create_poll:
 		errno = ret;
 		PERROR("join_consumer ust64");
 	}
+
+	/* Set state as non-running. */
+	sessiond_set_client_thread_state(false);
 	return NULL;
 }
 
@@ -5644,6 +5633,50 @@ end:
 	return ret;
 }
 
+static void destroy_all_sessions_and_wait(void)
+{
+	struct ltt_session *session, *tmp;
+	struct ltt_session_list *session_list;
+
+	session_list = session_get_list();
+	DBG("Initiating destruction of all sessions");
+
+	if (!session_list) {
+		return;
+	}
+
+	/*
+	 * Ensure that the client thread is no longer accepting new commands,
+	 * which could cause new sessions to be created.
+	 */
+	sessiond_wait_client_thread_stopped();
+
+	session_lock_list();
+	/* Initiate the destruction of all sessions. */
+	cds_list_for_each_entry_safe(session, tmp,
+			&session_list->head, list) {
+		if (!session_get(session)) {
+			continue;
+		}
+
+		session_lock(session);
+		if (session->destroyed) {
+			goto unlock_session;
+		}
+		(void) cmd_destroy_session(session,
+				notification_thread_handle);
+	unlock_session:
+		session_unlock(session);
+		session_put(session);
+	}
+	session_unlock_list();
+
+	/* Wait for the destruction of all sessions to complete. */
+	DBG("Waiting for the destruction of all sessions to complete");
+	session_list_wait_empty();
+	DBG("Destruction of all sessions completed");
+}
+
 /*
  * main
  */
@@ -6183,6 +6216,10 @@ int main(int argc, char **argv)
 		PERROR("pthread_join load_session_thread");
 		retval = -1;
 	}
+
+	/* Initiate teardown once activity occurs on the quit pipe. */
+	sessiond_wait_for_quit_pipe(-1U);
+	destroy_all_sessions_and_wait();
 exit_load_session:
 
 	if (is_root && !config.no_kernel) {

@@ -20,12 +20,28 @@
 #include "lttng-sessiond.h"
 #include "utils.h"
 #include <common/utils.h>
+#include <pthread.h>
+
+#define USEC_PER_SEC 1000000
 
 /*
  * Quit pipe for all threads. This permits a single cancellation point
  * for all threads when receiving an event on the pipe.
  */
 static int thread_quit_pipe[2] = { -1, -1 };
+
+/*
+ * Allows threads to query the state of the client thread.
+ */
+static struct client_thread_state {
+	pthread_cond_t cond;
+	pthread_mutex_t lock;
+	bool is_running;
+} client_thread_state = {
+	.cond = PTHREAD_COND_INITIALIZER,
+	.lock = PTHREAD_MUTEX_INITIALIZER,
+	.is_running = false
+};
 
 /*
  * Init thread quit pipe.
@@ -67,6 +83,8 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
 /*
  * Wait for a notification on the quit pipe (with a timeout).
  *
+ * A timeout value of -1U means no timeout.
+ *
  * Returns 1 if the caller should quit, 0 if the timeout was reached, and
  * -1 if an error was encountered.
  */
@@ -79,11 +97,12 @@ int sessiond_wait_for_quit_pipe(unsigned int timeout_us)
 	FD_ZERO(&read_fds);
 	FD_SET(thread_quit_pipe[0], &read_fds);
 	memset(&timeout, 0, sizeof(timeout));
-	timeout.tv_usec = timeout_us;
+	timeout.tv_sec = timeout_us / USEC_PER_SEC;
+	timeout.tv_usec = timeout_us % USEC_PER_SEC;
 
 	while (true) {
 		ret = select(thread_quit_pipe[0] + 1, &read_fds, NULL, NULL,
-				&timeout);
+				timeout_us != -1U ? &timeout : NULL);
 		if (ret < 0 && errno == EINTR) {
 			/* Retry on interrupt. */
 			continue;
@@ -115,6 +134,24 @@ int sessiond_notify_quit_pipe(void)
 void sessiond_close_quit_pipe(void)
 {
 	utils_close_pipe(thread_quit_pipe);
+}
+
+void sessiond_set_client_thread_state(bool running)
+{
+	pthread_mutex_lock(&client_thread_state.lock);
+	client_thread_state.is_running = running;
+	pthread_cond_broadcast(&client_thread_state.cond);
+	pthread_mutex_unlock(&client_thread_state.lock);
+}
+
+void sessiond_wait_client_thread_stopped(void)
+{
+	pthread_mutex_lock(&client_thread_state.lock);
+	while (client_thread_state.is_running) {
+		pthread_cond_wait(&client_thread_state.cond,
+				&client_thread_state.lock);
+	}
+	pthread_mutex_unlock(&client_thread_state.lock);
 }
 
 static

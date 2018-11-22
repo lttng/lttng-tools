@@ -25,6 +25,7 @@
 #include <urcu.h>
 #include <dirent.h>
 #include <sys/types.h>
+#include <pthread.h>
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -54,6 +55,7 @@
 static struct ltt_session_list ltt_session_list = {
 	.head = CDS_LIST_HEAD_INIT(ltt_session_list.head),
 	.lock = PTHREAD_MUTEX_INITIALIZER,
+	.removal_cond = PTHREAD_COND_INITIALIZER,
 	.next_uuid = 0,
 };
 
@@ -128,6 +130,19 @@ static void del_session_list(struct ltt_session *ls)
 struct ltt_session_list *session_get_list(void)
 {
 	return &ltt_session_list;
+}
+
+/*
+ * Returns once the session list is empty.
+ */
+void session_list_wait_empty(void)
+{
+	pthread_mutex_lock(&ltt_session_list.lock);
+	while (!cds_list_empty(&ltt_session_list.head)) {
+		pthread_cond_wait(&ltt_session_list.removal_cond,
+				&ltt_session_list.lock);
+	}
+	pthread_mutex_unlock(&ltt_session_list.lock);
 }
 
 /*
@@ -428,8 +443,11 @@ void session_release(struct urcu_ref *ref)
 
 	consumer_output_put(session->consumer);
 	snapshot_destroy(&session->snapshot);
+
+	ASSERT_LOCKED(ltt_session_list.lock);
 	del_session_list(session);
 	del_session_ht(session);
+	pthread_cond_broadcast(&ltt_session_list.removal_cond);
 	free(session);
 }
 
