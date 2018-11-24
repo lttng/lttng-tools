@@ -491,6 +491,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		 */
 		ret = access(real_target_path, F_OK);
 		if (ret) {
+			ERR("Cannot find binary at path: %s.", real_target_path);
 			ret = CMD_ERROR;
 			goto end_destroy_lookup_method;
 		}
