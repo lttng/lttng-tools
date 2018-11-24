@@ -291,6 +291,67 @@ end:
 }
 
 /*
+ * Check if the symbol field passed by the user is in fact an address or an
+ * offset from a symbol. Those two instrumentation types are not supported yet.
+ * It's expected to be a common mistake because of the existing --probe option
+ * that does support these formats.
+ *
+ * Here are examples of these unsupported formats for the --userspace-probe
+ * option:
+ * elf:/path/to/binary:0x400430
+ * elf:/path/to/binary:4194364
+ * elf:/path/to/binary:my_symbol+0x323
+ * elf:/path/to/binary:my_symbol+43
+ */
+static int warn_userspace_probe_syntax(const char *symbol)
+{
+	unsigned long addr = 0;
+	size_t offset = 0;
+	int ret;
+
+	/* Check if the symbol field is an hex address. */
+	ret = sscanf(symbol, "0x%lx", &addr);
+	if (ret > 0) {
+		/* If there is a match, print a warning and return an error. */
+		ERR("Userspace probe on address not supported yet.");
+		ret = CMD_UNSUPPORTED;
+		goto error;
+	}
+
+	/* Check if the symbol field is an decimal address. */
+	ret = sscanf(symbol, "%lu", &addr);
+	if (ret > 0) {
+		/* If there is a match, print a warning and return an error. */
+		ERR("Userspace probe on address not supported yet.");
+		ret = CMD_UNSUPPORTED;
+		goto error;
+	}
+
+	/* Check if the symbol field is symbol+hex_offset. */
+	ret = sscanf(symbol, "%*[^+]+0x%lx", &offset);
+	if (ret > 0) {
+		/* If there is a match, print a warning and return an error. */
+		ERR("Userspace probe on symbol+offset not supported yet.");
+		ret = CMD_UNSUPPORTED;
+		goto error;
+	}
+
+	/* Check if the symbol field is symbol+decimal_offset. */
+	ret = sscanf(symbol, "%*[^+]+%lu", &offset);
+	if (ret > 0) {
+		/* If there is a match, print a warning and return an error. */
+		ERR("Userspace probe on symbol+offset not supported yet.");
+		ret = CMD_UNSUPPORTED;
+		goto error;
+	}
+
+	ret = 0;
+
+error:
+	return ret;
+}
+
+/*
  * Parse userspace probe options
  * Set the userspace probe fields in the lttng_event struct and set the
  * target_path to the path to the binary.
@@ -389,7 +450,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 	/* strutils_unescape_string allocates a new char *. */
 	unescaped_target_path = strutils_unescape_string(target_path, 0);
 	if (!unescaped_target_path) {
-		ret = -LTTNG_ERR_INVALID;
+		ret = CMD_ERROR;
 		goto end_destroy_lookup_method;
 	}
 
@@ -437,6 +498,14 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 
 	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup_method)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		/*
+		 * Check for common mistakes in userspace probe description syntax.
+		 */
+		ret = warn_userspace_probe_syntax(symbol_name);
+		if (ret) {
+			goto end_destroy_lookup_method;
+		}
+
 		probe_location = lttng_userspace_probe_location_function_create(
 				real_target_path, symbol_name, lookup_method);
 		if (!probe_location) {
@@ -1296,8 +1365,19 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_USERSPACE_PROBE:
 				ret = parse_userspace_probe_opts(ev, opt_userspace_probe);
 				if (ret) {
-					ERR("Unable to parse userspace probe options");
-					ret = CMD_ERROR;
+					switch (ret) {
+					case CMD_UNSUPPORTED:
+						/*
+						 * Error message describing
+						 * what is not supported was
+						 * printed in the function.
+						 */
+						break;
+					case CMD_ERROR:
+					default:
+						ERR("Unable to parse userspace probe options");
+						break;
+					}
 					goto error;
 				}
 				break;
