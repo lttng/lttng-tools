@@ -19,8 +19,8 @@
 #define _LTTNG_HT_CLEANUP_H
 
 #include <pthread.h>
+#include "thread.h"
 
-int init_ht_cleanup_thread(pthread_t *thread);
-int fini_ht_cleanup_thread(pthread_t *thread);
+struct lttng_thread *launch_ht_cleanup_thread(void);
 
 #endif /* _LTTNG_HT_CLEANUP_H */
