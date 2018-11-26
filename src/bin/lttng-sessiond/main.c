@@ -82,6 +82,7 @@
 #include "ht-cleanup.h"
 #include "sessiond-config.h"
 #include "timer.h"
+#include "thread.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -192,7 +193,6 @@ static pthread_t client_thread;
 static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t health_thread;
-static pthread_t ht_cleanup_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 static pthread_t notification_thread;
@@ -5691,6 +5691,7 @@ int main(int argc, char **argv)
 	bool notification_thread_launched = false;
 	bool rotation_thread_launched = false;
 	bool timer_thread_launched = false;
+	struct lttng_thread *ht_cleanup_thread = NULL;
 	struct timer_thread_parameters timer_thread_ctx;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
@@ -5830,7 +5831,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to clean up RCU hash tables */
-	if (init_ht_cleanup_thread(&ht_cleanup_thread)) {
+	ht_cleanup_thread = launch_ht_cleanup_thread();
+	if (!ht_cleanup_thread) {
 		retval = -1;
 		goto exit_ht_cleanup;
 	}
@@ -6293,6 +6295,7 @@ exit_notification:
 		PERROR("pthread_join health thread");
 		retval = -1;
 	}
+	lttng_thread_list_shutdown_orphans();
 
 exit_health:
 exit_init_data:
@@ -6357,6 +6360,11 @@ exit_init_data:
 		}
 	}
 
+	if (ht_cleanup_thread) {
+		lttng_thread_shutdown(ht_cleanup_thread);
+		lttng_thread_put(ht_cleanup_thread);
+	}
+
 	/*
 	 * After the rotation and timer thread have quit, we can safely destroy
 	 * the rotation_timer_queue.
@@ -6366,10 +6374,6 @@ exit_init_data:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 
-	ret = fini_ht_cleanup_thread(&ht_cleanup_thread);
-	if (ret) {
-		retval = -1;
-	}
 	lttng_pipe_destroy(ust32_channel_monitor_pipe);
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);

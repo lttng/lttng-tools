@@ -32,6 +32,7 @@
 #include <bin/lttng-sessiond/ust-app.h>
 #include <bin/lttng-sessiond/ht-cleanup.h>
 #include <bin/lttng-sessiond/health-sessiond.h>
+#include <bin/lttng-sessiond/thread.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/common.h>
 
@@ -45,7 +46,6 @@
 
 struct health_app *health_sessiond;
 static struct ltt_session_list *session_list;
-static pthread_t ht_cleanup_thread;
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -315,10 +315,14 @@ void test_large_session_number(void)
 
 int main(int argc, char **argv)
 {
+	struct lttng_thread *ht_cleanup_thread;
+
 	plan_tests(NUM_TESTS);
 
 	health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
-	assert(!init_ht_cleanup_thread(&ht_cleanup_thread));
+	ht_cleanup_thread = launch_ht_cleanup_thread();
+	assert(ht_cleanup_thread);
+	lttng_thread_put(ht_cleanup_thread);
 
 	diag("Sessions unit tests");
 
@@ -341,7 +345,7 @@ int main(int argc, char **argv)
 	test_large_session_number();
 
 	rcu_unregister_thread();
-	assert(!fini_ht_cleanup_thread(&ht_cleanup_thread));
+	lttng_thread_list_shutdown_orphans();
 
 	return exit_status();
 }

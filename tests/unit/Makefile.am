@@ -71,6 +71,7 @@ SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT)
 	 $(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/thread-utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/process-utils.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/thread.$(OBJEXT) \
 	 $(top_builddir)/src/common/libcommon.la \
 	 $(top_builddir)/src/common/testpoint/libtestpoint.la \
 	 $(top_builddir)/src/common/compat/libcompat.la \
