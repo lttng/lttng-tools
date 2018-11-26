@@ -32,7 +32,7 @@ SDT_TEST_BIN_NAME="userspace-probe-sdt-binary"
 SDT_TEST_BIN="$SDT_TEST_BIN_DIR/$SDT_TEST_BIN_NAME"
 ELF_SYMBOL="test_function"
 PROBE_EVENT_NAME=userspace_probe_test_event
-NUM_TESTS=87
+NUM_TESTS=93
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
@@ -133,6 +133,31 @@ function test_userspace_probe_enable_elf_symbol_not_function ()
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
 
 	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_userspace_probe_unsupported_types ()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="test_userspace_probe_unsupported_types"
+	# Userspace probe at an address or at an offset to a function
+	# instrumentation description types are not supported at the moment.
+	ENABLE_EXPR_1="elf:$ELF_TEST_BIN:0x400030"
+	ENABLE_EXPR_2="elf:$ELF_TEST_BIN:4194364"
+	ENABLE_EXPR_3="elf:$ELF_TEST_BIN:$ELF_SYMBOL+0x21"
+	ENABLE_EXPR_4="elf:$ELF_TEST_BIN:$ELF_SYMBOL+2"
+
+	diag "Userspace probe enable with unsupported instrumentation description type"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR_1" $PROBE_EVENT_NAME
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR_2" $PROBE_EVENT_NAME
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR_3" $PROBE_EVENT_NAME
+	lttng_enable_kernel_userspace_probe_event_fail $SESSION_NAME "$ENABLE_EXPR_4" $PROBE_EVENT_NAME
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -816,6 +841,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_userspace_probe_enable_elf_missing_symbol_name
 	test_userspace_probe_enable_elf_nonexistant_symbol
 	test_userspace_probe_enable_elf_symbol_not_function
+	test_userspace_probe_unsupported_types
 
 	# Successful userspace probe elf enabling
 	test_userspace_probe_enable_implicit_probe_type
