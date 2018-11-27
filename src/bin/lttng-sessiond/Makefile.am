@@ -44,7 +44,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        globals.c \
                        thread-utils.c \
                        process-utils.c \
-                       thread.c thread.h
+                       thread.c thread.h \
+                       health.c
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
