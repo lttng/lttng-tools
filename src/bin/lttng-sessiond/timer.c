@@ -388,15 +388,9 @@ void *timer_thread_func(void *data)
 			struct ltt_session *session =
 					(struct ltt_session *) info.si_value.sival_ptr;
 
-			session_lock_list();
-			session_lock(session);
-			/* Acquires a reference to the session. */
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
 					ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION,
 					session);
-			/* Release the timer's reference to the session. */
-			(void) timer_session_rotation_pending_check_stop(session);
-			session_unlock_list();
 		} else if (signr == LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION) {
 			rotation_thread_enqueue_job(ctx->rotation_thread_job_queue,
 					ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION,

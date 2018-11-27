@@ -527,6 +527,19 @@ int check_session_rotation_pending(struct ltt_session *session,
 	DBG("[rotation-thread] Checking for pending rotation on session \"%s\", trace archive %" PRIu64,
 			session->name, session->current_archive_id - 1);
 
+	/*
+	 * The rotation-pending check timer of a session is launched in
+	 * one-shot mode. If the rotation is incomplete, the rotation
+	 * thread will re-enable the pending-check timer.
+	 *
+	 * The timer thread can't stop the timer itself since it is involved
+	 * in the check for the timer's quiescence.
+	 */
+	ret = timer_session_rotation_pending_check_stop(session);
+	if (ret) {
+		goto end;
+	}
+
 	if (session->rotation_pending_local) {
 		/* Updates session->rotation_pending_local as needed. */
 		ret = check_session_rotation_pending_local(session);
@@ -751,6 +764,7 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		session_lock(session);
 	        ret = run_job(job, session, handle->notification_thread_handle);
 		session_unlock(session);
+		/* Release reference held by the job. */
 		session_put(session);
 		session_unlock_list();
 		free(job);
