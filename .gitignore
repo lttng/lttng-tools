@@ -18,6 +18,7 @@ Makefile.in
 *.class
 *.trs
 *.log
+*.exe
 .dirstamp
 configure
 aclocal.m4
