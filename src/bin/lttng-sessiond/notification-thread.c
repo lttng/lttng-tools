@@ -37,6 +37,7 @@
 #include "notification-thread-commands.h"
 #include "lttng-sessiond.h"
 #include "health-sessiond.h"
+#include "thread.h"
 
 #include <urcu.h>
 #include <urcu/list.h>
@@ -56,6 +57,7 @@ void notification_thread_handle_destroy(
 
 	assert(cds_list_empty(&handle->cmd_queue.list));
 	pthread_mutex_destroy(&handle->cmd_queue.lock);
+	sem_destroy(&handle->ready);
 
 	if (handle->cmd_queue.event_pipe) {
 		lttng_pipe_destroy(handle->cmd_queue.event_pipe);
@@ -85,8 +87,7 @@ end:
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe,
-		sem_t *notification_thread_ready)
+		struct lttng_pipe *kernel_channel_monitor_pipe)
 {
 	int ret;
 	struct notification_thread_handle *handle;
@@ -96,6 +97,8 @@ struct notification_thread_handle *notification_thread_handle_create(
 	if (!handle) {
 		goto end;
 	}
+
+	sem_init(&handle->ready, 0, 0);
 
 	event_pipe = lttng_pipe_open(FD_CLOEXEC);
 	if (!event_pipe) {
@@ -142,7 +145,6 @@ struct notification_thread_handle *notification_thread_handle_create(
 	} else {
 		handle->channel_monitoring_pipes.kernel_consumer = -1;
 	}
-	handle->notification_thread_ready = notification_thread_ready;
 end:
 	return handle;
 error:
@@ -375,6 +377,21 @@ void fini_thread_state(struct notification_thread_state *state)
 }
 
 static
+void mark_thread_as_ready(struct notification_thread_handle *handle)
+{
+	DBG("Marking notification thread as ready");
+	sem_post(&handle->ready);
+}
+
+static
+void wait_until_thread_is_ready(struct notification_thread_handle *handle)
+{
+	DBG("Waiting for notification thread to be ready");
+	sem_wait(&handle->ready);
+	DBG("Notification thread is ready");
+}
+
+static
 int init_thread_state(struct notification_thread_handle *handle,
 		struct notification_thread_state *state)
 {
@@ -448,7 +465,7 @@ int init_thread_state(struct notification_thread_handle *handle,
 	if (!state->triggers_ht) {
 		goto error;
 	}
-	sem_post(handle->notification_thread_ready);
+	mark_thread_as_ready(handle);
 end:
 	return 0;
 error:
@@ -496,6 +513,7 @@ end:
  * This thread services notification channel clients and commands received
  * from various lttng-sessiond components over a command queue.
  */
+static
 void *thread_notification(void *data)
 {
 	int ret;
@@ -519,9 +537,6 @@ void *thread_notification(void *data)
 	if (ret) {
 		goto end;
 	}
-
-	/* Ready to handle client connections. */
-	sessiond_notify_ready();
 
 	while (true) {
 		int fd_count, i;
@@ -627,4 +642,38 @@ error:
 	rcu_unregister_thread();
 end:
 	return NULL;
+}
+
+static
+bool shutdown_notification_thread(void *thread_data)
+{
+	struct notification_thread_handle *handle = thread_data;
+
+	notification_thread_command_quit(handle);
+	return true;
+}
+
+bool launch_notification_thread(struct notification_thread_handle *handle)
+{
+	struct lttng_thread *thread;
+
+	thread = lttng_thread_create("Notification",
+			thread_notification,
+			shutdown_notification_thread,
+			NULL,
+			handle);
+	if (!thread) {
+		goto error;
+	}
+
+	/*
+	 * Wait for the thread to be marked as "ready" before returning
+	 * as other subsystems depend on the notification subsystem
+	 * (e.g. rotation thread).
+	 */
+	wait_until_thread_is_ready(handle);
+	lttng_thread_put(thread);
+	return true;
+error:
+	return false;
 }

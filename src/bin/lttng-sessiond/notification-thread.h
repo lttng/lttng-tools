@@ -48,10 +48,8 @@ struct notification_thread_handle {
 		int ust64_consumer;
 		int kernel_consumer;
 	} channel_monitoring_pipes;
-	/*
-	 * To inform the rotation thread we are ready.
-	 */
-	sem_t *notification_thread_ready;
+	/* Used to wait for the launch of the notification thread. */
+	sem_t ready;
 };
 
 /**
@@ -215,11 +213,9 @@ struct notification_thread_state {
 struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *ust32_channel_monitor_pipe,
 		struct lttng_pipe *ust64_channel_monitor_pipe,
-		struct lttng_pipe *kernel_channel_monitor_pipe,
-		sem_t *notification_thread_ready);
+		struct lttng_pipe *kernel_channel_monitor_pipe);
 void notification_thread_handle_destroy(
 		struct notification_thread_handle *handle);
-
-void *thread_notification(void *data);
+bool launch_notification_thread(struct notification_thread_handle *handle);
 
 #endif /* NOTIFICATION_THREAD_H */
