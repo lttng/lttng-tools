@@ -192,7 +192,6 @@ static pthread_t reg_apps_thread;
 static pthread_t client_thread;
 static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
-static pthread_t health_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 static pthread_t notification_thread;
@@ -4196,196 +4195,6 @@ init_setup_error:
 }
 
 /*
- * Thread managing health check socket.
- */
-static void *thread_manage_health(void *data)
-{
-	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
-	uint32_t revents, nb_fd;
-	struct lttng_poll_event events;
-	struct health_comm_msg msg;
-	struct health_comm_reply reply;
-
-	DBG("[thread] Manage health check started");
-
-	rcu_register_thread();
-
-	/* We might hit an error path before this is created. */
-	lttng_poll_init(&events);
-
-	/* Create unix socket */
-	sock = lttcomm_create_unix_sock(config.health_unix_sock_path.value);
-	if (sock < 0) {
-		ERR("Unable to create health check Unix socket");
-		goto error;
-	}
-
-	if (is_root) {
-		/* lttng health client socket path permissions */
-		ret = chown(config.health_unix_sock_path.value, 0,
-				utils_get_group_id(config.tracing_group_name.value));
-		if (ret < 0) {
-			ERR("Unable to set group on %s", config.health_unix_sock_path.value);
-			PERROR("chown");
-			goto error;
-		}
-
-		ret = chmod(config.health_unix_sock_path.value,
-				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-		if (ret < 0) {
-			ERR("Unable to set permissions on %s", config.health_unix_sock_path.value);
-			PERROR("chmod");
-			goto error;
-		}
-	}
-
-	/*
-	 * Set the CLOEXEC flag. Return code is useless because either way, the
-	 * show must go on.
-	 */
-	(void) utils_set_fd_cloexec(sock);
-
-	ret = lttcomm_listen_unix_sock(sock);
-	if (ret < 0) {
-		goto error;
-	}
-
-	/*
-	 * Pass 2 as size here for the thread quit pipe and client_sock. Nothing
-	 * more will be added to this poll set.
-	 */
-	ret = sessiond_set_thread_pollset(&events, 2);
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Add the application registration socket */
-	ret = lttng_poll_add(&events, sock, LPOLLIN | LPOLLPRI);
-	if (ret < 0) {
-		goto error;
-	}
-
-	sessiond_notify_ready();
-
-	while (1) {
-		DBG("Health check ready");
-
-		/* Inifinite blocking call, waiting for transmission */
-restart:
-		ret = lttng_poll_wait(&events, -1);
-		if (ret < 0) {
-			/*
-			 * Restart interrupted system call.
-			 */
-			if (errno == EINTR) {
-				goto restart;
-			}
-			goto error;
-		}
-
-		nb_fd = ret;
-
-		for (i = 0; i < nb_fd; i++) {
-			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
-
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
-
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
-				err = 0;
-				goto exit;
-			}
-
-			/* Event on the registration socket */
-			if (pollfd == sock) {
-				if (revents & LPOLLIN) {
-					continue;
-				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Health socket poll error");
-					goto error;
-				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-					goto error;
-				}
-			}
-		}
-
-		new_sock = lttcomm_accept_unix_sock(sock);
-		if (new_sock < 0) {
-			goto error;
-		}
-
-		/*
-		 * Set the CLOEXEC flag. Return code is useless because either way, the
-		 * show must go on.
-		 */
-		(void) utils_set_fd_cloexec(new_sock);
-
-		DBG("Receiving data from client for health...");
-		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
-		if (ret <= 0) {
-			DBG("Nothing recv() from client... continuing");
-			ret = close(new_sock);
-			if (ret) {
-				PERROR("close");
-			}
-			continue;
-		}
-
-		rcu_thread_online();
-
-		memset(&reply, 0, sizeof(reply));
-		for (i = 0; i < NR_HEALTH_SESSIOND_TYPES; i++) {
-			/*
-			 * health_check_state returns 0 if health is
-			 * bad.
-			 */
-			if (!health_check_state(health_sessiond, i)) {
-				reply.ret_code |= 1ULL << i;
-			}
-		}
-
-		DBG2("Health check return value %" PRIx64, reply.ret_code);
-
-		ret = send_unix_sock(new_sock, (void *) &reply, sizeof(reply));
-		if (ret < 0) {
-			ERR("Failed to send health data back to client");
-		}
-
-		/* End of transmission */
-		ret = close(new_sock);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-
-exit:
-error:
-	if (err) {
-		ERR("Health error occurred in %s", __func__);
-	}
-	DBG("Health check thread dying");
-	unlink(config.health_unix_sock_path.value);
-	if (sock >= 0) {
-		ret = close(sock);
-		if (ret) {
-			PERROR("close");
-		}
-	}
-
-	lttng_poll_clean(&events);
-	stop_threads();
-	rcu_unregister_thread();
-	return NULL;
-}
-
-/*
  * This thread manage all clients request using the unix client socket for
  * communication.
  */
@@ -6039,11 +5848,7 @@ int main(int argc, char **argv)
 	load_info->path = config.load_session_path.value;
 
 	/* Create health-check thread. */
-	ret = pthread_create(&health_thread, default_pthread_attr(),
-			thread_manage_health, (void *) NULL);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create health");
+	if (!launch_health_management_thread()) {
 		retval = -1;
 		goto exit_health;
 	}
@@ -6289,14 +6094,7 @@ exit_client:
 exit_rotation:
 exit_notification:
 	sem_destroy(&notification_thread_ready);
-	ret = pthread_join(health_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join health thread");
-		retval = -1;
-	}
 	lttng_thread_list_shutdown_orphans();
-
 exit_health:
 exit_init_data:
 	/*
