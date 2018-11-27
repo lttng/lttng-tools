@@ -75,7 +75,6 @@ struct rotation_thread_handle {
 	struct rotation_thread_timer_queue *rotation_timer_queue;
 	/* Access to the notification thread cmd_queue */
 	struct notification_thread_handle *notification_thread_handle;
-	sem_t *notification_thread_ready;
 };
 
 static
@@ -169,8 +168,7 @@ void rotation_thread_handle_destroy(
 
 struct rotation_thread_handle *rotation_thread_handle_create(
 		struct rotation_thread_timer_queue *rotation_timer_queue,
-		struct notification_thread_handle *notification_thread_handle,
-		sem_t *notification_thread_ready)
+		struct notification_thread_handle *notification_thread_handle)
 {
 	struct rotation_thread_handle *handle;
 
@@ -181,7 +179,6 @@ struct rotation_thread_handle *rotation_thread_handle_create(
 
 	handle->rotation_timer_queue = rotation_timer_queue;
 	handle->notification_thread_handle = notification_thread_handle;
-	handle->notification_thread_ready = notification_thread_ready;
 
 end:
 	return handle;
@@ -320,11 +317,6 @@ int init_thread_state(struct rotation_thread_handle *handle,
 		goto end;
 	}
 
-	/*
-	 * We wait until the notification thread is ready to create the
-	 * notification channel and add it to the poll_set.
-	 */
-	sem_wait(handle->notification_thread_ready);
 	rotate_notification_channel = lttng_notification_channel_create(
 			lttng_session_daemon_notification_endpoint);
 	if (!rotate_notification_channel) {

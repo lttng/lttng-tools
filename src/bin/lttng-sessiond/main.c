@@ -194,7 +194,6 @@ static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
-static pthread_t notification_thread;
 static pthread_t rotation_thread;
 static pthread_t timer_thread;
 
@@ -5497,14 +5496,12 @@ int main(int argc, char **argv)
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
-	bool notification_thread_launched = false;
 	bool rotation_thread_launched = false;
 	bool timer_thread_launched = false;
 	struct lttng_thread *ht_cleanup_thread = NULL;
 	struct timer_thread_parameters timer_thread_ctx;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
-	sem_t notification_thread_ready;
 
 	init_kernel_workarounds();
 
@@ -5853,37 +5850,23 @@ int main(int argc, char **argv)
 		goto exit_health;
 	}
 
-	/*
-	 * The rotation thread needs the notification thread to be ready before
-	 * creating the rotate_notification_channel, so we use this semaphore as
-	 * a rendez-vous point.
-	 */
-	sem_init(&notification_thread_ready, 0, 0);
-
 	/* notification_thread_data acquires the pipes' read side. */
 	notification_thread_handle = notification_thread_handle_create(
 			ust32_channel_monitor_pipe,
 			ust64_channel_monitor_pipe,
-			kernel_channel_monitor_pipe,
-			&notification_thread_ready);
+			kernel_channel_monitor_pipe);
 	if (!notification_thread_handle) {
 		retval = -1;
 		ERR("Failed to create notification thread shared data");
-		stop_threads();
 		goto exit_notification;
 	}
 
 	/* Create notification thread. */
-	ret = pthread_create(&notification_thread, default_pthread_attr(),
-			thread_notification, notification_thread_handle);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create notification");
+	if (!launch_notification_thread(notification_thread_handle)) {
 		retval = -1;
-		stop_threads();
 		goto exit_notification;
+
 	}
-	notification_thread_launched = true;
 
 	/* Create timer thread. */
 	ret = pthread_create(&timer_thread, default_pthread_attr(),
@@ -5900,8 +5883,7 @@ int main(int argc, char **argv)
 	/* rotation_thread_data acquires the pipes' read side. */
 	rotation_thread_handle = rotation_thread_handle_create(
 			rotation_timer_queue,
-			notification_thread_handle,
-			&notification_thread_ready);
+			notification_thread_handle);
 	if (!rotation_thread_handle) {
 		retval = -1;
 		ERR("Failed to create rotation thread shared data");
@@ -6093,7 +6075,6 @@ exit_dispatch:
 exit_client:
 exit_rotation:
 exit_notification:
-	sem_destroy(&notification_thread_ready);
 	lttng_thread_list_shutdown_orphans();
 exit_health:
 exit_init_data:
@@ -6116,25 +6097,6 @@ exit_init_data:
 	 * the queue is empty before shutting down the clean-up thread.
 	 */
 	rcu_barrier();
-
-	/*
-	 * The teardown of the notification system is performed after the
-	 * session daemon's teardown in order to allow it to be notified
-	 * of the active session and channels at the moment of the teardown.
-	 */
-	if (notification_thread_handle) {
-		if (notification_thread_launched) {
-			notification_thread_command_quit(
-					notification_thread_handle);
-			ret = pthread_join(notification_thread, &status);
-			if (ret) {
-				errno = ret;
-				PERROR("pthread_join notification thread");
-				retval = -1;
-			}
-		}
-		notification_thread_handle_destroy(notification_thread_handle);
-	}
 
 	if (rotation_thread_handle) {
 		if (rotation_thread_launched) {
@@ -6172,6 +6134,14 @@ exit_init_data:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 
+	/*
+	 * The teardown of the notification system is performed after the
+	 * session daemon's teardown in order to allow it to be notified
+	 * of the active session and channels at the moment of the teardown.
+	 */
+	if (notification_thread_handle) {
+		notification_thread_handle_destroy(notification_thread_handle);
+	}
 	lttng_pipe_destroy(ust32_channel_monitor_pipe);
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);
