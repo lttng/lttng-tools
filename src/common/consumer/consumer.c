@@ -3568,7 +3568,6 @@ error:
 
 		/* Assign new file descriptor */
 		relayd->control_sock.sock.fd = fd;
-		fd = -1;	/* For error path */
 		/* Assign version values. */
 		relayd->control_sock.major = relayd_sock->major;
 		relayd->control_sock.minor = relayd_sock->minor;
@@ -3596,7 +3595,6 @@ error:
 
 		/* Assign new file descriptor */
 		relayd->data_sock.sock.fd = fd;
-		fd = -1;	/* for eventual error paths */
 		/* Assign version values. */
 		relayd->data_sock.major = relayd_sock->major;
 		relayd->data_sock.minor = relayd_sock->minor;
@@ -3610,6 +3608,11 @@ error:
 	DBG("Consumer %s socket created successfully with net idx %" PRIu64 " (fd: %d)",
 			sock_type == LTTNG_STREAM_CONTROL ? "control" : "data",
 			relayd->net_seq_idx, fd);
+	/*
+	 * We gave the ownership of the fd to the relayd structure. Set the
+	 * fd to -1 so we don't call close() on it in the error path below.
+	 */
+	fd = -1;
 
 	/* We successfully added the socket. Send status back. */
 	ret = consumer_send_status_msg(sock, ret_code);
