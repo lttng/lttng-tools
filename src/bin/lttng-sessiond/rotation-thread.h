@@ -56,6 +56,6 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 		enum rotation_thread_job_type job_type,
 		struct ltt_session *session);
 
-void *thread_rotation(void *data);
+bool launch_rotation_thread(struct rotation_thread_handle *handle);
 
 #endif /* ROTATION_THREAD_H */
