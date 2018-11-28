@@ -194,7 +194,6 @@ static pthread_t kernel_thread;
 static pthread_t dispatch_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
-static pthread_t rotation_thread;
 static pthread_t timer_thread;
 
 /*
@@ -254,9 +253,6 @@ static const char * const config_section_name = "sessiond";
 
 /* Am I root or not. Set to 1 if the daemon is running as root */
 static int is_root;
-
-/* Rotation thread handle. */
-static struct rotation_thread_handle *rotation_thread_handle;
 
 /*
  * Stop all threads by closing the thread quit pipe.
@@ -5496,10 +5492,11 @@ int main(int argc, char **argv)
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
 			*kernel_channel_monitor_pipe = NULL;
-	bool rotation_thread_launched = false;
 	bool timer_thread_launched = false;
 	struct lttng_thread *ht_cleanup_thread = NULL;
 	struct timer_thread_parameters timer_thread_ctx;
+	/* Rotation thread handle. */
+	struct rotation_thread_handle *rotation_thread_handle = NULL;
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
 
@@ -5892,16 +5889,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Create rotation thread. */
-	ret = pthread_create(&rotation_thread, default_pthread_attr(),
-			thread_rotation, rotation_thread_handle);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create rotation");
+	if (!launch_rotation_thread(rotation_thread_handle)) {
 		retval = -1;
-		stop_threads();
 		goto exit_rotation;
 	}
-	rotation_thread_launched = true;
 
 	/* Create thread to manage the client socket */
 	ret = pthread_create(&client_thread, default_pthread_attr(),
@@ -6098,18 +6089,6 @@ exit_init_data:
 	 */
 	rcu_barrier();
 
-	if (rotation_thread_handle) {
-		if (rotation_thread_launched) {
-			ret = pthread_join(rotation_thread, &status);
-			if (ret) {
-				errno = ret;
-				PERROR("pthread_join rotation thread");
-				retval = -1;
-			}
-		}
-		rotation_thread_handle_destroy(rotation_thread_handle);
-	}
-
 	if (timer_thread_launched) {
 		timer_exit();
 		ret = pthread_join(timer_thread, &status);
@@ -6125,15 +6104,18 @@ exit_init_data:
 		lttng_thread_put(ht_cleanup_thread);
 	}
 
+	rcu_thread_offline();
+	rcu_unregister_thread();
+
+	if (rotation_thread_handle) {
+		rotation_thread_handle_destroy(rotation_thread_handle);
+	}
+
 	/*
 	 * After the rotation and timer thread have quit, we can safely destroy
 	 * the rotation_timer_queue.
 	 */
 	rotation_thread_timer_queue_destroy(rotation_timer_queue);
-
-	rcu_thread_offline();
-	rcu_unregister_thread();
-
 	/*
 	 * The teardown of the notification system is performed after the
 	 * session daemon's teardown in order to allow it to be notified
