@@ -715,15 +715,6 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		struct rotation_thread_timer_queue *queue)
 {
 	int ret = 0;
-	int fd = lttng_pipe_get_readfd(queue->event_pipe);
-	char buf;
-
-	ret = lttng_read(fd, &buf, 1);
-	if (ret != 1) {
-		ERR("[rotation-thread] Failed to read from wakeup pipe (fd = %i)", fd);
-		ret = -1;
-		goto end;
-	}
 
 	for (;;) {
 		struct ltt_session *session;
@@ -977,23 +968,43 @@ void *thread_rotation(void *data)
 				goto error;
 			}
 
-			if (sessiond_check_thread_quit_pipe(fd, revents)) {
-				DBG("[rotation-thread] Quit pipe activity");
-				/* TODO flush the queue. */
-				goto exit;
-			} else if (fd == lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe)) {
+			if (fd == rotate_notification_channel->socket) {
+				ret = handle_notification_channel(fd, handle,
+						&thread);
+				if (ret) {
+					ERR("[rotation-thread] Error occurred while handling activity on notification channel socket");
+					goto error;
+				}
+			} else {
+				/* Job queue or quit pipe activity. */
+				if (fd == lttng_pipe_get_readfd(
+						handle->rotation_timer_queue->event_pipe)) {
+					char buf;
+
+					ret = lttng_read(fd, &buf, 1);
+					if (ret != 1) {
+						ERR("[rotation-thread] Failed to read from wakeup pipe (fd = %i)", fd);
+						ret = -1;
+						goto error;
+					}
+				}
+
+				/*
+				 * The job queue is serviced if there is
+				 * activity on the quit pipe to ensure it is
+				 * flushed and all references held in the queue
+				 * are released.
+				 */
 				ret = handle_job_queue(handle, &thread,
 						handle->rotation_timer_queue);
 				if (ret) {
 					ERR("[rotation-thread] Failed to handle rotation timer pipe event");
 					goto error;
 				}
-			} else if (fd == rotate_notification_channel->socket) {
-				ret = handle_notification_channel(fd, handle,
-						&thread);
-				if (ret) {
-					ERR("[rotation-thread] Error occurred while handling activity on notification channel socket");
-					goto error;
+
+				if (sessiond_check_thread_quit_pipe(fd, revents)) {
+					DBG("[rotation-thread] Quit pipe activity");
+					goto exit;
 				}
 			}
 		}
