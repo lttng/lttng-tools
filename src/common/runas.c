@@ -240,6 +240,7 @@ int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	return ret_value->u.rmdir_recursive.ret;
 }
 
+#ifdef HAVE_ELF_H
 static
 int _extract_elf_symbol_offset(struct run_as_data *data,
 		struct run_as_ret *ret_value)
@@ -298,6 +299,23 @@ free_offset:
 end:
 	return ret;
 }
+#else
+static
+int _extract_elf_symbol_offset(struct run_as_data *data,
+		struct run_as_ret *ret_value)
+{
+	ERR("Unimplemented runas command RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET");
+	return -1;
+}
+
+static
+int _extract_sdt_probe_offsets(struct run_as_data *data,
+		struct run_as_ret *ret_value)
+{
+	ERR("Unimplemented runas command RUN_AS_EXTRACT_SDT_PROBE_OFFSETS");
+	return -1;
+}
+#endif
 
 static
 run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
