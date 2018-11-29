@@ -441,8 +441,14 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	struct cmsghdr *cmsg;
 	size_t sizeof_fds = nb_fd * sizeof(int);
 
-	/* Account for the struct ucred cmsg in the buffer size */
-	char recv_buf[CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred))];
+#ifdef __linux__
+/* Account for the struct ucred cmsg in the buffer size */
+#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred))
+#else
+#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds)
+#endif /* __linux__ */
+
+	char recv_buf[LTTNG_SOCK_RECV_FDS_BUF_SIZE];
 	struct msghdr msg;
 	char dummy;
 
@@ -512,6 +518,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 			ret = sizeof_fds;
 			goto end;
 		}
+#ifdef __linux__
 		if (cmsg->cmsg_type == SCM_CREDENTIALS) {
 			/*
 			 * Expect credentials to be sent when expecting fds even
@@ -520,6 +527,7 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 			 */
 			ret = -1;
 		}
+#endif /* __linux__ */
 	}
 end:
 	return ret;

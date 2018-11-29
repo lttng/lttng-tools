@@ -17,7 +17,7 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h \
                        pipe.c pipe.h readwrite.c readwrite.h \
                        mi-lttng.h mi-lttng.c \
                        daemonize.c daemonize.h \
-                       unix.h \
+                       unix.c unix.h \
                        filter.c filter.h context.c context.h \
                        action.c notify.c condition.c buffer-usage.c \
                        session-consumed-size.c \
@@ -37,12 +37,6 @@ if BUILD_LIB_RUNAS
 libcommon_la_SOURCES += runas.c lttng-elf.h lttng-elf.c
 else
 libcommon_la_SOURCES += runas-stub.c
-endif
-
-if BUILD_LIB_UNIX
-libcommon_la_SOURCES += unix.c
-else
-libcommon_la_SOURCES += unix-stub.c
 endif
 
 if BUILD_LIB_COMPAT
