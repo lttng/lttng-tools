@@ -56,13 +56,13 @@
 	do {					\
 		switch (sizeof(x)) {		\
 		case 8:				\
-			x = be64toh(x);		\
+			x = be64toh((uint64_t)x);		\
 			break;			\
 		case 4:				\
-			x = be32toh(x);		\
+			x = be32toh((uint32_t)x);		\
 			break;			\
 		case 2:				\
-			x = be16toh(x);		\
+			x = be16toh((uint16_t)x);		\
 			break;			\
 		case 1:				\
 			break;			\
