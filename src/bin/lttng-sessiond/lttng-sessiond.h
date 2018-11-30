@@ -31,6 +31,40 @@
 #include "notification-thread.h"
 #include "sessiond-config.h"
 
+/*
+ * Consumer daemon state which is changed when spawning it, killing it or in
+ * case of a fatal error.
+ */
+enum consumerd_state {
+	CONSUMER_STARTED = 1,
+	CONSUMER_STOPPED = 2,
+	CONSUMER_ERROR   = 3,
+};
+
+/*
+ * This consumer daemon state is used to validate if a client command will be
+ * able to reach the consumer. If not, the client is informed. For instance,
+ * doing a "lttng start" when the consumer state is set to ERROR will return an
+ * error to the client.
+ *
+ * The following example shows a possible race condition of this scheme:
+ *
+ * consumer thread error happens
+ *                                    client cmd arrives
+ *                                    client cmd checks state -> still OK
+ * consumer thread exit, sets error
+ *                                    client cmd try to talk to consumer
+ *                                    ...
+ *
+ * However, since the consumer is a different daemon, we have no way of making
+ * sure the command will reach it safely even with this state flag. This is why
+ * we consider that up to the state validation during command processing, the
+ * command is safe. After that, we can not guarantee the correctness of the
+ * client request vis-a-vis the consumer.
+ */
+extern enum consumerd_state ust_consumerd_state;
+extern enum consumerd_state kernel_consumerd_state;
+
 extern const char default_home_dir[],
 	default_tracing_group[],
 	default_ust_sock_dir[],
@@ -38,6 +72,8 @@ extern const char default_home_dir[],
 
 /* Set in main.c at boot time of the daemon */
 extern int kernel_tracer_fd;
+extern struct lttng_kernel_tracer_version kernel_tracer_version;
+extern struct lttng_kernel_tracer_abi_version kernel_tracer_abi_version;
 
 /* Notification thread handle. */
 extern struct notification_thread_handle *notification_thread_handle;
@@ -126,6 +162,11 @@ extern pid_t ppid;
 /* Internal parent PID use with daemonize. */
 extern pid_t child_ppid;
 
+/* Consumer daemon specific control data. */
+extern struct consumer_data ustconsumer32_data;
+extern struct consumer_data ustconsumer64_data;
+extern struct consumer_data kconsumer_data;
+
 int sessiond_init_thread_quit_pipe(void);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
 int sessiond_wait_for_quit_pipe(unsigned int timeout_us);
@@ -138,5 +179,7 @@ void sessiond_signal_parents(void);
 
 void sessiond_set_client_thread_state(bool running);
 void sessiond_wait_client_thread_stopped(void);
+
+void *thread_manage_consumer(void *data);
 
 #endif /* _LTT_SESSIOND_H */

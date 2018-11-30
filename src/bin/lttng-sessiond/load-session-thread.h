@@ -22,15 +22,6 @@
 
 /* Data passed to the thread. */
 struct load_session_thread_data {
-	/* Flag if the sem_init() has been done successfully on the sem. */
-	unsigned int sem_initialized:1;
-
-	/*
-	 * The load session thread waits on that semaphore which the client thread
-	 * will do a sem_post() to unblock it.
-	 */
-	sem_t message_thread_ready;
-
 	/* Path where the sessions are located. */
 	const char *path;
 };
