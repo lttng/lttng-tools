@@ -47,7 +47,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        thread.c thread.h \
                        health.c \
                        client.c client.h \
-                       dispatch.c dispatch.h
+                       dispatch.c dispatch.h \
+                       register.c register.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
