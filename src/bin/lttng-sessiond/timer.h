@@ -20,6 +20,7 @@
 #define SESSIOND_TIMER_H
 
 #include <pthread.h>
+#include <stdbool.h>
 
 #include "session.h"
 
@@ -28,9 +29,6 @@ struct timer_thread_parameters {
 };
 
 int timer_signal_init(void);
-void *timer_thread_func(void *data);
-
-void timer_exit(void);
 
 /* Start a session's rotation pending check timer (one-shot mode). */
 int timer_session_rotation_pending_check_start(struct ltt_session *session,
@@ -43,5 +41,8 @@ int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 		unsigned int interval_us);
 /* Stop a session's rotation schedule timer. */
 int timer_session_rotation_schedule_timer_stop(struct ltt_session *session);
+
+bool launch_timer_thread(
+		struct timer_thread_parameters *timer_thread_parameters);
 
 #endif /* SESSIOND_TIMER_H */

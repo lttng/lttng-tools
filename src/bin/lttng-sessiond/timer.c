@@ -24,6 +24,7 @@
 #include "timer.h"
 #include "health-sessiond.h"
 #include "rotation-thread.h"
+#include "thread.h"
 
 #define LTTNG_SESSIOND_SIG_QS				SIGRTMIN + 10
 #define LTTNG_SESSIOND_SIG_EXIT				SIGRTMIN + 11
@@ -344,7 +345,8 @@ int timer_signal_init(void)
 /*
  * This thread is the sighandler for the timer signals.
  */
-void *timer_thread_func(void *data)
+static
+void *thread_timer(void *data)
 {
 	int signr;
 	sigset_t mask;
@@ -414,7 +416,27 @@ end:
 	return NULL;
 }
 
-void timer_exit(void)
+static
+bool shutdown_timer_thread(void *data)
 {
-	kill(getpid(), LTTNG_SESSIOND_SIG_EXIT);
+	return kill(getpid(), LTTNG_SESSIOND_SIG_EXIT) == 0;
+}
+
+bool launch_timer_thread(
+		struct timer_thread_parameters *timer_thread_parameters)
+{
+	struct lttng_thread *thread;
+
+	thread = lttng_thread_create("Timer",
+			thread_timer,
+			shutdown_timer_thread,
+			NULL,
+			timer_thread_parameters);
+	if (!thread) {
+		goto error;
+	}
+	lttng_thread_put(thread);
+	return true;
+error:
+	return false;
 }
