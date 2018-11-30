@@ -30,15 +30,6 @@ void load_session_destroy_data(struct load_session_thread_data *data)
 	if (!data) {
 		return;
 	}
-
-	if (data->sem_initialized) {
-		int ret;
-
-		ret = sem_destroy(&data->message_thread_ready);
-		if (ret) {
-			PERROR("sem_destroy message_thread_ready");
-		}
-	}
 }
 
 /*
@@ -50,7 +41,6 @@ void load_session_destroy_data(struct load_session_thread_data *data)
  */
 int load_session_init_data(struct load_session_thread_data **data)
 {
-	int ret;
 	struct load_session_thread_data *_data = NULL;
 
 	assert(data);
@@ -64,12 +54,6 @@ int load_session_init_data(struct load_session_thread_data **data)
 		PERROR("zmalloc load session info");
 		goto error;
 	}
-	ret = sem_init(&_data->message_thread_ready, 0, 0);
-	if (ret) {
-		PERROR("sem_init message_thread_ready");
-		goto error;
-	}
-	_data->sem_initialized = 1;
 
 	*data = _data;
 	return 0;
@@ -90,19 +74,12 @@ void *thread_load_session(void *data)
 
 	DBG("[load-session-thread] Load session");
 
-	ret = sem_wait(&info->message_thread_ready);
-	if (ret) {
-		PERROR("sem_wait message_thread_ready");
-		goto end;
-	}
-
 	/* Override existing session and autoload also. */
 	ret = config_load_session(info->path, NULL, 1, 1, NULL);
 	if (ret) {
 		ERR("Session load failed: %s", error_get_str(ret));
 	}
 
-end:
 	sessiond_signal_parents();
 	return NULL;
 }

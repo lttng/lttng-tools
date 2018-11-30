@@ -31,19 +31,6 @@
 static int thread_quit_pipe[2] = { -1, -1 };
 
 /*
- * Allows threads to query the state of the client thread.
- */
-static struct client_thread_state {
-	pthread_cond_t cond;
-	pthread_mutex_t lock;
-	bool is_running;
-} client_thread_state = {
-	.cond = PTHREAD_COND_INITIALIZER,
-	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.is_running = false
-};
-
-/*
  * Init thread quit pipe.
  *
  * Return -1 on error or 0 if all pipes are created.
@@ -134,24 +121,6 @@ int sessiond_notify_quit_pipe(void)
 void sessiond_close_quit_pipe(void)
 {
 	utils_close_pipe(thread_quit_pipe);
-}
-
-void sessiond_set_client_thread_state(bool running)
-{
-	pthread_mutex_lock(&client_thread_state.lock);
-	client_thread_state.is_running = running;
-	pthread_cond_broadcast(&client_thread_state.cond);
-	pthread_mutex_unlock(&client_thread_state.lock);
-}
-
-void sessiond_wait_client_thread_stopped(void)
-{
-	pthread_mutex_lock(&client_thread_state.lock);
-	while (client_thread_state.is_running) {
-		pthread_cond_wait(&client_thread_state.cond,
-				&client_thread_state.lock);
-	}
-	pthread_mutex_unlock(&client_thread_state.lock);
 }
 
 static
