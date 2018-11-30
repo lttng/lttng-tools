@@ -24,6 +24,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="high-throughput"
+CHANNEL_NAME="chan1"
 EVENT_NAME="tp:tptest"
 NETWORK_URI="net://localhost"
 SESSIOND_CTRL_PORT=5342
@@ -32,7 +33,7 @@ DEFAULT_IF="lo"
 APPS_PID=
 
 
-NUM_TESTS=104
+NUM_TESTS=119
 
 source $TESTDIR/utils/utils.sh
 
@@ -204,6 +205,38 @@ function test_low_bandwidth_link
 	done
 }
 
+function test_low_data_socket_bandwidth_snapshot
+{
+	bw_limit=1000
+	bw_dataportlimit=1
+	bw_ctrlportlimit=$((${bw_limit}-${bw_dataportlimit}))
+
+	TRACE_PATH=$(mktemp -d)
+	diag "Test data port with bandwidth limit set to ${bw_dataportlimit}kbps"
+
+	set_bw_limit_per_relayd_port $bw_limit $bw_ctrlportlimit $bw_dataportlimit
+
+	start_lttng_sessiond
+	start_lttng_relayd "-o $TRACE_PATH"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	run_apps 1 10000
+	lttng_snapshot_add_output_ok $SESSION_NAME $NETWORK_URI
+	lttng_snapshot_record $SESSION_NAME
+
+	# Validate that the trace is readable
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+	stop_test_apps
+	stop_lttng_relayd
+	stop_lttng_sessiond
+	reset_bw_limit
+	rm -rf "$TRACE_PATH"
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -220,5 +253,6 @@ skip $isroot "Root access is needed to set bandwith limits. Skipping all tests."
 	trap interrupt_cleanup SIGTERM
 	trap interrupt_cleanup SIGINT
 
+	test_low_data_socket_bandwidth_snapshot
 	test_low_bandwidth_link
 }
