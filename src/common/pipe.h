@@ -51,7 +51,7 @@ struct lttng_pipe {
 /*
  * Return 1 if read side is open else 0.
  */
-static inline int lttng_pipe_is_read_open(struct lttng_pipe *pipe)
+static inline int lttng_pipe_is_read_open(const struct lttng_pipe *pipe)
 {
 	return pipe->r_state == LTTNG_PIPE_STATE_OPENED ? 1 : 0;
 }
@@ -59,17 +59,17 @@ static inline int lttng_pipe_is_read_open(struct lttng_pipe *pipe)
 /*
  * Return 1 if write side is open else 0.
  */
-static inline int lttng_pipe_is_write_open(struct lttng_pipe *pipe)
+static inline int lttng_pipe_is_write_open(const struct lttng_pipe *pipe)
 {
 	return pipe->w_state == LTTNG_PIPE_STATE_OPENED ? 1 : 0;
 }
 
-static inline int lttng_pipe_get_readfd(struct lttng_pipe *pipe)
+static inline int lttng_pipe_get_readfd(const struct lttng_pipe *pipe)
 {
 	return pipe->fd[0];
 }
 
-static inline int lttng_pipe_get_writefd(struct lttng_pipe *pipe)
+static inline int lttng_pipe_get_writefd(const struct lttng_pipe *pipe)
 {
 	return pipe->fd[1];
 }
