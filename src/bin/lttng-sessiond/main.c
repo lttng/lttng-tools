@@ -85,6 +85,7 @@
 #include "client.h"
 #include "dispatch.h"
 #include "register.h"
+#include "manage-apps.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -143,7 +144,6 @@ static const char *config_ignore_options[] = { "help", "version", "config" };
 static int apps_cmd_pipe[2] = { -1, -1 };
 
 /* Pthread, Mutexes and Semaphores */
-static pthread_t apps_thread;
 static pthread_t apps_notify_thread;
 static pthread_t kernel_thread;
 static pthread_t agent_reg_thread;
@@ -298,6 +298,8 @@ static void sessiond_cleanup(void)
 	if (ret < 0) {
 		PERROR("remove pidfile %s", config.pid_file_path.value);
 	}
+
+	utils_close_pipe(apps_cmd_pipe);
 
 	DBG("Removing sessiond and consumerd content of directory %s",
 		config.rundir.value);
@@ -1047,177 +1049,6 @@ error_poll:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 
-	return NULL;
-}
-
-/*
- * This thread receives application command sockets (FDs) on the
- * apps_cmd_pipe and waits (polls) on them until they are closed
- * or an error occurs.
- *
- * At that point, it flushes the data (tracing and metadata) associated
- * with this application and tears down ust app sessions and other
- * associated data structures through ust_app_unregister().
- *
- * Note that this thread never sends commands to the applications
- * through the command sockets; it merely listens for hang-ups
- * and errors on those sockets and cleans-up as they occur.
- */
-static void *thread_manage_apps(void *data)
-{
-	int i, ret, pollfd, err = -1;
-	ssize_t size_ret;
-	uint32_t revents, nb_fd;
-	struct lttng_poll_event events;
-
-	DBG("[thread] Manage application started");
-
-	rcu_register_thread();
-	rcu_thread_online();
-
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
-
-	if (testpoint(sessiond_thread_manage_apps)) {
-		goto error_testpoint;
-	}
-
-	health_code_update();
-
-	ret = sessiond_set_thread_pollset(&events, 2);
-	if (ret < 0) {
-		goto error_poll_create;
-	}
-
-	ret = lttng_poll_add(&events, apps_cmd_pipe[0], LPOLLIN | LPOLLRDHUP);
-	if (ret < 0) {
-		goto error;
-	}
-
-	if (testpoint(sessiond_thread_manage_apps_before_loop)) {
-		goto error;
-	}
-
-	health_code_update();
-
-	while (1) {
-		DBG("Apps thread polling");
-
-		/* Inifinite blocking call, waiting for transmission */
-	restart:
-		health_poll_entry();
-		ret = lttng_poll_wait(&events, -1);
-		DBG("Apps thread return from poll on %d fds",
-				LTTNG_POLL_GETNB(&events));
-		health_poll_exit();
-		if (ret < 0) {
-			/*
-			 * Restart interrupted system call.
-			 */
-			if (errno == EINTR) {
-				goto restart;
-			}
-			goto error;
-		}
-
-		nb_fd = ret;
-
-		for (i = 0; i < nb_fd; i++) {
-			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
-
-			health_code_update();
-
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
-
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
-				err = 0;
-				goto exit;
-			}
-
-			/* Inspect the apps cmd pipe */
-			if (pollfd == apps_cmd_pipe[0]) {
-				if (revents & LPOLLIN) {
-					int sock;
-
-					/* Empty pipe */
-					size_ret = lttng_read(apps_cmd_pipe[0], &sock, sizeof(sock));
-					if (size_ret < sizeof(sock)) {
-						PERROR("read apps cmd pipe");
-						goto error;
-					}
-
-					health_code_update();
-
-					/*
-					 * Since this is a command socket (write then read),
-					 * we only monitor the error events of the socket.
-					 */
-					ret = lttng_poll_add(&events, sock,
-							LPOLLERR | LPOLLHUP | LPOLLRDHUP);
-					if (ret < 0) {
-						goto error;
-					}
-
-					DBG("Apps with sock %d added to poll set", sock);
-				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Apps command pipe error");
-					goto error;
-				} else {
-					ERR("Unknown poll events %u for sock %d", revents, pollfd);
-					goto error;
-				}
-			} else {
-				/*
-				 * At this point, we know that a registered application made
-				 * the event at poll_wait.
-				 */
-				if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					/* Removing from the poll set */
-					ret = lttng_poll_del(&events, pollfd);
-					if (ret < 0) {
-						goto error;
-					}
-
-					/* Socket closed on remote end. */
-					ust_app_unregister(pollfd);
-				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-					goto error;
-				}
-			}
-
-			health_code_update();
-		}
-	}
-
-exit:
-error:
-	lttng_poll_clean(&events);
-error_poll_create:
-error_testpoint:
-	utils_close_pipe(apps_cmd_pipe);
-	apps_cmd_pipe[0] = apps_cmd_pipe[1] = -1;
-
-	/*
-	 * We don't clean the UST app hash table here since already registered
-	 * applications can still be controlled so let them be until the session
-	 * daemon dies or the applications stop.
-	 */
-
-	if (err) {
-		health_error();
-		ERR("Health error occurred in %s", __func__);
-	}
-	health_unregister(health_sessiond);
-	DBG("Application communication apps thread cleanup complete");
-	rcu_thread_offline();
-	rcu_unregister_thread();
 	return NULL;
 }
 
@@ -2605,13 +2436,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application socket */
-	ret = pthread_create(&apps_thread, default_pthread_attr(),
-			thread_manage_apps, (void *) NULL);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create apps");
+	if (!launch_application_management_thread(apps_cmd_pipe[0])) {
 		retval = -1;
-		stop_threads();
 		goto exit_apps;
 	}
 
@@ -2715,13 +2541,6 @@ exit_agent_reg:
 		retval = -1;
 	}
 exit_apps_notify:
-
-	ret = pthread_join(apps_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join apps");
-		retval = -1;
-	}
 exit_apps:
 exit_reg_apps:
 exit_dispatch:
