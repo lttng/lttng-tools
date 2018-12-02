@@ -146,7 +146,6 @@ static int apps_cmd_notify_pipe[2] = { -1, -1 };
 
 /* Pthread, Mutexes and Semaphores */
 static pthread_t kernel_thread;
-static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
 
 /*
@@ -2447,14 +2446,9 @@ int main(int argc, char **argv)
 		goto exit_apps_notify;
 	}
 
-	/* Create agent registration thread. */
-	ret = pthread_create(&agent_reg_thread, default_pthread_attr(),
-			agent_thread_manage_registration, (void *) NULL);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create agent");
+	/* Create agent management thread. */
+	if (!launch_agent_management_thread()) {
 		retval = -1;
-		stop_threads();
 		goto exit_agent_reg;
 	}
 
@@ -2520,13 +2514,6 @@ exit_load_session:
 		}
 	}
 exit_kernel:
-
-	ret = pthread_join(agent_reg_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join agent");
-		retval = -1;
-	}
 exit_agent_reg:
 exit_apps_notify:
 exit_apps:
