@@ -454,7 +454,6 @@ error_tcp_socket:
 error_poll_create:
 	uatomic_set(&agent_tracing_enabled, 0);
 	DBG("[agent-thread] Cleaning up and stopping.");
-	lttng_pipe_destroy(quit_pipe);
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;
@@ -468,7 +467,14 @@ static bool shutdown_agent_management_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-bool launch_agent_registration_thread(void)
+static void cleanup_agent_management_thread(void *data)
+{
+	struct lttng_pipe *quit_pipe = data;
+
+	lttng_pipe_destroy(quit_pipe);
+}
+
+bool launch_agent_management_thread(void)
 {
 	struct lttng_pipe *quit_pipe;
 	struct lttng_thread *thread;
@@ -480,6 +486,7 @@ bool launch_agent_registration_thread(void)
 	thread = lttng_thread_create("Agent management",
 			thread_agent_management,
 			shutdown_agent_management_thread,
+			cleanup_agent_management_thread,
 			quit_pipe);
 	if (!thread) {
 		goto error;
@@ -488,6 +495,6 @@ bool launch_agent_registration_thread(void)
 	lttng_thread_put(thread);
 	return true;
 error:
-	lttng_pipe_destroy(quit_pipe);
+	cleanup_agent_management_thread(quit_pipe);
 	return false;
 }
