@@ -22,17 +22,17 @@
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void *agent_thread_manage_registration(void *data);
+bool launch_agent_management_thread(void);
 bool agent_tracing_is_enabled(void);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
-void *agent_thread_manage_registration(void *data)
+bool launch_agent_management_thread(void)
 {
-	sessiond_notify_ready();
-	return NULL;
+	return true;
 }
+
 static inline
 bool agent_tracing_is_enabled(void)
 {
