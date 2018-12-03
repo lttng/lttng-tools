@@ -30,7 +30,6 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        snapshot.c snapshot.h \
                        agent.c agent.h \
                        save.h save.c \
-                       load-session-thread.h load-session-thread.c \
                        lttng-syscall.h lttng-syscall.c \
                        notification-thread.h notification-thread.c \
                        notification-thread-internal.h \

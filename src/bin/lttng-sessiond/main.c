@@ -72,7 +72,6 @@
 #include "ust-thread.h"
 #include "agent-thread.h"
 #include "save.h"
-#include "load-session-thread.h"
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
 #include "rotation-thread.h"
@@ -145,9 +144,6 @@ static const char *config_ignore_options[] = { "help", "version", "config" };
 static int apps_cmd_pipe[2] = { -1, -1 };
 static int apps_cmd_notify_pipe[2] = { -1, -1 };
 
-/* Pthread, Mutexes and Semaphores */
-static pthread_t load_session_thread;
-
 /*
  * UST registration command queue. This queue is tied with a futex and uses a N
  * wakers / 1 waiter implemented and detailed in futex.c/.h
@@ -160,9 +156,6 @@ static pthread_t load_session_thread;
 static struct ust_cmd_queue ust_cmd_queue;
 
 static const char *module_proc_lttng = "/proc/lttng";
-
-/* Load session thread information to operate. */
-static struct load_session_thread_data *load_info;
 
 /*
  * Section name to look for in the daemon configuration file.
@@ -359,11 +352,6 @@ static void sessiond_cleanup(void)
 	}
 
 	close_consumer_sockets();
-
-	if (load_info) {
-		load_session_destroy_data(load_info);
-		free(load_info);
-	}
 
 	/*
 	 * We do NOT rmdir rundir because there are other processes
@@ -1737,7 +1725,6 @@ static void destroy_all_sessions_and_wait(void)
 int main(int argc, char **argv)
 {
 	int ret = 0, retval = 0;
-	void *status;
 	const char *env_app_timeout;
 	struct lttng_pipe *ust32_channel_monitor_pipe = NULL,
 			*ust64_channel_monitor_pipe = NULL,
@@ -2080,12 +2067,6 @@ int main(int argc, char **argv)
 	/* Initialize TCP timeout values */
 	lttcomm_inet_init();
 
-	if (load_session_init_data(&load_info) < 0) {
-		retval = -1;
-		goto exit_init_data;
-	}
-	load_info->path = config.load_session_path.value;
-
 	/* Create health-check thread. */
 	if (!launch_health_management_thread()) {
 		retval = -1;
@@ -2178,28 +2159,22 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* Create session loading thread. */
-	ret = pthread_create(&load_session_thread, default_pthread_attr(),
-			thread_load_session, load_info);
+	/* Load sessions. */
+	ret = config_load_session(config.load_session_path.value,
+			NULL, 1, 1, NULL);
 	if (ret) {
-		errno = ret;
-		PERROR("pthread_create load_session_thread");
+		ERR("Session load failed: %s", error_get_str(ret));
 		retval = -1;
-		stop_threads();
 		goto exit_load_session;
 	}
+
+	/* Initialization completed. */
+	sessiond_signal_parents();
 
 	/*
 	 * This is where we start awaiting program completion (e.g. through
 	 * signal that asks threads to teardown).
 	 */
-
-	ret = pthread_join(load_session_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join load_session_thread");
-		retval = -1;
-	}
 
 	/* Initiate teardown once activity occurs on the quit pipe. */
 	sessiond_wait_for_quit_pipe(-1U);

@@ -41,7 +41,6 @@ test_uri_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBHASHTABLE) $(DL_LIBS)
 
 # Sessiond objects
 SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/load-session-thread.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/cmd.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/save.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
