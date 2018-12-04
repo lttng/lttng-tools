@@ -1705,6 +1705,7 @@ static void destroy_all_sessions_and_wait(void)
 		if (session->destroyed) {
 			goto unlock_session;
 		}
+		(void) cmd_stop_trace(session);
 		(void) cmd_destroy_session(session,
 				notification_thread_handle);
 	unlock_session:
