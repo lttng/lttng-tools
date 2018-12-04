@@ -26,16 +26,25 @@
 #include "ust-thread.h"
 #include "health-sessiond.h"
 #include "testpoint.h"
+#include "utils.h"
+#include "thread.h"
+
+struct thread_notifiers {
+	struct lttng_pipe *quit_pipe;
+	int apps_cmd_notify_pipe_read_fd;
+};
 
 /*
  * This thread manage application notify communication.
  */
-void *ust_thread_manage_notify(void *data)
+static void *thread_application_notification(void *data)
 {
 	int i, ret, pollfd, err = -1;
 	ssize_t size_ret;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
+	struct thread_notifiers *notifiers = data;
+	const int quit_pipe_read_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 
 	DBG("[ust-thread] Manage application notify command");
 
@@ -51,14 +60,20 @@ void *ust_thread_manage_notify(void *data)
 
 	health_code_update();
 
-	ret = sessiond_set_thread_pollset(&events, 2);
+	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
 	if (ret < 0) {
 		goto error_poll_create;
 	}
 
 	/* Add notify pipe to the pollset. */
-	ret = lttng_poll_add(&events, apps_cmd_notify_pipe[0],
+	ret = lttng_poll_add(&events, notifiers->apps_cmd_notify_pipe_read_fd,
 			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+	if (ret < 0) {
+		goto error;
+	}
+
+	ret = lttng_poll_add(&events, quit_pipe_read_fd,
+			LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -100,19 +115,16 @@ restart:
 			}
 
 			/* Thread quit pipe has been closed. Killing thread. */
-			ret = sessiond_check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
+			if (pollfd == quit_pipe_read_fd) {
 				err = 0;
 				goto exit;
-			}
-
-			/* Inspect the apps cmd pipe */
-			if (pollfd == apps_cmd_notify_pipe[0]) {
+			} else if (pollfd == notifiers->apps_cmd_notify_pipe_read_fd) {
+				/* Inspect the apps cmd pipe */
 				int sock;
 
 				if (revents & LPOLLIN) {
 					/* Get socket from dispatch thread. */
-					size_ret = lttng_read(apps_cmd_notify_pipe[0],
+					size_ret = lttng_read(notifiers->apps_cmd_notify_pipe_read_fd,
 							&sock, sizeof(sock));
 					if (size_ret < sizeof(sock)) {
 						PERROR("read apps notify pipe");
@@ -182,8 +194,7 @@ error:
 	lttng_poll_clean(&events);
 error_poll_create:
 error_testpoint:
-	utils_close_pipe(apps_cmd_notify_pipe);
-	apps_cmd_notify_pipe[0] = apps_cmd_notify_pipe[1] = -1;
+
 	DBG("Application notify communication apps thread cleanup complete");
 	if (err) {
 		health_error();
@@ -193,4 +204,53 @@ error_testpoint:
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;
+}
+
+static bool shutdown_application_notification_thread(void *data)
+{
+	struct thread_notifiers *notifiers = data;
+	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
+
+	return notify_thread_pipe(write_fd) == 1;
+}
+
+static void cleanup_application_notification_thread(void *data)
+{
+	struct thread_notifiers *notifiers = data;
+
+	lttng_pipe_destroy(notifiers->quit_pipe);
+	free(notifiers);
+}
+
+bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
+{
+	struct lttng_thread *thread;
+	struct thread_notifiers *notifiers;
+	struct lttng_pipe *quit_pipe;
+
+	notifiers = zmalloc(sizeof(*notifiers));
+	if (!notifiers) {
+		goto error;
+	}
+	notifiers->apps_cmd_notify_pipe_read_fd = apps_cmd_notify_pipe_read_fd;
+
+	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
+	if (!quit_pipe) {
+		goto error;
+	}
+	notifiers->quit_pipe = quit_pipe;
+
+	thread = lttng_thread_create("Application notification",
+			thread_application_notification,
+			shutdown_application_notification_thread,
+			cleanup_application_notification_thread,
+			notifiers);
+	if (!thread) {
+		goto error;
+	}
+	lttng_thread_put(thread);
+	return true;
+error:
+	cleanup_application_notification_thread(notifiers);
+	return false;
 }
