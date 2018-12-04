@@ -34,7 +34,6 @@ int kernel_tracer_fd = -1;
 struct lttng_kernel_tracer_version kernel_tracer_version;
 struct lttng_kernel_tracer_abi_version kernel_tracer_abi_version;
 
-int apps_cmd_notify_pipe[2] = { -1, -1 };
 int kernel_poll_pipe[2] = { -1, -1 };
 
 pid_t ppid;

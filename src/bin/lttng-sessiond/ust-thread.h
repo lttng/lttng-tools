@@ -20,13 +20,13 @@
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
-void *ust_thread_manage_notify(void *data);
+bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
-void *ust_thread_manage_notify(void *data)
+bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 {
-	return NULL;
+	return true;
 }
 
 #endif /* HAVE_LIBLTTNG_UST_CTL */

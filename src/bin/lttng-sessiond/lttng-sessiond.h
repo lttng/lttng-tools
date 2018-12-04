@@ -126,12 +126,6 @@ struct ust_reg_wait_node {
 };
 
 /*
- * This pipe is used to inform the thread managing application notify
- * communication that a command is queued and ready to be processed.
- */
-extern int apps_cmd_notify_pipe[2];
-
-/*
  * Used to notify that a hash table needs to be destroyed by dedicated
  * thread. Required by design because we don't want to move destroy
  * paths outside of large RCU read-side lock paths, and destroy cannot

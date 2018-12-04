@@ -142,9 +142,9 @@ static const char *config_ignore_options[] = { "help", "version", "config" };
  * that a command is queued and ready to be processed.
  */
 static int apps_cmd_pipe[2] = { -1, -1 };
+static int apps_cmd_notify_pipe[2] = { -1, -1 };
 
 /* Pthread, Mutexes and Semaphores */
-static pthread_t apps_notify_thread;
 static pthread_t kernel_thread;
 static pthread_t agent_reg_thread;
 static pthread_t load_session_thread;
@@ -293,13 +293,13 @@ static void sessiond_cleanup(void)
 	 * since we are now called.
 	 */
 	sessiond_close_quit_pipe();
+	utils_close_pipe(apps_cmd_pipe);
+	utils_close_pipe(apps_cmd_notify_pipe);
 
 	ret = remove(config.pid_file_path.value);
 	if (ret < 0) {
 		PERROR("remove pidfile %s", config.pid_file_path.value);
 	}
-
-	utils_close_pipe(apps_cmd_pipe);
 
 	DBG("Removing sessiond and consumerd content of directory %s",
 		config.rundir.value);
@@ -2442,13 +2442,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application notify socket */
-	ret = pthread_create(&apps_notify_thread, default_pthread_attr(),
-			ust_thread_manage_notify, (void *) NULL);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create notify");
+	if (!launch_application_notification_thread(apps_cmd_notify_pipe[0])) {
 		retval = -1;
-		stop_threads();
 		goto exit_apps_notify;
 	}
 
@@ -2533,13 +2528,6 @@ exit_kernel:
 		retval = -1;
 	}
 exit_agent_reg:
-
-	ret = pthread_join(apps_notify_thread, &status);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_join apps notify");
-		retval = -1;
-	}
 exit_apps_notify:
 exit_apps:
 exit_reg_apps:
