@@ -33,6 +33,11 @@
 #include "utils.h"
 #include "thread.h"
 
+struct thread_notifiers {
+	struct lttng_pipe *quit_pipe;
+	sem_t ready;
+};
+
 static int agent_tracing_enabled = -1;
 
 /*
@@ -293,6 +298,21 @@ static int write_agent_port(uint16_t port)
 			config.agent_port_file_path.value);
 }
 
+static
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Marking agent management thread as ready");
+	sem_post(&notifiers->ready);
+}
+
+static
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Waiting for agent management thread to be ready");
+	sem_wait(&notifiers->ready);
+	DBG("Agent management thread is ready");
+}
+
 /*
  * This thread manage application notify communication.
  */
@@ -302,8 +322,9 @@ static void *thread_agent_management(void *data)
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_sock *reg_sock;
-	struct lttng_pipe *quit_pipe = data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(quit_pipe);
+	struct thread_notifiers *notifiers = data;
+	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
+			notifiers->quit_pipe);
 
 	DBG("[agent-thread] Manage agent application registration.");
 
@@ -335,12 +356,12 @@ static void *thread_agent_management(void *data)
 		if (ret) {
 			ERR("[agent-thread] Failed to create agent port file: agent tracing will be unavailable");
 			/* Don't prevent the launch of the sessiond on error. */
-			sessiond_notify_ready();
+			mark_thread_as_ready(notifiers);
 			goto error;
 		}
 	} else {
 		/* Don't prevent the launch of the sessiond on error. */
-		sessiond_notify_ready();
+		mark_thread_as_ready(notifiers);
 		goto error_tcp_socket;
 	}
 
@@ -349,7 +370,7 @@ static void *thread_agent_management(void *data)
 	 * may start to query whether or not agent tracing is enabled.
 	 */
 	uatomic_set(&agent_tracing_enabled, 1);
-	sessiond_notify_ready();
+	mark_thread_as_ready(notifiers);
 
 	/* Add TCP socket to poll set. */
 	ret = lttng_poll_add(&events, reg_sock->fd,
@@ -461,40 +482,48 @@ error_poll_create:
 
 static bool shutdown_agent_management_thread(void *data)
 {
-	struct lttng_pipe *quit_pipe = data;
-	const int write_fd = lttng_pipe_get_writefd(quit_pipe);
+	struct thread_notifiers *notifiers = data;
+	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
 
 static void cleanup_agent_management_thread(void *data)
 {
-	struct lttng_pipe *quit_pipe = data;
+	struct thread_notifiers *notifiers = data;
 
-	lttng_pipe_destroy(quit_pipe);
+	lttng_pipe_destroy(notifiers->quit_pipe);
+	sem_destroy(&notifiers->ready);
+	free(notifiers);
 }
 
 bool launch_agent_management_thread(void)
 {
-	struct lttng_pipe *quit_pipe;
+	struct thread_notifiers *notifiers;
 	struct lttng_thread *thread;
 
-	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
-	if (!quit_pipe) {
+	notifiers = zmalloc(sizeof(*notifiers));
+	if (!notifiers) {
+		goto error;
+	}
+
+	sem_init(&notifiers->ready, 0, 0);
+	notifiers->quit_pipe = lttng_pipe_open(FD_CLOEXEC);
+	if (!notifiers->quit_pipe) {
 		goto error;
 	}
 	thread = lttng_thread_create("Agent management",
 			thread_agent_management,
 			shutdown_agent_management_thread,
 			cleanup_agent_management_thread,
-			quit_pipe);
+			notifiers);
 	if (!thread) {
 		goto error;
 	}
-
+	wait_until_thread_is_ready(notifiers);
 	lttng_thread_put(thread);
 	return true;
 error:
-	cleanup_agent_management_thread(quit_pipe);
+	cleanup_agent_management_thread(notifiers);
 	return false;
 }

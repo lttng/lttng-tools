@@ -39,7 +39,6 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        rotate.h rotate.c \
                        rotation-thread.h rotation-thread.c \
                        timer.c timer.h \
-                       ready.c \
                        globals.c \
                        thread-utils.c \
                        process-utils.c \
