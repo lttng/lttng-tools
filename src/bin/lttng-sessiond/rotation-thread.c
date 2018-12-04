@@ -950,9 +950,6 @@ void *thread_rotation(void *data)
 		goto error;
 	}
 
-	/* Ready to handle client connections. */
-	sessiond_notify_ready();
-
 	while (true) {
 		int fd_count, i;
 

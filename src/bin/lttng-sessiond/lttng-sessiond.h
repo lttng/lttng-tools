@@ -147,8 +147,6 @@ extern struct health_app *health_sessiond;
 
 extern struct sessiond_config config;
 
-extern int lttng_sessiond_ready;
-
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
 
 /* Parent PID for --sig-parent option */
@@ -168,7 +166,6 @@ int sessiond_notify_quit_pipe(void);
 void sessiond_close_quit_pipe(void);
 
 int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size);
-void sessiond_notify_ready(void);
 void sessiond_signal_parents(void);
 
 void sessiond_set_client_thread_state(bool running);

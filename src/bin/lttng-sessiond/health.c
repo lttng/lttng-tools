@@ -27,17 +27,39 @@
 #include "utils.h"
 #include "thread.h"
 
-static void cleanup_health_management_thread(void *thread_data)
-{
-	struct lttng_pipe *quit_pipe = thread_data;
+struct thread_notifiers {
+	struct lttng_pipe *quit_pipe;
+	sem_t ready;
+};
 
-	lttng_pipe_destroy(quit_pipe);
+static
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Marking health management thread as ready");
+	sem_post(&notifiers->ready);
+}
+
+static
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Waiting for health management thread to be ready");
+	sem_wait(&notifiers->ready);
+	DBG("Health management thread is ready");
+}
+
+static void cleanup_health_management_thread(void *data)
+{
+	struct thread_notifiers *notifiers = data;
+
+	lttng_pipe_destroy(notifiers->quit_pipe);
+	sem_destroy(&notifiers->ready);
+	free(notifiers);
 }
 
 /*
  * Thread managing health check socket.
  */
-static void *thread_manage_health(void *thread_data)
+static void *thread_manage_health(void *data)
 {
 	const bool is_root = (getuid() == 0);
 	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
@@ -46,8 +68,9 @@ static void *thread_manage_health(void *thread_data)
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
 	/* Thread-specific quit pipe. */
-	struct lttng_pipe *quit_pipe = thread_data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(quit_pipe);
+	struct thread_notifiers *notifiers = data;
+	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
+			notifiers->quit_pipe);
 
 	DBG("[thread] Manage health check started");
 
@@ -111,8 +134,7 @@ static void *thread_manage_health(void *thread_data)
 		goto error;
 	}
 
-	sessiond_notify_ready();
-
+	mark_thread_as_ready(notifiers);
 	while (1) {
 		DBG("Health check ready");
 
@@ -228,44 +250,42 @@ error:
 	return NULL;
 }
 
-static bool shutdown_health_management_thread(void *thread_data)
+static bool shutdown_health_management_thread(void *data)
 {
-	int ret;
-	int pipe_write_fd;
-	struct lttng_pipe *health_quit_pipe = thread_data;
+	struct thread_notifiers *notifiers = data;
+	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
 
-	pipe_write_fd = lttng_pipe_get_writefd(health_quit_pipe);
-	ret = notify_thread_pipe(pipe_write_fd);
-	if (ret < 0) {
-		ERR("Failed to notify Health management thread's quit pipe");
-		goto error;
-	}
-	return true;
-error:
-	return false;
+	return notify_thread_pipe(write_fd) == 1;
 }
 
 bool launch_health_management_thread(void)
 {
+	struct thread_notifiers *notifiers;
 	struct lttng_thread *thread;
-	struct lttng_pipe *health_quit_pipe = NULL;
 
-	health_quit_pipe = lttng_pipe_open(FD_CLOEXEC);
-	if (!health_quit_pipe) {
+	notifiers = zmalloc(sizeof(*notifiers));
+	if (!notifiers) {
 		goto error;
 	}
 
+	sem_init(&notifiers->ready, 0, 0);
+	notifiers->quit_pipe = lttng_pipe_open(FD_CLOEXEC);
+	if (!notifiers->quit_pipe) {
+		goto error;
+	}
 	thread = lttng_thread_create("Health management",
 			thread_manage_health,
 			shutdown_health_management_thread,
 			cleanup_health_management_thread,
-			health_quit_pipe);
+			notifiers);
 	if (!thread) {
 		goto error;
 	}
+
+	wait_until_thread_is_ready(notifiers);
 	lttng_thread_put(thread);
 	return true;
 error:
-	cleanup_health_management_thread(health_quit_pipe);
+	cleanup_health_management_thread(notifiers);
 	return false;
 }
