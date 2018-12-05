@@ -48,8 +48,6 @@ struct consumer_data kconsumer_data = {
 	.channel_monitor_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.cond = PTHREAD_COND_INITIALIZER,
-	.cond_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
 struct consumer_data ustconsumer64_data = {
@@ -59,8 +57,6 @@ struct consumer_data ustconsumer64_data = {
 	.channel_monitor_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.cond = PTHREAD_COND_INITIALIZER,
-	.cond_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
 struct consumer_data ustconsumer32_data = {
@@ -70,8 +66,6 @@ struct consumer_data ustconsumer32_data = {
 	.channel_monitor_pipe = -1,
 	.pid_mutex = PTHREAD_MUTEX_INITIALIZER,
 	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.cond = PTHREAD_COND_INITIALIZER,
-	.cond_mutex = PTHREAD_MUTEX_INITIALIZER,
 };
 
 enum consumerd_state ust_consumerd_state;
