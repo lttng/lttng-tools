@@ -35,6 +35,7 @@
 #include "health-sessiond.h"
 #include "testpoint.h"
 #include "utils.h"
+#include "manage-consumer.h"
 
 static bool is_root;
 
@@ -116,133 +117,11 @@ end:
 
 /*
  * Start the thread_manage_consumer. This must be done after a lttng-consumerd
- * exec or it will fails.
+ * exec or it will fail.
  */
 static int spawn_consumer_thread(struct consumer_data *consumer_data)
 {
-	int ret, clock_ret;
-	struct timespec timeout;
-
-	/*
-	 * Make sure we set the readiness flag to 0 because we are NOT ready.
-	 * This access to consumer_thread_is_ready does not need to be
-	 * protected by consumer_data.cond_mutex (yet) since the consumer
-	 * management thread has not been started at this point.
-	 */
-	consumer_data->consumer_thread_is_ready = 0;
-
-	/* Setup pthread condition */
-	ret = pthread_condattr_init(&consumer_data->condattr);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_condattr_init consumer data");
-		goto error;
-	}
-
-	/*
-	 * Set the monotonic clock in order to make sure we DO NOT jump in time
-	 * between the clock_gettime() call and the timedwait call. See bug #324
-	 * for a more details and how we noticed it.
-	 */
-	ret = pthread_condattr_setclock(&consumer_data->condattr, CLOCK_MONOTONIC);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_condattr_setclock consumer data");
-		goto error;
-	}
-
-	ret = pthread_cond_init(&consumer_data->cond, &consumer_data->condattr);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_cond_init consumer data");
-		goto error;
-	}
-
-	ret = pthread_create(&consumer_data->thread, default_pthread_attr(),
-			thread_manage_consumer, consumer_data);
-	if (ret) {
-		errno = ret;
-		PERROR("pthread_create consumer");
-		ret = -1;
-		goto error;
-	}
-
-	/* We are about to wait on a pthread condition */
-	pthread_mutex_lock(&consumer_data->cond_mutex);
-
-	/* Get time for sem_timedwait absolute timeout */
-	clock_ret = lttng_clock_gettime(CLOCK_MONOTONIC, &timeout);
-	/*
-	 * Set the timeout for the condition timed wait even if the clock gettime
-	 * call fails since we might loop on that call and we want to avoid to
-	 * increment the timeout too many times.
-	 */
-	timeout.tv_sec += DEFAULT_SEM_WAIT_TIMEOUT;
-
-	/*
-	 * The following loop COULD be skipped in some conditions so this is why we
-	 * set ret to 0 in order to make sure at least one round of the loop is
-	 * done.
-	 */
-	ret = 0;
-
-	/*
-	 * Loop until the condition is reached or when a timeout is reached. Note
-	 * that the pthread_cond_timedwait(P) man page specifies that EINTR can NOT
-	 * be returned but the pthread_cond(3), from the glibc-doc, says that it is
-	 * possible. This loop does not take any chances and works with both of
-	 * them.
-	 */
-	while (!consumer_data->consumer_thread_is_ready && ret != ETIMEDOUT) {
-		if (clock_ret < 0) {
-			PERROR("clock_gettime spawn consumer");
-			/* Infinite wait for the consumerd thread to be ready */
-			ret = pthread_cond_wait(&consumer_data->cond,
-					&consumer_data->cond_mutex);
-		} else {
-			ret = pthread_cond_timedwait(&consumer_data->cond,
-					&consumer_data->cond_mutex, &timeout);
-		}
-	}
-
-	/* Release the pthread condition */
-	pthread_mutex_unlock(&consumer_data->cond_mutex);
-
-	if (ret != 0) {
-		errno = ret;
-		if (ret == ETIMEDOUT) {
-			int pth_ret;
-
-			/*
-			 * Call has timed out so we kill the kconsumerd_thread and return
-			 * an error.
-			 */
-			ERR("Condition timed out. The consumer thread was never ready."
-					" Killing it");
-			pth_ret = pthread_cancel(consumer_data->thread);
-			if (pth_ret < 0) {
-				PERROR("pthread_cancel consumer thread");
-			}
-		} else {
-			PERROR("pthread_cond_wait failed consumer thread");
-		}
-		/* Caller is expecting a negative value on failure. */
-		ret = -1;
-		goto error;
-	}
-
-	pthread_mutex_lock(&consumer_data->pid_mutex);
-	if (consumer_data->pid == 0) {
-		ERR("Consumerd did not start");
-		pthread_mutex_unlock(&consumer_data->pid_mutex);
-		goto error;
-	}
-	pthread_mutex_unlock(&consumer_data->pid_mutex);
-
-	return 0;
-
-error:
-	return ret;
+	return launch_consumer_management_thread(consumer_data) ? 0 : -1;
 }
 
 /*
@@ -755,27 +634,6 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	lttng_dynamic_buffer_reset(&probe_location_buffer);
 error:
 	return ret;
-}
-
-/*
- * Join consumer thread
- */
-static int join_consumer_thread(struct consumer_data *consumer_data)
-{
-	void *status;
-
-	/* Consumer pid must be a real one. */
-	if (consumer_data->pid > 0) {
-		int ret;
-		ret = kill(consumer_data->pid, SIGTERM);
-		if (ret) {
-			PERROR("Error killing consumer daemon");
-			return ret;
-		}
-		return pthread_join(consumer_data->thread, &status);
-	} else {
-		return 0;
-	}
 }
 
 /*
@@ -2490,28 +2348,6 @@ error_create_poll:
 	DBG("Client thread dying");
 
 	rcu_unregister_thread();
-
-	/*
-	 * Since we are creating the consumer threads, we own them, so we need
-	 * to join them before our thread exits.
-	 */
-	ret = join_consumer_thread(&kconsumer_data);
-	if (ret) {
-		errno = ret;
-		PERROR("join_consumer");
-	}
-
-	ret = join_consumer_thread(&ustconsumer32_data);
-	if (ret) {
-		errno = ret;
-		PERROR("join_consumer ust32");
-	}
-
-	ret = join_consumer_thread(&ustconsumer64_data);
-	if (ret) {
-		errno = ret;
-		PERROR("join_consumer ust64");
-	}
 	return NULL;
 }
 
