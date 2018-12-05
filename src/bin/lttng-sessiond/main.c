@@ -1353,6 +1353,7 @@ int main(int argc, char **argv)
 	/* Queue of rotation jobs populated by the sessiond-timer. */
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
 	struct lttng_thread *client_thread = NULL;
+	struct lttng_thread *notification_thread = NULL;
 
 	init_kernel_workarounds();
 
@@ -1702,7 +1703,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Create notification thread. */
-	if (!launch_notification_thread(notification_thread_handle)) {
+	notification_thread = launch_notification_thread(
+			notification_thread_handle);
+	if (!notification_thread) {
 		retval = -1;
 		goto exit_notification;
 	}
@@ -1836,6 +1839,11 @@ exit_init_data:
 	 */
 	rcu_thread_online();
 	sessiond_cleanup();
+
+	if (notification_thread) {
+		lttng_thread_shutdown(notification_thread);
+		lttng_thread_put(notification_thread);
+	}
 
 	/*
 	 * Ensure all prior call_rcu are done. call_rcu callbacks may push

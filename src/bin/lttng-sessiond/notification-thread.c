@@ -653,7 +653,8 @@ bool shutdown_notification_thread(void *thread_data)
 	return true;
 }
 
-bool launch_notification_thread(struct notification_thread_handle *handle)
+struct lttng_thread *launch_notification_thread(
+		struct notification_thread_handle *handle)
 {
 	struct lttng_thread *thread;
 
@@ -672,8 +673,7 @@ bool launch_notification_thread(struct notification_thread_handle *handle)
 	 * (e.g. rotation thread).
 	 */
 	wait_until_thread_is_ready(handle);
-	lttng_thread_put(thread);
-	return true;
+	return thread;
 error:
-	return false;
+	return NULL;
 }
