@@ -27,6 +27,7 @@
 #include <common/hashtable/hashtable.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include "thread.h"
 
 struct notification_thread_handle {
 	/*
@@ -216,6 +217,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 		struct lttng_pipe *kernel_channel_monitor_pipe);
 void notification_thread_handle_destroy(
 		struct notification_thread_handle *handle);
-bool launch_notification_thread(struct notification_thread_handle *handle);
+struct lttng_thread *launch_notification_thread(
+		struct notification_thread_handle *handle);
 
 #endif /* NOTIFICATION_THREAD_H */
