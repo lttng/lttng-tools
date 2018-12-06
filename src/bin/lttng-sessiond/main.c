@@ -1486,20 +1486,20 @@ int main(int argc, char **argv)
 	if (!health_sessiond) {
 		PERROR("health_app_create error");
 		retval = -1;
-		goto exit_health_sessiond_cleanup;
+		goto stop_threads;
 	}
 
 	/* Create thread to clean up RCU hash tables */
 	ht_cleanup_thread = launch_ht_cleanup_thread();
 	if (!ht_cleanup_thread) {
 		retval = -1;
-		goto exit_ht_cleanup;
+		goto stop_threads;
 	}
 
 	/* Create thread quit pipe */
 	if (sessiond_init_thread_quit_pipe()) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Check if daemon is UID = 0 */
@@ -1511,14 +1511,14 @@ int main(int argc, char **argv)
 		if (!kernel_channel_monitor_pipe) {
 			ERR("Failed to create kernel consumer channel monitor pipe");
 			retval = -1;
-			goto exit_init_data;
+			goto stop_threads;
 		}
 		kconsumer_data.channel_monitor_pipe =
 				lttng_pipe_release_writefd(
 					kernel_channel_monitor_pipe);
 		if (kconsumer_data.channel_monitor_pipe < 0) {
 			retval = -1;
-			goto exit_init_data;
+			goto stop_threads;
 		}
 	}
 
@@ -1530,13 +1530,13 @@ int main(int argc, char **argv)
 	if (!ust32_channel_monitor_pipe) {
 		ERR("Failed to create 32-bit user space consumer channel monitor pipe");
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 	ustconsumer32_data.channel_monitor_pipe = lttng_pipe_release_writefd(
 			ust32_channel_monitor_pipe);
 	if (ustconsumer32_data.channel_monitor_pipe < 0) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/*
@@ -1547,7 +1547,7 @@ int main(int argc, char **argv)
 	rotation_timer_queue = rotation_thread_timer_queue_create();
 	if (!rotation_timer_queue) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 	timer_thread_parameters.rotation_thread_job_queue =
 			rotation_timer_queue;
@@ -1556,13 +1556,13 @@ int main(int argc, char **argv)
 	if (!ust64_channel_monitor_pipe) {
 		ERR("Failed to create 64-bit user space consumer channel monitor pipe");
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 	ustconsumer64_data.channel_monitor_pipe = lttng_pipe_release_writefd(
 			ust64_channel_monitor_pipe);
 	if (ustconsumer64_data.channel_monitor_pipe < 0) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/*
@@ -1572,7 +1572,7 @@ int main(int argc, char **argv)
 	if (ust_app_ht_alloc()) {
 		ERR("Failed to allocate UST app hash table");
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/*
@@ -1582,7 +1582,7 @@ int main(int argc, char **argv)
 	if (agent_app_ht_alloc()) {
 		ERR("Failed to allocate Agent app hash table");
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/*
@@ -1594,7 +1594,7 @@ int main(int argc, char **argv)
 	if (is_root) {
 		if (set_consumer_sockets(&kconsumer_data)) {
 			retval = -1;
-			goto exit_init_data;
+			goto stop_threads;
 		}
 
 		/* Setup kernel tracer */
@@ -1618,18 +1618,18 @@ int main(int argc, char **argv)
 
 	if (set_consumer_sockets(&ustconsumer64_data)) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	if (set_consumer_sockets(&ustconsumer32_data)) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Set credentials to socket */
 	if (is_root && set_permissions(config.rundir.value)) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Get parent pid if -S, --sig-parent is specified. */
@@ -1641,20 +1641,20 @@ int main(int argc, char **argv)
 	if (is_root && !config.no_kernel) {
 		if (utils_create_pipe_cloexec(kernel_poll_pipe)) {
 			retval = -1;
-			goto exit_init_data;
+			goto stop_threads;
 		}
 	}
 
 	/* Setup the thread apps communication pipe. */
 	if (utils_create_pipe_cloexec(apps_cmd_pipe)) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Setup the thread apps notify communication pipe. */
 	if (utils_create_pipe_cloexec(apps_cmd_notify_pipe)) {
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Initialize global buffer per UID and PID registry. */
@@ -1678,7 +1678,7 @@ int main(int argc, char **argv)
 	if (ret) {
 		ERR("Error in write_pidfile");
 		retval = -1;
-		goto exit_init_data;
+		goto stop_threads;
 	}
 
 	/* Initialize communication library */
@@ -1689,7 +1689,7 @@ int main(int argc, char **argv)
 	/* Create health-check thread. */
 	if (!launch_health_management_thread()) {
 		retval = -1;
-		goto exit_health;
+		goto stop_threads;
 	}
 
 	/* notification_thread_data acquires the pipes' read side. */
@@ -1700,7 +1700,7 @@ int main(int argc, char **argv)
 	if (!notification_thread_handle) {
 		retval = -1;
 		ERR("Failed to create notification thread shared data");
-		goto exit_notification;
+		goto stop_threads;
 	}
 
 	/* Create notification thread. */
@@ -1708,13 +1708,13 @@ int main(int argc, char **argv)
 			notification_thread_handle);
 	if (!notification_thread) {
 		retval = -1;
-		goto exit_notification;
+		goto stop_threads;
 	}
 
 	/* Create timer thread. */
 	if (!launch_timer_thread(&timer_thread_parameters)) {
 		retval = -1;
-		goto exit_notification;
+		goto stop_threads;
 	}
 
 	/* rotation_thread_data acquires the pipes' read side. */
@@ -1725,26 +1725,26 @@ int main(int argc, char **argv)
 		retval = -1;
 		ERR("Failed to create rotation thread shared data");
 		stop_threads();
-		goto exit_rotation;
+		goto stop_threads;
 	}
 
 	/* Create rotation thread. */
 	if (!launch_rotation_thread(rotation_thread_handle)) {
 		retval = -1;
-		goto exit_rotation;
+		goto stop_threads;
 	}
 
 	/* Create thread to manage the client socket */
 	client_thread = launch_client_thread();
 	if (!client_thread) {
 		retval = -1;
-		goto exit_client;
+		goto stop_threads;
 	}
 
 	if (!launch_ust_dispatch_thread(&ust_cmd_queue, apps_cmd_pipe[1],
 			apps_cmd_notify_pipe[1])) {
 		retval = -1;
-		goto exit_dispatch;
+		goto stop_threads;
 	}
 
 	/* Create thread to manage application registration. */
@@ -1752,25 +1752,25 @@ int main(int argc, char **argv)
 			&ust_cmd_queue);
 	if (!register_apps_thread) {
 		retval = -1;
-		goto exit_reg_apps;
+		goto stop_threads;
 	}
 
 	/* Create thread to manage application socket */
 	if (!launch_application_management_thread(apps_cmd_pipe[0])) {
 		retval = -1;
-		goto exit_apps;
+		goto stop_threads;
 	}
 
 	/* Create thread to manage application notify socket */
 	if (!launch_application_notification_thread(apps_cmd_notify_pipe[0])) {
 		retval = -1;
-		goto exit_apps_notify;
+		goto stop_threads;
 	}
 
 	/* Create agent management thread. */
 	if (!launch_agent_management_thread()) {
 		retval = -1;
-		goto exit_agent_reg;
+		goto stop_threads;
 	}
 
 	/* Don't start this thread if kernel tracing is not requested nor root */
@@ -1778,7 +1778,7 @@ int main(int argc, char **argv)
 		/* Create kernel thread to manage kernel event */
 		if (!launch_kernel_management_thread(kernel_poll_pipe[0])) {
 			retval = -1;
-			goto exit_kernel;
+			goto stop_threads;
 		}
 	}
 
@@ -1788,7 +1788,7 @@ int main(int argc, char **argv)
 	if (ret) {
 		ERR("Session load failed: %s", error_get_str(ret));
 		retval = -1;
-		goto exit_load_session;
+		goto stop_threads;
 	}
 
 	/* Initialization completed. */
@@ -1802,37 +1802,23 @@ int main(int argc, char **argv)
 	/* Initiate teardown once activity occurs on the quit pipe. */
 	sessiond_wait_for_quit_pipe(-1U);
 
+stop_threads:
 	/*
 	 * Ensure that the client thread is no longer accepting new commands,
 	 * which could cause new sessions to be created.
 	 */
-	if (!lttng_thread_shutdown(client_thread)) {
-		ERR("Failed to shutdown the client thread, continuing teardown");
+	if (client_thread) {
+		lttng_thread_shutdown(client_thread);
 		lttng_thread_put(client_thread);
-		client_thread = NULL;
 	}
 
 	destroy_all_sessions_and_wait();
-exit_load_session:
-exit_kernel:
-exit_agent_reg:
-exit_apps_notify:
-exit_apps:
+
 	if (register_apps_thread) {
 		lttng_thread_shutdown(register_apps_thread);
 		lttng_thread_put(register_apps_thread);
 	}
-exit_reg_apps:
-exit_dispatch:
-exit_client:
-exit_rotation:
-exit_notification:
 	lttng_thread_list_shutdown_orphans();
-exit_health:
-exit_init_data:
-	if (client_thread) {
-		lttng_thread_put(client_thread);
-	}
 
 	/*
 	 * Wait for all pending call_rcu work to complete before tearing
@@ -1887,12 +1873,9 @@ exit_init_data:
 	lttng_pipe_destroy(ust32_channel_monitor_pipe);
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);
-exit_ht_cleanup:
 
 	health_app_destroy(health_sessiond);
-exit_health_sessiond_cleanup:
 exit_create_run_as_worker_cleanup:
-
 exit_options:
 	sessiond_cleanup_lock_file();
 	sessiond_cleanup_options();
