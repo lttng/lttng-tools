@@ -921,6 +921,8 @@ int run_as_create_worker_no_lock(const char *procname)
 			ret = -1;
 		}
 		worker->sockpair[1] = -1;
+	        free(worker->procname);
+		free(worker);
 		LOG(ret ? PRINT_ERR : PRINT_DBG, "run_as worker exiting (ret = %d)", ret);
 		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
 	} else {
