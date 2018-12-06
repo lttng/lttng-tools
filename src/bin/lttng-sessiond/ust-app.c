@@ -3921,6 +3921,24 @@ void ust_app_clean_list(void)
 
 	rcu_read_lock();
 
+	/* Cleanup notify socket hash table */
+	if (ust_app_ht_by_notify_sock) {
+		cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
+				notify_sock_n.node) {
+			struct cds_lfht_node *node;
+			struct ust_app *app;
+
+			node = cds_lfht_iter_get_node(&iter.iter);
+			if (!node) {
+				continue;
+			}
+
+			app = container_of(node, struct ust_app,
+					notify_sock_n.node);
+			ust_app_notify_sock_unregister(app->notify_sock);
+		}
+	}
+
 	if (ust_app_ht) {
 		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 			ret = lttng_ht_del(ust_app_ht, &iter);
@@ -3938,14 +3956,6 @@ void ust_app_clean_list(void)
 		}
 	}
 
-	/* Cleanup notify socket hash table */
-	if (ust_app_ht_by_notify_sock) {
-		cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
-				notify_sock_n.node) {
-			ret = lttng_ht_del(ust_app_ht_by_notify_sock, &iter);
-			assert(!ret);
-		}
-	}
 	rcu_read_unlock();
 
 	/* Destroy is done only when the ht is empty */
