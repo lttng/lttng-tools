@@ -69,7 +69,7 @@
 #include "fd-limit.h"
 #include "health-sessiond.h"
 #include "testpoint.h"
-#include "ust-thread.h"
+#include "notify-apps.h"
 #include "agent-thread.h"
 #include "save.h"
 #include "notification-thread.h"

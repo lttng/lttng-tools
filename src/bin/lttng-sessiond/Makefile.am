@@ -10,7 +10,7 @@ bin_PROGRAMS = lttng-sessiond
 lttng_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
-                       ust-ctl.h ust-app.h trace-ust.h ust-thread.h \
+                       ust-ctl.h ust-app.h trace-ust.h notify-apps.h \
                        ust-registry.h \
                        context.c context.h \
                        channel.c channel.h \
@@ -53,7 +53,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
-			ust-consumer.c ust-consumer.h ust-thread.c \
+			ust-consumer.c ust-consumer.h notify-apps.c \
 			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h \
 			ust-field-utils.h ust-field-utils.c
 endif

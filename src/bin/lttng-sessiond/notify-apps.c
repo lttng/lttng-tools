@@ -23,7 +23,7 @@
 
 #include "fd-limit.h"
 #include "lttng-sessiond.h"
-#include "ust-thread.h"
+#include "notify-apps.h"
 #include "health-sessiond.h"
 #include "testpoint.h"
 #include "utils.h"
