@@ -37,6 +37,7 @@
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	struct ust_cmd_queue *ust_cmd_queue;
+	sem_t ready;
 };
 
 /*
@@ -113,6 +114,21 @@ static void cleanup_application_registration_thread(void *data)
 	free(notifiers);
 }
 
+static
+void mark_thread_as_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Marking application registration thread as ready");
+	sem_post(&notifiers->ready);
+}
+
+static
+void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+{
+	DBG("Waiting for application registration thread to be ready");
+	sem_wait(&notifiers->ready);
+	DBG("Application registration thread is ready");
+}
+
 /*
  * This thread manage application registration.
  */
@@ -149,6 +165,8 @@ static void *thread_application_registration(void *data)
 	if (ret < 0) {
 		goto error_listen;
 	}
+
+	mark_thread_as_ready(notifiers);
 
 	/*
 	 * Pass 2 as size here for the thread quit pipe and apps_sock. Nothing
@@ -379,6 +397,7 @@ struct lttng_thread *launch_application_registration_thread(
 	}
 	notifiers->quit_pipe = quit_pipe;
 	notifiers->ust_cmd_queue = cmd_queue;
+	sem_init(&notifiers->ready, 0, 0);
 
 	thread = lttng_thread_create("UST application registration",
 			thread_application_registration,
@@ -388,6 +407,7 @@ struct lttng_thread *launch_application_registration_thread(
 	if (!thread) {
 		goto error;
 	}
+	wait_until_thread_is_ready(notifiers);
 	return thread;
 error:
 	cleanup_application_registration_thread(notifiers);
