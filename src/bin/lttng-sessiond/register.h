@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include "lttng-sessiond.h"
 
-bool launch_application_registration_thread(struct ust_cmd_queue *cmd_queue);
+struct lttng_thread *launch_application_registration_thread(
+		struct ust_cmd_queue *cmd_queue);
 
 #endif /* SESSIOND_APPLICATION_REGISTRATION_THREAD_H */

@@ -361,7 +361,7 @@ static bool shutdown_application_registration_thread(void *data)
 	return notify_thread_pipe(write_fd) == 1;
 }
 
-bool launch_application_registration_thread(
+struct lttng_thread *launch_application_registration_thread(
 		struct ust_cmd_queue *cmd_queue)
 {
 	struct lttng_pipe *quit_pipe;
@@ -388,9 +388,8 @@ bool launch_application_registration_thread(
 	if (!thread) {
 		goto error;
 	}
-	lttng_thread_put(thread);
-	return true;
+	return thread;
 error:
 	cleanup_application_registration_thread(notifiers);
-	return false;
+	return NULL;
 }
