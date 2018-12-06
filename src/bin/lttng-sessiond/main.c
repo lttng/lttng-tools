@@ -1354,6 +1354,7 @@ int main(int argc, char **argv)
 	struct rotation_thread_timer_queue *rotation_timer_queue = NULL;
 	struct lttng_thread *client_thread = NULL;
 	struct lttng_thread *notification_thread = NULL;
+	struct lttng_thread *register_apps_thread = NULL;
 
 	init_kernel_workarounds();
 
@@ -1747,7 +1748,9 @@ int main(int argc, char **argv)
 	}
 
 	/* Create thread to manage application registration. */
-	if (!launch_application_registration_thread(&ust_cmd_queue)) {
+	register_apps_thread = launch_application_registration_thread(
+			&ust_cmd_queue);
+	if (!register_apps_thread) {
 		retval = -1;
 		goto exit_reg_apps;
 	}
@@ -1815,6 +1818,10 @@ exit_kernel:
 exit_agent_reg:
 exit_apps_notify:
 exit_apps:
+	if (register_apps_thread) {
+		lttng_thread_shutdown(register_apps_thread);
+		lttng_thread_put(register_apps_thread);
+	}
 exit_reg_apps:
 exit_dispatch:
 exit_client:
