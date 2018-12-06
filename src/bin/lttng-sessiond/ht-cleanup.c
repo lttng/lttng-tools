@@ -128,6 +128,7 @@ static void *thread_ht_cleanup(void *data)
 	health_code_update();
 
 	while (1) {
+	restart:
 		DBG3("[ht-thread] Polling.");
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
@@ -181,6 +182,13 @@ static void *thread_ht_cleanup(void *data)
 				lttng_ht_destroy(ht);
 
 				health_code_update();
+
+				/*
+				 * Ensure that we never process the quit pipe
+				 * event while there is still data available
+				 * on the ht clean pipe.
+				 */
+				goto restart;
 			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				ERR("ht cleanup pipe error");
 				goto error;
