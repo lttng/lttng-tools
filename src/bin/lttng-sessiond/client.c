@@ -40,31 +40,28 @@
 static bool is_root;
 
 static struct thread_state {
-	pthread_cond_t cond;
-	pthread_mutex_t lock;
-	bool is_running;
-} thread_state = {
-	.cond = PTHREAD_COND_INITIALIZER,
-	.lock = PTHREAD_MUTEX_INITIALIZER,
-	.is_running = false
-};
+	sem_t ready;
+	bool running;
+} thread_state;
 
-void set_thread_state_running(void)
+static void set_thread_status(bool running)
 {
-	pthread_mutex_lock(&thread_state.lock);
-        thread_state.is_running = true;
-	pthread_cond_broadcast(&thread_state.cond);
-	pthread_mutex_unlock(&thread_state.lock);
+	DBG("Marking client thread's state as %s", running ? "running" : "error");
+	thread_state.running = running;
+	sem_post(&thread_state.ready);
 }
 
-static void wait_thread_state_running(void)
+static bool wait_thread_status(void)
 {
-	pthread_mutex_lock(&thread_state.lock);
-	while (!thread_state.is_running) {
-		pthread_cond_wait(&thread_state.cond,
-				&thread_state.lock);
+	DBG("Waiting for client thread to be ready");
+	sem_wait(&thread_state.ready);
+	if (thread_state.running) {
+		DBG("Client thread is ready");
+	} else {
+		ERR("Initialization of client thread failed");
 	}
-	pthread_mutex_unlock(&thread_state.lock);
+
+	return thread_state.running;
 }
 
 /*
@@ -2071,6 +2068,11 @@ static void cleanup_client_thread(void *data)
 	lttng_pipe_destroy(quit_pipe);
 }
 
+static void thread_init_cleanup(void *data)
+{
+	set_thread_status(false);
+}
+
 /*
  * This thread manage all clients request using the unix client socket for
  * communication.
@@ -2090,6 +2092,7 @@ static void *thread_manage_clients(void *data)
 
 	is_root = (getuid() == 0);
 
+	pthread_cleanup_push(thread_init_cleanup, NULL);
 	client_sock = create_client_sock();
 	if (client_sock < 0) {
 		goto error_listen;
@@ -2127,6 +2130,10 @@ static void *thread_manage_clients(void *data)
 		goto error;
 	}
 
+	/* Set state as running. */
+        set_thread_status(true);
+	pthread_cleanup_pop(0);
+
 	/* This testpoint is after we signal readiness to the parent. */
 	if (testpoint(sessiond_thread_manage_clients)) {
 		goto error;
@@ -2137,9 +2144,6 @@ static void *thread_manage_clients(void *data)
 	}
 
 	health_code_update();
-
-	/* Set state as running. */
-        set_thread_state_running();
 
 	while (1) {
 		const struct cmd_completion_handler *cmd_completion_handler;
@@ -2362,9 +2366,11 @@ bool shutdown_client_thread(void *thread_data)
 
 struct lttng_thread *launch_client_thread(void)
 {
+	bool thread_running;
 	struct lttng_pipe *client_quit_pipe;
 	struct lttng_thread *thread;
 
+	sem_init(&thread_state.ready, 0, 0);
 	client_quit_pipe = lttng_pipe_open(FD_CLOEXEC);
 	if (!client_quit_pipe) {
 		goto error;
@@ -2383,8 +2389,11 @@ struct lttng_thread *launch_client_thread(void)
 	 * This thread is part of the threads that need to be fully
 	 * initialized before the session daemon is marked as "ready".
 	 */
-	wait_thread_state_running();
-
+	thread_running = wait_thread_status();
+	if (!thread_running) {
+		lttng_thread_put(thread);
+		thread = NULL;
+	}
 	return thread;
 error:
 	cleanup_client_thread(client_quit_pipe);
