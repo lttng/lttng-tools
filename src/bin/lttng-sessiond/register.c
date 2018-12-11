@@ -38,6 +38,7 @@ struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	struct ust_cmd_queue *ust_cmd_queue;
 	sem_t ready;
+	bool running;
 };
 
 /*
@@ -114,19 +115,31 @@ static void cleanup_application_registration_thread(void *data)
 	free(notifiers);
 }
 
-static
-void mark_thread_as_ready(struct thread_notifiers *notifiers)
+static void set_thread_status(struct thread_notifiers *notifiers, bool running)
 {
-	DBG("Marking application registration thread as ready");
+	DBG("Marking application registration thread's state as %s", running ? "running" : "error");
+	notifiers->running = running;
 	sem_post(&notifiers->ready);
 }
 
-static
-void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
+static bool wait_thread_status(struct thread_notifiers *notifiers)
 {
 	DBG("Waiting for application registration thread to be ready");
 	sem_wait(&notifiers->ready);
-	DBG("Application registration thread is ready");
+	if (notifiers->running) {
+		DBG("Application registration thread is ready");
+	} else {
+		ERR("Initialization of application registration thread failed");
+	}
+
+	return notifiers->running;
+}
+
+static void thread_init_cleanup(void *data)
+{
+	struct thread_notifiers *notifiers = data;
+
+	set_thread_status(notifiers, false);
 }
 
 /*
@@ -150,11 +163,8 @@ static void *thread_application_registration(void *data)
 
 	DBG("[thread] Manage application registration started");
 
+	pthread_cleanup_push(thread_init_cleanup, NULL);
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
-
-	if (testpoint(sessiond_thread_registration_apps)) {
-		goto error_testpoint;
-	}
 
 	apps_sock = create_application_socket();
 	if (apps_sock < 0) {
@@ -166,7 +176,12 @@ static void *thread_application_registration(void *data)
 		goto error_listen;
 	}
 
-	mark_thread_as_ready(notifiers);
+	set_thread_status(notifiers, true);
+	pthread_cleanup_pop(0);
+
+	if (testpoint(sessiond_thread_registration_apps)) {
+		goto error_create_poll;
+	}
 
 	/*
 	 * Pass 2 as size here for the thread quit pipe and apps_sock. Nothing
@@ -361,7 +376,6 @@ error_poll_add:
 	lttng_poll_clean(&events);
 error_listen:
 error_create_poll:
-error_testpoint:
 	DBG("UST Registration thread cleanup complete");
 	if (err) {
 		health_error();
@@ -407,7 +421,10 @@ struct lttng_thread *launch_application_registration_thread(
 	if (!thread) {
 		goto error;
 	}
-	wait_until_thread_is_ready(notifiers);
+	if (!wait_thread_status(notifiers)) {
+		lttng_thread_put(thread);
+		thread = NULL;
+	}
 	return thread;
 error:
 	cleanup_application_registration_thread(notifiers);
