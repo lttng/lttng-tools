@@ -31,6 +31,8 @@
 #define UUID_STR_LEN		37
 #define UUID_LEN		16
 
+typedef unsigned char lttng_uuid[UUID_LEN];
+
 #ifdef LTTNG_HAVE_LIBUUID
 #include <uuid/uuid.h>
 
@@ -38,7 +40,7 @@
  * uuid_out is of len UUID_LEN.
  */
 static inline
-int lttng_uuid_generate(unsigned char *uuid_out)
+int lttng_uuid_generate(lttng_uuid uuid_out)
 {
 	uuid_generate(uuid_out);
 	return 0;
@@ -52,7 +54,7 @@ int lttng_uuid_generate(unsigned char *uuid_out)
  * uuid_out is of len UUID_LEN.
  */
 static inline
-int lttng_uuid_generate(unsigned char *uuid_out)
+int lttng_uuid_generate(lttng_uuid uuid_out)
 {
 	uint32_t status;
 
@@ -74,6 +76,6 @@ int lttng_uuid_generate(unsigned char *uuid_out)
  * Assumes uuid_str is at least UUID_STR_LEN byte long.
  */
 LTTNG_HIDDEN
-void lttng_uuid_to_str(const unsigned char *uuid, char *uuid_str);
+void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str);
 
 #endif /* LTTNG_UUID_H */
