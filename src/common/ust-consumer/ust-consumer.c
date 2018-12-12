@@ -2109,6 +2109,19 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		}
 		break;
 	}
+	case LTTNG_CONSUMER_INIT:
+	{
+		ret_code = lttng_consumer_init_command(ctx,
+				msg.u.init.sessiond_uuid);
+
+		health_code_update();
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+		break;
+	}
 	default:
 		break;
 	}

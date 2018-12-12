@@ -4485,3 +4485,21 @@ int lttng_consumer_mkdir(const char *path, uid_t uid, gid_t gid,
 		return mkdir_local(path, uid, gid);
 	}
 }
+
+enum lttcomm_return_code lttng_consumer_init_command(
+		struct lttng_consumer_local_data *ctx,
+		const lttng_uuid sessiond_uuid)
+{
+	enum lttcomm_return_code ret;
+
+	if (ctx->sessiond_uuid.is_set) {
+		ret = LTTCOMM_CONSUMERD_ALREADY_SET;
+		goto end;
+	}
+
+	ctx->sessiond_uuid.is_set = true;
+	memcpy(ctx->sessiond_uuid.value, sessiond_uuid, sizeof(lttng_uuid));
+	ret = LTTCOMM_CONSUMERD_SUCCESS;
+end:
+	return ret;
+}
