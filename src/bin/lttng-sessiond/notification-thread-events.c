@@ -1518,6 +1518,7 @@ struct session_info *find_or_create_session_info(
 	if (!session) {
 		ERR("[notification-thread] Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
 				name, uid, gid);
+		lttng_session_trigger_list_destroy(trigger_list);
 		goto error;
 	}
 	trigger_list = NULL;
