@@ -70,6 +70,7 @@ static int update_kernel_poll(struct lttng_poll_event *events)
 			DBG("Channel fd %d added to kernel set", channel->fd);
 		}
 		session_unlock(session);
+		session_put(session);
 	}
 	session_unlock_list();
 
