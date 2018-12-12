@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <common/compat/uuid.h>
 
-void lttng_uuid_to_str(const unsigned char *uuid, char *uuid_str)
+void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
 {
 	sprintf(uuid_str,
 			"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",

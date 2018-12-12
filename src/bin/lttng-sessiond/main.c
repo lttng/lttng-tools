@@ -1369,6 +1369,14 @@ static int launch_run_as_worker(const char *procname)
 			&config);
 }
 
+static void sessiond_uuid_log(void)
+{
+	char uuid_str[UUID_STR_LEN];
+
+	lttng_uuid_to_str(sessiond_uuid, uuid_str);
+	DBG("Starting lttng-sessiond {%s}", uuid_str);
+}
+
 /*
  * main
  */
@@ -1465,6 +1473,7 @@ int main(int argc, char **argv)
 	set_clock_plugin_env();
 
 	sessiond_config_log(&config);
+	sessiond_uuid_log();
 
 	if (create_lttng_rundir()) {
 		retval = -1;

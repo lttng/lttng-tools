@@ -25,6 +25,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
+#include <common/compat/uuid.h>
 
 #include "session.h"
 #include "ust-app.h"
@@ -40,6 +41,9 @@ enum consumerd_state {
 	CONSUMER_STOPPED = 2,
 	CONSUMER_ERROR   = 3,
 };
+
+/* Unique identifier of a session daemon instance. */
+extern lttng_uuid sessiond_uuid;
 
 /*
  * This consumer daemon state is used to validate if a client command will be

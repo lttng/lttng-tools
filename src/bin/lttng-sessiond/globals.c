@@ -18,6 +18,9 @@
  */
 
 #include "lttng-sessiond.h"
+#include <common/compat/uuid.h>
+
+lttng_uuid sessiond_uuid;
 
 int ust_consumerd64_fd = -1;
 int ust_consumerd32_fd = -1;
@@ -70,3 +73,11 @@ struct consumer_data ustconsumer32_data = {
 
 enum consumerd_state ust_consumerd_state;
 enum consumerd_state kernel_consumerd_state;
+
+static void __attribute__((constructor)) init_sessiond_uuid(void)
+{
+	if (lttng_uuid_generate(sessiond_uuid)) {
+		ERR("Failed to generate a session daemon UUID");
+		abort();
+	}
+}
