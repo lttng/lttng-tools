@@ -1931,6 +1931,7 @@ int bind_trigger_to_matching_channels(const struct lttng_trigger *trigger,
 			channels_ht_node) {
 		struct lttng_trigger_list_element *trigger_list_element;
 		struct lttng_channel_trigger_list *trigger_list;
+		struct cds_lfht_iter lookup_iter;
 
 		if (!trigger_applies_to_channel(trigger, channel)) {
 			continue;
@@ -1940,8 +1941,8 @@ int bind_trigger_to_matching_channels(const struct lttng_trigger *trigger,
 				hash_channel_key(&channel->key),
 				match_channel_trigger_list,
 				&channel->key,
-				&iter);
-		node = cds_lfht_iter_get_node(&iter);
+				&lookup_iter);
+		node = cds_lfht_iter_get_node(&lookup_iter);
 		assert(node);
 		trigger_list = caa_container_of(node,
 				struct lttng_channel_trigger_list,
