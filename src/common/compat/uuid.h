@@ -23,6 +23,8 @@
 #ifndef LTTNG_UUID_H
 #define LTTNG_UUID_H
 
+#include <common/macros.h>
+
 /*
  * Includes final \0.
  */
@@ -64,5 +66,14 @@ int lttng_uuid_generate(unsigned char *uuid_out)
 #else
 #error "LTTng-Tools needs to have a UUID generator configured."
 #endif
+
+/*
+ * Convert a UUID to a human-readable, NULL-terminated, string of the form
+ * xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
+ *
+ * Assumes uuid_str is at least UUID_STR_LEN byte long.
+ */
+LTTNG_HIDDEN
+void lttng_uuid_to_str(const unsigned char *uuid, char *uuid_str);
 
 #endif /* LTTNG_UUID_H */
