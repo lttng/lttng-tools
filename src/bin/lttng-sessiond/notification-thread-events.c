@@ -70,6 +70,8 @@ struct lttng_channel_trigger_list {
 	struct cds_list_head list;
 	/* Node in the channel_triggers_ht */
 	struct cds_lfht_node channel_triggers_ht_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 /*
@@ -116,6 +118,8 @@ struct lttng_session_trigger_list {
 struct lttng_trigger_ht_element {
 	struct lttng_trigger *trigger;
 	struct cds_lfht_node node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct lttng_condition_list_element {
@@ -132,6 +136,8 @@ struct notification_client_list {
 	const struct lttng_trigger *trigger;
 	struct cds_list_head list;
 	struct cds_lfht_node notification_trigger_ht_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct notification_client {
@@ -198,6 +204,8 @@ struct notification_client {
 			struct lttng_dynamic_buffer buffer;
 		} outbound;
 	} communication;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct channel_state_sample {
@@ -206,6 +214,8 @@ struct channel_state_sample {
 	uint64_t highest_usage;
 	uint64_t lowest_usage;
 	uint64_t channel_total_consumed;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 static unsigned long hash_channel_key(struct channel_key *key);
@@ -501,6 +511,12 @@ enum lttng_object_type get_condition_binding_object(
 }
 
 static
+void free_channel_info_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct channel_info, rcu_node));
+}
+
+static
 void channel_info_destroy(struct channel_info *channel_info)
 {
 	if (!channel_info) {
@@ -515,7 +531,13 @@ void channel_info_destroy(struct channel_info *channel_info)
 	if (channel_info->name) {
 		free(channel_info->name);
 	}
-	free(channel_info);
+	call_rcu(&channel_info->rcu_node, free_channel_info_rcu);
+}
+
+static
+void free_session_info_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct session_info, rcu_node));
 }
 
 /* Don't call directly, use the ref-counting mechanism. */
@@ -539,7 +561,7 @@ void session_info_destroy(void *_data)
 			&session_info->sessions_ht_node);
 	rcu_read_unlock();
 	free(session_info->name);
-	free(session_info);
+	call_rcu(&session_info->rcu_node, free_session_info_rcu);
 }
 
 static
@@ -1099,6 +1121,12 @@ end:
 }
 
 static
+void free_notification_client_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct notification_client, rcu_node));
+}
+
+static
 void notification_client_destroy(struct notification_client *client,
 		struct notification_thread_state *state)
 {
@@ -1120,7 +1148,7 @@ void notification_client_destroy(struct notification_client *client,
 	}
 	lttng_dynamic_buffer_reset(&client->communication.inbound.buffer);
 	lttng_dynamic_buffer_reset(&client->communication.outbound.buffer);
-	free(client);
+	call_rcu(&client->rcu_node, free_notification_client_rcu);
 }
 
 /*
@@ -1544,6 +1572,7 @@ int handle_notification_thread_command_add_channel(
 		goto error;
 	}
 
+	rcu_read_lock();
 	/* Build a list of all triggers applying to the new channel. */
 	cds_lfht_for_each_entry(state->triggers_ht, &iter, trigger_ht_element,
 			node) {
@@ -1556,6 +1585,7 @@ int handle_notification_thread_command_add_channel(
 
 		new_element = zmalloc(sizeof(*new_element));
 		if (!new_element) {
+			rcu_read_unlock();
 			goto error;
 		}
 		CDS_INIT_LIST_HEAD(&new_element->node);
@@ -1563,6 +1593,7 @@ int handle_notification_thread_command_add_channel(
 		cds_list_add(&new_element->node, &trigger_list);
 		trigger_count++;
 	}
+	rcu_read_unlock();
 
 	DBG("[notification-thread] Found %i triggers that apply to newly added channel",
 			trigger_count);
@@ -1595,6 +1626,20 @@ error:
 	channel_info_destroy(new_channel_info);
 	session_info_put(session_info);
 	return 1;
+}
+
+static
+void free_channel_trigger_list_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct lttng_channel_trigger_list,
+			rcu_node));
+}
+
+static
+void free_channel_state_sample_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct channel_state_sample,
+			rcu_node));
 }
 
 static
@@ -1639,7 +1684,7 @@ int handle_notification_thread_command_remove_channel(
 		free(trigger_list_element);
 	}
 	cds_lfht_del(state->channel_triggers_ht, node);
-	free(trigger_list);
+	call_rcu(&trigger_list->rcu_node, free_channel_trigger_list_rcu);
 
 	/* Free sampled channel state. */
 	cds_lfht_lookup(state->channel_state_ht,
@@ -1658,7 +1703,7 @@ int handle_notification_thread_command_remove_channel(
 				channel_state_ht_node);
 
 		cds_lfht_del(state->channel_state_ht, node);
-		free(sample);
+		call_rcu(&sample->rcu_node, free_channel_state_sample_rcu);
 	}
 
 	/* Remove the channel from the channels_ht and free it. */
@@ -2118,6 +2163,20 @@ error:
 }
 
 static
+void free_notification_client_list_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct notification_client_list,
+			rcu_node));
+}
+
+static
+void free_lttng_trigger_ht_element_rcu(struct rcu_head *node)
+{
+	free(caa_container_of(node, struct lttng_trigger_ht_element,
+			rcu_node));
+}
+
+static
 int handle_notification_thread_command_unregister_trigger(
 		struct notification_thread_state *state,
 		struct lttng_trigger *trigger,
@@ -2186,7 +2245,7 @@ int handle_notification_thread_command_unregister_trigger(
 	}
 	cds_lfht_del(state->notification_trigger_clients_ht,
 			&client_list->notification_trigger_ht_node);
-	free(client_list);
+	call_rcu(&client_list->rcu_node, free_notification_client_list_rcu);
 
 	/* Remove trigger from triggers_ht. */
 	trigger_ht_element = caa_container_of(triggers_ht_node,
@@ -2198,7 +2257,7 @@ int handle_notification_thread_command_unregister_trigger(
 	action = lttng_trigger_get_action(trigger_ht_element->trigger);
 	lttng_action_destroy(action);
 	lttng_trigger_destroy(trigger_ht_element->trigger);
-	free(trigger_ht_element);
+	call_rcu(&trigger_ht_element->rcu_node, free_lttng_trigger_ht_element_rcu);
 end:
 	rcu_read_unlock();
 	if (_cmd_reply) {
