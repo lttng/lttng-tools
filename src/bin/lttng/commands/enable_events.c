@@ -305,12 +305,10 @@ end:
  */
 static int warn_userspace_probe_syntax(const char *symbol)
 {
-	unsigned long addr = 0;
-	size_t offset = 0;
 	int ret;
 
 	/* Check if the symbol field is an hex address. */
-	ret = sscanf(symbol, "0x%lx", &addr);
+	ret = sscanf(symbol, "0x%*x");
 	if (ret > 0) {
 		/* If there is a match, print a warning and return an error. */
 		ERR("Userspace probe on address not supported yet.");
@@ -319,7 +317,7 @@ static int warn_userspace_probe_syntax(const char *symbol)
 	}
 
 	/* Check if the symbol field is an decimal address. */
-	ret = sscanf(symbol, "%lu", &addr);
+	ret = sscanf(symbol, "%*u");
 	if (ret > 0) {
 		/* If there is a match, print a warning and return an error. */
 		ERR("Userspace probe on address not supported yet.");
@@ -328,7 +326,7 @@ static int warn_userspace_probe_syntax(const char *symbol)
 	}
 
 	/* Check if the symbol field is symbol+hex_offset. */
-	ret = sscanf(symbol, "%*[^+]+0x%lx", &offset);
+	ret = sscanf(symbol, "%*[^+]+0x%*x");
 	if (ret > 0) {
 		/* If there is a match, print a warning and return an error. */
 		ERR("Userspace probe on symbol+offset not supported yet.");
@@ -337,7 +335,7 @@ static int warn_userspace_probe_syntax(const char *symbol)
 	}
 
 	/* Check if the symbol field is symbol+decimal_offset. */
-	ret = sscanf(symbol, "%*[^+]+%lu", &offset);
+	ret = sscanf(symbol, "%*[^+]+%*u");
 	if (ret > 0) {
 		/* If there is a match, print a warning and return an error. */
 		ERR("Userspace probe on symbol+offset not supported yet.");
