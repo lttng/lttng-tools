@@ -53,6 +53,8 @@ struct session_info {
 		/* Identifier of the currently ongoing rotation. */
 		uint64_t id;
 	} rotation;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct channel_info {
@@ -68,6 +70,8 @@ struct channel_info {
 	struct cds_lfht_node channels_ht_node;
 	/* Node in the session_info's channels_ht. */
 	struct cds_lfht_node session_info_channels_ht_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 #endif /* NOTIFICATION_THREAD_INTERNAL_H */
