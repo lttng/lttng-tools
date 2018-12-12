@@ -877,7 +877,6 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		uint32_t major,
 		uint32_t minor)
 {
-	unsigned char *uuid_c;
 	char uuid_s[UUID_STR_LEN],
 		clock_uuid_s[UUID_STR_LEN];
 	int ret = 0;
@@ -885,14 +884,7 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 
 	assert(session);
 
-	uuid_c = session->uuid;
-
-	snprintf(uuid_s, sizeof(uuid_s),
-		"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-		uuid_c[0], uuid_c[1], uuid_c[2], uuid_c[3],
-		uuid_c[4], uuid_c[5], uuid_c[6], uuid_c[7],
-		uuid_c[8], uuid_c[9], uuid_c[10], uuid_c[11],
-		uuid_c[12], uuid_c[13], uuid_c[14], uuid_c[15]);
+	lttng_uuid_to_str(session->uuid, uuid_s);
 
 	/* For crash ABI */
 	ret = lttng_metadata_printf(session,
