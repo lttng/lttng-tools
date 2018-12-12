@@ -1626,12 +1626,6 @@ int main(int argc, char **argv)
 		goto stop_threads;
 	}
 
-	/* Set credentials to socket */
-	if (is_root && set_permissions(config.rundir.value)) {
-		retval = -1;
-		goto stop_threads;
-	}
-
 	/* Get parent pid if -S, --sig-parent is specified. */
 	if (config.sig_parent) {
 		ppid = getppid();
@@ -1737,6 +1731,12 @@ int main(int argc, char **argv)
 	/* Create thread to manage the client socket */
 	client_thread = launch_client_thread();
 	if (!client_thread) {
+		retval = -1;
+		goto stop_threads;
+	}
+
+	/* Set credentials of the client socket and rundir */
+	if (is_root && set_permissions(config.rundir.value)) {
 		retval = -1;
 		goto stop_threads;
 	}
