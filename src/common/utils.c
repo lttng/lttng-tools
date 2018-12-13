@@ -1014,7 +1014,7 @@ static inline unsigned int fls_u32(uint32_t x)
 #define HAS_FLS_U32
 #endif
 
-#if defined(__x86_64)
+#if defined(__x86_64) && defined(__LP64__)
 static inline
 unsigned int fls_u64(uint64_t x)
 {
