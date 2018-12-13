@@ -136,22 +136,18 @@ test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM)
 test_kernel_data_LDADD += $(KERN_DATA_TRACE)
 
 # utils suffix for unit test
-UTILS_SUFFIX=$(top_builddir)/src/common/libcommon.la
 
 # parse_size_suffix unit test
 test_utils_parse_size_suffix_SOURCES = test_utils_parse_size_suffix.c
 test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
-test_utils_parse_size_suffix_LDADD += $(UTILS_SUFFIX)
 
 # parse_time_suffix unit test
 test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.c
 test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
-test_utils_parse_time_suffix_LDADD += $(UTILS_SUFFIX)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
 test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
-test_utils_expand_path_LDADD += $(UTILS_SUFFIX)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
