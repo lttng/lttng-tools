@@ -20,11 +20,21 @@
 #define LTTNG_TIME_H
 
 #include <time.h>
+#include <stdbool.h>
 
 #define MSEC_PER_SEC	1000ULL
 #define NSEC_PER_SEC	1000000000ULL
 #define NSEC_PER_MSEC	1000000ULL
 #define NSEC_PER_USEC	1000ULL
+
+bool locale_supports_utf8(void);
+
+#define NSEC_UNIT       "ns"
+#define USEC_UNIT       (locale_supports_utf8() ? "µs" : "us")
+#define MSEC_UNIT       "ms"
+#define SEC_UNIT        "s"
+#define MIN_UNIT        "m"
+#define HR_UNIT         "h"
 
 /*
  * timespec_to_ms: Convert timespec to milliseconds.

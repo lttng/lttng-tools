@@ -22,6 +22,16 @@
 #include <limits.h>
 #include <errno.h>
 #include <pthread.h>
+#include <locale.h>
+#include <string.h>
+
+static bool utf8_output_supported;
+
+LTTNG_HIDDEN
+bool locale_supports_utf8(void)
+{
+	return utf8_output_supported;
+}
 
 LTTNG_HIDDEN
 int timespec_to_ms(struct timespec ts, unsigned long *ms)
@@ -56,4 +66,17 @@ struct timespec timespec_abs_diff(struct timespec t1, struct timespec t2)
 	res.tv_sec = diff / (uint64_t) NSEC_PER_SEC;
 	res.tv_nsec = diff % (uint64_t) NSEC_PER_SEC;
 	return res;
+}
+
+static
+void __attribute__((constructor)) init_locale_utf8_support(void)
+{
+	const char *program_locale = setlocale(LC_ALL, NULL);
+	const char *lang = getenv("LANG");
+
+	if (program_locale && strstr(program_locale, "utf8")) {
+		utf8_output_supported = true;
+	} else if (strstr(lang, "utf8")) {
+		utf8_output_supported = true;
+	}
 }

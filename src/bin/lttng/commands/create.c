@@ -442,7 +442,7 @@ static int create_session(void)
 		MSG("Traces will be written in %s", print_str_url);
 
 		if (opt_live_timer) {
-			MSG("Live timer set to %u usec", opt_live_timer);
+			MSG("Live timer set to %u %s", opt_live_timer, USEC_UNIT);
 		}
 	} else if (opt_snapshot) {
 		if (print_str_url) {
