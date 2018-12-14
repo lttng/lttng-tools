@@ -242,8 +242,8 @@ void *thread_consumer_management(void *data)
 	health_code_update();
 
 	/*
-	 * Transfer the write-end of the channel monitoring and rotate pipe
-	 * to the consumer by issuing a SET_CHANNEL_MONITOR_PIPE command.
+	 * Transfer the write-end of the channel monitoring pipe to the consumer
+	 * by issuing a SET_CHANNEL_MONITOR_PIPE command.
 	 */
 	cmd_socket_wrapper = consumer_allocate_socket(&consumer_data->cmd_sock);
 	if (!cmd_socket_wrapper) {
@@ -251,6 +251,16 @@ void *thread_consumer_management(void *data)
 		goto error;
 	}
 	cmd_socket_wrapper->lock = &consumer_data->lock;
+
+	pthread_mutex_lock(cmd_socket_wrapper->lock);
+	ret = consumer_init(cmd_socket_wrapper, sessiond_uuid);
+	if (ret) {
+		ERR("Failed to send sessiond uuid to consumer daemon");
+		mark_thread_intialization_as_failed(notifiers);
+		pthread_mutex_unlock(cmd_socket_wrapper->lock);
+		goto error;
+	}
+	pthread_mutex_unlock(cmd_socket_wrapper->lock);
 
 	ret = consumer_send_channel_monitor_pipe(cmd_socket_wrapper,
 			consumer_data->channel_monitor_pipe);

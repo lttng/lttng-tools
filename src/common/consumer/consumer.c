@@ -4491,6 +4491,7 @@ enum lttcomm_return_code lttng_consumer_init_command(
 		const lttng_uuid sessiond_uuid)
 {
 	enum lttcomm_return_code ret;
+	char uuid_str[UUID_STR_LEN];
 
 	if (ctx->sessiond_uuid.is_set) {
 		ret = LTTCOMM_CONSUMERD_ALREADY_SET;
@@ -4500,6 +4501,8 @@ enum lttcomm_return_code lttng_consumer_init_command(
 	ctx->sessiond_uuid.is_set = true;
 	memcpy(ctx->sessiond_uuid.value, sessiond_uuid, sizeof(lttng_uuid));
 	ret = LTTCOMM_CONSUMERD_SUCCESS;
+	lttng_uuid_to_str(sessiond_uuid, uuid_str);
+	DBG("Received session daemon UUID: %s", uuid_str);
 end:
 	return ret;
 }

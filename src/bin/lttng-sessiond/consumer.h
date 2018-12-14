@@ -314,5 +314,7 @@ int consumer_check_rotation_pending_relay(struct consumer_socket *socket,
 int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
 		const struct consumer_output *output, const char *path,
 		uid_t uid, gid_t gid);
+int consumer_init(struct consumer_socket *socket,
+		const lttng_uuid sessiond_uuid);
 
 #endif /* _CONSUMER_H */
