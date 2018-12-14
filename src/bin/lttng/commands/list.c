@@ -1261,7 +1261,7 @@ void print_timer(const char *timer_name, uint32_t space_count, int64_t value)
 	}
 
 	if (value) {
-		MSG("%" PRId64 " µs", value);
+		MSG("%" PRId64 " %s", value, USEC_UNIT);
 	} else {
 		MSG("inactive");
 	}
@@ -1318,7 +1318,8 @@ static void print_channel(struct lttng_channel *channel)
 		if (blocking_timeout == -1) {
 			MSG("%sBlocking timeout: infinite", indent6);
 		} else {
-			MSG("%sBlocking timeout: %" PRId64 " µs", indent6, blocking_timeout);
+			MSG("%sBlocking timeout: %" PRId64 " %s", indent6,
+					blocking_timeout, USEC_UNIT);
 		}
 	}
 
@@ -1616,7 +1617,7 @@ static enum cmd_error_code print_periodic_rotation_schedule(
 		goto end;
 	}
 
-	MSG("    timer period: %" PRIu64" µs", value);
+	MSG("    timer period: %" PRIu64" %s", value, USEC_UNIT);
 	ret = CMD_SUCCESS;
 end:
 	return ret;

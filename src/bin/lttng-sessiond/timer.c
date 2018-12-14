@@ -279,8 +279,8 @@ int timer_session_rotation_schedule_timer_start(struct ltt_session *session,
 		ret = -1;
 		goto end;
 	}
-	DBG("Enabling scheduled rotation timer on session \"%s\" (%ui µs)", session->name,
-			interval_us);
+	DBG("Enabling scheduled rotation timer on session \"%s\" (%ui %s)", session->name,
+			interval_us, USEC_UNIT);
 	ret = timer_start(&session->rotation_schedule_timer, session,
 			interval_us, LTTNG_SESSIOND_SIG_SCHEDULED_ROTATION,
 			/* one-shot */ false);

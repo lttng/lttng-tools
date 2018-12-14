@@ -510,7 +510,9 @@ int cmd_enable_channels(int argc, const char **argv)
 				goto end;
 			}
 			chan_opts.attr.switch_timer_interval = (uint32_t) v;
-			DBG("Channel switch timer interval set to %d", chan_opts.attr.switch_timer_interval);
+			DBG("Channel switch timer interval set to %d %s",
+					chan_opts.attr.switch_timer_interval,
+					USEC_UNIT);
 			break;
 		}
 		case OPT_READ_TIMER:
@@ -532,7 +534,9 @@ int cmd_enable_channels(int argc, const char **argv)
 				goto end;
 			}
 			chan_opts.attr.read_timer_interval = (uint32_t) v;
-			DBG("Channel read timer interval set to %d", chan_opts.attr.read_timer_interval);
+			DBG("Channel read timer interval set to %d %s",
+					chan_opts.attr.read_timer_interval,
+					USEC_UNIT);
 			break;
 		}
 		case OPT_MONITOR_TIMER:
@@ -549,7 +553,9 @@ int cmd_enable_channels(int argc, const char **argv)
 			}
 			opt_monitor_timer.interval = (uint64_t) v;
 			opt_monitor_timer.set = true;
-			DBG("Channel monitor timer interval set to %" PRIu64" (µs)", opt_monitor_timer.interval);
+			DBG("Channel monitor timer interval set to %" PRIu64 " %s",
+					opt_monitor_timer.interval,
+					USEC_UNIT);
 			break;
 		}
 		case OPT_BLOCKING_TIMEOUT:
@@ -597,8 +603,9 @@ int cmd_enable_channels(int argc, const char **argv)
 
 			opt_blocking_timeout.value = (int64_t) v;
 			opt_blocking_timeout.set = true;
-			DBG("Channel blocking timeout set to %" PRId64 " µs%s",
+			DBG("Channel blocking timeout set to %" PRId64 " %s%s",
 					opt_blocking_timeout.value,
+					USEC_UNIT,
 					opt_blocking_timeout.value == 0 ?
 						" (non-blocking)" : "");
 			break;

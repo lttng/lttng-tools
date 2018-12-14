@@ -118,8 +118,8 @@ static enum cmd_error_code add_schedule(const char *session_name,
 		ret = CMD_SUCCESS;
 		switch (schedule_type) {
 		case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
-			MSG("Enabled %s rotations every %" PRIu64 " µs on session %s",
-					schedule_type_name, value, session_name);
+			MSG("Enabled %s rotations every %" PRIu64 " %s on session %s",
+					schedule_type_name, value, USEC_UNIT, session_name);
 			break;
 		case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
 			MSG("Enabled %s rotations every %" PRIu64 " bytes written on session %s",
