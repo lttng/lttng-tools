@@ -471,7 +471,7 @@ bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 	wait_until_thread_is_ready(notifiers);
 	lttng_thread_put(thread);
 	if (notifiers->initialization_result) {
-		goto error;
+		return false;
 	}
 	return true;
 error:
