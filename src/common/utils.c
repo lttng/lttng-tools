@@ -1104,12 +1104,19 @@ end:
 
 /**
  * Parse a string that represents a time in human readable format. It
- * supports decimal integers suffixed by 's', 'u', 'm', 'us', and 'ms'.
+ * supports decimal integers suffixed by:
+ *     "us" for microsecond,
+ *     "ms" for millisecond,
+ *     "s"  for second,
+ *     "m"  for minute,
+ *     "h"  for hour
  *
  * The suffix multiply the integer by:
- * 'u'/'us': 1
- * 'm'/'ms': 1000
- * 's': 1000000
+ *     "us" : 1
+ *     "ms" : 1000
+ *     "s"  : 1000000
+ *     "m"  : 60000000
+ *     "h"  : 3600000000
  *
  * Note that unit-less numbers are assumed to be microseconds.
  *
@@ -1124,7 +1131,7 @@ int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
 {
 	int ret;
 	uint64_t base_time;
-	long multiplier = 1;
+	uint64_t multiplier = 1;
 	const char *str_end;
 	char *num_end;
 
@@ -1161,17 +1168,37 @@ int utils_parse_time_suffix(char const * const str, uint64_t * const time_us)
 	/* Check if a prefix is present. */
 	switch (*num_end) {
 	case 'u':
-		multiplier = 1;
-		/* Skip another letter in the 'us' case. */
-		num_end += (*(num_end + 1) == 's') ? 2 : 1;
+		/*
+		 * Microsecond (us)
+		 *
+		 * Skip the "us" if the string matches the "us" suffix,
+		 * otherwise let the check for the end of the string handle
+		 * the error reporting.
+		 */
+		if (*(num_end + 1) == 's') {
+			num_end += 2;
+		}
 		break;
 	case 'm':
-		multiplier = 1000;
-		/* Skip another letter in the 'ms' case. */
-		num_end += (*(num_end + 1) == 's') ? 2 : 1;
+		if (*(num_end + 1) == 's') {
+			/* Millisecond (ms) */
+			multiplier = USEC_PER_MSEC;
+			/* Skip the 's' */
+			num_end++;
+		} else {
+			/* Minute (m) */
+			multiplier = USEC_PER_MINUTE;
+		}
+		num_end++;
 		break;
 	case 's':
-		multiplier = 1000000;
+		/* Second */
+		multiplier = USEC_PER_SEC;
+		num_end++;
+		break;
+	case 'h':
+		/* Hour */
+		multiplier = USEC_PER_HOURS;
 		num_end++;
 		break;
 	case '\0':
