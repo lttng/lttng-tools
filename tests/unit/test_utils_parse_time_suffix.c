@@ -18,6 +18,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include <tap/tap.h>
 
@@ -37,16 +38,25 @@ struct valid_test_input {
 static struct valid_test_input valid_tests_inputs[] = {
 		{ "0", 0 },
 		{ "1234", 1234 },
-		{ "0u", 0 },
-		{ "1234u", 1234 },
-		{ "16m", 16000 },
-		{ "128m", 128000 },
+		{ "1234us", 1234 },
+		{ "16ms", 16000 },
+		{ "128ms", 128000 },
 		{ "32s", 32000000 },
+		{ "1m", 60000000 },
+		{ "20m", 1200000000 },
+		{ "1h", 3600000000 },
+		{ "5h", 18000000000 },
 		{ "00", 0 },
-		{ "0m", 0 },
+		{ "0us", 0 },
+		{ "0ms", 0 },
 		{ "0s", 0 },
-		{ "00m", 0 },
+		{ "0m", 0 },
+		{ "0h", 0 },
+		{ "00us", 0 },
+		{ "00ms", 0 },
 		{ "00s", 0 },
+		{ "00m", 0 },
+		{ "00h", 0 },
 		{ "12ms", 12000 },
 		{ "3597us", 3597 },
 		{ "+5", 5 },
@@ -79,6 +89,14 @@ static char *invalid_tests_inputs[] = {
 		"14ns",
 		"14ms garbage after value",
 		"0x14s",
+		"0u",
+		"5mS",
+		"5Ms",
+		"12ussr",
+		"67msrp",
+		"14si",
+		"12mo",
+		"53hi",
 };
 static const int num_invalid_tests = sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
 
@@ -90,11 +108,10 @@ static void test_utils_parse_time_suffix(void)
 
 	/* Test valid cases */
 	for (i = 0; i < num_valid_tests; i++) {
-		char name[100];
-
-		sprintf(name, "valid test case: %s", valid_tests_inputs[i].input);
+		char name[256];
 
 		ret = utils_parse_time_suffix(valid_tests_inputs[i].input, &result);
+		sprintf(name, "valid test case: %s expected %" PRIu64, valid_tests_inputs[i].input, result);
 		ok(ret == 0 && result == valid_tests_inputs[i].expected_result, name);
 	}
 

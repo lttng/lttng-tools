@@ -22,10 +22,18 @@
 #include <time.h>
 #include <stdbool.h>
 
-#define MSEC_PER_SEC	1000ULL
-#define NSEC_PER_SEC	1000000000ULL
-#define NSEC_PER_MSEC	1000000ULL
-#define NSEC_PER_USEC	1000ULL
+#define MSEC_PER_SEC    1000ULL
+#define NSEC_PER_SEC    1000000000ULL
+#define NSEC_PER_MSEC   1000000ULL
+#define NSEC_PER_USEC   1000ULL
+#define USEC_PER_SEC    1000000ULL
+#define USEC_PER_MSEC   1000ULL
+
+#define SEC_PER_MINUTE  60ULL
+#define MINUTE_PER_HOUR 60ULL
+
+#define USEC_PER_MINUTE (USEC_PER_SEC * SEC_PER_MINUTE)
+#define USEC_PER_HOURS  (USEC_PER_MINUTE * MINUTE_PER_HOUR)
 
 bool locale_supports_utf8(void);
 

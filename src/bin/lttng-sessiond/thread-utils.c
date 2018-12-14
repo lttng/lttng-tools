@@ -22,8 +22,6 @@
 #include <common/utils.h>
 #include <pthread.h>
 
-#define USEC_PER_SEC 1000000
-
 /*
  * Quit pipe for all threads. This permits a single cancellation point
  * for all threads when receiving an event on the pipe.
