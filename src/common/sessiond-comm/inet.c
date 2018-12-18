@@ -381,6 +381,15 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 	} while ((ret > 0 && ret < len_last) || (ret < 0 && errno == EINTR));
 
 	if (ret < 0) {
+		if (errno == EAGAIN && flags & MSG_DONTWAIT) {
+			/*
+			 * EAGAIN is expected in non-blocking mode and should
+			 * not be reported as an error. Moreover, if no data
+			 * was read, 0 must not be returned as it would be
+			 * interpreted as an orderly shutdown of the socket.
+			 */
+			goto end;
+		}
 		PERROR("recvmsg inet");
 	} else if (ret > 0) {
 		ret = len;
