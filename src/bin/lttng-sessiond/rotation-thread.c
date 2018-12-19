@@ -761,9 +761,9 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 			 * possible for a job targeting that session to have
 			 * already been queued before it was destroyed.
 			 */
-			session_unlock_list();
 			free(job);
 			session_put(session);
+			session_unlock_list();
 			continue;
 		}
 
@@ -832,7 +832,6 @@ int handle_condition(const struct lttng_condition *condition,
 		goto end;
 	}
 	session_lock(session);
-	session_unlock_list();
 
 	ret = unsubscribe_session_consumed_size_rotation(session,
 			notification_thread_handle);
@@ -861,6 +860,7 @@ int handle_condition(const struct lttng_condition *condition,
 end_unlock:
 	session_unlock(session);
 	session_put(session);
+	session_unlock_list();
 end:
 	return ret;
 }
