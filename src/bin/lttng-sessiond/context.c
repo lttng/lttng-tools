@@ -169,18 +169,19 @@ static int add_uctx_to_channel(struct ltt_ust_session *usess,
 		goto error;
 	}
 
+	/* Add ltt UST context node to ltt UST channel */
+	lttng_ht_add_ulong(uchan->ctx, &uctx->node);
+	cds_list_add_tail(&uctx->list, &uchan->ctx_list);
+
+	if (!usess->active) {
+		goto end;
+	}
+
 	ret = ust_app_add_ctx_channel_glb(usess, uchan, uctx);
 	if (ret < 0) {
 		goto error;
 	}
-
-	rcu_read_lock();
-
-	/* Add ltt UST context node to ltt UST channel */
-	lttng_ht_add_ulong(uchan->ctx, &uctx->node);
-	rcu_read_unlock();
-	cds_list_add_tail(&uctx->list, &uchan->ctx_list);
-
+end:
 	DBG("Context UST %d added to channel %s", uctx->ctx.ctx, uchan->name);
 
 	return 0;
