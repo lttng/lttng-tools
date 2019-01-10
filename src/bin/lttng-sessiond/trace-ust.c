@@ -827,13 +827,14 @@ int trace_ust_pid_tracker_lookup(struct ltt_ust_session *session, int pid)
 int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
 {
 	int retval = LTTNG_OK;
+	bool should_update_apps = false;
 
 	if (pid == -1) {
 		/* Track all pids: destroy tracker if exists. */
 		if (session->pid_tracker.ht) {
 			fini_pid_tracker(&session->pid_tracker);
 			/* Ensure all apps have session. */
-			ust_app_global_update_all(session);
+			should_update_apps = true;
 		}
 	} else {
 		int ret;
@@ -852,7 +853,7 @@ int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
 				goto end;
 			}
 			/* Remove all apps from session except pid. */
-			ust_app_global_update_all(session);
+			should_update_apps = true;
 		} else {
 			struct ust_app *app;
 
@@ -864,9 +865,12 @@ int trace_ust_track_pid(struct ltt_ust_session *session, int pid)
 			/* Add session to application */
 			app = ust_app_find_by_pid(pid);
 			if (app) {
-				ust_app_global_update(session, app);
+				should_update_apps = true;
 			}
 		}
+	}
+	if (should_update_apps && session->active) {
+		ust_app_global_update_all(session);
 	}
 end:
 	return retval;

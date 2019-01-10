@@ -311,6 +311,18 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 		DBG3("Channel %s already enabled. Skipping", uchan->name);
 		ret = LTTNG_ERR_UST_CHAN_EXIST;
 		goto end;
+	} else {
+		uchan->enabled = 1;
+		DBG2("Channel %s enabled successfully", uchan->name);
+	}
+
+	if (!usess->active) {
+		/*
+		 * The channel will be activated against the apps
+		 * when the session is started as part of the
+		 * application channel "synchronize" operation.
+		 */
+		goto end;
 	}
 
 	DBG2("Channel %s being enabled in UST domain", uchan->name);
@@ -325,8 +337,6 @@ int channel_ust_enable(struct ltt_ust_session *usess,
 	 */
 	(void) ust_app_enable_channel_glb(usess, uchan);
 
-	uchan->enabled = 1;
-	DBG2("Channel %s enabled successfully", uchan->name);
 
 end:
 	return ret;
@@ -465,11 +475,13 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		goto error_free_chan;
 	}
 
-	/* Enable channel for global domain */
-	ret = ust_app_create_channel_glb(usess, uchan);
-	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
-		ret = LTTNG_ERR_UST_CHAN_FAIL;
-		goto error_free_chan;
+	if (usess->active) {
+		/* Enable channel for global domain */
+		ret = ust_app_create_channel_glb(usess, uchan);
+		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
+			ret = LTTNG_ERR_UST_CHAN_FAIL;
+			goto error_free_chan;
+		}
 	}
 
 	/* Adding the channel to the channel hash table. */
@@ -531,6 +543,9 @@ int channel_ust_disable(struct ltt_ust_session *usess,
 	/* Already disabled */
 	if (uchan->enabled == 0) {
 		DBG2("Channel UST %s already disabled", uchan->name);
+		goto end;
+	}
+	if (!usess->active) {
 		goto end;
 	}
 

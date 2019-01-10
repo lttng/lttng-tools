@@ -61,7 +61,7 @@ static void update_ust_app(int app_sock)
 			continue;
 		}
 		session_lock(sess);
-		if (!sess->ust_session) {
+		if (!sess->active || !sess->ust_session) {
 			goto unlock_session;
 		}
 

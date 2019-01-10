@@ -162,7 +162,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event)
 {
-	int ret, to_create = 0;
+	int ret = LTTNG_OK, to_create = 0;
 	struct ltt_ust_event *uevent;
 
 	assert(usess);
@@ -195,6 +195,14 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	}
 
 	uevent->enabled = 1;
+	if (to_create) {
+		/* Add ltt ust event to channel */
+		add_unique_ust_event(uchan->events, uevent);
+	}
+
+	if (!usess->active) {
+		goto end;
+	}
 
 	if (to_create) {
 		/* Create event on all UST registered apps for session */
@@ -212,11 +220,6 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 			ret = LTTNG_ERR_UST_ENABLE_FAIL;
 			goto error;
 		}
-	}
-
-	if (to_create) {
-		/* Add ltt ust event to channel */
-		add_unique_ust_event(uchan->events, uevent);
 	}
 
 	DBG("Event UST %s %s in channel %s", uevent->attr.name,
@@ -291,17 +294,18 @@ int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
 			/* It's already disabled so everything is OK */
 			goto next;
 		}
+		uevent->enabled = 0;
+		DBG2("Event UST %s disabled in channel %s", uevent->attr.name,
+				uchan->name);
 
+		if (!usess->active) {
+			goto next;
+		}
 		ret = ust_app_disable_event_glb(usess, uchan, uevent);
 		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_DISABLE_FAIL;
 			goto error;
 		}
-		uevent->enabled = 0;
-
-		DBG2("Event UST %s disabled in channel %s", uevent->attr.name,
-				uchan->name);
-
 next:
 		/* Get next duplicate event by name. */
 		cds_lfht_next_duplicate(ht->ht, trace_ust_ht_match_event_by_name,
@@ -506,16 +510,17 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		created = 1;
 	}
 
-	/* Already enabled? */
-	if (aevent->enabled) {
-		goto end;
-	}
-
 	if (created && filter) {
 		ret = add_filter_app_ctx(filter, filter_expression, agt);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
+	}
+
+	/* Already enabled? */
+	if (aevent->enabled) {
+		ret = LTTNG_OK;
+		goto end;
 	}
 
 	ret = agent_enable_event(aevent, agt->domain);
@@ -629,10 +634,12 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 
-	ret = ust_app_disable_event_glb(usess, uchan, uevent);
-	if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
-		ret = LTTNG_ERR_UST_DISABLE_FAIL;
-		goto error;
+	if (usess->active) {
+		ret = ust_app_disable_event_glb(usess, uchan, uevent);
+		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
+			ret = LTTNG_ERR_UST_DISABLE_FAIL;
+			goto error;
+		}
 	}
 
 	/*
