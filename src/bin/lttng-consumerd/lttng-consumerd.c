@@ -411,7 +411,7 @@ int main(int argc, char **argv)
 		set_ulimit();
 	}
 
-	if (run_as_create_worker(argv[0]) < 0) {
+	if (run_as_create_worker(argv[0], NULL, NULL) < 0) {
 		goto exit_init_data;
 	}
 

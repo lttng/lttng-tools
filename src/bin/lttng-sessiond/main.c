@@ -1336,6 +1336,26 @@ static void destroy_all_sessions_and_wait(void)
 	DBG("Destruction of all sessions completed");
 }
 
+static int run_as_worker_post_fork_cleanup(void *data)
+{
+	struct sessiond_config *sessiond_config = data;
+
+	sessiond_config_fini(sessiond_config);
+	return 0;
+}
+
+static int launch_run_as_worker(const char *procname)
+{
+	/*
+	 * Clean-up before forking the run-as worker. Any dynamically
+	 * allocated memory of which the worker is not aware will
+	 * be leaked as the process forks a run-as worker (and performs
+	 * no exec*()). The same would apply to any opened fd.
+	 */
+	return run_as_create_worker(procname, run_as_worker_post_fork_cleanup,
+			&config);
+}
+
 /*
  * main
  */
@@ -1469,7 +1489,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (run_as_create_worker(argv[0]) < 0) {
+	if (launch_run_as_worker(argv[0]) < 0) {
 		goto exit_create_run_as_worker_cleanup;
 	}
 
