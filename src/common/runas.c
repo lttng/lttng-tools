@@ -870,7 +870,9 @@ end:
 }
 
 static
-int run_as_create_worker_no_lock(const char *procname)
+int run_as_create_worker_no_lock(const char *procname,
+		post_fork_cleanup_cb clean_up_func,
+		void *clean_up_user_data)
 {
 	pid_t pid;
 	int i, ret = 0;
@@ -915,6 +917,12 @@ int run_as_create_worker_no_lock(const char *procname)
 		reset_sighandler();
 
 		set_worker_sighandlers();
+		if (clean_up_func) {
+			if (clean_up_func(clean_up_user_data) < 0) {
+				ERR("Run-as post-fork clean-up failed, exiting.");
+				exit(EXIT_FAILURE);
+			}
+		}
 
 		/* Just close, no shutdown. */
 		if (close(worker->sockpair[0])) {
@@ -998,7 +1006,7 @@ int run_as_restart_worker(struct run_as_worker *worker)
 	run_as_destroy_worker();
 
 	/* Create a new run_as worker process*/
-	ret = run_as_create_worker_no_lock(procname);
+	ret = run_as_create_worker_no_lock(procname, NULL, NULL);
 	if (ret < 0 ) {
 		ERR("Restarting the worker process failed");
 		ret = -1;
@@ -1214,12 +1222,15 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 }
 
 LTTNG_HIDDEN
-int run_as_create_worker(const char *procname)
+int run_as_create_worker(const char *procname,
+		post_fork_cleanup_cb clean_up_func,
+		void *clean_up_user_data)
 {
 	int ret;
 
 	pthread_mutex_lock(&worker_lock);
-	ret = run_as_create_worker_no_lock(procname);
+	ret = run_as_create_worker_no_lock(procname, clean_up_func,
+			clean_up_user_data);
 	pthread_mutex_unlock(&worker_lock);
 	return ret;
 }
