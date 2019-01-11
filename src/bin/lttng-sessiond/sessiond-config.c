@@ -415,6 +415,7 @@ void sessiond_config_fini(struct sessiond_config *config)
 	config_string_fini(&config->tracing_group_name);
 	config_string_fini(&config->kmod_probes_list);
 	config_string_fini(&config->kmod_extra_probes_list);
+	config_string_fini(&config->rundir);
 	config_string_fini(&config->apps_unix_sock_path);
 	config_string_fini(&config->client_unix_sock_path);
 	config_string_fini(&config->wait_shm_path);
