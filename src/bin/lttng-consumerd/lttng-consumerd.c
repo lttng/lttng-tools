@@ -311,6 +311,10 @@ int main(int argc, char **argv)
 
 	rcu_register_thread();
 
+	if (run_as_create_worker(argv[0], NULL, NULL) < 0) {
+		goto exit_set_signal_handler;
+	}
+
 	if (set_signal_handler()) {
 		retval = -1;
 		goto exit_set_signal_handler;
@@ -409,10 +413,6 @@ int main(int argc, char **argv)
 	if (!getuid()) {
 		/* Set limit for open files */
 		set_ulimit();
-	}
-
-	if (run_as_create_worker(argv[0], NULL, NULL) < 0) {
-		goto exit_init_data;
 	}
 
 	/* create the consumer instance with and assign the callbacks */
