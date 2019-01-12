@@ -66,9 +66,7 @@ function run_app
 		opt="${opt} -g ${go_file}"
 	fi
 
-	set -x
 	$python $TESTAPP_PATH/$TESTAPP_BIN -n $NR_ITER -s $NR_SEC_WAIT $opt
-	set +x
 }
 
 function run_app_background
