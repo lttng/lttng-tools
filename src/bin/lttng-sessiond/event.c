@@ -506,7 +506,8 @@ int event_agent_enable(struct ltt_ust_session *usess,
 			ret = LTTNG_ERR_NOMEM;
 			goto error;
 		}
-
+		filter = NULL;
+		filter_expression = NULL;
 		created = 1;
 	}
 
@@ -533,13 +534,16 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		agent_add_event(aevent, agt);
 	}
 
-end:
-	return LTTNG_OK;
+	ret = LTTNG_OK;
+	goto end;
 
 error:
 	if (created) {
 		agent_destroy_event(aevent);
 	}
+end:
+	free(filter);
+	free(filter_expression);
 	return ret;
 }
 
