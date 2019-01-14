@@ -884,7 +884,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 		if (need_tracing_session) {
 			if (cmd_ctx->session->kernel_session == NULL) {
 				ret = create_kernel_session(cmd_ctx->session);
-				if (ret < 0) {
+				if (ret != LTTNG_OK) {
 					ret = LTTNG_ERR_KERN_SESS_FAIL;
 					goto error;
 				}
