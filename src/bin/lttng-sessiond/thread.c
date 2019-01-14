@@ -169,6 +169,7 @@ bool _lttng_thread_shutdown(struct lttng_thread *thread)
 	if (ret) {
 		PERROR("Failed to join \"%s\" thread", thread->name);
 		result = false;
+		goto end;
 	}
 	/* Release the list's reference to the thread. */
 	cds_list_del(&thread->node);
