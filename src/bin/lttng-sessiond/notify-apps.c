@@ -230,7 +230,7 @@ bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 
 	notifiers = zmalloc(sizeof(*notifiers));
 	if (!notifiers) {
-		goto error;
+		goto error_alloc;
 	}
 	notifiers->apps_cmd_notify_pipe_read_fd = apps_cmd_notify_pipe_read_fd;
 
@@ -252,5 +252,6 @@ bool launch_application_notification_thread(int apps_cmd_notify_pipe_read_fd)
 	return true;
 error:
 	cleanup_application_notification_thread(notifiers);
+error_alloc:
 	return false;
 }

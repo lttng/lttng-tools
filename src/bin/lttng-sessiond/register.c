@@ -400,13 +400,12 @@ struct lttng_thread *launch_application_registration_thread(
 	struct thread_notifiers *notifiers = NULL;
 	struct lttng_thread *thread;
 
-	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
-	if (!quit_pipe) {
-		goto error;
-	}
-
 	notifiers = zmalloc(sizeof(*notifiers));
 	if (!notifiers) {
+		goto error_alloc;
+	}
+	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
+	if (!quit_pipe) {
 		goto error;
 	}
 	notifiers->quit_pipe = quit_pipe;
@@ -428,5 +427,6 @@ struct lttng_thread *launch_application_registration_thread(
 	return thread;
 error:
 	cleanup_application_registration_thread(notifiers);
+error_alloc:
 	return NULL;
 }

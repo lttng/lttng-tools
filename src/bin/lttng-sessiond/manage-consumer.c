@@ -447,13 +447,13 @@ bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 	struct thread_notifiers *notifiers = NULL;
 	struct lttng_thread *thread;
 
-	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
-	if (!quit_pipe) {
-		goto error;
-	}
-
 	notifiers = zmalloc(sizeof(*notifiers));
 	if (!notifiers) {
+		goto error_alloc;
+	}
+
+	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
+	if (!quit_pipe) {
 		goto error;
 	}
 	notifiers->quit_pipe = quit_pipe;
@@ -476,5 +476,6 @@ bool launch_consumer_management_thread(struct consumer_data *consumer_data)
 	return true;
 error:
 	cleanup_consumer_management_thread(notifiers);
+error_alloc:
 	return false;
 }

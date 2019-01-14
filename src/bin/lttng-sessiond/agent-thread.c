@@ -504,7 +504,7 @@ bool launch_agent_management_thread(void)
 
 	notifiers = zmalloc(sizeof(*notifiers));
 	if (!notifiers) {
-		goto error;
+		goto error_alloc;
 	}
 
 	sem_init(&notifiers->ready, 0, 0);
@@ -525,5 +525,6 @@ bool launch_agent_management_thread(void)
 	return true;
 error:
 	cleanup_agent_management_thread(notifiers);
+error_alloc:
 	return false;
 }
