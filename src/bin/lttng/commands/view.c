@@ -296,6 +296,7 @@ static int view_trace(void)
 	int ret;
 	char *session_name, *trace_path = NULL;
 	struct lttng_session *sessions = NULL;
+	bool free_trace_path = false;
 
 	/*
 	 * Safety net. If lttng is suid at some point for *any* useless reasons,
@@ -373,6 +374,7 @@ static int view_trace(void)
 				ret = CMD_ERROR;
 				goto free_sessions;
 			}
+			free_trace_path = true;
 		} else {
 			/* Get file system session path. */
 			trace_path = sessions[i].path;
@@ -390,7 +392,7 @@ static int view_trace(void)
 	}
 
 free_sessions:
-	if (session_live_mode) {
+	if (session_live_mode && free_trace_path) {
 		free(trace_path);
 	}
 	free(sessions);
