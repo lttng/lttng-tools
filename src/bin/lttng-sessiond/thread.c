@@ -88,7 +88,7 @@ struct lttng_thread *lttng_thread_create(const char *name,
 
 	thread = zmalloc(sizeof(*thread));
 	if (!thread) {
-		goto error;
+		goto error_alloc;
 	}
 
 	urcu_ref_init(&thread->ref);
@@ -127,9 +127,9 @@ error_pthread_create:
 	/* Release list reference. */
 	lttng_thread_put(thread);
 	pthread_mutex_unlock(&thread_list.lock);
-error:
 	/* Release initial reference. */
 	lttng_thread_put(thread);
+error_alloc:
 	return NULL;
 }
 
