@@ -995,6 +995,51 @@ error_procname_alloc:
 }
 
 static
+void run_as_destroy_worker_no_lock(void)
+{
+	struct run_as_worker *worker = global_worker;
+
+	DBG("Destroying run_as worker");
+	if (!worker) {
+		return;
+	}
+	/* Close unix socket */
+	DBG("Closing run_as worker socket");
+	if (lttcomm_close_unix_sock(worker->sockpair[0])) {
+		PERROR("close");
+	}
+	worker->sockpair[0] = -1;
+	/* Wait for worker. */
+	for (;;) {
+		int status;
+		pid_t wait_ret;
+
+		wait_ret = waitpid(worker->pid, &status, 0);
+		if (wait_ret < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+			PERROR("waitpid");
+			break;
+		}
+
+		if (WIFEXITED(status)) {
+			LOG(WEXITSTATUS(status) == 0 ? PRINT_DBG : PRINT_ERR,
+					DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
+				        WEXITSTATUS(status));
+			break;
+		} else if (WIFSIGNALED(status)) {
+			ERR(DEFAULT_RUN_AS_WORKER_NAME " was killed by signal %d",
+					WTERMSIG(status));
+			break;
+		}
+	}
+	free(worker->procname);
+	free(worker);
+	global_worker = NULL;
+}
+
+static
 int run_as_restart_worker(struct run_as_worker *worker)
 {
 	int ret = 0;
@@ -1003,7 +1048,7 @@ int run_as_restart_worker(struct run_as_worker *worker)
 	procname = worker->procname;
 
 	/* Close socket to run_as worker process and clean up the zombie process */
-	run_as_destroy_worker();
+	run_as_destroy_worker_no_lock();
 
 	/* Create a new run_as worker process*/
 	ret = run_as_create_worker_no_lock(procname, NULL, NULL);
@@ -1238,47 +1283,7 @@ int run_as_create_worker(const char *procname,
 LTTNG_HIDDEN
 void run_as_destroy_worker(void)
 {
-	struct run_as_worker *worker = global_worker;
-
-	DBG("Destroying run_as worker");
 	pthread_mutex_lock(&worker_lock);
-	if (!worker) {
-		goto end;
-	}
-	/* Close unix socket */
-	DBG("Closing run_as worker socket");
-	if (lttcomm_close_unix_sock(worker->sockpair[0])) {
-		PERROR("close");
-	}
-	worker->sockpair[0] = -1;
-	/* Wait for worker. */
-	for (;;) {
-		int status;
-		pid_t wait_ret;
-
-		wait_ret = waitpid(worker->pid, &status, 0);
-		if (wait_ret < 0) {
-			if (errno == EINTR) {
-				continue;
-			}
-			PERROR("waitpid");
-			break;
-		}
-
-		if (WIFEXITED(status)) {
-			LOG(WEXITSTATUS(status) == 0 ? PRINT_DBG : PRINT_ERR,
-					DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
-				        WEXITSTATUS(status));
-			break;
-		} else if (WIFSIGNALED(status)) {
-			ERR(DEFAULT_RUN_AS_WORKER_NAME " was killed by signal %d",
-					WTERMSIG(status));
-			break;
-		}
-	}
-	free(worker->procname);
-	free(worker);
-	global_worker = NULL;
-end:
+	run_as_destroy_worker_no_lock();
 	pthread_mutex_unlock(&worker_lock);
 }
