@@ -475,7 +475,7 @@ static int create_kernel_session(struct ltt_session *session)
 	ret = kernel_create_session(session, kernel_tracer_fd);
 	if (ret < 0) {
 		ret = LTTNG_ERR_KERN_SESS_FAIL;
-		goto error;
+		goto error_create;
 	}
 
 	/* Code flow safety */
@@ -497,6 +497,7 @@ static int create_kernel_session(struct ltt_session *session)
 error:
 	trace_kernel_destroy_session(session->kernel_session);
 	session->kernel_session = NULL;
+error_create:
 	return ret;
 }
 
