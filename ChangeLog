@@ -1,3 +1,58 @@
+2019-01-22 lttng-tools 2.10.6 (Blonde Brownie Day)
+	* Fix: worker structure is leaked in run_as process
+	* Fix: only free trace_path when it is dynamically allocated
+	* Fix: leak of filter bytecode and expression on agent event re-enable
+	* Test fix: python logging test spams its output
+	* Fix: leak of rundir config string
+	* Fix: do not repurpose iterator while it is being used
+	* Fix: run_command_wait() handle partial write
+	* Fix: tests: test_crash should start sessions
+	* Add *.exe to gitignore for Cygwin
+	* Fix: warning 'fd' may be used uninitialized
+	* Fix: max_t/min_t macros are missing cast on input
+	* Fix: Connect timeout arithmetic in inet/inet6 (v4)
+	* Fix: create_channel_per_pid: remove channel on error
+	* Fix: channel errors on local stress-tests
+	* Fix: channel_ust_create: remove channel on agent error
+	* Always choose large event header for UST channels
+	* Remove unnecessary check of output parameter
+	* Fix: perform local data pending before checking data pending with relayd
+	* Fix: double put on error path
+	* Fix: holding the stream lock does not equate to having data pending
+	* Fix: skip uid registry when metadata key is 0
+	* Docs: document the meaning of a ust app channel key set to 0
+	* Fix: acquire stream lock during kernel metadata snapshot
+	* Fix: skip closed session on viewer listing
+	* Fix: use LTTNG_VIEWER_ATTACH_UNK to report a closed session
+	* Doc: withinin -> within
+	* Fix: perform relayd socket pair cleanup on control socket error
+	* Fix: relayd control socket mutex is not destroyed
+	* Tests: do not bound test app iterations when in background mode
+	* Tests: add missing rotation and autoload tests to check target
+	* Tests: remove temporary folder
+	* Tests: remove mi result files when done
+	* Tests: Remove unused set +x
+	* Tests: Kill relayd after sessiond to ensure a clean tear down
+	* Tests: Remove unused variable
+	* Tests: Use stop relayd from utils.sh
+	* Tests: remove declaration already present in utils.sh
+	* Fix: incorrect error message on regenerate missing argument
+	* Fix: incorrect error message on metadata missing argument
+	* Fix: snapshot command mishandles missing arguments
+	* Fix: potential use of NULL path in stat() use
+	* Fix: passing null to closedir() on error
+	* Fix: unchecked access to pids array
+	* Fix: returned pids may be uninitialized
+	* Fix: lttng-save command producing wrong XML fields
+	* Fix: memory is not zeroed on first set_capacity
+	* Fix: dynamic buffer mishandles setting capacity to 0
+	* Fix: client_list_element leak on failure to evaluate a condition
+	* Fix: possible NULL dereference in uri_parse_str_urls()
+	* Fix: clean-up sessiond condig structure on initialization error
+	* Fix: unchecked return value in sessiond path configuration
+	* Set consumer's verbosity to the max level on --verbose-consumer
+	* Tests: added test_autoload to noinst_SCRIPTS
+
 2018-07-23 lttng-tools 2.10.5 (National Vanilla Ice Cream Day)
 	* Fix: missing context enum values in session xml schema
 	* Tests: add session auto-loading test cases
