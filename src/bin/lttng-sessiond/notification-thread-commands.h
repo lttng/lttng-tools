@@ -48,6 +48,8 @@ struct channel_info {
 	char *channel_name;
 	uint64_t capacity;
 	struct cds_lfht_node channels_ht_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
 };
 
 struct notification_thread_command {
