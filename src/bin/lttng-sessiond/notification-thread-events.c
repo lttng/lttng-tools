@@ -1572,6 +1572,7 @@ int handle_notification_thread_trigger_unregister_all(
 	struct cds_lfht_iter iter;
 	struct lttng_trigger_ht_element *trigger_ht_element;
 
+	rcu_read_lock();
 	cds_lfht_for_each_entry(state->triggers_ht, &iter, trigger_ht_element,
 			node) {
 		int ret = handle_notification_thread_command_unregister_trigger(
@@ -1580,6 +1581,7 @@ int handle_notification_thread_trigger_unregister_all(
 			error_occurred = true;
 		}
 	}
+	rcu_read_unlock();
 	return error_occurred ? -1 : 0;
 }
 
