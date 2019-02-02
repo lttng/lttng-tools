@@ -26,7 +26,7 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 69
 
-static void test_one_split(const char *input, char delim, bool escape_delim,
+static void test_one_split(const char *input, char delim, int escape_delim,
 		...)
 {
 	va_list vl;
