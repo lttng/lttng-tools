@@ -24,7 +24,7 @@ CHANNEL_NAME="chan1"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=36
+NUM_TESTS=61
 
 source $TESTDIR/utils/utils.sh
 
@@ -124,6 +124,32 @@ function test_kernel_custom_name()
 	return $out
 }
 
+function test_kernel_n_snapshot()
+{
+	diag "Test kernel snapshot streaming multiple consecutive snapshot"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_kernel_channel $SESSION_NAME $CHANNEL_NAME
+	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	snapshot_add_output $SESSION_NAME "net://localhost"
+
+	for i in {1..5};
+	do
+		start_lttng_tracing_ok $SESSION_NAME
+		lttng_snapshot_record $SESSION_NAME
+		stop_lttng_tracing_ok $SESSION_NAME
+		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+		if [ $? -ne 0 ]; then
+			return 1
+		fi
+		set -u
+		rm -rf $TRACE_PATH/$HOSTNAME
+		set +u
+	done
+
+	destroy_lttng_session_ok $SESSION_NAME
+	return 0
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -141,8 +167,11 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 	start_lttng_relayd "-o $TRACE_PATH"
 	start_lttng_sessiond
 
-	tests=( test_kernel_default_name test_kernel_custom_name \
-			test_kernel_default_name_with_del )
+	tests=( test_kernel_default_name
+		test_kernel_custom_name
+		test_kernel_default_name_with_del
+		test_kernel_n_snapshot
+	)
 
 	for fct_test in ${tests[@]};
 	do
