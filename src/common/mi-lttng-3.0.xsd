@@ -722,6 +722,7 @@ THE SOFTWARE.
 			<xs:enumeration value="rotate" />
 			<xs:enumeration value="enable-rotation" />
 			<xs:enumeration value="disable-rotation" />
+			<xs:enumeration value="clear" />
 		</xs:restriction>
 	</xs:simpleType>
 

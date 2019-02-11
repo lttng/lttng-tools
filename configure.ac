@@ -389,6 +389,7 @@ _AC_DEFINE_AND_SUBST([DEFAULT_ROTATE_PENDING_TIMER], [500000])
 # Command short descriptions
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_ADD_CONTEXT], [Add context fields to a channel])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CREATE], [Create a tracing session])
+_AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_CLEAR], [Clear a tracing session])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DESTROY], [Tear down tracing sessions])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DISABLE_CHANNEL], [Disable tracing channels])
 _AC_DEFINE_QUOTED_AND_SUBST([CMD_DESCR_DISABLE_EVENT], [Disable event rules])

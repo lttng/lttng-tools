@@ -83,6 +83,7 @@ extern const char * const mi_lttng_element_command_version;
 extern const char * const mi_lttng_element_command_rotate;
 extern const char * const mi_lttng_element_command_enable_rotation;
 extern const char * const mi_lttng_element_command_disable_rotation;
+extern const char * const mi_lttng_element_command_clear;
 
 /* Strings related to version command */
 extern const char * const mi_lttng_element_version;

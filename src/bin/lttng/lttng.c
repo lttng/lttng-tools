@@ -76,6 +76,7 @@ static struct option long_options[] = {
 static struct cmd_struct commands[] =  {
 	{ "add-context", cmd_add_context},
 	{ "create", cmd_create},
+	{ "clear", cmd_clear},
 	{ "destroy", cmd_destroy},
 	{ "disable-channel", cmd_disable_channels},
 	{ "disable-event", cmd_disable_events},
@@ -280,6 +281,7 @@ static void show_basic_help(void)
 	puts("");
 	puts("Tracing sessions:");
 	puts("  create            " CONFIG_CMD_DESCR_CREATE);
+	puts("  clear             " CONFIG_CMD_DESCR_CLEAR);
 	puts("  destroy           " CONFIG_CMD_DESCR_DESTROY);
 	puts("  load              " CONFIG_CMD_DESCR_LOAD);
 	puts("  regenerate        " CONFIG_CMD_DESCR_REGENERATE);

@@ -77,6 +77,7 @@ const char * const mi_lttng_element_command_version = "version";
 LTTNG_HIDDEN const char * const mi_lttng_element_command_rotate = "rotate";
 LTTNG_HIDDEN const char * const mi_lttng_element_command_enable_rotation = "enable-rotation";
 LTTNG_HIDDEN const char * const mi_lttng_element_command_disable_rotation = "disable-rotation";
+LTTNG_HIDDEN const char * const mi_lttng_element_command_clear = "clear";
 
 /* Strings related to version command */
 const char * const mi_lttng_element_version = "version";
