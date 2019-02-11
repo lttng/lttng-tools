@@ -57,7 +57,7 @@ DEVNULL=/dev/null 2>&1
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=230
+NUM_TESTS=246
 
 source $TESTDIR/utils/utils.sh
 
@@ -889,6 +889,56 @@ function test_add_context_list()
 	ok $? "Mi test: context listing validation"
 }
 
+function test_clear_session ()
+{
+	# Since the session are not started there is no real clear done.
+	# We are testing the MI output only here.
+	local session_name=(
+			"testSession1"
+			"testSession2"
+			"testSession3")
+
+	OUTPUT_FILE="clear_session.xml"
+
+	#Test build up
+	OUTPUT_DEST=$DEVNULL
+	for (( i = 0; i < 3; i++ )); do
+		create_lttng_session_ok ${session_name[$i]} $OUTPUT_DIR
+	done
+
+	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
+	lttng_clear_session_ok  ${session_name[0]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: clear session ${session_name[0]} xsd validation"
+
+	#Verify that we cleared the good session
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
+	test "$result" = "${session_name[0]}"
+	ok $? "Mi test: cleared session: $result expected: ${session_name[0]}"
+
+	#Destroy all and count:should be 3
+	lttng_clear_all
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: clear all session xsd validation"
+
+	#Verify that we cleared 3 sessions
+	extract_xml $OUTPUT_DEST $XPATH_SESSION"/lttng:name/text()" result
+	num=$(echo "$result" | wc -l)
+	test "$num" -eq "3"
+	ok $? "Mi test: $num / 3 sessions discovered"
+
+	destroy_lttng_sessions
+
+	#Verify that if no session is present command fail and mi report it.
+	lttng_clear_session_fail ${session_name[0]}
+	$XML_VALIDATE $OUTPUT_DEST
+	ok $? "MI test: failing clear session ${session_name[0]} xsd validation"
+	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
+	test "$result" = "false"
+	ok $? "Mi test: clear command on ${session_name[0]} failed as expected"
+
+}
+
 start_lttng_sessiond $SESSIOND_LOAD_DIR
 TESTS=(
 	test_version
@@ -906,6 +956,7 @@ TESTS=(
 	test_track_untrack
 	test_list_session_long_path
 	test_add_context_list
+	test_clear_session
 )
 
 

@@ -1996,3 +1996,9 @@ function lttng_clear_session_fail ()
 {
 	lttng_clear_session 1 $@
 }
+
+function lttng_clear_all ()
+{
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN clear --all 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ok $? "Clear all lttng sessions"
+}
