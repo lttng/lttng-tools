@@ -86,6 +86,13 @@ enum context_type {
 	CONTEXT_MIGRATABLE   = 19,
 	CONTEXT_CALLSTACK_KERNEL = 20,
 	CONTEXT_CALLSTACK_USER = 21,
+	CONTEXT_CGROUP_NS    = 22,
+	CONTEXT_IPC_NS       = 23,
+	CONTEXT_MNT_NS       = 24,
+	CONTEXT_NET_NS       = 25,
+	CONTEXT_PID_NS       = 26,
+	CONTEXT_USER_NS      = 27,
+	CONTEXT_UTS_NS       = 28,
 };
 
 /*
@@ -246,6 +253,13 @@ const struct ctx_opts {
 #if HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
 	{ "callstack-user", CONTEXT_CALLSTACK_USER },
 #endif
+	{ "cgroup_ns", CONTEXT_CGROUP_NS },
+	{ "ipc_ns", CONTEXT_IPC_NS },
+	{ "mnt_ns", CONTEXT_MNT_NS },
+	{ "net_ns", CONTEXT_NET_NS },
+	{ "pid_ns", CONTEXT_PID_NS },
+	{ "user_ns", CONTEXT_USER_NS },
+	{ "uts_ns", CONTEXT_UTS_NS },
 
 	/* Perf options */
 

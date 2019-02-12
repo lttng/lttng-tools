@@ -205,6 +205,13 @@ LTTNG_HIDDEN const char * const config_event_context_need_reschedule = "NEED_RES
 LTTNG_HIDDEN const char * const config_event_context_migratable = "MIGRATABLE";
 LTTNG_HIDDEN const char * const config_event_context_callstack_user= "CALLSTACK_USER";
 LTTNG_HIDDEN const char * const config_event_context_callstack_kernel = "CALLSTACK_KERNEL";
+LTTNG_HIDDEN const char * const config_event_context_cgroup_ns = "CGROUP_NS";
+LTTNG_HIDDEN const char * const config_event_context_ipc_ns = "IPC_NS";
+LTTNG_HIDDEN const char * const config_event_context_mnt_ns = "MNT_NS";
+LTTNG_HIDDEN const char * const config_event_context_net_ns = "NET_NS";
+LTTNG_HIDDEN const char * const config_event_context_pid_ns = "PID_NS";
+LTTNG_HIDDEN const char * const config_event_context_user_ns = "USER_NS";
+LTTNG_HIDDEN const char * const config_event_context_uts_ns = "UTS_NS";
 
 /* Deprecated symbols */
 const char * const config_element_perf;
@@ -1047,6 +1054,27 @@ int get_context_type(xmlChar *context_type)
 	} else if (!strcmp((char *) context_type,
 		config_event_context_callstack_kernel)) {
 		ret = LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_cgroup_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_CGROUP_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_ipc_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_IPC_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_mnt_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_MNT_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_net_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_NET_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_pid_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_PID_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_user_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_USER_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_uts_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_UTS_NS;
 	} else {
 		goto error;
 	}

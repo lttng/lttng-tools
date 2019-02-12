@@ -267,6 +267,27 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_CALLSTACK_USER:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CALLSTACK_USER;
 		break;
+	case LTTNG_EVENT_CONTEXT_CGROUP_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CGROUP_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_IPC_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_IPC_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_MNT_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_MNT_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_NET_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_NET_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_PID_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PID_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_USER_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_USER_NS;
+		break;
+	case LTTNG_EVENT_CONTEXT_UTS_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_UTS_NS;
+		break;
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 		goto error;
