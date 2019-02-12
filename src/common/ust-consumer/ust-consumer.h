@@ -70,6 +70,7 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *metadata);
 void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer);
+void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts);
 int lttng_ustconsumer_get_sequence_number(
@@ -229,6 +230,10 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 static inline
 void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer)
+{
+}
+static inline
+void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
 }
 static inline

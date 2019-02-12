@@ -2290,6 +2290,14 @@ void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 	ustctl_flush_buffer(stream->ustream, producer);
 }
 
+void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
+{
+	assert(stream);
+	assert(stream->ustream);
+
+	ustctl_clear_buffer(stream->ustream);
+}
+
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts)
 {
