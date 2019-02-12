@@ -453,6 +453,11 @@ int kernctl_buffer_flush_empty(int fd)
 	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_FLUSH_EMPTY);
 }
 
+int kernctl_buffer_clear(int fd)
+{
+	return LTTNG_IOCTL_CHECK(fd, RING_BUFFER_CLEAR);
+}
+
 /* returns the version of the metadata. */
 int kernctl_get_metadata_version(int fd, uint64_t *version)
 {

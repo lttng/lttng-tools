@@ -64,6 +64,8 @@
  * so it can be read again.
  */
 #define RING_BUFFER_METADATA_CACHE_DUMP    	_IO(0xF6, 0x10)
+/* Clear ring buffer content */
+#define RING_BUFFER_CLEAR                       _IO(0xF6, 0x11)
 
 /* returns the timestamp begin of the current sub-buffer */
 #define LTTNG_RING_BUFFER_GET_TIMESTAMP_BEGIN     _IOR(0xF6, 0x20, uint64_t)
