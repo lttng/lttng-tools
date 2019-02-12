@@ -347,6 +347,27 @@ const char *get_ust_context_type_string(
 	case LTTNG_UST_CONTEXT_APP_CONTEXT:
 		context_type_string = config_event_context_app;
 		break;
+	case LTTNG_UST_CONTEXT_CGROUP_NS:
+		context_type_string = config_event_context_cgroup_ns;
+		break;
+	case LTTNG_UST_CONTEXT_IPC_NS:
+		context_type_string = config_event_context_ipc_ns;
+		break;
+	case LTTNG_UST_CONTEXT_MNT_NS:
+		context_type_string = config_event_context_mnt_ns;
+		break;
+	case LTTNG_UST_CONTEXT_NET_NS:
+		context_type_string = config_event_context_net_ns;
+		break;
+	case LTTNG_UST_CONTEXT_PID_NS:
+		context_type_string = config_event_context_pid_ns;
+		break;
+	case LTTNG_UST_CONTEXT_USER_NS:
+		context_type_string = config_event_context_user_ns;
+		break;
+	case LTTNG_UST_CONTEXT_UTS_NS:
+		context_type_string = config_event_context_uts_ns;
+		break;
 	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
 		/*
 		 * Error, should not be stored in the XML, perf contexts
