@@ -294,6 +294,27 @@ const char *get_kernel_context_type_string(
 	case LTTNG_KERNEL_CONTEXT_CALLSTACK_KERNEL:
 		context_type_string = config_event_context_callstack_kernel;
 		break;
+	case LTTNG_KERNEL_CONTEXT_CGROUP_NS:
+		context_type_string = config_event_context_cgroup_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_IPC_NS:
+		context_type_string = config_event_context_ipc_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_MNT_NS:
+		context_type_string = config_event_context_mnt_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_NET_NS:
+		context_type_string = config_event_context_net_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_PID_NS:
+		context_type_string = config_event_context_pid_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_USER_NS:
+		context_type_string = config_event_context_user_ns;
+		break;
+	case LTTNG_KERNEL_CONTEXT_UTS_NS:
+		context_type_string = config_event_context_uts_ns;
+		break;
 	default:
 		context_type_string = NULL;
 	}
