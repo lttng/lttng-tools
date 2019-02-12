@@ -73,6 +73,18 @@ enum lttng_kernel_context_type {
 	LTTNG_KERNEL_CONTEXT_PID_NS         = 22,
 	LTTNG_KERNEL_CONTEXT_USER_NS        = 23,
 	LTTNG_KERNEL_CONTEXT_UTS_NS         = 24,
+	LTTNG_KERNEL_CONTEXT_UID            = 25,
+	LTTNG_KERNEL_CONTEXT_EUID           = 26,
+	LTTNG_KERNEL_CONTEXT_SUID           = 27,
+	LTTNG_KERNEL_CONTEXT_GID            = 28,
+	LTTNG_KERNEL_CONTEXT_EGID           = 29,
+	LTTNG_KERNEL_CONTEXT_SGID           = 30,
+	LTTNG_KERNEL_CONTEXT_VUID           = 31,
+	LTTNG_KERNEL_CONTEXT_VEUID          = 32,
+	LTTNG_KERNEL_CONTEXT_VSUID          = 33,
+	LTTNG_KERNEL_CONTEXT_VGID           = 34,
+	LTTNG_KERNEL_CONTEXT_VEGID          = 35,
+	LTTNG_KERNEL_CONTEXT_VSGID          = 36,
 };
 
 /* Perf counter attributes */

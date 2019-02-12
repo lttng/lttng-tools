@@ -288,6 +288,42 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_UTS_NS:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_UTS_NS;
 		break;
+	case LTTNG_EVENT_CONTEXT_UID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_UID;
+		break;
+	case LTTNG_EVENT_CONTEXT_EUID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_EUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_SUID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_SUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_GID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_GID;
+		break;
+	case LTTNG_EVENT_CONTEXT_EGID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_EGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_SGID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_SGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VUID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VEUID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VEUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VSUID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VSUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VGID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VEGID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VEGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VSGID:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VSGID;
+		break;
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;
 		goto error;

@@ -315,6 +315,42 @@ const char *get_kernel_context_type_string(
 	case LTTNG_KERNEL_CONTEXT_UTS_NS:
 		context_type_string = config_event_context_uts_ns;
 		break;
+	case LTTNG_KERNEL_CONTEXT_UID:
+		context_type_string = config_event_context_uid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_EUID:
+		context_type_string = config_event_context_euid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_SUID:
+		context_type_string = config_event_context_suid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_GID:
+		context_type_string = config_event_context_gid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_EGID:
+		context_type_string = config_event_context_egid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_SGID:
+		context_type_string = config_event_context_sgid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VUID:
+		context_type_string = config_event_context_vuid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VEUID:
+		context_type_string = config_event_context_veuid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VSUID:
+		context_type_string = config_event_context_vsuid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VGID:
+		context_type_string = config_event_context_vgid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VEGID:
+		context_type_string = config_event_context_vegid;
+		break;
+	case LTTNG_KERNEL_CONTEXT_VSGID:
+		context_type_string = config_event_context_vsgid;
+		break;
 	default:
 		context_type_string = NULL;
 	}

@@ -158,5 +158,17 @@ extern const char * const config_event_context_net_ns;
 extern const char * const config_event_context_pid_ns;
 extern const char * const config_event_context_user_ns;
 extern const char * const config_event_context_uts_ns;
+extern const char * const config_event_context_uid;
+extern const char * const config_event_context_euid;
+extern const char * const config_event_context_suid;
+extern const char * const config_event_context_gid;
+extern const char * const config_event_context_egid;
+extern const char * const config_event_context_sgid;
+extern const char * const config_event_context_vuid;
+extern const char * const config_event_context_veuid;
+extern const char * const config_event_context_vsuid;
+extern const char * const config_event_context_vgid;
+extern const char * const config_event_context_vegid;
+extern const char * const config_event_context_vsgid;
 
 #endif /* CONFIG_SESSION_INTERNAL_H */

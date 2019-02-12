@@ -212,6 +212,18 @@ LTTNG_HIDDEN const char * const config_event_context_net_ns = "NET_NS";
 LTTNG_HIDDEN const char * const config_event_context_pid_ns = "PID_NS";
 LTTNG_HIDDEN const char * const config_event_context_user_ns = "USER_NS";
 LTTNG_HIDDEN const char * const config_event_context_uts_ns = "UTS_NS";
+LTTNG_HIDDEN const char * const config_event_context_uid = "UID";
+LTTNG_HIDDEN const char * const config_event_context_euid = "EUID";
+LTTNG_HIDDEN const char * const config_event_context_suid = "SUID";
+LTTNG_HIDDEN const char * const config_event_context_gid = "GID";
+LTTNG_HIDDEN const char * const config_event_context_egid = "EGID";
+LTTNG_HIDDEN const char * const config_event_context_sgid = "SGID";
+LTTNG_HIDDEN const char * const config_event_context_vuid = "VUID";
+LTTNG_HIDDEN const char * const config_event_context_veuid = "VEUID";
+LTTNG_HIDDEN const char * const config_event_context_vsuid = "VSUID";
+LTTNG_HIDDEN const char * const config_event_context_vgid = "VGID";
+LTTNG_HIDDEN const char * const config_event_context_vegid = "VEGID";
+LTTNG_HIDDEN const char * const config_event_context_vsgid = "VSGID";
 
 /* Deprecated symbols */
 const char * const config_element_perf;
@@ -1075,6 +1087,42 @@ int get_context_type(xmlChar *context_type)
 	} else if (!strcmp((char *) context_type,
 		config_event_context_uts_ns)) {
 		ret = LTTNG_EVENT_CONTEXT_UTS_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_uid)) {
+		ret = LTTNG_EVENT_CONTEXT_UID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_euid)) {
+		ret = LTTNG_EVENT_CONTEXT_EUID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_suid)) {
+		ret = LTTNG_EVENT_CONTEXT_SUID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_gid)) {
+		ret = LTTNG_EVENT_CONTEXT_GID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_egid)) {
+		ret = LTTNG_EVENT_CONTEXT_EGID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_sgid)) {
+		ret = LTTNG_EVENT_CONTEXT_SGID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_vuid)) {
+		ret = LTTNG_EVENT_CONTEXT_VUID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_veuid)) {
+		ret = LTTNG_EVENT_CONTEXT_VEUID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_vsuid)) {
+		ret = LTTNG_EVENT_CONTEXT_VSUID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_vgid)) {
+		ret = LTTNG_EVENT_CONTEXT_VGID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_vegid)) {
+		ret = LTTNG_EVENT_CONTEXT_VEGID;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_vsgid)) {
+		ret = LTTNG_EVENT_CONTEXT_VSGID;
 	} else {
 		goto error;
 	}
