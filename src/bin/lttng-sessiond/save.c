@@ -404,6 +404,24 @@ const char *get_ust_context_type_string(
 	case LTTNG_UST_CONTEXT_UTS_NS:
 		context_type_string = config_event_context_uts_ns;
 		break;
+	case LTTNG_UST_CONTEXT_VUID:
+		context_type_string = config_event_context_vuid;
+		break;
+	case LTTNG_UST_CONTEXT_VEUID:
+		context_type_string = config_event_context_veuid;
+		break;
+	case LTTNG_UST_CONTEXT_VSUID:
+		context_type_string = config_event_context_vsuid;
+		break;
+	case LTTNG_UST_CONTEXT_VGID:
+		context_type_string = config_event_context_vgid;
+		break;
+	case LTTNG_UST_CONTEXT_VEGID:
+		context_type_string = config_event_context_vegid;
+		break;
+	case LTTNG_UST_CONTEXT_VSGID:
+		context_type_string = config_event_context_vsgid;
+		break;
 	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
 		/*
 		 * Error, should not be stored in the XML, perf contexts
