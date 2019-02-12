@@ -585,6 +585,24 @@ int trace_ust_context_type_event_to_ust(
 	case LTTNG_EVENT_CONTEXT_UTS_NS:
 		utype = LTTNG_UST_CONTEXT_UTS_NS;
 		break;
+	case LTTNG_EVENT_CONTEXT_VUID:
+		utype = LTTNG_UST_CONTEXT_VUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VEUID:
+		utype = LTTNG_UST_CONTEXT_VEUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VSUID:
+		utype = LTTNG_UST_CONTEXT_VSUID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VGID:
+		utype = LTTNG_UST_CONTEXT_VGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VEGID:
+		utype = LTTNG_UST_CONTEXT_VEGID;
+		break;
+	case LTTNG_EVENT_CONTEXT_VSGID:
+		utype = LTTNG_UST_CONTEXT_VSGID;
+		break;
 	default:
 		utype = -1;
 		break;
