@@ -331,9 +331,9 @@ function lttng_enable_kernel_channel()
 	local expected_to_fail=$2
 	local sess_name=$3
 	local channel_name=$4
-	local opt=$5
+	local opts="${@:5}"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k $channel_name -s $sess_name $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -k $channel_name -s $sess_name $opts 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -946,9 +946,9 @@ function enable_ust_lttng_channel ()
 	local expected_to_fail=$2
 	local sess_name=$3
 	local channel_name=$4
-	local opt=$5
+	local opts="${@:5}"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel -u $channel_name -s $sess_name $opts 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -1420,7 +1420,6 @@ function lttng_snapshot_del_output_fail ()
 function lttng_snapshot_record ()
 {
 	local sess_name=$1
-	local trace_path=$2
 
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s $sess_name $trace_path 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ok $? "Snapshot recorded"
@@ -1573,6 +1572,44 @@ function add_context_kernel_fail()
 	add_context_lttng 1 -k "$@"
 }
 
+function validate_directory_empty ()
+{
+	local trace_path=$1
+
+	ls -A $local_path > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		pass "Directory empty"
+	else
+		fail "Directory empty"
+	fi
+}
+
+function wait_live_trace_ready ()
+{
+	local url=$1
+	local zero_client_match=0
+
+	diag "Waiting for live trace at url: $url"
+	while [ $zero_client_match -eq 0 ]; do
+		zero_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "0 client(s) connected" | wc -l)
+		sleep 0.5
+	done
+	pass "Waiting for live trace at url: $url"
+}
+
+function wait_live_viewer_connect ()
+{
+	local url=$1
+	local one_client_match=0
+
+	diag "Waiting for live viewers on url: $url"
+	while [ $one_client_match -eq 0 ]; do
+		one_client_match=$($BABELTRACE_BIN -i lttng-live $url | grep "1 client(s) connected" | wc -l)
+		sleep 0.5
+	done
+	pass "Waiting for live viewers on url: $url"
+}
+
 function validate_metadata_event ()
 {
 	local event_name=$1
@@ -1688,6 +1725,36 @@ function validate_trace_count
 	IFS=$OLDIFS
 	test $cnt -eq $expected_count
 	ok $? "Read a total of $cnt events, expected $expected_count"
+}
+
+function validate_trace_count_range_incl_min_excl_max
+{
+	local event_name=$1
+	local trace_path=$2
+	local expected_min=$3
+	local expected_max=$4
+
+	which $BABELTRACE_BIN >/dev/null
+	if [ $? -ne 0 ]; then
+	    skip 0 "Babeltrace binary not found. Skipping trace validation"
+	fi
+
+	cnt=0
+	OLDIFS=$IFS
+	IFS=","
+	for i in $event_name; do
+		traced=$($BABELTRACE_BIN $trace_path 2>/dev/null | grep $i | wc -l)
+		if [ "$traced" -ge $expected_min ]; then
+			pass "Validate trace for event $i, $traced events"
+		else
+			fail "Validate trace for event $i"
+			diag "Found $traced occurences of $i"
+		fi
+		cnt=$(($cnt + $traced))
+	done
+	IFS=$OLDIFS
+	test $cnt -lt $expected_max
+	ok $? "Read a total of $cnt events, expected between [$expected_min, $expected_max["
 }
 
 function trace_first_line
@@ -1903,4 +1970,29 @@ function lttng_enable_rotation_size_ok ()
 function lttng_enable_rotation_size_fail ()
 {
 	lttng_enable_rotation_size 1 $@
+}
+
+function lttng_clear_session ()
+{
+	local expected_to_fail=$1
+	local sess_name=$2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN clear $sess_name 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Expected fail on clear session $sess_name"
+	else
+		ok $ret "Clear session $sess_name"
+	fi
+}
+
+function lttng_clear_session_ok ()
+{
+	lttng_clear_session 0 $@
+}
+
+function lttng_clear_session_fail ()
+{
+	lttng_clear_session 1 $@
 }

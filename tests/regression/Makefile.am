@@ -33,7 +33,10 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/rotation/test_save_load_mi \
 	tools/rotation/test_schedule_api \
 	tools/metadata/test_kernel \
-	tools/working-directory/test_relayd_working_directory
+	tools/working-directory/test_relayd_working_directory \
+	tools/notification/test_notification_multi_app \
+	tools/clear/test_ust \
+	tools/clear/test_kernel
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust

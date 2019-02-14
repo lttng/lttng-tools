@@ -1,0 +1,804 @@
+#!/bin/bash
+#
+# Copyright (C) - 2019 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Clear - UST tracing"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+EVENT_NAME="tp:tptest"
+SESSION_NAME=""
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+NUM_TESTS=1683
+
+PAGE_SIZE=$(getconf PAGE_SIZE)
+TRACE_PATH=$(mktemp -d)
+
+source $TESTDIR/utils/utils.sh
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function clean_path ()
+{
+	local trace_path=$1
+	set -u
+	rm -rf $trace_path/*
+	set +u
+}
+
+function cond_start_tracing ()
+{
+	local session_name=$1
+	local tracing_active=$2
+
+	if [[ $tracing_active -ne 1 ]]; then
+		start_lttng_tracing_ok $session_name
+	fi
+}
+
+function cond_stop_tracing ()
+{
+	local session_name=$1
+	local tracing_active=$2
+
+	if [[ $tracing_active -ne 1 ]]; then
+		stop_lttng_tracing_ok $session_name
+	fi
+}
+
+function do_clear_session ()
+{
+	local session_name=$1
+	local tracing_active=$2
+	local clear_twice=$3
+	local rotate_before=$4
+	local rotate_after=$5
+
+	cond_stop_tracing $session_name $tracing_active
+	if [[ $rotate_before -eq 1 ]]; then
+		rotate_session_ok $SESSION_NAME
+	fi
+	lttng_clear_session_ok $SESSION_NAME
+	if [[ $clear_twice -eq 1 ]]; then
+		lttng_clear_session_ok $SESSION_NAME
+	fi
+	if [[ $rotate_after -eq 1 ]]; then
+		if [[ $tracing_active -eq 1 ]]; then
+			rotate_session_ok $SESSION_NAME
+		else
+			# Expect failure
+			rotate_session_fail $SESSION_NAME
+		fi
+	fi
+	cond_start_tracing $session_name $tracing_active
+}
+
+function test_ust_streaming ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local channel_name="chan"
+
+	diag "Test ust streaming clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 10
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count $EVENT_NAME $local_path 10
+	else
+		if [[ "$buffer_type" == "uid" ]]; then
+			validate_trace_empty $local_path
+		else	# pid
+			validate_directory_empty $local_path
+		fi
+	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_streaming_rotate_clear ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local channel_name="chan"
+
+	diag "Test ust streaming rotate-clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 1
+	rotate_session_ok $SESSION_NAME
+	$TESTAPP_BIN -i 2
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	$TESTAPP_BIN -i 3
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		local expect_count=6
+	else
+		local expect_count=4
+	fi
+	validate_trace_count $EVENT_NAME $local_path $expect_count
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_streaming_clear_rotate ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local channel_name="chan"
+
+	diag "Test ust streaming clear-rotate"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 1
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	$TESTAPP_BIN -i 2
+	rotate_session_ok $SESSION_NAME
+	$TESTAPP_BIN -i 3
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		local expect_count=6
+	else
+		local expect_count=5
+	fi
+	validate_trace_count $EVENT_NAME $local_path $expect_count
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_streaming_live ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local channel_name="chan"
+
+	diag "Test ust streaming live clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost "--live"
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 10
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice 0 0
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_directory_empty $local_path
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+#no clear
+function test_ust_basic_streaming_live_viewer ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
+	local channel_name="chan"
+	local bt_output_path=$(mktemp -u)
+	local file_sync_before_exit=$(mktemp -u)
+
+	diag "Test ust basic streaming live with viewer"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost "--live"
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+
+	wait_live_trace_ready net://localhost
+
+	# Connect a live viewer
+	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
+	local viewer_pid=$!
+
+	wait_live_viewer_connect net://localhost
+
+	$TESTAPP_BIN -i 10 --sync-before-exit $file_sync_before_exit &
+	local app_pid=$!
+
+	diag "Wait until viewer sees all 10 expected events"
+	local evcount=0
+	while [ $evcount -ne 10 ]; do
+		evcount=$(cat $bt_output_path | wc -l)
+		sleep 0.5
+	done
+	pass "Live viewer read $evcount events, expect 10"
+
+	destroy_lttng_session_ok $SESSION_NAME
+	touch $file_sync_before_exit
+	diag "Wait for application to exit"
+	wait $app_pid
+	pass "Wait for application to exit"
+	diag "Wait for viewer to exit"
+	wait $viewer_pid
+	ok $? "Babeltrace succeeds"
+	pass "Wait for viewer to exit"
+
+	rm -f $bt_output_path
+	rm -f $file_sync_before_exit
+}
+
+function test_ust_streaming_live_viewer ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
+	local channel_name="chan"
+	local bt_output_path=$(mktemp -d)/bt-output.txt
+
+	diag "Test ust streaming live clear with viewer"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost "--live"
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+
+	wait_live_trace_ready net://localhost
+
+	# Connect a live viewer
+	$BABELTRACE_BIN -i lttng-live net://localhost/host/$remote_trace_path > $bt_output_path &
+	local viewer_pid=$!
+
+	wait_live_viewer_connect net://localhost
+
+	$TESTAPP_BIN -i 10
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice 0 0
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	destroy_lttng_session_ok $SESSION_NAME
+	diag "Wait for viewer to exit"
+	wait $viewer_pid
+	ok $? "Babeltrace succeeds"
+	pass "Wait for viewer to exit"
+
+	clean_path $bt_output_path
+}
+
+function test_ust_local ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local channel_name="chan"
+
+	diag "Test ust local"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 10
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count $EVENT_NAME $TRACE_PATH 10
+	else
+		if [[ "$buffer_type" == "uid" ]]; then
+			validate_trace_empty $TRACE_PATH
+		else	# pid
+			validate_directory_empty $TRACE_PATH
+		fi
+	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_local_rotate_clear ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local channel_name="chan"
+
+	diag "Test ust local rotate-clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 1
+	rotate_session_ok $SESSION_NAME
+	$TESTAPP_BIN -i 2
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	$TESTAPP_BIN -i 3
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		local expect_count=6
+	else
+		local expect_count=4
+	fi
+	validate_trace_count $EVENT_NAME $TRACE_PATH $expect_count
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_local_clear_rotate ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local channel_name="chan"
+
+	diag "Test ust local clear-rotate"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 1
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	$TESTAPP_BIN -i 2
+	rotate_session_ok $SESSION_NAME
+	$TESTAPP_BIN -i 3
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		local expect_count=6
+	else
+		local expect_count=5
+	fi
+	validate_trace_count $EVENT_NAME $TRACE_PATH $expect_count
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function do_ust_snapshot ()
+{
+	local session_name=$1
+	local trace_path=$2
+	local tracing_active=$3
+	local clear_twice=$4
+	local buffer_type=$5
+	local channel_name="snapshot"
+
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $session_name $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $session_name
+
+	# Generate 10 events that will sit in the buffers.
+	$TESTAPP_BIN -i 10
+
+	# Take a first snapshot and validate that the events are present.
+	lttng_snapshot_record $session_name
+	stop_lttng_tracing_ok $session_name
+	validate_trace_count $EVENT_NAME $trace_path 10
+
+	# Clean the output path
+	clean_path $trace_path
+	start_lttng_tracing_ok $session_name
+
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice 0 0
+
+	# Make sure the subsequent snapshot is empty and valid.
+	lttng_snapshot_record $session_name
+	stop_lttng_tracing_ok $session_name
+	validate_trace_empty $trace_path
+
+	# Clean the output path
+	clean_path $trace_path
+	start_lttng_tracing_ok $session_name
+
+	# Make sure that everything still works, generate events and take a
+	# snapshot.
+	$TESTAPP_BIN -i 10
+	lttng_snapshot_record $session_name
+	stop_lttng_tracing_ok $session_name
+	validate_trace_count $EVENT_NAME $trace_path 10
+}
+
+function test_ust_streaming_snapshot ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused.
+	local buffer_type=$5
+
+	diag "Test ust streaming snapshot clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+
+	create_lttng_session_uri $SESSION_NAME net://localhost "--snapshot"
+	do_ust_snapshot $SESSION_NAME $TRACE_PATH $tracing_active $clear_twice $buffer_type
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_local_snapshot ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused.
+	local buffer_type=$5
+
+	diag "Test ust local snapshot clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH "--snapshot"
+	do_ust_snapshot $SESSION_NAME $TRACE_PATH $tracing_active $clear_twice $buffer_type
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+# snapshot for per-pid is tested independently of the "buffer type" parameter
+# because an application needs to be live to appear in a snapshot.
+function test_ust_local_snapshot_per_pid ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused.
+	local buffer_type=$5
+	local channel_name="channel0"
+	local file_sync_before_last=$(mktemp -u)
+	local file_sync_before_last_touch=$(mktemp -u)
+	local file_sync_before_exit=$(mktemp -u)
+	local file_sync_before_exit_touch=$(mktemp -u)
+
+	diag "Test ust local snapshot clear per pid"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+
+	create_lttng_session_ok $SESSION_NAME $TRACE_PATH "--snapshot"
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+
+	# Generate 10 events that will sit in the buffers.
+	$TESTAPP_BIN -i 10 -w 0 \
+		--sync-before-last-event ${file_sync_before_last} \
+		--sync-before-last-event-touch ${file_sync_before_last_touch} \
+		--sync-before-exit ${file_sync_before_exit} \
+		--sync-before-exit-touch ${file_sync_before_exit_touch} >/dev/null 2>&1 &
+
+	# Continue only when there is only the last event remaining.
+	while [ ! -f "${file_sync_before_last_touch}" ]; do
+		sleep 0.5
+	done
+
+	# Take a first snapshot and validate that the events are present.
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_count $EVENT_NAME $TRACE_PATH 9
+
+	# Clean the output path
+	clean_path $TRACE_PATH
+	start_lttng_tracing_ok $SESSION_NAME
+
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice 0 0
+
+	# Make sure the subsequent snapshot is empty and valid.
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_empty $TRACE_PATH
+
+	# Validate that tracing still works and subsequent snapshots are valid.
+	# Clean the output path.
+	clean_path $TRACE_PATH
+	start_lttng_tracing_ok $SESSION_NAME
+
+	# Continue over the last event.
+	touch ${file_sync_before_last}
+
+	# Wait for the before exit sync point. This ensure that we went over the
+	# last tracepoint.
+	while [ ! -f "${file_sync_before_exit_touch}" ]; do
+		sleep 0.5
+	done
+
+	# Make sure the snapshot contains the last event.
+	lttng_snapshot_record $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace_count $EVENT_NAME $TRACE_PATH 1
+
+	# Release the application.
+	touch ${file_sync_before_exit}
+	wait
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -f ${file_sync_before_last}
+	rm -f ${file_sync_before_last_touch}
+	rm -f ${file_sync_before_exit}
+	rm -f ${file_sync_before_exit_touch}
+}
+
+function test_ust_streaming_tracefile_rotation ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local channel_name="rotchan"
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+
+	diag "Test ust streaming clear with tracefile rotation"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --subbuf-size=$PAGE_SIZE \
+		--tracefile-size=$PAGE_SIZE --tracefile-count=2 --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 10
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count $EVENT_NAME $local_path 10
+	else
+		if [[ "$buffer_type" == "uid" ]]; then
+			validate_trace_empty $local_path
+		else	# pid
+			validate_directory_empty $local_path
+		fi
+	fi
+
+	start_lttng_tracing_ok $SESSION_NAME
+	$TESTAPP_BIN -i 20
+	stop_lttng_tracing_ok
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count $EVENT_NAME $local_path 30
+	else
+		validate_trace_count $EVENT_NAME $local_path 20
+	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+# With 1 byte per event (as strict minimum), generating 200000 events
+# guarantees filling up 2 files of 64k in size, which is the maximum
+# page size known on Linux
+function test_ust_streaming_tracefile_rotation_overwrite_files ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	local rotate_before=$3
+	local rotate_after=$4
+	local buffer_type=$5
+	local channel_name="rotchan"
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+
+	diag "Test ust streaming clear with tracefile rotation, overwrite files"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --subbuf-size=$PAGE_SIZE \
+		--tracefile-size=$PAGE_SIZE --tracefile-count=2 --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+	taskset -c 0 $TESTAPP_BIN -i 200000
+	do_clear_session $SESSION_NAME $tracing_active $clear_twice $rotate_before $rotate_after
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count_range_incl_min_excl_max $EVENT_NAME $local_path 1 200000
+	else
+		if [[ "$buffer_type" == "uid" ]]; then
+			validate_trace_empty $local_path
+		else	# pid
+			validate_directory_empty $local_path
+		fi
+	fi
+
+	start_lttng_tracing_ok $SESSION_NAME
+	taskset -c 0 $TESTAPP_BIN -i 400000
+	stop_lttng_tracing_ok
+
+	if [[ $rotate_before -eq 1 ]]; then
+		validate_trace_count_range_incl_min_excl_max $EVENT_NAME $local_path 1 600000
+	else
+		validate_trace_count_range_incl_min_excl_max $EVENT_NAME $local_path 1 200000
+	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_disallow_clear ()
+{
+	diag "Test ust disallow clear on relay daemon"
+	SESSION_NAME=$(randstring 16 0)
+
+	LTTNG_RELAYD_DISALLOW_CLEAR=1 start_lttng_relayd "-o $TRACE_PATH"
+
+	start_lttng_sessiond
+
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	lttng_clear_session_fail $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	stop_lttng_sessiond
+	stop_lttng_relayd
+	clean_path $TRACE_PATH
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+streaming_tests=(test_ust_streaming
+	test_ust_streaming_rotate_clear
+	test_ust_streaming_clear_rotate
+	test_ust_streaming_tracefile_rotation
+	test_ust_streaming_tracefile_rotation_overwrite_files
+)
+
+live_tests=(test_ust_streaming_live
+	test_ust_basic_streaming_live_viewer
+	test_ust_streaming_live_viewer
+)
+
+local_tests=(test_ust_local
+	test_ust_local_rotate_clear
+	test_ust_local_clear_rotate
+)
+
+snapshot_uid_tests=(test_ust_streaming_snapshot
+	test_ust_local_snapshot
+)
+
+snapshot_pid_tests=(test_ust_local_snapshot_per_pid)
+
+start_lttng_relayd "-o $TRACE_PATH"
+start_lttng_sessiond
+
+# Per-UID buffers
+
+# Clear with tracing active, clear once
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_uid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 1 0 0 0 uid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing active, clear twice
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_uid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 1 1 0 0 uid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear once
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_uid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 0 0 uid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear twice
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_uid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 1 0 0 uid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, rotate-clear once
+for fct_test in ${streaming_tests[@]} ${local_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 1 0 uid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear once-rotate(fail)
+for fct_test in ${streaming_tests[@]} ${local_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 0 1 uid
+	clean_path $TRACE_PATH
+done
+
+
+# Per-PID buffers.
+
+# Clear with tracing active, clear once
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_pid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 1 0 0 0 pid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing active, clear twice
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_pid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 1 1 0 0 pid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear once
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_pid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 0 0 pid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear twice
+for fct_test in ${streaming_tests[@]} ${live_tests[@]} ${local_tests[@]} ${snapshot_pid_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 1 0 0 pid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, rotate-clear once
+for fct_test in ${streaming_tests[@]} ${local_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 1 0 pid
+	clean_path $TRACE_PATH
+done
+
+# Clear with tracing inactive, clear once-rotate(fail)
+for fct_test in ${streaming_tests[@]} ${local_tests[@]};
+do
+	SESSION_NAME=$(randstring 16 0)
+	${fct_test} 0 0 0 1 pid
+	clean_path $TRACE_PATH
+done
+
+stop_lttng_sessiond
+stop_lttng_relayd
+
+test_ust_disallow_clear
