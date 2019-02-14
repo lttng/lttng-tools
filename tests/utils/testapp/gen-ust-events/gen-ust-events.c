@@ -45,6 +45,9 @@ static struct option long_options[] =
 	{"wait", required_argument, 0, 'w'},
 	{"sync-after-first-event", required_argument, 0, 'a'},
 	{"sync-before-last-event", required_argument, 0, 'b'},
+	{"sync-before-last-event-touch", required_argument, 0, 'c'},
+	{"sync-before-exit", required_argument, 0, 'd'},
+	{"sync-before-exit-touch", required_argument, 0, 'e'},
 	{0, 0, 0, 0}
 };
 
@@ -61,6 +64,15 @@ int main(int argc, char **argv)
 	useconds_t nr_usec = 0;
 	char *after_first_event_file_path = NULL;
 	char *before_last_event_file_path = NULL;
+	/*
+	 * Touch a file to indicate that all events except one were
+	 * generated.
+	 */
+	char *before_last_event_file_path_touch = NULL;
+	/* Touch file when we are exiting */
+	char *before_exit_file_path_touch = NULL;
+	/* Wait on file before exiting */
+	char *before_exit_file_path = NULL;
 
 	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:",
 			long_options, &option_index)) != -1) {
@@ -70,6 +82,15 @@ int main(int argc, char **argv)
 			break;
 		case 'b':
 			before_last_event_file_path = strdup(optarg);
+			break;
+		case 'c':
+			before_last_event_file_path_touch = strdup(optarg);
+			break;
+		case 'd':
+			before_exit_file_path = strdup(optarg);
+			break;
+		case 'e':
+			before_exit_file_path_touch = strdup(optarg);
 			break;
 		case 'i':
 			nr_iter = atoi(optarg);
@@ -100,6 +121,13 @@ int main(int argc, char **argv)
 
 	for (i = 0; nr_iter < 0 || i < nr_iter; i++) {
 		if (nr_iter >= 0 && i == nr_iter - 1) {
+			if (before_last_event_file_path_touch) {
+				ret = create_file(before_last_event_file_path_touch);
+				if (ret != 0) {
+					goto end;
+				}
+			}
+
 			/*
 			 * Wait on synchronization before writing last
 			 * event.
@@ -140,8 +168,23 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (before_exit_file_path_touch) {
+		ret = create_file(before_exit_file_path_touch);
+		if (ret != 0) {
+			goto end;
+		}
+	}
+	if (before_exit_file_path) {
+		ret = wait_on_file(before_exit_file_path);
+		if (ret != 0) {
+			goto end;
+		}
+	}
 end:
 	free(after_first_event_file_path);
 	free(before_last_event_file_path);
+	free(before_last_event_file_path_touch);
+	free(before_exit_file_path);
+	free(before_exit_file_path_touch);
 	exit(!ret ? EXIT_SUCCESS : EXIT_FAILURE);
 }
