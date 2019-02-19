@@ -28,7 +28,9 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h runas.c \
                        location.c \
                        waiter.h waiter.c \
                        userspace-probe.c event.c time.c \
-                       session-descriptor.c credentials.h
+                       session-descriptor.c credentials.h \
+                       trace-chunk.c trace-chunk.h trace-chunk-registry.h \
+                       dynamic-array.h dynamic-array.c optional.h
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += lttng-elf.h lttng-elf.c
