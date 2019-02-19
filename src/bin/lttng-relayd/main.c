@@ -1144,6 +1144,15 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	reply.session_id = htobe64(session->id);
 
+	session->current_trace_chunk =
+			sessiond_trace_chunk_registry_get_anonymous_chunk(
+				sessiond_trace_chunk_registry, sessiond_uuid,
+				session->id,
+				opt_output_path);
+	if (!session->current_trace_chunk) {
+		ret = -1;
+	}
+
 send_reply:
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_FATAL);
