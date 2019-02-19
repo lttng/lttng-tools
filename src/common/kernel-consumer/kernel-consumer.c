@@ -237,7 +237,7 @@ static int lttng_kconsumer_snapshot_channel(
 				produced_pos, nb_packets_per_stream,
 				stream->max_sb_size);
 
-		while (consumed_pos < produced_pos) {
+		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
 
