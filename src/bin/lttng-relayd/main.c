@@ -1099,7 +1099,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 {
 	int ret = 0;
 	ssize_t send_ret;
-	struct relay_session *session;
+	struct relay_session *session = NULL;
 	struct lttcomm_relayd_status_session reply;
 	char session_name[LTTNG_NAME_MAX];
 	char hostname[LTTNG_HOST_NAME_MAX];
@@ -1153,7 +1153,9 @@ send_reply:
 				send_ret);
 		ret = -1;
 	}
-
+	if (ret < 0 && session) {
+		session_put(session);
+	}
 	return ret;
 }
 
