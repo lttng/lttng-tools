@@ -29,6 +29,7 @@
 #include <lttng/constant.h>
 #include <common/hashtable/hashtable.h>
 #include <common/compat/uuid.h>
+#include <common/trace-chunk.h>
 
 /*
  * Represents a session for the relay point of view
@@ -107,6 +108,7 @@ struct relay_session {
 	 * session_list_lock. Traversals are protected by RCU.
 	 */
 	struct cds_list_head viewer_session_node;
+	struct lttng_trace_chunk *current_trace_chunk;
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
