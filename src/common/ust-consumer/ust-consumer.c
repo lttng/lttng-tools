@@ -1174,7 +1174,7 @@ static int snapshot_channel(uint64_t key, char *path, uint64_t relayd_id,
 				produced_pos, nb_packets_per_stream,
 				stream->max_sb_size);
 
-		while (consumed_pos < produced_pos) {
+		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
 
