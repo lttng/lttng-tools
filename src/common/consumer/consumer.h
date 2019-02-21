@@ -34,6 +34,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/pipe.h>
 #include <common/index/ctf-index.h>
+#include <common/trace-chunk-registry.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -651,6 +652,11 @@ struct lttng_consumer_global_data {
 	 * This HT uses the "node_channel_id" of the consumer stream.
 	 */
 	struct lttng_ht *stream_per_chan_id_ht;
+
+	/*
+	 * Trace chunk registry indexed by (session_id, chunk_id).
+	 */
+	struct lttng_trace_chunk_registry *chunk_registry;
 };
 
 /*
