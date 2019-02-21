@@ -193,6 +193,7 @@ static int rotate_tracing(char *session_name)
 		rotation_status = lttng_rotation_handle_get_state(handle,
 				&rotation_state);
 		if (rotation_status != LTTNG_ROTATION_STATUS_OK) {
+			MSG("");
 			ERR("Failed to query the state of the rotation.");
 			goto error;
 		}
@@ -200,14 +201,14 @@ static int rotate_tracing(char *session_name)
 		if (rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
 			ret = usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
 			if (ret) {
-				PERROR("usleep");
+				PERROR("\nusleep");
 				goto error;
 			}
 			_MSG(".");
 
 			ret = fflush(stdout);
 			if (ret) {
-				PERROR("fflush");
+				PERROR("\nfflush");
 				goto error;
 			}
 		}

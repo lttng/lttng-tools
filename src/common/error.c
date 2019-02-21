@@ -214,6 +214,9 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_CHAN_NOT_FOUND) ] = "Channel not found",
 	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_UNSUPPORTED) ] = "Session configuration does not allow the use of snapshots",
 	[ ERROR_INDEX(LTTNG_ERR_SESSION_NOT_EXIST) ] = "Tracing session does not exist",
+	[ ERROR_INDEX(LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER) ] = "Trace chunk creation failed on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER) ] = "Trace chunk close failed on consumer",
+	[ ERROR_INDEX(LTTNG_ERR_TRACE_CHUNK_EXISTS_FAIL_CONSUMER) ] = "Failed to query consumer for trace chunk existence",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

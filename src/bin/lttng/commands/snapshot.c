@@ -375,6 +375,7 @@ static int cmd_del_output(int argc, const char **argv)
 	long id;
 
 	if (argc < 2) {
+		ERR("A snapshot output name or id must be provided to delete a snapshot output.");
 		ret = CMD_ERROR;
 		goto end;
 	}

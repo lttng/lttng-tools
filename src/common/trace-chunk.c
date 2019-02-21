@@ -745,6 +745,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 			chunk->credentials.value.use_current_user ?
 					NULL : &chunk->credentials.value.user);
 	if (ret < 0) {
+		ERR("Failed to open file relative to trace chunk file_path = \"%s\", flags = %d, mode = %d",
+				file_path, flags, (int) mode);
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}

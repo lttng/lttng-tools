@@ -22,9 +22,6 @@
 #include "rotation-thread.h"
 #include <stdint.h>
 
-int rename_active_chunk(struct ltt_session *session);
-int rename_completed_chunk(struct ltt_session *session, time_t ts);
-
 /*
  * Subscribe/unsubscribe the notification_channel from the rotation_thread to
  * session usage notifications to perform size-based rotations.

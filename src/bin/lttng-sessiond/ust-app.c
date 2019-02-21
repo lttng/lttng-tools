@@ -2462,7 +2462,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	 * stream we have to expect.
 	 */
 	ret = ust_consumer_ask_channel(ua_sess, ua_chan, usess->consumer, socket,
-			registry, trace_archive_id);
+			registry, usess->current_trace_chunk);
 	if (ret < 0) {
 		goto error_ask;
 	}
@@ -2845,7 +2845,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
 			app->bits_per_long, reg_uid->registry->reg.ust,
-			session->current_archive_id);
+			session->most_recent_chunk_id.value);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 				ua_chan->name);
@@ -2959,7 +2959,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	/* Create and get channel on the consumer side. */
 	ret = do_consumer_create_channel(usess, ua_sess, ua_chan,
 			app->bits_per_long, registry,
-			session->current_archive_id);
+			session->most_recent_chunk_id.value);
 	if (ret < 0) {
 		ERR("Error creating UST channel \"%s\" on the consumer daemon",
 			ua_chan->name);
@@ -3236,7 +3236,7 @@ static int create_ust_app_metadata(struct ust_app_session *ua_sess,
 	 * consumer.
 	 */
 	ret = ust_consumer_ask_channel(ua_sess, metadata, consumer, socket,
-			registry, session->current_archive_id);
+			registry, session->current_trace_chunk);
 	if (ret < 0) {
 		/* Nullify the metadata key so we don't try to close it later on. */
 		registry->metadata_key = 0;
@@ -5884,19 +5884,11 @@ enum lttng_error_code ust_app_snapshot_record(
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	char pathname[PATH_MAX];
-	struct ltt_session *session = NULL;
-	uint64_t trace_archive_id;
 
 	assert(usess);
 	assert(output);
 
 	rcu_read_lock();
-
-	session = session_find_by_id(usess->id);
-	assert(session);
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
-	trace_archive_id = session->current_archive_id;
 
 	switch (usess->buffer_type) {
 	case LTTNG_BUFFER_PER_UID:
@@ -5921,8 +5913,12 @@ enum lttng_error_code ust_app_snapshot_record(
 			}
 
 			memset(pathname, 0, sizeof(pathname));
+			/*
+			 * DEFAULT_UST_TRACE_UID_PATH already contains a path
+			 * separator.
+			 */
 			ret = snprintf(pathname, sizeof(pathname),
-					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
+					DEFAULT_UST_TRACE_DIR DEFAULT_UST_TRACE_UID_PATH,
 					reg->uid, reg->bits_per_long);
 			if (ret < 0) {
 				PERROR("snprintf snapshot path");
@@ -5930,23 +5926,21 @@ enum lttng_error_code ust_app_snapshot_record(
 				goto error;
 			}
 
-			/* Add the UST default trace dir to path. */
+                        /* Add the UST default trace dir to path. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
 						reg_chan->consumer_key,
 						output, 0, usess->uid,
 						usess->gid, pathname, wait,
-						nb_packets_per_stream,
-						trace_archive_id);
+						nb_packets_per_stream);
 				if (status != LTTNG_OK) {
 					goto error;
 				}
 			}
 			status = consumer_snapshot_channel(socket,
 					reg->registry->reg.ust->metadata_key, output, 1,
-					usess->uid, usess->gid, pathname, wait, 0,
-					trace_archive_id);
+					usess->uid, usess->gid, pathname, wait, 0);
 			if (status != LTTNG_OK) {
 				goto error;
 			}
@@ -5978,7 +5972,7 @@ enum lttng_error_code ust_app_snapshot_record(
 
 			/* Add the UST default trace dir to path. */
 			memset(pathname, 0, sizeof(pathname));
-			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
+			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "%s",
 					ua_sess->path);
 			if (ret < 0) {
 				status = LTTNG_ERR_INVALID;
@@ -5986,14 +5980,13 @@ enum lttng_error_code ust_app_snapshot_record(
 				goto error;
 			}
 
-			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+                        cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
 						ua_chan->key, output,
 						0, ua_sess->euid, ua_sess->egid,
 						pathname, wait,
-						nb_packets_per_stream,
-						trace_archive_id);
+						nb_packets_per_stream);
 				switch (status) {
 				case LTTNG_OK:
 					break;
@@ -6012,8 +6005,7 @@ enum lttng_error_code ust_app_snapshot_record(
 			status = consumer_snapshot_channel(socket,
 					registry->metadata_key, output,
 					1, ua_sess->euid, ua_sess->egid,
-					pathname, wait, 0,
-					trace_archive_id);
+					pathname, wait, 0);
 			switch (status) {
 			case LTTNG_OK:
 				break;
@@ -6032,9 +6024,6 @@ enum lttng_error_code ust_app_snapshot_record(
 
 error:
 	rcu_read_unlock();
-	if (session) {
-		session_put(session);
-	}
 	return status;
 }
 
@@ -6281,7 +6270,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
 	struct ltt_ust_session *usess = session->ust_session;
-	char pathname[LTTNG_PATH_MAX];
 
 	assert(usess);
 
@@ -6304,24 +6292,14 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 				goto error;
 			}
 
-			ret = snprintf(pathname, sizeof(pathname),
-					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
-					reg->uid, reg->bits_per_long);
-			if (ret < 0 || ret >= sizeof(pathname)) {
-				PERROR("Failed to format rotation path");
-				cmd_ret = LTTNG_ERR_INVALID;
-				goto error;
-			}
-
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
 				ret = consumer_rotate_channel(socket,
 						reg_chan->consumer_key,
 						usess->uid, usess->gid,
-						usess->consumer, pathname,
-						/* is_metadata_channel */ false,
-						session->current_archive_id);
+						usess->consumer,
+						/* is_metadata_channel */ false);
 				if (ret < 0) {
 					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 					goto error;
@@ -6333,9 +6311,8 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			ret = consumer_rotate_channel(socket,
 					reg->registry->reg.ust->metadata_key,
 					usess->uid, usess->gid,
-					usess->consumer, pathname,
-					/* is_metadata_channel */ true,
-					session->current_archive_id);
+					usess->consumer,
+					/* is_metadata_channel */ true);
 			if (ret < 0) {
 				cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
@@ -6357,14 +6334,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 				/* Session not associated with this app. */
 				continue;
 			}
-			ret = snprintf(pathname, sizeof(pathname),
-					DEFAULT_UST_TRACE_DIR "/%s",
-					ua_sess->path);
-			if (ret < 0 || ret >= sizeof(pathname)) {
-				PERROR("Failed to format rotation path");
-				cmd_ret = LTTNG_ERR_INVALID;
-				goto error;
-			}
 
 			/* Get the right consumer socket for the application. */
 			socket = consumer_find_socket_by_bitness(app->bits_per_long,
@@ -6380,15 +6349,13 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 				continue;
 			}
 
-
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
 				ret = consumer_rotate_channel(socket, ua_chan->key,
 						ua_sess->euid, ua_sess->egid,
-						ua_sess->consumer, pathname,
-						/* is_metadata_channel */ false,
-						session->current_archive_id);
+						ua_sess->consumer,
+						/* is_metadata_channel */ false);
 				if (ret < 0) {
 					/* Per-PID buffer and application going away. */
 					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
@@ -6402,9 +6369,8 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			(void) push_metadata(registry, usess->consumer);
 			ret = consumer_rotate_channel(socket, registry->metadata_key,
 					ua_sess->euid, ua_sess->egid,
-					ua_sess->consumer, pathname,
-					/* is_metadata_channel */ true,
-					session->current_archive_id);
+					ua_sess->consumer,
+					/* is_metadata_channel */ true);
 			if (ret < 0) {
 				/* Per-PID buffer and application going away. */
 				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND)
@@ -6425,4 +6391,100 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 error:
 	rcu_read_unlock();
 	return cmd_ret;
+}
+
+enum lttng_error_code ust_app_create_channel_subdirectories(
+		const struct ltt_ust_session *usess)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct lttng_ht_iter iter;
+	enum lttng_trace_chunk_status chunk_status;
+	char *pathname_index;
+	int fmt_ret;
+
+	assert(usess->current_trace_chunk);
+	rcu_read_lock();
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			fmt_ret = asprintf(&pathname_index,
+				       DEFAULT_UST_TRACE_DIR DEFAULT_UST_TRACE_UID_PATH "/" DEFAULT_INDEX_DIR,
+				       reg->uid, reg->bits_per_long);
+			if (fmt_ret < 0) {
+				ERR("Failed to format channel index directory");
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+
+			/*
+			 * Create the index subdirectory which will take care
+			 * of implicitly creating the channel's path.
+			 */
+			chunk_status = lttng_trace_chunk_create_subdirectory(
+					usess->current_trace_chunk,
+					pathname_index);
+			free(pathname_index);
+			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		struct ust_app *app;
+
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app,
+				pid_n.node) {
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			registry = get_session_registry(ua_sess);
+			if (!registry) {
+				DBG("Application session is being torn down. Skip application.");
+				continue;
+			}
+
+			fmt_ret = asprintf(&pathname_index,
+					DEFAULT_UST_TRACE_DIR "%s/" DEFAULT_INDEX_DIR,
+					ua_sess->path);
+			if (fmt_ret < 0) {
+				ERR("Failed to format channel index directory");
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+			/*
+			 * Create the index subdirectory which will take care
+			 * of implicitly creating the channel's path.
+			 */
+			chunk_status = lttng_trace_chunk_create_subdirectory(
+					usess->current_trace_chunk,
+					pathname_index);
+			free(pathname_index);
+			if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+		}
+		break;
+	}
+	default:
+		abort();
+	}
+
+	ret = LTTNG_OK;
+error:
+	rcu_read_unlock();
+	return ret;
 }

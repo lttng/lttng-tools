@@ -55,8 +55,8 @@
 #define DEFAULT_TRACE_OUTPUT                    DEFAULT_HOME_DIR "/lttng"
 
 /* Default directory where the trace are written in per domain */
-#define DEFAULT_KERNEL_TRACE_DIR                "/kernel"
-#define DEFAULT_UST_TRACE_DIR                   "/ust"
+#define DEFAULT_KERNEL_TRACE_DIR                "kernel"
+#define DEFAULT_UST_TRACE_DIR                   "ust"
 
 /* Subpath for per PID or UID sessions. */
 #define DEFAULT_UST_TRACE_PID_PATH               "/pid"
@@ -342,6 +342,13 @@
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL"
 #define DEFAULT_LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD_ENV "LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD"
+
+/*
+ * Name of the intermediate directory used to rename the trace chunk of a
+ * session's first rotation.
+ */
+#define DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY	".tmp_rename_chunk"
+#define DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY		"archives"
 
 /*
  * Default timer value in usec for the rotate pending polling check on the

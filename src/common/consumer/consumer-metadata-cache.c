@@ -120,10 +120,20 @@ int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel)
 		write_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
 				&dummy, 1);
 		if (write_ret < 1) {
-			PERROR("Wake-up UST metadata pipe");
-			ret = -1;
-			goto end;
-		}
+			if (errno == EWOULDBLOCK) {
+				/*
+				 * This is fine, the metadata poll thread
+				 * is having a hard time keeping-up, but
+				 * it will eventually wake-up and consume
+				 * the available data.
+				 */
+				ret = 0;
+                        } else {
+				PERROR("Wake-up UST metadata pipe");
+				ret = -1;
+				goto end;
+                        }
+                }
 	}
 
 end:

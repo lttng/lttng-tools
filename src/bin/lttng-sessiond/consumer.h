@@ -34,6 +34,12 @@ enum consumer_dst_type {
 	CONSUMER_DST_NET,
 };
 
+enum consumer_trace_chunk_exists_status {
+	CONSUMER_TRACE_CHUNK_EXISTS_STATUS_EXISTS_LOCAL,
+	CONSUMER_TRACE_CHUNK_EXISTS_STATUS_EXISTS_REMOTE,
+	CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK,
+};
+
 struct consumer_socket {
 	/*
 	 * File descriptor. This is just a reference to the consumer data meaning
@@ -148,7 +154,7 @@ struct consumer_output {
 
 	/*
 	 * Subdirectory path name used for both local and network
-	 * consumer ("/kernel", "/ust", or empty).
+	 * consumer ("kernel", "ust", or empty).
 	 */
 	char domain_subdir[max(sizeof(DEFAULT_KERNEL_TRACE_DIR),
 			sizeof(DEFAULT_UST_TRACE_DIR))];
@@ -238,8 +244,6 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t session_id,
 		const char *pathname,
 		const char *name,
-		uid_t uid,
-		gid_t gid,
 		uint64_t relayd_id,
 		uint64_t key,
 		unsigned char *uuid,
@@ -252,12 +256,11 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int64_t blocking_timeout,
 		const char *root_shm_path,
 		const char *shm_path,
-		uint64_t trace_archive_id);
+	        struct lttng_trace_chunk *trace_chunk);
 void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t channel_key,
 		uint64_t stream_key,
-		int32_t cpu,
-		uint64_t trace_archive_id);
+		int32_t cpu);
 void consumer_init_streams_sent_comm_msg(struct lttcomm_consumer_msg *msg,
 		enum lttng_consumer_command cmd,
 		uint64_t channel_key, uint64_t net_seq_idx);
@@ -276,7 +279,8 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t tracefile_count,
 		unsigned int monitor,
 		unsigned int live_timer_interval,
-		unsigned int monitor_timer_interval);
+		unsigned int monitor_timer_interval,
+		struct lttng_trace_chunk *trace_chunk);
 int consumer_is_data_pending(uint64_t session_id,
 		struct consumer_output *consumer);
 int consumer_close_metadata(struct consumer_socket *socket,
@@ -296,26 +300,25 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 /* Snapshot command. */
 enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
 		uint64_t key, const struct snapshot_output *output, int metadata,
-		uid_t uid, gid_t gid, const char *session_path, int wait,
-		uint64_t nb_packets_per_stream, uint64_t trace_archive_id);
+		uid_t uid, gid_t gid, const char *channel_path, int wait,
+		uint64_t nb_packets_per_stream);
 
 /* Rotation commands. */
 int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 		uid_t uid, gid_t gid, struct consumer_output *output,
-		const char *domain_path, bool is_metadata_channel,
-		uint64_t new_chunk_id);
-int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
-		const struct consumer_output *output, const char *old_path,
-		const char *new_path, uid_t uid, gid_t gid);
-int consumer_check_rotation_pending_local(struct consumer_socket *socket,
-		uint64_t session_id, uint64_t chunk_id);
-int consumer_check_rotation_pending_relay(struct consumer_socket *socket,
-		const struct consumer_output *output, uint64_t session_id,
-		uint64_t chunk_id);
-int consumer_mkdir(struct consumer_socket *socket, uint64_t session_id,
-		const struct consumer_output *output, const char *path,
-		uid_t uid, gid_t gid);
+		bool is_metadata_channel);
 int consumer_init(struct consumer_socket *socket,
 		const lttng_uuid sessiond_uuid);
+
+int consumer_create_trace_chunk(struct consumer_socket *socket,
+		uint64_t relayd_id, uint64_t session_id,
+		struct lttng_trace_chunk *chunk);
+int consumer_close_trace_chunk(struct consumer_socket *socket,
+		uint64_t relayd_id, uint64_t session_id,
+		struct lttng_trace_chunk *chunk);
+int consumer_trace_chunk_exists(struct consumer_socket *socket,
+		uint64_t relayd_id, uint64_t session_id,
+		struct lttng_trace_chunk *chunk,
+		enum consumer_trace_chunk_exists_status *result);
 
 #endif /* _CONSUMER_H */

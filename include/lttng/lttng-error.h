@@ -169,6 +169,9 @@ enum lttng_error_code {
 	LTTNG_ERR_CHAN_NOT_FOUND         = 146, /* Channel not found */
 	LTTNG_ERR_SNAPSHOT_UNSUPPORTED   = 147, /* Session configuration does not allow the use of snapshots */
 	LTTNG_ERR_SESSION_NOT_EXIST      = 148, /* The session does not exist on the session daemon */
+	LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER     = 149, /* trace chunk creation failure on consumer */
+	LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER      = 150, /* trace chunk close failure on consumer */
+	LTTNG_ERR_TRACE_CHUNK_EXISTS_FAIL_CONSUMER     = 151, /* failed to query consumer for trace chunk existence */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */
