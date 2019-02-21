@@ -22,6 +22,7 @@
 
 #include <common/sessiond-comm/relayd.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/trace-chunk.h>
 
 int relayd_connect(struct lttcomm_relayd_sock *sock);
 int relayd_close(struct lttcomm_relayd_sock *sock);
@@ -33,7 +34,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *sock,
 int relayd_add_stream(struct lttcomm_relayd_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id,
 		uint64_t tracefile_size, uint64_t tracefile_count,
-		uint64_t trace_archive_id);
+		struct lttng_trace_chunk *trace_chunk);
 int relayd_streams_sent(struct lttcomm_relayd_sock *rsock);
 int relayd_send_close_stream(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
 		uint64_t last_net_seq_num);
@@ -55,7 +56,7 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 		uint64_t stream_id, uint64_t version);
 int relayd_rotate_stream(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
-		const char *new_pathname, uint64_t new_chunk_id, uint64_t seq_num);
+		uint64_t new_chunk_id, uint64_t seq_num);
 int relayd_rotate_rename(struct lttcomm_relayd_sock *sock,
 		const char *current_path, const char *new_path);
 int relayd_rotate_pending(struct lttcomm_relayd_sock *sock,

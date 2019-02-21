@@ -35,6 +35,7 @@
 #include <common/pipe.h>
 #include <common/index/ctf-index.h>
 #include <common/trace-chunk-registry.h>
+#include <common/credentials.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -65,18 +66,10 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_CLEAR_QUIESCENT_CHANNEL,
 	LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE,
 	LTTNG_CONSUMER_ROTATE_CHANNEL,
-	LTTNG_CONSUMER_ROTATE_RENAME,
-	LTTNG_CONSUMER_CHECK_ROTATION_PENDING_LOCAL,
-	LTTNG_CONSUMER_CHECK_ROTATION_PENDING_RELAY,
-	LTTNG_CONSUMER_MKDIR,
 	LTTNG_CONSUMER_INIT,
-};
-
-/* State of each fd in consumer */
-enum lttng_consumer_stream_state {
-	LTTNG_CONSUMER_ACTIVE_STREAM,
-	LTTNG_CONSUMER_PAUSE_STREAM,
-	LTTNG_CONSUMER_DELETE_STREAM,
+	LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
+	LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
+	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
 };
 
 enum lttng_consumer_type {
@@ -112,6 +105,8 @@ struct stream_list {
 struct consumer_metadata_cache;
 
 struct lttng_consumer_channel {
+	/* Is the channel published in the channel hash tables? */
+	bool is_published;
 	/* HT node used for consumer_data.channel_ht */
 	struct lttng_ht_node_u64 node;
 	/* HT node used for consumer_data.channels_by_session_id_ht */
@@ -122,6 +117,8 @@ struct lttng_consumer_channel {
 	int refcount;
 	/* Tracing session id on the session daemon side. */
 	uint64_t session_id;
+	/* Current trace chunk of the session in which this channel exists. */
+	struct lttng_trace_chunk *trace_chunk;
 	/*
 	 * Session id when requesting metadata to the session daemon for
 	 * a session with per-PID buffers.
@@ -131,9 +128,6 @@ struct lttng_consumer_channel {
 	char pathname[PATH_MAX];
 	/* Channel name. */
 	char name[LTTNG_SYMBOL_NAME_LEN];
-	/* UID and GID of the session owning this channel. */
-	uid_t uid;
-	gid_t gid;
 	/* Relayd id of the channel. -1ULL if it does not apply. */
 	uint64_t relayd_id;
 	/*
@@ -230,19 +224,14 @@ struct lttng_consumer_channel {
 	int nr_stream_fds;
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];
+	/* Only set for UST channels. */
+	LTTNG_OPTIONAL(struct lttng_credentials) buffer_credentials;
 	/* Total number of discarded events for that channel. */
 	uint64_t discarded_events;
 	/* Total number of missed packets due to overwriting (overwrite). */
 	uint64_t lost_packets;
 
 	bool streams_sent_to_relayd;
-
-	/*
-	 * The chunk id where we currently write the data. This value is sent
-	 * to the relay when we add a stream and when a stream rotates. This
-	 * allows to keep track of where each stream on the relay is writing.
-	 */
-	uint64_t current_chunk_id;
 };
 
 /*
@@ -258,6 +247,12 @@ struct lttng_consumer_stream {
 	struct lttng_ht_node_u64 node_session_id;
 	/* Pointer to associated channel. */
 	struct lttng_consumer_channel *chan;
+	/*
+	 * Current trace chunk. Holds a reference to the trace chunk.
+	 * `chunk` can be NULL when a stream is not associated to a chunk, e.g.
+	 * when it was created in the context of a no-output session.
+	 */
+	struct lttng_trace_chunk *trace_chunk;
 
 	/* Key by which the stream is indexed for 'node'. */
 	uint64_t key;
@@ -270,7 +265,6 @@ struct lttng_consumer_stream {
 	off_t out_fd_offset;
 	/* Amount of bytes written to the output */
 	uint64_t output_written;
-	enum lttng_consumer_stream_state state;
 	int shm_fd_is_copy;
 	int data_read;
 	int hangup_flush_done;
@@ -322,9 +316,6 @@ struct lttng_consumer_stream {
 	/* For UST */
 
 	int wait_fd;
-	/* UID/GID of the user owning the session to which stream belongs */
-	uid_t uid;
-	gid_t gid;
 	/* Network sequence number. Indicating on which relayd socket it goes. */
 	uint64_t net_seq_idx;
 	/*
@@ -415,12 +406,6 @@ struct lttng_consumer_stream {
 	/* Copy of the sequence number of the last packet extracted. */
 	uint64_t last_sequence_number;
 	/*
-	 * A stream is created with a trace_archive_id matching the session's
-	 * current trace archive id at the time of the creation of the stream.
-	 * It is incremented when the rotate_position is reached.
-	 */
-	uint64_t trace_archive_id;
-	/*
 	 * Index file object of the index file for this stream.
 	 */
 	struct lttng_index_file *index_file;
@@ -451,7 +436,6 @@ struct lttng_consumer_stream {
 	 * the stream objects when we introduce refcounting.
 	 */
 	struct {
-		char path[LTTNG_PATH_MAX];
 		uint64_t tracefile_size;
 	} channel_read_only_attributes;
 
@@ -745,23 +729,19 @@ void consumer_stream_update_channel_attributes(
 
 struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 		uint64_t stream_key,
-		enum lttng_consumer_stream_state state,
 		const char *channel_name,
-		uid_t uid,
-		gid_t gid,
 		uint64_t relayd_id,
 		uint64_t session_id,
+		struct lttng_trace_chunk *trace_chunk,
 		int cpu,
 		int *alloc_ret,
 		enum consumer_channel_type type,
-		unsigned int monitor,
-		uint64_t trace_archive_id);
+		unsigned int monitor);
 struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 		uint64_t session_id,
+		const uint64_t *chunk_id,
 		const char *pathname,
 		const char *name,
-		uid_t uid,
-		gid_t gid,
 		uint64_t relayd_id,
 		enum lttng_event_output output,
 		uint64_t tracefile_size,
@@ -847,23 +827,27 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream);
 void consumer_del_stream_for_metadata(struct lttng_consumer_stream *stream);
 int consumer_create_index_file(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
-		uint64_t key, const char *path, uint64_t relayd_id,
-		uint32_t metadata, uint64_t new_chunk_id,
+		uint64_t key, uint64_t relayd_id, uint32_t metadata,
 		struct lttng_consumer_local_data *ctx);
 int lttng_consumer_stream_is_rotate_ready(struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_stream(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, bool *rotated);
+		struct lttng_consumer_stream *stream);
 int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
 		uint64_t key, struct lttng_consumer_local_data *ctx);
-int lttng_consumer_rotate_rename(const char *current_path, const char *new_path,
-		uid_t uid, gid_t gid, uint64_t relayd_id);
-int lttng_consumer_check_rotation_pending_local(uint64_t session_id,
-		uint64_t chunk_id);
-int lttng_consumer_check_rotation_pending_relay(uint64_t session_id,
-		uint64_t relayd_id, uint64_t chunk_id);
 void lttng_consumer_reset_stream_rotate_state(struct lttng_consumer_stream *stream);
-int lttng_consumer_mkdir(const char *path, uid_t uid, gid_t gid,
-		uint64_t relayd_id);
+enum lttcomm_return_code lttng_consumer_create_trace_chunk(
+		const uint64_t *relayd_id, uint64_t session_id,
+		uint64_t chunk_id,
+		time_t chunk_creation_timestamp,
+		const char *chunk_override_name,
+		const struct lttng_credentials *credentials,
+		struct lttng_directory_handle *chunk_directory_handle);
+enum lttcomm_return_code lttng_consumer_close_trace_chunk(
+		const uint64_t *relayd_id, uint64_t session_id,
+		uint64_t chunk_id, time_t chunk_close_timestamp);
+enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
+		const uint64_t *relayd_id, uint64_t session_id,
+		uint64_t chunk_id);
 void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd);
 enum lttcomm_return_code lttng_consumer_init_command(
 		struct lttng_consumer_local_data *ctx,

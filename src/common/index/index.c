@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include <lttng/constant.h>
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/compat/endian.h>
@@ -109,6 +110,93 @@ error:
 		close_ret = close(fd);
 		if (close_ret < 0) {
 			PERROR("close index fd");
+		}
+	}
+	free(index_file);
+	return NULL;
+}
+
+struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+		struct lttng_trace_chunk *chunk,
+		const char *channel_path, char *stream_name,
+		uint64_t stream_file_size, uint64_t stream_count,
+		uint32_t index_major, uint32_t index_minor,
+		bool unlink_existing_file)
+{
+	struct lttng_index_file *index_file;
+	enum lttng_trace_chunk_status chunk_status;
+	int ret, fd = -1;
+	ssize_t size_ret;
+	struct ctf_packet_index_file_hdr hdr;
+	char index_directory_path[LTTNG_PATH_MAX];
+	char index_file_path[LTTNG_PATH_MAX];
+	const uint32_t element_len = ctf_packet_index_len(index_major,
+			index_minor);
+	const int flags = O_WRONLY | O_CREAT | O_TRUNC;
+	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+
+	index_file = zmalloc(sizeof(*index_file));
+	if (!index_file) {
+		PERROR("Failed to allocate lttng_index_file");
+		goto error;
+	}
+
+	ret = snprintf(index_directory_path, sizeof(index_directory_path),
+			"%s/" DEFAULT_INDEX_DIR, channel_path);
+	if (ret < 0 || ret >= sizeof(index_directory_path)) {
+		ERR("Failed to format index directory path");
+		goto error;
+	}
+
+	ret = utils_stream_file_path(index_directory_path, stream_name,
+			stream_file_size, stream_count,
+			DEFAULT_INDEX_FILE_SUFFIX,
+			index_file_path, sizeof(index_file_path));
+	if (ret) {
+		goto error;
+	}
+
+	if (unlink_existing_file) {
+		/*
+		 * For tracefile rotation. We need to unlink the old
+		 * file if present to synchronize with the tail of the
+		 * live viewer which could be working on this same file.
+		 * By doing so, any reference to the old index file
+		 * stays valid even if we re-create a new file with the
+		 * same name afterwards.
+		 */
+		chunk_status = lttng_trace_chunk_unlink_file(chunk,
+				index_file_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			goto error;
+		}
+        }
+
+	chunk_status = lttng_trace_chunk_open_file(chunk, index_file_path,
+			flags, mode, &fd);
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		goto error;
+	}
+
+	ctf_packet_index_file_hdr_init(&hdr, index_major, index_minor);
+	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
+	if (size_ret < sizeof(hdr)) {
+		PERROR("Failed to write index header");
+		goto error;
+	}
+	index_file->fd = fd;
+	index_file->major = index_major;
+	index_file->minor = index_minor;
+	index_file->element_len = element_len;
+	urcu_ref_init(&index_file->ref);
+
+	return index_file;
+
+error:
+	if (fd >= 0) {
+		ret = close(fd);
+		if (ret < 0) {
+			PERROR("Failed to close file descriptor of index file");
 		}
 	}
 	free(index_file);

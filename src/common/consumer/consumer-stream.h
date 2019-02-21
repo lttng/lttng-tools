@@ -77,4 +77,21 @@ int consumer_stream_write_index(struct lttng_consumer_stream *stream,
 int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
 		uint64_t session_id);
 
+/*
+ * Create the  output files of a local stream.
+ *
+ * This must be called with the channel's and the stream's lock held.
+ */
+int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
+		bool create_index);
+
+/*
+ * Rotate the output files of a local stream. This will change the
+ * active output files of both the binary and index in accordance
+ * with the stream's configuration (stream file count).
+ *
+ * This must be called with the channel's and the stream's lock held.
+ */
+int consumer_stream_rotate_output_files(struct lttng_consumer_stream *stream);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

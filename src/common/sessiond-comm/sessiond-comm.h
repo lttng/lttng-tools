@@ -37,6 +37,7 @@
 #include <common/defaults.h>
 #include <common/compat/uuid.h>
 #include <common/macros.h>
+#include <common/optional.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -145,7 +146,13 @@ enum lttcomm_relayd_command {
  */
 enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_SUCCESS            = 0,   /* Everything went fine. */
-	LTTCOMM_CONSUMERD_COMMAND_SOCK_READY = 1,   /* Command socket ready */
+	/*
+	 * Some code paths use -1 to express an error, others
+	 * negate this consumer return code. Starting codes at
+	 * 100 ensures there is no mix-up between this error value
+	 * and legitimate status codes.
+	 */
+	LTTCOMM_CONSUMERD_COMMAND_SOCK_READY = 100, /* Command socket ready */
 	LTTCOMM_CONSUMERD_SUCCESS_RECV_FD,          /* Success on receiving fds */
 	LTTCOMM_CONSUMERD_ERROR_RECV_FD,            /* Error on receiving fds */
 	LTTCOMM_CONSUMERD_ERROR_RECV_CMD,           /* Error on receiving command */
@@ -167,11 +174,13 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_CHAN_NOT_FOUND,           /* Channel not found. */
 	LTTCOMM_CONSUMERD_ALREADY_SET,              /* Resource already set. */
 	LTTCOMM_CONSUMERD_ROTATION_FAIL,            /* Rotation has failed. */
-	LTTCOMM_CONSUMERD_ROTATE_RENAME_FAILED,     /* Rotation rename has failed. */
-	LTTCOMM_CONSUMERD_ROTATION_PENDING_LOCAL_FAILED, /* Rotation pending relay failed. */
-	LTTCOMM_CONSUMERD_ROTATION_PENDING_RELAY_FAILED, /* Rotation pending relay failed. */
-	LTTCOMM_CONSUMERD_MKDIR_FAILED,             /* mkdir has failed. */
 	LTTCOMM_CONSUMERD_SNAPSHOT_FAILED,          /* snapshot has failed. */
+	LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED,/* Trace chunk creation failed. */
+	LTTCOMM_CONSUMERD_CLOSE_TRACE_CHUNK_FAILED, /* Trace chunk creation failed. */
+	LTTCOMM_CONSUMERD_INVALID_PARAMETERS,       /* Invalid parameters. */
+	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL, /* Trace chunk exists on consumer daemon. */
+	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE,/* Trace chunk exists on relay daemon. */
+	LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK,      /* Unknown trace chunk. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -462,9 +471,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t channel_key;
 			uint64_t session_id;
+			/* ID of the session's current trace chunk. */
+			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED chunk_id;
 			char pathname[PATH_MAX];
-			uint32_t uid;
-			uint32_t gid;
 			uint64_t relayd_id;
 			/* nb_init_streams is the number of streams open initially. */
 			uint32_t nb_init_streams;
@@ -487,13 +496,6 @@ struct lttcomm_consumer_msg {
 			int32_t cpu;	/* On which CPU this stream is assigned. */
 			/* Tells the consumer if the stream should be or not monitored. */
 			uint32_t no_monitor;
-			/*
-			 * The archive id that was "current" at the time this
-			 * stream was created. This is used to determine
-			 * whether a rotation request was sent before or after
-			 * the creation of a stream.
-			 */
-			uint64_t trace_archive_id;
 		} LTTNG_PACKED stream;	/* Only used by Kernel. */
 		struct {
 			uint64_t net_index;
@@ -524,10 +526,15 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;			/* Tracing session id */
 			char pathname[PATH_MAX];		/* Channel file path. */
 			char name[LTTNG_SYMBOL_NAME_LEN];	/* Channel name. */
-			uint32_t uid;				/* User ID of the session */
-			uint32_t gid;				/* Group ID ot the session */
+			/* Credentials used to open the UST buffer shared mappings. */
+			struct {
+				uint32_t uid;
+				uint32_t gid;
+			} LTTNG_PACKED buffer_credentials;
 			uint64_t relayd_id;			/* Relayd id if apply. */
 			uint64_t key;				/* Unique channel key. */
+			/* ID of the session's current trace chunk. */
+			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED chunk_id;
 			unsigned char uuid[UUID_LEN];	/* uuid for ust tracer. */
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
@@ -543,13 +550,6 @@ struct lttcomm_consumer_msg {
 			 */
 			uint32_t ust_app_uid;
 			int64_t blocking_timeout;
-			/*
-			 * The archive id that was "current" at the time this
-			 * channel was created. This is used to determine
-			 * whether a rotation request was sent before or after
-			 * the creation of a channel.
-			 */
-			uint64_t trace_archive_id;
 			char root_shm_path[PATH_MAX];
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED ask_channel;
@@ -585,12 +585,6 @@ struct lttcomm_consumer_msg {
 			uint64_t relayd_id;		/* Relayd id if apply. */
 			uint64_t key;
 			uint64_t nb_packets_per_stream;
-			/*
-			 * The session's current trace archive id is propagated
-			 * since a snapshot triggers the creation of an
-			 * ephemeral metadata stream.
-			 */
-			uint64_t trace_archive_id;
 		} LTTNG_PACKED snapshot_channel;
 		struct {
 			uint64_t channel_key;
@@ -608,20 +602,10 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 		} LTTNG_PACKED regenerate_metadata;
 		struct {
-			char pathname[PATH_MAX];
 			uint32_t metadata; /* This is a metadata channel. */
 			uint64_t relayd_id; /* Relayd id if apply. */
 			uint64_t key;
-			uint64_t new_chunk_id;
 		} LTTNG_PACKED rotate_channel;
-		struct {
-			char old_path[LTTNG_PATH_MAX];
-			char new_path[LTTNG_PATH_MAX];
-			uint64_t relayd_id; /* Relayd id if apply. */
-			uint64_t session_id;
-			uint32_t uid;
-			uint32_t gid;
-		} LTTNG_PACKED rotate_rename;
 		struct {
 			uint64_t session_id;
 			uint64_t chunk_id;
@@ -632,12 +616,40 @@ struct lttcomm_consumer_msg {
 			uint64_t chunk_id;
 		} LTTNG_PACKED check_rotation_pending_relay;
 		struct {
-			char path[LTTNG_PATH_MAX];
-			uint64_t relayd_id; /* Relayd id if apply. */
+			/*
+			 * Relayd id, if applicable (remote).
+			 *
+			 * A directory file descriptor referring to the chunk's
+			 * output folder is transmitted if the chunk is local
+			 * (relayd_id unset).
+			 *
+			 * `override_name` is left NULL (all-zeroes) if the
+			 * chunk's name is not overriden.
+			 */
+			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			char override_name[LTTNG_NAME_MAX];
 			uint64_t session_id;
-			uint32_t uid;
-			uint32_t gid;
-		} LTTNG_PACKED mkdir;
+			uint64_t chunk_id;
+			uint64_t creation_timestamp;
+			struct {
+				uint32_t uid;
+				uint32_t gid;
+			} LTTNG_PACKED credentials;
+		} LTTNG_PACKED create_trace_chunk;
+		struct {
+			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			uint64_t session_id;
+			uint64_t chunk_id;
+			uint64_t close_timestamp;
+		} LTTNG_PACKED close_trace_chunk;
+		struct {
+			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			uint64_t session_id;
+			uint64_t chunk_id;
+		} LTTNG_PACKED trace_chunk_exists;
+		struct {
+			lttng_uuid sessiond_uuid;
+		} LTTNG_PACKED init;
 	} u;
 } LTTNG_PACKED;
 

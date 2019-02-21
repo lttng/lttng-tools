@@ -23,6 +23,7 @@
 #include <common/error.h>
 
 #include "utils.h"
+#include "snapshot.h"
 #include "lttng-sessiond.h"
 
 int ht_cleanup_pipe[2] = { -1, -1 };
@@ -101,4 +102,12 @@ const char *session_get_base_path(const struct ltt_session *session)
 	return session->net_handle > 0 ?
 			session->consumer->dst.net.base_dir :
 			session->consumer->dst.session_root_path;
+}
+
+const char *snapshot_output_get_base_path(
+		const struct snapshot_output *snapshot_output)
+{
+	return snapshot_output->consumer->type == CONSUMER_DST_LOCAL ?
+			snapshot_output->consumer->dst.session_root_path :
+			snapshot_output->consumer->dst.net.base_dir;
 }

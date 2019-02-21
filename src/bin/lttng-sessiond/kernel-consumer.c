@@ -33,8 +33,7 @@
 #include "session.h"
 #include "lttng-sessiond.h"
 
-static char *create_channel_path(struct consumer_output *consumer,
-		uid_t uid, gid_t gid)
+static char *create_channel_path(struct consumer_output *consumer)
 {
 	int ret;
 	char tmp_path[PATH_MAX];
@@ -44,37 +43,14 @@ static char *create_channel_path(struct consumer_output *consumer,
 
 	/* Get the right path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
-		/* Set application path to the destination path */
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s%s",
-				consumer->dst.session_root_path,
-				consumer->chunk_path,
-				consumer->domain_subdir);
-		if (ret < 0) {
-			PERROR("snprintf kernel channel path");
-			goto error;
-		} else if (ret >= sizeof(tmp_path)) {
-			ERR("Kernel channel path exceeds the maximal allowed length of of %zu bytes (%i bytes required) with path \"%s%s%s\"",
-					sizeof(tmp_path), ret,
-					consumer->dst.session_root_path,
-					consumer->chunk_path,
+		pathname = strdup(consumer->domain_subdir);
+		if (!pathname) {
+			PERROR("Failed to copy domain subdirectory string %s",
 					consumer->domain_subdir);
 			goto error;
 		}
-		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
-		if (!pathname) {
-			PERROR("lttng_strndup");
-			goto error;
-		}
-
-		/* Create directory */
-		ret = run_as_mkdir_recursive(pathname, S_IRWXU | S_IRWXG, uid, gid);
-		if (ret < 0) {
-			if (errno != EEXIST) {
-				ERR("Trace directory creation error");
-				goto error;
-			}
-		}
-		DBG3("Kernel local consumer tracefile path: %s", pathname);
+		DBG3("Kernel local consumer trace path relative to current trace chunk: \"%s\"",
+				pathname);
 	} else {
 		/* Network output. */
 		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
@@ -115,12 +91,13 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 		unsigned int monitor)
 {
 	int ret;
-	char *pathname;
+	char *pathname = NULL;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
 	enum lttng_error_code status;
 	struct ltt_session *session = NULL;
 	struct lttng_channel_extended *channel_attr_extended;
+	bool is_local_trace;
 
 	/* Safety net */
 	assert(channel);
@@ -133,17 +110,37 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 
 	DBG("Kernel consumer adding channel %s to kernel consumer",
 			channel->channel->name);
+	is_local_trace = consumer->net_seq_index == -1ULL;
 
-	if (monitor) {
-		pathname = create_channel_path(consumer, ksession->uid,
-				ksession->gid);
-	} else {
-		/* Empty path. */
-		pathname = strdup("");
-	}
+	pathname = create_channel_path(consumer);
 	if (!pathname) {
 		ret = -1;
 		goto error;
+	}
+
+	if (is_local_trace && ksession->current_trace_chunk) {
+		enum lttng_trace_chunk_status chunk_status;
+		char *pathname_index;
+
+		ret = asprintf(&pathname_index, "%s/" DEFAULT_INDEX_DIR,
+				pathname);
+		if (ret < 0) {
+			ERR("Failed to format channel index directory");
+			ret = -1;
+			goto error;
+		}
+
+		/*
+		 * Create the index subdirectory which will take care
+		 * of implicitly creating the channel's path.
+		 */
+		chunk_status = lttng_trace_chunk_create_subdirectory(
+				ksession->current_trace_chunk, pathname_index);
+		free(pathname_index);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto error;
+		}
 	}
 
 	/* Prep channel message structure */
@@ -162,7 +159,8 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 			channel->channel->attr.tracefile_count,
 			monitor,
 			channel->channel->attr.live_timer_interval,
-			channel_attr_extended->monitor_timer_interval);
+			channel_attr_extended->monitor_timer_interval,
+			ksession->current_trace_chunk);
 
 	health_code_update();
 
@@ -209,10 +207,8 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 		struct ltt_kernel_session *ksession, unsigned int monitor)
 {
 	int ret;
-	char *pathname;
 	struct lttcomm_consumer_msg lkm;
 	struct consumer_output *consumer;
-	struct ltt_session *session = NULL;
 
 	rcu_read_lock();
 
@@ -227,28 +223,11 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	/* Get consumer output pointer */
 	consumer = ksession->consumer;
 
-	if (monitor) {
-		pathname = create_channel_path(consumer,
-				ksession->uid, ksession->gid);
-	} else {
-		/* Empty path. */
-		pathname = strdup("");
-	}
-	if (!pathname) {
-		ret = -1;
-		goto error;
-	}
-
-	session = session_find_by_id(ksession->id);
-	assert(session);
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
-
 	/* Prep channel message structure */
 	consumer_init_add_channel_comm_msg(&lkm,
 			ksession->metadata->key,
 			ksession->id,
-			pathname,
+			DEFAULT_KERNEL_TRACE_DIR,
 			ksession->uid,
 			ksession->gid,
 			consumer->net_seq_index,
@@ -257,7 +236,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 			DEFAULT_KERNEL_CHANNEL_OUTPUT,
 			CONSUMER_CHANNEL_TYPE_METADATA,
 			0, 0,
-			monitor, 0, 0);
+			monitor, 0, 0, ksession->current_trace_chunk);
 
 	health_code_update();
 
@@ -272,8 +251,7 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 	consumer_init_add_stream_comm_msg(&lkm,
 			ksession->metadata->key,
 			ksession->metadata_stream_fd,
-			0 /* CPU: 0 for metadata. */,
-			session->current_archive_id);
+			0 /* CPU: 0 for metadata. */);
 
 	health_code_update();
 
@@ -288,10 +266,6 @@ int kernel_consumer_add_metadata(struct consumer_socket *sock,
 
 error:
 	rcu_read_unlock();
-	free(pathname);
-	if (session) {
-		session_put(session);
-	}
 	return ret;
 }
 
@@ -302,8 +276,7 @@ static
 int kernel_consumer_add_stream(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel,
 		struct ltt_kernel_stream *stream,
-		struct ltt_kernel_session *session, unsigned int monitor,
-		uint64_t trace_archive_id)
+		struct ltt_kernel_session *session, unsigned int monitor)
 {
 	int ret;
 	struct lttcomm_consumer_msg lkm;
@@ -325,8 +298,7 @@ int kernel_consumer_add_stream(struct consumer_socket *sock,
 	consumer_init_add_stream_comm_msg(&lkm,
 			channel->key,
 			stream->fd,
-			stream->cpu,
-			trace_archive_id);
+			stream->cpu);
 
 	health_code_update();
 
@@ -387,7 +359,6 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 {
 	int ret = LTTNG_OK;
 	struct ltt_kernel_stream *stream;
-	struct ltt_session *session = NULL;
 
 	/* Safety net */
 	assert(channel);
@@ -396,11 +367,6 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 	assert(sock);
 
 	rcu_read_lock();
-
-	session = session_find_by_id(ksession->id);
-	assert(session);
-	assert(pthread_mutex_trylock(&session->lock));
-	assert(session_trylock_list());
 
 	/* Bail out if consumer is disabled */
 	if (!ksession->consumer->enabled) {
@@ -427,7 +393,7 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 
 		/* Add stream on the kernel consumer side. */
 		ret = kernel_consumer_add_stream(sock, channel, stream,
-				ksession, monitor, session->current_archive_id);
+				ksession, monitor);
 		if (ret < 0) {
 			goto error;
 		}
@@ -436,9 +402,6 @@ int kernel_consumer_send_channel_streams(struct consumer_socket *sock,
 
 error:
 	rcu_read_unlock();
-	if (session) {
-		session_put(session);
-	}
 	return ret;
 }
 

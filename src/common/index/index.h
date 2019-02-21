@@ -23,6 +23,7 @@
 #include <inttypes.h>
 #include <urcu/ref.h>
 
+#include <common/trace-chunk.h>
 #include "ctf-index.h"
 
 struct lttng_index_file {
@@ -40,6 +41,12 @@ struct lttng_index_file {
 struct lttng_index_file *lttng_index_file_create(const char *path_name,
 		char *stream_name, int uid, int gid, uint64_t size,
 		uint64_t count, uint32_t major, uint32_t minor);
+struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+		struct lttng_trace_chunk *chunk,
+		const char *channel_path, char *stream_name,
+		uint64_t stream_file_size, uint64_t stream_count,
+		uint32_t index_major, uint32_t index_minor,
+		bool unlink_existing_file);
 struct lttng_index_file *lttng_index_file_open(const char *path_name,
 		const char *channel_name, uint64_t tracefile_count,
 		uint64_t tracefile_count_current);
