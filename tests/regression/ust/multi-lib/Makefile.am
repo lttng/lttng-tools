@@ -3,13 +3,13 @@ EXTRA_DIST = test_multi_lib
 noinst_PROGRAMS = exec-with-callsites exec-without-callsites
 
 exec_with_callsites_SOURCES = multi-lib-test.c callsites.c
-exec_with_callsites_LDFLAGS = -ldl -lpopt
-exec_with_callsites_CFLAGS = $(AM_CFLAGS) -DHAS_CALLSITES=1
+exec_with_callsites_LDFLAGS = -ldl $(POPT_LIBS)
+exec_with_callsites_CFLAGS = $(POPT_CFLAGS) $(AM_CFLAGS) -DHAS_CALLSITES=1
 
 exec_without_callsites_SOURCES = multi-lib-test.c
-exec_without_callsites_LDFLAGS = -ldl -lpopt -llttng-ust
+exec_without_callsites_LDFLAGS = -ldl $(POPT_LIBS) -llttng-ust
 exec_without_callsites_LDADD = probes.o
-exec_without_callsites_CFLAGS = $(AM_CFLAGS) -DHAS_CALLSITES=0
+exec_without_callsites_CFLAGS = $(POPT_CFLAGS) $(AM_CFLAGS) -DHAS_CALLSITES=0
 
 PROBES_SRC=probes.c probes.h
 PROBES_LDF=-shared -module -llttng-ust -avoid-version -rpath $(abs_builddir)/.libs/

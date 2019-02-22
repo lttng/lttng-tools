@@ -7,7 +7,7 @@ EXTRA_DIST = test_event_basic test_all_events test_syscall \
 noinst_PROGRAMS = select_poll_epoll
 select_poll_epoll_SOURCES = select_poll_epoll.c
 select_poll_epoll_LDADD = $(POPT_LIBS)
-select_poll_epoll_CFLAGS = -fno-stack-protector -D_FORTIFY_SOURCE=0 $(AM_CFLAGS)
+select_poll_epoll_CFLAGS = $(POPT_CFLAGS) -fno-stack-protector -D_FORTIFY_SOURCE=0 $(AM_CFLAGS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
