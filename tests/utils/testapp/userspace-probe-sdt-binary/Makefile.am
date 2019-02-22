@@ -3,7 +3,7 @@ BUILT_SOURCES = foobar_provider.h
 
 noinst_PROGRAMS = userspace-probe-sdt-binary
 userspace_probe_sdt_binary_SOURCES = userspace-probe-sdt-binary.c sema.h sema.c
-userspace_probe_sdt_binary_LDADD = foobar_provider.o libfoo.la libbar.la -ldl
+userspace_probe_sdt_binary_LDADD = foobar_provider.o libfoo.la libbar.la $(DL_LIBS)
 userspace_probe_sdt_binary_CFLAGS = -I$(abs_builddir)
 nodist_userspace_probe_sdt_binary_SOURCES = $(abs_builddir)/foobar_provider.h
 
