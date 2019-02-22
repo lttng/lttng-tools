@@ -28,6 +28,8 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/disable_rotation.c \
 				utils.c utils.h lttng.c
 
+lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
+
 lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/libcommon.la \
 			$(top_builddir)/src/common/config/libconfig.la \
