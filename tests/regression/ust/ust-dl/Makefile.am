@@ -19,7 +19,7 @@ AM_CPPFLAGS += -I$(srcdir) -g
 
 noinst_PROGRAMS = prog
 prog_SOURCES = prog.c
-prog_LDADD = -ldl
+prog_LDADD = $(DL_LIBS)
 
 noinst_LTLIBRARIES = libzzz.la libbar.la libfoo.la libtp.la
 

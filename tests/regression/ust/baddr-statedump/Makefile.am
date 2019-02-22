@@ -6,7 +6,7 @@ AM_CPPFLAGS += -I$(srcdir) -g
 
 noinst_PROGRAMS = prog
 prog_SOURCES = prog.c tp.c tp.h
-prog_LDADD = -llttng-ust -ldl
+prog_LDADD = -llttng-ust $(DL_LIBS)
 
 noinst_SCRIPTS = test_baddr-statedump test_baddr-statedump.py
 EXTRA_DIST = test_baddr-statedump test_baddr-statedump.py
