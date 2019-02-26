@@ -81,6 +81,8 @@ struct ltt_session {
 	pthread_mutex_t lock;
 	struct cds_list_head list;
 	uint64_t id;		/* session unique identifier */
+	/* Indicates if the session has been added to the session list and ht.*/
+	bool published;
 	/* Indicates if a destroy command has been applied to this session. */
 	bool destroyed;
 	/* UID/GID of the user owning the session */

@@ -321,7 +321,9 @@ void snapshot_destroy(struct snapshot *obj)
 	struct lttng_ht_iter iter;
 	struct snapshot_output *output;
 
-	assert(obj);
+	if (!obj->output_ht) {
+		return;
+	}
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(obj->output_ht->ht, &iter.iter, output,

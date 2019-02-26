@@ -444,10 +444,12 @@ void session_release(struct urcu_ref *ref)
 	consumer_output_put(session->consumer);
 	snapshot_destroy(&session->snapshot);
 
-	ASSERT_LOCKED(ltt_session_list.lock);
-	del_session_list(session);
-	del_session_ht(session);
-	pthread_cond_broadcast(&ltt_session_list.removal_cond);
+	if (session->published) {
+		ASSERT_LOCKED(ltt_session_list.lock);
+		del_session_list(session);
+		del_session_ht(session);
+		pthread_cond_broadcast(&ltt_session_list.removal_cond);
+	}
 	free(session);
 }
 
@@ -630,6 +632,7 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	 * by session id.
 	 */
 	add_session_ht(new_session);
+	new_session->published = true;
 	session_unlock_list();
 
 	/*
@@ -643,7 +646,9 @@ int session_create(char *name, uid_t uid, gid_t gid)
 
 error:
 error_asprintf:
-	free(new_session);
+	session_lock_list();
+	session_put(new_session);
+	session_unlock_list();
 
 error_malloc:
 	return ret;
