@@ -25,6 +25,7 @@
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/trace-chunk.h>
 
 #include "buffer-registry.h"
 #include "trace-ust.h"
@@ -1199,6 +1200,6 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 	consumer_output_put(session->consumer);
 
 	fini_pid_tracker(&session->pid_tracker);
-
+	lttng_trace_chunk_put(session->current_trace_chunk);
 	free(session);
 }

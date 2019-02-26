@@ -32,6 +32,7 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
+#include <common/trace-chunk.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/action/action.h>
@@ -2559,54 +2560,6 @@ end:
 	return ret;
 }
 
-static
-int session_mkdir(const struct ltt_session *session)
-{
-	int ret;
-	struct consumer_output *output;
-	uid_t uid;
-	gid_t gid;
-
-	/*
-	 * Unsupported feature in lttng-relayd before 2.11, not an error since it
-	 * is only needed for session rotation and the user will get an error
-	 * on rotate.
-	 */
-	if (session->consumer->type == CONSUMER_DST_NET &&
-			session->consumer->relay_major_version == 2 &&
-			session->consumer->relay_minor_version < 11) {
-		ret = 0;
-		goto end;
-	}
-
-	if (session->kernel_session) {
-		output = session->kernel_session->consumer;
-		uid = session->kernel_session->uid;
-		gid = session->kernel_session->gid;
-		ret = domain_mkdir(output, session, uid, gid);
-		if (ret) {
-			ERR("Mkdir kernel");
-			goto end;
-		}
-	}
-
-	if (session->ust_session) {
-		output = session->ust_session->consumer;
-		uid = session->ust_session->uid;
-		gid = session->ust_session->gid;
-		ret = domain_mkdir(output, session, uid, gid);
-		if (ret) {
-			ERR("Mkdir UST");
-			goto end;
-		}
-	}
-
-	ret = 0;
-
-end:
-	return ret;
-}
-
 /*
  * Command LTTNG_START_TRACE processed by the client thread.
  *
@@ -2614,7 +2567,7 @@ end:
  */
 int cmd_start_trace(struct ltt_session *session)
 {
-	int ret;
+	enum lttng_error_code ret;
 	unsigned long nb_chan = 0;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
@@ -2646,25 +2599,10 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	/*
-	 * Record the timestamp of the first time the session is started for
-	 * an eventual session rotation call.
-	 */
-	if (!session->has_been_started) {
-		session->current_chunk_start_ts = time(NULL);
-		if (session->current_chunk_start_ts == (time_t) -1) {
-			PERROR("Failed to retrieve the \"%s\" session's start time",
-					session->name);
-			ret = LTTNG_ERR_FATAL;
+	if (!session->has_been_started && session->output_traces) {
+		ret = session_switch_trace_chunk(session, NULL, NULL);
+		if (ret != LTTNG_OK) {
 			goto error;
-		}
-		if (!session->snapshot_mode && session->output_traces) {
-			ret = session_mkdir(session);
-			if (ret) {
-				ERR("Failed to create the session directories");
-				ret = LTTNG_ERR_CREATE_DIR_FAIL;
-				goto error;
-			}
 		}
 	}
 
@@ -2679,8 +2617,9 @@ int cmd_start_trace(struct ltt_session *session)
 
 	/* Flag session that trace should start automatically */
 	if (usess) {
-		ret = ust_app_start_trace_all(usess);
-		if (ret < 0) {
+		int int_ret = ust_app_start_trace_all(usess);
+
+		if (int_ret < 0) {
 			ret = LTTNG_ERR_UST_START_FAIL;
 			goto error;
 		}
@@ -2697,9 +2636,10 @@ int cmd_start_trace(struct ltt_session *session)
 	session->rotated_after_last_stop = false;
 
 	if (session->rotate_timer_period) {
-		ret = timer_session_rotation_schedule_timer_start(session,
-				session->rotate_timer_period);
-		if (ret < 0) {
+		int int_ret = timer_session_rotation_schedule_timer_start(
+				session, session->rotate_timer_period);
+
+		if (int_ret < 0) {
 			ERR("Failed to enable rotate timer");
 			ret = LTTNG_ERR_UNK;
 			goto error;
