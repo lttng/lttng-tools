@@ -107,6 +107,7 @@ error:
 /*
  * Sending a single channel to the consumer with command ADD_CHANNEL.
  */
+static
 int kernel_consumer_add_channel(struct consumer_socket *sock,
 		struct ltt_kernel_channel *channel,
 		struct ltt_kernel_session *ksession,
