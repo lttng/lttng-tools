@@ -24,6 +24,7 @@
 #include <inttypes.h>
 
 #include <common/common.h>
+#include <common/trace-chunk.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-ctl/kernel-ioctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
@@ -1159,12 +1160,15 @@ end_boot_id:
  */
 void kernel_destroy_session(struct ltt_kernel_session *ksess)
 {
+	struct lttng_trace_chunk *trace_chunk;
+
 	if (ksess == NULL) {
 		DBG3("No kernel session when tearing down session");
 		return;
 	}
 
 	DBG("Tearing down kernel session");
+	trace_chunk = ksess->current_trace_chunk;
 
 	/*
 	 * Destroy channels on the consumer if at least one FD has been sent and we
@@ -1198,6 +1202,7 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 	consumer_output_send_destroy_relayd(ksess->consumer);
 
 	trace_kernel_destroy_session(ksess);
+	lttng_trace_chunk_put(trace_chunk);
 }
 
 /*

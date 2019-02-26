@@ -139,6 +139,9 @@ struct ltt_ust_session {
 	char shm_path[PATH_MAX];
 
 	struct ust_pid_tracker pid_tracker;
+
+	/* Current trace chunk of the ltt_session. */
+	struct lttng_trace_chunk *current_trace_chunk;
 };
 
 /*

@@ -28,6 +28,7 @@
 
 #include <common/common.h>
 #include <common/defaults.h>
+#include <common/trace-chunk.h>
 
 #include "consumer.h"
 #include "trace-kernel.h"
