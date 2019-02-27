@@ -4399,36 +4399,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto skip_setup;
 	}
 
-	/* Create directories if consumer is LOCAL and has a path defined. */
-	if (usess->consumer->type == CONSUMER_DST_LOCAL &&
-			usess->consumer->dst.session_root_path[0] != '\0') {
-		char tmp_path[LTTNG_PATH_MAX];
-
-		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s%s",
-				usess->consumer->dst.session_root_path,
-				usess->consumer->chunk_path,
-				usess->consumer->domain_subdir);
-		if (ret >= sizeof(tmp_path)) {
-			ERR("Local destination path exceeds the maximal allowed length of %zu bytes (needs %i bytes) with path = \"%s%s%s\"",
-					sizeof(tmp_path), ret,
-					usess->consumer->dst.session_root_path,
-					usess->consumer->chunk_path,
-					usess->consumer->domain_subdir);
-			goto error_unlock;
-		}
-
-		DBG("Creating directory path for local tracing: \"%s\"",
-				tmp_path);
-		ret = run_as_mkdir_recursive(tmp_path, S_IRWXU | S_IRWXG,
-				ua_sess->euid, ua_sess->egid);
-		if (ret < 0) {
-			if (errno != EEXIST) {
-				ERR("Trace directory creation error");
-				goto error_unlock;
-			}
-		}
-	}
-
 	/*
 	 * Create the metadata for the application. This returns gracefully if a
 	 * metadata was already set for the session.
