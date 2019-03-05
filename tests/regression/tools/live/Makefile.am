@@ -7,8 +7,10 @@ LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
+LIBCOMPAT=$(top_builddir)/src/common/compat/libcompat.la
 
 LIVE= $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT)
 
@@ -21,7 +23,7 @@ endif
 
 live_test_SOURCES = live_test.c
 live_test_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		$(LIBHASHTABLE) $(LIBHEALTH) $(DL_LIBS) -lrt
+		$(LIBHASHTABLE) $(LIBHEALTH) $(DL_LIBS) $(LIBCOMPAT) -lrt
 live_test_LDADD += $(LIVE) \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 

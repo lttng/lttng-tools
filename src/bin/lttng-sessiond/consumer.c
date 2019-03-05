@@ -35,6 +35,7 @@
 #include "health-sessiond.h"
 #include "ust-app.h"
 #include "utils.h"
+#include "lttng-sessiond.h"
 
 /*
  * Send a data payload using a given consumer socket of size len.
@@ -1078,7 +1079,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		ret = relayd_create_session(rsock,
 				&msg.u.relayd_sock.relayd_session_id,
 				session_name, hostname, session_live_timer,
-				consumer->snapshot);
+				consumer->snapshot, session_id,
+				sessiond_uuid);
 		if (ret < 0) {
 			/* Close the control socket. */
 			(void) relayd_close(rsock);

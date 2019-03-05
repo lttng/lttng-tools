@@ -126,7 +126,9 @@ endif
 
 # Kernel data structures unit test
 KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
+		$(top_builddir)/src/common/compat/libcompat.la \
 		$(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
+		$(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
 		$(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
 		$(top_builddir)/src/common/health/libhealth.la \
 		$(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
