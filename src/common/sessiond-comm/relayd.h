@@ -26,6 +26,7 @@
 #include <common/defaults.h>
 #include <common/index/ctf-index.h>
 #include <common/macros.h>
+#include <common/compat/uuid.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR
 #define RELAYD_VERSION_COMM_MINOR             VERSION_MINOR
@@ -206,6 +207,10 @@ struct lttcomm_relayd_create_session_2_11 {
 	uint32_t hostname_len;
 	uint32_t live_timer;
 	uint8_t snapshot;
+	/* Sessiond instance UUID */
+	lttng_uuid sessiond_uuid;
+	/* Sessiond session id */
+        uint64_t session_id;
 	/* Contains the session_name and hostname */
 	char names[];
 } LTTNG_PACKED;

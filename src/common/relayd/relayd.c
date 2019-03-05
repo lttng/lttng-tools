@@ -127,7 +127,8 @@ error:
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		char *session_name, char *hostname,
-		int session_live_timer, unsigned int snapshot)
+		int session_live_timer, unsigned int snapshot,
+		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -164,6 +165,9 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 
 	msg->live_timer = htobe32(session_live_timer);
 	msg->snapshot = !!snapshot;
+
+	lttng_uuid_copy(msg->sessiond_uuid, sessiond_uuid);
+	msg->session_id = htobe64(sessiond_session_id);
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
@@ -231,15 +235,16 @@ error:
  * On success, return 0 else a negative value which is either an errno error or
  * a lttng error code from the relayd.
  */
-int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_id,
+int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *relayd_session_id,
 		char *session_name, char *hostname, int session_live_timer,
-		unsigned int snapshot)
+		unsigned int snapshot, uint64_t sessiond_session_id,
+		const lttng_uuid sessiond_uuid)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
 
 	assert(rsock);
-	assert(session_id);
+	assert(relayd_session_id);
 
 	DBG("Relayd create session");
 
@@ -253,7 +258,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 	} else {
 		/* From 2.11 to ... */
 		ret = relayd_create_session_2_11(rsock, session_name,
-				hostname, session_live_timer, snapshot);
+				hostname, session_live_timer, snapshot,
+				sessiond_session_id, sessiond_uuid);
 	}
 
 	if (ret < 0) {
@@ -276,7 +282,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *session_i
 		goto error;
 	} else {
 		ret = 0;
-		*session_id = reply.session_id;
+		*relayd_session_id = reply.session_id;
 	}
 
 	DBG("Relayd session created with id %" PRIu64, reply.session_id);
