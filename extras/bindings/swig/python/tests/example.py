@@ -1,4 +1,9 @@
-#This example shows basically how to use the lttng-tools python module
+#
+# Copyright (C) 2012 Danny Serres <danny.serres@efficios.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# This example shows basically how to use the lttng-tools python module
 
 from lttng import *
 

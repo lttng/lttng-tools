@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_LTLIBRARIES = libcompat.la
 
 if COMPAT_EPOLL

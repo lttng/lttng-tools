@@ -1,3 +1,4 @@
+dnl SPDX-License-Identifier: GPL-2.0-only
 AC_PREREQ([2.64])
 AC_INIT([lttng-tools],[2.12.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 

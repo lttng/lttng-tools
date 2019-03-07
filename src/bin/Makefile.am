@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 ACLOCAL_AMFLAGS = -I config
 
 SUBDIRS =

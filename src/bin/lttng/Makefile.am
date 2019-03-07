@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -DINSTALL_BIN_PATH=\""$(bindir)"\"
 
 if EMBED_HELP

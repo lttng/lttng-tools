@@ -3,7 +3,8 @@
 # (c) 2005, Joel Schopp <jschopp@austin.ibm.com> (the ugly bit)
 # (c) 2007,2008, Andy Whitcroft <apw@uk.ibm.com> (new conditions, test suite)
 # (c) 2008-2010 Andy Whitcroft <apw@canonical.com>
-# Licensed under the terms of the GNU GPL License version 2
+#
+# SPDX-License-Identifier: GPL-2.0-only
 
 use strict;
 

@@ -1,17 +1,29 @@
-LTTng Tools licensing
-David Goulet <david.goulet@polymtl.ca>
-July 18, 2011
+LTTng Tools is provided under:
 
-* LGPLv2.1
+	SPDX-License-Identifier: GPL-2.0-only
 
-The library part is distributed under LGPLv2.1. See lgpl-2.1.txt for details.
+Being under the terms of the GNU General Public License version 2 only,
+according with:
+
+	LICENSES/GPL-2.0
+
+The library part is provided under:
+
+	SPDX-License-Identifier: LGPL-2.1-only
+
+Being under the terms of the GNU Lesser General Public License version 2.1
+only, according with:
+
+	LICENSES/LGPL-2.1
+
 This applies to:
 
--) include/lttng/*
--) src/lib/lttng-ctl/*
+	include/lttng/*
+	src/lib/lttng-ctl/*
 
-We have some tests LGPL but should not impact anything even if we change them
-in the future to GPL.
+In addition, other licenses may also apply, see SPDX-License-Identifier in
+individual files.
+
 
 LGPL-compatible source code can statically use the library header using:
 
@@ -21,8 +33,3 @@ LGPL-compatible source code can statically use the library header using:
 Dynamic-only linking with the LGPL library is used if _LGPL_SOURCE is not
 defined. It permits relinking with newer versions of the library, which is
 required by the LGPL license.
-
-* GPLv2
-
-All remaining source code is distributed under the GPLv2 license. See
-gpl-2.0.txt for details. 

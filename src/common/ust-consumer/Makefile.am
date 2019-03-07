@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 if HAVE_LIBLTTNG_UST_CTL
 
 noinst_LTLIBRARIES = libust-consumer.la

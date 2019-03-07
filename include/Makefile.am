@@ -1,3 +1,4 @@
+## SPDX-License-Identifier: GPL-2.0-only
 ##
 ## This target generates an include file that contains the git version
 ## string of the current branch, it must be continuously updated when

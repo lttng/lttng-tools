@@ -1,23 +1,12 @@
+/*
+ * Copyright 2012 (C) Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #ifndef _LTTNG_CTL_MEMSTREAM_H
 #define _LTTNG_CTL_MEMSTREAM_H
-
-/*
- * src/lib/lttng-ctl/memstream.h
- *
- * Copyright 2012 (c) - Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
- *
- * memstream compatibility layer.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- */
 
 #ifdef LTTNG_HAVE_FMEMOPEN
 #include <stdio.h>

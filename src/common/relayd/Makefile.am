@@ -1,4 +1,5 @@
-# Relayd library
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_LTLIBRARIES = librelayd.la
 
 librelayd_la_SOURCES = relayd.c relayd.h

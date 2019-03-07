@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 lttnglibexec_PROGRAMS = lttng-consumerd
 
 lttng_consumerd_SOURCES = lttng-consumerd.c \

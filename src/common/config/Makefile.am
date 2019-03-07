@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_LTLIBRARIES = libconfig.la
 
 libconfig_la_SOURCES = ini.c ini.h session-config.c session-config.h \

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -I$(srcdir) -I$(builddir)
 
 noinst_PROGRAMS = filter-grammar-test

@@ -1,4 +1,5 @@
-# Consumer library
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_LTLIBRARIES = libconsumer.la
 
 noinst_HEADERS = consumer-metadata-cache.h consumer-timer.h \
