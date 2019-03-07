@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_LTLIBRARIES = libtap.la
 libtap_la_SOURCES = tap.c tap.h
 dist_noinst_SCRIPTS = tap.sh

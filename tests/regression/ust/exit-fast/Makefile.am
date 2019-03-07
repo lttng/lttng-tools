@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = exit-fast

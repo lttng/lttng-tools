@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 if LTTNG_TOOLS_BUILD_WITH_LIBPFM
 LIBS += -lpfm
 

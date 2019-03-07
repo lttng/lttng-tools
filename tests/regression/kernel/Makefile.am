@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 EXTRA_DIST = test_event_basic test_all_events test_syscall \
 		test_clock_override test_rotation_destroy_flush \
 		test_select_poll_epoll test_lttng_logger \

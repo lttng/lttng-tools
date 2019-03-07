@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_periodical_metadata_flush
 EXTRA_DIST = test_periodical_metadata_flush
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -I$(top_srcdir)/tests/utils -I$(srcdir) \
 	-I$(top_srcdir)/tests/utils/testapp
 

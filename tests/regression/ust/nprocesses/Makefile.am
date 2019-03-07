@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_nprocesses
 EXTRA_DIST = test_nprocesses
 

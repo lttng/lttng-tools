@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = metadata-regeneration
 EXTRA_DIST = metadata-regeneration
 

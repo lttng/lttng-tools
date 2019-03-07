@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 provider foobar {
     probe tp1();
     probe tp2();

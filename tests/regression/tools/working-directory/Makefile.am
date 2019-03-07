@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_relayd_working_directory
 EXTRA_DIST = test_relayd_working_directory
 

@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2015 Antoine Busque <abusque@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
 #include <unistd.h>
 
 #define TRACEPOINT_DEFINE

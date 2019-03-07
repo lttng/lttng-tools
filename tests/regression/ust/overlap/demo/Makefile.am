@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.

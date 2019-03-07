@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2016 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
 #include "libbar.h"
 
 #define TRACEPOINT_DEFINE

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 EXTRA_DIST = load-42-live.lttng load-42-snapshot.lttng
 
 all-local:

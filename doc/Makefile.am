@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 SUBDIRS = man
 EXTRA_DIST = quickstart.txt streaming-howto.txt python-howto.txt \
 	snapshot-howto.txt kernel-CodingStyle.txt \

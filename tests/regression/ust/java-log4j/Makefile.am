@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 JAVAROOT = .
 
 noinst_SCRIPTS = test_java_log4j JTestLTTng.java

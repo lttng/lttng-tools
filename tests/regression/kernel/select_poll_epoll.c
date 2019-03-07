@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2016 Julien Desfossez <jdesfossez@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
 #include <stdio.h>
 #include <poll.h>
 #include <signal.h>

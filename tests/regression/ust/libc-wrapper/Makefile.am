@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_PROGRAMS = prog
 prog_SOURCES = prog.c
 prog_LDADD = $(UST_LIBS) -llttng-ust-libc-wrapper

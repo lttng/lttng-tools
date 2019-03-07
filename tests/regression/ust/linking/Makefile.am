@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 # -Wsystem-headers is needed to print warnings in the tracepoint
 # description file.
 AM_CPPFLAGS += -I$(srcdir) -Wsystem-headers

@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2016 Antoine Busque <abusque@efficios.com>
+ *
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+
 /* _GNU_SOURCE is defined by config.h */
 #include <dlfcn.h>
 #include <stdio.h>

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 SUBDIRS = tools kernel ust
 
 LOG_DRIVER_FLAGS = --merge --post-script $(top_srcdir)/tests/utils/warn_processes.sh

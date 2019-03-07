@@ -1,4 +1,5 @@
 #!/bin/sh
+SPDX-License-Identifier: GPL-2.0-only
 
 # launch with: run-getcpu-override progname args
 DIR=$(dirname $0)

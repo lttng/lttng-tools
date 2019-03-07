@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CFLAGS += -I$(top_srcdir)/tests/utils/
 AM_CFLAGS += -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer
 #  The feature called Position Independent Execution (PIE) may be enabled by

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 # no optimization
 AM_CFLAGS = -O0
 noinst_LTLIBRARIES = libfoo.la

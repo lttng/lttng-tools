@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 EXTRA_DIST = foobar_provider.d
 
 # Although this is redundant with the check performed in the parent

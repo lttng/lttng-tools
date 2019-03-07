@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_ust test_kernel test_high_throughput_limits
 EXTRA_DIST = test_ust test_kernel test_high_throughput_limits
 

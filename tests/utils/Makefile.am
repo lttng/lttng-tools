@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 SUBDIRS = . tap testapp
 
 EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh \

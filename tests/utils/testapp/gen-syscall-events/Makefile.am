@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CFLAGS += -I$(top_srcdir)/tests/utils/
 
 noinst_PROGRAMS = gen-syscall-events

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_ns_contexts test_ns_contexts_change
 EXTRA_DIST = test_ns_contexts test_ns_contexts_change
 

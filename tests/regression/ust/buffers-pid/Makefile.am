@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_buffers_pid
 EXTRA_DIST = test_buffers_pid
 

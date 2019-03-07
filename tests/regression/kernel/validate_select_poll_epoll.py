@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+#
+# Copyright (C) 2016 Julien Desfossez <jdesfossez@efficios.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+#
 
 import argparse
 import pprint

@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2015 Antoine Busque <abusque@efficios.com>
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #undef TRACEPOINT_PROVIDER
 #define TRACEPOINT_PROVIDER my_provider
 

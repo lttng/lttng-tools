@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -I. -I$(top_srcdir)/include
 
 COPYSCRIPTS = test_thread_exit test_thread_stall test_tp_fail \

@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2016 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ */
+
 #undef TRACEPOINT_PROVIDER
 #define TRACEPOINT_PROVIDER libfoo
 

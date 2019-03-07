@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
 
 CURDIR=$(dirname $0)
 LD_PRELOAD=${CURDIR}/.libs/liblttng-ust-provider-ust-tests-demo.so:${CURDIR}/.libs/liblttng-ust-provider-ust-tests-demo3.so ${CURDIR}/./demo ${*}

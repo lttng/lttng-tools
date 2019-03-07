@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_multi_lib
 EXTRA_DIST = test_multi_lib
 noinst_PROGRAMS = exec-with-callsites exec-without-callsites

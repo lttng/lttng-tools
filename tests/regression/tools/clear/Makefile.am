@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_kernel test_ust
 EXTRA_DIST = test_kernel test_ust
 

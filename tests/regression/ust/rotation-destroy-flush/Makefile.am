@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 noinst_SCRIPTS = test_rotation_destroy_flush
 EXTRA_DIST = test_rotation_destroy_flush
 

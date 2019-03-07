@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 objcopy_verbose = $(objcopy_verbose_@AM_V@)
 objcopy_verbose_ = $(objcopy_verbose_@AM_DEFAULT_V@)
 objcopy_verbose_0 = @echo OBJCOPY $@;

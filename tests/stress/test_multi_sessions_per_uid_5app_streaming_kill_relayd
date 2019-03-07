@@ -1,14 +1,9 @@
 #!/bin/bash
 #
-# Copyright (C) - 2013 David Goulet <dgoulet@efficios.com>
+# Copyright (C) 2013 David Goulet <dgoulet@efficios.com>
 #
-# This library is free software; you can redistribute it and/or modify it under
-# the terms of the GNU Lesser General Public License as published by the Free
-# Software Foundation; version 2.1 of the License.  details.
+# SPDX-License-Identifier: LGPL-2.1-only
 #
-# You should have received a copy of the GNU Lesser General Public License
-# along with this library; if not, write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/..

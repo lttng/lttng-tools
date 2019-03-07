@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
 AM_CPPFLAGS += -I$(top_srcdir)/tests -I$(srcdir)
 
 noinst_SCRIPTS = test_event_wildcard
