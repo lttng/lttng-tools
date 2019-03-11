@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <common/compat/uuid.h>
+#include <string.h>
 
 void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
 {
@@ -26,4 +27,9 @@ void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
 			uuid[4], uuid[5], uuid[6], uuid[7],
 			uuid[8], uuid[9], uuid[10], uuid[11],
 			uuid[12], uuid[13], uuid[14], uuid[15]);
+}
+
+bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b)
+{
+	return memcmp(a, b, (sizeof(lttng_uuid))) == 0;
 }
