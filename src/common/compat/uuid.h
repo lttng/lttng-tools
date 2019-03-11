@@ -24,6 +24,7 @@
 #define LTTNG_UUID_H
 
 #include <common/macros.h>
+#include <stdbool.h>
 
 /*
  * Includes final \0.
@@ -77,5 +78,8 @@ int lttng_uuid_generate(lttng_uuid uuid_out)
  */
 LTTNG_HIDDEN
 void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str);
+
+LTTNG_HIDDEN
+bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b);
 
 #endif /* LTTNG_UUID_H */
