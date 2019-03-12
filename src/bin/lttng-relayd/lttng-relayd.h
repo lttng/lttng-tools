@@ -26,6 +26,8 @@
 
 #include <common/hashtable/hashtable.h>
 
+struct sessiond_trace_chunk_registry;
+
 /*
  * Queue used to enqueue relay requests
  */
@@ -43,6 +45,7 @@ struct relay_conn_queue {
 extern struct lttng_ht *sessions_ht;
 extern struct lttng_ht *relay_streams_ht;
 extern struct lttng_ht *viewer_streams_ht;
+extern struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
 
 extern char *opt_output_path;
 extern const char *tracing_group_name;

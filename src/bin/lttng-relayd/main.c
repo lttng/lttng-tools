@@ -74,6 +74,7 @@
 #include "connection.h"
 #include "tracefile-array.h"
 #include "tcp_keep_alive.h"
+#include "sessiond-trace-chunks.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -166,6 +167,8 @@ struct lttng_ht *sessions_ht;
 
 /* Relayd health monitoring */
 struct health_app *health_relayd;
+
+struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
 
 static struct option long_options[] = {
 	{ "control-port", 1, 0, 'C', },
@@ -1097,6 +1100,8 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	char hostname[LTTNG_HOST_NAME_MAX];
 	uint32_t live_timer = 0;
 	bool snapshot = false;
+	/* Left nil for peers < 2.11. */
+	lttng_uuid sessiond_uuid = {};
 
 	memset(session_name, 0, LTTNG_NAME_MAX);
 	memset(hostname, 0, LTTNG_HOST_NAME_MAX);
@@ -1113,7 +1118,14 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	} else {
 		/* From 2.11 to ... */
 		ret = cmd_create_session_2_11(payload, session_name,
-			hostname, &live_timer, &snapshot);
+				hostname, &live_timer, &snapshot,
+				sessiond_uuid);
+		if (lttng_uuid_is_nil(sessiond_uuid)) {
+			/* The nil UUID is reserved for pre-2.11 clients. */
+			ERR("Illegal nil UUID announced by peer in create session command");
+			ret = -1;
+			goto send_reply;
+		}
 	}
 
 	if (ret < 0) {
@@ -1121,7 +1133,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	session = session_create(session_name, hostname, live_timer,
-			snapshot, conn->major, conn->minor);
+			snapshot, sessiond_uuid, conn->major, conn->minor);
 	if (!session) {
 		ret = -1;
 		goto send_reply;
@@ -4116,6 +4128,13 @@ int main(int argc, char **argv)
 		}
 	}
 
+	sessiond_trace_chunk_registry = sessiond_trace_chunk_registry_create();
+	if (!sessiond_trace_chunk_registry) {
+		ERR("Failed to initialize session daemon trace chunk registry");
+		retval = -1;
+		goto exit_sessiond_trace_chunk_registry;
+	}
+
 	/* Initialize thread health monitoring */
 	health_relayd = health_app_create(NR_HEALTH_RELAYD_TYPES);
 	if (!health_relayd) {
@@ -4265,7 +4284,9 @@ exit_health_quit_pipe:
 
 exit_init_data:
 	health_app_destroy(health_relayd);
+	sessiond_trace_chunk_registry_destroy(sessiond_trace_chunk_registry);
 exit_health_app_create:
+exit_sessiond_trace_chunk_registry:
 exit_options:
 	/*
 	 * Wait for all pending call_rcu work to complete before tearing
