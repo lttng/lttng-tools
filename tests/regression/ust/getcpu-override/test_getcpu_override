@@ -157,13 +157,19 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-if [ -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
-	foundobj=1
-else
-	foundobj=0
+if [ ! -x "$CURDIR/.libs/lttng-ust-getcpu-override-test.so" ]; then
+	skip 0 "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
 fi
 
-skip $foundobj "No shared object generated. Skipping all tests." $NUM_TESTS && exit 0
+if [ "$num_cpus" -eq "1" ]; then
+	# Skip the test since we cannot perform it as designed since N mod 1
+	# is always equals to zero. There is no point testing this on a system
+	# with a single configured core. LTTng-UST limits the get_cpu function
+	# to return value inside the [0, NUM_CPU - 1] range for a valid event
+	# (present in trace).
+	skip 0 "Test system only have a single thread. Skipping all tests." $NUM_TESTS && exit 0
+fi
+
 
 TESTS=(
 	test_getcpu_override_fail
