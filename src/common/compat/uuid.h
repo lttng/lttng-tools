@@ -85,4 +85,7 @@ bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b);
 LTTNG_HIDDEN
 bool lttng_uuid_is_nil(const lttng_uuid uuid);
 
+LTTNG_HIDDEN
+void lttng_uuid_copy(lttng_uuid dst, const lttng_uuid src);
+
 #endif /* LTTNG_UUID_H */
