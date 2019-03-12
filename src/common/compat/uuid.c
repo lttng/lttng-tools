@@ -41,3 +41,8 @@ bool lttng_uuid_is_nil(const lttng_uuid uuid)
 {
 	return memcmp(nil_uuid, uuid, sizeof(lttng_uuid)) == 0;
 }
+
+void lttng_uuid_copy(lttng_uuid dst, const lttng_uuid src)
+{
+	memcpy(dst, src, sizeof(lttng_uuid));
+}
