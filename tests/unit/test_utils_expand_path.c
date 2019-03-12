@@ -281,8 +281,8 @@ error:
 static void test_utils_expand_path(void)
 {
 	char *result;
-	char name[100], tmppath[PATH_MAX];
-	int i;
+	char name[100], tmppath[PATH_MAX], real_tree_origin[PATH_MAX];
+	int i, treelen;
 
 	/* Test valid cases */
 	for (i = 0; i < num_valid_tests; i++) {
@@ -295,14 +295,24 @@ static void test_utils_expand_path(void)
 		free(result);
 	}
 
+	/*
+	 * Get the realpath for the tree_origin since it can itself be a
+	 * symlink.
+	 */
+	result = realpath(tree_origin, real_tree_origin);
+	if (!result) {
+		fail("realpath failed.");
+		return;
+	}
+
 	/* Test symlink tree cases */
-	int treelen = strlen(tree_origin) + 1;
+	treelen = strlen(real_tree_origin) + 1;
 	for (i = 0; i < num_symlink_tests; i++) {
 		sprintf(name, "symlink tree test case: [tmppath/]%s",
 				symlink_tests_inputs[i].input);
 
 		snprintf(tmppath, PATH_MAX, "%s/%s",
-				tree_origin, symlink_tests_inputs[i].input);
+				real_tree_origin, symlink_tests_inputs[i].input);
 		result = utils_expand_path(tmppath);
 		ok(result != NULL && strcmp(result + treelen,
 					symlink_tests_inputs[i].expected_result) == 0, name);
