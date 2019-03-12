@@ -82,4 +82,7 @@ void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str);
 LTTNG_HIDDEN
 bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b);
 
+LTTNG_HIDDEN
+bool lttng_uuid_is_nil(const lttng_uuid uuid);
+
 #endif /* LTTNG_UUID_H */

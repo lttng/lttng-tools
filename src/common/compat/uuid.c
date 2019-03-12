@@ -18,6 +18,9 @@
 #include <stdio.h>
 #include <common/compat/uuid.h>
 #include <string.h>
+#include <stddef.h>
+
+static const lttng_uuid nil_uuid;
 
 void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
 {
@@ -32,4 +35,9 @@ void lttng_uuid_to_str(const lttng_uuid uuid, char *uuid_str)
 bool lttng_uuid_is_equal(const lttng_uuid a, const lttng_uuid b)
 {
 	return memcmp(a, b, (sizeof(lttng_uuid))) == 0;
+}
+
+bool lttng_uuid_is_nil(const lttng_uuid uuid)
+{
+	return memcmp(nil_uuid, uuid, sizeof(lttng_uuid)) == 0;
 }
