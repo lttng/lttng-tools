@@ -31,7 +31,8 @@
 
 int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,
-		uint32_t *live_timer, bool *snapshot)
+		uint32_t *live_timer, bool *snapshot,
+		lttng_uuid sessiond_uuid)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 header;
@@ -52,6 +53,8 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	header.session_name_len = be32toh(header.session_name_len);
 	header.hostname_len = be32toh(header.hostname_len);
 	header.live_timer = be32toh(header.live_timer);
+
+	lttng_uuid_copy(sessiond_uuid, header.sessiond_uuid);
 
 	received_names_size = header.session_name_len + header.hostname_len;
 	if (payload->size < header_len + received_names_size) {

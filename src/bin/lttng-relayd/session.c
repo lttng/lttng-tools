@@ -25,6 +25,7 @@
 #include "ctf-trace.h"
 #include "session.h"
 #include "stream.h"
+#include "sessiond-trace-chunks.h"
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;
@@ -37,8 +38,10 @@ static pthread_mutex_t last_relay_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
  */
 struct relay_session *session_create(const char *session_name,
 		const char *hostname, uint32_t live_timer,
-		bool snapshot, uint32_t major, uint32_t minor)
+		bool snapshot, const lttng_uuid sessiond_uuid,
+		uint32_t major, uint32_t minor)
 {
+	int ret;
 	struct relay_session *session;
 
 	session = zmalloc(sizeof(*session));
@@ -73,6 +76,13 @@ struct relay_session *session_create(const char *session_name,
 
 	session->live_timer = live_timer;
 	session->snapshot = snapshot;
+	lttng_uuid_copy(session->sessiond_uuid, sessiond_uuid);
+
+	ret = sessiond_trace_chunk_registry_session_created(
+			sessiond_trace_chunk_registry, sessiond_uuid);
+	if (ret) {
+		goto error;
+	}
 
 	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
 	return session;
@@ -153,6 +163,9 @@ static void destroy_session(struct relay_session *session)
 	int ret;
 
 	ret = session_delete(session);
+	assert(!ret);
+	ret = sessiond_trace_chunk_registry_session_destroyed(
+			sessiond_trace_chunk_registry, session->sessiond_uuid);
 	assert(!ret);
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }

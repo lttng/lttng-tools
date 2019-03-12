@@ -19,10 +19,12 @@
 
 #include "lttng-relayd.h"
 #include <common/buffer-view.h>
+#include <common/compat/uuid.h>
 
 int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname,
-		uint32_t *live_timer, bool *snapshot);
+		uint32_t *live_timer, bool *snapshot,
+		lttng_uuid sessiond_uuid);
 
 int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 		char **ret_path_name, char **ret_channel_name,
