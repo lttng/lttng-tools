@@ -303,6 +303,11 @@ static void show_basic_help(void)
 	puts("  start             " CONFIG_CMD_DESCR_START);
 	puts("  stop              " CONFIG_CMD_DESCR_STOP);
 	puts("");
+	puts("Tracing session rotation:");
+	puts("  disable-rotation  " CONFIG_CMD_DESCR_DISABLE_ROTATION);
+	puts("  enable-rotation   " CONFIG_CMD_DESCR_ENABLE_ROTATION);
+	puts("  rotate            " CONFIG_CMD_DESCR_ROTATE);
+	puts("");
 	puts("Resource tracking:");
 	puts("  track             " CONFIG_CMD_DESCR_TRACK);
 	puts("  untrack           " CONFIG_CMD_DESCR_UNTRACK);
