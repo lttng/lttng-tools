@@ -20,6 +20,7 @@
 
 #include <netinet/in.h>
 #include <lttng/lttng.h>
+#include <common/macros.h>
 
 /* Destination type of lttng URI */
 enum lttng_dst_type {
@@ -65,14 +66,14 @@ struct lttng_uri {
 	enum lttng_uri_type utype;
 	enum lttng_stream_type stype;
 	enum lttng_proto_type proto;
-	in_port_t port;
-	char subdir[PATH_MAX];
+	uint16_t port;
+	char subdir[LTTNG_PATH_MAX];
 	union {
 		char ipv4[INET_ADDRSTRLEN];
 		char ipv6[INET6_ADDRSTRLEN];
-		char path[PATH_MAX];
+		char path[LTTNG_PATH_MAX];
 	} dst;
-};
+} LTTNG_PACKED;
 
 int uri_compare(struct lttng_uri *uri1, struct lttng_uri *uri2);
 void uri_free(struct lttng_uri *uri);
