@@ -41,6 +41,29 @@ function enable_ust_lttng_event_per_chan()
 	ok $? "Enable event $event_name for session $sess_name in channel $chan_name"
 }
 
+function add_context_ust_skip_ok()
+{
+	local session_name=$1
+	local channel_name=$2
+	local context_name=$3
+	local skip_num=$4
+
+	local ret
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" add-context -u \
+		-s "$session_name" -c "$channel_name" \
+		-t "$context_name"  1>"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+	ret=$?
+
+	if [ "$ret" == "4" ]; then
+		skip 0 "Current UST lib doesn't implement '$context_name' context" "$skip_num"
+	else
+		ok $ret "Add context command for type: $context_name"
+	fi
+
+	return $ret
+}
+
 # Only test parsing of the enabling by raw ID
 function test_parsing_raw()
 {
@@ -54,7 +77,7 @@ function test_parsing_raw()
 
 	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
 
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test"
+	add_context_ust_skip_ok $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:test" 1
 	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:rZZZ:test"
 	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:b0110:test"
 	add_context_ust_fail $SESSION_NAME $CHAN_NAME "perf:thread:raw:r0110:"
@@ -76,24 +99,30 @@ function test_event_basic()
 	SESSION_NAME="ust_event_basic"
 	CHAN_NAME="mychan"
 
+	local ret
+
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
 	enable_ust_lttng_channel_ok $SESSION_NAME $CHAN_NAME
 
 	enable_ust_lttng_event_per_chan $SESSION_NAME $EVENT_NAME $CHAN_NAME
 
-	add_context_ust_ok $SESSION_NAME $CHAN_NAME "perf:thread:page-fault"
+	add_context_ust_skip_ok $SESSION_NAME $CHAN_NAME "perf:thread:page-fault" 4
+	ret=$?
 
-	start_lttng_tracing_ok
+	if [ "$ret" != "4" ]; then
+		start_lttng_tracing_ok
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
 
-	stop_lttng_tracing_ok
+		stop_lttng_tracing_ok
+
+		validate_trace "perf_thread_page_fault" "$TRACE_PATH"
+	fi
 
 	destroy_lttng_session_ok $SESSION_NAME
 
-	validate_trace "perf_thread_page_fault" $TRACE_PATH
-	rm -rf $TRACE_PATH
+	rm -rf "$TRACE_PATH"
 }
 
 # MUST set TESTDIR before calling those functions
