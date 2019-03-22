@@ -33,7 +33,15 @@ extern "C" {
 #define LTTNG_SESSION_PADDING1             12
 struct lttng_session {
 	char name[LTTNG_NAME_MAX];
-	/* The path where traces are written */
+	/*
+	 * Human-readable representation of the trace's destination.
+	 * In the case of a local tracing session, a path is provided:
+	 *     /path/to/the/output
+	 *
+	 * In the case of a remote (network) tracing session, the string has
+	 * the following format:
+	 *     net://hostname/path:ctrl_port [data: data_port]
+	 */
 	char path[PATH_MAX];
 	uint32_t enabled;	/* enabled/started: 1, disabled/stopped: 0 */
 	uint32_t snapshot_mode;
