@@ -76,8 +76,7 @@ extern int lttng_create_session_snapshot(const char *name,
  * indexes are sent and metadata is checked for each packet.
  *
  * Name can't be NULL. If no URL is given, the default is to send the data to
- * net://127.0.0.1. The timer_interval is in usec and by default set to 1000000
- * (1 second).
+ * net://127.0.0.1. The timer_interval is in usec.
  *
  * Return 0 on success else a negative LTTng error code.
  */
