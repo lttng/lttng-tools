@@ -616,6 +616,22 @@ end:
 	return ret;
 }
 
+int validate_url_option_combination(void)
+{
+	int ret = 0;
+	int used_count = 0;
+
+	used_count += !!opt_url;
+	used_count += !!opt_output_path;
+	used_count += (opt_data_url || opt_ctrl_url);
+	if (used_count > 1) {
+		ERR("Only one of the --set-url, --ctrl-url/data-url, or --output options may be used at once.");
+		ret = -1;
+	}
+
+	return ret;
+}
+
 /*
  *  The 'create <options>' first level command
  *
@@ -684,6 +700,12 @@ int cmd_create(int argc, const char **argv)
 	if (opt_no_consumer) {
 		MSG("The option --no-consumer is obsolete. Use --no-output now.");
 		ret = CMD_WARNING;
+		goto end;
+	}
+
+	ret = validate_url_option_combination();
+	if (ret) {
+		ret = CMD_ERROR;
 		goto end;
 	}
 
