@@ -108,6 +108,7 @@ function kernel_test
 }
 
 if [ "$(id -u)" == "0" ]; then
+	validate_lttng_modules_present
 	kernel_test
 else
 	# Kernel tests are skipped.
