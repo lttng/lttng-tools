@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include <common/macros.h>
 #include <lttng/lttng.h>
 
 /*

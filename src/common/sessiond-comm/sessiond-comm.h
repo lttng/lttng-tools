@@ -36,6 +36,7 @@
 #include <common/uri.h>
 #include <common/defaults.h>
 #include <common/compat/uuid.h>
+#include <common/macros.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>

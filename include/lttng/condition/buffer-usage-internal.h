@@ -23,6 +23,7 @@
 #include <lttng/condition/evaluation-internal.h>
 #include <lttng/domain.h>
 #include "common/buffer-view.h"
+#include <common/macros.h>
 
 struct lttng_condition_buffer_usage {
 	struct lttng_condition parent;
