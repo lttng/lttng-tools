@@ -244,7 +244,7 @@ static int enable_channel(char *session_name)
 		void *extended_ptr;
 
 		/* Validate channel name's length */
-		if (strlen(channel_name) >= NAME_MAX) {
+		if (strlen(channel_name) >= sizeof(chan_opts.name)) {
 			ERR("Channel name is too long (max. %zu characters)",
 					sizeof(chan_opts.name) - 1);
 			error = 1;
