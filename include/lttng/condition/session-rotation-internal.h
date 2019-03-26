@@ -23,6 +23,7 @@
 #include <lttng/condition/evaluation-internal.h>
 #include "common/buffer-view.h"
 #include <lttng/location.h>
+#include <common/macros.h>
 
 struct lttng_condition_session_rotation {
 	struct lttng_condition parent;

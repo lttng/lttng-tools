@@ -23,6 +23,7 @@
  */
 
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/macros.h>
 
 #include "filter-ast.h"
 

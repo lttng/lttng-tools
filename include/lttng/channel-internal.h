@@ -18,6 +18,8 @@
 #ifndef LTTNG_CHANNEL_INTERNAL_H
 #define LTTNG_CHANNEL_INTERNAL_H
 
+#include <common/macros.h>
+
 struct lttng_channel_extended {
 	uint64_t discarded_events;
 	uint64_t lost_packets;
