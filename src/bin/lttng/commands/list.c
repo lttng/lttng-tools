@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include <common/mi-lttng.h>
+#include <common/time.h>
 #include <lttng/constant.h>
 
 #include "../command.h"
@@ -1858,7 +1859,6 @@ static int list_sessions(const char *session_name)
 			MSG("Available tracing sessions:");
 		}
 
-
 		for (i = 0; i < count; i++) {
 			if (session_name != NULL) {
 				if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
@@ -1866,20 +1866,25 @@ static int list_sessions(const char *session_name)
 					MSG("Tracing session %s: [%s%s]", session_name,
 							active_string(sessions[i].enabled),
 							snapshot_string(sessions[i].snapshot_mode));
-					MSG("%sTrace path: %s\n", indent4, sessions[i].path);
+					if (*sessions[i].path) {
+						MSG("%sTrace output: %s\n", indent4, sessions[i].path);
+					}
 					memcpy(&listed_session, &sessions[i],
 							sizeof(listed_session));
 					break;
 				}
 			} else {
-				MSG("  %d) %s (%s) [%s%s]", i + 1,
-						sessions[i].name, sessions[i].path,
+				MSG("  %d) %s [%s%s]", i + 1,
+						sessions[i].name,
 						active_string(sessions[i].enabled),
 						snapshot_string(sessions[i].snapshot_mode));
-				MSG("%sTrace path: %s", indent4, sessions[i].path);
+				if (*sessions[i].path) {
+					MSG("%sTrace output: %s", indent4, sessions[i].path);
+				}
 				if (sessions[i].live_timer_interval != 0) {
-					MSG("%sLive timer interval: %u µs", indent4,
-							sessions[i].live_timer_interval);
+					MSG("%sLive timer interval: %u %s", indent4,
+							sessions[i].live_timer_interval,
+							USEC_UNIT);
 				}
 				MSG("");
 			}
