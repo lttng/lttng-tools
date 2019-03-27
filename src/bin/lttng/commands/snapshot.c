@@ -346,11 +346,23 @@ static int cmd_add_output(int argc, const char **argv)
 	int ret;
 
 	if (argc < 2 && (!opt_data_url || !opt_ctrl_url)) {
+		ERR("An output destination must be specified to add a snapshot output.");
 		ret = CMD_ERROR;
 		goto end;
 	}
 
 	ret = add_output(argv[1]);
+	if (ret < 0) {
+		switch (-ret) {
+		case LTTNG_ERR_SNAPSHOT_UNSUPPORTED:
+			ERR("Session \"%s\" contains a channel that is incompatible with the snapshot functionality.\nMake sure all channels are configured in 'mmap' output mode.",
+					current_session_name);
+			ret = CMD_ERROR;
+			break;
+		default:
+			break;
+		}
+	}
 
 end:
 	return ret;
@@ -506,8 +518,22 @@ static enum cmd_error_code handle_command(const char **argv)
 
 			result = cmd->func(argc, argv);
 			if (result) {
-				switch (-result) {
-				case LTTNG_ERR_SNAPSHOT_NODATA:
+				switch (result) {
+				case CMD_ERROR:
+				case CMD_UNDEFINED:
+				case CMD_FATAL:
+				case CMD_WARNING:
+				case CMD_UNSUPPORTED:
+					/*
+					 * Sub-commands mix lttng_error_codes
+					 * and cmd_error_codes. This should be
+					 * cleaned-up, but in the meantime this
+					 * hack works since the values of the
+					 * two enums do not intersect.
+					 */
+					cmd_ret = result;
+					break;
+				case -LTTNG_ERR_SNAPSHOT_NODATA:
 					WARN("%s", lttng_strerror(result));
 
 					/*  A warning is fine since the user has no control on

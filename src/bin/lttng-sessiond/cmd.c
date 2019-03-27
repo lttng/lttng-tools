@@ -1523,6 +1523,11 @@ int cmd_enable_channel(struct ltt_session *session,
 		kchan = trace_kernel_get_channel_by_name(attr->name,
 				session->kernel_session);
 		if (kchan == NULL) {
+			if (session->snapshot.nb_output > 0 ||
+					session->snapshot_mode) {
+				/* Enforce mmap output for snapshot sessions. */
+				attr->attr.output = LTTNG_EVENT_MMAP;
+			}
 			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
 			if (attr->name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
@@ -1591,6 +1596,9 @@ int cmd_enable_channel(struct ltt_session *session,
 		goto error;
 	}
 
+	if (ret == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
+		session->has_non_mmap_channel = true;
+	}
 error:
 	rcu_read_unlock();
 end:
@@ -3545,6 +3553,11 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 	 */
 	if (session->output_traces) {
 		ret = LTTNG_ERR_NOT_SNAPSHOT_SESSION;
+		goto error;
+	}
+
+	if (session->has_non_mmap_channel) {
+		ret = LTTNG_ERR_SNAPSHOT_UNSUPPORTED;
 		goto error;
 	}
 

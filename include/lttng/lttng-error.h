@@ -167,7 +167,7 @@ enum lttng_error_code {
 	LTTNG_ERR_ROTATION_PENDING_RELAY_FAIL_CONSUMER = 144, /* Rotation pending check (relay) failure on consumer */
 	LTTNG_ERR_MKDIR_FAIL_CONSUMER    = 145, /* mkdir failure on consumer */
 	LTTNG_ERR_CHAN_NOT_FOUND         = 146, /* Channel not found */
-
+	LTTNG_ERR_SNAPSHOT_UNSUPPORTED   = 147, /* Session configuration does not allow the use of snapshots */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

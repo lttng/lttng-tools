@@ -122,6 +122,12 @@ struct ltt_session {
 	 */
 	unsigned int snapshot_mode;
 	/*
+	 * A session that has channels that don't use 'mmap' output can't be
+	 * used to capture snapshots. This is set to true whenever a
+	 * 'splice' kernel channel is enabled.
+	 */
+	bool has_non_mmap_channel;
+	/*
 	 * Timer set when the session is created for live reading.
 	 */
 	unsigned int live_timer;
