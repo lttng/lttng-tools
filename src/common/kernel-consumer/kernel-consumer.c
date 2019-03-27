@@ -144,7 +144,8 @@ static int lttng_kconsumer_snapshot_channel(
 
 	/* Splice is not supported yet for channel snapshot. */
 	if (channel->output != CONSUMER_CHANNEL_MMAP) {
-		ERR("Unsupported output %d", channel->output);
+		ERR("Unsupported output type for channel \"%s\": mmap output is required to record a snapshot",
+				channel->name);
 		ret = -1;
 		goto end;
 	}
