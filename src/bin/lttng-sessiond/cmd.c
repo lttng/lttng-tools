@@ -4499,8 +4499,7 @@ int cmd_rotate_session(struct ltt_session *session,
 		goto end;
 	}
 
-	if (session->live_timer || session->snapshot_mode ||
-			!session->output_traces) {
+	if (session->live_timer || !session->output_traces) {
 		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
 	}
@@ -4849,8 +4848,7 @@ int cmd_rotation_set_schedule(struct ltt_session *session,
 
 	DBG("Cmd rotate set schedule session %s", session->name);
 
-	if (session->live_timer || session->snapshot_mode ||
-			!session->output_traces) {
+	if (session->live_timer || !session->output_traces) {
 		DBG("Failing ROTATION_SET_SCHEDULE command as the rotation feature is not available for this session");
 		ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
