@@ -129,8 +129,10 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
  *
  * Returns 0 on success, < 0 on error
  */
-int lttng_kconsumer_snapshot_channel(struct lttng_consumer_channel *channel,
-		uint64_t key, char *path, uint64_t relayd_id, uint64_t nb_packets_per_stream,
+static int lttng_kconsumer_snapshot_channel(
+		struct lttng_consumer_channel *channel,
+		uint64_t key, char *path, uint64_t relayd_id,
+		uint64_t nb_packets_per_stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
