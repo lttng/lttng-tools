@@ -179,11 +179,18 @@ static int list_output(void)
 	}
 
 	while ((s_iter = lttng_snapshot_output_list_get_next(list)) != NULL) {
-		MSG("%s[%" PRIu32 "] %s: %s (max-size: %" PRId64 ")", indent4,
-				lttng_snapshot_output_get_id(s_iter),
-				lttng_snapshot_output_get_name(s_iter),
-				lttng_snapshot_output_get_ctrl_url(s_iter),
-				lttng_snapshot_output_get_maxsize(s_iter));
+		if (lttng_snapshot_output_get_maxsize(s_iter)) {
+			MSG("%s[%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)", indent4,
+					lttng_snapshot_output_get_id(s_iter),
+					lttng_snapshot_output_get_name(s_iter),
+					lttng_snapshot_output_get_ctrl_url(s_iter),
+					lttng_snapshot_output_get_maxsize(s_iter));
+		} else {
+			MSG("%s[%" PRIu32 "] %s: %s", indent4,
+					lttng_snapshot_output_get_id(s_iter),
+					lttng_snapshot_output_get_name(s_iter),
+					lttng_snapshot_output_get_ctrl_url(s_iter));
+		}
 		output_seen = 1;
 		if (lttng_opt_mi) {
 			ret = mi_lttng_snapshot_list_output(writer, s_iter);
@@ -312,10 +319,16 @@ static int add_output(const char *url)
 
 	MSG("Snapshot output successfully added for session %s",
 			current_session_name);
-	MSG("  [%" PRIu32 "] %s: %s (max-size: %" PRId64 ")",
-			lttng_snapshot_output_get_id(output), n_ptr,
-			lttng_snapshot_output_get_ctrl_url(output),
-			lttng_snapshot_output_get_maxsize(output));
+	if (opt_max_size) {
+		MSG("  [%" PRIu32 "] %s: %s (max size: %" PRIu64 " bytes)",
+				lttng_snapshot_output_get_id(output), n_ptr,
+				lttng_snapshot_output_get_ctrl_url(output),
+				lttng_snapshot_output_get_maxsize(output));
+	} else {
+		MSG("  [%" PRIu32 "] %s: %s",
+				lttng_snapshot_output_get_id(output), n_ptr,
+				lttng_snapshot_output_get_ctrl_url(output));
+	}
 	if (lttng_opt_mi) {
 		ret = mi_lttng_snapshot_add_output(writer, current_session_name,
 				n_ptr, output);
