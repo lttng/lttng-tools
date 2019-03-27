@@ -259,11 +259,6 @@ int channel_kernel_create(struct ltt_kernel_session *ksession,
 		attr->attr.overwrite = !!ksession->snapshot_mode;
 	}
 
-	/* Enforce mmap output for snapshot sessions. */
-	if (ksession->snapshot_mode) {
-		attr->attr.output = LTTNG_EVENT_MMAP;
-	}
-
 	/* Validate common channel properties. */
 	if (channel_validate(attr) < 0) {
 		ret = LTTNG_ERR_INVALID;

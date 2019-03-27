@@ -208,6 +208,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_PENDING_RELAY_FAIL_CONSUMER) ] = "Rotation pending check (relay) failure on consumer",
 	[ ERROR_INDEX(LTTNG_ERR_MKDIR_FAIL_CONSUMER) ] = "mkdir failure on consumer",
 	[ ERROR_INDEX(LTTNG_ERR_CHAN_NOT_FOUND) ] = "Channel not found",
+	[ ERROR_INDEX(LTTNG_ERR_SNAPSHOT_UNSUPPORTED) ] = "Session configuration does not allow the use of snapshots",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"
