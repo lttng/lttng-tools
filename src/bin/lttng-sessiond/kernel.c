@@ -1297,7 +1297,7 @@ enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
 		/* Put back the saved consumer output into the session. */
 		ksess->consumer = saved_output;
 		if (ret < 0) {
-			status = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			status = LTTNG_ERR_KERN_META_FAIL;
 			goto error_consumer;
 		}
 
