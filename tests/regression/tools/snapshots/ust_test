@@ -337,9 +337,9 @@ function test_ust_local_snapshot_max_size ()
 	if [ "$sum_size_tracefiles" -gt "$max_size" ]; then
 		fail "Tracefiles size sum validation"
 		diag "Tracefiles size sum: $sum_size_tracefiles Expected max: $max_size"
+	else
+		pass "Tracefiles size sum validation"
 	fi
-
-	pass "Tracefiles size sum validation"
 
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
