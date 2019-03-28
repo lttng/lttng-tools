@@ -1078,7 +1078,11 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	unsigned int free_filter_expression = 0;
 	struct filter_parser_ctx *ctx = NULL;
 
-	memset(&send_buffer, 0, sizeof(send_buffer));
+	/*
+	 * We have either a filter or some exclusions, so we need to set up
+	 * a variable-length memory block from where to send the data.
+	 */
+	lttng_dynamic_buffer_init(&send_buffer);
 
 	/*
 	 * Cast as non-const since we may replace the filter expression
@@ -1127,12 +1131,6 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 	lsm.u.enable.exclusion_count = exclusion_count;
 	lsm.u.enable.bytecode_len = 0;
-
-	/*
-	 * We have either a filter or some exclusions, so we need to set up
-	 * a variable-length memory block from where to send the data.
-	 */
-	lttng_dynamic_buffer_init(&send_buffer);
 
 	/* Parse filter expression. */
 	if (filter_expression != NULL || handle->domain.type == LTTNG_DOMAIN_JUL
