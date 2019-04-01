@@ -37,6 +37,7 @@
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
 #include <common/compat/dirent.h>
+#include <common/dynamic-buffer.h>
 #include <lttng/constant.h>
 
 #include "utils.h"
@@ -1231,24 +1232,77 @@ size_t utils_get_current_time_str(const char *format, char *dst, size_t len)
 }
 
 /*
- * Return the group ID matching name, else 0 if it cannot be found.
+ * Return 0 on success and set *gid to the group_ID matching the passed name.
+ * Else -1 if it cannot be found or an error occurred.
  */
 LTTNG_HIDDEN
-gid_t utils_get_group_id(const char *name)
+int utils_get_group_id(const char *name, bool warn, gid_t *gid)
 {
-	struct group *grp;
+	static volatile int warn_once;
+	int ret;
+	long sys_len;
+	size_t len;
+	struct group grp;
+	struct group *result;
+	struct lttng_dynamic_buffer buffer;
 
-	grp = getgrnam(name);
-	if (!grp) {
-		static volatile int warn_once;
-
-		if (!warn_once) {
-			WARN("No tracing group detected");
-			warn_once = 1;
-		}
-		return 0;
+	/* Get the system limit, if it exists. */
+	sys_len = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (sys_len == -1) {
+		len = 1024;
+	} else {
+		len = (size_t) sys_len;
 	}
-	return grp->gr_gid;
+
+	lttng_dynamic_buffer_init(&buffer);
+	ret = lttng_dynamic_buffer_set_size(&buffer, len);
+	if (ret) {
+		ERR("Failed to allocate group info buffer");
+		ret = -1;
+		goto error;
+	}
+
+	while ((ret = getgrnam_r(name, &grp, buffer.data, buffer.size, &result)) == ERANGE) {
+		const size_t new_len = 2 * buffer.size;
+
+		/* Buffer is not big enough, increase its size. */
+		if (new_len < buffer.size) {
+			ERR("Group info buffer size overflow");
+			ret = -1;
+			goto error;
+		}
+
+		ret = lttng_dynamic_buffer_set_size(&buffer, new_len);
+		if (ret) {
+			ERR("Failed to grow group info buffer to %zu bytes",
+					new_len);
+			ret = -1;
+			goto error;
+		}
+	}
+	if (ret) {
+		PERROR("Failed to get group file entry for group name \"%s\"",
+				name);
+		ret = -1;
+		goto error;
+	}
+
+	/* Group not found. */
+	if (!result) {
+		ret = -1;
+		goto error;
+	}
+
+	*gid = result->gr_gid;
+	ret = 0;
+
+error:
+	if (ret && warn && !warn_once) {
+		WARN("No tracing group detected");
+		warn_once = 1;
+	}
+	lttng_dynamic_buffer_reset(&buffer);
+	return ret;
 }
 
 /*
