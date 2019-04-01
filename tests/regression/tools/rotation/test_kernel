@@ -55,7 +55,7 @@ function test_kernel_streaming ()
 {
 	diag "Test kernel streaming with session rotation"
 	create_lttng_session_uri $SESSION_NAME net://localhost
-	rotate_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	rotate_kernel_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives"
 }
 
 function test_kernel_local ()
@@ -63,7 +63,7 @@ function test_kernel_local ()
 	diag "Test kernel local with session rotation"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
-	rotate_kernel_test "${TRACE_PATH}"
+	rotate_kernel_test "${TRACE_PATH}/archives"
 }
 
 function test_kernel_local_timer ()
@@ -74,7 +74,7 @@ function test_kernel_local_timer ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 
-	rotate_timer_test "${TRACE_PATH}" 0
+	rotate_timer_test "${TRACE_PATH}/archives" 0
 }
 
 function test_kernel_streaming_timer ()
@@ -85,7 +85,7 @@ function test_kernel_streaming_timer ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 
-	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 0
 }
 
 plan_tests $NUM_TESTS
