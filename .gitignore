@@ -125,6 +125,7 @@ health_check
 /tests/regression/ust/multi-lib/exec-without-callsites
 /tests/utils/testapp/gen-syscall-events-callstack/gen-syscall-events-callstack
 /tests/utils/testapp/gen-ust-events/gen-ust-events
+/tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef

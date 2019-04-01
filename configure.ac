@@ -1175,6 +1175,7 @@ AC_CONFIG_FILES([
 	tests/utils/tap/Makefile
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ust-events/Makefile
+	tests/utils/testapp/gen-ust-events-ns/Makefile
 	tests/utils/testapp/gen-syscall-events-callstack/Makefile
 	tests/utils/testapp/gen-ust-nevents/Makefile
 	tests/utils/testapp/gen-ust-nevents-str/Makefile

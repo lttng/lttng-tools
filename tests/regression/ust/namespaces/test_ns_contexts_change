@@ -1,0 +1,135 @@
+#!/bin/bash
+#
+# Copyright (C) 2019 Michael Jeanson <mjeanson@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="UST - Namespace contexts change"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../..
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events-ns"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NUM_EVENT=1000
+EVENT_NAME="tp:tptest"
+
+TESTS_PER_NS=16
+
+NUM_TESTS=$((TESTS_PER_NS * 5))
+
+source "$TESTDIR/utils/utils.sh"
+
+# MUST set TESTDIR before calling those functions
+
+function test_ns()
+{
+	local ns=$1
+
+	local session_name="${ns}_ns"
+	local chan_name="${ns}_ns"
+	local context_name="${ns}_ns"
+
+	local trace_path
+	local ns_inode
+	local file_sync_before_last
+	local file_sync_after_unshare
+
+	# Check if the kernel has support for this ns type
+	if [ ! -f "/proc/$$/ns/$ns" ]; then
+		skip 0 "System has no $ns namespace support" $TESTS_PER_NS
+		return
+	fi
+
+	# Get the current ns inode number
+	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
+	ok $? "Get current $ns namespace inode: $ns_inode" || ns_inode="invalid"
+
+	trace_path=$(mktemp -d)
+	file_sync_before_last=$(mktemp -u)
+	file_sync_after_unshare=$(mktemp -u)
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok "$session_name" "$trace_path"
+	enable_ust_lttng_channel_ok "$session_name" "$chan_name"
+	add_context_ust_ok "$session_name" "$chan_name" "$context_name"
+	enable_ust_lttng_event_ok "$session_name" "$EVENT_NAME" "$chan_name"
+	start_lttng_tracing_ok "$session_name"
+
+	$TESTAPP_BIN -n "$ns" -i $NUM_EVENT -a "$file_sync_after_unshare" -b "$file_sync_before_last" &
+	app_pid=$!
+
+	# Let the app do it's thing before entering the synchronisation loop
+	sleep 0.5
+
+	while [ ! -f "$file_sync_after_unshare" ]; do
+		# Break if the app failed / died
+		if [ ! -f "/proc/$app_pid" ]; then
+			break
+		fi
+		echo "# Waiting for app..."
+		sleep 0.5
+	done
+
+	app_ns_inode=$(stat -c '%i' -L "/proc/$app_pid/ns/$ns")
+	ok $? "Get current $ns namespace inode: $app_ns_inode" || app_ns_inode="invalid"
+
+	test "$ns_inode" != "invalid" && test "$app_ns_inode" != "invalid" && test "$ns_inode" != "$app_ns_inode"
+	ok $? "Reported namespace inode changed after unshare"
+
+	touch "$file_sync_before_last"
+
+	# stop and destroy
+	stop_lttng_tracing_ok "$session_name"
+	destroy_lttng_session_ok "$session_name"
+	stop_lttng_sessiond
+
+	# Check that the events contain the right namespace inode number
+	validate_trace_count "${ns}_ns = $ns_inode" "$trace_path" $NUM_EVENT
+	validate_trace_count "${ns}_ns = $app_ns_inode" "$trace_path" $NUM_EVENT
+
+	rm -rf "$trace_path"
+	rm -f "$file_sync_before_last"
+	rm -f "$file_sync_after_unshare"
+}
+
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+isroot=0
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" && exit 0
+
+system_has_ns=0
+if [ -d "/proc/$$/ns" ]; then
+	system_has_ns=1
+fi
+
+skip $system_has_ns "System has no namespaces support" $NUM_TESTS && exit 0
+
+
+test_ns cgroup
+test_ns ipc
+test_ns mnt
+test_ns net
+#test_ns pid # pid_ns is special, can't be changed that way
+#test_ns user # user_ns can only be change when the app is single threaded, this is always false for an ust instrumented app
+test_ns uts
