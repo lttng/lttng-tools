@@ -1,5 +1,5 @@
-noinst_SCRIPTS = test_ns_contexts
-EXTRA_DIST = test_ns_contexts
+noinst_SCRIPTS = test_ns_contexts test_ns_contexts_change
+EXTRA_DIST = test_ns_contexts test_ns_contexts_change
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
