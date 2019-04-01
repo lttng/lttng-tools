@@ -116,6 +116,11 @@ function rotate_timer_test ()
 	nr_iter=0
 	expected_chunks=3
 
+	# Wait for the "archives" folder to appear after the first rotation
+	until [ -d $local_path ]; do
+	    sleep 1
+	done
+
 	# Wait for $expected_chunks to be generated, timeout after
 	# 3 * $expected_chunks * 0.5s.
 	# On a laptop with an empty session, a local rotation takes about 200ms,

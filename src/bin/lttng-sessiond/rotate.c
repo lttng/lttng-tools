@@ -218,7 +218,7 @@ int rename_completed_chunk(struct ltt_session *session, time_t ts)
 		 * session_root_path, so we need to create the chunk folder
 		 * and move the domain-specific folders inside it.
 		 */
-		ret = snprintf(new_path, sizeof(new_path), "%s/%s-%s-%" PRIu64,
+		ret = snprintf(new_path, sizeof(new_path), "%s/archives/%s-%s-%" PRIu64,
 				session->rotation_chunk.current_rotate_path,
 				start_time,
 				datetime, session->current_archive_id);
@@ -275,7 +275,7 @@ int rename_completed_chunk(struct ltt_session *session, time_t ts)
 			ret = -1;
 			goto end;
 		}
-		ret = snprintf(new_path, sizeof(new_path), "%s/%s-%s-%" PRIu64,
+		ret = snprintf(new_path, sizeof(new_path), "%s/archives/%s-%s-%" PRIu64,
 				session_get_base_path(session),
 				start_datetime,
 				datetime, session->current_archive_id);

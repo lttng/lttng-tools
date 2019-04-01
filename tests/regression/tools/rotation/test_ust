@@ -75,7 +75,7 @@ function test_ust_streaming_uid ()
 	create_lttng_session_uri $SESSION_NAME net://localhost
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/uid/*/*/" 0
+	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" "ust/uid/*/*/" 0
 }
 
 function test_ust_local_uid ()
@@ -84,7 +84,7 @@ function test_ust_local_uid ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	rotate_ust_test "${TRACE_PATH}" "ust/uid/*/*/" 0
+	rotate_ust_test "${TRACE_PATH}/archives" "ust/uid/*/*/" 0
 }
 
 function test_ust_streaming_pid ()
@@ -94,7 +94,7 @@ function test_ust_streaming_pid ()
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" "ust/pid/*/" 1
+	rotate_ust_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" "ust/pid/*/" 1
 }
 
 function test_ust_local_pid ()
@@ -104,7 +104,7 @@ function test_ust_local_pid ()
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	rotate_ust_test "${TRACE_PATH}" "ust/pid/*/" 1
+	rotate_ust_test "${TRACE_PATH}/archives" "ust/pid/*/" 1
 }
 
 function test_ust_local_timer_uid ()
@@ -117,7 +117,7 @@ function test_ust_local_timer_uid ()
 	# We just want the app to register, no event generated
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
-	rotate_timer_test "${TRACE_PATH}" 0
+	rotate_timer_test "${TRACE_PATH}/archives" 0
 }
 
 function test_ust_streaming_timer_uid ()
@@ -130,7 +130,7 @@ function test_ust_streaming_timer_uid ()
 	# We just want the app to register, no event generated
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
-	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 0
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 0
 }
 
 function test_ust_local_timer_pid ()
@@ -144,7 +144,7 @@ function test_ust_local_timer_pid ()
 	# We just want the app to register, no event generated
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
-	rotate_timer_test "${TRACE_PATH}" 1
+	rotate_timer_test "${TRACE_PATH}/archives" 1
 }
 
 function test_ust_streaming_timer_pid ()
@@ -158,7 +158,7 @@ function test_ust_streaming_timer_pid ()
 	# We just want the app to register, no event generated
 	$TESTAPP_BIN 0 0 /dev/null 2>&1
 
-	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*" 1
+	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 1
 }
 
 function test_incompatible_sessions ()
@@ -206,6 +206,8 @@ tests=( test_ust_streaming_uid test_ust_local_uid \
 	test_ust_local_timer_uid test_ust_streaming_timer_uid \
 	test_ust_local_timer_pid test_ust_streaming_timer_pid \
 	test_incompatible_sessions )
+
+#tests=( test_ust_local_timer_uid )
 
 for fct_test in ${tests[@]};
 do
