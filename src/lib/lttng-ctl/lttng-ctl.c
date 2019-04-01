@@ -243,15 +243,13 @@ end:
 LTTNG_HIDDEN
 int lttng_check_tracing_group(void)
 {
-	struct group *grp_tracing;	/* no free(). See getgrnam(3) */
-	gid_t *grp_list;
+	gid_t *grp_list, tracing_gid;
 	int grp_list_size, grp_id, i;
 	int ret = -1;
 	const char *grp_name = tracing_group;
 
 	/* Get GID of group 'tracing' */
-	grp_tracing = getgrnam(grp_name);
-	if (!grp_tracing) {
+	if (utils_get_group_id(grp_name, false, &tracing_gid)) {
 		/* If grp_tracing is NULL, the group does not exist. */
 		goto end;
 	}
@@ -276,7 +274,7 @@ int lttng_check_tracing_group(void)
 	}
 
 	for (i = 0; i < grp_list_size; i++) {
-		if (grp_list[i] == grp_tracing->gr_gid) {
+		if (grp_list[i] == tracing_gid) {
 			ret = 1;
 			break;
 		}

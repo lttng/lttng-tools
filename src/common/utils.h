@@ -22,6 +22,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <getopt.h>
+#include <stdbool.h>
+#include <sys/types.h>
 
 #include <common/compat/directory-handle.h>
 
@@ -56,7 +58,7 @@ int utils_get_count_order_u64(uint64_t x);
 char *utils_get_home_dir(void);
 char *utils_get_user_home_dir(uid_t uid);
 size_t utils_get_current_time_str(const char *format, char *dst, size_t len);
-gid_t utils_get_group_id(const char *name);
+int utils_get_group_id(const char *name, bool warn, gid_t *gid);
 char *utils_generate_optstring(const struct option *long_options,
 		size_t opt_count);
 int utils_create_lock_file(const char *filepath);
