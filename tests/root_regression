@@ -8,6 +8,7 @@ regression/kernel/test_select_poll_epoll
 regression/kernel/test_lttng_logger
 regression/kernel/test_callstack
 regression/kernel/test_userspace_probe
+regression/kernel/test_ns_contexts
 regression/tools/live/test_kernel
 regression/tools/live/test_lttng_kernel
 regression/tools/streaming/test_high_throughput_limits
