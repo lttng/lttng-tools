@@ -184,8 +184,15 @@ void *thread_manage_health(void *data)
 	is_root = !getuid();
 	if (is_root) {
 		/* lttng health client socket path permissions */
-		ret = chown(health_unix_sock_path, 0,
-				utils_get_group_id(tracing_group_name));
+		gid_t gid;
+
+		ret = utils_get_group_id(tracing_group_name, true, &gid);
+		if (ret) {
+			/* Default to root group. */
+			gid = 0;
+		}
+
+		ret = chown(health_unix_sock_path, 0, gid);
 		if (ret < 0) {
 			ERR("Unable to set group on %s", health_unix_sock_path);
 			PERROR("chown");
