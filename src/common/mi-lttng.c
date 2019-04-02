@@ -428,6 +428,44 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 		return config_event_context_callstack_user;
 	case LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL:
 		return config_event_context_callstack_kernel;
+	case LTTNG_EVENT_CONTEXT_CGROUP_NS:
+		return config_event_context_cgroup_ns;
+	case LTTNG_EVENT_CONTEXT_IPC_NS:
+		return config_event_context_ipc_ns;
+	case LTTNG_EVENT_CONTEXT_MNT_NS:
+		return config_event_context_mnt_ns;
+	case LTTNG_EVENT_CONTEXT_NET_NS:
+		return config_event_context_net_ns;
+	case LTTNG_EVENT_CONTEXT_PID_NS:
+		return config_event_context_pid_ns;
+	case LTTNG_EVENT_CONTEXT_USER_NS:
+		return config_event_context_user_ns;
+	case LTTNG_EVENT_CONTEXT_UTS_NS:
+		return config_event_context_uts_ns;
+	case LTTNG_EVENT_CONTEXT_UID:
+		return config_event_context_uid;
+	case LTTNG_EVENT_CONTEXT_EUID:
+		return config_event_context_euid;
+	case LTTNG_EVENT_CONTEXT_SUID:
+		return config_event_context_suid;
+	case LTTNG_EVENT_CONTEXT_GID:
+		return config_event_context_gid;
+	case LTTNG_EVENT_CONTEXT_EGID:
+		return config_event_context_egid;
+	case LTTNG_EVENT_CONTEXT_SGID:
+		return config_event_context_sgid;
+	case LTTNG_EVENT_CONTEXT_VUID:
+		return config_event_context_vuid;
+	case LTTNG_EVENT_CONTEXT_VEUID:
+		return config_event_context_veuid;
+	case LTTNG_EVENT_CONTEXT_VSUID:
+		return config_event_context_vsuid;
+	case LTTNG_EVENT_CONTEXT_VGID:
+		return config_event_context_vgid;
+	case LTTNG_EVENT_CONTEXT_VEGID:
+		return config_event_context_vegid;
+	case LTTNG_EVENT_CONTEXT_VSGID:
+		return config_event_context_vsgid;
 	default:
 		return NULL;
 	}
