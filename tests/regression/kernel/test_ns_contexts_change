@@ -1,0 +1,189 @@
+#!/bin/bash
+#
+# Copyright (C) 2019 Michael Jeanson <mjeanson@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+TEST_DESC="Kernel tracer - Namespace contexts change"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../..
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ns-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+TESTS_PER_NS=19
+
+NUM_TESTS=$((TESTS_PER_NS * 6))
+
+source "$TESTDIR/utils/utils.sh"
+
+# MUST set TESTDIR before calling those functions
+
+function add_context_kernel_skip_ok()
+{
+	local session_name=$1
+	local channel_name=$2
+	local context_name=$3
+	local skip_num=$4
+
+	local ret
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" add-context -k \
+		-s "$session_name" -c "$channel_name" \
+		-t "$context_name"  1>"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+	ret=$?
+
+	if [ "$ret" == "4" ]; then
+		skip 0 "Current kernel doesn't implement '$context_name' context" $((skip_num + 1))
+	else
+		ok $ret "Add context command for type: $context_name"
+	fi
+
+	return $ret
+}
+
+function enable_kernel_lttng_event_filter_ok()
+{
+	local session_name=$1
+	local syscall_name=$2
+	local channel_name=$3
+	local filter=$4
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" enable-event -k \
+		-c "$channel_name" -s "$session_name" \
+		--syscall "$syscall_name" \
+		-f "$filter" \
+		1>"$OUTPUT_DEST" 2>"$ERROR_OUTPUT_DEST"
+
+	ok $? "Add syscall with filter"
+}
+
+function test_ns()
+{
+	local ns=$1
+
+	local session_name="${ns}_ns"
+	local chan_name="${ns}_ns"
+	local context_name="${ns}_ns"
+
+	local trace_path
+	local ns_inode
+	local file_sync_wait_before_unshare
+	local file_sync_wait_after_unshare
+	local file_sync_signal_after_unshare
+
+	# Check if the kernel has support for this ns type
+	if [ ! -f "/proc/$$/ns/$ns" ]; then
+		skip 0 "System has no $ns namespace support" $TESTS_PER_NS
+		return
+	fi
+
+	trace_path=$(mktemp -d)
+	file_sync_wait_before_unshare=$(mktemp -u)
+	file_sync_wait_after_unshare=$(mktemp -u)
+	file_sync_signal_after_unshare=$(mktemp -u)
+
+	# Get the current ns inode number
+	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
+	ok $? "Get current $ns namespace inode: $ns_inode" || ns_inode="invalid"
+
+	$TESTAPP_BIN -n "$ns" -a "$file_sync_wait_after_unshare" -b "$file_sync_wait_before_unshare" -s "$file_sync_signal_after_unshare" &
+	ok $? "Launch test app."
+	app_pid=$!
+
+	app_ns_inode=$(stat -c '%i' -L "/proc/$app_pid/ns/$ns")
+	ok $? "Get app current $ns namespace inode: $app_ns_inode" || app_ns_inode="invalid"
+
+	start_lttng_sessiond
+
+	create_lttng_session_ok "$session_name" "$trace_path"
+	enable_kernel_lttng_channel_ok "$session_name" "$chan_name"
+	add_context_kernel_skip_ok "$session_name" "$chan_name" "$context_name" 10
+	if [ "$?" != "4" ]; then
+		lttng_enable_kernel_syscall_ok "$session_name" "unshare" "$chan_name"
+		lttng_track_pid_ok "$app_pid"
+		start_lttng_tracing_ok "$session_name"
+
+		touch "$file_sync_wait_before_unshare"
+
+		# Let the app do it's thing before entering the synchronisation loop
+		sleep 0.5
+
+		while [ ! -f "$file_sync_signal_after_unshare" ]; do
+			# Break if the app failed / died
+			if [ ! -f "/proc/$app_pid" ]; then
+				break
+			fi
+			echo "# Waiting for app..."
+			sleep 0.5
+		done
+
+		app_unshare_ns_inode=$(stat -c '%i' -L "/proc/$app_pid/ns/$ns")
+		ok $? "Get app current $ns namespace inode: $app_unshare_ns_inode" || app_unshare_ns_inode="invalid"
+
+		test "$app_ns_inode" != "invalid" && test "$app_unshare_ns_inode" != "invalid" && test "$app_ns_inode" != "$app_unshare_ns_inode"
+		ok $? "Reported namespace inode changed after unshare"
+
+		touch "$file_sync_wait_after_unshare"
+
+		stop_lttng_tracing_ok "$session_name"
+
+		# Check that the events contain the right namespace inode number
+		validate_trace_count "${ns}_ns = $app_ns_inode" "$trace_path" 1
+		validate_trace_count "${ns}_ns = $app_unshare_ns_inode" "$trace_path" 1
+	fi
+
+	# stop and destroy
+	destroy_lttng_session_ok "$session_name"
+	stop_lttng_sessiond
+
+	rm -rf "$trace_path"
+	rm -f "$file_sync_wait_after_unshare"
+	rm -f "$file_sync_wait_before_unshare"
+	rm -f "$file_sync_signal_after_unshare"
+}
+
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+
+isroot=0
+if [ "$(id -u)" == "0" ]; then
+	isroot=1
+fi
+
+skip $isroot "Root access is needed. Skipping all tests." "$NUM_TESTS" && exit 0
+
+
+system_has_ns=0
+if [ -d "/proc/$$/ns" ]; then
+	system_has_ns=1
+fi
+
+skip $system_has_ns "System has no namespaces support" $NUM_TESTS && exit 0
+
+
+validate_lttng_modules_present
+
+test_ns cgroup
+test_ns ipc
+test_ns mnt
+test_ns net
+#test_ns pid # pid_ns is special, can't be changed that way
+test_ns user
+test_ns uts

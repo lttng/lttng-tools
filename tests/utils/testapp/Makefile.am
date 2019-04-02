@@ -1,4 +1,6 @@
-SUBDIRS = gen-ust-events \
+SUBDIRS = \
+	  gen-ns-events \
+	  gen-ust-events \
 	  gen-ust-events-ns \
 	  gen-ust-nevents \
 	  gen-ust-nevents-str \

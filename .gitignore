@@ -140,6 +140,7 @@ health_check
 /tests/utils/testapp/userspace-probe-elf-cxx-binary/userspace-probe-elf-cxx-binary
 /tests/utils/testapp/userspace-probe-sdt-binary/foobar_provider.h
 /tests/utils/testapp/userspace-probe-sdt-binary/userspace-probe-sdt-binary
+/tests/utils/testapp/gen-ns-events/gen-ns-events
 
 # man pages
 /doc/man/*.1
