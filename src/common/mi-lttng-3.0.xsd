@@ -119,6 +119,25 @@ THE SOFTWARE.
 			<xs:enumeration value="MIGRATABLE" />
 			<xs:enumeration value="CALLSTACK_USER" />
 			<xs:enumeration value="CALLSTACK_KERNEL" />
+			<xs:enumeration value="CGROUP_NS" />
+			<xs:enumeration value="IPC_NS" />
+			<xs:enumeration value="MNT_NS" />
+			<xs:enumeration value="NET_NS" />
+			<xs:enumeration value="PID_NS" />
+			<xs:enumeration value="USER_NS" />
+			<xs:enumeration value="UTS_NS" />
+			<xs:enumeration value="UID" />
+			<xs:enumeration value="EUID" />
+			<xs:enumeration value="SUID" />
+			<xs:enumeration value="GID" />
+			<xs:enumeration value="EGID" />
+			<xs:enumeration value="SGID" />
+			<xs:enumeration value="VUID" />
+			<xs:enumeration value="VEUID" />
+			<xs:enumeration value="VSUID" />
+			<xs:enumeration value="VGID" />
+			<xs:enumeration value="VEGID" />
+			<xs:enumeration value="VSGID" />
 		</xs:restriction>
 	</xs:simpleType>
 
