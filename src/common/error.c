@@ -20,6 +20,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <lttng/lttng-error.h>
 #include <common/common.h>
@@ -45,6 +46,7 @@ const char *log_add_time(void)
 	struct tm tm, *res;
 	struct timespec tp;
 	time_t now;
+	const int errsv = errno;
 
 	ret = lttng_clock_gettime(CLOCK_REALTIME, &tp);
 	if (ret < 0) {
@@ -65,10 +67,12 @@ const char *log_add_time(void)
 		goto error;
 	}
 
+	errno = errsv;
 	return URCU_TLS(error_log_time).str;
 
 error:
 	/* Return an empty string on error so logging is not affected. */
+	errno = errsv;
 	return "";
 }
 
