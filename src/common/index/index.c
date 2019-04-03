@@ -171,8 +171,12 @@ int lttng_index_file_read(const struct lttng_index_file *index_file,
 	}
 
 	ret = lttng_read(fd, element, len);
-	if (ret < len) {
+	if (ret < 0) {
 		PERROR("read index file");
+		goto error;
+	}
+	if (ret < len) {
+		ERR("lttng_read expected %zu, returned %zd", len, ret);
 		goto error;
 	}
 	return 0;
