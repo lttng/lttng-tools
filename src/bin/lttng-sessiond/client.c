@@ -81,6 +81,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	const size_t payload_offset = cmd_header_offset + cmd_header_len;
 	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
 
+	free(cmd_ctx->llm);
 	cmd_ctx->llm = zmalloc(total_msg_size);
 
 	if (cmd_ctx->llm == NULL) {
