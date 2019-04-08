@@ -21,6 +21,7 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <common/macros.h>
 
 #define MSEC_PER_SEC    1000ULL
 #define NSEC_PER_SEC    1000000000ULL
@@ -35,6 +36,7 @@
 #define USEC_PER_MINUTE (USEC_PER_SEC * SEC_PER_MINUTE)
 #define USEC_PER_HOURS  (USEC_PER_MINUTE * MINUTE_PER_HOUR)
 
+LTTNG_HIDDEN
 bool locale_supports_utf8(void);
 
 #define NSEC_UNIT       "ns"
@@ -50,11 +52,13 @@ bool locale_supports_utf8(void);
  * Returns 0 on success, else -1 on error. errno is set to EOVERFLOW if
  * input would overflow the output in milliseconds.
  */
+LTTNG_HIDDEN
 int timespec_to_ms(struct timespec ts, unsigned long *ms);
 
 /*
  * timespec_abs_diff: Absolute difference between timespec.
  */
+LTTNG_HIDDEN
 struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
 
 #endif /* LTTNG_TIME_H */
