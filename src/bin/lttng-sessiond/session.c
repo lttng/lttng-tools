@@ -467,6 +467,9 @@ bool session_get(struct ltt_session *session)
  */
 void session_put(struct ltt_session *session)
 {
+	if (!session) {
+		return;
+	}
 	/*
 	 * The session list lock must be held as any session_put()
 	 * may cause the removal of the session from the session_list.
@@ -554,77 +557,144 @@ end:
 }
 
 /*
- * Create a brand new session and add it to the session list.
+ * Create a new session and add it to the session list.
+ * Session list lock must be held by the caller.
  */
-int session_create(char *name, uid_t uid, gid_t gid)
+enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
+		struct ltt_session **out_session)
 {
 	int ret;
-	struct ltt_session *new_session;
+	enum lttng_error_code ret_code;
+	struct ltt_session *new_session = NULL;
 
-	/* Allocate session data structure */
+	ASSERT_LOCKED(ltt_session_list.lock);
+	if (name) {
+		struct ltt_session *clashing_session;
+
+		clashing_session = session_find_by_name(name);
+		if (clashing_session) {
+			session_put(clashing_session);
+			ret_code = LTTNG_ERR_EXIST_SESS;
+			goto error;
+		}
+	}
 	new_session = zmalloc(sizeof(struct ltt_session));
-	if (new_session == NULL) {
-		PERROR("zmalloc");
-		ret = LTTNG_ERR_FATAL;
-		goto error_malloc;
+	if (!new_session) {
+		PERROR("Failed to allocate an ltt_session structure");
+		ret_code = LTTNG_ERR_NOMEM;
+		goto error;
 	}
 
 	urcu_ref_init(&new_session->ref);
+	pthread_mutex_init(&new_session->lock, NULL);
 
-	/* Define session name */
-	if (name != NULL) {
-		if (snprintf(new_session->name, NAME_MAX, "%s", name) < 0) {
-			ret = LTTNG_ERR_FATAL;
-			goto error_asprintf;
-		}
-	} else {
-		ERR("No session name given");
-		ret = LTTNG_ERR_FATAL;
+	new_session->creation_time = time(NULL);
+	if (new_session->creation_time == (time_t) -1) {
+		PERROR("Failed to sample session creation time");
+		ret_code = LTTNG_ERR_SESSION_FAIL;
 		goto error;
 	}
 
-	ret = validate_name(name);
-	if (ret < 0) {
-		ret = LTTNG_ERR_SESSION_INVALID_CHAR;
+	/* Create default consumer output. */
+	new_session->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
+	if (new_session->consumer == NULL) {
+		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
+	}
+
+	if (name) {
+		ret = lttng_strncpy(new_session->name, name, sizeof(new_session->name));
+		if (ret) {
+			ret_code = LTTNG_ERR_SESSION_INVALID_CHAR;
+			goto error;
+		}
+		ret = validate_name(name);
+		if (ret < 0) {
+			ret_code = LTTNG_ERR_SESSION_INVALID_CHAR;
+			goto error;
+		}
+	} else {
+		int i = 0;
+		bool found_name = false;
+		char datetime[16];
+		struct tm *timeinfo;
+
+		timeinfo = localtime(&new_session->creation_time);
+		if (!timeinfo) {
+			ret_code = LTTNG_ERR_SESSION_FAIL;
+			goto error;
+		}
+		strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
+		for (i = 0; i < INT_MAX; i++) {
+			struct ltt_session *clashing_session;
+
+			if (i == 0) {
+				ret = snprintf(new_session->name,
+						sizeof(new_session->name),
+						"%s-%s",
+						DEFAULT_SESSION_NAME,
+						datetime);
+			} else {
+				ret = snprintf(new_session->name,
+						sizeof(new_session->name),
+						"%s%d-%s",
+						DEFAULT_SESSION_NAME, i,
+						datetime);
+			}
+			if (ret == -1 || ret >= sizeof(new_session->name)) {
+				/*
+				 * Null-terminate in case the name is used
+				 * in logging statements.
+				 */
+				new_session->name[sizeof(new_session->name) - 1] = '\0';
+				ret_code = LTTNG_ERR_SESSION_FAIL;
+				goto error;
+			}
+
+			clashing_session =
+					session_find_by_name(new_session->name);
+			session_put(clashing_session);
+			if (!clashing_session) {
+				found_name = true;
+				break;
+			}
+		}
+		if (found_name) {
+			DBG("Generated session name \"%s\"", new_session->name);
+			new_session->has_auto_generated_name = true;
+		} else {
+			ERR("Failed to auto-generate a session name");
+			ret_code = LTTNG_ERR_SESSION_FAIL;
+			goto error;
+		}
 	}
 
 	ret = gethostname(new_session->hostname, sizeof(new_session->hostname));
 	if (ret < 0) {
 		if (errno == ENAMETOOLONG) {
 			new_session->hostname[sizeof(new_session->hostname) - 1] = '\0';
+			ERR("Hostname exceeds the maximal permitted length and has been truncated to %s",
+					new_session->hostname);
 		} else {
-			ret = LTTNG_ERR_FATAL;
+			ret_code = LTTNG_ERR_SESSION_FAIL;
 			goto error;
 		}
 	}
-
-	/* Init kernel session */
-	new_session->kernel_session = NULL;
-	new_session->ust_session = NULL;
-
-	/* Init lock */
-	pthread_mutex_init(&new_session->lock, NULL);
 
 	new_session->uid = uid;
 	new_session->gid = gid;
 
 	ret = snapshot_init(&new_session->snapshot);
 	if (ret < 0) {
-		ret = LTTNG_ERR_NOMEM;
+		ret_code = LTTNG_ERR_NOMEM;
 		goto error;
 	}
 
-	new_session->rotation_pending_local = false;
-	new_session->rotation_pending_relay = false;
 	new_session->rotation_state = LTTNG_ROTATION_STATE_NO_ROTATION;
 
-	new_session->rotation_pending_check_timer_enabled = false;
-	new_session->rotation_schedule_timer_enabled = false;
-
-	/* Add new session to the session list */
-	session_lock_list();
+	/* Add new session to the session list. */
 	new_session->id = add_session_list(new_session);
+
 	/*
 	 * Add the new session to the ltt_sessions_ht_by_id.
 	 * No ownership is taken by the hash table; it is merely
@@ -633,25 +703,25 @@ int session_create(char *name, uid_t uid, gid_t gid)
 	 */
 	add_session_ht(new_session);
 	new_session->published = true;
-	session_unlock_list();
 
 	/*
-	 * Consumer is let to NULL since the create_session_uri command will set it
-	 * up and, if valid, assign it to the session.
+	 * Consumer is left to NULL since the create_session_uri command will
+	 * set it up and, if valid, assign it to the session.
 	 */
-	DBG("Tracing session %s created with ID %" PRIu64 " by UID %d GID %d",
-			name, new_session->id, new_session->uid, new_session->gid);
-
-	return LTTNG_OK;
-
+	DBG("Tracing session %s created with ID %" PRIu64 " by uid = %d, gid = %d",
+			new_session->name, new_session->id, new_session->uid,
+			new_session->gid);
+	ret_code = LTTNG_OK;
+end:
+	if (new_session) {
+		(void) session_get(new_session);
+		*out_session = new_session;
+	}
+	return ret_code;
 error:
-error_asprintf:
-	session_lock_list();
 	session_put(new_session);
-	session_unlock_list();
-
-error_malloc:
-	return ret;
+	new_session = NULL;
+	goto end;
 }
 
 /*

@@ -44,10 +44,8 @@ struct cmd_completion_handler {
 void cmd_init(void);
 
 /* Session commands */
-int cmd_create_session_uri(char *name, struct lttng_uri *uris,
-		size_t nb_uri, lttng_sock_cred *creds, unsigned int live_timer);
-int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
-		size_t nb_uri, lttng_sock_cred *creds);
+enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
+		struct lttng_session_descriptor **return_descriptor);
 int cmd_destroy_session(struct ltt_session *session,
 		struct notification_thread_handle *notification_thread_handle);
 
@@ -101,8 +99,8 @@ ssize_t cmd_list_channels(enum lttng_domain_type domain,
 		struct ltt_session *session, struct lttng_channel **channels);
 ssize_t cmd_list_domains(struct ltt_session *session,
 		struct lttng_domain **domains);
-void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
-		gid_t gid);
+void cmd_list_lttng_sessions(struct lttng_session *sessions,
+		size_t session_count, uid_t uid, gid_t gid);
 ssize_t cmd_list_tracepoint_fields(enum lttng_domain_type domain,
 		struct lttng_event_field **fields);
 ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,

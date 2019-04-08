@@ -39,7 +39,9 @@
 #include <lttng/channel-internal.h>
 #include <lttng/rotate-internal.h>
 #include <lttng/location-internal.h>
+#include <lttng/session-internal.h>
 #include <lttng/userspace-probe-internal.h>
+#include <lttng/session-descriptor-internal.h>
 #include <common/string-utils/string-utils.h>
 
 #include "channel.h"
@@ -816,34 +818,47 @@ error:
  * Add URI so the consumer output object. Set the correct path depending on the
  * domain adding the default trace directory.
  */
-static int add_uri_to_consumer(struct consumer_output *consumer,
-		struct lttng_uri *uri, enum lttng_domain_type domain,
-		const char *session_name)
+static enum lttng_error_code add_uri_to_consumer(
+		const struct ltt_session *session,
+		struct consumer_output *consumer,
+		struct lttng_uri *uri, enum lttng_domain_type domain)
 {
-	int ret = LTTNG_OK;
-	const char *default_trace_dir;
+	int ret;
+	enum lttng_error_code ret_code = LTTNG_OK;
 
 	assert(uri);
 
 	if (consumer == NULL) {
 		DBG("No consumer detected. Don't add URI. Stopping.");
-		ret = LTTNG_ERR_NO_CONSUMER;
+		ret_code = LTTNG_ERR_NO_CONSUMER;
 		goto error;
 	}
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		default_trace_dir = DEFAULT_KERNEL_TRACE_DIR;
+		ret = lttng_strncpy(consumer->domain_subdir,
+				DEFAULT_KERNEL_TRACE_DIR,
+				sizeof(consumer->domain_subdir));
 		break;
 	case LTTNG_DOMAIN_UST:
-		default_trace_dir = DEFAULT_UST_TRACE_DIR;
+		ret = lttng_strncpy(consumer->domain_subdir,
+				DEFAULT_UST_TRACE_DIR,
+				sizeof(consumer->domain_subdir));
 		break;
 	default:
 		/*
-		 * This case is possible is we try to add the URI to the global tracing
-		 * session consumer object which in this case there is no subdir.
+		 * This case is possible is we try to add the URI to the global
+		 * tracing session consumer object which in this case there is
+		 * no subdir.
 		 */
-		default_trace_dir = "";
+		memset(consumer->domain_subdir, 0,
+				sizeof(consumer->domain_subdir));
+		ret = 0;
+	}
+	if (ret) {
+		ERR("Failed to initialize consumer output domain subdirectory");
+		ret_code = LTTNG_ERR_FATAL;
+		goto error;
 	}
 
 	switch (uri->dtype) {
@@ -856,67 +871,46 @@ static int add_uri_to_consumer(struct consumer_output *consumer,
 				consumer->dst.net.control_isset) ||
 				(uri->stype == LTTNG_STREAM_DATA &&
 				consumer->dst.net.data_isset)) {
-				ret = LTTNG_ERR_URL_EXIST;
+				ret_code = LTTNG_ERR_URL_EXIST;
 				goto error;
 			}
 		} else {
-			memset(&consumer->dst.net, 0, sizeof(consumer->dst.net));
+			memset(&consumer->dst, 0, sizeof(consumer->dst));
 		}
 
-		consumer->type = CONSUMER_DST_NET;
-
 		/* Set URI into consumer output object */
-		ret = consumer_set_network_uri(consumer, uri);
+		ret = consumer_set_network_uri(session, consumer, uri);
 		if (ret < 0) {
-			ret = -ret;
+			ret_code = -ret;
 			goto error;
 		} else if (ret == 1) {
 			/*
 			 * URI was the same in the consumer so we do not append the subdir
 			 * again so to not duplicate output dir.
 			 */
-			ret = LTTNG_OK;
+			ret_code = LTTNG_OK;
 			goto error;
 		}
-
-		if (uri->stype == LTTNG_STREAM_CONTROL && strlen(uri->subdir) == 0) {
-			ret = consumer_set_subdir(consumer, session_name);
-			if (ret < 0) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-		}
-
-		if (uri->stype == LTTNG_STREAM_CONTROL) {
-			/* On a new subdir, reappend the default trace dir. */
-			strncat(consumer->subdir, default_trace_dir,
-					sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
-			DBG3("Append domain trace name to subdir %s", consumer->subdir);
-		}
-
 		break;
 	case LTTNG_DST_PATH:
-		DBG2("Setting trace directory path from URI to %s", uri->dst.path);
-		memset(consumer->dst.session_root_path, 0,
-				sizeof(consumer->dst.session_root_path));
-		/* Explicit length checks for strcpy and strcat. */
-		if (strlen(uri->dst.path) + strlen(default_trace_dir)
-				>= sizeof(consumer->dst.session_root_path)) {
-			ret = LTTNG_ERR_FATAL;
+		if (*uri->dst.path != '/' || strstr(uri->dst.path, "../")) {
+			ret_code = LTTNG_ERR_INVALID;
 			goto error;
 		}
-		strcpy(consumer->dst.session_root_path, uri->dst.path);
-		/* Append default trace dir */
-		strcat(consumer->dst.session_root_path, default_trace_dir);
-		/* Flag consumer as local. */
+		DBG2("Setting trace directory path from URI to %s",
+				uri->dst.path);
+		memset(&consumer->dst, 0, sizeof(consumer->dst));
+
+		ret = lttng_strncpy(consumer->dst.session_root_path,
+				uri->dst.path,
+				sizeof(consumer->dst.session_root_path));
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
 	}
 
-	ret = LTTNG_OK;
-
+	ret_code = LTTNG_OK;
 error:
-	return ret;
+	return ret_code;
 }
 
 /*
@@ -2521,7 +2515,7 @@ int domain_mkdir(const struct consumer_output *output,
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	int ret;
-	char *path = NULL;
+	char path[LTTNG_PATH_MAX];
 
 	if (!output || !output->socks) {
 		ERR("No consumer output found");
@@ -2529,18 +2523,12 @@ int domain_mkdir(const struct consumer_output *output,
 		goto end;
 	}
 
-	path = zmalloc(LTTNG_PATH_MAX * sizeof(char));
-	if (!path) {
-		ERR("Cannot allocate mkdir path");
-		ret = -1;
-		goto end;
-	}
-
-	ret = snprintf(path, LTTNG_PATH_MAX, "%s%s%s",
+	ret = snprintf(path, sizeof(path), "%s/%s%s",
 			session_get_base_path(session),
-			output->chunk_path, output->subdir);
+			output->chunk_path,
+			output->domain_subdir);
 	if (ret < 0 || ret >= LTTNG_PATH_MAX) {
-		ERR("Format path");
+		ERR("Failed to format path new chunk domain path");
 		ret = -1;
 		goto end;
 	}
@@ -2556,7 +2544,7 @@ int domain_mkdir(const struct consumer_output *output,
 		ret = consumer_mkdir(socket, session->id, output, path, uid, gid);
 		pthread_mutex_unlock(socket->lock);
 		if (ret) {
-			ERR("Consumer mkdir");
+			ERR("Failed to create directory at \"%s\"", path);
 			ret = -1;
 			goto end_unlock;
 		}
@@ -2568,7 +2556,6 @@ int domain_mkdir(const struct consumer_output *output,
 end_unlock:
 	rcu_read_unlock();
 end:
-	free(path);
 	return ret;
 }
 
@@ -2820,8 +2807,9 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 
 	/* Set the "global" consumer URIs */
 	for (i = 0; i < nb_uri; i++) {
-		ret = add_uri_to_consumer(session->consumer,
-				&uris[i], 0, session->name);
+		ret = add_uri_to_consumer(session,
+				session->consumer,
+				&uris[i], LTTNG_DOMAIN_NONE);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2830,10 +2818,9 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 	/* Set UST session URIs */
 	if (session->ust_session) {
 		for (i = 0; i < nb_uri; i++) {
-			ret = add_uri_to_consumer(
+			ret = add_uri_to_consumer(session,
 					session->ust_session->consumer,
-					&uris[i], LTTNG_DOMAIN_UST,
-					session->name);
+					&uris[i], LTTNG_DOMAIN_UST);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2843,10 +2830,9 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 	/* Set kernel session URIs */
 	if (session->kernel_session) {
 		for (i = 0; i < nb_uri; i++) {
-			ret = add_uri_to_consumer(
+			ret = add_uri_to_consumer(session,
 					session->kernel_session->consumer,
-					&uris[i], LTTNG_DOMAIN_KERNEL,
-					session->name);
+					&uris[i], LTTNG_DOMAIN_KERNEL);
 			if (ret != LTTNG_OK) {
 				goto error;
 			}
@@ -2873,142 +2859,247 @@ error:
 	return ret;
 }
 
-/*
- * Command LTTNG_CREATE_SESSION processed by the client thread.
- */
-int cmd_create_session_uri(char *name, struct lttng_uri *uris,
-		size_t nb_uri, lttng_sock_cred *creds, unsigned int live_timer)
+static
+enum lttng_error_code set_session_output_from_descriptor(
+		struct ltt_session *session,
+		const struct lttng_session_descriptor *descriptor)
 {
 	int ret;
-	struct ltt_session *session = NULL;
+	enum lttng_error_code ret_code = LTTNG_OK;
+	enum lttng_session_descriptor_type session_type =
+			lttng_session_descriptor_get_type(descriptor);
+	enum lttng_session_descriptor_output_type output_type =
+			lttng_session_descriptor_get_output_type(descriptor);
+	struct lttng_uri uris[2] = {};
+	size_t uri_count = 0;
 
-	assert(name);
-	assert(creds);
-
-	/* Check if the session already exists. */
-	session_lock_list();
-	session = session_find_by_name(name);
-	session_unlock_list();
-	if (session != NULL) {
-		ret = LTTNG_ERR_EXIST_SESS;
+	switch (output_type) {
+	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NONE:
+		goto end;
+	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_LOCAL:
+		lttng_session_descriptor_get_local_output_uri(descriptor,
+				&uris[0]);
+		uri_count = 1;
+		break;
+	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
+		lttng_session_descriptor_get_network_output_uris(descriptor,
+				&uris[0], &uris[1]);
+		uri_count = 2;
+		break;
+	default:
+		ret_code = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	/* Create tracing session in the registry */
-	ret = session_create(name, LTTNG_SOCK_GET_UID_CRED(creds),
-			LTTNG_SOCK_GET_GID_CRED(creds));
-	if (ret != LTTNG_OK) {
-		goto end;
-	}
+	switch (session_type) {
+	case LTTNG_SESSION_DESCRIPTOR_TYPE_SNAPSHOT:
+	{
+		struct snapshot_output *new_output = NULL;
 
-	/* Get the newly created session pointer back. */
-	session_lock_list();
-	session = session_find_by_name(name);
-	session_unlock_list();
-	assert(session);
-
-	session->live_timer = live_timer;
-	/* Create default consumer output for the session not yet created. */
-	session->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
-	if (session->consumer == NULL) {
-		ret = LTTNG_ERR_FATAL;
-		goto end;
-	}
-
-	if (uris) {
-		ret = cmd_set_consumer_uri(session, nb_uri, uris);
-		if (ret != LTTNG_OK) {
+		new_output = snapshot_output_alloc();
+		if (!new_output) {
+			ret_code = LTTNG_ERR_NOMEM;
 			goto end;
 		}
-		session->output_traces = 1;
-	} else {
-		session->output_traces = 0;
-		DBG2("Session %s created with no output", session->name);
+
+		ret = snapshot_output_init_with_uri(session,
+				DEFAULT_SNAPSHOT_MAX_SIZE,
+				NULL, uris, uri_count, session->consumer,
+				new_output, &session->snapshot);
+		if (ret < 0) {
+			ret_code = (ret == -ENOMEM) ?
+					LTTNG_ERR_NOMEM : LTTNG_ERR_INVALID;
+			snapshot_output_destroy(new_output);
+			goto end;
+		}
+		snapshot_add_output(&session->snapshot, new_output);
+		break;
 	}
-
-	session->consumer->enabled = 1;
-
-	ret = LTTNG_OK;
+	case LTTNG_SESSION_DESCRIPTOR_TYPE_REGULAR:
+	case LTTNG_SESSION_DESCRIPTOR_TYPE_LIVE:
+	{
+		ret_code = cmd_set_consumer_uri(session, uri_count, uris);
+		break;
+	}
+	default:
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
 end:
-	if (session) {
-		session_lock_list();
-		session_put(session);
-		session_unlock_list();
-	}
-	return ret;
+	return ret_code;
 }
 
-/*
- * Command LTTNG_CREATE_SESSION_SNAPSHOT processed by the client thread.
- */
-int cmd_create_session_snapshot(char *name, struct lttng_uri *uris,
-		size_t nb_uri, lttng_sock_cred *creds)
+static
+enum lttng_error_code cmd_create_session_from_descriptor(
+		struct lttng_session_descriptor *descriptor,
+		const lttng_sock_cred *creds,
+		const char *home_path)
 {
 	int ret;
-	struct ltt_session *session = NULL;
-	struct snapshot_output *new_output = NULL;
+	enum lttng_error_code ret_code;
+	const char *session_name;
+	struct ltt_session *new_session = NULL;
+	enum lttng_session_descriptor_status descriptor_status;
 
-	assert(name);
-	assert(creds);
+	session_lock_list();
+	if (home_path) {
+		if (*home_path != '/') {
+			ERR("Home path provided by client is not absolute");
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+	}
+
+	descriptor_status = lttng_session_descriptor_get_session_name(
+			descriptor, &session_name);
+	switch (descriptor_status) {
+	case LTTNG_SESSION_DESCRIPTOR_STATUS_OK:
+		break;
+	case LTTNG_SESSION_DESCRIPTOR_STATUS_UNSET:
+		session_name = NULL;
+		break;
+	default:
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret_code = session_create(session_name, creds->uid, creds->gid,
+			&new_session);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	if (!session_name) {
+		ret = lttng_session_descriptor_set_session_name(descriptor,
+				new_session->name);
+		if (ret) {
+			ret_code = LTTNG_ERR_SESSION_FAIL;
+			goto end;
+		}
+	}
+
+	if (!lttng_session_descriptor_is_output_destination_initialized(
+			descriptor)) {
+		/*
+		 * Only include the session's creation time in the output
+		 * destination if the name of the session itself was
+		 * not auto-generated.
+		 */
+		ret_code = lttng_session_descriptor_set_default_output(
+				descriptor,
+				session_name ? &new_session->creation_time : NULL,
+				home_path);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+	} else {
+		new_session->has_user_specified_directory =
+				lttng_session_descriptor_has_output_directory(
+					descriptor);
+	}
+
+	switch (lttng_session_descriptor_get_type(descriptor)) {
+	case LTTNG_SESSION_DESCRIPTOR_TYPE_SNAPSHOT:
+		new_session->snapshot_mode = 1;
+		break;
+	case LTTNG_SESSION_DESCRIPTOR_TYPE_LIVE:
+		new_session->live_timer =
+				lttng_session_descriptor_live_get_timer_interval(
+					descriptor);
+		break;
+	default:
+		break;
+	}
+
+	ret_code = set_session_output_from_descriptor(new_session, descriptor);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+	new_session->consumer->enabled = 1;
+	ret_code = LTTNG_OK;
+end:
+	/* Release reference provided by the session_create function. */
+	session_put(new_session);
+	if (ret_code != LTTNG_OK && new_session) {
+		/* Release the global reference on error. */
+		session_destroy(new_session);
+	}
+	session_unlock_list();
+	return ret_code;
+}
+
+enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
+		struct lttng_session_descriptor **return_descriptor)
+{
+	int ret;
+	size_t payload_size;
+	struct lttng_dynamic_buffer payload;
+	struct lttng_buffer_view home_dir_view;
+	struct lttng_buffer_view session_descriptor_view;
+	struct lttng_session_descriptor *session_descriptor = NULL;
+	enum lttng_error_code ret_code;
+
+	lttng_dynamic_buffer_init(&payload);
+	if (cmd_ctx->lsm->u.create_session.home_dir_size >=
+			LTTNG_PATH_MAX) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto error;
+	}
+	if (cmd_ctx->lsm->u.create_session.session_descriptor_size >
+			LTTNG_SESSION_DESCRIPTOR_MAX_LEN) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	payload_size = cmd_ctx->lsm->u.create_session.home_dir_size +
+			cmd_ctx->lsm->u.create_session.session_descriptor_size;
+	ret = lttng_dynamic_buffer_set_size(&payload, payload_size);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	ret = lttcomm_recv_unix_sock(sock, payload.data, payload.size);
+	if (ret <= 0) {
+		ERR("Reception of session descriptor failed, aborting.");
+		ret_code = LTTNG_ERR_SESSION_FAIL;
+		goto error;
+	}
+
+	home_dir_view = lttng_buffer_view_from_dynamic_buffer(
+			&payload,
+			0,
+			cmd_ctx->lsm->u.create_session.home_dir_size);
+	session_descriptor_view = lttng_buffer_view_from_dynamic_buffer(
+			&payload,
+			cmd_ctx->lsm->u.create_session.home_dir_size,
+			cmd_ctx->lsm->u.create_session.session_descriptor_size);
+
+	ret = lttng_session_descriptor_create_from_buffer(
+			&session_descriptor_view, &session_descriptor);
+	if (ret < 0) {
+		ERR("Failed to create session descriptor from payload of \"create session\" command");
+		ret_code = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	/*
-	 * Create session in no output mode with URIs set to NULL. The uris we've
-	 * received are for a default snapshot output if one.
+	 * Sets the descriptor's auto-generated properties (name, output) if
+	 * needed.
 	 */
-	ret = cmd_create_session_uri(name, NULL, 0, creds, 0);
-	if (ret != LTTNG_OK) {
-		goto end;
+	ret_code = cmd_create_session_from_descriptor(session_descriptor,
+			&cmd_ctx->creds,
+			home_dir_view.size ? home_dir_view.data : NULL);
+	if (ret_code != LTTNG_OK) {
+		goto error;
 	}
 
-	/* Get the newly created session pointer back. This should NEVER fail. */
-	session_lock_list();
-	session = session_find_by_name(name);
-	session_unlock_list();
-	assert(session);
-
-	/* Flag session for snapshot mode. */
-	session->snapshot_mode = 1;
-
-	/* Skip snapshot output creation if no URI is given. */
-	if (nb_uri == 0) {
-		/* Not an error. */
-		goto end;
-	}
-
-	new_output = snapshot_output_alloc();
-	if (!new_output) {
-		ret = LTTNG_ERR_NOMEM;
-		goto error_snapshot_alloc;
-	}
-
-	ret = snapshot_output_init_with_uri(DEFAULT_SNAPSHOT_MAX_SIZE, NULL,
-			uris, nb_uri, session->consumer, new_output, &session->snapshot);
-	if (ret < 0) {
-		if (ret == -ENOMEM) {
-			ret = LTTNG_ERR_NOMEM;
-		} else {
-			ret = LTTNG_ERR_INVALID;
-		}
-		goto error_snapshot;
-	}
-
-	rcu_read_lock();
-	snapshot_add_output(&session->snapshot, new_output);
-	rcu_read_unlock();
-
-	ret = LTTNG_OK;
-	goto end;
-
-error_snapshot:
-	snapshot_output_destroy(new_output);
-error_snapshot_alloc:
-end:
-	if (session) {
-		session_lock_list();
-		session_put(session);
-		session_unlock_list();
-	}
-	return ret;
+	ret_code = LTTNG_OK;
+	*return_descriptor = session_descriptor;
+	session_descriptor = NULL;
+error:
+	lttng_dynamic_buffer_reset(&payload);
+	lttng_session_descriptor_destroy(session_descriptor);
+	return ret_code;
 }
 
 /*
@@ -3412,13 +3503,15 @@ error:
  * The session list lock MUST be acquired before calling this function. Use
  * session_lock_list() and session_unlock_list().
  */
-void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
-		gid_t gid)
+void cmd_list_lttng_sessions(struct lttng_session *sessions,
+		size_t session_count, uid_t uid, gid_t gid)
 {
 	int ret;
 	unsigned int i = 0;
 	struct ltt_session *session;
 	struct ltt_session_list *list = session_get_list();
+        struct lttng_session_extended *extended =
+			(typeof(extended)) (&sessions[session_count]);
 
 	DBG("Getting all available session for UID %d GID %d",
 			uid, gid);
@@ -3462,6 +3555,8 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions, uid_t uid,
 		sessions[i].enabled = session->active;
 		sessions[i].snapshot_mode = session->snapshot_mode;
 		sessions[i].live_timer_interval = session->live_timer;
+		extended[i].creation_time.value = (uint64_t) session->creation_time;
+		extended[i].creation_time.is_set = 1;
 		i++;
 		session_put(session);
 	}
@@ -3573,7 +3668,7 @@ int cmd_snapshot_add_output(struct ltt_session *session,
 		goto error;
 	}
 
-	ret = snapshot_output_init(output->max_size, output->name,
+	ret = snapshot_output_init(session, output->max_size, output->name,
 			output->ctrl_url, output->data_url, session->consumer, new_output,
 			&session->snapshot);
 	if (ret < 0) {
@@ -4336,8 +4431,10 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 	/* Use temporary output for the session. */
 	if (*output->ctrl_url != '\0') {
-		ret = snapshot_output_init(output->max_size, output->name,
-				output->ctrl_url, output->data_url, session->consumer,
+		ret = snapshot_output_init(session, output->max_size,
+				output->name,
+				output->ctrl_url, output->data_url,
+				session->consumer,
 				&tmp_output, NULL);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
@@ -4611,6 +4708,32 @@ int cmd_rotate_session(struct ltt_session *session,
 		goto end;
 	}
 
+	/* Current chunk directory, ex: 20170922-111754-42 */
+	ret = snprintf(session->consumer->chunk_path,
+			sizeof(session->consumer->chunk_path),
+			"%s-%" PRIu64, datetime,
+			session->current_archive_id + 1);
+	if (ret < 0 || ret >= sizeof(session->consumer->chunk_path)) {
+		ERR("Failed to format the new chunk's directory in rotate session command");
+		cmd_ret = LTTNG_ERR_UNK;
+		goto error;
+	}
+
+	/*
+	 * The active path for the next rotation/destroy.
+	 * Ex: ~/lttng-traces/auto-20170922-111748/20170922-111754-42
+	 */
+	ret = snprintf(session->rotation_chunk.active_tracing_path,
+			sizeof(session->rotation_chunk.active_tracing_path),
+			"%s/%s",
+			session_get_base_path(session),
+			session->consumer->chunk_path);
+	if (ret < 0 || ret >= sizeof(session->rotation_chunk.active_tracing_path)) {
+		ERR("Failed to format active tracing path in rotate session command");
+		cmd_ret = LTTNG_ERR_UNK;
+		goto error;
+	}
+
 	/*
 	 * A rotation has a local step even if the destination is a relay
 	 * daemon; the buffers must be consumed by the consumer daemon.
@@ -4621,43 +4744,23 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 
 	if (session->kernel_session) {
-		/*
-		 * The active path for the next rotation/destroy.
-		 * Ex: ~/lttng-traces/auto-20170922-111748/20170922-111754-42
-		 */
-		ret = snprintf(session->rotation_chunk.active_tracing_path,
-				sizeof(session->rotation_chunk.active_tracing_path),
-				"%s/%s-%" PRIu64,
-				session_get_base_path(session),
-				datetime, session->current_archive_id + 1);
-		if (ret < 0 || ret == sizeof(session->rotation_chunk.active_tracing_path)) {
-			ERR("Failed to format active kernel tracing path in rotate session command");
+		ret = lttng_strncpy(
+				session->kernel_session->consumer->chunk_path,
+				session->consumer->chunk_path,
+				sizeof(session->kernel_session->consumer->chunk_path));
+		if (ret) {
+			ERR("Failed to copy current chunk directory to kernel session");
 			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
 		/*
-		 * The sub-directory for the consumer
-		 * Ex: /20170922-111754-42/kernel
-		 */
-		ret = snprintf(session->kernel_session->consumer->chunk_path,
-				sizeof(session->kernel_session->consumer->chunk_path),
-				"/%s-%" PRIu64, datetime,
-				session->current_archive_id + 1);
-		if (ret < 0 || ret == sizeof(session->kernel_session->consumer->chunk_path)) {
-			ERR("Failed to format the kernel consumer's sub-directory in rotate session command");
-			cmd_ret = LTTNG_ERR_UNK;
-			goto error;
-		}
-		/*
-		 * Create the new chunk folder, before the rotation begins so we don't
-		 * race with the consumer/tracer activity.
+		 * Create the new chunk folder, before the rotation begins so we
+		 * don't race with the consumer/tracer activity.
 		 */
 		ret = domain_mkdir(session->kernel_session->consumer, session,
 				session->kernel_session->uid,
 				session->kernel_session->gid);
 		if (ret) {
-			ERR("Failed to create kernel session tracing path at %s",
-					session->kernel_session->consumer->chunk_path);
 			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
 		}
@@ -4667,27 +4770,15 @@ int cmd_rotate_session(struct ltt_session *session,
 		}
 	}
 	if (session->ust_session) {
-		ret = snprintf(session->rotation_chunk.active_tracing_path,
-				PATH_MAX, "%s/%s-%" PRIu64,
-				session_get_base_path(session),
-				datetime, session->current_archive_id + 1);
-		if (ret < 0) {
-			ERR("Failed to format active UST tracing path in rotate session command");
+		ret = lttng_strncpy(
+				session->ust_session->consumer->chunk_path,
+				session->consumer->chunk_path,
+				sizeof(session->ust_session->consumer->chunk_path));
+		if (ret) {
+			ERR("Failed to copy current chunk directory to userspace session");
 			cmd_ret = LTTNG_ERR_UNK;
 			goto error;
 		}
-		ret = snprintf(session->ust_session->consumer->chunk_path,
-				PATH_MAX, "/%s-%" PRIu64, datetime,
-				session->current_archive_id + 1);
-		if (ret < 0) {
-			ERR("Failed to format the UST consumer's sub-directory in rotate session command");
-			cmd_ret = LTTNG_ERR_UNK;
-			goto error;
-		}
-		/*
-		 * Create the new chunk folder, before the rotation begins so we don't
-		 * race with the consumer/tracer activity.
-		 */
 		ret = domain_mkdir(session->ust_session->consumer, session,
 				session->ust_session->uid,
 				session->ust_session->gid);

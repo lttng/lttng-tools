@@ -120,39 +120,50 @@ int rename_first_chunk(struct ltt_session *session,
 	int ret;
 	char current_full_path[LTTNG_PATH_MAX], new_full_path[LTTNG_PATH_MAX];
 
-	/* Current domain path: <session>/kernel */
 	if (session->net_handle > 0) {
-		ret = snprintf(current_full_path, sizeof(current_full_path), "%s/%s",
-				consumer->dst.net.base_dir, consumer->subdir);
+		/*
+		 * Current domain path:
+		 *   HOSTNAME/{SESSION-[TIMESTAMP], USER_DIRECTORY}/DOMAIN
+		 */
+		ret = snprintf(current_full_path, sizeof(current_full_path),
+				"%s%s",
+				consumer->dst.net.base_dir,
+				consumer->domain_subdir);
 		if (ret < 0 || ret >= sizeof(current_full_path)) {
 			ERR("Failed to initialize current full path while renaming first rotation chunk of session \"%s\"",
 					session->name);
-			ret = -1;
+			ret = -LTTNG_ERR_UNK;
 			goto error;
 		}
 	} else {
-		ret = snprintf(current_full_path, sizeof(current_full_path), "%s/%s",
-				consumer->dst.session_root_path, consumer->subdir);
+		/*
+		 * Current domain path:
+		 *   SESSION_OUTPUT_PATH/DOMAIN
+		 */
+		ret = snprintf(current_full_path, sizeof(current_full_path),
+				"%s/%s",
+				consumer->dst.session_root_path,
+				consumer->domain_subdir);
 		if (ret < 0 || ret >= sizeof(current_full_path)) {
 			ERR("Failed to initialize current full path while renaming first rotation chunk of session \"%s\"",
 					session->name);
-			ret = -1;
+			ret = -LTTNG_ERR_UNK;
 			goto error;
 		}
 	}
-	/* New domain path: <session>/<start-date>-<end-date>-<rotate-count>/kernel */
+	/*
+	 * New domain path:
+	 *   SESSION_BASE_PATH/<START_TS>_<END_TS>-INDEX/DOMAIN
+	 */
 	ret = snprintf(new_full_path, sizeof(new_full_path), "%s/%s",
-			new_path, consumer->subdir);
+			new_path, consumer->domain_subdir);
 	if (ret < 0 || ret >= sizeof(new_full_path)) {
 		ERR("Failed to initialize new full path while renaming first rotation chunk of session \"%s\"",
 				session->name);
-		ret = -1;
+		ret = -LTTNG_ERR_UNK;
 		goto error;
 	}
-	/*
-	 * Move the per-domain fcurrenter inside the first rotation
-	 * fcurrenter.
-	 */
+	/* Move the per-domain inside the first rotation chunk path. */
 	ret = session_rename_chunk(session, current_full_path, new_full_path);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
@@ -171,70 +182,70 @@ error:
  *
  * Returns 0 on success, a negative value on error.
  */
-int rename_completed_chunk(struct ltt_session *session, time_t ts)
+int rename_completed_chunk(struct ltt_session *session, time_t end_ts)
 {
-	struct tm *timeinfo;
-	char new_path[LTTNG_PATH_MAX];
-	char datetime[21], start_datetime[21];
 	int ret;
 	size_t strf_ret;
+	struct tm *timeinfo;
+	char new_path[LTTNG_PATH_MAX];
+	char start_datetime[21], end_datetime[21];
 
 	DBG("Renaming completed chunk for session %s", session->name);
-	timeinfo = localtime(&ts);
+
+	/* Format chunk start time. */
+	timeinfo = localtime(&session->last_chunk_start_ts);
 	if (!timeinfo) {
-		ERR("Failed to retrieve local time while renaming completed chunk");
+		ERR("Failed to separate local time while renaming completed chunk");
 		ret = -1;
 		goto end;
 	}
-
-	strf_ret = strftime(datetime, sizeof(datetime), "%Y%m%dT%H%M%S%z",
-			timeinfo);
+	strf_ret = strftime(start_datetime, sizeof(start_datetime),
+			    "%Y%m%dT%H%M%S%z", timeinfo);
 	if (strf_ret == 0) {
 		ERR("Failed to format timestamp while renaming completed session chunk");
 		ret = -1;
 		goto end;
 	}
 
+	/* Format chunk end time. */
+	timeinfo = localtime(&end_ts);
+	if (!timeinfo) {
+		ERR("Failed to parse time while renaming completed chunk");
+		ret = -1;
+		goto end;
+	}
+	strf_ret = strftime(end_datetime, sizeof(end_datetime),
+			"%Y%m%dT%H%M%S%z", timeinfo);
+	if (strf_ret == 0) {
+		ERR("Failed to format timestamp while renaming completed session chunk");
+		ret = -1;
+		goto end;
+	}
+
+	/* Format completed chunk's path. */
+	ret = snprintf(new_path, sizeof(new_path), "%s/archives/%s-%s-%" PRIu64,
+			session_get_base_path(session),
+			start_datetime, end_datetime,
+			session->current_archive_id);
+	if (ret < 0 || ret >= sizeof(new_path)) {
+		ERR("Failed to format new chunk path while renaming chunk of session \"%s\"",
+				session->name);
+		ret = -1;
+		goto error;
+	}
+
 	if (session->current_archive_id == 1) {
-		char start_time[21];
-
-		timeinfo = localtime(&session->last_chunk_start_ts);
-		if (!timeinfo) {
-			ERR("Failed to retrieve local time while renaming completed chunk");
-			ret = -1;
-			goto end;
-		}
-
-		strf_ret = strftime(start_time, sizeof(start_time),
-				"%Y%m%dT%H%M%S%z", timeinfo);
-		if (strf_ret == 0) {
-			ERR("Failed to format timestamp while renaming completed session chunk");
-			ret = -1;
-			goto end;
-		}
-
 		/*
 		 * On the first rotation, the current_rotate_path is the
 		 * session_root_path, so we need to create the chunk folder
 		 * and move the domain-specific folders inside it.
 		 */
-		ret = snprintf(new_path, sizeof(new_path), "%s/archives/%s-%s-%" PRIu64,
-				session->rotation_chunk.current_rotate_path,
-				start_time,
-				datetime, session->current_archive_id);
-		if (ret < 0 || ret >= sizeof(new_path)) {
-			ERR("Failed to format new chunk path while renaming session \"%s\"'s first chunk",
-					session->name);
-			ret = -1;
-			goto end;
-		}
-
 		if (session->kernel_session) {
 			ret = rename_first_chunk(session,
 					session->kernel_session->consumer,
 					new_path);
 			if (ret) {
-				ERR("Failed to rename kernel session trace folder to %s", new_path);
+				ERR("Failed to rename kernel session trace folder to \"%s\"", new_path);
 				/*
 				 * This is not a fatal error for the rotation
 				 * thread, we just need to inform the client
@@ -251,7 +262,7 @@ int rename_completed_chunk(struct ltt_session *session, time_t ts)
 					session->ust_session->consumer,
 					new_path);
 			if (ret) {
-				ERR("Failed to rename userspace session trace folder to %s", new_path);
+				ERR("Failed to rename userspace session trace folder to \"%s\"", new_path);
 				ret = 0;
 				goto error;
 			}
@@ -261,35 +272,11 @@ int rename_completed_chunk(struct ltt_session *session, time_t ts)
 		 * After the first rotation, all the trace data is already in
 		 * its own chunk folder, we just need to append the suffix.
 		 */
-		/* Recreate the session->rotation_chunk.current_rotate_path */
-		timeinfo = localtime(&session->last_chunk_start_ts);
-		if (!timeinfo) {
-			ERR("Failed to retrieve local time while renaming completed chunk");
-			ret = -1;
-			goto end;
-		}
-		strf_ret = strftime(start_datetime, sizeof(start_datetime),
-				"%Y%m%dT%H%M%S%z", timeinfo);
-		if (!strf_ret) {
-			ERR("Failed to format timestamp while renaming completed session chunk");
-			ret = -1;
-			goto end;
-		}
-		ret = snprintf(new_path, sizeof(new_path), "%s/archives/%s-%s-%" PRIu64,
-				session_get_base_path(session),
-				start_datetime,
-				datetime, session->current_archive_id);
-		if (ret < 0 || ret >= sizeof(new_path)) {
-			ERR("Failed to format new chunk path while renaming chunk of session \"%s\"",
-					session->name);
-			ret = -1;
-			goto error;
-		}
 		ret = session_rename_chunk(session,
 				session->rotation_chunk.current_rotate_path,
 				new_path);
 		if (ret) {
-			ERR("Failed to rename session trace folder from %s to %s",
+			ERR("Failed to rename session trace folder from \"%s\" to \"%s\"",
 					session->rotation_chunk.current_rotate_path,
 					new_path);
 			ret = 0;

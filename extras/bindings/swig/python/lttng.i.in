@@ -156,12 +156,10 @@ enum lttng_event_context_type {
 			PyObject *name = PyString_FromString((*$1)[i].name);
 			PyObject *path = PyString_FromString((*$1)[i].path);
 			PyObject *enabled = PyInt_FromSize_t((*$1)[i].enabled);
-			PyObject *padding = PyString_FromString((*$1)[i].padding);
 
 			PyTuple_SetItem(tmp, 0, name);
 			PyTuple_SetItem(tmp, 1, path);
 			PyTuple_SetItem(tmp, 2, enabled);
-			PyTuple_SetItem(tmp, 3, padding);
 			PyList_Append(sessions, tmp);
 		}
 		$result = sessions;
@@ -990,7 +988,12 @@ struct lttng_session {
 	char name[NAME_MAX];
 	char path[PATH_MAX];
 	uint32_t enabled;
-	char padding[LTTNG_SESSION_PADDING1];
+	uint32_t snapshot_mode;
+	unsigned int live_timer_interval;
+	union {
+		char padding[LTTNG_SESSION_PADDING1];
+		void *ptr;
+	} extended;
 
 	%extend {
 		char *__repr__() {

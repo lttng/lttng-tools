@@ -35,6 +35,7 @@
 #include <lttng/session.h>
 #include <lttng/snapshot.h>
 #include <lttng/endpoint.h>
+#include <lttng/session-descriptor.h>
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
 #include <lttng/condition/condition.h>

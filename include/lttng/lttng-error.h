@@ -168,6 +168,7 @@ enum lttng_error_code {
 	LTTNG_ERR_MKDIR_FAIL_CONSUMER    = 145, /* mkdir failure on consumer */
 	LTTNG_ERR_CHAN_NOT_FOUND         = 146, /* Channel not found */
 	LTTNG_ERR_SNAPSHOT_UNSUPPORTED   = 147, /* Session configuration does not allow the use of snapshots */
+	LTTNG_ERR_SESSION_NOT_EXIST      = 148, /* The session does not exist on the session daemon */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

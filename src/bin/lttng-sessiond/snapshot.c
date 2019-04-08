@@ -39,7 +39,8 @@ static inline unsigned long get_next_output_id(struct snapshot *snapshot)
  *
  * Return 0 on success or else a negative value.
  */
-static int output_init(uint64_t max_size, const char *name,
+static int output_init(const struct ltt_session *session,
+		uint64_t max_size, const char *name,
 		struct lttng_uri *uris, size_t nb_uri,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot)
@@ -115,7 +116,8 @@ static int output_init(uint64_t max_size, const char *name,
 
 	for (i = 0; i < nb_uri; i ++) {
 		/* Network URIs */
-		ret = consumer_set_network_uri(output->consumer, &uris[i]);
+		ret = consumer_set_network_uri(session, output->consumer,
+				&uris[i]);
 		if (ret < 0) {
 			goto error;
 		}
@@ -132,13 +134,14 @@ end:
  *
  * Return 0 on success or else a negative value.
  */
-int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
+int snapshot_output_init_with_uri(const struct ltt_session *session,
+		uint64_t max_size, const char *name,
 		struct lttng_uri *uris, size_t nb_uri,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot)
 {
-	return output_init(max_size, name, uris, nb_uri, consumer, output,
-			snapshot);
+	return output_init(session, max_size, name, uris, nb_uri, consumer,
+			output, snapshot);
 }
 
 /*
@@ -147,7 +150,8 @@ int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
  *
  * Return 0 on success or else a negative value.
  */
-int snapshot_output_init(uint64_t max_size, const char *name,
+int snapshot_output_init(const struct ltt_session *session,
+		uint64_t max_size, const char *name,
 		const char *ctrl_url, const char *data_url,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot)
@@ -162,8 +166,8 @@ int snapshot_output_init(uint64_t max_size, const char *name,
 		goto error;
 	}
 
-	ret = output_init(max_size, name, uris, nb_uri, consumer, output,
-			snapshot);
+	ret = output_init(session, max_size, name, uris, nb_uri, consumer,
+			output, snapshot);
 
 error:
 	free(uris);

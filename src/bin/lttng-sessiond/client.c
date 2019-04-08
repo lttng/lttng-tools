@@ -26,6 +26,8 @@
 #include <common/utils.h>
 #include <lttng/userspace-probe-internal.h>
 #include <lttng/event-internal.h>
+#include <lttng/session-internal.h>
+#include <lttng/session-descriptor-internal.h>
 
 #include "client.h"
 #include "lttng-sessiond.h"
@@ -389,10 +391,13 @@ static int copy_session_consumer(int domain, struct ltt_session *session)
 	}
 
 	/* Append correct directory to subdir */
-	strncat(consumer->subdir, dir_name,
-			sizeof(consumer->subdir) - strlen(consumer->subdir) - 1);
-	DBG3("Copy session consumer subdir %s", consumer->subdir);
-
+	ret = lttng_strncpy(consumer->domain_subdir, dir_name,
+			sizeof(consumer->domain_subdir));
+	if (ret) {
+		ret = LTTNG_ERR_UNK;
+		goto error;
+	}
+	DBG3("Copy session consumer subdir %s", consumer->domain_subdir);
 	ret = LTTNG_OK;
 
 error:
@@ -718,9 +723,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 	*sock_error = 0;
 
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_CREATE_SESSION:
-	case LTTNG_CREATE_SESSION_SNAPSHOT:
-	case LTTNG_CREATE_SESSION_LIVE:
+	case LTTNG_CREATE_SESSION_EXT:
 	case LTTNG_DESTROY_SESSION:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_DOMAINS:
@@ -798,9 +801,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
 
 	/* Commands that DO NOT need a session. */
 	switch (cmd_ctx->lsm->cmd_type) {
-	case LTTNG_CREATE_SESSION:
-	case LTTNG_CREATE_SESSION_SNAPSHOT:
-	case LTTNG_CREATE_SESSION_LIVE:
+	case LTTNG_CREATE_SESSION_EXT:
 	case LTTNG_LIST_SESSIONS:
 	case LTTNG_LIST_TRACEPOINTS:
 	case LTTNG_LIST_SYSCALLS:
@@ -1517,47 +1518,6 @@ error_add_context:
 		ret = cmd_stop_trace(cmd_ctx->session);
 		break;
 	}
-	case LTTNG_CREATE_SESSION:
-	{
-		size_t nb_uri, len;
-		struct lttng_uri *uris = NULL;
-
-		nb_uri = cmd_ctx->lsm->u.uri.size;
-		len = nb_uri * sizeof(struct lttng_uri);
-
-		if (nb_uri > 0) {
-			uris = zmalloc(len);
-			if (uris == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-
-			/* Receive variable len data */
-			DBG("Waiting for %zu URIs from client ...", nb_uri);
-			ret = lttcomm_recv_unix_sock(sock, uris, len);
-			if (ret <= 0) {
-				DBG("No URIs received from client... continuing");
-				*sock_error = 1;
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
-
-			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
-				DBG("Creating session with ONE network URI is a bad call");
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
-		}
-
-		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris, nb_uri,
-			&cmd_ctx->creds, 0);
-
-		free(uris);
-
-		break;
-	}
 	case LTTNG_DESTROY_SESSION:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
@@ -1652,7 +1612,9 @@ error_add_context:
 		nr_sessions = lttng_sessions_count(
 				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
-		payload_len = sizeof(struct lttng_session) * nr_sessions;
+
+		payload_len = (sizeof(struct lttng_session) * nr_sessions) +
+				(sizeof(struct lttng_session_extended) * nr_sessions);
 		sessions_payload = zmalloc(payload_len);
 
 		if (!sessions_payload) {
@@ -1661,7 +1623,7 @@ error_add_context:
 			goto setup_error;
 		}
 
-		cmd_list_lttng_sessions(sessions_payload,
+		cmd_list_lttng_sessions(sessions_payload, nr_sessions,
 			LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
 			LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds));
 		session_unlock_list();
@@ -1792,82 +1754,35 @@ error_add_context:
 				cmd_ctx->lsm->u.snapshot_record.wait);
 		break;
 	}
-	case LTTNG_CREATE_SESSION_SNAPSHOT:
+	case LTTNG_CREATE_SESSION_EXT:
 	{
-		size_t nb_uri, len;
-		struct lttng_uri *uris = NULL;
+		struct lttng_dynamic_buffer payload;
+		struct lttng_session_descriptor *return_descriptor = NULL;
 
-		nb_uri = cmd_ctx->lsm->u.uri.size;
-		len = nb_uri * sizeof(struct lttng_uri);
-
-		if (nb_uri > 0) {
-			uris = zmalloc(len);
-			if (uris == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-
-			/* Receive variable len data */
-			DBG("Waiting for %zu URIs from client ...", nb_uri);
-			ret = lttcomm_recv_unix_sock(sock, uris, len);
-			if (ret <= 0) {
-				DBG("No URIs received from client... continuing");
-				*sock_error = 1;
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
-
-			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
-				DBG("Creating session with ONE network URI is a bad call");
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
+		lttng_dynamic_buffer_init(&payload);
+		ret = cmd_create_session(cmd_ctx, sock, &return_descriptor);
+		if (ret != LTTNG_OK) {
+			goto error;
 		}
 
-		ret = cmd_create_session_snapshot(cmd_ctx->lsm->session.name, uris,
-				nb_uri, &cmd_ctx->creds);
-		free(uris);
-		break;
-	}
-	case LTTNG_CREATE_SESSION_LIVE:
-	{
-		size_t nb_uri, len;
-		struct lttng_uri *uris = NULL;
-
-		nb_uri = cmd_ctx->lsm->u.uri.size;
-		len = nb_uri * sizeof(struct lttng_uri);
-
-		if (nb_uri > 0) {
-			uris = zmalloc(len);
-			if (uris == NULL) {
-				ret = LTTNG_ERR_FATAL;
-				goto error;
-			}
-
-			/* Receive variable len data */
-			DBG("Waiting for %zu URIs from client ...", nb_uri);
-			ret = lttcomm_recv_unix_sock(sock, uris, len);
-			if (ret <= 0) {
-				DBG("No URIs received from client... continuing");
-				*sock_error = 1;
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
-
-			if (nb_uri == 1 && uris[0].dtype != LTTNG_DST_PATH) {
-				DBG("Creating session with ONE network URI is a bad call");
-				ret = LTTNG_ERR_SESSION_FAIL;
-				free(uris);
-				goto error;
-			}
+		ret = lttng_session_descriptor_serialize(return_descriptor,
+				&payload);
+		if (ret) {
+			ERR("Failed to serialize session descriptor in reply to \"create session\" command");
+			lttng_session_descriptor_destroy(return_descriptor);
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
 		}
-
-		ret = cmd_create_session_uri(cmd_ctx->lsm->session.name, uris,
-				nb_uri, &cmd_ctx->creds, cmd_ctx->lsm->u.session_live.timer_interval);
-		free(uris);
+		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, payload.data,
+				payload.size);
+		if (ret) {
+			lttng_session_descriptor_destroy(return_descriptor);
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		lttng_dynamic_buffer_reset(&payload);
+		lttng_session_descriptor_destroy(return_descriptor);
+		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_SAVE_SESSION:
