@@ -43,6 +43,8 @@
 #include <lttng/channel-internal.h>
 #include <lttng/event-internal.h>
 #include <lttng/userspace-probe-internal.h>
+#include <lttng/session-internal.h>
+#include <lttng/session-descriptor-internal.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -1748,8 +1750,89 @@ const char *lttng_strerror(int code)
 	return error_get_str(code);
 }
 
+enum lttng_error_code lttng_create_session_ext(
+		struct lttng_session_descriptor *session_descriptor)
+{
+	enum lttng_error_code ret_code;
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_CREATE_SESSION_EXT,
+	};
+	void *reply = NULL;
+	struct lttng_buffer_view reply_view;
+	int reply_ret;
+	bool sessiond_must_generate_ouput;
+	struct lttng_dynamic_buffer payload;
+	int ret;
+	size_t descriptor_size;
+	struct lttng_session_descriptor *descriptor_reply = NULL;
+
+	lttng_dynamic_buffer_init(&payload);
+	if (!session_descriptor) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	sessiond_must_generate_ouput =
+			!lttng_session_descriptor_is_output_destination_initialized(
+				session_descriptor);
+	if (sessiond_must_generate_ouput) {
+		const char *home_dir = utils_get_home_dir();
+		size_t home_dir_len = home_dir ? strlen(home_dir) + 1 : 0;
+
+		if (!home_dir || home_dir_len > LTTNG_PATH_MAX) {
+			ret_code = LTTNG_ERR_FATAL;
+			goto end;
+		}
+
+		lsm.u.create_session.home_dir_size = (uint16_t) home_dir_len;
+		ret = lttng_dynamic_buffer_append(&payload, home_dir,
+				home_dir_len);
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	descriptor_size = payload.size;
+	ret = lttng_session_descriptor_serialize(session_descriptor,
+			&payload);
+	if (ret) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+	descriptor_size = payload.size - descriptor_size;
+	lsm.u.create_session.session_descriptor_size = descriptor_size;
+
+	/* Command returns a session descriptor on success. */
+	reply_ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, payload.data,
+			payload.size, &reply);
+	if (reply_ret < 0) {
+		ret_code = -reply_ret;
+		goto end;
+	} else if (reply_ret == 0) {
+		/* Socket unexpectedly closed by the session daemon. */
+		ret_code = LTTNG_ERR_FATAL;
+		goto end;
+	}
+
+	reply_view = lttng_buffer_view_init(reply, 0, reply_ret);
+	ret = lttng_session_descriptor_create_from_buffer(&reply_view,
+			&descriptor_reply);
+	if (ret < 0) {
+		ret_code = LTTNG_ERR_FATAL;
+		goto end;
+	}
+	ret_code = LTTNG_OK;
+	lttng_session_descriptor_assign(session_descriptor, descriptor_reply);
+end:
+	free(reply);
+	lttng_dynamic_buffer_reset(&payload);
+	lttng_session_descriptor_destroy(descriptor_reply);
+	return ret_code;
+}
+
 /*
- * Create a brand new session using name and url for destination.
+ * Create a new session using name and url for destination.
  *
  * Returns LTTNG_OK on success or a negative error code.
  */
@@ -1757,30 +1840,160 @@ int lttng_create_session(const char *name, const char *url)
 {
 	int ret;
 	ssize_t size;
-	struct lttcomm_session_msg lsm;
 	struct lttng_uri *uris = NULL;
+	struct lttng_session_descriptor *descriptor = NULL;
+	enum lttng_error_code ret_code;
 
-	if (name == NULL) {
-		return -LTTNG_ERR_INVALID;
+	if (!name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-
-	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-
-	/* There should never be a data URL */
 	size = uri_parse_str_urls(url, NULL, &uris);
 	if (size < 0) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	switch (size) {
+	case 0:
+		descriptor = lttng_session_descriptor_create(name);
+		break;
+	case 1:
+		if (uris[0].dtype != LTTNG_DST_PATH) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		descriptor = lttng_session_descriptor_local_create(name,
+				uris[0].dst.path);
+		break;
+	case 2:
+		descriptor = lttng_session_descriptor_network_create(name, url,
+				NULL);
+		break;
+	default:
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	if (!descriptor) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret_code = lttng_create_session_ext(descriptor);
+	ret = ret_code == LTTNG_OK ? 0 : -ret_code;
+end:
+	lttng_session_descriptor_destroy(descriptor);
+	free(uris);
+	return ret;
+}
+
+/*
+ * Create a session exclusively used for snapshot.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	ssize_t size;
+	struct lttng_uri *uris = NULL;
+	struct lttng_session_descriptor *descriptor = NULL;
+
+	if (!name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	lsm.u.uri.size = size;
+	size = uri_parse_str_urls(snapshot_url, NULL, &uris);
+	if (size < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	/*
+	 * If the user does not specify a custom subdir, use the session name.
+	 */
+	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH &&
+			strlen(uris[0].subdir) == 0) {
+		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s",
+				name);
+		if (ret < 0) {
+			PERROR("Failed to set session name as network destination sub-directory");
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
+		} else if (ret >= sizeof(uris[0].subdir)) {
+			/* Truncated output. */
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+	}
 
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
-			sizeof(struct lttng_uri) * size, NULL);
-
+	switch (size) {
+	case 0:
+		descriptor = lttng_session_descriptor_snapshot_create(name);
+		break;
+	case 1:
+		if (uris[0].dtype != LTTNG_DST_PATH) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		descriptor = lttng_session_descriptor_snapshot_local_create(
+				name,
+				uris[0].dst.path);
+		break;
+	case 2:
+		descriptor = lttng_session_descriptor_snapshot_network_create(
+				name,
+				snapshot_url,
+				NULL);
+		break;
+	default:
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	if (!descriptor) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret_code = lttng_create_session_ext(descriptor);
+	ret = ret_code == LTTNG_OK ? 0 : -ret_code;
+end:
+	lttng_session_descriptor_destroy(descriptor);
 	free(uris);
+	return ret;
+}
+
+/*
+ * Create a session exclusively used for live.
+ *
+ * Returns LTTNG_OK on success or a negative error code.
+ */
+int lttng_create_session_live(const char *name, const char *url,
+		unsigned int timer_interval)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct lttng_session_descriptor *descriptor = NULL;
+
+	if (!name) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (url) {
+		descriptor = lttng_session_descriptor_live_network_create(
+				name, url, NULL, timer_interval);
+	} else {
+		descriptor = lttng_session_descriptor_live_create(
+				name, timer_interval);
+	}
+	if (!descriptor) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+	ret_code = lttng_create_session_ext(descriptor);
+	ret = ret_code == LTTNG_OK ? 0 : -ret_code;
+end:
+	lttng_session_descriptor_destroy(descriptor);
 	return ret;
 }
 
@@ -1854,19 +2067,73 @@ end:
  * Returns the number of lttng_session entries in sessions;
  * on error, returns a negative value.
  */
-int lttng_list_sessions(struct lttng_session **sessions)
+int lttng_list_sessions(struct lttng_session **out_sessions)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
+	const size_t session_size = sizeof(struct lttng_session) +
+			sizeof(struct lttng_session_extended);
+	size_t session_count, i;
+	struct lttng_session_extended *sessions_extended_begin;
+	struct lttng_session *sessions = NULL;
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_SESSIONS;
-	ret = lttng_ctl_ask_sessiond(&lsm, (void**) sessions);
-	if (ret < 0) {
-		return ret;
+	ret = lttng_ctl_ask_sessiond(&lsm, (void**) &sessions);
+	if (ret <= 0) {
+		ret = ret == 0 ? -LTTNG_ERR_FATAL : ret;
+		goto end;
+	}
+	if (!sessions) {
+		ret = -LTTNG_ERR_FATAL;
+		goto end;
 	}
 
-	return ret / sizeof(struct lttng_session);
+	if (ret % session_size) {
+		ret = -LTTNG_ERR_UNK;
+		free(sessions);
+		*out_sessions = NULL;
+		goto end;
+	}
+	session_count = (size_t) ret / session_size;
+	sessions_extended_begin = (struct lttng_session_extended *)
+			(&sessions[session_count]);
+
+	/* Set extended session info pointers. */
+	for (i = 0; i < session_count; i++) {
+		struct lttng_session *session = &sessions[i];
+		struct lttng_session_extended *extended =
+				&(sessions_extended_begin[i]);
+
+		session->extended.ptr = extended;
+	}
+
+	ret = (int) session_count;
+	*out_sessions = sessions;
+end:
+	return ret;
+}
+
+enum lttng_error_code lttng_session_get_creation_time(
+		const struct lttng_session *session, uint64_t *creation_time)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct lttng_session_extended *extended;
+
+	if (!session || !creation_time || !session->extended.ptr) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	extended = session->extended.ptr;
+	if (!extended->creation_time.is_set) {
+		/* Not created on the session daemon yet. */
+		ret = LTTNG_ERR_SESSION_NOT_EXIST;
+		goto end;
+	}
+	*creation_time = extended->creation_time.value;
+end:
+	return ret;
 }
 
 int lttng_set_session_shm_path(const char *session_name,
@@ -2565,71 +2832,12 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 }
 
 /*
- * This is an extension of create session that is ONLY and SHOULD only be used
- * by the lttng command line program. It exists to avoid using URI parsing in
- * the lttng client.
- *
- * We need the date and time for the trace path subdirectory for the case where
- * the user does NOT define one using either -o or -U. Using the normal
- * lttng_create_session API call, we have no clue on the session daemon side if
- * the URL was generated automatically by the client or define by the user.
- *
- * So this function "wrapper" is hidden from the public API, takes the datetime
- * string and appends it if necessary to the URI subdirectory before sending it
- * to the session daemon.
- *
- * With this extra function, the lttng_create_session call behavior is not
- * changed and the timestamp is appended to the URI on the session daemon side
- * if necessary.
+ * [OBSOLETE]
  */
 int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime)
 {
-	int ret;
-	ssize_t size;
-	struct lttcomm_session_msg lsm;
-	struct lttng_uri *uris = NULL;
-
-	if (name == NULL || datetime == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-
-	lsm.cmd_type = LTTNG_CREATE_SESSION;
-	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-
-	/* There should never be a data URL. */
-	size = uri_parse_str_urls(url, NULL, &uris);
-	if (size < 0) {
-		ret = -LTTNG_ERR_INVALID;
-		goto error;
-	}
-
-	lsm.u.uri.size = size;
-
-	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
-		/* Don't append datetime if the name was automatically created. */
-		if (strncmp(name, DEFAULT_SESSION_NAME "-",
-					strlen(DEFAULT_SESSION_NAME) + 1)) {
-			ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s-%s",
-					name, datetime);
-		} else {
-			ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s", name);
-		}
-		if (ret < 0) {
-			PERROR("snprintf uri subdir");
-			ret = -LTTNG_ERR_FATAL;
-			goto error;
-		}
-	}
-
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
-			sizeof(struct lttng_uri) * size, NULL);
-
-error:
-	free(uris);
-	return ret;
+	return -ENOSYS;
 }
 
 /*
@@ -2665,103 +2873,6 @@ int lttng_data_pending(const char *session_name)
 	ret = (int) *pending;
 end:
 	free(pending);
-	return ret;
-}
-
-/*
- * Create a session exclusively used for snapshot.
- *
- * Returns LTTNG_OK on success or a negative error code.
- */
-int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
-{
-	int ret;
-	ssize_t size;
-	struct lttcomm_session_msg lsm;
-	struct lttng_uri *uris = NULL;
-
-	if (name == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-
-	lsm.cmd_type = LTTNG_CREATE_SESSION_SNAPSHOT;
-	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-
-	size = uri_parse_str_urls(snapshot_url, NULL, &uris);
-	if (size < 0) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	lsm.u.uri.size = size;
-
-	/*
-	 * If the user does not specify a custom subdir, use the session name.
-	 */
-	if (size > 0 && uris[0].dtype != LTTNG_DST_PATH && strlen(uris[0].subdir) == 0) {
-		ret = snprintf(uris[0].subdir, sizeof(uris[0].subdir), "%s", name);
-		if (ret < 0) {
-			PERROR("snprintf uri subdir");
-			ret = -LTTNG_ERR_FATAL;
-			goto error;
-		}
-	}
-
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
-			sizeof(struct lttng_uri) * size, NULL);
-
-error:
-	free(uris);
-	return ret;
-}
-
-/*
- * Create a session exclusively used for live.
- *
- * Returns LTTNG_OK on success or a negative error code.
- */
-int lttng_create_session_live(const char *name, const char *url,
-		unsigned int timer_interval)
-{
-	int ret;
-	ssize_t size;
-	struct lttcomm_session_msg lsm;
-	struct lttng_uri *uris = NULL;
-
-	if (name == NULL || timer_interval == 0) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-
-	lsm.cmd_type = LTTNG_CREATE_SESSION_LIVE;
-	lttng_ctl_copy_string(lsm.session.name, name, sizeof(lsm.session.name));
-
-	if (url) {
-		size = uri_parse_str_urls(url, NULL, &uris);
-		if (size <= 0) {
-			ret = -LTTNG_ERR_INVALID;
-			goto end;
-		}
-
-		/* file:// is not accepted for live session. */
-		if (uris[0].dtype == LTTNG_DST_PATH) {
-			ret = -LTTNG_ERR_INVALID;
-			goto end;
-		}
-	} else {
-		size = 0;
-	}
-
-	lsm.u.session_live.nb_uri = size;
-	lsm.u.session_live.timer_interval = timer_interval;
-
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, uris,
-			sizeof(struct lttng_uri) * size, NULL);
-
-end:
-	free(uris);
 	return ret;
 }
 

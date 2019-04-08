@@ -128,27 +128,36 @@ static void empty_session_list(void)
 static int create_one_session(char *name)
 {
 	int ret;
+	enum lttng_error_code ret_code;
+	struct ltt_session *session = NULL;
 
-	ret = session_create(name, geteuid(), getegid());
-	if (ret == LTTNG_OK) {
+	session_lock_list();
+	ret_code = session_create(name, geteuid(), getegid(), &session);
+	session_put(session);
+	if (ret_code == LTTNG_OK) {
 		/* Validate */
 		ret = find_session_name(name);
 		if (ret < 0) {
 			/* Session not found by name */
 			printf("session not found after creation\n");
-			return -1;
+			ret = -1;
+			goto end;
 		} else {
 			/* Success */
-			return 0;
+			ret = 0;
+			goto end;
 		}
 	} else {
-		if (ret == LTTNG_ERR_EXIST_SESS) {
+		if (ret_code == LTTNG_ERR_EXIST_SESS) {
 			printf("(session already exists) ");
 		}
-		return -1;
+		ret = -1;
+		goto end;
 	}
-
-	return 0;
+	ret = 0;
+end:
+	session_unlock_list();
+	return ret;
 }
 
 /*
@@ -266,13 +275,29 @@ void test_duplicate_session(void)
 	   "Duplicate session creation");
 }
 
-void test_bogus_session_param(void)
+void test_session_name_generation(void)
 {
-	ok(create_one_session(NULL) < 0,
-	   "Create session with bogus param: NULL should fail");
+	struct ltt_session *session = NULL;
+	enum lttng_error_code ret_code;
+	const char *expected_session_name_prefix = DEFAULT_SESSION_NAME;
 
-	ok(session_list_count() == 0,
-	   "Create session with bogus param: session list empty");
+	session_lock_list();
+	ret_code = session_create(NULL, geteuid(), getegid(), &session);
+	ok(ret_code == LTTNG_OK,
+		"Create session with a NULL name (auto-generate a name)");
+	if (!session) {
+		skip(1, "Skipping session name generation tests as session_create() failed.");
+		goto end;
+	}
+	diag("Automatically-generated session name: %s", *session->name ?
+		session->name : "ERROR");
+	ok(*session->name && !strncmp(expected_session_name_prefix, session->name,
+			sizeof(DEFAULT_SESSION_NAME) - 1),
+			"Auto-generated session name starts with %s",
+			DEFAULT_SESSION_NAME);
+end:
+	session_put(session);
+	session_unlock_list();
 }
 
 void test_large_session_number(void)
@@ -340,7 +365,7 @@ int main(int argc, char **argv)
 
 	empty_session_list();
 
-	test_bogus_session_param();
+	test_session_name_generation();
 
 	test_large_session_number();
 

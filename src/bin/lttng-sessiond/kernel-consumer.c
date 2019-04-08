@@ -48,7 +48,7 @@ static char *create_channel_path(struct consumer_output *consumer,
 		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s%s",
 				consumer->dst.session_root_path,
 				consumer->chunk_path,
-				consumer->subdir);
+				consumer->domain_subdir);
 		if (ret < 0) {
 			PERROR("snprintf kernel channel path");
 			goto error;
@@ -57,7 +57,7 @@ static char *create_channel_path(struct consumer_output *consumer,
 					sizeof(tmp_path), ret,
 					consumer->dst.session_root_path,
 					consumer->chunk_path,
-					consumer->subdir);
+					consumer->domain_subdir);
 			goto error;
 		}
 		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));
@@ -76,9 +76,10 @@ static char *create_channel_path(struct consumer_output *consumer,
 		}
 		DBG3("Kernel local consumer tracefile path: %s", pathname);
 	} else {
+		/* Network output. */
 		ret = snprintf(tmp_path, sizeof(tmp_path), "%s%s",
 				consumer->dst.net.base_dir,
-				consumer->subdir);
+				consumer->domain_subdir);
 		if (ret < 0) {
 			PERROR("snprintf kernel metadata path");
 			goto error;
@@ -86,7 +87,7 @@ static char *create_channel_path(struct consumer_output *consumer,
 			ERR("Kernel channel path exceeds the maximal allowed length of of %zu bytes (%i bytes required) with path \"%s%s\"",
 					sizeof(tmp_path), ret,
 					consumer->dst.net.base_dir,
-					consumer->subdir);
+					consumer->domain_subdir);
 			goto error;
 		}
 		pathname = lttng_strndup(tmp_path, sizeof(tmp_path));

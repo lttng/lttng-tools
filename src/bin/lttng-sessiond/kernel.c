@@ -1432,7 +1432,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 					chan->key, session->name);
 			ret = consumer_rotate_channel(socket, chan->key,
 					ksess->uid, ksess->gid, ksess->consumer,
-					ksess->consumer->subdir,
+					ksess->consumer->domain_subdir,
 					/* is_metadata_channel */ false,
 					session->current_archive_id);
 			if (ret < 0) {
@@ -1446,7 +1446,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 		 */
 		ret = consumer_rotate_channel(socket, ksess->metadata->key,
 				ksess->uid, ksess->gid, ksess->consumer,
-				ksess->consumer->subdir,
+				ksess->consumer->domain_subdir,
 				/* is_metadata_channel */ true,
 				session->current_archive_id);
 		if (ret < 0) {

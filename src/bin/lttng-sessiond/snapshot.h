@@ -28,6 +28,7 @@
 #include "consumer.h"
 
 struct consumer_output;
+struct ltt_session;
 
 struct snapshot_output {
 	uint32_t id;
@@ -72,11 +73,13 @@ void snapshot_add_output(struct snapshot *snapshot,
 /* Snapshot output object. */
 struct snapshot_output *snapshot_output_alloc(void);
 void snapshot_output_destroy(struct snapshot_output *obj);
-int snapshot_output_init(uint64_t max_size, const char *name,
+int snapshot_output_init(const struct ltt_session *session,
+		uint64_t max_size, const char *name,
 		const char *ctrl_url, const char *data_url,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot);
-int snapshot_output_init_with_uri(uint64_t max_size, const char *name,
+int snapshot_output_init_with_uri(const struct ltt_session *session,
+		uint64_t max_size, const char *name,
 		struct lttng_uri *uris, size_t nb_uri,
 		struct consumer_output *consumer, struct snapshot_output *output,
 		struct snapshot *snapshot);

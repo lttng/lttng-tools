@@ -55,7 +55,7 @@ function test_kernel_default_name_with_del()
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -65,7 +65,7 @@ function test_kernel_default_name_with_del()
 	lttng_snapshot_record $SESSION_NAME
 
 	# Validate test with the next ID since a del output was done prior.
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-2*
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-2*
 	if [ $? -ne 0 ]; then
 		return $?
 	fi
@@ -89,7 +89,7 @@ function test_kernel_default_name()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 	# Validate test
-	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
 	out=$?
 
 	return $out
@@ -111,10 +111,10 @@ function test_kernel_custom_name()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	if ls $TRACE_PATH/$HOSTNAME/$name* &> /dev/null; then
+	if ls $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name* &> /dev/null; then
 		ok 0 "Custom name snapshot exists"
 		# Validate test
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$name-*
+		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/$name-*
 		out=$?
 	else
 		fail "No custom name snapshot found"
@@ -137,7 +137,7 @@ function test_kernel_n_snapshot()
 		start_lttng_tracing_ok $SESSION_NAME
 		lttng_snapshot_record $SESSION_NAME
 		stop_lttng_tracing_ok $SESSION_NAME
-		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*/snapshot-1*
 		if [ $? -ne 0 ]; then
 			return 1
 		fi

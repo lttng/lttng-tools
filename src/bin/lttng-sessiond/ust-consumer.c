@@ -65,10 +65,10 @@ static char *setup_trace_path(struct consumer_output *consumer,
 	/* Get correct path name destination */
 	if (consumer->type == CONSUMER_DST_LOCAL) {
 		/* Set application path to the destination path */
-		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s/%s%s/%s",
 				consumer->dst.session_root_path,
 				consumer->chunk_path,
-				consumer->subdir, ua_sess->path);
+				consumer->domain_subdir, ua_sess->path);
 		if (ret < 0) {
 			PERROR("snprintf channel path");
 			goto error;
@@ -84,10 +84,10 @@ static char *setup_trace_path(struct consumer_output *consumer,
 			}
 		}
 	} else {
-		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s/%s%s",
 				consumer->dst.net.base_dir,
 				consumer->chunk_path,
-				consumer->subdir,
+				consumer->domain_subdir,
 				ua_sess->path);
 		if (ret < 0) {
 			PERROR("snprintf channel path");

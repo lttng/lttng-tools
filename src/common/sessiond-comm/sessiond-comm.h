@@ -68,7 +68,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_ENABLE_EVENT                    = 6,
 	/* 7 */
 	/* Session daemon command */
-	LTTNG_CREATE_SESSION                  = 8,
+	/* 8 */
 	LTTNG_DESTROY_SESSION                 = 9,
 	LTTNG_LIST_CHANNELS                   = 10,
 	LTTNG_LIST_DOMAINS                    = 11,
@@ -91,8 +91,8 @@ enum lttcomm_sessiond_command {
 	LTTNG_SNAPSHOT_DEL_OUTPUT             = 26,
 	LTTNG_SNAPSHOT_LIST_OUTPUT            = 27,
 	LTTNG_SNAPSHOT_RECORD                 = 28,
-	LTTNG_CREATE_SESSION_SNAPSHOT         = 29,
-	LTTNG_CREATE_SESSION_LIVE             = 30,
+	/* 29 */
+	/* 30 */
 	LTTNG_SAVE_SESSION                    = 31,
 	LTTNG_TRACK_PID                       = 32,
 	LTTNG_UNTRACK_PID                     = 33,
@@ -106,6 +106,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_ROTATION_GET_INFO               = 46,
 	LTTNG_ROTATION_SET_SCHEDULE           = 47,
 	LTTNG_SESSION_LIST_ROTATION_SCHEDULES = 48,
+	LTTNG_CREATE_SESSION_EXT              = 49
 };
 
 enum lttcomm_relayd_command {
@@ -356,10 +357,22 @@ struct lttcomm_session_msg {
 			uint8_t set;
 			uint64_t value;
 		} LTTNG_PACKED rotation_set_schedule;
+		struct {
+			/*
+			 * Includes the null-terminator.
+			 * Must be an absolute path.
+			 *
+			 * Size bounded by LTTNG_PATH_MAX.
+			 */
+			uint16_t home_dir_size;
+			uint64_t session_descriptor_size;
+			/* An lttng_session_descriptor follows. */
+		} LTTNG_PACKED create_session;
 	} u;
 } LTTNG_PACKED;
 
 #define LTTNG_FILTER_MAX_LEN	65536
+#define LTTNG_SESSION_DESCRIPTOR_MAX_LEN	65536
 
 /*
  * Filter bytecode data. The reloc table is located at the end of the

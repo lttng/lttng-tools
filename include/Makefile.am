@@ -83,7 +83,8 @@ lttnginclude_HEADERS = \
 	lttng/endpoint.h \
 	lttng/rotation.h \
 	lttng/location.h \
-	lttng/userspace-probe.h
+	lttng/userspace-probe.h \
+	lttng/session-descriptor.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
@@ -125,5 +126,7 @@ noinst_HEADERS = \
 	lttng/ref-internal.h \
 	lttng/location-internal.h \
 	lttng/userspace-probe-internal.h \
+	lttng/session-internal.h \
+	lttng/session-descriptor-internal.h \
 	version.h \
 	version.i

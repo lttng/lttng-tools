@@ -27,6 +27,7 @@
 
 struct snapshot;
 struct snapshot_output;
+struct ltt_session;
 
 enum consumer_dst_type {
 	CONSUMER_DST_LOCAL,
@@ -147,14 +148,15 @@ struct consumer_output {
 
 	/*
 	 * Subdirectory path name used for both local and network
-	 * consumer (/kernel or /ust).
+	 * consumer ("/kernel", "/ust", or empty).
 	 */
-	char subdir[LTTNG_PATH_MAX];
+	char domain_subdir[max(sizeof(DEFAULT_KERNEL_TRACE_DIR),
+			sizeof(DEFAULT_UST_TRACE_DIR))];
 
 	/*
 	 * Hashtable of consumer_socket index by the file descriptor value. For
-	 * multiarch consumer support, we can have more than one consumer (ex: 32
-	 * and 64 bit).
+	 * multiarch consumer support, we can have more than one consumer (ex:
+	 * 32 and 64 bit).
 	 */
 	struct lttng_ht *socks;
 
@@ -195,7 +197,8 @@ struct consumer_output *consumer_create_output(enum consumer_dst_type type);
 struct consumer_output *consumer_copy_output(struct consumer_output *obj);
 void consumer_output_get(struct consumer_output *obj);
 void consumer_output_put(struct consumer_output *obj);
-int consumer_set_network_uri(struct consumer_output *obj,
+int consumer_set_network_uri(const struct ltt_session *session,
+		struct consumer_output *obj,
 		struct lttng_uri *uri);
 int consumer_send_fds(struct consumer_socket *sock, const int *fds,
 		size_t nb_fd);
@@ -220,8 +223,6 @@ int consumer_recv_status_channel(struct consumer_socket *sock,
 void consumer_output_send_destroy_relayd(struct consumer_output *consumer);
 int consumer_create_socket(struct consumer_data *data,
 		struct consumer_output *output);
-int consumer_set_subdir(struct consumer_output *consumer,
-		const char *session_name);
 
 void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t subbuf_size,
@@ -300,7 +301,8 @@ enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
 /* Rotation commands. */
 int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 		uid_t uid, gid_t gid, struct consumer_output *output,
-		char *domain_path, bool is_metadata_channel, uint64_t new_chunk_id);
+		const char *domain_path, bool is_metadata_channel,
+		uint64_t new_chunk_id);
 int consumer_rotate_rename(struct consumer_socket *socket, uint64_t session_id,
 		const struct consumer_output *output, const char *old_path,
 		const char *new_path, uid_t uid, gid_t gid);

@@ -4402,24 +4402,18 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	/* Create directories if consumer is LOCAL and has a path defined. */
 	if (usess->consumer->type == CONSUMER_DST_LOCAL &&
 			usess->consumer->dst.session_root_path[0] != '\0') {
-		char *tmp_path;
+		char tmp_path[LTTNG_PATH_MAX];
 
-		tmp_path = zmalloc(LTTNG_PATH_MAX);
-		if (!tmp_path) {
-			ERR("Alloc tmp_path");
-			goto error_unlock;
-		}
-		ret = snprintf(tmp_path, LTTNG_PATH_MAX, "%s%s%s",
+		ret = snprintf(tmp_path, sizeof(tmp_path), "%s/%s%s",
 				usess->consumer->dst.session_root_path,
 				usess->consumer->chunk_path,
-				usess->consumer->subdir);
-		if (ret >= LTTNG_PATH_MAX) {
-			ERR("Local destination path exceeds the maximal allowed length of %i bytes (needs %i bytes) with path = \"%s%s%s\"",
-					LTTNG_PATH_MAX, ret,
+				usess->consumer->domain_subdir);
+		if (ret >= sizeof(tmp_path)) {
+			ERR("Local destination path exceeds the maximal allowed length of %zu bytes (needs %i bytes) with path = \"%s%s%s\"",
+					sizeof(tmp_path), ret,
 					usess->consumer->dst.session_root_path,
 					usess->consumer->chunk_path,
-					usess->consumer->subdir);
-			free(tmp_path);
+					usess->consumer->domain_subdir);
 			goto error_unlock;
 		}
 
@@ -4427,7 +4421,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 				tmp_path);
 		ret = run_as_mkdir_recursive(tmp_path, S_IRWXU | S_IRWXG,
 				ua_sess->euid, ua_sess->egid);
-		free(tmp_path);
 		if (ret < 0) {
 			if (errno != EEXIST) {
 				ERR("Trace directory creation error");
@@ -6343,7 +6336,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			ret = snprintf(pathname, sizeof(pathname),
 					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
 					reg->uid, reg->bits_per_long);
-			if (ret < 0 || ret == sizeof(pathname)) {
+			if (ret < 0 || ret >= sizeof(pathname)) {
 				PERROR("Failed to format rotation path");
 				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;
@@ -6396,7 +6389,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			ret = snprintf(pathname, sizeof(pathname),
 					DEFAULT_UST_TRACE_DIR "/%s",
 					ua_sess->path);
-			if (ret < 0 || ret == sizeof(pathname)) {
+			if (ret < 0 || ret >= sizeof(pathname)) {
 				PERROR("Failed to format rotation path");
 				cmd_ret = LTTNG_ERR_INVALID;
 				goto error;

@@ -69,7 +69,9 @@ struct ltt_session_list {
  */
 struct ltt_session {
 	char name[NAME_MAX];
+	bool has_auto_generated_name;
 	char hostname[HOST_NAME_MAX]; /* Local hostname. */
+	time_t creation_time;
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
 	struct urcu_ref ref;
@@ -100,7 +102,11 @@ struct ltt_session {
 	 * copied into those sessions.
 	 */
 	struct consumer_output *consumer;
-
+	/*
+	 * Indicates whether or not the user has specified an output directory
+	 * or if it was configured using the default configuration.
+	 */
+	bool has_user_specified_directory;
 	/* Did at least ONE start command has been triggered?. */
 	unsigned int has_been_started:1;
 	/*
@@ -222,8 +228,8 @@ struct ltt_session {
 };
 
 /* Prototypes */
-int session_create(char *name, uid_t uid, gid_t gid);
-
+enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
+		struct ltt_session **out_session);
 void session_lock(struct ltt_session *session);
 void session_lock_list(void);
 int session_trylock_list(void);

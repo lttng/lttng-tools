@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+struct lttng_session_descriptor;
+
 /*
  * Basic session information.
  *
@@ -47,8 +49,28 @@ struct lttng_session {
 	uint32_t snapshot_mode;
 	unsigned int live_timer_interval;	/* usec */
 
-	char padding[LTTNG_SESSION_PADDING1];
+	union {
+		char padding[LTTNG_SESSION_PADDING1];
+		void *ptr;
+	} extended;
 };
+
+/*
+ * Create a session on the session daemon from a session descriptor.
+ *
+ * See the session descriptor API description in session-descriptor.h
+ *
+ * Note that unspecified session descriptor parameters, such as a session's
+ * name, are updated in the session descriptor if the creation of the session
+ * succeeds. This allows users to query the session's auto-generated name
+ * after its creation. Note that other attributes can be queried using the
+ * session listing API.
+ *
+ * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
+ * return codes.
+ */
+extern enum lttng_error_code lttng_create_session_ext(
+		struct lttng_session_descriptor *session_descriptor);
 
 /*
  * Create a tracing session using a name and an optional URL.
@@ -119,10 +141,27 @@ extern int lttng_destroy_session_no_wait(const char *name);
 /*
  * List all the tracing sessions.
  *
- * Return the size (number of entries) of the "lttng_session" array. Caller
- * must free sessions. On error, a negative LTTng error code is returned.
+ * Return the number of entries of the "lttng_session" array. The caller
+ * must free the returned sessions array directly using free().
+ *
+ * On error, a negative LTTng error code is returned.
  */
 extern int lttng_list_sessions(struct lttng_session **sessions);
+
+/*
+ * Get the creation time of an lttng_session object on the session daemon.
+ *
+ * This function must only be used with lttng_session objects returned
+ * by lttng_list_sessions() or lttng_session_create().
+ *
+ * The creation time returned is a UNIX timestamp; the number of seconds since
+ * Epoch (1970-01-01 00:00:00 +0000 (UTC)).
+ *
+ * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
+ * return codes.
+ */
+extern enum lttng_error_code lttng_session_get_creation_time(
+		const struct lttng_session *session, uint64_t *creation_time);
 
 /*
  * Set the shared memory path for a session.
