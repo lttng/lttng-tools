@@ -73,7 +73,7 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	 */
 	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
 	if (wait_shm_fd < 0) {
-		PERROR("shm_open wait shm");
+		PERROR("Failed to open wait shm at %s", shm_path);
 		goto error;
 	}
 
