@@ -247,8 +247,12 @@ static void test_create_ust_context(void)
 	uctx = trace_ust_create_context(&ectx);
 	ok(uctx != NULL, "Create UST context");
 
-	ok((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID,
-	   "Validate UST context");
+	if (uctx) {
+		ok((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID,
+		   "Validate UST context");
+	} else {
+		skip(1, "Skipping UST context validation as creation failed");
+	}
 	free(uctx);
 }
 
