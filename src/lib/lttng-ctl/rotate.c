@@ -233,7 +233,7 @@ int lttng_rotate_session(const char *session_name,
 			sizeof(lsm.session.name));
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &rotate_return);
-	if (ret < 0) {
+	if (ret <= 0) {
 		*rotation_handle = NULL;
 		goto end;
 	}
