@@ -243,13 +243,19 @@ void test_validate_session(void)
 	ok(tmp != NULL,
 	   "Validating session: session found");
 
-	ok(tmp->kernel_session == NULL &&
-	   strlen(tmp->name),
-	   "Validating session: basic sanity check");
+	if (tmp) {
+		ok(tmp->kernel_session == NULL &&
+		   strlen(tmp->name),
+		   "Validating session: basic sanity check");
+	} else {
+		skip(1, "Skipping session validation check as session was not found");
+		goto end;
+	}
 
 	session_lock(tmp);
 	session_unlock(tmp);
 	session_put(tmp);
+end:
 	session_unlock_list();
 }
 
