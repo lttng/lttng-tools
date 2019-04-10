@@ -58,9 +58,6 @@ static const char alphanum[] =
 	"abcdefghijklmnopqrstuvwxyz";
 static char random_string[RANDOM_STRING_LEN];
 
-static struct ltt_ust_session *usess;
-static struct lttng_domain dom;
-
 /*
  * Return random string of 10 characters.
  * Not thread-safe.
@@ -80,9 +77,9 @@ static char *get_random_string(void)
 
 static void test_create_one_ust_session(void)
 {
-	dom.type = LTTNG_DOMAIN_UST;
+	struct ltt_ust_session *usess =
+		trace_ust_create_session(42);
 
-	usess = trace_ust_create_session(42);
 	ok(usess != NULL, "Create UST session");
 
 	if (!usess) {
@@ -112,8 +109,8 @@ static void test_create_ust_channel(void)
 	uchan = trace_ust_create_channel(&attr, LTTNG_DOMAIN_UST);
 	ok(uchan != NULL, "Create UST channel");
 
-	if (!usess) {
-		skip(1, "UST session is null");
+	if (!uchan) {
+		skip(1, "UST channel is null");
 		return;
 	}
 
