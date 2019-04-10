@@ -269,9 +269,13 @@ void test_destroy_session(void)
 	ok(tmp != NULL,
 	   "Destroying session: session found");
 
-	ok(destroy_one_session(tmp) == 0,
-	   "Destroying session: %s destroyed",
-	   SESSION1);
+	if (tmp) {
+		ok(destroy_one_session(tmp) == 0,
+		   "Destroying session: %s destroyed",
+		   SESSION1);
+	} else {
+		skip(1, "Skipping session destruction as it was not found");
+	}
 	session_unlock_list();
 }
 
