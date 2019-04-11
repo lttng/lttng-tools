@@ -207,8 +207,6 @@ tests=( test_ust_streaming_uid test_ust_local_uid \
 	test_ust_local_timer_pid test_ust_streaming_timer_pid \
 	test_incompatible_sessions )
 
-#tests=( test_ust_local_timer_uid )
-
 for fct_test in ${tests[@]};
 do
 	SESSION_NAME=$(randstring 16 0)
