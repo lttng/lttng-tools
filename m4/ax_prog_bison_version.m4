@@ -1,5 +1,5 @@
 # ===========================================================================
-#   http://www.gnu.org/software/autoconf-archive/ax_prog_bison_version.html
+#  https://www.gnu.org/software/autoconf-archive/ax_prog_bison_version.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -34,7 +34,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 2
+#serial 3
 
 AC_DEFUN([AX_PROG_BISON_VERSION],[
     AC_REQUIRE([AC_PROG_SED])
