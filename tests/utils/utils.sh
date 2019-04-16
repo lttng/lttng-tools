@@ -1235,14 +1235,26 @@ function lttng_snapshot_add_output ()
 	local expected_to_fail=$1
 	local sess_name=$2
 	local trace_path=$3
+	local name=$4
+	local max_size=$5
+	local extra_opt=""
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output -s $sess_name file://$trace_path 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	if [ ! -z $name ]; then
+		extra_opt+=" -n $name"
+	fi
+
+	if [ ! -z $max_size ]; then
+		extra_opt+=" -m $max_size"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot add-output \
+		-s $sess_name $extra_opt $trace_path 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [[ $expected_to_fail -eq 1 ]]; then
 		test "$ret" -ne "0"
-		ok $? "Added snapshot output file://$trace_path failed as expected"
+		ok $? "Added snapshot output $trace_path failed as expected"
 	else
-		ok $ret "Added snapshot output file://$trace_path"
+		ok $ret "Added snapshot output $trace_path ($extra_opt)"
 	fi
 }
 

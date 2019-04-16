@@ -20,20 +20,20 @@ TEST_DESC="Streaming - High throughput with bandwidth limits"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
-NR_APP_ITER=10
-NR_ITER=1000000
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="high-throughput"
+CHANNEL_NAME="chan1"
 EVENT_NAME="tp:tptest"
+NETWORK_URI="net://localhost"
 SESSIOND_CTRL_PORT=5342
 SESSIOND_DATA_PORT=5343
 DEFAULT_IF="lo"
+APPS_PID=
 
-TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=104
+NUM_TESTS=119
 
 source $TESTDIR/utils/utils.sh
 
@@ -41,16 +41,14 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
 fi
 
-function set_bw_limit
+function set_bw_limit_per_relayd_port
 {
 	limit=$1
-	ctrlportlimit=$(($limit/10))
-	# failsafe to have at least 1kbit/s for control (in the case where $1 < 10)
-	[ $ctrlportlimit = 0 ] && ctrlportlimit=1
-	# if $1 < 10, we might bust the limit set here, but the
-	# parent qdisc (1:) will always limit us to the right max value
-	dataportlimit=$((9*${ctrlportlimit}))
+	ctrlportlimit=$2
+	dataportlimit=$3
 
+	# Clear previous tc config
+	tc qdisc del dev $DEFAULT_IF root >/dev/null 2>&1
 
 	tc qdisc add dev $DEFAULT_IF root handle 1: htb default 15 >/dev/null 2>&1
 
@@ -66,7 +64,18 @@ function set_bw_limit
 	# filter to assign data traffic to the 1:11 class
 	tc filter add dev $DEFAULT_IF parent 1: protocol ip u32 match ip dport $SESSIOND_DATA_PORT 0xffff flowid 1:11 >/dev/null 2>&1
 
-	ok $? "Set bandwidth limits to ${limit}kbits, ${ctrlportlimit} for control and ${dataportlimit} for data"
+	ok $? "Set bandwidth limits to ${limit}kbps, ${ctrlportlimit} for control and ${dataportlimit} for data"
+}
+
+function set_bw_limit_ratio_ctrl_tenth
+{
+	limit=$1
+	ctrlportlimit=$(($limit/10))
+	# failsafe to have at least 1kbit/s for control (in the case where $1 < 10)
+	[ $ctrlportlimit = 0 ] && ctrlportlimit=1
+	dataportlimit=$((${limit}-${ctrlportlimit}))
+
+	set_bw_limit_per_relayd_port $limit $ctrlportlimit $dataportlimit
 }
 
 function reset_bw_limit
@@ -86,33 +95,43 @@ function create_lttng_session_with_uri
 
 function run_apps
 {
-	for i in `seq 1 $NR_APP_ITER`; do
+	NR_APP_ITER=$1
+	NR_ITER=$2
+	APPS_PID=
+	for i in $(seq 1 $NR_APP_ITER); do
 		# With bandwidth limitation, unfortunately, application easily timeout
 		# due to very slow communication between the consumer and relayd making
 		# the status reply from the consumer quite slow thus delaying the
 		# registration done message.
-		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN $NR_ITER & >/dev/null 2>&1
+		local tmp_file=$(mktemp -u)
+
+		# Start application with a temporary file.
+		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN $NR_ITER 0 $tmp_file &
+		ret=$?
+		APPS_PID="${APPS_PID} ${!}"
+
+		# Wait for the application file to appear indicating that at least one
+		# tracepoint has been fired.
+		while [ ! -f "$tmp_file" ]; do
+			sleep 0.5
+		done
+		rm -f $tmp_file
 	done
 }
 
-function test_high_throughput
+function stop_test_apps()
 {
-	NETWORK_URI="net://localhost"
-	create_lttng_session_with_uri $SESSION_NAME $NETWORK_URI
-	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
-	start_lttng_tracing_ok $SESSION_NAME
-	run_apps
-	diag "Waiting for applications to end"
-	wait
-	pass "waiting done"
-	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	validate_event_count
+	diag "Stopping $TESTAPP_NAME"
+	for p in ${APPS_PID}; do
+		kill ${p} 2>/dev/null
+		wait ${p} 2>/dev/null
+	done
 }
 
 function validate_event_count
 {
-
+	TRACE_PATH=$1
+	EXPECTED_EVENT_COUNT=$2
 	TEMP_FILE=$(mktemp)
 	TEMP_FILE_2=$(mktemp)
 
@@ -128,7 +147,7 @@ function validate_event_count
 	done < $TEMP_FILE
 
 	let total=$dropped+$traced
-	let wanted=$NR_APP_ITER*$NR_ITER
+	let wanted=$EXPECTED_EVENT_COUNT
 
 	if [ $wanted -ne $total ]; then
 		fail "Validate trace event count"
@@ -136,11 +155,7 @@ function validate_event_count
 		return 1
 	else
 		pass "Validate trace event count"
-		diag "Expected $wanted. Dropped $dropped. Recorded $traced. Total $total... "
-
-		rm -rf $TRACE_PATH
 		rm $TEMP_FILE $TEMP_FILE_2
-
 		return 0
 	fi
 }
@@ -152,6 +167,74 @@ function interrupt_cleanup()
 	stop_lttng_sessiond
 	reset_bw_limit
 	exit 1
+}
+
+
+function test_low_bandwidth_link
+{
+	local NR_APP_ITER=10
+	local NR_ITER=100000
+	BW_LIMITS=(3200 1600 800 400 200 100 50 25)
+
+	for BW in ${BW_LIMITS[@]};
+	do
+		TRACE_PATH=$(mktemp -d)
+		diag "Test high-throughput with bandwidth limit set to ${BW}kbps"
+
+		set_bw_limit_ratio_ctrl_tenth $BW
+
+		start_lttng_sessiond
+		start_lttng_relayd "-o $TRACE_PATH"
+
+		create_lttng_session_with_uri $SESSION_NAME $NETWORK_URI
+		enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
+		start_lttng_tracing_ok $SESSION_NAME
+		run_apps $NR_APP_ITER $NR_ITER
+		diag "Waiting for applications to end"
+		wait
+		pass "Applications execution done"
+		stop_lttng_tracing_ok $SESSION_NAME
+		destroy_lttng_session_ok $SESSION_NAME
+
+		validate_event_count "$TRACE_PATH" $((${NR_APP_ITER}*${NR_ITER}))
+
+		stop_lttng_relayd
+		stop_lttng_sessiond
+		reset_bw_limit
+		rm -rf "$TRACE_PATH"
+	done
+}
+
+function test_low_data_socket_bandwidth_snapshot
+{
+	bw_limit=1000
+	bw_dataportlimit=1
+	bw_ctrlportlimit=$((${bw_limit}-${bw_dataportlimit}))
+
+	TRACE_PATH=$(mktemp -d)
+	diag "Test data port with bandwidth limit set to ${bw_dataportlimit}kbps"
+
+	set_bw_limit_per_relayd_port $bw_limit $bw_ctrlportlimit $bw_dataportlimit
+
+	start_lttng_sessiond
+	start_lttng_relayd "-o $TRACE_PATH"
+	create_lttng_session_no_output $SESSION_NAME
+	enable_lttng_mmap_overwrite_ust_channel $SESSION_NAME $CHANNEL_NAME
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
+	start_lttng_tracing_ok $SESSION_NAME
+	run_apps 1 10000
+	lttng_snapshot_add_output_ok $SESSION_NAME $NETWORK_URI
+	lttng_snapshot_record $SESSION_NAME
+
+	# Validate that the trace is readable
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/snapshot-1*
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+	stop_test_apps
+	stop_lttng_relayd
+	stop_lttng_sessiond
+	reset_bw_limit
+	rm -rf "$TRACE_PATH"
 }
 
 plan_tests $NUM_TESTS
@@ -166,24 +249,10 @@ fi
 
 skip $isroot "Root access is needed to set bandwith limits. Skipping all tests." $NUM_TESTS ||
 {
-
 	# Catch sigint and try to cleanup limits
 	trap interrupt_cleanup SIGTERM
 	trap interrupt_cleanup SIGINT
 
-	BW_LIMITS=(3200 1600 800 400 200 100 50 25)
-	for BW in ${BW_LIMITS[@]};
-	do
-		diag "Test high-throughput with bandwidth limit set to ${BW}kbits"
-
-		set_bw_limit $BW
-
-		start_lttng_sessiond
-		start_lttng_relayd "-o $TRACE_PATH"
-		test_high_throughput
-		result=$?
-		stop_lttng_relayd
-		stop_lttng_sessiond
-		reset_bw_limit
-	done
+	test_low_data_socket_bandwidth_snapshot
+	test_low_bandwidth_link
 }
