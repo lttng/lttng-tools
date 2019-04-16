@@ -25,8 +25,8 @@ AC_PROG_CXX
 rw_PROG_CXX_WORKS
 AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
 
-ax_CHECK_SDT_WORKS
-AM_CONDITIONAL([SDT_WORKS], [test "x$ax_check_sdt_works" = "xyes"])
+LTTNG_CHECK_SDT_WORKS
+AM_CONDITIONAL([SDT_WORKS], [test "x$lttng_cv_sdt_works" = "xyes"])
 
 # Checks for programs.
 AC_PROG_GREP
