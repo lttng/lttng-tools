@@ -425,7 +425,7 @@ CONFDIR=`eval echo $sysconfdir`
 AC_SUBST(CONFDIR)
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_CONFIGDIR],"$CONFDIR", [LTTng system configuration directory.])
 
-AC_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR],[datadir], [LTTng system data directory.])
+AX_DEFINE_DIR([CONFIG_LTTNG_SYSTEM_DATADIR], [datadir], [LTTng system data directory.])
 
 # Check libpopt
 PKG_CHECK_MODULES([POPT], [popt],
