@@ -28,7 +28,7 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h runas.c \
                        location.c \
                        waiter.h waiter.c \
                        userspace-probe.c event.c time.c \
-                       session-descriptor.c
+                       session-descriptor.c credentials.h
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += lttng-elf.h lttng-elf.c
@@ -36,6 +36,7 @@ endif
 
 libcommon_la_LIBADD = \
 		$(top_builddir)/src/common/config/libconfig.la \
+		$(top_builddir)/src/common/compat/libcompat.la \
 		$(UUID_LIBS)
 
 if BUILD_LIB_COMPAT
