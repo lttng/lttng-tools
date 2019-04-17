@@ -38,6 +38,7 @@
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
 #include <common/compat/dirent.h>
+#include <common/compat/directory-handle.h>
 #include <lttng/constant.h>
 
 #include "utils.h"
@@ -668,44 +669,6 @@ error:
 }
 
 /*
- * On some filesystems (e.g. nfs), mkdir will validate access rights before
- * checking for the existence of the path element. This means that on a setup
- * where "/home/" is a mounted NFS share, and running as an unpriviledged user,
- * recursively creating a path of the form "/home/my_user/trace/" will fail with
- * EACCES on mkdir("/home", ...).
- *
- * Performing a stat(...) on the path to check for existence allows us to
- * work around this behaviour.
- */
-static
-int mkdir_check_exists(const char *path, mode_t mode)
-{
-	int ret = 0;
-	struct stat st;
-
-	ret = stat(path, &st);
-	if (ret == 0) {
-		if (S_ISDIR(st.st_mode)) {
-			/* Directory exists, skip. */
-			goto end;
-		} else {
-			/* Exists, but is not a directory. */
-			errno = ENOTDIR;
-			ret = -1;
-			goto end;
-		}
-	}
-
-	/*
-	 * Let mkdir handle other errors as the caller expects mkdir
-	 * semantics.
-	 */
-	ret = mkdir(path, mode);
-end:
-	return ret;
-}
-
-/*
  * Create directory using the given path and mode.
  *
  * On success, return 0 else a negative error code.
@@ -714,82 +677,17 @@ LTTNG_HIDDEN
 int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
+	struct lttng_directory_handle handle;
+	struct lttng_credentials creds = {
+		.uid = (uid_t) uid,
+		.gid = (gid_t) gid,
+	};
 
-	if (uid < 0 || gid < 0) {
-		ret = mkdir_check_exists(path, mode);
-	} else {
-		ret = run_as_mkdir(path, mode, uid, gid);
-	}
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("mkdir %s, uid %d, gid %d", path ? path : "NULL",
-					uid, gid);
-		} else {
-			ret = 0;
-		}
-	}
-
-	return ret;
-}
-
-/*
- * Internal version of mkdir_recursive. Runs as the current user.
- * Don't call directly; use utils_mkdir_recursive().
- *
- * This function is ominously marked as "unsafe" since it should only
- * be called by a caller that has transitioned to the uid and gid under which
- * the directory creation should occur.
- */
-LTTNG_HIDDEN
-int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode)
-{
-	char *p, tmp[PATH_MAX];
-	size_t len;
-	int ret;
-
-	assert(path);
-
-	ret = snprintf(tmp, sizeof(tmp), "%s", path);
-	if (ret < 0) {
-		PERROR("snprintf mkdir");
-		goto error;
-	}
-
-	len = ret;
-	if (tmp[len - 1] == '/') {
-		tmp[len - 1] = 0;
-	}
-
-	for (p = tmp + 1; *p; p++) {
-		if (*p == '/') {
-			*p = 0;
-			if (tmp[strlen(tmp) - 1] == '.' &&
-					tmp[strlen(tmp) - 2] == '.' &&
-					tmp[strlen(tmp) - 3] == '/') {
-				ERR("Using '/../' is not permitted in the trace path (%s)",
-						tmp);
-				ret = -1;
-				goto error;
-			}
-			ret = mkdir_check_exists(tmp, mode);
-			if (ret < 0) {
-				if (errno != EACCES) {
-					PERROR("mkdir recursive");
-					ret = -errno;
-					goto error;
-				}
-			}
-			*p = '/';
-		}
-	}
-
-	ret = mkdir_check_exists(tmp, mode);
-	if (ret < 0) {
-		PERROR("mkdir recursive last element");
-		ret = -errno;
-	}
-
-error:
+	(void) lttng_directory_handle_init(&handle, NULL);
+	ret = lttng_directory_handle_create_subdirectory_as_user(
+			&handle, path, mode,
+			(uid >= 0 || gid >= 0) ? &creds : NULL);
+	lttng_directory_handle_fini(&handle);
 	return ret;
 }
 
@@ -803,18 +701,17 @@ LTTNG_HIDDEN
 int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
+	struct lttng_directory_handle handle;
+	struct lttng_credentials creds = {
+		.uid = (uid_t) uid,
+		.gid = (gid_t) gid,
+	};
 
-	if (uid < 0 || gid < 0) {
-		/* Run as current user. */
-		ret = _utils_mkdir_recursive_unsafe(path, mode);
-	} else {
-		ret = run_as_mkdir_recursive(path, mode, uid, gid);
-	}
-	if (ret < 0) {
-		PERROR("mkdir %s, uid %d, gid %d", path ? path : "NULL",
-				uid, gid);
-	}
-
+	(void) lttng_directory_handle_init(&handle, NULL);
+	ret = lttng_directory_handle_create_subdirectory_recursive_as_user(
+			&handle, path, mode,
+			(uid >= 0 || gid >= 0) ? &creds : NULL);
+	lttng_directory_handle_fini(&handle);
 	return ret;
 }
 

@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <getopt.h>
 
+#include <common/compat/directory-handle.h>
+
 #define KIBI_LOG2 10
 #define MEBI_LOG2 20
 #define GIBI_LOG2 30

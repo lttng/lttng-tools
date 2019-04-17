@@ -41,7 +41,13 @@ typedef int (*post_fork_cleanup_cb)(void *user_data);
 LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
+int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,
+		uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
+int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
+		uid_t uid, gid_t gid);
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
 LTTNG_HIDDEN

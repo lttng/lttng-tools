@@ -49,7 +49,7 @@ struct run_as_data;
 struct run_as_ret;
 typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
 
-struct run_as_mkdir_data {
+struct run_as_mkdirat_data {
 	char path[PATH_MAX];
 	mode_t mode;
 };
@@ -77,7 +77,7 @@ struct run_as_extract_sdt_probe_offsets_data {
 	char provider_name[LTTNG_SYMBOL_NAME_LEN];
 };
 
-struct run_as_mkdir_ret {
+struct run_as_mkdirat_ret {
 	int ret;
 };
 
@@ -104,10 +104,12 @@ struct run_as_extract_sdt_probe_offsets_ret {
 
 enum run_as_cmd {
 	RUN_AS_MKDIR,
+	RUN_AS_MKDIRAT,
+	RUN_AS_MKDIR_RECURSIVE,
+	RUN_AS_MKDIRAT_RECURSIVE,
 	RUN_AS_OPEN,
 	RUN_AS_UNLINK,
 	RUN_AS_RMDIR_RECURSIVE,
-	RUN_AS_MKDIR_RECURSIVE,
 	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
 	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
 };
@@ -116,7 +118,7 @@ struct run_as_data {
 	enum run_as_cmd cmd;
 	int fd;
 	union {
-		struct run_as_mkdir_data mkdir;
+		struct run_as_mkdirat_data mkdirat;
 		struct run_as_open_data open;
 		struct run_as_unlink_data unlink;
 		struct run_as_rmdir_recursive_data rmdir_recursive;
@@ -145,7 +147,7 @@ struct run_as_data {
 struct run_as_ret {
 	int fd;
 	union {
-		struct run_as_mkdir_ret mkdir;
+		struct run_as_mkdirat_ret mkdirat;
 		struct run_as_open_ret open;
 		struct run_as_unlink_ret unlink;
 		struct run_as_rmdir_recursive_ret rmdir_recursive;
@@ -181,35 +183,49 @@ int use_clone(void)
 }
 #endif
 
-LTTNG_HIDDEN
-int _utils_mkdir_recursive_unsafe(const char *path, mode_t mode);
-
 /*
  * Create recursively directory using the FULL path.
  */
 static
-int _mkdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
+int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
+	struct lttng_directory_handle handle;
 
-	path = data->u.mkdir.path;
-	mode = data->u.mkdir.mode;
+	path = data->u.mkdirat.path;
+	mode = data->u.mkdirat.mode;
 
+	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.mkdir.ret = _utils_mkdir_recursive_unsafe(path, mode);
+	ret_value->u.mkdirat.ret =
+			lttng_directory_handle_create_subdirectory_recursive(
+					&handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
-	return ret_value->u.mkdir.ret;
+	ret_value->_error = (ret_value->u.mkdirat.ret) ? true : false;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.mkdirat.ret;
 }
 
 static
-int _mkdir(struct run_as_data *data, struct run_as_ret *ret_value)
+int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.mkdir.ret = mkdir(data->u.mkdir.path, data->u.mkdir.mode);
+	const char *path;
+	mode_t mode;
+	struct lttng_directory_handle handle;
+
+	path = data->u.mkdirat.path;
+	mode = data->u.mkdirat.mode;
+
+	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
+	/* Safe to call as we have transitioned to the requested uid/gid. */
+	ret_value->u.mkdirat.ret =
+			lttng_directory_handle_create_subdirectory(
+					&handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.mkdir.ret) ? true : false;
-	return ret_value->u.mkdir.ret;
+	ret_value->_error = (ret_value->u.mkdirat.ret) ? true : false;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.mkdirat.ret;
 }
 
 static
@@ -322,15 +338,17 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
 	switch (cmd) {
 	case RUN_AS_MKDIR:
-		return _mkdir;
+	case RUN_AS_MKDIRAT:
+		return _mkdirat;
+	case RUN_AS_MKDIR_RECURSIVE:
+	case RUN_AS_MKDIRAT_RECURSIVE:
+		return _mkdirat_recursive;
 	case RUN_AS_OPEN:
 		return _open;
 	case RUN_AS_UNLINK:
 		return _unlink;
 	case RUN_AS_RMDIR_RECURSIVE:
 		return _rmdir_recursive;
-	case RUN_AS_MKDIR_RECURSIVE:
-		return _mkdir_recursive;
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 		return _extract_elf_symbol_offset;
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
@@ -390,6 +408,8 @@ int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
+	case RUN_AS_MKDIRAT:
+	case RUN_AS_MKDIRAT_RECURSIVE:
 		break;
 	default:
 		return 0;
@@ -468,7 +488,13 @@ int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
+	case RUN_AS_MKDIRAT:
+	case RUN_AS_MKDIRAT_RECURSIVE:
 		break;
+	case RUN_AS_MKDIR:
+	case RUN_AS_MKDIR_RECURSIVE:
+		*fd = AT_FDCWD;
+		/* fall-through */
 	default:
 		return 0;
 	}
@@ -490,6 +516,8 @@ int cleanup_received_fd(enum run_as_cmd cmd, int fd)
 	switch (cmd) {
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
+	case RUN_AS_MKDIRAT:
+	case RUN_AS_MKDIRAT_RECURSIVE:
 		break;
 	default:
 		return 0;
@@ -1101,39 +1129,74 @@ err:
 LTTNG_HIDDEN
 int run_as_mkdir_recursive(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
+	return run_as_mkdirat_recursive(AT_FDCWD, path, mode, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,
+		uid_t uid, gid_t gid)
+{
+	int ret;
 	struct run_as_data data;
-	struct run_as_ret ret;
+	struct run_as_ret run_as_ret;
 
 	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
-	DBG3("mkdir() recursive %s with mode %d for uid %d and gid %d",
+	memset(&run_as_ret, 0, sizeof(run_as_ret));
+	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) mode, (int) uid, (int) gid);
-	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
-	data.u.mkdir.path[PATH_MAX - 1] = '\0';
-	data.u.mkdir.mode = mode;
-
-	run_as(RUN_AS_MKDIR_RECURSIVE, &data, &ret, uid, gid);
-	errno = ret._errno;
-	return ret.u.mkdir.ret;
+	ret = lttng_strncpy(data.u.mkdirat.path, path,
+			sizeof(data.u.mkdirat.path));
+	if (ret) {
+		ERR("Failed to copy path argument of mkdirat recursive command");
+		goto error;
+	}
+	data.u.mkdirat.path[PATH_MAX - 1] = '\0';
+	data.u.mkdirat.mode = mode;
+	data.fd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR_RECURSIVE : RUN_AS_MKDIRAT_RECURSIVE,
+			&data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.mkdirat.ret;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
 int run_as_mkdir(const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
+	return run_as_mkdirat(AT_FDCWD, path, mode, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
+		uid_t uid, gid_t gid)
+{
+	int ret;
 	struct run_as_data data;
-	struct run_as_ret ret;
+	struct run_as_ret run_as_ret;
 
 	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+	memset(&run_as_ret, 0, sizeof(run_as_ret));
 
-	DBG3("mkdir() %s with mode %d for uid %d and gid %d",
+	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) mode, (int) uid, (int) gid);
-	strncpy(data.u.mkdir.path, path, PATH_MAX - 1);
-	data.u.mkdir.path[PATH_MAX - 1] = '\0';
-	data.u.mkdir.mode = mode;
-	run_as(RUN_AS_MKDIR, &data, &ret, uid, gid);
-	errno = ret._errno;
-	return ret.u.mkdir.ret;
+	ret = lttng_strncpy(data.u.mkdirat.path, path,
+			sizeof(data.u.mkdirat.path));
+	if (ret) {
+		ERR("Failed to copy path argument of mkdirat command");
+		goto error;
+	}
+	data.u.mkdirat.path[PATH_MAX - 1] = '\0';
+	data.u.mkdirat.mode = mode;
+	data.fd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR : RUN_AS_MKDIRAT,
+			&data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret._errno;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
