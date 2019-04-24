@@ -92,6 +92,7 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 	stream->prev_path_name = NULL;
 	stream->channel_name = channel_name;
 	stream->rotate_at_seq_num = -1ULL;
+	stream->beacon_ts_end = -1ULL;
 	lttng_ht_node_init_u64(&stream->node, stream->stream_handle);
 	pthread_mutex_init(&stream->lock, NULL);
 	urcu_ref_init(&stream->ref);
