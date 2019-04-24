@@ -260,6 +260,23 @@ struct lttng_session_descriptor *create_session_descriptor(void)
 	}
 	if (!descriptor) {
 		ERR("Failed to initialize session creation command.");
+	} else {
+		/*
+		 * Auto-launch the relay daemon when a live session
+		 * is created using default URLs.
+		 */
+		if (!opt_url && !opt_ctrl_url && !opt_data_url &&
+				opt_live_timer && !check_relayd()) {
+			int ret;
+			const char *pathname = opt_relayd_path ? :
+					INSTALL_BIN_PATH "/lttng-relayd";
+
+			ret = spawn_relayd(pathname, 0);
+			if (ret < 0) {
+				lttng_session_descriptor_destroy(descriptor);
+				descriptor = NULL;
+			}
+		}
 	}
 end:
 	free(uris);
