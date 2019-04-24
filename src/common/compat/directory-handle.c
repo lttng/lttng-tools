@@ -88,6 +88,24 @@ void lttng_directory_handle_fini(struct lttng_directory_handle *handle)
 	}
 }
 
+LTTNG_HIDDEN
+int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
+		struct lttng_directory_handle *new_copy)
+{
+	int ret = 0;
+
+	if (handle->dirfd == AT_FDCWD) {
+		new_copy->dirfd = handle->dirfd;
+	} else {
+		new_copy->dirfd = dup(handle->dirfd);
+		if (new_copy->dirfd == -1) {
+			PERROR("Failed to duplicate directory fd of directory handle");
+			ret = -1;
+		}
+	}
+	return ret;
+}
+
 static
 int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 		const char *path, struct stat *st)
@@ -223,6 +241,14 @@ LTTNG_HIDDEN
 void lttng_directory_handle_fini(struct lttng_directory_handle *handle)
 {
 	free(handle->base_path);
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
+		struct lttng_directory_handle *new_copy)
+{
+	new_copy->base_path = strdup(handle->base_path);
+	return new_copy->base_path ? 0 : -1;
 }
 
 static

@@ -56,6 +56,13 @@ int lttng_directory_handle_init_from_dirfd(
 		struct lttng_directory_handle *handle, int dirfd);
 
 /*
+ * Copy a directory handle.
+ */
+LTTNG_HIDDEN
+int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
+		struct lttng_directory_handle *new_copy);
+
+/*
  * Release the resources of a directory handle.
  */
 LTTNG_HIDDEN
