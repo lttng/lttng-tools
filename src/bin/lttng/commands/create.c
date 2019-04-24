@@ -236,7 +236,6 @@ struct lttng_session_descriptor *create_session_descriptor(void)
 		descriptor = lttng_session_descriptor_live_network_create(
 				opt_session_name, uri_str1, uri_str2,
 				opt_live_timer);
-
 	} else {
 		/* Regular session. */
 		switch (output_type) {
