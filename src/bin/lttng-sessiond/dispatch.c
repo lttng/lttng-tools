@@ -144,11 +144,6 @@ static void sanitize_wait_queue(struct ust_reg_wait_queue *wait_queue)
 		uint32_t revents = LTTNG_POLL_GETEV(&events, i);
 		int pollfd = LTTNG_POLL_GETFD(&events, i);
 
-		if (!revents) {
-			/* No activity for this FD (poll implementation). */
-			continue;
-		}
-
 		cds_list_for_each_entry_safe(wait_node, tmp_wait_node,
 				&wait_queue->head, head) {
 			if (pollfd == wait_node->app->sock &&
