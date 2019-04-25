@@ -12,6 +12,7 @@ TESTS = test_kernel_data \
 	test_utils_parse_size_suffix \
 	test_utils_parse_time_suffix \
 	test_utils_expand_path \
+	test_utils_compat_poll \
 	test_string_utils \
 	test_notification \
 	ini_config/test_ini_config
@@ -28,7 +29,8 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 # Define test programs
 noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
-                  test_utils_expand_path test_string_utils test_notification
+                  test_utils_expand_path test_utils_compat_poll \
+                  test_string_utils test_notification
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -144,6 +146,11 @@ test_utils_parse_size_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL
 # parse_time_suffix unit test
 test_utils_parse_time_suffix_SOURCES = test_utils_parse_time_suffix.c
 test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
+
+# compat_poll unit test
+test_utils_compat_poll_SOURCES = test_utils_compat_poll.c
+test_utils_compat_poll_LDADD  = $(LIBTAP) $(LIBHASHTABLE) $(DL_LIBS) \
+		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON)
 
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
