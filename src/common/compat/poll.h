@@ -315,10 +315,12 @@ static inline int __lttng_poll_get_prev_fd(struct lttng_poll_event *events,
 /*
  * For the following calls, consider 'e' to be a lttng_poll_event pointer and i
  * being the index of the events array.
+ * LTTNG_POLL_GETNB is always used after lttng_poll_wait, thus we can use the
+ * current list for test compatibility purposes.
  */
 #define LTTNG_POLL_GETFD(e, i) LTTNG_REF(e)->wait.events[i].fd
 #define LTTNG_POLL_GETEV(e, i) LTTNG_REF(e)->wait.events[i].revents
-#define LTTNG_POLL_GETNB(e) LTTNG_REF(e)->wait.nb_fd
+#define LTTNG_POLL_GETNB(e) LTTNG_REF(e)->current.nb_fd
 #define LTTNG_POLL_GETSZ(e) LTTNG_REF(e)->wait.events_size
 #define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd) \
 	__lttng_poll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
