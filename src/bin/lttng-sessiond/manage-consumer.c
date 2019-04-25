@@ -134,11 +134,6 @@ void *thread_consumer_management(void *data)
 
 		health_code_update();
 
-		if (!revents) {
-			/* No activity for this FD (poll implementation). */
-			continue;
-		}
-
 		/* Thread quit pipe has been closed. Killing thread. */
 		if (pollfd == quit_pipe_read_fd) {
 			err = 0;
@@ -297,11 +292,6 @@ void *thread_consumer_management(void *data)
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
-
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
 
 			/*
 			 * Thread quit pipe has been triggered, flag that we should stop

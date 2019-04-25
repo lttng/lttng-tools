@@ -165,11 +165,6 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
-
 			/* Event on the registration socket */
 			if (pollfd == sock) {
 				if (revents & LPOLLIN) {

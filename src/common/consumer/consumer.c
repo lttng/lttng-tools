@@ -2396,11 +2396,6 @@ restart:
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
-
 			if (pollfd == lttng_pipe_get_readfd(ctx->consumer_metadata_pipe)) {
 				if (revents & LPOLLIN) {
 					ssize_t pipe_len;
@@ -2989,11 +2984,6 @@ restart:
 
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
-
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
 
 			if (pollfd == ctx->consumer_channel_pipe[0]) {
 				if (revents & LPOLLIN) {

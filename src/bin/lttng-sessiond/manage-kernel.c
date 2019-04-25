@@ -267,11 +267,6 @@ static void *thread_kernel_management(void *data)
 
 			health_code_update();
 
-			if (!revents) {
-				/* No activity for this FD (poll implementation). */
-				continue;
-			}
-
 			if (pollfd == quit_pipe_read_fd) {
 				err = 0;
 				goto exit;
