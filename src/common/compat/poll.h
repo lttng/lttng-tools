@@ -177,7 +177,7 @@ extern int compat_epoll_del(struct lttng_poll_event *events, int fd);
 extern int compat_epoll_mod(struct lttng_poll_event *events,
 		int fd, uint32_t req_events);
 #define lttng_poll_mod(events, fd, req_events) \
-	compat_epoll_add(events, fd, req_events)
+	compat_epoll_mod(events, fd, req_events)
 
 /*
  * Set up the poll set limits variable poll_max_size
@@ -361,7 +361,7 @@ extern int compat_poll_del(struct lttng_poll_event *events, int fd);
 extern int compat_poll_mod(struct lttng_poll_event *events,
 		int fd, uint32_t req_events);
 #define lttng_poll_mod(events, fd, req_events) \
-	compat_poll_add(events, fd, req_events)
+	compat_poll_mod(events, fd, req_events)
 
 /*
  * Set up the poll set limits variable poll_max_size
