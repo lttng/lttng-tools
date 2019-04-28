@@ -78,7 +78,7 @@ LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory,
-		mode_t mode, struct lttng_credentials *creds);
+		mode_t mode, const struct lttng_credentials *creds);
 
 /*
  * Recursively create a directory relative to a directory handle.
@@ -97,6 +97,6 @@ LTTNG_HIDDEN
 int lttng_directory_handle_create_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *subdirectory_path,
-		mode_t mode, struct lttng_credentials *creds);
+		mode_t mode, const struct lttng_credentials *creds);
 
 #endif /* _COMPAT_PATH_HANDLE_H */
