@@ -679,7 +679,7 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
 	struct lttng_directory_handle handle;
-	struct lttng_credentials creds = {
+	const struct lttng_credentials creds = {
 		.uid = (uid_t) uid,
 		.gid = (gid_t) gid,
 	};
@@ -703,7 +703,7 @@ int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
 	struct lttng_directory_handle handle;
-	struct lttng_credentials creds = {
+	const struct lttng_credentials creds = {
 		.uid = (uid_t) uid,
 		.gid = (gid_t) gid,
 	};
