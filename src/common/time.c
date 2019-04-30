@@ -76,7 +76,7 @@ void __attribute__((constructor)) init_locale_utf8_support(void)
 
 	if (program_locale && strstr(program_locale, "utf8")) {
 		utf8_output_supported = true;
-	} else if (strstr(lang, "utf8")) {
+	} else if (lang && strstr(lang, "utf8")) {
 		utf8_output_supported = true;
 	}
 }
