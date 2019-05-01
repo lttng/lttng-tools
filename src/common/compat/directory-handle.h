@@ -63,6 +63,18 @@ int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
 		struct lttng_directory_handle *new_copy);
 
 /*
+ * Move a directory handle. The original directory handle may no longer be
+ * used after this call. This call cannot fail; directly assign the
+ * return value to the new directory handle.
+ *
+ * It is safe (but unnecessary) to call lttng_directory_handle_fini on the
+ * original handle.
+ */
+LTTNG_HIDDEN
+struct lttng_directory_handle
+lttng_directory_handle_move(struct lttng_directory_handle *original);
+
+/*
  * Release the resources of a directory handle.
  */
 LTTNG_HIDDEN
