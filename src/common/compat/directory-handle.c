@@ -41,6 +41,8 @@ int _run_as_mkdir(const struct lttng_directory_handle *handle, const char *path,
 static
 int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
 		const char *path, mode_t mode, uid_t uid, gid_t gid);
+static
+void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
 
 #ifdef COMPAT_DIRFD
 
@@ -79,13 +81,15 @@ void lttng_directory_handle_fini(struct lttng_directory_handle *handle)
 {
 	int ret;
 
-	if (handle->dirfd == AT_FDCWD) {
-		return;
+	if (handle->dirfd == AT_FDCWD || handle->dirfd == -1) {
+		goto end;
 	}
 	ret = close(handle->dirfd);
 	if (ret == -1) {
 		PERROR("Failed to close directory file descriptor of directory handle");
 	}
+end:
+	lttng_directory_handle_invalidate(handle);
 }
 
 LTTNG_HIDDEN
@@ -104,6 +108,12 @@ int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
 		}
 	}
 	return ret;
+}
+
+static
+void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
+{
+	handle->dirfd = -1;
 }
 
 static
@@ -241,6 +251,7 @@ LTTNG_HIDDEN
 void lttng_directory_handle_fini(struct lttng_directory_handle *handle)
 {
 	free(handle->base_path);
+	lttng_directory_handle_invalidate(handle);
 }
 
 LTTNG_HIDDEN
@@ -249,6 +260,12 @@ int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
 {
 	new_copy->base_path = strdup(handle->base_path);
 	return new_copy->base_path ? 0 : -1;
+}
+
+static
+void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
+{
+	handle->base_path = NULL;
 }
 
 static
@@ -385,6 +402,16 @@ end:
 }
 
 /* Common implementation. */
+LTTNG_HIDDEN
+struct lttng_directory_handle
+lttng_directory_handle_move(struct lttng_directory_handle *original)
+{
+	const struct lttng_directory_handle tmp = *original;
+
+	lttng_directory_handle_invalidate(original);
+	return tmp;
+}
+
 static
 int create_directory_recursive(const struct lttng_directory_handle *handle,
 		const char *path, mode_t mode)
