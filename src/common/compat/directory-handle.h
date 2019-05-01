@@ -51,6 +51,16 @@ LTTNG_HIDDEN
 int lttng_directory_handle_init(struct lttng_directory_handle *handle,
 		const char *path);
 
+/*
+ * Initialize a new directory handle from an existing directory fd.
+ *
+ * The new directory handle assumes the ownership of the directory fd.
+ * Note that this method should only be used in very specific cases, such as
+ * re-creating a directory handle from a dirfd passed over a unix socket.
+ *
+ * An initialized directory handle must be finalized using
+ * lttng_directory_handle_fini().
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_init_from_dirfd(
 		struct lttng_directory_handle *handle, int dirfd);
