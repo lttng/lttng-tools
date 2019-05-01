@@ -47,22 +47,41 @@ void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
 #ifdef COMPAT_DIRFD
 
 LTTNG_HIDDEN
-int lttng_directory_handle_init(struct lttng_directory_handle *handle,
+int lttng_directory_handle_init(struct lttng_directory_handle *new_handle,
 		const char *path)
+{
+	const struct lttng_directory_handle cwd_handle = {
+		.dirfd = AT_FDCWD,
+	};
+
+	/* Open a handle to the CWD if NULL is passed. */
+	return lttng_directory_handle_init_from_handle(new_handle,
+			path,
+			&cwd_handle);
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_init_from_handle(
+		struct lttng_directory_handle *new_handle, const char *path,
+		const struct lttng_directory_handle *handle)
 {
 	int ret;
 
 	if (!path) {
-		handle->dirfd = AT_FDCWD;
-		ret = 0;
+		ret = lttng_directory_handle_copy(handle, new_handle);
 		goto end;
 	}
-	ret = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+	if (!*path) {
+		ERR("Failed to initialize directory handle: provided path is an empty string");
+		ret = -1;
+		goto end;
+	}
+	ret = openat(handle->dirfd, path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 	if (ret == -1) {
 		PERROR("Failed to initialize directory handle to \"%s\"", path);
 		goto end;
 	}
-	handle->dirfd = ret;
+	new_handle->dirfd = ret;
 	ret = 0;
 end:
 	return ret;
@@ -147,16 +166,50 @@ int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
 
 #else /* COMPAT_DIRFD */
 
+static
+int get_full_path(const struct lttng_directory_handle *handle,
+		const char *subdirectory, char *fullpath, size_t size)
+{
+	int ret;
+
+	subdirectory = subdirectory ? : "";
+	/*
+	 * Don't include the base path if subdirectory is absolute.
+	 * This is the same behaviour than mkdirat.
+	 */
+	ret = snprintf(fullpath, size, "%s%s",
+			*subdirectory != '/' ? handle->base_path : "",
+			subdirectory);
+	if (ret == -1 || ret >= size) {
+		ERR("Failed to format subdirectory from directory handle");
+		ret = -1;
+	}
+	ret = 0;
+	return ret;
+}
+
 LTTNG_HIDDEN
 int lttng_directory_handle_init(struct lttng_directory_handle *handle,
 		const char *path)
 {
 	int ret;
-	size_t cwd_len, path_len, handle_path_len;
-	char cwd_buf[LTTNG_PATH_MAX];
 	const char *cwd;
-	bool add_slash = false;
-	struct stat stat_buf;
+	size_t cwd_len, path_len;
+	char cwd_buf[LTTNG_PATH_MAX] = {};
+	char handle_buf[LTTNG_PATH_MAX] = {};
+	bool add_cwd_slash, add_trailing_slash;
+	const struct lttng_directory_handle cwd_handle = {
+		.base_path = handle_buf,
+	};
+
+	if (path && *path == '/') {
+		/*
+		 * Creation of an handle to an absolute path; no need to sample
+		 * the cwd.
+		 */
+		goto create;
+	}
+	path_len = path ? strlen(path) : 0;
 
 	cwd = getcwd(cwd_buf, sizeof(cwd_buf));
 	if (!cwd) {
@@ -166,70 +219,99 @@ int lttng_directory_handle_init(struct lttng_directory_handle *handle,
 	}
 	cwd_len = strlen(cwd);
 	if (cwd_len == 0) {
-		ERR("Failed to initialize directory handle to \"%s\": getcwd() returned an empty string",
-				path);
+		ERR("Failed to initialize directory handle, current working directory path has a length of 0");
 		ret = -1;
 		goto end;
 	}
-	if (cwd[cwd_len - 1] != '/') {
-		add_slash = true;
+
+	add_cwd_slash = cwd[cwd_len - 1] != '/';
+	add_trailing_slash = path && path[path_len - 1] != '/';
+
+	ret = snprintf(handle_buf, sizeof(handle_buf), "%s%s%s%s",
+			cwd,
+			add_cwd_slash ? "/" : "",
+			path ? : "",
+			add_trailing_slash ? "/" : "");
+	if (ret == -1 || ret >= LTTNG_PATH_MAX) {
+		ERR("Failed to initialize directory handle, failed to format directory path");
+		goto end;
+	}
+create:
+	ret = lttng_directory_handle_init_from_handle(handle, path,
+			&cwd_handle);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_init_from_handle(
+		struct lttng_directory_handle *new_handle, const char *path,
+		const struct lttng_directory_handle *handle)
+{
+	int ret;
+	size_t path_len, handle_path_len;
+	bool add_trailing_slash;
+	struct stat stat_buf;
+
+	assert(handle && handle->base_path);
+
+	ret = lttng_directory_handle_stat(handle, path, &stat_buf);
+	if (ret == -1) {
+		PERROR("Failed to create directory handle");
+		goto end;
+	} else if (!S_ISDIR(stat_buf.st_mode)) {
+		char full_path[LTTNG_PATH_MAX];
+
+		/* Best effort for logging purposes. */
+		ret = get_full_path(handle, path, full_path,
+				sizeof(full_path));
+		if (ret) {
+			full_path[0] = '\0';
+		}
+
+		ERR("Failed to initialize directory handle to \"%s\": not a directory",
+				full_path);
+		ret = -1;
+		goto end;
+	}
+	if (!path) {
+		ret = lttng_directory_handle_copy(handle, new_handle);
+		goto end;
 	}
 
-	if (path) {
-		path_len = strlen(path);
-		if (path_len == 0) {
-			ERR("Failed to initialize directory handle: provided path is an empty string");
-			ret = -1;
-			goto end;
-		}
-
-		/*
-		 * Ensure that 'path' is a directory. There is a race
-		 * (TOCTOU) since the directory could be removed/replaced/renamed,
-		 * but this is inevitable on platforms that don't provide dirfd support.
-		 */
-		ret = stat(path, &stat_buf);
-		if (ret == -1) {
-			PERROR("Failed to initialize directory handle to \"%s\", stat() failed",
-			       path);
-			goto end;
-		}
-		if (!S_ISDIR(stat_buf.st_mode)) {
-			ERR("Failed to initialize directory handle to \"%s\": not a directory",
-			    path);
-			ret = -1;
-			goto end;
-		}
-		if (*path == '/') {
-			handle->base_path = strdup(path);
-			if (!handle->base_path) {
-				ret = -1;
-			}
-			/* Not an error. */
-			goto end;
-		}
-	} else {
-		path = "";
-		path_len = 0;
-		add_slash = false;
+	path_len = strlen(path);
+	if (path_len == 0) {
+		ERR("Failed to initialize directory handle: provided path is an empty string");
+		ret = -1;
+		goto end;
+	}
+	if (*path == '/') {
+		new_handle->base_path = strdup(path);
+		ret = new_handle->base_path ? 0 : -1;
+		goto end;
 	}
 
-	handle_path_len = cwd_len + path_len + !!add_slash + 2;
+	add_trailing_slash = path[path_len - 1] != '/';
+
+	handle_path_len = strlen(handle->base_path) + path_len +
+			!!add_trailing_slash;
 	if (handle_path_len >= LTTNG_PATH_MAX) {
 		ERR("Failed to initialize directory handle as the resulting path's length (%zu bytes) exceeds the maximal allowed length (%d bytes)",
 				handle_path_len, LTTNG_PATH_MAX);
 		ret = -1;
 		goto end;
 	}
-	handle->base_path = zmalloc(handle_path_len);
-	if (!handle->base_path) {
+	new_handle->base_path = zmalloc(handle_path_len);
+	if (!new_handle->base_path) {
 		PERROR("Failed to initialize directory handle");
 		ret = -1;
 		goto end;
 	}
 
-	ret = sprintf(handle->base_path, "%s%s%s/", cwd,
-			add_slash ? "/" : "", path);
+	ret = sprintf(new_handle->base_path, "%s%s%s",
+			handle->base_path,
+			path,
+			add_trailing_slash ? "/" : "");
 	if (ret == -1 || ret >= handle_path_len) {
 		ERR("Failed to initialize directory handle: path formatting failed");
 		ret = -1;
@@ -266,27 +348,6 @@ static
 void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
 {
 	handle->base_path = NULL;
-}
-
-static
-int get_full_path(const struct lttng_directory_handle *handle,
-		const char *subdirectory, char *fullpath, size_t size)
-{
-	int ret;
-
-	/*
-	 * Don't include the base path if subdirectory is absolute.
-	 * This is the same behaviour than mkdirat.
-	 */
-	ret = snprintf(fullpath, size, "%s%s",
-			*subdirectory != '/' ? handle->base_path : "",
-			subdirectory);
-	if (ret == -1 || ret >= size) {
-		ERR("Failed to format subdirectory from directory handle");
-		ret = -1;
-	}
-	ret = 0;
-	return ret;
 }
 
 static

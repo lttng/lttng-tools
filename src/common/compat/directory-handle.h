@@ -40,9 +40,7 @@ struct lttng_directory_handle {
 
 /*
  * Initialize a directory handle to the provided path. Passing a NULL path
- * returns a handle to the current working directory. The working directory
- * is not sampled; it will be accessed at the time of use of the functions
- * of this API.
+ * returns a handle to the current working directory.
  *
  * An initialized directory handle must be finalized using
  * lttng_directory_handle_fini().
@@ -50,6 +48,25 @@ struct lttng_directory_handle {
 LTTNG_HIDDEN
 int lttng_directory_handle_init(struct lttng_directory_handle *handle,
 		const char *path);
+
+/*
+ * Initialize a new directory handle to a path relative to an existing handle.
+ *
+ * The provided path must already exist. Note that the creation of a
+ * subdirectory and the creation of a handle are kept as separate operations
+ * to highlight the fact that there is an inherent race between the creation of
+ * a directory and the creation of a handle to it.
+ *
+ * Passing a NULL path effectively copies the original handle.
+ *
+ * An initialized directory handle must be finalized using
+ * lttng_directory_handle_fini().
+ */
+LTTNG_HIDDEN
+int lttng_directory_handle_init_from_handle(
+		struct lttng_directory_handle *new_handle,
+		const char *path,
+		const struct lttng_directory_handle *handle);
 
 /*
  * Initialize a new directory handle from an existing directory fd.
