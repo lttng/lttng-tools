@@ -684,11 +684,15 @@ int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 		.gid = (gid_t) gid,
 	};
 
-	(void) lttng_directory_handle_init(&handle, NULL);
+	ret = lttng_directory_handle_init(&handle, NULL);
+	if (ret) {
+		goto end;
+	}
 	ret = lttng_directory_handle_create_subdirectory_as_user(
 			&handle, path, mode,
 			(uid >= 0 || gid >= 0) ? &creds : NULL);
 	lttng_directory_handle_fini(&handle);
+end:
 	return ret;
 }
 
@@ -708,11 +712,15 @@ int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 		.gid = (gid_t) gid,
 	};
 
-	(void) lttng_directory_handle_init(&handle, NULL);
+	ret = lttng_directory_handle_init(&handle, NULL);
+	if (ret) {
+		goto end;
+	}
 	ret = lttng_directory_handle_create_subdirectory_recursive_as_user(
 			&handle, path, mode,
 			(uid >= 0 || gid >= 0) ? &creds : NULL);
 	lttng_directory_handle_fini(&handle);
+end:
 	return ret;
 }
 
