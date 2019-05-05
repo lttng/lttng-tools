@@ -32,6 +32,14 @@
 struct lttng_directory_handle {
 	int dirfd;
 };
+
+static inline
+int lttng_directory_handle_get_dirfd(
+		const struct lttng_directory_handle *handle)
+{
+	return handle->dirfd;
+}
+
 #else
 struct lttng_directory_handle {
 	char *base_path;
