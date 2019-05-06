@@ -37,10 +37,15 @@ tags
 .project
 .settings/
 
-# cscope and ctags
+# cscope, ctags and other IDE files
 cscope.*
 tags
 TAGS
+/.ccls-cache/
+.ccls-root
+/.clangd/
+compile_commands.json
+*_flymake*
 
 # m4 macros not automatically generated
 /m4/libtool.m4
