@@ -23,6 +23,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <common/macros.h>
+
 /*
  * The run-as process is launched by forking without an exec*() call. This means
  * that any resource allocated before the run-as worker is launched should be
@@ -51,7 +53,12 @@ int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
+int run_as_openat(int dirfd, const char *filename, int flags, mode_t mode,
+		uid_t uid, gid_t gid);
+LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid);
+LTTNG_HIDDEN
+int run_as_unlinkat(int dirfd, const char *filename, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid);
 LTTNG_HIDDEN

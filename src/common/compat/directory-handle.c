@@ -28,6 +28,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/*
+ * This compatibility layer shares a common "base" that is implemented
+ * in terms of an internal API. This file contains two implementations
+ * of the internal API below.
+ */
 static
 int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 		const char *path, struct stat *st);
@@ -41,6 +46,20 @@ int _run_as_mkdir(const struct lttng_directory_handle *handle, const char *path,
 static
 int _run_as_mkdir_recursive(const struct lttng_directory_handle *handle,
 		const char *path, mode_t mode, uid_t uid, gid_t gid);
+static
+int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
+		const char *filename, int flags, mode_t mode);
+static
+int _run_as_open(const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode, uid_t uid, gid_t gid);
+static
+int lttng_directory_handle_unlink(
+		const struct lttng_directory_handle *handle,
+		const char *filename);
+static
+int _run_as_unlink(const struct lttng_directory_handle *handle,
+		const char *filename, uid_t uid, gid_t gid);
 static
 void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
 
@@ -151,8 +170,38 @@ int lttng_directory_handle_mkdir(
 }
 
 static
-int _run_as_mkdir(const struct lttng_directory_handle *handle, const char *path,
-		mode_t mode, uid_t uid, gid_t gid)
+int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
+		const char *filename, int flags, mode_t mode)
+{
+	return openat(handle->dirfd, filename, flags, mode);
+}
+
+static
+int _run_as_open(const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode, uid_t uid, gid_t gid)
+{
+	return run_as_openat(handle->dirfd, filename, flags, mode, uid, gid);
+}
+
+static
+int _run_as_unlink(const struct lttng_directory_handle *handle,
+		const char *filename, uid_t uid, gid_t gid)
+{
+	return run_as_unlinkat(handle->dirfd, filename, uid, gid);
+}
+
+static
+int lttng_directory_handle_unlink(
+		const struct lttng_directory_handle *handle,
+		const char *filename)
+{
+	return unlinkat(handle->dirfd, filename, 0);
+}
+
+static
+int _run_as_mkdir(const struct lttng_directory_handle *handle,
+		const char *path, mode_t mode, uid_t uid, gid_t gid)
 {
 	return run_as_mkdirat(handle->dirfd, path, mode, uid, gid);
 }
@@ -387,6 +436,43 @@ end:
 }
 
 static
+int lttng_directory_handle_open(const struct lttng_directory_handle *handle,
+		const char *filename, int flags, mode_t mode)
+{
+	int ret;
+	char fullpath[LTTNG_PATH_MAX];
+
+	ret = get_full_path(handle, filename, fullpath, sizeof(fullpath));
+	if (ret) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	ret = open(fullpath, flags, mode);
+end:
+	return ret;
+}
+
+static
+int lttng_directory_handle_unlink(
+		const struct lttng_directory_handle *handle,
+		const char *filename)
+{
+	int ret;
+	char fullpath[LTTNG_PATH_MAX];
+
+	ret = get_full_path(handle, filename, fullpath, sizeof(fullpath));
+	if (ret) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	ret = unlink(fullpath);
+end:
+	return ret;
+}
+
+static
 int _run_as_mkdir(const struct lttng_directory_handle *handle, const char *path,
 		mode_t mode, uid_t uid, gid_t gid)
 {
@@ -400,6 +486,43 @@ int _run_as_mkdir(const struct lttng_directory_handle *handle, const char *path,
 	}
 
 	ret = run_as_mkdir(fullpath, mode, uid, gid);
+end:
+	return ret;
+}
+
+static
+int _run_as_open(const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode, uid_t uid, gid_t gid)
+{
+	int ret;
+	char fullpath[LTTNG_PATH_MAX];
+
+	ret = get_full_path(handle, filename, fullpath, sizeof(fullpath));
+	if (ret) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	ret = run_as_open(fullpath, flags, mode, uid, gid);
+end:
+	return ret;
+}
+
+static
+int _run_as_unlink(const struct lttng_directory_handle *handle,
+		const char *filename, uid_t uid, gid_t gid)
+{
+	int ret;
+	char fullpath[LTTNG_PATH_MAX];
+
+	ret = get_full_path(handle, filename, fullpath, sizeof(fullpath));
+	if (ret) {
+		errno = ENOMEM;
+		goto end;
+	}
+
+	ret = run_as_unlink(fullpath, uid, gid);
 end:
 	return ret;
 }
@@ -586,4 +709,60 @@ int lttng_directory_handle_create_subdirectory_recursive(
 {
 	return lttng_directory_handle_create_subdirectory_recursive_as_user(
 			handle, subdirectory_path, mode, NULL);
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_open_file_as_user(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode,
+		const struct lttng_credentials *creds)
+{
+	int ret;
+
+	if (!creds) {
+		/* Run as current user. */
+		ret = lttng_directory_handle_open(handle, filename, flags,
+				mode);
+	} else {
+		ret = _run_as_open(handle, filename, flags, mode,
+				creds->uid, creds->gid);
+	}
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_open_file(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode)
+{
+	return lttng_directory_handle_open_file_as_user(handle, filename, flags,
+			mode, NULL);
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_unlink_file_as_user(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		const struct lttng_credentials *creds)
+{
+	int ret;
+
+	if (!creds) {
+		/* Run as current user. */
+		ret = lttng_directory_handle_unlink(handle, filename);
+	} else {
+		ret = _run_as_unlink(handle, filename, creds->uid, creds->gid);
+	}
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_directory_handle_unlink_file(
+		const struct lttng_directory_handle *handle,
+		const char *filename)
+{
+	return lttng_directory_handle_unlink_file_as_user(handle,
+			filename, NULL);
 }

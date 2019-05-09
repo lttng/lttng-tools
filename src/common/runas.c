@@ -108,7 +108,9 @@ enum run_as_cmd {
 	RUN_AS_MKDIR_RECURSIVE,
 	RUN_AS_MKDIRAT_RECURSIVE,
 	RUN_AS_OPEN,
+	RUN_AS_OPENAT,
 	RUN_AS_UNLINK,
+	RUN_AS_UNLINKAT,
 	RUN_AS_RMDIR_RECURSIVE,
 	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
 	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
@@ -231,7 +233,8 @@ int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 static
 int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.open.ret = open(data->u.open.path, data->u.open.flags, data->u.open.mode);
+	ret_value->u.open.ret = openat(data->fd, data->u.open.path,
+			data->u.open.flags, data->u.open.mode);
 	ret_value->fd = ret_value->u.open.ret;
 	ret_value->_errno = errno;
 	ret_value->_error = ret_value->u.open.ret < 0;
@@ -241,7 +244,7 @@ int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 static
 int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.unlink.ret = unlink(data->u.unlink.path);
+	ret_value->u.unlink.ret = unlinkat(data->fd, data->u.unlink.path, 0);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.unlink.ret) ? true : false;
 	return ret_value->u.unlink.ret;
@@ -344,8 +347,10 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 	case RUN_AS_MKDIRAT_RECURSIVE:
 		return _mkdirat_recursive;
 	case RUN_AS_OPEN:
+	case RUN_AS_OPENAT:
 		return _open;
 	case RUN_AS_UNLINK:
+	case RUN_AS_UNLINKAT:
 		return _unlink;
 	case RUN_AS_RMDIR_RECURSIVE:
 		return _rmdir_recursive;
@@ -410,6 +415,8 @@ int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 	case RUN_AS_MKDIRAT:
 	case RUN_AS_MKDIRAT_RECURSIVE:
+	case RUN_AS_OPENAT:
+	case RUN_AS_UNLINKAT:
 		break;
 	default:
 		return 0;
@@ -436,6 +443,7 @@ int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
 
 	switch (cmd) {
 	case RUN_AS_OPEN:
+	case RUN_AS_OPENAT:
 		break;
 	default:
 		return 0;
@@ -466,6 +474,7 @@ int recv_fd_from_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int *
 
 	switch (cmd) {
 	case RUN_AS_OPEN:
+	case RUN_AS_OPENAT:
 		break;
 	default:
 		return 0;
@@ -490,9 +499,13 @@ int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 	case RUN_AS_MKDIRAT:
 	case RUN_AS_MKDIRAT_RECURSIVE:
+	case RUN_AS_OPENAT:
+	case RUN_AS_UNLINKAT:
 		break;
 	case RUN_AS_MKDIR:
 	case RUN_AS_MKDIR_RECURSIVE:
+	case RUN_AS_OPEN:
+	case RUN_AS_UNLINK:
 		*fd = AT_FDCWD;
 		/* fall-through */
 	default:
@@ -518,6 +531,10 @@ int cleanup_received_fd(enum run_as_cmd cmd, int fd)
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 	case RUN_AS_MKDIRAT:
 	case RUN_AS_MKDIRAT_RECURSIVE:
+	case RUN_AS_OPEN:
+	case RUN_AS_OPENAT:
+	case RUN_AS_UNLINK:
+	case RUN_AS_UNLINKAT:
 		break;
 	default:
 		return 0;
@@ -1200,7 +1217,15 @@ error:
 }
 
 LTTNG_HIDDEN
-int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
+int run_as_open(const char *path, int flags, mode_t mode, uid_t uid,
+                gid_t gid)
+{
+	return run_as_openat(AT_FDCWD, path, flags, mode, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_openat(int dirfd, const char *path, int flags, mode_t mode,
+		uid_t uid, gid_t gid)
 {
 	struct run_as_data data;
 	struct run_as_ret ret;
@@ -1208,13 +1233,16 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 	memset(&data, 0, sizeof(data));
 	memset(&ret, 0, sizeof(ret));
 
-	DBG3("open() %s with flags %X mode %d for uid %d and gid %d",
+	DBG3("openat() fd = %d%s, path = %s, flags = %X, mode = %d, uid %d, gid %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, flags, (int) mode, (int) uid, (int) gid);
 	strncpy(data.u.open.path, path, PATH_MAX - 1);
 	data.u.open.path[PATH_MAX - 1] = '\0';
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
-	run_as(RUN_AS_OPEN, &data, &ret, uid, gid);
+	data.fd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_OPEN : RUN_AS_OPENAT,
+			&data, &ret, uid, gid);
 	errno = ret._errno;
 	ret.u.open.ret = ret.fd;
 	return ret.u.open.ret;
@@ -1223,16 +1251,24 @@ int run_as_open(const char *path, int flags, mode_t mode, uid_t uid, gid_t gid)
 LTTNG_HIDDEN
 int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 {
+	return run_as_unlinkat(AT_FDCWD, path, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_unlinkat(int dirfd, const char *path, uid_t uid, gid_t gid)
+{
 	struct run_as_data data;
 	struct run_as_ret ret;
 
 	memset(&data, 0, sizeof(data));
 	memset(&ret, 0, sizeof(ret));
 
-	DBG3("unlink() %s with for uid %d and gid %d",
+	DBG3("unlinkat() fd = %d%s, path = %s, uid = %d, gid = %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) uid, (int) gid);
 	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
 	data.u.unlink.path[PATH_MAX - 1] = '\0';
+	data.fd = dirfd;
 	run_as(RUN_AS_UNLINK, &data, &ret, uid, gid);
 	errno = ret._errno;
 	return ret.u.unlink.ret;
