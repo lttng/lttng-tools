@@ -153,4 +153,28 @@ int lttng_directory_handle_create_subdirectory_recursive_as_user(
 		const char *subdirectory_path,
 		mode_t mode, const struct lttng_credentials *creds);
 
+LTTNG_HIDDEN
+int lttng_directory_handle_open_file(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode);
+
+LTTNG_HIDDEN
+int lttng_directory_handle_open_file_as_user(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		int flags, mode_t mode,
+		const struct lttng_credentials *creds);
+
+LTTNG_HIDDEN
+int lttng_directory_handle_unlink_file(
+		const struct lttng_directory_handle *handle,
+		const char *filename);
+
+LTTNG_HIDDEN
+int lttng_directory_handle_unlink_file_as_user(
+		const struct lttng_directory_handle *handle,
+		const char *filename,
+		const struct lttng_credentials *creds);
+
 #endif /* _COMPAT_PATH_HANDLE_H */
