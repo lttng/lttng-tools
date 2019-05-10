@@ -40,6 +40,7 @@
 #include <common/compat/dirent.h>
 #include <common/compat/directory-handle.h>
 #include <common/dynamic-buffer.h>
+#include <common/string-utils/format.h>
 #include <lttng/constant.h>
 
 #include "utils.h"
@@ -725,66 +726,42 @@ end:
 }
 
 /*
- * path is the output parameter. It needs to be PATH_MAX len.
+ * out_stream_path is the output parameter.
  *
  * Return 0 on success or else a negative value.
  */
-static int utils_stream_file_name(char *path,
-		const char *path_name, const char *file_name,
-		uint64_t size, uint64_t count,
-		const char *suffix)
+LTTNG_HIDDEN
+int utils_stream_file_path(const char *path_name, const char *file_name,
+		uint64_t size, uint64_t count, const char *suffix,
+		char *out_stream_path, size_t stream_path_len)
 {
 	int ret;
-	char full_path[PATH_MAX];
-	char *path_name_suffix = NULL;
-	char *extra = NULL;
+        char count_str[MAX_INT_DEC_LEN(count) + 1] = {};
+	const char *path_separator;
 
-	ret = snprintf(full_path, sizeof(full_path), "%s/%s",
-			path_name, file_name);
-	if (ret < 0) {
-		PERROR("snprintf create output file");
-		goto error;
-	}
-
-	/* Setup extra string if suffix or/and a count is needed. */
-	if (size > 0 && suffix) {
-		ret = asprintf(&extra, "_%" PRIu64 "%s", count, suffix);
-	} else if (size > 0) {
-		ret = asprintf(&extra, "_%" PRIu64, count);
-	} else if (suffix) {
-		ret = asprintf(&extra, "%s", suffix);
-	}
-	if (ret < 0) {
-		PERROR("Allocating extra string to name");
-		goto error;
-	}
-
-	/*
-	 * If we split the trace in multiple files, we have to add the count at
-	 * the end of the tracefile name.
-	 */
-	if (extra) {
-		ret = asprintf(&path_name_suffix, "%s%s", full_path, extra);
-		if (ret < 0) {
-			PERROR("Allocating path name with extra string");
-			goto error_free_suffix;
-		}
-		strncpy(path, path_name_suffix, PATH_MAX - 1);
-		path[PATH_MAX - 1] = '\0';
+	if (path_name && path_name[strlen(path_name) - 1] == '/') {
+		path_separator = "";
 	} else {
-		ret = lttng_strncpy(path, full_path, PATH_MAX);
-		if (ret) {
-			ERR("Failed to copy stream file name");
-			goto error_free_suffix;
-		}
+		path_separator = "/";
 	}
-	path[PATH_MAX - 1] = '\0';
-	ret = 0;
 
-	free(path_name_suffix);
-error_free_suffix:
-	free(extra);
-error:
+	path_name = path_name ? : "";
+	suffix = suffix ? : "";
+	if (size > 0) {
+		ret = snprintf(count_str, sizeof(count_str), "_%" PRIu64,
+				count);
+		assert(ret > 0 && ret < sizeof(count_str));
+	}
+
+        ret = snprintf(out_stream_path, stream_path_len, "%s%s%s%s%s",
+			path_name, path_separator, file_name, count_str,
+			suffix);
+	if (ret < 0 || ret >= stream_path_len) {
+		ERR("Truncation occurred while formatting stream path");
+		ret = -1;
+	} else {
+		ret = 0;
+	}
 	return ret;
 }
 
@@ -798,10 +775,10 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 		uint64_t count, int uid, int gid, char *suffix)
 {
 	int ret, flags, mode;
-	char path[PATH_MAX];
+	char path[LTTNG_PATH_MAX];
 
-	ret = utils_stream_file_name(path, path_name, file_name,
-			size, count, suffix);
+	ret = utils_stream_file_path(path_name, file_name,
+			size, count, suffix, path, sizeof(path));
 	if (ret < 0) {
 		goto error;
 	}
@@ -836,10 +813,10 @@ int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t si
 		uint64_t count, int uid, int gid, char *suffix)
 {
 	int ret;
-	char path[PATH_MAX];
+	char path[LTTNG_PATH_MAX];
 
-	ret = utils_stream_file_name(path, path_name, file_name,
-			size, count, suffix);
+	ret = utils_stream_file_path(path_name, file_name, size, count, suffix,
+			path, sizeof(path));
 	if (ret < 0) {
 		goto error;
 	}
