@@ -199,6 +199,8 @@ int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	mode = data->u.mkdirat.mode;
 
 	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
+	/* Ownership of dirfd is transferred to the handle. */
+	data->fd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.mkdirat.ret =
 			lttng_directory_handle_create_subdirectory_recursive(
@@ -220,6 +222,8 @@ int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 	mode = data->u.mkdirat.mode;
 
 	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
+	/* Ownership of dirfd is transferred to the handle. */
+	data->fd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.mkdirat.ret =
 			lttng_directory_handle_create_subdirectory(
