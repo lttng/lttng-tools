@@ -164,7 +164,7 @@ extern struct consumer_data kconsumer_data;
 
 int sessiond_init_thread_quit_pipe(void);
 int sessiond_check_thread_quit_pipe(int fd, uint32_t events);
-int sessiond_wait_for_quit_pipe(unsigned int timeout_us);
+int sessiond_wait_for_quit_pipe(int timeout_ms);
 int sessiond_notify_quit_pipe(void);
 void sessiond_close_quit_pipe(void);
 

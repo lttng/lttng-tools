@@ -73,41 +73,38 @@ int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
  * Returns 1 if the caller should quit, 0 if the timeout was reached, and
  * -1 if an error was encountered.
  */
-int sessiond_wait_for_quit_pipe(unsigned int timeout_us)
+int sessiond_wait_for_quit_pipe(int timeout_ms)
 {
 	int ret;
-	fd_set read_fds;
-	struct timeval timeout;
+	struct lttng_poll_event events;
 
-	FD_ZERO(&read_fds);
-	FD_SET(thread_quit_pipe[0], &read_fds);
-	memset(&timeout, 0, sizeof(timeout));
-	timeout.tv_sec = timeout_us / USEC_PER_SEC;
-	timeout.tv_usec = timeout_us % USEC_PER_SEC;
-
-	while (true) {
-		ret = select(thread_quit_pipe[0] + 1, &read_fds, NULL, NULL,
-				timeout_us != -1U ? &timeout : NULL);
-		if (ret < 0 && errno == EINTR) {
-			/* Retry on interrupt. */
-			continue;
-		} else {
-			break;
-		}
+	ret = lttng_poll_create(&events, 1, LTTNG_CLOEXEC);
+	if (ret < 0) {
+		PERROR("Failed to initialize poll/epoll set");
+		ret = -1;
+		goto end;
 	}
-
+	ret = lttng_poll_add(&events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
+	if (ret < 0) {
+		PERROR("Failed to add file descriptor to poll/epoll set");
+		ret = -1;
+		goto end_clean_poll;
+	}
+	ret = lttng_poll_wait(&events, timeout_ms);
 	if (ret > 0) {
 		/* Should quit. */
 		ret = 1;
 	} else if (ret < 0 && errno != EINTR) {
 		/* Unknown error. */
-		PERROR("Failed to select() thread quit pipe");
+		PERROR("Failed to epoll()/poll() thread quit pipe");
 		ret = -1;
 	} else {
 		/* Timeout reached. */
 		ret = 0;
 	}
-
+end_clean_poll:
+	lttng_poll_clean(&events);
+end:
 	return ret;
 }
 
