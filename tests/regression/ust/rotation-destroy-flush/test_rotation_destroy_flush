@@ -48,8 +48,7 @@ function run_app()
 function signal_cleanup()
 {
 	diag "*** Exiting ***"
-	stop_lttng_sessiond
-	exit 1
+	full_cleanup
 }
 
 function enable_ust_lttng_channel_size_limit ()

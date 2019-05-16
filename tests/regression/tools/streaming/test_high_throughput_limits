@@ -176,7 +176,6 @@ function interrupt_cleanup()
 	reset_bw_limit
 	# invoke utils cleanup
 	full_cleanup
-	exit 1
 }
 
 plan_tests $NUM_TESTS

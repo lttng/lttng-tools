@@ -142,11 +142,10 @@ function sighandler()
 {
 	cleanup
 	rm $LOG_FILE_SESSIOND $LOG_FILE_RELAYD
-	exit 1
+	full_cleanup
 }
 
-trap sighandler SIGINT
-trap sighandler SIGTERM
+trap sighandler SIGINT SIGTERM
 
 # Make sure we collect a coredump if possible.
 ulimit -c unlimited
