@@ -68,8 +68,20 @@ function full_cleanup ()
 	trap - SIGTERM && kill -- -$$
 }
 
+function null_pipes ()
+{
+	exec 0>/dev/null
+	exec 1>/dev/null
+	exec 2>/dev/null
+}
 
 trap full_cleanup SIGINT SIGTERM
+
+# perl prove closes its child pipes before giving it a chance to run its
+# signal trap handlers. Redirect pipes to /dev/null if SIGPIPE is caught
+# to allow those trap handlers to proceed.
+
+trap null_pipes SIGPIPE
 
 function print_ok ()
 {
