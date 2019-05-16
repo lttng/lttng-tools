@@ -291,7 +291,8 @@ error:
 /*
  * Wait on poll() with timeout. Blocking call.
  */
-int compat_poll_wait(struct lttng_poll_event *events, int timeout)
+int compat_poll_wait(struct lttng_poll_event *events, int timeout,
+		bool interruptible)
 {
 	int ret, active_fd_count;
 	int idle_pfd_index = 0;
@@ -320,10 +321,11 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 
 	do {
 		ret = poll(events->wait.events, events->wait.nb_fd, timeout);
-	} while (ret == -1 && errno == EINTR);
+	} while (!interruptible && ret == -1 && errno == EINTR);
 	if (ret < 0) {
-		/* At this point, every error is fatal */
-		PERROR("poll wait");
+		if (errno != EINTR) {
+			PERROR("poll wait");
+		}
 		goto error;
 	}
 
