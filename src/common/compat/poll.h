@@ -150,9 +150,12 @@ static inline int compat_glibc_epoll_create(int size, int flags)
  * Wait on epoll set with the number of fd registered to the lttng_poll_event
  * data structure (events).
  */
-extern int compat_epoll_wait(struct lttng_poll_event *events, int timeout);
+extern int compat_epoll_wait(struct lttng_poll_event *events, int timeout,
+		bool interruptible);
 #define lttng_poll_wait(events, timeout) \
-	compat_epoll_wait(events, timeout)
+	compat_epoll_wait(events, timeout, false)
+#define lttng_poll_wait_interruptible(events, timeout) \
+	compat_epoll_wait(events, timeout, true)
 
 /*
  * Add a fd to the epoll set and resize the epoll_event structure if needed.
@@ -334,9 +337,12 @@ extern int compat_poll_create(struct lttng_poll_event *events, int size);
  * Wait on poll(2) event with nb_fd registered to the lttng_poll_event data
  * structure.
  */
-extern int compat_poll_wait(struct lttng_poll_event *events, int timeout);
+extern int compat_poll_wait(struct lttng_poll_event *events, int timeout,
+		bool interruptible);
 #define lttng_poll_wait(events, timeout) \
-	compat_poll_wait(events, timeout)
+	compat_poll_wait(events, timeout, false)
+#define lttng_poll_wait_interruptible(events, timeout) \
+	compat_poll_wait(events, timeout, true)
 
 /*
  * Add the fd to the pollfd structure. Resize if needed.
