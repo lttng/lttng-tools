@@ -49,11 +49,9 @@ source $TESTDIR/utils/utils.sh
 function signal_cleanup()
 {
 	diag "*** Exiting ***"
-	rmmod lttng-test
 	stop_lttng_sessiond
-	rmmod lttng-clock-plugin-test
-	rmmod lttng-clock
-	exit 1
+	modprobe -r lttng-test lttng-clock-plugin-test lttng-clock
+	full_cleanup
 }
 
 function extract_clock_metadata()
@@ -93,10 +91,8 @@ function test_clock_override_metadata()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rmmod lttng-test
 	stop_lttng_sessiond
-	rmmod lttng-clock-plugin-test
-	rmmod lttng-clock
+	modprobe -r lttng-test lttng-clock-plugin-test lttng-clock
 
 	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
 	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"

@@ -39,9 +39,8 @@ source $TESTDIR/utils/utils.sh
 function signal_cleanup()
 {
 	diag "*** Exiting ***"
-	rmmod lttng-test
-	stop_lttng_sessiond
-	exit 1
+	modprobe -r lttng-test
+	full_cleanup
 }
 
 function enable_kernel_lttng_channel_size_limit ()
@@ -107,7 +106,7 @@ function test_rotation_destroy_flush_single()
 
 	rm -rf $TRACE_PATH
 
-	rmmod lttng-test
+	modprobe -r lttng-test
 	stop_lttng_sessiond
 }
 

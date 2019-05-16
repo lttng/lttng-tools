@@ -56,7 +56,7 @@ function kernel_event_generator
 	state_file=$1
 	kernel_event_generator_suspended=0
 	trap kernel_event_generator_toogle_state SIGUSR1
-	trap "exit" SIGTERM SIGINT EXIT
+
 	while (true); do
 		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
 			touch $state_file

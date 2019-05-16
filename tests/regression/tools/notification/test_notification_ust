@@ -56,7 +56,7 @@ function ust_event_generator
 	state_file=$1
 	ust_event_generator_suspended=0
 	trap ust_event_generator_toogle_state SIGUSR1
-	trap "exit" SIGTERM SIGINT
+
 	while (true); do
 		if [[ $ust_event_generator_suspended -eq "1" ]]; then
 			touch $state_file
