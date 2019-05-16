@@ -66,6 +66,7 @@ function full_cleanup ()
 	# The '-' before the pid number ($$) indicates 'kill' to signal the
 	# whole process group.
 	trap - SIGTERM && kill -- -$$
+	exit 1
 }
 
 function null_pipes ()
