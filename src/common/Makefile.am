@@ -89,7 +89,7 @@ endif
 
 noinst_HEADERS = lttng-kernel.h defaults.h macros.h error.h futex.h \
 				 uri.h utils.h lttng-kernel-old.h \
-				 align.h bitfield.h bug.h time.h
+				 align.h bug.h time.h
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
