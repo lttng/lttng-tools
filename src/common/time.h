@@ -36,6 +36,8 @@
 #define USEC_PER_MINUTE (USEC_PER_SEC * SEC_PER_MINUTE)
 #define USEC_PER_HOURS  (USEC_PER_MINUTE * MINUTE_PER_HOUR)
 
+#define ISO8601_STR_LEN sizeof("YYYYmmddTHHMMSS+HHMM")
+
 LTTNG_HIDDEN
 bool locale_supports_utf8(void);
 
@@ -60,5 +62,15 @@ int timespec_to_ms(struct timespec ts, unsigned long *ms);
  */
 LTTNG_HIDDEN
 struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
+
+/*
+ * Format a Unix timestamp to an ISO 8601 compatible timestamp of
+ * the form "YYYYmmddTHHMMSS+HHMM" in local time. `len` must >= to
+ * ISO8601_STR_LEN.
+ *
+ * Returns 0 on success, else -1 on error.
+ */
+LTTNG_HIDDEN
+int time_to_iso8601_str(time_t time, char *str, size_t len);
 
 #endif /* LTTNG_TIME_H */
