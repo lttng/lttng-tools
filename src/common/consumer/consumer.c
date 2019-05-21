@@ -393,6 +393,10 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	iter.iter.node = &channel->node.node;
 	ret = lttng_ht_del(consumer_data.channel_ht, &iter);
 	assert(!ret);
+
+	iter.iter.node = &channel->channels_by_session_id_ht_node.node;
+	ret = lttng_ht_del(consumer_data.channels_by_session_id_ht, &iter);
+	assert(!ret);
 	rcu_read_unlock();
 
 	call_rcu(&channel->node.head, free_channel_rcu);
@@ -1035,6 +1039,8 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 	}
 
 	lttng_ht_node_init_u64(&channel->node, channel->key);
+	lttng_ht_node_init_u64(&channel->channels_by_session_id_ht_node,
+			channel->session_id);
 
 	channel->wait_fd = -1;
 
@@ -1067,6 +1073,8 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 
 	rcu_read_lock();
 	lttng_ht_add_unique_u64(consumer_data.channel_ht, &channel->node);
+	lttng_ht_add_u64(consumer_data.channels_by_session_id_ht,
+			&channel->channels_by_session_id_ht_node);
 	rcu_read_unlock();
 
 	pthread_mutex_unlock(&channel->timer_lock);
@@ -1225,6 +1233,7 @@ void lttng_consumer_cleanup(void)
 	rcu_read_unlock();
 
 	lttng_ht_destroy(consumer_data.channel_ht);
+	lttng_ht_destroy(consumer_data.channels_by_session_id_ht);
 
 	cleanup_relayd_ht();
 
@@ -3420,6 +3429,12 @@ int lttng_consumer_init(void)
 {
 	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!consumer_data.channel_ht) {
+		goto error;
+	}
+
+	consumer_data.channels_by_session_id_ht =
+			lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!consumer_data.channels_by_session_id_ht) {
 		goto error;
 	}
 
