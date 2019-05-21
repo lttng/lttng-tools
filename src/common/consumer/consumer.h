@@ -112,6 +112,8 @@ struct consumer_metadata_cache;
 struct lttng_consumer_channel {
 	/* HT node used for consumer_data.channel_ht */
 	struct lttng_ht_node_u64 node;
+	/* HT node used for consumer_data.channels_by_session_id_ht */
+	struct lttng_ht_node_u64 channels_by_session_id_ht_node;
 	/* Indexed key. Incremented value in the consumer. */
 	uint64_t key;
 	/* Number of streams referencing this channel */
@@ -621,6 +623,8 @@ struct lttng_consumer_global_data {
 
 	/* Channel hash table protected by consumer_data.lock. */
 	struct lttng_ht *channel_ht;
+	/* Channel hash table indexed by session id. */
+	struct lttng_ht *channels_by_session_id_ht;
 	/*
 	 * Flag specifying if the local array of FDs needs update in the
 	 * poll function. Protected by consumer_data.lock.
