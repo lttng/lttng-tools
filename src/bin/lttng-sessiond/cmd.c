@@ -1030,7 +1030,8 @@ static enum lttng_error_code send_consumer_relayd_socket(
 		struct lttng_uri *relayd_uri,
 		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
-		char *session_name, char *hostname, int session_live_timer)
+		const char *session_name, const char *hostname,
+		int session_live_timer)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = NULL;
@@ -1104,8 +1105,8 @@ relayd_comm_error:
 static enum lttng_error_code send_consumer_relayd_sockets(
 		enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
-		struct consumer_socket *sock, char *session_name,
-		char *hostname, int session_live_timer)
+		struct consumer_socket *sock, const char *session_name,
+		const char *hostname, int session_live_timer)
 {
 	enum lttng_error_code status = LTTNG_OK;
 
@@ -4103,8 +4104,8 @@ end:
  */
 static enum lttng_error_code set_relayd_for_snapshot(
 		struct consumer_output *consumer,
-		struct snapshot_output *snap_output,
-		struct ltt_session *session)
+		const struct snapshot_output *snap_output,
+		const struct ltt_session *session)
 {
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
@@ -4150,8 +4151,10 @@ error:
  *
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
-static enum lttng_error_code record_kernel_snapshot(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, struct ltt_session *session,
+static enum lttng_error_code record_kernel_snapshot(
+		struct ltt_kernel_session *ksess,
+		const struct snapshot_output *output,
+		const struct ltt_session *session,
 		int wait, uint64_t nb_packets_per_stream)
 {
 	int ret;
@@ -4197,8 +4200,9 @@ end:
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
 static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
-		struct snapshot_output *output, struct ltt_session *session,
-		int wait, uint64_t nb_packets_per_stream)
+		const struct snapshot_output *output,
+		const struct ltt_session *session, int wait,
+		uint64_t nb_packets_per_stream)
 {
 	int ret;
 	enum lttng_error_code status;
@@ -4222,7 +4226,8 @@ static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
 		goto error_snapshot;
 	}
 
-	status = ust_app_snapshot_record(usess, output, wait, nb_packets_per_stream);
+	status = ust_app_snapshot_record(usess, output, wait,
+			nb_packets_per_stream);
 	if (status != LTTNG_OK) {
 		goto error_snapshot;
 	}
@@ -4238,14 +4243,15 @@ end:
 }
 
 static
-uint64_t get_session_size_one_more_packet_per_stream(struct ltt_session *session,
-	uint64_t cur_nr_packets)
+uint64_t get_session_size_one_more_packet_per_stream(
+		const struct ltt_session *session, uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
 
 	if (session->kernel_session) {
 		struct ltt_kernel_channel *chan;
-		struct ltt_kernel_session *ksess = session->kernel_session;
+		const struct ltt_kernel_session *ksess =
+				session->kernel_session;
 
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
 			if (cur_nr_packets >= chan->channel->attr.num_subbuf) {
@@ -4261,7 +4267,7 @@ uint64_t get_session_size_one_more_packet_per_stream(struct ltt_session *session
 	}
 
 	if (session->ust_session) {
-		struct ltt_ust_session *usess = session->ust_session;
+		const struct ltt_ust_session *usess = session->ust_session;
 
 		tot_size += ust_app_get_size_one_more_packet_per_stream(usess,
 				cur_nr_packets);
@@ -4291,7 +4297,8 @@ uint64_t get_session_size_one_more_packet_per_stream(struct ltt_session *session
  * in between this call and actually grabbing data.
  */
 static
-int64_t get_session_nb_packets_per_stream(struct ltt_session *session, uint64_t max_size)
+int64_t get_session_nb_packets_per_stream(const struct ltt_session *session,
+		uint64_t max_size)
 {
 	int64_t size_left;
 	uint64_t cur_nb_packets = 0;
@@ -4304,8 +4311,8 @@ int64_t get_session_nb_packets_per_stream(struct ltt_session *session, uint64_t 
 	for (;;) {
 		uint64_t one_more_packet_tot_size;
 
-		one_more_packet_tot_size = get_session_size_one_more_packet_per_stream(session,
-					cur_nb_packets);
+		one_more_packet_tot_size = get_session_size_one_more_packet_per_stream(
+				session, cur_nb_packets);
 		if (!one_more_packet_tot_size) {
 			/* We are already grabbing all packets. */
 			break;
@@ -4321,6 +4328,41 @@ int64_t get_session_nb_packets_per_stream(struct ltt_session *session, uint64_t 
 		return -1;
 	}
 	return cur_nb_packets;
+}
+
+static
+enum lttng_error_code snapshot_record(const struct ltt_session *session,
+		const struct snapshot_output *snapshot_output, int wait)
+{
+	int64_t nb_packets_per_stream;
+	enum lttng_error_code ret = LTTNG_OK;
+
+	nb_packets_per_stream = get_session_nb_packets_per_stream(session,
+			snapshot_output->max_size);
+	if (nb_packets_per_stream < 0) {
+		ret = LTTNG_ERR_MAX_SIZE_INVALID;
+		goto end;
+	}
+
+	if (session->kernel_session) {
+		ret = record_kernel_snapshot(session->kernel_session,
+				snapshot_output, session,
+				wait, nb_packets_per_stream);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	if (session->ust_session) {
+		ret = record_ust_snapshot(session->ust_session,
+				snapshot_output, session,
+				wait, nb_packets_per_stream);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+	}
+end:
+	return ret;
 }
 
 /*
@@ -4393,33 +4435,10 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 	if (use_tmp_output) {
-		int64_t nb_packets_per_stream;
-
-		nb_packets_per_stream = get_session_nb_packets_per_stream(session,
-				tmp_output.max_size);
-		if (nb_packets_per_stream < 0) {
-			cmd_ret = LTTNG_ERR_MAX_SIZE_INVALID;
+		cmd_ret = snapshot_record(session, &tmp_output, wait);
+		if (cmd_ret != LTTNG_OK) {
 			goto error;
 		}
-
-		if (session->kernel_session) {
-			cmd_ret = record_kernel_snapshot(session->kernel_session,
-					&tmp_output, session,
-					wait, nb_packets_per_stream);
-			if (cmd_ret != LTTNG_OK) {
-				goto error;
-			}
-		}
-
-		if (session->ust_session) {
-			cmd_ret = record_ust_snapshot(session->ust_session,
-					&tmp_output, session,
-					wait, nb_packets_per_stream);
-			if (cmd_ret != LTTNG_OK) {
-				goto error;
-			}
-		}
-
 		snapshot_success = 1;
 	} else {
 		struct snapshot_output *sout;
@@ -4428,26 +4447,18 @@ int cmd_snapshot_record(struct ltt_session *session,
 		rcu_read_lock();
 		cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 				&iter.iter, sout, node.node) {
-			int64_t nb_packets_per_stream;
-
 			/*
-			 * Make a local copy of the output and assign the possible
-			 * temporary value given by the caller.
+			 * Make a local copy of the output and assign the
+			 * possible temporary value given by the caller.
 			 */
-			memset(&tmp_output, 0, sizeof(tmp_output));
 			memcpy(&tmp_output, sout, sizeof(tmp_output));
 
 			if (output->max_size != (uint64_t) -1ULL) {
 				tmp_output.max_size = output->max_size;
 			}
 
-			nb_packets_per_stream = get_session_nb_packets_per_stream(session,
-					tmp_output.max_size);
-			if (nb_packets_per_stream < 0) {
-				cmd_ret = LTTNG_ERR_MAX_SIZE_INVALID;
-				rcu_read_unlock();
-				goto error;
-			}
+			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+			memcpy(tmp_output.datetime, datetime, sizeof(datetime));
 
 			/* Use temporary name. */
 			if (*output->name != '\0') {
@@ -4459,27 +4470,10 @@ int cmd_snapshot_record(struct ltt_session *session,
 				}
 			}
 
-			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
-			memcpy(tmp_output.datetime, datetime, sizeof(datetime));
-
-			if (session->kernel_session) {
-				cmd_ret = record_kernel_snapshot(session->kernel_session,
-						&tmp_output, session,
-						wait, nb_packets_per_stream);
-				if (cmd_ret != LTTNG_OK) {
-					rcu_read_unlock();
-					goto error;
-				}
-			}
-
-			if (session->ust_session) {
-				cmd_ret = record_ust_snapshot(session->ust_session,
-						&tmp_output, session,
-						wait, nb_packets_per_stream);
-				if (cmd_ret != LTTNG_OK) {
-					rcu_read_unlock();
-					goto error;
-				}
+			cmd_ret = snapshot_record(session, &tmp_output, wait);
+			if (cmd_ret != LTTNG_OK) {
+				rcu_read_unlock();
+				goto error;
 			}
 			snapshot_success = 1;
 		}

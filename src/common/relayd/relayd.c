@@ -126,7 +126,7 @@ error:
  * payload size is introduced.
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
-		char *session_name, char *hostname,
+		const char *session_name, const char *hostname,
 		int session_live_timer, unsigned int snapshot,
 		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid)
 {
@@ -183,8 +183,8 @@ error:
  * support the live reading capability.
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
-		char *session_name, char *hostname, int session_live_timer,
-		unsigned int snapshot)
+		const char *session_name, const char *hostname,
+		int session_live_timer, unsigned int snapshot)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
@@ -235,8 +235,10 @@ error:
  * On success, return 0 else a negative value which is either an errno error or
  * a lttng error code from the relayd.
  */
-int relayd_create_session(struct lttcomm_relayd_sock *rsock, uint64_t *relayd_session_id,
-		char *session_name, char *hostname, int session_live_timer,
+int relayd_create_session(struct lttcomm_relayd_sock *rsock,
+		uint64_t *relayd_session_id,
+		const char *session_name, const char *hostname,
+		int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid)
 {

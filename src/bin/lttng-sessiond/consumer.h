@@ -212,7 +212,8 @@ int consumer_send_channel(struct consumer_socket *sock,
 int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
 		enum lttng_stream_type type, uint64_t session_id,
-		char *session_name, char *hostname, int session_live_timer);
+		const char *session_name, const char *hostname,
+		int session_live_timer);
 int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
 		int pipe);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,
@@ -294,7 +295,7 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 
 /* Snapshot command. */
 enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
-		uint64_t key, struct snapshot_output *output, int metadata,
+		uint64_t key, const struct snapshot_output *output, int metadata,
 		uid_t uid, gid_t gid, const char *session_path, int wait,
 		uint64_t nb_packets_per_stream, uint64_t trace_archive_id);
 

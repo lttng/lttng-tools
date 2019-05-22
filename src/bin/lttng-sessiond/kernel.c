@@ -1240,8 +1240,9 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  *
  * Return LTTNG_OK on success or else return a LTTNG_ERR code.
  */
-enum lttng_error_code kernel_snapshot_record(struct ltt_kernel_session *ksess,
-		struct snapshot_output *output, int wait,
+enum lttng_error_code kernel_snapshot_record(
+		struct ltt_kernel_session *ksess,
+		const struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
