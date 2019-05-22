@@ -474,6 +474,7 @@ TESTS=(
 )
 
 if [ "$(id -u)" == "0" ]; then
+	validate_lttng_modules_present
 	TESTS+=(
 	test_multi_app_kernel
 	test_on_register_evaluation_kernel
