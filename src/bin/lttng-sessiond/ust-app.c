@@ -1923,7 +1923,7 @@ error:
  * Lookup sesison wrapper.
  */
 static
-void __lookup_session_by_app(struct ltt_ust_session *usess,
+void __lookup_session_by_app(const struct ltt_ust_session *usess,
 			struct ust_app *app, struct lttng_ht_iter *iter)
 {
 	/* Get right UST app session from app */
@@ -1935,7 +1935,7 @@ void __lookup_session_by_app(struct ltt_ust_session *usess,
  * id.
  */
 static struct ust_app_session *lookup_session_by_app(
-		struct ltt_ust_session *usess, struct ust_app *app)
+		const struct ltt_ust_session *usess, struct ust_app *app)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_u64 *node;
@@ -5874,8 +5874,9 @@ void ust_app_destroy(struct ust_app *app)
  *
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
-enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct snapshot_output *output, int wait,
+enum lttng_error_code ust_app_snapshot_record(
+		const struct ltt_ust_session *usess,
+		const struct snapshot_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int ret = 0;
@@ -6040,8 +6041,8 @@ error:
 /*
  * Return the size taken by one more packet per stream.
  */
-uint64_t ust_app_get_size_one_more_packet_per_stream(struct ltt_ust_session *usess,
-		uint64_t cur_nr_packets)
+uint64_t ust_app_get_size_one_more_packet_per_stream(
+		const struct ltt_ust_session *usess, uint64_t cur_nr_packets)
 {
 	uint64_t tot_size = 0;
 	struct ust_app *app;
