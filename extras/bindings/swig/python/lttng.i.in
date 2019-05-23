@@ -44,6 +44,15 @@ enum lttng_domain_type {
 	LTTNG_DOMAIN_UST                      = 2,
 };
 
+%rename("BUFFER_PER_PID") LTTNG_BUFFER_PER_PID;
+%rename("BUFFER_PER_UID") LTTNG_BUFFER_PER_UID;
+%rename("BUFFER_GLOBAL") LTTNG_BUFFER_GLOBAL;
+enum lttng_buffer_type {
+	LTTNG_BUFFER_PER_PID,
+	LTTNG_BUFFER_PER_UID,
+	LTTNG_BUFFER_GLOBAL,
+};
+
 %rename("EVENT_ALL") LTTNG_EVENT_ALL;
 %rename("EVENT_TRACEPOINT") LTTNG_EVENT_TRACEPOINT;
 %rename("EVENT_PROBE") LTTNG_EVENT_PROBE;
@@ -181,18 +190,20 @@ enum lttng_event_context_type {
 		int i;
 		for(i=0; i<l; i++)
 		{
-			PyObject *tmp = PyTuple_New(5);
+			PyObject *tmp = PyTuple_New(6);
 			PyObject *type = PyInt_FromSize_t((*$1)[i].type);
+			PyObject *buf_type = PyInt_FromSize_t((*$1)[i].buf_type);
 			PyObject *execname = PyString_FromString((*$1)[i].attr.exec_name);
 			PyObject *pid = PyInt_FromSize_t((*$1)[i].attr.pid);
 			PyObject *padding = PyString_FromString((*$1)[i].padding);
 			PyObject *attrpadding = PyString_FromString((*$1)[i].attr.padding);
 
 			PyTuple_SetItem(tmp, 0, type);
-			PyTuple_SetItem(tmp, 1, padding);
-			PyTuple_SetItem(tmp, 2, pid);
-			PyTuple_SetItem(tmp, 3, execname);
-			PyTuple_SetItem(tmp, 4, attrpadding);
+			PyTuple_SetItem(tmp, 1, buf_type);
+			PyTuple_SetItem(tmp, 2, padding);
+			PyTuple_SetItem(tmp, 3, pid);
+			PyTuple_SetItem(tmp, 4, execname);
+			PyTuple_SetItem(tmp, 5, attrpadding);
 			PyList_Append(dom, tmp);
 		}
 		$result = dom;
@@ -471,10 +482,11 @@ def list_domains(session_name):
 	for dom_elements in dom_list:
 		dom = Domain()
 		dom.type = dom_elements[0]
-		dom.paddinf = dom_elements[1]
-		dom.attr.pid = dom_elements[2]
-		dom.attr.exec_name = dom_elements[3]
-		dom.attr.padding = dom_elements[4]
+		dom.buf_type = dom_elements[1]
+		dom.paddinf = dom_elements[2]
+		dom.attr.pid = dom_elements[3]
+		dom.attr.exec_name = dom_elements[4]
+		dom.attr.padding = dom_elements[5]
 
 		domains.append(dom)
 
@@ -762,6 +774,7 @@ class Handle:
 
 struct lttng_domain{
 	enum lttng_domain_type type;
+	enum lttng_buffer_type buf_type;
 	char padding[LTTNG_DOMAIN_PADDING1];
 
 	union {
@@ -773,17 +786,39 @@ struct lttng_domain{
 	%extend {
 		char *__repr__() {
 			static char temp[256];
+			static char domain_type[25];
+			static char buffer_type[25];
 			switch ( $self->type ) {
 			case 1:
-				sprintf(temp, "lttng.Domain; type(DOMAIN_KERNEL)");
+				sprintf(domain_type, "type(DOMAIN_KERNEL)");
 				break;
 			case 2:
-				sprintf(temp, "lttng.Domain; type(DOMAIN_UST)");
+				sprintf(domain_type, "type(DOMAIN_UST)");
 				break;
 			default:
-				sprintf(temp, "lttng.Domain; type(%i)", $self->type);
+				sprintf(domain_type, "type(%i)", $self->type);
 				break;
 			}
+
+			switch ( $self->buf_type ) {
+			case LTTNG_BUFFER_PER_UID:
+				sprintf(buffer_type, "buf_type(BUFFER_PER_UID)");
+				break;
+			case LTTNG_BUFFER_PER_PID:
+				sprintf(buffer_type, "buf_type(BUFFER_PER_PID)");
+				break;
+			case LTTNG_BUFFER_GLOBAL:
+				sprintf(buffer_type, "buf_type(BUFFER_GLOBAL)");
+				break;
+			default:
+				sprintf(buffer_type, "buf_type(%i)", $self->buf_type);
+				break;
+			}
+
+			sprintf(temp, "lttng.Domain; %s, %s",
+				domain_type,
+				buffer_type
+				);
 			return &temp[0];
 		}
 	}
