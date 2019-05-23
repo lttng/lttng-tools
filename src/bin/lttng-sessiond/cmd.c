@@ -1252,7 +1252,7 @@ error:
 /*
  * Start a kernel session by opening all necessary streams.
  */
-static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
+static int start_kernel_session(struct ltt_kernel_session *ksess)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -1304,7 +1304,7 @@ static int start_kernel_session(struct ltt_kernel_session *ksess, int wpipe)
 	}
 
 	/* Quiescent wait after starting trace */
-	kernel_wait_quiescent(wpipe);
+	kernel_wait_quiescent();
 
 	ksess->active = 1;
 
@@ -1336,7 +1336,7 @@ int cmd_disable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1394,7 +1394,7 @@ int cmd_track_pid(struct ltt_session *session, enum lttng_domain_type domain,
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1445,7 +1445,7 @@ int cmd_untrack_pid(struct ltt_session *session, enum lttng_domain_type domain,
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1525,7 +1525,7 @@ int cmd_enable_channel(struct ltt_session *session,
 	switch (domain->type) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		if (kernel_supports_ring_buffer_snapshot_sample_positions(kernel_tracer_fd) != 1) {
+		if (kernel_supports_ring_buffer_snapshot_sample_positions() != 1) {
 			/* Sampling position of buffer is not supported */
 			WARN("Kernel tracer does not support buffer monitoring. "
 					"Setting the monitor interval timer to 0 "
@@ -1576,7 +1576,7 @@ int cmd_enable_channel(struct ltt_session *session,
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -1711,7 +1711,7 @@ int cmd_disable_event(struct ltt_session *session,
 			goto error_unlock;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -2161,7 +2161,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
@@ -2429,7 +2429,7 @@ ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		nb_events = kernel_list_events(kernel_tracer_fd, events);
+		nb_events = kernel_list_events(events);
 		if (nb_events < 0) {
 			ret = LTTNG_ERR_KERN_LIST_FAIL;
 			goto error;
@@ -2609,7 +2609,7 @@ int cmd_start_trace(struct ltt_session *session)
 	/* Kernel tracing */
 	if (ksession != NULL) {
 		DBG("Start kernel tracing session %s", session->name);
-		ret = start_kernel_session(ksession, kernel_tracer_fd);
+		ret = start_kernel_session(ksession);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2686,7 +2686,7 @@ int cmd_stop_trace(struct ltt_session *session)
 			goto error;
 		}
 
-		kernel_wait_quiescent(kernel_tracer_fd);
+		kernel_wait_quiescent();
 
 		/* Flush metadata after stopping (if exists) */
 		if (ksession->metadata_stream_fd >= 0) {
