@@ -1215,7 +1215,7 @@ int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
 	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR : RUN_AS_MKDIRAT,
 			&data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
-	ret = run_as_ret._errno;
+	ret = run_as_ret.u.mkdirat.ret;
 error:
 	return ret;
 }
