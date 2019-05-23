@@ -22,6 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 #include <common/common.h>
 #include <common/trace-chunk.h>
@@ -29,18 +30,25 @@
 #include <common/kernel-ctl/kernel-ioctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
+#include "lttng-sessiond.h"
+#include "lttng-syscall.h"
 #include "consumer.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "kern-modules.h"
 #include "utils.h"
 #include "rotate.h"
+#include "modprobe.h"
 
 /*
  * Key used to reference a channel between the sessiond and the consumer. This
  * is only read and updated with the session_list lock held.
  */
 static uint64_t next_kernel_channel_key;
+
+static const char *module_proc_lttng = "/proc/lttng";
+
+static int kernel_tracer_fd = -1;
 
 #include <lttng/userspace-probe.h>
 #include <lttng/userspace-probe-internal.h>
@@ -92,7 +100,7 @@ error:
  * Create a new kernel session, register it to the kernel tracer and add it to
  * the session daemon session.
  */
-int kernel_create_session(struct ltt_session *session, int tracer_fd)
+int kernel_create_session(struct ltt_session *session)
 {
 	int ret;
 	struct ltt_kernel_session *lks;
@@ -107,7 +115,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 	}
 
 	/* Kernel tracer session creation */
-	ret = kernctl_create_session(tracer_fd);
+	ret = kernctl_create_session(kernel_tracer_fd);
 	if (ret < 0) {
 		PERROR("ioctl kernel create session");
 		goto error;
@@ -836,9 +844,10 @@ error:
 /*
  * Make a kernel wait to make sure in-flight probe have completed.
  */
-void kernel_wait_quiescent(int fd)
+void kernel_wait_quiescent(void)
 {
 	int ret;
+	int fd = kernel_tracer_fd;
 
 	DBG("Kernel quiescent wait on %d", fd);
 
@@ -997,7 +1006,7 @@ error:
 /*
  * Get the event list from the kernel tracer and return the number of elements.
  */
-ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
+ssize_t kernel_list_events(struct lttng_event **events)
 {
 	int fd, ret;
 	char *event;
@@ -1007,7 +1016,7 @@ ssize_t kernel_list_events(int tracer_fd, struct lttng_event **events)
 
 	assert(events);
 
-	fd = kernctl_tracepoint_list(tracer_fd);
+	fd = kernctl_tracepoint_list(kernel_tracer_fd);
 	if (fd < 0) {
 		PERROR("kernel tracepoint list");
 		goto error;
@@ -1081,13 +1090,12 @@ error:
 /*
  * Get kernel version and validate it.
  */
-int kernel_validate_version(int tracer_fd,
-		struct lttng_kernel_tracer_version *version,
+int kernel_validate_version(struct lttng_kernel_tracer_version *version,
 		struct lttng_kernel_tracer_abi_version *abi_version)
 {
 	int ret;
 
-	ret = kernctl_tracer_version(tracer_fd, version);
+	ret = kernctl_tracer_version(kernel_tracer_fd, version);
 	if (ret < 0) {
 		ERR("Failed to retrieve the lttng-modules version");
 		goto error;
@@ -1099,7 +1107,7 @@ int kernel_validate_version(int tracer_fd,
 			version->major, VERSION_MAJOR);
 		goto error_version;
 	}
-	ret = kernctl_tracer_abi_version(tracer_fd, abi_version);
+	ret = kernctl_tracer_abi_version(kernel_tracer_fd, abi_version);
 	if (ret < 0) {
 		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
@@ -1372,12 +1380,12 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
  * Return 1 on success, 0 when feature is not supported, negative value in case
  * of errors.
  */
-int kernel_supports_ring_buffer_snapshot_sample_positions(int tracer_fd)
+int kernel_supports_ring_buffer_snapshot_sample_positions(void)
 {
 	int ret = 0; // Not supported by default
 	struct lttng_kernel_tracer_abi_version abi;
 
-	ret = kernctl_tracer_abi_version(tracer_fd, &abi);
+	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
 	if (ret < 0) {
 		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
@@ -1479,4 +1487,110 @@ enum lttng_error_code kernel_create_channel_subdirectories(
 error:
 	rcu_read_unlock();
 	return ret;
+}
+
+/*
+ * Setup necessary data for kernel tracer action.
+ */
+LTTNG_HIDDEN
+int init_kernel_tracer(void)
+{
+	int ret;
+	bool is_root = !getuid();
+
+	/* Modprobe lttng kernel modules */
+	ret = modprobe_lttng_control();
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Open debugfs lttng */
+	kernel_tracer_fd = open(module_proc_lttng, O_RDWR);
+	if (kernel_tracer_fd < 0) {
+		DBG("Failed to open %s", module_proc_lttng);
+		goto error_open;
+	}
+
+	/* Validate kernel version */
+	ret = kernel_validate_version(&kernel_tracer_version,
+			&kernel_tracer_abi_version);
+	if (ret < 0) {
+		goto error_version;
+	}
+
+	ret = modprobe_lttng_data();
+	if (ret < 0) {
+		goto error_modules;
+	}
+
+	ret = kernel_supports_ring_buffer_snapshot_sample_positions();
+	if (ret < 0) {
+		goto error_modules;
+	}
+
+	if (ret < 1) {
+		WARN("Kernel tracer does not support buffer monitoring. "
+			"The monitoring timer of channels in the kernel domain "
+			"will be set to 0 (disabled).");
+	}
+
+	DBG("Kernel tracer fd %d", kernel_tracer_fd);
+
+	ret = syscall_init_table(kernel_tracer_fd);
+	if (ret < 0) {
+		ERR("Unable to populate syscall table. Syscall tracing won't "
+			"work for this session daemon.");
+	}
+	return 0;
+
+error_version:
+	modprobe_remove_lttng_control();
+	ret = close(kernel_tracer_fd);
+	if (ret) {
+		PERROR("close");
+	}
+	kernel_tracer_fd = -1;
+	return LTTNG_ERR_KERN_VERSION;
+
+error_modules:
+	ret = close(kernel_tracer_fd);
+	if (ret) {
+		PERROR("close");
+	}
+
+error_open:
+	modprobe_remove_lttng_control();
+
+error:
+	WARN("No kernel tracer available");
+	kernel_tracer_fd = -1;
+	if (!is_root) {
+		return LTTNG_ERR_NEED_ROOT_SESSIOND;
+	} else {
+		return LTTNG_ERR_KERN_NA;
+	}
+}
+
+LTTNG_HIDDEN
+void cleanup_kernel_tracer(void)
+{
+	int ret;
+
+	DBG2("Closing kernel fd");
+	if (kernel_tracer_fd >= 0) {
+		ret = close(kernel_tracer_fd);
+		if (ret) {
+			PERROR("close");
+		}
+		kernel_tracer_fd = -1;
+	}
+	DBG("Unloading kernel modules");
+	modprobe_remove_lttng_all();
+	free(syscall_table);
+}
+
+LTTNG_HIDDEN
+bool kernel_tracer_is_initialized(void)
+{
+	return kernel_tracer_fd >= 0;
 }

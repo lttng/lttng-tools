@@ -478,7 +478,7 @@ static int create_kernel_session(struct ltt_session *session)
 
 	DBG("Creating kernel session");
 
-	ret = kernel_create_session(session, kernel_tracer_fd);
+	ret = kernel_create_session(session);
 	if (ret < 0) {
 		ret = LTTNG_ERR_KERN_SESS_FAIL;
 		goto error_create;
@@ -877,6 +877,15 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		if (!is_root) {
 			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
 			goto error;
+		}
+
+		/* Kernel tracer check */
+		if (!kernel_tracer_is_initialized()) {
+			/* Basically, load kernel tracer modules */
+			ret = init_kernel_tracer();
+			if (ret != 0) {
+				goto error;
+			}
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */

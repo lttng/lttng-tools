@@ -1860,8 +1860,7 @@ int condition_is_supported(struct lttng_condition *condition)
 		 * buffers. Therefore, we reject triggers that require that
 		 * mechanism to be available to be evaluated.
 		 */
-		ret = kernel_supports_ring_buffer_snapshot_sample_positions(
-				kernel_tracer_fd);
+		ret = kernel_supports_ring_buffer_snapshot_sample_positions();
 		break;
 	}
 	default:

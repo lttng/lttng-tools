@@ -75,7 +75,6 @@ extern const char default_home_dir[],
 	default_global_apps_pipe[];
 
 /* Set in main.c at boot time of the daemon */
-extern int kernel_tracer_fd;
 extern struct lttng_kernel_tracer_version kernel_tracer_version;
 extern struct lttng_kernel_tracer_abi_version kernel_tracer_abi_version;
 

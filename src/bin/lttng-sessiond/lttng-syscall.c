@@ -38,7 +38,7 @@ static size_t syscall_table_nb_entry;
  * Return 0 on success and the syscall table is allocated. On error, a negative
  * value is returned.
  */
-int syscall_init_table(void)
+int syscall_init_table(int tracer_fd)
 {
 	int ret, fd, err;
 	size_t nbmem;
@@ -51,7 +51,7 @@ int syscall_init_table(void)
 
 	DBG3("Syscall init system call table");
 
-	fd = kernctl_syscall_list(kernel_tracer_fd);
+	fd = kernctl_syscall_list(tracer_fd);
 	if (fd < 0) {
 		ret = fd;
 		PERROR("kernelctl syscall list");

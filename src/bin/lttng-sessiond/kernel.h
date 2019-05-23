@@ -34,7 +34,7 @@
 
 int kernel_add_channel_context(struct ltt_kernel_channel *chan,
 		struct ltt_kernel_context *ctx);
-int kernel_create_session(struct ltt_session *session, int tracer_fd);
+int kernel_create_session(struct ltt_session *session);
 int kernel_create_channel(struct ltt_kernel_session *session,
 		struct lttng_channel *chan);
 int kernel_create_event(struct lttng_event *ev, struct ltt_kernel_channel *channel,
@@ -52,10 +52,9 @@ int kernel_flush_buffer(struct ltt_kernel_channel *channel);
 int kernel_metadata_flush_buffer(int fd);
 int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
-ssize_t kernel_list_events(int tracer_fd, struct lttng_event **event_list);
-void kernel_wait_quiescent(int fd);
-int kernel_validate_version(int tracer_fd,
-		struct lttng_kernel_tracer_version *kernel_tracer_version,
+ssize_t kernel_list_events(struct lttng_event **event_list);
+void kernel_wait_quiescent(void);
+int kernel_validate_version(struct lttng_kernel_tracer_version *kernel_tracer_version,
 		struct lttng_kernel_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
@@ -70,7 +69,10 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session);
 int init_kernel_workarounds(void);
 ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
 		int **_pids);
-int kernel_supports_ring_buffer_snapshot_sample_positions(int tracer_fd);
+int kernel_supports_ring_buffer_snapshot_sample_positions(void);
+int init_kernel_tracer(void);
+void cleanup_kernel_tracer(void);
+bool kernel_tracer_is_initialized(void);
 
 enum lttng_error_code kernel_create_channel_subdirectories(
 		const struct ltt_kernel_session *ksess);

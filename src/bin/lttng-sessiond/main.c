@@ -61,7 +61,6 @@
 #include "event.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
-#include "modprobe.h"
 #include "shm.h"
 #include "ust-ctl.h"
 #include "ust-consumer.h"
@@ -75,7 +74,6 @@
 #include "notification-thread.h"
 #include "notification-thread-commands.h"
 #include "rotation-thread.h"
-#include "lttng-syscall.h"
 #include "agent.h"
 #include "ht-cleanup.h"
 #include "sessiond-config.h"
@@ -154,8 +152,6 @@ static int apps_cmd_notify_pipe[2] = { -1, -1 };
  * close that triggers an unregistration of the application.
  */
 static struct ust_cmd_queue ust_cmd_queue;
-
-static const char *module_proc_lttng = "/proc/lttng";
 
 /*
  * Section name to look for in the daemon configuration file.
@@ -340,16 +336,7 @@ static void sessiond_cleanup(void)
 	wait_consumer(&ustconsumer32_data);
 
 	if (is_root && !config.no_kernel) {
-		DBG2("Closing kernel fd");
-		if (kernel_tracer_fd >= 0) {
-			ret = close(kernel_tracer_fd);
-			if (ret) {
-				PERROR("close");
-			}
-		}
-		DBG("Unloading kernel modules");
-		modprobe_remove_lttng_all();
-		free(syscall_table);
+		cleanup_kernel_tracer();
 	}
 
 	/*
@@ -369,81 +356,6 @@ static void sessiond_cleanup_options(void)
 	sessiond_config_fini(&config);
 
 	run_as_destroy_worker();
-}
-
-/*
- * Setup necessary data for kernel tracer action.
- */
-static int init_kernel_tracer(void)
-{
-	int ret;
-
-	/* Modprobe lttng kernel modules */
-	ret = modprobe_lttng_control();
-	if (ret < 0) {
-		goto error;
-	}
-
-	/* Open debugfs lttng */
-	kernel_tracer_fd = open(module_proc_lttng, O_RDWR);
-	if (kernel_tracer_fd < 0) {
-		DBG("Failed to open %s", module_proc_lttng);
-		goto error_open;
-	}
-
-	/* Validate kernel version */
-	ret = kernel_validate_version(kernel_tracer_fd, &kernel_tracer_version,
-			&kernel_tracer_abi_version);
-	if (ret < 0) {
-		goto error_version;
-	}
-
-	ret = modprobe_lttng_data();
-	if (ret < 0) {
-		goto error_modules;
-	}
-
-	ret = kernel_supports_ring_buffer_snapshot_sample_positions(
-			kernel_tracer_fd);
-	if (ret < 0) {
-		goto error_modules;
-	}
-
-	if (ret < 1) {
-		WARN("Kernel tracer does not support buffer monitoring. "
-			"The monitoring timer of channels in the kernel domain "
-			"will be set to 0 (disabled).");
-	}
-
-	DBG("Kernel tracer fd %d", kernel_tracer_fd);
-	return 0;
-
-error_version:
-	modprobe_remove_lttng_control();
-	ret = close(kernel_tracer_fd);
-	if (ret) {
-		PERROR("close");
-	}
-	kernel_tracer_fd = -1;
-	return LTTNG_ERR_KERN_VERSION;
-
-error_modules:
-	ret = close(kernel_tracer_fd);
-	if (ret) {
-		PERROR("close");
-	}
-
-error_open:
-	modprobe_remove_lttng_control();
-
-error:
-	WARN("No kernel tracer available");
-	kernel_tracer_fd = -1;
-	if (!is_root) {
-		return LTTNG_ERR_NEED_ROOT_SESSIOND;
-	} else {
-		return LTTNG_ERR_KERN_NA;
-	}
 }
 
 static int string_match(const char *str1, const char *str2)
@@ -1641,14 +1553,6 @@ int main(int argc, char **argv)
 		/* Setup kernel tracer */
 		if (!config.no_kernel) {
 			init_kernel_tracer();
-			if (kernel_tracer_fd >= 0) {
-				ret = syscall_init_table();
-				if (ret < 0) {
-					ERR("Unable to populate syscall table. "
-						"Syscall tracing won't work "
-						"for this session daemon.");
-				}
-			}
 		}
 
 		/* Set ulimit for open files */
