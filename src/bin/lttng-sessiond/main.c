@@ -2652,6 +2652,12 @@ static int init_kernel_tracer(void)
 	}
 
 	DBG("Kernel tracer fd %d", kernel_tracer_fd);
+
+	ret = syscall_init_table();
+	if (ret < 0) {
+		ERR("Unable to populate syscall table. Syscall tracing won't "
+			"work for this session daemon.");
+	}
 	return 0;
 
 error_version:
@@ -5771,14 +5777,6 @@ int main(int argc, char **argv)
 		/* Setup kernel tracer */
 		if (!config.no_kernel) {
 			init_kernel_tracer();
-			if (kernel_tracer_fd >= 0) {
-				ret = syscall_init_table();
-				if (ret < 0) {
-					ERR("Unable to populate syscall table. "
-						"Syscall tracing won't work "
-						"for this session daemon.");
-				}
-			}
 		}
 
 		/* Set ulimit for open files */
