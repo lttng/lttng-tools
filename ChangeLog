@@ -1,3 +1,34 @@
+2019-05-24 lttng-tools 2.10.7 (Asparagus Day)
+	* Update base test for binding
+	* Fix: python binding: expose domain buffer type
+	* Fix: lttng_poll_mod calls compat_(e)poll_add
+	* Fix: getgrnam is not MT-Safe, use getgrnam_r
+	* Fix: logging: log_add_time() save/restore errno
+	* Fix relayd: initialize beacon to -1ULL
+	* Fix: relayd: handling of lttng_read errors >= 0
+	* Fix tests: NULL pointer dereference in ust channel unit tests
+	* Fix tests: NULL pointer dereference in ltt_ust_context unit tests
+	* Log the wait-shm's path on shm_open failure
+	* Tests: use modprobe to test for the presence of lttng-modules
+	* Fix: skip test when ust doesn't have perf support
+	* Tests: check for lttng-modules presence
+	* Fix: Properly sanitize input parameter
+	* Fix tests: link libpause_consumer on liblttng-ctl
+	* tap-driver.sh: flush stdout after each test result
+	* Fix tests: snapshot size validation failure runs too many test cases
+	* Fix tests: the tree origin can be a symlink itself
+	* Fix tests: skip test_getcpu_override on single core systems
+	* Fix: Add POPT_CFLAGS to lttng_CFLAGS
+	* Fix: consumer snapshot: handle unsigned long overflow
+	* Fix: wrong error code returned by kernel_snapshot_record()
+	* Docs: document the format of the lttng_session path member
+	* Fix: check illegal combinations of ctrl-url/data-url/ouput/set-url
+	* Remove duplicate check for dlopen
+	* Tests: take multiple snapshots in streaming mode
+	* Fix: don't destroy the sockets if the snapshot was successful
+	* Fix: missing rcu read locking in trigger "unregister all" command
+	* Fix: notification thread: RCU-safe reclaim of hash table nodes
+
 2019-01-22 lttng-tools 2.10.6 (Blonde Brownie Day)
 	* Fix: worker structure is leaked in run_as process
 	* Fix: only free trace_path when it is dynamically allocated
