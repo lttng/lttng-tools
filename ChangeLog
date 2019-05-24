@@ -1,3 +1,25 @@
+2019-05-24 lttng-tools 2.9.12 (Asparagus Day)
+	* Update base test for binding
+	* Fix: python binding: expose domain buffer type
+	* Fix: logging: log_add_time() save/restore errno
+	* Fix relayd: initialize beacon to -1ULL
+	* Fix: relayd: handling of lttng_read errors >= 0
+	* Fix tests: NULL pointer dereference in ust channel unit tests
+	* Fix tests: NULL pointer dereference in ltt_ust_context unit tests
+	* Log the wait-shm's path on shm_open failure
+	* Fix: skip test when ust doesn't have perf support
+	* Fix: Properly sanitize input parameter
+	* tap-driver.sh: flush stdout after each test result
+	* Fix tests: snapshot size validation failure runs too many test cases
+	* Fix tests: the tree origin can be a symlink itself
+	* Fix tests: skip test_getcpu_override on single core systems
+	* Fix: consumer snapshot: handle unsigned long overflow
+	* Fix: wrong error code returned by kernel_snapshot_record()
+	* Docs: document the format of the lttng_session path member
+	* Fix: check illegal combinations of ctrl-url/data-url/ouput/set-url
+	* Tests: take multiple snapshots in streaming mode
+	* Fix: don't destroy the sockets if the snapshot was successful
+
 2019-01-22 lttng-tools 2.9.11 (Blonde Brownie Day)
 	* Fix: worker structure is leaked in run_as process
 	* Fix: leak of filter bytecode and expression on agent event re-enable
