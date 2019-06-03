@@ -151,11 +151,11 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
 #define _ERRMSG(msg, type, fmt, args...) __lttng_print(type, msg \
 		" - %s [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
-			log_add_time(), (long) getpid(), (long) gettid(), ## args, __func__)
+			log_add_time(), (long) getpid(), (long) lttng_gettid(), ## args, __func__)
 
 #define _ERRMSG_NO_LOC(msg, type, fmt, args...) __lttng_print(type, msg	\
 		" - %s [%ld/%ld]: " fmt "\n", \
-			log_add_time(), (long) getpid(), (long) gettid(), ## args)
+			log_add_time(), (long) getpid(), (long) lttng_gettid(), ## args)
 
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
