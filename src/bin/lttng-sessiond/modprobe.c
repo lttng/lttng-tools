@@ -62,6 +62,7 @@ struct kern_modules_param kern_modules_probes_default[] = {
 	{ "lttng-probe-irq" },
 	{ "lttng-probe-jbd" },
 	{ "lttng-probe-jbd2" },
+	{ "lttng-probe-kallsyms" },
 	{ "lttng-probe-kmem" },
 	{ "lttng-probe-kvm" },
 	{ "lttng-probe-kvm-x86" },
