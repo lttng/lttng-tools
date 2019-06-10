@@ -2264,6 +2264,13 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 			stream->ust_metadata_pushed);
 	ret = write_len;
 
+	/*
+	 * Switch packet (but don't open the next one) on every commit of
+	 * a metadata packet. Since the subbuffer is fully filled (with padding,
+	 * if needed), the stream is "quiescent" after this commit.
+	 */
+	ustctl_flush_buffer(stream->ustream, 1);
+	stream->quiescent = true;
 end:
 	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 	return ret;
@@ -2308,7 +2315,6 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 		retry = 1;
 	}
 
-	ustctl_flush_buffer(metadata->ustream, 1);
 	ret = ustctl_snapshot(metadata->ustream);
 	if (ret < 0) {
 		if (errno != EAGAIN) {
@@ -2498,7 +2504,6 @@ retry:
 			if (ret <= 0) {
 				goto end;
 			}
-			ustctl_flush_buffer(stream->ustream, 1);
 			goto retry;
 		}
 
