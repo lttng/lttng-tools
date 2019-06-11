@@ -61,29 +61,20 @@ function validate_test_chunks ()
 	# Enable extglob for the use of chunk_pattern
 	shopt -s extglob
 
-	# Validate that only 3 chunks are present
+	# Validate that only 2 chunks are present
 	nb_chunk=$(ls -A $local_path | wc -l)
-	test $nb_chunk -eq 3
-	ok $? "${local_path} contains 3 chunks only"
+	test $nb_chunk -eq 2
+	ok $? "${local_path} contains 2 chunks only"
 
 	# Check if the first and second chunk folders exist and they contain a ${app_path}/metadata file.
-	for chunk in $(seq 1 2); do
+	for chunk in $(seq 0 1); do
 		path=$(ls $local_path/${chunk_pattern}-${chunk}/${app_path}/metadata)
 		ok $? "Chunk ${chunk} exists based on path $path"
 	done
 
-	# In per-pid the last chunk (3) must be empty.
-	if [ "${per_pid}" -eq "1" ]; then
-		test -z "$(ls -A $local_path/${chunk_pattern}-3/${domain})"
-		ok $? "Chunk 3 is empty per-pid mode"
-	else
-		path=$(ls $local_path/${chunk_pattern}-3/${app_path}/metadata)
-		ok $? "Chunk 3 exists based on path $path"
-	fi
-
 	# Make sure we don't have anything else in the first 2 chunk directories
 	# besides the kernel folder.
-	for chunk in $(seq 1 2); do
+	for chunk in $(seq 0 1); do
 		nr_stale=$(ls -A $local_path/${chunk_pattern}-${chunk} | grep -v $domain | wc -l)
 		ok $nr_stale "No stale folders in chunk ${chunk} directory"
 	done
@@ -92,17 +83,11 @@ function validate_test_chunks ()
 	validate_trace_count $EVENT_NAME $local_path 30
 
 	# Chunk 1: 10 events
-	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-1 10
+	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-0 10
 
 	# Chunk 2: 20 events
-	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-2 20
+	validate_trace_count $EVENT_NAME $local_path/${chunk_pattern}-1 20
 
-	# Chunk 3: 0 event
-	# Trace for chunk number 3 can only be read in per-uid mode since in
-	# per-pid mode it is empty (no metadata or stream files).
-	if test $per_pid = 0; then
-		validate_trace_empty $local_path/${chunk_pattern}-3
-	fi
 	shopt -u extglob
 }
 
