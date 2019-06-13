@@ -1856,7 +1856,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		relayd_hang_up = 1;
 
 		/* Socket operation failed. We consider the relayd dead */
-		if (errno == EPIPE || errno == EINVAL || errno == EBADF) {
+		if (errno == EPIPE) {
 			/*
 			 * This is possible if the fd is closed on the other side
 			 * (outfd) or any write problem. It can be verbose a bit for a
