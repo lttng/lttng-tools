@@ -119,11 +119,10 @@ function rotate_timer_test ()
 		sleep 1
 	done
 	test $nr -ge $expected_chunks
-	ok $? "Generated $nr chunks in $(($nr_iter))s"
+	ok $? "Generated at least $nr chunks in $(($nr_iter))s"
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	# Make sure the 10 first chunks are valid empty traces
 	i=1
 	local chunk_pattern=$(get_chunk_pattern ${today})
 
