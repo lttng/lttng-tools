@@ -89,7 +89,9 @@ struct lttng_rotate_session_return {
 struct lttng_rotation_get_info_return {
 	/* Represents values defined in enum lttng_rotation_state. */
 	int32_t status;
-	/* Represents values defined in enum lttng_rotation_state. */
+	/*
+	 * Represents values defined in enum lttng_trace_archive_location_type.
+	 */
 	int8_t location_type;
 	union {
 		struct {

@@ -34,6 +34,7 @@
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 #include <common/trace-chunk.h>
+#include <lttng/location-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/action/action.h>
@@ -68,6 +69,11 @@
 
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
+
+struct cmd_destroy_session_reply_context {
+	int reply_sock_fd;
+	bool implicit_rotation_on_destroy;
+};
 
 static enum lttng_error_code wait_on_path(void *path);
 
@@ -3003,20 +3009,127 @@ error:
 	return ret_code;
 }
 
+static
+void cmd_destroy_session_reply(const struct ltt_session *session,
+		void *_reply_context)
+{
+	int ret;
+	ssize_t comm_ret;
+	const struct cmd_destroy_session_reply_context *reply_context =
+			_reply_context;
+	struct lttng_dynamic_buffer payload;
+	struct lttcomm_session_destroy_command_header cmd_header;
+	struct lttng_trace_archive_location *location = NULL;
+	struct lttcomm_lttng_msg llm = {
+		.cmd_type = LTTNG_DESTROY_SESSION,
+		.ret_code = LTTNG_OK,
+		.pid = UINT32_MAX,
+		.cmd_header_size =
+			sizeof(struct lttcomm_session_destroy_command_header),
+		.data_size = 0,
+	};
+	size_t payload_size_before_location;
+
+	lttng_dynamic_buffer_init(&payload);
+
+	ret = lttng_dynamic_buffer_append(&payload, &llm, sizeof(llm));
+        if (ret) {
+		ERR("Failed to append session destruction message");
+		goto error;
+        }
+
+	cmd_header.rotation_state =
+			(int32_t) (reply_context->implicit_rotation_on_destroy ?
+				session->rotation_state :
+				LTTNG_ROTATION_STATE_NO_ROTATION);
+	ret = lttng_dynamic_buffer_append(&payload, &cmd_header,
+			sizeof(cmd_header));
+	if (ret) {
+		ERR("Failed to append session destruction command header");
+		goto error;
+	}
+
+	if (!reply_context->implicit_rotation_on_destroy) {
+		DBG("No implicit rotation performed during the destruction of session \"%s\", sending reply",
+				session->name);
+		goto send_reply;
+	}
+	if (session->rotation_state != LTTNG_ROTATION_STATE_COMPLETED) {
+		DBG("Rotation state of session \"%s\" is not \"completed\", sending session destruction reply",
+				session->name);
+		goto send_reply;
+	}
+
+	location = session_get_trace_archive_location(session);
+	if (!location) {
+		ERR("Failed to get the location of the trace archive produced during the destruction of session \"%s\"",
+				session->name);
+		goto error;
+	}
+
+	payload_size_before_location = payload.size;
+	comm_ret = lttng_trace_archive_location_serialize(location,
+			&payload);
+	if (comm_ret < 0) {
+		ERR("Failed to serialize the location of the trace archive produced during the destruction of session \"%s\"",
+				session->name);
+		goto error;
+	}
+	/* Update the message to indicate the location's length. */
+	((struct lttcomm_lttng_msg *) payload.data)->data_size =
+			payload.size - payload_size_before_location;
+send_reply:
+	comm_ret = lttcomm_send_unix_sock(reply_context->reply_sock_fd,
+			payload.data, payload.size);
+	if (comm_ret != (ssize_t) payload.size) {
+		ERR("Failed to send result of the destruction of session \"%s\" to client",
+				session->name);
+	}
+error:
+	ret = close(reply_context->reply_sock_fd);
+	if (ret) {
+		PERROR("Failed to close client socket in deferred session destroy reply");
+	}
+	lttng_dynamic_buffer_reset(&payload);
+	free(_reply_context);
+}
+
 /*
  * Command LTTNG_DESTROY_SESSION processed by the client thread.
  *
  * Called with session lock held.
  */
 int cmd_destroy_session(struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle)
+		struct notification_thread_handle *notification_thread_handle,
+		int *sock_fd)
 {
 	int ret;
+	struct cmd_destroy_session_reply_context *reply_context = NULL;
+
+	if (sock_fd) {
+		reply_context = zmalloc(sizeof(*reply_context));
+		if (!reply_context) {
+			ret = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		reply_context->reply_sock_fd = *sock_fd;
+	}
 
 	/* Safety net */
 	assert(session);
 
-	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name, session->id);
+	DBG("Begin destroy session %s (id %" PRIu64 ")", session->name,
+			session->id);
+	if (session->active) {
+		DBG("Session \"%s\" is active, attempting to stop it before destroying it",
+				session->name);
+		ret = cmd_stop_trace(session);
+		if (ret != LTTNG_OK && ret != LTTNG_ERR_TRACE_ALREADY_STOPPED) {
+			/* Carry on with the destruction of the session. */
+			ERR("Failed to stop session \"%s\" as part of its destruction: %s",
+					session->name, lttng_strerror(-ret));
+		}
+	}
 
 	if (session->rotation_schedule_timer_enabled) {
 		if (timer_session_rotation_schedule_timer_stop(
@@ -3039,7 +3152,10 @@ int cmd_destroy_session(struct ltt_session *session,
 			ERR("Failed to perform an implicit rotation as part of the destruction of session \"%s\": %s",
 					session->name, lttng_strerror(-ret));
 		}
-	}
+                if (reply_context) {
+			reply_context->implicit_rotation_on_destroy = true;
+                }
+        }
 
 	if (session->shm_path[0]) {
 		/*
@@ -3101,8 +3217,19 @@ int cmd_destroy_session(struct ltt_session *session,
 	 * _at least_ up to the point when that reference is released.
 	 */
 	session_destroy(session);
-	ret = LTTNG_OK;
-
+	if (reply_context) {
+		ret = session_add_destroy_notifier(session,
+				cmd_destroy_session_reply,
+				(void *) reply_context);
+		if (ret) {
+			ret = LTTNG_ERR_FATAL;
+			goto end;
+		} else {
+			*sock_fd = -1;
+		}
+        }
+        ret = LTTNG_OK;
+end:
 	return ret;
 }
 

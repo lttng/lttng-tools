@@ -706,10 +706,12 @@ static int send_unix_sock(int sock, void *buf, size_t len)
  * Return any error encountered or 0 for success.
  *
  * "sock" is only used for special-case var. len data.
+ * A command may assume the ownership of the socket, in which case its value
+ * should be set to -1.
  *
  * Should *NOT* be called with RCU read-side lock held.
  */
-static int process_client_msg(struct command_ctx *cmd_ctx, int sock,
+static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		int *sock_error)
 {
 	int ret = LTTNG_OK;
@@ -1108,13 +1110,13 @@ skip_domain:
 			cmd_ctx->lsm->u.context.ctx.u.app_ctx.ctx_name =
 					context_name;
 
-			ret = lttcomm_recv_unix_sock(sock, provider_name,
+			ret = lttcomm_recv_unix_sock(*sock, provider_name,
 					provider_name_len);
 			if (ret < 0) {
 				goto error_add_context;
 			}
 
-			ret = lttcomm_recv_unix_sock(sock, context_name,
+			ret = lttcomm_recv_unix_sock(*sock, context_name,
 					context_name_len);
 			if (ret < 0) {
 				goto error_add_context;
@@ -1167,7 +1169,7 @@ error_add_context:
 
 			DBG("Discarding disable event command payload of size %zu", count);
 			while (count) {
-				ret = lttcomm_recv_unix_sock(sock, data,
+				ret = lttcomm_recv_unix_sock(*sock, data,
 				        count > sizeof(data) ? sizeof(data) : count);
 				if (ret < 0) {
 					goto error;
@@ -1225,7 +1227,7 @@ error_add_context:
 
 			DBG("Receiving var len exclusion event list from client ...");
 			exclusion->count = count;
-			ret = lttcomm_recv_unix_sock(sock, exclusion->names,
+			ret = lttcomm_recv_unix_sock(*sock, exclusion->names,
 					count * LTTNG_SYMBOL_NAME_LEN);
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
@@ -1256,7 +1258,7 @@ error_add_context:
 
 			/* Receive var. len. data */
 			DBG("Receiving var len filter's expression from client ...");
-			ret = lttcomm_recv_unix_sock(sock, filter_expression,
+			ret = lttcomm_recv_unix_sock(*sock, filter_expression,
 				expression_len);
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
@@ -1289,7 +1291,7 @@ error_add_context:
 
 			/* Receive var. len. data */
 			DBG("Receiving var len filter's bytecode from client ...");
-			ret = lttcomm_recv_unix_sock(sock, bytecode, bytecode_len);
+			ret = lttcomm_recv_unix_sock(*sock, bytecode, bytecode_len);
 			if (ret <= 0) {
 				DBG("Nothing recv() from client var len data... continuing");
 				*sock_error = 1;
@@ -1323,7 +1325,7 @@ error_add_context:
 
 		if (cmd_ctx->lsm->u.enable.userspace_probe_location_len > 0) {
 			/* Expect a userspace probe description. */
-			ret = receive_userspace_probe(cmd_ctx, sock, sock_error, ev);
+			ret = receive_userspace_probe(cmd_ctx, *sock, sock_error, ev);
 			if (ret) {
 				free(filter_expression);
 				free(bytecode);
@@ -1476,7 +1478,7 @@ error_add_context:
 
 		/* Receive variable len data */
 		DBG("Receiving %zu URI(s) from client ...", nb_uri);
-		ret = lttcomm_recv_unix_sock(sock, uris, len);
+		ret = lttcomm_recv_unix_sock(*sock, uris, len);
 		if (ret <= 0) {
 			DBG("No URIs received from client... continuing");
 			*sock_error = 1;
@@ -1521,7 +1523,8 @@ error_add_context:
 	case LTTNG_DESTROY_SESSION:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
-				notification_thread_handle);
+				notification_thread_handle,
+				sock);
 		break;
 	}
 	case LTTNG_LIST_DOMAINS:
@@ -1760,7 +1763,7 @@ error_add_context:
 		struct lttng_session_descriptor *return_descriptor = NULL;
 
 		lttng_dynamic_buffer_init(&payload);
-		ret = cmd_create_session(cmd_ctx, sock, &return_descriptor);
+		ret = cmd_create_session(cmd_ctx, *sock, &return_descriptor);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1809,13 +1812,13 @@ error_add_context:
 	}
 	case LTTNG_REGISTER_TRIGGER:
 	{
-		ret = cmd_register_trigger(cmd_ctx, sock,
+		ret = cmd_register_trigger(cmd_ctx, *sock,
 				notification_thread_handle);
 		break;
 	}
 	case LTTNG_UNREGISTER_TRIGGER:
 	{
-		ret = cmd_unregister_trigger(cmd_ctx, sock,
+		ret = cmd_unregister_trigger(cmd_ctx, *sock,
 				notification_thread_handle);
 		break;
 	}
@@ -1934,6 +1937,7 @@ setup_error:
 	if (cmd_ctx->session) {
 		session_unlock(cmd_ctx->session);
 		session_put(cmd_ctx->session);
+		cmd_ctx->session = NULL;
 	}
 	if (need_tracing_session) {
 		session_unlock_list();
@@ -2178,14 +2182,16 @@ static void *thread_manage_clients(void *data)
 		 * informations for the client. The command context struct contains
 		 * everything this function may needs.
 		 */
-		ret = process_client_msg(cmd_ctx, sock, &sock_error);
+		ret = process_client_msg(cmd_ctx, &sock, &sock_error);
 		rcu_thread_offline();
 		if (ret < 0) {
-			ret = close(sock);
-			if (ret) {
-				PERROR("close");
-			}
-			sock = -1;
+			if (sock >= 0) {
+				ret = close(sock);
+				if (ret) {
+					PERROR("close");
+				}
+                        }
+                        sock = -1;
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
 			 * this point, ret < 0 means that a zmalloc failed
@@ -2211,21 +2217,24 @@ static void *thread_manage_clients(void *data)
 
 		health_code_update();
 
-		DBG("Sending response (size: %d, retcode: %s (%d))",
-				cmd_ctx->lttng_msg_size,
-				lttng_strerror(-cmd_ctx->llm->ret_code),
-				cmd_ctx->llm->ret_code);
-		ret = send_unix_sock(sock, cmd_ctx->llm, cmd_ctx->lttng_msg_size);
-		if (ret < 0) {
-			ERR("Failed to send data back to client");
-		}
+		if (sock >= 0) {
+			DBG("Sending response (size: %d, retcode: %s (%d))",
+					cmd_ctx->lttng_msg_size,
+					lttng_strerror(-cmd_ctx->llm->ret_code),
+					cmd_ctx->llm->ret_code);
+			ret = send_unix_sock(sock, cmd_ctx->llm,
+					cmd_ctx->lttng_msg_size);
+			if (ret < 0) {
+				ERR("Failed to send data back to client");
+			}
 
-		/* End of transmission */
-		ret = close(sock);
-		if (ret) {
-			PERROR("close");
-		}
-		sock = -1;
+			/* End of transmission */
+			ret = close(sock);
+			if (ret) {
+				PERROR("close");
+			}
+                }
+                sock = -1;
 
 		clean_command_ctx(&cmd_ctx);
 

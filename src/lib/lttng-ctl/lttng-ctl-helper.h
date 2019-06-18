@@ -79,4 +79,6 @@ int lttng_ctl_ask_sessiond(struct lttcomm_session_msg *lsm, void **buf)
 
 int lttng_check_tracing_group(void);
 
+int connect_sessiond(void);
+
 #endif /* LTTNG_CTL_HELPER_H */

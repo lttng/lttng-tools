@@ -45,6 +45,7 @@
 #include <lttng/userspace-probe-internal.h>
 #include <lttng/session-internal.h>
 #include <lttng/session-descriptor-internal.h>
+#include <lttng/destruction-handle.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -68,7 +69,7 @@ do {								\
 
 
 /* Socket to session daemon for communication */
-static int sessiond_socket;
+static int sessiond_socket = -1;
 static char sessiond_sock_path[PATH_MAX];
 
 /* Variables */
@@ -423,16 +424,11 @@ error:
 /*
  * Connect to the LTTng session daemon.
  *
- * On success, return 0. On error, return -1.
+ * On success, return the socket's file descriptor. On error, return -1.
  */
-static int connect_sessiond(void)
+LTTNG_HIDDEN int connect_sessiond(void)
 {
 	int ret;
-
-	/* Don't try to connect if already connected. */
-	if (connected) {
-		return 0;
-	}
 
 	ret = set_session_daemon_path();
 	if (ret < 0) {
@@ -445,13 +441,16 @@ static int connect_sessiond(void)
 		goto error;
 	}
 
-	sessiond_socket = ret;
-	connected = 1;
-
-	return 0;
+	return ret;
 
 error:
 	return -1;
+}
+
+static void reset_global_sessiond_connection_state(void)
+{
+	sessiond_socket = -1;
+	connected = 0;
 }
 
 /*
@@ -465,8 +464,7 @@ static int disconnect_sessiond(void)
 
 	if (connected) {
 		ret = lttcomm_close_unix_sock(sessiond_socket);
-		sessiond_socket = 0;
-		connected = 0;
+		reset_global_sessiond_connection_state();
 	}
 
 	return ret;
@@ -541,6 +539,9 @@ int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
 	if (ret < 0) {
 		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
+	} else {
+		sessiond_socket = ret;
+		connected = 1;
 	}
 
 	/* Send command to session daemon */
@@ -1994,44 +1995,46 @@ end:
 }
 
 /*
- * Destroy session using name.
- * Returns size of returned session payload data or a negative error code.
- */
-static
-int _lttng_destroy_session(const char *session_name)
-{
-	struct lttcomm_session_msg lsm;
-
-	if (session_name == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_DESTROY_SESSION;
-
-	lttng_ctl_copy_string(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
-
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
-}
-
-/*
  * Stop the session and wait for the data before destroying it
  */
 int lttng_destroy_session(const char *session_name)
 {
 	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_destruction_handle_status status;
+	struct lttng_destruction_handle *handle = NULL;
 
 	/*
-	 * Stop the tracing and wait for the data.
+	 * Stop the tracing and wait for the data to be
+	 * consumed.
 	 */
 	ret = _lttng_stop_tracing(session_name, 1);
 	if (ret && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		goto end;
 	}
 
-	ret = _lttng_destroy_session(session_name);
+	ret_code = lttng_destroy_session_ext(session_name, &handle);
+	if (ret_code != LTTNG_OK) {
+		ret = (int) -ret_code;
+		goto end;
+	}
+	assert(handle);
+
+	/* Block until the completion of the destruction of the session. */
+	status = lttng_destruction_handle_wait_for_completion(handle, -1);
+	if (status != LTTNG_DESTRUCTION_HANDLE_STATUS_COMPLETED) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	status = lttng_destruction_handle_get_result(handle, &ret_code);
+	if (status != LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+	ret = ret_code == LTTNG_OK ? LTTNG_OK : -ret_code;
 end:
+	lttng_destruction_handle_destroy(handle);
 	return ret;
 }
 
@@ -2040,21 +2043,10 @@ end:
  */
 int lttng_destroy_session_no_wait(const char *session_name)
 {
-	int ret;
+	enum lttng_error_code ret_code;
 
-	/*
-	 * Stop the tracing without waiting for the data.
-	 * The session might already have been stopped, so just
-	 * skip this error.
-	 */
-	ret = _lttng_stop_tracing(session_name, 0);
-	if (ret && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
-		goto end;
-	}
-
-	ret = _lttng_destroy_session(session_name);
-end:
-	return ret;
+	ret_code = lttng_destroy_session_ext(session_name, NULL);
+	return ret_code == LTTNG_OK ? ret_code : -ret_code;
 }
 
 /*

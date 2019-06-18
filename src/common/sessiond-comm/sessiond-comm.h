@@ -446,6 +446,14 @@ struct lttcomm_event_extended_header {
 } LTTNG_PACKED;
 
 /*
+ * Command header of the reply to an LTTNG_DESTROY_SESSION command.
+ */
+struct lttcomm_session_destroy_command_header {
+	/* enum lttng_session */
+	int32_t rotation_state;
+};
+
+/*
  * Data structure for the response from sessiond to the lttng client.
  */
 struct lttcomm_lttng_msg {
