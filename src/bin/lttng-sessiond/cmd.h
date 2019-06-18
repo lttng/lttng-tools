@@ -47,7 +47,8 @@ void cmd_init(void);
 enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
 		struct lttng_session_descriptor **return_descriptor);
 int cmd_destroy_session(struct ltt_session *session,
-		struct notification_thread_handle *notification_thread_handle);
+		struct notification_thread_handle *notification_thread_handle,
+		int *sock_fd);
 
 /* Channel commands */
 int cmd_disable_channel(struct ltt_session *session,

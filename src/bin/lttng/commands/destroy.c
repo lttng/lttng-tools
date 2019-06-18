@@ -113,7 +113,7 @@ static int destroy_session(struct lttng_session *session)
 		print_session_stats(session->name);
 	}
 
-	ret = lttng_destroy_session_no_wait(session->name);
+	ret = lttng_destroy_session(session->name);
 	if (ret < 0) {
 		goto error;
 	}

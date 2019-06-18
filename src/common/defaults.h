@@ -333,6 +333,9 @@
 /* Default maximal size of message notification channel message payloads. */
 #define DEFAULT_MAX_NOTIFICATION_CLIENT_MESSAGE_PAYLOAD_SIZE	65536
 
+/* Default maximal size of trace archive location. */
+#define DEFAULT_MAX_TRACE_ARCHIVE_LOCATION_PAYLOAD_SIZE		65536
+
 /* Default maximal size of message notification channel message payloads. */
 #define DEFAULT_CLIENT_MAX_QUEUED_NOTIFICATIONS_COUNT		100
 

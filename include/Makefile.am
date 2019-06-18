@@ -84,7 +84,8 @@ lttnginclude_HEADERS = \
 	lttng/rotation.h \
 	lttng/location.h \
 	lttng/userspace-probe.h \
-	lttng/session-descriptor.h
+	lttng/session-descriptor.h \
+	lttng/destruction-handle.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \

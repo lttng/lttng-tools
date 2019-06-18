@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 - David Goulet <dgoulet@efficios.com>
+ * Copyright (C) 2019 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License, version 2.1 only,
@@ -23,6 +24,7 @@ extern "C" {
 #endif
 
 struct lttng_session_descriptor;
+struct lttng_destruction_handle;
 
 /*
  * Basic session information.
@@ -128,9 +130,24 @@ extern int lttng_create_session_live(const char *name, const char *url,
  *
  * The name can't be NULL here.
  *
- * Return 0 on success else a negative LTTng error code.
+ * Returns LTTNG_OK on success, else a negative LTTng error code.
  */
 extern int lttng_destroy_session(const char *name);
+
+/*
+ * Destroy a tracing session.
+ *
+ * Performs the same function as lttng_destroy_session(), but provides
+ * an lttng_destruction_handle which can be used to wait for the completion
+ * of the session's destruction. The lttng_destroy_handle can also be used
+ * obtain the status and archive location of any implicit session
+ * rotation that may have occured during the session's destruction.
+ *
+ * Returns LTTNG_OK on success. The returned handle is owned by the caller
+ * and must be free'd using lttng_destruction_handle_destroy().
+ */
+extern enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
+		struct lttng_destruction_handle **handle);
 
 /*
  * Behaves exactly like lttng_destroy_session but does not wait for data

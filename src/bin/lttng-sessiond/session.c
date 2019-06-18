@@ -40,6 +40,11 @@
 #include "trace-ust.h"
 #include "timer.h"
 
+struct ltt_session_destroy_notifier_element {
+	ltt_session_destroy_notifier notifier;
+	void *user_data;
+};
+
 /*
  * NOTES:
  *
@@ -245,7 +250,7 @@ void session_get_net_consumer_ports(const struct ltt_session *session,
  * The caller must hold the session lock.
  */
 struct lttng_trace_archive_location *session_get_trace_archive_location(
-		struct ltt_session *session)
+		const struct ltt_session *session)
 {
 	int ret;
 	struct lttng_trace_archive_location *location = NULL;
@@ -738,6 +743,22 @@ int session_set_trace_chunk(struct ltt_session *session,
 }
 
 static
+void session_notify_destruction(const struct ltt_session *session)
+{
+	size_t i;
+	const size_t count = lttng_dynamic_array_get_count(
+			&session->destroy_notifiers);
+
+	for (i = 0; i < count; i++) {
+		const struct ltt_session_destroy_notifier_element *element =
+			lttng_dynamic_array_get_element(
+					&session->destroy_notifiers, i);
+
+		element->notifier(session, element->user_data);
+	}
+}
+
+static
 void session_release(struct urcu_ref *ref)
 {
 	int ret;
@@ -749,6 +770,9 @@ void session_release(struct urcu_ref *ref)
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
+
+	session_notify_destruction(session);
+	lttng_dynamic_array_reset(&session->destroy_notifiers, NULL);
 	if (session->current_trace_chunk) {
 		ret = session_close_trace_chunk(session, session->current_trace_chunk);
 		if (ret) {
@@ -852,6 +876,18 @@ void session_destroy(struct ltt_session *session)
 	session_put(session);
 }
 
+int session_add_destroy_notifier(struct ltt_session *session,
+		ltt_session_destroy_notifier notifier, void *user_data)
+{
+	const struct ltt_session_destroy_notifier_element element = {
+		.notifier = notifier,
+		.user_data = user_data
+	};
+
+	return lttng_dynamic_array_add_element(&session->destroy_notifiers,
+			&element);
+}
+
 /*
  * Return a ltt_session structure ptr that matches name. If no session found,
  * NULL is returned. This must be called with the session list lock held using
@@ -940,6 +976,8 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 		goto error;
 	}
 
+	lttng_dynamic_array_init(&new_session->destroy_notifiers,
+			sizeof(struct ltt_session_destroy_notifier_element));
 	urcu_ref_init(&new_session->ref);
 	pthread_mutex_init(&new_session->lock, NULL);
 
