@@ -62,4 +62,8 @@ int check_relayd(void);
 void print_session_stats(const char *session_name);
 int show_cmd_help(const char *cmd_name, const char *help_msg);
 
+int print_trace_archive_location(
+		const struct lttng_trace_archive_location *location,
+		const char *session_name);
+
 #endif /* _LTTNG_UTILS_H */
