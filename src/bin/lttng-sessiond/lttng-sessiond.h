@@ -87,7 +87,6 @@ extern struct notification_thread_handle *notification_thread_handle;
  * session daemon from the lttng client.
  */
 struct command_ctx {
-	int ust_sock;
 	unsigned int lttng_msg_size;
 	struct ltt_session *session;
 	struct lttcomm_lttng_msg *llm;
