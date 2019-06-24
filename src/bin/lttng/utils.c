@@ -554,3 +554,98 @@ int show_cmd_help(const char *cmd_name, const char *help_msg)
 
 	return ret;
 }
+
+int print_trace_archive_location(
+		const struct lttng_trace_archive_location *location,
+		const char *session_name)
+{
+	int ret = 0;
+	enum lttng_trace_archive_location_type location_type;
+	enum lttng_trace_archive_location_status status;
+	bool printed_location = false;
+
+	location_type = lttng_trace_archive_location_get_type(location);
+
+	_MSG("Trace chunk archive for session %s is now readable",
+			session_name);
+	switch (location_type) {
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
+	{
+		const char *absolute_path;
+
+		status = lttng_trace_archive_location_local_get_absolute_path(
+				location, &absolute_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+		MSG(" at %s", absolute_path);
+		printed_location = true;
+		break;
+	}
+	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY:
+	{
+		uint16_t control_port, data_port;
+		const char *host, *relative_path, *protocol_str;
+		enum lttng_trace_archive_location_relay_protocol_type protocol;
+
+		/* Fetch all relay location parameters. */
+		status = lttng_trace_archive_location_relay_get_protocol_type(
+				location, &protocol);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_host(
+				location, &host);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_control_port(
+				location, &control_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_data_port(
+				location, &data_port);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		status = lttng_trace_archive_location_relay_get_relative_path(
+				location, &relative_path);
+		if (status != LTTNG_TRACE_ARCHIVE_LOCATION_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
+		switch (protocol) {
+		case LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP:
+			protocol_str = "tcp";
+			break;
+		default:
+			protocol_str = "unknown";
+			break;
+		}
+
+		MSG(" on relay %s://%s/%s [control port %" PRIu16 ", data port %"
+				PRIu16 "]", protocol_str, host,
+				relative_path, control_port, data_port);
+		printed_location = true;
+		break;
+	}
+	default:
+		break;
+	}
+end:
+	if (!printed_location) {
+		MSG(" at an unknown location");
+	}
+	return ret;
+}
