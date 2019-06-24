@@ -119,9 +119,7 @@ static inline int __lttng_epoll_get_prev_fd(struct lttng_poll_event *events,
 #define LTTNG_POLL_GET_PREV_FD(e, i, nb_fd) \
 	__lttng_epoll_get_prev_fd(LTTNG_REF(e), i, nb_fd)
 
-/*
- * Create the epoll set. No memory allocation is done here.
- */
+/* Create the epoll set. */
 extern int compat_epoll_create(struct lttng_poll_event *events,
 		int size, int flags);
 #define lttng_poll_create(events, size, flags) \
