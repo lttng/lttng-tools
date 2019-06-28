@@ -19,10 +19,13 @@
 
 LTTNG_HIDDEN
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
-		size_t element_size)
+		size_t element_size,
+		lttng_dynamic_array_element_destructor destructor)
 {
 	lttng_dynamic_buffer_init(&array->buffer);
 	array->element_size = element_size;
+	array->size = 0;
+	array->destructor = destructor;
 }
 
 LTTNG_HIDDEN
@@ -47,14 +50,36 @@ end:
 }
 
 LTTNG_HIDDEN
-void lttng_dynamic_array_reset(struct lttng_dynamic_array *array,
-		lttng_dynamic_array_element_destructor destructor)
+int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
+		size_t element_index)
 {
-	if (destructor) {
+	void *element = lttng_dynamic_array_get_element(array,
+			element_index);
+
+	if (array->destructor) {
+		array->destructor(element);
+	}
+	if (element_index != lttng_dynamic_array_get_count(array) - 1) {
+		void *next_element = lttng_dynamic_array_get_element(array,
+				element_index + 1);
+
+		memmove(element, next_element,
+				(array->size - element_index - 1) * array->element_size);
+	}
+	array->size--;
+	return lttng_dynamic_buffer_set_size(&array->buffer,
+			array->buffer.size - array->element_size);
+}
+
+LTTNG_HIDDEN
+void lttng_dynamic_array_reset(struct lttng_dynamic_array *array)
+{
+	if (array->destructor) {
 		size_t i;
 
 		for (i = 0; i < lttng_dynamic_array_get_count(array); i++) {
-			destructor(lttng_dynamic_array_get_element(array, i));
+			array->destructor(lttng_dynamic_array_get_element(array,
+					i));
 		}
 	}
 
@@ -64,25 +89,26 @@ void lttng_dynamic_array_reset(struct lttng_dynamic_array *array,
 
 LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_init(
-		struct lttng_dynamic_pointer_array *array)
+		struct lttng_dynamic_pointer_array *array,
+		lttng_dynamic_pointer_array_destructor destructor)
 {
-	lttng_dynamic_array_init(&array->array, sizeof(void *));
+	lttng_dynamic_array_init(&array->array, sizeof(void *), destructor);
 }	
 
 /* Release any memory used by the dynamic array. */
 LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_reset(
-		struct lttng_dynamic_pointer_array *array,
-		lttng_dynamic_pointer_array_destructor destructor)
+		struct lttng_dynamic_pointer_array *array)
 {
-	if (destructor) {
+	if (array->array.destructor) {
 		size_t i, count = lttng_dynamic_pointer_array_get_count(array);
 
 		for (i = 0; i < count; i++) {
 			void *ptr = lttng_dynamic_pointer_array_get_pointer(
 					array, i);
-			destructor(ptr);
+			array->array.destructor(ptr);
 		}
+		array->array.destructor = NULL;
 	}
-	lttng_dynamic_array_reset(&array->array, NULL);
+	lttng_dynamic_array_reset(&array->array);
 }

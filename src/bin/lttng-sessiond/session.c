@@ -772,7 +772,7 @@ void session_release(struct urcu_ref *ref)
 	ksess = session->kernel_session;
 
 	session_notify_destruction(session);
-	lttng_dynamic_array_reset(&session->destroy_notifiers, NULL);
+	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	if (session->current_trace_chunk) {
 		ret = session_close_trace_chunk(session, session->current_trace_chunk);
 		if (ret) {
@@ -977,7 +977,8 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 	}
 
 	lttng_dynamic_array_init(&new_session->destroy_notifiers,
-			sizeof(struct ltt_session_destroy_notifier_element));
+			sizeof(struct ltt_session_destroy_notifier_element),
+			NULL);
 	urcu_ref_init(&new_session->ref);
 	pthread_mutex_init(&new_session->lock, NULL);
 

@@ -1485,79 +1485,16 @@ end:
 LTTNG_HIDDEN
 int utils_recursive_rmdir(const char *path)
 {
-	DIR *dir;
-	size_t path_len;
-	int dir_fd, ret = 0, closeret, is_empty = 1;
-	struct dirent *entry;
+	int ret;
+	struct lttng_directory_handle handle;
 
-	/* Open directory */
-	dir = opendir(path);
-	if (!dir) {
-		PERROR("Cannot open '%s' path", path);
-		return -1;
+	ret = lttng_directory_handle_init(&handle, NULL);
+	if (ret) {
+		goto end;
 	}
-	dir_fd = lttng_dirfd(dir);
-	if (dir_fd < 0) {
-		PERROR("lttng_dirfd");
-		return -1;
-	}
-
-	path_len = strlen(path);
-	while ((entry = readdir(dir))) {
-		struct stat st;
-		size_t name_len;
-		char filename[PATH_MAX];
-
-		if (!strcmp(entry->d_name, ".")
-				|| !strcmp(entry->d_name, "..")) {
-			continue;
-		}
-
-		name_len = strlen(entry->d_name);
-		if (path_len + name_len + 2 > sizeof(filename)) {
-			ERR("Failed to remove file: path name too long (%s/%s)",
-				path, entry->d_name);
-			continue;
-		}
-		if (snprintf(filename, sizeof(filename), "%s/%s",
-				path, entry->d_name) < 0) {
-			ERR("Failed to format path.");
-			continue;
-		}
-
-		if (stat(filename, &st)) {
-			PERROR("stat");
-			continue;
-		}
-
-		if (S_ISDIR(st.st_mode)) {
-			char subpath[PATH_MAX];
-
-			strncpy(subpath, path, PATH_MAX);
-			subpath[PATH_MAX - 1] = '\0';
-			strncat(subpath, "/",
-				PATH_MAX - strlen(subpath) - 1);
-			strncat(subpath, entry->d_name,
-				PATH_MAX - strlen(subpath) - 1);
-			if (utils_recursive_rmdir(subpath)) {
-				is_empty = 0;
-			}
-		} else if (S_ISREG(st.st_mode)) {
-			is_empty = 0;
-		} else {
-			ret = -EINVAL;
-			goto end;
-		}
-	}
+	ret = lttng_directory_handle_remove_subdirectory(&handle, path);
+	lttng_directory_handle_fini(&handle);
 end:
-	closeret = closedir(dir);
-	if (closeret) {
-		PERROR("closedir");
-	}
-	if (is_empty) {
-		DBG3("Attempting rmdir %s", path);
-		ret = rmdir(path);
-	}
 	return ret;
 }
 

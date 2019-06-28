@@ -15,6 +15,7 @@ TESTS = test_kernel_data \
 	test_utils_compat_poll \
 	test_string_utils \
 	test_notification \
+	test_directory_handle \
 	ini_config/test_ini_config
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
@@ -30,7 +31,7 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
                   test_utils_expand_path test_utils_compat_poll \
-                  test_string_utils test_notification
+                  test_string_utils test_notification test_directory_handle
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -157,6 +158,10 @@ test_utils_compat_poll_LDADD  = $(LIBTAP) $(LIBHASHTABLE) $(DL_LIBS) \
 # expand_path unit test
 test_utils_expand_path_SOURCES = test_utils_expand_path.c
 test_utils_expand_path_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
+
+# directory handle unit test
+test_directory_handle_SOURCES = test_directory_handle.c
+test_directory_handle_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON) $(DL_LIBS)
 
 # string utilities unit test
 test_string_utils_SOURCES = test_string_utils.c
