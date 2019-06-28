@@ -21,18 +21,19 @@
 #include <common/dynamic-buffer.h>
 #include <assert.h>
 
+typedef void (*lttng_dynamic_array_element_destructor)(void *element);
+typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
+
 struct lttng_dynamic_array {
 	struct lttng_dynamic_buffer buffer;
 	size_t element_size;
 	size_t size;
+	lttng_dynamic_array_element_destructor destructor;
 };
 
 struct lttng_dynamic_pointer_array {
 	struct lttng_dynamic_array array;
 };
-
-typedef void (*lttng_dynamic_array_element_destructor)(void *element);
-typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
 
 /*
  * Initialize a resizable array of fixed-size elements. This performs no
@@ -40,7 +41,8 @@ typedef void (*lttng_dynamic_pointer_array_destructor)(void *ptr);
  */
 LTTNG_HIDDEN
 void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
-		size_t element_size);
+		size_t element_size,
+		lttng_dynamic_array_element_destructor destructor);
 
 /*
  * Returns the number of elements in the dynamic array.
@@ -74,10 +76,18 @@ LTTNG_HIDDEN
 int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
 		const void *element);
 
+/*
+ * Remove an element from the dynamic array. The array's element count is
+ * decreased by one and the following elements are shifted to take its place
+ * (when applicable).
+ */
+LTTNG_HIDDEN
+int lttng_dynamic_array_remove_element(struct lttng_dynamic_array *array,
+		size_t element_index);
+
 /* Release any memory used by the dynamic array. */
 LTTNG_HIDDEN
-void lttng_dynamic_array_reset(struct lttng_dynamic_array *array,
-		lttng_dynamic_array_element_destructor destructor);
+void lttng_dynamic_array_reset(struct lttng_dynamic_array *array);
 
 
 /*
@@ -93,7 +103,8 @@ void lttng_dynamic_array_reset(struct lttng_dynamic_array *array,
  */
 LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_init(
-		struct lttng_dynamic_pointer_array *array);
+		struct lttng_dynamic_pointer_array *array,
+		lttng_dynamic_pointer_array_destructor destructor);
 
 /*
  * Returns the number of pointers in the dynamic pointer array.
@@ -130,10 +141,21 @@ int lttng_dynamic_pointer_array_add_pointer(
 	return lttng_dynamic_array_add_element(&array->array, &pointer);
 }
 
+/*
+ * Remove a pointer from a dynamic pointer array. The array's element
+ * count is decreased by one and the following pointers are shifted to
+ * take the place of the removed pointer (if applicable).
+ */
+static inline
+int lttng_dynamic_pointer_array_remove_pointer(
+		struct lttng_dynamic_pointer_array *array, size_t index)
+{
+	return lttng_dynamic_array_remove_element(&array->array, index);
+}
+
 /* Release any memory used by the dynamic array. */
 LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_reset(
-		struct lttng_dynamic_pointer_array *array,
-		lttng_dynamic_pointer_array_destructor destructor);
+		struct lttng_dynamic_pointer_array *array);
 
 #endif /* LTTNG_DYNAMIC_ARRAY_H */

@@ -209,7 +209,7 @@ void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
 {
 	urcu_ref_init(&chunk->ref);
 	pthread_mutex_init(&chunk->lock, NULL);
-	lttng_dynamic_pointer_array_init(&chunk->top_level_directories);
+	lttng_dynamic_pointer_array_init(&chunk->top_level_directories, free);
 }
 
 static
@@ -224,7 +224,7 @@ void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 	}
 	free(chunk->name);
 	chunk->name = NULL;
-	lttng_dynamic_pointer_array_reset(&chunk->top_level_directories, free);
+	lttng_dynamic_pointer_array_reset(&chunk->top_level_directories);
 	pthread_mutex_destroy(&chunk->lock);
 }
 

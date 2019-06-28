@@ -179,33 +179,37 @@ int lttng_directory_handle_unlink_file_as_user(
 
 LTTNG_HIDDEN
 int lttng_directory_handle_rename(
-		const struct lttng_directory_handle *handle,
-		const char *old, const char *new);
+		const struct lttng_directory_handle *old_handle,
+		const char *old_name,
+		const struct lttng_directory_handle *new_handle,
+		const char *new_name);
 
 LTTNG_HIDDEN
 int lttng_directory_handle_rename_as_user(
-		const struct lttng_directory_handle *handle,
-		const char *old, const char *new,
+		const struct lttng_directory_handle *old_handle,
+		const char *old_name,
+		const struct lttng_directory_handle *new_handle,
+		const char *new_name,
 		const struct lttng_credentials *creds);
 
 LTTNG_HIDDEN
-int lttng_directory_handle_rmdir(
+int lttng_directory_handle_remove_subdirectory(
 		const struct lttng_directory_handle *handle,
 		const char *name);
 
 LTTNG_HIDDEN
-int lttng_directory_handle_rmdir_as_user(
+int lttng_directory_handle_remove_subdirectory_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
 		const struct lttng_credentials *creds);
 
 LTTNG_HIDDEN
-int lttng_directory_handle_rmdir_recursive(
+int lttng_directory_handle_remove_subdirectory_recursive(
 		const struct lttng_directory_handle *handle,
 		const char *name);
 
 LTTNG_HIDDEN
-int lttng_directory_handle_rmdir_recursive_as_user(
+int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
 		const struct lttng_credentials *creds);

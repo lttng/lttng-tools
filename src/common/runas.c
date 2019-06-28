@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 - David Goulet <david.goulet@polymtl.ca>
  *                      Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ *               2019 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 only,
@@ -49,59 +50,6 @@ struct run_as_data;
 struct run_as_ret;
 typedef int (*run_as_fct)(struct run_as_data *data, struct run_as_ret *ret_value);
 
-struct run_as_mkdirat_data {
-	char path[PATH_MAX];
-	mode_t mode;
-};
-
-struct run_as_open_data {
-	char path[PATH_MAX];
-	int flags;
-	mode_t mode;
-};
-
-struct run_as_unlink_data {
-	char path[PATH_MAX];
-};
-
-struct run_as_rmdir_recursive_data {
-	char path[PATH_MAX];
-};
-
-struct run_as_extract_elf_symbol_offset_data {
-	char function[LTTNG_SYMBOL_NAME_LEN];
-};
-
-struct run_as_extract_sdt_probe_offsets_data {
-	char probe_name[LTTNG_SYMBOL_NAME_LEN];
-	char provider_name[LTTNG_SYMBOL_NAME_LEN];
-};
-
-struct run_as_mkdirat_ret {
-	int ret;
-};
-
-struct run_as_open_ret {
-	int ret;
-};
-
-struct run_as_unlink_ret {
-	int ret;
-};
-
-struct run_as_rmdir_recursive_ret {
-	int ret;
-};
-
-struct run_as_extract_elf_symbol_offset_ret {
-	uint64_t offset;
-};
-
-struct run_as_extract_sdt_probe_offsets_ret {
-	uint32_t num_offset;
-	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
-};
-
 enum run_as_cmd {
 	RUN_AS_MKDIR,
 	RUN_AS_MKDIRAT,
@@ -111,25 +59,87 @@ enum run_as_cmd {
 	RUN_AS_OPENAT,
 	RUN_AS_UNLINK,
 	RUN_AS_UNLINKAT,
+	RUN_AS_RMDIR,
+	RUN_AS_RMDIRAT,
 	RUN_AS_RMDIR_RECURSIVE,
+	RUN_AS_RMDIRAT_RECURSIVE,
+	RUN_AS_RENAME,
+	RUN_AS_RENAMEAT,
 	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
 	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
 };
 
+struct run_as_mkdir_data {
+	int dirfd;
+	char path[LTTNG_PATH_MAX];
+	mode_t mode;
+} LTTNG_PACKED;
+
+struct run_as_open_data {
+	int dirfd;
+	char path[LTTNG_PATH_MAX];
+	int flags;
+	mode_t mode;
+} LTTNG_PACKED;
+
+struct run_as_unlink_data {
+	int dirfd;
+	char path[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
+struct run_as_rmdir_data {
+	int dirfd;
+	char path[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
+struct run_as_extract_elf_symbol_offset_data {
+	int fd;
+	char function[LTTNG_SYMBOL_NAME_LEN];
+} LTTNG_PACKED;
+
+struct run_as_extract_sdt_probe_offsets_data {
+	int fd;
+	char probe_name[LTTNG_SYMBOL_NAME_LEN];
+	char provider_name[LTTNG_SYMBOL_NAME_LEN];
+} LTTNG_PACKED;
+
+struct run_as_rename_data {
+	/*
+	 * [0] = old_dirfd
+	 * [1] = new_dirfd
+	 */
+	int dirfds[2];
+	char old_path[LTTNG_PATH_MAX];
+	char new_path[LTTNG_PATH_MAX];
+} LTTNG_PACKED;
+
+struct run_as_open_ret {
+	int fd;
+} LTTNG_PACKED;
+
+struct run_as_extract_elf_symbol_offset_ret {
+	uint64_t offset;
+} LTTNG_PACKED;
+
+struct run_as_extract_sdt_probe_offsets_ret {
+	uint32_t num_offset;
+	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
+} LTTNG_PACKED;
+
 struct run_as_data {
 	enum run_as_cmd cmd;
-	int fd;
 	union {
-		struct run_as_mkdirat_data mkdirat;
+		struct run_as_mkdir_data mkdir;
 		struct run_as_open_data open;
 		struct run_as_unlink_data unlink;
-		struct run_as_rmdir_recursive_data rmdir_recursive;
+		struct run_as_rmdir_data rmdir;
+		struct run_as_rename_data rename;
 		struct run_as_extract_elf_symbol_offset_data extract_elf_symbol_offset;
 		struct run_as_extract_sdt_probe_offsets_data extract_sdt_probe_offsets;
 	} u;
 	uid_t uid;
 	gid_t gid;
-};
+} LTTNG_PACKED;
 
 /*
  * The run_as_ret structure holds the returned value and status of the command.
@@ -147,17 +157,164 @@ struct run_as_data {
  *
  */
 struct run_as_ret {
-	int fd;
 	union {
-		struct run_as_mkdirat_ret mkdirat;
+		int ret;
 		struct run_as_open_ret open;
-		struct run_as_unlink_ret unlink;
-		struct run_as_rmdir_recursive_ret rmdir_recursive;
 		struct run_as_extract_elf_symbol_offset_ret extract_elf_symbol_offset;
 		struct run_as_extract_sdt_probe_offsets_ret extract_sdt_probe_offsets;
 	} u;
 	int _errno;
 	bool _error;
+} LTTNG_PACKED;
+
+#define COMMAND_IN_FDS(data_ptr) ({					\
+	int *fds = NULL;						\
+	if (command_properties[data_ptr->cmd].in_fds_offset != -1) {	\
+		fds = (int *) ((char *) data_ptr + command_properties[data_ptr->cmd].in_fds_offset); \
+	}								\
+	fds;								\
+})
+
+#define COMMAND_OUT_FDS(cmd, ret_ptr) ({				\
+	int *fds = NULL;						\
+	if (command_properties[cmd].out_fds_offset != -1) {		\
+		fds = (int *) ((char *) ret_ptr + command_properties[cmd].out_fds_offset); \
+	}								\
+	fds;								\
+})
+
+#define COMMAND_IN_FD_COUNT(data_ptr) ({		\
+	command_properties[data_ptr->cmd].in_fd_count;	\
+})
+
+#define COMMAND_OUT_FD_COUNT(cmd) ({		\
+	command_properties[cmd].out_fd_count;	\
+})
+
+#define COMMAND_USE_CWD_FD(data_ptr) command_properties[data_ptr->cmd].use_cwd_fd
+
+struct run_as_command_properties {
+	/* Set to -1 when not applicable. */
+	ptrdiff_t in_fds_offset, out_fds_offset;
+	unsigned int in_fd_count, out_fd_count;
+	bool use_cwd_fd;
+};
+
+static const struct run_as_command_properties command_properties[] = {
+	[RUN_AS_MKDIR] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.mkdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_MKDIRAT] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.mkdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_MKDIR_RECURSIVE] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.mkdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_MKDIRAT_RECURSIVE] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.mkdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_OPEN] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.open.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = offsetof(struct run_as_ret, u.open.fd),
+		.out_fd_count = 1,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_OPENAT] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.open.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = offsetof(struct run_as_ret, u.open.fd),
+		.out_fd_count = 1,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_UNLINK] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.unlink.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_UNLINKAT] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.unlink.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_RMDIR_RECURSIVE] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rmdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_RMDIRAT_RECURSIVE] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rmdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_RMDIR] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rmdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_RMDIRAT] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rmdir.dirfd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_RENAME] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rename.dirfds),
+		.in_fd_count = 2,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = true,
+	},
+	[RUN_AS_RENAMEAT] = {
+		.in_fds_offset = offsetof(struct run_as_data, u.rename.dirfds),
+		.in_fd_count = 2,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET] = {
+		.in_fds_offset = offsetof(struct run_as_data,
+				u.extract_elf_symbol_offset.fd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_EXTRACT_SDT_PROBE_OFFSETS] = {
+		.in_fds_offset = offsetof(struct run_as_data,
+				u.extract_sdt_probe_offsets.fd),
+		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
 };
 
 struct run_as_worker {
@@ -195,20 +352,21 @@ int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	mode_t mode;
 	struct lttng_directory_handle handle;
 
-	path = data->u.mkdirat.path;
-	mode = data->u.mkdirat.mode;
+	path = data->u.mkdir.path;
+	mode = data->u.mkdir.mode;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.mkdir.dirfd);
 	/* Ownership of dirfd is transferred to the handle. */
-	data->fd = -1;
+	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.mkdirat.ret =
+	ret_value->u.ret =
 			lttng_directory_handle_create_subdirectory_recursive(
 					&handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.mkdirat.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_fini(&handle);
-	return ret_value->u.mkdirat.ret;
+	return ret_value->u.ret;
 }
 
 static
@@ -218,49 +376,133 @@ int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 	mode_t mode;
 	struct lttng_directory_handle handle;
 
-	path = data->u.mkdirat.path;
-	mode = data->u.mkdirat.mode;
+	path = data->u.mkdir.path;
+	mode = data->u.mkdir.mode;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle, data->fd);
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.mkdir.dirfd);
 	/* Ownership of dirfd is transferred to the handle. */
-	data->fd = -1;
+	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.mkdirat.ret =
+	ret_value->u.ret =
 			lttng_directory_handle_create_subdirectory(
 					&handle, path, mode);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.mkdirat.ret) ? true : false;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_fini(&handle);
-	return ret_value->u.mkdirat.ret;
+	return ret_value->u.ret;
 }
 
 static
 int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.open.ret = openat(data->fd, data->u.open.path,
-			data->u.open.flags, data->u.open.mode);
-	ret_value->fd = ret_value->u.open.ret;
+	int fd;
+	struct lttng_directory_handle handle;
+
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.open.dirfd);
+	/* Ownership of dirfd is transferred to the handle. */
+	data->u.open.dirfd = -1;
+
+	fd = lttng_directory_handle_open_file(&handle,
+			data->u.open.path, data->u.open.flags,
+			data->u.open.mode);
+	if (fd < 0) {
+		ret_value->u.ret = -1;
+		ret_value->u.open.fd = -1;
+	} else {
+		ret_value->u.ret = 0;
+		ret_value->u.open.fd = fd;
+	}
+
 	ret_value->_errno = errno;
-	ret_value->_error = ret_value->u.open.ret < 0;
-	return ret_value->u.open.ret;
+	ret_value->_error = fd < 0;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.ret;
 }
 
 static
 int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.unlink.ret = unlinkat(data->fd, data->u.unlink.path, 0);
+	struct lttng_directory_handle handle;
+
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.unlink.dirfd);
+
+	/* Ownership of dirfd is transferred to the handle. */
+	data->u.unlink.dirfd = -1;
+
+	ret_value->u.ret = lttng_directory_handle_unlink_file(&handle,
+			data->u.unlink.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.unlink.ret) ? true : false;
-	return ret_value->u.unlink.ret;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.ret;
+}
+
+static
+int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
+{
+	struct lttng_directory_handle handle;
+
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.rmdir.dirfd);
+
+	/* Ownership of dirfd is transferred to the handle. */
+	data->u.rmdir.dirfd = -1;
+
+	ret_value->u.ret = lttng_directory_handle_remove_subdirectory(
+			&handle, data->u.rmdir.path);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.ret;
 }
 
 static
 int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	ret_value->u.rmdir_recursive.ret = utils_recursive_rmdir(data->u.rmdir_recursive.path);
+	struct lttng_directory_handle handle;
+
+	(void) lttng_directory_handle_init_from_dirfd(&handle,
+			data->u.rmdir.dirfd);
+
+	/* Ownership of dirfd is transferred to the handle. */
+	data->u.rmdir.dirfd = -1;
+
+	ret_value->u.ret = lttng_directory_handle_remove_subdirectory_recursive(
+			&handle, data->u.rmdir.path);
 	ret_value->_errno = errno;
-	ret_value->_error = (ret_value->u.rmdir_recursive.ret) ? true : false;
-	return ret_value->u.rmdir_recursive.ret;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
+	lttng_directory_handle_fini(&handle);
+	return ret_value->u.ret;
+}
+
+static
+int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
+{
+	const char *old_path, *new_path;
+	struct lttng_directory_handle old_handle, new_handle;
+
+	old_path = data->u.rename.old_path;
+	new_path = data->u.rename.new_path;
+
+	(void) lttng_directory_handle_init_from_dirfd(&old_handle,
+			data->u.rename.dirfds[0]);
+	(void) lttng_directory_handle_init_from_dirfd(&new_handle,
+			data->u.rename.dirfds[1]);
+
+	/* Ownership of dirfds are transferred to the handles. */
+	data->u.rename.dirfds[0] = data->u.rename.dirfds[1] = -1;
+
+	/* Safe to call as we have transitioned to the requested uid/gid. */
+	ret_value->u.ret = lttng_directory_handle_rename(
+			&old_handle, old_path, &new_handle, new_path);
+	ret_value->_errno = errno;
+	ret_value->_error = (ret_value->u.ret) ? true : false;
+	lttng_directory_handle_fini(&old_handle);
+	lttng_directory_handle_fini(&new_handle);
+	return ret_value->u.ret;
 }
 
 #ifdef HAVE_ELF_H
@@ -269,9 +511,9 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 		struct run_as_ret *ret_value)
 {
 	int ret = 0;
-	ret_value->_error = false;
 
-	ret = lttng_elf_get_symbol_offset(data->fd,
+	ret_value->_error = false;
+	ret = lttng_elf_get_symbol_offset(data->u.extract_elf_symbol_offset.fd,
 			 data->u.extract_elf_symbol_offset.function,
 			 &ret_value->u.extract_elf_symbol_offset.offset);
 	if (ret) {
@@ -293,7 +535,8 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 	ret_value->_error = false;
 
 	/* On success, this call allocates the offsets paramater. */
-	ret = lttng_elf_get_sdt_probe_offsets(data->fd,
+	ret = lttng_elf_get_sdt_probe_offsets(
+			data->u.extract_sdt_probe_offsets.fd,
 			data->u.extract_sdt_probe_offsets.provider_name,
 			data->u.extract_sdt_probe_offsets.probe_name,
 			&offsets, &num_offset);
@@ -356,8 +599,15 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 	case RUN_AS_UNLINK:
 	case RUN_AS_UNLINKAT:
 		return _unlink;
+	case RUN_AS_RMDIR:
+	case RUN_AS_RMDIRAT:
+		return _rmdir;
 	case RUN_AS_RMDIR_RECURSIVE:
+	case RUN_AS_RMDIRAT_RECURSIVE:
 		return _rmdir_recursive;
+	case RUN_AS_RENAME:
+	case RUN_AS_RENAMEAT:
+		return _rename;
 	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
 		return _extract_elf_symbol_offset;
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
@@ -369,190 +619,171 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 }
 
 static
-int do_send_fd(int sock, int fd)
+int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 {
 	ssize_t len;
+	unsigned int i;
 
-	if (fd < 0) {
-		ERR("Attempt to send invalid file descriptor to master (fd = %i)", fd);
-		/* Return 0 as this is not a fatal error. */
-		return 0;
-	}
+	for (i = 0; i < fd_count; i++) {
+		if (fds[i] < 0) {
+			ERR("Attempt to send invalid file descriptor to master (fd = %i)",
+					fds[i]);
+			/* Return 0 as this is not a fatal error. */
+			return 0;
+		}
+        }
 
-	len = lttcomm_send_fds_unix_sock(sock, &fd, 1);
-	if (len < 0) {
-		PERROR("lttcomm_send_fds_unix_sock");
-		return -1;
-	}
-	return 0;
+        len = lttcomm_send_fds_unix_sock(sock, fds, fd_count);
+	return len < 0 ? -1 : 0;
 }
 
 static
-int do_recv_fd(int sock, int *fd)
+int do_recv_fds(int sock, int *fds, unsigned int fd_count)
 {
+	int ret = 0;
+	unsigned int i;
 	ssize_t len;
 
-	len = lttcomm_recv_fds_unix_sock(sock, fd, 1);
-
-	if (!len) {
-		return -1;
+	len = lttcomm_recv_fds_unix_sock(sock, fds, fd_count);
+	if (len == 0) {
+		ret = -1;
+		goto end;
 	} else if (len < 0) {
-		PERROR("lttcomm_recv_fds_unix_sock");
-		return -1;
-	}
-	if (*fd < 0) {
-		ERR("Invalid file descriptor received from worker (fd = %i)", *fd);
-		/* Return 0 as this is not a fatal error. */
-		return 0;
+		PERROR("Failed to receive file descriptors from socket");
+		ret = -1;
+		goto end;
 	}
 
-	return 0;
+	for (i = 0; i < fd_count; i++) {
+		if (fds[i] < 0) {
+			ERR("Invalid file descriptor received from worker (fd = %i)", fds[i]);
+			/* Return 0 as this is not a fatal error. */
+		}
+        }
+end:
+        return ret;
 }
 
 static
-int send_fd_to_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+int send_fds_to_worker(const struct run_as_worker *worker,
+		const struct run_as_data *data)
 {
 	int ret = 0;
+	unsigned int i;
 
-	switch (cmd) {
-	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
-	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
-	case RUN_AS_MKDIRAT:
-	case RUN_AS_MKDIRAT_RECURSIVE:
-	case RUN_AS_OPENAT:
-	case RUN_AS_UNLINKAT:
-		break;
-	default:
-		return 0;
+	if (COMMAND_USE_CWD_FD(data) || COMMAND_IN_FD_COUNT(data) == 0) {
+		goto end;
 	}
 
-	if (fd < 0) {
-		ERR("Refusing to send invalid fd to worker (fd = %i)", fd);
-		return -1;
-	}
+	for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
+		if (COMMAND_IN_FDS(data)[i] < 0) {
+			ERR("Refusing to send invalid fd to worker (fd = %i)",
+					COMMAND_IN_FDS(data)[i]);
+			ret = -1;
+			goto end;
+		}
+        }
 
-	ret = do_send_fd(worker->sockpair[0], fd);
+        ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data),
+			COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
-		PERROR("do_send_fd");
+		PERROR("Failed to send file descriptor to run-as worker");
 		ret = -1;
+		goto end;
 	}
-
+end:
 	return ret;
 }
 
 static
-int send_fd_to_master(struct run_as_worker *worker, enum run_as_cmd cmd, int fd)
+int send_fds_to_master(struct run_as_worker *worker, enum run_as_cmd cmd,
+		struct run_as_ret *run_as_ret)
 {
-	int ret = 0, ret_close = 0;
+	int ret = 0;
+	unsigned int i;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-	case RUN_AS_OPENAT:
-		break;
-	default:
-		return 0;
+	if (COMMAND_OUT_FD_COUNT(cmd) == 0) {
+		goto end;
 	}
 
-	if (fd < 0) {
-		DBG("Not sending file descriptor to master as it is invalid (fd = %i)", fd);
-		return 0;
-	}
-	ret = do_send_fd(worker->sockpair[1], fd);
+	ret = do_send_fds(worker->sockpair[1], COMMAND_OUT_FDS(cmd, run_as_ret),
+			COMMAND_OUT_FD_COUNT(cmd));
 	if (ret < 0) {
-		PERROR("do_send_fd error");
-		ret = -1;
+		PERROR("Failed to send file descriptor to master process");
+		goto end;
 	}
 
-	ret_close = close(fd);
-	if (ret_close < 0) {
-		PERROR("close");
-	}
+	for (i = 0; i < COMMAND_OUT_FD_COUNT(cmd); i++) {
+		int ret_close = close(COMMAND_OUT_FDS(cmd, run_as_ret)[i]);
 
+		if (ret_close < 0) {
+			PERROR("Failed to close result file descriptor");
+		}
+	}
+end:
 	return ret;
 }
 
 static
-int recv_fd_from_worker(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+int recv_fds_from_worker(const struct run_as_worker *worker, enum run_as_cmd cmd,
+		struct run_as_ret *run_as_ret)
 {
 	int ret = 0;
 
-	switch (cmd) {
-	case RUN_AS_OPEN:
-	case RUN_AS_OPENAT:
-		break;
-	default:
-		return 0;
+	if (COMMAND_OUT_FD_COUNT(cmd) == 0) {
+		goto end;
 	}
 
-	ret = do_recv_fd(worker->sockpair[0], fd);
+	ret = do_recv_fds(worker->sockpair[0], COMMAND_OUT_FDS(cmd, run_as_ret),
+			COMMAND_OUT_FD_COUNT(cmd));
 	if (ret < 0) {
-		PERROR("do_recv_fd error");
+		PERROR("Failed to receive file descriptor from run-as worker");
 		ret = -1;
 	}
-
+end:
 	return ret;
 }
 
 static
-int recv_fd_from_master(struct run_as_worker *worker, enum run_as_cmd cmd, int *fd)
+int recv_fds_from_master(struct run_as_worker *worker, struct run_as_data *data)
 {
 	int ret = 0;
 
-	switch (cmd) {
-	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
-	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
-	case RUN_AS_MKDIRAT:
-	case RUN_AS_MKDIRAT_RECURSIVE:
-	case RUN_AS_OPENAT:
-	case RUN_AS_UNLINKAT:
-		break;
-	case RUN_AS_MKDIR:
-	case RUN_AS_MKDIR_RECURSIVE:
-	case RUN_AS_OPEN:
-	case RUN_AS_UNLINK:
-		*fd = AT_FDCWD;
-		/* fall-through */
-	default:
-		return 0;
+	if (COMMAND_USE_CWD_FD(data)) {
+		unsigned int i;
+
+		for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
+			COMMAND_IN_FDS(data)[i] = AT_FDCWD;
+		}
+		goto end;
 	}
 
-	ret = do_recv_fd(worker->sockpair[1], fd);
+	ret = do_recv_fds(worker->sockpair[1], COMMAND_IN_FDS(data),
+			COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
-		PERROR("do_recv_fd error");
+		PERROR("Failed to receive file descriptors from master process");
 		ret = -1;
 	}
-
+end:
 	return ret;
 }
 
 static
-int cleanup_received_fd(enum run_as_cmd cmd, int fd)
+int cleanup_received_fds(struct run_as_data *data)
 {
-	int ret = 0;
+	int ret = 0, i;
 
-	switch (cmd) {
-	case RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET:
-	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
-	case RUN_AS_MKDIRAT:
-	case RUN_AS_MKDIRAT_RECURSIVE:
-	case RUN_AS_OPEN:
-	case RUN_AS_OPENAT:
-	case RUN_AS_UNLINK:
-	case RUN_AS_UNLINKAT:
-		break;
-	default:
-		return 0;
+	for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
+		if (COMMAND_IN_FDS(data)[i] == -1) {
+			continue;
+		}
+		ret = close(COMMAND_IN_FDS(data)[i]);
+		if (ret) {
+			PERROR("Failed to close file descriptor received fd in run-as worker");
+			goto end;
+		}
 	}
-
-	if (fd < 0) {
-		return 0;
-	}
-	ret = close(fd);
-	if (ret < 0) {
-		PERROR("close error");
-		ret = -1;
-	}
-
+end:
 	return ret;
 }
 
@@ -563,14 +794,11 @@ static
 int handle_one_cmd(struct run_as_worker *worker)
 {
 	int ret = 0;
-	struct run_as_data data;
-	ssize_t readlen, writelen;
-	struct run_as_ret sendret;
-	run_as_fct cmd;
+        struct run_as_data data = {};
+        ssize_t readlen, writelen;
+        struct run_as_ret sendret = {};
+        run_as_fct cmd;
 	uid_t prev_euid;
-
-	memset(&sendret, 0, sizeof(sendret));
-	sendret.fd = -1;
 
 	/*
 	 * Stage 1: Receive run_as_data struct from the master.
@@ -601,7 +829,7 @@ int handle_one_cmd(struct run_as_worker *worker)
 	 * Some commands need a file descriptor as input so if it's needed we
 	 * receive the fd using the Unix socket.
 	 */
-	ret = recv_fd_from_master(worker, data.cmd, &data.fd);
+	ret = recv_fds_from_master(worker, &data);
 	if (ret < 0) {
 		PERROR("recv_fd_from_master error");
 		ret = -1;
@@ -642,7 +870,7 @@ int handle_one_cmd(struct run_as_worker *worker)
 	}
 
 write_return:
-	ret = cleanup_received_fd(data.cmd, data.fd);
+	ret = cleanup_received_fds(&data);
 	if (ret < 0) {
 		ERR("Error cleaning up FD");
 		goto end;
@@ -661,11 +889,9 @@ write_return:
 	}
 
 	/*
-	 * Stage 5: Send file descriptor to the master
-	 * Some commands return a file descriptor so if it's needed we pass it back
-	 * to the master using the Unix socket.
+	 * Stage 5: Send resulting file descriptors to the master.
 	 */
-	ret = send_fd_to_master(worker, data.cmd, sendret.fd);
+	ret = send_fds_to_master(worker, data.cmd, &sendret);
 	if (ret < 0) {
 		DBG("Sending FD to master returned an error");
 		goto end;
@@ -771,7 +997,7 @@ int run_as_cmd(struct run_as_worker *worker,
 	/*
 	 * Stage 2: Send file descriptor to the worker process if needed
 	 */
-	ret = send_fd_to_worker(worker, data->cmd, data->fd);
+	ret = send_fds_to_worker(worker, data);
 	if (ret) {
 		PERROR("do_send_fd error");
 		ret = -1;
@@ -809,7 +1035,7 @@ int run_as_cmd(struct run_as_worker *worker,
 	/*
 	 * Stage 5: Receive file descriptor if needed
 	 */
-	ret = recv_fd_from_worker(worker, data->cmd, &ret_value->fd);
+	ret = recv_fds_from_worker(worker, cmd, ret_value);
 	if (ret < 0) {
 		ERR("Error receiving fd");
 		ret = -1;
@@ -1158,27 +1384,25 @@ int run_as_mkdirat_recursive(int dirfd, const char *path, mode_t mode,
 		uid_t uid, gid_t gid)
 {
 	int ret;
-	struct run_as_data data;
-	struct run_as_ret run_as_ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
-	memset(&data, 0, sizeof(data));
-	memset(&run_as_ret, 0, sizeof(run_as_ret));
 	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
 			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) mode, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.mkdirat.path, path,
-			sizeof(data.u.mkdirat.path));
+	ret = lttng_strncpy(data.u.mkdir.path, path,
+			sizeof(data.u.mkdir.path));
 	if (ret) {
 		ERR("Failed to copy path argument of mkdirat recursive command");
 		goto error;
 	}
-	data.u.mkdirat.path[PATH_MAX - 1] = '\0';
-	data.u.mkdirat.mode = mode;
-	data.fd = dirfd;
+	data.u.mkdir.path[sizeof(data.u.mkdir.path) - 1] = '\0';
+	data.u.mkdir.mode = mode;
+	data.u.mkdir.dirfd = dirfd;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR_RECURSIVE : RUN_AS_MKDIRAT_RECURSIVE,
 			&data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
-	ret = run_as_ret.u.mkdirat.ret;
+	ret = run_as_ret.u.ret;
 error:
 	return ret;
 }
@@ -1194,28 +1418,25 @@ int run_as_mkdirat(int dirfd, const char *path, mode_t mode,
 		uid_t uid, gid_t gid)
 {
 	int ret;
-	struct run_as_data data;
-	struct run_as_ret run_as_ret;
-
-	memset(&data, 0, sizeof(data));
-	memset(&run_as_ret, 0, sizeof(run_as_ret));
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
 	DBG3("mkdirat() recursive fd = %d%s, path = %s, mode = %d, uid = %d, gid = %d",
 			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) mode, (int) uid, (int) gid);
-	ret = lttng_strncpy(data.u.mkdirat.path, path,
-			sizeof(data.u.mkdirat.path));
+	ret = lttng_strncpy(data.u.mkdir.path, path,
+			sizeof(data.u.mkdir.path));
 	if (ret) {
 		ERR("Failed to copy path argument of mkdirat command");
 		goto error;
 	}
-	data.u.mkdirat.path[PATH_MAX - 1] = '\0';
-	data.u.mkdirat.mode = mode;
-	data.fd = dirfd;
+	data.u.mkdir.path[sizeof(data.u.mkdir.path) - 1] = '\0';
+	data.u.mkdir.mode = mode;
+	data.u.mkdir.dirfd = dirfd;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_MKDIR : RUN_AS_MKDIRAT,
 			&data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;
-	ret = run_as_ret.u.mkdirat.ret;
+	ret = run_as_ret.u.ret;
 error:
 	return ret;
 }
@@ -1231,25 +1452,28 @@ LTTNG_HIDDEN
 int run_as_openat(int dirfd, const char *path, int flags, mode_t mode,
 		uid_t uid, gid_t gid)
 {
-	struct run_as_data data;
-	struct run_as_ret ret;
-
-	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+	int ret;
+        struct run_as_data data = {};
+        struct run_as_ret run_as_ret = {};
 
 	DBG3("openat() fd = %d%s, path = %s, flags = %X, mode = %d, uid %d, gid %d",
 			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, flags, (int) mode, (int) uid, (int) gid);
-	strncpy(data.u.open.path, path, PATH_MAX - 1);
-	data.u.open.path[PATH_MAX - 1] = '\0';
+	ret = lttng_strncpy(data.u.open.path, path, sizeof(data.u.open.path));
+	if (ret) {
+		ERR("Failed to copy path argument of open command");
+		goto error;
+	}
 	data.u.open.flags = flags;
 	data.u.open.mode = mode;
-	data.fd = dirfd;
+	data.u.open.dirfd = dirfd;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_OPEN : RUN_AS_OPENAT,
-			&data, &ret, uid, gid);
-	errno = ret._errno;
-	ret.u.open.ret = ret.fd;
-	return ret.u.open.ret;
+			&data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.ret < 0 ? run_as_ret.u.ret :
+			run_as_ret.u.open.fd;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
@@ -1261,70 +1485,161 @@ int run_as_unlink(const char *path, uid_t uid, gid_t gid)
 LTTNG_HIDDEN
 int run_as_unlinkat(int dirfd, const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_data data;
-	struct run_as_ret ret;
-
-	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
 	DBG3("unlinkat() fd = %d%s, path = %s, uid = %d, gid = %d",
 			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) uid, (int) gid);
-	strncpy(data.u.unlink.path, path, PATH_MAX - 1);
-	data.u.unlink.path[PATH_MAX - 1] = '\0';
-	data.fd = dirfd;
-	run_as(RUN_AS_UNLINK, &data, &ret, uid, gid);
-	errno = ret._errno;
-	return ret.u.unlink.ret;
+	ret = lttng_strncpy(data.u.unlink.path, path,
+			sizeof(data.u.unlink.path));
+	if (ret) {
+		goto error;
+	}
+	data.u.unlink.dirfd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_UNLINK : RUN_AS_UNLINKAT, &data,
+			&run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.ret;
+error:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int run_as_rmdir(const char *path, uid_t uid, gid_t gid)
+{
+	return run_as_rmdirat(AT_FDCWD, path, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_rmdirat(int dirfd, const char *path, uid_t uid, gid_t gid)
+{
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
+
+	DBG3("rmdirat() fd = %d%s, path = %s, uid = %d, gid = %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+			path, (int) uid, (int) gid);
+	ret = lttng_strncpy(data.u.rmdir.path, path,
+			sizeof(data.u.rmdir.path));
+	if (ret) {
+		goto error;
+	}
+	data.u.rmdir.dirfd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR : RUN_AS_RMDIRAT, &data,
+			&run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.ret;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
 int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
 {
-	struct run_as_data data;
-	struct run_as_ret ret;
+	return run_as_rmdirat_recursive(AT_FDCWD, path, uid, gid);
+}
 
-	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+LTTNG_HIDDEN
+int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid)
+{
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
-	DBG3("rmdir_recursive() %s with for uid %d and gid %d",
+	DBG3("rmdirat() recursive fd = %d%s, path = %s, uid = %d, gid = %d",
+			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
 			path, (int) uid, (int) gid);
-	strncpy(data.u.rmdir_recursive.path, path, PATH_MAX - 1);
-	data.u.rmdir_recursive.path[PATH_MAX - 1] = '\0';
-	run_as(RUN_AS_RMDIR_RECURSIVE, &data, &ret, uid, gid);
-	errno = ret._errno;
-	return ret.u.rmdir_recursive.ret;
+	ret = lttng_strncpy(data.u.rmdir.path, path,
+			sizeof(data.u.rmdir.path));
+	if (ret) {
+		goto error;
+	}
+	data.u.rmdir.dirfd = dirfd;
+	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR_RECURSIVE : RUN_AS_RMDIRAT_RECURSIVE,
+			&data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.ret;
+error:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int run_as_rename(const char *old, const char *new, uid_t uid, gid_t gid)
+{
+	return run_as_renameat(AT_FDCWD, old, AT_FDCWD, new, uid, gid);
+}
+
+LTTNG_HIDDEN
+int run_as_renameat(int old_dirfd, const char *old_name,
+		int new_dirfd, const char *new_name, uid_t uid, gid_t gid)
+{
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
+
+	DBG3("renameat() old_dirfd = %d%s, old_name = %s, new_dirfd = %d%s, new_name = %s, uid = %d, gid = %d",
+			old_dirfd, old_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+			old_name,
+			new_dirfd, new_dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
+			new_name, (int) uid, (int) gid);
+	ret = lttng_strncpy(data.u.rename.old_path, old_name,
+			sizeof(data.u.rename.old_path));
+	if (ret) {
+		goto error;
+	}
+	ret = lttng_strncpy(data.u.rename.new_path, new_name,
+			sizeof(data.u.rename.new_path));
+	if (ret) {
+		goto error;
+	}
+
+	data.u.rename.dirfds[0] = old_dirfd;
+	data.u.rename.dirfds[1] = new_dirfd;
+	run_as(old_dirfd == AT_FDCWD && new_dirfd == AT_FDCWD ?
+			RUN_AS_RENAME : RUN_AS_RENAMEAT,
+			&data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	ret = run_as_ret.u.ret;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
 int run_as_extract_elf_symbol_offset(int fd, const char* function,
 		uid_t uid, gid_t gid, uint64_t *offset)
 {
-	struct run_as_data data;
-	struct run_as_ret ret;
-
-	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+	int ret;
+	struct run_as_data data = {};
+        struct run_as_ret run_as_ret = {};
 
 	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
-		"with for uid %d and gid %d", fd, function, (int) uid, (int) gid);
+			"with for uid %d and gid %d", fd, function,
+			(int) uid, (int) gid);
 
-	data.fd = fd;
+	data.u.extract_elf_symbol_offset.fd = fd;
 
 	strncpy(data.u.extract_elf_symbol_offset.function, function, LTTNG_SYMBOL_NAME_LEN - 1);
-
 	data.u.extract_elf_symbol_offset.function[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-
-	run_as(RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET, &data, &ret, uid, gid);
-
-	errno = ret._errno;
-
-	if (ret._error) {
-		return -1;
+	ret = lttng_strncpy(data.u.extract_elf_symbol_offset.function,
+			function,
+			sizeof(data.u.extract_elf_symbol_offset.function));
+	if (ret) {
+		goto error;
 	}
 
-	*offset = ret.u.extract_elf_symbol_offset.offset;
-	return 0;
+	run_as(RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET, &data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	if (run_as_ret._error) {
+		ret = -1;
+		goto error;
+	}
+
+	*offset = run_as_ret.u.extract_elf_symbol_offset.offset;
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
@@ -1332,41 +1647,46 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 		const char* probe_name, uid_t uid, gid_t gid,
 		uint64_t **offsets, uint32_t *num_offset)
 {
-	struct run_as_data data;
-	struct run_as_ret ret;
-
-	memset(&data, 0, sizeof(data));
-	memset(&ret, 0, sizeof(ret));
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
 	DBG3("extract_sdt_probe_offsets() on fd=%d, probe_name=%s and "
-		"provider_name=%s with for uid %d and gid %d", fd, probe_name,
-		provider_name, (int) uid, (int) gid);
+			"provider_name=%s with for uid %d and gid %d", fd,
+			probe_name, provider_name, (int) uid, (int) gid);
 
-	data.fd = fd;
+	data.u.extract_sdt_probe_offsets.fd = fd;
 
-	strncpy(data.u.extract_sdt_probe_offsets.probe_name, probe_name, LTTNG_SYMBOL_NAME_LEN - 1);
-	strncpy(data.u.extract_sdt_probe_offsets.provider_name, provider_name, LTTNG_SYMBOL_NAME_LEN - 1);
-
-	data.u.extract_sdt_probe_offsets.probe_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-	data.u.extract_sdt_probe_offsets.provider_name[LTTNG_SYMBOL_NAME_LEN - 1] = '\0';
-
-	run_as(RUN_AS_EXTRACT_SDT_PROBE_OFFSETS, &data, &ret, uid, gid);
-
-	errno = ret._errno;
-
-	if (ret._error) {
-		return -1;
+	ret = lttng_strncpy(data.u.extract_sdt_probe_offsets.probe_name, probe_name,
+			sizeof(data.u.extract_sdt_probe_offsets.probe_name));
+	if (ret) {
+		goto error;
+	}
+	ret = lttng_strncpy(data.u.extract_sdt_probe_offsets.provider_name,
+			provider_name,
+			sizeof(data.u.extract_sdt_probe_offsets.provider_name));
+	if (ret) {
+		goto error;
 	}
 
-	*num_offset = ret.u.extract_sdt_probe_offsets.num_offset;
+	run_as(RUN_AS_EXTRACT_SDT_PROBE_OFFSETS, &data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	if (run_as_ret._error) {
+		ret = -1;
+		goto error;
+	}
 
+	*num_offset = run_as_ret.u.extract_sdt_probe_offsets.num_offset;
 	*offsets = zmalloc(*num_offset * sizeof(uint64_t));
 	if (!*offsets) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto error;
 	}
 
-	memcpy(*offsets, ret.u.extract_sdt_probe_offsets.offsets, *num_offset * sizeof(uint64_t));
-	return 0;
+	memcpy(*offsets, run_as_ret.u.extract_sdt_probe_offsets.offsets,
+			*num_offset * sizeof(uint64_t));
+error:
+	return ret;
 }
 
 LTTNG_HIDDEN
