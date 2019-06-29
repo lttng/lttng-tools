@@ -153,12 +153,19 @@ int lttng_directory_handle_create_subdirectory_recursive_as_user(
 		const char *subdirectory_path,
 		mode_t mode, const struct lttng_credentials *creds);
 
+/*
+ * Open a file descriptor to a path relative to a directory handle.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_open_file(
 		const struct lttng_directory_handle *handle,
 		const char *filename,
 		int flags, mode_t mode);
 
+/*
+ * Open a file descriptor to a path relative to a directory handle
+ * as a given user.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_open_file_as_user(
 		const struct lttng_directory_handle *handle,
@@ -166,17 +173,27 @@ int lttng_directory_handle_open_file_as_user(
 		int flags, mode_t mode,
 		const struct lttng_credentials *creds);
 
+/*
+ * Unlink a file to a path relative to a directory handle.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_unlink_file(
 		const struct lttng_directory_handle *handle,
 		const char *filename);
 
+/*
+ * Unlink a file to a path relative to a directory handle as a given user.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_unlink_file_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *filename,
 		const struct lttng_credentials *creds);
 
+/*
+ * Rename a file from a path relative to a directory handle to a new
+ * name relative to another directory handle.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_rename(
 		const struct lttng_directory_handle *old_handle,
@@ -184,6 +201,10 @@ int lttng_directory_handle_rename(
 		const struct lttng_directory_handle *new_handle,
 		const char *new_name);
 
+/*
+ * Rename a file from a path relative to a directory handle to a new
+ * name relative to another directory handle as a given user.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_rename_as_user(
 		const struct lttng_directory_handle *old_handle,
@@ -192,22 +213,36 @@ int lttng_directory_handle_rename_as_user(
 		const char *new_name,
 		const struct lttng_credentials *creds);
 
+/*
+ * Remove a subdirectory relative to a directory handle.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory(
 		const struct lttng_directory_handle *handle,
 		const char *name);
 
+/*
+ * Remove a subdirectory relative to a directory handle as a given user.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
 		const struct lttng_credentials *creds);
 
+/*
+ * Remove a subdirectory and remove its contents if it only
+ * consists in empty directories.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive(
 		const struct lttng_directory_handle *handle,
 		const char *name);
 
+/*
+ * Remove a subdirectory and remove its contents if it only
+ * consists in empty directories as a given user.
+ */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
