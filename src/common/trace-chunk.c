@@ -800,8 +800,6 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 	int ret;
 	char *directory_to_rename = NULL;
 	bool free_directory_to_rename = false;
-	const int session_dirfd =
-			trace_chunk->session_output_directory.value.dirfd;
 	char *archived_chunk_name = NULL;
 	const uint64_t chunk_id = LTTNG_OPTIONAL_GET(trace_chunk->id);
 	const time_t creation_timestamp =
@@ -845,17 +843,18 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 		}
 
 		for (i = 0; i < count; i++) {
-			const int temp_dirfd = temporary_rename_directory.dirfd;
 			const char *top_level_name =
 					lttng_dynamic_pointer_array_get_pointer(
 						&trace_chunk->top_level_directories, i);
 
-			/*
-			 * FIXME replace renamat() use by directory handle
-			 * wrapper for non-POSIX 2008 systems.
-			 */
-			ret = renameat(session_dirfd, top_level_name,
-					temp_dirfd, top_level_name);
+			ret = lttng_directory_handle_rename_as_user(
+					&trace_chunk->session_output_directory.value,
+					top_level_name,
+					&temporary_rename_directory,
+					top_level_name,
+					LTTNG_OPTIONAL_GET(trace_chunk->credentials).use_current_user ?
+						NULL :
+						&trace_chunk->credentials.value.user);
 			if (ret) {
 				PERROR("Failed to move \"%s\" to temporary trace chunk rename directory",
 						top_level_name);
@@ -906,13 +905,14 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 	}
 	archived_chunks_directory.is_set = true;
 
-	/*
-	 * FIXME replace renamat() use by directory handle
-	 * wrapper for non-POSIX 2008 systems.
-	 */
-	ret = renameat(session_dirfd, directory_to_rename,
-			archived_chunks_directory.value.dirfd,
-			archived_chunk_name);
+	ret = lttng_directory_handle_rename_as_user(
+			&trace_chunk->session_output_directory.value,
+			directory_to_rename,
+			&archived_chunks_directory.value,
+			archived_chunk_name,
+			LTTNG_OPTIONAL_GET(trace_chunk->credentials).use_current_user ?
+				NULL :
+				&trace_chunk->credentials.value.user);
 	if (ret) {
 		PERROR("Failed to rename folder \"%s\" to \"%s\"",
 				directory_to_rename, archived_chunk_name);
