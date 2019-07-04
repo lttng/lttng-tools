@@ -30,6 +30,7 @@
 #include <common/hashtable/hashtable.h>
 #include <common/compat/uuid.h>
 #include <common/trace-chunk.h>
+#include <common/optional.h>
 
 /*
  * Represents a session for the relay point of view
@@ -41,6 +42,15 @@ struct relay_session {
 	 * It is used to match a set of streams to their session.
 	 */
 	uint64_t id;
+	/*
+	 * ID of the session in the session daemon's domain.
+	 * This information is only provided by 2.11+ peers.
+	 */
+	LTTNG_OPTIONAL(uint64_t) id_sessiond;
+	/*
+	 * Only provided by 2.11+ peers. However, the UUID is set to 'nil' in
+	 * the other cases.
+	 */
 	lttng_uuid sessiond_uuid;
 	char session_name[LTTNG_NAME_MAX];
 	char hostname[LTTNG_HOST_NAME_MAX];
@@ -115,6 +125,7 @@ struct relay_session {
 struct relay_session *session_create(const char *session_name,
 		const char *hostname, uint32_t live_timer,
 		bool snapshot, const lttng_uuid sessiond_uuid,
+		uint64_t *id_sessiond, uint64_t *current_chunk_id,
 		uint32_t major, uint32_t minor);
 struct relay_session *session_get_by_id(uint64_t id);
 bool session_get(struct relay_session *session);
