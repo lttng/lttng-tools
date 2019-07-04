@@ -129,7 +129,8 @@ error:
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		int session_live_timer, unsigned int snapshot,
-		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid)
+		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid,
+		const uint64_t *current_chunk_id)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -169,6 +170,11 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 
 	lttng_uuid_copy(msg->sessiond_uuid, sessiond_uuid);
 	msg->session_id = htobe64(sessiond_session_id);
+
+	if (current_chunk_id) {
+		LTTNG_OPTIONAL_SET(&msg->current_chunk_id,
+				htobe64(*current_chunk_id));
+	}
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
@@ -241,7 +247,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
-		const lttng_uuid sessiond_uuid)
+		const lttng_uuid sessiond_uuid,
+		const uint64_t *current_chunk_id)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
@@ -262,7 +269,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		/* From 2.11 to ... */
 		ret = relayd_create_session_2_11(rsock, session_name,
 				hostname, session_live_timer, snapshot,
-				sessiond_session_id, sessiond_uuid);
+				sessiond_session_id, sessiond_uuid,
+				current_chunk_id);
 	}
 
 	if (ret < 0) {
