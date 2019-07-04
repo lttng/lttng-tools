@@ -32,9 +32,6 @@
  * Prefer using this macro where "special" values would be used, e.g.
  * -1ULL for uint64_t types.
  *
- * LTTNG_OPTIONAL should be combined with the LTTNG_PACKED macro when
- * used for IPC / network communication.
- *
  * Declaration example:
  * struct my_struct {
  * 	int a;
@@ -56,6 +53,16 @@
 		uint8_t is_set; \
 		type value;  \
 	}
+
+/*
+ * Alias used for communication structures. If the layout of an LTTNG_OPTIONAL
+ * is changed, the original layout should still be used for communication
+ * purposes.
+ *
+ * LTTNG_OPTIONAL_COMM should be combined with the LTTNG_PACKED macro when
+ * used for IPC / network communication.
+ */
+#define LTTNG_OPTIONAL_COMM LTTNG_OPTIONAL
 
 /*
  * This macro is available as a 'convenience' to allow sites that assume

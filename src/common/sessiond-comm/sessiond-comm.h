@@ -480,7 +480,7 @@ struct lttcomm_consumer_msg {
 			uint64_t channel_key;
 			uint64_t session_id;
 			/* ID of the session's current trace chunk. */
-			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED chunk_id;
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED chunk_id;
 			char pathname[PATH_MAX];
 			uint64_t relayd_id;
 			/* nb_init_streams is the number of streams open initially. */
@@ -542,7 +542,7 @@ struct lttcomm_consumer_msg {
 			uint64_t relayd_id;			/* Relayd id if apply. */
 			uint64_t key;				/* Unique channel key. */
 			/* ID of the session's current trace chunk. */
-			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED chunk_id;
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED chunk_id;
 			unsigned char uuid[UUID_LEN];	/* uuid for ust tracer. */
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
@@ -634,7 +634,7 @@ struct lttcomm_consumer_msg {
 			 * `override_name` is left NULL (all-zeroes) if the
 			 * chunk's name is not overriden.
 			 */
-			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
 			char override_name[LTTNG_NAME_MAX];
 			uint64_t session_id;
 			uint64_t chunk_id;
@@ -645,13 +645,13 @@ struct lttcomm_consumer_msg {
 			} LTTNG_PACKED credentials;
 		} LTTNG_PACKED create_trace_chunk;
 		struct {
-			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
 			uint64_t session_id;
 			uint64_t chunk_id;
 			uint64_t close_timestamp;
 		} LTTNG_PACKED close_trace_chunk;
 		struct {
-			LTTNG_OPTIONAL(uint64_t) LTTNG_PACKED relayd_id;
+			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
 			uint64_t session_id;
 			uint64_t chunk_id;
 		} LTTNG_PACKED trace_chunk_exists;
