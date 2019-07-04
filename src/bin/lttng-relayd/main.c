@@ -1095,18 +1095,15 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	int ret = 0;
 	ssize_t send_ret;
 	struct relay_session *session = NULL;
-	struct lttcomm_relayd_status_session reply;
-	char session_name[LTTNG_NAME_MAX];
-	char hostname[LTTNG_HOST_NAME_MAX];
+	struct lttcomm_relayd_status_session reply = {};
+	char session_name[LTTNG_NAME_MAX] = {};
+	char hostname[LTTNG_HOST_NAME_MAX] = {};
 	uint32_t live_timer = 0;
 	bool snapshot = false;
 	/* Left nil for peers < 2.11. */
 	lttng_uuid sessiond_uuid = {};
-
-	memset(session_name, 0, LTTNG_NAME_MAX);
-	memset(hostname, 0, LTTNG_HOST_NAME_MAX);
-
-	memset(&reply, 0, sizeof(reply));
+	LTTNG_OPTIONAL(uint64_t) id_sessiond = {};
+	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
 	if (conn->minor < 4) {
 		/* From 2.1 to 2.3 */
@@ -1119,13 +1116,16 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 		/* From 2.11 to ... */
 		ret = cmd_create_session_2_11(payload, session_name,
 				hostname, &live_timer, &snapshot,
-				sessiond_uuid);
+				&id_sessiond.value, sessiond_uuid,
+				&current_chunk_id.value);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
 			/* The nil UUID is reserved for pre-2.11 clients. */
 			ERR("Illegal nil UUID announced by peer in create session command");
 			ret = -1;
 			goto send_reply;
 		}
+		id_sessiond.is_set = true;
+		current_chunk_id.is_set = true;
 	}
 
 	if (ret < 0) {
@@ -1133,7 +1133,10 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	session = session_create(session_name, hostname, live_timer,
-			snapshot, sessiond_uuid, conn->major, conn->minor);
+			snapshot, sessiond_uuid,
+			id_sessiond.is_set ? &id_sessiond.value : NULL,
+			current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+			conn->major, conn->minor);
 	if (!session) {
 		ret = -1;
 		goto send_reply;
@@ -1147,8 +1150,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	session->current_trace_chunk =
 			sessiond_trace_chunk_registry_get_anonymous_chunk(
 				sessiond_trace_chunk_registry, sessiond_uuid,
-				session->id,
-				opt_output_path);
+				session->id);
 	if (!session->current_trace_chunk) {
 		ret = -1;
 	}

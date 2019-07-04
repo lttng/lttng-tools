@@ -1038,7 +1038,8 @@ static enum lttng_error_code send_consumer_relayd_socket(
 		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
 		const char *session_name, const char *hostname,
-		int session_live_timer)
+		int session_live_timer,
+	        const uint64_t *current_chunk_id)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = NULL;
@@ -1066,7 +1067,8 @@ static enum lttng_error_code send_consumer_relayd_socket(
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
 			relayd_uri->stype, session_id,
-			session_name, hostname, session_live_timer);
+			session_name, hostname, session_live_timer,
+			current_chunk_id);
 	if (ret < 0) {
 		status = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -1113,7 +1115,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 		enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
 		struct consumer_socket *sock, const char *session_name,
-		const char *hostname, int session_live_timer)
+		const char *hostname, int session_live_timer,
+		const uint64_t *current_chunk_id)
 {
 	enum lttng_error_code status = LTTNG_OK;
 
@@ -1124,7 +1127,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 	if (!sock->control_sock_sent) {
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.control, consumer, sock,
-				session_name, hostname, session_live_timer);
+				session_name, hostname, session_live_timer,
+				current_chunk_id);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1134,7 +1138,8 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 	if (!sock->data_sock_sent) {
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.data, consumer, sock,
-				session_name, hostname, session_live_timer);
+				session_name, hostname, session_live_timer,
+				current_chunk_id);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1156,13 +1161,27 @@ int cmd_setup_relayd(struct ltt_session *session)
 	struct ltt_kernel_session *ksess;
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
+        LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
-	assert(session);
+        assert(session);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
 
 	DBG("Setting relayd for session %s", session->name);
+
+	if (session->current_trace_chunk) {
+		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
+				session->current_trace_chunk, &current_chunk_id.value);
+
+		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+			current_chunk_id.is_set = true;
+		} else {
+			ERR("Failed to get current trace chunk id");
+			ret = LTTNG_ERR_UNK;
+			goto error;
+		}
+	}
 
 	rcu_read_lock();
 
@@ -1175,7 +1194,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
 					usess->consumer, socket,
 					session->name, session->hostname,
-					session->live_timer);
+					session->live_timer,
+					current_chunk_id.is_set ? &current_chunk_id.value : NULL);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -1197,7 +1217,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
 					ksess->consumer, socket,
 					session->name, session->hostname,
-					session->live_timer);
+					session->live_timer,
+					current_chunk_id.is_set ? &current_chunk_id.value : NULL);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -4184,12 +4205,26 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
+	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
 	assert(consumer);
 	assert(snap_output);
 	assert(session);
 
 	DBG2("Set relayd object from snapshot output");
+
+	if (session->current_trace_chunk) {
+		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
+				session->current_trace_chunk, &current_chunk_id.value);
+
+		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+			current_chunk_id.is_set = true;
+		} else {
+			ERR("Failed to get current trace chunk id");
+			status = LTTNG_ERR_UNK;
+			goto error;
+		}
+	}
 
 	/* Ignore if snapshot consumer output is not network. */
 	if (snap_output->consumer->type != CONSUMER_DST_NET) {
@@ -4207,7 +4242,8 @@ static enum lttng_error_code set_relayd_for_snapshot(
 		status = send_consumer_relayd_sockets(0, session->id,
 				snap_output->consumer, socket,
 				session->name, session->hostname,
-				session->live_timer);
+				session->live_timer,
+				current_chunk_id.is_set ? &current_chunk_id.value : NULL);
 		pthread_mutex_unlock(socket->lock);
 		if (status != LTTNG_OK) {
 			rcu_read_unlock();

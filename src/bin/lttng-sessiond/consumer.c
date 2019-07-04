@@ -1085,7 +1085,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
 		enum lttng_stream_type type, uint64_t session_id,
 		const char *session_name, const char *hostname,
-		int session_live_timer)
+		int session_live_timer, const uint64_t *current_chunk_id)
 {
 	int ret;
 	struct lttcomm_consumer_msg msg;
@@ -1107,7 +1107,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 				&msg.u.relayd_sock.relayd_session_id,
 				session_name, hostname, session_live_timer,
 				consumer->snapshot, session_id,
-				sessiond_uuid);
+				sessiond_uuid, current_chunk_id);
 		if (ret < 0) {
 			/* Close the control socket. */
 			(void) relayd_close(rsock);

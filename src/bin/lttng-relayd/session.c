@@ -19,6 +19,7 @@
 
 #define _LGPL_SOURCE
 #include <common/common.h>
+#include <common/compat/uuid.h>
 #include <urcu/rculist.h>
 
 #include "lttng-relayd.h"
@@ -31,6 +32,42 @@
 static uint64_t last_relay_session_id;
 static pthread_mutex_t last_relay_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static int session_set_anonymous_chunk(struct relay_session *session)
+{
+	int ret = 0;
+	struct lttng_trace_chunk *chunk = NULL;
+	enum lttng_trace_chunk_status status;
+	struct lttng_directory_handle output_directory;
+
+	ret = lttng_directory_handle_init(&output_directory, opt_output_path);
+	if (ret) {
+		goto end;
+	}
+
+	chunk = lttng_trace_chunk_create_anonymous();
+	if (!chunk) {
+		goto end;
+	}
+
+	status = lttng_trace_chunk_set_credentials_current_user(chunk);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ret = -1;
+		goto end;
+	}
+
+	status = lttng_trace_chunk_set_as_owner(chunk, &output_directory);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ret = -1;
+		goto end;
+	}
+	session->current_trace_chunk = chunk;
+	chunk = NULL;
+end:
+	lttng_trace_chunk_put(chunk);
+	lttng_directory_handle_fini(&output_directory);
+	return ret;
+}
+
 /*
  * Create a new session by assigning a new session ID.
  *
@@ -39,6 +76,7 @@ static pthread_mutex_t last_relay_session_id_lock = PTHREAD_MUTEX_INITIALIZER;
 struct relay_session *session_create(const char *session_name,
 		const char *hostname, uint32_t live_timer,
 		bool snapshot, const lttng_uuid sessiond_uuid,
+		uint64_t *id_sessiond, uint64_t *current_chunk_id,
 		uint32_t major, uint32_t minor)
 {
 	int ret;
@@ -46,15 +84,17 @@ struct relay_session *session_create(const char *session_name,
 
 	session = zmalloc(sizeof(*session));
 	if (!session) {
-		PERROR("relay session zmalloc");
+		PERROR("Failed to allocate session");
 		goto error;
 	}
 	if (lttng_strncpy(session->session_name, session_name,
 			sizeof(session->session_name))) {
+	        WARN("Session name exceeds maximal allowed length");
 		goto error;
 	}
 	if (lttng_strncpy(session->hostname, hostname,
 			sizeof(session->hostname))) {
+		WARN("Hostname exceeds maximal allowed length");
 		goto error;
 	}
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
@@ -78,17 +118,48 @@ struct relay_session *session_create(const char *session_name,
 	session->snapshot = snapshot;
 	lttng_uuid_copy(session->sessiond_uuid, sessiond_uuid);
 
+	if (id_sessiond) {
+		LTTNG_OPTIONAL_SET(&session->id_sessiond, *id_sessiond);
+	}
+
 	ret = sessiond_trace_chunk_registry_session_created(
 			sessiond_trace_chunk_registry, sessiond_uuid);
 	if (ret) {
 		goto error;
 	}
 
+	if (id_sessiond && current_chunk_id) {
+		session->current_trace_chunk =
+				sessiond_trace_chunk_registry_get_chunk(
+					sessiond_trace_chunk_registry,
+					session->sessiond_uuid,
+					session->id_sessiond.value,
+					*current_chunk_id);
+		if (!session->current_trace_chunk) {
+		        char uuid_str[UUID_STR_LEN];
+
+			lttng_uuid_to_str(sessiond_uuid, uuid_str);
+			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64 ", trace chunk id = %" PRIu64,
+					uuid_str, *id_sessiond,
+					*current_chunk_id);
+                }
+	} else if (!id_sessiond) {
+		/*
+		 * Pre-2.11 peers will not announce trace chunks. An
+		 * anonymous trace chunk which will remain set for the
+		 * duration of the session is created.
+		 */
+		ret = session_set_anonymous_chunk(session);
+		if (ret) {
+			goto error;
+		}
+	}
+
 	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
 	return session;
 
 error:
-	free(session);
+	session_put(session);
 	return NULL;
 }
 
