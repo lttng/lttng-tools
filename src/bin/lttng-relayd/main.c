@@ -1113,10 +1113,13 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 		ret = cmd_create_session_2_4(payload, session_name,
 			hostname, &live_timer, &snapshot);
 	} else {
+		bool has_current_chunk;
+
 		/* From 2.11 to ... */
 		ret = cmd_create_session_2_11(payload, session_name,
 				hostname, &live_timer, &snapshot,
 				&id_sessiond.value, sessiond_uuid,
+				&has_current_chunk,
 				&current_chunk_id.value);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
 			/* The nil UUID is reserved for pre-2.11 clients. */
@@ -1125,7 +1128,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 			goto send_reply;
 		}
 		id_sessiond.is_set = true;
-		current_chunk_id.is_set = true;
+		current_chunk_id.is_set = has_current_chunk;
 	}
 
 	if (ret < 0) {
@@ -1146,14 +1149,6 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	DBG("Created session %" PRIu64, session->id);
 
 	reply.session_id = htobe64(session->id);
-
-	session->current_trace_chunk =
-			sessiond_trace_chunk_registry_get_anonymous_chunk(
-				sessiond_trace_chunk_registry, sessiond_uuid,
-				session->id);
-	if (!session->current_trace_chunk) {
-		ret = -1;
-	}
 
 send_reply:
 	if (ret < 0) {
