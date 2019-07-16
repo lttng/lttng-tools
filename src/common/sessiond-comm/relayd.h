@@ -237,4 +237,13 @@ struct lttcomm_relayd_rotate_stream {
 	char new_pathname[];
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_create_trace_chunk {
+	uint64_t chunk_id;
+	/* Seconds since EPOCH. */
+	uint64_t creation_timestamp;
+	/* Includes trailing NULL. */
+	uint32_t override_name_length;
+	char override_name[];
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

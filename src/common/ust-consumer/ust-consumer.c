@@ -2008,8 +2008,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_CREATE_TRACE_CHUNK:
 	{
 		const struct lttng_credentials credentials = {
-			.uid = msg.u.create_trace_chunk.credentials.uid,
-			.gid = msg.u.create_trace_chunk.credentials.gid,
+			.uid = msg.u.create_trace_chunk.credentials.value.uid,
+			.gid = msg.u.create_trace_chunk.credentials.value.gid,
 		};
 		const bool is_local_trace =
 				!msg.u.create_trace_chunk.relayd_id.is_set;
@@ -2062,9 +2062,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				!is_local_trace ? &relayd_id : NULL,
 				msg.u.create_trace_chunk.session_id,
 				msg.u.create_trace_chunk.chunk_id,
-				(time_t) msg.u.create_trace_chunk.creation_timestamp,
+				(time_t) msg.u.create_trace_chunk
+						.creation_timestamp,
 				chunk_override_name,
-				&credentials,
+				msg.u.create_trace_chunk.credentials.is_set ?
+						&credentials :
+						NULL,
 				chunk_directory_handle.is_set ?
 						&chunk_directory_handle.value :
 						NULL);

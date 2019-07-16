@@ -429,8 +429,6 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	struct lttng_trace_chunk *current_trace_chunk;
 	uint64_t chunk_id;
 	enum lttng_trace_chunk_status chunk_status;
-	const uint64_t relayd_id = session->consumer->net_seq_index;
-	const bool is_local_trace = relayd_id  == -1ULL;
 
 	rcu_read_lock();
 	/*
@@ -470,6 +468,12 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 	}
 
 	if (session->ust_session) {
+		const uint64_t relayd_id =
+				session->ust_session->consumer->net_seq_index;
+		const bool is_local_trace =
+				session->ust_session->consumer->type ==
+				CONSUMER_DST_LOCAL;
+
 		session->ust_session->current_trace_chunk = new_trace_chunk;
                 if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
@@ -495,6 +499,12 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
                 }
         }
 	if (session->kernel_session) {
+		const uint64_t relayd_id =
+				session->kernel_session->consumer->net_seq_index;
+		const bool is_local_trace =
+				session->kernel_session->consumer->type ==
+				CONSUMER_DST_LOCAL;
+
 		session->kernel_session->current_trace_chunk = new_trace_chunk;
 		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;

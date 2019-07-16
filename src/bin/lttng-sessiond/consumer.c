@@ -1772,7 +1772,6 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 		goto error;
 	}
 	msg.u.create_trace_chunk.chunk_id = chunk_id;
-	/* Only used for logging purposes. */
 
 	if (chunk_has_local_output) {
 		chunk_status = lttng_trace_chunk_get_chunk_directory_handle(
@@ -1793,20 +1792,23 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 		chunk_dirfd = lttng_directory_handle_get_dirfd(
 				chunk_directory_handle);
 		assert(chunk_dirfd >= 0);
-	}
 
-	chunk_status = lttng_trace_chunk_get_credentials(chunk,
-			&chunk_credentials);
-	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-		/*
-		 * Not associating credentials to a sessiond chunk is a fatal
-		 * internal error.
-		 */
-		ret = -LTTNG_ERR_FATAL;
-		goto error;
+		chunk_status = lttng_trace_chunk_get_credentials(
+				chunk, &chunk_credentials);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			/*
+			 * Not associating credentials to a sessiond chunk is a
+			 * fatal internal error.
+			 */
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
+		msg.u.create_trace_chunk.credentials.value.uid =
+				chunk_credentials.uid;
+		msg.u.create_trace_chunk.credentials.value.gid =
+				chunk_credentials.gid;
+		msg.u.create_trace_chunk.credentials.is_set = 1;
 	}
-	msg.u.create_trace_chunk.credentials.uid = chunk_credentials.uid;
-	msg.u.create_trace_chunk.credentials.gid = chunk_credentials.gid;
 
 	DBG("Sending consumer create trace chunk command: relayd_id = %" PRId64
 			", session_id = %" PRIu64 ", chunk_id = %" PRIu64

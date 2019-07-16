@@ -4507,8 +4507,39 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 			break;
 		}
 	}
-	rcu_read_unlock();
 
+	if (relayd_id) {
+		struct consumer_relayd_sock_pair *relayd;
+
+		relayd = consumer_find_relayd(*relayd_id);
+		if (relayd) {
+			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+			ret = relayd_create_trace_chunk(
+					&relayd->control_sock, published_chunk);
+			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		} else {
+			ERR("Failed to find relay daemon socket: relayd_id = %" PRIu64, *relayd_id);
+		}
+
+		if (!relayd || ret) {
+			enum lttcomm_return_code close_ret;
+
+			close_ret = lttng_consumer_close_trace_chunk(relayd_id,
+					session_id,
+					chunk_id,
+					chunk_creation_timestamp);
+			if (close_ret != LTTCOMM_CONSUMERD_SUCCESS) {
+				ERR("Failed to roll-back the creation of new chunk: session_id = %" PRIu64 ", chunk_id = %" PRIu64,
+						session_id,
+						chunk_id);
+			}
+
+			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
+			goto error;
+		}
+	}
+error:
+	rcu_read_unlock();
 	/* Release the reference returned by the "publish" operation. */
 	lttng_trace_chunk_put(published_chunk);
 end:
