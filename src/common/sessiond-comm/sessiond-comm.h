@@ -133,12 +133,8 @@ enum lttcomm_relayd_command {
 	RELAYD_RESET_METADATA               = 17,
 	/* Ask the relay to rotate a stream file (2.11+) */
 	RELAYD_ROTATE_STREAM                = 18,
-	/* Rename a chunk after the rotation is completed (2.11+) */
-	RELAYD_ROTATE_RENAME                = 19,
-	/* Check if a chunk has data pending (2.11+) */
-	RELAYD_ROTATE_PENDING               = 20,
-	/* Create a folder on the relayd FS (2.11+) */
-	RELAYD_MKDIR                        = 21,
+	/* Ask the relay to create a trace chunk (2.11+) */
+	RELAYD_CREATE_TRACE_CHUNK           = 19,
 };
 
 /*
@@ -639,10 +635,10 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 			uint64_t chunk_id;
 			uint64_t creation_timestamp;
-			struct {
+			LTTNG_OPTIONAL_COMM(struct {
 				uint32_t uid;
 				uint32_t gid;
-			} LTTNG_PACKED credentials;
+			} LTTNG_PACKED ) LTTNG_PACKED credentials;
 		} LTTNG_PACKED create_trace_chunk;
 		struct {
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
