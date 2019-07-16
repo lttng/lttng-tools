@@ -399,6 +399,27 @@ end:
 	return status;
 }
 
+static
+bool is_valid_chunk_name(const char *name)
+{
+	size_t len;
+
+	if (!name) {
+		return false;
+	}
+
+	len = strnlen(name, LTTNG_NAME_MAX);
+	if (len == 0 || len == LTTNG_NAME_MAX) {
+		return false;
+	}
+
+	if (strchr(name, '/') || strchr(name, '.')) {
+		return false;
+	}
+
+	return true;
+}
+
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 		struct lttng_trace_chunk *chunk, const char *name)
@@ -407,7 +428,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 	char *new_name;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 
-	if (!name || !*name || strnlen(name, LTTNG_NAME_MAX) == LTTNG_NAME_MAX) {
+	if (!is_valid_chunk_name(name)) {
 		ERR("Attempted to set an invalid name on a trace chunk: name = %s",
 				name ? : "NULL");
 		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_ARGUMENT;
