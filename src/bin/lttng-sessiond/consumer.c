@@ -883,7 +883,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int64_t blocking_timeout,
 		const char *root_shm_path,
 		const char *shm_path,
-		struct lttng_trace_chunk *trace_chunk)
+		struct lttng_trace_chunk *trace_chunk,
+		const struct lttng_credentials *buffer_credentials)
 {
 	assert(msg);
 
@@ -899,20 +900,13 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
         if (trace_chunk) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
-		struct lttng_credentials chunk_credentials;
 
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk, &chunk_id);
 		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&msg->u.ask_channel.chunk_id, chunk_id);
-
-		chunk_status = lttng_trace_chunk_get_credentials(trace_chunk,
-				&chunk_credentials);
-		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-		msg->u.ask_channel.buffer_credentials.uid =
-				chunk_credentials.uid;
-		msg->u.ask_channel.buffer_credentials.gid =
-				chunk_credentials.gid;
         }
+	msg->u.ask_channel.buffer_credentials.uid = buffer_credentials->uid;
+	msg->u.ask_channel.buffer_credentials.gid = buffer_credentials->gid;
 
 	msg->cmd_type = LTTNG_CONSUMER_ASK_CHANNEL_CREATION;
 	msg->u.ask_channel.subbuf_size = subbuf_size;
