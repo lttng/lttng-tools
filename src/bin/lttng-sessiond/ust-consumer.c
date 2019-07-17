@@ -214,10 +214,11 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			ua_chan->tracefile_count,
 			ua_sess->id,
 			ua_sess->output_traces,
-			ua_sess->uid,
+			ua_sess->real_credentials.uid,
 			ua_chan->attr.blocking_timeout,
 			root_shm_path, shm_path,
-			trace_chunk);
+			trace_chunk,
+			&ua_sess->effective_credentials);
 
 	health_code_update();
 
