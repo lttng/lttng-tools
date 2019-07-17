@@ -250,7 +250,8 @@ static struct ust_registry_session *get_session_registry(
 	case LTTNG_BUFFER_PER_UID:
 	{
 		struct buffer_reg_uid *reg_uid = buffer_reg_uid_find(
-				ua_sess->tracing_id, ua_sess->bits_per_long, ua_sess->uid);
+				ua_sess->tracing_id, ua_sess->bits_per_long,
+				ua_sess->real_credentials.uid);
 		if (!reg_uid) {
 			goto error;
 		}
@@ -1846,10 +1847,10 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 
 	ua_sess->tracing_id = usess->id;
 	ua_sess->id = get_next_session_id();
-	ua_sess->uid = app->uid;
-	ua_sess->gid = app->gid;
-	ua_sess->euid = usess->uid;
-	ua_sess->egid = usess->gid;
+	ua_sess->real_credentials.uid = app->uid;
+	ua_sess->real_credentials.gid = app->gid;
+	ua_sess->effective_credentials.uid = usess->uid;
+	ua_sess->effective_credentials.gid = usess->gid;
 	ua_sess->buffer_type = usess->buffer_type;
 	ua_sess->bits_per_long = app->bits_per_long;
 
@@ -1870,7 +1871,9 @@ static void shadow_copy_session(struct ust_app_session *ua_sess,
 		break;
 	case LTTNG_BUFFER_PER_UID:
 		ret = snprintf(ua_sess->path, sizeof(ua_sess->path),
-				DEFAULT_UST_TRACE_UID_PATH, ua_sess->uid, app->bits_per_long);
+				DEFAULT_UST_TRACE_UID_PATH,
+				ua_sess->real_credentials.uid,
+				app->bits_per_long);
 		break;
 	default:
 		assert(0);
@@ -1990,10 +1993,10 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			app->bits_per_long, app->uint8_t_alignment,
 			app->uint16_t_alignment, app->uint32_t_alignment,
 			app->uint64_t_alignment, app->long_alignment,
-			app->byte_order, app->version.major,
-			app->version.minor, reg_pid->root_shm_path,
-			reg_pid->shm_path,
-			ua_sess->euid, ua_sess->egid);
+			app->byte_order, app->version.major, app->version.minor,
+			reg_pid->root_shm_path, reg_pid->shm_path,
+			ua_sess->effective_credentials.uid,
+			ua_sess->effective_credentials.gid);
 	if (ret < 0) {
 		/*
 		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
@@ -2882,10 +2885,9 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	notification_ret = notification_thread_command_add_channel(
 			notification_thread_handle, session->name,
-			ua_sess->euid, ua_sess->egid,
-			ua_chan->name,
-			ua_chan->key,
-			LTTNG_DOMAIN_UST,
+			ua_sess->effective_credentials.uid,
+			ua_sess->effective_credentials.gid, ua_chan->name,
+			ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (notification_ret != LTTNG_OK) {
 		ret = - (int) notification_ret;
@@ -2983,10 +2985,9 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	cmd_ret = notification_thread_command_add_channel(
 			notification_thread_handle, session->name,
-			ua_sess->euid, ua_sess->egid,
-			ua_chan->name,
-			ua_chan->key,
-			LTTNG_DOMAIN_UST,
+			ua_sess->effective_credentials.uid,
+			ua_sess->effective_credentials.gid, ua_chan->name,
+			ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (cmd_ret != LTTNG_OK) {
 		ret = - (int) cmd_ret;
@@ -5983,8 +5984,11 @@ enum lttng_error_code ust_app_snapshot_record(
                         cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
-						ua_chan->key, output,
-						0, ua_sess->euid, ua_sess->egid,
+						ua_chan->key, output, 0,
+						ua_sess->effective_credentials
+								.uid,
+						ua_sess->effective_credentials
+								.gid,
 						pathname, wait,
 						nb_packets_per_stream);
 				switch (status) {
@@ -6003,8 +6007,9 @@ enum lttng_error_code ust_app_snapshot_record(
 				continue;
 			}
 			status = consumer_snapshot_channel(socket,
-					registry->metadata_key, output,
-					1, ua_sess->euid, ua_sess->egid,
+					registry->metadata_key, output, 1,
+					ua_sess->effective_credentials.uid,
+					ua_sess->effective_credentials.gid,
 					pathname, wait, 0);
 			switch (status) {
 			case LTTNG_OK:
@@ -6352,8 +6357,12 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
-				ret = consumer_rotate_channel(socket, ua_chan->key,
-						ua_sess->euid, ua_sess->egid,
+				ret = consumer_rotate_channel(socket,
+						ua_chan->key,
+						ua_sess->effective_credentials
+								.uid,
+						ua_sess->effective_credentials
+								.gid,
 						ua_sess->consumer,
 						/* is_metadata_channel */ false);
 				if (ret < 0) {
@@ -6367,8 +6376,10 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 
 			/* Rotate the metadata channel. */
 			(void) push_metadata(registry, usess->consumer);
-			ret = consumer_rotate_channel(socket, registry->metadata_key,
-					ua_sess->euid, ua_sess->egid,
+			ret = consumer_rotate_channel(socket,
+					registry->metadata_key,
+					ua_sess->effective_credentials.uid,
+					ua_sess->effective_credentials.gid,
 					ua_sess->consumer,
 					/* is_metadata_channel */ true);
 			if (ret < 0) {

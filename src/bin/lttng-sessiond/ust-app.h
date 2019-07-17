@@ -209,11 +209,9 @@ struct ust_app_session {
 	/* Starts with 'ust'; no leading slash. */
 	char path[PATH_MAX];
 	/* UID/GID of the application owning the session */
-	uid_t uid;
-	gid_t gid;
+	struct lttng_credentials real_credentials;
 	/* Effective UID and GID. Same as the tracing session. */
-	uid_t euid;
-	gid_t egid;
+	struct lttng_credentials effective_credentials;
 	struct cds_list_head teardown_node;
 	/*
 	 * Once at least *one* session is created onto the application, the
