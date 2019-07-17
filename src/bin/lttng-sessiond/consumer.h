@@ -256,7 +256,8 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		int64_t blocking_timeout,
 		const char *root_shm_path,
 		const char *shm_path,
-	        struct lttng_trace_chunk *trace_chunk);
+		struct lttng_trace_chunk *trace_chunk,
+		const struct lttng_credentials *buffer_credentials);
 void consumer_init_add_stream_comm_msg(struct lttcomm_consumer_msg *msg,
 		uint64_t channel_key,
 		uint64_t stream_key,
