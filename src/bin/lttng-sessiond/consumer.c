@@ -1845,17 +1845,34 @@ int consumer_close_trace_chunk(struct consumer_socket *socket,
 	int ret;
 	enum lttng_trace_chunk_status chunk_status;
 	struct lttcomm_consumer_msg msg = {
-		.cmd_type = LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
-		.u.close_trace_chunk.session_id = session_id,
+			.cmd_type = LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
+			.u.close_trace_chunk.session_id = session_id,
 	};
 	uint64_t chunk_id;
 	time_t close_timestamp;
+	enum lttng_trace_chunk_command_type close_command;
+	const char *close_command_name = "none";
 
 	assert(socket);
 
 	if (relayd_id != -1ULL) {
-		LTTNG_OPTIONAL_SET(&msg.u.close_trace_chunk.relayd_id,
-				relayd_id);
+		LTTNG_OPTIONAL_SET(
+				&msg.u.close_trace_chunk.relayd_id, relayd_id);
+	}
+
+	chunk_status = lttng_trace_chunk_get_close_command(
+			chunk, &close_command);
+	switch (chunk_status) {
+	case LTTNG_TRACE_CHUNK_STATUS_OK:
+		LTTNG_OPTIONAL_SET(&msg.u.close_trace_chunk.close_command,
+				(uint32_t) close_command);
+		break;
+	case LTTNG_TRACE_CHUNK_STATUS_NONE:
+		break;
+	default:
+		ERR("Failed to get trace chunk close command");
+		ret = -1;
+		goto error;
 	}
 
 	chunk_status = lttng_trace_chunk_get_id(chunk, &chunk_id);
@@ -1877,10 +1894,14 @@ int consumer_close_trace_chunk(struct consumer_socket *socket,
 	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 	msg.u.close_trace_chunk.close_timestamp = (uint64_t) close_timestamp;
 
+	if (msg.u.close_trace_chunk.close_command.is_set) {
+		close_command_name = lttng_trace_chunk_command_type_get_name(
+				close_command);
+	}
 	DBG("Sending consumer close trace chunk command: relayd_id = %" PRId64
-			", session_id = %" PRIu64
-			", chunk_id = %" PRIu64,
-			relayd_id, session_id, chunk_id);
+			", session_id = %" PRIu64 ", chunk_id = %" PRIu64
+			", close command = \"%s\"",
+			relayd_id, session_id, chunk_id, close_command_name);
 
 	health_code_update();
 	ret = consumer_send_msg(socket, &msg);

@@ -2853,6 +2853,107 @@ end_no_reply:
 	return ret;
 }
 
+/*
+ * relay_close_trace_chunk: close a trace chunk
+ */
+static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn,
+		const struct lttng_buffer_view *payload)
+{
+	int ret = 0;
+	ssize_t send_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_close_trace_chunk *msg;
+	struct lttcomm_relayd_generic_reply reply = {};
+	struct lttng_buffer_view header_view;
+	struct lttng_trace_chunk *chunk = NULL;
+	enum lttng_error_code reply_code = LTTNG_OK;
+	enum lttng_trace_chunk_status chunk_status;
+	uint64_t chunk_id;
+	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command;
+	time_t close_timestamp;
+
+	if (!session || !conn->version_check_done) {
+		ERR("Trying to close a trace chunk before version check");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	if (session->major == 2 && session->minor < 11) {
+		ERR("Chunk close command is unsupported before 2.11");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
+	if (!header_view.data) {
+		ERR("Failed to receive payload of chunk close command");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	/* Convert to host endianness. */
+	msg = (typeof(msg)) header_view.data;
+	chunk_id = be64toh(msg->chunk_id);
+	close_timestamp = (time_t) be64toh(msg->close_timestamp);
+	close_command = (typeof(close_command)){
+		.value = be32toh(msg->close_command.value),
+		.is_set = msg->close_command.is_set,
+	};
+
+	chunk = sessiond_trace_chunk_registry_get_chunk(
+			sessiond_trace_chunk_registry,
+			conn->session->sessiond_uuid,
+			conn->session->id,
+			chunk_id);
+	if (!chunk) {
+		char uuid_str[UUID_STR_LEN];
+
+		lttng_uuid_to_str(conn->session->sessiond_uuid, uuid_str);
+		ERR("Failed to find chunk to close: sessiond_uuid = %s, session_id = %" PRIu64 ", chunk_id = %" PRIu64,
+				uuid_str,
+				conn->session->id,
+				msg->chunk_id);
+		ret = -1;
+		reply_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	chunk_status = lttng_trace_chunk_set_close_timestamp(
+			chunk, close_timestamp);
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ERR("Failed to set trace chunk close timestamp");
+		ret = -1;
+		reply_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	if (close_command.is_set) {
+		chunk_status = lttng_trace_chunk_set_close_command(
+				chunk, close_command.value);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			reply_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+	}
+
+end:
+	reply.ret_code = htobe32((uint32_t) reply_code);
+	send_ret = conn->sock->ops->sendmsg(conn->sock,
+			&reply,
+			sizeof(struct lttcomm_relayd_generic_reply),
+			0);
+	if (send_ret < (ssize_t) sizeof(reply)) {
+		ERR("Failed to send \"create trace chunk\" command reply (ret = %zd)",
+				send_ret);
+		ret = -1;
+	}
+end_no_reply:
+	lttng_trace_chunk_put(chunk);
+	return ret;
+}
+
 #define DBG_CMD(cmd_name, conn) \
 		DBG3("Processing \"%s\" command for socket %i", cmd_name, conn->sock->fd);
 
@@ -2922,6 +3023,10 @@ static int relay_process_control_command(struct relay_connection *conn,
 	case RELAYD_CREATE_TRACE_CHUNK:
 		DBG_CMD("RELAYD_CREATE_TRACE_CHUNK", conn);
 		ret = relay_create_trace_chunk(header, conn, payload);
+		break;
+	case RELAYD_CLOSE_TRACE_CHUNK:
+		DBG_CMD("RELAYD_CLOSE_TRACE_CHUNK", conn);
+		ret = relay_close_trace_chunk(header, conn, payload);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:

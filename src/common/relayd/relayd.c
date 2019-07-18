@@ -1252,11 +1252,8 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 		}
 	}
 
-	ret = send_command(sock,
-			RELAYD_CREATE_TRACE_CHUNK,
-			payload.data,
-			payload.size,
-			0);
+	ret = send_command(sock, RELAYD_CREATE_TRACE_CHUNK, payload.data,
+			payload.size, 0);
 	if (ret < 0) {
 		ERR("Failed to send trace chunk creation command to relay daemon");
 		goto end;
@@ -1281,5 +1278,80 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 
 end:
 	lttng_dynamic_buffer_reset(&payload);
+	return ret;
+}
+
+int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
+		struct lttng_trace_chunk *chunk)
+{
+	int ret = 0;
+	enum lttng_trace_chunk_status status;
+	struct lttcomm_relayd_close_trace_chunk msg = {};
+	struct lttcomm_relayd_generic_reply reply = {};
+	uint64_t chunk_id;
+	time_t close_timestamp;
+	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command = {};
+
+	status = lttng_trace_chunk_get_id(chunk, &chunk_id);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ERR("Failed to get trace chunk id");
+		ret = -1;
+		goto end;
+	}
+
+	status = lttng_trace_chunk_get_close_timestamp(chunk, &close_timestamp);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ERR("Failed to get trace chunk close timestamp");
+		ret = -1;
+		goto end;
+	}
+
+	status = lttng_trace_chunk_get_close_command(chunk,
+			&close_command.value);
+	switch (status) {
+	case LTTNG_TRACE_CHUNK_STATUS_OK:
+		close_command.is_set = 1;
+		break;
+	case LTTNG_TRACE_CHUNK_STATUS_NONE:
+		break;
+	default:
+		ERR("Failed to get trace chunk close command");
+		ret = -1;
+		goto end;
+	}
+
+	msg = (typeof(msg)){
+		.chunk_id = htobe64(chunk_id),
+		.close_timestamp = htobe64((uint64_t) close_timestamp),
+		.close_command = {
+			.value = htobe32((uint32_t) close_command.value),
+			.is_set = close_command.is_set,
+		},
+	};
+
+	ret = send_command(sock, RELAYD_CLOSE_TRACE_CHUNK, &msg, sizeof(msg),
+			0);
+	if (ret < 0) {
+		ERR("Failed to send trace chunk close command to relay daemon");
+		goto end;
+	}
+
+	ret = recv_reply(sock, &reply, sizeof(reply));
+	if (ret < 0) {
+		ERR("Failed to receive relay daemon trace chunk close command reply");
+		goto end;
+	}
+
+	reply.ret_code = be32toh(reply.ret_code);
+	if (reply.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd trace chunk close replied error %d",
+				reply.ret_code);
+	} else {
+		ret = 0;
+		DBG("Relayd successfully closed trace chunk: chunk_id = %" PRIu64,
+				chunk_id);
+	}
+end:
 	return ret;
 }

@@ -245,6 +245,7 @@ int session_set_trace_chunk(struct ltt_session *session,
  * ltt_session itself.
  */
 int session_close_trace_chunk(const struct ltt_session *session,
-		struct lttng_trace_chunk *trace_chunk);
+		struct lttng_trace_chunk *trace_chunk,
+		const enum lttng_trace_chunk_command_type *close_command);
 
 #endif /* _LTT_SESSION_H */

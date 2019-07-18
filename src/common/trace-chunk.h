@@ -154,9 +154,18 @@ int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk,
 		const char *filename);
 
 LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_get_close_command(
+		struct lttng_trace_chunk *chunk,
+		enum lttng_trace_chunk_command_type *command_type);
+
+LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 		struct lttng_trace_chunk *chunk,
 		enum lttng_trace_chunk_command_type command_type);
+
+LTTNG_HIDDEN
+const char *lttng_trace_chunk_command_type_get_name(
+		enum lttng_trace_chunk_command_type command);
 
 /* Returns true on success. */
 LTTNG_HIDDEN
