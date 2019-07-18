@@ -135,6 +135,8 @@ enum lttcomm_relayd_command {
 	RELAYD_ROTATE_STREAM                = 18,
 	/* Ask the relay to create a trace chunk (2.11+) */
 	RELAYD_CREATE_TRACE_CHUNK           = 19,
+	/* Ask the relay to close a trace chunk (2.11+) */
+	RELAYD_CLOSE_TRACE_CHUNK            = 20,
 };
 
 /*
@@ -645,6 +647,8 @@ struct lttcomm_consumer_msg {
 			uint64_t session_id;
 			uint64_t chunk_id;
 			uint64_t close_timestamp;
+			/* enum lttng_trace_chunk_command_type */
+			LTTNG_OPTIONAL_COMM(uint32_t) LTTNG_PACKED close_command;
 		} LTTNG_PACKED close_trace_chunk;
 		struct {
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;

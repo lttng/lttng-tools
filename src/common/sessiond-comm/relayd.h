@@ -246,4 +246,12 @@ struct lttcomm_relayd_create_trace_chunk {
 	char override_name[];
 } LTTNG_PACKED;
 
+struct lttcomm_relayd_close_trace_chunk {
+	uint64_t chunk_id;
+	/* Seconds since EPOCH. */
+	uint64_t close_timestamp;
+	/* enum lttng_trace_chunk_command_type */
+	LTTNG_OPTIONAL_COMM(uint32_t) LTTNG_PACKED close_command;
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

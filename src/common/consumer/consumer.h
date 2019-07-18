@@ -844,7 +844,8 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		struct lttng_directory_handle *chunk_directory_handle);
 enum lttcomm_return_code lttng_consumer_close_trace_chunk(
 		const uint64_t *relayd_id, uint64_t session_id,
-		uint64_t chunk_id, time_t chunk_close_timestamp);
+		uint64_t chunk_id, time_t chunk_close_timestamp,
+		const enum lttng_trace_chunk_command_type *close_command);
 enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 		const uint64_t *relayd_id, uint64_t session_id,
 		uint64_t chunk_id);

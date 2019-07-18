@@ -4504,7 +4504,8 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 		}
 	}
 
-	if (session_close_trace_chunk(session, session->current_trace_chunk)) {
+	if (session_close_trace_chunk(
+			    session, session->current_trace_chunk, NULL)) {
 		/*
 		 * Don't goto end; make sure the chunk is closed for the session
 		 * to allow future snapshots.
@@ -4750,14 +4751,6 @@ int cmd_rotate_session(struct ltt_session *session,
 			&ongoing_rotation_chunk_id);
 	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
-	chunk_status = lttng_trace_chunk_set_close_command(
-			chunk_being_archived,
-			LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
-	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-		cmd_ret = LTTNG_ERR_FATAL;
-		goto error;
-	}
-
 	if (session->kernel_session) {
 		cmd_ret = kernel_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
@@ -4771,7 +4764,9 @@ int cmd_rotate_session(struct ltt_session *session,
 		}
 	}
 
-	ret = session_close_trace_chunk(session, chunk_being_archived);
+	ret = session_close_trace_chunk(session, chunk_being_archived,
+			&((enum lttng_trace_chunk_command_type) {
+					LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED}));
 	if (ret) {
 		cmd_ret = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 		goto error;

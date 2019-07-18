@@ -829,7 +829,16 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 			LTTNG_OPTIONAL_GET(trace_chunk->timestamp_close);
 	LTTNG_OPTIONAL(struct lttng_directory_handle) archived_chunks_directory;
 
-	assert(trace_chunk->mode.is_set);
+	if (!trace_chunk->mode.is_set ||
+			trace_chunk->mode.value != TRACE_CHUNK_MODE_OWNER ||
+			!trace_chunk->session_output_directory.is_set) {
+		/*
+		 * This command doesn't need to run if the output is remote
+		 * or if the trace chunk is not owned by this process.
+		 */
+		goto end;
+	}
+
 	assert(trace_chunk->mode.value == TRACE_CHUNK_MODE_OWNER);
 	assert(!trace_chunk->name_overriden);
 
@@ -950,6 +959,24 @@ end:
 }
 
 LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_get_close_command(
+		struct lttng_trace_chunk *chunk,
+		enum lttng_trace_chunk_command_type *command_type)
+{
+	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+
+	pthread_mutex_lock(&chunk->lock);
+	if (chunk->close_command.is_set) {
+		*command_type = chunk->close_command.value;
+		status = LTTNG_TRACE_CHUNK_STATUS_OK;
+	} else {
+		status = LTTNG_TRACE_CHUNK_STATUS_NONE;
+	}
+	pthread_mutex_unlock(&chunk->lock);
+	return status;
+}
+
+LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 		struct lttng_trace_chunk *chunk,
 		enum lttng_trace_chunk_command_type close_command)
@@ -975,6 +1002,18 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 	pthread_mutex_unlock(&chunk->lock);
 end_unlock:
 	return status;
+}
+
+LTTNG_HIDDEN
+const char *lttng_trace_chunk_command_type_get_name(
+		enum lttng_trace_chunk_command_type command)
+{
+	switch (command) {
+	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED:
+		return "move to completed trace chunk folder";
+	default:
+		abort();
+	}
 }
 
 LTTNG_HIDDEN

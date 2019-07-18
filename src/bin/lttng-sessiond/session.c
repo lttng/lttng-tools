@@ -677,7 +677,8 @@ error:
 }
 
 int session_close_trace_chunk(const struct ltt_session *session,
-		struct lttng_trace_chunk *trace_chunk)
+		struct lttng_trace_chunk *trace_chunk,
+		const enum lttng_trace_chunk_command_type *close_command)
 {
 	int ret = 0;
 	bool error_occurred = false;
@@ -685,6 +686,15 @@ int session_close_trace_chunk(const struct ltt_session *session,
 	struct consumer_socket *socket;
 	enum lttng_trace_chunk_status chunk_status;
 	const time_t chunk_close_timestamp = time(NULL);
+
+	if (close_command) {
+		chunk_status = lttng_trace_chunk_set_close_command(
+				trace_chunk, *close_command);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+	}
 
 	if (chunk_close_timestamp == (time_t) -1) {
 		ERR("Failed to sample the close timestamp of the current trace chunk of session \"%s\"",
@@ -784,7 +794,7 @@ void session_release(struct urcu_ref *ref)
 	session_notify_destruction(session);
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	if (session->current_trace_chunk) {
-		ret = session_close_trace_chunk(session, session->current_trace_chunk);
+		ret = session_close_trace_chunk(session, session->current_trace_chunk, NULL);
 		if (ret) {
 			ERR("Failed to close the current trace chunk of session \"%s\" during its release",
 					session->name);

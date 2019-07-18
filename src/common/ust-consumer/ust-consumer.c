@@ -2080,15 +2080,21 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_CLOSE_TRACE_CHUNK:
 	{
+		enum lttng_trace_chunk_command_type close_command =
+				msg.u.close_trace_chunk.close_command.value;
 		const uint64_t relayd_id =
 				msg.u.close_trace_chunk.relayd_id.value;
 
 		ret_code = lttng_consumer_close_trace_chunk(
 				msg.u.close_trace_chunk.relayd_id.is_set ?
-						&relayd_id : NULL,
+						&relayd_id :
+						NULL,
 				msg.u.close_trace_chunk.session_id,
 				msg.u.close_trace_chunk.chunk_id,
-				(time_t) msg.u.close_trace_chunk.close_timestamp);
+				(time_t) msg.u.close_trace_chunk.close_timestamp,
+				msg.u.close_trace_chunk.close_command.is_set ?
+						&close_command :
+						NULL);
 		goto end_msg_sessiond;
 	}
 	case LTTNG_CONSUMER_TRACE_CHUNK_EXISTS:
