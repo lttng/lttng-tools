@@ -33,7 +33,6 @@ static char *create_output_path_auto(const char *path_name)
 {
 	int ret;
 	char *traces_path = NULL;
-	char *alloc_path = NULL;
 	char *default_path;
 
 	default_path = utils_get_home_dir();
@@ -42,19 +41,13 @@ static char *create_output_path_auto(const char *path_name)
 				Please specify an output path using -o, --output PATH");
 		goto exit;
 	}
-	alloc_path = strdup(default_path);
-	if (alloc_path == NULL) {
-		PERROR("Path allocation");
-		goto exit;
-	}
 	ret = asprintf(&traces_path, "%s/" DEFAULT_TRACE_DIR_NAME
-			"/%s", alloc_path, path_name);
+			"/%s", default_path, path_name);
 	if (ret < 0) {
 		PERROR("asprintf trace dir name");
 		goto exit;
 	}
 exit:
-	free(alloc_path);
 	return traces_path;
 }
 
