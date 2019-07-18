@@ -41,6 +41,13 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
+/*
+ * Non-zero 8-bits arbitrary value below 0x7f to ensure no sign extension
+ * occurs. Used to verify that the value is properly propagated through the
+ * pipe.
+ */
+#define MAGIC_VALUE ((char) 0x5A)
+
 #ifdef HAVE_EPOLL
 #define NUM_TESTS 46
 #else
@@ -53,11 +60,6 @@ int lttng_opt_mi;
 #else
 #define CLOE_VALUE FD_CLOEXEC
 #endif
-
-/* Non-zero 8-bits arbitrary value below 0x7f to ensure no sign extension
- * used to verify that the value is properly propagated throught the pipe.
- */
-#define MAGIC_VALUE ((char)0x5A)
 
 void test_epoll_compat(void)
 {
