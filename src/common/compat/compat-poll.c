@@ -350,7 +350,7 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout)
 		struct pollfd *idle_pfd = &events->wait.events[idle_pfd_index];
 		struct pollfd *current_pfd = &events->wait.events[i];
 
-		if (ipfd->revents != 0) {
+		if (idle_pfd->revents != 0) {
 			swap_pfd = *current_pfd;
 			*current_pfd = *idle_pfd;
 			*idle_pfd = swap_pfd;
