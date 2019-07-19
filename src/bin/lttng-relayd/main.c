@@ -1104,6 +1104,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	lttng_uuid sessiond_uuid = {};
 	LTTNG_OPTIONAL(uint64_t) id_sessiond = {};
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
+	LTTNG_OPTIONAL(time_t) creation_time = {};
 
 	if (conn->minor < 4) {
 		/* From 2.1 to 2.3 */
@@ -1114,21 +1115,27 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 			hostname, &live_timer, &snapshot);
 	} else {
 		bool has_current_chunk;
+		uint64_t current_chunk_id_value;
+		time_t creation_time_value;
+		uint64_t id_sessiond_value;
 
 		/* From 2.11 to ... */
-		ret = cmd_create_session_2_11(payload, session_name,
-				hostname, &live_timer, &snapshot,
-				&id_sessiond.value, sessiond_uuid,
-				&has_current_chunk,
-				&current_chunk_id.value);
+		ret = cmd_create_session_2_11(payload, session_name, hostname,
+				&live_timer, &snapshot, &id_sessiond_value,
+				sessiond_uuid, &has_current_chunk,
+				&current_chunk_id_value, &creation_time_value);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
 			/* The nil UUID is reserved for pre-2.11 clients. */
 			ERR("Illegal nil UUID announced by peer in create session command");
 			ret = -1;
 			goto send_reply;
 		}
-		id_sessiond.is_set = true;
-		current_chunk_id.is_set = has_current_chunk;
+		LTTNG_OPTIONAL_SET(&id_sessiond, id_sessiond_value);
+		LTTNG_OPTIONAL_SET(&creation_time, creation_time_value);
+		if (has_current_chunk) {
+			LTTNG_OPTIONAL_SET(&current_chunk_id,
+					current_chunk_id_value);
+		}
 	}
 
 	if (ret < 0) {
@@ -1139,6 +1146,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 			snapshot, sessiond_uuid,
 			id_sessiond.is_set ? &id_sessiond.value : NULL,
 			current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+			creation_time.is_set ? &creation_time.value : NULL,
 			conn->major, conn->minor);
 	if (!session) {
 		ret = -1;

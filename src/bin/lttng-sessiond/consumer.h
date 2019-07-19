@@ -219,7 +219,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		struct lttcomm_relayd_sock *rsock, struct consumer_output *consumer,
 		enum lttng_stream_type type, uint64_t session_id,
 		const char *session_name, const char *hostname,
-		int session_live_timer, const uint64_t *current_chunk_id);
+		int session_live_timer, const uint64_t *current_chunk_id,
+		time_t session_creation_time);
 int consumer_send_channel_monitor_pipe(struct consumer_socket *consumer_sock,
 		int pipe);
 int consumer_send_destroy_relayd(struct consumer_socket *sock,

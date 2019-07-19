@@ -52,6 +52,7 @@ struct relay_session {
 	 * the other cases.
 	 */
 	lttng_uuid sessiond_uuid;
+	LTTNG_OPTIONAL(time_t) creation_time;
 	char session_name[LTTNG_NAME_MAX];
 	char hostname[LTTNG_HOST_NAME_MAX];
 	uint32_t live_timer;
@@ -123,10 +124,15 @@ struct relay_session {
 };
 
 struct relay_session *session_create(const char *session_name,
-		const char *hostname, uint32_t live_timer,
-		bool snapshot, const lttng_uuid sessiond_uuid,
-		uint64_t *id_sessiond, uint64_t *current_chunk_id,
-		uint32_t major, uint32_t minor);
+		const char *hostname,
+		uint32_t live_timer,
+		bool snapshot,
+		const lttng_uuid sessiond_uuid,
+		const uint64_t *id_sessiond,
+		const uint64_t *current_chunk_id,
+		const time_t *creation_time,
+		uint32_t major,
+		uint32_t minor);
 struct relay_session *session_get_by_id(uint64_t id);
 bool session_get(struct relay_session *session);
 void session_put(struct relay_session *session);

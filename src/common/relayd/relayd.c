@@ -130,7 +130,8 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
 		int session_live_timer, unsigned int snapshot,
 		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid,
-		const uint64_t *current_chunk_id)
+		const uint64_t *current_chunk_id,
+		time_t creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -175,6 +176,8 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		LTTNG_OPTIONAL_SET(&msg->current_chunk_id,
 				htobe64(*current_chunk_id));
 	}
+
+	msg->creation_time = htobe64((uint64_t) creation_time);
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_CREATE_SESSION, msg, msg_length, 0);
@@ -248,7 +251,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
-		const uint64_t *current_chunk_id)
+		const uint64_t *current_chunk_id,
+		time_t creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
@@ -270,7 +274,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		ret = relayd_create_session_2_11(rsock, session_name,
 				hostname, session_live_timer, snapshot,
 				sessiond_session_id, sessiond_uuid,
-				current_chunk_id);
+				current_chunk_id, creation_time);
 	}
 
 	if (ret < 0) {
