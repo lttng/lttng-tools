@@ -1039,7 +1039,8 @@ static enum lttng_error_code send_consumer_relayd_socket(
 		struct consumer_socket *consumer_sock,
 		const char *session_name, const char *hostname,
 		int session_live_timer,
-	        const uint64_t *current_chunk_id)
+	        const uint64_t *current_chunk_id,
+		time_t session_creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_sock *rsock = NULL;
@@ -1068,7 +1069,7 @@ static enum lttng_error_code send_consumer_relayd_socket(
 	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
 			relayd_uri->stype, session_id,
 			session_name, hostname, session_live_timer,
-			current_chunk_id);
+			current_chunk_id, session_creation_time);
 	if (ret < 0) {
 		status = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -1116,7 +1117,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 		unsigned int session_id, struct consumer_output *consumer,
 		struct consumer_socket *sock, const char *session_name,
 		const char *hostname, int session_live_timer,
-		const uint64_t *current_chunk_id)
+		const uint64_t *current_chunk_id, time_t session_creation_time)
 {
 	enum lttng_error_code status = LTTNG_OK;
 
@@ -1128,7 +1129,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.control, consumer, sock,
 				session_name, hostname, session_live_timer,
-				current_chunk_id);
+				current_chunk_id, session_creation_time);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1139,7 +1140,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.data, consumer, sock,
 				session_name, hostname, session_live_timer,
-				current_chunk_id);
+				current_chunk_id, session_creation_time);
 		if (status != LTTNG_OK) {
 			goto error;
 		}
@@ -1195,7 +1196,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 					usess->consumer, socket,
 					session->name, session->hostname,
 					session->live_timer,
-					current_chunk_id.is_set ? &current_chunk_id.value : NULL);
+					current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+					session->creation_time);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -1218,7 +1220,8 @@ int cmd_setup_relayd(struct ltt_session *session)
 					ksess->consumer, socket,
 					session->name, session->hostname,
 					session->live_timer,
-					current_chunk_id.is_set ? &current_chunk_id.value : NULL);
+					current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+					session->creation_time);
 			pthread_mutex_unlock(socket->lock);
 			if (ret != LTTNG_OK) {
 				goto error;
@@ -4243,7 +4246,8 @@ static enum lttng_error_code set_relayd_for_snapshot(
 				snap_output->consumer, socket,
 				session->name, session->hostname,
 				session->live_timer,
-				current_chunk_id.is_set ? &current_chunk_id.value : NULL);
+				current_chunk_id.is_set ? &current_chunk_id.value : NULL,
+				session->creation_time);
 		pthread_mutex_unlock(socket->lock);
 		if (status != LTTNG_OK) {
 			rcu_read_unlock();

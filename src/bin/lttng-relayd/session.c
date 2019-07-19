@@ -74,10 +74,15 @@ end:
  * Return allocated session or else NULL.
  */
 struct relay_session *session_create(const char *session_name,
-		const char *hostname, uint32_t live_timer,
-		bool snapshot, const lttng_uuid sessiond_uuid,
-		uint64_t *id_sessiond, uint64_t *current_chunk_id,
-		uint32_t major, uint32_t minor)
+		const char *hostname,
+		uint32_t live_timer,
+		bool snapshot,
+		const lttng_uuid sessiond_uuid,
+		const uint64_t *id_sessiond,
+		const uint64_t *current_chunk_id,
+		const time_t *creation_time,
+		uint32_t major,
+		uint32_t minor)
 {
 	int ret;
 	struct relay_session *session;
@@ -156,6 +161,9 @@ struct relay_session *session_create(const char *session_name,
 	}
 
 	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
+	if (creation_time) {
+		LTTNG_OPTIONAL_SET(&session->creation_time, *creation_time);
+	}
 	return session;
 
 error:
