@@ -192,6 +192,7 @@ static int destroy_session(struct lttng_session *session)
 skip_wait_rotation:
 	MSG("%sSession \"%s\" destroyed", printed_wait_msg ? "\n" : "",
 			session->name);
+	printed_wait_msg = false;
 
 	session_name = get_session_name_quiet();
 	if (session_name && !strncmp(session->name, session_name, NAME_MAX)) {
@@ -208,6 +209,9 @@ skip_wait_rotation:
 
 	ret = CMD_SUCCESS;
 error:
+	if (printed_wait_msg) {
+		MSG("");
+	}
 	lttng_destruction_handle_destroy(handle);
 	free(session_name);
 	return ret;
