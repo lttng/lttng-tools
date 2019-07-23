@@ -127,6 +127,10 @@ static void rcu_free_connection(struct rcu_head *head)
 		viewer_session_destroy(conn->viewer_session);
 		conn->viewer_session = NULL;
 	}
+	if (conn->type == RELAY_CONTROL) {
+		lttng_dynamic_buffer_reset(
+				&conn->protocol.ctrl.reception_buffer);
+	}
 	free(conn);
 }
 
