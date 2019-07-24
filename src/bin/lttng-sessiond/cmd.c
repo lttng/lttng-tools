@@ -4540,10 +4540,9 @@ int cmd_snapshot_record(struct ltt_session *session,
 {
 	enum lttng_error_code cmd_ret = LTTNG_OK;
 	int ret;
-	unsigned int use_tmp_output = 0;
-	struct snapshot_output tmp_output;
 	unsigned int snapshot_success = 0;
 	char datetime[16];
+	struct snapshot_output *tmp_output = NULL;
 
 	assert(session);
 	assert(output);
@@ -4575,11 +4574,17 @@ int cmd_snapshot_record(struct ltt_session *session,
 
 	/* Use temporary output for the session. */
 	if (*output->ctrl_url != '\0') {
+		tmp_output = snapshot_output_alloc();
+		if (!tmp_output) {
+			cmd_ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+
 		ret = snapshot_output_init(session, output->max_size,
 				output->name,
 				output->ctrl_url, output->data_url,
 				session->consumer,
-				&tmp_output, NULL);
+				tmp_output, NULL);
 		if (ret < 0) {
 			if (ret == -ENOMEM) {
 				cmd_ret = LTTNG_ERR_NOMEM;
@@ -4589,15 +4594,11 @@ int cmd_snapshot_record(struct ltt_session *session,
 			goto error;
 		}
 		/* Use the global session count for the temporary snapshot. */
-		tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
+		tmp_output->nb_snapshot = session->snapshot.nb_snapshot;
 
 		/* Use the global datetime */
-		memcpy(tmp_output.datetime, datetime, sizeof(datetime));
-		use_tmp_output = 1;
-	}
-
-	if (use_tmp_output) {
-		cmd_ret = snapshot_record(session, &tmp_output, wait);
+		memcpy(tmp_output->datetime, datetime, sizeof(datetime));
+		cmd_ret = snapshot_record(session, tmp_output, wait);
 		if (cmd_ret != LTTNG_OK) {
 			goto error;
 		}
@@ -4609,30 +4610,35 @@ int cmd_snapshot_record(struct ltt_session *session,
 		rcu_read_lock();
 		cds_lfht_for_each_entry(session->snapshot.output_ht->ht,
 				&iter.iter, sout, node.node) {
+			struct snapshot_output output_copy;
+
 			/*
-			 * Make a local copy of the output and assign the
-			 * possible temporary value given by the caller.
+			 * Make a local copy of the output and override output
+			 * parameters with those provided as part of the
+			 * command.
 			 */
-			memcpy(&tmp_output, sout, sizeof(tmp_output));
+			memcpy(&output_copy, sout, sizeof(output_copy));
 
 			if (output->max_size != (uint64_t) -1ULL) {
-				tmp_output.max_size = output->max_size;
+				output_copy.max_size = output->max_size;
 			}
 
-			tmp_output.nb_snapshot = session->snapshot.nb_snapshot;
-			memcpy(tmp_output.datetime, datetime, sizeof(datetime));
+			output_copy.nb_snapshot = session->snapshot.nb_snapshot;
+			memcpy(output_copy.datetime, datetime,
+					sizeof(datetime));
 
 			/* Use temporary name. */
 			if (*output->name != '\0') {
-				if (lttng_strncpy(tmp_output.name, output->name,
-						sizeof(tmp_output.name))) {
+				if (lttng_strncpy(output_copy.name,
+						output->name,
+						sizeof(output_copy.name))) {
 					cmd_ret = LTTNG_ERR_INVALID;
 					rcu_read_unlock();
 					goto error;
 				}
 			}
 
-			cmd_ret = snapshot_record(session, &tmp_output, wait);
+			cmd_ret = snapshot_record(session, &output_copy, wait);
 			if (cmd_ret != LTTNG_OK) {
 				rcu_read_unlock();
 				goto error;
@@ -4649,6 +4655,9 @@ int cmd_snapshot_record(struct ltt_session *session,
 	}
 
 error:
+	if (tmp_output) {
+		snapshot_output_destroy(tmp_output);
+	}
 	return cmd_ret;
 }
 
