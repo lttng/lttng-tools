@@ -33,6 +33,10 @@ struct ctf_trace {
 	struct urcu_ref ref;		/* Every stream has a ref on the trace. */
 	struct relay_session *session;	/* Back ref to trace session */
 
+	/* Trace sub-folder relative to the session output path. */
+	char *path;
+	bool index_folder_created;
+
 	/*
 	 * The ctf_trace lock nests inside the session lock.
 	 */
@@ -57,7 +61,7 @@ struct ctf_trace {
 };
 
 struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
-		char *path_name);
+		const char *subpath);
 bool ctf_trace_get(struct ctf_trace *trace);
 void ctf_trace_put(struct ctf_trace *trace);
 

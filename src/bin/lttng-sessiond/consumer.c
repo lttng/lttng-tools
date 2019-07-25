@@ -315,7 +315,7 @@ error:
  * object reference is not needed anymore.
  */
 struct consumer_socket *consumer_find_socket_by_bitness(int bits,
-		struct consumer_output *consumer)
+		const struct consumer_output *consumer)
 {
 	int consumer_fd;
 	struct consumer_socket *socket = NULL;
@@ -348,7 +348,7 @@ end:
  * returned consumer_socket.
  */
 struct consumer_socket *consumer_find_socket(int key,
-		struct consumer_output *consumer)
+		const struct consumer_output *consumer)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_ht_node_ulong *node;
@@ -405,7 +405,7 @@ void consumer_add_socket(struct consumer_socket *sock,
 }
 
 /*
- * Delte consumer socket to consumer output object. Read side lock must be
+ * Delete consumer socket to consumer output object. Read side lock must be
  * acquired before calling this function.
  */
 void consumer_del_socket(struct consumer_socket *sock,
@@ -1441,7 +1441,7 @@ end:
  * Returns LTTNG_OK on success or else an LTTng error code.
  */
 enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
-		uint64_t key, const struct snapshot_output *output, int metadata,
+		uint64_t key, const struct consumer_output *output, int metadata,
 		uid_t uid, gid_t gid, const char *channel_path, int wait,
 		uint64_t nb_packets_per_stream)
 {
@@ -1451,7 +1451,6 @@ enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
 
 	assert(socket);
 	assert(output);
-	assert(output->consumer);
 
 	DBG("Consumer snapshot channel key %" PRIu64, key);
 
@@ -1461,9 +1460,9 @@ enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
 	msg.u.snapshot_channel.nb_packets_per_stream = nb_packets_per_stream;
 	msg.u.snapshot_channel.metadata = metadata;
 
-	if (output->consumer->type == CONSUMER_DST_NET) {
+	if (output->type == CONSUMER_DST_NET) {
 		msg.u.snapshot_channel.relayd_id =
-				output->consumer->net_seq_index;
+				output->net_seq_index;
 		msg.u.snapshot_channel.use_relayd = 1;
 	} else {
 		msg.u.snapshot_channel.relayd_id = (uint64_t) -1ULL;

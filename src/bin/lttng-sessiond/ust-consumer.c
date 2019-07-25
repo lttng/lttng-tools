@@ -62,19 +62,19 @@ static char *setup_channel_trace_path(struct consumer_output *consumer,
 	}
 
 	/* Get correct path name destination */
-	if (consumer->type == CONSUMER_DST_LOCAL) {
-		/* Set application path to the destination path */
-		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s",
-				consumer->domain_subdir, ua_sess->path);
-		DBG3("Userspace local consumer trace path relative to current trace chunk: \"%s\"",
-				pathname);
-	} else {
+	if (consumer->type == CONSUMER_DST_NET &&
+			consumer->relay_major_version == 2 &&
+			consumer->relay_minor_version < 11) {
 		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s/%s%s",
 				consumer->dst.net.base_dir,
-				consumer->chunk_path,
-				consumer->domain_subdir,
+				consumer->chunk_path, consumer->domain_subdir,
 				ua_sess->path);
+	} else {
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s",
+				consumer->domain_subdir, ua_sess->path);
 	}
+	DBG3("Userspace consumer trace path relative to current trace chunk: \"%s\"",
+			pathname);
 	if (ret < 0) {
 		PERROR("Failed to format channel path");
 		goto error;
@@ -85,7 +85,6 @@ static char *setup_channel_trace_path(struct consumer_output *consumer,
 	}
 
 	return pathname;
-
 error:
 	free(pathname);
 	return NULL;

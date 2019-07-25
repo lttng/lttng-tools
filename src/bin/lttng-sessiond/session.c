@@ -565,21 +565,11 @@ error:
 }
 
 static
-bool output_supports_trace_chunks(const struct ltt_session *session)
+bool output_supports_trace_chunks(const struct consumer_output *output)
 {
-	if (session->consumer->type == CONSUMER_DST_LOCAL) {
+	if (output->type == CONSUMER_DST_LOCAL) {
 		return true;
 	} else {
-		struct consumer_output *output;
-
-		if (session->ust_session) {
-			output = session->ust_session->consumer;
-		} else if (session->kernel_session) {
-			output = session->kernel_session->consumer;
-		} else {
-			abort();
-		}
-
 		if (output->relay_major_version > 2) {
 			return true;
 		} else if (output->relay_major_version == 2 &&
@@ -591,7 +581,8 @@ bool output_supports_trace_chunks(const struct ltt_session *session)
 }
 
 struct lttng_trace_chunk *session_create_new_trace_chunk(
-		struct ltt_session *session,
+		const struct ltt_session *session,
+		const struct consumer_output *consumer_output_override,
 		const char *session_base_path_override,
 		const char *chunk_name_override)
 {
@@ -599,16 +590,28 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	struct lttng_trace_chunk *trace_chunk = NULL;
 	enum lttng_trace_chunk_status chunk_status;
 	const time_t chunk_creation_ts = time(NULL);
-	const bool is_local_trace =
-			session->consumer->type == CONSUMER_DST_LOCAL;
-	const char *base_path = session_base_path_override ? :
-			session_get_base_path(session);
+	bool is_local_trace;
+	const char *base_path;
 	struct lttng_directory_handle session_output_directory;
 	const struct lttng_credentials session_credentials = {
 		.uid = session->uid,
 		.gid = session->gid,
 	};
 	uint64_t next_chunk_id;
+	const struct consumer_output *output;
+
+	if (consumer_output_override) {
+		output = consumer_output_override;
+	} else {
+		assert(session->ust_session || session->kernel_session);
+		output = session->ust_session ?
+					 session->ust_session->consumer :
+					 session->kernel_session->consumer;
+	}
+
+	is_local_trace = output->type == CONSUMER_DST_LOCAL;
+	base_path = session_base_path_override ? :
+			consumer_output_get_base_path(output);
 
 	if (chunk_creation_ts == (time_t) -1) {
 		PERROR("Failed to sample time while creation session \"%s\" trace chunk",
@@ -616,7 +619,7 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 		goto error;
 	}
 
-	if (!output_supports_trace_chunks(session)) {
+	if (!output_supports_trace_chunks(output)) {
 		goto end;
 	}
 	next_chunk_id = session->most_recent_chunk_id.is_set ?

@@ -408,7 +408,7 @@ static int relayd_add_stream_2_11(struct lttcomm_relayd_sock *rsock,
 
 	msg->tracefile_size = htobe64(tracefile_size);
 	msg->tracefile_count = htobe64(tracefile_count);
-	msg->trace_archive_id = htobe64(trace_archive_id);
+	msg->trace_chunk_id = htobe64(trace_archive_id);
 
 	/* Send command */
 	ret = send_command(rsock, RELAYD_ADD_STREAM, (void *) msg, msg_length, 0);

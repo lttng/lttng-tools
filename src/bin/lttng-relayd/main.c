@@ -1207,6 +1207,34 @@ static void publish_connection_local_streams(struct relay_connection *conn)
 	pthread_mutex_unlock(&session->lock);
 }
 
+static int conform_channel_path(char *channel_path)
+{
+	int ret = 0;
+
+	if (strstr("../", channel_path)) {
+		ERR("Refusing channel path as it walks up the path hierarchy: \"%s\"",
+				channel_path);
+		ret = -1;
+		goto end;
+	}
+
+	if (*channel_path == '/') {
+		const size_t len = strlen(channel_path);
+
+		/*
+		 * Channel paths from peers prior to 2.11 are expressed as an
+		 * absolute path that is, in reality, relative to the relay
+		 * daemon's output directory. Remove the leading slash so it
+		 * is correctly interpreted as a relative path later on.
+		 *
+		 * len (and not len - 1) is used to copy the trailing NULL.
+		 */
+		bcopy(channel_path + 1, channel_path, len);
+	}
+end:
+	return ret;
+}
+
 /*
  * relay_add_stream: allocate a new stream for a session
  */
@@ -1223,7 +1251,7 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 	uint64_t stream_handle = -1ULL;
 	char *path_name = NULL, *channel_name = NULL;
 	uint64_t tracefile_size = 0, tracefile_count = 0;
-	struct relay_stream_chunk_id stream_chunk_id = { 0 };
+	LTTNG_OPTIONAL(uint64_t) stream_chunk_id = {};
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to add a stream before version check");
@@ -1251,6 +1279,10 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto send_reply;
 	}
 
+	if (conform_channel_path(path_name)) {
+		goto send_reply;
+	}
+
 	trace = ctf_trace_get_by_path_or_create(session, path_name);
 	if (!trace) {
 		goto send_reply;
@@ -1263,8 +1295,7 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	/* We pass ownership of path_name and channel_name. */
 	stream = stream_create(trace, stream_handle, path_name,
-		channel_name, tracefile_size, tracefile_count,
-		&stream_chunk_id);
+		channel_name, tracefile_size, tracefile_count);
 	path_name = NULL;
 	channel_name = NULL;
 
@@ -1560,10 +1591,12 @@ end:
  */
 static
 int create_rotate_index_file(struct relay_stream *stream,
-		const char *stream_path)
+		const char *channel_path)
 {
 	int ret;
 	uint32_t major, minor;
+
+	ASSERT_LOCKED(stream->lock);
 
 	/* Put ref on previous index_file. */
 	if (stream->index_file) {
@@ -1572,12 +1605,26 @@ int create_rotate_index_file(struct relay_stream *stream,
 	}
 	major = stream->trace->session->major;
 	minor = stream->trace->session->minor;
-	stream->index_file = lttng_index_file_create(stream_path,
-			stream->channel_name,
-			-1, -1, stream->tracefile_size,
-			tracefile_array_get_file_index_head(stream->tfa),
+	if (!stream->trace->index_folder_created) {
+		char *index_subpath = NULL;
+
+		ret = asprintf(&index_subpath, "%s/%s", channel_path, DEFAULT_INDEX_DIR);
+		if (ret < 0) {
+			goto end;
+		}
+
+		ret = lttng_trace_chunk_create_subdirectory(stream->trace_chunk, index_subpath);
+		free(index_subpath);
+		if (ret) {
+			goto end;
+		}
+		stream->trace->index_folder_created = true;
+	}
+	stream->index_file = lttng_index_file_create_from_trace_chunk(
+			stream->trace_chunk, channel_path, stream->channel_name,
+			stream->tracefile_size, stream->tracefile_count,
 			lttng_to_index_major(major, minor),
-			lttng_to_index_minor(major, minor));
+			lttng_to_index_minor(major, minor), true);
 	if (!stream->index_file) {
 		ret = -1;
 		goto end;
@@ -2618,9 +2665,6 @@ static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr
 		goto end_stream_unlock;
 	}
 
-	assert(stream->current_chunk_id.is_set);
-	stream->current_chunk_id.value = stream_info.new_chunk_id;
-
 	if (stream->is_metadata) {
 		/*
 		 * Metadata streams have no index; consider its rotation
@@ -2679,10 +2723,21 @@ static int init_session_output_directory_handle(struct relay_session *session,
 	 * e.g. /home/user/lttng-traces/hostname/session_name
 	 */
 	char *full_session_path = NULL;
+	char creation_time_str[16];
+	struct tm *timeinfo;
+
+	assert(session->creation_time.is_set);
+	timeinfo = localtime(&session->creation_time.value);
+	if (!timeinfo) {
+		ret = -1;
+		goto end;
+	}
+	strftime(creation_time_str, sizeof(creation_time_str), "%Y%m%d-%H%M%S",
+			timeinfo);
 
 	pthread_mutex_lock(&session->lock);
-	ret = asprintf(&session_directory, "%s/%s", session->hostname,
-			session->session_name);
+	ret = asprintf(&session_directory, "%s/%s-%s", session->hostname,
+			session->session_name, creation_time_str);
 	pthread_mutex_unlock(&session->lock);
 	if (ret < 0) {
 		PERROR("Failed to format session directory name");

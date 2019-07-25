@@ -5877,7 +5877,7 @@ void ust_app_destroy(struct ust_app *app)
  */
 enum lttng_error_code ust_app_snapshot_record(
 		const struct ltt_ust_session *usess,
-		const struct snapshot_output *output, int wait,
+		const struct consumer_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int ret = 0;
@@ -5965,7 +5965,7 @@ enum lttng_error_code ust_app_snapshot_record(
 
 			/* Get the right consumer socket for the application. */
 			socket = consumer_find_socket_by_bitness(app->bits_per_long,
-					output->consumer);
+					output);
 			if (!socket) {
 				status = LTTNG_ERR_INVALID;
 				goto error;

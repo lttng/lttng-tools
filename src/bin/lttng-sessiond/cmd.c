@@ -2583,7 +2583,7 @@ int cmd_start_trace(struct ltt_session *session)
 		struct lttng_trace_chunk *trace_chunk;
 
 		trace_chunk = session_create_new_trace_chunk(
-				session, NULL, NULL);
+				session, NULL, NULL, NULL);
 		if (!trace_chunk) {
 			ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
@@ -4201,8 +4201,7 @@ end:
  * Return LTTNG_OK on success or a LTTNG_ERR code.
  */
 static enum lttng_error_code set_relayd_for_snapshot(
-		struct consumer_output *consumer,
-		const struct snapshot_output *snap_output,
+		struct consumer_output *output,
 		const struct ltt_session *session)
 {
 	enum lttng_error_code status = LTTNG_OK;
@@ -4210,17 +4209,18 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	struct consumer_socket *socket;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
-	assert(consumer);
-	assert(snap_output);
+	assert(output);
 	assert(session);
 
 	DBG2("Set relayd object from snapshot output");
 
 	if (session->current_trace_chunk) {
-		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
-				session->current_trace_chunk, &current_chunk_id.value);
+		enum lttng_trace_chunk_status chunk_status =
+				lttng_trace_chunk_get_id(
+						session->current_trace_chunk,
+						&current_chunk_id.value);
 
-		if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+		if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK) {
 			current_chunk_id.is_set = true;
 		} else {
 			ERR("Failed to get current trace chunk id");
@@ -4230,7 +4230,7 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	}
 
 	/* Ignore if snapshot consumer output is not network. */
-	if (snap_output->consumer->type != CONSUMER_DST_NET) {
+	if (output->type != CONSUMER_DST_NET) {
 		goto error;
 	}
 
@@ -4239,11 +4239,11 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	 * snapshot output.
 	 */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(snap_output->consumer->socks->ht, &iter.iter,
+	cds_lfht_for_each_entry(output->socks->ht, &iter.iter,
 			socket, node.node) {
 		pthread_mutex_lock(socket->lock);
 		status = send_consumer_relayd_sockets(0, session->id,
-				snap_output->consumer, socket,
+				output, socket,
 				session->name, session->hostname,
 				session->live_timer,
 				current_chunk_id.is_set ? &current_chunk_id.value : NULL,
@@ -4267,44 +4267,18 @@ error:
  */
 static enum lttng_error_code record_kernel_snapshot(
 		struct ltt_kernel_session *ksess,
-		const struct snapshot_output *output,
+		const struct consumer_output *output,
 		const struct ltt_session *session,
 		int wait, uint64_t nb_packets_per_stream)
 {
-	int ret;
 	enum lttng_error_code status;
 
 	assert(ksess);
 	assert(output);
 	assert(session);
 
-	/*
-	 * Copy kernel session sockets so we can communicate with the right
-	 * consumer for the snapshot record command.
-	 */
-	ret = consumer_copy_sockets(output->consumer, ksess->consumer);
-	if (ret < 0) {
-		status = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	status = set_relayd_for_snapshot(ksess->consumer, output, session);
-	if (status != LTTNG_OK) {
-		goto error_snapshot;
-	}
-
-	status = kernel_snapshot_record(ksess, output, wait, nb_packets_per_stream);
-	if (status != LTTNG_OK) {
-		goto error_snapshot;
-	}
-
-	goto end;
-
-error_snapshot:
-	/* Clean up copied sockets so this output can use some other later on. */
-	consumer_destroy_output_sockets(output->consumer);
-error:
-end:
+	status = kernel_snapshot_record(
+			ksess, output, wait, nb_packets_per_stream);
 	return status;
 }
 
@@ -4314,45 +4288,18 @@ end:
  * Returns LTTNG_OK on success or a LTTNG_ERR error code.
  */
 static enum lttng_error_code record_ust_snapshot(struct ltt_ust_session *usess,
-		const struct snapshot_output *output,
-		const struct ltt_session *session, int wait,
-		uint64_t nb_packets_per_stream)
+		const struct consumer_output *output,
+		const struct ltt_session *session,
+		int wait, uint64_t nb_packets_per_stream)
 {
-	int ret;
 	enum lttng_error_code status;
 
 	assert(usess);
 	assert(output);
 	assert(session);
 
-	/*
-	 * Copy UST session sockets so we can communicate with the right
-	 * consumer for the snapshot record command.
-	 */
-	ret = consumer_copy_sockets(output->consumer, usess->consumer);
-	if (ret < 0) {
-		status = LTTNG_ERR_NOMEM;
-		goto error;
-	}
-
-	status = set_relayd_for_snapshot(usess->consumer, output, session);
-	if (status != LTTNG_OK) {
-		goto error_snapshot;
-	}
-
-	status = ust_app_snapshot_record(usess, output, wait,
-			nb_packets_per_stream);
-	if (status != LTTNG_OK) {
-		goto error_snapshot;
-	}
-
-	goto end;
-
-error_snapshot:
-	/* Clean up copied sockets so this output can use some other later on. */
-	consumer_destroy_output_sockets(output->consumer);
-error:
-end:
+	status = ust_app_snapshot_record(
+			usess, output, wait, nb_packets_per_stream);
 	return status;
 }
 
@@ -4448,63 +4395,122 @@ static
 enum lttng_error_code snapshot_record(struct ltt_session *session,
 		const struct snapshot_output *snapshot_output, int wait)
 {
-	int fmt_ret;
 	int64_t nb_packets_per_stream;
 	char snapshot_chunk_name[LTTNG_NAME_MAX];
-	enum lttng_error_code ret = LTTNG_OK;
+	int ret;
+	enum lttng_error_code ret_code = LTTNG_OK;
 	struct lttng_trace_chunk *snapshot_trace_chunk;
+	struct consumer_output *original_ust_consumer_output = NULL;
+	struct consumer_output *original_kernel_consumer_output = NULL;
+	struct consumer_output *snapshot_ust_consumer_output = NULL;
+	struct consumer_output *snapshot_kernel_consumer_output = NULL;
 
-	fmt_ret = snprintf(snapshot_chunk_name, sizeof(snapshot_chunk_name),
+	ret = snprintf(snapshot_chunk_name, sizeof(snapshot_chunk_name),
 			"%s-%s-%" PRIu64,
 			snapshot_output->name,
 			snapshot_output->datetime,
 			snapshot_output->nb_snapshot);
-	if (fmt_ret < 0 || fmt_ret >= sizeof(snapshot_chunk_name)) {
+	if (ret < 0 || ret >= sizeof(snapshot_chunk_name)) {
 		ERR("Failed to format snapshot name");
-		ret = LTTNG_ERR_INVALID;
-		goto end;
+		ret_code = LTTNG_ERR_INVALID;
+		goto error;
 	}
 	DBG("Recording snapshot \"%s\" for session \"%s\" with chunk name \"%s\"",
 			snapshot_output->name, session->name,
 			snapshot_chunk_name);
+	if (!session->kernel_session && !session->ust_session) {
+		ERR("Failed to record snapshot as no channels exist");
+		ret_code = LTTNG_ERR_NO_CHANNEL;
+		goto error;
+	}
+
+	if (session->kernel_session) {
+		original_kernel_consumer_output =
+				session->kernel_session->consumer;
+		snapshot_kernel_consumer_output =
+				consumer_copy_output(snapshot_output->consumer);
+		ret = consumer_copy_sockets(snapshot_kernel_consumer_output,
+				original_kernel_consumer_output);
+		if (ret < 0) {
+			ERR("Failed to copy consumer sockets from snapshot output configuration");
+			ret_code = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		ret_code = set_relayd_for_snapshot(
+				snapshot_kernel_consumer_output, session);
+		if (ret_code != LTTNG_OK) {
+			ERR("Failed to setup relay daemon for kernel tracer snapshot");
+			goto error;
+		}
+		session->kernel_session->consumer =
+				snapshot_kernel_consumer_output;
+	}
+	if (session->ust_session) {
+		original_ust_consumer_output = session->ust_session->consumer;
+		snapshot_ust_consumer_output =
+				consumer_copy_output(snapshot_output->consumer);
+		ret = consumer_copy_sockets(snapshot_ust_consumer_output,
+				original_ust_consumer_output);
+		if (ret < 0) {
+			ERR("Failed to copy consumer sockets from snapshot output configuration");
+			ret_code = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		ret_code = set_relayd_for_snapshot(
+				snapshot_ust_consumer_output, session);
+		if (ret_code != LTTNG_OK) {
+			ERR("Failed to setup relay daemon for userspace tracer snapshot");
+			goto error;
+		}
+		session->ust_session->consumer =
+				snapshot_ust_consumer_output;
+	}
+
 	snapshot_trace_chunk = session_create_new_trace_chunk(session,
-			snapshot_output_get_base_path(snapshot_output),
+			snapshot_kernel_consumer_output ?:
+					snapshot_ust_consumer_output,
+			consumer_output_get_base_path(
+					snapshot_output->consumer),
 			snapshot_chunk_name);
 	if (!snapshot_trace_chunk) {
-		ret = LTTNG_ERR_CREATE_DIR_FAIL;
-		goto end;
+		ERR("Failed to create temporary trace chunk to record a snapshot of session \"%s\"",
+				session->name);
+		ret_code = LTTNG_ERR_CREATE_DIR_FAIL;
+		goto error;
 	}
 	assert(!session->current_trace_chunk);
 	ret = session_set_trace_chunk(session, snapshot_trace_chunk, NULL);
 	lttng_trace_chunk_put(snapshot_trace_chunk);
 	snapshot_trace_chunk = NULL;
 	if (ret) {
-		ret = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
-		goto end;
+		ERR("Failed to set temporary trace chunk to record a snapshot of session \"%s\"",
+				session->name);
+		ret_code = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
+		goto error;
 	}
 
 	nb_packets_per_stream = get_session_nb_packets_per_stream(session,
 			snapshot_output->max_size);
 	if (nb_packets_per_stream < 0) {
-		ret = LTTNG_ERR_MAX_SIZE_INVALID;
-		goto end;
+		ret_code = LTTNG_ERR_MAX_SIZE_INVALID;
+		goto error;
 	}
 
 	if (session->kernel_session) {
-		ret = record_kernel_snapshot(session->kernel_session,
-				snapshot_output, session,
+		ret_code = record_kernel_snapshot(session->kernel_session,
+				snapshot_kernel_consumer_output, session,
 				wait, nb_packets_per_stream);
-		if (ret != LTTNG_OK) {
-			goto end;
+		if (ret_code != LTTNG_OK) {
+			goto error;
 		}
 	}
 
 	if (session->ust_session) {
-		ret = record_ust_snapshot(session->ust_session,
-				snapshot_output, session,
+		ret_code = record_ust_snapshot(session->ust_session,
+				snapshot_ust_consumer_output, session,
 				wait, nb_packets_per_stream);
-		if (ret != LTTNG_OK) {
-			goto end;
+		if (ret_code != LTTNG_OK) {
+			goto error;
 		}
 	}
 
@@ -4516,15 +4522,24 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 		 */
 		ERR("Failed to close snapshot trace chunk of session \"%s\"",
 				session->name);
-		ret = -1;
+		ret_code = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 	}
 	if (session_set_trace_chunk(session, NULL, NULL)) {
 		ERR("Failed to release the current trace chunk of session \"%s\"",
 				session->name);
-		ret = -1;
+		ret_code = LTTNG_ERR_UNK;
 	}
-end:
-	return ret;
+error:
+	if (original_ust_consumer_output) {
+		session->ust_session->consumer = original_ust_consumer_output;
+	}
+	if (original_kernel_consumer_output) {
+		session->kernel_session->consumer =
+				original_kernel_consumer_output;
+	}
+	consumer_output_put(snapshot_ust_consumer_output);
+	consumer_output_put(snapshot_kernel_consumer_output);
+	return ret_code;
 }
 
 /*
@@ -4743,7 +4758,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
 
 	if (session->active) {
-		new_trace_chunk = session_create_new_trace_chunk(session,
+		new_trace_chunk = session_create_new_trace_chunk(session, NULL,
 				NULL, NULL);
 		if (!new_trace_chunk) {
 			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;

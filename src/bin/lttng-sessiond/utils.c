@@ -99,15 +99,12 @@ int loglevels_match(int a_loglevel_type, int a_loglevel_value,
 
 const char *session_get_base_path(const struct ltt_session *session)
 {
-	return session->net_handle > 0 ?
-			session->consumer->dst.net.base_dir :
-			session->consumer->dst.session_root_path;
+	return consumer_output_get_base_path(session->consumer);
 }
 
-const char *snapshot_output_get_base_path(
-		const struct snapshot_output *snapshot_output)
+const char *consumer_output_get_base_path(const struct consumer_output *output)
 {
-	return snapshot_output->consumer->type == CONSUMER_DST_LOCAL ?
-			snapshot_output->consumer->dst.session_root_path :
-			snapshot_output->consumer->dst.net.base_dir;
+	return output->type == CONSUMER_DST_LOCAL ?
+			output->dst.session_root_path :
+			output->dst.net.base_dir;
 }

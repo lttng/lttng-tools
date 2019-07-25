@@ -224,7 +224,8 @@ int session_reset_rotation_state(struct ltt_session *session,
 
 /* Create a new trace chunk object from the session's configuration. */
 struct lttng_trace_chunk *session_create_new_trace_chunk(
-		struct ltt_session *session,
+		const struct ltt_session *session,
+		const struct consumer_output *consumer_output_override,
 		const char *session_base_path_override,
 		const char *chunk_name_override);
 

@@ -124,7 +124,17 @@ struct lttng_consumer_channel {
 	 * a session with per-PID buffers.
 	 */
 	uint64_t session_id_per_pid;
-	/* Channel trace file path name. */
+	/*
+	 * In the case of local streams, this field contains the channel's
+	 * output path; a path relative to the session's output path.
+	 *   e.g. ust/uid/1000/64-bit
+	 *
+	 * In the case of remote streams, the contents of this field depends
+	 * on the version of the relay daemon peer. For 2.11+ peers, the
+	 * contents are the same as in the local case. However, for legacy
+	 * peers, this contains a path of the form:
+	 *   /hostname/session_path/ust/uid/1000/64-bit
+	 */
 	char pathname[PATH_MAX];
 	/* Channel name. */
 	char name[LTTNG_SYMBOL_NAME_LEN];

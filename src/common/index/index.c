@@ -31,91 +31,6 @@
 
 #include "index.h"
 
-/*
- * Create the index file associated with a trace file.
- *
- * Return allocated struct lttng_index_file, NULL on error.
- */
-struct lttng_index_file *lttng_index_file_create(const char *path_name,
-		char *stream_name, int uid, int gid,
-		uint64_t size, uint64_t count, uint32_t major, uint32_t minor)
-{
-	struct lttng_index_file *index_file;
-	int ret, fd = -1;
-	ssize_t size_ret;
-	struct ctf_packet_index_file_hdr hdr;
-	char fullpath[PATH_MAX];
-	uint32_t element_len = ctf_packet_index_len(major, minor);
-
-	index_file = zmalloc(sizeof(*index_file));
-	if (!index_file) {
-		PERROR("allocating lttng_index_file");
-		goto error;
-	}
-
-	ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR,
-			path_name);
-	if (ret < 0) {
-		PERROR("snprintf index path");
-		goto error;
-	}
-
-	/* Create index directory if necessary. */
-	ret = utils_mkdir(fullpath, S_IRWXU | S_IRWXG, uid, gid);
-	if (ret < 0) {
-		if (errno != EEXIST) {
-			PERROR("Index trace directory creation error");
-			goto error;
-		}
-	}
-
-	/*
-	 * For tracefile rotation. We need to unlink the old
-	 * file if present to synchronize with the tail of the
-	 * live viewer which could be working on this same file.
-	 * By doing so, any reference to the old index file
-	 * stays valid even if we re-create a new file with the
-	 * same name afterwards.
-	 */
-	ret = utils_unlink_stream_file(fullpath, stream_name, size, count, uid,
-			gid, DEFAULT_INDEX_FILE_SUFFIX);
-	if (ret < 0 && errno != ENOENT) {
-		goto error;
-	}
-	ret = utils_create_stream_file(fullpath, stream_name, size, count, uid,
-			gid, DEFAULT_INDEX_FILE_SUFFIX);
-	if (ret < 0) {
-		goto error;
-	}
-	fd = ret;
-
-	ctf_packet_index_file_hdr_init(&hdr, major, minor);
-	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
-	if (size_ret < sizeof(hdr)) {
-		PERROR("write index header");
-		goto error;
-	}
-	index_file->fd = fd;
-	index_file->major = major;
-	index_file->minor = minor;
-	index_file->element_len = element_len;
-	urcu_ref_init(&index_file->ref);
-
-	return index_file;
-
-error:
-	if (fd >= 0) {
-		int close_ret;
-
-		close_ret = close(fd);
-		if (close_ret < 0) {
-			PERROR("close index fd");
-		}
-	}
-	free(index_file);
-	return NULL;
-}
-
 struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, char *stream_name,
@@ -165,12 +80,14 @@ struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 		 * stays valid even if we re-create a new file with the
 		 * same name afterwards.
 		 */
-		chunk_status = lttng_trace_chunk_unlink_file(chunk,
-				index_file_path);
-		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		chunk_status = lttng_trace_chunk_unlink_file(
+				chunk, index_file_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK &&
+				!(chunk_status == LTTNG_TRACE_CHUNK_STATUS_ERROR &&
+						errno == ENOENT)) {
 			goto error;
 		}
-        }
+	}
 
 	chunk_status = lttng_trace_chunk_open_file(chunk, index_file_path,
 			flags, mode, &fd);
