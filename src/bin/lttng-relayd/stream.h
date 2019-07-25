@@ -127,7 +127,7 @@ struct relay_stream {
 	bool data_pending_check_done;
 
 	/* Is this stream a metadata stream ? */
-	int32_t is_metadata;
+	bool is_metadata;
 	/* Amount of metadata received (bytes). */
 	uint64_t metadata_received;
 
