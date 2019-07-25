@@ -58,7 +58,7 @@ int cmd_recv_stream_2_2(const struct lttng_buffer_view *payload,
 		ERR("Path name too long");
 		goto error;
 	}
-	path_name = create_output_path(stream_info.pathname);
+	path_name = strdup(stream_info.pathname);
 	if (!path_name) {
 		PERROR("Path name allocation");
 		ret = -ENOMEM;

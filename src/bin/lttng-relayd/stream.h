@@ -26,15 +26,11 @@
 #include <urcu/list.h>
 
 #include <common/hashtable/hashtable.h>
+#include <common/trace-chunk.h>
 
 #include "session.h"
 #include "stream-fd.h"
 #include "tracefile-array.h"
-
-struct relay_stream_chunk_id {
-	bool is_set;
-	uint64_t value;
-};
 
 /*
  * Represents a stream in the relay
@@ -175,23 +171,16 @@ struct relay_stream {
 	bool data_rotated;
 	bool index_rotated;
 	/*
-	 * This is the id of the chunk where we are writing to if no rotation is
-	 * pending (rotate_at_seq_num == -1ULL). If a rotation is pending, this
-	 * is the chunk_id we will have after the rotation. It must be updated
-	 * atomically with rotate_at_seq_num.
-	 *
-	 * Always access with stream lock held.
-	 *
-	 * This attribute is not set if the stream is created by a pre-2.11
-	 * consumer.
+	 * `trace_chunk` is the trace chunk to which the file currently
+	 * being produced (if any) belongs.
 	 */
-	struct relay_stream_chunk_id current_chunk_id;
+	struct lttng_trace_chunk *trace_chunk;
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,
 	uint64_t stream_handle, char *path_name,
 	char *channel_name, uint64_t tracefile_size,
-	uint64_t tracefile_count, const struct relay_stream_chunk_id *chunk_id);
+	uint64_t tracefile_count);
 
 struct relay_stream *stream_get_by_id(uint64_t stream_id);
 bool stream_get(struct relay_stream *stream);

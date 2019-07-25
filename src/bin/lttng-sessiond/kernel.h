@@ -61,7 +61,7 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);
 enum lttng_error_code kernel_snapshot_record(
 		struct ltt_kernel_session *ksess,
-		const struct snapshot_output *output, int wait,
+		const struct consumer_output *output, int wait,
 		uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_session *session);

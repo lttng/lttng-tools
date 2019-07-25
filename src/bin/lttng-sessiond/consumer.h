@@ -182,9 +182,9 @@ struct consumer_output {
 };
 
 struct consumer_socket *consumer_find_socket(int key,
-		struct consumer_output *consumer);
+		const struct consumer_output *consumer);
 struct consumer_socket *consumer_find_socket_by_bitness(int bits,
-		struct consumer_output *consumer);
+		const struct consumer_output *consumer);
 struct consumer_socket *consumer_allocate_socket(int *fd);
 void consumer_add_socket(struct consumer_socket *sock,
 		struct consumer_output *consumer);
@@ -301,7 +301,7 @@ int consumer_get_lost_packets(uint64_t session_id, uint64_t channel_key,
 
 /* Snapshot command. */
 enum lttng_error_code consumer_snapshot_channel(struct consumer_socket *socket,
-		uint64_t key, const struct snapshot_output *output, int metadata,
+		uint64_t key, const struct consumer_output *output, int metadata,
 		uid_t uid, gid_t gid, const char *channel_path, int wait,
 		uint64_t nb_packets_per_stream);
 

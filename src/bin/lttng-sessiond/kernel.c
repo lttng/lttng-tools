@@ -1242,7 +1242,7 @@ void kernel_destroy_channel(struct ltt_kernel_channel *kchan)
  */
 enum lttng_error_code kernel_snapshot_record(
 		struct ltt_kernel_session *ksess,
-		const struct snapshot_output *output, int wait,
+		const struct consumer_output *output, int wait,
 		uint64_t nb_packets_per_stream)
 {
 	int err, ret, saved_metadata_fd;
@@ -1276,24 +1276,14 @@ enum lttng_error_code kernel_snapshot_record(
 	}
 
 	/* Send metadata to consumer and snapshot everything. */
-	cds_lfht_for_each_entry(ksess->consumer->socks->ht, &iter.iter,
+	cds_lfht_for_each_entry(output->socks->ht, &iter.iter,
 			socket, node.node) {
-		struct consumer_output *saved_output;
 		struct ltt_kernel_channel *chan;
-
-		/*
-		 * Temporarly switch consumer output for our snapshot output. As long
-		 * as the session lock is taken, this is safe.
-		 */
-		saved_output = ksess->consumer;
-		ksess->consumer = output->consumer;
 
 		pthread_mutex_lock(socket->lock);
 		/* This stream must not be monitored by the consumer. */
 		ret = kernel_consumer_add_metadata(socket, ksess, 0);
 		pthread_mutex_unlock(socket->lock);
-		/* Put back the saved consumer output into the session. */
-		ksess->consumer = saved_output;
 		if (ret < 0) {
 			status = LTTNG_ERR_KERN_META_FAIL;
 			goto error_consumer;

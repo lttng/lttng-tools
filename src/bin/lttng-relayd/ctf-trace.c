@@ -54,6 +54,8 @@ void ctf_trace_destroy(struct ctf_trace *trace)
 	assert(cds_list_empty(&trace->stream_list));
 	session_put(trace->session);
 	trace->session = NULL;
+	free(trace->path);
+	trace->path = NULL;
 	call_rcu(&trace->rcu_node, rcu_destroy_ctf_trace);
 }
 
@@ -85,23 +87,26 @@ bool ctf_trace_get(struct ctf_trace *trace)
  * put their reference, its refcount drops to 0.
  */
 static struct ctf_trace *ctf_trace_create(struct relay_session *session,
-		char *path_name)
+		const char *subpath)
 {
 	struct ctf_trace *trace;
 
 	trace = zmalloc(sizeof(*trace));
 	if (!trace) {
-		PERROR("ctf_trace alloc");
-		goto error;
+		PERROR("Failed to allocate ctf_trace");
+		goto end;
 	}
+	urcu_ref_init(&trace->ref);
 
 	if (!session_get(session)) {
-		ERR("Cannot get session");
-		free(trace);
-		trace = NULL;
+		ERR("Failed to acquire session reference");
 		goto error;
 	}
 	trace->session = session;
+	trace->path = strdup(subpath);
+	if (!trace->path) {
+		goto error;
+	}
 
 	CDS_INIT_LIST_HEAD(&trace->stream_list);
 
@@ -109,17 +114,21 @@ static struct ctf_trace *ctf_trace_create(struct relay_session *session,
 	trace->id = ++last_relay_ctf_trace_id;
 	pthread_mutex_unlock(&last_relay_ctf_trace_id_lock);
 
-	lttng_ht_node_init_str(&trace->node, path_name);
+	lttng_ht_node_init_str(&trace->node, trace->path);
 	trace->session = session;
-	urcu_ref_init(&trace->ref);
 	pthread_mutex_init(&trace->lock, NULL);
 	pthread_mutex_init(&trace->stream_list_lock, NULL);
 	lttng_ht_add_str(session->ctf_traces_ht, &trace->node);
 
-	DBG("Created ctf_trace %" PRIu64 " with path: %s", trace->id, path_name);
+	DBG("Created ctf_trace %" PRIu64 "of session \"%s\" from host \"%s\" with path: %s",
+			trace->id, session->session_name, session->hostname,
+			subpath);
 
-error:
+end:
 	return trace;
+error:
+	ctf_trace_put(trace);
+	return NULL;
 }
 
 /*
@@ -128,17 +137,17 @@ error:
  * ctf_trace_put().
  */
 struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,
-		char *path_name)
+		const char *subpath)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
 	struct ctf_trace *trace = NULL;
 
 	rcu_read_lock();
-	lttng_ht_lookup(session->ctf_traces_ht, (void *) path_name, &iter);
+	lttng_ht_lookup(session->ctf_traces_ht, subpath, &iter);
 	node = lttng_ht_iter_get_node_str(&iter);
 	if (!node) {
-		DBG("CTF Trace path %s not found", path_name);
+		DBG("CTF Trace path %s not found", subpath);
 		goto end;
 	}
 	trace = caa_container_of(node, struct ctf_trace, node);
@@ -149,7 +158,7 @@ end:
 	rcu_read_unlock();
 	if (!trace) {
 		/* Try to create */
-		trace = ctf_trace_create(session, path_name);
+		trace = ctf_trace_create(session, subpath);
 	}
 	return trace;
 }

@@ -92,7 +92,7 @@ struct lttcomm_relayd_add_stream_2_11 {
 	uint32_t pathname_len;
 	uint64_t tracefile_size;
 	uint64_t tracefile_count;
-	uint64_t trace_archive_id;
+	uint64_t trace_chunk_id;
 	char names[];
 } LTTNG_PACKED;
 
