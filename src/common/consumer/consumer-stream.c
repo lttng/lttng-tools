@@ -576,7 +576,7 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
 
 	ret = utils_stream_file_path(stream->chan->pathname, stream->name,
 			stream->chan->tracefile_size,
-			stream->chan->tracefile_count, NULL,
+			stream->tracefile_count_current, NULL,
 			stream_path, sizeof(stream_path));
 	if (ret < 0) {
 		goto end;
