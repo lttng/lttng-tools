@@ -48,9 +48,6 @@ int utils_create_stream_file(const char *path_name, char *file_name, uint64_t si
 		uint64_t count, int uid, int gid, char *suffix);
 int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t size,
 		uint64_t count, int uid, int gid, char *suffix);
-int utils_rotate_stream_file(char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, int out_fd, uint64_t *new_count,
-		int *stream_fd);
 int utils_stream_file_path(const char *path_name, const char *file_name,
 		uint64_t size, uint64_t count, const char *suffix,
 		char *out_stream_path, size_t stream_path_len);

@@ -112,7 +112,6 @@ void trace_chunk_registry_ht_element_free(struct rcu_head *node)
 	struct trace_chunk_registry_ht_element *element =
 			container_of(node, typeof(*element), rcu_node);
 
-	lttng_trace_chunk_registry_destroy(element->trace_chunk_registry);
 	free(element);
 }
 
@@ -136,6 +135,7 @@ void trace_chunk_registry_ht_element_release(struct urcu_ref *ref)
 		element->sessiond_trace_chunk_registry = NULL;
 	}
 
+	lttng_trace_chunk_registry_destroy(element->trace_chunk_registry);
 	/* Defered reclaim of the object */
 	call_rcu(&element->rcu_node, trace_chunk_registry_ht_element_free);
 }
@@ -399,6 +399,19 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 
         published_chunk = lttng_trace_chunk_registry_publish_chunk(
 			element->trace_chunk_registry, session_id, new_chunk);
+	/*
+	 * At this point, two references to the published chunks exist. One
+	 * is taken by the registry while the other is being returned to the
+	 * caller. In the use case of the relay daemon, the reference held
+	 * by the registry itself is undesirable.
+	 *
+	 * We want the trace chunk to be removed from the registry as soon
+	 * as it is not being used by the relay daemon (through a session
+	 * or a stream). This differs from the behaviour of the consumer
+	 * daemon which relies on an explicit command from the session
+	 * daemon to release the registry's reference.
+	 */
+	lttng_trace_chunk_put(published_chunk);
 end:
 	trace_chunk_registry_ht_element_put(element);
 	return published_chunk;

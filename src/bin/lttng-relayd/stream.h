@@ -27,10 +27,29 @@
 
 #include <common/hashtable/hashtable.h>
 #include <common/trace-chunk.h>
+#include <common/optional.h>
+#include <common/buffer-view.h>
 
 #include "session.h"
 #include "stream-fd.h"
 #include "tracefile-array.h"
+
+struct lttcomm_relayd_index;
+
+struct relay_stream_rotation {
+	/*
+	 * Indicates if the stream's data and index have been rotated. A
+	 * rotation is considered completed when both rotations have occurred.
+	 */
+	bool data_rotated;
+	bool index_rotated;
+	/*
+	 * Sequence number of the first packet of the new trace chunk to which
+	 * the stream is rotating.
+	 */
+	uint64_t seq_num;
+	struct lttng_trace_chunk *next_trace_chunk;
+};
 
 /*
  * Represents a stream in the relay
@@ -61,26 +80,23 @@ struct relay_stream {
 	struct lttng_index_file *index_file;
 
 	char *path_name;
-	/*
-	 * prev_path_name is only used for session rotation support.
-	 * It is essentially used to work around the fact that index
-	 * files are always created from the 'data' connection.
-	 *
-	 * Hence, it is possible to receive a ROTATE_STREAM command
-	 * which affects the stream's path_name before the creation of
-	 * an index file. In this situation, the index file of the
-	 * 'previous' chunk would be created in the new destination folder.
-	 *
-	 * It would then be unlinked when the actual index of the new chunk
-	 * is created.
-	 */
-	char *prev_path_name;
 	char *channel_name;
 
 	/* On-disk circular buffer of tracefiles. */
 	uint64_t tracefile_size;
 	uint64_t tracefile_size_current;
+	/* Max number of trace files for this stream. */
 	uint64_t tracefile_count;
+	/*
+	 * Index of the currently active file for this stream's on-disk
+	 * ring buffer.
+	 */
+	uint64_t tracefile_current_index;
+	/*
+	 * Indicates that the on-disk buffer has wrapped around. Stream
+	 * files shall be unlinked before being opened after this has occurred.
+	 */
+	bool tracefile_wrapped_around;
 
 	/*
 	 * Position in the tracefile where we have the full index also on disk.
@@ -146,7 +162,8 @@ struct relay_stream {
 	 */
 	bool in_recv_list;
 	struct cds_list_head recv_node;
-	bool published;	/* Protected by session lock. */
+	/* Protected by session lock. */
+	bool published;
 	/*
 	 * Node of stream within global stream hash table.
 	 */
@@ -154,27 +171,11 @@ struct relay_stream {
 	bool in_stream_ht;		/* is stream in stream hash table. */
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 	/*
-	 * When we have written the data and index corresponding to this
-	 * seq_num, rotate the tracefile (session rotation). The path_name is
-	 * already up-to-date.
-	 * This is set to -1ULL when no rotation is pending.
-	 *
-	 * Always access with stream lock held.
-	 */
-	uint64_t rotate_at_seq_num;
-	/*
-	 * When rotate_at_seq_num != -1ULL, meaning that a rotation is ongoing,
-	 * data_rotated and index_rotated respectively indicate if the stream's
-	 * data and index have been rotated. A rotation is considered completed
-	 * when both rotations have occurred.
-	 */
-	bool data_rotated;
-	bool index_rotated;
-	/*
-	 * `trace_chunk` is the trace chunk to which the file currently
-	 * being produced (if any) belongs.
+	 * The trace chunk to which the file currently being produced (if any)
+	 * belongs.
 	 */
 	struct lttng_trace_chunk *trace_chunk;
+	LTTNG_OPTIONAL(struct relay_stream_rotation) ongoing_rotation;
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,
@@ -185,8 +186,28 @@ struct relay_stream *stream_create(struct ctf_trace *trace,
 struct relay_stream *stream_get_by_id(uint64_t stream_id);
 bool stream_get(struct relay_stream *stream);
 void stream_put(struct relay_stream *stream);
+int stream_rotate_output_files(struct relay_session *session,
+		struct relay_stream *stream);
+int stream_set_pending_rotation(struct relay_stream *stream,
+		struct lttng_trace_chunk *next_trace_chunk,
+		uint64_t rotation_sequence_number);
 void try_stream_close(struct relay_stream *stream);
 void stream_publish(struct relay_stream *stream);
+int stream_init_packet(struct relay_stream *stream, size_t packet_size,
+		bool *file_rotated);
+int stream_write(struct relay_stream *stream,
+		const struct lttng_buffer_view *packet, size_t padding_len);
+/* Called after the reception of a complete data packet. */
+int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
+		bool rotate_index, bool *flushed, uint64_t total_size);
+int stream_complete_packet(struct relay_stream *stream,
+		size_t packet_total_size, uint64_t sequence_number,
+		bool index_flushed);
+/* Index info is in host endianness. */
+int stream_add_index(struct relay_stream *stream,
+		const struct lttcomm_relayd_index *index_info);
+int stream_reset_file(struct relay_stream *stream);
+
 void print_relay_streams(void);
 
 #endif /* _STREAM_H */

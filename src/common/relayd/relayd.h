@@ -19,10 +19,23 @@
 #define _RELAYD_H
 
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <common/sessiond-comm/relayd.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/trace-chunk.h>
+#include <common/dynamic-array.h>
+
+struct relayd_stream_rotation_position {
+	uint64_t stream_id;
+	/*
+	 * Sequence number of the first packet belonging to the new
+	 * "destination" trace chunk to which the stream is rotating.
+	 *
+	 * Ignored for metadata streams.
+	 */
+	uint64_t rotate_at_seq_num;
+};
 
 int relayd_connect(struct lttcomm_relayd_sock *sock);
 int relayd_close(struct lttcomm_relayd_sock *sock);
@@ -58,11 +71,15 @@ int relayd_send_index(struct lttcomm_relayd_sock *rsock,
 		uint64_t net_seq_num);
 int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 		uint64_t stream_id, uint64_t version);
-int relayd_rotate_stream(struct lttcomm_relayd_sock *sock, uint64_t stream_id,
-		uint64_t new_chunk_id, uint64_t seq_num);
+/* `positions` is an array of `stream_count` relayd_stream_rotation_position. */
+int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
+		unsigned int stream_count, uint64_t *new_chunk_id,
+		const struct relayd_stream_rotation_position *positions);
 int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 		struct lttng_trace_chunk *chunk);
 int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		struct lttng_trace_chunk *chunk);
+int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
+		uint64_t chunk_id, bool *chunk_exists);
 
 #endif /* _RELAYD_H */

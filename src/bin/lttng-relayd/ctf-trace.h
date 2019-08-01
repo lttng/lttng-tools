@@ -35,7 +35,6 @@ struct ctf_trace {
 
 	/* Trace sub-folder relative to the session output path. */
 	char *path;
-	bool index_folder_created;
 
 	/*
 	 * The ctf_trace lock nests inside the session lock.

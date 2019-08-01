@@ -105,7 +105,6 @@ static int lttng_relay_ready = NR_LTTNG_RELAY_READY;
 
 /* Size of receive buffer. */
 #define RECV_DATA_BUFFER_SIZE		65536
-#define FILE_COPY_BUFFER_SIZE		65536
 
 static int recv_child_signal;	/* Set to 1 when a SIGUSR1 signal is received. */
 static pid_t child_ppid;	/* Internal parent PID use with daemonize. */
@@ -1051,33 +1050,6 @@ error_testpoint:
 	return NULL;
 }
 
-/*
- * Set index data from the control port to a given index object.
- */
-static int set_index_control_data(struct relay_index *index,
-		struct lttcomm_relayd_index *data,
-		struct relay_connection *conn)
-{
-	struct ctf_packet_index index_data;
-
-	/*
-	 * The index on disk is encoded in big endian.
-	 */
-	index_data.packet_size = htobe64(data->packet_size);
-	index_data.content_size = htobe64(data->content_size);
-	index_data.timestamp_begin = htobe64(data->timestamp_begin);
-	index_data.timestamp_end = htobe64(data->timestamp_end);
-	index_data.events_discarded = htobe64(data->events_discarded);
-	index_data.stream_id = htobe64(data->stream_id);
-
-	if (conn->minor >= 8) {
-		index->index_data.stream_instance_id = htobe64(data->stream_instance_id);
-		index->index_data.packet_seq_num = htobe64(data->packet_seq_num);
-	}
-
-	return relay_index_set_data(index, &index_data);
-}
-
 static bool session_streams_have_index(const struct relay_session *session)
 {
 	return session->minor >= 4 && !session->snapshot;
@@ -1475,15 +1447,14 @@ int relay_reset_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_unlock;
 	}
 
-	ret = utils_rotate_stream_file(stream->path_name, stream->channel_name,
-			0, 0, -1, -1, stream->stream_fd->fd, NULL,
-			&stream->stream_fd->fd);
+	ret = stream_reset_file(stream);
 	if (ret < 0) {
-		ERR("Failed to rotate metadata file %s of channel %s",
-				stream->path_name, stream->channel_name);
+		ERR("Failed to reset metadata stream %" PRIu64
+				": stream_path = %s, channel = %s",
+				stream->stream_handle, stream->path_name,
+				stream->channel_name);
 		goto end_unlock;
 	}
-
 end_unlock:
 	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
@@ -1555,371 +1526,6 @@ static int relay_start(const struct lttcomm_relayd_hdr *recv_hdr,
 }
 
 /*
- * Append padding to the file pointed by the file descriptor fd.
- */
-static int write_padding_to_file(int fd, uint32_t size)
-{
-	ssize_t ret = 0;
-	char *zeros;
-
-	if (size == 0) {
-		goto end;
-	}
-
-	zeros = zmalloc(size);
-	if (zeros == NULL) {
-		PERROR("zmalloc zeros for padding");
-		ret = -1;
-		goto end;
-	}
-
-	ret = lttng_write(fd, zeros, size);
-	if (ret < size) {
-		PERROR("write padding to file");
-	}
-
-	free(zeros);
-
-end:
-	return ret;
-}
-
-/*
- * Close the current index file if it is open, and create a new one.
- *
- * Return 0 on success, -1 on error.
- */
-static
-int create_rotate_index_file(struct relay_stream *stream,
-		const char *channel_path)
-{
-	int ret;
-	uint32_t major, minor;
-
-	ASSERT_LOCKED(stream->lock);
-
-	/* Put ref on previous index_file. */
-	if (stream->index_file) {
-		lttng_index_file_put(stream->index_file);
-		stream->index_file = NULL;
-	}
-	major = stream->trace->session->major;
-	minor = stream->trace->session->minor;
-	if (!stream->trace->index_folder_created) {
-		char *index_subpath = NULL;
-
-		ret = asprintf(&index_subpath, "%s/%s", channel_path, DEFAULT_INDEX_DIR);
-		if (ret < 0) {
-			goto end;
-		}
-
-		ret = lttng_trace_chunk_create_subdirectory(stream->trace_chunk, index_subpath);
-		free(index_subpath);
-		if (ret) {
-			goto end;
-		}
-		stream->trace->index_folder_created = true;
-	}
-	stream->index_file = lttng_index_file_create_from_trace_chunk(
-			stream->trace_chunk, channel_path, stream->channel_name,
-			stream->tracefile_size, stream->tracefile_count,
-			lttng_to_index_major(major, minor),
-			lttng_to_index_minor(major, minor), true);
-	if (!stream->index_file) {
-		ret = -1;
-		goto end;
-	}
-
-	ret = 0;
-
-end:
-	return ret;
-}
-
-static
-int do_rotate_stream_data(struct relay_stream *stream)
-{
-	int ret;
-
-	DBG("Rotating stream %" PRIu64 " data file",
-			stream->stream_handle);
-	/* Perform the stream rotation. */
-	ret = utils_rotate_stream_file(stream->path_name,
-			stream->channel_name, stream->tracefile_size,
-			stream->tracefile_count, -1,
-			-1, stream->stream_fd->fd,
-			NULL, &stream->stream_fd->fd);
-	if (ret < 0) {
-		ERR("Rotating stream output file");
-		goto end;
-	}
-	stream->tracefile_size_current = 0;
-	stream->pos_after_last_complete_data_index = 0;
-	stream->data_rotated = true;
-
-	if (stream->data_rotated && stream->index_rotated) {
-		/* Rotation completed; reset its state. */
-		DBG("Rotation completed for stream %" PRIu64,
-				stream->stream_handle);
-		stream->rotate_at_seq_num = -1ULL;
-		stream->data_rotated = false;
-		stream->index_rotated = false;
-	}
-end:
-	return ret;
-}
-
-/*
- * If too much data has been written in a tracefile before we received the
- * rotation command, we have to move the excess data to the new tracefile and
- * perform the rotation. This can happen because the control and data
- * connections are separate, the indexes as well as the commands arrive from
- * the control connection and we have no control over the order so we could be
- * in a situation where too much data has been received on the data connection
- * before the rotation command on the control connection arrives.
- */
-static
-int rotate_truncate_stream(struct relay_stream *stream)
-{
-	int ret, new_fd;
-	off_t lseek_ret;
-	uint64_t diff, pos = 0;
-	char buf[FILE_COPY_BUFFER_SIZE];
-
-	assert(!stream->is_metadata);
-
-	assert(stream->tracefile_size_current >
-			stream->pos_after_last_complete_data_index);
-	diff = stream->tracefile_size_current -
-			stream->pos_after_last_complete_data_index;
-
-	/* Create the new tracefile. */
-	new_fd = utils_create_stream_file(stream->path_name,
-			stream->channel_name,
-			stream->tracefile_size, stream->tracefile_count,
-			/* uid */ -1, /* gid */ -1, /* suffix */ NULL);
-	if (new_fd < 0) {
-		ERR("Failed to create new stream file at path %s for channel %s",
-				stream->path_name, stream->channel_name);
-		ret = -1;
-		goto end;
-	}
-
-	/*
-	 * Rewind the current tracefile to the position at which the rotation
-	 * should have occurred.
-	 */
-	lseek_ret = lseek(stream->stream_fd->fd,
-			stream->pos_after_last_complete_data_index, SEEK_SET);
-	if (lseek_ret < 0) {
-		PERROR("seek truncate stream");
-		ret = -1;
-		goto end;
-	}
-
-	/* Move data from the old file to the new file. */
-	while (pos < diff) {
-		uint64_t count, bytes_left;
-		ssize_t io_ret;
-
-		bytes_left = diff - pos;
-		count = bytes_left > sizeof(buf) ? sizeof(buf) : bytes_left;
-		assert(count <= SIZE_MAX);
-
-		io_ret = lttng_read(stream->stream_fd->fd, buf, count);
-		if (io_ret < (ssize_t) count) {
-			char error_string[256];
-
-			snprintf(error_string, sizeof(error_string),
-					"Failed to read %" PRIu64 " bytes from fd %i in rotate_truncate_stream(), returned %zi",
-					count, stream->stream_fd->fd, io_ret);
-			if (io_ret == -1) {
-				PERROR("%s", error_string);
-			} else {
-				ERR("%s", error_string);
-			}
-			ret = -1;
-			goto end;
-		}
-
-		io_ret = lttng_write(new_fd, buf, count);
-		if (io_ret < (ssize_t) count) {
-			char error_string[256];
-
-			snprintf(error_string, sizeof(error_string),
-					"Failed to write %" PRIu64 " bytes from fd %i in rotate_truncate_stream(), returned %zi",
-					count, new_fd, io_ret);
-			if (io_ret == -1) {
-				PERROR("%s", error_string);
-			} else {
-				ERR("%s", error_string);
-			}
-			ret = -1;
-			goto end;
-		}
-
-		pos += count;
-	}
-
-	/* Truncate the file to get rid of the excess data. */
-	ret = ftruncate(stream->stream_fd->fd,
-			stream->pos_after_last_complete_data_index);
-	if (ret) {
-		PERROR("ftruncate");
-		goto end;
-	}
-
-	ret = close(stream->stream_fd->fd);
-	if (ret < 0) {
-		PERROR("Closing tracefile");
-		goto end;
-	}
-
-	/*
-	 * Update the offset and FD of all the eventual indexes created by the
-	 * data connection before the rotation command arrived.
-	 */
-	ret = relay_index_switch_all_files(stream);
-	if (ret < 0) {
-		ERR("Failed to rotate index file");
-		goto end;
-	}
-
-	stream->stream_fd->fd = new_fd;
-	stream->tracefile_size_current = diff;
-	stream->pos_after_last_complete_data_index = 0;
-	stream->rotate_at_seq_num = -1ULL;
-
-	ret = 0;
-
-end:
-	return ret;
-}
-
-/*
- * Check if a stream's index file should be rotated (for session rotation).
- * Must be called with the stream lock held.
- *
- * Return 0 on success, a negative value on error.
- */
-static
-int try_rotate_stream_index(struct relay_stream *stream)
-{
-	int ret = 0;
-
-	if (stream->rotate_at_seq_num == -1ULL) {
-		/* No rotation expected. */
-		goto end;
-	}
-
-	if (stream->index_rotated) {
-		/* Rotation of the index has already occurred. */
-		goto end;
-	}
-
-	if (stream->prev_index_seq == -1ULL ||
-			stream->prev_index_seq < stream->rotate_at_seq_num) {
-		DBG("Stream %" PRIu64 " index not yet ready for rotation (rotate_at_seq_num = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
-				stream->stream_handle,
-				stream->rotate_at_seq_num,
-				stream->prev_index_seq);
-		goto end;
-	} else if (stream->prev_index_seq != stream->rotate_at_seq_num) {
-		/*
-		 * Unexpected, protocol error/bug.
-		 * It could mean that we received a rotation position
-		 * that is in the past.
-		 */
-		ERR("Stream %" PRIu64 " index is in an inconsistent state (rotate_at_seq_num = %" PRIu64 ", prev_data_seq = %" PRIu64 ", prev_index_seq = %" PRIu64 ")",
-				stream->stream_handle,
-				stream->rotate_at_seq_num,
-				stream->prev_data_seq,
-				stream->prev_index_seq);
-		ret = -1;
-		goto end;
-	} else {
-		DBG("Rotating stream %" PRIu64 " index file",
-				stream->stream_handle);
-		ret = create_rotate_index_file(stream, stream->path_name);
-		stream->index_rotated = true;
-
-		if (stream->data_rotated && stream->index_rotated) {
-			/* Rotation completed; reset its state. */
-			DBG("Rotation completed for stream %" PRIu64,
-					stream->stream_handle);
-			stream->rotate_at_seq_num = -1ULL;
-			stream->data_rotated = false;
-			stream->index_rotated = false;
-		}
-	}
-
-end:
-	return ret;
-}
-
-/*
- * Check if a stream's data file (as opposed to index) should be rotated
- * (for session rotation).
- * Must be called with the stream lock held.
- *
- * Return 0 on success, a negative value on error.
- */
-static
-int try_rotate_stream_data(struct relay_stream *stream)
-{
-	int ret = 0;
-
-	if (stream->rotate_at_seq_num == -1ULL) {
-		/* No rotation expected. */
-		goto end;
-	}
-
-	if (stream->data_rotated) {
-		/* Rotation of the data file has already occurred. */
-		goto end;
-	}
-
-	if (stream->prev_data_seq == -1ULL ||
-			stream->prev_data_seq < stream->rotate_at_seq_num) {
-		DBG("Stream %" PRIu64 " not yet ready for rotation (rotate_at_seq_num = %" PRIu64 ", prev_data_seq = %" PRIu64 ")",
-				stream->stream_handle,
-				stream->rotate_at_seq_num,
-				stream->prev_data_seq);
-		goto end;
-	} else if (stream->prev_data_seq > stream->rotate_at_seq_num) {
-		/*
-		 * prev_data_seq is checked here since indexes and rotation
-		 * commands are serialized with respect to each other.
-		 */
-		DBG("Rotation after too much data has been written in tracefile "
-				"for stream %" PRIu64 ", need to truncate before "
-				"rotating", stream->stream_handle);
-		ret = rotate_truncate_stream(stream);
-		if (ret) {
-			ERR("Failed to truncate stream");
-			goto end;
-		}
-	} else if (stream->prev_data_seq != stream->rotate_at_seq_num) {
-		/*
-		 * Unexpected, protocol error/bug.
-		 * It could mean that we received a rotation position
-		 * that is in the past.
-		 */
-		ERR("Stream %" PRIu64 " data is in an inconsistent state (rotate_at_seq_num = %" PRIu64 ", prev_data_seq = %" PRIu64 ")",
-				stream->stream_handle,
-				stream->rotate_at_seq_num,
-				stream->prev_data_seq);
-		ret = -1;
-		goto end;
-	} else {
-		ret = do_rotate_stream_data(stream);
-	}
-
-end:
-	return ret;
-}
-
-/*
  * relay_recv_metadata: receive the metadata for the session.
  */
 static int relay_recv_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
@@ -1927,11 +1533,11 @@ static int relay_recv_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
 		const struct lttng_buffer_view *payload)
 {
 	int ret = 0;
-	ssize_t size_ret;
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_metadata_payload metadata_payload_header;
 	struct relay_stream *metadata_stream;
 	uint64_t metadata_payload_size;
+	struct lttng_buffer_view packet_view;
 
 	if (!session) {
 		ERR("Metadata sent before version check");
@@ -1960,36 +1566,23 @@ static int relay_recv_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	packet_view = lttng_buffer_view_from_view(payload,
+			sizeof(metadata_payload_header), metadata_payload_size);
+	if (!packet_view.data) {
+		ERR("Invalid metadata packet length announced by header");
+		ret = -1;
+		goto end_put;
+	}
+
 	pthread_mutex_lock(&metadata_stream->lock);
-
-	size_ret = lttng_write(metadata_stream->stream_fd->fd,
-			payload->data + sizeof(metadata_payload_header),
-			metadata_payload_size);
-	if (size_ret < metadata_payload_size) {
-		ERR("Relay error writing metadata on file");
-		ret = -1;
-		goto end_put;
-	}
-
-	size_ret = write_padding_to_file(metadata_stream->stream_fd->fd,
+	ret = stream_write(metadata_stream, &packet_view,
 			metadata_payload_header.padding_size);
-	if (size_ret < (int64_t) metadata_payload_header.padding_size) {
+	pthread_mutex_unlock(&metadata_stream->lock);
+	if (ret){
 		ret = -1;
 		goto end_put;
 	}
-
-	metadata_stream->metadata_received +=
-		metadata_payload_size + metadata_payload_header.padding_size;
-	DBG2("Relay metadata written. Updated metadata_received %" PRIu64,
-		metadata_stream->metadata_received);
-
-	ret = try_rotate_stream_data(metadata_stream);
-	if (ret < 0) {
-		goto end_put;
-	}
-
 end_put:
-	pthread_mutex_unlock(&metadata_stream->lock);
 	stream_put(metadata_stream);
 end:
 	return ret;
@@ -2397,7 +1990,6 @@ static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
 	ssize_t send_ret;
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_index index_info;
-	struct relay_index *index;
 	struct lttcomm_relayd_generic_reply reply;
 	struct relay_stream *stream;
 	size_t msg_len;
@@ -2443,73 +2035,17 @@ static int relay_recv_index(const struct lttcomm_relayd_hdr *recv_hdr,
 		ret = -1;
 		goto end;
 	}
+
 	pthread_mutex_lock(&stream->lock);
-
-	/* Live beacon handling */
-	if (index_info.packet_size == 0) {
-		DBG("Received live beacon for stream %" PRIu64,
-				stream->stream_handle);
-
-		/*
-		 * Only flag a stream inactive when it has already
-		 * received data and no indexes are in flight.
-		 */
-		if (stream->index_received_seqcount > 0
-				&& stream->indexes_in_flight == 0) {
-			stream->beacon_ts_end = index_info.timestamp_end;
-		}
-		ret = 0;
+	ret = stream_add_index(stream, &index_info);
+	pthread_mutex_unlock(&stream->lock);
+	if (ret) {
 		goto end_stream_put;
-	} else {
-		stream->beacon_ts_end = -1ULL;
-	}
-
-	if (stream->ctf_stream_id == -1ULL) {
-		stream->ctf_stream_id = index_info.stream_id;
-	}
-	index = relay_index_get_by_id_or_create(stream, index_info.net_seq_num);
-	if (!index) {
-		ret = -1;
-		ERR("relay_index_get_by_id_or_create index NULL");
-		goto end_stream_put;
-	}
-	if (set_index_control_data(index, &index_info, conn)) {
-		ERR("set_index_control_data error");
-		relay_index_put(index);
-		ret = -1;
-		goto end_stream_put;
-	}
-	ret = relay_index_try_flush(index);
-	if (ret == 0) {
-		tracefile_array_commit_seq(stream->tfa);
-		stream->index_received_seqcount++;
-		stream->pos_after_last_complete_data_index += index->total_size;
-		stream->prev_index_seq = index_info.net_seq_num;
-
-		ret = try_rotate_stream_index(stream);
-		if (ret < 0) {
-			goto end_stream_put;
-		}
-	} else if (ret > 0) {
-		/* no flush. */
-		ret = 0;
-	} else {
-		/*
-		 * ret < 0
-		 *
-		 * relay_index_try_flush is responsible for the self-reference
-		 * put of the index object on error.
-		 */
-		ERR("relay_index_try_flush error %d", ret);
-		ret = -1;
 	}
 
 end_stream_put:
-	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
-
 end:
-
 	memset(&reply, 0, sizeof(reply));
 	if (ret < 0) {
 		reply.ret_code = htobe32(LTTNG_ERR_UNK);
@@ -2572,22 +2108,25 @@ end_no_session:
 }
 
 /*
- * relay_rotate_session_stream: rotate a stream to a new tracefile for the session
- * rotation feature (not the tracefile rotation feature).
+ * relay_rotate_session_stream: rotate a stream to a new tracefile for the
+ * session rotation feature (not the tracefile rotation feature).
  */
-static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr,
+static int relay_rotate_session_streams(
+		const struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
 	int ret;
+	uint32_t i;
 	ssize_t send_ret;
+	enum lttng_error_code reply_code = LTTNG_ERR_UNK;
 	struct relay_session *session = conn->session;
-	struct lttcomm_relayd_rotate_stream stream_info;
-	struct lttcomm_relayd_generic_reply reply;
-	struct relay_stream *stream;
-	size_t header_len;
-	size_t path_len;
-	struct lttng_buffer_view new_path_view;
+	struct lttcomm_relayd_rotate_streams rotate_streams;
+	struct lttcomm_relayd_generic_reply reply = {};
+	struct relay_stream *stream = NULL;
+	const size_t header_len = sizeof(struct lttcomm_relayd_rotate_streams);
+	struct lttng_trace_chunk *next_trace_chunk = NULL;
+	struct lttng_buffer_view stream_positions;
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to rotate a stream before version check");
@@ -2601,8 +2140,6 @@ static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr
 		goto end_no_reply;
 	}
 
-	header_len = sizeof(struct lttcomm_relayd_rotate_stream);
-
 	if (payload->size < header_len) {
 		ERR("Unexpected payload size in \"relay_rotate_session_stream\": expected >= %zu bytes, got %zu bytes",
 				header_len, payload->size);
@@ -2610,96 +2147,88 @@ static int relay_rotate_session_stream(const struct lttcomm_relayd_hdr *recv_hdr
 		goto end_no_reply;
 	}
 
-	memcpy(&stream_info, payload->data, header_len);
+	memcpy(&rotate_streams, payload->data, header_len);
 
-	/* Convert to host */
-	stream_info.pathname_length = be32toh(stream_info.pathname_length);
-	stream_info.stream_id = be64toh(stream_info.stream_id);
-	stream_info.new_chunk_id = be64toh(stream_info.new_chunk_id);
-	stream_info.rotate_at_seq_num = be64toh(stream_info.rotate_at_seq_num);
-
-	path_len = stream_info.pathname_length;
-	if (payload->size < header_len + path_len) {
-		ERR("Unexpected payload size in \"relay_rotate_session_stream\" including path: expected >= %zu bytes, got %zu bytes",
-				header_len + path_len, payload->size);
-		ret = -1;
-		goto end_no_reply;
-	}	
-	
-	/* Ensure it fits in local filename length. */
-	if (path_len >= LTTNG_PATH_MAX) {
-		ret = -ENAMETOOLONG;
-		ERR("Length of relay_rotate_session_stream command's path name (%zu bytes) exceeds the maximal allowed length of %i bytes",
-				path_len, LTTNG_PATH_MAX);
-		goto end;
-	}
-
-	new_path_view = lttng_buffer_view_from_view(payload, header_len,
-			stream_info.pathname_length);
-
-	stream = stream_get_by_id(stream_info.stream_id);
-	if (!stream) {
-		ret = -1;
-		goto end;
-	}
-
-	pthread_mutex_lock(&stream->lock);
-
-	/*
-	 * Update the trace path (just the folder, the stream name does not
-	 * change).
-	 */
-	free(stream->prev_path_name);
-	stream->prev_path_name = stream->path_name;
-	stream->path_name = create_output_path(new_path_view.data);
-	if (!stream->path_name) {
-		ERR("Failed to create a new output path");
-		ret = -1;
-		goto end_stream_unlock;
-	}
-	ret = utils_mkdir_recursive(stream->path_name, S_IRWXU | S_IRWXG,
-			-1, -1);
-	if (ret < 0) {
-		ERR("relay creating output directory");
-		ret = -1;
-		goto end_stream_unlock;
-	}
-
-	if (stream->is_metadata) {
-		/*
-		 * Metadata streams have no index; consider its rotation
-		 * complete.
-		 */
-		stream->index_rotated = true;
-		/*
-		 * The metadata stream is sent only over the control connection
-		 * so we know we have all the data to perform the stream
-		 * rotation.
-		 */
-		ret = do_rotate_stream_data(stream);
-	} else {
-		stream->rotate_at_seq_num = stream_info.rotate_at_seq_num;
-		ret = try_rotate_stream_data(stream);
-		if (ret < 0) {
-			goto end_stream_unlock;
+	/* Convert header to host endianness. */
+	rotate_streams = (typeof(rotate_streams)) {
+		.stream_count = be32toh(rotate_streams.stream_count),
+		.new_chunk_id = (typeof(rotate_streams.new_chunk_id)) {
+			.is_set = !!rotate_streams.new_chunk_id.is_set,
+			.value = be64toh(rotate_streams.new_chunk_id.value),
 		}
+	};
 
-		ret = try_rotate_stream_index(stream);
-		if (ret < 0) {
-			goto end_stream_unlock;
+	if (rotate_streams.new_chunk_id.is_set) {
+		/*
+		 * Retrieve the trace chunk the stream must transition to. As
+		 * per the protocol, this chunk should have been created
+		 * before this command is received.
+		 */
+		next_trace_chunk = sessiond_trace_chunk_registry_get_chunk(
+				sessiond_trace_chunk_registry,
+				session->sessiond_uuid, session->id,
+				rotate_streams.new_chunk_id.value);
+		if (!next_trace_chunk) {
+			char uuid_str[UUID_STR_LEN];
+
+			lttng_uuid_to_str(session->sessiond_uuid, uuid_str);
+			ERR("Unknown next trace chunk in ROTATE_STREAMS command: sessiond_uuid = {%s}, session_id = %" PRIu64
+					", trace_chunk_id = %" PRIu64,
+					uuid_str, session->id,
+					rotate_streams.new_chunk_id.value);
+			reply_code = LTTNG_ERR_INVALID_PROTOCOL;
+			ret = -1;
+			goto end;
 		}
 	}
 
-end_stream_unlock:
-	pthread_mutex_unlock(&stream->lock);
-	stream_put(stream);
+	stream_positions = lttng_buffer_view_from_view(payload,
+			sizeof(rotate_streams), -1);
+	if (!stream_positions.data ||
+			stream_positions.size <
+					(rotate_streams.stream_count *
+							sizeof(struct lttcomm_relayd_stream_rotation_position))) {
+		reply_code = LTTNG_ERR_INVALID_PROTOCOL;
+		ret = -1;
+		goto end;
+	}
+
+	for (i = 0; i < rotate_streams.stream_count; i++) {
+		struct lttcomm_relayd_stream_rotation_position *position_comm =
+				&((typeof(position_comm)) stream_positions.data)[i];
+		const struct lttcomm_relayd_stream_rotation_position pos = {
+			.stream_id = be64toh(position_comm->stream_id),
+			.rotate_at_seq_num = be64toh(
+					position_comm->rotate_at_seq_num),
+		};
+
+		stream = stream_get_by_id(pos.stream_id);
+		if (!stream) {
+			reply_code = LTTNG_ERR_INVALID;
+			ret = -1;
+			goto end;
+		}
+
+		pthread_mutex_lock(&stream->lock);
+		ret = stream_set_pending_rotation(stream, next_trace_chunk,
+				pos.rotate_at_seq_num);
+		pthread_mutex_unlock(&stream->lock);
+		if (ret) {
+			reply_code = LTTNG_ERR_FILE_CREATION_ERROR;
+			goto end;
+		}
+
+		stream_put(stream);
+		stream = NULL;
+	}
+
+	reply_code = LTTNG_OK;
 end:
-	memset(&reply, 0, sizeof(reply));
-	if (ret < 0) {
-		reply.ret_code = htobe32(LTTNG_ERR_UNK);
-	} else {
-		reply.ret_code = htobe32(LTTNG_OK);
+	if (stream) {
+		stream_put(stream);
 	}
+
+	reply.ret_code = htobe32((uint32_t) reply_code);
 	send_ret = conn->sock->ops->sendmsg(conn->sock, &reply,
 			sizeof(struct lttcomm_relayd_generic_reply), 0);
 	if (send_ret < (ssize_t) sizeof(reply)) {
@@ -2709,6 +2238,7 @@ end:
 	}
 
 end_no_reply:
+	lttng_trace_chunk_put(next_trace_chunk);
 	return ret;
 }
 
@@ -2895,8 +2425,8 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	pthread_mutex_lock(&conn->session->lock);
 	lttng_trace_chunk_put(conn->session->current_trace_chunk);
 	conn->session->current_trace_chunk = published_chunk;
-	pthread_mutex_unlock(&conn->session->lock);
 	published_chunk = NULL;
+	pthread_mutex_unlock(&conn->session->lock);
 
 end:
 	reply.ret_code = htobe32((uint32_t) reply_code);
@@ -2933,7 +2463,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 	uint64_t chunk_id;
-	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command;
+	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command = {};
 	time_t close_timestamp;
 
 	if (!session || !conn->version_check_done) {
@@ -3001,12 +2531,88 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		}
 	}
 
+	pthread_mutex_lock(&session->lock);
+	if (session->current_trace_chunk == chunk) {
+		/*
+		 * After a trace chunk close command, no new streams
+		 * referencing the chunk may be created. Hence, on the
+		 * event that no new trace chunk have been created for
+		 * the session, the reference to the current trace chunk
+		 * is released in order to allow it to be reclaimed when
+		 * the last stream releases its reference to it.
+		 */
+		lttng_trace_chunk_put(session->current_trace_chunk);
+		session->current_trace_chunk = NULL;
+	}
+	pthread_mutex_unlock(&session->lock);
+
 end:
 	reply.ret_code = htobe32((uint32_t) reply_code);
 	send_ret = conn->sock->ops->sendmsg(conn->sock,
 			&reply,
 			sizeof(struct lttcomm_relayd_generic_reply),
 			0);
+	if (send_ret < (ssize_t) sizeof(reply)) {
+		ERR("Failed to send \"create trace chunk\" command reply (ret = %zd)",
+				send_ret);
+		ret = -1;
+	}
+end_no_reply:
+	lttng_trace_chunk_put(chunk);
+	return ret;
+}
+
+/*
+ * relay_trace_chunk_exists: check if a trace chunk exists
+ */
+static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn,
+		const struct lttng_buffer_view *payload)
+{
+	int ret = 0;
+	ssize_t send_ret;
+	struct relay_session *session = conn->session;
+	struct lttcomm_relayd_trace_chunk_exists *msg;
+	struct lttcomm_relayd_trace_chunk_exists_reply reply = {};
+	struct lttng_buffer_view header_view;
+	struct lttng_trace_chunk *chunk = NULL;
+	uint64_t chunk_id;
+
+	if (!session || !conn->version_check_done) {
+		ERR("Trying to close a trace chunk before version check");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	if (session->major == 2 && session->minor < 11) {
+		ERR("Chunk close command is unsupported before 2.11");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
+	if (!header_view.data) {
+		ERR("Failed to receive payload of chunk close command");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	/* Convert to host endianness. */
+	msg = (typeof(msg)) header_view.data;
+	chunk_id = be64toh(msg->chunk_id);
+
+	chunk = sessiond_trace_chunk_registry_get_chunk(
+			sessiond_trace_chunk_registry,
+			conn->session->sessiond_uuid,
+			conn->session->id,
+			chunk_id);
+
+	reply = (typeof(reply)) {
+		.generic.ret_code = htobe32((uint32_t) LTTNG_OK),
+		.trace_chunk_exists = !!chunk,
+	};
+	send_ret = conn->sock->ops->sendmsg(conn->sock,
+			&reply, sizeof(reply), 0);
 	if (send_ret < (ssize_t) sizeof(reply)) {
 		ERR("Failed to send \"create trace chunk\" command reply (ret = %zd)",
 				send_ret);
@@ -3079,9 +2685,9 @@ static int relay_process_control_command(struct relay_connection *conn,
 		DBG_CMD("RELAYD_RESET_METADATA", conn);
 		ret = relay_reset_metadata(header, conn, payload);
 		break;
-	case RELAYD_ROTATE_STREAM:
-		DBG_CMD("RELAYD_ROTATE_STREAM", conn);
-		ret = relay_rotate_session_stream(header, conn, payload);
+	case RELAYD_ROTATE_STREAMS:
+		DBG_CMD("RELAYD_ROTATE_STREAMS", conn);
+		ret = relay_rotate_session_streams(header, conn, payload);
 		break;
 	case RELAYD_CREATE_TRACE_CHUNK:
 		DBG_CMD("RELAYD_CREATE_TRACE_CHUNK", conn);
@@ -3090,6 +2696,10 @@ static int relay_process_control_command(struct relay_connection *conn,
 	case RELAYD_CLOSE_TRACE_CHUNK:
 		DBG_CMD("RELAYD_CLOSE_TRACE_CHUNK", conn);
 		ret = relay_close_trace_chunk(header, conn, payload);
+		break;
+	case RELAYD_TRACE_CHUNK_EXISTS:
+		DBG_CMD("RELAYD_TRACE_CHUNK_EXISTS", conn);
+		ret = relay_trace_chunk_exists(header, conn, payload);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:
@@ -3291,106 +2901,6 @@ static enum relay_connection_status relay_process_control(
 	return status;
 }
 
-/*
- * Handle index for a data stream.
- *
- * Called with the stream lock held.
- *
- * Return 0 on success else a negative value.
- */
-static int handle_index_data(struct relay_stream *stream, uint64_t net_seq_num,
-		bool rotate_index, bool *flushed, uint64_t total_size)
-{
-	int ret = 0;
-	uint64_t data_offset;
-	struct relay_index *index;
-
-	/* Get data offset because we are about to update the index. */
-	data_offset = htobe64(stream->tracefile_size_current);
-
-	DBG("handle_index_data: stream %" PRIu64 " net_seq_num %" PRIu64 " data offset %" PRIu64,
-			stream->stream_handle, net_seq_num, stream->tracefile_size_current);
-
-	/*
-	 * Lookup for an existing index for that stream id/sequence
-	 * number. If it exists, the control thread has already received the
-	 * data for it, thus we need to write it to disk.
-	 */
-	index = relay_index_get_by_id_or_create(stream, net_seq_num);
-	if (!index) {
-		ret = -1;
-		goto end;
-	}
-
-	if (rotate_index || !stream->index_file) {
-		const char *stream_path;
-
-		/*
-		 * The data connection creates the stream's first index file.
-		 *
-		 * This can happen _after_ a ROTATE_STREAM command. In
-		 * other words, the data of the first packet of this stream
-		 * can be received after a ROTATE_STREAM command.
-		 *
-		 * The ROTATE_STREAM command changes the stream's path_name
-		 * to point to the "next" chunk. If a rotation is pending for
-		 * this stream, as indicated by "rotate_at_seq_num != -1ULL",
-		 * it means that we are still receiving data that belongs in the
-		 * stream's former path.
-		 *
-		 * In this very specific case, we must ensure that the index
-		 * file is created in the streams's former path,
-		 * "prev_path_name".
-		 *
-		 * All other rotations beyond the first one are not affected
-		 * by this problem since the actual rotation operation creates
-		 * the new chunk's index file.
-		 */
-		stream_path = stream->rotate_at_seq_num == -1ULL ?
-				stream->path_name:
-				stream->prev_path_name;
-
-		ret = create_rotate_index_file(stream, stream_path);
-		if (ret < 0) {
-			ERR("Failed to rotate index");
-			/* Put self-ref for this index due to error. */
-			relay_index_put(index);
-			index = NULL;
-			goto end;
-		}
-	}
-
-	if (relay_index_set_file(index, stream->index_file, data_offset)) {
-		ret = -1;
-		/* Put self-ref for this index due to error. */
-		relay_index_put(index);
-		index = NULL;
-		goto end;
-	}
-
-	ret = relay_index_try_flush(index);
-	if (ret == 0) {
-		tracefile_array_commit_seq(stream->tfa);
-		stream->index_received_seqcount++;
-		*flushed = true;
-	} else if (ret > 0) {
-		index->total_size = total_size;
-		/* No flush. */
-		ret = 0;
-	} else {
-		/*
-		 * ret < 0
-		 *
-		 * relay_index_try_flush is responsible for the self-reference
-		 * put of the index object on error.
-		 */
-		ERR("relay_index_try_flush error %d", ret);
-		ret = -1;
-	}
-end:
-	return ret;
-}
-
 static enum relay_connection_status relay_process_data_receive_header(
 		struct relay_connection *conn)
 {
@@ -3467,40 +2977,17 @@ static enum relay_connection_status relay_process_data_receive_header(
 	}
 
 	pthread_mutex_lock(&stream->lock);
-
-	/* Check if a rotation is needed. */
-	if (stream->tracefile_size > 0 &&
-			(stream->tracefile_size_current + header.data_size) >
-			stream->tracefile_size) {
-		uint64_t old_id, new_id;
-
-		old_id = tracefile_array_get_file_index_head(stream->tfa);
-		tracefile_array_file_rotate(stream->tfa);
-
-		/* new_id is updated by utils_rotate_stream_file. */
-		new_id = old_id;
-
-		ret = utils_rotate_stream_file(stream->path_name,
-				stream->channel_name, stream->tracefile_size,
-				stream->tracefile_count, -1,
-			        -1, stream->stream_fd->fd,
-				&new_id, &stream->stream_fd->fd);
-		if (ret < 0) {
-			ERR("Failed to rotate stream output file");
-			status = RELAY_CONNECTION_STATUS_ERROR;
-			goto end_stream_unlock;
-		}
-
-		/*
-		 * Reset current size because we just performed a stream
-		 * rotation.
-		 */
-		stream->tracefile_size_current = 0;
-		conn->protocol.data.state.receive_payload.rotate_index = true;
+	/* Prepare stream for the reception of a new packet. */
+	ret = stream_init_packet(stream, header.data_size,
+			&conn->protocol.data.state.receive_payload.rotate_index);
+	pthread_mutex_unlock(&stream->lock);
+	if (ret) {
+		ERR("Failed to rotate stream output file");
+		status = RELAY_CONNECTION_STATUS_ERROR;
+		goto end_stream_unlock;
 	}
 
 end_stream_unlock:
-	pthread_mutex_unlock(&stream->lock);
 	stream_put(stream);
 end:
 	return status;
@@ -3551,8 +3038,8 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	 *   - the on-stack data buffer
 	 */
 	while (left_to_receive > 0 && !partial_recv) {
-		ssize_t write_ret;
 		size_t recv_size = min(left_to_receive, chunk_size);
+		struct lttng_buffer_view packet_chunk;
 
 		ret = conn->sock->ops->recvmsg(conn->sock, data_buffer,
 				recv_size, MSG_DONTWAIT);
@@ -3574,14 +3061,15 @@ static enum relay_connection_status relay_process_data_receive_payload(
 			 * consumed.
 			 */
 			partial_recv = true;
+			recv_size = ret;
 		}
 
-		recv_size = ret;
+		packet_chunk = lttng_buffer_view_init(data_buffer,
+				0, recv_size);
+		assert(packet_chunk.data);
 
-		/* Write data to stream output fd. */
-		write_ret = lttng_write(stream->stream_fd->fd, data_buffer,
-				recv_size);
-		if (write_ret < (ssize_t) recv_size) {
+		ret = stream_write(stream, &packet_chunk, 0);
+		if (ret) {
 			ERR("Relay error writing data to file");
 			status = RELAY_CONNECTION_STATUS_ERROR;
 			goto end_stream_unlock;
@@ -3590,9 +3078,6 @@ static enum relay_connection_status relay_process_data_receive_payload(
 		left_to_receive -= recv_size;
 		state->received += recv_size;
 		state->left_to_receive = left_to_receive;
-
-		DBG2("Relay wrote %zd bytes to tracefile for stream id %" PRIu64,
-				write_ret, stream->stream_handle);
 	}
 
 	if (state->left_to_receive > 0) {
@@ -3606,22 +3091,18 @@ static enum relay_connection_status relay_process_data_receive_payload(
 		goto end_stream_unlock;
 	}
 
-	ret = write_padding_to_file(stream->stream_fd->fd,
-			state->header.padding_size);
-	if ((int64_t) ret < (int64_t) state->header.padding_size) {
-		ERR("write_padding_to_file: fail stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
-				stream->stream_handle,
-				state->header.net_seq_num, ret);
+	ret = stream_write(stream, NULL, state->header.padding_size);
+	if (ret) {
 		status = RELAY_CONNECTION_STATUS_ERROR;
 		goto end_stream_unlock;
 	}
 
-
 	if (session_streams_have_index(session)) {
-		ret = handle_index_data(stream, state->header.net_seq_num,
-				state->rotate_index, &index_flushed, state->header.data_size + state->header.padding_size);
+		ret = stream_update_index(stream, state->header.net_seq_num,
+				state->rotate_index, &index_flushed,
+				state->header.data_size + state->header.padding_size);
 		if (ret < 0) {
-			ERR("handle_index_data: fail stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
+			ERR("Failed to update index: stream %" PRIu64 " net_seq_num %" PRIu64 " ret %d",
 					stream->stream_handle,
 					state->header.net_seq_num, ret);
 			status = RELAY_CONNECTION_STATUS_ERROR;
@@ -3629,23 +3110,17 @@ static enum relay_connection_status relay_process_data_receive_payload(
 		}
 	}
 
-	stream->tracefile_size_current += state->header.data_size +
-			state->header.padding_size;
-
 	if (stream->prev_data_seq == -1ULL) {
 		new_stream = true;
 	}
-	if (index_flushed) {
-		stream->pos_after_last_complete_data_index =
-				stream->tracefile_size_current;
-		stream->prev_index_seq = state->header.net_seq_num;
-		ret = try_rotate_stream_index(stream);
-		if (ret < 0) {
-			goto end_stream_unlock;
-		}
-	}
 
-	stream->prev_data_seq = state->header.net_seq_num;
+	ret = stream_complete_packet(stream, state->header.data_size +
+			state->header.padding_size, state->header.net_seq_num,
+			index_flushed);
+	if (ret) {
+		status = RELAY_CONNECTION_STATUS_ERROR;
+		goto end_stream_unlock;
+	}
 
 	/*
 	 * Resetting the protocol state (to RECEIVE_HEADER) will trash the
@@ -3654,12 +3129,6 @@ static enum relay_connection_status relay_process_data_receive_payload(
 	 */
 	connection_reset_protocol_state(conn);
 	state = NULL;
-
-	ret = try_rotate_stream_data(stream);
-	if (ret < 0) {
-		status = RELAY_CONNECTION_STATUS_ERROR;
-		goto end_stream_unlock;
-	}
 
 end_stream_unlock:
 	close_requested = stream->close_requested;

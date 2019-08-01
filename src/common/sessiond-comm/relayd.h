@@ -228,15 +228,26 @@ struct lttcomm_relayd_reset_metadata {
 	uint64_t version;
 } LTTNG_PACKED;
 
-struct lttcomm_relayd_rotate_stream {
+struct lttcomm_relayd_stream_rotation_position {
 	uint64_t stream_id;
-	/* Ignored for metadata streams. */
+	/*
+	 * Sequence number of the first packet belonging to the new
+	 * "destination" trace chunk to which the stream is rotating.
+	 *
+	 * Ignored for metadata streams.
+	 */
 	uint64_t rotate_at_seq_num;
-	uint64_t new_chunk_id;
-	/* Includes trailing NULL. */
-	uint32_t pathname_length;
-	/* Must be the last member of this structure. */
-	char new_pathname[];
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_rotate_streams {
+	uint32_t stream_count;
+	/*
+	 * Streams can be rotated outside of a chunk but not be parented to
+	 * a new chunk.
+	 */
+	LTTNG_OPTIONAL_COMM(uint64_t) new_chunk_id;
+	/* `stream_count` positions follow. */
+	struct lttcomm_relayd_stream_rotation_position rotation_positions[];
 } LTTNG_PACKED;
 
 struct lttcomm_relayd_create_trace_chunk {
@@ -254,6 +265,15 @@ struct lttcomm_relayd_close_trace_chunk {
 	uint64_t close_timestamp;
 	/* enum lttng_trace_chunk_command_type */
 	LTTNG_OPTIONAL_COMM(uint32_t) LTTNG_PACKED close_command;
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_trace_chunk_exists {
+	uint64_t chunk_id;
+} LTTNG_PACKED;
+
+struct lttcomm_relayd_trace_chunk_exists_reply {
+	struct lttcomm_relayd_generic_reply generic;
+	uint8_t trace_chunk_exists;
 } LTTNG_PACKED;
 
 #endif	/* _RELAYD_COMM */

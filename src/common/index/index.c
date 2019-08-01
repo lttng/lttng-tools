@@ -34,7 +34,7 @@
 struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, char *stream_name,
-		uint64_t stream_file_size, uint64_t stream_count,
+		uint64_t stream_file_size, uint64_t stream_file_index,
 		uint32_t index_major, uint32_t index_minor,
 		bool unlink_existing_file)
 {
@@ -49,6 +49,9 @@ struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 			index_minor);
 	const int flags = O_WRONLY | O_CREAT | O_TRUNC;
 	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+	bool acquired_reference = lttng_trace_chunk_get(chunk);
+
+	assert(acquired_reference);
 
 	index_file = zmalloc(sizeof(*index_file));
 	if (!index_file) {
@@ -56,6 +59,7 @@ struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 		goto error;
 	}
 
+	index_file->trace_chunk = chunk;
 	ret = snprintf(index_directory_path, sizeof(index_directory_path),
 			"%s/" DEFAULT_INDEX_DIR, channel_path);
 	if (ret < 0 || ret >= sizeof(index_directory_path)) {
@@ -64,7 +68,7 @@ struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 	}
 
 	ret = utils_stream_file_path(index_directory_path, stream_name,
-			stream_file_size, stream_count,
+			stream_file_size, stream_file_index,
 			DEFAULT_INDEX_FILE_SUFFIX,
 			index_file_path, sizeof(index_file_path));
 	if (ret) {
@@ -290,6 +294,7 @@ static void lttng_index_file_release(struct urcu_ref *ref)
 	if (close(index_file->fd)) {
 		PERROR("close index fd");
 	}
+	lttng_trace_chunk_put(index_file->trace_chunk);
 	free(index_file);
 }
 

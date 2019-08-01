@@ -244,11 +244,10 @@ static void destroy_session(struct relay_session *session)
 	ret = session_delete(session);
 	assert(!ret);
 	lttng_trace_chunk_put(session->current_trace_chunk);
+	session->current_trace_chunk = NULL;
 	ret = sessiond_trace_chunk_registry_session_destroyed(
 			sessiond_trace_chunk_registry, session->sessiond_uuid);
 	assert(!ret);
-	lttng_trace_chunk_put(session->current_trace_chunk);
-	session->current_trace_chunk = NULL;
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 

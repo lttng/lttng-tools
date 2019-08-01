@@ -31,6 +31,7 @@ struct lttng_index_file {
 	uint32_t major;
 	uint32_t minor;
 	uint32_t element_len;
+	struct lttng_trace_chunk *trace_chunk;
 	struct urcu_ref ref;
 };
 

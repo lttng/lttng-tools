@@ -78,7 +78,7 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
 		uint64_t session_id);
 
 /*
- * Create the  output files of a local stream.
+ * Create the output files of a local stream.
  *
  * This must be called with the channel's and the stream's lock held.
  */
