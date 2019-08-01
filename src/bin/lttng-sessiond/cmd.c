@@ -2579,7 +2579,8 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	if (session->output_traces && !session->current_trace_chunk) {
+	if (session->output_traces && !session->current_trace_chunk &&
+			session_output_supports_trace_chunks(session)) {
 		struct lttng_trace_chunk *trace_chunk;
 
 		trace_chunk = session_create_new_trace_chunk(
