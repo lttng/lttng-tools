@@ -27,6 +27,7 @@
 #include "lttng-relayd.h"
 #include "stream.h"
 #include "index.h"
+#include "connection.h"
 
 /*
  * Allocate a new relay index object. Pass the stream in which it is
@@ -410,4 +411,29 @@ int relay_index_switch_all_files(struct relay_stream *stream)
 end:
 	rcu_read_unlock();
 	return ret;
+}
+
+/*
+ * Set index data from the control port to a given index object.
+ */
+int relay_index_set_control_data(struct relay_index *index,
+		const struct lttcomm_relayd_index *data,
+		unsigned int minor_version)
+{
+	/* The index on disk is encoded in big endian. */
+	const struct ctf_packet_index index_data = {
+		.packet_size = htobe64(data->packet_size),
+		.content_size = htobe64(data->content_size),
+		.timestamp_begin = htobe64(data->timestamp_begin),
+		.timestamp_end = htobe64(data->timestamp_end),
+		.events_discarded = htobe64(data->events_discarded),
+		.stream_id = htobe64(data->stream_id),
+	};
+
+	if (minor_version >= 8) {
+		index->index_data.stream_instance_id = htobe64(data->stream_instance_id);
+		index->index_data.packet_seq_num = htobe64(data->packet_seq_num);
+	}
+
+	return relay_index_set_data(index, &index_data);
 }

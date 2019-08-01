@@ -131,12 +131,14 @@ enum lttcomm_relayd_command {
 	RELAYD_STREAMS_SENT                 = 16,
 	/* Ask the relay to reset the metadata trace file (2.8+) */
 	RELAYD_RESET_METADATA               = 17,
-	/* Ask the relay to rotate a stream file (2.11+) */
-	RELAYD_ROTATE_STREAM                = 18,
+	/* Ask the relay to rotate a set of stream files (2.11+) */
+	RELAYD_ROTATE_STREAMS                = 18,
 	/* Ask the relay to create a trace chunk (2.11+) */
 	RELAYD_CREATE_TRACE_CHUNK           = 19,
 	/* Ask the relay to close a trace chunk (2.11+) */
 	RELAYD_CLOSE_TRACE_CHUNK            = 20,
+	/* Ask the relay whether a trace chunk exists (2.11+) */
+	RELAYD_TRACE_CHUNK_EXISTS           = 21,
 };
 
 /*

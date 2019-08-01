@@ -827,7 +827,7 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 			LTTNG_OPTIONAL_GET(trace_chunk->timestamp_creation);
 	const time_t close_timestamp =
 			LTTNG_OPTIONAL_GET(trace_chunk->timestamp_close);
-	LTTNG_OPTIONAL(struct lttng_directory_handle) archived_chunks_directory;
+	LTTNG_OPTIONAL(struct lttng_directory_handle) archived_chunks_directory = {};
 
 	if (!trace_chunk->mode.is_set ||
 			trace_chunk->mode.value != TRACE_CHUNK_MODE_OWNER ||

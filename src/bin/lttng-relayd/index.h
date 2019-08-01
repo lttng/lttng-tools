@@ -29,6 +29,8 @@
 #include "stream-fd.h"
 
 struct relay_stream;
+struct relay_connection;
+struct lttcomm_relayd_index;
 
 struct relay_index {
 	/*
@@ -76,5 +78,8 @@ void relay_index_close_all(struct relay_stream *stream);
 void relay_index_close_partial_fd(struct relay_stream *stream);
 uint64_t relay_index_find_last(struct relay_stream *stream);
 int relay_index_switch_all_files(struct relay_stream *stream);
+int relay_index_set_control_data(struct relay_index *index,
+		const struct lttcomm_relayd_index *data,
+		unsigned int minor_version);
 
 #endif /* _RELAY_INDEX_H */

@@ -313,7 +313,7 @@ struct lttng_consumer_stream {
 	bool missed_metadata_flush;
 
 	enum lttng_event_output output;
-	/* Maximum subbuffer size. */
+	/* Maximum subbuffer size (in bytes). */
 	unsigned long max_sb_size;
 
 	/*

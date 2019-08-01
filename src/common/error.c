@@ -218,6 +218,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER) ] = "Trace chunk close failed on consumer",
 	[ ERROR_INDEX(LTTNG_ERR_TRACE_CHUNK_EXISTS_FAIL_CONSUMER) ] = "Failed to query consumer for trace chunk existence",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_PROTOCOL) ] = "Protocol error occurred",
+	[ ERROR_INDEX(LTTNG_ERR_FILE_CREATION_ERROR) ] = "Failed to create file",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

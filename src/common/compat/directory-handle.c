@@ -151,6 +151,7 @@ void lttng_directory_handle_fini(struct lttng_directory_handle *handle)
 	ret = close(handle->dirfd);
 	if (ret == -1) {
 		PERROR("Failed to close directory file descriptor of directory handle");
+		abort();
 	}
 end:
 	lttng_directory_handle_invalidate(handle);
