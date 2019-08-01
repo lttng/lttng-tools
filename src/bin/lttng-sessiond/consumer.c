@@ -893,10 +893,6 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	msg->u.ask_channel.buffer_credentials.uid = UINT32_MAX;
 	msg->u.ask_channel.buffer_credentials.gid = UINT32_MAX;
 
-	if (monitor) {
-		assert(trace_chunk);
-	}
-
         if (trace_chunk) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
