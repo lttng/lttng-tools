@@ -564,9 +564,12 @@ error:
 	goto end_no_move;
 }
 
-static
-bool output_supports_trace_chunks(const struct consumer_output *output)
+bool session_output_supports_trace_chunks(const struct ltt_session *session)
 {
+	const struct consumer_output *output = session->kernel_session ?
+			session->kernel_session->consumer :
+			session->ust_session->consumer;
+
 	if (output->type == CONSUMER_DST_LOCAL) {
 		return true;
 	} else {
@@ -619,9 +622,6 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 		goto error;
 	}
 
-	if (!output_supports_trace_chunks(output)) {
-		goto end;
-	}
 	next_chunk_id = session->most_recent_chunk_id.is_set ?
 			session->most_recent_chunk_id.value + 1 : 0;
 
