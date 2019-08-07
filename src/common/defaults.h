@@ -284,7 +284,7 @@
  * Wait period before retrying the lttng_data_pending command in the lttng
  * stop command of liblttng-ctl.
  */
-#define DEFAULT_DATA_AVAILABILITY_WAIT_TIME 200000  /* usec */
+#define DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US 200000  /* usec */
 
 /*
  * Wait period before retrying the lttng_consumer_flushed_cache when

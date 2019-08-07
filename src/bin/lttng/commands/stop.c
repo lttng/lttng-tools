@@ -135,7 +135,7 @@ static int stop_tracing(void)
 			 * returned value indicates availability.
 			 */
 			if (ret) {
-				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 				_MSG(".");
 				fflush(stdout);
 			}

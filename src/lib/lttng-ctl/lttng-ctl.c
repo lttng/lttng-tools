@@ -724,7 +724,7 @@ static int _lttng_stop_tracing(const char *session_name, int wait)
 		 * call returned value indicates availability.
 		 */
 		if (data_ret) {
-			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+			usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 		}
 	} while (data_ret != 0);
 
