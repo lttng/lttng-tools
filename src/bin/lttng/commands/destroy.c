@@ -101,7 +101,7 @@ static int destroy_session(struct lttng_session *session)
 					fflush(stdout);
 				}
 
-				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 				_MSG(".");
 				fflush(stdout);
 			}
@@ -127,7 +127,7 @@ static int destroy_session(struct lttng_session *session)
 
 	do {
 		status = lttng_destruction_handle_wait_for_completion(handle,
-				DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+				DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US / USEC_PER_MSEC);
 		switch (status) {
 		case LTTNG_DESTRUCTION_HANDLE_STATUS_TIMEOUT:
 			if (!printed_wait_msg) {

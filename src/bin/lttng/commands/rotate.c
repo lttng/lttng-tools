@@ -104,7 +104,7 @@ static int rotate_tracing(char *session_name)
 		}
 
 		if (rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
-			ret = usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME);
+			ret = usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 			if (ret) {
 				PERROR("\nusleep");
 				goto error;
