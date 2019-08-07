@@ -3171,7 +3171,11 @@ int cmd_destroy_session(struct ltt_session *session,
 
 	if (session->most_recent_chunk_id.is_set &&
 			session->most_recent_chunk_id.value != 0 &&
-			session->current_trace_chunk) {
+			session->current_trace_chunk && session->output_traces) {
+		/*
+		 * Perform a last rotation on destruction if rotations have
+		 * occurred during the session's lifetime.
+		 */
 		ret = cmd_rotate_session(session, NULL);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to perform an implicit rotation as part of the destruction of session \"%s\": %s",
