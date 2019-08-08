@@ -41,13 +41,15 @@ struct lttng_index_file {
  */
 struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
-		const char *channel_path, char *stream_name,
+		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_count,
 		uint32_t index_major, uint32_t index_minor,
 		bool unlink_existing_file);
-struct lttng_index_file *lttng_index_file_open(const char *path_name,
-		const char *channel_name, uint64_t tracefile_count,
-		uint64_t tracefile_count_current);
+struct lttng_index_file *lttng_index_file_create_from_trace_chunk_read_only(
+		struct lttng_trace_chunk *chunk,
+		const char *channel_path, const char *stream_name,
+		uint64_t stream_file_size, uint64_t stream_file_index,
+		uint32_t index_major, uint32_t index_minor);
 int lttng_index_file_write(const struct lttng_index_file *index_file,
 		const struct ctf_packet_index *element);
 int lttng_index_file_read(const struct lttng_index_file *index_file,

@@ -31,12 +31,16 @@
 
 #include "index.h"
 
-struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+#define WRITE_FILE_FLAGS	O_WRONLY | O_CREAT | O_TRUNC
+#define READ_ONLY_FILE_FLAGS	O_RDONLY
+
+static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
-		const char *channel_path, char *stream_name,
+		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_file_index,
 		uint32_t index_major, uint32_t index_minor,
-		bool unlink_existing_file)
+		bool unlink_existing_file,
+		int flags)
 {
 	struct lttng_index_file *index_file;
 	enum lttng_trace_chunk_status chunk_status;
@@ -47,9 +51,8 @@ struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
 	char index_file_path[LTTNG_PATH_MAX];
 	const uint32_t element_len = ctf_packet_index_len(index_major,
 			index_minor);
-	const int flags = O_WRONLY | O_CREAT | O_TRUNC;
 	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
-	bool acquired_reference = lttng_trace_chunk_get(chunk);
+	const bool acquired_reference = lttng_trace_chunk_get(chunk);
 
 	assert(acquired_reference);
 
@@ -124,6 +127,31 @@ error:
 	return NULL;
 }
 
+struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+		struct lttng_trace_chunk *chunk,
+		const char *channel_path, const char *stream_name,
+		uint64_t stream_file_size, uint64_t stream_file_index,
+		uint32_t index_major, uint32_t index_minor,
+		bool unlink_existing_file)
+{
+	return _lttng_index_file_create_from_trace_chunk(chunk, channel_path,
+			stream_name, stream_file_size, stream_file_index,
+			index_major, index_minor, unlink_existing_file,
+			WRITE_FILE_FLAGS);
+}
+
+struct lttng_index_file *lttng_index_file_create_from_trace_chunk_read_only(
+		struct lttng_trace_chunk *chunk,
+		const char *channel_path, const char *stream_name,
+		uint64_t stream_file_size, uint64_t stream_file_index,
+		uint32_t index_major, uint32_t index_minor)
+{
+	return _lttng_index_file_create_from_trace_chunk(chunk, channel_path,
+			stream_name, stream_file_size, stream_file_index,
+			index_major, index_minor, false,
+			READ_ONLY_FILE_FLAGS);
+}
+
 /*
  * Write index values to the given index file.
  *
@@ -188,97 +216,6 @@ int lttng_index_file_read(const struct lttng_index_file *index_file,
 
 error:
 	return -1;
-}
-
-/*
- * Open index file using a given path, channel name and tracefile count.
- *
- * Return allocated struct lttng_index_file, NULL on error.
- */
-struct lttng_index_file *lttng_index_file_open(const char *path_name,
-		const char *channel_name, uint64_t tracefile_count,
-		uint64_t tracefile_count_current)
-{
-	struct lttng_index_file *index_file;
-	int ret, read_fd;
-	ssize_t read_len;
-	char fullpath[PATH_MAX];
-	struct ctf_packet_index_file_hdr hdr;
-	uint32_t major, minor, element_len;
-
-	assert(path_name);
-	assert(channel_name);
-
-	index_file = zmalloc(sizeof(*index_file));
-	if (!index_file) {
-		PERROR("allocating lttng_index_file");
-		goto error;
-	}
-
-	if (tracefile_count > 0) {
-		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s_%"
-				PRIu64 DEFAULT_INDEX_FILE_SUFFIX, path_name,
-				channel_name, tracefile_count_current);
-	} else {
-		ret = snprintf(fullpath, sizeof(fullpath), "%s/" DEFAULT_INDEX_DIR "/%s"
-				DEFAULT_INDEX_FILE_SUFFIX, path_name, channel_name);
-	}
-	if (ret < 0) {
-		PERROR("snprintf index path");
-		goto error;
-	}
-
-	DBG("Index opening file %s in read only", fullpath);
-	read_fd = open(fullpath, O_RDONLY);
-	if (read_fd < 0) {
-		PERROR("opening index in read-only");
-		goto error;
-	}
-
-	read_len = lttng_read(read_fd, &hdr, sizeof(hdr));
-	if (read_len < 0) {
-		PERROR("Reading index header");
-		goto error_close;
-	}
-
-	if (be32toh(hdr.magic) != CTF_INDEX_MAGIC) {
-		ERR("Invalid header magic");
-		goto error_close;
-	}
-	major = be32toh(hdr.index_major);
-	minor = be32toh(hdr.index_minor);
-	element_len = be32toh(hdr.packet_index_len);
-
-	if (major != CTF_INDEX_MAJOR) {
-		ERR("Invalid header version");
-		goto error_close;
-	}
-	if (element_len > sizeof(struct ctf_packet_index)) {
-		ERR("Index element length too long");
-		goto error_close;
-	}
-
-	index_file->fd = read_fd;
-	index_file->major = major;
-	index_file->minor = minor;
-	index_file->element_len = element_len;
-	urcu_ref_init(&index_file->ref);
-
-	return index_file;
-
-error_close:
-	if (read_fd >= 0) {
-		int close_ret;
-
-		close_ret = close(read_fd);
-		if (close_ret < 0) {
-			PERROR("close read fd %d", read_fd);
-		}
-	}
-
-error:
-	free(index_file);
-	return NULL;
 }
 
 void lttng_index_file_get(struct lttng_index_file *index_file)

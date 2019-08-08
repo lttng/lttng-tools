@@ -73,7 +73,7 @@ int relayd_reset_metadata(struct lttcomm_relayd_sock *rsock,
 		uint64_t stream_id, uint64_t version);
 /* `positions` is an array of `stream_count` relayd_stream_rotation_position. */
 int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
-		unsigned int stream_count, uint64_t *new_chunk_id,
+		unsigned int stream_count, const uint64_t *new_chunk_id,
 		const struct relayd_stream_rotation_position *positions);
 int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 		struct lttng_trace_chunk *chunk);
