@@ -405,7 +405,7 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 		goto error;
 	}
 
-	comm_ret = lttcomm_send_unix_sock(sessiond_socket, &lsm, sizeof(lsm));
+	comm_ret = lttcomm_send_creds_unix_sock(sessiond_socket, &lsm, sizeof(lsm));
 	if (comm_ret < 0) {
 		ret_code = LTTNG_ERR_FATAL;
 		goto error;
