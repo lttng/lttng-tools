@@ -715,12 +715,15 @@ int session_close_trace_chunk(const struct ltt_session *session,
 	}
 
 	if (session->ust_session) {
+		const uint64_t relayd_id =
+				session->ust_session->consumer->net_seq_index;
+
 		cds_lfht_for_each_entry(
 				session->ust_session->consumer->socks->ht,
 				&iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
-					session->consumer->net_seq_index,
+					relayd_id,
 					session->id,
 					trace_chunk);
 			pthread_mutex_unlock(socket->lock);
@@ -731,12 +734,15 @@ int session_close_trace_chunk(const struct ltt_session *session,
 		}
 	}
 	if (session->kernel_session) {
+		const uint64_t relayd_id =
+				session->kernel_session->consumer->net_seq_index;
+
 		cds_lfht_for_each_entry(
 				session->kernel_session->consumer->socks->ht,
 				&iter, socket, node.node) {
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_close_trace_chunk(socket,
-					session->consumer->net_seq_index,
+					relayd_id,
 					session->id,
 					trace_chunk);
 			pthread_mutex_unlock(socket->lock);
