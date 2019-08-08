@@ -231,15 +231,6 @@ static int lttng_kconsumer_snapshot_channel(
 			goto end_unlock;
 		}
 
-		if (stream->max_sb_size == 0) {
-			ret = kernctl_get_max_subbuf_size(stream->wait_fd,
-					&stream->max_sb_size);
-			if (ret < 0) {
-				ERR("Getting kernel max_sb_size");
-				goto end_unlock;
-			}
-		}
-
 		consumed_pos = consumer_get_consume_start_pos(consumed_pos,
 				produced_pos, nb_packets_per_stream,
 				stream->max_sb_size);
@@ -668,6 +659,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		new_stream->chan = channel;
 		new_stream->wait_fd = fd;
+		ret = kernctl_get_max_subbuf_size(new_stream->wait_fd,
+				&new_stream->max_sb_size);
+		if (ret < 0) {
+			pthread_mutex_unlock(&channel->lock);
+			ERR("Failed to get kernel maximal subbuffer size");
+			goto end_nosignal;
+		}
+
 		consumer_stream_update_channel_attributes(new_stream,
 				channel);
 		switch (channel->output) {
