@@ -42,7 +42,10 @@ static char *create_channel_path(struct consumer_output *consumer)
 	assert(consumer);
 
 	/* Get the right path name destination */
-	if (consumer->type == CONSUMER_DST_LOCAL) {
+	if (consumer->type == CONSUMER_DST_LOCAL ||
+			(consumer->type == CONSUMER_DST_NET &&
+					consumer->relay_major_version == 2 &&
+					consumer->relay_minor_version >= 11)) {
 		pathname = strdup(consumer->domain_subdir);
 		if (!pathname) {
 			PERROR("Failed to copy domain subdirectory string %s",
