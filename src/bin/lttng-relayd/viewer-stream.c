@@ -43,7 +43,13 @@ static void viewer_stream_destroy_rcu(struct rcu_head *head)
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		enum lttng_viewer_seek seek_t)
 {
-	struct relay_viewer_stream *vstream;
+	struct relay_viewer_stream *vstream = NULL;
+	const bool acquired_reference = lttng_trace_chunk_get(
+			stream->trace_chunk);
+
+	if (!acquired_reference) {
+		goto error;
+	}
 
 	vstream = zmalloc(sizeof(*vstream));
 	if (!vstream) {
@@ -51,6 +57,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		goto error;
 	}
 
+	vstream->stream_file.trace_chunk = stream->trace_chunk;
 	vstream->path_name = lttng_strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
 	if (vstream->path_name == NULL) {
 		PERROR("relay viewer path_name alloc");
@@ -118,10 +125,17 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	if (stream->index_received_seqcount == 0) {
 		vstream->index_file = NULL;
 	} else {
-		vstream->index_file = lttng_index_file_open(vstream->path_name,
-				vstream->channel_name,
-				stream->tracefile_count,
-				vstream->current_tracefile_id);
+		const uint32_t connection_major = stream->trace->session->major;
+		const uint32_t connection_minor = stream->trace->session->minor;
+
+		vstream->index_file = lttng_index_file_create_from_trace_chunk_read_only(
+				stream->trace_chunk, stream->path_name,
+				stream->channel_name, stream->tracefile_size,
+				vstream->current_tracefile_id,
+				lttng_to_index_major(connection_major,
+						connection_minor),
+				lttng_to_index_minor(connection_major,
+						connection_minor));
 		if (!vstream->index_file) {
 			goto error_unlock;
 		}
@@ -179,9 +193,9 @@ static void viewer_stream_release(struct urcu_ref *ref)
 
 	viewer_stream_unpublish(vstream);
 
-	if (vstream->stream_fd) {
-		stream_fd_put(vstream->stream_fd);
-		vstream->stream_fd = NULL;
+	if (vstream->stream_file.fd) {
+		stream_fd_put(vstream->stream_file.fd);
+		vstream->stream_file.fd = NULL;
 	}
 	if (vstream->index_file) {
 		lttng_index_file_put(vstream->index_file);
@@ -191,6 +205,7 @@ static void viewer_stream_release(struct urcu_ref *ref)
 		stream_put(vstream->stream);
 		vstream->stream = NULL;
 	}
+	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
 	call_rcu(&vstream->rcu_node, viewer_stream_destroy_rcu);
 }
 
@@ -243,8 +258,10 @@ void viewer_stream_put(struct relay_viewer_stream *vstream)
 int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 {
 	int ret;
-	struct relay_stream *stream = vstream->stream;
 	uint64_t new_id;
+	const struct relay_stream *stream = vstream->stream;
+	const uint32_t connection_major = stream->trace->session->major;
+	const uint32_t connection_minor = stream->trace->session->minor;
 
 	/* Detect the last tracefile to open. */
 	if (stream->index_received_seqcount
@@ -289,15 +306,20 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 		lttng_index_file_put(vstream->index_file);
 		vstream->index_file = NULL;
 	}
-	if (vstream->stream_fd) {
-		stream_fd_put(vstream->stream_fd);
-		vstream->stream_fd = NULL;
+	if (vstream->stream_file.fd) {
+		stream_fd_put(vstream->stream_file.fd);
+		vstream->stream_file.fd = NULL;
 	}
-
-	vstream->index_file = lttng_index_file_open(vstream->path_name,
-			vstream->channel_name,
-			stream->tracefile_count,
-			vstream->current_tracefile_id);
+	vstream->index_file =
+			lttng_index_file_create_from_trace_chunk_read_only(
+					stream->trace_chunk, stream->path_name,
+					stream->channel_name,
+					stream->tracefile_size,
+					vstream->current_tracefile_id,
+					lttng_to_index_major(connection_major,
+							connection_minor),
+					lttng_to_index_minor(connection_major,
+							connection_minor));
 	if (!vstream->index_file) {
 		ret = -1;
 		goto end;

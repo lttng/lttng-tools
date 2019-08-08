@@ -1123,7 +1123,7 @@ error:
 }
 
 int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
-		unsigned int stream_count, uint64_t *new_chunk_id,
+		unsigned int stream_count, const uint64_t *new_chunk_id,
 		const struct relayd_stream_rotation_position *positions)
 {
 	int ret;
