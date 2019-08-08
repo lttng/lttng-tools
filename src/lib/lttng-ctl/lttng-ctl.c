@@ -1831,7 +1831,7 @@ end:
 /*
  * Create a new session using name and url for destination.
  *
- * Returns LTTNG_OK on success or a negative error code.
+ * Return 0 on success else a negative LTTng error code.
  */
 int lttng_create_session(const char *name, const char *url)
 {
@@ -1886,7 +1886,7 @@ end:
 /*
  * Create a session exclusively used for snapshot.
  *
- * Returns LTTNG_OK on success or a negative error code.
+ * Return 0 on success else a negative LTTng error code.
  */
 int lttng_create_session_snapshot(const char *name, const char *snapshot_url)
 {
@@ -1962,7 +1962,7 @@ end:
 /*
  * Create a session exclusively used for live.
  *
- * Returns LTTNG_OK on success or a negative error code.
+ * Return 0 on success else a negative LTTng error code.
  */
 int lttng_create_session_live(const char *name, const char *url,
 		unsigned int timer_interval)
@@ -1996,6 +1996,8 @@ end:
 
 /*
  * Stop the session and wait for the data before destroying it
+ *
+ * Return 0 on success else a negative LTTng error code.
  */
 int lttng_destroy_session(const char *session_name)
 {
@@ -2032,7 +2034,7 @@ int lttng_destroy_session(const char *session_name)
 		ret = -LTTNG_ERR_UNK;
 		goto end;
 	}
-	ret = ret_code == LTTNG_OK ? LTTNG_OK : -ret_code;
+	ret = ret_code == LTTNG_OK ? 0 : -ret_code;
 end:
 	lttng_destruction_handle_destroy(handle);
 	return ret;

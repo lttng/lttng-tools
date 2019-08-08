@@ -130,7 +130,7 @@ extern int lttng_create_session_live(const char *name, const char *url,
  *
  * The name can't be NULL here.
  *
- * Returns LTTNG_OK on success, else a negative LTTng error code.
+ * Return 0 on success else a negative LTTng error code.
  */
 extern int lttng_destroy_session(const char *name);
 
