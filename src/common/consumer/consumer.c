@@ -4073,6 +4073,10 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			stream->rotate_ready = true;
 		}
 
+		/*
+		 * Active flush; has no effect if the production position
+		 * is at a packet boundary.
+		 */
 		ret = consumer_flush_buffer(stream, 1);
 		if (ret < 0) {
 			ERR("Failed to flush stream %" PRIu64 " during channel rotation",
@@ -4081,10 +4085,34 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		}
 
 		if (!is_local_trace) {
+			/*
+			 * The relay daemon control protocol expects a rotation
+			 * position as "the sequence number of the first packet
+			 * _after_ the current trace chunk.
+			 *
+			 * At the moment when the positions of the buffers are
+			 * sampled, the production position does not necessarily
+			 * sit at a packet boundary. The 'active' flush
+			 * operation above will push the production position to
+			 * the next packet boundary _if_ it is not already
+			 * sitting at such a boundary.
+			 *
+			 * Assuming a current production position that is not
+			 * on the bound of a packet, the 'target' sequence
+			 * number is
+			 *   (consumed_pos / subbuffer_size) + 1
+			 * Note the '+ 1' to ensure the current packet is
+			 * part of the current trace chunk.
+			 *
+			 * However, if the production position is already at
+			 * a packet boundary, the '+ 1' is not necessary as the
+			 * last packet of the current chunk is already
+			 * 'complete'.
+			 */
 			const struct relayd_stream_rotation_position position = {
 				.stream_id = stream->relayd_stream_id,
-				.rotate_at_seq_num = (stream->rotate_position /
-						stream->max_sb_size) + 1,
+				.rotate_at_seq_num = (stream->rotate_position / stream->max_sb_size) +
+					!!(stream->rotate_position % stream->max_sb_size),
 			};
 
 			ret = lttng_dynamic_array_add_element(
