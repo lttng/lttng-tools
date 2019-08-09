@@ -31,6 +31,8 @@ NR_ITER=-1
 # Temp file output
 OUTPUT_DIR=$(mktemp -d)
 
+LAST_APP_PID=
+
 NUM_TESTS=77
 
 source $TESTDIR/utils/utils.sh
@@ -50,6 +52,7 @@ function start_test_app()
 	# Start application with a temporary file.
 	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
 	ret=$?
+	LAST_APP_PID="${!}"
 	APPS_PID="${APPS_PID} ${!}"
 	ok $ret "Start application to trace"
 
@@ -81,6 +84,7 @@ function stop_test_app()
 		diag "Stopping $p"
 		kill ${p} 2>/dev/null
 		wait ${p} 2>/dev/null
+		diag "Stopped $p"
 	done
 }
 
@@ -118,7 +122,7 @@ function test_shm_path_per_pid()
 	diag "Shm: check folder creation and structure"
 
 	start_test_app
-	first_app_pid=$APPS_PID
+	first_app_pid=$LAST_APP_PID
 	shm_session_path=$(find $shm_path -mindepth 1 -maxdepth 1)
 
 	file_count=$(echo "$shm_session_path"| wc -l)
@@ -141,6 +145,7 @@ function test_shm_path_per_pid()
 	diag "Shm: check basic creation of second ust application"
 
 	start_test_app
+	second_app_pid=$LAST_APP_PID
 	second_pid_path=$(find $shm_session_path/ust/pid -mindepth 1 -maxdepth 1)
 	ok $? "Pid path exist found $second_pid_path"
 
@@ -150,6 +155,7 @@ function test_shm_path_per_pid()
 
 	# Stop first test application and check for cleanup
 	stop_test_app "$first_app_pid"
+	APPS_PID="$second_app_pid"
 	verify_path_dont_exists "$first_pid_path"
 	ok $? "First pid cleanup"
 
