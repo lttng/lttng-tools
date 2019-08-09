@@ -216,7 +216,7 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 		struct ltt_session *session)
 {
 	int ret;
-	const char * const dummy = "!";
+	const char dummy = '!';
 	struct rotation_thread_job *job = NULL;
 	const char *job_type_str = get_job_type_str(job_type);
 
@@ -242,8 +242,8 @@ void rotation_thread_enqueue_job(struct rotation_thread_timer_queue *queue,
 	job->type = job_type;
 	cds_list_add_tail(&job->head, &queue->list);
 
-	ret = lttng_write(lttng_pipe_get_writefd(queue->event_pipe), dummy,
-			1);
+	ret = lttng_write(lttng_pipe_get_writefd(queue->event_pipe), &dummy,
+			sizeof(dummy));
 	if (ret < 0) {
 		/*
 		 * We do not want to block in the timer handler, the job has
