@@ -2423,11 +2423,22 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	pthread_mutex_lock(&conn->session->lock);
-	lttng_trace_chunk_put(conn->session->current_trace_chunk);
+	if (conn->session->pending_closure_trace_chunk) {
+		/*
+		 * Invalid; this means a second create_trace_chunk command was
+		 * received before a close_trace_chunk.
+		 */
+		ERR("Invalid trace chunk close command received; a trace chunk is already waiting for a trace chunk close command");
+		reply_code = LTTNG_ERR_INVALID_PROTOCOL;
+		ret = -1;
+		goto end_unlock_session;
+	}
+	conn->session->pending_closure_trace_chunk =
+			conn->session->current_trace_chunk;
 	conn->session->current_trace_chunk = published_chunk;
 	published_chunk = NULL;
+end_unlock_session:
 	pthread_mutex_unlock(&conn->session->lock);
-
 end:
 	reply.ret_code = htobe32((uint32_t) reply_code);
 	send_ret = conn->sock->ops->sendmsg(conn->sock,
@@ -2512,13 +2523,23 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	pthread_mutex_lock(&session->lock);
+	if (session->pending_closure_trace_chunk &&
+			session->pending_closure_trace_chunk != chunk) {
+		ERR("Trace chunk close command for session \"%s\" does not target the trace chunk pending closure",
+				session->session_name);
+		reply_code = LTTNG_ERR_INVALID_PROTOCOL;
+		ret = -1;
+		goto end_unlock_session;
+	}
+
 	chunk_status = lttng_trace_chunk_set_close_timestamp(
 			chunk, close_timestamp);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to set trace chunk close timestamp");
 		ret = -1;
 		reply_code = LTTNG_ERR_UNK;
-		goto end;
+		goto end_unlock_session;
 	}
 
 	if (close_command.is_set) {
@@ -2527,11 +2548,10 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
 			reply_code = LTTNG_ERR_INVALID;
-			goto end;
+			goto end_unlock_session;
 		}
 	}
 
-	pthread_mutex_lock(&session->lock);
 	if (session->current_trace_chunk == chunk) {
 		/*
 		 * After a trace chunk close command, no new streams
@@ -2544,6 +2564,9 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		lttng_trace_chunk_put(session->current_trace_chunk);
 		session->current_trace_chunk = NULL;
 	}
+	lttng_trace_chunk_put(session->pending_closure_trace_chunk);
+	session->pending_closure_trace_chunk = NULL;
+end_unlock_session:
 	pthread_mutex_unlock(&session->lock);
 
 end:
