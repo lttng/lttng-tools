@@ -1727,9 +1727,8 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 
 	/* RCU lock for the relayd pointer */
 	rcu_read_lock();
-
 	assert(stream->net_seq_idx != (uint64_t) -1ULL ||
-			stream->chan->trace_chunk);
+			stream->trace_chunk);
 
 	/* Flag that the current stream if set for network streaming. */
 	if (stream->net_seq_idx != (uint64_t) -1ULL) {
