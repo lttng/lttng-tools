@@ -494,7 +494,6 @@ int check_session_rotation_pending(struct ltt_session *session,
 
 	check_session_rotation_pending_on_consumers(session,
 			&rotation_completed);
-
 	if (!rotation_completed ||
 			session->rotation_state == LTTNG_ROTATION_STATE_ERROR) {
 		goto end;
@@ -514,21 +513,23 @@ int check_session_rotation_pending(struct ltt_session *session,
 	}
 	session_reset_rotation_state(session, LTTNG_ROTATION_STATE_COMPLETED);
 
-	location = session_get_trace_archive_location(session);
-	/* Ownership of location is transferred. */
-	ret = notification_thread_command_session_rotation_completed(
-			notification_thread_handle,
-			session->name,
-			session->uid,
-			session->gid,
-			session->last_archived_chunk_id.value,
-			location);
-	if (ret != LTTNG_OK) {
-		ERR("[rotation-thread] Failed to notify notification thread of completed rotation for session %s",
-				session->name);
+	if (!session->quiet_rotation) {
+		location = session_get_trace_archive_location(session);
+		/* Ownership of location is transferred. */
+		ret = notification_thread_command_session_rotation_completed(
+				notification_thread_handle,
+				session->name,
+				session->uid,
+				session->gid,
+				session->last_archived_chunk_id.value,
+				location);
+		if (ret != LTTNG_OK) {
+			ERR("[rotation-thread] Failed to notify notification thread of completed rotation for session %s",
+					session->name);
+		}
 	}
 
-	if (!session->active) {
+	if (!session->active && !session->quiet_rotation) {
 		/*
 		 * A stop command was issued during the rotation, it is
 		 * up to the rotation completion check to perform the
@@ -594,7 +595,7 @@ int launch_session_rotation(struct ltt_session *session)
 	DBG("[rotation-thread] Launching scheduled time-based rotation on session \"%s\"",
 			session->name);
 
-	ret = cmd_rotate_session(session, &rotation_return);
+	ret = cmd_rotate_session(session, &rotation_return, false);
 	if (ret == LTTNG_OK) {
 		DBG("[rotation-thread] Scheduled time-based rotation successfully launched on session \"%s\"",
 				session->name);
@@ -741,7 +742,7 @@ int handle_condition(const struct lttng_condition *condition,
 		goto end_unlock;
 	}
 
-	ret = cmd_rotate_session(session, NULL);
+	ret = cmd_rotate_session(session, NULL, false);
 	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
 		DBG("Rotate already pending, subscribe to the next threshold value");
 	} else if (ret != LTTNG_OK) {

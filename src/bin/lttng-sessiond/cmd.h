@@ -133,7 +133,8 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		struct notification_thread_handle *notification_thread_handle);
 
 int cmd_rotate_session(struct ltt_session *session,
-		struct lttng_rotate_session_return *rotate_return);
+		struct lttng_rotate_session_return *rotate_return,
+		bool quiet_rotation);
 int cmd_rotate_get_info(struct ltt_session *session,
 		struct lttng_rotation_get_info_return *info_return,
 		uint64_t rotate_id);
