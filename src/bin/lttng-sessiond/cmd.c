@@ -3176,7 +3176,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		 * Perform a last rotation on destruction if rotations have
 		 * occurred during the session's lifetime.
 		 */
-		ret = cmd_rotate_session(session, NULL);
+		ret = cmd_rotate_session(session, NULL, false);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to perform an implicit rotation as part of the destruction of session \"%s\": %s",
 					session->name, lttng_strerror(-ret));
@@ -3184,7 +3184,23 @@ int cmd_destroy_session(struct ltt_session *session,
                 if (reply_context) {
 			reply_context->implicit_rotation_on_destroy = true;
                 }
-        }
+        } else if (session->has_been_started && session->current_trace_chunk &&
+				session_output_supports_trace_chunks(session)) {
+		/*
+		 * The user has not triggered a session rotation. However, to
+		 * ensure all data has been consumed, the session is rotated
+		 * to a 'null' trace chunk before it is destroyed.
+		 *
+		 * This is a "quiet" rotation meaning that no notification is
+		 * emitted and no renaming of the current trace chunk takes
+		 * place.
+		 */
+		ret = cmd_rotate_session(session, NULL, true);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to perform a quiet rotation as part of the destruction of session \"%s\": %s",
+					session->name, lttng_strerror(-ret));
+		}
+	}
 
 	if (session->shm_path[0]) {
 		/*
@@ -4713,7 +4729,8 @@ int cmd_set_session_shm_path(struct ltt_session *session,
  * Returns LTTNG_OK on success or else a negative LTTng error code.
  */
 int cmd_rotate_session(struct ltt_session *session,
-		struct lttng_rotate_session_return *rotate_return)
+		struct lttng_rotate_session_return *rotate_return,
+		bool quiet_rotation)
 {
 	int ret;
 	uint64_t ongoing_rotation_chunk_id;
@@ -4798,13 +4815,16 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	ret = session_close_trace_chunk(session, chunk_being_archived,
-			&((enum lttng_trace_chunk_command_type) {
-					LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED}));
+			quiet_rotation ?
+					NULL :
+					&((enum lttng_trace_chunk_command_type){
+							LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED}));
 	if (ret) {
 		cmd_ret = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 		goto error;
 	}
 
+	session->quiet_rotation = quiet_rotation;
 	ret = timer_session_rotation_pending_check_start(session,
 			DEFAULT_ROTATE_PENDING_TIMER);
 	if (ret) {
@@ -4822,14 +4842,16 @@ int cmd_rotate_session(struct ltt_session *session,
 
 	session->chunk_being_archived = chunk_being_archived;
 	chunk_being_archived = NULL;
-	ret = notification_thread_command_session_rotation_ongoing(
-			notification_thread_handle,
-			session->name, session->uid, session->gid,
-			ongoing_rotation_chunk_id);
-	if (ret != LTTNG_OK) {
-		ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",
-				session->name);
-		cmd_ret = ret;
+	if (!quiet_rotation) {
+		ret = notification_thread_command_session_rotation_ongoing(
+				notification_thread_handle,
+				session->name, session->uid, session->gid,
+				ongoing_rotation_chunk_id);
+		if (ret != LTTNG_OK) {
+			ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",
+					session->name);
+			cmd_ret = ret;
+		}
 	}
 
 	DBG("Cmd rotate session %s, archive_id %" PRIu64 " sent",

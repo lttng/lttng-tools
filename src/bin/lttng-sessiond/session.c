@@ -39,6 +39,7 @@
 #include "utils.h"
 #include "trace-ust.h"
 #include "timer.h"
+#include "cmd.h"
 
 struct ltt_session_destroy_notifier_element {
 	ltt_session_destroy_notifier notifier;
@@ -794,26 +795,12 @@ void session_release(struct urcu_ref *ref)
 	struct ltt_ust_session *usess;
 	struct ltt_kernel_session *ksess;
 	struct ltt_session *session = container_of(ref, typeof(*session), ref);
+	const bool session_published = session->published;
 
 	assert(!session->chunk_being_archived);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
-
-	session_notify_destruction(session);
-	lttng_dynamic_array_reset(&session->destroy_notifiers);
-	if (session->current_trace_chunk) {
-		ret = session_close_trace_chunk(session, session->current_trace_chunk, NULL);
-		if (ret) {
-			ERR("Failed to close the current trace chunk of session \"%s\" during its release",
-					session->name);
-		}
-		ret = _session_set_trace_chunk_no_lock_check(session, NULL, NULL);
-		if (ret) {
-			ERR("Failed to release the current trace chunk of session \"%s\" during its release",
-					session->name);
-		}
-        }
 
         /* Clean kernel session teardown */
 	kernel_destroy_session(ksess);
@@ -851,14 +838,22 @@ void session_release(struct urcu_ref *ref)
 
 	pthread_mutex_destroy(&session->lock);
 
-	if (session->published) {
+	if (session_published) {
 		ASSERT_LOCKED(ltt_session_list.lock);
 		del_session_list(session);
 		del_session_ht(session);
-		pthread_cond_broadcast(&ltt_session_list.removal_cond);
 	}
+	session_notify_destruction(session);
+	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	free(session->last_archived_chunk_name);
 	free(session);
+	if (session_published) {
+		/*
+		 * Broadcast after free-ing to ensure the memory is
+		 * reclaimed before the main thread exits.
+		 */
+		pthread_cond_broadcast(&ltt_session_list.removal_cond);
+	}
 }
 
 /*

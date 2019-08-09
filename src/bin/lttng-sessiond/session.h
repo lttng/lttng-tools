@@ -180,6 +180,7 @@ struct ltt_session {
 	struct lttng_trace_chunk *chunk_being_archived;
 	/* Current state of a rotation. */
 	enum lttng_rotation_state rotation_state;
+	bool quiet_rotation;
 	char *last_archived_chunk_name;
 	LTTNG_OPTIONAL(uint64_t) last_archived_chunk_id;
 	struct lttng_dynamic_array destroy_notifiers;
