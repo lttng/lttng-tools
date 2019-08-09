@@ -120,6 +120,7 @@ struct relay_session {
 	 */
 	struct cds_list_head viewer_session_node;
 	struct lttng_trace_chunk *current_trace_chunk;
+	struct lttng_trace_chunk *pending_closure_trace_chunk;
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
