@@ -37,6 +37,7 @@
 #include <inttypes.h>
 #include <urcu/futex.h>
 #include <urcu/uatomic.h>
+#include <urcu/rculist.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -58,7 +59,7 @@
 #include <common/config/session-config.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
-#include <urcu/rculist.h>
+#include <common/string-utils/format.h>
 
 #include "cmd.h"
 #include "ctf-trace.h"
@@ -2127,6 +2128,8 @@ static int relay_rotate_session_streams(
 	const size_t header_len = sizeof(struct lttcomm_relayd_rotate_streams);
 	struct lttng_trace_chunk *next_trace_chunk = NULL;
 	struct lttng_buffer_view stream_positions;
+	char chunk_id_buf[MAX_INT_DEC_LEN(uint64_t)];
+	const char *chunk_id_str = "none";
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to rotate a stream before version check");
@@ -2180,7 +2183,19 @@ static int relay_rotate_session_streams(
 			ret = -1;
 			goto end;
 		}
+
+		ret = snprintf(chunk_id_buf, sizeof(chunk_id_buf), "%" PRIu64,
+				rotate_streams.new_chunk_id.value);
+		if (ret < 0 || ret >= sizeof(chunk_id_buf)) {
+			chunk_id_str = "formatting error";
+		} else {
+			chunk_id_str = chunk_id_buf;
+		}
 	}
+
+	DBG("Rotate %" PRIu32 " streams of session \"%s\" to chunk \"%s\"",
+			rotate_streams.stream_count, session->session_name,
+			chunk_id_str);
 
 	stream_positions = lttng_buffer_view_from_view(payload,
 			sizeof(rotate_streams), -1);
