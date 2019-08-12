@@ -19,14 +19,15 @@
 
 #define _LGPL_SOURCE
 #include <common/common.h>
+#include <common/utils.h>
 #include <common/compat/uuid.h>
 #include <urcu/rculist.h>
 
-#include "lttng-relayd.h"
 #include "ctf-trace.h"
+#include "lttng-relayd.h"
 #include "session.h"
-#include "stream.h"
 #include "sessiond-trace-chunks.h"
+#include "stream.h"
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;
@@ -38,8 +39,20 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	struct lttng_trace_chunk *chunk = NULL;
 	enum lttng_trace_chunk_status status;
 	struct lttng_directory_handle output_directory;
+	char *base_path = opt_output_path;
 
-	ret = lttng_directory_handle_init(&output_directory, opt_output_path);
+	if (base_path == NULL) {
+		/* No output path defined */
+		base_path = utils_get_home_dir();
+		if (base_path == NULL) {
+			ERR("Home path not found.\n \
+					Please specify an output path using -o, --output PATH");
+			ret = -1;
+			goto end;
+		}
+	}
+
+	ret = lttng_directory_handle_init(&output_directory, base_path);
 	if (ret) {
 		goto end;
 	}
