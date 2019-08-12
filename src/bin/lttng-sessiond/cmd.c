@@ -4746,7 +4746,14 @@ int cmd_rotate_session(struct ltt_session *session,
 		goto end;
 	}
 
-	if (session->live_timer || !session->output_traces) {
+	/*
+	 * Explicit rotation is not supported for live sessions.
+	 * However, live sessions can perform a quiet rotation on
+	 * destroy.
+	 * Rotation is not supported for snapshot traces (no output).
+	 */
+	if ((!quiet_rotation && session->live_timer) ||
+			!session->output_traces) {
 		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE;
 		goto end;
 	}
