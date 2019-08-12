@@ -21,6 +21,11 @@
 #include <common/macros.h>
 #include <common/credentials.h>
 
+enum lttng_directory_handle_rmdir_recursive_flags {
+	LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG = (1U << 0),
+	LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG = (1U << 1),
+};
+
 /*
  * Some platforms, such as Solaris 10, do not support directory file descriptors
  * and their associated functions (*at(...)), which are defined in POSIX.2008.
@@ -233,20 +238,23 @@ int lttng_directory_handle_remove_subdirectory_as_user(
 /*
  * Remove a subdirectory and remove its contents if it only
  * consists in empty directories.
+ * @flags: enum lttng_directory_handle_rmdir_recursive_flags
  */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive(
 		const struct lttng_directory_handle *handle,
-		const char *name);
+		const char *name, int flags);
 
 /*
  * Remove a subdirectory and remove its contents if it only
  * consists in empty directories as a given user.
+ * @flags: enum lttng_directory_handle_rmdir_recursive_flags
  */
 LTTNG_HIDDEN
 int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const struct lttng_directory_handle *handle,
 		const char *name,
-		const struct lttng_credentials *creds);
+		const struct lttng_credentials *creds,
+		int flags);
 
 #endif /* _COMPAT_PATH_HANDLE_H */

@@ -90,6 +90,7 @@ struct run_as_unlink_data {
 struct run_as_rmdir_data {
 	int dirfd;
 	char path[LTTNG_PATH_MAX];
+	int flags; /* enum lttng_directory_handle_rmdir_recursive_flags */
 } LTTNG_PACKED;
 
 struct run_as_extract_elf_symbol_offset_data {
@@ -471,7 +472,7 @@ int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 	data->u.rmdir.dirfd = -1;
 
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory_recursive(
-			&handle, data->u.rmdir.path);
+			&handle, data->u.rmdir.path, data->u.rmdir.flags);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
 	lttng_directory_handle_fini(&handle);
@@ -1537,13 +1538,13 @@ error:
 }
 
 LTTNG_HIDDEN
-int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid)
+int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid, int flags)
 {
-	return run_as_rmdirat_recursive(AT_FDCWD, path, uid, gid);
+	return run_as_rmdirat_recursive(AT_FDCWD, path, uid, gid, flags);
 }
 
 LTTNG_HIDDEN
-int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid)
+int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid, int flags)
 {
 	int ret;
 	struct run_as_data data = {};
@@ -1558,6 +1559,7 @@ int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid)
 		goto error;
 	}
 	data.u.rmdir.dirfd = dirfd;
+	data.u.rmdir.flags = flags;
 	run_as(dirfd == AT_FDCWD ? RUN_AS_RMDIR_RECURSIVE : RUN_AS_RMDIRAT_RECURSIVE,
 			&data, &run_as_ret, uid, gid);
 	errno = run_as_ret._errno;

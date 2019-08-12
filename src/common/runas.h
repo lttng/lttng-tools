@@ -62,11 +62,11 @@ int run_as_unlinkat(int dirfd, const char *filename, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
 int run_as_rmdir(const char *path, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
-int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid);
+int run_as_rmdir_recursive(const char *path, uid_t uid, gid_t gid, int flags);
 LTTNG_HIDDEN
 int run_as_rmdirat(int dirfd, const char *path, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
-int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid);
+int run_as_rmdirat_recursive(int dirfd, const char *path, uid_t uid, gid_t gid, int flags);
 LTTNG_HIDDEN
 int run_as_rename(const char *old, const char *new, uid_t uid, gid_t gid);
 LTTNG_HIDDEN
