@@ -31,7 +31,7 @@
 
 #include "index.h"
 
-#define WRITE_FILE_FLAGS	O_WRONLY | O_CREAT | O_TRUNC
+#define WRITE_FILE_FLAGS	(O_WRONLY | O_CREAT | O_TRUNC)
 #define READ_ONLY_FILE_FLAGS	O_RDONLY
 
 static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
