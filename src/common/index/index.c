@@ -49,8 +49,6 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	struct ctf_packet_index_file_hdr hdr;
 	char index_directory_path[LTTNG_PATH_MAX];
 	char index_file_path[LTTNG_PATH_MAX];
-	const uint32_t element_len = ctf_packet_index_len(index_major,
-			index_minor);
 	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 	const bool acquired_reference = lttng_trace_chunk_get(chunk);
 
@@ -102,16 +100,46 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 		goto error;
 	}
 
-	ctf_packet_index_file_hdr_init(&hdr, index_major, index_minor);
-	size_ret = lttng_write(fd, &hdr, sizeof(hdr));
-	if (size_ret < sizeof(hdr)) {
-		PERROR("Failed to write index header");
-		goto error;
+	if (flags == WRITE_FILE_FLAGS) {
+		ctf_packet_index_file_hdr_init(&hdr, index_major, index_minor);
+		size_ret = lttng_write(fd, &hdr, sizeof(hdr));
+		if (size_ret < sizeof(hdr)) {
+			PERROR("Failed to write index header");
+			goto error;
+		}
+		index_file->element_len = ctf_packet_index_len(index_major, index_minor);
+	} else {
+		uint32_t element_len;
+
+		size_ret = lttng_read(fd, &hdr, sizeof(hdr));
+		if (size_ret < 0) {
+			PERROR("Failed to read index header");
+			goto error;
+		}
+		if (be32toh(hdr.magic) != CTF_INDEX_MAGIC) {
+			ERR("Invalid header magic");
+			goto error;
+		}
+		if (index_major != be32toh(hdr.index_major)) {
+			ERR("Index major number mismatch: %u, expect %u",
+				be32toh(hdr.index_major), index_major);
+			goto error;
+		}
+		if (index_minor != be32toh(hdr.index_minor)) {
+			ERR("Index minor number mismatch: %u, expect %u",
+				be32toh(hdr.index_minor), index_minor);
+			goto error;
+		}
+		element_len = be32toh(hdr.packet_index_len);
+		if (element_len > sizeof(struct ctf_packet_index)) {
+			ERR("Index element length too long");
+			goto error;
+		}
+		index_file->element_len = element_len;
 	}
 	index_file->fd = fd;
 	index_file->major = index_major;
 	index_file->minor = index_minor;
-	index_file->element_len = element_len;
 	urcu_ref_init(&index_file->ref);
 
 	return index_file;
