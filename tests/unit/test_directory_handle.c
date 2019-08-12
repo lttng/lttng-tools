@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	ok(dir_exists(created_dir), "Folder %s exists", created_dir);
 
 	ret = lttng_directory_handle_remove_subdirectory_recursive(
-			&test_dir_handle, "a");
+			&test_dir_handle, "a", LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG);
 	ok(ret == 0, "Recursively removed directory hierarchy %s by removing %s",
 			DIR_HIERARCHY, "a");
 end:

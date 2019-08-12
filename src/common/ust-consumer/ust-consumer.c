@@ -519,7 +519,8 @@ error_open:
 	if (channel->root_shm_path[0]) {
 		(void) run_as_rmdir_recursive(channel->root_shm_path,
 				channel->buffer_credentials.value.uid,
-				channel->buffer_credentials.value.gid);
+				channel->buffer_credentials.value.gid,
+				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 	free(stream_fds);
 error_alloc:
@@ -2349,7 +2350,8 @@ void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 	if (chan->root_shm_path[0]) {
 		(void) run_as_rmdir_recursive(chan->root_shm_path,
 				chan->buffer_credentials.value.uid,
-				chan->buffer_credentials.value.gid);
+				chan->buffer_credentials.value.gid,
+				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 	free(chan->stream_fds);
 }

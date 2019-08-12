@@ -1031,7 +1031,8 @@ void ust_registry_session_destroy(struct ust_registry_session *reg)
 		 * Try deleting the directory hierarchy.
 		 */
 		(void) run_as_rmdir_recursive(reg->root_shm_path,
-				reg->uid, reg->gid);
+				reg->uid, reg->gid,
+				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 	/* Destroy the enum hash table */
 	if (reg->enums) {
