@@ -1730,7 +1730,7 @@ function lttng_enable_rotation_timer ()
 		test "$ret" -ne "0"
 		ok $? "Expected fail when setting periodic rotation ($period) of session $sess_name"
 	else
-		ok $ret "Set periodic rotatation ($period) of session $sess_name"
+		ok $ret "Set periodic rotation ($period) of session $sess_name"
 	fi
 }
 
