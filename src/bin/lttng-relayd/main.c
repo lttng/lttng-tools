@@ -2117,7 +2117,7 @@ static int relay_rotate_session_streams(
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
-	int ret;
+	int ret = 0;
 	uint32_t i;
 	ssize_t send_ret;
 	enum lttng_error_code reply_code = LTTNG_ERR_UNK;
