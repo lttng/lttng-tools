@@ -710,7 +710,11 @@ void trace_kernel_destroy_session(struct ltt_kernel_session *session)
 	cds_list_for_each_entry_safe(channel, ctmp, &session->channel_list.head, list) {
 		trace_kernel_destroy_channel(channel);
 	}
+}
 
+/* Free elements needed by destroy notifiers. */
+void trace_kernel_free_session(struct ltt_kernel_session *session)
+{
 	/* Wipe consumer output object */
 	consumer_output_put(session->consumer);
 

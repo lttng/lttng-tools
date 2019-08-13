@@ -164,5 +164,6 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel);
 void trace_kernel_destroy_event(struct ltt_kernel_event *event);
 void trace_kernel_destroy_stream(struct ltt_kernel_stream *stream);
 void trace_kernel_destroy_context(struct ltt_kernel_context *ctx);
+void trace_kernel_free_session(struct ltt_kernel_session *session);
 
 #endif /* _LTT_TRACE_KERNEL_H */

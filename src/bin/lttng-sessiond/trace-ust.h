@@ -217,6 +217,7 @@ void trace_ust_destroy_session(struct ltt_ust_session *session);
 void trace_ust_destroy_channel(struct ltt_ust_channel *channel);
 void trace_ust_destroy_event(struct ltt_ust_event *event);
 void trace_ust_destroy_context(struct ltt_ust_context *ctx);
+void trace_ust_free_session(struct ltt_ust_session *session);
 
 int trace_ust_track_pid(struct ltt_ust_session *session, int pid);
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid);
@@ -279,6 +280,12 @@ static inline
 void trace_ust_destroy_event(struct ltt_ust_event *event)
 {
 }
+
+static inline
+void trace_ust_free_session(struct ltt_ust_session *session)
+{
+}
+
 static inline
 struct ltt_ust_context *trace_ust_create_context(
 		struct lttng_event_context *ctx)

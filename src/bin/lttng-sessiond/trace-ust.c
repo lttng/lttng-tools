@@ -1161,7 +1161,8 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
 }
 
 /*
- * Cleanup ust session structure
+ * Cleanup ust session structure, keeping data required by
+ * destroy notifier.
  *
  * Should *NOT* be called with RCU read-side lock held.
  */
@@ -1197,9 +1198,13 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 		buffer_reg_uid_destroy(reg, session->consumer);
 	}
 
-	consumer_output_put(session->consumer);
-
 	fini_pid_tracker(&session->pid_tracker);
 	lttng_trace_chunk_put(session->current_trace_chunk);
+}
+
+/* Free elements needed by destroy notifiers. */
+void trace_ust_free_session(struct ltt_ust_session *session)
+{
+	consumer_output_put(session->consumer);
 	free(session);
 }
