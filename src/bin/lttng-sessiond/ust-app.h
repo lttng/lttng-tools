@@ -297,6 +297,11 @@ struct ust_app {
 	 * to a negative value indicating that the agent application is gone.
 	 */
 	int agent_app_sock;
+	/*
+	 * Time at which the app is registred.
+	 * Used for path creation
+	 */
+	time_t registration_time;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL

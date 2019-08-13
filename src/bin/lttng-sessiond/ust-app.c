@@ -1832,15 +1832,12 @@ static void shadow_copy_channel(struct ust_app_channel *ua_chan,
 static void shadow_copy_session(struct ust_app_session *ua_sess,
 		struct ltt_ust_session *usess, struct ust_app *app)
 {
-	time_t rawtime;
 	struct tm *timeinfo;
 	char datetime[16];
 	int ret;
 	char tmp_shm_path[PATH_MAX];
 
-	/* Get date and time for unique app path */
-	time(&rawtime);
-	timeinfo = localtime(&rawtime);
+	timeinfo = localtime(&app->registration_time);
 	strftime(datetime, sizeof(datetime), "%Y%m%d-%H%M%S", timeinfo);
 
 	DBG2("Shadow copy of session handle %d", ua_sess->handle);
@@ -3376,6 +3373,8 @@ void ust_app_add(struct ust_app *app)
 {
 	assert(app);
 	assert(app->notify_sock >= 0);
+
+	app->registration_time = time(NULL);
 
 	rcu_read_lock();
 
