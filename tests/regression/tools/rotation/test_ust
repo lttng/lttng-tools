@@ -27,7 +27,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=142
+NUM_TESTS=136
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
