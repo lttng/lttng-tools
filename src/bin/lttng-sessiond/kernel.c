@@ -131,6 +131,7 @@ int kernel_create_session(struct ltt_session *session, int tracer_fd)
 error:
 	if (lks) {
 		trace_kernel_destroy_session(lks);
+		trace_kernel_free_session(lks);
 	}
 	return ret;
 }
@@ -1156,7 +1157,7 @@ end_boot_id:
 }
 
 /*
- * Complete teardown of a kernel session.
+ * Teardown of a kernel session, keeping data required by destroy notifiers.
  */
 void kernel_destroy_session(struct ltt_kernel_session *ksess)
 {
@@ -1203,6 +1204,15 @@ void kernel_destroy_session(struct ltt_kernel_session *ksess)
 
 	trace_kernel_destroy_session(ksess);
 	lttng_trace_chunk_put(trace_chunk);
+}
+
+/* Teardown of data required by destroy notifiers. */
+void kernel_free_session(struct ltt_kernel_session *ksess)
+{
+	if (ksess == NULL) {
+		return;
+	}
+	trace_kernel_free_session(ksess);
 }
 
 /*

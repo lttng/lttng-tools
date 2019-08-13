@@ -802,11 +802,10 @@ void session_release(struct urcu_ref *ref)
 	usess = session->ust_session;
 	ksess = session->kernel_session;
 
-        /* Clean kernel session teardown */
+        /* Clean kernel session teardown, keeping data for destroy notifier. */
 	kernel_destroy_session(ksess);
-	session->kernel_session = NULL;
 
-	/* UST session teardown */
+	/* UST session teardown, keeping data for destroy notifier. */
 	if (usess) {
 		/* Close any relayd session */
 		consumer_output_send_destroy_relayd(usess->consumer);
@@ -817,9 +816,8 @@ void session_release(struct urcu_ref *ref)
 			ERR("Error in ust_app_destroy_trace_all");
 		}
 
-		/* Clean up the rest. */
+		/* Clean up the rest, keeping destroy notifier data. */
 		trace_ust_destroy_session(usess);
-		session->ust_session = NULL;
 	}
 
 	/*
@@ -844,6 +842,13 @@ void session_release(struct urcu_ref *ref)
 		del_session_ht(session);
 	}
 	session_notify_destruction(session);
+
+	kernel_free_session(ksess);
+	session->kernel_session = NULL;
+	if (usess) {
+		trace_ust_free_session(usess);
+		session->ust_session = NULL;
+	}
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
 	free(session->last_archived_chunk_name);
 	free(session);
