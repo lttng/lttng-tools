@@ -22,7 +22,7 @@ EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=64
+NUM_TESTS=60
 
 source $TESTDIR/utils/utils.sh
 source $CURDIR/rotate_utils.sh
