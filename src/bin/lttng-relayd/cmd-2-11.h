@@ -22,7 +22,7 @@
 #include <common/compat/uuid.h>
 
 int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
-		char *session_name, char *hostname,
+		char *session_name, char *hostname, char *base_path,
 		uint32_t *live_timer, bool *snapshot,
 		uint64_t *id_sessiond, lttng_uuid sessiond_uuid,
 		bool *has_current_chunk, uint64_t *current_chunk_id,

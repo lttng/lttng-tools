@@ -1074,6 +1074,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	uint32_t live_timer = 0;
 	bool snapshot = false;
 	/* Left nil for peers < 2.11. */
+	char base_path[LTTNG_PATH_MAX] = {};
 	lttng_uuid sessiond_uuid = {};
 	LTTNG_OPTIONAL(uint64_t) id_sessiond = {};
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
@@ -1094,7 +1095,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 
 		/* From 2.11 to ... */
 		ret = cmd_create_session_2_11(payload, session_name, hostname,
-				&live_timer, &snapshot, &id_sessiond_value,
+				base_path, &live_timer, &snapshot, &id_sessiond_value,
 				sessiond_uuid, &has_current_chunk,
 				&current_chunk_id_value, &creation_time_value);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
@@ -1115,7 +1116,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto send_reply;
 	}
 
-	session = session_create(session_name, hostname, live_timer,
+	session = session_create(session_name, hostname, base_path, live_timer,
 			snapshot, sessiond_uuid,
 			id_sessiond.is_set ? &id_sessiond.value : NULL,
 			current_chunk_id.is_set ? &current_chunk_id.value : NULL,
@@ -2262,29 +2263,49 @@ static int init_session_output_directory_handle(struct relay_session *session,
 		struct lttng_directory_handle *handle)
 {
 	int ret;
-	/* hostname/session_name */
+	/*
+	 * session_directory:
+	 *
+	 * if base_path is NULL
+	 *   hostname/session_name
+	 * else
+	 *   hostname/base_path
+	 */
 	char *session_directory = NULL;
 	/*
 	 * base path + session_directory
 	 * e.g. /home/user/lttng-traces/hostname/session_name
 	 */
 	char *full_session_path = NULL;
-	char creation_time_str[16];
-	struct tm *timeinfo;
 
-	assert(session->creation_time.is_set);
-	timeinfo = localtime(&session->creation_time.value);
-	if (!timeinfo) {
-		ret = -1;
-		goto end;
+	/*
+	 * If base path is set, it overrides the session name for the
+	 * session relative base path. No timestamp is appended if the
+	 * base path is overridden.
+	 */
+	if (session->base_path[0] == '\0') {
+		char creation_time_str[16];
+		struct tm *timeinfo;
+
+		assert(session->creation_time.is_set);
+		timeinfo = localtime(&session->creation_time.value);
+		if (!timeinfo) {
+			ret = -1;
+			goto end;
+		}
+		strftime(creation_time_str, sizeof(creation_time_str), "%Y%m%d-%H%M%S",
+				timeinfo);
+
+		pthread_mutex_lock(&session->lock);
+		ret = asprintf(&session_directory, "%s/%s-%s", session->hostname,
+				session->session_name, creation_time_str);
+		pthread_mutex_unlock(&session->lock);
+	} else {
+		pthread_mutex_lock(&session->lock);
+		ret = asprintf(&session_directory, "%s/%s", session->hostname,
+				session->base_path);
+		pthread_mutex_unlock(&session->lock);
 	}
-	strftime(creation_time_str, sizeof(creation_time_str), "%Y%m%d-%H%M%S",
-			timeinfo);
-
-	pthread_mutex_lock(&session->lock);
-	ret = asprintf(&session_directory, "%s/%s-%s", session->hostname,
-			session->session_name, creation_time_str);
-	pthread_mutex_unlock(&session->lock);
 	if (ret < 0) {
 		PERROR("Failed to format session directory name");
 		goto end;

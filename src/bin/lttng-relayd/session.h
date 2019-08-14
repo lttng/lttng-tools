@@ -55,6 +55,7 @@ struct relay_session {
 	LTTNG_OPTIONAL(time_t) creation_time;
 	char session_name[LTTNG_NAME_MAX];
 	char hostname[LTTNG_HOST_NAME_MAX];
+	char base_path[LTTNG_PATH_MAX];
 	uint32_t live_timer;
 
 	/* Session in snapshot mode. */
@@ -125,7 +126,7 @@ struct relay_session {
 };
 
 struct relay_session *session_create(const char *session_name,
-		const char *hostname,
+		const char *hostname, const char *base_path,
 		uint32_t live_timer,
 		bool snapshot,
 		const lttng_uuid sessiond_uuid,

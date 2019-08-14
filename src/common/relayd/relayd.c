@@ -122,29 +122,32 @@ error:
 }
 
 /*
- * Starting from 2.11, RELAYD_CREATE_SESSION payload (session_name & hostname)
- * have no length restriction on the sender side.
+ * Starting from 2.11, RELAYD_CREATE_SESSION payload (session_name,
+ * hostname, and base_path) have no length restriction on the sender side.
  * Length for both payloads is stored in the msg struct. A new dynamic size
  * payload size is introduced.
  */
 static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
-		int session_live_timer, unsigned int snapshot,
-		uint64_t sessiond_session_id, const lttng_uuid sessiond_uuid,
-		const uint64_t *current_chunk_id,
+		const char *base_path, int session_live_timer,
+		unsigned int snapshot, uint64_t sessiond_session_id,
+		const lttng_uuid sessiond_uuid, const uint64_t *current_chunk_id,
 		time_t creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
 	size_t session_name_len;
 	size_t hostname_len;
+	size_t base_path_len;
 	size_t msg_length;
+	char *dst;
 
 	/* The two names are sent with a '\0' delimiter between them. */
 	session_name_len = strlen(session_name) + 1;
 	hostname_len = strlen(hostname) + 1;
+	base_path_len = base_path ? strlen(base_path) + 1 : 0;
 
-	msg_length = sizeof(*msg) + session_name_len + hostname_len;
+	msg_length = sizeof(*msg) + session_name_len + hostname_len + base_path_len;
 	msg = zmalloc(msg_length);
 	if (!msg) {
 		PERROR("zmalloc create_session_2_11 command message");
@@ -158,11 +161,21 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	assert(hostname_len <= UINT32_MAX);
 	msg->hostname_len = htobe32(hostname_len);
 
-	if (lttng_strncpy(msg->names, session_name, session_name_len)) {
+	assert(base_path_len <= UINT32_MAX);
+	msg->base_path_len = htobe32(base_path_len);
+
+	dst = msg->names;
+	if (lttng_strncpy(dst, session_name, session_name_len)) {
 		ret = -1;
 		goto error;
 	}
-	if (lttng_strncpy(msg->names + session_name_len, hostname, hostname_len)) {
+	dst += session_name_len;
+	if (lttng_strncpy(dst, hostname, hostname_len)) {
+		ret = -1;
+		goto error;
+	}
+	dst += hostname_len;
+	if (base_path && lttng_strncpy(dst, base_path, base_path_len)) {
 		ret = -1;
 		goto error;
 	}
@@ -249,7 +262,7 @@ error:
 int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		uint64_t *relayd_session_id,
 		const char *session_name, const char *hostname,
-		int session_live_timer,
+		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
 		const uint64_t *current_chunk_id,
@@ -273,7 +286,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 	} else {
 		/* From 2.11 to ... */
 		ret = relayd_create_session_2_11(rsock, session_name,
-				hostname, session_live_timer, snapshot,
+				hostname, base_path, session_live_timer, snapshot,
 				sessiond_session_id, sessiond_uuid,
 				current_chunk_id, creation_time);
 	}
