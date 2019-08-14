@@ -87,7 +87,7 @@ end:
  * Return allocated session or else NULL.
  */
 struct relay_session *session_create(const char *session_name,
-		const char *hostname,
+		const char *hostname, const char *base_path,
 		uint32_t live_timer,
 		bool snapshot,
 		const lttng_uuid sessiond_uuid,
@@ -115,6 +115,12 @@ struct relay_session *session_create(const char *session_name,
 		WARN("Hostname exceeds maximal allowed length");
 		goto error;
 	}
+	if (lttng_strncpy(session->base_path, base_path,
+			sizeof(session->base_path))) {
+		WARN("Base path exceeds maximal allowed length");
+		goto error;
+	}
+
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->ctf_traces_ht) {
 		goto error;

@@ -42,7 +42,7 @@ int relayd_close(struct lttcomm_relayd_sock *sock);
 int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		uint64_t *relayd_session_id,
 		const char *session_name, const char *hostname,
-		int session_live_timer,
+		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
 		const uint64_t *current_chunk_id,

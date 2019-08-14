@@ -1038,7 +1038,7 @@ static enum lttng_error_code send_consumer_relayd_socket(
 		struct consumer_output *consumer,
 		struct consumer_socket *consumer_sock,
 		const char *session_name, const char *hostname,
-		int session_live_timer,
+		const char *base_path, int session_live_timer,
 	        const uint64_t *current_chunk_id,
 		time_t session_creation_time)
 {
@@ -1068,8 +1068,9 @@ static enum lttng_error_code send_consumer_relayd_socket(
 	/* Send relayd socket to consumer. */
 	ret = consumer_send_relayd_socket(consumer_sock, rsock, consumer,
 			relayd_uri->stype, session_id,
-			session_name, hostname, session_live_timer,
-			current_chunk_id, session_creation_time);
+			session_name, hostname, base_path,
+			session_live_timer, current_chunk_id,
+			session_creation_time);
 	if (ret < 0) {
 		status = LTTNG_ERR_ENABLE_CONSUMER_FAIL;
 		goto close_sock;
@@ -1116,7 +1117,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 		enum lttng_domain_type domain,
 		unsigned int session_id, struct consumer_output *consumer,
 		struct consumer_socket *sock, const char *session_name,
-		const char *hostname, int session_live_timer,
+		const char *hostname, const char *base_path, int session_live_timer,
 		const uint64_t *current_chunk_id, time_t session_creation_time)
 {
 	enum lttng_error_code status = LTTNG_OK;
@@ -1128,7 +1129,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 	if (!sock->control_sock_sent) {
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.control, consumer, sock,
-				session_name, hostname, session_live_timer,
+				session_name, hostname, base_path, session_live_timer,
 				current_chunk_id, session_creation_time);
 		if (status != LTTNG_OK) {
 			goto error;
@@ -1139,7 +1140,7 @@ static enum lttng_error_code send_consumer_relayd_sockets(
 	if (!sock->data_sock_sent) {
 		status = send_consumer_relayd_socket(session_id,
 				&consumer->dst.net.data, consumer, sock,
-				session_name, hostname, session_live_timer,
+				session_name, hostname, base_path, session_live_timer,
 				current_chunk_id, session_creation_time);
 		if (status != LTTNG_OK) {
 			goto error;
@@ -1195,6 +1196,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_UST, session->id,
 					usess->consumer, socket,
 					session->name, session->hostname,
+					session->base_path,
 					session->live_timer,
 					current_chunk_id.is_set ? &current_chunk_id.value : NULL,
 					session->creation_time);
@@ -1219,6 +1221,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 			ret = send_consumer_relayd_sockets(LTTNG_DOMAIN_KERNEL, session->id,
 					ksess->consumer, socket,
 					session->name, session->hostname,
+					session->base_path,
 					session->live_timer,
 					current_chunk_id.is_set ? &current_chunk_id.value : NULL,
 					session->creation_time);
@@ -2872,6 +2875,7 @@ enum lttng_error_code cmd_create_session_from_descriptor(
 	const char *session_name;
 	struct ltt_session *new_session = NULL;
 	enum lttng_session_descriptor_status descriptor_status;
+	const char *base_path;
 
 	session_lock_list();
 	if (home_path) {
@@ -2894,8 +2898,13 @@ enum lttng_error_code cmd_create_session_from_descriptor(
 		ret_code = LTTNG_ERR_INVALID;
 		goto end;
 	}
+	ret = lttng_session_descriptor_get_base_path(descriptor, &base_path);
+	if (ret) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
 	ret_code = session_create(session_name, creds->uid, creds->gid,
-			&new_session);
+			base_path, &new_session);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
@@ -4229,6 +4238,7 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	struct lttng_ht_iter iter;
 	struct consumer_socket *socket;
 	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
+	const char *base_path;
 
 	assert(output);
 	assert(session);
@@ -4256,6 +4266,16 @@ static enum lttng_error_code set_relayd_for_snapshot(
 	}
 
 	/*
+	 * The snapshot record URI base path overrides the session
+	 * base path.
+	 */
+	if (output->dst.net.control.subdir[0] != '\0') {
+		base_path = output->dst.net.control.subdir;
+	} else {
+		base_path = session->base_path;
+	}
+
+	/*
 	 * For each consumer socket, create and send the relayd object of the
 	 * snapshot output.
 	 */
@@ -4266,6 +4286,7 @@ static enum lttng_error_code set_relayd_for_snapshot(
 		status = send_consumer_relayd_sockets(0, session->id,
 				output, socket,
 				session->name, session->hostname,
+				base_path,
 				session->live_timer,
 				current_chunk_id.is_set ? &current_chunk_id.value : NULL,
 				session->creation_time);

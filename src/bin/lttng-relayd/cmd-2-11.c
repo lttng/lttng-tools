@@ -30,7 +30,7 @@
 #include "utils.h"
 
 int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
-		char *session_name, char *hostname,
+		char *session_name, char *hostname, char *base_path,
 		uint32_t *live_timer, bool *snapshot,
 		uint64_t *id_sessiond, lttng_uuid sessiond_uuid,
 		bool *has_current_chunk, uint64_t *current_chunk_id,
@@ -38,9 +38,10 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 header;
-	size_t header_len, received_names_size;
+	size_t header_len, received_names_size, offset;
 	struct lttng_buffer_view session_name_view;
 	struct lttng_buffer_view hostname_view;
+	struct lttng_buffer_view base_path_view;
 
 	header_len = sizeof(header);
 
@@ -54,6 +55,7 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 
 	header.session_name_len = be32toh(header.session_name_len);
 	header.hostname_len = be32toh(header.hostname_len);
+	header.base_path_len = be32toh(header.base_path_len);
 	header.live_timer = be32toh(header.live_timer);
 	header.current_chunk_id.value = be64toh(header.current_chunk_id.value);
 	header.current_chunk_id.is_set = !!header.current_chunk_id.is_set;
@@ -61,7 +63,8 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 
 	lttng_uuid_copy(sessiond_uuid, header.sessiond_uuid);
 
-	received_names_size = header.session_name_len + header.hostname_len;
+	received_names_size = header.session_name_len + header.hostname_len +
+				header.base_path_len;
 	if (payload->size < header_len + received_names_size) {
 		ERR("Unexpected payload size in \"cmd_create_session_2_11\": expected >= %zu bytes, got %zu bytes",
 				header_len + received_names_size, payload->size);
@@ -80,11 +83,21 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		ERR("Length of hostname (%" PRIu32 " bytes) received in create_session command exceeds maximum length (%d bytes)", header.hostname_len, LTTNG_HOST_NAME_MAX);
 		goto error;
 	}
+	if (header.base_path_len > LTTNG_PATH_MAX) {
+		ret = -ENAMETOOLONG;
+		ERR("Length of base_path (%" PRIu32 " bytes) received in create_session command exceeds maximum length (%d bytes)", header.base_path_len, PATH_MAX);
+		goto error;
+	}
 
-	session_name_view = lttng_buffer_view_from_view(payload, header_len,
+	offset = header_len;
+	session_name_view = lttng_buffer_view_from_view(payload, offset,
 			header.session_name_len);
+	offset += header.session_name_len;
 	hostname_view = lttng_buffer_view_from_view(payload,
-			header_len + header.session_name_len, header.hostname_len);
+			offset, header.hostname_len);
+	offset += header.hostname_len;
+	base_path_view = lttng_buffer_view_from_view(payload,
+			offset, header.base_path_len);
 
 	/* Validate that names are NULL terminated. */
 	if (session_name_view.data[session_name_view.size - 1] != '\0') {
@@ -99,12 +112,20 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		goto error;
 	}
 
+	if (base_path_view.size != 0 &&
+			base_path_view.data[base_path_view.size - 1] != '\0') {
+		ERR("cmd_create_session_2_11 base_path is invalid (not NULL terminated)");
+		ret = -1;
+		goto error;
+	}
+
 	/*
 	 * Length and null-termination check are already performed.
-	 * LTTNG_NAME_MAX and LTTNG_HOST_NAME_MAX max size are expected.
+	 * LTTNG_NAME_MAX, LTTNG_HOST_NAME_MAX, and LTTNG_PATH_MAX max sizes are expected.
 	 */
 	strcpy(session_name, session_name_view.data);
 	strcpy(hostname, hostname_view.data);
+	strcpy(base_path, base_path_view.size ? base_path_view.data : "");
 
 	*live_timer = header.live_timer;
 	*snapshot = !!header.snapshot;
