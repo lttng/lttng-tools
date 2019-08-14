@@ -632,7 +632,7 @@ struct lttcomm_consumer_msg {
 			 * (relayd_id unset).
 			 *
 			 * `override_name` is left NULL (all-zeroes) if the
-			 * chunk's name is not overriden.
+			 * chunk's name is not overridden.
 			 */
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED relayd_id;
 			char override_name[LTTNG_NAME_MAX];

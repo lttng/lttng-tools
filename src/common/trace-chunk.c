@@ -77,7 +77,7 @@ struct lttng_trace_chunk {
 	struct lttng_dynamic_pointer_array top_level_directories;
 	/* Is contained within an lttng_trace_chunk_registry_element? */
 	bool in_registry_element;
-	bool name_overriden;
+	bool name_overridden;
 	char *name;
 	/* An unset id means the chunk is anonymous. */
 	LTTNG_OPTIONAL(uint64_t) id;
@@ -381,13 +381,13 @@ end:
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_get_name(
 		struct lttng_trace_chunk *chunk, const char **name,
-		bool *name_overriden)
+		bool *name_overridden)
 {
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 
 	pthread_mutex_lock(&chunk->lock);
-        if (name_overriden) {
-		*name_overriden = chunk->name_overriden;
+        if (name_overridden) {
+		*name_overridden = chunk->name_overridden;
         }
         if (!chunk->name) {
 		status = LTTNG_TRACE_CHUNK_STATUS_NONE;
@@ -450,7 +450,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 	}
 	free(chunk->name);
 	chunk->name = new_name;
-	chunk->name_overriden = true;
+	chunk->name_overridden = true;
 end_unlock:	
 	pthread_mutex_unlock(&chunk->lock);
 end:
@@ -840,7 +840,7 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 	}
 
 	assert(trace_chunk->mode.value == TRACE_CHUNK_MODE_OWNER);
-	assert(!trace_chunk->name_overriden);
+	assert(!trace_chunk->name_overridden);
 
 	/*
 	 * The fist trace chunk of a session is directly output to the
