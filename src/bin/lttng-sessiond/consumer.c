@@ -1698,7 +1698,7 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	const struct lttng_directory_handle *chunk_directory_handle;
 	int chunk_dirfd;
 	const char *chunk_name;
-	bool chunk_name_overriden;
+	bool chunk_name_overridden;
 	uint64_t chunk_id;
 	time_t creation_timestamp;
 	char creation_timestamp_buffer[ISO8601_STR_LEN];
@@ -1718,14 +1718,14 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	}
 
 	chunk_status = lttng_trace_chunk_get_name(chunk, &chunk_name,
-			&chunk_name_overriden);
+			&chunk_name_overridden);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK &&
 			chunk_status != LTTNG_TRACE_CHUNK_STATUS_NONE) {
 		ERR("Failed to get name of trace chunk");
 		ret = -LTTNG_ERR_FATAL;
 		goto error;
 	}
-	if (chunk_name_overriden) {
+	if (chunk_name_overridden) {
 		ret = lttng_strncpy(msg.u.create_trace_chunk.override_name,
 				chunk_name,
 				sizeof(msg.u.create_trace_chunk.override_name));

@@ -102,7 +102,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_timestamp(
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_get_name(
 		struct lttng_trace_chunk *chunk, const char **name,
-		bool *name_overriden);
+		bool *name_overridden);
 
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
