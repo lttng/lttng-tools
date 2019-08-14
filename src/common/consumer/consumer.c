@@ -1408,6 +1408,7 @@ void lttng_consumer_cleanup(void)
 {
 	struct lttng_ht_iter iter;
 	struct lttng_consumer_channel *channel;
+	unsigned int trace_chunks_left;
 
 	rcu_read_lock();
 
@@ -1432,6 +1433,27 @@ void lttng_consumer_cleanup(void)
 	 */
 	lttng_ht_destroy(consumer_data.stream_list_ht);
 
+	/*
+	 * Trace chunks in the registry may still exist if the session
+	 * daemon has encountered an internal error and could not
+	 * tear down its sessions and/or trace chunks properly.
+	 *
+	 * Release the session daemon's implicit reference to any remaining
+	 * trace chunk and print an error if any trace chunk was found. Note
+	 * that there are _no_ legitimate cases for trace chunks to be left,
+	 * it is a leak. However, it can happen following a crash of the
+	 * session daemon and not emptying the registry would cause an assertion
+	 * to hit.
+	 */
+	trace_chunks_left = lttng_trace_chunk_registry_put_each_chunk(
+			consumer_data.chunk_registry);
+	if (trace_chunks_left) {
+		ERR("%u trace chunks are leaked by lttng-consumerd. "
+				"This can be caused by an internal error of the session daemon.",
+				trace_chunks_left);
+	}
+	/* Run all callbacks freeing each chunk. */
+	rcu_barrier();
 	lttng_trace_chunk_registry_destroy(consumer_data.chunk_registry);
 }
 

@@ -95,4 +95,8 @@ lttng_trace_chunk_registry_find_anonymous_chunk(
 		const struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id);
 
+LTTNG_HIDDEN
+unsigned int lttng_trace_chunk_registry_put_each_chunk(
+		struct lttng_trace_chunk_registry *registry);
+
 #endif /* LTTNG_TRACE_CHUNK_REGISTRY_H */
