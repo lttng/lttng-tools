@@ -1132,6 +1132,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/regen-statedump/Makefile
 	tests/regression/tools/notification/Makefile
 	tests/regression/tools/rotation/Makefile
+	tests/regression/tools/base-path/Makefile
 	tests/regression/ust/Makefile
 	tests/regression/ust/nprocesses/Makefile
 	tests/regression/ust/high-throughput/Makefile
