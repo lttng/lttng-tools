@@ -327,16 +327,17 @@ static void sessiond_cleanup(void)
 
 	pthread_mutex_destroy(&session_list->lock);
 
-	wait_consumer(&kconsumer_data);
-	wait_consumer(&ustconsumer64_data);
-	wait_consumer(&ustconsumer32_data);
-
 	DBG("Cleaning up all agent apps");
 	agent_app_ht_clean();
-
 	DBG("Closing all UST sockets");
 	ust_app_clean_list();
 	buffer_reg_destroy_registries();
+
+	close_consumer_sockets();
+
+	wait_consumer(&kconsumer_data);
+	wait_consumer(&ustconsumer64_data);
+	wait_consumer(&ustconsumer32_data);
 
 	if (is_root && !config.no_kernel) {
 		DBG2("Closing kernel fd");
@@ -350,8 +351,6 @@ static void sessiond_cleanup(void)
 		modprobe_remove_lttng_all();
 		free(syscall_table);
 	}
-
-	close_consumer_sockets();
 
 	/*
 	 * We do NOT rmdir rundir because there are other processes
