@@ -87,6 +87,8 @@ struct relay_session {
 	 */
 	bool aborted;
 
+	bool session_name_contains_creation_time;
+
 	/* Contains ctf_trace object of that session indexed by path name. */
 	struct lttng_ht *ctf_traces_ht;
 
@@ -134,7 +136,8 @@ struct relay_session *session_create(const char *session_name,
 		const uint64_t *current_chunk_id,
 		const time_t *creation_time,
 		uint32_t major,
-		uint32_t minor);
+		uint32_t minor,
+		bool session_name_contains_creation_timestamp);
 struct relay_session *session_get_by_id(uint64_t id);
 bool session_get(struct relay_session *session);
 void session_put(struct relay_session *session);

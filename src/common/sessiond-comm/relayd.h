@@ -210,6 +210,7 @@ struct lttcomm_relayd_create_session_2_11 {
 	uint32_t base_path_len;
 	uint32_t live_timer;
 	uint8_t snapshot;
+	uint8_t session_name_contains_creation_time;
 	/* Sessiond instance UUID */
 	lttng_uuid sessiond_uuid;
 	/* Sessiond session id */
