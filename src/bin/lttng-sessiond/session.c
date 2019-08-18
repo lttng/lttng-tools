@@ -565,25 +565,6 @@ error:
 	goto end_no_move;
 }
 
-bool session_output_supports_trace_chunks(const struct ltt_session *session)
-{
-	const struct consumer_output *output = session->kernel_session ?
-			session->kernel_session->consumer :
-			session->ust_session->consumer;
-
-	if (output->type == CONSUMER_DST_LOCAL) {
-		return true;
-	} else {
-		if (output->relay_major_version > 2) {
-			return true;
-		} else if (output->relay_major_version == 2 &&
-				output->relay_minor_version >= 11) {
-			return true;
-		}
-	}
-	return false;
-}
-
 struct lttng_trace_chunk *session_create_new_trace_chunk(
 		const struct ltt_session *session,
 		const struct consumer_output *consumer_output_override,
