@@ -75,6 +75,7 @@ struct ltt_session_list {
 struct ltt_session {
 	char name[NAME_MAX];
 	bool has_auto_generated_name;
+	bool name_contains_creation_time;
 	char hostname[HOST_NAME_MAX]; /* Local hostname. */
 	time_t creation_time;
 	struct ltt_kernel_session *kernel_session;

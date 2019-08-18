@@ -46,7 +46,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
 		const uint64_t *current_chunk_id,
-		time_t creation_time);
+		time_t creation_time, bool session_name_contains_creation_time);
 int relayd_add_stream(struct lttcomm_relayd_sock *sock, const char *channel_name,
 		const char *pathname, uint64_t *stream_id,
 		uint64_t tracefile_size, uint64_t tracefile_count,

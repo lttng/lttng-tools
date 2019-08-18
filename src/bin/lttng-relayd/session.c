@@ -95,7 +95,8 @@ struct relay_session *session_create(const char *session_name,
 		const uint64_t *current_chunk_id,
 		const time_t *creation_time,
 		uint32_t major,
-		uint32_t minor)
+		uint32_t minor,
+		bool session_name_contains_creation_time)
 {
 	int ret;
 	struct relay_session *session = NULL;
@@ -136,6 +137,11 @@ struct relay_session *session_create(const char *session_name,
 		WARN("Base path exceeds maximal allowed length");
 		goto error;
 	}
+	if (creation_time) {
+		LTTNG_OPTIONAL_SET(&session->creation_time, *creation_time);
+	}
+	session->session_name_contains_creation_time =
+			session_name_contains_creation_time;
 
 	session->ctf_traces_ht = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
 	if (!session->ctf_traces_ht) {
@@ -196,9 +202,6 @@ struct relay_session *session_create(const char *session_name,
 	}
 
 	lttng_ht_add_unique_u64(sessions_ht, &session->session_n);
-	if (creation_time) {
-		LTTNG_OPTIONAL_SET(&session->creation_time, *creation_time);
-	}
 	return session;
 
 error:

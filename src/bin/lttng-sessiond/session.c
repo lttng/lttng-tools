@@ -1065,6 +1065,7 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 						DEFAULT_SESSION_NAME, i,
 						datetime);
 			}
+			new_session->name_contains_creation_time = true;
 			if (ret == -1 || ret >= sizeof(new_session->name)) {
 				/*
 				 * Null-terminate in case the name is used

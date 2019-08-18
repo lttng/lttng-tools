@@ -132,7 +132,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid, const uint64_t *current_chunk_id,
-		time_t creation_time)
+		time_t creation_time, bool session_name_contains_creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -142,7 +142,10 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	size_t msg_length;
 	char *dst;
 
-	/* The two names are sent with a '\0' delimiter between them. */
+	if (!base_path) {
+		base_path = "";
+	}
+	/* The three names are sent with a '\0' delimiter between them. */
 	session_name_len = strlen(session_name) + 1;
 	hostname_len = strlen(hostname) + 1;
 	base_path_len = base_path ? strlen(base_path) + 1 : 0;
@@ -185,7 +188,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 
 	lttng_uuid_copy(msg->sessiond_uuid, sessiond_uuid);
 	msg->session_id = htobe64(sessiond_session_id);
-
+	msg->session_name_contains_creation_time = session_name_contains_creation_time;
 	if (current_chunk_id) {
 		LTTNG_OPTIONAL_SET(&msg->current_chunk_id,
 				htobe64(*current_chunk_id));
@@ -266,7 +269,7 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
 		const uint64_t *current_chunk_id,
-		time_t creation_time)
+		time_t creation_time, bool session_name_contains_creation_time)
 {
 	int ret;
 	struct lttcomm_relayd_status_session reply;
@@ -288,7 +291,8 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		ret = relayd_create_session_2_11(rsock, session_name,
 				hostname, base_path, session_live_timer, snapshot,
 				sessiond_session_id, sessiond_uuid,
-				current_chunk_id, creation_time);
+				current_chunk_id, creation_time,
+				session_name_contains_creation_time);
 	}
 
 	if (ret < 0) {

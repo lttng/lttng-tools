@@ -1073,6 +1073,7 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 	char hostname[LTTNG_HOST_NAME_MAX] = {};
 	uint32_t live_timer = 0;
 	bool snapshot = false;
+	bool session_name_contains_creation_timestamp = false;
 	/* Left nil for peers < 2.11. */
 	char base_path[LTTNG_PATH_MAX] = {};
 	lttng_uuid sessiond_uuid = {};
@@ -1097,7 +1098,8 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 		ret = cmd_create_session_2_11(payload, session_name, hostname,
 				base_path, &live_timer, &snapshot, &id_sessiond_value,
 				sessiond_uuid, &has_current_chunk,
-				&current_chunk_id_value, &creation_time_value);
+				&current_chunk_id_value, &creation_time_value,
+				&session_name_contains_creation_timestamp);
 		if (lttng_uuid_is_nil(sessiond_uuid)) {
 			/* The nil UUID is reserved for pre-2.11 clients. */
 			ERR("Illegal nil UUID announced by peer in create session command");
@@ -1121,7 +1123,8 @@ static int relay_create_session(const struct lttcomm_relayd_hdr *recv_hdr,
 			id_sessiond.is_set ? &id_sessiond.value : NULL,
 			current_chunk_id.is_set ? &current_chunk_id.value : NULL,
 			creation_time.is_set ? &creation_time.value : NULL,
-			conn->major, conn->minor);
+			conn->major, conn->minor,
+			session_name_contains_creation_timestamp);
 	if (!session) {
 		ret = -1;
 		goto send_reply;
@@ -2266,14 +2269,14 @@ static int init_session_output_directory_handle(struct relay_session *session,
 	/*
 	 * session_directory:
 	 *
-	 * if base_path is NULL
+	 * if base_path is \0'
 	 *   hostname/session_name
 	 * else
 	 *   hostname/base_path
 	 */
 	char *session_directory = NULL;
 	/*
-	 * base path + session_directory
+	 * relayd_output_path/session_directory
 	 * e.g. /home/user/lttng-traces/hostname/session_name
 	 */
 	char *full_session_path = NULL;
@@ -2282,28 +2285,60 @@ static int init_session_output_directory_handle(struct relay_session *session,
 	 * If base path is set, it overrides the session name for the
 	 * session relative base path. No timestamp is appended if the
 	 * base path is overridden.
+	 *
+	 * If the session name already contains the creation time (e.g.
+	 * auto-<timestamp>, don't append yet another timestamp after
+	 * the session name in the generated path.
+	 *
+	 * Otherwise, generate the path with session_name-<timestamp>.
 	 */
-	if (session->base_path[0] == '\0') {
-		char creation_time_str[16];
-		struct tm *timeinfo;
-
-		assert(session->creation_time.is_set);
-		timeinfo = localtime(&session->creation_time.value);
-		if (!timeinfo) {
-			ret = -1;
-			goto end;
-		}
-		strftime(creation_time_str, sizeof(creation_time_str), "%Y%m%d-%H%M%S",
-				timeinfo);
-
-		pthread_mutex_lock(&session->lock);
-		ret = asprintf(&session_directory, "%s/%s-%s", session->hostname,
-				session->session_name, creation_time_str);
-		pthread_mutex_unlock(&session->lock);
-	} else {
+	if (session->base_path[0] != '\0') {
 		pthread_mutex_lock(&session->lock);
 		ret = asprintf(&session_directory, "%s/%s", session->hostname,
 				session->base_path);
+		pthread_mutex_unlock(&session->lock);
+	} else if (session->session_name_contains_creation_time) {
+		pthread_mutex_lock(&session->lock);
+		ret = asprintf(&session_directory, "%s/%s", session->hostname,
+				session->session_name);
+		pthread_mutex_unlock(&session->lock);
+	} else {
+		char session_creation_datetime[16];
+		size_t strftime_ret;
+		struct tm *timeinfo;
+		time_t creation_time;
+
+		/*
+		 * The 2.11+ protocol guarantees that a creation time
+		 * is provided for a session. This would indicate a
+		 * protocol error or an improper use of this util.
+		 */
+		if (!session->creation_time.is_set) {
+			ERR("Creation time missing for session \"%s\" (protocol error)",
+					session->session_name);
+			ret = -1;
+			goto end;
+		}
+		creation_time = LTTNG_OPTIONAL_GET(session->creation_time);
+
+		timeinfo = localtime(&creation_time);
+		if (!timeinfo) {
+			ERR("Failed to get timeinfo while initializing session output directory handle");
+			ret = -1;
+			goto end;
+		}
+		strftime_ret = strftime(session_creation_datetime,
+				sizeof(session_creation_datetime),
+				"%Y%m%d-%H%M%S", timeinfo);
+		if (strftime_ret == 0) {
+			ERR("Failed to format session creation timestamp while initializing session output directory handle");
+			ret = -1;
+			goto end;
+		}
+		pthread_mutex_lock(&session->lock);
+		ret = asprintf(&session_directory, "%s/%s-%s",
+				session->hostname, session->session_name,
+				session_creation_datetime);
 		pthread_mutex_unlock(&session->lock);
 	}
 	if (ret < 0) {
