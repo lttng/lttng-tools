@@ -34,6 +34,17 @@
 
 #include "relayd.h"
 
+static
+bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
+{
+	if (sock->major > 2) {
+		return true;
+	} else if (sock->major == 2 && sock->minor >= 11) {
+		return true;
+	}
+	return false;
+}
+
 /*
  * Send command. Fill up the header and append the data.
  */
@@ -442,6 +453,10 @@ error:
 /*
  * Add stream on the relayd and assign stream handle to the stream_id argument.
  *
+ * Chunks are not supported by relayd prior to 2.11, but are used to
+ * internally between session daemon and consumer daemon to keep track
+ * of the channel and stream output path.
+ *
  * On success return 0 else return ret_code negative value.
  */
 int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_name,
@@ -456,25 +471,23 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	assert(rsock);
 	assert(channel_name);
 	assert(pathname);
+	assert(trace_chunk);
 
 	DBG("Relayd adding stream for channel name %s", channel_name);
 
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {
 		/* For 2.1 */
-		assert(!trace_chunk);
 		ret = relayd_add_stream_2_1(rsock, channel_name, pathname);
 	
 	} else if (rsock->minor > 1 && rsock->minor < 11) {
 		/* From 2.2 to 2.10 */
-		assert(!trace_chunk);
 		ret = relayd_add_stream_2_2(rsock, channel_name, pathname,
 				tracefile_size, tracefile_count);
 	} else {
 		enum lttng_trace_chunk_status chunk_status;
 		uint64_t chunk_id;
 
-		assert(trace_chunk);
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk,
 				&chunk_id);
 		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
@@ -1157,6 +1170,11 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 	char new_chunk_id_buf[MAX_INT_DEC_LEN(*new_chunk_id)] = {};
 	const char *new_chunk_id_str;
 
+	if (!relayd_supports_chunks(sock)) {
+		DBG("Refusing to rotate remote streams: relayd does not support chunks");
+		return 0;
+	}
+
 	lttng_dynamic_buffer_init(&payload);
 
 	/* Code flow error. Safety net. */
@@ -1249,6 +1267,11 @@ int relayd_create_trace_chunk(struct lttcomm_relayd_sock *sock,
 
 	lttng_dynamic_buffer_init(&payload);
 
+	if (!relayd_supports_chunks(sock)) {
+		DBG("Refusing to create remote trace chunk: relayd does not support chunks");
+		goto end;
+	}
+
 	status = lttng_trace_chunk_get_id(chunk, &chunk_id);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
@@ -1329,6 +1352,11 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 	time_t close_timestamp;
 	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command = {};
 
+	if (!relayd_supports_chunks(sock)) {
+		DBG("Refusing to close remote trace chunk: relayd does not support chunks");
+		goto end;
+	}
+
 	status = lttng_trace_chunk_get_id(chunk, &chunk_id);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to get trace chunk id");
@@ -1399,6 +1427,11 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 	int ret = 0;
 	struct lttcomm_relayd_trace_chunk_exists msg = {};
 	struct lttcomm_relayd_trace_chunk_exists_reply reply = {};
+
+	if (!relayd_supports_chunks(sock)) {
+		DBG("Refusing to check for trace chunk existence: relayd does not support chunks");
+		goto end;
+	}
 
 	msg = (typeof(msg)){
 			.chunk_id = htobe64(chunk_id),

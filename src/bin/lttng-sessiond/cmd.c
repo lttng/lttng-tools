@@ -2588,8 +2588,7 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	if (session->output_traces && !session->current_trace_chunk &&
-			session_output_supports_trace_chunks(session)) {
+	if (session->output_traces && !session->current_trace_chunk) {
 		struct lttng_trace_chunk *trace_chunk;
 
 		trace_chunk = session_create_new_trace_chunk(
@@ -3199,8 +3198,7 @@ int cmd_destroy_session(struct ltt_session *session,
                 if (reply_context) {
 			reply_context->implicit_rotation_on_destroy = true;
                 }
-        } else if (session->has_been_started && session->current_trace_chunk &&
-				session_output_supports_trace_chunks(session)) {
+        } else if (session->has_been_started && session->current_trace_chunk) {
 		/*
 		 * The user has not triggered a session rotation. However, to
 		 * ensure all data has been consumed, the session is rotated
@@ -4787,7 +4785,7 @@ int cmd_rotate_session(struct ltt_session *session,
 	}
 
 	/* Unsupported feature in lttng-relayd before 2.11. */
-	if (session->consumer->type == CONSUMER_DST_NET &&
+	if (!quiet_rotation && session->consumer->type == CONSUMER_DST_NET &&
 			(session->consumer->relay_major_version == 2 &&
 			session->consumer->relay_minor_version < 11)) {
 		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE_RELAY;
