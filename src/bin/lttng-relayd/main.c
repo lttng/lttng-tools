@@ -2252,6 +2252,7 @@ end:
 		ret = -1;
 	}
 
+	ret = 0;
 end_no_reply:
 	lttng_trace_chunk_put(next_trace_chunk);
 	return ret;
