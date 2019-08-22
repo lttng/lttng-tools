@@ -28,6 +28,7 @@
 #include "session.h"
 #include "sessiond-trace-chunks.h"
 #include "stream.h"
+#include <common/defaults.h>
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;
@@ -39,20 +40,31 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	struct lttng_trace_chunk *chunk = NULL;
 	enum lttng_trace_chunk_status status;
 	struct lttng_directory_handle output_directory;
-	const char *base_path = opt_output_path;
+	char *output_path;
+	bool output_path_allocated = false;
 
-	if (base_path == NULL) {
+	if (!opt_output_path) {
 		/* No output path defined */
-		base_path = utils_get_home_dir();
-		if (base_path == NULL) {
+		const char *home_dir = utils_get_home_dir();
+		if (!home_dir) {
 			ERR("Home path not found.\n \
 					Please specify an output path using -o, --output PATH");
 			ret = -1;
 			goto end;
 		}
+		ret = asprintf(&output_path, "%s/%s", home_dir, DEFAULT_TRACE_DIR_NAME);
+		if (ret < 0) {
+			PERROR("asprintf trace dir name");
+			ret = -1;
+			goto end;
+		}
+		output_path_allocated = true;
+	} else {
+		output_path = opt_output_path;
+		output_path_allocated = false;
 	}
 
-	ret = lttng_directory_handle_init(&output_directory, base_path);
+	ret = lttng_directory_handle_init(&output_directory, output_path);
 	if (ret) {
 		goto end;
 	}
@@ -78,6 +90,9 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 end:
 	lttng_trace_chunk_put(chunk);
 	lttng_directory_handle_fini(&output_directory);
+	if (output_path_allocated) {
+		free(output_path);
+	}
 	return ret;
 }
 
