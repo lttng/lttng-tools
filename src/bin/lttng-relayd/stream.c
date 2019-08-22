@@ -383,6 +383,7 @@ static int create_index_file(struct relay_stream *stream,
 	int ret;
 	uint32_t major, minor;
 	char *index_subpath = NULL;
+	enum lttng_trace_chunk_status status;
 
 	ASSERT_LOCKED(stream->lock);
 
@@ -404,10 +405,11 @@ static int create_index_file(struct relay_stream *stream,
 		goto end;
 	}
 
-	ret = lttng_trace_chunk_create_subdirectory(chunk,
+	status = lttng_trace_chunk_create_subdirectory(chunk,
 			index_subpath);
 	free(index_subpath);
-	if (ret) {
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ret = -1;
 		goto end;
 	}
 	stream->index_file = lttng_index_file_create_from_trace_chunk(
