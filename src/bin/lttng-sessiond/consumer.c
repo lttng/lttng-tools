@@ -1095,6 +1095,8 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	}
 
 	if (type == LTTNG_STREAM_CONTROL) {
+		char output_path[LTTNG_PATH_MAX] = {};
+
 		ret = relayd_create_session(rsock,
 				&msg.u.relayd_sock.relayd_session_id,
 				session_name, hostname, base_path,
@@ -1102,12 +1104,15 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 				consumer->snapshot, session_id,
 				sessiond_uuid, current_chunk_id,
 				session_creation_time,
-				session_name_contains_creation_time);
+				session_name_contains_creation_time,
+				output_path);
 		if (ret < 0) {
 			/* Close the control socket. */
 			(void) relayd_close(rsock);
 			goto error;
 		}
+		DBG("Created session on relay, output path reply: %s",
+			output_path);
 	}
 
 	msg.cmd_type = LTTNG_CONSUMER_ADD_RELAYD_SOCKET;
@@ -1840,7 +1845,8 @@ error:
  */
 int consumer_close_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk)
+		struct lttng_trace_chunk *chunk,
+		char *closed_trace_chunk_path)
 {
 	int ret;
 	enum lttng_trace_chunk_status chunk_status;
@@ -1848,12 +1854,15 @@ int consumer_close_trace_chunk(struct consumer_socket *socket,
 			.cmd_type = LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
 			.u.close_trace_chunk.session_id = session_id,
 	};
+	struct lttcomm_consumer_close_trace_chunk_reply reply;
 	uint64_t chunk_id;
 	time_t close_timestamp;
 	enum lttng_trace_chunk_command_type close_command;
 	const char *close_command_name = "none";
+	struct lttng_dynamic_buffer path_reception_buffer;
 
 	assert(socket);
+	lttng_dynamic_buffer_init(&path_reception_buffer);
 
 	if (relayd_id != -1ULL) {
 		LTTNG_OPTIONAL_SET(
@@ -1904,13 +1913,51 @@ int consumer_close_trace_chunk(struct consumer_socket *socket,
 			relayd_id, session_id, chunk_id, close_command_name);
 
 	health_code_update();
-	ret = consumer_send_msg(socket, &msg);
+	ret = consumer_socket_send(socket, &msg, sizeof(struct lttcomm_consumer_msg));
 	if (ret < 0) {
 		ret = -LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 		goto error;
 	}
-
+	ret = consumer_socket_recv(socket, &reply, sizeof(reply));
+	if (ret < 0) {
+		ret = -LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
+		goto error;
+	}
+	if (reply.path_length >= LTTNG_PATH_MAX) {
+		ERR("Invalid path returned by relay daemon: %" PRIu32 "bytes exceeds maximal allowed length of %d bytes",
+				reply.path_length, LTTNG_PATH_MAX);
+		ret = -LTTNG_ERR_INVALID_PROTOCOL;
+		goto error;
+	}
+	ret = lttng_dynamic_buffer_set_size(&path_reception_buffer,
+			reply.path_length);
+	if (ret) {
+		ERR("Failed to allocate reception buffer of path returned by the \"close trace chunk\" command");
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+	ret = consumer_socket_recv(socket, path_reception_buffer.data,
+			path_reception_buffer.size);
+	if (ret < 0) {
+		ERR("Communication error while receiving path of closed trace chunk");
+		ret = -LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
+		goto error;
+	}
+	if (path_reception_buffer.data[path_reception_buffer.size - 1] != '\0') {
+		ERR("Invalid path returned by relay daemon: not null-terminated");
+		ret = -LTTNG_ERR_INVALID_PROTOCOL;
+		goto error;
+	}
+	if (closed_trace_chunk_path) {
+		/*
+		 * closed_trace_chunk_path is assumed to have a length >=
+		 * LTTNG_PATH_MAX
+		 */
+		memcpy(closed_trace_chunk_path, path_reception_buffer.data,
+				path_reception_buffer.size);
+	}
 error:
+	lttng_dynamic_buffer_reset(&path_reception_buffer);
 	health_code_update();
 	return ret;
 }

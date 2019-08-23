@@ -695,6 +695,12 @@ struct lttcomm_consumer_status_channel {
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
 
+struct lttcomm_consumer_close_trace_chunk_reply {
+	enum lttcomm_return_code ret_code;
+	uint32_t path_length;
+	char path[];
+};
+
 #include <lttng/ust-abi.h>
 
 /*

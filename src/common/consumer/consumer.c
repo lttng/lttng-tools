@@ -4580,11 +4580,13 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 			 * channels.
 			 */
 			enum lttcomm_return_code close_ret;
+			char path[LTTNG_PATH_MAX];
 
 			DBG("Failed to set new trace chunk on existing channels, rolling back");
 			close_ret = lttng_consumer_close_trace_chunk(relayd_id,
 					session_id, chunk_id,
-					chunk_creation_timestamp, NULL);
+					chunk_creation_timestamp, NULL,
+					path);
 			if (close_ret != LTTCOMM_CONSUMERD_SUCCESS) {
 				ERR("Failed to roll-back the creation of new chunk: session_id = %" PRIu64 ", chunk_id = %" PRIu64,
 						session_id, chunk_id);
@@ -4610,12 +4612,13 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 
 		if (!relayd || ret) {
 			enum lttcomm_return_code close_ret;
+			char path[LTTNG_PATH_MAX];
 
 			close_ret = lttng_consumer_close_trace_chunk(relayd_id,
 					session_id,
 					chunk_id,
 					chunk_creation_timestamp,
-					NULL);
+					NULL, path);
 			if (close_ret != LTTCOMM_CONSUMERD_SUCCESS) {
 				ERR("Failed to roll-back the creation of new chunk: session_id = %" PRIu64 ", chunk_id = %" PRIu64,
 						session_id,
@@ -4637,7 +4640,8 @@ end:
 enum lttcomm_return_code lttng_consumer_close_trace_chunk(
 		const uint64_t *relayd_id, uint64_t session_id,
 		uint64_t chunk_id, time_t chunk_close_timestamp,
-		const enum lttng_trace_chunk_command_type *close_command)
+		const enum lttng_trace_chunk_command_type *close_command,
+		char *path)
 {
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttng_trace_chunk *chunk;
@@ -4735,7 +4739,8 @@ enum lttcomm_return_code lttng_consumer_close_trace_chunk(
 		if (relayd) {
 			pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 			ret = relayd_close_trace_chunk(
-					&relayd->control_sock, chunk);
+					&relayd->control_sock, chunk,
+					path);
 			pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
 		} else {
 			ERR("Failed to find relay daemon socket: relayd_id = %" PRIu64,

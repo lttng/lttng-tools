@@ -4562,7 +4562,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 	}
 
 	if (session_close_trace_chunk(
-			    session, session->current_trace_chunk, NULL)) {
+			    session, session->current_trace_chunk, NULL, NULL)) {
 		/*
 		 * Don't goto end; make sure the chunk is closed for the session
 		 * to allow future snapshots.
@@ -4851,7 +4851,8 @@ int cmd_rotate_session(struct ltt_session *session,
 			quiet_rotation ?
 					NULL :
 					&((enum lttng_trace_chunk_command_type){
-							LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED}));
+							LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED}),
+			session->last_chunk_path);
 	if (ret) {
 		cmd_ret = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
 		goto error;
@@ -4972,6 +4973,16 @@ int cmd_rotate_get_info(struct ltt_session *session,
 					sizeof(info_return->location.local.absolute_path);
 			info_return->location_type =
 					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL;
+			fmt_ret = asprintf(&chunk_path,
+					"%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
+					session_get_base_path(session),
+					session->last_archived_chunk_name);
+			if (fmt_ret == -1) {
+				PERROR("Failed to format the path of the last archived trace chunk");
+				info_return->status = LTTNG_ROTATION_STATUS_ERROR;
+				cmd_ret = LTTNG_ERR_UNK;
+				goto end;
+			}
 			break;
 		case CONSUMER_DST_NET:
 			current_tracing_path_reply =
@@ -4997,19 +5008,16 @@ int cmd_rotate_get_info(struct ltt_session *session,
 					&info_return->location.relay.ports.data);
 			info_return->location_type =
 					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY;
+			chunk_path = strdup(session->last_chunk_path);
+			if (!chunk_path) {
+				ERR("Failed to allocate the path of the last archived trace chunk");
+				info_return->status = LTTNG_ROTATION_STATUS_ERROR;
+				cmd_ret = LTTNG_ERR_UNK;
+				goto end;
+			}
 			break;
 		default:
 			abort();
-		}
-		fmt_ret = asprintf(&chunk_path,
-				"%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
-				session_get_base_path(session),
-				session->last_archived_chunk_name);
-		if (fmt_ret == -1) {
-			PERROR("Failed to format the path of the last archived trace chunk");
-			info_return->status = LTTNG_ROTATION_STATUS_ERROR;
-			cmd_ret = LTTNG_ERR_UNK;
-			goto end;
 		}
 
 		fmt_ret = lttng_strncpy(current_tracing_path_reply,

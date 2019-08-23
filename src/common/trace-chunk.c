@@ -366,12 +366,14 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_timestamp(
 		goto end;
 	}
 	LTTNG_OPTIONAL_SET(&chunk->timestamp_close, close_ts);
-	free(chunk->name);
-	chunk->name = generate_chunk_name(LTTNG_OPTIONAL_GET(chunk->id),
-			LTTNG_OPTIONAL_GET(chunk->timestamp_creation),
-			&close_ts);
-	if (!chunk->name) {
-		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+	if (!chunk->name_overridden) {
+		free(chunk->name);
+		chunk->name = generate_chunk_name(LTTNG_OPTIONAL_GET(chunk->id),
+				LTTNG_OPTIONAL_GET(chunk->timestamp_creation),
+				&close_ts);
+		if (!chunk->name) {
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		}
 	}
 end:
 	pthread_mutex_unlock(&chunk->lock);

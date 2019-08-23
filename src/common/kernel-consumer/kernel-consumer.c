@@ -1250,6 +1250,8 @@ error_rotate_channel:
 				msg.u.close_trace_chunk.close_command.value;
 		const uint64_t relayd_id =
 				msg.u.close_trace_chunk.relayd_id.value;
+		struct lttcomm_consumer_close_trace_chunk_reply reply;
+		char path[LTTNG_PATH_MAX];
 
 		ret_code = lttng_consumer_close_trace_chunk(
 				msg.u.close_trace_chunk.relayd_id.is_set ?
@@ -1260,8 +1262,18 @@ error_rotate_channel:
 				(time_t) msg.u.close_trace_chunk.close_timestamp,
 				msg.u.close_trace_chunk.close_command.is_set ?
 						&close_command :
-						NULL);
-		goto end_msg_sessiond;
+						NULL, path);
+		reply.ret_code = ret_code;
+		reply.path_length = strlen(path) + 1;
+		ret = lttcomm_send_unix_sock(sock, &reply, sizeof(reply));
+		if (ret != sizeof(reply)) {
+			goto error_fatal;
+		}
+		ret = lttcomm_send_unix_sock(sock, path, reply.path_length);
+		if (ret != reply.path_length) {
+			goto error_fatal;
+		}
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_TRACE_CHUNK_EXISTS:
 	{
