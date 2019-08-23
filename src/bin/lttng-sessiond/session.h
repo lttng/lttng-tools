@@ -77,6 +77,8 @@ struct ltt_session {
 	bool has_auto_generated_name;
 	bool name_contains_creation_time;
 	char hostname[HOST_NAME_MAX]; /* Local hostname. */
+	/* Path of the last closed chunk. */
+	char last_chunk_path[LTTNG_PATH_MAX];
 	time_t creation_time;
 	struct ltt_kernel_session *kernel_session;
 	struct ltt_ust_session *ust_session;
@@ -251,7 +253,8 @@ int session_set_trace_chunk(struct ltt_session *session,
  */
 int session_close_trace_chunk(const struct ltt_session *session,
 		struct lttng_trace_chunk *trace_chunk,
-		const enum lttng_trace_chunk_command_type *close_command);
+		const enum lttng_trace_chunk_command_type *close_command,
+		char *path);
 
 bool session_output_supports_trace_chunks(const struct ltt_session *session);
 

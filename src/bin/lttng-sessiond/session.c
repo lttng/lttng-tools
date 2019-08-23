@@ -262,15 +262,15 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 		goto end;
 	}
 
-	ret = asprintf(&chunk_path, "%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
-			session_get_base_path(session),
-			session->last_archived_chunk_name);
-	if (ret == -1) {
-		goto end;
-	}
-
 	switch (session_get_consumer_destination_type(session)) {
 	case CONSUMER_DST_LOCAL:
+		ret = asprintf(&chunk_path,
+				"%s/" DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY "/%s",
+				session_get_base_path(session),
+				session->last_archived_chunk_name);
+		if (ret == -1) {
+			goto end;
+		}
 		location = lttng_trace_archive_location_local_create(
 				chunk_path);
 		break;
@@ -286,7 +286,7 @@ struct lttng_trace_archive_location *session_get_trace_archive_location(
 		location = lttng_trace_archive_location_relay_create(
 				hostname,
 				LTTNG_TRACE_ARCHIVE_LOCATION_RELAY_PROTOCOL_TYPE_TCP,
-				control_port, data_port, chunk_path);
+				control_port, data_port, session->last_chunk_path);
 		break;
 	}
 	default:
@@ -663,7 +663,8 @@ error:
 
 int session_close_trace_chunk(const struct ltt_session *session,
 		struct lttng_trace_chunk *trace_chunk,
-		const enum lttng_trace_chunk_command_type *close_command)
+		const enum lttng_trace_chunk_command_type *close_command,
+		char *closed_trace_chunk_path)
 {
 	int ret = 0;
 	bool error_occurred = false;
@@ -707,7 +708,7 @@ int session_close_trace_chunk(const struct ltt_session *session,
 			ret = consumer_close_trace_chunk(socket,
 					relayd_id,
 					session->id,
-					trace_chunk);
+					trace_chunk, closed_trace_chunk_path);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				ERR("Failed to close trace chunk on user space consumer");
@@ -726,7 +727,7 @@ int session_close_trace_chunk(const struct ltt_session *session,
 			ret = consumer_close_trace_chunk(socket,
 					relayd_id,
 					session->id,
-					trace_chunk);
+					trace_chunk, closed_trace_chunk_path);
 			pthread_mutex_unlock(socket->lock);
 			if (ret) {
 				ERR("Failed to close trace chunk on kernel consumer");

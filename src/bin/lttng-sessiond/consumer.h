@@ -318,7 +318,8 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 		struct lttng_trace_chunk *chunk);
 int consumer_close_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk);
+		struct lttng_trace_chunk *chunk,
+		char *closed_trace_chunk_path);
 int consumer_trace_chunk_exists(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
 		struct lttng_trace_chunk *chunk,

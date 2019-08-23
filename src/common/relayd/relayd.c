@@ -143,7 +143,9 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		const char *base_path, int session_live_timer,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid, const uint64_t *current_chunk_id,
-		time_t creation_time, bool session_name_contains_creation_time)
+		time_t creation_time, bool session_name_contains_creation_time,
+		struct lttcomm_relayd_create_session_reply_2_11 *reply,
+		char *output_path)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_11 *msg = NULL;
@@ -212,6 +214,24 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	if (ret < 0) {
 		goto error;
 	}
+	/* Receive response */
+	ret = recv_reply(rsock, reply, sizeof(*reply));
+	if (ret < 0) {
+		goto error;
+	}
+	reply->generic.session_id = be64toh(reply->generic.session_id);
+	reply->generic.ret_code = be32toh(reply->generic.ret_code);
+	reply->output_path_length = be32toh(reply->output_path_length);
+	if (reply->output_path_length >= LTTNG_PATH_MAX) {
+		ERR("Invalid session output path length in reply (%" PRIu32 " bytes) exceeds maximal allowed length (%d bytes)",
+				reply->output_path_length, LTTNG_PATH_MAX);
+		ret = -1;
+		goto error;
+	}
+	ret = recv_reply(rsock, output_path, reply->output_path_length);
+	if (ret < 0) {
+		goto error;
+	}
 error:
 	free(msg);
 	return ret;
@@ -222,7 +242,8 @@ error:
  */
 static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 		const char *session_name, const char *hostname,
-		int session_live_timer, unsigned int snapshot)
+		int session_live_timer, unsigned int snapshot,
+		struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 	struct lttcomm_relayd_create_session_2_4 msg;
@@ -245,6 +266,13 @@ static int relayd_create_session_2_4(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 
+	/* Receive response */
+	ret = recv_reply(rsock, reply, sizeof(*reply));
+	if (ret < 0) {
+		goto error;
+	}
+	reply->session_id = be64toh(reply->session_id);
+	reply->ret_code = be32toh(reply->ret_code);
 error:
 	return ret;
 }
@@ -252,7 +280,8 @@ error:
 /*
  * RELAYD_CREATE_SESSION from 2.1 to 2.3.
  */
-static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock)
+static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock,
+		struct lttcomm_relayd_status_session *reply)
 {
 	int ret;
 
@@ -262,6 +291,13 @@ static int relayd_create_session_2_1(struct lttcomm_relayd_sock *rsock)
 		goto error;
 	}
 
+	/* Receive response */
+	ret = recv_reply(rsock, reply, sizeof(*reply));
+	if (ret < 0) {
+		goto error;
+	}
+	reply->session_id = be64toh(reply->session_id);
+	reply->ret_code = be32toh(reply->ret_code);
 error:
 	return ret;
 }
@@ -280,10 +316,11 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 		unsigned int snapshot, uint64_t sessiond_session_id,
 		const lttng_uuid sessiond_uuid,
 		const uint64_t *current_chunk_id,
-		time_t creation_time, bool session_name_contains_creation_time)
+		time_t creation_time, bool session_name_contains_creation_time,
+		char *output_path)
 {
 	int ret;
-	struct lttcomm_relayd_status_session reply;
+	struct lttcomm_relayd_create_session_reply_2_11 reply = {};
 
 	assert(rsock);
 	assert(relayd_session_id);
@@ -292,44 +329,38 @@ int relayd_create_session(struct lttcomm_relayd_sock *rsock,
 
 	if (rsock->minor < 4) {
 		/* From 2.1 to 2.3 */
-		ret = relayd_create_session_2_1(rsock);
+		ret = relayd_create_session_2_1(rsock, &reply.generic);
 	} else if (rsock->minor >= 4 && rsock->minor < 11) {
 		/* From 2.4 to 2.10 */
 		ret = relayd_create_session_2_4(rsock, session_name,
-				hostname, session_live_timer, snapshot);
+				hostname, session_live_timer, snapshot,
+				&reply.generic);
 	} else {
 		/* From 2.11 to ... */
 		ret = relayd_create_session_2_11(rsock, session_name,
 				hostname, base_path, session_live_timer, snapshot,
 				sessiond_session_id, sessiond_uuid,
 				current_chunk_id, creation_time,
-				session_name_contains_creation_time);
+				session_name_contains_creation_time,
+				&reply, output_path);
 	}
 
 	if (ret < 0) {
 		goto error;
 	}
-
-	/* Receive response */
-	ret = recv_reply(rsock, (void *) &reply, sizeof(reply));
-	if (ret < 0) {
-		goto error;
-	}
-
-	reply.session_id = be64toh(reply.session_id);
-	reply.ret_code = be32toh(reply.ret_code);
 
 	/* Return session id or negative ret code. */
-	if (reply.ret_code != LTTNG_OK) {
+	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
-		ERR("Relayd create session replied error %d", reply.ret_code);
+		ERR("Relayd create session replied error %d",
+			reply.generic.ret_code);
 		goto error;
 	} else {
 		ret = 0;
-		*relayd_session_id = reply.session_id;
+		*relayd_session_id = reply.generic.session_id;
 	}
 
-	DBG("Relayd session created with id %" PRIu64, reply.session_id);
+	DBG("Relayd session created with id %" PRIu64, reply.generic.session_id);
 
 error:
 	return ret;
@@ -1342,12 +1373,13 @@ end:
 }
 
 int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
-		struct lttng_trace_chunk *chunk)
+		struct lttng_trace_chunk *chunk,
+		char *path)
 {
 	int ret = 0;
 	enum lttng_trace_chunk_status status;
 	struct lttcomm_relayd_close_trace_chunk msg = {};
-	struct lttcomm_relayd_generic_reply reply = {};
+	struct lttcomm_relayd_close_trace_chunk_reply reply = {};
 	uint64_t chunk_id;
 	time_t close_timestamp;
 	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command = {};
@@ -1407,11 +1439,29 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		goto end;
 	}
 
-	reply.ret_code = be32toh(reply.ret_code);
-	if (reply.ret_code != LTTNG_OK) {
+	reply.path_length = be32toh(reply.path_length);
+	if (reply.path_length >= LTTNG_PATH_MAX) {
+		ERR("Chunk path too long");
+		ret = -1;
+		goto end;
+	}
+
+	ret = recv_reply(sock, path, reply.path_length);
+	if (ret < 0) {
+		ERR("Failed to receive relay daemon trace chunk close command reply");
+		goto end;
+	}
+	if (path[reply.path_length - 1] != '\0') {
+		ERR("Invalid trace chunk path returned by relay daemon (not null-terminated)");
+		ret = -1;
+		goto end;
+	}
+
+	reply.generic.ret_code = be32toh(reply.generic.ret_code);
+	if (reply.generic.ret_code != LTTNG_OK) {
 		ret = -1;
 		ERR("Relayd trace chunk close replied error %d",
-				reply.ret_code);
+				reply.generic.ret_code);
 	} else {
 		ret = 0;
 		DBG("Relayd successfully closed trace chunk: chunk_id = %" PRIu64,
