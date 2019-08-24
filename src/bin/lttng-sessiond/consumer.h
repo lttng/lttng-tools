@@ -325,4 +325,7 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 		struct lttng_trace_chunk *chunk,
 		enum consumer_trace_chunk_exists_status *result);
 
+char *setup_channel_trace_path(struct consumer_output *consumer,
+		const char *session_path);
+
 #endif /* _CONSUMER_H */
