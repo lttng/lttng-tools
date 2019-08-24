@@ -39,7 +39,7 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	struct lttng_trace_chunk *chunk = NULL;
 	enum lttng_trace_chunk_status status;
 	struct lttng_directory_handle output_directory;
-	char *base_path = opt_output_path;
+	const char *base_path = opt_output_path;
 
 	if (base_path == NULL) {
 		/* No output path defined */

@@ -172,7 +172,7 @@ char *get_notification_channel_sock_path(void)
 			goto error;
 		}
 	} else {
-		char *home_path = utils_get_home_dir();
+		const char *home_path = utils_get_home_dir();
 
 		if (!home_path) {
 			ERR("Can't get HOME directory for socket creation");

@@ -250,7 +250,7 @@ int config_get_section_entries(const char *override_path, const char *section,
 		config_entry_handler_cb handler, void *user_data)
 {
 	int ret = 0;
-	char *path;
+	const char *path;
 	FILE *config_file = NULL;
 	struct handler_filter_args filter = { section, handler, user_data };
 
@@ -3532,7 +3532,7 @@ int config_load_session(const char *path, const char *session_name,
 	}
 
 	if (!path) {
-		char *home_path;
+		const char *home_path;
 		const char *sys_path;
 
 		/* Try home path */
