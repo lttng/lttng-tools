@@ -33,7 +33,7 @@ static char *create_output_path_auto(const char *path_name)
 {
 	int ret;
 	char *traces_path = NULL;
-	char *default_path;
+	const char *default_path;
 
 	default_path = utils_get_home_dir();
 	if (default_path == NULL) {

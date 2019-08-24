@@ -51,7 +51,8 @@ static const char *str_function = "Function";
 static
 char *_get_session_name(int quiet)
 {
-	char *path, *session_name = NULL;
+	const char *path;
+	char *session_name = NULL;
 
 	/* Get path to config file */
 	path = utils_get_home_dir();

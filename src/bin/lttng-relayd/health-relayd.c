@@ -155,7 +155,8 @@ static
 int setup_health_path(void)
 {
 	int is_root, ret = 0;
-	char *home_path = NULL, *rundir = NULL, *relayd_path = NULL;
+	const char *home_path = NULL;
+	char *rundir = NULL, *relayd_path = NULL;
 
 	ret = parse_health_env();
 	if (ret) {

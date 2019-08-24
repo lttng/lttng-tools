@@ -77,7 +77,7 @@ error:
  * On success, returns 0;
  * on error, returns -1.
  */
-static int create_config_file(char *path)
+static int create_config_file(const char *path)
 {
 	int ret;
 	FILE *fp;
@@ -155,7 +155,7 @@ end:
  */
 void config_destroy_default(void)
 {
-	char *path = utils_get_home_dir();
+	const char *path = utils_get_home_dir();
 	if (path == NULL) {
 		return;
 	}
@@ -302,7 +302,7 @@ error:
 int config_init(const char *session_name)
 {
 	int ret;
-	char *path;
+	const char *path;
 
 	path = utils_get_home_dir();
 	if (path == NULL) {

@@ -1197,7 +1197,7 @@ int utils_get_count_order_u64(uint64_t x)
  * Otherwise returns the value of HOME.
  */
 LTTNG_HIDDEN
-char *utils_get_home_dir(void)
+const char *utils_get_home_dir(void)
 {
 	char *val = NULL;
 	struct passwd *pwd;
