@@ -2264,7 +2264,8 @@ void lttng_consumer_close_all_metadata(void)
 void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 		struct lttng_ht *ht)
 {
-	struct lttng_consumer_channel *free_chan = NULL;
+	struct lttng_consumer_channel *channel = NULL;
+	bool free_channel = false;
 
 	assert(stream);
 	/*
@@ -2276,11 +2277,17 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	DBG3("Consumer delete metadata stream %d", stream->wait_fd);
 
 	pthread_mutex_lock(&consumer_data.lock);
-	pthread_mutex_lock(&stream->chan->lock);
+	/*
+	 * Note that this assumes that a stream's channel is never changed and
+	 * that the stream's lock doesn't need to be taken to sample its
+	 * channel.
+	 */
+	channel = stream->chan;
+	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&stream->lock);
-	if (stream->chan->metadata_cache) {
+	if (channel->metadata_cache) {
 		/* Only applicable to userspace consumers. */
-		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
+		pthread_mutex_lock(&channel->metadata_cache->lock);
 	}
 
 	/* Remove any reference to that stream. */
@@ -2292,28 +2299,29 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	consumer_stream_destroy_buffers(stream);
 
 	/* Atomically decrement channel refcount since other threads can use it. */
-	if (!uatomic_sub_return(&stream->chan->refcount, 1)
-			&& !uatomic_read(&stream->chan->nb_init_stream_left)) {
+	if (!uatomic_sub_return(&channel->refcount, 1)
+			&& !uatomic_read(&channel->nb_init_stream_left)) {
 		/* Go for channel deletion! */
-		free_chan = stream->chan;
+		free_channel = true;
 	}
+	stream->chan = NULL;
 
 	/*
 	 * Nullify the stream reference so it is not used after deletion. The
 	 * channel lock MUST be acquired before being able to check for a NULL
 	 * pointer value.
 	 */
-	stream->chan->metadata_stream = NULL;
+	channel->metadata_stream = NULL;
 
-	if (stream->chan->metadata_cache) {
-		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
+	if (channel->metadata_cache) {
+		pthread_mutex_unlock(&channel->metadata_cache->lock);
 	}
 	pthread_mutex_unlock(&stream->lock);
-	pthread_mutex_unlock(&stream->chan->lock);
+	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
 
-	if (free_chan) {
-		consumer_del_channel(free_chan);
+	if (free_channel) {
+		consumer_del_channel(channel);
 	}
 
 	lttng_trace_chunk_put(stream->trace_chunk);
