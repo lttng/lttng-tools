@@ -411,7 +411,8 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		rcu_read_unlock();
 	}
 
-        call_rcu(&channel->node.head, free_channel_rcu);
+	channel->is_deleted = true;
+	call_rcu(&channel->node.head, free_channel_rcu);
 end:
 	pthread_mutex_unlock(&channel->lock);
 	pthread_mutex_unlock(&consumer_data.lock);
@@ -1021,6 +1022,16 @@ int lttng_consumer_channel_set_trace_chunk(
 	unsigned long channel_hash;
 
 	pthread_mutex_lock(&channel->lock);
+	if (channel->is_deleted) {
+		/*
+		 * The channel has been logically deleted and should no longer
+		 * be used. It has released its reference to its current trace
+		 * chunk and should not acquire a new one.
+		 *
+		 * Return success as there is nothing for the caller to do.
+		 */
+		goto end;
+	}
 	/*
 	 * A stream can transition to a state where it and its channel
 	 * no longer belong to a trace chunk. For instance, this happens when

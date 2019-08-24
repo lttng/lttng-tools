@@ -107,6 +107,12 @@ struct consumer_metadata_cache;
 struct lttng_consumer_channel {
 	/* Is the channel published in the channel hash tables? */
 	bool is_published;
+	/*
+	 * Was the channel deleted (logically) and waiting to be reclaimed?
+	 * If this flag is set, no modification that is not cleaned-up by the
+	 * RCU reclamation callback should be made
+	 */
+	bool is_deleted;
 	/* HT node used for consumer_data.channel_ht */
 	struct lttng_ht_node_u64 node;
 	/* HT node used for consumer_data.channels_by_session_id_ht */
