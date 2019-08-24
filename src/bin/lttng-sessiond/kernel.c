@@ -1260,6 +1260,7 @@ enum lttng_error_code kernel_snapshot_record(
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
 	struct ltt_kernel_metadata *saved_metadata;
+	char *trace_path = NULL;
 
 	assert(ksess);
 	assert(ksess->consumer);
@@ -1285,6 +1286,12 @@ enum lttng_error_code kernel_snapshot_record(
 		goto error_open_stream;
 	}
 
+	trace_path = setup_channel_trace_path(ksess->consumer,
+			DEFAULT_KERNEL_TRACE_DIR);
+	if (!trace_path) {
+		status = LTTNG_ERR_INVALID;
+		goto error;
+	}
 	/* Send metadata to consumer and snapshot everything. */
 	cds_lfht_for_each_entry(output->socks->ht, &iter.iter,
 			socket, node.node) {
@@ -1303,7 +1310,7 @@ enum lttng_error_code kernel_snapshot_record(
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
 			status = consumer_snapshot_channel(socket, chan->key, output, 0,
 					ksess->uid, ksess->gid,
-					DEFAULT_KERNEL_TRACE_DIR, wait,
+					trace_path, wait,
 					nb_packets_per_stream);
 			if (status != LTTNG_OK) {
 				(void) kernel_consumer_destroy_metadata(socket,
@@ -1314,8 +1321,7 @@ enum lttng_error_code kernel_snapshot_record(
 
 		/* Snapshot metadata, */
 		status = consumer_snapshot_channel(socket, ksess->metadata->key, output,
-				1, ksess->uid, ksess->gid,
-				DEFAULT_KERNEL_TRACE_DIR, wait, 0);
+				1, ksess->uid, ksess->gid, trace_path, wait, 0);
 		if (status != LTTNG_OK) {
 			goto error_consumer;
 		}
@@ -1341,6 +1347,7 @@ error:
 	ksess->metadata = saved_metadata;
 	ksess->metadata_stream_fd = saved_metadata_fd;
 	rcu_read_unlock();
+	free(trace_path);
 	return status;
 }
 

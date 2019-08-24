@@ -39,6 +39,62 @@
 #include "lttng-sessiond.h"
 
 /*
+ * Return allocated full pathname of the session using the consumer trace path
+ * and subdir if available.
+ *
+ * The caller can safely free(3) the returned value. On error, NULL is
+ * returned.
+ */
+char *setup_channel_trace_path(struct consumer_output *consumer,
+		const char *session_path)
+{
+	int ret;
+	char *pathname;
+
+	assert(consumer);
+	assert(session_path);
+
+	health_code_update();
+
+	/*
+	 * Allocate the string ourself to make sure we never exceed
+	 * LTTNG_PATH_MAX.
+	 */
+	pathname = zmalloc(LTTNG_PATH_MAX);
+	if (!pathname) {
+		goto error;
+	}
+
+	/* Get correct path name destination */
+	if (consumer->type == CONSUMER_DST_NET &&
+			consumer->relay_major_version == 2 &&
+			consumer->relay_minor_version < 11) {
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s/%s%s",
+				consumer->dst.net.base_dir,
+				consumer->chunk_path, consumer->domain_subdir,
+				session_path);
+	} else {
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s",
+				consumer->domain_subdir, session_path);
+	}
+	DBG3("Consumer trace path relative to current trace chunk: \"%s\"",
+			pathname);
+	if (ret < 0) {
+		PERROR("Failed to format channel path");
+		goto error;
+	} else if (ret >= LTTNG_PATH_MAX) {
+		ERR("Truncation occurred while formatting channel path");
+		ret = -1;
+		goto error;
+	}
+
+	return pathname;
+error:
+	free(pathname);
+	return NULL;
+}
+
+/*
  * Send a data payload using a given consumer socket of size len.
  *
  * The consumer socket lock MUST be acquired before calling this since this
