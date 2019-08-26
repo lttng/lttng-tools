@@ -56,7 +56,9 @@ function test_ust_streaming ()
 	create_lttng_session_uri $SESSION_NAME net://localhost
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -87,7 +89,9 @@ function test_ust_local ()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -119,7 +123,9 @@ function test_ust_pid ()
 	enable_channel_per_pid $SESSION_NAME "channel0"
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME "channel0"
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -150,7 +156,9 @@ function test_ust_live ()
 	create_lttng_session_uri $SESSION_NAME net://localhost --live
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} /dev/null 2>&1 &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 

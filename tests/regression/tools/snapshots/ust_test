@@ -49,7 +49,7 @@ function start_test_app()
 	local tmp_file=$(mktemp -u)
 
 	# Start application with a temporary file.
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $tmp_file &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &
 	ret=$?
 	APPS_PID="${APPS_PID} ${!}"
 	ok $ret "Start application to trace"

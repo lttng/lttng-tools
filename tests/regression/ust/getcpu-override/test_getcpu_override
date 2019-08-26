@@ -55,14 +55,14 @@ num_cpus=$(conf_proc_count)
 run_app()
 {
 	diag "Launching app without getcpu-plugin wrapper"
-	$TESTAPP_BIN $NUM_EVENT $EVENT_WAIT_USEC
+	$TESTAPP_BIN -i $NUM_EVENT -w $EVENT_WAIT_USEC
 	ok $? "Application without wrapper done"
 }
 
 run_getcpu_plugin_app()
 {
 	diag "Launching app with getcpu-plugin wrapper"
-	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN $NUM_EVENT $EVENT_WAIT_USEC
+	$CURDIR/$TESTAPP_WRAPPER $TESTAPP_BIN -i $NUM_EVENT -w $EVENT_WAIT_USEC
 	ok $? "Application with wrapper done"
 }
 

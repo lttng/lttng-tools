@@ -58,7 +58,7 @@ function test_per_uid ()
 	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
 	start_lttng_tracing_ok "$session_name"
 
-	$TESTAPP_BIN $NR_ITER
+	$TESTAPP_BIN -i $NR_ITER
 
 	stop_lttng_tracing_ok "$session_name"
 	destroy_lttng_session_ok "$session_name"
@@ -150,7 +150,7 @@ function test_per_pid ()
 	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME channel
 	start_lttng_tracing_ok "$session_name"
 
-	$TESTAPP_BIN "$NR_ITER" "$NR_USEC_WAIT" &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
 	testapp_pid=$!
 	wait $testapp_pid
 

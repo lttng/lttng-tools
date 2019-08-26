@@ -52,7 +52,7 @@ fi
 # Infinite loop. Spawns NR_APP apps for NR_USEC_WAIT doing NR_APP_LOOP.
 while :; do
 	for j in `seq 1 $NR_APP`; do
-		$TESTAPP_BIN $NR_APP_LOOP $NR_USEC_WAIT >/dev/null 2>&1 &
+		$TESTAPP_BIN -i $NR_APP_LOOP -w $NR_USEC_WAIT >/dev/null 2>&1 &
 	done
 	# Wait before the next round of applications.
 	sleep 3

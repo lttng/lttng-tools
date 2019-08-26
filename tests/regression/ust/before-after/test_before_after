@@ -42,7 +42,7 @@ function test_before_apps()
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT &
 	wait
 	ok $? "Traced application stopped."
 
@@ -63,7 +63,9 @@ function test_after_apps()
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
 
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} &
 	ok $? "Application started in background."
 
 	start_lttng_tracing_ok $SESSION_NAME

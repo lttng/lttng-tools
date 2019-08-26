@@ -65,7 +65,7 @@ function ust_event_generator
 			if [[ -f $state_file ]]; then
 				rm -rf $state_file 2> /dev/null
 			fi
-			taskset  -c 0 $TESTAPP_BIN $NR_ITER $NR_USEC_WAIT > /dev/null 2>&1
+			taskset  -c 0 $TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
 		fi
 	done
 }

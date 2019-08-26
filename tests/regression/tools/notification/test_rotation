@@ -47,7 +47,7 @@ enable_ust_lttng_event_notap $SESSION_NAME $EVENT_NAME $CHANNEL_NAME
 
 start_lttng_tracing_notap $SESSION_NAME
 
-$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $FILE_SYNC_AFTER_FIRST_EVENT &
+$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $FILE_SYNC_AFTER_FIRST_EVENT &
 APP_PID=$!
 while [ ! -f "${FILE_SYNC_AFTER_FIRST_EVENT}" ]; do
 	sleep 0.5

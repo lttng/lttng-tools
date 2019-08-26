@@ -544,7 +544,9 @@ function test_list_ust_event ()
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 
 	#Begin testing
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} & 2>/dev/null
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} & 2>/dev/null
 
 	while [ ! -f "${file_sync_after_first}" ]; do
 		sleep 0.5

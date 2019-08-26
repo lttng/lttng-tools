@@ -35,7 +35,7 @@ source $TESTDIR/utils/utils.sh
 # Run app on CPU 0 to ensure we only write in a single ring buffer.
 function run_app()
 {
-	taskset 0x00000001 $TESTAPP_BIN $NUM_EVENT
+	taskset 0x00000001 $TESTAPP_BIN -i $NUM_EVENT
 	ok $? "Application done"
 }
 

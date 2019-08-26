@@ -119,7 +119,7 @@ function test_tracefile_count_limit ()
 
 	start_lttng_tracing_ok $session_name
 
-	$TESTAPP_BIN $num_iter >/dev/null 2>&1
+	$TESTAPP_BIN -i $num_iter >/dev/null 2>&1
 
 	stop_lttng_tracing_ok $session_name
 

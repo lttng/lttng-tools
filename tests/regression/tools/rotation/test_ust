@@ -55,10 +55,10 @@ function rotate_ust_test ()
 	start_lttng_tracing_ok $SESSION_NAME
 	today=$(date +%Y%m%d)
 
-	$TESTAPP_BIN 10 $NR_USEC_WAIT /dev/null 2>&1
+	$TESTAPP_BIN -i 10 -w $NR_USEC_WAIT > /dev/null 2>&1
 	rotate_session_ok $SESSION_NAME
 
-	$TESTAPP_BIN 20 $NR_USEC_WAIT /dev/null 2>&1
+	$TESTAPP_BIN -i 20 -w $NR_USEC_WAIT > /dev/null 2>&1
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Third chunk contains no event (rotate after stop).
@@ -115,7 +115,7 @@ function test_ust_local_timer_uid ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 	# We just want the app to register, no event generated
-	$TESTAPP_BIN 0 0 /dev/null 2>&1
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/archives" 0
 }
@@ -128,7 +128,7 @@ function test_ust_streaming_timer_uid ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 	# We just want the app to register, no event generated
-	$TESTAPP_BIN 0 0 /dev/null 2>&1
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 0
 }
@@ -142,7 +142,7 @@ function test_ust_local_timer_pid ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 	# We just want the app to register, no event generated
-	$TESTAPP_BIN 0 0 /dev/null 2>&1
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/archives" 1
 }
@@ -156,7 +156,7 @@ function test_ust_streaming_timer_pid ()
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
 	start_lttng_tracing_ok $SESSION_NAME
 	# We just want the app to register, no event generated
-	$TESTAPP_BIN 0 0 /dev/null 2>&1
+	$TESTAPP_BIN -i 0 -w 0 > /dev/null 2>&1
 
 	rotate_timer_test "${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*/archives" 1
 }

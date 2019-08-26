@@ -106,7 +106,7 @@ function check_app_tmp_file()
 function start_trace_app()
 {
 	# Start application with a temporary file.
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT $APP_TMP_FILE &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $APP_TMP_FILE &
 	ret=$?
 	APPS_PID="${APPS_PID} ${!}"
 	ok $ret "Start application to trace"

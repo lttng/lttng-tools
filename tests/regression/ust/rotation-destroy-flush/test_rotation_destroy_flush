@@ -41,7 +41,7 @@ source $TESTDIR/utils/utils.sh
 # MUST set TESTDIR before calling those functions
 function run_app()
 {
-	$TESTAPP_BIN $NUM_EVENT
+	$TESTAPP_BIN -i $NUM_EVENT
 	ok $? "Application done"
 }
 

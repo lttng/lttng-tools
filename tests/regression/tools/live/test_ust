@@ -63,7 +63,7 @@ start_lttng_relayd_notap "-o $TRACE_PATH"
 setup_live_tracing
 
 # Run app in background
-$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} >/dev/null 2>&1
+$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event ${file_sync_after_first} >/dev/null 2>&1
 
 while [ ! -f "${file_sync_after_first}" ]; do
 	sleep 0.5

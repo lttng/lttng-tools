@@ -113,7 +113,7 @@ function test_event_basic()
 	if [ "$ret" != "4" ]; then
 		start_lttng_tracing_ok
 
-		$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+		$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT >/dev/null 2>&1
 
 		stop_lttng_tracing_ok
 

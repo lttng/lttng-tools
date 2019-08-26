@@ -116,7 +116,7 @@ function run_apps
 		# due to very slow communication between the consumer and relayd making
 		# the status reply from the consumer quite slow thus delaying the
 		# registration done message.
-		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN $NR_ITER & >/dev/null 2>&1
+		LTTNG_UST_REGISTER_TIMEOUT=-1 $TESTAPP_BIN -i $NR_ITER & >/dev/null 2>&1
 	done
 }
 

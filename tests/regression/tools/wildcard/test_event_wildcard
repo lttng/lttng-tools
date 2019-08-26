@@ -34,7 +34,7 @@ source $TESTDIR/utils/utils.sh
 
 function run_ust
 {
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
 }
 
 function run_kernel

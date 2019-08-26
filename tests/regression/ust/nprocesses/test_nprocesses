@@ -52,7 +52,9 @@ file_sync_before_last=$(mktemp -u)
 diag "Starting $NUM_PROCESS test applications"
 for i in `seq 1 $NUM_PROCESS`
 do
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT ${file_sync_after_first} ${file_sync_before_last} >/dev/null 2>&1 &
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
+		--sync-after-first-event ${file_sync_after_first} \
+		--sync-before-last-event ${file_sync_before_last} >/dev/null 2>&1 &
 	APPS_PID="${APPS_PID} ${!}"
 done
 
