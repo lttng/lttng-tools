@@ -591,14 +591,14 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto error_fatal;
+			goto error_add_stream_fatal;
 		}
 
 		health_code_update();
 
 		if (ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 			/* Channel was not found. */
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		/* Blocking call */
@@ -606,7 +606,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = lttng_consumer_poll_socket(consumer_sockpoll);
 		health_poll_exit();
 		if (ret) {
-			goto error_fatal;
+			goto error_add_stream_fatal;
 		}
 
 		health_code_update();
@@ -615,8 +615,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = lttcomm_recv_fds_unix_sock(sock, &fd, 1);
 		if (ret != sizeof(fd)) {
 			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_FD);
-			rcu_read_unlock();
-			return ret;
+			goto end;
 		}
 
 		health_code_update();
@@ -629,7 +628,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		health_code_update();
@@ -654,7 +653,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				break;
 			}
 			pthread_mutex_unlock(&channel->lock);
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		new_stream->chan = channel;
@@ -664,7 +663,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (ret < 0) {
 			pthread_mutex_unlock(&channel->lock);
 			ERR("Failed to get kernel maximal subbuffer size");
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		consumer_stream_update_channel_attributes(new_stream,
@@ -675,7 +674,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			ret = utils_create_pipe(new_stream->splice_pipe);
 			if (ret < 0) {
 				pthread_mutex_unlock(&channel->lock);
-				goto end_nosignal;
+				goto error_add_stream_nosignal;
 			}
 			break;
 		case CONSUMER_CHANNEL_MMAP:
@@ -684,7 +683,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		default:
 			ERR("Stream output unknown %d", channel->output);
 			pthread_mutex_unlock(&channel->lock);
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		/*
@@ -716,7 +715,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				pthread_mutex_unlock(&new_stream->lock);
 				pthread_mutex_unlock(&channel->lock);
 				consumer_stream_free(new_stream);
-				goto end_nosignal;
+				goto error_add_stream_nosignal;
 			}
 		}
 		health_code_update();
@@ -733,7 +732,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			cds_list_add(&new_stream->send_node, &channel->streams.head);
 			pthread_mutex_unlock(&new_stream->lock);
 			pthread_mutex_unlock(&channel->lock);
-			break;
+			goto end_add_stream;
 		}
 
 		/* Send stream to relayd if the stream has an ID. */
@@ -744,7 +743,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				pthread_mutex_unlock(&new_stream->lock);
 				pthread_mutex_unlock(&channel->lock);
 				consumer_stream_free(new_stream);
-				goto end_nosignal;
+				goto error_add_stream_nosignal;
 			}
 
 			/*
@@ -758,7 +757,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				if (ret < 0) {
 					pthread_mutex_unlock(&new_stream->lock);
 					pthread_mutex_unlock(&channel->lock);
-					goto end_nosignal;
+					goto error_add_stream_nosignal;
 				}
 			}
 		}
@@ -789,12 +788,17 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			} else {
 				consumer_del_stream_for_data(new_stream);
 			}
-			goto end_nosignal;
+			goto error_add_stream_nosignal;
 		}
 
 		DBG("Kernel consumer ADD_STREAM %s (fd: %d) %s with relayd id %" PRIu64,
 				new_stream->name, fd, new_stream->chan->pathname, new_stream->relayd_stream_id);
+end_add_stream:
 		break;
+error_add_stream_nosignal:
+		goto end_nosignal;
+error_add_stream_fatal:
+		goto error_fatal;
 	}
 	case LTTNG_CONSUMER_STREAMS_SENT:
 	{
@@ -1272,15 +1276,16 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 
 end_nosignal:
-	rcu_read_unlock();
-
 	/*
 	 * Return 1 to indicate success since the 0 value can be a socket
 	 * shutdown during the recv() or send() call.
 	 */
-	health_code_update();
-	return 1;
-
+	ret = 1;
+	goto end;
+error_fatal:
+	/* This will issue a consumer stop. */
+	ret = -1;
+	goto end;
 end_msg_sessiond:
 	/*
 	 * The returned value here is not useful since either way we'll return 1 to
@@ -1291,16 +1296,11 @@ end_msg_sessiond:
 	if (ret < 0) {
 		goto error_fatal;
 	}
-	rcu_read_unlock();
-
+	ret = 1;
+end:
 	health_code_update();
-
-	return 1;
-
-error_fatal:
 	rcu_read_unlock();
-	/* This will issue a consumer stop. */
-	return -1;
+	return ret;
 }
 
 /*
