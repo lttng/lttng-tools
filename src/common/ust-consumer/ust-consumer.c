@@ -3031,7 +3031,7 @@ end:
  * Stop a given metadata channel timer if enabled and close the wait fd which
  * is the poll pipe of the metadata stream.
  *
- * This MUST be called with the metadata channel acquired.
+ * This MUST be called with the metadata channel lock acquired.
  */
 void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata)
 {
