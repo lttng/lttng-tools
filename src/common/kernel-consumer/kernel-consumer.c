@@ -979,14 +979,14 @@ error_streams_sent_nosignal:
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto end_destroy_channel;
 		}
 
 		health_code_update();
 
 		/* Stop right now if no channel was found. */
 		if (!channel) {
-			goto end_nosignal;
+			goto end_destroy_channel;
 		}
 
 		/*
@@ -1002,7 +1002,7 @@ error_streams_sent_nosignal:
 		assert(!uatomic_sub_return(&channel->refcount, 1));
 
 		consumer_del_channel(channel);
-
+end_destroy_channel:
 		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_DISCARDED_EVENTS:
