@@ -1712,7 +1712,7 @@ end_get_channel_nosignal:
 			 */
 			DBG("UST consumer push metadata %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHANNEL_FAIL;
-			goto end_msg_sessiond;
+			goto end_push_metadata_msg_sessiond;
 		}
 
 		health_code_update();
@@ -1723,14 +1723,14 @@ end_get_channel_nosignal:
 			 * checked whether the channel can be found.
 			 */
 			ret_code = LTTCOMM_CONSUMERD_SUCCESS;
-			goto end_msg_sessiond;
+			goto end_push_metadata_msg_sessiond;
 		}
 
 		/* Tell session daemon we are ready to receive the metadata. */
 		ret = consumer_send_status_msg(sock, LTTCOMM_CONSUMERD_SUCCESS);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto error_fatal;
+			goto error_push_metadata_fatal;
 		}
 
 		health_code_update();
@@ -1740,7 +1740,7 @@ end_get_channel_nosignal:
 		ret = lttng_consumer_poll_socket(consumer_sockpoll);
 		health_poll_exit();
 		if (ret) {
-			goto error_fatal;
+			goto error_push_metadata_fatal;
 		}
 
 		health_code_update();
@@ -1749,11 +1749,15 @@ end_get_channel_nosignal:
 				len, version, channel, 0, 1);
 		if (ret < 0) {
 			/* error receiving from sessiond */
-			goto error_fatal;
+			goto error_push_metadata_fatal;
 		} else {
 			ret_code = ret;
-			goto end_msg_sessiond;
+			goto end_push_metadata_msg_sessiond;
 		}
+end_push_metadata_msg_sessiond:
+		goto end_msg_sessiond;
+error_push_metadata_fatal:
+		goto error_fatal;
 	}
 	case LTTNG_CONSUMER_SETUP_METADATA:
 	{
