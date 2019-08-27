@@ -1591,7 +1591,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		if (!channel) {
 			ERR("UST consumer get channel key %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
-			goto end_msg_sessiond;
+			goto end_get_channel;
 		}
 
 		health_code_update();
@@ -1607,13 +1607,13 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 				 * and the consumer can continue its work. The above call
 				 * has sent the error status message to the sessiond.
 				 */
-				goto end_nosignal;
+				goto end_get_channel_nosignal;
 			}
 			/*
 			 * The communicaton was broken hence there is a bad state between
 			 * the consumer and sessiond so stop everything.
 			 */
-			goto error_fatal;
+			goto error_get_channel_fatal;
 		}
 
 		health_code_update();
@@ -1623,7 +1623,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * so don't send them to the data thread.
 		 */
 		if (!channel->monitor) {
-			goto end_msg_sessiond;
+			goto end_get_channel;
 		}
 
 		ret = send_streams_to_thread(channel, ctx);
@@ -1632,11 +1632,16 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 * If we are unable to send the stream to the thread, there is
 			 * a big problem so just stop everything.
 			 */
-			goto error_fatal;
+			goto error_get_channel_fatal;
 		}
 		/* List MUST be empty after or else it could be reused. */
 		assert(cds_list_empty(&channel->streams.head));
+end_get_channel:
 		goto end_msg_sessiond;
+error_get_channel_fatal:
+		goto error_fatal;
+end_get_channel_nosignal:
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_DESTROY_CHANNEL:
 	{
@@ -2115,15 +2120,12 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 
 end_nosignal:
-	rcu_read_unlock();
-
-	health_code_update();
-
 	/*
 	 * Return 1 to indicate success since the 0 value can be a socket
 	 * shutdown during the recv() or send() call.
 	 */
-	return 1;
+	ret = 1;
+	goto end;
 
 end_msg_sessiond:
 	/*
@@ -2135,11 +2137,9 @@ end_msg_sessiond:
 	if (ret < 0) {
 		goto error_fatal;
 	}
-	rcu_read_unlock();
+	ret = 1;
+	goto end;
 
-	health_code_update();
-
-	return 1;
 end_channel_error:
 	if (channel) {
 		pthread_mutex_unlock(&channel->lock);
@@ -2155,15 +2155,18 @@ end_channel_error:
 		/* Stop everything if session daemon can not be notified. */
 		goto error_fatal;
 	}
-	rcu_read_unlock();
+	ret = 1;
+	goto end;
 
-	health_code_update();
-
-	return 1;
 error_fatal:
-	rcu_read_unlock();
 	/* This will issue a consumer stop. */
-	return -1;
+	ret = -1;
+	goto end;
+
+end:
+	rcu_read_unlock();
+	health_code_update();
+	return ret;
 }
 
 /*
