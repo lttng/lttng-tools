@@ -1145,7 +1145,7 @@ end_destroy_channel:
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_rotate_channel;
 		}
 		if (channel) {
 			/* Rotate the streams that are ready right now. */
@@ -1155,8 +1155,9 @@ end_destroy_channel:
 				ERR("Rotate ready streams failed");
 			}
 		}
-
 		break;
+error_rotate_channel:
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_INIT:
 	{
