@@ -1984,7 +1984,7 @@ error_push_metadata_fatal:
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto end_rotate_channel_nosignal;
 		}
 
 		/*
@@ -2002,6 +2002,8 @@ error_push_metadata_fatal:
 			}
 		}
 		break;
+end_rotate_channel_nosignal:
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_INIT:
 	{
