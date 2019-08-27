@@ -827,7 +827,7 @@ error_add_stream_fatal:
 		ret = consumer_send_status_msg(sock, ret_code);
 		if (ret < 0 || ret_code != LTTCOMM_CONSUMERD_SUCCESS) {
 			/* Somehow, the session daemon is not responding anymore. */
-			goto end_nosignal;
+			goto error_streams_sent_nosignal;
 		}
 
 		health_code_update();
@@ -837,7 +837,7 @@ error_add_stream_fatal:
 		 * streams in this channel.
 		 */
 		if (!channel->monitor) {
-			break;
+			goto end_error_streams_sent;
 		}
 
 		health_code_update();
@@ -846,11 +846,14 @@ error_add_stream_fatal:
 			ret = consumer_send_relayd_streams_sent(
 					msg.u.sent_streams.net_seq_idx);
 			if (ret < 0) {
-				goto end_nosignal;
+				goto error_streams_sent_nosignal;
 			}
 			channel->streams_sent_to_relayd = true;
 		}
+end_error_streams_sent:
 		break;
+error_streams_sent_nosignal:
+		goto end_nosignal;
 	}
 	case LTTNG_CONSUMER_UPDATE_STREAM:
 	{
