@@ -768,10 +768,19 @@ static int flush_channel(uint64_t chan_key)
 		health_code_update();
 
 		pthread_mutex_lock(&stream->lock);
+
+		/*
+		 * Protect against concurrent teardown of a stream.
+		 */
+		if (cds_lfht_is_node_deleted(&stream->node.node)) {
+			goto next;
+		}
+
 		if (!stream->quiescent) {
 			ustctl_flush_buffer(stream->ustream, 0);
 			stream->quiescent = true;
 		}
+next:
 		pthread_mutex_unlock(&stream->lock);
 	}
 error:
