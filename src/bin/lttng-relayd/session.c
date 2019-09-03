@@ -47,8 +47,8 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 		/* No output path defined */
 		const char *home_dir = utils_get_home_dir();
 		if (!home_dir) {
-			ERR("Home path not found.\n \
-					Please specify an output path using -o, --output PATH");
+			ERR("Home path not found."
+					" Please specify an output path using -o, --output PATH");
 			ret = -1;
 			goto end;
 		}
