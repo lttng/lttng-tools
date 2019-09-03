@@ -39,6 +39,7 @@ endif
 libcommon_la_LIBADD = \
 		$(top_builddir)/src/common/config/libconfig.la \
 		$(top_builddir)/src/common/compat/libcompat.la \
+		$(top_builddir)/src/common/hashtable/libhashtable.la \
 		$(UUID_LIBS)
 
 if BUILD_LIB_COMPAT
