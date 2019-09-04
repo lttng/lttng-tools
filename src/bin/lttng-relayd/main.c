@@ -2298,40 +2298,7 @@ end_no_reply:
 	return ret;
 }
 
-static int init_session_output_directory_handle(struct relay_session *session,
-		struct lttng_directory_handle *handle)
-{
-	int ret;
-	/*
-	 * relayd_output_path/session_directory
-	 * e.g. /home/user/lttng-traces/hostname/session_name
-	 */
-	char *full_session_path = NULL;
 
-	pthread_mutex_lock(&session->lock);
-	full_session_path = create_output_path(session->output_path);
-	if (!full_session_path) {
-		ret = -1;
-		goto end;
-	}
-
-	ret = utils_mkdir_recursive(
-			full_session_path, S_IRWXU | S_IRWXG, -1, -1);
-	if (ret) {
-		ERR("Failed to create session output path \"%s\"",
-				full_session_path);
-		goto end;
-	}
-
-	ret = lttng_directory_handle_init(handle, full_session_path);
-	if (ret) {
-		goto end;
-	}
-end:
-	pthread_mutex_unlock(&session->lock);
-	free(full_session_path);
-	return ret;
-}
 
 /*
  * relay_create_trace_chunk: create a new trace chunk
@@ -2418,7 +2385,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		}
 	}
 
-	ret = init_session_output_directory_handle(
+	ret = session_init_output_directory_handle(
 			conn->session, &session_output);
 	if (ret) {
 		reply_code = LTTNG_ERR_CREATE_DIR_FAIL;

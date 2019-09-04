@@ -154,6 +154,9 @@ void session_put(struct relay_session *session);
 int session_close(struct relay_session *session);
 int session_abort(struct relay_session *session);
 
+int session_init_output_directory_handle(struct relay_session *session,
+		struct lttng_directory_handle *handle);
+
 void print_sessions(void);
 
 #endif /* _SESSION_H */

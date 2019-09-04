@@ -23,12 +23,15 @@
 #include <common/compat/uuid.h>
 #include <urcu/rculist.h>
 
+#include <sys/stat.h>
+
 #include "ctf-trace.h"
 #include "lttng-relayd.h"
 #include "session.h"
 #include "sessiond-trace-chunks.h"
 #include "stream.h"
 #include <common/defaults.h>
+#include "utils.h"
 
 /* Global session id used in the session creation. */
 static uint64_t last_relay_session_id;
@@ -128,31 +131,8 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	struct lttng_trace_chunk *chunk = NULL;
 	enum lttng_trace_chunk_status status;
 	struct lttng_directory_handle output_directory;
-	char *output_path;
-	bool output_path_allocated = false;
 
-	if (!opt_output_path) {
-		/* No output path defined */
-		const char *home_dir = utils_get_home_dir();
-		if (!home_dir) {
-			ERR("Home path not found."
-					" Please specify an output path using -o, --output PATH");
-			ret = -1;
-			goto end;
-		}
-		ret = asprintf(&output_path, "%s/%s", home_dir, DEFAULT_TRACE_DIR_NAME);
-		if (ret < 0) {
-			PERROR("asprintf trace dir name");
-			ret = -1;
-			goto end;
-		}
-		output_path_allocated = true;
-	} else {
-		output_path = opt_output_path;
-		output_path_allocated = false;
-	}
-
-	ret = lttng_directory_handle_init(&output_directory, output_path);
+	ret = session_init_output_directory_handle(session, &output_directory);
 	if (ret) {
 		goto end;
 	}
@@ -178,9 +158,6 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 end:
 	lttng_trace_chunk_put(chunk);
 	lttng_directory_handle_fini(&output_directory);
-	if (output_path_allocated) {
-		free(output_path);
-	}
 	return ret;
 }
 
@@ -490,4 +467,39 @@ void print_sessions(void)
 		session_put(session);
 	}
 	rcu_read_unlock();
+}
+
+int session_init_output_directory_handle(struct relay_session *session,
+		struct lttng_directory_handle *handle)
+{
+	int ret;
+	/*
+	 * relayd_output_path/session_directory
+	 * e.g. /home/user/lttng-traces/hostname/session_name
+	 */
+	char *full_session_path = NULL;
+
+	pthread_mutex_lock(&session->lock);
+	full_session_path = create_output_path(session->output_path);
+	if (!full_session_path) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = utils_mkdir_recursive(
+			full_session_path, S_IRWXU | S_IRWXG, -1, -1);
+	if (ret) {
+		ERR("Failed to create session output path \"%s\"",
+				full_session_path);
+		goto end;
+	}
+
+	ret = lttng_directory_handle_init(handle, full_session_path);
+	if (ret) {
+		goto end;
+	}
+end:
+	pthread_mutex_unlock(&session->lock);
+	free(full_session_path);
+	return ret;
 }
