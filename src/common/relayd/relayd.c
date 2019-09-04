@@ -1480,6 +1480,8 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 
 	if (!relayd_supports_chunks(sock)) {
 		DBG("Refusing to check for trace chunk existence: relayd does not support chunks");
+		/* The chunk will never exist */
+		*chunk_exists = false;
 		goto end;
 	}
 
