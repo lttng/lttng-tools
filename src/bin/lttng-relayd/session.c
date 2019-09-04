@@ -271,10 +271,14 @@ struct relay_session *session_create(const char *session_name,
 		LTTNG_OPTIONAL_SET(&session->id_sessiond, *id_sessiond);
 	}
 
-	ret = init_session_output_path(session);
-	if (ret) {
-		goto error;
+	if (major == 2 && minor >= 11) {
+		/* Only applies for 2.11+ peers using trace chunks. */
+		ret = init_session_output_path(session);
+		if (ret) {
+			goto error;
+		}
 	}
+
 	ret = sessiond_trace_chunk_registry_session_created(
 			sessiond_trace_chunk_registry, sessiond_uuid);
 	if (ret) {
