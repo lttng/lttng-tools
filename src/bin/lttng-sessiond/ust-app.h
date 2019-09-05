@@ -563,7 +563,7 @@ struct ust_app *ust_app_find_by_pid(pid_t pid)
 }
 static inline
 uint64_t ust_app_get_size_one_more_packet_per_stream(
-		struct ltt_ust_session *usess, uint64_t cur_nr_packets) {
+		const struct ltt_ust_session *usess, uint64_t cur_nr_packets) {
 	return 0;
 }
 static inline
