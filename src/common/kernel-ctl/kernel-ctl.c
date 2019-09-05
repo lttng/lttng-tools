@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <common/time.h>
 
 #include "kernel-ctl.h"
 #include "kernel-ioctl.h"
@@ -251,6 +252,23 @@ int kernctl_session_set_name(int fd, const char *name)
 
 	ret = LTTNG_IOCTL_CHECK(
 			fd, LTTNG_KERNEL_SESSION_SET_NAME, &session_name);
+end:
+	return ret;
+}
+
+int kernctl_session_set_creation_time(int fd, time_t time)
+{
+	int ret;
+	struct lttng_kernel_session_creation_time creation_time;
+
+	ret = time_to_iso8601_str(time, creation_time.iso8601,
+			sizeof(creation_time.iso8601));
+	if (ret) {
+		goto end;
+	}
+
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_SET_CREATION_TIME,
+			&creation_time);
 end:
 	return ret;
 }

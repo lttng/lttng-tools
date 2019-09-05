@@ -68,6 +68,7 @@ int kernctl_list_tracker_pids(int fd);
 int kernctl_session_regenerate_metadata(int fd);
 int kernctl_session_regenerate_statedump(int fd);
 int kernctl_session_set_name(int fd, const char *name);
+int kernctl_session_set_creation_time(int fd, time_t time);
 
 /* Buffer operations */
 
