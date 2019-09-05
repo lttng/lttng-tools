@@ -1993,7 +1993,8 @@ static int setup_buffer_reg_pid(struct ust_app_session *ua_sess,
 			app->byte_order, app->version.major, app->version.minor,
 			reg_pid->root_shm_path, reg_pid->shm_path,
 			ua_sess->effective_credentials.uid,
-			ua_sess->effective_credentials.gid);
+			ua_sess->effective_credentials.gid, ua_sess->tracing_id,
+			app->uid);
 	if (ret < 0) {
 		/*
 		 * reg_pid->registry->reg.ust is NULL upon error, so we need to
@@ -2060,7 +2061,8 @@ static int setup_buffer_reg_uid(struct ltt_ust_session *usess,
 			app->uint64_t_alignment, app->long_alignment,
 			app->byte_order, app->version.major,
 			app->version.minor, reg_uid->root_shm_path,
-			reg_uid->shm_path, usess->uid, usess->gid);
+			reg_uid->shm_path, usess->uid, usess->gid,
+			ua_sess->tracing_id, app->uid);
 	if (ret < 0) {
 		/*
 		 * reg_uid->registry->reg.ust is NULL upon error, so we need to

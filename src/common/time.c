@@ -16,6 +16,7 @@
  */
 
 #include <common/time.h>
+#include <common/error.h>
 #include <common/macros.h>
 #include <common/error.h>
 #include <stddef.h>
