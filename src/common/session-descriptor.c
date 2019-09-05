@@ -1186,8 +1186,12 @@ int lttng_session_descriptor_get_base_path(struct lttng_session_descriptor *dst,
 	switch (dst->output_type) {
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
 	{
-		*_base_path = dst->output.network.control->subdir[0] ?
-				dst->output.network.control->subdir : NULL;
+		if (dst->output.network.control &&
+				dst->output.network.control->subdir[0]) {
+			*_base_path = dst->output.network.control->subdir;
+		} else {
+			*_base_path = NULL;
+		}
 		break;
 	}
 	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_LOCAL:
