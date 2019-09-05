@@ -536,7 +536,7 @@ void ust_app_destroy(struct ust_app *app)
 }
 static inline
 enum lttng_error_code ust_app_snapshot_record(struct ltt_ust_session *usess,
-		struct consumer_output *output, int wait, uint64_t max_stream_size)
+		const struct consumer_output *output, int wait, uint64_t max_stream_size)
 {
 	return 0;
 }
