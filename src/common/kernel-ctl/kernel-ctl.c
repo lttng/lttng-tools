@@ -22,6 +22,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <common/align.h>
+#include <common/macros.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <assert.h>
@@ -236,6 +237,22 @@ int kernctl_session_regenerate_metadata(int fd)
 int kernctl_session_regenerate_statedump(int fd)
 {
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_STATEDUMP);
+}
+
+int kernctl_session_set_name(int fd, const char *name)
+{
+	int ret;
+	struct lttng_kernel_session_name session_name;
+
+	ret = lttng_strncpy(session_name.name, name, sizeof(session_name.name));
+	if (ret) {
+		goto end;
+	}
+
+	ret = LTTNG_IOCTL_CHECK(
+			fd, LTTNG_KERNEL_SESSION_SET_NAME, &session_name);
+end:
+	return ret;
 }
 
 int kernctl_create_stream(int fd)

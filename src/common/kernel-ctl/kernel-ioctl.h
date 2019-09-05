@@ -145,6 +145,8 @@
 #define LTTNG_KERNEL_SESSION_METADATA_REGEN	_IO(0xF6, 0x59)
 /* 0x5A and 0x5B are reserved for a future ABI-breaking cleanup. */
 #define LTTNG_KERNEL_SESSION_STATEDUMP		_IO(0xF6, 0x5C)
+#define LTTNG_KERNEL_SESSION_SET_NAME		\
+	_IOR(0xF6, 0x5D, struct lttng_kernel_session_name)
 
 /* Channel FD ioctl */
 #define LTTNG_KERNEL_STREAM			_IO(0xF6, 0x62)
