@@ -922,7 +922,7 @@ int stream_init_packet(struct relay_stream *stream, size_t packet_size,
 		}
 		DBG("New stream packet causes stream file rotation: stream_id = %" PRIu64
 				", current_file_size = %" PRIu64
-				", packet_size = %" PRIu64 ", current_file_index = %" PRIu64
+				", packet_size = %zu, current_file_index = %" PRIu64
 				" new_file_index = %" PRIu64,
 				stream->stream_handle,
 				stream->tracefile_size_current, packet_size,
