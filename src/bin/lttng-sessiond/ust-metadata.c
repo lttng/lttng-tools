@@ -217,6 +217,43 @@ void sanitize_ctf_identifier(char *out, const char *in)
 	}
 }
 
+static
+int print_escaped_ctf_string(struct ust_registry_session *session, const char *string)
+{
+	int ret;
+	size_t i;
+	char cur;
+
+	i = 0;
+	cur = string[i];
+	while (cur != '\0') {
+		switch (cur) {
+		case '\n':
+			ret = lttng_metadata_printf(session, "%s", "\\n");
+			break;
+		case '\\':
+		case '"':
+			ret = lttng_metadata_printf(session, "%c", '\\');
+			if (ret) {
+				goto error;
+			}
+			/* We still print the current char */
+			/* Fallthrough */
+		default:
+			ret = lttng_metadata_printf(session, "%c", cur);
+			break;
+		}
+
+		if (ret) {
+			goto error;
+		}
+
+		cur = string[++i];
+	}
+error:
+	return ret;
+}
+
 /* Called with session registry mutex held. */
 static
 int ust_metadata_enum_statedump(struct ust_registry_session *session,
@@ -869,6 +906,98 @@ int64_t measure_clock_offset(void)
 	return offset_best_sample.offset;
 }
 
+static
+int print_metadata_session_information(struct ust_registry_session *registry)
+{
+	int ret;
+	struct ltt_session *session = NULL;
+	char creation_datetime[ISO8601_STR_LEN];
+
+	rcu_read_lock();
+	session = session_find_by_id(registry->tracing_id);
+	if (!session) {
+		ret = -1;
+		goto error;
+	}
+
+	/* Print the trace name */
+	ret = lttng_metadata_printf(registry, "	trace_name = \"");
+	if (ret) {
+		goto error;
+	}
+
+	/*
+	 * This is necessary since the creation time is present in the session
+	 * name when it is generated.
+	 */
+	if (session->has_auto_generated_name) {
+		ret = print_escaped_ctf_string(registry, DEFAULT_SESSION_NAME);
+	} else {
+		ret = print_escaped_ctf_string(registry, session->name);
+	}
+	if (ret) {
+		goto error;
+	}
+
+	ret = lttng_metadata_printf(registry, "\";\n");
+	if (ret) {
+		goto error;
+	}
+
+	/* Prepare creation time */
+	ret = time_to_iso8601_str(session->creation_time, creation_datetime,
+			sizeof(creation_datetime));
+	if (ret) {
+		goto error;
+	}
+
+	/* Output the reste of the information */
+	ret = lttng_metadata_printf(registry,
+			"	trace_creation_datetime = \"%s\";\n"
+			"	hostname = \"%s\";\n",
+			creation_datetime, session->hostname);
+	if (ret) {
+		goto error;
+	}
+
+error:
+	if (session) {
+		session_put(session);
+	}
+	rcu_read_unlock();
+	return ret;
+}
+
+static
+int print_metadata_app_information(struct ust_registry_session *registry,
+		struct ust_app *app)
+{
+	int ret;
+	char datetime[ISO8601_STR_LEN];
+
+	if (!app) {
+		ret = 0;
+		goto end;
+	}
+
+	ret = time_to_iso8601_str(
+			app->registration_time, datetime, sizeof(datetime));
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_metadata_printf(registry,
+			"	tracer_patchlevel = %u;\n"
+			"	vpid = %d;\n"
+			"	procname = \"%s\";\n"
+			"	vpid_datetime = \"%s\";\n",
+			app->version.patchlevel, (int) app->pid, app->name,
+			datetime);
+
+end:
+	return ret;
+}
+
 /*
  * Should be called with session registry mutex held.
  */
@@ -880,7 +1009,6 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	char uuid_s[UUID_STR_LEN],
 		clock_uuid_s[UUID_STR_LEN];
 	int ret = 0;
-	char hostname[HOST_NAME_MAX];
 
 	assert(session);
 
@@ -930,40 +1058,36 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 	if (ret)
 		goto end;
 
-	/* ignore error, just use empty string if error. */
-	hostname[0] = '\0';
-	ret = gethostname(hostname, sizeof(hostname));
-	if (ret && errno == ENAMETOOLONG)
-		hostname[HOST_NAME_MAX - 1] = '\0';
 	ret = lttng_metadata_printf(session,
 		"env {\n"
-		"	hostname = \"%s\";\n"
 		"	domain = \"ust\";\n"
 		"	tracer_name = \"lttng-ust\";\n"
 		"	tracer_major = %u;\n"
-		"	tracer_minor = %u;\n",
-		hostname,
+		"	tracer_minor = %u;\n"
+		"	tracer_buffering_scheme = \"%s\";\n"
+		"	tracer_buffering_id = %u;\n"
+		"	architecture_bit_width = %u;\n",
 		major,
-		minor
-		);
-	if (ret)
+		minor,
+		app ? "pid" : "uid",
+		app ? (int) app->pid : (int) session->tracing_uid,
+		session->bits_per_long);
+	if (ret) {
 		goto end;
+	}
+
+	ret = print_metadata_session_information(session);
+	if (ret) {
+		goto end;
+	}
 
 	/*
 	 * If per-application registry, we can output extra information
 	 * about the application.
 	 */
-	if (app) {
-		ret = lttng_metadata_printf(session,
-			"	tracer_patchlevel = %u;\n"
-			"	vpid = %d;\n"
-			"	procname = \"%s\";\n",
-			app->version.patchlevel,
-			(int) app->pid,
-			app->name
-			);
-		if (ret)
-			goto end;
+	ret = print_metadata_app_information(session, app);
+	if (ret) {
+		goto end;
 	}
 
 	ret = lttng_metadata_printf(session,

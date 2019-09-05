@@ -880,7 +880,9 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		const char *root_shm_path,
 		const char *shm_path,
 		uid_t euid,
-		gid_t egid)
+		gid_t egid,
+		uint64_t tracing_id,
+		uid_t tracing_uid)
 {
 	int ret;
 	struct ust_registry_session *session;
@@ -961,6 +963,9 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		ERR("Failed to generate UST uuid (errno = %d)", ret);
 		goto error;
 	}
+
+	session->tracing_id = tracing_id;
+	session->tracing_uid = tracing_uid;
 
 	pthread_mutex_lock(&session->lock);
 	ret = ust_metadata_session_statedump(session, app, major, minor);

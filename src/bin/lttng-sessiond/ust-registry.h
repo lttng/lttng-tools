@@ -131,6 +131,10 @@ struct ust_registry_session {
 	 */
 	uint32_t major;
 	uint32_t minor;
+
+	/* The id of the parent session */
+	uint64_t tracing_id;
+	uid_t tracing_uid;
 };
 
 struct ust_registry_channel {
@@ -291,7 +295,9 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		const char *root_shm_path,
 		const char *shm_path,
 		uid_t euid,
-		gid_t egid);
+		gid_t egid,
+		uint64_t tracing_id,
+		uid_t tracing_uid);
 void ust_registry_session_destroy(struct ust_registry_session *session);
 
 int ust_registry_create_event(struct ust_registry_session *session,
@@ -351,7 +357,15 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uint32_t uint32_t_alignment,
 		uint32_t uint64_t_alignment,
 		uint32_t long_alignment,
-		int byte_order)
+		int byte_order,
+		uint32_t major,
+		uint32_t minor,
+		const char *root_shm_path,
+		const char *shm_path,
+		uid_t euid,
+		gid_t egid,
+		uint64_t tracing_id,
+		uid_t tracing_uid);
 {
 	return 0;
 }
