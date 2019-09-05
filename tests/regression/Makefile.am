@@ -31,7 +31,8 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \
 	tools/rotation/test_save_load_mi \
-	tools/rotation/test_schedule_api
+	tools/rotation/test_schedule_api \
+	tools/metadata/test_kernel
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
@@ -50,7 +51,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/test_event_perf \
 	ust/blocking/test_blocking \
 	ust/multi-lib/test_multi_lib \
-	ust/rotation-destroy-flush/test_rotation_destroy_flush
+	ust/rotation-destroy-flush/test_rotation_destroy_flush \
+	tools/metadata/test_ust
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING

@@ -1,0 +1,258 @@
+#!/bin/bash
+#
+# Copyright (C) - 2019 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+TEST_DESC="Metadata env - User space tracing"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../..
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+EVENT_NAME="tp:tptest"
+
+TRACE_PATH=$(mktemp -d)
+
+NUM_TESTS=37
+
+NR_ITER=10
+NR_USEC_WAIT=0
+
+source "$TESTDIR/utils/utils.sh"
+
+# Fetch utils functions common to ust and kernel tests.
+source "$CURDIR/utils.sh"
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST events binary detected."
+fi
+
+function test_per_uid ()
+{
+	local metadata
+	local metadata_env
+	local metadata_path
+	local value
+	local value2
+
+	local expected_path="${TRACE_PATH}/lttng-traces"
+	local session_name="per-uid"
+
+	metadata=$(mktemp)
+	metadata_env=$(mktemp)
+
+	diag "Test UST metadata env field in per-uid mode"
+	create_lttng_session_ok "$session_name"
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME
+	start_lttng_tracing_ok "$session_name"
+
+	$TESTAPP_BIN $NR_ITER
+
+	stop_lttng_tracing_ok "$session_name"
+	destroy_lttng_session_ok "$session_name"
+
+	# bt1 accepts only a directory while bt2 accepts either the metadata
+	# file directly or a directory with an immediate metadata file.
+	# Settle for the common denominator.
+	metadata_path=$(find "${expected_path}/${session_name}"* | grep metadata)
+	metadata_path=$(dirname "$metadata_path")
+
+	$BABELTRACE_BIN --output-format=ctf-metadata "${metadata_path}" > "$metadata"
+
+	# Extract "env" scope
+	awk '/env {/,/};/' < "$metadata" > "$metadata_env"
+
+	# Construct the expected path from the env metadata and use it to
+	# validate that all information make sense. This information is present
+	# to allow trace viewer to recreate the same directory hierarchy.
+
+	# Trace name
+	value=$(get_env_value "$metadata_env" trace_name)
+	ok $? "Extracting trace_name from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Session creation time
+	value=$(get_env_value "$metadata_env" trace_creation_datetime)
+	ok $? "Extracting trace_creation_datetime from env metadata"
+	value=$(iso8601_to_lttng_dir_datetime "$value")
+	expected_path="${expected_path}-${value}"
+
+	# Domain
+	value=$(get_env_value "$metadata_env" domain)
+	ok $? "Extracting domain from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Buffering scheme
+	value=$(get_env_value "$metadata_env" tracer_buffering_scheme)
+	ok $? "Extracting tracer_buffering_scheme from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# tracer_buffering_id
+	value=$(get_env_value "$metadata_env" tracer_buffering_id)
+	ok $? "Extracting tracer_buffering_id from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Check that the uid is the one we expect from the current user
+	is "$value" "$(id -u)" "tracer_buffering_id match current user uid"
+
+	# Architecture_bit_width
+	value=$(get_env_value "$metadata_env" architecture_bit_width)
+	ok $? "Extracting architecture_bit_width from env metadata"
+	expected_path="${expected_path}/${value}-bit"
+
+	# Append "metadata" and test that we find the file.
+	expected_path="${expected_path}/metadata"
+
+	test -e "$expected_path"
+	ok $? "Reconstructed path from metadata is valid"
+
+	# Hostname
+	# The hostname is not part of the lttng hierarchy still we can test for
+	# its validity here.
+	value=$(get_env_value "$metadata_env" hostname)
+	ok $? "Extracting hostname from env metadata"
+	is "$value" "$(hostname)" "Hostname is valid"
+
+	rm -f "$metadata"
+	rm -f "$metadata_env"
+}
+
+function test_per_pid ()
+{
+	local metadata
+	local metadata_env
+	local metadata_path
+	local testapp_pid
+	local value
+	local value2
+
+	local expected_path="${TRACE_PATH}/lttng-traces"
+	local session_name="per-pid"
+
+	metadata=$(mktemp)
+	metadata_env=$(mktemp)
+
+	diag "Test UST metadata env field in per-pid mode"
+	create_lttng_session_ok "$session_name"
+	enable_ust_lttng_channel_ok "$session_name" channel "--buffers-pid"
+	enable_ust_lttng_event_ok "$session_name" $EVENT_NAME channel
+	start_lttng_tracing_ok "$session_name"
+
+	$TESTAPP_BIN "$NR_ITER" "$NR_USEC_WAIT" &
+	testapp_pid=$!
+	wait $testapp_pid
+
+	stop_lttng_tracing_ok "$session_name"
+	destroy_lttng_session_ok "$session_name"
+
+	# bt1 accepts only a directory while bt2 accepts either the metadata
+	# file directly or a directory with an immediate metadata file.
+	# Settle for the common denominator.
+	metadata_path=$(find "${expected_path}/${session_name}"* | grep metadata)
+	metadata_path=$(dirname "$metadata_path")
+
+	$BABELTRACE_BIN --output-format=ctf-metadata "${metadata_path}" 1> "$metadata"
+
+	# Extract "env" scope
+	awk '/env {/,/};/' < "$metadata" > "$metadata_env"
+
+	# Construct the expected path from the env metadata and use it to
+	# validate that all information make sense. This information is present
+	# to allow trace viewer to recreate the same directory hierarchy.
+
+	# Trace name
+	value=$(get_env_value "$metadata_env" trace_name)
+	ok $? "Extracting trace_name from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Session creation time
+	value=$(get_env_value "$metadata_env" trace_creation_datetime)
+	ok $? "Extracting trace_creation_datetime from env metadata"
+	value=$(iso8601_to_lttng_dir_datetime "$value")
+	expected_path="${expected_path}-${value}"
+
+	# Domain
+	value=$(get_env_value "$metadata_env" domain)
+	ok $? "Extracting domain from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Buffering scheme
+	value=$(get_env_value "$metadata_env" tracer_buffering_scheme)
+	ok $? "Extracting tracer_buffering_scheme from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# Procname
+	value=$(get_env_value "$metadata_env" procname)
+	ok $? "Extracting procname from env metadata"
+	expected_path="${expected_path}/${value}"
+
+	# vpid and tracer_buffering_id should be the same here.
+	# "vpid =" is used since other key have vpid in them.
+	value=$(get_env_value "$metadata_env" "vpid =")
+	ok $? "Extracting vpid from env metadata"
+
+	value2=$(get_env_value "$metadata_env" tracer_buffering_id)
+	ok $? "Extracting tracer_buffering_id from env metadata"
+	expected_path="${expected_path}-${value2}"
+
+	is "$value" "$value2" "vpid and tracer_buffering_id are identical"
+	is "$testapp_pid" "$value" "vpid and known testapp pid are identical"
+	is "$testapp_pid" "$value2" "tracer_buffering_id and known testapp pid are identical"
+
+	# vpid_datetime
+	value=$(get_env_value "$metadata_env" vpid_datetime)
+	ok $? "Extracting vpid_datetime from env metadata"
+	value=$(iso8601_to_lttng_dir_datetime "$value")
+	expected_path="${expected_path}-${value}"
+
+	# Append "metadata" and test that we find the file.
+	expected_path="${expected_path}/metadata"
+
+	test -e "$expected_path"
+	ok $? "Reconstructed path from metadata is valid"
+
+	# Hostname
+	# The hostname is not part of the lttng hierarchy still we can test for
+	# its validity here.
+	value=$(get_env_value "$metadata_env" hostname)
+	ok $? "Extracting hostname from env metadata"
+	is "$value" "$(hostname)" "Hostname is valid"
+
+	rm -f "$metadata"
+	rm -f "$metadata_env"
+}
+
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+# Use LTTNG_HOME since we want the complete "default" lttng directory hierarchy
+# with "<session_name>-<datetime>/...".
+LTTNG_HOME="$TRACE_PATH"
+
+export LTTNG_HOME
+start_lttng_sessiond
+
+tests=( test_per_uid test_per_pid )
+
+for fct_test in "${tests[@]}";
+do
+	${fct_test}
+done
+
+stop_lttng_sessiond
+unset LTTNG_HOME
+
+rm -rf "$TRACE_PATH"
