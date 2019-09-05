@@ -900,7 +900,14 @@ function create_lttng_session ()
 	local trace_path=$4
 	local opt=$5
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create $sess_name -o $trace_path $opt > $OUTPUT_DEST
+	if [ -z "$trace_path" ]; then
+		# Use lttng-sessiond default output.
+		trace_path=""
+	else
+		trace_path="-o $trace_path"
+	fi
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN create "$sess_name" $trace_path $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ret=$?
 	if [ $expected_to_fail -eq "1" ]; then
 		test "$ret" -ne "0"
