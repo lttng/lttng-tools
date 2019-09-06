@@ -40,6 +40,7 @@
 #include <urcu/rculist.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <strings.h>
 
 #include <lttng/lttng.h>
 #include <common/common.h>
