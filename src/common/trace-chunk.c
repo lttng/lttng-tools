@@ -656,7 +656,7 @@ int add_top_level_directory_unique(struct lttng_trace_chunk *chunk,
 	}
 
 	if (!found) {
-		char *copy = strndup(new_path, new_path_top_level_len);
+		char *copy = lttng_strndup(new_path, new_path_top_level_len);
 
 		DBG("Adding new top-level directory \"%s\" to trace chunk \"%s\"",
 				new_path, chunk->name ? : "(unnamed)");
