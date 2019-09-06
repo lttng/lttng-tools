@@ -22,14 +22,13 @@
 #include <time.h>
 #include <stdbool.h>
 #include <common/macros.h>
+#include <common/compat/time.h>
 
 #define MSEC_PER_SEC    1000ULL
 #define NSEC_PER_SEC    1000000000ULL
 #define NSEC_PER_MSEC   1000000ULL
 #define NSEC_PER_USEC   1000ULL
-#ifndef USEC_PER_SEC
 #define USEC_PER_SEC    1000000ULL
-#endif
 #define USEC_PER_MSEC   1000ULL
 
 #define SEC_PER_MINUTE  60ULL

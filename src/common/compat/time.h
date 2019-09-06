@@ -36,6 +36,7 @@ typedef uint64_t timer_t;
 #undef NSEC_PER_SEC
 #undef NSEC_PER_MSEC
 #undef NSEC_PER_USEC
+#undef USEC_PER_SEC
 
 #endif /* __APPLE__ */
 
