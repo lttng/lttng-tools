@@ -365,7 +365,7 @@ int ust_registry_session_init(struct ust_registry_session **sessionp,
 		uid_t euid,
 		gid_t egid,
 		uint64_t tracing_id,
-		uid_t tracing_uid);
+		uid_t tracing_uid)
 {
 	return 0;
 }
