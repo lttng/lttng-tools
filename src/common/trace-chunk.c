@@ -410,7 +410,7 @@ bool is_valid_chunk_name(const char *name)
 		return false;
 	}
 
-	len = strnlen(name, LTTNG_NAME_MAX);
+	len = lttng_strnlen(name, LTTNG_NAME_MAX);
 	if (len == 0 || len == LTTNG_NAME_MAX) {
 		return false;
 	}
