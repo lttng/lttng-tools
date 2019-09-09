@@ -2693,6 +2693,7 @@ int cmd_stop_trace(struct ltt_session *session)
 			ret = kernel_metadata_flush_buffer(ksession->metadata_stream_fd);
 			if (ret < 0) {
 				ERR("Kernel metadata flush failed");
+				error_occurred = true;
 			}
 		}
 
@@ -2701,6 +2702,7 @@ int cmd_stop_trace(struct ltt_session *session)
 			ret = kernel_flush_buffer(kchan);
 			if (ret < 0) {
 				ERR("Kernel flush buffer error");
+				error_occurred = true;
 			}
 		}
 
