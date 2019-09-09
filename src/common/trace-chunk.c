@@ -165,8 +165,9 @@ char *generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp,
 {
 	int ret = 0;
 	char *new_name= NULL;
-	char start_datetime[sizeof("YYYYmmddTHHMMSS+HHMM")] = {};
-	char end_datetime_suffix[sizeof("-YYYYmmddTHHMMSS+HHMM")] = {};
+	char start_datetime[ISO8601_STR_LEN] = {};
+	/* Add 1 for a '-' prefix. */
+	char end_datetime_suffix[ISO8601_STR_LEN + 1] = {};
 
 	ret = time_to_iso8601_str(
 			creation_timestamp,
@@ -180,7 +181,7 @@ char *generate_chunk_name(uint64_t chunk_id, time_t creation_timestamp,
 		ret = time_to_iso8601_str(
 				*close_timestamp,
 				end_datetime_suffix + 1,
-				sizeof(end_datetime_suffix));
+				sizeof(end_datetime_suffix) - 1);
 		if (ret) {
 			ERR("Failed to format trace chunk end date time");
 			goto error;
