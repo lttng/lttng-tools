@@ -5885,6 +5885,7 @@ enum lttng_error_code ust_app_snapshot_record(
 	enum lttng_error_code status = LTTNG_OK;
 	struct lttng_ht_iter iter;
 	struct ust_app *app;
+	char *trace_path = NULL;
 
 	assert(usess);
 	assert(output);
@@ -5899,7 +5900,6 @@ enum lttng_error_code ust_app_snapshot_record(
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
 			struct buffer_reg_channel *reg_chan;
 			struct consumer_socket *socket;
-			char *trace_path = NULL;
 			char pathname[PATH_MAX];
 
 			if (!reg->registry->reg.ust->metadata_key) {
@@ -5928,6 +5928,8 @@ enum lttng_error_code ust_app_snapshot_record(
 				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
+			/* Free path allowed on previous iteration. */
+			free(trace_path);
 			trace_path = setup_channel_trace_path(usess->consumer, pathname);
 			if (!trace_path) {
 				status = LTTNG_ERR_INVALID;
@@ -5942,14 +5944,12 @@ enum lttng_error_code ust_app_snapshot_record(
 						usess->gid, trace_path, wait,
 						nb_packets_per_stream);
 				if (status != LTTNG_OK) {
-					free(trace_path);
 					goto error;
 				}
 			}
 			status = consumer_snapshot_channel(socket,
 					reg->registry->reg.ust->metadata_key, output, 1,
 					usess->uid, usess->gid, trace_path, wait, 0);
-			free(trace_path);
 			if (status != LTTNG_OK) {
 				goto error;
 			}
@@ -5964,7 +5964,6 @@ enum lttng_error_code ust_app_snapshot_record(
 			struct ust_app_channel *ua_chan;
 			struct ust_app_session *ua_sess;
 			struct ust_registry_session *registry;
-			char *trace_path = NULL;
 			char pathname[PATH_MAX];
 
 			ua_sess = lookup_session_by_app(usess, app);
@@ -5990,6 +5989,8 @@ enum lttng_error_code ust_app_snapshot_record(
 				PERROR("snprintf snapshot path");
 				goto error;
 			}
+			/* Free path allowed on previous iteration. */
+			free(trace_path);
 			trace_path = setup_channel_trace_path(usess->consumer, pathname);
 			if (!trace_path) {
 				status = LTTNG_ERR_INVALID;
@@ -6009,10 +6010,8 @@ enum lttng_error_code ust_app_snapshot_record(
 				case LTTNG_OK:
 					break;
 				case LTTNG_ERR_CHAN_NOT_FOUND:
-					free(trace_path);
 					continue;
 				default:
-					free(trace_path);
 					goto error;
 				}
 			}
@@ -6027,7 +6026,6 @@ enum lttng_error_code ust_app_snapshot_record(
 					ua_sess->effective_credentials.uid,
 					ua_sess->effective_credentials.gid,
 					trace_path, wait, 0);
-			free(trace_path);
 			switch (status) {
 			case LTTNG_OK:
 				break;
@@ -6045,6 +6043,7 @@ enum lttng_error_code ust_app_snapshot_record(
 	}
 
 error:
+	free(trace_path);
 	rcu_read_unlock();
 	return status;
 }
