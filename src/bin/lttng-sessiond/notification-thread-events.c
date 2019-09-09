@@ -928,7 +928,10 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 		ret = -1;
 		goto end;
 	}
-
+	if (ret) {
+		/* Fatal error. */
+		goto end;
+	}
 	if (!evaluation) {
 		/* Evaluation yielded nothing. Normal exit. */
 		DBG("[notification-thread] Newly subscribed-to condition evaluated to false, nothing to report to client");
