@@ -213,6 +213,7 @@ int trace_chunk_registry_ht_element_create(
 	urcu_ref_init(&new_element->ref);
 	cds_lfht_node_init(&new_element->ht_node);
 	new_element->trace_chunk_registry = trace_chunk_registry;
+	trace_chunk_registry = NULL;
 
 	/* Attempt to publish the new element. */
 	rcu_read_lock();
@@ -261,6 +262,7 @@ end:
 		ERR("Failed to create trace chunk registry for session daemon {%s}",
 				uuid_str);
 	}
+	lttng_trace_chunk_registry_destroy(trace_chunk_registry);
 	return ret;
 }
 
