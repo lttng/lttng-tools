@@ -389,6 +389,9 @@ void session_release(struct urcu_ref *ref)
 
 void session_put(struct relay_session *session)
 {
+	if (!session) {
+		return;
+	}
 	rcu_read_lock();
 	urcu_ref_put(&session->ref, session_release);
 	rcu_read_unlock();
