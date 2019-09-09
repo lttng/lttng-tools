@@ -1096,7 +1096,7 @@ end:
 	return registry;
 error:
 	lttng_trace_chunk_registry_destroy(registry);
-	goto end;
+	return NULL;
 }
 
 LTTNG_HIDDEN
