@@ -4633,6 +4633,7 @@ error:
 	rcu_read_unlock();
 	/* Release the reference returned by the "publish" operation. */
 	lttng_trace_chunk_put(published_chunk);
+	lttng_trace_chunk_put(created_chunk);
 end:
 	return ret_code;
 }
