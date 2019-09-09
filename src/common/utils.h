@@ -44,10 +44,6 @@ int utils_set_fd_cloexec(int fd);
 int utils_create_pid_file(pid_t pid, const char *filepath);
 int utils_mkdir(const char *path, mode_t mode, int uid, int gid);
 int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid);
-int utils_create_stream_file(const char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, char *suffix);
-int utils_unlink_stream_file(const char *path_name, char *file_name, uint64_t size,
-		uint64_t count, int uid, int gid, char *suffix);
 int utils_stream_file_path(const char *path_name, const char *file_name,
 		uint64_t size, uint64_t count, const char *suffix,
 		char *out_stream_path, size_t stream_path_len);
