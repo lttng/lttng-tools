@@ -2386,13 +2386,6 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		}
 	}
 
-	ret = session_init_output_directory_handle(
-			conn->session, &session_output);
-	if (ret) {
-		reply_code = LTTNG_ERR_CREATE_DIR_FAIL;
-		goto end;
-	}
-
 	chunk_status = lttng_trace_chunk_set_credentials_current_user(chunk);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		reply_code = LTTNG_ERR_UNK;
@@ -2400,7 +2393,14 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
+	ret = session_init_output_directory_handle(
+			conn->session, &session_output);
+	if (ret) {
+		reply_code = LTTNG_ERR_CREATE_DIR_FAIL;
+		goto end;
+	}
 	chunk_status = lttng_trace_chunk_set_as_owner(chunk, &session_output);
+	lttng_directory_handle_fini(&session_output);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		reply_code = LTTNG_ERR_UNK;
 		ret = -1;
@@ -2456,7 +2456,6 @@ end:
 end_no_reply:
 	lttng_trace_chunk_put(chunk);
 	lttng_trace_chunk_put(published_chunk);
-	lttng_directory_handle_fini(&session_output);
 	return ret;
 }
 
