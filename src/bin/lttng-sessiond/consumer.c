@@ -84,7 +84,6 @@ char *setup_channel_trace_path(struct consumer_output *consumer,
 		goto error;
 	} else if (ret >= LTTNG_PATH_MAX) {
 		ERR("Truncation occurred while formatting channel path");
-		ret = -1;
 		goto error;
 	}
 
