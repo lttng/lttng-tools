@@ -482,7 +482,6 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			ret_error_code = ust_app_create_channel_subdirectories(
 					session->ust_session);
 			if (ret_error_code != LTTNG_OK) {
-				ret = -ret_error_code;
 				goto error;
 			}
                 }
@@ -513,7 +512,6 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			ret_error_code = kernel_create_channel_subdirectories(
 					session->kernel_session);
 			if (ret_error_code != LTTNG_OK) {
-				ret = -ret_error_code;
 				goto error;
 			}
                 }
