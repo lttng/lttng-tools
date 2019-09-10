@@ -190,6 +190,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 
 	if (uevent->enabled) {
 		/* It's already enabled so everything is OK */
+		assert(!to_create);
 		ret = LTTNG_ERR_UST_EVENT_ENABLED;
 		goto end;
 	}
