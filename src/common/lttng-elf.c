@@ -309,38 +309,32 @@ error:
  * Retrieve the nth (where n is the `index` argument) shdr (section
  * header) from the given elf instance.
  *
- * A pointer to the shdr is returned on success, NULL on failure.
+ * 0 is returned on succes, -1 on failure.
  */
 static
-struct lttng_elf_shdr *lttng_elf_get_section_hdr(struct lttng_elf *elf,
-		uint16_t index)
+int lttng_elf_get_section_hdr(struct lttng_elf *elf,
+		uint16_t index, struct lttng_elf_shdr *out_header)
 {
-	struct lttng_elf_shdr *section_header = NULL;
 	int ret = 0;
 
 	if (!elf) {
+		ret = -1;
 		goto error;
 	}
 
 	if (index >= elf->ehdr->e_shnum) {
+		ret = -1;
 		goto error;
 	}
 
-	section_header = zmalloc(sizeof(struct lttng_elf_shdr));
-	if (!section_header) {
-		goto error;
-	}
-
-	ret = populate_section_header(elf, section_header, index);
+	ret = populate_section_header(elf, out_header, index);
 	if (ret) {
 		DBG("Error populating section header.");
 		goto error;
 	}
-	return section_header;
 
 error:
-	free(section_header);
-	return NULL;
+	return ret;
 }
 
 /*
@@ -534,7 +528,7 @@ end:
 static
 struct lttng_elf *lttng_elf_create(int fd)
 {
-	struct lttng_elf_shdr *section_names_shdr;
+	struct lttng_elf_shdr section_names_shdr;
 	struct lttng_elf *elf = NULL;
 	int ret;
 
@@ -559,15 +553,14 @@ struct lttng_elf *lttng_elf_create(int fd)
 		goto error;
 	}
 
-	section_names_shdr = lttng_elf_get_section_hdr(elf, elf->ehdr->e_shstrndx);
-	if (!section_names_shdr) {
+	ret = lttng_elf_get_section_hdr(
+			elf, elf->ehdr->e_shstrndx, &section_names_shdr);
+	if (ret) {
 		goto error;
 	}
 
-	elf->section_names_offset = section_names_shdr->sh_offset;
-	elf->section_names_size = section_names_shdr->sh_size;
-
-	free(section_names_shdr);
+	elf->section_names_offset = section_names_shdr.sh_offset;
+	elf->section_names_size = section_names_shdr.sh_size;
 	return elf;
 
 error:
@@ -606,15 +599,19 @@ void lttng_elf_destroy(struct lttng_elf *elf)
 
 static
 int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
-		const char *section_name, struct lttng_elf_shdr **section_hdr)
+		const char *section_name, struct lttng_elf_shdr *section_hdr)
 {
 	int i;
 	char *curr_section_name;
-	for (i = 0; i < elf->ehdr->e_shnum; ++i) {
-		*section_hdr = lttng_elf_get_section_hdr(elf, i);
-		curr_section_name = lttng_elf_get_section_name(elf,
-				(*section_hdr)->sh_name);
 
+	for (i = 0; i < elf->ehdr->e_shnum; ++i) {
+	        int ret = lttng_elf_get_section_hdr(elf, i, section_hdr);
+
+		if (ret) {
+			break;
+		}
+		curr_section_name = lttng_elf_get_section_name(elf,
+				section_hdr->sh_name);
 		if (!curr_section_name) {
 			continue;
 		}
@@ -678,7 +675,7 @@ int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
 	off_t text_section_addr_beg;
 	off_t text_section_addr_end;
 	off_t offset_in_section;
-	struct lttng_elf_shdr *text_section_hdr = NULL;
+	struct lttng_elf_shdr text_section_hdr;
 
 	if (!elf_handle) {
 		DBG("Invalid ELF handle.");
@@ -695,9 +692,10 @@ int lttng_elf_convert_addr_in_text_to_offset(struct lttng_elf *elf_handle,
 		goto error;
 	}
 
-	text_section_offset = text_section_hdr->sh_offset;
-	text_section_addr_beg = text_section_hdr->sh_addr;
-	text_section_addr_end = text_section_addr_beg + text_section_hdr->sh_size;
+	text_section_offset = text_section_hdr.sh_offset;
+	text_section_addr_beg = text_section_hdr.sh_addr;
+	text_section_addr_end =
+			text_section_addr_beg + text_section_hdr.sh_size;
 
 	/*
 	 * Verify that the address is within the .text section boundaries.
@@ -739,8 +737,8 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	char *symbol_table_data = NULL;
 	char *string_table_data = NULL;
 	char *string_table_name = NULL;
-	struct lttng_elf_shdr *symtab_hdr = NULL;
-	struct lttng_elf_shdr *strtab_hdr = NULL;
+	struct lttng_elf_shdr symtab_hdr;
+	struct lttng_elf_shdr strtab_hdr;
 	struct lttng_elf *elf = NULL;
 
 	if (!symbol || !offset ) {
@@ -778,7 +776,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	}
 
 	/* Get the data associated with the symbol table section. */
-	symbol_table_data = lttng_elf_get_section_data(elf, symtab_hdr);
+	symbol_table_data = lttng_elf_get_section_data(elf, &symtab_hdr);
 	if (symbol_table_data == NULL) {
 		DBG("Cannot get ELF Symbol Table data.");
 		ret = LTTNG_ERR_ELF_PARSING;
@@ -794,7 +792,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	}
 
 	/* Get the data associated with the string table section. */
-	string_table_data = lttng_elf_get_section_data(elf, strtab_hdr);
+	string_table_data = lttng_elf_get_section_data(elf, &strtab_hdr);
 	if (string_table_data == NULL) {
 		DBG("Cannot get ELF string table section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
@@ -802,7 +800,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	}
 
 	/* Get the number of symbol in the table for the iteration. */
-	sym_count = symtab_hdr->sh_size / symtab_hdr->sh_entsize;
+	sym_count = symtab_hdr.sh_size / symtab_hdr.sh_entsize;
 
 	/* Loop over all symbol. */
 	for (sym_idx = 0; sym_idx < sym_count; sym_idx++) {
@@ -888,7 +886,7 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 		const char *probe_name, uint64_t **offsets, uint32_t *nb_probes)
 {
 	int ret = 0, nb_match = 0;
-	struct lttng_elf_shdr *stap_note_section_hdr = NULL;
+	struct lttng_elf_shdr stap_note_section_hdr;
 	struct lttng_elf *elf = NULL;
 	char *stap_note_section_data = NULL;
 	char *curr_note_section_begin, *curr_data_ptr, *curr_probe, *curr_provider;
@@ -919,7 +917,8 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 	}
 
 	/* Get the data associated with the stap note section. */
-	stap_note_section_data = lttng_elf_get_section_data(elf, stap_note_section_hdr);
+	stap_note_section_data =
+			lttng_elf_get_section_data(elf, &stap_note_section_hdr);
 	if (stap_note_section_data == NULL) {
 		DBG("Cannot get ELF stap note section data.");
 		ret = LTTNG_ERR_ELF_PARSING;
@@ -934,7 +933,8 @@ int lttng_elf_get_sdt_probe_offsets(int fd, const char *provider_name,
 		curr_data_ptr = next_note_ptr;
 		/* Check if we have reached the end of the note section. */
 		if (curr_data_ptr >=
-				curr_note_section_begin + stap_note_section_hdr->sh_size) {
+				curr_note_section_begin +
+						stap_note_section_hdr.sh_size) {
 			*nb_probes = nb_match;
 			*offsets = probe_locs;
 			ret = 0;
