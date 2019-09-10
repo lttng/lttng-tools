@@ -1157,21 +1157,24 @@ send_reply:
 		}
 	} else {
 		const uint32_t output_path_length =
-				strlen(session->output_path) + 1;
+				session ? strlen(session->output_path) + 1 : 0;
 
 		reply.output_path_length = htobe32(output_path_length);
-		ret = lttng_dynamic_buffer_append(&reply_payload, &reply,
-				sizeof(reply));
+		ret = lttng_dynamic_buffer_append(
+				&reply_payload, &reply, sizeof(reply));
 		if (ret) {
 			ERR("Failed to append \"create session\" command reply header to payload buffer");
 			goto end;
 		}
 
-		ret = lttng_dynamic_buffer_append(&reply_payload,
-				session->output_path, output_path_length);
-		if (ret) {
-			ERR("Failed to append \"create session\" command reply path to payload buffer");
-			goto end;
+		if (output_path_length) {
+			ret = lttng_dynamic_buffer_append(&reply_payload,
+					session->output_path,
+					output_path_length);
+			if (ret) {
+				ERR("Failed to append \"create session\" command reply path to payload buffer");
+				goto end;
+			}
 		}
 	}
 
