@@ -181,17 +181,21 @@ struct relay_session *session_create(const char *session_name,
 	int ret;
 	struct relay_session *session = NULL;
 
-	if (session_name && strstr(session_name, ".")) {
+	assert(session_name);
+	assert(hostname);
+	assert(base_path);
+
+	if (strstr(session_name, ".")) {
 		ERR("Illegal character in session name: \"%s\"",
 				session_name);
 		goto error;
 	}
-	if (base_path && strstr(base_path, "../")) {
+	if (strstr(base_path, "../")) {
 		ERR("Invalid session base path walks up the path hierarchy: \"%s\"",
 				base_path);
 		goto error;
 	}
-	if (hostname && strstr(hostname, ".")) {
+	if (strstr(hostname, ".")) {
 		ERR("Invalid character in hostname: \"%s\"",
 				hostname);
 		goto error;
