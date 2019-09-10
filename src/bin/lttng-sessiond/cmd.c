@@ -912,6 +912,10 @@ static enum lttng_error_code add_uri_to_consumer(
 		ret = lttng_strncpy(consumer->dst.session_root_path,
 				uri->dst.path,
 				sizeof(consumer->dst.session_root_path));
+		if (ret) {
+			ret_code = LTTNG_ERR_FATAL;
+			goto error;
+		}
 		consumer->type = CONSUMER_DST_LOCAL;
 		break;
 	}
