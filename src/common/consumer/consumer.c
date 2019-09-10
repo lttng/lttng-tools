@@ -4461,7 +4461,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 {
 	int ret;
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
-	struct lttng_trace_chunk *created_chunk, *published_chunk;
+	struct lttng_trace_chunk *created_chunk = NULL, *published_chunk = NULL;
 	enum lttng_trace_chunk_status chunk_status;
 	char relayd_id_buffer[MAX_INT_DEC_LEN(*relayd_id)];
 	char creation_timestamp_buffer[ISO8601_STR_LEN];
@@ -4516,7 +4516,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	if (!created_chunk) {
 		ERR("Failed to create trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-		goto end;
+		goto error;
 	}
 
 	if (chunk_override_name) {
@@ -4524,7 +4524,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 				chunk_override_name);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-			goto end;
+			goto error;
 		}
 	}
 
@@ -4534,7 +4534,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ERR("Failed to set trace chunk credentials");
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-			goto end;
+			goto error;
 		}
 		/*
 		 * The consumer daemon has no ownership of the chunk output
@@ -4545,7 +4545,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ERR("Failed to set trace chunk's directory handle");
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-			goto end;
+			goto error;
 		}
 	}
 
@@ -4557,7 +4557,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	if (!published_chunk) {
 		ERR("Failed to publish trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-		goto end;
+		goto error;
 	}
 
 	rcu_read_lock();
@@ -4626,15 +4626,15 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 			}
 
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
-			goto error;
+			goto error_unlock;
 		}
 	}
-error:
+error_unlock:
 	rcu_read_unlock();
+error:
 	/* Release the reference returned by the "publish" operation. */
 	lttng_trace_chunk_put(published_chunk);
 	lttng_trace_chunk_put(created_chunk);
-end:
 	return ret_code;
 }
 
