@@ -127,6 +127,7 @@ static int handle_command(const char **argv)
 	}
 
 	argc = count_arguments(argv);
+	assert(argc >= 1);
 
 	cmd = &actions[i];
 	while (cmd->func != NULL) {
