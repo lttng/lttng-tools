@@ -220,7 +220,7 @@ void sanitize_ctf_identifier(char *out, const char *in)
 static
 int print_escaped_ctf_string(struct ust_registry_session *session, const char *string)
 {
-	int ret;
+	int ret = 0;
 	size_t i;
 	char cur;
 
