@@ -2282,6 +2282,7 @@ static int relay_rotate_session_streams(
 	}
 
 	reply_code = LTTNG_OK;
+	ret = 0;
 end:
 	if (stream) {
 		stream_put(stream);
@@ -2295,8 +2296,6 @@ end:
 				send_ret);
 		ret = -1;
 	}
-
-	ret = 0;
 end_no_reply:
 	lttng_trace_chunk_put(next_trace_chunk);
 	return ret;
