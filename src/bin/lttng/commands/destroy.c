@@ -161,6 +161,10 @@ static int destroy_session(struct lttng_session *session)
 
 	status = lttng_destruction_handle_get_rotation_state(handle,
 			&rotation_state);
+	if (status != LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
+		ERR("Failed to get rotation state from destruction handle");
+		goto skip_wait_rotation;
+	}
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_NO_ROTATION:
 		break;
