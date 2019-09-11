@@ -269,7 +269,6 @@ struct lttng_thread *launch_ht_cleanup_thread(void)
 			cleanup_ht_cleanup_thread,
 			NULL);
 	if (!thread) {
-		ret = -1;
 		goto error;
 	}
 	return thread;
