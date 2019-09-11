@@ -914,7 +914,6 @@ void *thread_rotation(void *data)
 					ret = lttng_read(fd, &buf, 1);
 					if (ret != 1) {
 						ERR("[rotation-thread] Failed to read from wakeup pipe (fd = %i)", fd);
-						ret = -1;
 						goto error;
 					}
 				} else {
