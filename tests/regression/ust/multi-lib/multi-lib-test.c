@@ -201,12 +201,15 @@ int main(int argc, const char **argv)
 	 * Populate the libraries array with the arguments passed to the process.
 	 */
 	while (poptPeekArg(optCon) != NULL) {
+		char **realloced_libraries = NULL;
+
 		nb_libraries++;
-		libraries = realloc(libraries, nb_libraries * sizeof(char *));
-		if (!libraries) {
+		realloced_libraries = realloc(libraries, nb_libraries * sizeof(char *));
+		if (!realloced_libraries) {
 			ret = -1;
 			goto error;
 		}
+		libraries = realloced_libraries;
 		libraries[nb_libraries - 1] = (char *) poptGetArg(optCon);
 	}
 
