@@ -423,7 +423,7 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 		struct lttng_trace_chunk *new_trace_chunk,
 		struct lttng_trace_chunk **_current_trace_chunk)
 {
-	int ret;
+	int ret = 0;
 	unsigned int i, refs_to_acquire = 0, refs_acquired = 0, refs_to_release = 0;
 	struct cds_lfht_iter iter;
 	struct consumer_socket *socket;
