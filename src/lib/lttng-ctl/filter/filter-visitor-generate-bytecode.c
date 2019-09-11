@@ -295,6 +295,9 @@ int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
 	}
 	ret = bytecode_push(&ctx->bytecode_reloc, symbol,
 				1, strlen(symbol) + 1);
+	if (ret) {
+		goto end;
+	}
 	ret = 1;	/* legacy */
 end:
 	free(insn);
