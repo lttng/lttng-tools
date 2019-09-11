@@ -2469,7 +2469,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		struct relay_connection *conn,
 		const struct lttng_buffer_view *payload)
 {
-	int ret = 0;
+	int ret = 0, buf_ret;
 	ssize_t send_ret;
 	struct relay_session *session = conn->session;
 	struct lttcomm_relayd_close_trace_chunk *msg;
@@ -2630,17 +2630,17 @@ end_unlock_session:
 end:
 	reply.generic.ret_code = htobe32((uint32_t) reply_code);
 	reply.path_length = htobe32((uint32_t) path_length);
-	ret = lttng_dynamic_buffer_append(
+	buf_ret = lttng_dynamic_buffer_append(
 			&reply_payload, &reply, sizeof(reply));
-	if (ret) {
+	if (buf_ret) {
 		ERR("Failed to append \"close trace chunk\" command reply header to payload buffer");
 		goto end_no_reply;
 	}
 
 	if (reply_code == LTTNG_OK) {
-		ret = lttng_dynamic_buffer_append(&reply_payload,
+		buf_ret = lttng_dynamic_buffer_append(&reply_payload,
 				closed_trace_chunk_path, path_length);
-		if (ret) {
+		if (buf_ret) {
 			ERR("Failed to append \"close trace chunk\" command reply path to payload buffer");
 			goto end_no_reply;
 		}
