@@ -210,6 +210,16 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	struct stream_fd *previous_stream_fd = NULL;
 	struct lttng_trace_chunk *previous_chunk = NULL;
 
+	if (!LTTNG_OPTIONAL_GET(&stream->ongoing_rotation)->next_trace_chunk) {
+		ERR("Protocol error encoutered in %s(): stream rotation "
+			"sequence number is before the current sequence number "
+			"and the next trace chunk is unset. Honoring this "
+			"rotation command would result in data loss",
+				__FUNCTION__);
+		ret = -1;
+		goto end;
+	}
+
 	ASSERT_LOCKED(stream->lock);
 	/*
 	 * Acquire a reference to the current trace chunk to ensure
@@ -245,6 +255,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 		goto end;
 	}
 
+	assert(stream->stream_fd);
 	/*
 	 * Seek the current tracefile to the position at which the rotation
 	 * should have occurred.
