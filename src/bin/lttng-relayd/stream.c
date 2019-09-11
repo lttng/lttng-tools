@@ -1015,7 +1015,8 @@ int stream_write(struct relay_stream *stream,
 	}
 
 	if (stream->is_metadata) {
-		stream->metadata_received += packet->size + padding_len;
+		stream->metadata_received += packet ? packet->size : 0;
+		stream->metadata_received += padding_len;
 	}
 
 	DBG("Wrote to %sstream %" PRIu64 ": data_length = %zu, padding_length = %zu",
