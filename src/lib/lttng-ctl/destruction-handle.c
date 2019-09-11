@@ -420,7 +420,9 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 error:
 	if (sessiond_socket >= 0) {
 		ret = close(sessiond_socket);
-		PERROR("Failed to close the LTTng session daemon connection socket");
+		if (ret < 0) {
+			PERROR("Failed to close the LTTng session daemon connection socket");
+		}
 	}
 	if (handle) {
 		lttng_destruction_handle_destroy(handle);
