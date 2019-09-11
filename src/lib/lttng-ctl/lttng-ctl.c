@@ -2229,6 +2229,10 @@ int lttng_data_pending(const char *session_name)
 		/* Unexpected payload size */
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
+	} else if (!pending) {
+		/* Internal error. */
+		ret = -LTTNG_ERR_UNK;
+		goto end;
 	}
 
 	ret = (int) *pending;
