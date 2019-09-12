@@ -732,6 +732,9 @@ void epoll_pwait_concurrent_munmap(void)
 	struct epoll_event *epoll_event;
 	pthread_t writer;
 
+	for (i = 0; i < MAX_FDS; i++) {
+		fds[i] = -1;
+	}
 	epollfd = epoll_create(MAX_FDS);
 	if (epollfd < 0) {
 		perror("[eppoll] create");
