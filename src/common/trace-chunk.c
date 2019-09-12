@@ -91,8 +91,8 @@ struct lttng_trace_chunk {
 
 /* A trace chunk is uniquely identified by its (session id, chunk id) tuple. */
 struct lttng_trace_chunk_registry_element {
-	uint64_t session_id;
 	struct lttng_trace_chunk chunk;
+	uint64_t session_id;
 	/* Weak and only set when added. */
 	struct lttng_trace_chunk_registry *registry;
 	struct cds_lfht_node trace_chunk_registry_ht_node;
