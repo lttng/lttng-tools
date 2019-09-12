@@ -131,6 +131,11 @@ int parse_pid_string(const char *_pid_string,
 		/* For next loop */
 		one_pid_str = strtok_r(NULL, ",", &iter);
 	}
+	if (count == 0) {
+		ERR("Fatal error occurred when parsing pid string");
+		retval = CMD_ERROR;
+		goto error;
+	}
 
 	free(pid_string);
 	/* Identity of delimiter has been lost in first pass. */
