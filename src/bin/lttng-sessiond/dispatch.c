@@ -304,6 +304,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(ust_cmd);
+					ust_cmd = NULL;
 					goto error;
 				}
 				CDS_INIT_LIST_HEAD(&wait_node->head);
@@ -318,7 +319,9 @@ static void *thread_dispatch_ust_registration(void *data)
 					}
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 					free(wait_node);
+					wait_node = NULL;
 					free(ust_cmd);
+					ust_cmd = NULL;
 					continue;
 				}
 				/*
@@ -329,6 +332,7 @@ static void *thread_dispatch_ust_registration(void *data)
 				wait_queue.count++;
 
 				free(ust_cmd);
+				ust_cmd = NULL;
 				/*
 				 * We have to continue here since we don't have the notify
 				 * socket and the application MUST be added to the hash table
@@ -349,6 +353,7 @@ static void *thread_dispatch_ust_registration(void *data)
 						wait_queue.count--;
 						app = wait_node->app;
 						free(wait_node);
+						wait_node = NULL;
 						DBG3("UST app notify socket %d is set", ust_cmd->sock);
 						break;
 					}
@@ -367,6 +372,7 @@ static void *thread_dispatch_ust_registration(void *data)
 					lttng_fd_put(LTTNG_FD_APPS, 1);
 				}
 				free(ust_cmd);
+				ust_cmd = NULL;
 			}
 
 			if (app) {
