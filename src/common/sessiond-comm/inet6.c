@@ -100,7 +100,8 @@ int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 {
 	int ret;
 
-	ret = bind(sock->fd, (const struct sockaddr *) &sock->sockaddr.addr.sin6,
+	ret = bind(sock->fd, (const struct sockaddr *) ALIGNED_CONST_PTR(
+			sock->sockaddr.addr.sin6),
 			sizeof(sock->sockaddr.addr.sin6));
 	if (ret < 0) {
 		PERROR("bind inet6");
@@ -112,7 +113,9 @@ int lttcomm_bind_inet6_sock(struct lttcomm_sock *sock)
 static
 int connect_no_timeout(struct lttcomm_sock *sock)
 {
-	return connect(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin6,
+	return connect(sock->fd,
+			(const struct sockaddr *) ALIGNED_CONST_PTR(
+					sock->sockaddr.addr.sin6),
 			sizeof(sock->sockaddr.addr.sin6));
 }
 
@@ -145,11 +148,11 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 	}
 
 	connect_ret = connect(sock->fd,
-		(struct sockaddr *) &sock->sockaddr.addr.sin6,
-		sizeof(sock->sockaddr.addr.sin6));
-	if (connect_ret == -1 && errno != EAGAIN
-			&& errno != EWOULDBLOCK
-			&& errno != EINPROGRESS) {
+			(const struct sockaddr *) ALIGNED_CONST_PTR(
+					sock->sockaddr.addr.sin6),
+			sizeof(sock->sockaddr.addr.sin6));
+	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK &&
+			errno != EINPROGRESS) {
 		goto error;
 	} else if (!connect_ret) {
 		/* Connect succeeded */
@@ -265,6 +268,7 @@ struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
 	int new_fd;
 	socklen_t len;
 	struct lttcomm_sock *new_sock;
+	struct sockaddr_in6 new_addr = {};
 
 	if (sock->proto == LTTCOMM_SOCK_UDP) {
 		/*
@@ -279,16 +283,15 @@ struct lttcomm_sock *lttcomm_accept_inet6_sock(struct lttcomm_sock *sock)
 		goto error;
 	}
 
-	len = sizeof(new_sock->sockaddr.addr.sin6);
+	len = sizeof(new_addr);
 
 	/* Blocking call */
-	new_fd = accept(sock->fd,
-			(struct sockaddr *) &new_sock->sockaddr.addr.sin6, &len);
+	new_fd = accept(sock->fd, (struct sockaddr *) &new_addr, &len);
 	if (new_fd < 0) {
 		PERROR("accept inet6");
 		goto error;
 	}
-
+	new_sock->sockaddr.addr.sin6 = new_addr;
 	new_sock->fd = new_fd;
 	new_sock->ops = &inet6_ops;
 
@@ -342,6 +345,7 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	size_t len_last;
+	struct sockaddr_in6 addr = sock->sockaddr.addr.sin6;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -350,7 +354,7 @@ ssize_t lttcomm_recvmsg_inet6_sock(struct lttcomm_sock *sock, void *buf,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	msg.msg_name = (struct sockaddr *) &sock->sockaddr.addr.sin6;
+	msg.msg_name = (struct sockaddr *) &addr;
 	msg.msg_namelen = sizeof(sock->sockaddr.addr.sin6);
 
 	do {
@@ -394,9 +398,13 @@ ssize_t lttcomm_sendmsg_inet6_sock(struct lttcomm_sock *sock, const void *buf,
 
 	switch (sock->proto) {
 	case LTTCOMM_SOCK_UDP:
-		msg.msg_name = (struct sockaddr *) &sock->sockaddr.addr.sin6;
+	{
+		struct sockaddr_in6 addr = sock->sockaddr.addr.sin6;
+
+		msg.msg_name = (struct sockaddr *) &addr;
 		msg.msg_namelen = sizeof(sock->sockaddr.addr.sin6);
 		break;
+	}
 	default:
 		break;
 	}
