@@ -694,6 +694,9 @@ int main(int argc, char **argv)
 
 	ret = list_sessions(&session_id);
 	ok(ret > 0, "List sessions : %d session(s)", ret);
+	if (ret < 0) {
+		goto end;
+	}
 
 	ret = create_viewer_session();
 	ok(ret == 0, "Create viewer session");
@@ -722,6 +725,6 @@ int main(int argc, char **argv)
 
 	ret = attach_session(session_id);
 	ok(ret > 0, "Attach to session, %d streams received", ret);
-
+end:
 	return exit_status();
 }
