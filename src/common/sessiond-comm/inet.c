@@ -101,14 +101,17 @@ LTTNG_HIDDEN
 int lttcomm_bind_inet_sock(struct lttcomm_sock *sock)
 {
 	return bind(sock->fd,
-			(const struct sockaddr *) &sock->sockaddr.addr.sin,
+			(const struct sockaddr *) ALIGNED_CONST_PTR(
+					sock->sockaddr.addr.sin),
 			sizeof(sock->sockaddr.addr.sin));
 }
 
 static
 int connect_no_timeout(struct lttcomm_sock *sock)
 {
-	return connect(sock->fd, (struct sockaddr *) &sock->sockaddr.addr.sin,
+	return connect(sock->fd,
+			(const struct sockaddr *) ALIGNED_CONST_PTR(
+					sock->sockaddr.addr.sin),
 			sizeof(sock->sockaddr.addr.sin));
 }
 
@@ -141,11 +144,11 @@ int connect_with_timeout(struct lttcomm_sock *sock)
 	}
 
 	connect_ret = connect(sock->fd,
-		(struct sockaddr *) &sock->sockaddr.addr.sin,
-		sizeof(sock->sockaddr.addr.sin));
-	if (connect_ret == -1 && errno != EAGAIN
-			&& errno != EWOULDBLOCK
-			&& errno != EINPROGRESS) {
+			(const struct sockaddr *) ALIGNED_CONST_PTR(
+					sock->sockaddr.addr.sin),
+			sizeof(sock->sockaddr.addr.sin));
+	if (connect_ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK &&
+			errno != EINPROGRESS) {
 		goto error;
 	} else if (!connect_ret) {
 		/* Connect succeeded */
@@ -261,6 +264,7 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 	socklen_t len;
 	struct lttcomm_sock *new_sock;
 	unsigned long timeout;
+	struct sockaddr_in new_addr = {};
 
 	if (sock->proto == LTTCOMM_SOCK_UDP) {
 		/*
@@ -275,15 +279,15 @@ struct lttcomm_sock *lttcomm_accept_inet_sock(struct lttcomm_sock *sock)
 		goto error;
 	}
 
-	len = sizeof(new_sock->sockaddr.addr.sin);
+	len = sizeof(new_addr);
 
 	/* Blocking call */
-	new_fd = accept(sock->fd, (struct sockaddr *) &new_sock->sockaddr.addr.sin,
-			&len);
+	new_fd = accept(sock->fd, (struct sockaddr *) &new_addr, &len);
 	if (new_fd < 0) {
 		PERROR("accept inet");
 		goto error;
 	}
+	new_sock->sockaddr.addr.sin = new_addr;
 	timeout = lttcomm_get_network_timeout();
 	if (timeout) {
 		int ret;
@@ -356,6 +360,7 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 	struct iovec iov[1];
 	ssize_t ret = -1;
 	size_t len_last;
+	struct sockaddr_in addr = sock->sockaddr.addr.sin;
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -364,7 +369,7 @@ ssize_t lttcomm_recvmsg_inet_sock(struct lttcomm_sock *sock, void *buf,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-	msg.msg_name = (struct sockaddr *) &sock->sockaddr.addr.sin;
+	msg.msg_name = (struct sockaddr *) &addr;
 	msg.msg_namelen = sizeof(sock->sockaddr.addr.sin);
 
 	do {
@@ -421,9 +426,13 @@ ssize_t lttcomm_sendmsg_inet_sock(struct lttcomm_sock *sock, const void *buf,
 
 	switch (sock->proto) {
 	case LTTCOMM_SOCK_UDP:
-		msg.msg_name = (struct sockaddr *) &sock->sockaddr.addr.sin;
+	{
+		struct sockaddr_in addr = sock->sockaddr.addr.sin;
+
+		msg.msg_name = (struct sockaddr *) &addr;
 		msg.msg_namelen = sizeof(sock->sockaddr.addr.sin);
 		break;
+	}
 	default:
 		break;
 	}
