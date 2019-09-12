@@ -85,8 +85,10 @@ int get_count_order(unsigned int count)
 	int order;
 
 	order = fls(count) - 1;
-	if (count & (count - 1))
+	if (count & (count - 1)) {
 		order++;
+	}
+	assert(order >= 0);
 	return order;
 }
 
