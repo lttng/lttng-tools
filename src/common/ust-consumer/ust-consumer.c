@@ -2424,62 +2424,69 @@ static int get_index_values(struct ctf_packet_index *index,
 		struct ustctl_consumer_stream *ustream)
 {
 	int ret;
+	uint64_t packet_size, content_size, timestamp_begin, timestamp_end,
+			events_discarded, stream_id, stream_instance_id,
+			packet_seq_num;
 
-	ret = ustctl_get_timestamp_begin(ustream, &index->timestamp_begin);
+	ret = ustctl_get_timestamp_begin(ustream, &timestamp_begin);
 	if (ret < 0) {
 		PERROR("ustctl_get_timestamp_begin");
 		goto error;
 	}
-	index->timestamp_begin = htobe64(index->timestamp_begin);
 
-	ret = ustctl_get_timestamp_end(ustream, &index->timestamp_end);
+	ret = ustctl_get_timestamp_end(ustream, &timestamp_end);
 	if (ret < 0) {
 		PERROR("ustctl_get_timestamp_end");
 		goto error;
 	}
-	index->timestamp_end = htobe64(index->timestamp_end);
 
-	ret = ustctl_get_events_discarded(ustream, &index->events_discarded);
+	ret = ustctl_get_events_discarded(ustream, &events_discarded);
 	if (ret < 0) {
 		PERROR("ustctl_get_events_discarded");
 		goto error;
 	}
-	index->events_discarded = htobe64(index->events_discarded);
 
-	ret = ustctl_get_content_size(ustream, &index->content_size);
+	ret = ustctl_get_content_size(ustream, &content_size);
 	if (ret < 0) {
 		PERROR("ustctl_get_content_size");
 		goto error;
 	}
-	index->content_size = htobe64(index->content_size);
 
-	ret = ustctl_get_packet_size(ustream, &index->packet_size);
+	ret = ustctl_get_packet_size(ustream, &packet_size);
 	if (ret < 0) {
 		PERROR("ustctl_get_packet_size");
 		goto error;
 	}
-	index->packet_size = htobe64(index->packet_size);
 
-	ret = ustctl_get_stream_id(ustream, &index->stream_id);
+	ret = ustctl_get_stream_id(ustream, &stream_id);
 	if (ret < 0) {
 		PERROR("ustctl_get_stream_id");
 		goto error;
 	}
-	index->stream_id = htobe64(index->stream_id);
 
-	ret = ustctl_get_instance_id(ustream, &index->stream_instance_id);
+	ret = ustctl_get_instance_id(ustream, &stream_instance_id);
 	if (ret < 0) {
 		PERROR("ustctl_get_instance_id");
 		goto error;
 	}
-	index->stream_instance_id = htobe64(index->stream_instance_id);
 
-	ret = ustctl_get_sequence_number(ustream, &index->packet_seq_num);
+	ret = ustctl_get_sequence_number(ustream, &packet_seq_num);
 	if (ret < 0) {
 		PERROR("ustctl_get_sequence_number");
 		goto error;
 	}
-	index->packet_seq_num = htobe64(index->packet_seq_num);
+
+	*index = (typeof(*index)) {
+		.offset = index->offset,
+		.packet_size = htobe64(packet_size),
+		.content_size = htobe64(content_size),
+		.timestamp_begin = htobe64(timestamp_begin),
+		.timestamp_end = htobe64(timestamp_end),
+		.events_discarded = htobe64(events_discarded),
+		.stream_id = htobe64(stream_id),
+		.stream_instance_id = htobe64(stream_instance_id),
+		.packet_seq_num = htobe64(packet_seq_num),
+	};
 
 error:
 	return ret;

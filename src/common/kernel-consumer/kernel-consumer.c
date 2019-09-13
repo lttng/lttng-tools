@@ -1327,66 +1327,62 @@ end:
 static int get_index_values(struct ctf_packet_index *index, int infd)
 {
 	int ret;
+	uint64_t packet_size, content_size, timestamp_begin, timestamp_end,
+			events_discarded, stream_id, stream_instance_id,
+			packet_seq_num;
 
-	ret = kernctl_get_timestamp_begin(infd, &index->timestamp_begin);
+	ret = kernctl_get_timestamp_begin(infd, &timestamp_begin);
 	if (ret < 0) {
 		PERROR("kernctl_get_timestamp_begin");
 		goto error;
 	}
-	index->timestamp_begin = htobe64(index->timestamp_begin);
 
-	ret = kernctl_get_timestamp_end(infd, &index->timestamp_end);
+	ret = kernctl_get_timestamp_end(infd, &timestamp_end);
 	if (ret < 0) {
 		PERROR("kernctl_get_timestamp_end");
 		goto error;
 	}
-	index->timestamp_end = htobe64(index->timestamp_end);
 
-	ret = kernctl_get_events_discarded(infd, &index->events_discarded);
+	ret = kernctl_get_events_discarded(infd, &events_discarded);
 	if (ret < 0) {
 		PERROR("kernctl_get_events_discarded");
 		goto error;
 	}
-	index->events_discarded = htobe64(index->events_discarded);
 
-	ret = kernctl_get_content_size(infd, &index->content_size);
+	ret = kernctl_get_content_size(infd, &content_size);
 	if (ret < 0) {
 		PERROR("kernctl_get_content_size");
 		goto error;
 	}
-	index->content_size = htobe64(index->content_size);
 
-	ret = kernctl_get_packet_size(infd, &index->packet_size);
+	ret = kernctl_get_packet_size(infd, &packet_size);
 	if (ret < 0) {
 		PERROR("kernctl_get_packet_size");
 		goto error;
 	}
-	index->packet_size = htobe64(index->packet_size);
 
-	ret = kernctl_get_stream_id(infd, &index->stream_id);
+	ret = kernctl_get_stream_id(infd, &stream_id);
 	if (ret < 0) {
 		PERROR("kernctl_get_stream_id");
 		goto error;
 	}
-	index->stream_id = htobe64(index->stream_id);
 
-	ret = kernctl_get_instance_id(infd, &index->stream_instance_id);
+	ret = kernctl_get_instance_id(infd, &stream_instance_id);
 	if (ret < 0) {
 		if (ret == -ENOTTY) {
 			/* Command not implemented by lttng-modules. */
-			index->stream_instance_id = -1ULL;
+			stream_instance_id = -1ULL;
 		} else {
 			PERROR("kernctl_get_instance_id");
 			goto error;
 		}
 	}
-	index->stream_instance_id = htobe64(index->stream_instance_id);
 
-	ret = kernctl_get_sequence_number(infd, &index->packet_seq_num);
+	ret = kernctl_get_sequence_number(infd, &packet_seq_num);
 	if (ret < 0) {
 		if (ret == -ENOTTY) {
 			/* Command not implemented by lttng-modules. */
-			index->packet_seq_num = -1ULL;
+			packet_seq_num = -1ULL;
 			ret = 0;
 		} else {
 			PERROR("kernctl_get_sequence_number");
@@ -1394,6 +1390,18 @@ static int get_index_values(struct ctf_packet_index *index, int infd)
 		}
 	}
 	index->packet_seq_num = htobe64(index->packet_seq_num);
+
+	*index = (typeof(*index)) {
+		.offset = index->offset,
+		.packet_size = htobe64(packet_size),
+		.content_size = htobe64(content_size),
+		.timestamp_begin = htobe64(timestamp_begin),
+		.timestamp_end = htobe64(timestamp_end),
+		.events_discarded = htobe64(events_discarded),
+		.stream_id = htobe64(stream_id),
+		.stream_instance_id = htobe64(stream_instance_id),
+		.packet_seq_num = htobe64(packet_seq_num),
+	};
 
 error:
 	return ret;
