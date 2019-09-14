@@ -805,7 +805,7 @@ char *print_exclusions(char **names)
 {
 	int length = 0;
 	int i;
-	const char *preamble = " excluding ";
+	const char preamble[] = " excluding ";
 	char *ret;
 	int count = names ? strutils_array_of_strings_len(names) : 0;
 
@@ -818,9 +818,8 @@ char *print_exclusions(char **names)
 		length += strlen(names[i]) + 4;
 	}
 
-	/* add length of preamble + one for NUL - one for last (missing) comma */
-	length += strlen(preamble);
-	ret = zmalloc(length + 1);
+	length += sizeof(preamble);
+	ret = zmalloc(length);
 	if (!ret) {
 		return NULL;
 	}
