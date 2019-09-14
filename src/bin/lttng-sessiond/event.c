@@ -172,7 +172,8 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
-			event->loglevel_type, event->loglevel, exclusion);
+			(enum lttng_ust_loglevel_type) event->loglevel_type,
+			event->loglevel, exclusion);
 	if (!uevent) {
 		ret = trace_ust_create_event(event, filter_expression,
 				filter, exclusion, internal_event, &uevent);
