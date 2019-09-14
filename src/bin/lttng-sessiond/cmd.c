@@ -4995,6 +4995,9 @@ int cmd_rotate_get_info(struct ltt_session *session,
 			}
 			break;
 		case CONSUMER_DST_NET:
+		{
+			uint16_t ctrl_port, data_port;
+
 			current_tracing_path_reply =
 					info_return->location.relay.relative_path;
 			current_tracing_path_reply_len =
@@ -5013,9 +5016,9 @@ int cmd_rotate_get_info(struct ltt_session *session,
 				goto end;
 			}
 
-			session_get_net_consumer_ports(session,
-					&info_return->location.relay.ports.control,
-					&info_return->location.relay.ports.data);
+			session_get_net_consumer_ports(session, &ctrl_port, &data_port);
+			info_return->location.relay.ports.control = ctrl_port;
+			info_return->location.relay.ports.data = data_port;
 			info_return->location_type =
 					(int8_t) LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_RELAY;
 			chunk_path = strdup(session->last_chunk_path);
@@ -5026,6 +5029,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 				goto end;
 			}
 			break;
+		}
 		default:
 			abort();
 		}
