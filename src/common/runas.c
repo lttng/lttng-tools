@@ -512,15 +512,17 @@ int _extract_elf_symbol_offset(struct run_as_data *data,
 		struct run_as_ret *ret_value)
 {
 	int ret = 0;
+	uint64_t offset;
 
 	ret_value->_error = false;
 	ret = lttng_elf_get_symbol_offset(data->u.extract_elf_symbol_offset.fd,
 			 data->u.extract_elf_symbol_offset.function,
-			 &ret_value->u.extract_elf_symbol_offset.offset);
+			 &offset);
 	if (ret) {
 		DBG("Failed to extract ELF function offset");
 		ret_value->_error = true;
 	}
+	ret_value->u.extract_elf_symbol_offset.offset = offset;
 
 	return ret;
 }
