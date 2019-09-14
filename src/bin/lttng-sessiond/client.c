@@ -1712,13 +1712,15 @@ error_add_context:
 	}
 	case LTTNG_SNAPSHOT_ADD_OUTPUT:
 	{
+		uint32_t snapshot_id;
 		struct lttcomm_lttng_output_id reply;
 
 		ret = cmd_snapshot_add_output(cmd_ctx->session,
-				&cmd_ctx->lsm->u.snapshot_output.output, &reply.id);
+				&cmd_ctx->lsm->u.snapshot_output.output, &snapshot_id);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
+		reply.id = snapshot_id;
 
 		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, &reply,
 			sizeof(reply));
