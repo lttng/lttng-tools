@@ -60,6 +60,13 @@ do {								\
 } while (0)
 #endif
 
+#define COPY_DOMAIN_PACKED(dst, src)				\
+do {								\
+	struct lttng_domain _tmp_domain;			\
+								\
+	lttng_ctl_copy_lttng_domain(&_tmp_domain, &src);	\
+	dst = _tmp_domain;					\
+} while (0)
 
 /* Socket to session daemon for communication */
 static int sessiond_socket;
@@ -565,7 +572,7 @@ int lttng_register_consumer(struct lttng_handle *handle,
 	lsm.cmd_type = LTTNG_REGISTER_CONSUMER;
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.u.reg.path, socket_path,
 			sizeof(lsm.u.reg.path));
@@ -696,7 +703,7 @@ int lttng_add_context(struct lttng_handle *handle,
 				sizeof(lsm.u.context.channel_name));
 	}
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
@@ -1034,8 +1041,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		lttng_ctl_copy_string(ev->name, "*", sizeof(ev->name));
 	}
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-	/* FIXME: copying non-packed struct to packed struct. */
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 	memcpy(&lsm.u.enable.event, ev, sizeof(lsm.u.enable.event));
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
@@ -1203,8 +1209,7 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 
 	lsm.cmd_type = LTTNG_DISABLE_EVENT;
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
-	/* FIXME: copying non-packed struct to packed struct. */
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 	memcpy(&lsm.u.disable.event, ev, sizeof(lsm.u.disable.event));
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
@@ -1439,7 +1444,7 @@ int lttng_enable_channel(struct lttng_handle *handle,
 	}
 
 	lsm.cmd_type = LTTNG_ENABLE_CHANNEL;
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1467,7 +1472,7 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 	lttng_ctl_copy_string(lsm.u.disable.channel_name, name,
 			sizeof(lsm.u.disable.channel_name));
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1493,7 +1498,7 @@ int lttng_track_pid(struct lttng_handle *handle, int pid)
 	lsm.cmd_type = LTTNG_TRACK_PID;
 	lsm.u.pid_tracker.pid = pid;
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1519,7 +1524,7 @@ int lttng_untrack_pid(struct lttng_handle *handle, int pid)
 	lsm.cmd_type = LTTNG_UNTRACK_PID;
 	lsm.u.pid_tracker.pid = pid;
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
@@ -1545,7 +1550,7 @@ int lttng_list_tracepoints(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINTS;
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) events);
 	if (ret < 0) {
@@ -1573,7 +1578,7 @@ int lttng_list_tracepoint_fields(struct lttng_handle *handle,
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_LIST_TRACEPOINT_FIELDS;
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) fields);
 	if (ret < 0) {
@@ -1818,7 +1823,7 @@ int lttng_list_channels(struct lttng_handle *handle,
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void**) channels);
 	if (ret < 0) {
@@ -1875,7 +1880,7 @@ int lttng_list_events(struct lttng_handle *handle,
 			sizeof(lsm.session.name));
 	lttng_ctl_copy_string(lsm.u.list.channel_name, channel_name,
 			sizeof(lsm.u.list.channel_name));
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond_varlen(&lsm, NULL, 0, (void **) events,
 		(void **) &cmd_header, &cmd_header_len);
@@ -2319,7 +2324,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	size = uri_parse_str_urls(control_url, data_url, &uris);
 	if (size < 0) {
@@ -2570,7 +2575,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 	lsm.cmd_type = LTTNG_LIST_TRACKER_PIDS;
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
-	lttng_ctl_copy_lttng_domain(&lsm.domain, &handle->domain);
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &pids);
 	if (ret < 0) {
