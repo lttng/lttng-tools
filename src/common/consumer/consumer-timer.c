@@ -711,6 +711,7 @@ void monitor_timer(struct lttng_consumer_local_data *ctx,
 	sample_positions_cb sample;
 	get_consumed_cb get_consumed;
 	get_produced_cb get_produced;
+	uint64_t lowest = 0, highest = 0;
 
 	assert(channel);
 
@@ -734,11 +735,13 @@ void monitor_timer(struct lttng_consumer_local_data *ctx,
 		abort();
 	}
 
-	ret = sample_channel_positions(channel, &msg.highest, &msg.lowest,
+	ret = sample_channel_positions(channel, &highest, &lowest,
 			sample, get_consumed, get_produced);
 	if (ret) {
 		return;
 	}
+	msg.highest = highest;
+	msg.lowest = lowest;
 
 	/*
 	 * Writes performed here are assumed to be atomic which is only
