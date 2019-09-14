@@ -299,29 +299,33 @@ enum lttng_rotation_status lttng_rotation_update_schedule(
 	switch (schedule->type) {
 	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
 	{
+		uint64_t threshold;
+
 		status = lttng_rotation_schedule_size_threshold_get_threshold(
-				schedule, &lsm.u.rotation_set_schedule.value);
+				schedule, &threshold);
 		if (status != LTTNG_ROTATION_STATUS_OK) {
 			if (status == LTTNG_ROTATION_STATUS_UNAVAILABLE) {
 				status = LTTNG_ROTATION_STATUS_INVALID;
 			}
 			goto end;
 		}
-
+		lsm.u.rotation_set_schedule.value = threshold;
 		lsm.u.rotation_set_schedule.set = !!add;
 		break;
 	}
 	case LTTNG_ROTATION_SCHEDULE_TYPE_PERIODIC:
 	{
+		uint64_t period;
+
 		status = lttng_rotation_schedule_periodic_get_period(
-				schedule, &lsm.u.rotation_set_schedule.value);
+				schedule, &period);
 		if (status != LTTNG_ROTATION_STATUS_OK) {
 			if (status == LTTNG_ROTATION_STATUS_UNAVAILABLE) {
 				status = LTTNG_ROTATION_STATUS_INVALID;
 			}
 			goto end;
 		}
-
+		lsm.u.rotation_set_schedule.value = period;
 		lsm.u.rotation_set_schedule.set = !!add;
 		break;
 	}
