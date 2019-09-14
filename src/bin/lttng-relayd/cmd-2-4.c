@@ -53,8 +53,7 @@ int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		ERR("Session name too long");
 		goto error;
 	}
-	strncpy(session_name, session_info.session_name,
-			sizeof(session_info.session_name));
+	strncpy(session_name, session_info.session_name, LTTNG_PATH_MAX);
 
 	len = lttng_strnlen(session_info.hostname, sizeof(session_info.hostname));
 	if (len == sizeof(session_info.hostname) || len >= LTTNG_HOST_NAME_MAX) {
@@ -62,8 +61,7 @@ int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		ERR("Session name too long");
 		goto error;
 	}
-	strncpy(hostname, session_info.hostname,
-			sizeof(session_info.hostname));
+	strncpy(hostname, session_info.hostname, LTTNG_HOST_NAME_MAX);
 
 	*live_timer = be32toh(session_info.live_timer);
 	*snapshot = be32toh(session_info.snapshot);
