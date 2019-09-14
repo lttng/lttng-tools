@@ -1052,7 +1052,7 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 	}
 
 	DBG3("Sending relayd socket file descriptor to consumer");
-	ret = consumer_send_fds(consumer_sock, &rsock->sock.fd, 1);
+	ret = consumer_send_fds(consumer_sock, ALIGNED_CONST_PTR(rsock->sock.fd), 1);
 	if (ret < 0) {
 		goto error;
 	}
