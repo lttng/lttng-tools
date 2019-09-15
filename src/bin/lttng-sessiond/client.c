@@ -410,7 +410,7 @@ error:
  * Should *NOT* be called with RCU read-side lock held.
  */
 static int create_ust_session(struct ltt_session *session,
-		struct lttng_domain *domain)
+		const struct lttng_domain *domain)
 {
 	int ret;
 	struct ltt_ust_session *lus = NULL;
@@ -950,7 +950,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			/* Create UST session if none exist. */
 			if (cmd_ctx->session->ust_session == NULL) {
 				ret = create_ust_session(cmd_ctx->session,
-						&cmd_ctx->lsm->domain);
+						ALIGNED_CONST_PTR(cmd_ctx->lsm->domain));
 				if (ret != LTTNG_OK) {
 					goto error;
 				}
@@ -1139,7 +1139,7 @@ skip_domain:
 		ret = cmd_add_context(cmd_ctx->session,
 				cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.context.channel_name,
-				&cmd_ctx->lsm->u.context.ctx,
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.context.ctx),
 				kernel_poll_pipe[1]);
 
 		cmd_ctx->lsm->u.context.ctx.u.app_ctx.provider_name = NULL;
@@ -1187,18 +1187,18 @@ error_add_context:
 				count -= (size_t) ret;
 			}
 		}
-		/* FIXME: passing packed structure to non-packed pointer */
 		ret = cmd_disable_event(cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				cmd_ctx->lsm->u.disable.channel_name,
-				&cmd_ctx->lsm->u.disable.event);
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.disable.event));
 		break;
 	}
 	case LTTNG_ENABLE_CHANNEL:
 	{
 		cmd_ctx->lsm->u.channel.chan.attr.extended.ptr =
 				(struct lttng_channel_extended *) &cmd_ctx->lsm->u.channel.extended;
-		ret = cmd_enable_channel(cmd_ctx->session, &cmd_ctx->lsm->domain,
-				&cmd_ctx->lsm->u.channel.chan,
+		ret = cmd_enable_channel(cmd_ctx->session,
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->domain),
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.channel.chan),
 				kernel_poll_pipe[1]);
 		break;
 	}
@@ -1320,7 +1320,7 @@ error_add_context:
 			}
 		}
 
-		ev = lttng_event_copy(&cmd_ctx->lsm->u.enable.event);
+		ev = lttng_event_copy(ALIGNED_CONST_PTR(cmd_ctx->lsm->u.enable.event));
 		if (!ev) {
 			DBG("Failed to copy event: %s",
 					cmd_ctx->lsm->u.enable.event.name);
@@ -1344,7 +1344,8 @@ error_add_context:
 			}
 		}
 
-		ret = cmd_enable_event(cmd_ctx->session, &cmd_ctx->lsm->domain,
+		ret = cmd_enable_event(cmd_ctx->session,
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->domain),
 				cmd_ctx->lsm->u.enable.channel_name,
 				ev,
 				filter_expression, bytecode, exclusion,
@@ -1716,7 +1717,8 @@ error_add_context:
 		struct lttcomm_lttng_output_id reply;
 
 		ret = cmd_snapshot_add_output(cmd_ctx->session,
-				&cmd_ctx->lsm->u.snapshot_output.output, &snapshot_id);
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.snapshot_output.output),
+				&snapshot_id);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -1735,7 +1737,7 @@ error_add_context:
 	case LTTNG_SNAPSHOT_DEL_OUTPUT:
 	{
 		ret = cmd_snapshot_del_output(cmd_ctx->session,
-				&cmd_ctx->lsm->u.snapshot_output.output);
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.snapshot_output.output));
 		break;
 	}
 	case LTTNG_SNAPSHOT_LIST_OUTPUT:
@@ -1764,7 +1766,7 @@ error_add_context:
 	case LTTNG_SNAPSHOT_RECORD:
 	{
 		ret = cmd_snapshot_record(cmd_ctx->session,
-				&cmd_ctx->lsm->u.snapshot_record.output,
+				ALIGNED_CONST_PTR(cmd_ctx->lsm->u.snapshot_record.output),
 				cmd_ctx->lsm->u.snapshot_record.wait);
 		break;
 	}

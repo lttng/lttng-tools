@@ -153,9 +153,10 @@ void agent_delete_event(struct agent_event *event, struct agent *agt);
 void agent_destroy_event(struct agent_event *event);
 
 /* Agent context API.*/
-int agent_enable_context(struct lttng_event_context *ctx,
+int agent_enable_context(const struct lttng_event_context *ctx,
 		enum lttng_domain_type domain);
-int agent_add_context(struct lttng_event_context *ctx, struct agent *agt);
+int agent_add_context(const struct lttng_event_context *ctx,
+		struct agent *agt);
 
 /* Agent app API. */
 struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,

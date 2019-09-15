@@ -69,7 +69,7 @@ static void add_unique_ust_event(struct lttng_ht *ht,
  * If event_name is NULL all events of the specified type are disabled.
  */
 int event_kernel_disable_event(struct ltt_kernel_channel *kchan,
-		char *event_name, enum lttng_event_type type)
+		const char *event_name, enum lttng_event_type type)
 {
 	int ret, error = 0, found = 0;
 	struct ltt_kernel_event *kevent;
@@ -259,7 +259,7 @@ error:
  * Disable UST tracepoint of a channel from a UST session.
  */
 int event_ust_disable_tracepoint(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan, char *event_name)
+		struct ltt_ust_channel *uchan, const char *event_name)
 {
 	int ret;
 	struct ltt_ust_event *uevent;
@@ -672,7 +672,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
 int event_agent_disable(struct ltt_ust_session *usess, struct agent *agt,
-		char *event_name)
+		const char *event_name)
 {
 	int ret = LTTNG_OK;
 	struct agent_event *aevent;

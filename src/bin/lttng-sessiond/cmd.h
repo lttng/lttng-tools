@@ -54,7 +54,7 @@ int cmd_destroy_session(struct ltt_session *session,
 int cmd_disable_channel(struct ltt_session *session,
 		enum lttng_domain_type domain, char *channel_name);
 int cmd_enable_channel(struct ltt_session *session,
-		struct lttng_domain *domain, struct lttng_channel *attr,
+		const struct lttng_domain *domain, const struct lttng_channel *attr,
 		int wpipe);
 int cmd_track_pid(struct ltt_session *session, enum lttng_domain_type domain,
 		int pid);
@@ -64,14 +64,14 @@ int cmd_untrack_pid(struct ltt_session *session, enum lttng_domain_type domain,
 /* Event commands */
 int cmd_disable_event(struct ltt_session *session,
 		enum lttng_domain_type domain,
-		char *channel_name,
-		struct lttng_event *event);
+		const char *channel_name,
+		const struct lttng_event *event);
 int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
-		char *channel_name, struct lttng_event_context *ctx, int kwpipe);
+		char *channel_name, const struct lttng_event_context *ctx, int kwpipe);
 int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
 		struct lttng_filter_bytecode *bytecode);
-int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
+int cmd_enable_event(struct ltt_session *session, const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -116,11 +116,11 @@ int cmd_data_pending(struct ltt_session *session);
 
 /* Snapshot */
 int cmd_snapshot_add_output(struct ltt_session *session,
-		struct lttng_snapshot_output *output, uint32_t *id);
+		const struct lttng_snapshot_output *output, uint32_t *id);
 int cmd_snapshot_del_output(struct ltt_session *session,
-		struct lttng_snapshot_output *output);
+		const struct lttng_snapshot_output *output);
 int cmd_snapshot_record(struct ltt_session *session,
-		struct lttng_snapshot_output *output, int wait);
+		const struct lttng_snapshot_output *output, int wait);
 
 int cmd_set_session_shm_path(struct ltt_session *session,
 		const char *shm_path);

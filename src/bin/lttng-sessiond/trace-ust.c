@@ -171,7 +171,7 @@ no_match:
  * lock MUST be acquired before calling this.
  */
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
-		char *name)
+		const char *name)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -574,8 +574,8 @@ int trace_ust_context_type_event_to_ust(
 /*
  * Return 1 if contexts match, 0 otherwise.
  */
-int trace_ust_match_context(struct ltt_ust_context *uctx,
-		struct lttng_event_context *ctx)
+int trace_ust_match_context(const struct ltt_ust_context *uctx,
+		const struct lttng_event_context *ctx)
 {
 	int utype;
 
@@ -624,7 +624,7 @@ int trace_ust_match_context(struct ltt_ust_context *uctx,
  * Return pointer to structure or NULL.
  */
 struct ltt_ust_context *trace_ust_create_context(
-		struct lttng_event_context *ctx)
+		const struct lttng_event_context *ctx)
 {
 	struct ltt_ust_context *uctx = NULL;
 	int utype;

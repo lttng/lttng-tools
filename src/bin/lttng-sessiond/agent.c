@@ -708,7 +708,7 @@ void destroy_app_ctx(struct agent_app_ctx *ctx)
 }
 
 static
-struct agent_app_ctx *create_app_ctx(struct lttng_event_context *ctx)
+struct agent_app_ctx *create_app_ctx(const struct lttng_event_context *ctx)
 {
 	struct agent_app_ctx *agent_ctx = NULL;
 
@@ -738,7 +738,7 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int agent_enable_context(struct lttng_event_context *ctx,
+int agent_enable_context(const struct lttng_event_context *ctx,
 		enum lttng_domain_type domain)
 {
 	int ret;
@@ -1166,7 +1166,7 @@ void agent_add_event(struct agent_event *event, struct agent *agt)
 /*
  * Unique add of a agent context to an agent object.
  */
-int agent_add_context(struct lttng_event_context *ctx, struct agent *agt)
+int agent_add_context(const struct lttng_event_context *ctx, struct agent *agt)
 {
 	int ret = LTTNG_OK;
 	struct agent_app_ctx *agent_ctx = NULL;

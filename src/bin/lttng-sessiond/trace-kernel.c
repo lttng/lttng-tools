@@ -39,7 +39,7 @@
  * Find the channel name for the given kernel session.
  */
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
-		char *name, struct ltt_kernel_session *session)
+		const char *name, struct ltt_kernel_session *session)
 {
 	struct ltt_kernel_channel *chan;
 

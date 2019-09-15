@@ -135,7 +135,7 @@ struct ltt_kernel_event *trace_kernel_find_event(
 		enum lttng_event_type type,
 		struct lttng_filter_bytecode *filter);
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
-		char *name, struct ltt_kernel_session *session);
+		const char *name, struct ltt_kernel_session *session);
 
 /*
  * Create functions malloc() the data structure.

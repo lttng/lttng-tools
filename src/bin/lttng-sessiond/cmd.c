@@ -107,7 +107,7 @@ static uint64_t relayd_net_seq_idx;
 
 static int validate_ust_event_name(const char *);
 static int cmd_enable_event_internal(struct ltt_session *session,
-		struct lttng_domain *domain,
+		const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -1482,27 +1482,29 @@ error:
  * The wpipe arguments is used as a notifier for the kernel thread.
  */
 int cmd_enable_channel(struct ltt_session *session,
-		struct lttng_domain *domain, struct lttng_channel *attr, int wpipe)
+		const struct lttng_domain *domain, const struct lttng_channel *_attr, int wpipe)
 {
 	int ret;
 	struct ltt_ust_session *usess = session->ust_session;
 	struct lttng_ht *chan_ht;
 	size_t len;
+	struct lttng_channel attr;
 
 	assert(session);
-	assert(attr);
+	assert(_attr);
 	assert(domain);
 
-	len = lttng_strnlen(attr->name, sizeof(attr->name));
+	attr = *_attr;
+	len = lttng_strnlen(attr.name, sizeof(attr.name));
 
 	/* Validate channel name */
-	if (attr->name[0] == '.' ||
-		memchr(attr->name, '/', len) != NULL) {
+	if (attr.name[0] == '.' ||
+		memchr(attr.name, '/', len) != NULL) {
 		ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 		goto end;
 	}
 
-	DBG("Enabling channel %s for session %s", attr->name, session->name);
+	DBG("Enabling channel %s for session %s", attr.name, session->name);
 
 	rcu_read_lock();
 
@@ -1521,8 +1523,8 @@ int cmd_enable_channel(struct ltt_session *session,
 	 * beacons for inactive streams.
 	 */
 	if (session->live_timer > 0) {
-		attr->attr.live_timer_interval = session->live_timer;
-		attr->attr.switch_timer_interval = 0;
+		attr.attr.live_timer_interval = session->live_timer;
+		attr.attr.switch_timer_interval = 0;
 	}
 
 	/* Check for feature support */
@@ -1534,8 +1536,8 @@ int cmd_enable_channel(struct ltt_session *session,
 			WARN("Kernel tracer does not support buffer monitoring. "
 					"Setting the monitor interval timer to 0 "
 					"(disabled) for channel '%s' of session '%s'",
-					attr-> name, session->name);
-			lttng_channel_set_monitor_timer_interval(attr, 0);
+					attr.name, session->name);
+			lttng_channel_set_monitor_timer_interval(&attr, 0);
 		}
 		break;
 	}
@@ -1560,16 +1562,16 @@ int cmd_enable_channel(struct ltt_session *session,
 	{
 		struct ltt_kernel_channel *kchan;
 
-		kchan = trace_kernel_get_channel_by_name(attr->name,
+		kchan = trace_kernel_get_channel_by_name(attr.name,
 				session->kernel_session);
 		if (kchan == NULL) {
 			if (session->snapshot.nb_output > 0 ||
 					session->snapshot_mode) {
 				/* Enforce mmap output for snapshot sessions. */
-				attr->attr.output = LTTNG_EVENT_MMAP;
+				attr.attr.output = LTTNG_EVENT_MMAP;
 			}
-			ret = channel_kernel_create(session->kernel_session, attr, wpipe);
-			if (attr->name[0] != '\0') {
+			ret = channel_kernel_create(session->kernel_session, &attr, wpipe);
+			if (attr.name[0] != '\0') {
 				session->kernel_session->has_non_default_channel = 1;
 			}
 		} else {
@@ -1599,19 +1601,19 @@ int cmd_enable_channel(struct ltt_session *session,
 		 * adhered to.
 		 */
 		if (domain->type == LTTNG_DOMAIN_JUL) {
-			if (strncmp(attr->name, DEFAULT_JUL_CHANNEL_NAME,
+			if (strncmp(attr.name, DEFAULT_JUL_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_LOG4J) {
-			if (strncmp(attr->name, DEFAULT_LOG4J_CHANNEL_NAME,
+			if (strncmp(attr.name, DEFAULT_LOG4J_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
 			}
 		} else if (domain->type == LTTNG_DOMAIN_PYTHON) {
-			if (strncmp(attr->name, DEFAULT_PYTHON_CHANNEL_NAME,
+			if (strncmp(attr.name, DEFAULT_PYTHON_CHANNEL_NAME,
 					LTTNG_SYMBOL_NAME_LEN)) {
 				ret = LTTNG_ERR_INVALID_CHANNEL_NAME;
 				goto error;
@@ -1620,10 +1622,10 @@ int cmd_enable_channel(struct ltt_session *session,
 
 		chan_ht = usess->domain_global.channels;
 
-		uchan = trace_ust_find_channel_by_name(chan_ht, attr->name);
+		uchan = trace_ust_find_channel_by_name(chan_ht, attr.name);
 		if (uchan == NULL) {
-			ret = channel_ust_create(usess, attr, domain->buf_type);
-			if (attr->name[0] != '\0') {
+			ret = channel_ust_create(usess, &attr, domain->buf_type);
+			if (attr.name[0] != '\0') {
 				usess->has_non_default_channel = 1;
 			}
 		} else {
@@ -1636,7 +1638,7 @@ int cmd_enable_channel(struct ltt_session *session,
 		goto error;
 	}
 
-	if (ret == LTTNG_OK && attr->attr.output != LTTNG_EVENT_MMAP) {
+	if (ret == LTTNG_OK && attr.attr.output != LTTNG_EVENT_MMAP) {
 		session->has_non_mmap_channel = true;
 	}
 error:
@@ -1649,11 +1651,11 @@ end:
  * Command LTTNG_DISABLE_EVENT processed by the client thread.
  */
 int cmd_disable_event(struct ltt_session *session,
-		enum lttng_domain_type domain, char *channel_name,
-		struct lttng_event *event)
+		enum lttng_domain_type domain, const char *channel_name,
+		const struct lttng_event *event)
 {
 	int ret;
-	char *event_name;
+	const char *event_name;
 
 	DBG("Disable event command for event \'%s\'", event->name);
 
@@ -1826,7 +1828,7 @@ error:
  * Command LTTNG_ADD_CONTEXT processed by the client thread.
  */
 int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
-		char *channel_name, struct lttng_event_context *ctx, int kwpipe)
+		char *channel_name, const struct lttng_event_context *ctx, int kwpipe)
 {
 	int ret, chan_kern_created = 0, chan_ust_created = 0;
 	char *app_ctx_provider_name = NULL, *app_ctx_name = NULL;
@@ -1997,7 +1999,7 @@ end:
  * enable the events through which all "agent" events are funeled.
  */
 static int _cmd_enable_event(struct ltt_session *session,
-		struct lttng_domain *domain,
+		const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -2394,7 +2396,8 @@ error:
  * Command LTTNG_ENABLE_EVENT processed by the client thread.
  * We own filter, exclusion, and filter_expression.
  */
-int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
+int cmd_enable_event(struct ltt_session *session,
+		const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -2411,7 +2414,7 @@ int cmd_enable_event(struct ltt_session *session, struct lttng_domain *domain,
  * reserved names.
  */
 static int cmd_enable_event_internal(struct ltt_session *session,
-		struct lttng_domain *domain,
+		const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
 		struct lttng_filter_bytecode *filter,
@@ -3712,7 +3715,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_snapshot_add_output(struct ltt_session *session,
-		struct lttng_snapshot_output *output, uint32_t *id)
+		const struct lttng_snapshot_output *output, uint32_t *id)
 {
 	int ret;
 	struct snapshot_output *new_output;
@@ -3780,7 +3783,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_snapshot_del_output(struct ltt_session *session,
-		struct lttng_snapshot_output *output)
+		const struct lttng_snapshot_output *output)
 {
 	int ret;
 	struct snapshot_output *sout = NULL;
@@ -4608,7 +4611,7 @@ error:
  * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_snapshot_record(struct ltt_session *session,
-		struct lttng_snapshot_output *output, int wait)
+		const struct lttng_snapshot_output *output, int wait)
 {
 	enum lttng_error_code cmd_ret = LTTNG_OK;
 	int ret;
