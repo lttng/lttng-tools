@@ -1079,7 +1079,6 @@ error_stream:
 	 * Clean up the stream completly because the next snapshot will use a new
 	 * metadata stream.
 	 */
-	pthread_mutex_lock(&metadata_stream->lock);
 	consumer_stream_destroy(metadata_stream, NULL);
 	cds_list_del(&metadata_stream->send_node);
 	metadata_channel->metadata_stream = NULL;
