@@ -1553,7 +1553,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	int err, write_index = 1, rotation_ret;
 	ssize_t ret = 0;
 	int infd = stream->wait_fd;
-	struct ctf_packet_index index;
+	struct ctf_packet_index index = {};
 
 	DBG("In read_subbuffer (infd : %d)", infd);
 
