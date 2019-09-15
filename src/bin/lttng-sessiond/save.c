@@ -1891,7 +1891,7 @@ int save_session(struct ltt_session *session,
 	struct lttng_save_session_attr *attr, lttng_sock_cred *creds)
 {
 	int ret, fd = -1;
-	char config_file_path[PATH_MAX];
+	char config_file_path[LTTNG_PATH_MAX];
 	size_t len;
 	struct config_writer *writer = NULL;
 	size_t session_name_len;
@@ -1919,7 +1919,7 @@ int save_session(struct ltt_session *session,
 			ret = LTTNG_ERR_SET_URL;
 			goto end;
 		}
-		strncpy(config_file_path, provided_path, len);
+		strncpy(config_file_path, provided_path, sizeof(config_file_path));
 	} else {
 		ssize_t ret_len;
 		char *home_dir = utils_get_user_home_dir(
@@ -1963,7 +1963,7 @@ int save_session(struct ltt_session *session,
 	 * was done just above.
 	 */
 	config_file_path[len++] = '/';
-	strncpy(config_file_path + len, session->name, session_name_len);
+	strncpy(config_file_path + len, session->name, sizeof(config_file_path) - len);
 	len += session_name_len;
 	strcpy(config_file_path + len, DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
 	len += sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
