@@ -107,7 +107,8 @@ error:
  */
 static int add_uctx_to_channel(struct ltt_ust_session *usess,
 		enum lttng_domain_type domain,
-		struct ltt_ust_channel *uchan, struct lttng_event_context *ctx)
+		struct ltt_ust_channel *uchan,
+		const struct lttng_event_context *ctx)
 {
 	int ret;
 	struct ltt_ust_context *uctx = NULL;
@@ -196,7 +197,7 @@ duplicate:
  * Add kernel context to tracer.
  */
 int context_kernel_add(struct ltt_kernel_session *ksession,
-		struct lttng_event_context *ctx, char *channel_name)
+		const struct lttng_event_context *ctx, char *channel_name)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -313,7 +314,8 @@ error:
  * Add UST context to tracer.
  */
 int context_ust_add(struct ltt_ust_session *usess,
-		enum lttng_domain_type domain, struct lttng_event_context *ctx,
+		enum lttng_domain_type domain,
+		const struct lttng_event_context *ctx,
 		char *channel_name)
 {
 	int ret = LTTNG_OK;

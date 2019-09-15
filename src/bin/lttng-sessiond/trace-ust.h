@@ -187,7 +187,7 @@ struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
-		char *name);
+		const char *name);
 struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 		enum lttng_domain_type domain_type);
 
@@ -203,9 +203,9 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event, struct ltt_ust_event **ust_event);
 struct ltt_ust_context *trace_ust_create_context(
-		struct lttng_event_context *ctx);
-int trace_ust_match_context(struct ltt_ust_context *uctx,
-		struct lttng_event_context *ctx);
+		const struct lttng_event_context *ctx);
+int trace_ust_match_context(const struct ltt_ust_context *uctx,
+		const struct lttng_event_context *ctx);
 void trace_ust_delete_channel(struct lttng_ht *ht,
 		struct ltt_ust_channel *channel);
 
@@ -241,7 +241,7 @@ static inline int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
 }
 static inline
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
-		char *name)
+		const char *name)
 {
 	return NULL;
 }
@@ -288,13 +288,13 @@ void trace_ust_free_session(struct ltt_ust_session *session)
 
 static inline
 struct ltt_ust_context *trace_ust_create_context(
-		struct lttng_event_context *ctx)
+		const struct lttng_event_context *ctx)
 {
 	return NULL;
 }
 static inline
-int trace_ust_match_context(struct ltt_ust_context *uctx,
-		struct lttng_event_context *ctx)
+int trace_ust_match_context(const struct ltt_ust_context *uctx,
+		const struct lttng_event_context *ctx)
 {
 	return 0;
 }
