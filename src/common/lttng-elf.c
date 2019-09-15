@@ -605,6 +605,7 @@ int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
 	char *curr_section_name;
 
 	for (i = 0; i < elf->ehdr->e_shnum; ++i) {
+		bool name_equal;
 	        int ret = lttng_elf_get_section_hdr(elf, i, section_hdr);
 
 		if (ret) {
@@ -615,7 +616,9 @@ int lttng_elf_get_section_hdr_by_name(struct lttng_elf *elf,
 		if (!curr_section_name) {
 			continue;
 		}
-		if (strcmp(curr_section_name, section_name) == 0) {
+		name_equal = strcmp(curr_section_name, section_name) == 0;
+		free(curr_section_name);
+		if (name_equal) {
 			return 0;
 		}
 	}
