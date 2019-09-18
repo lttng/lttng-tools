@@ -989,7 +989,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 	if (close_command < LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED ||
 			close_command >= LTTNG_TRACE_CHUNK_COMMAND_TYPE_MAX) {
 		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_ARGUMENT;
-		goto end_unlock;
+		goto end;
 	}
 
 	pthread_mutex_lock(&chunk->lock);
@@ -1003,7 +1003,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
         }
 	LTTNG_OPTIONAL_SET(&chunk->close_command, close_command);
 	pthread_mutex_unlock(&chunk->lock);
-end_unlock:
+end:
 	return status;
 }
 
