@@ -151,6 +151,7 @@ error:
 			PERROR("Failed to close file descriptor of index file");
 		}
 	}
+	lttng_trace_chunk_put(chunk);
 	free(index_file);
 	return NULL;
 }
