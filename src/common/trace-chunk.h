@@ -83,6 +83,15 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 		uint64_t chunk_id,
 		time_t chunk_creation_time);
 
+/*
+ * Copy a trace chunk. The copy that is returned is always a _user_
+ * mode chunk even if the source chunk was an _owner_ as there can never be
+ * two _owners_ of the same trace output.
+ */
+LTTNG_HIDDEN
+struct lttng_trace_chunk *lttng_trace_chunk_copy(
+		struct lttng_trace_chunk *source_chunk);
+
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_get_id(
 		struct lttng_trace_chunk *chunk, uint64_t *id);

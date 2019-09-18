@@ -66,6 +66,7 @@ struct chunk_credentials {
 	struct lttng_credentials user;
 };
 
+/* NOTE: Make sure to update lttng_trace_chunk_copy if you modify this. */
 struct lttng_trace_chunk {
 	pthread_mutex_t lock;
 	struct urcu_ref ref;
@@ -73,6 +74,8 @@ struct lttng_trace_chunk {
 	/*
 	 * First-level directories created within the trace chunk.
 	 * Elements are of type 'char *'.
+	 *
+	 * Only used by _owner_ mode chunks.
 	 */
 	struct lttng_dynamic_pointer_array top_level_directories;
 	/* Is contained within an lttng_trace_chunk_registry_element? */
@@ -299,6 +302,71 @@ end:
 	return chunk;
 error:
 	lttng_trace_chunk_put(chunk);
+	return NULL;
+}
+
+LTTNG_HIDDEN
+struct lttng_trace_chunk *lttng_trace_chunk_copy(
+		struct lttng_trace_chunk *source_chunk)
+{
+	struct lttng_trace_chunk *new_chunk = lttng_trace_chunk_allocate();
+
+	if (!new_chunk) {
+		goto end;
+	}
+
+	pthread_mutex_lock(&source_chunk->lock);
+	/*
+	 * A new chunk is always a user; it shall create no new trace
+	 * subdirectories.
+	 */
+	new_chunk->mode = (typeof(new_chunk->mode)) {
+		.is_set = true,
+		.value = TRACE_CHUNK_MODE_USER,
+	};
+	/*
+	 * top_level_directories is not copied as it is never used
+	 * by _user_ mode chunks.
+	 */
+	/* The new chunk is not part of a registry (yet, at least). */
+	new_chunk->in_registry_element = false;
+	new_chunk->name_overridden = source_chunk->name_overridden;
+	if (source_chunk->name) {
+		new_chunk->name = strdup(source_chunk->name);
+		if (!new_chunk->name) {
+			ERR("Failed to copy source trace chunk name in %s()",
+					__FUNCTION__);
+			goto error_unlock;
+		}
+	}
+	new_chunk->id = source_chunk->id;
+	new_chunk->timestamp_creation = source_chunk->timestamp_creation;
+	new_chunk->timestamp_close = source_chunk->timestamp_close;
+	new_chunk->credentials = source_chunk->credentials;
+	if (source_chunk->session_output_directory.is_set) {
+		if (lttng_directory_handle_copy(
+				&source_chunk->session_output_directory.value,
+				&new_chunk->session_output_directory.value)) {
+			goto error_unlock;
+		} else {
+			new_chunk->session_output_directory.is_set = true;
+		}
+	}
+	if (source_chunk->chunk_directory.is_set) {
+		if (lttng_directory_handle_copy(
+				&source_chunk->chunk_directory.value,
+				&new_chunk->chunk_directory.value)) {
+			goto error_unlock;
+		} else {
+			new_chunk->chunk_directory.is_set = true;
+		}
+	}
+	new_chunk->close_command = source_chunk->close_command;
+	pthread_mutex_unlock(&source_chunk->lock);
+end:
+	return new_chunk;
+error_unlock:
+	pthread_mutex_unlock(&source_chunk->lock);
 	return NULL;
 }
 
