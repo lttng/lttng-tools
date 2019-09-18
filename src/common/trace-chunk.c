@@ -104,11 +104,13 @@ struct lttng_trace_chunk_registry {
 	struct cds_lfht *ht;
 };
 
-const char *close_command_names[] = {
+static const
+char *close_command_names[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED] =
 		"move to completed chunk folder",
 };
 
+static const
 chunk_close_command close_command_funcs[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED] =
 			lttng_trace_chunk_move_to_completed,
