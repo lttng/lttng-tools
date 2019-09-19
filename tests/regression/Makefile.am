@@ -53,7 +53,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/blocking/test_blocking \
 	ust/multi-lib/test_multi_lib \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
-	tools/metadata/test_ust
+	tools/metadata/test_ust \
+	tools/relayd-grouping/test_ust
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
