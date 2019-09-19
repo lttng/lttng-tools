@@ -42,11 +42,12 @@ static void viewer_stream_destroy_rcu(struct rcu_head *head)
 }
 
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
+		struct lttng_trace_chunk *viewer_trace_chunk,
 		enum lttng_viewer_seek seek_t)
 {
 	struct relay_viewer_stream *vstream = NULL;
 	const bool acquired_reference = lttng_trace_chunk_get(
-			stream->trace_chunk);
+			viewer_trace_chunk);
 
 	if (!acquired_reference) {
 		goto error;
@@ -58,7 +59,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		goto error;
 	}
 
-	vstream->stream_file.trace_chunk = stream->trace_chunk;
+	vstream->stream_file.trace_chunk = viewer_trace_chunk;
+	viewer_trace_chunk = NULL;
 	vstream->path_name = lttng_strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
 	if (vstream->path_name == NULL) {
 		PERROR("relay viewer path_name alloc");
@@ -130,7 +132,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		const uint32_t connection_minor = stream->trace->session->minor;
 
 		vstream->index_file = lttng_index_file_create_from_trace_chunk_read_only(
-				stream->trace_chunk, stream->path_name,
+				vstream->stream_file.trace_chunk,
+				stream->path_name,
 				stream->channel_name, stream->tracefile_size,
 				vstream->current_tracefile_id,
 				lttng_to_index_major(connection_major,
@@ -169,6 +172,9 @@ error_unlock:
 error:
 	if (vstream) {
 		viewer_stream_destroy(vstream);
+	}
+	if (viewer_trace_chunk) {
+		lttng_trace_chunk_put(viewer_trace_chunk);
 	}
 	return NULL;
 }
@@ -313,7 +319,8 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 	}
 	vstream->index_file =
 			lttng_index_file_create_from_trace_chunk_read_only(
-					stream->trace_chunk, stream->path_name,
+					vstream->stream_file.trace_chunk,
+					stream->path_name,
 					stream->channel_name,
 					stream->tracefile_size,
 					vstream->current_tracefile_id,

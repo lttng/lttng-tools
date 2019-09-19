@@ -276,10 +276,13 @@ end_unlock:
  *
  * Return 0 on success or else a negative value.
  */
-static
-int make_viewer_streams(struct relay_session *session,
-		enum lttng_viewer_seek seek_t, uint32_t *nb_total, uint32_t *nb_unsent,
-		uint32_t *nb_created, bool *closed)
+static int make_viewer_streams(struct relay_session *session,
+		struct lttng_trace_chunk *viewer_trace_chunk,
+		enum lttng_viewer_seek seek_t,
+		uint32_t *nb_total,
+		uint32_t *nb_unsent,
+		uint32_t *nb_created,
+		bool *closed)
 {
 	int ret;
 	struct lttng_ht_iter iter;
@@ -321,7 +324,8 @@ int make_viewer_streams(struct relay_session *session,
 			}
 			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
-				vstream = viewer_stream_create(stream, seek_t);
+				vstream = viewer_stream_create(stream,
+						viewer_trace_chunk, seek_t);
 				if (!vstream) {
 					ret = -1;
 					ctf_trace_put(ctf_trace);
@@ -906,7 +910,7 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	uint32_t nb_created = 0, nb_unsent = 0, nb_streams = 0, nb_total = 0;
 	struct lttng_viewer_new_streams_request request;
 	struct lttng_viewer_new_streams_response response;
-	struct relay_session *session;
+	struct relay_session *session = NULL;
 	uint64_t session_id;
 	bool closed = false;
 
@@ -944,12 +948,23 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
 	pthread_mutex_lock(&session->lock);
-	ret = make_viewer_streams(session, LTTNG_VIEWER_SEEK_LAST, &nb_total, &nb_unsent,
-			&nb_created, &closed);
-	pthread_mutex_unlock(&session->lock);
-	if (ret < 0) {
-		goto end_put_session;
+	if (!conn->viewer_session->current_trace_chunk &&
+			session->current_trace_chunk) {
+		ret = viewer_session_set_trace_chunk(conn->viewer_session,
+				session->current_trace_chunk);
+		if (ret) {
+			goto error_unlock_session;
+		}
 	}
+	ret = make_viewer_streams(session,
+			conn->viewer_session->current_trace_chunk,
+			LTTNG_VIEWER_SEEK_LAST, &nb_total, &nb_unsent,
+			&nb_created, &closed);
+	if (ret < 0) {
+		goto error_unlock_session;
+	}
+	pthread_mutex_unlock(&session->lock);
+
 	/* Only send back the newly created streams with the unsent ones. */
 	nb_streams = nb_created + nb_unsent;
 	response.streams_count = htobe32(nb_streams);
@@ -997,6 +1012,10 @@ end_put_session:
 		session_put(session);
 	}
 error:
+	return ret;
+error_unlock_session:
+	pthread_mutex_unlock(&session->lock);
+	session_put(session);
 	return ret;
 }
 
@@ -1073,12 +1092,20 @@ int viewer_attach_session(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	ret = make_viewer_streams(session, seek_type, &nb_streams, NULL,
-			NULL, &closed);
+	if (!conn->viewer_session->current_trace_chunk &&
+			session->current_trace_chunk) {
+		ret = viewer_session_set_trace_chunk(conn->viewer_session,
+				session->current_trace_chunk);
+		if (ret) {
+			goto end_put_session;
+		}
+	}
+	ret = make_viewer_streams(session,
+			conn->viewer_session->current_trace_chunk, seek_type,
+			&nb_streams, NULL, NULL, &closed);
 	if (ret < 0) {
 		goto end_put_session;
 	}
-
 	pthread_mutex_unlock(&session->lock);
 	session_put(session);
 	session = NULL;
@@ -1158,7 +1185,7 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 		goto end;
 	}
 	vstream->index_file = lttng_index_file_create_from_trace_chunk_read_only(
-			rstream->trace_chunk, rstream->path_name,
+			vstream->stream_file.trace_chunk, rstream->path_name,
 			rstream->channel_name, rstream->tracefile_size,
 			vstream->current_tracefile_id,
 			lttng_to_index_major(connection_major, connection_minor),

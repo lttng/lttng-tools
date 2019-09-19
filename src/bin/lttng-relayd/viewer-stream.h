@@ -81,6 +81,7 @@ struct relay_viewer_stream {
 };
 
 struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
+		struct lttng_trace_chunk *viewer_trace_chunk,
 		enum lttng_viewer_seek seek_t);
 
 struct relay_viewer_stream *viewer_stream_get_by_id(uint64_t id);
