@@ -37,6 +37,12 @@ struct relay_conn_queue {
 	int32_t futex;
 };
 
+enum relay_group_output_by {
+	RELAYD_GROUP_OUTPUT_BY_UNKNOWN,
+	RELAYD_GROUP_OUTPUT_BY_HOST,
+	RELAYD_GROUP_OUTPUT_BY_SESSION,
+};
+
 /*
  * Contains stream indexed by ID. This is important since many commands lookup
  * streams only by ID thus also keeping them in this hash table makes the
@@ -50,6 +56,7 @@ extern struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
 extern char *opt_output_path;
 extern const char *tracing_group_name;
 extern const char * const config_section_name;
+extern enum relay_group_output_by opt_group_output_by;
 
 extern int thread_quit_pipe[2];
 

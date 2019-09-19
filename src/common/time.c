@@ -114,3 +114,35 @@ int time_to_iso8601_str(time_t time, char *str, size_t len)
 end:
 	return ret;
 }
+
+LTTNG_HIDDEN
+int time_to_datetime_str(time_t time, char *str, size_t len)
+{
+	int ret = 0;
+	struct tm *tm_result;
+	struct tm tm_storage;
+	size_t strf_ret;
+
+	if (len < DATETIME_STR_LEN) {
+		ERR("Buffer too short to format to datetime: %zu bytes provided when at least %zu are needed",
+				len, DATETIME_STR_LEN);
+		ret = -1;
+		goto end;
+	}
+
+	tm_result = localtime_r(&time, &tm_storage);
+	if (!tm_result) {
+		ret = -1;
+		PERROR("Failed to break down timestamp to tm structure");
+		goto end;
+	}
+
+	strf_ret = strftime(str, len, "%Y%m%d-%H%M%S", tm_result);
+	if (strf_ret == 0) {
+		ret = -1;
+		ERR("Failed to format timestamp as local time");
+		goto end;
+	}
+end:
+	return ret;
+}
