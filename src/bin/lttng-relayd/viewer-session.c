@@ -47,12 +47,13 @@ int viewer_session_attach(struct relay_viewer_session *vsession,
 {
 	int ret = 0;
 
+	ASSERT_LOCKED(session->lock);
+
 	/* Will not fail, as per the ownership guarantee. */
 	if (!session_get(session)) {
 		ret = -1;
 		goto end;
 	}
-	pthread_mutex_lock(&session->lock);
 	if (session->viewer_attached) {
 		ret = -1;
 	} else {
@@ -69,8 +70,6 @@ int viewer_session_attach(struct relay_viewer_session *vsession,
 		/* Put our local ref. */
 		session_put(session);
 	}
-	/* Safe since we know the session exists. */
-	pthread_mutex_unlock(&session->lock);
 end:
 	return ret;
 }
