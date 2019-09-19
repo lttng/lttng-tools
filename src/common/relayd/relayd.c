@@ -491,20 +491,36 @@ error:
  * On success return 0 else return ret_code negative value.
  */
 int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_name,
-		const char *pathname, uint64_t *stream_id,
+		const char *domain_name, const char *_pathname, uint64_t *stream_id,
 		uint64_t tracefile_size, uint64_t tracefile_count,
 		struct lttng_trace_chunk *trace_chunk)
 {
 	int ret;
 	struct lttcomm_relayd_status_stream reply;
+	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
+	char *separator;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);
 	assert(channel_name);
-	assert(pathname);
+	assert(domain_name);
+	assert(_pathname);
 	assert(trace_chunk);
 
 	DBG("Relayd adding stream for channel name %s", channel_name);
+
+	if (_pathname[0] == '\0') {
+		separator = "";
+	} else {
+		separator = "/";
+	}
+	ret = snprintf(pathname, RELAYD_COMM_LTTNG_PATH_MAX, "%s%s%s",
+			domain_name, separator, _pathname);
+	if (ret <= 0 || ret >= RELAYD_COMM_LTTNG_PATH_MAX) {
+		ERR("stream path too long.");
+		ret = -1;
+		goto error;
+	}
 
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {

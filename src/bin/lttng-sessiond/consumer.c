@@ -46,7 +46,7 @@
  * returned.
  */
 char *setup_channel_trace_path(struct consumer_output *consumer,
-		const char *session_path)
+		const char *session_path, size_t *consumer_path_offset)
 {
 	int ret;
 	char *pathname;
@@ -69,13 +69,15 @@ char *setup_channel_trace_path(struct consumer_output *consumer,
 	if (consumer->type == CONSUMER_DST_NET &&
 			consumer->relay_major_version == 2 &&
 			consumer->relay_minor_version < 11) {
-		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s/%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s/%s/%s",
 				consumer->dst.net.base_dir,
 				consumer->chunk_path, consumer->domain_subdir,
 				session_path);
+		*consumer_path_offset = 0;
 	} else {
-		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s%s",
+		ret = snprintf(pathname, LTTNG_PATH_MAX, "%s/%s",
 				consumer->domain_subdir, session_path);
+		*consumer_path_offset = strlen(consumer->domain_subdir) + 1;
 	}
 	DBG3("Consumer trace path relative to current trace chunk: \"%s\"",
 			pathname);
@@ -1755,13 +1757,15 @@ error:
  */
 int consumer_create_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk)
+		struct lttng_trace_chunk *chunk,
+		const char *domain_subdir)
 {
 	int ret;
 	enum lttng_trace_chunk_status chunk_status;
 	struct lttng_credentials chunk_credentials;
-	const struct lttng_directory_handle *chunk_directory_handle;
-	int chunk_dirfd;
+	const struct lttng_directory_handle *chunk_directory_handle = NULL;
+	struct lttng_directory_handle *domain_handle = NULL;
+	int domain_dirfd;
 	const char *chunk_name;
 	bool chunk_name_overridden;
 	uint64_t chunk_id;
@@ -1836,19 +1840,6 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
-
-		/*
-		 * This will only compile on platforms that support
-		 * dirfd (POSIX.2008). This is fine as the session daemon
-		 * is only built for such platforms.
-		 *
-		 * The ownership of the chunk directory handle's is maintained
-		 * by the trace chunk.
-		 */
-		chunk_dirfd = lttng_directory_handle_get_dirfd(
-				chunk_directory_handle);
-		assert(chunk_dirfd >= 0);
-
 		chunk_status = lttng_trace_chunk_get_credentials(
 				chunk, &chunk_credentials);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
@@ -1859,6 +1850,37 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
+		ret = lttng_directory_handle_create_subdirectory_as_user(
+				chunk_directory_handle,
+				domain_subdir,
+				S_IRWXU | S_IRWXG,
+				&chunk_credentials);
+		if (ret) {
+			PERROR("Failed to create chunk domain output directory \"%s\"",
+				domain_subdir);
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
+		domain_handle = lttng_directory_handle_create_from_handle(
+				domain_subdir,
+				chunk_directory_handle);
+		if (!domain_handle) {
+			ret = -LTTNG_ERR_FATAL;
+			goto error;
+		}
+
+		/*
+		 * This will only compile on platforms that support
+		 * dirfd (POSIX.2008). This is fine as the session daemon
+		 * is only built for such platforms.
+		 *
+		 * The ownership of the chunk directory handle's is maintained
+		 * by the trace chunk.
+		 */
+		domain_dirfd = lttng_directory_handle_get_dirfd(
+				domain_handle);
+		assert(domain_dirfd >= 0);
+
 		msg.u.create_trace_chunk.credentials.value.uid =
 				chunk_credentials.uid;
 		msg.u.create_trace_chunk.credentials.value.gid =
@@ -1881,9 +1903,9 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	}
 
 	if (chunk_has_local_output) {
-		DBG("Sending trace chunk directory fd to consumer");
+		DBG("Sending trace chunk domain directory fd to consumer");
 		health_code_update();
-		ret = consumer_send_fds(socket, &chunk_dirfd, 1);
+		ret = consumer_send_fds(socket, &domain_dirfd, 1);
 		health_code_update();
 		if (ret < 0) {
 			ERR("Trace chunk creation error on consumer");
@@ -1892,6 +1914,7 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 		}
 	}
 error:
+	lttng_directory_handle_put(domain_handle);
 	return ret;
 }
 

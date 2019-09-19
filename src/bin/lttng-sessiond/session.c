@@ -491,7 +491,8 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 					relayd_id,
-					session->id, new_trace_chunk);
+					session->id, new_trace_chunk,
+					DEFAULT_UST_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
                         if (ret) {
 				goto error;
@@ -521,7 +522,8 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			pthread_mutex_lock(socket->lock);
 			ret = consumer_create_trace_chunk(socket,
 					relayd_id,
-					session->id, new_trace_chunk);
+					session->id, new_trace_chunk,
+					DEFAULT_KERNEL_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
                         if (ret) {
 				goto error;

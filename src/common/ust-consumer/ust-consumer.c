@@ -2056,18 +2056,21 @@ end_rotate_channel_nosignal:
 				goto end_nosignal;
 			}
 
+			/*
+			 * Receive trace chunk domain dirfd.
+			 */
 			ret = lttcomm_recv_fds_unix_sock(sock, &chunk_dirfd, 1);
 			if (ret != sizeof(chunk_dirfd)) {
-				ERR("Failed to receive trace chunk directory file descriptor");
+				ERR("Failed to receive trace chunk domain directory file descriptor");
 				goto error_fatal;
 			}
 
-			DBG("Received trace chunk directory fd (%d)",
+			DBG("Received trace chunk domain directory fd (%d)",
 					chunk_dirfd);
 			chunk_directory_handle = lttng_directory_handle_create_from_dirfd(
 					chunk_dirfd);
 			if (!chunk_directory_handle) {
-				ERR("Failed to initialize chunk directory handle from directory file descriptor");
+				ERR("Failed to initialize chunk domain directory handle from directory file descriptor");
 				if (close(chunk_dirfd)) {
 					PERROR("Failed to close chunk directory file descriptor");
 				}

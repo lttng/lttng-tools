@@ -59,8 +59,8 @@
 #define DEFAULT_UST_TRACE_DIR                   "ust"
 
 /* Subpath for per PID or UID sessions. */
-#define DEFAULT_UST_TRACE_PID_PATH               "/pid"
-#define DEFAULT_UST_TRACE_UID_PATH               "/uid/%d/%u-bit"
+#define DEFAULT_UST_TRACE_PID_PATH               "pid"
+#define DEFAULT_UST_TRACE_UID_PATH               "uid/%d/%u-bit"
 
 /*
  * Default session name for the lttng command line. This default value will

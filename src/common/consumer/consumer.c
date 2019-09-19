@@ -91,6 +91,20 @@ int consumer_quit;
 static struct lttng_ht *metadata_ht;
 static struct lttng_ht *data_ht;
 
+static const char *get_consumer_domain(void)
+{
+	switch (consumer_data.type) {
+	case LTTNG_CONSUMER_KERNEL:
+		return DEFAULT_KERNEL_TRACE_DIR;
+	case LTTNG_CONSUMER64_UST:
+		/* Fall-through. */
+	case LTTNG_CONSUMER32_UST:
+		return DEFAULT_UST_TRACE_DIR;
+	default:
+		abort();
+	}
+}
+
 /*
  * Notify a thread lttng pipe to poll back again. This usually means that some
  * global state has changed so we just send back the thread in a poll wait
@@ -816,7 +830,7 @@ int consumer_send_relayd_stream(struct lttng_consumer_stream *stream,
 		/* Add stream on the relayd */
 		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
 		ret = relayd_add_stream(&relayd->control_sock, stream->name,
-				path, &stream->relayd_stream_id,
+				get_consumer_domain(), path, &stream->relayd_stream_id,
 				stream->chan->tracefile_size,
 				stream->chan->tracefile_count,
 				stream->trace_chunk);

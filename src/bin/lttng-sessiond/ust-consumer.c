@@ -56,6 +56,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
 	bool is_local_trace;
+	size_t consumer_path_offset = 0;
 
 	assert(ua_sess);
 	assert(ua_chan);
@@ -67,7 +68,8 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 
 	is_local_trace = consumer->net_seq_index == -1ULL;
 	/* Format the channel's path (relative to the current trace chunk). */
-	pathname = setup_channel_trace_path(consumer, ua_sess->path);
+	pathname = setup_channel_trace_path(consumer, ua_sess->path,
+			&consumer_path_offset);
 	if (!pathname) {
 		ret = -1;
 		goto error;
@@ -148,7 +150,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 			output,
 			(int) ua_chan->attr.type,
 			ua_sess->tracing_id,
-			pathname,
+			&pathname[consumer_path_offset],
 			ua_chan->name,
 			consumer->net_seq_index,
 			ua_chan->key,

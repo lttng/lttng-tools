@@ -315,7 +315,8 @@ int consumer_init(struct consumer_socket *socket,
 
 int consumer_create_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
-		struct lttng_trace_chunk *chunk);
+		struct lttng_trace_chunk *chunk,
+		const char *domain_subdir);
 int consumer_close_trace_chunk(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
 		struct lttng_trace_chunk *chunk,
@@ -326,6 +327,6 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 		enum consumer_trace_chunk_exists_status *result);
 
 char *setup_channel_trace_path(struct consumer_output *consumer,
-		const char *session_path);
+		const char *session_path, size_t *consumer_path_offset);
 
 #endif /* _CONSUMER_H */
