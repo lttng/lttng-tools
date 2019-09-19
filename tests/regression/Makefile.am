@@ -55,7 +55,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
 	ust/namespaces/test_ns_contexts \
 	ust/namespaces/test_ns_contexts_change \
-	tools/metadata/test_ust
+	tools/metadata/test_ust \
+	tools/relayd-grouping/test_ust
 endif # HAVE_LIBLTTNG_UST_CTL
 
 if PYTHON_BINDING
