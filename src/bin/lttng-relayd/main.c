@@ -98,6 +98,7 @@ enum relay_connection_status {
 /* command line options */
 char *opt_output_path, *opt_working_directory;
 static int opt_daemon, opt_background, opt_print_version;
+enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
 /*
  * We need to wait for listener and live listener threads, as well as
@@ -185,6 +186,8 @@ static struct option long_options[] = {
 	{ "config", 1, 0, 'f' },
 	{ "version", 0, 0, 'V' },
 	{ "working-directory", 1, 0, 'w', },
+	{ "group-output-by-session", 0, 0, 's', },
+	{ "group-output-by-host", 0, 0, 'p', },
 	{ NULL, 0, 0, 0, },
 };
 
@@ -336,6 +339,20 @@ static int set_option(int opt, const char *arg, const char *optname)
 				lttng_opt_verbose += 1;
 			}
 		}
+		break;
+	case 's':
+		if (opt_group_output_by != RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
+			ERR("Cannot set --group-output-by-session, another --group-output-by argument is present");
+			exit(EXIT_FAILURE);
+		}
+		opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_SESSION;
+		break;
+	case 'p':
+		if (opt_group_output_by != RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
+			ERR("Cannot set --group-output-by-host, another --group-output-by argument is present");
+			exit(EXIT_FAILURE);
+		}
+		opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_HOST;
 		break;
 	default:
 		/* Unknown option or other error.
@@ -539,6 +556,10 @@ static int set_options(int argc, char **argv)
 			retval = -1;
 			goto exit;
 		}
+	}
+
+	if (opt_group_output_by == RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
+		opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_HOST;
 	}
 
 exit:

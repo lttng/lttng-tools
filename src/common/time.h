@@ -38,6 +38,7 @@
 #define USEC_PER_HOURS  (USEC_PER_MINUTE * MINUTE_PER_HOUR)
 
 #define ISO8601_STR_LEN sizeof("YYYYmmddTHHMMSS+HHMM")
+#define DATETIME_STR_LEN sizeof("YYYYmmdd-HHMMSS")
 
 LTTNG_HIDDEN
 bool locale_supports_utf8(void);
@@ -73,5 +74,8 @@ struct timespec timespec_abs_diff(struct timespec ts_a, struct timespec ts_b);
  */
 LTTNG_HIDDEN
 int time_to_iso8601_str(time_t time, char *str, size_t len);
+
+LTTNG_HIDDEN
+int time_to_datetime_str(time_t time, char *str, size_t len);
 
 #endif /* LTTNG_TIME_H */
