@@ -27,6 +27,7 @@
 #include <urcu/ref.h>
 
 #include <common/hashtable/hashtable.h>
+#include <common/trace-chunk.h>
 
 #include "session.h"
 
@@ -39,6 +40,8 @@ struct relay_viewer_session {
 	 */
 	struct cds_list_head session_list;	/* RCU list. */
 	pthread_mutex_t session_list_lock;	/* Protects list updates. */
+	/* Once set, the current trace chunk of a viewer must not change. */
+	struct lttng_trace_chunk *current_trace_chunk;
 };
 
 struct relay_viewer_session *viewer_session_create(void);
@@ -51,5 +54,7 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession,
 		struct relay_session *session);
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		struct relay_session *session);
+int viewer_session_set_trace_chunk(struct relay_viewer_session *vsession,
+		struct lttng_trace_chunk *relay_session_trace_chunk);
 
 #endif /* _VIEWER_SESSION_H */
