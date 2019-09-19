@@ -188,7 +188,7 @@ static char **alloc_argv_from_local_opts(const char **opts, size_t opts_len,
 		goto error;
 	}
 
-	memcpy(argv, opts, opts_len);
+	memcpy(argv, opts, size);
 
 	if (session_live_mode) {
 		argv[opts_len] = "-i";
