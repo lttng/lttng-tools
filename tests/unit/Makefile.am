@@ -16,6 +16,7 @@ TESTS = test_kernel_data \
 	test_string_utils \
 	test_notification \
 	test_directory_handle \
+	test_relayd_backward_compat_group_by_session \
 	ini_config/test_ini_config
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
@@ -31,7 +32,8 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
                   test_utils_expand_path test_utils_compat_poll \
-                  test_string_utils test_notification test_directory_handle
+                  test_string_utils test_notification test_directory_handle \
+                  test_relayd_backward_compat_group_by_session
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -89,6 +91,8 @@ SESSIOND_OBJS += $(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/agent-thread.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT)
 endif
+
+RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
 
 test_session_SOURCES = test_session.c
 test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
@@ -170,3 +174,8 @@ test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
 # Notification api
 test_notification_SOURCES = test_notification.c
 test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
+
+# relayd backward compat for groou-by-session utilities
+test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
+test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(RELAYD_OBJS)
+test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/bin/lttng-relayd

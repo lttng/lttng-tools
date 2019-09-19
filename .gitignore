@@ -85,6 +85,7 @@ compile_commands.json
 /tests/unit/test_utils_expand_path
 /tests/unit/test_notification
 /tests/unit/test_directory_handle
+/tests/unit/test_relayd_backward_compat_group_by_session
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard
