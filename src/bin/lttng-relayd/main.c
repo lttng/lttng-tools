@@ -62,22 +62,23 @@
 #include <common/buffer-view.h>
 #include <common/string-utils/format.h>
 
-#include "version.h"
+#include "backward-compatibility-group-by.h"
 #include "cmd.h"
-#include "ctf-trace.h"
-#include "index.h"
-#include "utils.h"
-#include "lttng-relayd.h"
-#include "live.h"
-#include "health-relayd.h"
-#include "testpoint.h"
-#include "viewer-stream.h"
-#include "session.h"
-#include "stream.h"
 #include "connection.h"
-#include "tracefile-array.h"
-#include "tcp_keep_alive.h"
+#include "ctf-trace.h"
+#include "health-relayd.h"
+#include "index.h"
+#include "live.h"
+#include "lttng-relayd.h"
+#include "session.h"
 #include "sessiond-trace-chunks.h"
+#include "stream.h"
+#include "tcp_keep_alive.h"
+#include "testpoint.h"
+#include "tracefile-array.h"
+#include "utils.h"
+#include "version.h"
+#include "viewer-stream.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -1370,12 +1371,57 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto send_reply;
 	}
 
+	/*
+	 * Backward compatibility for --group-output-by-session.
+	 * Prior to lttng 2.11, the complete path is passed by the stream.
+	 * Starting at 2.11, lttng-relayd uses chunk. When dealing with producer
+	 * >=2.11 the chunk is responsible for the output path. When dealing
+	 * with producer < 2.11 the chunk output_path is the root output path
+	 * and the stream carries the complete path (path_name).
+	 * To support --group-output-by-session with older producer (<2.11), we
+	 * need to craft the path based on the stream path.
+	 */
+	if (opt_group_output_by == RELAYD_GROUP_OUTPUT_BY_SESSION) {
+		if (conn->minor < 4) {
+			/*
+			 * From 2.1 to 2.3, the session_name is not passed on
+			 * the RELAYD_CREATE_SESSION command. The session name
+			 * is necessary to detect the presence of a base_path
+			 * inside the stream path. Without it we cannot perform
+			 * a valid group-output-by-session transformation.
+			 */
+			WARN("Unable to perform a --group-by-session transformation for session %" PRIu64
+			     " for stream with path \"%s\" as it is produced by a peer using a protocol older than v2.4",
+					session->id, path_name);
+		} else if (conn->minor >= 4 && conn->minor < 11) {
+			char *group_by_session_path_name;
+
+			assert(session->session_name[0] != '\0');
+
+			group_by_session_path_name =
+					backward_compat_group_by_session(
+							path_name,
+							session->session_name);
+			if (!group_by_session_path_name) {
+				ERR("Failed to apply group by session to stream of session %" PRIu64,
+						session->id);
+				goto send_reply;
+			}
+
+			DBG("Transformed session path from \"%s\" to \"%s\" to honor per-session name grouping",
+					path_name, group_by_session_path_name);
+
+			free(path_name);
+			path_name = group_by_session_path_name;
+		}
+	}
+
 	trace = ctf_trace_get_by_path_or_create(session, path_name);
 	if (!trace) {
 		goto send_reply;
 	}
-	/* This stream here has one reference on the trace. */
 
+	/* This stream here has one reference on the trace. */
 	pthread_mutex_lock(&last_relay_stream_id_lock);
 	stream_handle = ++last_relay_stream_id;
 	pthread_mutex_unlock(&last_relay_stream_id_lock);

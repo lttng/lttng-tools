@@ -23,7 +23,8 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        viewer-session.c viewer-session.h \
                        tracefile-array.c tracefile-array.h \
                        tcp_keep_alive.c tcp_keep_alive.h \
-                       sessiond-trace-chunks.c sessiond-trace-chunks.h
+                       sessiond-trace-chunks.c sessiond-trace-chunks.h \
+                       backward-compatibility-group-by.c backward-compatibility-group-by.h
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = -lurcu-common -lurcu \
