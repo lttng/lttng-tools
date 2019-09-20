@@ -832,8 +832,7 @@ void *thread_rotation(void *data)
 	int ret;
 	struct rotation_thread_handle *handle = data;
 	struct rotation_thread thread;
-	const int queue_pipe_fd = lttng_pipe_get_readfd(
-			handle->rotation_timer_queue->event_pipe);
+	int queue_pipe_fd;
 
 	DBG("[rotation-thread] Started rotation thread");
 
@@ -841,6 +840,9 @@ void *thread_rotation(void *data)
 		ERR("[rotation-thread] Invalid thread context provided");
 		goto end;
 	}
+
+	queue_pipe_fd = lttng_pipe_get_readfd(
+			handle->rotation_timer_queue->event_pipe);
 
 	rcu_register_thread();
 	rcu_thread_online();
