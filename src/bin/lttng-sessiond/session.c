@@ -811,7 +811,6 @@ void session_release(struct urcu_ref *ref)
 
 	DBG("Destroying session %s (id %" PRIu64 ")", session->name, session->id);
 
-	consumer_output_put(session->consumer);
 	snapshot_destroy(&session->snapshot);
 
 	pthread_mutex_destroy(&session->lock);
@@ -823,6 +822,7 @@ void session_release(struct urcu_ref *ref)
 	}
 	session_notify_destruction(session);
 
+	consumer_output_put(session->consumer);
 	kernel_free_session(ksess);
 	session->kernel_session = NULL;
 	if (usess) {
