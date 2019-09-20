@@ -1819,7 +1819,9 @@ stop_threads:
 	lttng_pipe_destroy(ust64_channel_monitor_pipe);
 	lttng_pipe_destroy(kernel_channel_monitor_pipe);
 
-	health_app_destroy(health_sessiond);
+	if (health_sessiond) {
+		health_app_destroy(health_sessiond);
+	}
 exit_create_run_as_worker_cleanup:
 exit_options:
 	sessiond_cleanup_lock_file();
