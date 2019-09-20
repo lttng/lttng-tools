@@ -1985,8 +1985,11 @@ static int create_client_sock(void)
 	/* File permission MUST be 660 */
 	ret = chmod(config.client_unix_sock_path.value, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
-		ERR("Set file permissions failed: %s", config.client_unix_sock_path.value);
+		ERR("Set file permissions failed: %s",
+				config.client_unix_sock_path.value);
 		PERROR("chmod");
+		(void) lttcomm_close_unix_sock(client_sock);
+		ret = -1;
 		goto end;
 	}
 	DBG("Created client socket (fd = %i)", client_sock);
