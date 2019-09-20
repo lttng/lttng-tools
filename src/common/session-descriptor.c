@@ -550,14 +550,8 @@ lttng_session_descriptor_live_create(
 	struct lttng_session_descriptor_live *descriptor;
 
 	descriptor = _lttng_session_descriptor_live_create(name, live_timer_us);
-	if (!descriptor) {
-		goto error;
-	}
 
 	return descriptor ? &descriptor->base : NULL;
-error:
-	lttng_session_descriptor_destroy(descriptor ? &descriptor->base : NULL);
-	return NULL;
 }
 
 struct lttng_session_descriptor *
