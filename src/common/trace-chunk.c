@@ -367,6 +367,7 @@ end:
 	return new_chunk;
 error_unlock:
 	pthread_mutex_unlock(&source_chunk->lock);
+	lttng_trace_chunk_put(new_chunk);
 	return NULL;
 }
 
