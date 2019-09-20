@@ -133,11 +133,13 @@ function rotate_timer_test ()
 	# chunks should be empty folders
 	if test $per_pid = 1; then
 		validate_trace_empty $local_path/${chunk_pattern}-0
-		nr=$(ls $local_path/${chunk_pattern}-1/ | wc -l)
-		test $nr = 0
+		nr=$(find $local_path/${chunk_pattern}-1/ | wc -l)
+		# contains self and may contain ust/ subdir (local) or not (remote).
+		test $nr -le 2
 		ok $? "Chunk 2 is empty"
-		nr=$(ls $local_path/${chunk_pattern}-2/ | wc -l)
-		test $nr = 0
+		nr=$(find $local_path/${chunk_pattern}-2/ | wc -l)
+		# contains self and may contain ust/ subdir (local) or not (remote).
+		test $nr -le 2
 		ok $? "Chunk 3 is empty"
 	else
 		while [ $i -le $expected_chunks ]; do
