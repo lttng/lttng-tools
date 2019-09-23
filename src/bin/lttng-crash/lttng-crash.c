@@ -490,7 +490,8 @@ int check_magic(const uint8_t *magic)
 }
 
 static
-int get_crash_layout(struct lttng_crash_layout *layout, int fd)
+int get_crash_layout(struct lttng_crash_layout *layout, int fd,
+		const char *input_file)
 {
 	char *map;
 	int ret = 0, unmapret;
@@ -501,7 +502,21 @@ int get_crash_layout(struct lttng_crash_layout *layout, int fd)
 	const struct crash_abi_unknown *abi;
 	uint16_t endian;
 	enum lttng_crash_type layout_type;
+	struct stat stat;
 
+	ret = fstat(fd, &stat);
+	if (ret < 0) {
+		PERROR("Failed to fstat '%s'", input_file);
+		return -1;
+	}
+	if (stat.st_size < RB_CRASH_DUMP_ABI_LEN) {
+		ERR("File '%s' truncated: file length of %" PRIi64
+				" bytes does not meet the minimal expected "
+				"length of %d bytes",
+				input_file, (int64_t) stat.st_size,
+				RB_CRASH_DUMP_ABI_LEN);
+		return -1;
+	}
 	map = mmap(NULL, RB_CRASH_DUMP_ABI_LEN, PROT_READ, MAP_PRIVATE,
 		fd, 0);
 	if (map == MAP_FAILED) {
@@ -830,7 +845,7 @@ int extract_file(int output_dir_fd, const char *output_file,
 	}
 
 	/* Query the crash ABI layout */
-	ret = get_crash_layout(&layout, fd_src);
+	ret = get_crash_layout(&layout, fd_src, input_file);
 	if (ret) {
 		goto close_src;
 	}
