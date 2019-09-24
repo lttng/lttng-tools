@@ -523,8 +523,9 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		goto end;
 	}
 
-	if (created && filter) {
-		ret = add_filter_app_ctx(filter, filter_expression, agt);
+	if (created && aevent->filter) {
+		ret = add_filter_app_ctx(
+				aevent->filter, aevent->filter_expression, agt);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
