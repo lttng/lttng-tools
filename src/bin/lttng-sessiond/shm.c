@@ -70,11 +70,44 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 	/*
 	 * Try creating shm (or get rw access). We don't do an exclusive open,
 	 * because we allow other processes to create+ftruncate it concurrently.
+	 *
+	 * A sysctl, fs.protected_regular may prevent the session daemon from
+	 * opening a previously created shm when the O_CREAT flag is provided.
+	 * Systemd enables this ABI-breaking change by default since v241.
+	 *
+	 * First, attempt to use the create-or-open semantic that is
+	 * desired here. If this fails with EACCES, work around this broken
+	 * behaviour and attempt to open the shm without the O_CREAT flag.
+	 *
+	 * The two attempts are made in this order since applications are
+	 * expected to race with the session daemon to create this shm.
+	 * Attempting an shm_open() without the O_CREAT flag first could fail
+	 * because the file doesn't exist. It could then be created by an
+	 * application, which would cause a second try with the O_CREAT flag to
+	 * fail with EACCES.
+	 *
+	 * Note that this introduces a new failure mode where a user could
+	 * launch an application (creating the shm) and unlink the shm while
+	 * the session daemon is launching, causing the second attempt
+	 * to fail. This is not recovered-from as unlinking the shm will
+	 * prevent userspace tracing from succeeding anyhow: the sessiond would
+	 * use a now-unlinked shm, while the next application would create
+	 * a new named shm.
 	 */
 	wait_shm_fd = shm_open(shm_path, O_RDWR | O_CREAT, mode);
 	if (wait_shm_fd < 0) {
-		PERROR("Failed to open wait shm at %s", shm_path);
-		goto error;
+		if (errno == EACCES) {
+			/* Work around sysctl fs.protected_regular. */
+			DBG("shm_open of %s returned EACCES, this may be caused "
+					"by the fs.protected_regular sysctl. "
+					"Attempting to open the shm without "
+					"creating it.", shm_path);
+			wait_shm_fd = shm_open(shm_path, O_RDWR, mode);
+		}
+		if (wait_shm_fd < 0) {
+			PERROR("Failed to open wait shm at %s", shm_path);
+			goto error;
+		}
 	}
 
 	ret = ftruncate(wait_shm_fd, mmap_size);
