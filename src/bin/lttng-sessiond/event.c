@@ -511,6 +511,7 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		filter = NULL;
 		filter_expression = NULL;
 		created = 1;
+		assert(!aevent->enabled);
 	}
 
 	if (created && aevent->filter) {
