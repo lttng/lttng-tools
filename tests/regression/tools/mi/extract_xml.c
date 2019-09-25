@@ -155,8 +155,8 @@ static int register_lttng_namespace(xmlXPathContextPtr xpathCtx)
 	}
 
 	ret = xmlXPathRegisterNs(xpathCtx, prefix, ns);
-	xmlFree(prefix);
 end:
+	xmlFree(prefix);
 	xmlFree(ns);
 	return ret;
 }
