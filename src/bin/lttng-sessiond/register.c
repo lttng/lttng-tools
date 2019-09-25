@@ -72,7 +72,7 @@ static int create_application_socket(void)
 	if (ret < 0) {
 		PERROR("Set file permissions failed on %s",
 				config.apps_unix_sock_path.value);
-		goto end;
+		goto error_close_socket;
 	}
 
 	DBG3("Session daemon application socket created (fd = %d) ", apps_sock);
@@ -80,6 +80,13 @@ static int create_application_socket(void)
 end:
 	umask(old_umask);
 	return ret;
+error_close_socket:
+	if (close(apps_sock)) {
+		PERROR("Failed to close application socket in error path");
+	}
+	apps_sock = -1;
+	ret = -1;
+	goto end;
 }
 
 /*
