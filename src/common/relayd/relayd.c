@@ -161,7 +161,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 	/* The three names are sent with a '\0' delimiter between them. */
 	session_name_len = strlen(session_name) + 1;
 	hostname_len = strlen(hostname) + 1;
-	base_path_len = base_path ? strlen(base_path) + 1 : 0;
+	base_path_len = strlen(base_path) + 1;
 
 	msg_length = sizeof(*msg) + session_name_len + hostname_len + base_path_len;
 	msg = zmalloc(msg_length);
