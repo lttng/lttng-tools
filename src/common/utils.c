@@ -379,6 +379,9 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 		/* Resolve partially our path */
 		absolute_path = utils_partial_realpath(absolute_path,
 				absolute_path, LTTNG_PATH_MAX);
+		if (!absolute_path) {
+			goto error;
+		}
 	}
 
 	ret = expand_double_slashes_dot_and_dotdot(absolute_path);
