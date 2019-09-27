@@ -53,5 +53,8 @@ static void stream_fd_release(struct urcu_ref *ref)
 
 void stream_fd_put(struct stream_fd *sf)
 {
+	if (!sf) {
+		return;
+	}
 	urcu_ref_put(&sf->ref, stream_fd_release);
 }
