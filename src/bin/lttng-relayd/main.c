@@ -2674,8 +2674,8 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_trace_chunk_exists *msg;
 	struct lttcomm_relayd_trace_chunk_exists_reply reply = {};
 	struct lttng_buffer_view header_view;
-	struct lttng_trace_chunk *chunk = NULL;
 	uint64_t chunk_id;
+	bool chunk_exists;
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to close a trace chunk before version check");
@@ -2700,25 +2700,29 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	msg = (typeof(msg)) header_view.data;
 	chunk_id = be64toh(msg->chunk_id);
 
-	chunk = sessiond_trace_chunk_registry_get_chunk(
+	ret = sessiond_trace_chunk_registry_chunk_exists(
 			sessiond_trace_chunk_registry,
 			conn->session->sessiond_uuid,
 			conn->session->id,
-			chunk_id);
-
-	reply = (typeof(reply)) {
-		.generic.ret_code = htobe32((uint32_t) LTTNG_OK),
-		.trace_chunk_exists = !!chunk,
+			chunk_id, &chunk_exists);
+	/*
+	 * If ret is not 0, send the reply and report the error to the caller.
+	 * It is a protocol (or internal) error and the session/connection
+	 * should be torn down.
+	 */
+	reply = (typeof(reply)){
+		.generic.ret_code = htobe32((uint32_t)
+			(ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL)),
+		.trace_chunk_exists = ret == 0 ? chunk_exists : 0,
 	};
-	send_ret = conn->sock->ops->sendmsg(conn->sock,
-			&reply, sizeof(reply), 0);
+	send_ret = conn->sock->ops->sendmsg(
+			conn->sock, &reply, sizeof(reply), 0);
 	if (send_ret < (ssize_t) sizeof(reply)) {
 		ERR("Failed to send \"create trace chunk\" command reply (ret = %zd)",
 				send_ret);
 		ret = -1;
 	}
 end_no_reply:
-	lttng_trace_chunk_put(chunk);
 	return ret;
 }
 

@@ -55,4 +55,9 @@ sessiond_trace_chunk_registry_get_chunk(
 		const lttng_uuid sessiond_uuid,
 		uint64_t session_id, uint64_t chunk_id);
 
+int sessiond_trace_chunk_registry_chunk_exists(
+		struct sessiond_trace_chunk_registry *sessiond_registry,
+		const lttng_uuid sessiond_uuid,
+		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists);
+
 #endif /* SESSIOND_TRACE_CHUNK_REGISTRY_H */

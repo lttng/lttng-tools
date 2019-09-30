@@ -4772,12 +4772,11 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 {
 	int ret;
 	enum lttcomm_return_code ret_code;
-	struct lttng_trace_chunk *chunk;
 	char relayd_id_buffer[MAX_INT_DEC_LEN(*relayd_id)];
 	const char *relayd_id_str = "(none)";
 	const bool is_local_trace = !relayd_id;
 	struct consumer_relayd_sock_pair *relayd = NULL;
-	bool chunk_exists_remote;
+	bool chunk_exists_local, chunk_exists_remote;
 
 	if (relayd_id) {
 		int ret;
@@ -4795,13 +4794,19 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 	DBG("Consumer trace chunk exists command: relayd_id = %s"
 			", chunk_id = %" PRIu64, relayd_id_str,
 			chunk_id);
-	chunk = lttng_trace_chunk_registry_find_chunk(
+	ret = lttng_trace_chunk_registry_chunk_exists(
 			consumer_data.chunk_registry, session_id,
-			chunk_id);
-	DBG("Trace chunk %s locally", chunk ? "exists" : "does not exist");
-	if (chunk) {
+			chunk_id, &chunk_exists_local);
+	if (ret) {
+		/* Internal error. */
+		ERR("Failed to query the existence of a trace chunk");
+		ret_code = LTTCOMM_CONSUMERD_FATAL;
+		goto end_rcu_unlock;
+	}
+	DBG("Trace chunk %s locally",
+			chunk_exists_local ? "exists" : "does not exist");
+	if (chunk_exists_local) {
 		ret_code = LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL;
-		lttng_trace_chunk_put(chunk);
 		goto end;
 	} else if (is_local_trace) {
 		ret_code = LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK;
