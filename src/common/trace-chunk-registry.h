@@ -84,6 +84,16 @@ lttng_trace_chunk_registry_find_chunk(
 		uint64_t session_id, uint64_t chunk_id);
 
 /*
+ * Query the existence of a trace chunk by session_id and chunk_id.
+ *
+ * Returns 0 on success, a negative value on error.
+ */
+LTTNG_HIDDEN
+int lttng_trace_chunk_registry_chunk_exists(
+		const struct lttng_trace_chunk_registry *registry,
+		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists);
+
+/*
  * Look-up an anonymous trace chunk by session_id.
  * A reference is acquired on behalf of the caller.
  *

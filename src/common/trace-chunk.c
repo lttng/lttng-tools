@@ -1359,6 +1359,41 @@ lttng_trace_chunk_registry_find_chunk(
 }
 
 LTTNG_HIDDEN
+int lttng_trace_chunk_registry_chunk_exists(
+		const struct lttng_trace_chunk_registry *registry,
+		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists)
+{
+	int ret = 0;
+	const struct lttng_trace_chunk_registry_element target_element = {
+		.chunk.id.is_set = true,
+		.chunk.id.value = chunk_id,
+		.session_id = session_id,
+	};
+	const unsigned long element_hash =
+			lttng_trace_chunk_registry_element_hash(
+				&target_element);
+	struct cds_lfht_node *published_node;
+	struct cds_lfht_iter iter;
+
+	rcu_read_lock();
+	cds_lfht_lookup(registry->ht,
+			element_hash,
+			lttng_trace_chunk_registry_element_match,
+			&target_element,
+			&iter);
+	published_node = cds_lfht_iter_get_node(&iter);
+	if (!published_node) {
+		*chunk_exists = false;
+		goto end;
+	}
+
+	*chunk_exists = !cds_lfht_is_node_deleted(published_node);
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+LTTNG_HIDDEN
 struct lttng_trace_chunk *
 lttng_trace_chunk_registry_find_anonymous_chunk(
 		const struct lttng_trace_chunk_registry *registry,

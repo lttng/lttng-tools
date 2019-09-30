@@ -476,3 +476,39 @@ sessiond_trace_chunk_registry_get_chunk(
 end:
 	return chunk;
 }
+
+int sessiond_trace_chunk_registry_chunk_exists(
+		struct sessiond_trace_chunk_registry *sessiond_registry,
+		const lttng_uuid sessiond_uuid,
+		uint64_t session_id, uint64_t chunk_id, bool *chunk_exists)
+{
+	int ret;
+	struct trace_chunk_registry_ht_element *element;
+	struct trace_chunk_registry_ht_key key;
+
+	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
+	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
+	if (!element) {
+		char uuid_str[UUID_STR_LEN];
+
+		lttng_uuid_to_str(sessiond_uuid, uuid_str);
+		/*
+		 * While this certainly means that the chunk does not exist,
+		 * it is unexpected for a chunk existence query to target a
+		 * session daemon that does not have an active
+		 * connection/registry. This would indicate a protocol
+		 * (or internal) error.
+		 */
+		ERR("Failed to find trace chunk registry of sessiond {%s}",
+				uuid_str);
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_trace_chunk_registry_chunk_exists(
+			element->trace_chunk_registry,
+			session_id, chunk_id, chunk_exists);
+	trace_chunk_registry_ht_element_put(element);
+end:
+	return ret;
+}
