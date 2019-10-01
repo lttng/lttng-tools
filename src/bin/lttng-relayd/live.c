@@ -2055,8 +2055,13 @@ restart:
 					if (ret < 0) {
 						goto error;
 					}
-					lttng_poll_add(&events, conn->sock->fd,
+					ret = lttng_poll_add(&events,
+							conn->sock->fd,
 							LPOLLIN | LPOLLRDHUP);
+					if (ret) {
+						ERR("Failed to add new live connection file descriptor to poll set");
+						goto error;
+					}
 					connection_ht_add(viewer_connections_ht, conn);
 					DBG("Connection socket %d added to poll", conn->sock->fd);
 				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
