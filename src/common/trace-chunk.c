@@ -975,6 +975,7 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 				creation_timestamp, NULL);
 		if (!directory_to_rename) {
 			ERR("Failed to generate initial trace chunk name while renaming trace chunk");
+			goto end;
 		}
 		free_directory_to_rename = true;
 	}
