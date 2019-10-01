@@ -467,17 +467,17 @@ int check_session_rotation_pending(struct ltt_session *session,
 	const char *archived_chunk_name;
 	uint64_t chunk_being_archived_id;
 
+	if (!session->chunk_being_archived) {
+		ret = 0;
+		goto end;
+	}
+
 	chunk_status = lttng_trace_chunk_get_id(session->chunk_being_archived,
 			&chunk_being_archived_id);
 	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	DBG("[rotation-thread] Checking for pending rotation on session \"%s\", trace archive %" PRIu64,
 			session->name, chunk_being_archived_id);
-
-	if (!session->chunk_being_archived) {
-		ret = 0;
-		goto end;
-	}
 
 	/*
 	 * The rotation-pending check timer of a session is launched in
