@@ -57,4 +57,8 @@ lttng_destruction_handle_get_archive_location(
 		const struct lttng_destruction_handle *handle,
 		const struct lttng_trace_archive_location **location);
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* LTTNG_DESTRUCTION_HANDLE_H */
