@@ -1133,9 +1133,7 @@ int stream_complete_packet(struct relay_stream *stream, size_t packet_total_size
 
 	stream->prev_data_seq = sequence_number;
 	ret = try_rotate_stream_data(stream);
-	if (ret < 0) {
-		goto end;
-	}
+
 end:
 	return ret;
 }
