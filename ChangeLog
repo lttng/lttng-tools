@@ -1,3 +1,90 @@
+2019-10-01 lttng-tools 2.11.0-rc4 (International Coffee Day)
+	* Fix: Tests: Segfault in `test_utils_expand_path()`
+	* Fix: lttng-ctl: missing __cplusplus closing brace
+	* Fix: trace chunk reported unknown before close command execution
+	* Fix: sessiond: leak of application socket on chmod failure
+	* sessiond: clean-up: silence warning that agent event is leaked
+	* Fix: tests: leak of prefix on error to register lttng namespace
+	* Fix: use newly created event filter for condition check
+	* Fix: lttng-crash: detect truncated files
+	* Fix: sessiond: fs.protected_regular sysctl breaks app registration
+	* relayd: clean-up: mix-up between LTTNG_PATH_MAX and LTTNG_NAME_MAX
+	* Fix: destroy command: put consumer output after destroy notifier
+	* Refactor: remove logically dead code
+	* Fix: Null check before destroying health_sessiond
+	* Fix: Move initialization of queue_pipe_fd after null check of handle
+	* Fix: release reference to new chunk on copy error
+	* Fix: Close socket handle on error
+	* Fix: lttng: out-of-bound copy of arguments in 'view' command handler
+	* Revert "lttng: fix: out-of-bounds copy of original 'view' command arguments"
+	* Fix: relayd: session destruction does not complete in live mode
+	* Add a copy method to the trace chunk interface
+	* relayd: move viewer stream chunk reference release to destroy
+	* relayd: move relay_session locking outside of make_viewer_streams
+	* Fix: release reference to trace chunk on index file creation failure
+	* trace-chunk: clean-up: mark close command properties as static const
+	* trace-chunk: clean-up: misleading label name
+	* ust-consumer: fix: metadata stream lock taken before destroy
+	* sessiond: fix: memory leak of section name in elf parser
+	* kconsumer: clean-up: initialize ctf_index before populating it
+	* sessiond: fix: strncpy called with source length
+	* sessiond: fix: possible unaligned access in packed structure
+	* relayd: clean-up: strncpy uses the length of the source as length
+	* lttng: fix: out-of-bounds copy of original 'view' command arguments
+	* lttng: clean-up: silence bogus string truncation warning
+	* sessiond: clean-up: mixed log levels enums used to look-up event
+	* sessiond: fix: possible unaligned access in packed structure
+	* sessiond: fix: possible unaligned access in packed structure
+	* sessiond: fix: possible unaligned access in packed structure
+	* sessiond: fix: possible unaligned access in packed structure
+	* lttng-ctl: fix: possible unaligned access in packed structure
+	* lttng-ctl rotate: fix: possible unaligned access in packed structure
+	* runas: fix: possible unaligned access in packed structure
+	* consumer: fix: possible unaligned access in packed structure
+	* inet: fix: possible unaligned access in packed structure (inet/inet6)
+	* consumer: fix: unaligned accesses to index fields
+	* lttng-sessiond: clean-up: set free'd pointer to NULL
+	* lttng: fix: potential 0-length allocation in pid list parsing
+	* Tests: fix: uninitialized session_id used on list_sessions failure
+	* Tests: fix: uninitialized values passed to close() on error
+	* Clean-up: assert that get_count_order() returns a positive value
+	* Clean-up: suppress bogus scan-build warning
+	* Tests: fix: leak caused by misuse of realloc in multi-lib-test
+	* sessiond: clean-up: init ret value of _session_set_trace_chunk_no_lock_check
+	* sessiond: fix: print_escaped_ctf_string mishandles empty string
+	* lttng-ctl: fix: lttng_data_pending confuses communication status
+	* relayd: fix: rotate_truncate_stream() assumes non-null next chunk
+	* Fix: dereference of NULL pointer in stream_write()
+	* Fix: report bytecode_push failure when pushing symbol
+	* Fix: only invoke PERROR() on failure to close sessiond_socket
+	* Clean-up: lttng: check status returned when checking rotation state
+	* Fix: communication error unreported in relay_rotate_session_streams
+	* Fix: unreported error in relay_close_trace_chunk
+	* Clean-up: remove dead assignment from ht cleanup thread launcher
+	* Clean-up: remove dead assignment from thread_rotation
+	* Clean-up: remove dead assignment in setup_channel_trace_path
+	* Clean-up: remove dead assignments while setting session trace chunk
+	* Fix: report path truncation on addition of local uri to consumer
+	* Clean-up: lttng: silence warning in regenerate command handler
+	* Clean-up: lttng: silence warning in metadata command handler
+	* Clean-up: remove NULL check on sesison_create mandatory arguments
+	* Fix: session may be NULL in relay_create_session error path
+	* Clean-up: silence erroneous leak warning
+	* Fix: leak of lttng_elf_shdr in lttng-elf.c
+	* Fix: leaked chunk reference in lttng_consumer_create_trace_chunk
+	* Clean-up: remove unused stream file creation and unlink functions
+	* Fix: use the trace chunk to truncate streams on late rotation
+	* Clean-up: format using remaining buffer len rather than total len
+	* Fix sessiond: report flush errors on session stop
+	* Fix: leak of trace_path on error in ust_app_snapshot_record
+	* Fix: uninitialized directory handle finalized on error path
+	* Fix: release reference to created chunk if it can't be published
+	* Fix: destroy chunk registry on element creation failure
+	* Fix: return NULL on trace chunk registry failure
+	* Fix: forward fatal error in evaluate_condition_for_client()
+	* Fix relayd: check for NULL in session_put
+	* Fix typo in regenerate statedump test util
+
 2019-09-06 lttng-tools 2.11.0-rc3 (Great Egg Toss Day)
 	* Fix: time constants already defined on macOS
 	* Fix: missing include strings.h for bcopy on Solaris 10/11
