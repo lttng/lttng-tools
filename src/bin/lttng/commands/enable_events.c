@@ -435,7 +435,7 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		lookup_method =
 			lttng_userspace_probe_location_lookup_method_tracepoint_sdt_create();
 		if (!lookup_method) {
-			WARN("Failed to create ELF lookup method");
+			WARN("Failed to create SDT lookup method");
 			ret = CMD_ERROR;
 			goto end_string;
 		}
