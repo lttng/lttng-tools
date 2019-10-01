@@ -151,6 +151,10 @@ static
 void trace_chunk_registry_ht_element_put(
 		struct trace_chunk_registry_ht_element *element)
 {
+	if (!element) {
+		return;
+	}
+
 	urcu_ref_put(&element->ref, trace_chunk_registry_ht_element_release);
 }
 
