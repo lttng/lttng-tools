@@ -1052,6 +1052,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 	uint64_t data_offset;
 	struct relay_index *index;
 
+	assert(stream->trace_chunk);
 	ASSERT_LOCKED(stream->lock);
 	/* Get data offset because we are about to update the index. */
 	data_offset = htobe64(stream->tracefile_size_current);
