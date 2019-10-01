@@ -49,9 +49,9 @@ int lttng_opt_mi;
 #define MAGIC_VALUE ((char) 0x5A)
 
 #ifdef HAVE_EPOLL
-#define NUM_TESTS 46
+#define NUM_TESTS 47
 #else
-#define NUM_TESTS 45
+#define NUM_TESTS 46
 #endif
 
 #ifdef HAVE_EPOLL
@@ -101,7 +101,7 @@ void test_add_del(void)
 	ok(lttng_poll_add(&poll_events, 1, LPOLLIN) != 0, "Adding to uninitialized structure fails");
 	ok(lttng_poll_add(&poll_events, -1, LPOLLIN) != 0, "Adding invalid FD fails");
 
-	lttng_poll_create(&poll_events, 1, 0);
+	ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create a poll set succeeds");
 	ok(LTTNG_POLL_GETNB(&poll_events) == 0, "Set created empty");
 
 	ok(lttng_poll_add(NULL, 1, LPOLLIN) != 0, "Adding to NULL set fails");
