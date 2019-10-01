@@ -1069,9 +1069,13 @@ struct rmdir_frame {
 static
 void rmdir_frame_fini(void *data)
 {
+	int ret;
 	struct rmdir_frame *frame = data;
 
-	closedir(frame->dir);
+	ret = closedir(frame->dir);
+	if (ret == -1) {
+		PERROR("Failed to close directory stream");
+	}
 }
 
 static
