@@ -484,8 +484,8 @@ static int parse_userspace_probe_opts(struct lttng_event *ev, char *opt)
 		}
 
 		/*
-		 * Check if the file exists using access(2). If it does not, walk the
-		 * $PATH.
+		 * Check if the file exists using access(2), If it does not,
+		 * return an error.
 		 */
 		ret = access(real_target_path, F_OK);
 		if (ret) {
