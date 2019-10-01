@@ -141,21 +141,17 @@ static int create_one_session(char *name)
 			/* Session not found by name */
 			printf("session not found after creation\n");
 			ret = -1;
-			goto end;
 		} else {
 			/* Success */
 			ret = 0;
-			goto end;
 		}
 	} else {
 		if (ret_code == LTTNG_ERR_EXIST_SESS) {
 			printf("(session already exists) ");
 		}
 		ret = -1;
-		goto end;
 	}
-	ret = 0;
-end:
+
 	session_unlock_list();
 	return ret;
 }
