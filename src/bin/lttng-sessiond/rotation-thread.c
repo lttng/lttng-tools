@@ -489,14 +489,14 @@ int check_session_rotation_pending(struct ltt_session *session,
 	 */
 	ret = timer_session_rotation_pending_check_stop(session);
 	if (ret) {
-		goto end;
+		goto check_ongoing_rotation;
 	}
 
 	check_session_rotation_pending_on_consumers(session,
 			&rotation_completed);
 	if (!rotation_completed ||
 			session->rotation_state == LTTNG_ROTATION_STATE_ERROR) {
-		goto end;
+		goto check_ongoing_rotation;
 	}
 
 	/*
@@ -562,7 +562,7 @@ int check_session_rotation_pending(struct ltt_session *session,
 	}
 
 	ret = 0;
-end:
+check_ongoing_rotation:
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
 		uint64_t chunk_being_archived_id;
 
@@ -582,6 +582,7 @@ end:
 		}
 	}
 
+end:
 	return ret;
 }
 
