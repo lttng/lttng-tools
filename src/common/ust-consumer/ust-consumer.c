@@ -2170,7 +2170,6 @@ end_msg_sessiond:
 
 end_channel_error:
 	if (channel) {
-		pthread_mutex_unlock(&channel->lock);
 		/*
 		 * Free channel here since no one has a reference to it. We don't
 		 * free after that because a stream can store this pointer.
