@@ -522,6 +522,10 @@ _lttng_session_descriptor_live_network_create(
 
 	descriptor = _lttng_session_descriptor_live_create(name,
 			live_timer_interval_us);
+	if (!descriptor) {
+		goto error;
+	}
+
 	descriptor->base.output_type =
 			LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK;
 
