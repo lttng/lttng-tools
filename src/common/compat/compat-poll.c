@@ -30,7 +30,14 @@
 
 #include "poll.h"
 
-unsigned int poll_max_size;
+
+/*
+ * Maximum number of fd we can monitor.
+ *
+ * For poll(2), the max fds must not exceed RLIMIT_NOFILE given by
+ * getrlimit(2).
+ */
+static unsigned int poll_max_size;
 
 /*
  * Resize the epoll events structure of the new size.
@@ -103,6 +110,7 @@ error:
 /*
  * Create pollfd data structure.
  */
+LTTNG_HIDDEN
 int compat_poll_create(struct lttng_poll_event *events, int size)
 {
 	struct compat_poll_event_array *current, *wait;
@@ -155,6 +163,7 @@ error:
 /*
  * Add fd to pollfd data structure with requested events.
  */
+LTTNG_HIDDEN
 int compat_poll_add(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
@@ -201,6 +210,7 @@ error:
 /*
  * Modify an fd's events..
  */
+LTTNG_HIDDEN
 int compat_poll_mod(struct lttng_poll_event *events, int fd,
 		uint32_t req_events)
 {
@@ -237,6 +247,7 @@ error:
 /*
  * Remove a fd from the pollfd structure.
  */
+LTTNG_HIDDEN
 int compat_poll_del(struct lttng_poll_event *events, int fd)
 {
 	int i, count = 0, ret;
@@ -291,6 +302,7 @@ error:
 /*
  * Wait on poll() with timeout. Blocking call.
  */
+LTTNG_HIDDEN
 int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 		bool interruptible)
 {
@@ -370,6 +382,7 @@ error:
 /*
  * Setup poll set maximum size.
  */
+LTTNG_HIDDEN
 int compat_poll_set_max_size(void)
 {
 	int ret, retval = 0;

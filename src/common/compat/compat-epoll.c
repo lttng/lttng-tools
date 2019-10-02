@@ -32,7 +32,17 @@
 
 #include "poll.h"
 
-unsigned int poll_max_size;
+/*
+ * Maximum number of fd we can monitor.
+ *
+ * For epoll(7), /proc/sys/fs/epoll/max_user_watches (since Linux 2.6.28) will
+ * be used for the maximum size of the poll set. If this interface is not
+ * available, according to the manpage, the max_user_watches value is 1/25 (4%)
+ * of the available low memory divided by the registration cost in bytes which
+ * is 90 bytes on a 32-bit kernel and 160 bytes on a 64-bit kernel.
+ *
+ */
+static unsigned int poll_max_size;
 
 /*
  * Resize the epoll events structure of the new size.
@@ -68,6 +78,7 @@ error:
 /*
  * Create epoll set and allocate returned events structure.
  */
+LTTNG_HIDDEN
 int compat_epoll_create(struct lttng_poll_event *events, int size, int flags)
 {
 	int ret;
@@ -120,6 +131,7 @@ error:
 /*
  * Add a fd to the epoll set with requesting events.
  */
+LTTNG_HIDDEN
 int compat_epoll_add(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int ret;
@@ -167,6 +179,7 @@ error:
 /*
  * Remove a fd from the epoll set.
  */
+LTTNG_HIDDEN
 int compat_epoll_del(struct lttng_poll_event *events, int fd)
 {
 	int ret;
@@ -201,6 +214,7 @@ error:
 /*
  * Set an fd's events.
  */
+LTTNG_HIDDEN
 int compat_epoll_mod(struct lttng_poll_event *events, int fd, uint32_t req_events)
 {
 	int ret;
@@ -242,6 +256,7 @@ error:
 /*
  * Wait on epoll set. This is a blocking call of timeout value.
  */
+LTTNG_HIDDEN
 int compat_epoll_wait(struct lttng_poll_event *events, int timeout,
 		bool interruptible)
 {
@@ -296,6 +311,7 @@ error:
 /*
  * Setup poll set maximum size.
  */
+LTTNG_HIDDEN
 int compat_epoll_set_max_size(void)
 {
 	int ret, fd, retval = 0;

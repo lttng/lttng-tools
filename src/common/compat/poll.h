@@ -25,20 +25,6 @@
 #include <common/common.h>
 
 /*
- * Maximum number of fd we can monitor.
- *
- * For epoll(7), /proc/sys/fs/epoll/max_user_watches (since Linux 2.6.28) will
- * be used for the maximum size of the poll set. If this interface is not
- * available, according to the manpage, the max_user_watches value is 1/25 (4%)
- * of the available low memory divided by the registration cost in bytes which
- * is 90 bytes on a 32-bit kernel and 160 bytes on a 64-bit kernel.
- *
- * For poll(2), the max fds must not exceed RLIMIT_NOFILE given by
- * getrlimit(2).
- */
-extern unsigned int poll_max_size;
-
-/*
  * Used by lttng_poll_clean to free the events structure in a lttng_poll_event.
  */
 static inline void __lttng_poll_free(void *events)
