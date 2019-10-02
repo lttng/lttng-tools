@@ -34,7 +34,7 @@ struct lttng_destruction_handle;
  *
  * The structures should be initialized to zero before use.
  */
-#define LTTNG_SESSION_PADDING1             12
+#define LTTNG_SESSION_PADDING1             8
 struct lttng_session {
 	char name[LTTNG_NAME_MAX];
 	/*
@@ -51,7 +51,29 @@ struct lttng_session {
 	uint32_t snapshot_mode;
 	unsigned int live_timer_interval;	/* usec */
 
+	/*
+	 * End of public attributes.
+	 * The remaining fields are used to deal with ABI management concerns.
+	 */
+
+	/*
+	 * 32-bit architectures are already naturally aligned on 4 bytes after
+	 * 'live_timer_interval'. However, the offset does not result in a
+	 * natural alignment on 64-bit architectures. Adding 4 bytes of
+	 * padding here results in an aligned offset after 'alignement_padding'
+	 * for both bitnesses.
+	 *
+	 * This was added since not all compilers appear to align unions in the
+	 * same way. Some (e.g. MSVC) do not seem to impose an alignement
+	 * constraint while others (e.g. gcc, clang, icc) seem to align it to
+	 * ensure 'ptr' is naturally aligned.
+	 */
+	char alignment_padding[4];
 	union {
+		/*
+		 * Ensure the 'extended' union has the same size for both
+		 * 32-bit and 64-bit builds.
+		 */
 		char padding[LTTNG_SESSION_PADDING1];
 		void *ptr;
 	} extended;
