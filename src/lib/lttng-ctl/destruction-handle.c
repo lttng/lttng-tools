@@ -243,6 +243,11 @@ lttng_destruction_handle_wait_for_completion(
 	const bool has_timeout = timeout_ms > 0;
         struct timespec initial_time;
 
+	if (!handle) {
+		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
         if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
 		goto end;
@@ -329,6 +334,11 @@ lttng_destruction_handle_get_rotation_state(
 	enum lttng_destruction_handle_status status =
 			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
 
+	if (!handle || !rotation_state) {
+		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
 	if (!handle->rotation_state.is_set) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
 		goto end;
@@ -346,6 +356,11 @@ lttng_destruction_handle_get_archive_location(
 	enum lttng_destruction_handle_status status =
 			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
 
+	if (!handle || !location) {
+		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
 	if (!handle->location) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
 		goto end;
@@ -362,6 +377,11 @@ lttng_destruction_handle_get_result(
 {
 	enum lttng_destruction_handle_status status =
 			LTTNG_DESTRUCTION_HANDLE_STATUS_OK;
+
+	if (!handle || !result) {
+		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
+		goto end;
+	}
 
 	if (!handle->destruction_return_code.is_set) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
@@ -383,6 +403,11 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	};
 	int sessiond_socket = -1;
 	struct lttng_destruction_handle *handle = NULL;
+
+	if (!session_name || !handle) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
