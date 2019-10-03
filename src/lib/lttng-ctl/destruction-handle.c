@@ -404,7 +404,7 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	int sessiond_socket = -1;
 	struct lttng_destruction_handle *handle = NULL;
 
-	if (!session_name || !handle) {
+	if (!session_name || !_handle) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
