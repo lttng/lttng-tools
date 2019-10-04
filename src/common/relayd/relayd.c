@@ -191,7 +191,7 @@ static int relayd_create_session_2_11(struct lttcomm_relayd_sock *rsock,
 		goto error;
 	}
 	dst += hostname_len;
-	if (base_path && lttng_strncpy(dst, base_path, base_path_len)) {
+	if (lttng_strncpy(dst, base_path, base_path_len)) {
 		ret = -1;
 		goto error;
 	}
