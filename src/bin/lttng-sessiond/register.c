@@ -34,11 +34,12 @@
 #include "utils.h"
 #include "thread.h"
 
-struct thread_notifiers {
+struct thread_state {
 	struct lttng_pipe *quit_pipe;
 	struct ust_cmd_queue *ust_cmd_queue;
 	sem_t ready;
 	bool running;
+	int application_socket;
 };
 
 /*
@@ -116,37 +117,41 @@ error:
 
 static void cleanup_application_registration_thread(void *data)
 {
-	struct thread_notifiers *notifiers = data;
+	struct thread_state *thread_state = data;
 
-	lttng_pipe_destroy(notifiers->quit_pipe);
-	free(notifiers);
+	if (!data) {
+		return;
+	}
+
+	lttng_pipe_destroy(thread_state->quit_pipe);
+	free(thread_state);
 }
 
-static void set_thread_status(struct thread_notifiers *notifiers, bool running)
+static void set_thread_status(struct thread_state *thread_state, bool running)
 {
 	DBG("Marking application registration thread's state as %s", running ? "running" : "error");
-	notifiers->running = running;
-	sem_post(&notifiers->ready);
+	thread_state->running = running;
+	sem_post(&thread_state->ready);
 }
 
-static bool wait_thread_status(struct thread_notifiers *notifiers)
+static bool wait_thread_status(struct thread_state *thread_state)
 {
 	DBG("Waiting for application registration thread to be ready");
-	sem_wait(&notifiers->ready);
-	if (notifiers->running) {
+	sem_wait(&thread_state->ready);
+	if (thread_state->running) {
 		DBG("Application registration thread is ready");
 	} else {
 		ERR("Initialization of application registration thread failed");
 	}
 
-	return notifiers->running;
+	return thread_state->running;
 }
 
 static void thread_init_cleanup(void *data)
 {
-	struct thread_notifiers *notifiers = data;
+	struct thread_state *thread_state = data;
 
-	set_thread_status(notifiers, false);
+	set_thread_status(thread_state, false);
 }
 
 /*
@@ -155,7 +160,6 @@ static void thread_init_cleanup(void *data)
 static void *thread_application_registration(void *data)
 {
 	int sock = -1, i, ret, pollfd, err = -1;
-	int apps_sock = -1;
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 	/*
@@ -164,27 +168,20 @@ static void *thread_application_registration(void *data)
 	 */
 	struct ust_command *ust_cmd = NULL;
 	const bool is_root = (getuid() == 0);
-	struct thread_notifiers *notifiers = data;
+	struct thread_state *thread_state = data;
+	const int application_socket = thread_state->application_socket;
 	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
-			notifiers->quit_pipe);
+			thread_state->quit_pipe);
 
 	DBG("[thread] Manage application registration started");
 
 	pthread_cleanup_push(thread_init_cleanup, NULL);
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
-	apps_sock = create_application_socket();
-	if (apps_sock < 0) {
-		goto error_listen;
-	}
-
-	ret = lttcomm_listen_unix_sock(apps_sock);
+	ret = lttcomm_listen_unix_sock(application_socket);
 	if (ret < 0) {
 		goto error_listen;
 	}
-
-	set_thread_status(notifiers, true);
-	pthread_cleanup_pop(0);
 
 	if (testpoint(sessiond_thread_registration_apps)) {
 		goto error_create_poll;
@@ -200,7 +197,7 @@ static void *thread_application_registration(void *data)
 	}
 
 	/* Add the application registration socket */
-	ret = lttng_poll_add(&events, apps_sock, LPOLLIN | LPOLLRDHUP);
+	ret = lttng_poll_add(&events, application_socket, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error_poll_add;
 	}
@@ -211,13 +208,8 @@ static void *thread_application_registration(void *data)
 		goto error_poll_add;
 	}
 
-	/* Notify all applications to register */
-	ret = notify_ust_apps(1, is_root);
-	if (ret < 0) {
-		ERR("Failed to notify applications or create the wait shared memory.\n"
-			"Execution continues but there might be problem for already\n"
-			"running applications that wishes to register.");
-	}
+	set_thread_status(thread_state, true);
+	pthread_cleanup_pop(0);
 
 	while (1) {
 		DBG("Accepting application registration");
@@ -253,7 +245,7 @@ static void *thread_application_registration(void *data)
 			} else {
 				/* Event on the registration socket */
 				if (revents & LPOLLIN) {
-					sock = lttcomm_accept_unix_sock(apps_sock);
+					sock = lttcomm_accept_unix_sock(application_socket);
 					if (sock < 0) {
 						goto error;
 					}
@@ -334,15 +326,15 @@ static void *thread_application_registration(void *data)
 					 * Lock free enqueue the registration request. The red pill
 					 * has been taken! This apps will be part of the *system*.
 					 */
-					cds_wfcq_enqueue(&notifiers->ust_cmd_queue->head,
-							&notifiers->ust_cmd_queue->tail,
+					cds_wfcq_enqueue(&thread_state->ust_cmd_queue->head,
+							&thread_state->ust_cmd_queue->tail,
 							&ust_cmd->node);
 
 					/*
 					 * Wake the registration queue futex. Implicit memory
 					 * barrier with the exchange in cds_wfcq_enqueue.
 					 */
-					futex_nto1_wake(&notifiers->ust_cmd_queue->futex);
+					futex_nto1_wake(&thread_state->ust_cmd_queue->futex);
 				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 					ERR("Register apps socket poll error");
 					goto error;
@@ -359,16 +351,14 @@ error:
 	/* Notify that the registration thread is gone */
 	notify_ust_apps(0, is_root);
 
-	if (apps_sock >= 0) {
-		ret = close(apps_sock);
-		if (ret) {
-			PERROR("close");
-		}
+	ret = close(application_socket);
+	if (ret) {
+		PERROR("Failed to close application registration socket");
 	}
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {
-			PERROR("close");
+			PERROR("Failed to close application socket");
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 	}
@@ -389,8 +379,8 @@ error_create_poll:
 
 static bool shutdown_application_registration_thread(void *data)
 {
-	struct thread_notifiers *notifiers = data;
-	const int write_fd = lttng_pipe_get_writefd(notifiers->quit_pipe);
+	struct thread_state *thread_state = data;
+	const int write_fd = lttng_pipe_get_writefd(thread_state->quit_pipe);
 
 	return notify_thread_pipe(write_fd) == 1;
 }
@@ -398,37 +388,66 @@ static bool shutdown_application_registration_thread(void *data)
 struct lttng_thread *launch_application_registration_thread(
 		struct ust_cmd_queue *cmd_queue)
 {
+	int ret;
 	struct lttng_pipe *quit_pipe;
-	struct thread_notifiers *notifiers = NULL;
-	struct lttng_thread *thread;
+	struct thread_state *thread_state = NULL;
+	struct lttng_thread *thread = NULL;
+	const bool is_root = (getuid() == 0);
+	int application_socket = -1;
 
-	notifiers = zmalloc(sizeof(*notifiers));
-	if (!notifiers) {
+	thread_state = zmalloc(sizeof(*thread_state));
+	if (!thread_state) {
 		goto error_alloc;
 	}
 	quit_pipe = lttng_pipe_open(FD_CLOEXEC);
 	if (!quit_pipe) {
 		goto error;
 	}
-	notifiers->quit_pipe = quit_pipe;
-	notifiers->ust_cmd_queue = cmd_queue;
-	sem_init(&notifiers->ready, 0, 0);
+	thread_state->quit_pipe = quit_pipe;
+	thread_state->ust_cmd_queue = cmd_queue;
+	application_socket = create_application_socket();
+	if (application_socket < 0) {
+		goto error;
+	}
+	thread_state->application_socket = application_socket;
+	sem_init(&thread_state->ready, 0, 0);
 
 	thread = lttng_thread_create("UST application registration",
 			thread_application_registration,
 			shutdown_application_registration_thread,
 			cleanup_application_registration_thread,
-			notifiers);
+			thread_state);
 	if (!thread) {
 		goto error;
 	}
-	if (!wait_thread_status(notifiers)) {
-		lttng_thread_put(thread);
-		thread = NULL;
+	/*
+	 * The application registration thread now owns the application socket
+	 * and the global thread state. The thread state is used to wait for
+	 * the thread's status, but its ownership now belongs to the thread.
+	 */
+	application_socket = -1;
+	if (!wait_thread_status(thread_state)) {
+		thread_state = NULL;
+		goto error;
 	}
+
+	/* Notify all applications to register. */
+	ret = notify_ust_apps(1, is_root);
+	if (ret < 0) {
+		ERR("Failed to notify applications or create the wait shared memory.\n"
+			"Execution continues but there might be problems for already\n"
+			"running applications that wishes to register.");
+	}
+
 	return thread;
 error:
-	cleanup_application_registration_thread(notifiers);
+	lttng_thread_put(thread);
+	cleanup_application_registration_thread(thread_state);
+	if (application_socket >= 0) {
+		if (close(application_socket)) {
+			PERROR("Failed to close application registration socket");
+		}
+	}
 error_alloc:
 	return NULL;
 }
