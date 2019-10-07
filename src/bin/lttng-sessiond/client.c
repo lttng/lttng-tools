@@ -44,6 +44,7 @@ static bool is_root;
 static struct thread_state {
 	sem_t ready;
 	bool running;
+	int client_sock;
 } thread_state;
 
 static void set_thread_status(bool running)
@@ -2022,7 +2023,7 @@ static void *thread_manage_clients(void *data)
 	uint32_t revents, nb_fd;
 	struct command_ctx *cmd_ctx = NULL;
 	struct lttng_poll_event events;
-	int client_sock = -1;
+	const int client_sock = thread_state.client_sock;
 	struct lttng_pipe *quit_pipe = data;
 	const int thread_quit_pipe_fd = lttng_pipe_get_readfd(quit_pipe);
 
@@ -2031,10 +2032,6 @@ static void *thread_manage_clients(void *data)
 	is_root = (getuid() == 0);
 
 	pthread_cleanup_push(thread_init_cleanup, NULL);
-	client_sock = create_client_sock();
-	if (client_sock < 0) {
-		goto error_listen;
-	}
 
 	rcu_register_thread();
 
@@ -2273,11 +2270,9 @@ error:
 error_listen:
 error_create_poll:
 	unlink(config.client_unix_sock_path.value);
-	if (client_sock >= 0) {
-		ret = close(client_sock);
-		if (ret) {
-			PERROR("close");
-		}
+	ret = close(client_sock);
+	if (ret) {
+		PERROR("close");
 	}
 
 	if (err) {
@@ -2306,7 +2301,8 @@ struct lttng_thread *launch_client_thread(void)
 {
 	bool thread_running;
 	struct lttng_pipe *client_quit_pipe;
-	struct lttng_thread *thread;
+	struct lttng_thread *thread = NULL;
+	int client_sock_fd = -1;
 
 	sem_init(&thread_state.ready, 0, 0);
 	client_quit_pipe = lttng_pipe_open(FD_CLOEXEC);
@@ -2314,6 +2310,12 @@ struct lttng_thread *launch_client_thread(void)
 		goto error;
 	}
 
+	client_sock_fd = create_client_sock();
+	if (client_sock_fd < 0) {
+		goto error;
+	}
+
+	thread_state.client_sock = client_sock_fd;
 	thread = lttng_thread_create("Client management",
 			thread_manage_clients,
 			shutdown_client_thread,
@@ -2322,6 +2324,9 @@ struct lttng_thread *launch_client_thread(void)
 	if (!thread) {
 		goto error;
 	}
+	/* The client thread now owns the client sock fd and the quit pipe. */
+	client_sock_fd = -1;
+	client_quit_pipe = NULL;
 
 	/*
 	 * This thread is part of the threads that need to be fully
@@ -2329,11 +2334,16 @@ struct lttng_thread *launch_client_thread(void)
 	 */
 	thread_running = wait_thread_status();
 	if (!thread_running) {
-		lttng_thread_put(thread);
-		thread = NULL;
+		goto error;
 	}
 	return thread;
 error:
+	if (client_sock_fd >= 0) {
+		if (close(client_sock_fd)) {
+			PERROR("Failed to close client socket");
+		}
+	}
+	lttng_thread_put(thread);
 	cleanup_client_thread(client_quit_pipe);
 	return NULL;
 }
