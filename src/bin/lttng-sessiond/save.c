@@ -2290,6 +2290,7 @@ int save_session(struct ltt_session *session,
 	struct config_writer *writer = NULL;
 	size_t session_name_len;
 	const char *provided_path;
+	int file_open_flags = O_CREAT | O_WRONLY | O_TRUNC;
 
 	assert(session);
 	assert(attr);
@@ -2363,18 +2364,26 @@ int save_session(struct ltt_session *session,
 	len += sizeof(DEFAULT_SESSION_CONFIG_FILE_EXTENSION);
 	config_file_path[len] = '\0';
 
-	if (!access(config_file_path, F_OK) && !attr->overwrite) {
-		/* File exists, notify the user since the overwrite flag is off. */
-		ret = LTTNG_ERR_SAVE_FILE_EXIST;
-		goto end;
+	if (!attr->overwrite) {
+		file_open_flags |= O_EXCL;
 	}
 
-	fd = run_as_open(config_file_path, O_CREAT | O_WRONLY | O_TRUNC,
+	fd = run_as_open(config_file_path, file_open_flags,
 		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP,
 		LTTNG_SOCK_GET_UID_CRED(creds), LTTNG_SOCK_GET_GID_CRED(creds));
 	if (fd < 0) {
 		PERROR("Could not create configuration file");
-		ret = LTTNG_ERR_SAVE_IO_FAIL;
+		switch (errno) {
+		case EEXIST:
+			ret = LTTNG_ERR_SAVE_FILE_EXIST;
+			break;
+		case EACCES:
+			ret = LTTNG_ERR_EPERM;
+			break;
+		default:
+			ret = LTTNG_ERR_SAVE_IO_FAIL;
+			break;
+		}
 		goto end;
 	}
 
