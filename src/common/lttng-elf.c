@@ -43,6 +43,7 @@
 #define NOTE_STAPSDT_SECTION_NAME ".note.stapsdt"
 #define NOTE_STAPSDT_NAME "stapsdt"
 #define NOTE_STAPSDT_TYPE 3
+#define MAX_SECTION_DATA_SIZE   512 * 1024 * 1024
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define NATIVE_ELF_ENDIANNESS ELFDATA2LSB
@@ -191,6 +192,7 @@ struct lttng_elf_sym {
 
 struct lttng_elf {
 	int fd;
+	size_t file_size;
 	uint8_t bitness;
 	uint8_t endianness;
 	/* Offset in bytes to start of section names string table. */
@@ -531,8 +533,19 @@ struct lttng_elf *lttng_elf_create(int fd)
 	struct lttng_elf_shdr section_names_shdr;
 	struct lttng_elf *elf = NULL;
 	int ret;
+	struct stat stat_buf;
 
 	if (fd < 0) {
+		goto error;
+	}
+
+	ret = fstat(fd, &stat_buf);
+	if (ret) {
+		PERROR("Failed to determine size of elf file");
+		goto error;
+	}
+	if (!S_ISREG(stat_buf.st_mode)) {
+		ERR("Refusing to initialize lttng_elf from non-regular file");
 		goto error;
 	}
 
@@ -541,6 +554,7 @@ struct lttng_elf *lttng_elf_create(int fd)
 		PERROR("Error allocating struct lttng_elf");
 		goto error;
 	}
+	elf->file_size = (size_t) stat_buf.st_size;
 
 	elf->fd = dup(fd);
 	if (elf->fd < 0) {
@@ -632,6 +646,8 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 	int ret;
 	off_t section_offset;
 	char *data;
+	const size_t max_alloc_size = min_t(size_t, MAX_SECTION_DATA_SIZE,
+			elf->file_size);
 
 	if (!elf || !shdr) {
 		goto error;
@@ -643,6 +659,11 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 		goto error;
 	}
 
+	if (shdr->sh_size > max_alloc_size) {
+		ERR("ELF section size exceeds maximal allowed size of %zu bytes",
+				max_alloc_size);
+		goto error;
+	}
 	data = zmalloc(shdr->sh_size);
 	if (!data) {
 		PERROR("Error allocating buffer for ELF section data");
