@@ -278,6 +278,7 @@ static void *thread_application_registration(void *data)
 						if (ret) {
 							PERROR("close");
 						}
+						sock = -1;
 						goto error;
 					}
 
