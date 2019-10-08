@@ -119,12 +119,8 @@ static char *invalid_tests_inputs[] = {
 static const int num_invalid_tests =
 		sizeof(invalid_tests_inputs) / sizeof(invalid_tests_inputs[0]);
 
-#define ERRSIZE 100
-char errmsg[ERRSIZE];
-static void printerr(char *msg)
-{
-	fprintf(stderr, "test_utils_expand_path: error: %s\n", msg);
-}
+#define PRINT_ERR(fmt, args...)						\
+	fprintf(stderr, "test_utils_expand_path: error: " fmt "\n", ## args)
 
 int prepare_valid_results(void)
 {
@@ -139,7 +135,7 @@ int prepare_valid_results(void)
 	pprev_path = realpath("../..", NULL);
 	empty = strdup("");
 	if (!cur_path || !prev_path || !pprev_path || !empty) {
-		printerr("strdup out of memory");
+		PRINT_ERR("strdup out of memory");
 		ret = -1;
 		goto end;
 	}
@@ -147,14 +143,14 @@ int prepare_valid_results(void)
 	/* allocate memory for the expected results */
 	valid_tests_expected_results = zmalloc(sizeof(char *) * num_valid_tests);
 	if (!valid_tests_expected_results) {
-		printerr("out of memory");
+		PRINT_ERR("out of memory");
 		ret = -1;
 		goto end;
 	}
 	for (i = 0; i < num_valid_tests; i++) {
 		valid_tests_expected_results[i] = malloc(PATH_MAX);
 		if (valid_tests_expected_results[i] == NULL) {
-			printerr("malloc expected results");
+			PRINT_ERR("malloc expected results");
 			ret = -1;
 			goto end;
 		}
@@ -198,34 +194,33 @@ int free_valid_results(void)
 int prepare_symlink_tree(void)
 {
 	int i;
-	char tmppath[PATH_MAX];
+	char tmppath[PATH_MAX] = {};
 
 	/* Create the temporary directory */
 	if (mkdtemp(tree_origin) == NULL) {
-		printerr("mkdtemp");
+		PRINT_ERR("failed to mkdtemp");
 		goto error;
 	}
 
 	/* Create the directories of the test tree */
 	for (i = 0; i < num_tree_dirs; i++) {
-		snprintf(tmppath, PATH_MAX, "%s/%s", tree_origin, tree_dirs[i]);
+		snprintf(tmppath, sizeof(tmppath), "%s/%s", tree_origin,
+				tree_dirs[i]);
 
 		if (mkdir(tmppath, 0755) != 0) {
-			snprintf(errmsg, ERRSIZE, "mkdir %s", tmppath);
-			printerr(errmsg);
+			PRINT_ERR("mkdir failed with path \"%s\"", tmppath);
 			goto error;
 		}
 	}
 
 	/* Create the symlinks of the test tree */
 	for (i = 0; i < num_tree_symlinks; i++) {
-		snprintf(tmppath, PATH_MAX, "%s/%s",
+		snprintf(tmppath, sizeof(tmppath), "%s/%s",
 				tree_origin, tree_symlinks[i].orig);
 
 		if (symlink(tree_symlinks[i].dest, tmppath) != 0) {
-			snprintf(errmsg, ERRSIZE, "symlink %s to %s",
-					tmppath, tree_symlinks[i].dest);
-			printerr(errmsg);
+			PRINT_ERR("failed to symlink \"%s\" to \"%s\"", tmppath,
+					tree_symlinks[i].dest);
 			goto error;
 		}
 	}
@@ -247,8 +242,7 @@ int free_symlink_tree(void)
 				tree_origin, tree_symlinks[i].orig);
 
 		if (unlink(tmppath) != 0) {
-			snprintf(errmsg, ERRSIZE, "unlink %s", tmppath);
-			printerr(errmsg);
+			PRINT_ERR("failed to unlink \"%s\"", tmppath);
 			goto error;
 		}
 	}
@@ -258,16 +252,14 @@ int free_symlink_tree(void)
 		snprintf(tmppath, PATH_MAX, "%s/%s", tree_origin, tree_dirs[i]);
 
 		if (rmdir(tmppath) != 0) {
-			snprintf(errmsg, ERRSIZE, "rmdir %s", tmppath);
-			printerr(errmsg);
+			PRINT_ERR("failed to rmdir \"%s\"", tmppath);
 			goto error;
 		}
 	}
 
 	/* Remove the temporary directory */
 	if (rmdir(tree_origin) != 0) {
-		snprintf(errmsg, ERRSIZE, "rmdir %s", tree_origin);
-		printerr(errmsg);
+		PRINT_ERR("failed to rmdir \"%s\"", tree_origin);
 		goto error;
 	}
 
@@ -307,11 +299,21 @@ static void test_utils_expand_path(void)
 	/* Test symlink tree cases */
 	treelen = strlen(real_tree_origin) + 1;
 	for (i = 0; i < num_symlink_tests; i++) {
+		int ret;
+
 		sprintf(name, "symlink tree test case: [tmppath/]%s",
 				symlink_tests_inputs[i].input);
 
-		snprintf(tmppath, PATH_MAX, "%s/%s",
-				real_tree_origin, symlink_tests_inputs[i].input);
+		ret = snprintf(tmppath, PATH_MAX, "%s/%s",
+				real_tree_origin,
+				symlink_tests_inputs[i].input);
+		if (ret == -1 || ret >= PATH_MAX) {
+			PRINT_ERR("truncation occurred while concatenating paths \"%s\" and \"%s\"",
+					real_tree_origin,
+					symlink_tests_inputs[i].input);
+			fail(name);
+			continue;
+		}
 		result = utils_expand_path(tmppath);
 		ok(result != NULL && strcmp(result + treelen,
 					symlink_tests_inputs[i].expected_result) == 0, name);
