@@ -646,12 +646,13 @@ char *lttng_elf_get_section_data(struct lttng_elf *elf,
 	int ret;
 	off_t section_offset;
 	char *data;
-	const size_t max_alloc_size = min_t(size_t, MAX_SECTION_DATA_SIZE,
-			elf->file_size);
+	size_t max_alloc_size;
 
 	if (!elf || !shdr) {
 		goto error;
 	}
+
+	max_alloc_size = min_t(size_t, MAX_SECTION_DATA_SIZE, elf->file_size);
 
 	section_offset = shdr->sh_offset;
 	if (lseek(elf->fd, section_offset, SEEK_SET) < 0) {
