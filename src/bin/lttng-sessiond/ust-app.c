@@ -3142,8 +3142,19 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 	/* Create it on the tracer side */
 	ret = create_ust_event(app, ua_sess, ua_chan, ua_event);
 	if (ret < 0) {
-		/* Not found previously means that it does not exist on the tracer */
-		assert(ret != -LTTNG_UST_ERR_EXIST);
+		/*
+		 * Not found previously means that it does not exist on the
+		 * tracer. If the application reports that the event existed,
+		 * it means there is a bug in the sessiond or lttng-ust
+		 * (or corruption, etc.)
+		 */
+		if (ret == -LTTNG_UST_ERR_EXIST) {
+			ERR("Tracer for application reported that an event being created already existed: "
+					"event_name = \"%s\", pid = %d, ppid = %d, uid = %d, gid = %d",
+					uevent->attr.name,
+					app->pid, app->ppid, app->uid,
+					app->gid);
+		}
 		goto error;
 	}
 
