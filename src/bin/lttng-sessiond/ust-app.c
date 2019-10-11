@@ -4413,7 +4413,7 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	health_code_update();
 
 skip_setup:
-	/* This start the UST tracing */
+	/* This starts the UST tracing */
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_start_session(app->sock, ua_sess->handle);
 	pthread_mutex_unlock(&app->sock_lock);
