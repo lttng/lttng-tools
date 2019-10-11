@@ -1100,7 +1100,7 @@ struct ust_app_event *alloc_ust_app_event(char *name,
 	/* Init most of the default value by allocating and zeroing */
 	ua_event = zmalloc(sizeof(struct ust_app_event));
 	if (ua_event == NULL) {
-		PERROR("malloc");
+		PERROR("Failed to allocate ust_app_event structure");
 		goto error;
 	}
 
@@ -3133,7 +3133,7 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 
 	ua_event = alloc_ust_app_event(uevent->attr.name, &uevent->attr);
 	if (ua_event == NULL) {
-		/* Only malloc can failed so something is really wrong */
+		/* Only failure mode of alloc_ust_app_event(). */
 		ret = -ENOMEM;
 		goto end;
 	}
