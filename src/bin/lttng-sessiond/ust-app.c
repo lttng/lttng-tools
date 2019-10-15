@@ -4212,7 +4212,7 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 			if (session_was_created) {
 				destroy_app_session(app, ua_sess);
 			}
-			goto error_rcu_unlock;
+			/* Continue to the next application. */
 		}
 	}
 
