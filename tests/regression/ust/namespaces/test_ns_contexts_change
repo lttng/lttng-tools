@@ -72,12 +72,10 @@ function test_ns()
 	$TESTAPP_BIN -n "$ns" -i $NUM_EVENT -a "$file_sync_after_unshare" -b "$file_sync_before_last" &
 	app_pid=$!
 
-	# Let the app do it's thing before entering the synchronisation loop
-	sleep 0.5
-
 	while [ ! -f "$file_sync_after_unshare" ]; do
 		# Break if the app failed / died
-		if [ ! -f "/proc/$app_pid" ]; then
+		if ! kill -0 "$app_pid" ; then
+			echo "# App failed"
 			break
 		fi
 		echo "# Waiting for app..."

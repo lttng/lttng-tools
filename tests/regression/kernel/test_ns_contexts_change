@@ -119,13 +119,11 @@ function test_ns()
 
 		touch "$file_sync_wait_before_unshare"
 
-		# Let the app do it's thing before entering the synchronisation loop
-		sleep 0.5
-
 		while [ ! -f "$file_sync_signal_after_unshare" ]; do
 			# Break if the app failed / died
-			if [ ! -f "/proc/$app_pid" ]; then
+			if ! kill -0 "$app_pid" ; then
 				break
+				echo "# App failed"
 			fi
 			echo "# Waiting for app..."
 			sleep 0.5
