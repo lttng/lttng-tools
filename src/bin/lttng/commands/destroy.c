@@ -155,7 +155,7 @@ static int destroy_session(struct lttng_session *session)
 		goto error;
 	}
 	if (ret_code != LTTNG_OK) {
-		ret = -LTTNG_OK;
+		ret = -ret_code;
 		goto error;
 	}
 
@@ -228,23 +228,27 @@ error:
  */
 static int destroy_all_sessions(struct lttng_session *sessions, int count)
 {
-	int i, ret = CMD_SUCCESS;
+	int i;
+	bool error_occurred = false;
 
+	assert(count >= 0);
 	if (count == 0) {
 		MSG("No session found, nothing to do.");
-	} else if (count < 0) {
-		ERR("%s", lttng_strerror(ret));
-		goto error;
 	}
 
 	for (i = 0; i < count; i++) {
-		ret = destroy_session(&sessions[i]);
+		int ret = destroy_session(&sessions[i]);
+
 		if (ret < 0) {
-			goto error;
+			ERR("%s during the destruction of session \"%s\"",
+					lttng_strerror(ret),
+					sessions[i].name);
+			/* Continue to next session. */
+			error_occurred = true;
 		}
 	}
-error:
-	return ret;
+
+	return error_occurred ? CMD_ERROR : CMD_SUCCESS;
 }
 
 /*
@@ -350,8 +354,10 @@ int cmd_destroy(int argc, const char **argv)
 				command_ret = destroy_session(&sessions[i]);
 				if (command_ret) {
 					success = 0;
+					ERR("%s during the destruction of session \"%s\"",
+							lttng_strerror(command_ret),
+							sessions[i].name);
 				}
-
 			}
 		}
 
