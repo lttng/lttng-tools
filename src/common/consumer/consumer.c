@@ -4801,7 +4801,7 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 		/* Internal error. */
 		ERR("Failed to query the existence of a trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_FATAL;
-		goto end_rcu_unlock;
+		goto end;
 	}
 	DBG("Trace chunk %s locally",
 			chunk_exists_local ? "exists" : "does not exist");
