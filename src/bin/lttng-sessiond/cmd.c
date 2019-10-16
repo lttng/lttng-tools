@@ -4788,6 +4788,8 @@ int cmd_rotate_session(struct ltt_session *session,
 	struct lttng_trace_chunk *chunk_being_archived = NULL;
 	struct lttng_trace_chunk *new_trace_chunk = NULL;
 	enum lttng_trace_chunk_status chunk_status;
+	bool failed_to_rotate = false;
+	enum lttng_error_code rotation_fail_code = LTTNG_OK;
 
 	assert(session);
 
@@ -4845,7 +4847,13 @@ int cmd_rotate_session(struct ltt_session *session,
 		}
         }
 
-        /* The current trace chunk becomes the chunk being archived. */
+	/*
+	 * The current trace chunk becomes the chunk being archived.
+	 *
+	 * After this point, "chunk_being_archived" must absolutely
+	 * be closed on the consumer(s), otherwise it will never be
+	 * cleaned-up, which will result in a leak.
+	 */
 	ret = session_set_trace_chunk(session, new_trace_chunk,
 			&chunk_being_archived);
 	if (ret) {
@@ -4861,13 +4869,15 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (session->kernel_session) {
 		cmd_ret = kernel_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
-			goto error;
+			failed_to_rotate = true;
+			rotation_fail_code = cmd_ret;
 		}
 	}
 	if (session->ust_session) {
 		cmd_ret = ust_app_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
-			goto error;
+			failed_to_rotate = true;
+			rotation_fail_code = cmd_ret;
 		}
 	}
 
@@ -4879,6 +4889,11 @@ int cmd_rotate_session(struct ltt_session *session,
 			session->last_chunk_path);
 	if (ret) {
 		cmd_ret = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
+		goto error;
+	}
+
+	if (failed_to_rotate) {
+		cmd_ret = rotation_fail_code;
 		goto error;
 	}
 
