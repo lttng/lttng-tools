@@ -174,6 +174,7 @@ enum lttng_error_code {
 	LTTNG_ERR_TRACE_CHUNK_EXISTS_FAIL_CONSUMER     = 151, /* failed to query consumer for trace chunk existence */
 	LTTNG_ERR_INVALID_PROTOCOL                     = 152, /* a protocol error occurred */
 	LTTNG_ERR_FILE_CREATION_ERROR                  = 153, /* failed to create a file */
+	LTTNG_ERR_TIMER_STOP_ERROR                     = 154, /* failed to stop timer. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

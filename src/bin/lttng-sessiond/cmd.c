@@ -73,6 +73,11 @@
 struct cmd_destroy_session_reply_context {
 	int reply_sock_fd;
 	bool implicit_rotation_on_destroy;
+	/*
+	 * Indicates whether or not an error occurred while launching the
+	 * destruction of a session.
+	 */
+	enum lttng_error_code destruction_status;
 };
 
 static enum lttng_error_code wait_on_path(void *path);
@@ -3070,7 +3075,7 @@ void cmd_destroy_session_reply(const struct ltt_session *session,
 	struct lttng_trace_archive_location *location = NULL;
 	struct lttcomm_lttng_msg llm = {
 		.cmd_type = LTTNG_DESTROY_SESSION,
-		.ret_code = LTTNG_OK,
+		.ret_code = reply_context->destruction_status,
 		.pid = UINT32_MAX,
 		.cmd_header_size =
 			sizeof(struct lttcomm_session_destroy_command_header),
@@ -3152,6 +3157,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		int *sock_fd)
 {
 	int ret;
+	enum lttng_error_code destruction_last_error = LTTNG_OK;
 	struct cmd_destroy_session_reply_context *reply_context = NULL;
 
 	if (sock_fd) {
@@ -3176,6 +3182,7 @@ int cmd_destroy_session(struct ltt_session *session,
 			/* Carry on with the destruction of the session. */
 			ERR("Failed to stop session \"%s\" as part of its destruction: %s",
 					session->name, lttng_strerror(-ret));
+			destruction_last_error = ret;
 		}
 	}
 
@@ -3184,6 +3191,7 @@ int cmd_destroy_session(struct ltt_session *session,
 				session)) {
 			ERR("Failed to stop the \"rotation schedule\" timer of session %s",
 					session->name);
+			destruction_last_error = LTTNG_ERR_TIMER_STOP_ERROR;
 		}
 	}
 
@@ -3203,6 +3211,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		if (ret != LTTNG_OK) {
 			ERR("Failed to perform an implicit rotation as part of the destruction of session \"%s\": %s",
 					session->name, lttng_strerror(-ret));
+			destruction_last_error = -ret;
 		}
                 if (reply_context) {
 			reply_context->implicit_rotation_on_destroy = true;
@@ -3221,6 +3230,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		if (ret != LTTNG_OK) {
 			ERR("Failed to perform a quiet rotation as part of the destruction of session \"%s\": %s",
 					session->name, lttng_strerror(-ret));
+			destruction_last_error = -ret;
 		}
 	}
 
@@ -3285,6 +3295,7 @@ int cmd_destroy_session(struct ltt_session *session,
 	 */
 	session_destroy(session);
 	if (reply_context) {
+		reply_context->destruction_status = destruction_last_error;
 		ret = session_add_destroy_notifier(session,
 				cmd_destroy_session_reply,
 				(void *) reply_context);
