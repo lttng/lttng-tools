@@ -530,15 +530,15 @@ void *thread_notification(void *data)
 
 	DBG("[notification-thread] Started notification thread");
 
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_NOTIFICATION);
+	rcu_register_thread();
+	rcu_thread_online();
+
 	if (!handle) {
 		ERR("[notification-thread] Invalid thread context provided");
 		goto end;
 	}
 
-	rcu_register_thread();
-	rcu_thread_online();
-
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_NOTIFICATION);
 	health_code_update();
 
 	ret = init_thread_state(handle, &state);
@@ -642,10 +642,10 @@ void *thread_notification(void *data)
 exit:
 error:
 	fini_thread_state(&state);
-	health_unregister(health_sessiond);
+end:
 	rcu_thread_offline();
 	rcu_unregister_thread();
-end:
+	health_unregister(health_sessiond);
 	return NULL;
 }
 

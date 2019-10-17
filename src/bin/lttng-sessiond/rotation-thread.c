@@ -836,6 +836,10 @@ void *thread_rotation(void *data)
 	int queue_pipe_fd;
 
 	DBG("[rotation-thread] Started rotation thread");
+	rcu_register_thread();
+	rcu_thread_online();
+	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_ROTATION);
+	health_code_update();
 
 	if (!handle) {
 		ERR("[rotation-thread] Invalid thread context provided");
@@ -845,11 +849,6 @@ void *thread_rotation(void *data)
 	queue_pipe_fd = lttng_pipe_get_readfd(
 			handle->rotation_timer_queue->event_pipe);
 
-	rcu_register_thread();
-	rcu_thread_online();
-
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_ROTATION);
-	health_code_update();
 
 	ret = init_thread_state(handle, &thread);
 	if (ret) {
@@ -930,10 +929,10 @@ exit:
 error:
 	DBG("[rotation-thread] Exit");
 	fini_thread_state(&thread);
+end:
 	health_unregister(health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
-end:
 	return NULL;
 }
 
