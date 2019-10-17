@@ -175,7 +175,7 @@ static void *thread_application_registration(void *data)
 
 	DBG("[thread] Manage application registration started");
 
-	pthread_cleanup_push(thread_init_cleanup, NULL);
+	pthread_cleanup_push(thread_init_cleanup, thread_state);
 	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
 	ret = lttcomm_listen_unix_sock(application_socket);
