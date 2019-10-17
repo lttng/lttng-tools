@@ -1,3 +1,7 @@
+2019-10-17 lttng-tools 2.10.9 (Wear Something Gaudy Day)
+	* Fix: sessiond: TOCTOU error on save of session configuration
+	* Fix: tests: replace truncation-prone logging helper
+
 2019-10-01 lttng-tools 2.10.8 (International Coffee Day)
 	* Fix: lttng: out-of-bound copy of arguments in 'view' command handler
 	* sessiond: fix: strncpy called with source length
