@@ -1,3 +1,45 @@
+2019-10-17 lttng-tools 2.11.0 (Wear Something Gaudy Day)
+	* Fix: sessiond: unbalanced health register/unregister on error
+	* Fix: sessiond: NULL thread_state provided to pthread_cleanup callback
+	* Fix: sessiond: leak of trace chunk on destruction error
+	* common: cleanup error message mentioning mkdir
+	* Fix: sessiond: session destruction errors are unreported
+	* Fix: consumer: double unlock of rcu read lock on error
+	* Fix: sessiond: application channel creation failure stops start cmd
+	* sessiond: clean-up: enhance logging on event allocation failure
+	* Fix: sessiond: don't assert on event creation error
+	* Fix: lttng-elf.c: dereferencing pointer before null check
+	* Fix: sessiond: unbounded elf section data size allocation
+	* Fix: sessiond: double socket close on allocation failure
+	* Fix: sessiond: TOCTOU error on save of session configuration
+	* Fix: tests: replace truncation-prone logging helper
+	* Fix: relayd: Dereference after null check
+	* Fix: sessiond: app sock and notif shm not created by the main thread
+	* Fix: sessiond: client socket not created by the main thread
+	* Fix: relayd: Dereference before null check
+	* Fix: relayd: unchecked return values
+	* Fix: ust-consumer.c: Double unlock of channel lock
+	* Fix: sessiond: Dereference before null check
+	* Fix: sessiond: Dereference after null check
+	* Fix: relayd: Explicit null dereferenced
+	* Cleanup: relayd: Logically dead code
+	* Fix: enable_events.c: typo in `WARN()` message
+	* Cleanup: enable_events.c: fix erroneous comment
+	* Cleanup: relayd: identical code for different branches
+	* Fix: common: Unchecked return value of `closedir()`
+	* Fix: relayd: Dereference after null check
+	* Fix: Tests: test_session.c: Structurally dead code
+	* Fix: session-descriptor.c: Dereference before null check
+	* Fix: common: Dereference after null check
+	* Fix: test_utils_compat_poll.c: Unchecked return value
+	* Fix: liblttng-ctl: wrong variable used during argument validation
+	* Fix: liblttng-ctl: ABI-breaking size change of lttng_session struct
+	* Fix: liblttng-ctl: config and mi strings inadvertantly exported
+	* Fix: liblttng-ctl: compat_sync_file_range inadvertantly exported
+	* Fix: liblttng-ctl: poll compatibility symbols inadvertently exported
+	* Fix: lttng-ctl: unvalidated session destruction handle API arguments
+	* Docs: document the session destruction handle API
+
 2019-10-01 lttng-tools 2.11.0-rc4 (International Coffee Day)
 	* Fix: Tests: Segfault in `test_utils_expand_path()`
 	* Fix: lttng-ctl: missing __cplusplus closing brace
