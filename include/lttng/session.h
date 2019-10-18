@@ -163,7 +163,7 @@ extern int lttng_destroy_session(const char *name);
  * an lttng_destruction_handle which can be used to wait for the completion
  * of the session's destruction. The lttng_destroy_handle can also be used
  * obtain the status and archive location of any implicit session
- * rotation that may have occured during the session's destruction.
+ * rotation that may have occurred during the session's destruction.
  *
  * Returns LTTNG_OK on success. The returned handle is owned by the caller
  * and must be free'd using lttng_destruction_handle_destroy().

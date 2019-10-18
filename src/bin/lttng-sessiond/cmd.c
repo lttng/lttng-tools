@@ -4983,7 +4983,7 @@ int cmd_rotate_get_info(struct ltt_session *session,
 
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_NO_ROTATION:
-		DBG("Reporting that no rotation has occured within the lifetime of session \"%s\"",
+		DBG("Reporting that no rotation has occurred within the lifetime of session \"%s\"",
 				session->name);
 		goto end;
 	case LTTNG_ROTATION_STATE_EXPIRED:
