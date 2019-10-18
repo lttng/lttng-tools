@@ -25,7 +25,7 @@
 #include <common/hashtable/hashtable.h>
 
 #include "consumer.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 #include "ust-registry.h"
 
 struct buffer_reg_stream {

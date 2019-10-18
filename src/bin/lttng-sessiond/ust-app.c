@@ -27,7 +27,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <urcu/compiler.h>
-#include <lttng/ust-error.h>
 #include <signal.h>
 
 #include <common/common.h>
@@ -38,7 +37,8 @@
 #include "health-sessiond.h"
 #include "ust-app.h"
 #include "ust-consumer.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
+#include "lttng-ust-error.h"
 #include "utils.h"
 #include "session.h"
 #include "lttng-sessiond.h"
