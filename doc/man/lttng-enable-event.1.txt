@@ -1,5 +1,6 @@
 lttng-enable-event(1)
 =====================
+:revdate: 4 April 2019
 
 
 NAME

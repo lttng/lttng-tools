@@ -1,5 +1,6 @@
 lttng(1)
 ========
+:revdate: 16 October 2019
 
 
 NAME

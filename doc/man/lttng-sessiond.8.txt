@@ -1,5 +1,6 @@
 lttng-sessiond(8)
 =================
+:revdate: 17 September 2018
 
 
 NAME

@@ -1,5 +1,6 @@
 lttng-version(1)
 ================
+:revdate: 1 May 2018
 
 
 NAME

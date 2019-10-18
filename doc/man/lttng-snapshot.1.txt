@@ -1,5 +1,6 @@
 lttng-snapshot(1)
 =================
+:revdate: 9 November 2018
 
 
 NAME
