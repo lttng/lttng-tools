@@ -1,5 +1,6 @@
 lttng-set-session(1)
 ====================
+:revdate: 7 April 2016
 
 
 NAME

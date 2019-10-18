@@ -1,5 +1,6 @@
 lttng-enable-rotation(1)
 ========================
+:revdate: 13 November 2018
 
 
 NAME
