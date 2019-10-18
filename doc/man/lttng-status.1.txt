@@ -1,5 +1,6 @@
 lttng-status(1)
 ===============
+:revdate: 14 March 2017
 
 
 NAME

@@ -1,5 +1,6 @@
 lttng-rotate(1)
 ===============
+:revdate: 18 October 2019
 
 
 NAME

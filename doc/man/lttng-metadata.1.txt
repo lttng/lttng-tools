@@ -1,5 +1,6 @@
 lttng-metadata(1)
 =================
+:revdate: 28 November 2016
 
 
 NAME

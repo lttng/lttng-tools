@@ -1,5 +1,6 @@
 lttng-destroy(1)
-===============
+================
+:revdate: 18 January 2018
 
 
 NAME
