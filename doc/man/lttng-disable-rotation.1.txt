@@ -1,5 +1,6 @@
 lttng-disable-rotation(1)
 =========================
+:revdate: 8 November 2018
 
 
 NAME

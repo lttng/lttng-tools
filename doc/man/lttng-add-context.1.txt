@@ -1,5 +1,6 @@
 lttng-add-context(1)
 ====================
+:revdate: 5 Februrary 2018
 
 
 NAME
