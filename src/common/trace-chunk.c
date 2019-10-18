@@ -1269,7 +1269,7 @@ lttng_trace_chunk_registry_publish_chunk(
 				 *
 				 * Re-attempt to publish.
 				 */
-				ERR("Attemp to publish a trace chunk to the chunk registry raced with a trace chunk deletion");
+				ERR("Attempt to publish a trace chunk to the chunk registry raced with a trace chunk deletion");
 				continue;
 			}
 		}
