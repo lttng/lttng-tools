@@ -385,7 +385,7 @@ void check_session_rotation_pending_on_consumers(struct ltt_session *session,
 				&exists_status);
 		if (ret) {
 			pthread_mutex_unlock(socket->lock);
-			ERR("Error occured while checking rotation status on consumer daemon");
+			ERR("Error occurred while checking rotation status on consumer daemon");
 			goto end;
 		}
 
@@ -414,7 +414,7 @@ skip_ust:
 				&exists_status);
 		if (ret) {
 			pthread_mutex_unlock(socket->lock);
-			ERR("Error occured while checking rotation status on consumer daemon");
+			ERR("Error occurred while checking rotation status on consumer daemon");
 			goto end;
 		}
 

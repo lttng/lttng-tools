@@ -1163,7 +1163,7 @@ int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid)
  *
  * Be careful of the result passed to this function. For instance,
  * on failure to launch a rotation, a client will expect the rotation
- * state to be set to "NO_ROTATION". If an error occured while the
+ * state to be set to "NO_ROTATION". If an error occurred while the
  * rotation was "ONGOING", result should be set to "ERROR", which will
  * allow a client to report it.
  *
