@@ -357,6 +357,8 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 		struct consumer_output *consumer,
 		int overwrite, uint64_t *discarded, uint64_t *lost);
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess);
+int ust_app_release_object(struct ust_app *app,
+		struct lttng_ust_object_data *data);
 
 static inline
 int ust_app_supported(void)
@@ -586,6 +588,12 @@ int ust_app_pid_get_channel_runtime_stats(struct ltt_ust_session *usess,
 
 static inline
 int ust_app_regenerate_statedump_all(struct ltt_ust_session *usess)
+{
+	return 0;
+}
+
+static inline
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
 {
 	return 0;
 }

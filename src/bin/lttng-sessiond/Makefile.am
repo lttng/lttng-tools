@@ -10,7 +10,9 @@ bin_PROGRAMS = lttng-sessiond
 lttng_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
-                       ust-ctl.h ust-app.h trace-ust.h ust-thread.h \
+                       ust-app.h trace-ust.h ust-thread.h \
+                       lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
+                       ust-ctl-internal.h ust-abi-internal.h ust-error-internal.h \
                        ust-registry.h \
                        context.c context.h \
                        channel.c channel.h \
@@ -19,7 +21,6 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        consumer.c consumer.h \
                        session.c session.h \
                        modprobe.c modprobe.h kern-modules.h \
-                       lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        fd-limit.c fd-limit.h \
                        kernel-consumer.c kernel-consumer.h \
                        consumer.h \

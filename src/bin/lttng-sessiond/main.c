@@ -61,7 +61,7 @@
 #include "kernel-consumer.h"
 #include "modprobe.h"
 #include "shm.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 #include "ust-consumer.h"
 #include "utils.h"
 #include "fd-limit.h"

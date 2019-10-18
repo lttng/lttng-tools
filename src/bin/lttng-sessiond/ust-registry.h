@@ -24,7 +24,7 @@
 #include <common/hashtable/hashtable.h>
 #include <common/compat/uuid.h>
 
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 
 #define CTF_SPEC_MAJOR	1
 #define CTF_SPEC_MINOR	8

@@ -18,7 +18,7 @@
 #ifndef LTTNG_UST_FIELD_UTILS_H
 #define LTTNG_UST_FIELD_UTILS_H
 
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 
 /*
  * Compare two UST fields.

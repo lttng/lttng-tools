@@ -30,6 +30,7 @@
 #include "consumer.h"
 #include "health-sessiond.h"
 #include "ust-consumer.h"
+#include "lttng-ust-error.h"
 #include "buffer-registry.h"
 #include "session.h"
 #include "lttng-sessiond.h"
