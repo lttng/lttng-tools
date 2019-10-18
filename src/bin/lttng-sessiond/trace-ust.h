@@ -27,7 +27,7 @@
 #include <common/defaults.h>
 
 #include "consumer.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 
 struct agent;
 

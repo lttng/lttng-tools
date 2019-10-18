@@ -24,7 +24,8 @@
 #include "buffer-registry.h"
 #include "fd-limit.h"
 #include "ust-consumer.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
+#include "lttng-ust-error.h"
 #include "utils.h"
 
 /*

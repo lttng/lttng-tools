@@ -22,7 +22,7 @@
 
 #include "trace-kernel.h"
 #include "trace-ust.h"
-#include "ust-ctl.h"
+#include "lttng-ust-ctl.h"
 
 int context_kernel_add(struct ltt_kernel_session *ksession,
 		const struct lttng_event_context *ctx, char *channel_name);
