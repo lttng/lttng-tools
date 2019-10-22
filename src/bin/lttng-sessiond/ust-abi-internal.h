@@ -1,5 +1,5 @@
 /*
- * lttng/ust-abi.h
+ * Copied from LTTng-UST lttng/ust-abi.h
  *
  * LTTng-UST ABI header
  *
@@ -28,9 +28,11 @@
 #define LTTNG_UST_ABI_INTERNAL_H
 
 #include <stdint.h>
+#include <macros.h>
 
-#define lttng_ust_notrace __attribute__((no_instrument_function))
-#define LTTNG_PACKED    __attribute__((__packed__))
+#ifndef LTTNG_PACKED
+#error "LTTNG_PACKED should be defined"
+#endif
 
 #ifndef __ust_stringify
 #define __ust_stringify1(x)	#x
@@ -46,8 +48,6 @@
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
 #define LTTNG_UST_ABI_MAJOR_VERSION		8
 #define LTTNG_UST_ABI_MINOR_VERSION		0
-
-struct lttng_ust_calibrate;
 
 enum lttng_ust_instrumentation {
 	LTTNG_UST_TRACEPOINT		= 0,
@@ -145,6 +145,19 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER	= 5,
 	LTTNG_UST_CONTEXT_CPU_ID		= 6,
 	LTTNG_UST_CONTEXT_APP_CONTEXT		= 7,
+	LTTNG_UST_CONTEXT_CGROUP_NS		= 8,
+	LTTNG_UST_CONTEXT_IPC_NS		= 9,
+	LTTNG_UST_CONTEXT_MNT_NS		= 10,
+	LTTNG_UST_CONTEXT_NET_NS		= 11,
+	LTTNG_UST_CONTEXT_PID_NS		= 12,
+	LTTNG_UST_CONTEXT_USER_NS		= 13,
+	LTTNG_UST_CONTEXT_UTS_NS		= 14,
+	LTTNG_UST_CONTEXT_VUID			= 15,
+	LTTNG_UST_CONTEXT_VEUID			= 16,
+	LTTNG_UST_CONTEXT_VSUID			= 17,
+	LTTNG_UST_CONTEXT_VGID			= 18,
+	LTTNG_UST_CONTEXT_VEGID			= 19,
+	LTTNG_UST_CONTEXT_VSGID			= 20,
 };
 
 struct lttng_ust_perf_counter_ctx {
@@ -175,7 +188,7 @@ struct lttng_ust_context {
  */
 #define LTTNG_UST_CHANNEL_ATTR_PADDING	(LTTNG_UST_SYM_NAME_LEN + 32)
 struct lttng_ust_channel_attr {
-	uint64_t subbuf_size;			/* bytes, power of 2 */
+	uint64_t subbuf_size;			/* bytes */
 	uint64_t num_subbuf;			/* power of 2 */
 	int overwrite;				/* 1: overwrite, 0: discard */
 	unsigned int switch_timer_interval;	/* usec */
@@ -183,7 +196,7 @@ struct lttng_ust_channel_attr {
 	enum lttng_ust_output output;		/* splice, mmap */
 	union {
 		struct {
-			int64_t blocking_timeout;	/* Retry timeout (usec) */
+			int64_t blocking_timeout;	/* Blocking timeout (usec) */
 		} s;
 		char padding[LTTNG_UST_CHANNEL_ATTR_PADDING];
 	} u;
@@ -224,6 +237,21 @@ struct lttng_ust_object_data {
 			uint32_t stream_nr;
 		} stream;
 		char padding2[LTTNG_UST_OBJECT_DATA_PADDING2];
+	} u;
+} LTTNG_PACKED;
+
+enum lttng_ust_calibrate_type {
+	LTTNG_UST_CALIBRATE_TRACEPOINT,
+};
+
+#define LTTNG_UST_CALIBRATE_PADDING1	16
+#define LTTNG_UST_CALIBRATE_PADDING2	(LTTNG_UST_SYM_NAME_LEN + 32)
+struct lttng_ust_calibrate {
+	enum lttng_ust_calibrate_type type;	/* type (input) */
+	char padding[LTTNG_UST_CALIBRATE_PADDING1];
+
+	union {
+		char padding[LTTNG_UST_CALIBRATE_PADDING2];
 	} u;
 } LTTNG_PACKED;
 
@@ -290,6 +318,7 @@ struct lttng_ust_event_exclusion {
 
 /* Event FD commands */
 #define LTTNG_UST_FILTER			_UST_CMD(0xA0)
+#define LTTNG_UST_EXCLUSION			_UST_CMD(0xA1)
 
 #define LTTNG_UST_ROOT_HANDLE	0
 
@@ -307,6 +336,9 @@ union ust_args {
 	struct {
 		struct lttng_ust_field_iter entry;
 	} field_list;
+	struct {
+		char *ctxname;
+	} app_context;
 };
 
 struct lttng_ust_objd_ops {
