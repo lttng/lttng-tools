@@ -1,5 +1,5 @@
-noinst_SCRIPTS = test_relayd_workding_directory
-EXTRA_DIST = test_relayd_workding_directory
+noinst_SCRIPTS = test_relayd_working_directory
+EXTRA_DIST = test_relayd_working_directory
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
