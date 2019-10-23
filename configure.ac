@@ -562,14 +562,13 @@ AC_ARG_WITH([lttng-ust],
 
 AS_IF([test "x$with_lttng_ust" = "xyes"],
   [
-    AC_CHECK_LIB([lttng-ust-ctl], [ustctl_recv_channel_from_consumer],
+    AC_CHECK_LIB([lttng-ust-ctl], [lttng_ust_enum_get_from_desc],
       [
         AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1])
       ],
       [
-        AC_MSG_FAILURE([Cannot find LTTng-UST >= 2.2.x. Use [LDFLAGS]=-Ldir and [CPPFLAGS]=-Idir to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])
-      ],
-      [-lurcu-common -lurcu-bp -lurcu-cds -lrt -ldl]
+        AC_MSG_FAILURE([Cannot find LTTng-UST >= 2.11.x. Use [LDFLAGS]=-Ldir and [CPPFLAGS]=-Idir to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])
+      ]
     )
   ]
 )
