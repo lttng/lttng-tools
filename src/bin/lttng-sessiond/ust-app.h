@@ -21,7 +21,7 @@
 
 #include <stdint.h>
 
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 #include "trace-ust.h"
 #include "ust-registry.h"

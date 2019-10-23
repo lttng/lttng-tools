@@ -28,7 +28,7 @@
 
 #include <lttng/constant.h>
 #include <common/hashtable/hashtable.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/trace-chunk.h>
 #include <common/optional.h>
 

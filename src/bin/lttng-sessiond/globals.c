@@ -18,7 +18,7 @@
  */
 
 #include "lttng-sessiond.h"
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 lttng_uuid sessiond_uuid;
 

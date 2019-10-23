@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #include <common/hashtable/hashtable.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 #include "lttng-ust-ctl.h"
 
@@ -48,7 +48,7 @@ struct ust_registry_session {
 	/* Next enumeration ID available. */
 	uint64_t next_enum_id;
 	/* Universal unique identifier used by the tracer. */
-	unsigned char uuid[UUID_LEN];
+	unsigned char uuid[LTTNG_UUID_LEN];
 
 	/* session ABI description */
 

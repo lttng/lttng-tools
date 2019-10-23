@@ -1286,7 +1286,7 @@ static int launch_run_as_worker(const char *procname)
 
 static void sessiond_uuid_log(void)
 {
-	char uuid_str[UUID_STR_LEN];
+	char uuid_str[LTTNG_UUID_STR_LEN];
 
 	lttng_uuid_to_str(sessiond_uuid, uuid_str);
 	DBG("Starting lttng-sessiond {%s}", uuid_str);

@@ -2332,7 +2332,7 @@ static int relay_rotate_session_streams(
 				session->sessiond_uuid, session->id,
 				rotate_streams.new_chunk_id.value);
 		if (!next_trace_chunk) {
-			char uuid_str[UUID_STR_LEN];
+			char uuid_str[LTTNG_UUID_STR_LEN];
 
 			lttng_uuid_to_str(session->sessiond_uuid, uuid_str);
 			ERR("Unknown next trace chunk in ROTATE_STREAMS command: sessiond_uuid = {%s}, session_id = %" PRIu64
@@ -2532,7 +2532,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 			conn->session->id,
 			chunk);
 	if (!published_chunk) {
-		char uuid_str[UUID_STR_LEN];
+		char uuid_str[LTTNG_UUID_STR_LEN];
 
 		lttng_uuid_to_str(conn->session->sessiond_uuid, uuid_str);
 		ERR("Failed to publish chunk: sessiond_uuid = %s, session_id = %" PRIu64 ", chunk_id = %" PRIu64,
@@ -2638,7 +2638,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 			conn->session->id,
 			chunk_id);
 	if (!chunk) {
-		char uuid_str[UUID_STR_LEN];
+		char uuid_str[LTTNG_UUID_STR_LEN];
 
 		lttng_uuid_to_str(conn->session->sessiond_uuid, uuid_str);
 		ERR("Failed to find chunk to close: sessiond_uuid = %s, session_id = %" PRIu64 ", chunk_id = %" PRIu64,

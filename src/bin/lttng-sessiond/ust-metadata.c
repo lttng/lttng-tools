@@ -1008,8 +1008,8 @@ int ust_metadata_session_statedump(struct ust_registry_session *session,
 		uint32_t major,
 		uint32_t minor)
 {
-	char uuid_s[UUID_STR_LEN],
-		clock_uuid_s[UUID_STR_LEN];
+	char uuid_s[LTTNG_UUID_STR_LEN],
+		clock_uuid_s[LTTNG_UUID_STR_LEN];
 	int ret = 0;
 
 	assert(session);

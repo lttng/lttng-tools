@@ -26,7 +26,7 @@
 #include <common/defaults.h>
 #include <common/index/ctf-index.h>
 #include <common/macros.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/optional.h>
 
 #define RELAYD_VERSION_COMM_MAJOR             VERSION_MAJOR

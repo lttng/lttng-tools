@@ -30,7 +30,8 @@ libcommon_la_SOURCES = error.h error.c utils.c utils.h runas.h runas.c \
                        userspace-probe.c event.c time.c \
                        session-descriptor.c credentials.h \
                        trace-chunk.c trace-chunk.h trace-chunk-registry.h \
-                       dynamic-array.h dynamic-array.c optional.h
+                       dynamic-array.h dynamic-array.c optional.h \
+                       uuid.c uuid.h
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += lttng-elf.h lttng-elf.c
@@ -39,8 +40,7 @@ endif
 libcommon_la_LIBADD = \
 		$(top_builddir)/src/common/config/libconfig.la \
 		$(top_builddir)/src/common/compat/libcompat.la \
-		$(top_builddir)/src/common/hashtable/libhashtable.la \
-		$(UUID_LIBS)
+		$(top_builddir)/src/common/hashtable/libhashtable.la
 
 if BUILD_LIB_COMPAT
 SUBDIRS += compat

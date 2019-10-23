@@ -30,7 +30,7 @@
 
 #include <common/hashtable/hashtable.h>
 #include <common/compat/fcntl.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/pipe.h>
 #include <common/index/ctf-index.h>
@@ -159,7 +159,7 @@ struct lttng_consumer_channel {
 	/* For UST */
 	uid_t ust_app_uid;	/* Application UID. */
 	struct ustctl_consumer_channel *uchan;
-	unsigned char uuid[UUID_STR_LEN];
+	unsigned char uuid[LTTNG_UUID_STR_LEN];
 	/*
 	 * Temporary stream list used to store the streams once created and waiting
 	 * to be sent to the session daemon by receiving the

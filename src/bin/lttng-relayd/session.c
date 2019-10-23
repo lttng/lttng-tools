@@ -19,9 +19,10 @@
 
 #define _LGPL_SOURCE
 #include <common/common.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/time.h>
 #include <common/utils.h>
+#include <common/uuid.h>
 #include <urcu/rculist.h>
 
 #include <sys/stat.h>
@@ -328,7 +329,7 @@ struct relay_session *session_create(const char *session_name,
 					session->id_sessiond.value,
 					*current_chunk_id);
 		if (!session->current_trace_chunk) {
-		        char uuid_str[UUID_STR_LEN];
+		        char uuid_str[LTTNG_UUID_STR_LEN];
 
 			lttng_uuid_to_str(sessiond_uuid, uuid_str);
 			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64 ", trace chunk id = %" PRIu64,

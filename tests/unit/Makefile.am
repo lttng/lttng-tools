@@ -18,7 +18,8 @@ TESTS = test_kernel_data \
 	test_directory_handle \
 	test_relayd_backward_compat_group_by_session \
 	ini_config/test_ini_config \
-	test_fd_tracker
+	test_fd_tracker \
+	test_uuid
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
@@ -36,7 +37,7 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_expand_path test_utils_compat_poll \
                   test_string_utils test_notification test_directory_handle \
                   test_relayd_backward_compat_group_by_session \
-                  test_fd_tracker
+                  test_fd_tracker test_uuid
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -186,3 +187,7 @@ test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_s
 # fd tracker unit test
 test_fd_tracker_SOURCES = test_fd_tracker.c
 test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON) $(LIBHASHTABLE)
+
+# uuid unit test
+test_uuid_SOURCES = test_uuid.c
+test_uuid_LDADD = $(LIBTAP) $(LIBCOMMON)

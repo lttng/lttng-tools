@@ -35,7 +35,7 @@
 #include <common/compat/socket.h>
 #include <common/uri.h>
 #include <common/defaults.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/macros.h>
 #include <common/optional.h>
 
@@ -543,7 +543,7 @@ struct lttcomm_consumer_msg {
 			uint64_t key;				/* Unique channel key. */
 			/* ID of the session's current trace chunk. */
 			LTTNG_OPTIONAL_COMM(uint64_t) LTTNG_PACKED chunk_id;
-			unsigned char uuid[UUID_LEN];	/* uuid for ust tracer. */
+			unsigned char uuid[LTTNG_UUID_LEN];	/* uuid for ust tracer. */
 			uint32_t chan_id;			/* Channel ID on the tracer side. */
 			uint64_t tracefile_size;	/* bytes */
 			uint32_t tracefile_count;	/* number of tracefiles */

@@ -19,7 +19,7 @@
 
 #include "lttng-relayd.h"
 #include <common/buffer-view.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		char *session_name, char *hostname, char *base_path,

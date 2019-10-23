@@ -29,7 +29,7 @@
 #include <urcu/arch.h>
 #include <lttng/ust-clock.h>
 
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 /* TRACE CLOCK */
 

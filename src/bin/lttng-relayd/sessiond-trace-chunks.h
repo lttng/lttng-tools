@@ -18,7 +18,7 @@
 #ifndef SESSIOND_TRACE_CHUNK_REGISTRY_H
 #define SESSIOND_TRACE_CHUNK_REGISTRY_H
 
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 #include <common/trace-chunk.h>
 #include <stdint.h>
 

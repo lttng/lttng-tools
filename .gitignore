@@ -83,6 +83,7 @@ compile_commands.json
 /tests/unit/test_utils_parse_size_suffix
 /tests/unit/test_utils_parse_time_suffix
 /tests/unit/test_utils_expand_path
+/tests/unit/test_uuid
 /tests/unit/test_notification
 /tests/unit/test_directory_handle
 /tests/unit/test_relayd_backward_compat_group_by_session

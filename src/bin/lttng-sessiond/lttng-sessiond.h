@@ -25,7 +25,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
-#include <common/compat/uuid.h>
+#include <common/uuid.h>
 
 #include "session.h"
 #include "ust-app.h"
