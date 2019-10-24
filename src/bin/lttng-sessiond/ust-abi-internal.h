@@ -28,7 +28,7 @@
 #define LTTNG_UST_ABI_INTERNAL_H
 
 #include <stdint.h>
-#include <macros.h>
+#include <common/macros.h>
 
 #ifndef LTTNG_PACKED
 #error "LTTNG_PACKED should be defined"
