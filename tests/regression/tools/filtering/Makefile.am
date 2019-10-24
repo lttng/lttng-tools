@@ -3,7 +3,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests -I$(srcdir)
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS = gen-ust-events
 gen_ust_events_SOURCES = gen-ust-events.c tp.c tp.h
-gen_ust_events_LDADD = -llttng-ust -lurcu-bp $(DL_LIBS)
+gen_ust_events_LDADD = $(UST_LIBS) $(DL_LIBS)
 endif
 
 noinst_SCRIPTS = test_unsupported_op test_invalid_filter test_valid_filter

@@ -9,7 +9,7 @@ LIBS =
 # Build a version of the test app with built-in tracepoints
 demo_builtin_SOURCES = demo.c tp.c tp2.c tp3.c ust_tests_demo.h \
 	ust_tests_demo2.h ust_tests_demo3.h
-demo_builtin_LDADD = -llttng-ust $(DL_LIBS)
+demo_builtin_LDADD = $(UST_LIBS) $(DL_LIBS)
 demo_builtin_CFLAGS = -Werror=old-style-definition $(AM_CFLAGS)
 
 # Build a version statically linked to the providers
@@ -21,13 +21,13 @@ liblttng_ust_provider_ust_tests_demo_static_la_SOURCES = \
 	tp.c ust_tests_demo.h \
 	tp2.c ust_tests_demo2.h
 liblttng_ust_provider_ust_tests_demo_static_la_LIBADD = \
-	-llttng-ust
+	$(UST_LIBS)
 
 # contains ust_tests_demo3.h provider probes
 liblttng_ust_provider_ust_tests_demo3_static_la_SOURCES = \
 	tp3.c ust_tests_demo3.h
 liblttng_ust_provider_ust_tests_demo3_static_la_LIBADD = \
-	-llttng-ust
+	$(UST_LIBS)
 
 demo_static_SOURCES = demo.c
 demo_static_LDADD = liblttng-ust-provider-ust-tests-demo-static.la \
@@ -58,14 +58,14 @@ noinst_LTLIBRARIES += liblttng-ust-provider-ust-tests-demo.la \
 liblttng_ust_provider_ust_tests_demo_la_SOURCES = \
 	tp.c ust_tests_demo.h \
 	tp2.c ust_tests_demo2.h
-liblttng_ust_provider_ust_tests_demo_la_LIBADD = -llttng-ust
+liblttng_ust_provider_ust_tests_demo_la_LIBADD = $(UST_LIBS)
 liblttng_ust_provider_ust_tests_demo_la_LDFLAGS = \
 	$(FORCE_SHARED_LIB_OPTIONS)
 
 #contains ust_tests_demo3.h provider probes
 liblttng_ust_provider_ust_tests_demo3_la_SOURCES = \
 	tp3.c ust_tests_demo3.h
-liblttng_ust_provider_ust_tests_demo3_la_LIBADD = -llttng-ust
+liblttng_ust_provider_ust_tests_demo3_la_LIBADD = $(UST_LIBS)
 liblttng_ust_provider_ust_tests_demo3_la_LDFLAGS = \
 	$(FORCE_SHARED_LIB_OPTIONS)
 

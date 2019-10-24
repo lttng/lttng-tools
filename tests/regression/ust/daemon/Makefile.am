@@ -2,7 +2,7 @@ AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = daemon
 daemon_SOURCES = daemon.c ust_tests_daemon.h
-daemon_LDADD = -llttng-ust -llttng-ust-fork $(DL_LIBS)
+daemon_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
 
 noinst_SCRIPTS = test_daemon test_daemon.py
 EXTRA_DIST = test_daemon test_daemon.py

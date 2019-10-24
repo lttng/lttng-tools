@@ -2,10 +2,10 @@ AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = fork fork2
 fork_SOURCES = fork.c ust_tests_fork.h
-fork_LDADD = -llttng-ust -llttng-ust-fork $(DL_LIBS)
+fork_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
 
 fork2_SOURCES = fork2.c
-fork2_LDADD = -llttng-ust -llttng-ust-fork $(DL_LIBS)
+fork2_LDADD = $(UST_LIBS) -llttng-ust-fork $(DL_LIBS)
 
 noinst_SCRIPTS = test_fork test_fork.py
 EXTRA_DIST = test_fork test_fork.py

@@ -78,5 +78,5 @@ lttng_sessiond_LDADD = -lurcu-common -lurcu $(KMOD_LIBS) \
 
 
 if HAVE_LIBLTTNG_UST_CTL
-lttng_sessiond_LDADD += -llttng-ust-ctl
+lttng_sessiond_LDADD += $(UST_CTL_LIBS)
 endif

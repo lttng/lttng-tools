@@ -105,7 +105,7 @@ test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 test_session_LDADD += $(SESSIOND_OBJS)
 
 if HAVE_LIBLTTNG_UST_CTL
-test_session_LDADD += -llttng-ust-ctl
+test_session_LDADD += $(UST_CTL_LIBS)
 endif
 
 # UST data structures unit test
@@ -113,7 +113,7 @@ if HAVE_LIBLTTNG_UST_CTL
 test_ust_data_SOURCES = test_ust_data.c
 test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 		      $(LIBHASHTABLE) $(DL_LIBS) -lrt -lurcu-common -lurcu \
-		      -llttng-ust-ctl \
+		      $(UST_CTL_LIBS) \
 		      $(KMOD_LIBS) \
 		      $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		      $(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \

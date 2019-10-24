@@ -16,5 +16,5 @@ lttng_consumerd_LDADD = \
 lttng_consumerd_LDFLAGS = -rdynamic
 
 if HAVE_LIBLTTNG_UST_CTL
-lttng_consumerd_LDADD += -llttng-ust-ctl
+lttng_consumerd_LDADD += $(UST_CTL_LIBS)
 endif

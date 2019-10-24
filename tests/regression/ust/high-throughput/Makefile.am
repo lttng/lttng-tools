@@ -2,7 +2,7 @@ AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = gen-events
 gen_events_SOURCES = main.c tp.c tp.h
-gen_events_LDADD = -llttng-ust $(DL_LIBS)
+gen_events_LDADD = $(UST_LIBS) $(DL_LIBS)
 
 noinst_SCRIPTS = test_high_throughput
 EXTRA_DIST = test_high_throughput

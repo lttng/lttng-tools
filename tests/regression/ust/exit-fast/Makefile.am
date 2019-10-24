@@ -2,7 +2,7 @@ AM_CPPFLAGS += -I$(srcdir)
 
 noinst_PROGRAMS = exit-fast
 exit_fast_SOURCES = exit-fast.c ust_tests_exitfast.h
-exit_fast_LDADD = -llttng-ust $(DL_LIBS)
+exit_fast_LDADD = $(UST_LIBS) $(DL_LIBS)
 
 noinst_SCRIPTS = test_exit-fast test_exit-fast.py
 EXTRA_DIST = test_exit-fast test_exit-fast.py

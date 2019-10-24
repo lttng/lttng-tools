@@ -557,18 +557,18 @@ AC_ARG_WITH([lttng-ust],
   [with_lttng_ust=yes]
 )
 
-AS_IF([test "x$with_lttng_ust" = "xyes"],
-  [
-    AC_CHECK_LIB([lttng-ust-ctl], [lttng_ust_enum_get_from_desc],
-      [
-        AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1])
-      ],
-      [
-        AC_MSG_FAILURE([Cannot find LTTng-UST >= 2.11.x. Use [LDFLAGS]=-Ldir and [CPPFLAGS]=-Idir to specify its location, or specify --without-lttng-ust to build lttng-tools without LTTng-UST support.])
-      ]
-    )
-  ]
-)
+AS_IF([test "x$with_lttng_ust" = "xyes"], [
+  AC_DEFINE([HAVE_LIBLTTNG_UST_CTL], [1])
+
+  # Check for liblttng-ust
+  PKG_CHECK_MODULES([UST], [lttng-ust >= $major_version.$minor_version])
+
+  # Check for liblttng-ust-ctl
+  PKG_CHECK_MODULES([UST_CTL], [lttng-ust-ctl >= $major_version.$minor_version])
+
+  AM_CPPFLAGS="$AM_CPPFLAGS $UST_CFLAGS"
+])
+
 AM_CONDITIONAL([HAVE_LIBLTTNG_UST_CTL], [test "x$with_lttng_ust" = "xyes"])
 
 

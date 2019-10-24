@@ -21,12 +21,12 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 liblttng_ust_provider_ust_tests_demo_la_SOURCES = \
 	tp.c ust_tests_demo.h \
 	tp2.c ust_tests_demo2.h
-liblttng_ust_provider_ust_tests_demo_la_LIBADD = -llttng-ust
+liblttng_ust_provider_ust_tests_demo_la_LIBADD = $(UST_LIBS)
 liblttng_ust_provider_ust_tests_demo_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
 #contains ust_tests_demo3.h provider probes
 liblttng_ust_provider_ust_tests_demo3_la_SOURCES = tp3.c ust_tests_demo3.h
-liblttng_ust_provider_ust_tests_demo3_la_LIBADD = -llttng-ust
+liblttng_ust_provider_ust_tests_demo3_la_LIBADD = $(UST_LIBS)
 liblttng_ust_provider_ust_tests_demo3_la_LDFLAGS = $(FORCE_SHARED_LIB_OPTIONS)
 
 noinst_LTLIBRARIES = liblttng-ust-provider-ust-tests-demo.la \
