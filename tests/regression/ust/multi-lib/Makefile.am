@@ -3,11 +3,11 @@ EXTRA_DIST = test_multi_lib
 noinst_PROGRAMS = exec-with-callsites exec-without-callsites
 
 exec_with_callsites_SOURCES = multi-lib-test.c callsites.c
-exec_with_callsites_LDFLAGS = -ldl $(POPT_LIBS)
+exec_with_callsites_LDFLAGS = $(DL_LIBS) $(POPT_LIBS)
 exec_with_callsites_CFLAGS = $(POPT_CFLAGS) $(AM_CFLAGS) -DHAS_CALLSITES=1
 
 exec_without_callsites_SOURCES = multi-lib-test.c
-exec_without_callsites_LDFLAGS = -ldl $(POPT_LIBS) $(UST_LIBS)
+exec_without_callsites_LDFLAGS = $(DL_LIBS) $(POPT_LIBS) $(UST_LIBS)
 exec_without_callsites_LDADD = probes.o
 exec_without_callsites_CFLAGS = $(POPT_CFLAGS) $(AM_CFLAGS) -DHAS_CALLSITES=0
 
