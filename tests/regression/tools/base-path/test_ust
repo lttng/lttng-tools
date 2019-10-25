@@ -27,7 +27,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=32
+NUM_TESTS=37
 
 source $TESTDIR/utils/utils.sh
 
@@ -117,7 +117,7 @@ function ust_app_snapshot_base_path ()
 function ust_app_snapshot_add_output_base_path ()
 {
 	local session_name=$(randstring 16 0)
-	local base_path="my/custom/path3"
+	local base_path="my/custom/path4"
 
 	diag "Test base path override for remote trace snapshot (URI on add-output)"
 	create_lttng_session_no_output $session_name --snapshot
@@ -142,6 +142,27 @@ function ust_app_snapshot_add_output_base_path ()
 	fi
 }
 
+function ust_app_stream_base_path_via_load ()
+{
+	local session_name="load-stream-extra-path"
+	local base_path="my/custom/path5"
+
+	diag "Test base path override for trace streaming using lttng load"
+	lttng_load_ok "-i $CURDIR/$session_name.lttng"
+	start_lttng_tracing_ok $session_name
+
+	$TESTAPP_BIN > /dev/null 2>&1
+
+	stop_lttng_tracing_ok $session_name
+	destroy_lttng_session_ok $session_name
+
+	# validate test
+	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
+		# only delete if successful
+		rm -rf "$TRACE_PATH"
+	fi
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -152,7 +173,9 @@ start_lttng_sessiond
 tests=( ust_app_stream_base_path
 	ust_app_snapshot_create_base_path
 	ust_app_snapshot_base_path
-	ust_app_snapshot_add_output_base_path )
+	ust_app_snapshot_add_output_base_path
+	ust_app_stream_base_path_via_load
+)
 for fct_test in ${tests[@]};
 do
 	${fct_test}
