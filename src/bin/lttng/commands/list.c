@@ -1825,7 +1825,7 @@ static int list_sessions(const char *session_name)
 	int ret = CMD_SUCCESS;
 	int count, i;
 	unsigned int session_found = 0;
-	struct lttng_session *sessions;
+	struct lttng_session *sessions = NULL;
 
 	count = lttng_list_sessions(&sessions);
 	DBG("Session count %d", count);
@@ -1838,7 +1838,7 @@ static int list_sessions(const char *session_name)
 	if (lttng_opt_mi) {
 		/* Mi */
 		if (session_name == NULL) {
-			/* List all session */
+			/* List all sessions */
 			ret = mi_list_sessions(sessions, count);
 		} else {
 			/* Note : this return an open session element */
@@ -1846,7 +1846,7 @@ static int list_sessions(const char *session_name)
 		}
 		if (ret) {
 			ret = CMD_ERROR;
-			goto error;
+			goto end;
 		}
 	} else {
 		/* Pretty print */
@@ -1893,7 +1893,7 @@ static int list_sessions(const char *session_name)
 		if (!session_found && session_name != NULL) {
 			ERR("Session '%s' not found", session_name);
 			ret = CMD_ERROR;
-			goto error;
+			goto end;
 		}
 
 		if (session_name == NULL) {
@@ -1901,9 +1901,8 @@ static int list_sessions(const char *session_name)
 		}
 	}
 
-error:
-	free(sessions);
 end:
+	free(sessions);
 	return ret;
 }
 
