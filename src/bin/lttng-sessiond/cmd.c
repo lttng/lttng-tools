@@ -2740,6 +2740,45 @@ error:
 }
 
 /*
+ * Set the base_path of the session only if subdir of a control uris is set.
+ * Return LTTNG_OK on success, otherwise LTTNG_ERR_*.
+ */
+static int set_session_base_path_from_uris(struct ltt_session *session,
+		size_t nb_uri,
+		struct lttng_uri *uris)
+{
+	int ret;
+	size_t i;
+
+	for (i = 0; i < nb_uri; i++) {
+		if (uris[i].stype != LTTNG_STREAM_CONTROL ||
+				uris[i].subdir[0] == '\0') {
+			/* Not interested in these URIs */
+			continue;
+		}
+
+		if (session->base_path != NULL) {
+			free(session->base_path);
+			session->base_path = NULL;
+		}
+
+		/* Set session base_path */
+		session->base_path = strdup(uris[i].subdir);
+		if (!session->base_path) {
+			PERROR("Failed to copy base path \"%s\" to session \"%s\"",
+					uris[i].subdir, session->name);
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		DBG2("Setting base path \"%s\" for session \"%s\"",
+				session->base_path, session->name);
+	}
+	ret = LTTNG_OK;
+error:
+	return ret;
+}
+
+/*
  * Command LTTNG_SET_CONSUMER_URI processed by the client thread.
  */
 int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
@@ -2759,26 +2798,14 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 		goto error;
 	}
 
-	for (i = 0; i < nb_uri; i++) {
-		if (uris[i].stype != LTTNG_STREAM_CONTROL ||
-				uris[i].subdir[0] == '\0') {
-			/* Not interested in these URIs */
-			continue;
-		}
-
-		if (session->base_path != NULL) {
-			free(session->base_path);
-			session->base_path = NULL;
-		}
-
-		/* Set session base_path */
-		session->base_path = strdup(uris[i].subdir);
-		if (!session->base_path) {
-			PERROR("Copying base path: %s", uris[i].subdir);
-			goto error;
-		}
-		DBG2("Setting base path for session %" PRIu64 ": %s",
-				session->id, session->base_path);
+	/*
+	 * Set the session base path if any. This is done inside
+	 * cmd_set_consumer_uri to preserve backward compatibility of the
+	 * previous session creation api vs the session descriptor api.
+	 */
+	ret = set_session_base_path_from_uris(session, nb_uri, uris);
+	if (ret != LTTNG_OK) {
+		goto error;
 	}
 
 	/* Set the "global" consumer URIs */
