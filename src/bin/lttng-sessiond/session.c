@@ -962,7 +962,7 @@ end:
  * Session list lock must be held by the caller.
  */
 enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
-		const char *base_path, struct ltt_session **out_session)
+		struct ltt_session **out_session)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -1081,16 +1081,6 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 			ERR("Hostname exceeds the maximal permitted length and has been truncated to %s",
 					new_session->hostname);
 		} else {
-			ret_code = LTTNG_ERR_SESSION_FAIL;
-			goto error;
-		}
-	}
-
-	if (base_path) {
-		new_session->base_path = strdup(base_path);
-		if (!new_session->base_path) {
-			ERR("Failed to allocate base path of session \"%s\"",
-					name);
 			ret_code = LTTNG_ERR_SESSION_FAIL;
 			goto error;
 		}

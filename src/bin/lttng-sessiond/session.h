@@ -193,7 +193,7 @@ struct ltt_session {
 
 /* Prototypes */
 enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
-		const char *base_path, struct ltt_session **out_session);
+		struct ltt_session **out_session);
 void session_lock(struct ltt_session *session);
 void session_lock_list(void);
 int session_trylock_list(void);
