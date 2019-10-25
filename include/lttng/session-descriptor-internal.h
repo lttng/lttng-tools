@@ -109,8 +109,4 @@ int lttng_session_descriptor_assign(
 		struct lttng_session_descriptor *dst_descriptor,
 		const struct lttng_session_descriptor *src_descriptor);
 
-LTTNG_HIDDEN
-int lttng_session_descriptor_get_base_path(struct lttng_session_descriptor *dst,
-		const char **base_path);
-
 #endif /* LTTNG_SESSION_DESCRIPTOR_INTERNAL_H */
