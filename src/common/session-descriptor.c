@@ -1176,26 +1176,3 @@ int lttng_session_descriptor_assign(
 end:
 	return ret;
 }
-
-LTTNG_HIDDEN
-int lttng_session_descriptor_get_base_path(struct lttng_session_descriptor *dst,
-		const char **_base_path)
-{
-	switch (dst->output_type) {
-	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NETWORK:
-	{
-		if (dst->output.network.control &&
-				dst->output.network.control->subdir[0]) {
-			*_base_path = dst->output.network.control->subdir;
-		} else {
-			*_base_path = NULL;
-		}
-		break;
-	}
-	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_LOCAL:
-	case LTTNG_SESSION_DESCRIPTOR_OUTPUT_TYPE_NONE:
-		*_base_path = NULL;
-		break;
-	}
-	return 0;
-}
