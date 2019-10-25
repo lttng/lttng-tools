@@ -132,7 +132,7 @@ static int create_one_session(char *name)
 	struct ltt_session *session = NULL;
 
 	session_lock_list();
-	ret_code = session_create(name, geteuid(), getegid(), NULL, &session);
+	ret_code = session_create(name, geteuid(), getegid(), &session);
 	session_put(session);
 	if (ret_code == LTTNG_OK) {
 		/* Validate */
@@ -288,7 +288,7 @@ void test_session_name_generation(void)
 	const char *expected_session_name_prefix = DEFAULT_SESSION_NAME;
 
 	session_lock_list();
-	ret_code = session_create(NULL, geteuid(), getegid(), NULL, &session);
+	ret_code = session_create(NULL, geteuid(), getegid(), &session);
 	ok(ret_code == LTTNG_OK,
 		"Create session with a NULL name (auto-generate a name)");
 	if (!session) {

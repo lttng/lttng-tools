@@ -2759,11 +2759,32 @@ int cmd_set_consumer_uri(struct ltt_session *session, size_t nb_uri,
 		goto error;
 	}
 
+	for (i = 0; i < nb_uri; i++) {
+		if (uris[i].stype != LTTNG_STREAM_CONTROL ||
+				uris[i].subdir[0] == '\0') {
+			/* Not interested in these URIs */
+			continue;
+		}
+
+		if (session->base_path != NULL) {
+			free(session->base_path);
+			session->base_path = NULL;
+		}
+
+		/* Set session base_path */
+		session->base_path = strdup(uris[i].subdir);
+		if (!session->base_path) {
+			PERROR("Copying base path: %s", uris[i].subdir);
+			goto error;
+		}
+		DBG2("Setting base path for session %" PRIu64 ": %s",
+				session->id, session->base_path);
+	}
+
 	/* Set the "global" consumer URIs */
 	for (i = 0; i < nb_uri; i++) {
-		ret = add_uri_to_consumer(session,
-				session->consumer,
-				&uris[i], LTTNG_DOMAIN_NONE);
+		ret = add_uri_to_consumer(session, session->consumer, &uris[i],
+				LTTNG_DOMAIN_NONE);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2894,7 +2915,6 @@ enum lttng_error_code cmd_create_session_from_descriptor(
 	const char *session_name;
 	struct ltt_session *new_session = NULL;
 	enum lttng_session_descriptor_status descriptor_status;
-	const char *base_path;
 
 	session_lock_list();
 	if (home_path) {
@@ -2917,13 +2937,9 @@ enum lttng_error_code cmd_create_session_from_descriptor(
 		ret_code = LTTNG_ERR_INVALID;
 		goto end;
 	}
-	ret = lttng_session_descriptor_get_base_path(descriptor, &base_path);
-	if (ret) {
-		ret_code = LTTNG_ERR_INVALID;
-		goto end;
-	}
+
 	ret_code = session_create(session_name, creds->uid, creds->gid,
-			base_path, &new_session);
+			&new_session);
 	if (ret_code != LTTNG_OK) {
 		goto end;
 	}
