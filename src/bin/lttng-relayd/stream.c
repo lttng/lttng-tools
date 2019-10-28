@@ -644,7 +644,9 @@ end:
 		stream_put(stream);
 		stream = NULL;
 	}
-	lttng_trace_chunk_put(current_trace_chunk);
+	if (acquired_reference) {
+		lttng_trace_chunk_put(current_trace_chunk);
+	}
 	return stream;
 
 error_no_alloc:
