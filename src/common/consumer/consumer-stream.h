@@ -94,4 +94,13 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
  */
 int consumer_stream_rotate_output_files(struct lttng_consumer_stream *stream);
 
+/*
+ * Indicates whether or not a stream is logically deleted. A deleted stream
+ * should no longer be used; its existence is only garanteed by the RCU lock
+ * held by the caller.
+ *
+ * This function must be called with the RCU read side lock held.
+ */
+bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */
