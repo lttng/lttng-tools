@@ -645,3 +645,13 @@ int consumer_stream_rotate_output_files(struct lttng_consumer_stream *stream)
 end:
 	return ret;
 }
+
+bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream)
+{
+	/*
+	 * This function does not take a const stream since
+	 * cds_lfht_is_node_deleted was not const before liburcu 0.12.
+	 */
+	assert(stream);
+	return cds_lfht_is_node_deleted(&stream->node.node);
+}

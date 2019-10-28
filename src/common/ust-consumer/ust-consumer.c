@@ -2582,37 +2582,59 @@ end:
  * interacting with sessiond, else we cause a deadlock with live
  * awaiting on metadata to be pushed out.
  *
+ * The RCU read side lock must be held by the caller.
+ *
  * Return 0 if new metadatda is available, EAGAIN if the metadata stream
  * is empty or a negative value on error.
  */
 int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *metadata)
+		struct lttng_consumer_stream *metadata_stream)
 {
 	int ret;
 	int retry = 0;
+	struct lttng_consumer_channel *metadata_channel;
 
 	assert(ctx);
-	assert(metadata);
+	assert(metadata_stream);
 
-	pthread_mutex_unlock(&metadata->lock);
+	metadata_channel = metadata_stream->chan;
+	pthread_mutex_unlock(&metadata_stream->lock);
 	/*
 	 * Request metadata from the sessiond, but don't wait for the flush
 	 * because we locked the metadata thread.
 	 */
-	ret = lttng_ustconsumer_request_metadata(ctx, metadata->chan, 0, 0);
-	pthread_mutex_lock(&metadata->lock);
+	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel, 0, 0);
+	pthread_mutex_lock(&metadata_stream->lock);
 	if (ret < 0) {
 		goto end;
 	}
 
-	ret = commit_one_metadata_packet(metadata);
+	/*
+	 * The metadata stream and channel can be deleted while the
+	 * metadata stream lock was released. The streamed is checked
+	 * for deletion before we use it further.
+	 *
+	 * Note that it is safe to access a logically-deleted stream since its
+	 * existence is still guaranteed by the RCU read side lock. However,
+	 * it should no longer be used. The close/deletion of the metadata
+	 * channel and stream already guarantees that all metadata has been
+	 * consumed. Therefore, there is nothing left to do in this function.
+	 */
+	if (consumer_stream_is_deleted(metadata_stream)) {
+		DBG("Metadata stream %" PRIu64 " was deleted during the metadata synchronization",
+				metadata_stream->key);
+		ret = 0;
+		goto end;
+	}
+
+	ret = commit_one_metadata_packet(metadata_stream);
 	if (ret <= 0) {
 		goto end;
 	} else if (ret > 0) {
 		retry = 1;
 	}
 
-	ret = ustctl_snapshot(metadata->ustream);
+	ret = ustctl_snapshot(metadata_stream->ustream);
 	if (ret < 0) {
 		if (errno != EAGAIN) {
 			ERR("Sync metadata, taking UST snapshot");
