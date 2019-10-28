@@ -173,7 +173,7 @@ error:
 	if (vstream) {
 		viewer_stream_destroy(vstream);
 	}
-	if (viewer_trace_chunk) {
+	if (viewer_trace_chunk && acquired_reference) {
 		lttng_trace_chunk_put(viewer_trace_chunk);
 	}
 	return NULL;
