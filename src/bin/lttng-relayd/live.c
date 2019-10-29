@@ -831,9 +831,18 @@ int viewer_list_sessions(struct relay_connection *conn)
 
 		health_code_update();
 
+		pthread_mutex_lock(&session->lock);
 		if (session->connection_closed) {
 			/* Skip closed session */
-			continue;
+			goto next_session;
+		}
+		if (!session->current_trace_chunk) {
+			/*
+			 * Skip un-attachable session. It is either
+			 * being destroyed or has not had a trace
+			 * chunk created against it yet.
+			 */
+			goto next_session;
 		}
 
 		if (count >= buf_count) {
@@ -844,7 +853,7 @@ int viewer_list_sessions(struct relay_connection *conn)
 				new_buf_count * sizeof(*send_session_buf));
 			if (!newbuf) {
 				ret = -1;
-				break;
+				goto break_loop;
 			}
 			send_session_buf = newbuf;
 			buf_count = new_buf_count;
@@ -854,12 +863,12 @@ int viewer_list_sessions(struct relay_connection *conn)
 				session->session_name,
 				sizeof(send_session->session_name))) {
 			ret = -1;
-			break;
+			goto break_loop;
 		}
 		if (lttng_strncpy(send_session->hostname, session->hostname,
 				sizeof(send_session->hostname))) {
 			ret = -1;
-			break;
+			goto break_loop;
 		}
 		send_session->id = htobe64(session->id);
 		send_session->live_timer = htobe32(session->live_timer);
@@ -870,6 +879,12 @@ int viewer_list_sessions(struct relay_connection *conn)
 		}
 		send_session->streams = htobe32(session->stream_count);
 		count++;
+	next_session:
+		pthread_mutex_unlock(&session->lock);
+		continue;
+	break_loop:
+		pthread_mutex_unlock(&session->lock);
+		break;
 	}
 	rcu_read_unlock();
 	if (ret < 0) {
