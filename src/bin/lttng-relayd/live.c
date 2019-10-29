@@ -1080,6 +1080,15 @@ int viewer_attach_session(struct relay_connection *conn)
 	DBG("Attach session ID %" PRIu64 " received", session_id);
 
 	pthread_mutex_lock(&session->lock);
+	if (!session->current_trace_chunk) {
+		/*
+		 * Session is either being destroyed or it never had a trace
+		 * chunk created against it.
+		 */
+		DBG("Session requested by live client has no current trace chunk, returning unknown session");
+		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
+		goto send_reply;
+	}
 	if (session->live_timer == 0) {
 		DBG("Not live session");
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_NOT_LIVE);
