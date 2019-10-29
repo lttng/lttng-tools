@@ -954,15 +954,22 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	}
 
 	if (!viewer_session_is_attached(conn->viewer_session, session)) {
-		send_streams = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
 		goto send_reply;
 	}
 
-	send_streams = 1;
-	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
-
 	pthread_mutex_lock(&session->lock);
+	if (!session->current_trace_chunk) {
+		/*
+		 * Means the session is being destroyed. React the same way
+		 * as if it could not be found at all.
+		 */
+		DBG("Relay session %" PRIu64 " has no current trace chunk, replying LTTNG_VIEWER_NEW_STREAMS_ERR",
+				session_id);
+		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
+		goto send_reply_unlock;
+	}
+
 	if (!conn->viewer_session->current_trace_chunk &&
 			session->current_trace_chunk) {
 		ret = viewer_session_set_trace_chunk(conn->viewer_session,
@@ -978,7 +985,8 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	if (ret < 0) {
 		goto error_unlock_session;
 	}
-	pthread_mutex_unlock(&session->lock);
+	send_streams = 1;
+	response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_OK);
 
 	/* Only send back the newly created streams with the unsent ones. */
 	nb_streams = nb_created + nb_unsent;
@@ -992,8 +1000,10 @@ int viewer_get_new_streams(struct relay_connection *conn)
 		send_streams = 0;
 		response.streams_count = 0;
 		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_HUP);
-		goto send_reply;
+		goto send_reply_unlock;
 	}
+send_reply_unlock:
+	pthread_mutex_unlock(&session->lock);
 
 send_reply:
 	health_code_update();
