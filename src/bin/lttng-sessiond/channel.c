@@ -471,15 +471,6 @@ int channel_ust_create(struct ltt_ust_session *usess,
 		goto error_free_chan;
 	}
 
-	if (usess->active) {
-		/* Enable channel for global domain */
-		ret = ust_app_create_channel_glb(usess, uchan);
-		if (ret < 0 && ret != -LTTNG_UST_ERR_EXIST) {
-			ret = LTTNG_ERR_UST_CHAN_FAIL;
-			goto error_free_chan;
-		}
-	}
-
 	/* Adding the channel to the channel hash table. */
 	rcu_read_lock();
 	if (strncmp(uchan->name, DEFAULT_METADATA_NAME,

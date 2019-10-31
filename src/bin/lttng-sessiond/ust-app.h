@@ -315,8 +315,6 @@ int ust_app_stop_trace_all(struct ltt_ust_session *usess);
 int ust_app_destroy_trace_all(struct ltt_ust_session *usess);
 int ust_app_list_events(struct lttng_event **events);
 int ust_app_list_event_fields(struct lttng_event_field **fields);
-int ust_app_create_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan);
 int ust_app_create_event_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan, struct ltt_ust_event *uevent);
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
@@ -462,12 +460,6 @@ int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 }
 static inline
 int ust_app_enable_channel_glb(struct ltt_ust_session *usess,
-		struct ltt_ust_channel *uchan)
-{
-	return 0;
-}
-static inline
-int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)
 {
 	return 0;
