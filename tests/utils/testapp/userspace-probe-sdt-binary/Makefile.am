@@ -26,10 +26,14 @@ libzzz_la_CFLAGS = -I$(abs_builddir)
 libzzz_la_LDFLAGS = -module -shared -avoid-version -rpath $(abs_builddir)/.libs/
 nodist_libzzz_la_SOURCES = $(abs_builddir)/foobar_provider.h
 
+dtrace_verbose = $(dtrace_verbose_@AM_V@)
+dtrace_verbose_ = $(dtrace_verbose_@AM_DEFAULT_V@)
+dtrace_verbose_0 = @echo "  DTRACE  " $@;
+
 foobar_provider.h: foobar_provider.d
-	dtrace -s $< -o $@ -h
+	$(dtrace_verbose)$(DTRACE) -s $< -o $@ -h
 
 foobar_provider.o: foobar_provider.d
-	dtrace -s $< -o $@ -G
+	$(dtrace_verbose)$(DTRACE) -s $< -o $@ -G
 
 CLEANFILES = foobar_provider.h

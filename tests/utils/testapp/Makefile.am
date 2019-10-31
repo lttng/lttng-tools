@@ -9,9 +9,9 @@ if CXX_WORKS
 SUBDIRS += userspace-probe-elf-cxx-binary
 endif # CXX_WORKS
 
-if SDT_WORKS
+if TEST_SDT_UPROBE
 SUBDIRS += userspace-probe-sdt-binary
-endif # SDT_WORKS
+endif # TEST_SDT_UPROBE
 
 if HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
 SUBDIRS += gen-syscall-events-callstack
