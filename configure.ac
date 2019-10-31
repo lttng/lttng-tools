@@ -25,9 +25,6 @@ AC_PROG_CXX
 RW_PROG_CXX_WORKS
 AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
 
-LTTNG_CHECK_SDT_WORKS
-AM_CONDITIONAL([SDT_WORKS], [test "x$lttng_cv_sdt_works" = "xyes"])
-
 # Checks for programs.
 AC_PROG_GREP
 AC_PROG_MAKE_SET
@@ -857,6 +854,36 @@ AC_SUBST([RUN_PYTHON_AGENT_TEST])
 AC_SUBST([PYTHON2_AGENT])
 AC_SUBST([PYTHON3_AGENT])
 
+AC_ARG_ENABLE([test-sdt-uprobe],
+  [AS_HELP_STRING([--enable-test-sdt-uprobe], [enable the LTTng UST SDT uprobe tests [default=autodetect]])],
+  [test_sdt_uprobe="$enableval"],
+  [test_sdt_uprobe=autodetect]
+)
+
+AS_IF([test "$test_sdt_uprobe" != "no"], [
+  LTTNG_CHECK_SDT_WORKS
+  AC_PATH_PROG([DTRACE], [dtrace])
+])
+
+AS_IF([test "$test_sdt_uprobe" = "yes"], [
+  AS_IF([test "$lttng_cv_sdt_works" = "no"], [
+    AC_MSG_ERROR([Cannot find 'sys/sdt.h'.])
+  ])
+  AS_IF([test "x$DTRACE" = "x"], [
+    AC_MSG_ERROR([Cannot find SystemTap dtrace. You can set the DTRACE variable to override automatic detection.])
+  ])
+])
+
+AS_IF([test "$test_sdt_uprobe" = "autodetect"], [
+  AS_IF([test "$lttng_cv_sdt_works" = "yes"], [
+    AS_IF([test "x$DTRACE" != "x"], [
+      test_sdt_uprobe=yes
+    ])
+  ])
+])
+
+AM_CONDITIONAL([TEST_SDT_UPROBE], [test "$test_sdt_uprobe" = "yes"])
+
 # Arguments for binaries build exclusion
 AC_ARG_ENABLE([bin-lttng], AS_HELP_STRING([--disable-bin-lttng],[Disable the build of lttng binaries]))
 AC_ARG_ENABLE([bin-lttng-consumerd], AS_HELP_STRING([--disable-bin-lttng-consumerd],
@@ -1284,6 +1311,10 @@ PPRINT_PROP_BOOL([LTTng-UST Python2 agent tests], $value)
 
 test ! -z "$PYTHON3_AGENT" && value=1 || value=0
 PPRINT_PROP_BOOL([LTTng-UST Python3 agent tests], $value)
+
+# LTTng UST Java agent Log4j tests enabled/disabled
+test "x$test_sdt_uprobe" = "xyes" && value=1 || value=0
+PPRINT_PROP_BOOL([LTTng-UST SDT uprobe tests], $value)
 
 #Python binding enabled/disabled
 test "x$enable_python_binding" = xyes && value=1 || value=0
