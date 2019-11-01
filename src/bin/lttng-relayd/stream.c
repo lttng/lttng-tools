@@ -923,6 +923,27 @@ void try_stream_close(struct relay_stream *stream)
 	stream->closed = true;
 	/* Relay indexes are only used by the "consumer/sessiond" end. */
 	relay_index_close_all(stream);
+
+	/*
+	 * If we are closed by an application exiting (per-pid buffers),
+	 * we need to put our reference on the stream trace chunk right
+	 * away, because otherwise still holding the reference on the
+	 * trace chunk could allow a viewer stream (which holds a reference
+	 * to the stream) to postpone destroy waiting for the chunk to cease
+	 * to exist endlessly until the viewer is detached.
+	 */
+
+	/* Put stream fd before put chunk. */
+	if (stream->stream_fd) {
+		stream_fd_put(stream->stream_fd);
+		stream->stream_fd = NULL;
+	}
+	if (stream->index_file) {
+		lttng_index_file_put(stream->index_file);
+		stream->index_file = NULL;
+	}
+	lttng_trace_chunk_put(stream->trace_chunk);
+	stream->trace_chunk = NULL;
 	pthread_mutex_unlock(&stream->lock);
 	DBG("Succeeded in closing stream %" PRIu64, stream->stream_handle);
 	stream_put(stream);
