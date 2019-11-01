@@ -958,7 +958,7 @@ int stream_init_packet(struct relay_stream *stream, size_t packet_size,
 				stream->stream_handle,
 				stream->tracefile_size_current, packet_size,
 				stream->tracefile_current_index, new_file_index);
-		tracefile_array_file_rotate(stream->tfa);
+		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_WRITE);
 		stream->tracefile_current_index = new_file_index;
 
 		if (stream->stream_fd) {
@@ -1095,6 +1095,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
+		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_READ);
 		tracefile_array_commit_seq(stream->tfa);
 		stream->index_received_seqcount++;
 		*flushed = true;
@@ -1188,6 +1189,7 @@ int stream_add_index(struct relay_stream *stream,
 	}
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
+		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_READ);
 		tracefile_array_commit_seq(stream->tfa);
 		stream->index_received_seqcount++;
 		stream->pos_after_last_complete_data_index += index->total_size;
