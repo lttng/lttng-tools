@@ -62,7 +62,8 @@ void tracefile_array_destroy(struct tracefile_array *tfa)
 	free(tfa);
 }
 
-void tracefile_array_file_rotate(struct tracefile_array *tfa)
+void tracefile_array_file_rotate(struct tracefile_array *tfa,
+		enum tracefile_rotate_type type)
 {
 	uint64_t *headp, *tailp;
 
@@ -70,24 +71,37 @@ void tracefile_array_file_rotate(struct tracefile_array *tfa)
 		/* Not in tracefile rotation mode. */
 		return;
 	}
-	/* Rotate to next file.  */
-	tfa->file_head = (tfa->file_head + 1) % tfa->count;
-	if (tfa->file_head == tfa->file_tail) {
-		/* Move tail. */
-		tfa->file_tail = (tfa->file_tail + 1) % tfa->count;
+	switch (type) {
+	case TRACEFILE_ROTATE_READ:
+		/*
+		 * Rotate read head to write head position, thus allowing
+		 * reader to consume the newly rotated head file.
+		 */
+		tfa->file_head_read = tfa->file_head_write;
+		break;
+	case TRACEFILE_ROTATE_WRITE:
+		/* Rotate write head to next file, pushing tail if needed.  */
+		tfa->file_head_write = (tfa->file_head_write + 1) % tfa->count;
+		if (tfa->file_head_write == tfa->file_tail) {
+			/* Move tail. */
+			tfa->file_tail = (tfa->file_tail + 1) % tfa->count;
+		}
+		headp = &tfa->tf[tfa->file_head_write].seq_head;
+		tailp = &tfa->tf[tfa->file_head_write].seq_tail;
+		/*
+		 * If we overwrite a file with content, we need to push the tail
+		 * to the position following the content we are overwriting.
+		 */
+		if (*headp != -1ULL) {
+			tfa->seq_tail = tfa->tf[tfa->file_tail].seq_tail;
+		}
+		/* Reset this file head/tail (overwrite). */
+		*headp = -1ULL;
+		*tailp = -1ULL;
+		break;
+	default:
+		abort();
 	}
-	headp = &tfa->tf[tfa->file_head].seq_head;
-	tailp = &tfa->tf[tfa->file_head].seq_tail;
-	/*
-	 * If we overwrite a file with content, we need to push the tail
-	 * to the position following the content we are overwriting.
-	 */
-	if (*headp != -1ULL) {
-		tfa->seq_tail = tfa->tf[tfa->file_tail].seq_tail;
-	}
-	/* Reset this file head/tail (overwrite). */
-	*headp = -1ULL;
-	*tailp = -1ULL;
 }
 
 void tracefile_array_commit_seq(struct tracefile_array *tfa)
@@ -104,8 +118,8 @@ void tracefile_array_commit_seq(struct tracefile_array *tfa)
 		/* Not in tracefile rotation mode. */
 		return;
 	}
-	headp = &tfa->tf[tfa->file_head].seq_head;
-	tailp = &tfa->tf[tfa->file_head].seq_tail;
+	headp = &tfa->tf[tfa->file_head_write].seq_head;
+	tailp = &tfa->tf[tfa->file_head_write].seq_tail;
 	/* Update head tracefile seq_head. */
 	*headp = tfa->seq_head;
 	/*
@@ -117,9 +131,9 @@ void tracefile_array_commit_seq(struct tracefile_array *tfa)
 	}
 }
 
-uint64_t tracefile_array_get_file_index_head(struct tracefile_array *tfa)
+uint64_t tracefile_array_get_read_file_index_head(struct tracefile_array *tfa)
 {
-	return tfa->file_head;
+	return tfa->file_head_read;
 }
 
 uint64_t tracefile_array_get_seq_head(struct tracefile_array *tfa)

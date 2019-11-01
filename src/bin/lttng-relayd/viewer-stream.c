@@ -106,7 +106,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	}
 	case LTTNG_VIEWER_SEEK_LAST:
 		vstream->current_tracefile_id =
-			tracefile_array_get_file_index_head(stream->tfa);
+			tracefile_array_get_read_file_index_head(stream->tfa);
 		/*
 		 * We seek at the very end of each stream, awaiting for
 		 * a future packet to eventually come in.
