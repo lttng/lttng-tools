@@ -731,6 +731,10 @@ error:
  * nullified. The session lock MUST be held unless the application is
  * in the destroy path.
  *
+ * Do not hold the registry lock while communicating with the consumerd, because
+ * doing so causes inter-process deadlocks between consumerd and sessiond with
+ * the metadata request notification.
+ *
  * Return 0 on success else a negative value.
  */
 static int close_metadata(struct ust_registry_session *registry,
@@ -738,6 +742,8 @@ static int close_metadata(struct ust_registry_session *registry,
 {
 	int ret;
 	struct consumer_socket *socket;
+	uint64_t metadata_key;
+	bool registry_was_already_closed;
 
 	assert(registry);
 	assert(consumer);
@@ -745,8 +751,19 @@ static int close_metadata(struct ust_registry_session *registry,
 	rcu_read_lock();
 
 	pthread_mutex_lock(&registry->lock);
+	metadata_key = registry->metadata_key;
+	registry_was_already_closed = registry->metadata_closed;
+	if (metadata_key != 0) {
+		/*
+		 * Metadata closed. Even on error this means that the consumer
+		 * is not responding or not found so either way a second close
+		 * should NOT be emit for this registry.
+		 */
+		registry->metadata_closed = 1;
+	}
+	pthread_mutex_unlock(&registry->lock);
 
-	if (!registry->metadata_key || registry->metadata_closed) {
+	if (metadata_key == 0 || registry_was_already_closed) {
 		ret = 0;
 		goto end;
 	}
@@ -756,23 +773,15 @@ static int close_metadata(struct ust_registry_session *registry,
 			consumer);
 	if (!socket) {
 		ret = -1;
-		goto error;
+		goto end;
 	}
 
-	ret = consumer_close_metadata(socket, registry->metadata_key);
+	ret = consumer_close_metadata(socket, metadata_key);
 	if (ret < 0) {
-		goto error;
+		goto end;
 	}
 
-error:
-	/*
-	 * Metadata closed. Even on error this means that the consumer is not
-	 * responding or not found so either way a second close should NOT be emit
-	 * for this registry.
-	 */
-	registry->metadata_closed = 1;
 end:
-	pthread_mutex_unlock(&registry->lock);
 	rcu_read_unlock();
 	return ret;
 }
