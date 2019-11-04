@@ -286,6 +286,34 @@ static const char *get_tracker_str(enum lttng_tracker_type tracker_type)
 	return NULL;
 }
 
+static int ust_tracker_type_support(enum lttng_tracker_type *tracker_type)
+{
+	int ret;
+
+	switch (*tracker_type) {
+	case LTTNG_TRACKER_PID:
+		*tracker_type = LTTNG_TRACKER_VPID;
+		ret = 0;
+		break;
+	case LTTNG_TRACKER_VPID:
+	case LTTNG_TRACKER_VUID:
+	case LTTNG_TRACKER_VGID:
+		ret = 0;
+		break;
+	case LTTNG_TRACKER_UID:
+	case LTTNG_TRACKER_GID:
+		ERR("The %s tracker is invalid for UST domain.",
+				get_tracker_str(*tracker_type));
+		ret = -1;
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
 static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 		const char *cmd_str,
 		const char *session_name,
@@ -321,8 +349,11 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 		dom.type = LTTNG_DOMAIN_KERNEL;
 	} else if (opt_userspace) {
 		dom.type = LTTNG_DOMAIN_UST;
-		if (tracker_type == LTTNG_TRACKER_PID) {
-			tracker_type = LTTNG_TRACKER_VPID;
+		ret = ust_tracker_type_support(&tracker_type);
+		if (ret) {
+			ERR("Invalid parameter");
+			retval = CMD_ERROR;
+			goto end;
 		}
 	} else {
 		/* Checked by the caller. */
