@@ -29,7 +29,7 @@
 struct relayd_stream_rotation_position {
 	uint64_t stream_id;
 	/*
-	 * Sequence number of the first packet belonging to the new
+	 * Packet sequence number of the first packet belonging to the new
 	 * "destination" trace chunk to which the stream is rotating.
 	 *
 	 * Ignored for metadata streams.

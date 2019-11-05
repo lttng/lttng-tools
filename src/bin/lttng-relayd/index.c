@@ -433,6 +433,11 @@ int relay_index_set_control_data(struct relay_index *index,
 	if (minor_version >= 8) {
 		index->index_data.stream_instance_id = htobe64(data->stream_instance_id);
 		index->index_data.packet_seq_num = htobe64(data->packet_seq_num);
+	} else {
+		uint64_t unset_value = -1ULL;
+
+		index->index_data.stream_instance_id = htobe64(unset_value);
+		index->index_data.packet_seq_num = htobe64(unset_value);
 	}
 
 	return relay_index_set_data(index, &index_data);
