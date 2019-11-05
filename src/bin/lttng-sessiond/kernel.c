@@ -1426,6 +1426,37 @@ error:
 }
 
 /*
+ * Check for the support of the packet sequence number via abi version number.
+ *
+ * Return 1 on success, 0 when feature is not supported, negative value in case
+ * of errors.
+ */
+int kernel_supports_ring_buffer_packet_sequence_number(void)
+{
+	int ret = 0; // Not supported by default
+	struct lttng_kernel_tracer_abi_version abi;
+
+	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
+	if (ret < 0) {
+		ERR("Failed to retrieve lttng-modules ABI version");
+		goto error;
+	}
+
+	/*
+	 * Packet sequence number was introduced in 2.8
+	 */
+	if (abi.major >= 2 && abi.minor >= 8) {
+		/* Supported */
+		ret = 1;
+	} else {
+		/* Not supported */
+		ret = 0;
+	}
+error:
+	return ret;
+}
+
+/*
  * Rotate a kernel session.
  *
  * Return LTTNG_OK on success or else an LTTng error code.

@@ -220,6 +220,7 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_PROTOCOL) ] = "Protocol error occurred",
 	[ ERROR_INDEX(LTTNG_ERR_FILE_CREATION_ERROR) ] = "Failed to create file",
 	[ ERROR_INDEX(LTTNG_ERR_TIMER_STOP_ERROR) ] = "Failed to stop a timer",
+	[ ERROR_INDEX(LTTNG_ERR_ROTATION_NOT_AVAILABLE_KERNEL) ] = "Rotation feature not supported by the kernel tracer.",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

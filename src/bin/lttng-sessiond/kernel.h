@@ -70,6 +70,7 @@ int init_kernel_workarounds(void);
 ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
 		int **_pids);
 int kernel_supports_ring_buffer_snapshot_sample_positions(void);
+int kernel_supports_ring_buffer_packet_sequence_number(void);
 int init_kernel_tracer(void);
 void cleanup_kernel_tracer(void);
 bool kernel_tracer_is_initialized(void);
