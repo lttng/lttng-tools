@@ -35,6 +35,12 @@
 #define ALIGN(v, align)		__ALIGN_MASK(v, (__typeof__(v)) (align) - 1)
 #endif
 
+#define __ALIGN_FLOOR_MASK(v, mask)	((v) & ~(mask))
+
+#ifndef ALIGN_FLOOR
+#define ALIGN_FLOOR(v, align)	__ALIGN_FLOOR_MASK(v, (__typeof__(v)) (align) - 1)
+#endif
+
 #define PAGE_ALIGN(addr)	ALIGN(addr, PAGE_SIZE)
 
 /**
