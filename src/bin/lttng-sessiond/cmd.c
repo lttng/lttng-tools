@@ -4907,6 +4907,12 @@ int cmd_rotate_session(struct ltt_session *session,
 		goto end;
 	}
 
+	/* Unsupported feature in lttng-modules before 2.8 (lack of sequence number). */
+	if (session->kernel_session && !kernel_supports_ring_buffer_packet_sequence_number()) {
+		cmd_ret = LTTNG_ERR_ROTATION_NOT_AVAILABLE_KERNEL;
+		goto end;
+	}
+
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
 		DBG("Refusing to launch a rotation; a rotation is already in progress for session %s",
 				session->name);

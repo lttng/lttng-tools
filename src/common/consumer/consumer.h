@@ -305,6 +305,11 @@ struct lttng_consumer_stream {
 	bool quiescent;
 
 	/*
+	 * True if the sequence number is not available (lttng-modules < 2.8).
+	 */
+	bool sequence_number_unavailable;
+
+	/*
 	 * metadata_timer_lock protects flags waiting_on_metadata and
 	 * missed_metadata_flush.
 	 */
@@ -438,12 +443,12 @@ struct lttng_consumer_stream {
 	pthread_mutex_t metadata_rdv_lock;
 
 	/*
-	 * rotate_position represents the position in the ring-buffer that has to
-	 * be flushed to disk to complete the ongoing rotation. When that position
-	 * is reached, this tracefile can be closed and a new one is created in
-	 * channel_read_only_attributes.path.
+	 * rotate_position represents the packet sequence number of the last
+	 * packet which belongs to the current trace chunk prior to the rotation.
+	 * When that position is reached, this tracefile can be closed and a
+	 * new one is created in channel_read_only_attributes.path.
 	 */
-	unsigned long rotate_position;
+	uint64_t rotate_position;
 
 	/*
 	 * Read-only copies of channel values. We cannot safely access the

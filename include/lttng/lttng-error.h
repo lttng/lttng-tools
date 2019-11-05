@@ -175,6 +175,7 @@ enum lttng_error_code {
 	LTTNG_ERR_INVALID_PROTOCOL                     = 152, /* a protocol error occurred */
 	LTTNG_ERR_FILE_CREATION_ERROR                  = 153, /* failed to create a file */
 	LTTNG_ERR_TIMER_STOP_ERROR                     = 154, /* failed to stop timer. */
+	LTTNG_ERR_ROTATION_NOT_AVAILABLE_KERNEL = 155, /* Rotation feature not supported by the kernel tracer. */
 
 	/* MUST be last element */
 	LTTNG_ERR_NR,                           /* Last element */

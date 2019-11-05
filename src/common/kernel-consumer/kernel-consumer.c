@@ -1454,6 +1454,7 @@ int update_stream_stats(struct lttng_consumer_stream *stream)
 		if (ret == -ENOTTY) {
 			/* Command not implemented by lttng-modules. */
 			seq = -1ULL;
+			stream->sequence_number_unavailable = true;
 		} else {
 			PERROR("kernctl_get_sequence_number");
 			goto end;
