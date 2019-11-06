@@ -27,7 +27,6 @@
 
 static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 {
-	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
 	free(vstream->path_name);
 	free(vstream->channel_name);
 	free(vstream);
@@ -212,7 +211,8 @@ static void viewer_stream_release(struct urcu_ref *ref)
 		stream_put(vstream->stream);
 		vstream->stream = NULL;
 	}
-
+	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
+	vstream->stream_file.trace_chunk = NULL;
 	call_rcu(&vstream->rcu_node, viewer_stream_destroy_rcu);
 }
 
