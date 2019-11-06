@@ -13,6 +13,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 BinPackArguments: true
 BinPackParameters: false
+BreakBeforeBraces: Custom
 BraceWrapping:
   AfterControlStatement: false
   AfterEnum: false
@@ -21,12 +22,12 @@ BraceWrapping:
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
+  AfterCaseLabel: true
   BeforeCatch: false
   BeforeElse: false
   IndentBraces: false
   SplitEmptyFunction: true
 BreakBeforeBinaryOperators: None
-BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: false
 BreakStringLiterals: false
 ColumnLimit: 80
