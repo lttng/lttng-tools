@@ -1,6 +1,6 @@
 lttng-track(1)
 ==============
-:revdate: 14 March 2017
+:revdate: 04 November 2019
 
 
 NAME
@@ -12,7 +12,13 @@ SYNOPSIS
 --------
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* (option:--kernel | option:--userspace)
-      [option:--session='SESSION'] (option:--pid='PID'[,'PID']... | option:--all option:--pid)
+      [option:--session='SESSION'] (option:--pid='PID'[,'PID']... |
+      option:--uid='UID'[,'UID'][,'USERNAME']... |
+      option:--gid='GID'[,'GID'][,'GROUPNAME']... |
+      option:--vpid='VPID'[,'VPID']... |
+      option:--vuid='VUID'[,'VUID'][,'USERNAME']... |
+      option:--vgid='VGID'[,'VGID'][,'GROUPNAME']... |
+      option:--all (option:--pid | option:--uid | option:--gid | option:--vpid | option:--vuid | option:--vgid))
 
 
 DESCRIPTION
@@ -27,11 +33,12 @@ event rules (see man:lttng-enable-event(1)).
 Tracker entries can be removed from the whitelist with
 man:lttng-untrack(1).
 
-As of this version, the only available tracker is the *PID tracker*. The
-process ID (PID) tracker follows one or more process IDs; only the
-processes with a tracked PID are allowed to emit events. By default, all
-possible PIDs on the system are tracked: any process may emit enabled
-events (equivalent of `lttng track --pid --all` for all domains).
+The following tracker are available: PID, UID, GID, VPID, VUID, VGID.
+
+A tracker follows one or more IDs; only the processes with a tracked ID are
+allowed to emit events. By default, all possible IDs on the system are tracked:
+any process may emit enabled events (equivalent of `lttng track --pid --uid
+--gid --vpid --vuid --vgid --all` for all domains).
 
 With the PID tracker, it is possible, for example, to record all system
 calls called by a given process:
@@ -52,7 +59,7 @@ specified PIDs.
 
 Example
 ~~~~~~~
-Assume the maximum system PID is 7 for this example.
+Assume the maximum system VPID is 7 for this example.
 
 Initial whitelist:
 
@@ -64,7 +71,7 @@ Command:
 
 [role="term"]
 ----
-$ lttng track --userspace --pid=3,6,7
+$ lttng track --userspace --vpid=3,6,7
 ----
 
 Whitelist:
@@ -77,7 +84,7 @@ Command:
 
 [role="term"]
 ----
-$ lttng untrack --userspace --pid=7
+$ lttng untrack --userspace --vpid=7
 ----
 
 Whitelist:
@@ -90,7 +97,7 @@ Command:
 
 [role="term"]
 ----
-$ lttng track --userspace --pid=1,5
+$ lttng track --userspace --vpid=1,5
 ----
 
 Whitelist:
@@ -99,9 +106,9 @@ Whitelist:
 [ ] [1] [ ] [3] [ ] [5] [6] [ ]
 -------------------------------
 
-It should be noted that the PID tracker tracks the numeric process IDs.
-Should a process with a given ID exit and another process be given this
-ID, then the latter would also be allowed to emit events.
+It should be noted that the VPID tracker tracks the numeric namespaced process
+IDs. Should a process with a given ID exit and another process be given this ID,
+then the latter would also be allowed to emit events.
 
 See the man:lttng-untrack(1) for more details about removing
 entries.
@@ -131,13 +138,57 @@ option:-s 'SESSION', option:--session='SESSION'::
 Tracking
 ~~~~~~~~
 option:-a, option:--all::
-    Used in conjunction with an empty option:--pid option: track _all_
+    Used in conjunction with an empty tracker option, e.g: options:--pid track _all_
     process IDs (add all entries to the whitelist).
 
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
     Track process IDs 'PID' (add them to the current whitelist).
+    PID is the non-namespaced value for the process.
 +
 The 'PID' argument must be omitted when also using the option:--all
+option.
+
+option:-p ['UID'[,'UID']...], option:--uid[='UID'[,'UID'][,'USERNAME']...]::
+    Track process IDs 'UID' (add them to the current whitelist).
+    User name can also be used, name resolution is performed by
+    lttng-sessiond.
+    UID is the non-namespaced user id value for the process.
++
+The 'UID' argument must be omitted when also using the option:--all
+option.
+
+option:-p ['GID'[,'GID']...], option:--gid[='GID'[,'GID'][,'GROUPNAME']...]::
+    Track process IDs 'GID' (add them to the current whitelist).
+    Group name can also be used, name resolution is performed by
+    lttng-sessiond.
+    GID is the non-namespaced group id value for the process.
++
+The 'GID' argument must be omitted when also using the option:--all
+option.
+
+option:-p ['VPID'[,'VPID']...], option:--vpid[='VPID'[,'VPID']...]::
+    Track process IDs 'VPID' (add them to the current whitelist).
+    VPID is the namespaced PID of the process for its current context.
++
+The 'VPID' argument must be omitted when also using the option:--all
+option.
+
+option:-p ['VUID'[,'VUID']...], option:--vuid[='VUID'[,'VUID'][,'USERNAME']...]::
+    Track process IDs 'VUID' (add them to the current whitelist).
+    User name can also be used, name resolution is performed by
+    lttng-sessiond.
+    VUID is the namespaced UID of the process for its current context.
++
+The 'VUID' argument must be omitted when also using the option:--all
+option.
+
+option:-p ['VGID'[,'VGID']...], option:--vgid[='VGID'[,'VGID'][,'GROUPNAME']...]::
+    Track process IDs 'VGID' (add them to the current whitelist).
+    Group name can also be used, name resolution is performed by
+    lttng-sessiond.
+    VGID is the namespaced GID of the process for its current context.
++
+The 'VGID' argument must be omitted when also using the option:--all
 option.
 
 
