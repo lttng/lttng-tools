@@ -33,10 +33,11 @@
  *     node;b;
  *     node;c;
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <libxml/tree.h>
@@ -47,9 +48,9 @@
 
 #if defined(LIBXML_XPATH_ENABLED)
 
-
-int opt_verbose;
-int node_exist;
+static int opt_verbose;
+static int node_exist;
+static bool result = false;
 
 /**
  * print_xpath_nodes:
@@ -86,7 +87,7 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 					node_child_value_string = xmlNodeListGetString(doc,
 							cur->children, 1);
 					if (node_exist) {
-						fprintf(output, "true\n");
+						result = true;
 					} else if (opt_verbose) {
 						fprintf(output, "%s;%s;\n", cur->name,
 								node_child_value_string);
@@ -98,7 +99,7 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 				} else {
 					/* We don't want to print non-final element */
 					if (node_exist) {
-						fprintf(output, "true\n");
+						result = true;
 					} else {
 						fprintf(stderr, "ERR:%s\n",
 								"Xpath expression return non-final xml element");
@@ -108,7 +109,7 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 				}
 			} else {
 				if (node_exist) {
-					fprintf(output, "true\n");
+					result = true;
 				} else {
 					/* We don't want to print non-final element */
 					fprintf(stderr, "ERR:%s\n",
@@ -121,7 +122,7 @@ static int print_xpath_nodes(xmlDocPtr doc, xmlNodeSetPtr nodes, FILE *output)
 		} else {
 			cur = nodes->nodeTab[i];
 			if (node_exist) {
-				fprintf(output, "true\n");
+				result = true;
 			} else if (opt_verbose) {
 				fprintf(output, "%s;%s;\n", cur->parent->name, cur->content);
 			} else {
@@ -220,6 +221,9 @@ static int extract_xpath(const char *xml_path, const xmlChar *xpath)
 		xmlXPathFreeContext(xpathCtx);
 		xmlFreeDoc(doc);
 		return -1;
+	}
+	if (node_exist && result) {
+		fprintf(stdout, "true\n");
 	}
 
 	/* Cleanup */

@@ -50,8 +50,8 @@ XPATH_LIST_UST_EVENT="$XPATH_CMD_OUTPUT/lttng:domains/lttng:domain[./lttng:type 
 XPATH_SNAPSHOT_ADD_SNAPSHOT="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'add-output']/lttng:output"
 XPATH_SNAPSHOT_LIST="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'list-output']/lttng:output"
 XPATH_SNAPSHOT_DEL="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'del-output']/lttng:output"
-XPATH_TRACK_UNTRACK_PID="$XPATH_CMD_OUTPUT/lttng:targets/lttng:pid_target"
-XPATH_PID_TRACKER="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:pid_tracker"
+XPATH_TRACK_UNTRACK_VPID="$XPATH_CMD_OUTPUT/lttng:trackers/lttng:vpid_tracker/lttng:targets/lttng:vpid_target/lttng:type"
+XPATH_VPID_TRACKER="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:vpid_tracker"
 
 DEVNULL=/dev/null 2>&1
 
@@ -766,7 +766,7 @@ function test_track_untrack ()
 	ok $? "Mi test: track pid is a success"
 
 	#Verify that there is 3 process
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_VPID"/lttng:id" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: track pid expecting 3 processes got $num"
@@ -777,7 +777,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_VPID_TRACKER"/lttng:targets/lttng:vpid_target/lttng:type/lttng:id" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: tracker pid listing expecting 3 target got $num"
@@ -793,7 +793,7 @@ function test_track_untrack ()
 	ok $? "Mi test: untrack pid is a success"
 
 	#Verify that there is 2 untracked pids
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_VPID"/lttng:id" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "2"
 	ok $? "Mi test: untrack pid expecting 2 process got $num"
@@ -804,7 +804,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_VPID_TRACKER"/lttng:targets/lttng:vpid_target/lttng:type/lttng:pid" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: tracker pid listing expecting 1 process got $num"
@@ -820,14 +820,14 @@ function test_track_untrack ()
 	ok $? "Mi test: untrack all pid is a success"
 
 	#Verify that there is 1 untracked pid
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_VPID"/lttng:all" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: untrack pid expecting 1 process got $num"
 
-	#Test if the id is * which represent the all argument
-	test "$result" = "*"
-	ok $? "Mi test: pid expected is * got $result"
+	#Test if type "all" is "true" which represent the all argument
+	test "$result" = "true"
+	ok $? "Mi test: pid expected is true got $result"
 
 	#Test if pid_tracker is enabled as definied by pid_tracker
 	#behavior. If all pid are untrack than the pid_tracker is still
@@ -837,7 +837,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_PID_TRACKER"/lttng:targets/lttng:pid_target/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_VPID_TRACKER"/lttng:targets/lttng:vpid_target/lttng:type/lttng:pid" result
 	num=$(echo -n "$result" | wc -l)
 	test "$num" -eq "0"
 	ok $? "Mi test: tracker pid listing expecting 0 process got $num"
@@ -853,14 +853,14 @@ function test_track_untrack ()
 	ok $? "Mi test: track all pid is a success"
 
 	#Verify that there is 1 tracked process
-	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_PID"/lttng:pid" result
+	extract_xml $OUTPUT_DEST $XPATH_TRACK_UNTRACK_VPID"/lttng:all" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "1"
 	ok $? "Mi test: track pid expecting 1 process got $num"
 
-	#Test if the id is * wich represent the all argument
-	test "$result" = "*"
-	ok $? "Mi test: pid expected is * got $result"
+	#Test if the id is true wich represent the all argument
+	test "$result" = "true"
+	ok $? "Mi test: pid expected is true got $result"
 
 	#Test if pid_tracker is enabled as definied by pid_tracker
 	#behavior. If all pid are untrack thant the pid_tracker is
@@ -869,9 +869,9 @@ function test_track_untrack ()
 	$XML_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
-	node_check_xml $OUTPUT_DEST $XPATH_PID_TRACKER result
+	node_check_xml $OUTPUT_DEST $XPATH_VPID_TRACKER result
 	test "$result" = ""
-	ok $? "Mi test: Pid_tracker node is absent as defined"
+	ok $? "Mi test: VPID_tracker node is absent as defined"
 
 	OUTPUT_DEST=$DEVNULL
 	destroy_lttng_sessions

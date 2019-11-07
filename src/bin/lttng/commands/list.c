@@ -809,7 +809,7 @@ static int mi_list_ust_event_fields(struct lttng_event_field *fields, int count,
 		}
 	}
 
-	/* Close pid, domain, domains */
+	/* Close pids, domain, domains */
 	ret = mi_lttng_close_multi_element(writer, 3);
 end:
 	return ret;
@@ -1512,43 +1512,78 @@ error_channels:
 	return ret;
 }
 
+static const char *get_tracker_str(enum lttng_tracker_type tracker_type)
+{
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		return "PID";
+	case LTTNG_TRACKER_VPID:
+		return "VPID";
+	case LTTNG_TRACKER_UID:
+		return "UID";
+	case LTTNG_TRACKER_VUID:
+		return "VUID";
+	case LTTNG_TRACKER_GID:
+		return "GID";
+	case LTTNG_TRACKER_VGID:
+		return "VGID";
+	}
+	return NULL;
+}
+
 /*
- * List tracker PID(s) of session and domain.
+ * List tracker ID(s) of session and domain.
  */
-static int list_tracker_pids(void)
+static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 {
 	int ret = 0;
-	int enabled;
-	int *pids = NULL;
-	size_t nr_pids;
+	int enabled = 1;
+	struct lttng_tracker_id *ids = NULL;
+	size_t nr_ids, i;
 
-	ret = lttng_list_tracker_pids(handle,
-		&enabled, &pids, &nr_pids);
+	ret = lttng_list_tracker_ids(handle, tracker_type, &ids, &nr_ids);
 	if (ret) {
 		return ret;
 	}
+	if (nr_ids == 1 && ids[0].type == LTTNG_ID_ALL) {
+		enabled = 0;
+	}
 	if (enabled) {
-		int i;
-		_MSG("PID tracker: [");
+		_MSG("%s tracker: [", get_tracker_str(tracker_type));
 
-		/* Mi tracker_pid element*/
+		/* Mi tracker_id element */
 		if (writer) {
-			/* Open tracker_pid and targets elements */
-			ret = mi_lttng_pid_tracker_open(writer);
+			/* Open tracker_id and targets elements */
+			ret = mi_lttng_id_tracker_open(writer, tracker_type);
 			if (ret) {
 				goto end;
 			}
 		}
 
-		for (i = 0; i < nr_pids; i++) {
+		for (i = 0; i < nr_ids; i++) {
+			struct lttng_tracker_id *id = &ids[i];
+
 			if (i) {
 				_MSG(",");
 			}
-			_MSG(" %d", pids[i]);
+			switch (id->type) {
+			case LTTNG_ID_ALL:
+				_MSG(" *");
+				break;
+			case LTTNG_ID_VALUE:
+				_MSG(" %d", ids[i].value);
+				break;
+			case LTTNG_ID_STRING:
+				_MSG(" %s", ids[i].string);
+				break;
+			case LTTNG_ID_UNKNOWN:
+				return CMD_ERROR;
+			}
 
 			/* Mi */
 			if (writer) {
-				ret = mi_lttng_pid_target(writer, pids[i], 0);
+				ret = mi_lttng_id_target(
+						writer, tracker_type, id, 0);
 				if (ret) {
 					goto end;
 				}
@@ -1556,24 +1591,26 @@ static int list_tracker_pids(void)
 		}
 		_MSG(" ]\n\n");
 
-		/* Mi close tracker_pid and targets */
+		/* Mi close tracker_id and targets */
 		if (writer) {
-			ret = mi_lttng_close_multi_element(writer,2);
+			ret = mi_lttng_close_multi_element(writer, 2);
 			if (ret) {
 				goto end;
 			}
 		}
 	}
 end:
-	free(pids);
+	for (i = 0; i < nr_ids; i++) {
+		free(ids[i].string);
+	}
+	free(ids);
 	return ret;
-
 }
 
 /*
- * List all tracker of a domain
+ * List all trackers of a domain
  */
-static int list_trackers(void)
+static int list_trackers(const struct lttng_domain *domain)
 {
 	int ret;
 
@@ -1585,12 +1622,59 @@ static int list_trackers(void)
 		}
 	}
 
-	/* pid tracker */
-	ret = list_tracker_pids();
-	if (ret) {
-		goto end;
+	switch (domain->type) {
+	case LTTNG_DOMAIN_KERNEL:
+		/* pid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_PID);
+		if (ret) {
+			goto end;
+		}
+		/* vpid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VPID);
+		if (ret) {
+			goto end;
+		}
+		/* uid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_UID);
+		if (ret) {
+			goto end;
+		}
+		/* vuid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VUID);
+		if (ret) {
+			goto end;
+		}
+		/* gid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_GID);
+		if (ret) {
+			goto end;
+		}
+		/* vgid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VGID);
+		if (ret) {
+			goto end;
+		}
+		break;
+	case LTTNG_DOMAIN_UST:
+		/* vpid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VPID);
+		if (ret) {
+			goto end;
+		}
+		/* vuid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VUID);
+		if (ret) {
+			goto end;
+		}
+		/* vgid tracker */
+		ret = list_tracker_ids(LTTNG_TRACKER_VGID);
+		if (ret) {
+			goto end;
+		}
+		break;
+	default:
+		break;
 	}
-
 	if (lttng_opt_mi) {
 		/* Close trackers element */
 		ret = mi_lttng_writer_close_element(writer);
@@ -2185,7 +2269,7 @@ int cmd_list(int argc, const char **argv)
 
 
 			/* Trackers */
-			ret = list_trackers();
+			ret = list_trackers(&domain);
 			if (ret) {
 				goto end;
 			}
@@ -2282,7 +2366,7 @@ int cmd_list(int argc, const char **argv)
 				switch (domains[i].type) {
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
-					ret = list_trackers();
+					ret = list_trackers(&domains[i]);
 					if (ret) {
 						goto end;
 					}

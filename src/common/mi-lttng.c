@@ -1540,13 +1540,58 @@ int mi_lttng_trackers_open(struct mi_writer *writer)
 	return mi_lttng_writer_open_element(writer, config_element_trackers);
 }
 
+static int get_tracker_elements(enum lttng_tracker_type tracker_type,
+		const char **element_id_tracker,
+		const char **element_target_id)
+{
+	int ret = 0;
+
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		*element_id_tracker = config_element_pid_tracker;
+		*element_target_id = config_element_target_pid;
+		break;
+	case LTTNG_TRACKER_VPID:
+		*element_id_tracker = config_element_vpid_tracker;
+		*element_target_id = config_element_target_vpid;
+		break;
+	case LTTNG_TRACKER_UID:
+		*element_id_tracker = config_element_uid_tracker;
+		*element_target_id = config_element_target_uid;
+		break;
+	case LTTNG_TRACKER_VUID:
+		*element_id_tracker = config_element_vuid_tracker;
+		*element_target_id = config_element_target_vuid;
+		break;
+	case LTTNG_TRACKER_GID:
+		*element_id_tracker = config_element_gid_tracker;
+		*element_target_id = config_element_target_gid;
+		break;
+	case LTTNG_TRACKER_VGID:
+		*element_id_tracker = config_element_vgid_tracker;
+		*element_target_id = config_element_target_vgid;
+		break;
+	default:
+		ret = LTTNG_ERR_SAVE_IO_FAIL;
+	}
+	return ret;
+}
+
 LTTNG_HIDDEN
-int mi_lttng_pid_tracker_open(struct mi_writer *writer)
+int mi_lttng_id_tracker_open(
+		struct mi_writer *writer, enum lttng_tracker_type tracker_type)
 {
 	int ret;
+	const char *element_id_tracker, *element_target_id;
 
-	/* Open element pid_tracker */
-	ret = mi_lttng_writer_open_element(writer, config_element_pid_tracker);
+	ret = get_tracker_elements(
+			tracker_type, &element_id_tracker, &element_target_id);
+	if (ret) {
+		return ret;
+	}
+
+	/* Open element $id_tracker */
+	ret = mi_lttng_writer_open_element(writer, element_id_tracker);
 	if (ret) {
 		goto end;
 	}
@@ -1568,7 +1613,9 @@ int mi_lttng_pids_open(struct mi_writer *writer)
  * mi api bump. The use of process element break the mi api.
  */
 LTTNG_HIDDEN
-int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *name,
+int mi_lttng_pid(struct mi_writer *writer,
+		pid_t pid,
+		const char *name,
 		int is_open)
 {
 	int ret;
@@ -1612,27 +1659,81 @@ int mi_lttng_targets_open(struct mi_writer *writer)
 }
 
 LTTNG_HIDDEN
-int mi_lttng_pid_target(struct mi_writer *writer, pid_t pid, int is_open)
+int mi_lttng_id_target(struct mi_writer *writer,
+		enum lttng_tracker_type tracker_type,
+		struct lttng_tracker_id *id,
+		int is_open)
 {
 	int ret;
+	const char *element_id_tracker, *element_target_id;
 
-	ret = mi_lttng_writer_open_element(writer,
-			config_element_target_pid);
+	ret = get_tracker_elements(
+			tracker_type, &element_id_tracker, &element_target_id);
 	if (ret) {
-		goto end;
+		return ret;
 	}
 
-	/* Writing pid number
-	 * Special case for element all on track untrack command
-	 * All pid is represented as wildcard *
-	 */
-	if ((int) pid == -1) {
-		ret = mi_lttng_writer_write_element_string(writer,
-				config_element_pid,
-				mi_lttng_element_track_untrack_all_wildcard);
-	} else {
-		ret = mi_lttng_writer_write_element_signed_int(writer,
-				config_element_pid, (int) pid);
+	switch (id->type) {
+	case LTTNG_ID_ALL:
+		ret = mi_lttng_writer_open_element(writer, element_target_id);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_open_element(writer, config_element_type);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_write_element_bool(
+				writer, config_element_all, 1);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+		break;
+	case LTTNG_ID_VALUE:
+		ret = mi_lttng_writer_open_element(writer, element_target_id);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_open_element(writer, config_element_type);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_write_element_signed_int(
+				writer, config_element_id, id->value);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+		break;
+	case LTTNG_ID_STRING:
+		ret = mi_lttng_writer_open_element(writer, element_target_id);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_open_element(writer, config_element_type);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_write_element_string(
+				writer, config_element_name, id->string);
+		if (ret) {
+			goto end;
+		}
+		ret = mi_lttng_writer_close_element(writer);
+		if (ret) {
+			goto end;
+		}
+		break;
+	case LTTNG_ID_UNKNOWN:
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 	if (ret) {
 		goto end;

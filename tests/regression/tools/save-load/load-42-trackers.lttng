@@ -32,10 +32,31 @@
 					</channel>
 				</channels>
 				<trackers>
+					<vpid_tracker>
+						<targets>
+							<vpid_target>
+								<id>666</id>
+							</vpid_target>
+						</targets>
+					</vpid_tracker>
+					<vuid_tracker>
+						<targets>
+							<vuid_target>
+								<id>777</id>
+							</vuid_target>
+						</targets>
+					</vuid_tracker>
+					<vgid_tracker>
+						<targets>
+							<vgid_target>
+								<id>888</id>
+							</vgid_target>
+						</targets>
+					</vgid_tracker>
 					<pid_tracker>
 						<targets>
 							<pid_target>
-								<pid>666</pid>
+								<pid>999</pid>
 							</pid_target>
 						</targets>
 					</pid_tracker>

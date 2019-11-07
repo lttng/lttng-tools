@@ -606,7 +606,7 @@ int mi_lttng_event_fields_open(struct mi_writer *writer);
 int mi_lttng_trackers_open(struct mi_writer *writer);
 
 /*
- * Machine interface: open a pid_tracker element.
+ * Machine interface: open a id tracker element.
  *
  * writer An instance of a machine interface writer.
  *
@@ -615,7 +615,8 @@ int mi_lttng_trackers_open(struct mi_writer *writer);
  *
  * Note: A targets element is also opened for each tracker definition
  */
-int mi_lttng_pid_tracker_open(struct mi_writer *writer);
+int mi_lttng_id_tracker_open(
+		struct mi_writer *writer, enum lttng_tracker_type tracker_type);
 
 /*
  * Machine interface: open a PIDs element.
@@ -684,14 +685,17 @@ int mi_lttng_pid(struct mi_writer *writer, pid_t pid , const char *name,
 int mi_lttng_targets_open(struct mi_writer *writer);
 
 /*
- * Machine interface for track/untrack a pid_target
+ * Machine interface for track/untrack an id_target
  *
  * writer An instance of a machine interface writer.
  *
  * Returns zero if the element's value could be written.
  * Negative values indicate an error.
  */
-int mi_lttng_pid_target(struct mi_writer *writer, pid_t pid, int is_open);
+int mi_lttng_id_target(struct mi_writer *writer,
+		enum lttng_tracker_type tracker_type,
+		struct lttng_tracker_id *id,
+		int is_open);
 
 /*
  * Machine interface of a context.
