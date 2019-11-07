@@ -23,6 +23,28 @@
 extern "C" {
 #endif
 
+enum lttng_tracker_type {
+	LTTNG_TRACKER_PID = 0,
+	LTTNG_TRACKER_VPID = 1,
+	LTTNG_TRACKER_UID = 2,
+	LTTNG_TRACKER_GID = 3,
+	LTTNG_TRACKER_VUID = 4,
+	LTTNG_TRACKER_VGID = 5,
+};
+
+enum lttng_tracker_id_type {
+	LTTNG_ID_UNKNOWN = -1,
+	LTTNG_ID_ALL = 0,
+	LTTNG_ID_VALUE = 1,
+	LTTNG_ID_STRING = 2,
+};
+
+struct lttng_tracker_id {
+	enum lttng_tracker_id_type type;
+	int value;
+	char *string;
+};
+
 struct lttng_session_descriptor;
 struct lttng_destruction_handle;
 
