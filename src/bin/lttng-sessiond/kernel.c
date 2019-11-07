@@ -679,120 +679,281 @@ error:
 	return ret;
 }
 
-
-int kernel_track_pid(struct ltt_kernel_session *session, int pid)
+static struct lttng_tracker_list *get_id_tracker_list(
+		struct ltt_kernel_session *session,
+		enum lttng_tracker_type tracker_type)
 {
-	int ret;
-
-	DBG("Kernel track PID %d for session id %" PRIu64 ".",
-			pid, session->id);
-	ret = kernctl_track_pid(session->fd, pid);
-	if (!ret) {
-		return LTTNG_OK;
-	}
-	switch (-ret) {
-	case EINVAL:
-		return LTTNG_ERR_INVALID;
-	case ENOMEM:
-		return LTTNG_ERR_NOMEM;
-	case EEXIST:
-		return LTTNG_ERR_PID_TRACKED;
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		return session->tracker_list_pid;
+	case LTTNG_TRACKER_VPID:
+		return session->tracker_list_vpid;
+	case LTTNG_TRACKER_UID:
+		return session->tracker_list_uid;
+	case LTTNG_TRACKER_VUID:
+		return session->tracker_list_vuid;
+	case LTTNG_TRACKER_GID:
+		return session->tracker_list_gid;
+	case LTTNG_TRACKER_VGID:
+		return session->tracker_list_vgid;
 	default:
-		return LTTNG_ERR_UNK;
+		return NULL;
 	}
 }
 
-int kernel_untrack_pid(struct ltt_kernel_session *session, int pid)
+int kernel_track_id(enum lttng_tracker_type tracker_type,
+		struct ltt_kernel_session *session,
+		const struct lttng_tracker_id *id)
 {
-	int ret;
+	int ret, value;
+	struct lttng_tracker_list *tracker_list;
+	struct lttng_tracker_id *saved_ids;
+	ssize_t saved_ids_count, i;
 
-	DBG("Kernel untrack PID %d for session id %" PRIu64 ".",
-			pid, session->id);
-	ret = kernctl_untrack_pid(session->fd, pid);
-	if (!ret) {
-		return LTTNG_OK;
+	ret = lttng_tracker_id_lookup_string(tracker_type, id, &value);
+	if (ret != LTTNG_OK) {
+		return ret;
 	}
-	switch (-ret) {
-	case EINVAL:
+
+	tracker_list = get_id_tracker_list(session, tracker_type);
+	if (!tracker_list) {
 		return LTTNG_ERR_INVALID;
-	case ENOMEM:
-		return LTTNG_ERR_NOMEM;
-	case ENOENT:
-		return LTTNG_ERR_PID_NOT_TRACKED;
-	default:
-		return LTTNG_ERR_UNK;
-	}
-}
-
-ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
-		int **_pids)
-{
-	int fd, ret;
-	int pid;
-	ssize_t nbmem, count = 0;
-	FILE *fp;
-	int *pids;
-
-	fd = kernctl_list_tracker_pids(session->fd);
-	if (fd < 0) {
-		PERROR("kernel tracker pids list");
-		goto error;
 	}
 
-	fp = fdopen(fd, "r");
-	if (fp == NULL) {
-		PERROR("kernel tracker pids list fdopen");
-		goto error_fp;
+	/* Save list for restore on error. */
+	saved_ids_count = lttng_tracker_id_get_list(tracker_list, &saved_ids);
+	if (saved_ids_count < 0) {
+		return LTTNG_ERR_INVALID;
 	}
 
-	nbmem = KERNEL_TRACKER_PIDS_INIT_LIST_SIZE;
-	pids = zmalloc(sizeof(*pids) * nbmem);
-	if (pids == NULL) {
-		PERROR("alloc list pids");
-		count = -ENOMEM;
+	/* Add to list. */
+	ret = lttng_tracker_list_add(tracker_list, id);
+	if (ret != LTTNG_OK) {
 		goto end;
 	}
 
-	while (fscanf(fp, "process { pid = %u; };\n", &pid) == 1) {
-		if (count >= nbmem) {
-			int *new_pids;
-			size_t new_nbmem;
-
-			new_nbmem = nbmem << 1;
-			DBG("Reallocating pids list from %zu to %zu entries",
-					nbmem, new_nbmem);
-			new_pids = realloc(pids, new_nbmem * sizeof(*new_pids));
-			if (new_pids == NULL) {
-				PERROR("realloc list events");
-				free(pids);
-				count = -ENOMEM;
-				goto end;
-			}
-			/* Zero the new memory */
-			memset(new_pids + nbmem, 0,
-				(new_nbmem - nbmem) * sizeof(*new_pids));
-			nbmem = new_nbmem;
-			pids = new_pids;
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		DBG("Kernel track PID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_pid(session->fd, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
 		}
-		pids[count++] = pid;
+		break;
+	case LTTNG_TRACKER_VPID:
+		DBG("Kernel track VPID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_id(session->fd, LTTNG_TRACKER_VPID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_UID:
+		DBG("Kernel track UID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_id(session->fd, LTTNG_TRACKER_UID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_GID:
+		DBG("Kernel track GID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_id(session->fd, LTTNG_TRACKER_GID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_VUID:
+		DBG("Kernel track VUID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_id(session->fd, LTTNG_TRACKER_VUID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_VGID:
+		DBG("Kernel track VGID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_track_id(session->fd, LTTNG_TRACKER_VGID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	default:
+		ret = -EINVAL;
+		break;
 	}
 
-	*_pids = pids;
-	DBG("Kernel list tracker pids done (%zd pids)", count);
+	/* Error handling. */
+	switch (-ret) {
+	case EINVAL:
+		ret = LTTNG_ERR_INVALID;
+		break;
+	case ENOMEM:
+		ret = LTTNG_ERR_NOMEM;
+		break;
+	case EEXIST:
+		ret = LTTNG_ERR_ID_TRACKED;
+		break;
+	default:
+		ret = LTTNG_ERR_UNK;
+		break;
+	}
+
+	if (lttng_tracker_id_set_list(tracker_list, saved_ids,
+			    saved_ids_count) != LTTNG_OK) {
+		ERR("Error on tracker add error handling.\n");
+	}
 end:
-	ret = fclose(fp);	/* closes both fp and fd */
-	if (ret) {
-		PERROR("fclose");
+	for (i = 0; i < saved_ids_count; i++) {
+		free(saved_ids[i].string);
 	}
-	return count;
+	free(saved_ids);
+	return ret;
+}
 
-error_fp:
-	ret = close(fd);
-	if (ret) {
-		PERROR("close");
+int kernel_untrack_id(enum lttng_tracker_type tracker_type,
+		struct ltt_kernel_session *session,
+		const struct lttng_tracker_id *id)
+{
+	int ret, value;
+	struct lttng_tracker_list *tracker_list;
+	struct lttng_tracker_id *saved_ids;
+	ssize_t saved_ids_count, i;
+
+	ret = lttng_tracker_id_lookup_string(tracker_type, id, &value);
+	if (ret != LTTNG_OK) {
+		return ret;
 	}
-error:
-	return -1;
+
+	tracker_list = get_id_tracker_list(session, tracker_type);
+	if (!tracker_list) {
+		return LTTNG_ERR_INVALID;
+	}
+	/* Save list for restore on error. */
+	saved_ids_count = lttng_tracker_id_get_list(tracker_list, &saved_ids);
+	if (saved_ids_count < 0) {
+		return LTTNG_ERR_INVALID;
+	}
+	/* Remove from list. */
+	ret = lttng_tracker_list_remove(tracker_list, id);
+	if (ret != LTTNG_OK) {
+		goto end;
+	}
+
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		DBG("Kernel untrack PID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_pid(session->fd, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_VPID:
+		DBG("Kernel untrack VPID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_id(
+				session->fd, LTTNG_TRACKER_VPID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_UID:
+		DBG("Kernel untrack UID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_id(session->fd, LTTNG_TRACKER_UID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_GID:
+		DBG("Kernel untrack GID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_id(session->fd, LTTNG_TRACKER_GID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_VUID:
+		DBG("Kernel untrack VUID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_id(
+				session->fd, LTTNG_TRACKER_VUID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	case LTTNG_TRACKER_VGID:
+		DBG("Kernel untrack VGID %d for session id %" PRIu64 ".", value,
+				session->id);
+		ret = kernctl_untrack_id(
+				session->fd, LTTNG_TRACKER_VGID, value);
+		if (!ret) {
+			ret = LTTNG_OK;
+			goto end;
+		}
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	/* Error handling. */
+	switch (-ret) {
+	case EINVAL:
+		ret = LTTNG_ERR_INVALID;
+		break;
+	case ENOMEM:
+		ret = LTTNG_ERR_NOMEM;
+		break;
+	case EEXIST:
+		ret = LTTNG_ERR_ID_TRACKED;
+		break;
+	default:
+		ret = LTTNG_ERR_UNK;
+		break;
+	}
+
+	if (lttng_tracker_id_set_list(tracker_list, saved_ids,
+			    saved_ids_count) != LTTNG_OK) {
+		ERR("Error on tracker remove error handling.\n");
+	}
+end:
+	for (i = 0; i < saved_ids_count; i++) {
+		free(saved_ids[i].string);
+	}
+	free(saved_ids);
+	return ret;
+}
+
+/*
+ * Called with session lock held.
+ */
+ssize_t kernel_list_tracker_ids(enum lttng_tracker_type tracker_type,
+		struct ltt_kernel_session *session,
+		struct lttng_tracker_id **_ids)
+{
+	struct lttng_tracker_list *tracker_list;
+
+	tracker_list = get_id_tracker_list(session, tracker_type);
+	if (!tracker_list) {
+		return -LTTNG_ERR_INVALID;
+	}
+	return lttng_tracker_id_get_list(tracker_list, _ids);
 }
 
 /*

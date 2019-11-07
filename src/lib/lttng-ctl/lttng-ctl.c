@@ -1606,13 +1606,14 @@ int lttng_disable_channel(struct lttng_handle *handle, const char *name)
 	return lttng_ctl_ask_sessiond(&lsm, NULL);
 }
 
-/*
- * Add PID to session tracker.
- * Return 0 on success else a negative LTTng error code.
- */
-int lttng_track_pid(struct lttng_handle *handle, int pid)
+static int lttng_track_untrack_id(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		const struct lttng_tracker_id *id,
+		enum lttcomm_sessiond_command cmd)
 {
 	struct lttcomm_session_msg lsm;
+	char *var_data = NULL;
+	size_t var_data_len = 0;
 
 	/* NULL arguments are forbidden. No default values. */
 	if (handle == NULL) {
@@ -1621,15 +1622,67 @@ int lttng_track_pid(struct lttng_handle *handle, int pid)
 
 	memset(&lsm, 0, sizeof(lsm));
 
-	lsm.cmd_type = LTTNG_TRACK_PID;
-	lsm.u.pid_tracker.pid = pid;
+	lsm.cmd_type = cmd;
+	lsm.u.id_tracker.tracker_type = tracker_type;
+	lsm.u.id_tracker.id_type = id->type;
+	switch (id->type) {
+	case LTTNG_ID_ALL:
+		break;
+	case LTTNG_ID_VALUE:
+		lsm.u.id_tracker.u.value = id->value;
+		break;
+	case LTTNG_ID_STRING:
+		var_data = id->string;
+		var_data_len = strlen(var_data) + 1; /* Includes \0. */
+		lsm.u.id_tracker.u.var_len = var_data_len;
+		break;
+	default:
+		return -LTTNG_ERR_INVALID;
+	}
 
 	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
 
 	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
 			sizeof(lsm.session.name));
 
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	return lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+			&lsm, var_data, var_data_len, NULL);
+}
+
+/*
+ * Add ID to session tracker.
+ * Return 0 on success else a negative LTTng error code.
+ */
+int lttng_track_id(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		const struct lttng_tracker_id *id)
+{
+	return lttng_track_untrack_id(handle, tracker_type, id, LTTNG_TRACK_ID);
+}
+
+/*
+ * Remove ID from session tracker.
+ * Return 0 on success else a negative LTTng error code.
+ */
+int lttng_untrack_id(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		const struct lttng_tracker_id *id)
+{
+	return lttng_track_untrack_id(
+			handle, tracker_type, id, LTTNG_UNTRACK_ID);
+}
+
+/*
+ * Add PID to session tracker.
+ * Return 0 on success else a negative LTTng error code.
+ */
+int lttng_track_pid(struct lttng_handle *handle, int pid)
+{
+	struct lttng_tracker_id id;
+
+	id.type = LTTNG_TRACKER_PID;
+	id.value = pid;
+	return lttng_track_id(handle, LTTNG_TRACKER_PID, &id);
 }
 
 /*
@@ -1638,24 +1691,11 @@ int lttng_track_pid(struct lttng_handle *handle, int pid)
  */
 int lttng_untrack_pid(struct lttng_handle *handle, int pid)
 {
-	struct lttcomm_session_msg lsm;
+	struct lttng_tracker_id id;
 
-	/* NULL arguments are forbidden. No default values. */
-	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-
-	lsm.cmd_type = LTTNG_UNTRACK_PID;
-	lsm.u.pid_tracker.pid = pid;
-
-	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-
-	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	id.type = LTTNG_TRACKER_PID;
+	id.value = pid;
+	return lttng_untrack_id(handle, LTTNG_TRACKER_PID, &id);
 }
 
 /*
@@ -2283,7 +2323,7 @@ int lttng_list_events(struct lttng_handle *handle,
 	/* Set number of events and free command header */
 	nb_events = cmd_header->nb_events;
 	if (nb_events > INT_MAX) {
-		ret = -EOVERFLOW;
+		ret = -LTTNG_ERR_OVERFLOW;
 		goto end;
 	}
 	free(cmd_header);
@@ -2879,6 +2919,107 @@ end:
 }
 
 /*
+ * List IDs in the tracker.
+ *
+ * tracker_type is the type of tracker.
+ * ids is set to an allocated array of IDs currently tracked. On
+ * success, ids and all the strings it contains must be freed by the caller.
+ * nr_ids is set to the number of entries contained by the ids array.
+ *
+ * Returns 0 on success, else a negative LTTng error code.
+ */
+int lttng_list_tracker_ids(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		struct lttng_tracker_id **_ids,
+		size_t *_nr_ids)
+{
+	int ret, i;
+	struct lttcomm_session_msg lsm;
+	struct lttcomm_tracker_command_header *cmd_header = NULL;
+	char *cmd_payload = NULL, *p;
+	size_t cmd_header_len;
+	size_t nr_ids = 0;
+	struct lttng_tracker_id *ids = NULL;
+
+	if (handle == NULL) {
+		return -LTTNG_ERR_INVALID;
+	}
+
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_LIST_TRACKER_IDS;
+	lsm.u.id_tracker_list.tracker_type = tracker_type;
+	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
+			sizeof(lsm.session.name));
+	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
+
+	ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm, NULL, 0, NULL, 0,
+			(void **) &cmd_payload, (void **) &cmd_header,
+			&cmd_header_len);
+	if (ret < 0) {
+		goto error;
+	}
+
+	/* Set number of tracker_id and free command header */
+	nr_ids = cmd_header->nb_tracker_id;
+	if (nr_ids > INT_MAX) {
+		ret = -LTTNG_ERR_OVERFLOW;
+		goto error;
+	}
+	free(cmd_header);
+	cmd_header = NULL;
+
+	ids = zmalloc(sizeof(*ids) * nr_ids);
+	if (!ids) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	p = cmd_payload;
+	for (i = 0; i < nr_ids; i++) {
+		struct lttcomm_tracker_id_header *tracker_id;
+		struct lttng_tracker_id *id;
+
+		tracker_id = (struct lttcomm_tracker_id_header *) p;
+		p += sizeof(struct lttcomm_tracker_id_header);
+		id = &ids[i];
+
+		id->type = tracker_id->type;
+		switch (tracker_id->type) {
+		case LTTNG_ID_ALL:
+			break;
+		case LTTNG_ID_VALUE:
+			id->value = tracker_id->u.value;
+			break;
+		case LTTNG_ID_STRING:
+			id->string = strdup(p);
+			if (!id->string) {
+				ret = -LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			p += tracker_id->u.var_data_len;
+			break;
+		default:
+			goto error;
+		}
+	}
+	free(cmd_payload);
+	*_ids = ids;
+	*_nr_ids = nr_ids;
+	return 0;
+
+error:
+	if (ids) {
+		for (i = 0; i < nr_ids; i++) {
+			free(ids[i].string);
+		}
+		free(ids);
+	}
+	free(cmd_payload);
+	free(cmd_header);
+	return ret;
+}
+
+/*
  * List PIDs in the tracker.
  *
  * enabled is set to whether the PID tracker is enabled.
@@ -2891,40 +3032,46 @@ end:
 int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *_enabled, int32_t **_pids, size_t *_nr_pids)
 {
-	int ret;
-	int enabled = 1;
-	struct lttcomm_session_msg lsm;
-	size_t nr_pids;
-	int32_t *pids = NULL;
+	struct lttng_tracker_id *ids = NULL;
+	size_t nr_ids = 0;
+	int *pids = NULL;
+	int ret = 0, i;
 
-	if (handle == NULL) {
-		return -LTTNG_ERR_INVALID;
-	}
-
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_LIST_TRACKER_PIDS;
-	lttng_ctl_copy_string(lsm.session.name, handle->session_name,
-			sizeof(lsm.session.name));
-	COPY_DOMAIN_PACKED(lsm.domain, handle->domain);
-
-	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &pids);
-	if (ret < 0) {
+	ret = lttng_list_tracker_ids(handle, LTTNG_TRACKER_PID, &ids, &nr_ids);
+	if (ret < 0)
 		return ret;
+
+	if (nr_ids == 1 && ids[0].type == LTTNG_ID_ALL) {
+		*_enabled = 0;
+		goto end;
 	}
-	nr_pids = ret / sizeof(int32_t);
-	if (nr_pids > 0 && !pids) {
-		return -LTTNG_ERR_UNK;
+	*_enabled = 1;
+
+	pids = zmalloc(nr_ids * sizeof(*pids));
+	if (!pids) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
 	}
-	if (nr_pids == 1 && pids[0] == -1) {
-		free(pids);
-		pids = NULL;
-		enabled = 0;
-		nr_pids = 0;
+	for (i = 0; i < nr_ids; i++) {
+		struct lttng_tracker_id *id = &ids[i];
+
+		if (id->type != LTTNG_ID_VALUE) {
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
+		pids[i] = id->value;
 	}
-	*_enabled = enabled;
 	*_pids = pids;
-	*_nr_pids = nr_pids;
-	return 0;
+	*_nr_pids = nr_ids;
+end:
+	for (i = 0; i < nr_ids; i++) {
+		free(ids[i].string);
+	}
+	free(ids);
+	if (ret < 0) {
+		free(pids);
+	}
+	return ret;
 }
 
 /*

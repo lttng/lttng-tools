@@ -95,9 +95,9 @@ enum lttcomm_sessiond_command {
 	/* 29 */
 	/* 30 */
 	LTTNG_SAVE_SESSION                    = 31,
-	LTTNG_TRACK_PID                       = 32,
-	LTTNG_UNTRACK_PID                     = 33,
-	LTTNG_LIST_TRACKER_PIDS               = 34,
+	LTTNG_TRACK_ID                       = 32,
+	LTTNG_UNTRACK_ID                     = 33,
+	LTTNG_LIST_TRACKER_IDS               = 34,
 	LTTNG_SET_SESSION_SHM_PATH            = 40,
 	LTTNG_REGENERATE_METADATA             = 41,
 	LTTNG_REGENERATE_STATEDUMP            = 42,
@@ -354,8 +354,21 @@ struct lttcomm_session_msg {
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED set_shm_path;
 		struct {
-			uint32_t pid;
-		} LTTNG_PACKED pid_tracker;
+			uint32_t tracker_type; /* enum lttng_tracker_type */
+			uint32_t id_type; /* enum lttng_tracker_id_type */
+			union {
+				int32_t value;
+				uint32_t var_len;
+			} u;
+			/*
+			 * for LTTNG_ID_STRING, followed by a variable length
+			 * zero-terminated string of length "var_len", which
+			 * includes the final \0.
+			 */
+		} LTTNG_PACKED id_tracker;
+		struct {
+			uint32_t tracker_type; /* enum lttng_tracker_type */
+		} LTTNG_PACKED id_tracker_list;
 		struct {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
@@ -458,6 +471,21 @@ struct lttcomm_session_destroy_command_header {
 	/* enum lttng_session */
 	int32_t rotation_state;
 };
+
+/*
+ * tracker command header.
+ */
+struct lttcomm_tracker_command_header {
+	uint32_t nb_tracker_id;
+} LTTNG_PACKED;
+
+struct lttcomm_tracker_id_header {
+	uint32_t type; /* enum lttng_tracker_id_type */
+	union {
+		int32_t value;
+		uint32_t var_data_len;
+	} u;
+} LTTNG_PACKED;
 
 /*
  * Data structure for the response from sessiond to the lttng client.

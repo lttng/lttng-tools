@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#include <lttng/constant.h>
+
 enum lttng_tracker_type {
 	LTTNG_TRACKER_PID = 0,
 	LTTNG_TRACKER_VPID = 1,
@@ -45,6 +47,7 @@ struct lttng_tracker_id {
 	char *string;
 };
 
+struct lttng_handle;
 struct lttng_session_descriptor;
 struct lttng_destruction_handle;
 
@@ -235,6 +238,46 @@ extern enum lttng_error_code lttng_session_get_creation_time(
  */
 extern int lttng_set_session_shm_path(const char *session_name,
 		const char *shm_path);
+
+/*
+ * Add ID to session tracker.
+ *
+ * tracker_type is the type of tracker.
+ * id the id to track.
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+extern int lttng_track_id(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		const struct lttng_tracker_id *id);
+
+/*
+ * Remove ID from session tracker.
+ *
+ * tracker_type is the type of tracker.
+ * id the id to untrack.
+ *
+ * Return 0 on success else a negative LTTng error code.
+ */
+extern int lttng_untrack_id(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		const struct lttng_tracker_id *id);
+
+/*
+ * List IDs in the tracker.
+ *
+ * tracker_type is the type of tracker.
+ * ids is set to an allocated array of IDs currently tracked. On
+ * success, ids and the strings it contains must be freed by the
+ * caller.
+ * nr_ids is set to the number of entries contained by the ids array.
+ *
+ * Returns 0 on success, else a negative LTTng error code.
+ */
+extern int lttng_list_tracker_ids(struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type,
+		struct lttng_tracker_id **ids,
+		size_t *nr_ids);
 
 /*
  * Add PID to session tracker.

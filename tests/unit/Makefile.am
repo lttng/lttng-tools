@@ -93,7 +93,8 @@ SESSIOND_OBJS += $(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/notify-apps.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/ust-metadata.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/agent-thread.$(OBJEXT) \
-		 $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT)
+		 $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT) \
+		 $(top_builddir)/src/bin/lttng-sessiond/tracker.$(OBJEXT)
 endif
 
 RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
@@ -139,6 +140,7 @@ KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
 		$(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
 		$(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
 		$(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
+		$(top_builddir)/src/bin/lttng-sessiond/tracker.$(OBJEXT) \
 		$(top_builddir)/src/common/health/libhealth.la \
 		$(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
 		$(LIBLTTNG_CTL)

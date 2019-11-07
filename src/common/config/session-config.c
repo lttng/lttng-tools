@@ -61,6 +61,7 @@ struct session_config_validation_ctx {
 	xmlSchemaValidCtxtPtr schema_validation_ctx;
 };
 
+const char * const config_element_all = "all";
 const char * const config_str_yes = "yes";
 const char * const config_str_true = "true";
 const char * const config_str_on = "on";
@@ -141,12 +142,25 @@ const char * const config_element_control_uri = "control_uri";
 const char * const config_element_data_uri = "data_uri";
 const char * const config_element_max_size = "max_size";
 const char * const config_element_pid = "pid";
+const char * const config_element_id = "id";
 const char * const config_element_pids = "pids";
 const char * const config_element_shared_memory_path = "shared_memory_path";
 const char * const config_element_pid_tracker = "pid_tracker";
+const char * const config_element_vpid_tracker = "vpid_tracker";
+const char * const config_element_uid_tracker = "uid_tracker";
+const char * const config_element_vuid_tracker = "vuid_tracker";
+const char * const config_element_gid_tracker = "gid_tracker";
+const char * const config_element_vgid_tracker = "vgid_tracker";
 const char * const config_element_trackers = "trackers";
 const char * const config_element_targets = "targets";
+const char * const config_element_target_type = "target_type";
 const char * const config_element_target_pid = "pid_target";
+const char * const config_element_target_vpid = "vpid_target";
+const char * const config_element_target_uid = "uid_target";
+const char * const config_element_target_vuid = "vuid_target";
+const char * const config_element_target_gid = "gid_target";
+const char * const config_element_target_vgid = "vgid_target";
+const char * const config_element_tracker_type = "tracker_type";
 
 LTTNG_HIDDEN const char * const config_element_rotation_schedules = "rotation_schedules";
 LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic = "periodic";
@@ -2661,19 +2675,90 @@ end:
 	return ret;
 }
 
-static
-int process_pid_tracker_node(xmlNodePtr pid_tracker_node,
-	struct lttng_handle *handle)
+static int get_tracker_elements(enum lttng_tracker_type tracker_type,
+		const char **element_id_tracker,
+		const char **element_target_id,
+		const char **element_id,
+		const char **element_id_alias,
+		const char **element_name)
+{
+	int ret = 0;
+
+	switch (tracker_type) {
+	case LTTNG_TRACKER_PID:
+		*element_id_tracker = config_element_pid_tracker;
+		*element_target_id = config_element_target_pid;
+		*element_id = config_element_id;
+		*element_id_alias = config_element_pid;
+		*element_name = NULL;
+		break;
+	case LTTNG_TRACKER_VPID:
+		*element_id_tracker = config_element_vpid_tracker;
+		*element_target_id = config_element_target_vpid;
+		*element_id = config_element_id;
+		*element_id_alias = NULL;
+		*element_name = NULL;
+		break;
+	case LTTNG_TRACKER_UID:
+		*element_id_tracker = config_element_uid_tracker;
+		*element_target_id = config_element_target_uid;
+		*element_id = config_element_id;
+		*element_id_alias = NULL;
+		*element_name = config_element_name;
+		break;
+	case LTTNG_TRACKER_VUID:
+		*element_id_tracker = config_element_vuid_tracker;
+		*element_target_id = config_element_target_vuid;
+		*element_id = config_element_id;
+		*element_id_alias = NULL;
+		*element_name = config_element_name;
+		break;
+	case LTTNG_TRACKER_GID:
+		*element_id_tracker = config_element_gid_tracker;
+		*element_target_id = config_element_target_gid;
+		*element_id = config_element_id;
+		*element_id_alias = NULL;
+		*element_name = config_element_name;
+		break;
+	case LTTNG_TRACKER_VGID:
+		*element_id_tracker = config_element_vgid_tracker;
+		*element_target_id = config_element_target_vgid;
+		*element_id = config_element_id;
+		*element_id_alias = NULL;
+		*element_name = config_element_name;
+		break;
+	default:
+		ret = LTTNG_ERR_INVALID;
+	}
+	return ret;
+}
+
+static int process_id_tracker_node(xmlNodePtr id_tracker_node,
+		struct lttng_handle *handle,
+		enum lttng_tracker_type tracker_type)
 {
 	int ret = 0, child;
 	xmlNodePtr targets_node = NULL;
 	xmlNodePtr node;
+	const char *element_id_tracker;
+	const char *element_target_id;
+	const char *element_id;
+	const char *element_id_alias;
+	const char *element_name;
 
 	assert(handle);
-	assert(pid_tracker_node);
+	assert(id_tracker_node);
+
+	ret = get_tracker_elements(tracker_type, &element_id_tracker,
+			&element_target_id, &element_id, &element_id_alias,
+			&element_name);
+	if (ret) {
+		return ret;
+	}
+
 	/* get the targets node */
-	for (node = xmlFirstElementChild(pid_tracker_node); node;
-		node = xmlNextElementSibling(node)) {
+	for (node = xmlFirstElementChild(id_tracker_node); node;
+			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
 				config_element_targets)) {
 			targets_node = node;
@@ -2686,26 +2771,32 @@ int process_pid_tracker_node(xmlNodePtr pid_tracker_node,
 		goto end;
 	}
 
-	/* Go through all pid_target node */
+	/* Go through all id target node */
 	child = xmlChildElementCount(targets_node);
 	if (child == 0) {
+		struct lttng_tracker_id tracker_id;
+
+		tracker_id.type = LTTNG_ID_ALL;
 		/* The session is explicitly set to target nothing. */
-		ret = lttng_untrack_pid(handle, -1);
+		ret = lttng_untrack_id(handle, tracker_type, &tracker_id);
 		if (ret) {
 			goto end;
 		}
 	}
 	for (node = xmlFirstElementChild(targets_node); node;
 			node = xmlNextElementSibling(node)) {
-		xmlNodePtr pid_target_node = node;
+		xmlNodePtr id_target_node = node;
 
-		/* get pid node and track it */
-		for (node = xmlFirstElementChild(pid_target_node); node;
-			node = xmlNextElementSibling(node)) {
-			if (!strcmp((const char *) node->name,
-					config_element_pid)) {
-				int64_t pid;
+		/* get id node and track it */
+		for (node = xmlFirstElementChild(id_target_node); node;
+				node = xmlNextElementSibling(node)) {
+			if (!strcmp((const char *) node->name, element_id) ||
+					(element_id_alias &&
+							!strcmp((const char *) node->name,
+									element_id_alias))) {
+				int64_t id;
 				xmlChar *content = NULL;
+				struct lttng_tracker_id tracker_id;
 
 				content = xmlNodeGetContent(node);
 				if (!content) {
@@ -2713,20 +2804,42 @@ int process_pid_tracker_node(xmlNodePtr pid_tracker_node,
 					goto end;
 				}
 
-				ret = parse_int(content, &pid);
+				ret = parse_int(content, &id);
 				free(content);
 				if (ret) {
 					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
 					goto end;
 				}
 
-				ret = lttng_track_pid(handle, (int) pid);
+				tracker_id.type = LTTNG_ID_VALUE;
+				tracker_id.value = (int) id;
+				ret = lttng_track_id(handle, tracker_type,
+						&tracker_id);
+				if (ret) {
+					goto end;
+				}
+			}
+			if (element_name && !strcmp((const char *) node->name,
+							    element_name)) {
+				xmlChar *content = NULL;
+				struct lttng_tracker_id tracker_id;
+
+				content = xmlNodeGetContent(node);
+				if (!content) {
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+				tracker_id.type = LTTNG_ID_STRING;
+				tracker_id.string = (char *) content;
+				ret = lttng_track_id(handle, tracker_type,
+						&tracker_id);
+				free(content);
 				if (ret) {
 					goto end;
 				}
 			}
 		}
-		node = pid_target_node;
+		node = id_target_node;
 	}
 
 end:
@@ -2743,6 +2856,11 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	xmlNodePtr channels_node = NULL;
 	xmlNodePtr trackers_node = NULL;
 	xmlNodePtr pid_tracker_node = NULL;
+	xmlNodePtr vpid_tracker_node = NULL;
+	xmlNodePtr uid_tracker_node = NULL;
+	xmlNodePtr vuid_tracker_node = NULL;
+	xmlNodePtr gid_tracker_node = NULL;
+	xmlNodePtr vgid_tracker_node = NULL;
 	xmlNodePtr node;
 
 	assert(session_name);
@@ -2855,17 +2973,60 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 
 	for (node = xmlFirstElementChild(trackers_node); node;
 			node = xmlNextElementSibling(node)) {
-		if (!strcmp((const char *)node->name,config_element_pid_tracker)) {
+		if (!strcmp((const char *) node->name,
+				    config_element_pid_tracker)) {
 			pid_tracker_node = node;
-			ret = process_pid_tracker_node(pid_tracker_node, handle);
+			ret = process_id_tracker_node(pid_tracker_node, handle,
+					LTTNG_TRACKER_PID);
 			if (ret) {
 				goto end;
 			}
 		}
-	}
-
-	if (!pid_tracker_node) {
-		lttng_track_pid(handle, -1);
+		if (!strcmp((const char *) node->name,
+				    config_element_vpid_tracker)) {
+			vpid_tracker_node = node;
+			ret = process_id_tracker_node(vpid_tracker_node, handle,
+					LTTNG_TRACKER_VPID);
+			if (ret) {
+				goto end;
+			}
+		}
+		if (!strcmp((const char *) node->name,
+				    config_element_uid_tracker)) {
+			uid_tracker_node = node;
+			ret = process_id_tracker_node(uid_tracker_node, handle,
+					LTTNG_TRACKER_UID);
+			if (ret) {
+				goto end;
+			}
+		}
+		if (!strcmp((const char *) node->name,
+				    config_element_vuid_tracker)) {
+			vuid_tracker_node = node;
+			ret = process_id_tracker_node(vuid_tracker_node, handle,
+					LTTNG_TRACKER_VUID);
+			if (ret) {
+				goto end;
+			}
+		}
+		if (!strcmp((const char *) node->name,
+				    config_element_gid_tracker)) {
+			gid_tracker_node = node;
+			ret = process_id_tracker_node(gid_tracker_node, handle,
+					LTTNG_TRACKER_GID);
+			if (ret) {
+				goto end;
+			}
+		}
+		if (!strcmp((const char *) node->name,
+				    config_element_vgid_tracker)) {
+			vgid_tracker_node = node;
+			ret = process_id_tracker_node(vgid_tracker_node, handle,
+					LTTNG_TRACKER_VGID);
+			if (ret) {
+				goto end;
+			}
+		}
 	}
 
 end:
@@ -3377,6 +3538,7 @@ int load_session_from_file(const char *path, const char *session_name,
 
 	sessions_node = xmlDocGetRootElement(doc);
 	if (!sessions_node) {
+		ret = -LTTNG_ERR_LOAD_INVALID_CONFIG;
 		goto end;
 	}
 
@@ -3395,6 +3557,9 @@ end:
 	xmlFreeDoc(doc);
 	if (!ret) {
 		ret = session_found ? 0 : -LTTNG_ERR_LOAD_SESSION_NOENT;
+	}
+	if (ret == -LTTNG_ERR_NO_SESSION) {
+		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
 	}
 	return ret;
 }
@@ -3520,9 +3685,13 @@ int load_session_from_path(const char *path, const char *session_name,
 
 			ret = load_session_from_file(file_path.data, session_name,
 				validation_ctx, overwrite, overrides);
-			if (session_name && !ret) {
+			if (session_name &&
+					(!ret || ret != -LTTNG_ERR_LOAD_SESSION_NOENT)) {
 				session_found = 1;
 				break;
+			}
+			if (ret && ret != -LTTNG_ERR_LOAD_SESSION_NOENT) {
+				goto end;
 			}
 			/*
 			 * Reset the buffer's size to the location of the
@@ -3535,25 +3704,24 @@ int load_session_from_path(const char *path, const char *session_name,
 				goto end;
 			}
 		}
-
 	} else {
 		ret = load_session_from_file(path, session_name,
 			validation_ctx, overwrite, overrides);
 		if (ret) {
 			goto end;
-		} else {
-			session_found = 1;
 		}
+		session_found = 1;
 	}
 
+	ret = 0;
 end:
 	if (directory) {
 		if (closedir(directory)) {
 			PERROR("closedir");
 		}
 	}
-	if (session_found && !ret) {
-		ret = 0;
+	if (!ret && !session_found) {
+		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
 	}
 	lttng_dynamic_buffer_reset(&file_path);
 	return ret;
@@ -3626,6 +3794,7 @@ int config_load_session(const char *path, const char *session_name,
 						DEFAULT_SESSION_CONFIG_AUTOLOAD, home_path);
 				if (ret < 0) {
 					PERROR("snprintf session autoload home config path");
+					ret = -LTTNG_ERR_INVALID;
 					goto end;
 				}
 
@@ -3643,6 +3812,7 @@ int config_load_session(const char *path, const char *session_name,
 						DEFAULT_SESSION_HOME_CONFIGPATH, home_path);
 				if (ret < 0) {
 					PERROR("snprintf session home config path");
+					ret = -LTTNG_ERR_INVALID;
 					goto end;
 				}
 				path_ptr = path;
@@ -3683,6 +3853,8 @@ int config_load_session(const char *path, const char *session_name,
 			if (!ret) {
 				session_loaded = true;
 			}
+		} else {
+			ret = 0;
 		}
 	} else {
 		ret = access(path, F_OK);

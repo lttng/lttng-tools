@@ -18,6 +18,7 @@
 #ifndef CONFIG_SESSION_INTERNAL_H
 #define CONFIG_SESSION_INTERNAL_H
 
+extern const char * const config_element_all;
 extern const char * const config_element_channel;
 extern const char * const config_element_channels;
 extern const char * const config_element_domain;
@@ -84,12 +85,26 @@ extern const char * const config_element_control_uri;
 extern const char * const config_element_data_uri;
 extern const char * const config_element_max_size;
 extern const char * const config_element_pid;
+extern const char * const config_element_id;
 extern const char * const config_element_pids;
+extern const char * const config_element_name;
 extern const char * const config_element_shared_memory_path;
 extern const char * const config_element_pid_tracker;
+extern const char * const config_element_vpid_tracker;
+extern const char * const config_element_uid_tracker;
+extern const char * const config_element_vuid_tracker;
+extern const char * const config_element_gid_tracker;
+extern const char * const config_element_vgid_tracker;
 extern const char * const config_element_trackers;
 extern const char * const config_element_targets;
+extern const char * const config_element_target_type;
 extern const char * const config_element_target_pid;
+extern const char * const config_element_target_vpid;
+extern const char * const config_element_target_uid;
+extern const char * const config_element_target_vuid;
+extern const char * const config_element_target_gid;
+extern const char * const config_element_target_vgid;
+extern const char * const config_element_tracker_type;
 extern const char * const config_element_rotation_timer_interval;
 extern const char * const config_element_rotation_size;
 extern const char * const config_element_rotation_schedule;

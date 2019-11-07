@@ -789,7 +789,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_LIST_CHANNELS:
 	case LTTNG_LIST_EVENTS:
 	case LTTNG_LIST_SYSCALLS:
-	case LTTNG_LIST_TRACKER_PIDS:
+	case LTTNG_LIST_TRACKER_IDS:
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATION_GET_INFO:
@@ -1205,18 +1205,100 @@ error_add_context:
 				kernel_poll_pipe[1]);
 		break;
 	}
-	case LTTNG_TRACK_PID:
+	case LTTNG_TRACK_ID:
 	{
-		ret = cmd_track_pid(cmd_ctx->session,
-				cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.pid_tracker.pid);
+		struct lttng_tracker_id id;
+
+		memset(&id, 0, sizeof(id));
+		id.type = cmd_ctx->lsm->u.id_tracker.id_type;
+		switch (id.type) {
+		case LTTNG_ID_ALL:
+			break;
+		case LTTNG_ID_VALUE:
+			id.value = cmd_ctx->lsm->u.id_tracker.u.value;
+			break;
+		case LTTNG_ID_STRING:
+		{
+			const size_t var_len = cmd_ctx->lsm->u.id_tracker.u.var_len;
+
+			id.string = zmalloc(var_len);
+			if (!id.string) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			DBG("Receiving var len tracker id string from client");
+			ret = lttcomm_recv_unix_sock(*sock, id.string, var_len);
+			if (ret <= 0) {
+				DBG("Nothing received");
+				*sock_error = 1;
+				free(id.string);
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+			if (strnlen(id.string, var_len) != var_len - 1) {
+				DBG("String received as tracker ID is not NULL-terminated");
+				free(id.string);
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+			break;
+		}
+		default:
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
+		ret = cmd_track_id(cmd_ctx->session,
+				cmd_ctx->lsm->u.id_tracker.tracker_type,
+				cmd_ctx->lsm->domain.type, &id);
+		free(id.string);
 		break;
 	}
-	case LTTNG_UNTRACK_PID:
+	case LTTNG_UNTRACK_ID:
 	{
-		ret = cmd_untrack_pid(cmd_ctx->session,
-				cmd_ctx->lsm->domain.type,
-				cmd_ctx->lsm->u.pid_tracker.pid);
+		struct lttng_tracker_id id;
+
+		memset(&id, 0, sizeof(id));
+		id.type = cmd_ctx->lsm->u.id_tracker.id_type;
+		switch (id.type) {
+		case LTTNG_ID_ALL:
+			break;
+		case LTTNG_ID_VALUE:
+			id.value = cmd_ctx->lsm->u.id_tracker.u.value;
+			break;
+		case LTTNG_ID_STRING:
+		{
+			const size_t var_len = cmd_ctx->lsm->u.id_tracker.u.var_len;
+
+			id.string = zmalloc(var_len);
+			if (!id.string) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			DBG("Receiving var len tracker id string from client");
+			ret = lttcomm_recv_unix_sock(*sock, id.string, var_len);
+			if (ret <= 0) {
+				DBG("Nothing received");
+				*sock_error = 1;
+				free(id.string);
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+			if (strnlen(id.string, var_len) != var_len - 1) {
+				DBG("String received as tracker ID is not NULL-terminated");
+				free(id.string);
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+			break;
+		}
+		default:
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
+		ret = cmd_untrack_id(cmd_ctx->session,
+				cmd_ctx->lsm->u.id_tracker.tracker_type,
+				cmd_ctx->lsm->domain.type, &id);
+		free(id.string);
 		break;
 	}
 	case LTTNG_ENABLE_EVENT:
@@ -1442,27 +1524,65 @@ error_add_context:
 		ret = LTTNG_OK;
 		break;
 	}
-	case LTTNG_LIST_TRACKER_PIDS:
+	case LTTNG_LIST_TRACKER_IDS:
 	{
-		int32_t *pids = NULL;
-		ssize_t nr_pids;
+		struct lttcomm_tracker_command_header cmd_header;
+		struct lttng_tracker_id *ids = NULL;
+		ssize_t nr_ids, i;
+		struct lttng_dynamic_buffer buf;
 
-		nr_pids = cmd_list_tracker_pids(cmd_ctx->session,
-				cmd_ctx->lsm->domain.type, &pids);
-		if (nr_pids < 0) {
+		nr_ids = cmd_list_tracker_ids(
+				cmd_ctx->lsm->u.id_tracker.tracker_type,
+				cmd_ctx->session, cmd_ctx->lsm->domain.type,
+				&ids);
+		if (nr_ids < 0) {
 			/* Return value is a negative lttng_error_code. */
-			ret = -nr_pids;
+			ret = -nr_ids;
 			goto error;
 		}
 
-		/*
-		 * Setup lttng message with payload size set to the event list size in
-		 * bytes and then copy list into the llm payload.
-		 */
-		ret = setup_lttng_msg_no_cmd_header(cmd_ctx, pids,
-			sizeof(int32_t) * nr_pids);
-		free(pids);
+		lttng_dynamic_buffer_init(&buf);
+		for (i = 0; i < nr_ids; i++) {
+			struct lttng_tracker_id *id = &ids[i];
+			struct lttcomm_tracker_id_header id_hdr;
+			size_t var_data_len = 0;
 
+			memset(&id_hdr, 0, sizeof(id_hdr));
+			id_hdr.type = id->type;
+			switch (id->type) {
+			case LTTNG_ID_ALL:
+				break;
+			case LTTNG_ID_VALUE:
+				id_hdr.u.value = id->value;
+				break;
+			case LTTNG_ID_STRING:
+				id_hdr.u.var_data_len = var_data_len =
+						strlen(id->string) + 1;
+				break;
+			default:
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+			ret = lttng_dynamic_buffer_append(
+					&buf, &id_hdr, sizeof(id_hdr));
+			if (ret) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			ret = lttng_dynamic_buffer_append(
+					&buf, id->string, var_data_len);
+			if (ret) {
+				ret = LTTNG_ERR_NOMEM;
+				goto error;
+			}
+			free(id->string);
+		}
+
+		cmd_header.nb_tracker_id = nr_ids;
+		ret = setup_lttng_msg(cmd_ctx, buf.data, buf.size, &cmd_header,
+				sizeof(cmd_header));
+		free(ids);
+		lttng_dynamic_buffer_reset(&buf);
 		if (ret < 0) {
 			goto setup_error;
 		}

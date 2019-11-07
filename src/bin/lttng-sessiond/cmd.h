@@ -57,10 +57,14 @@ int cmd_disable_channel(struct ltt_session *session,
 int cmd_enable_channel(struct ltt_session *session,
 		const struct lttng_domain *domain, const struct lttng_channel *attr,
 		int wpipe);
-int cmd_track_pid(struct ltt_session *session, enum lttng_domain_type domain,
-		int pid);
-int cmd_untrack_pid(struct ltt_session *session, enum lttng_domain_type domain,
-		int pid);
+int cmd_track_id(struct ltt_session *session,
+		enum lttng_tracker_type tracker_type,
+		enum lttng_domain_type domain,
+		const struct lttng_tracker_id *id);
+int cmd_untrack_id(struct ltt_session *session,
+		enum lttng_tracker_type tracker_type,
+		enum lttng_domain_type domain,
+		const struct lttng_tracker_id *id);
 
 /* Event commands */
 int cmd_disable_event(struct ltt_session *session,
@@ -110,8 +114,10 @@ ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs);
 ssize_t cmd_list_syscalls(struct lttng_event **events);
-ssize_t cmd_list_tracker_pids(struct ltt_session *session,
-		enum lttng_domain_type domain, int32_t **pids);
+ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		struct lttng_tracker_id **ids);
 
 int cmd_data_pending(struct ltt_session *session);
 

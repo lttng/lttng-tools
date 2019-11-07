@@ -4183,9 +4183,22 @@ int ust_app_create_channel_glb(struct ltt_ust_session *usess,
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter, app, pid_n.node) {
 		struct ust_app_session *ua_sess;
 		int session_was_created = 0;
+		bool present_in_tracker =
+				trace_ust_id_tracker_lookup(LTTNG_TRACKER_VPID,
+						usess, app->pid) &&
+				trace_ust_id_tracker_lookup(LTTNG_TRACKER_VUID,
+						usess, app->uid) &&
+				trace_ust_id_tracker_lookup(LTTNG_TRACKER_VGID,
+						usess, app->gid);
 
-		if (!app->compatible ||
-				!trace_ust_pid_tracker_lookup(usess, app->pid)) {
+		if (!app->compatible || !(present_in_tracker)) {
+			/*
+			 * This is probably an error this MUST BE TESTED
+			 * Introduced by
+			 * 88e3c2f5610b9ac89b0923d448fee34140fc46fb On app not
+			 * in tracker we should skip it. not sure what to do on
+			 * app !compatible
+			 */
 			goto error_rcu_unlock;
 		}
 
@@ -5184,7 +5197,11 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 	if (!app->compatible) {
 		return;
 	}
-	if (trace_ust_pid_tracker_lookup(usess, app->pid)) {
+	if (trace_ust_id_tracker_lookup(LTTNG_TRACKER_VPID, usess, app->pid) &&
+			trace_ust_id_tracker_lookup(
+					LTTNG_TRACKER_VUID, usess, app->uid) &&
+			trace_ust_id_tracker_lookup(
+					LTTNG_TRACKER_VGID, usess, app->gid)) {
 		/*
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.

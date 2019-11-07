@@ -270,16 +270,17 @@ by its signed 32-bit representation when converted to msec.
 </xs:complexType>
 
 <xs:complexType name="pid_target_type">
-	<xs:all>
+	<xs:choice minOccurs="0">
 		<xs:element name="pid" type="xs:integer" />
-	</xs:all>
+		<xs:element name="id" type="xs:integer" />
+	</xs:choice>
 </xs:complexType>
 
 <!-- Maps to a list of pid_targets-->
-<xs:complexType name="targets_type">
+<xs:complexType name="pid_targets_type">
 	<xs:sequence>
-		<xs:choice>
-			<xs:element name="pid_target" type="pid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:choice minOccurs="0" maxOccurs="unbounded" >
+			<xs:element name="pid_target" type="pid_target_type" />
 		</xs:choice>
 	</xs:sequence>
 </xs:complexType>
@@ -287,14 +288,125 @@ by its signed 32-bit representation when converted to msec.
 <!-- Maps to a pid_tracker-->
 <xs:complexType name="pid_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="targets_type" />
+		<xs:element name="targets" type="pid_targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="vpid_target_type">
+	<xs:all>
+		<xs:element name="id" type="xs:integer" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a list of vpid_targets-->
+<xs:complexType name="vpid_targets_type">
+	<xs:sequence>
+		<xs:element name="vpid_target" type="vpid_target_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a pid_tracker-->
+<xs:complexType name="vpid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="vpid_targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="uid_target_type">
+	<xs:choice>
+		<xs:element name="id" type="xs:integer" />
+		<xs:element name="name" type="xs:string" />
+	</xs:choice>
+</xs:complexType>
+
+<!-- Maps to a list of uid_targets-->
+<xs:complexType name="uid_targets_type">
+	<xs:sequence>
+		<xs:element name="uid_target" type="uid_target_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a uid_tracker-->
+<xs:complexType name="uid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="uid_targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="vuid_target_type">
+	<xs:choice>
+		<xs:element name="id" type="xs:integer" />
+		<xs:element name="name" type="xs:string" />
+	</xs:choice>
+</xs:complexType>
+
+<!-- Maps to a list of vuid_targets-->
+<xs:complexType name="vuid_targets_type">
+	<xs:sequence>
+		<xs:element name="vuid_target" type="vuid_target_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a uid_tracker-->
+<xs:complexType name="vuid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="vuid_targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="gid_target_type">
+	<xs:choice>
+		<xs:element name="id" type="xs:integer" />
+		<xs:element name="name" type="xs:string" />
+	</xs:choice>
+</xs:complexType>
+
+<!-- Maps to a list of gid_targets-->
+<xs:complexType name="gid_targets_type">
+	<xs:sequence>
+		<xs:element name="gid_target" type="gid_target_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a gid_tracker-->
+<xs:complexType name="gid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="gid_targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<xs:complexType name="vgid_target_type">
+	<xs:choice>
+		<xs:element name="id" type="xs:integer" />
+		<xs:element name="name" type="xs:string" />
+	</xs:choice>
+</xs:complexType>
+
+<!-- Maps to a list of vgid_targets-->
+<xs:complexType name="vgid_targets_type">
+	<xs:sequence>
+		<xs:element name="vgid_target" type="vgid_target_type" minOccurs="0" maxOccurs="unbounded" />
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a gid_tracker-->
+<xs:complexType name="vgid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="vgid_targets_type" />
 	</xs:all>
 </xs:complexType>
 
 <!-- Maps to a list of trackers-->
 <xs:complexType name="trackers_type">
-	<xs:sequence minOccurs="0" maxOccurs="unbounded">
-		<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
+	<xs:sequence>
+		<xs:choice minOccurs="0" maxOccurs="unbounded" >
+			<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
+			<xs:element name="vpid_tracker" type="vpid_tracker_type" maxOccurs="1" />
+			<xs:element name="uid_tracker" type="uid_tracker_type" maxOccurs="1" />
+			<xs:element name="vuid_tracker" type="vuid_tracker_type" maxOccurs="1" />
+			<xs:element name="gid_tracker" type="gid_tracker_type" maxOccurs="1" />
+			<xs:element name="vgid_tracker" type="vgid_tracker_type" maxOccurs="1" />
+		</xs:choice>
 	</xs:sequence>
 </xs:complexType>
 
