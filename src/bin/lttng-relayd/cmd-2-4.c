@@ -52,6 +52,10 @@ int cmd_create_session_2_4(const struct lttng_buffer_view *payload,
 		ret = -ENAMETOOLONG;
 		ERR("Session name too long");
 		goto error;
+	} else if (len == 0) {
+		ret = -EINVAL;
+		ERR("Session name can't be of length 0");
+		goto error;
 	}
 	strncpy(session_name, session_info.session_name, LTTNG_NAME_MAX);
 

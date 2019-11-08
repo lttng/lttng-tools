@@ -53,6 +53,7 @@ struct relay_session {
 	 */
 	lttng_uuid sessiond_uuid;
 	LTTNG_OPTIONAL(time_t) creation_time;
+	/* Must _not_ be empty for 2.4+ peers. */
 	char session_name[LTTNG_NAME_MAX];
 	char hostname[LTTNG_HOST_NAME_MAX];
 	char base_path[LTTNG_PATH_MAX];

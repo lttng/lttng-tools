@@ -78,6 +78,10 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 		ret = -ENAMETOOLONG;
 		ERR("Length of session name (%" PRIu32 " bytes) received in create_session command exceeds maximum length (%d bytes)", header.session_name_len, LTTNG_NAME_MAX);
 		goto error;
+	} else if (header.session_name_len == 0) {
+		ret = -EINVAL;
+		ERR("Illegal session name length of 0 received");
+		goto error;
 	}
 	if (header.hostname_len > LTTNG_HOST_NAME_MAX) {
 		ret = -ENAMETOOLONG;
