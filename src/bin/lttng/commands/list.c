@@ -1612,7 +1612,7 @@ end:
  */
 static int list_trackers(const struct lttng_domain *domain)
 {
-	int ret;
+	int ret = 0;
 
 	/* Trackers listing */
 	if (lttng_opt_mi) {
