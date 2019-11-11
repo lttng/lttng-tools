@@ -29,7 +29,7 @@
 
 #define DATETIME_STRING_SIZE 16
 #define DATETIME_REGEX \
-	".*-[1-2][0-9][0-9][0-9][0-1][0-1][0-3][0-9]-[0-2][0-9][0-5][0-9][0-5][0-9]$"
+	".*-[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]-[0-2][0-9][0-5][0-9][0-5][0-9]$"
 
 /*
  * Provide support for --group-output-by-session for producer >= 2.4 and < 2.11.
