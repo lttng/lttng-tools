@@ -57,6 +57,12 @@ struct ctf_trace {
 	 */
 	struct lttng_ht_node_str node;
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
+
+	/*
+	 * True if the metadata stream of this trace was sent the viewer in the
+	 * past.
+	 */
+	bool metadata_stream_sent_to_viewer;
 };
 
 struct ctf_trace *ctf_trace_get_by_path_or_create(struct relay_session *session,

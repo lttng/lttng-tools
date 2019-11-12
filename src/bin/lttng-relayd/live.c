@@ -309,12 +309,36 @@ static int make_viewer_streams(struct relay_session *session,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(session->ctf_traces_ht->ht, &iter.iter, ctf_trace,
 			node.node) {
+		bool trace_has_metadata_stream = false;
 		struct relay_stream *stream;
 
 		health_code_update();
 
 		if (!ctf_trace_get(ctf_trace)) {
 			continue;
+		}
+
+		/*
+		 * Iterate over all the streams of the trace to see if we have a
+		 * metadata stream.
+		 */
+		cds_list_for_each_entry_rcu(
+				stream, &ctf_trace->stream_list, stream_node)
+		{
+			if (stream->is_metadata) {
+				trace_has_metadata_stream = true;
+				break;
+			}
+		}
+
+		/*
+		 * If there is no metadata stream in this trace at the moment
+		 * and we never sent one to the viewer, skip the trace. We
+		 * accept that the viewer will not see this trace at all.
+		 */
+		if (!trace_has_metadata_stream &&
+				!ctf_trace->metadata_stream_sent_to_viewer) {
+			break;
 		}
 
 		cds_list_for_each_entry_rcu(stream, &ctf_trace->stream_list, stream_node) {
@@ -331,6 +355,15 @@ static int make_viewer_streams(struct relay_session *session,
 			}
 			vstream = viewer_stream_get_by_id(stream->stream_handle);
 			if (!vstream) {
+				/*
+				 * Save that we sent the metadata stream to the
+				 * viewer. So that we know what trace the viewer
+				 * is aware of.
+				 */
+				if (stream->is_metadata) {
+					ctf_trace->metadata_stream_sent_to_viewer =
+							true;
+				}
 				vstream = viewer_stream_create(stream,
 						viewer_trace_chunk, seek_t);
 				if (!vstream) {
