@@ -41,6 +41,28 @@ end:
 	return vsession;
 }
 
+static int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
+		struct lttng_trace_chunk *relay_session_trace_chunk)
+{
+	int ret = 0;
+	struct lttng_trace_chunk *viewer_chunk;
+
+	assert(relay_session_trace_chunk);
+	assert(!vsession->current_trace_chunk);
+
+	DBG("Copying relay session's current trace chunk to the viewer session");
+	viewer_chunk = lttng_trace_chunk_copy(relay_session_trace_chunk);
+	if (!viewer_chunk) {
+		ERR("Failed to create a viewer trace chunk from the relay session's current chunk");
+		ret = -1;
+		goto end;
+	}
+
+	vsession->current_trace_chunk = viewer_chunk;
+end:
+	return ret;
+}
+
 /* The existence of session must be guaranteed by the caller. */
 enum lttng_viewer_attach_return_code viewer_session_attach(
 		struct relay_viewer_session *vsession,
@@ -65,7 +87,7 @@ enum lttng_viewer_attach_return_code viewer_session_attach(
 		assert(!vsession->current_trace_chunk);
 		session->viewer_attached = true;
 
-		ret = viewer_session_set_trace_chunk(vsession,
+		ret = viewer_session_set_trace_chunk_copy(vsession,
 				session->current_trace_chunk);
 		if (ret) {
 			/*
@@ -203,26 +225,4 @@ end_rcu_unlock:
 end:
 	pthread_mutex_unlock(&session->lock);
 	return found;
-}
-
-int viewer_session_set_trace_chunk(struct relay_viewer_session *vsession,
-		struct lttng_trace_chunk *relay_session_trace_chunk)
-{
-	int ret = 0;
-	struct lttng_trace_chunk *viewer_chunk;
-
-	assert(relay_session_trace_chunk);
-	assert(!vsession->current_trace_chunk);
-
-	DBG("Copying relay session's current trace chunk to the viewer session");
-	viewer_chunk = lttng_trace_chunk_copy(relay_session_trace_chunk);
-	if (!viewer_chunk) {
-		ERR("Failed to create a viewer trace chunk from the relay session's current chunk");
-		ret = -1;
-		goto end;
-	}
-
-	vsession->current_trace_chunk = viewer_chunk;
-end:
-	return ret;
 }
