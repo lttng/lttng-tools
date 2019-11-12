@@ -42,25 +42,45 @@ end:
 }
 
 /* The existence of session must be guaranteed by the caller. */
-int viewer_session_attach(struct relay_viewer_session *vsession,
+enum lttng_viewer_attach_return_code viewer_session_attach(
+		struct relay_viewer_session *vsession,
 		struct relay_session *session)
 {
-	int ret = 0;
+	enum lttng_viewer_attach_return_code viewer_attach_status =
+			LTTNG_VIEWER_ATTACH_OK;
 
 	ASSERT_LOCKED(session->lock);
 
 	/* Will not fail, as per the ownership guarantee. */
 	if (!session_get(session)) {
-		ret = -1;
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
 		goto end;
 	}
 	if (session->viewer_attached) {
-		ret = -1;
+		viewer_attach_status = LTTNG_VIEWER_ATTACH_ALREADY;
 	} else {
+		int ret;
+
+		assert(session->current_trace_chunk);
+		assert(!vsession->current_trace_chunk);
 		session->viewer_attached = true;
+
+		ret = viewer_session_set_trace_chunk(vsession,
+				session->current_trace_chunk);
+		if (ret) {
+			/*
+			 * The live protocol does not define a generic error
+			 * value for the "attach" command. The "unknown"
+			 * status is used so that the viewer may handle this
+			 * failure as if the session didn't exist anymore.
+			 */
+			DBG("Failed to create a viewer trace chunk from the current trace chunk of session \"%s\", returning LTTNG_VIEWER_ATTACH_UNK",
+					session->session_name);
+			viewer_attach_status = LTTNG_VIEWER_ATTACH_UNK;
+		}
 	}
 
-	if (!ret) {
+	if (viewer_attach_status == LTTNG_VIEWER_ATTACH_OK) {
 		pthread_mutex_lock(&vsession->session_list_lock);
 		/* Ownership is transfered to the list. */
 		cds_list_add_rcu(&session->viewer_session_node,
@@ -71,7 +91,7 @@ int viewer_session_attach(struct relay_viewer_session *vsession,
 		session_put(session);
 	}
 end:
-	return ret;
+	return viewer_attach_status;
 }
 
 /* The existence of session must be guaranteed by the caller. */
