@@ -291,6 +291,13 @@ static int make_viewer_streams(struct relay_session *session,
 	assert(session);
 	ASSERT_LOCKED(session->lock);
 
+	if (!viewer_trace_chunk) {
+		ERR("Internal error: viewer session associated with session \"%s\" has a NULL trace chunk",
+				session->session_name);
+		ret = -1;
+		goto error;
+	}
+
 	if (session->connection_closed) {
 		*closed = true;
 	}
@@ -378,6 +385,7 @@ static int make_viewer_streams(struct relay_session *session,
 
 error_unlock:
 	rcu_read_unlock();
+error:
 	return ret;
 }
 
@@ -959,25 +967,6 @@ int viewer_get_new_streams(struct relay_connection *conn)
 	}
 
 	pthread_mutex_lock(&session->lock);
-	if (!session->current_trace_chunk) {
-		/*
-		 * Means the session is being destroyed. React the same way
-		 * as if it could not be found at all.
-		 */
-		DBG("Relay session %" PRIu64 " has no current trace chunk, replying LTTNG_VIEWER_NEW_STREAMS_ERR",
-				session_id);
-		response.status = htobe32(LTTNG_VIEWER_NEW_STREAMS_ERR);
-		goto send_reply_unlock;
-	}
-
-	if (!conn->viewer_session->current_trace_chunk &&
-			session->current_trace_chunk) {
-		ret = viewer_session_set_trace_chunk(conn->viewer_session,
-				session->current_trace_chunk);
-		if (ret) {
-			goto error_unlock_session;
-		}
-	}
 	ret = make_viewer_streams(session,
 			conn->viewer_session->current_trace_chunk,
 			LTTNG_VIEWER_SEEK_LAST, &nb_total, &nb_unsent,
@@ -1057,6 +1046,7 @@ int viewer_attach_session(struct relay_connection *conn)
 	struct lttng_viewer_attach_session_request request;
 	struct lttng_viewer_attach_session_response response;
 	struct relay_session *session = NULL;
+	enum lttng_viewer_attach_return_code viewer_attach_status;
 	bool closed = false;
 	uint64_t session_id;
 
@@ -1106,10 +1096,10 @@ int viewer_attach_session(struct relay_connection *conn)
 	}
 
 	send_streams = 1;
-	ret = viewer_session_attach(conn->viewer_session, session);
-	if (ret) {
-		DBG("Already a viewer attached");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_ALREADY);
+	viewer_attach_status = viewer_session_attach(conn->viewer_session,
+			session);
+	if (viewer_attach_status != LTTNG_VIEWER_ATTACH_OK) {
+		response.status = htobe32(viewer_attach_status);
 		goto send_reply;
 	}
 
@@ -1126,14 +1116,6 @@ int viewer_attach_session(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	if (!conn->viewer_session->current_trace_chunk &&
-			session->current_trace_chunk) {
-		ret = viewer_session_set_trace_chunk(conn->viewer_session,
-				session->current_trace_chunk);
-		if (ret) {
-			goto end_put_session;
-		}
-	}
 	ret = make_viewer_streams(session,
 			conn->viewer_session->current_trace_chunk, seek_type,
 			&nb_streams, NULL, NULL, &closed);
