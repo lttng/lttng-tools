@@ -178,7 +178,8 @@ void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		 */
 		viewer_stream_put(vstream);
 	}
-
+	lttng_trace_chunk_put(vsession->current_trace_chunk);
+	vsession->current_trace_chunk = NULL;
 	viewer_session_detach(vsession, session);
 }
 
