@@ -955,6 +955,14 @@ int stream_init_packet(struct relay_stream *stream, size_t packet_size,
 	int ret = 0;
 
 	ASSERT_LOCKED(stream->lock);
+
+	if (!stream->stream_fd || !stream->trace_chunk) {
+		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64 ", channel_name = %s",
+				stream->stream_handle, stream->channel_name);
+		ret = -1;
+		goto end;
+	}
+
 	if (caa_likely(stream->tracefile_size == 0)) {
 		/* No size limit set; nothing to check. */
 		goto end;
@@ -1020,6 +1028,12 @@ int stream_write(struct relay_stream *stream,
 	memset(padding_buffer, 0,
 			min(sizeof(padding_buffer), padding_to_write));
 
+	if (!stream->stream_fd || !stream->trace_chunk) {
+		ERR("Protocol error: received a packet for a stream that doesn't have a current trace chunk: stream_id = %" PRIu64 ", channel_name = %s",
+				stream->stream_handle, stream->channel_name);
+		ret = -1;
+		goto end;
+	}
 	if (packet) {
 		write_ret = lttng_write(stream->stream_fd->fd,
 				packet->data, packet->size);
