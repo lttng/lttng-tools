@@ -146,12 +146,9 @@ int lttng_dynamic_pointer_array_add_pointer(
  * count is decreased by one and the following pointers are shifted to
  * take the place of the removed pointer (if applicable).
  */
-static inline
+LTTNG_HIDDEN
 int lttng_dynamic_pointer_array_remove_pointer(
-		struct lttng_dynamic_pointer_array *array, size_t index)
-{
-	return lttng_dynamic_array_remove_element(&array->array, index);
-}
+		struct lttng_dynamic_pointer_array *array, size_t index);
 
 /* Release any memory used by the dynamic array. */
 LTTNG_HIDDEN

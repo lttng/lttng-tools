@@ -95,6 +95,28 @@ void lttng_dynamic_pointer_array_init(
 	lttng_dynamic_array_init(&array->array, sizeof(void *), destructor);
 }	
 
+LTTNG_HIDDEN
+int lttng_dynamic_pointer_array_remove_pointer(
+		struct lttng_dynamic_pointer_array *array, size_t index)
+{
+	int ret;
+	const lttng_dynamic_array_element_destructor destructor =
+			array->array.destructor;
+
+	/*
+	 * Prevent the destructor from being used by the underlying
+	 * dynamic array.
+	 */
+	array->array.destructor = NULL;
+	if (destructor) {
+		destructor(lttng_dynamic_pointer_array_get_pointer(array,
+				index));
+	}
+	ret = lttng_dynamic_array_remove_element(&array->array, index);
+	array->array.destructor = destructor;
+	return ret;
+}
+
 /* Release any memory used by the dynamic array. */
 LTTNG_HIDDEN
 void lttng_dynamic_pointer_array_reset(
@@ -108,6 +130,10 @@ void lttng_dynamic_pointer_array_reset(
 					array, i);
 			array->array.destructor(ptr);
 		}
+		/*
+		 * Prevent the destructor from being used by the underlying
+		 * dynamic array.
+		 */
 		array->array.destructor = NULL;
 	}
 	lttng_dynamic_array_reset(&array->array);
