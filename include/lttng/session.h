@@ -25,28 +25,6 @@ extern "C" {
 
 #include <lttng/constant.h>
 
-enum lttng_tracker_type {
-	LTTNG_TRACKER_PID = 0,
-	LTTNG_TRACKER_VPID = 1,
-	LTTNG_TRACKER_UID = 2,
-	LTTNG_TRACKER_GID = 3,
-	LTTNG_TRACKER_VUID = 4,
-	LTTNG_TRACKER_VGID = 5,
-};
-
-enum lttng_tracker_id_type {
-	LTTNG_ID_UNKNOWN = -1,
-	LTTNG_ID_ALL = 0,
-	LTTNG_ID_VALUE = 1,
-	LTTNG_ID_STRING = 2,
-};
-
-struct lttng_tracker_id {
-	enum lttng_tracker_id_type type;
-	int value;
-	char *string;
-};
-
 struct lttng_handle;
 struct lttng_session_descriptor;
 struct lttng_destruction_handle;
@@ -238,79 +216,6 @@ extern enum lttng_error_code lttng_session_get_creation_time(
  */
 extern int lttng_set_session_shm_path(const char *session_name,
 		const char *shm_path);
-
-/*
- * Add ID to session tracker.
- *
- * tracker_type is the type of tracker.
- * id the id to track.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-extern int lttng_track_id(struct lttng_handle *handle,
-		enum lttng_tracker_type tracker_type,
-		const struct lttng_tracker_id *id);
-
-/*
- * Remove ID from session tracker.
- *
- * tracker_type is the type of tracker.
- * id the id to untrack.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-extern int lttng_untrack_id(struct lttng_handle *handle,
-		enum lttng_tracker_type tracker_type,
-		const struct lttng_tracker_id *id);
-
-/*
- * List IDs in the tracker.
- *
- * tracker_type is the type of tracker.
- * ids is set to an allocated array of IDs currently tracked. On
- * success, ids and the strings it contains must be freed by the
- * caller.
- * nr_ids is set to the number of entries contained by the ids array.
- *
- * Returns 0 on success, else a negative LTTng error code.
- */
-extern int lttng_list_tracker_ids(struct lttng_handle *handle,
-		enum lttng_tracker_type tracker_type,
-		struct lttng_tracker_id **ids,
-		size_t *nr_ids);
-
-/*
- * Add PID to session tracker.
- *
- * A pid argument >= 0 adds the PID to the session tracker.
- * A pid argument of -1 means "track all PIDs".
- *
- * Return 0 on success else a negative LTTng error code.
- */
-extern int lttng_track_pid(struct lttng_handle *handle, int pid);
-
-/*
- * Remove PID from session tracker.
- *
- * A pid argument >= 0 removes the PID from the session tracker.
- * A pid argument of -1 means "untrack all PIDs".
- *
- * Return 0 on success else a negative LTTng error code.
- */
-extern int lttng_untrack_pid(struct lttng_handle *handle, int pid);
-
-/*
- * List PIDs in the tracker.
- *
- * enabled is set to whether the PID tracker is enabled.
- * pids is set to an allocated array of PIDs currently tracked. On
- * success, pids must be freed by the caller.
- * nr_pids is set to the number of entries contained by the pids array.
- *
- * Returns 0 on success, else a negative LTTng error code.
- */
-extern int lttng_list_tracker_pids(struct lttng_handle *handle,
-		int *enabled, int32_t **pids, size_t *nr_pids);
 
 #ifdef __cplusplus
 }

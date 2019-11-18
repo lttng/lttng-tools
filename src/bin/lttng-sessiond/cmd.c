@@ -2584,7 +2584,7 @@ ssize_t cmd_list_syscalls(struct lttng_event **events)
 ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_session *session,
 		enum lttng_domain_type domain,
-		struct lttng_tracker_id **ids)
+		struct lttng_tracker_id ***ids)
 {
 	int ret;
 	ssize_t nr_pids = 0;

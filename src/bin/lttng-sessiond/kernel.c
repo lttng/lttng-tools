@@ -707,8 +707,8 @@ int kernel_track_id(enum lttng_tracker_type tracker_type,
 {
 	int ret, value;
 	struct lttng_tracker_list *tracker_list;
-	struct lttng_tracker_id *saved_ids;
-	ssize_t saved_ids_count, i;
+	struct lttng_tracker_id **saved_ids;
+	ssize_t saved_ids_count;
 
 	ret = lttng_tracker_id_lookup_string(tracker_type, id, &value);
 	if (ret != LTTNG_OK) {
@@ -813,9 +813,7 @@ int kernel_track_id(enum lttng_tracker_type tracker_type,
 		ERR("Error on tracker add error handling.\n");
 	}
 end:
-	for (i = 0; i < saved_ids_count; i++) {
-		free(saved_ids[i].string);
-	}
+	lttng_tracker_ids_destroy(saved_ids, saved_ids_count);
 	free(saved_ids);
 	return ret;
 }
@@ -826,8 +824,8 @@ int kernel_untrack_id(enum lttng_tracker_type tracker_type,
 {
 	int ret, value;
 	struct lttng_tracker_list *tracker_list;
-	struct lttng_tracker_id *saved_ids;
-	ssize_t saved_ids_count, i;
+	struct lttng_tracker_id **saved_ids;
+	ssize_t saved_ids_count;
 
 	ret = lttng_tracker_id_lookup_string(tracker_type, id, &value);
 	if (ret != LTTNG_OK) {
@@ -933,9 +931,7 @@ int kernel_untrack_id(enum lttng_tracker_type tracker_type,
 		ERR("Error on tracker remove error handling.\n");
 	}
 end:
-	for (i = 0; i < saved_ids_count; i++) {
-		free(saved_ids[i].string);
-	}
+	lttng_tracker_ids_destroy(saved_ids, saved_ids_count);
 	free(saved_ids);
 	return ret;
 }
@@ -945,7 +941,7 @@ end:
  */
 ssize_t kernel_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_kernel_session *session,
-		struct lttng_tracker_id **_ids)
+		struct lttng_tracker_id ***_ids)
 {
 	struct lttng_tracker_list *tracker_list;
 

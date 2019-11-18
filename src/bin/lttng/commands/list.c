@@ -26,6 +26,7 @@
 #include <common/mi-lttng.h>
 #include <common/time.h>
 #include <lttng/constant.h>
+#include <lttng/tracker.h>
 
 #include "../command.h"
 
@@ -1538,14 +1539,14 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 {
 	int ret = 0;
 	int enabled = 1;
-	struct lttng_tracker_id *ids = NULL;
+	struct lttng_tracker_id **ids = NULL;
 	size_t nr_ids, i;
 
 	ret = lttng_list_tracker_ids(handle, tracker_type, &ids, &nr_ids);
 	if (ret) {
 		return ret;
 	}
-	if (nr_ids == 1 && ids[0].type == LTTNG_ID_ALL) {
+	if (nr_ids == 1 && lttng_tracker_id_get_type(ids[0]) == LTTNG_ID_ALL) {
 		enabled = 0;
 	}
 	if (enabled) {
@@ -1561,23 +1562,49 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 		}
 
 		for (i = 0; i < nr_ids; i++) {
-			struct lttng_tracker_id *id = &ids[i];
+			struct lttng_tracker_id *id = ids[i];
+			enum lttng_tracker_id_status status;
+			int value;
+			const char *value_string;
+
+			switch (lttng_tracker_id_get_type(id)) {
+			case LTTNG_ID_ALL:
+				break;
+			case LTTNG_ID_VALUE:
+				status = lttng_tracker_id_get_value(id, &value);
+				break;
+			case LTTNG_ID_STRING:
+				status = lttng_tracker_id_get_string(
+						id, &value_string);
+				break;
+			case LTTNG_ID_UNKNOWN:
+				ret = CMD_ERROR;
+				goto end;
+			}
+
+			if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+				ERR("Invalid state for tracker id");
+				ret = CMD_ERROR;
+				goto end;
+			}
 
 			if (i) {
 				_MSG(",");
 			}
-			switch (id->type) {
+			switch (lttng_tracker_id_get_type(id)) {
 			case LTTNG_ID_ALL:
 				_MSG(" *");
 				break;
 			case LTTNG_ID_VALUE:
-				_MSG(" %d", ids[i].value);
+				_MSG(" %d", value);
 				break;
 			case LTTNG_ID_STRING:
-				_MSG(" %s", ids[i].string);
+				_MSG(" %s", value_string);
 				break;
 			case LTTNG_ID_UNKNOWN:
-				return CMD_ERROR;
+				ERR("Invalid state for tracker id");
+				ret = CMD_ERROR;
+				goto end;
 			}
 
 			/* Mi */
@@ -1600,10 +1627,7 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 		}
 	}
 end:
-	for (i = 0; i < nr_ids; i++) {
-		free(ids[i].string);
-	}
-	free(ids);
+	lttng_tracker_ids_destroy(ids, nr_ids);
 	return ret;
 }
 

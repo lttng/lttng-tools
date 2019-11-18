@@ -62,6 +62,7 @@ libcommon_la_SOURCES = \
 	userspace-probe.c \
 	utils.c utils.h \
 	uuid.c uuid.h \
+	tracker.c \
 	waiter.c waiter.h
 
 if HAVE_ELF_H

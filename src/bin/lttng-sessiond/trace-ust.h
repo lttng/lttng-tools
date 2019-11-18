@@ -240,7 +240,7 @@ int trace_ust_id_tracker_lookup(enum lttng_tracker_type tracker_type,
 
 ssize_t trace_ust_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *session,
-		struct lttng_tracker_id **_ids);
+		struct lttng_tracker_id ***_ids);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 

@@ -21,6 +21,7 @@
 #include <common/config/session-config.h>
 #include <common/defaults.h>
 #include <lttng/snapshot-internal.h>
+#include <lttng/tracker-internal.h>
 #include <lttng/channel.h>
 #include "mi-lttng.h"
 
@@ -1666,6 +1667,9 @@ int mi_lttng_id_target(struct mi_writer *writer,
 {
 	int ret;
 	const char *element_id_tracker, *element_target_id;
+	enum lttng_tracker_id_status status;
+	int value;
+	const char *string;
 
 	ret = get_tracker_elements(
 			tracker_type, &element_id_tracker, &element_target_id);
@@ -1673,7 +1677,7 @@ int mi_lttng_id_target(struct mi_writer *writer,
 		return ret;
 	}
 
-	switch (id->type) {
+	switch (lttng_tracker_id_get_type(id)) {
 	case LTTNG_ID_ALL:
 		ret = mi_lttng_writer_open_element(writer, element_target_id);
 		if (ret) {
@@ -1702,8 +1706,15 @@ int mi_lttng_id_target(struct mi_writer *writer,
 		if (ret) {
 			goto end;
 		}
+
+		status = lttng_tracker_id_get_value(id, &value);
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
 		ret = mi_lttng_writer_write_element_signed_int(
-				writer, config_element_id, id->value);
+				writer, config_element_id, value);
 		if (ret) {
 			goto end;
 		}
@@ -1721,8 +1732,15 @@ int mi_lttng_id_target(struct mi_writer *writer,
 		if (ret) {
 			goto end;
 		}
+
+		status = lttng_tracker_id_get_string(id, &string);
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+
 		ret = mi_lttng_writer_write_element_string(
-				writer, config_element_name, id->string);
+				writer, config_element_name, string);
 		if (ret) {
 			goto end;
 		}

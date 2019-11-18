@@ -1837,8 +1837,12 @@ static int save_id_tracker(struct config_writer *writer,
 {
 	int ret = LTTNG_OK;
 	ssize_t nr_ids = 0, i;
-	struct lttng_tracker_id *ids = NULL;
+	struct lttng_tracker_id **ids = NULL;
 	const char *element_id_tracker, *element_target_id, *element_id;
+	struct lttng_tracker_id *id;
+	enum lttng_tracker_id_status status;
+	int value;
+	const char *string;
 
 	switch (tracker_type) {
 	case LTTNG_TRACKER_PID:
@@ -1905,7 +1909,7 @@ static int save_id_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	if (nr_ids == 1 && ids[0].type == LTTNG_ID_ALL) {
+	if (nr_ids == 1 && lttng_tracker_id_get_type(ids[0]) == LTTNG_ID_ALL) {
 		/* Tracking all, nothing to output. */
 		ret = LTTNG_OK;
 		goto end;
@@ -1940,7 +1944,8 @@ static int save_id_tracker(struct config_writer *writer,
 	} else {
 		/* Tracking list. */
 		for (i = 0; i < nr_ids; i++) {
-			switch (ids[i].type) {
+			id = ids[i];
+			switch (lttng_tracker_id_get_type(id)) {
 			case LTTNG_ID_VALUE:
 				ret = config_writer_open_element(
 						writer, element_target_id);
@@ -1948,9 +1953,9 @@ static int save_id_tracker(struct config_writer *writer,
 					ret = LTTNG_ERR_SAVE_IO_FAIL;
 					goto end;
 				}
+				status = lttng_tracker_id_get_value(id, &value);
 				ret = config_writer_write_element_unsigned_int(
-						writer, element_id,
-						ids[i].value);
+						writer, element_id, value);
 				break;
 			case LTTNG_ID_STRING:
 				ret = config_writer_open_element(
@@ -1959,9 +1964,10 @@ static int save_id_tracker(struct config_writer *writer,
 					ret = LTTNG_ERR_SAVE_IO_FAIL;
 					goto end;
 				}
+				status = lttng_tracker_id_get_string(
+						id, &string);
 				ret = config_writer_write_element_string(writer,
-						config_element_name,
-						ids[i].string);
+						config_element_name, string);
 				break;
 			default:
 				/* Unexpected. */
@@ -1969,6 +1975,10 @@ static int save_id_tracker(struct config_writer *writer,
 				goto end;
 			}
 			if (ret) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
+			if (status != LTTNG_TRACKER_ID_STATUS_OK) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
@@ -1998,6 +2008,7 @@ static int save_id_tracker(struct config_writer *writer,
 
 	ret = LTTNG_OK;
 end:
+	lttng_tracker_ids_destroy(ids, nr_ids);
 	free(ids);
 	return ret;
 }

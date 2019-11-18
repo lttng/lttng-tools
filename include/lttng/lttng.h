@@ -48,6 +48,7 @@
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
 #include <lttng/rotation.h>
+#include <lttng/tracker.h>
 
 #ifdef __cplusplus
 extern "C" {

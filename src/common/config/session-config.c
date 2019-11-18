@@ -2745,6 +2745,7 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	const char *element_id;
 	const char *element_id_alias;
 	const char *element_name;
+	enum lttng_tracker_id_status status;
 
 	assert(handle);
 	assert(id_tracker_node);
@@ -2774,11 +2775,21 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	/* Go through all id target node */
 	child = xmlChildElementCount(targets_node);
 	if (child == 0) {
-		struct lttng_tracker_id tracker_id;
+		struct lttng_tracker_id *tracker_id = NULL;
+		tracker_id = lttng_tracker_id_create();
+		if (tracker_id == NULL) {
+			ret = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+		status = lttng_tracker_id_set_all(tracker_id);
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ret = LTTNG_ERR_INVALID;
+			goto end;
+		}
 
-		tracker_id.type = LTTNG_ID_ALL;
 		/* The session is explicitly set to target nothing. */
-		ret = lttng_untrack_id(handle, tracker_type, &tracker_id);
+		ret = lttng_untrack_id(handle, tracker_type, tracker_id);
+		lttng_tracker_id_destroy(tracker_id);
 		if (ret) {
 			goto end;
 		}
@@ -2796,7 +2807,7 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 									element_id_alias))) {
 				int64_t id;
 				xmlChar *content = NULL;
-				struct lttng_tracker_id tracker_id;
+				struct lttng_tracker_id *tracker_id = NULL;
 
 				content = xmlNodeGetContent(node);
 				if (!content) {
@@ -2811,10 +2822,23 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 					goto end;
 				}
 
-				tracker_id.type = LTTNG_ID_VALUE;
-				tracker_id.value = (int) id;
+				tracker_id = lttng_tracker_id_create();
+				if (tracker_id == NULL) {
+					ret = LTTNG_ERR_NOMEM;
+					goto end;
+				}
+
+				status = lttng_tracker_id_set_value(
+						tracker_id, id);
+				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+					lttng_tracker_id_destroy(tracker_id);
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
 				ret = lttng_track_id(handle, tracker_type,
-						&tracker_id);
+						tracker_id);
+				lttng_tracker_id_destroy(tracker_id);
 				if (ret) {
 					goto end;
 				}
@@ -2822,17 +2846,31 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 			if (element_name && !strcmp((const char *) node->name,
 							    element_name)) {
 				xmlChar *content = NULL;
-				struct lttng_tracker_id tracker_id;
+				struct lttng_tracker_id *tracker_id = NULL;
 
 				content = xmlNodeGetContent(node);
 				if (!content) {
 					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
 					goto end;
 				}
-				tracker_id.type = LTTNG_ID_STRING;
-				tracker_id.string = (char *) content;
+
+				tracker_id = lttng_tracker_id_create();
+				if (tracker_id == NULL) {
+					ret = LTTNG_ERR_NOMEM;
+					goto end;
+				}
+
+				status = lttng_tracker_id_set_string(tracker_id,
+						(const char *) content);
+				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+					lttng_tracker_id_destroy(tracker_id);
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
 				ret = lttng_track_id(handle, tracker_type,
-						&tracker_id);
+						tracker_id);
+				lttng_tracker_id_destroy(tracker_id);
 				free(content);
 				if (ret) {
 					goto end;

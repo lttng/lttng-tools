@@ -56,7 +56,7 @@ struct opt_type {
 
 struct id_list {
 	size_t nr;
-	struct lttng_tracker_id *array;
+	struct lttng_tracker_id **array;
 };
 
 static char *opt_session_name;
@@ -100,7 +100,7 @@ static struct poptOption long_options[] = {
 static struct id_list *alloc_id_list(size_t nr_items)
 {
 	struct id_list *id_list;
-	struct lttng_tracker_id *items;
+	struct lttng_tracker_id **items;
 
 	id_list = zmalloc(sizeof(*id_list));
 	if (!id_list) {
@@ -128,15 +128,16 @@ static void free_id_list(struct id_list *list)
 	}
 	nr_items = list->nr;
 	for (i = 0; i < nr_items; i++) {
-		struct lttng_tracker_id *item = &list->array[i];
-
-		free(item->string);
+		struct lttng_tracker_id *item = list->array[i];
+		lttng_tracker_id_destroy(item);
 	}
 	free(list);
 }
 
-static int parse_id_string(
-		const char *_id_string, int all, struct id_list **_id_list)
+static int parse_id_string(const char *_id_string,
+		int all,
+		struct id_list **_id_list,
+		enum lttng_tracker_type tracker_type)
 {
 	const char *one_id_str;
 	char *iter;
@@ -157,14 +158,28 @@ static int parse_id_string(
 		goto error;
 	}
 	if (all) {
-		/* Empty ID string means all IDs */
+		enum lttng_tracker_id_status status;
+		/* Empty `ID string means all IDs */
 		id_list = alloc_id_list(1);
 		if (!id_list) {
 			ERR("Out of memory");
 			retval = CMD_ERROR;
 			goto error;
 		}
-		id_list->array[0].type = LTTNG_ID_ALL;
+
+		id_list->array[0] = lttng_tracker_id_create();
+		if (id_list->array[0] == NULL) {
+			ERR("Out of memory");
+			retval = CMD_ERROR;
+			goto error;
+		}
+
+		status = lttng_tracker_id_set_all(id_list->array[0]);
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ERR("Invalid value for tracker id");
+			retval = CMD_ERROR;
+			goto error;
+		}
 		goto assign;
 	}
 
@@ -230,20 +245,30 @@ static int parse_id_string(
 	count = 0;
 	one_id_str = strtok_r(id_string, ",", &iter);
 	while (one_id_str != NULL) {
+		enum lttng_tracker_id_status status;
 		struct lttng_tracker_id *item;
+		item = lttng_tracker_id_create();
+		if (item == NULL) {
+			ERR("Out of memory");
+			retval = CMD_ERROR;
+			goto error;
+		}
 
-		item = &id_list->array[count++];
+		id_list->array[count++] = item;
 		if (isdigit(one_id_str[0])) {
 			unsigned long v;
 
 			v = strtoul(one_id_str, NULL, 10);
-			item->type = LTTNG_ID_VALUE;
-			item->value = (int) v;
+			status = lttng_tracker_id_set_value(item, (int) v);
+			if (status == LTTNG_TRACKER_ID_STATUS_INVALID) {
+				ERR("Invalid value");
+				retval = CMD_ERROR;
+				goto error;
+			}
 		} else {
-			item->type = LTTNG_ID_STRING;
-			item->string = strdup(one_id_str);
-			if (!item->string) {
-				PERROR("Failed to allocate ID string");
+			status = lttng_tracker_id_set_string(item, one_id_str);
+			if (status == LTTNG_TRACKER_ID_STATUS_INVALID) {
+				ERR("Failed to set ID string");
 				retval = CMD_ERROR;
 				goto error;
 			}
@@ -254,11 +279,12 @@ static int parse_id_string(
 	}
 
 assign:
+	/* SUCCESS */
 	*_id_list = id_list;
-	goto end;	/* SUCCESS */
+	goto end;
 
-	/* ERROR */
 error:
+	/* ERROR */
 	free_id_list(id_list);
 end:
 	free(id_string);
@@ -365,7 +391,7 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 		retval = CMD_ERROR;
 		goto end;
 	}
-	ret = parse_id_string(id_string, all, &id_list);
+	ret = parse_id_string(id_string, all, &id_list, tracker_type);
 	if (ret != CMD_SUCCESS) {
 		ERR("Error parsing %s string", tracker_str);
 		retval = CMD_ERROR;
@@ -387,22 +413,51 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 	}
 
 	for (i = 0; i < id_list->nr; i++) {
-		struct lttng_tracker_id *item = &id_list->array[i];
+		struct lttng_tracker_id *item = id_list->array[i];
+		enum lttng_tracker_id_type type =
+				lttng_tracker_id_get_type(item);
+		enum lttng_tracker_id_status status =
+				LTTNG_TRACKER_ID_STATUS_OK;
+		int value;
+		const char *value_string;
 
-		switch (item->type) {
+		switch (type) {
 		case LTTNG_ID_ALL:
-			DBG("%s all IDs", cmd_str);
+			/* Nothing to check */
 			break;
 		case LTTNG_ID_VALUE:
-			DBG("%s ID %d", cmd_str, item->value);
+			status = lttng_tracker_id_get_value(item, &value);
 			break;
 		case LTTNG_ID_STRING:
-			DBG("%s ID '%s'", cmd_str, item->string);
+			status = lttng_tracker_id_get_string(
+					item, &value_string);
 			break;
 		default:
 			retval = CMD_ERROR;
 			goto end;
 		}
+
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ERR("Tracker id object is in an invalid state");
+			retval = CMD_ERROR;
+			goto end;
+		}
+
+		switch (type) {
+		case LTTNG_ID_ALL:
+			DBG("%s all IDs", cmd_str);
+			break;
+		case LTTNG_ID_VALUE:
+			DBG("%s ID %d", cmd_str, value);
+			break;
+		case LTTNG_ID_STRING:
+			DBG("%s ID '%s'", cmd_str, value_string);
+			break;
+		default:
+			retval = CMD_ERROR;
+			goto end;
+		}
+
 		ret = cmd_func(handle, tracker_type, item);
 		if (ret) {
 			char *msg = NULL;
@@ -425,7 +480,7 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 				break;
 			}
 			if (msg) {
-				switch (item->type) {
+				switch (type) {
 				case LTTNG_ID_ALL:
 					WARN("All %ss %s in session %s",
 							tracker_str, msg,
@@ -433,14 +488,13 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 					break;
 				case LTTNG_ID_VALUE:
 					WARN("%s %i %s in session %s",
-							tracker_str,
-							item->value, msg,
+							tracker_str, value, msg,
 							session_name);
 					break;
 				case LTTNG_ID_STRING:
 					WARN("%s '%s' %s in session %s",
 							tracker_str,
-							item->string, msg,
+							value_string, msg,
 							session_name);
 					break;
 				default:
@@ -449,19 +503,18 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 				}
 			}
 		} else {
-			switch (item->type) {
+			switch (type) {
 			case LTTNG_ID_ALL:
 				MSG("All %ss %sed in session %s", tracker_str,
 						cmd_str, session_name);
 				break;
 			case LTTNG_ID_VALUE:
 				MSG("%s %i %sed in session %s", tracker_str,
-						item->value, cmd_str,
-						session_name);
+						value, cmd_str, session_name);
 				break;
 			case LTTNG_ID_STRING:
 				MSG("%s '%s' %sed in session %s", tracker_str,
-						item->string, cmd_str,
+						value_string, cmd_str,
 						session_name);
 				break;
 			default:

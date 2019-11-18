@@ -18,7 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <lttng/session.h>
+#include <lttng/tracker.h>
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
@@ -31,7 +31,7 @@ enum lttng_tracker_list_state {
 
 /* Tracker ID */
 struct lttng_tracker_list_node {
-	struct lttng_tracker_id id;
+	struct lttng_tracker_id *id;
 
 	struct cds_list_head list_node;
 	struct cds_lfht_node ht_node;
@@ -57,9 +57,9 @@ int lttng_tracker_id_lookup_string(enum lttng_tracker_type tracker_type,
 		const struct lttng_tracker_id *id,
 		int *result);
 ssize_t lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id **_ids);
+		struct lttng_tracker_id ***_ids);
 int lttng_tracker_id_set_list(struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id *_ids,
+		struct lttng_tracker_id **_ids,
 		size_t count);
 
 #endif /* _LTT_TRACKER_H */
