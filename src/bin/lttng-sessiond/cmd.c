@@ -2572,6 +2572,8 @@ int cmd_start_trace(struct ltt_session *session)
 	unsigned long nb_chan = 0;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
+	const bool session_rotated_after_last_stop =
+			session->rotated_after_last_stop;
 
 	assert(session);
 
@@ -2582,6 +2584,22 @@ int cmd_start_trace(struct ltt_session *session)
 	/* Is the session already started? */
 	if (session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
+		goto error;
+	}
+
+	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING &&
+			!session->current_trace_chunk) {
+		/*
+		 * A rotation was launched while the session was stopped and
+		 * it has not been completed yet. It is not possible to start
+		 * the session since starting the session here would require a
+		 * rotation from "NULL" to a new trace chunk. That rotation
+		 * would overlap with the ongoing rotation, which is not
+		 * supported.
+		 */
+		WARN("Refusing to start session \"%s\" as a rotation launched after the last \"stop\" is still ongoing",
+				session->name);
+		ret = LTTNG_ERR_ROTATION_PENDING;
 		goto error;
 	}
 
@@ -2600,21 +2618,45 @@ int cmd_start_trace(struct ltt_session *session)
 		goto error;
 	}
 
+	session->active = 1;
+	session->rotated_after_last_stop = false;
 	if (session->output_traces && !session->current_trace_chunk) {
-		struct lttng_trace_chunk *trace_chunk;
+		if (!session->has_been_started) {
+			struct lttng_trace_chunk *trace_chunk;
 
-		trace_chunk = session_create_new_trace_chunk(
-				session, NULL, NULL, NULL);
-		if (!trace_chunk) {
-			ret = LTTNG_ERR_CREATE_DIR_FAIL;
-			goto error;
-		}
-		assert(!session->current_trace_chunk);
-		ret = session_set_trace_chunk(session, trace_chunk, NULL);
-		lttng_trace_chunk_put(trace_chunk);
-		if (ret) {
-			ret = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
-			goto error;
+			DBG("Creating initial trace chunk of session \"%s\"",
+					session->name);
+			trace_chunk = session_create_new_trace_chunk(
+					session, NULL, NULL, NULL);
+			if (!trace_chunk) {
+				ret = LTTNG_ERR_CREATE_DIR_FAIL;
+				goto error;
+			}
+			assert(!session->current_trace_chunk);
+			ret = session_set_trace_chunk(session, trace_chunk,
+					NULL);
+			lttng_trace_chunk_put(trace_chunk);
+			if (ret) {
+				ret = LTTNG_ERR_CREATE_TRACE_CHUNK_FAIL_CONSUMER;
+				goto error;
+			}
+		} else {
+			DBG("Rotating session \"%s\" from its current \"NULL\" trace chunk to a new chunk",
+					session->name);
+			/*
+			 * Rotate existing streams into the new chunk.
+			 * This is a "quiet" rotation has no client has
+			 * explicitly requested this operation.
+			 *
+			 * There is also no need to wait for the rotation
+			 * to complete as it will happen immediately. No data
+			 * was produced as the session was stopped, so the
+			 * rotation should happen on reception of the command.
+			 */
+			ret = cmd_rotate_session(session, NULL, true);
+			if (ret != LTTNG_OK) {
+				goto error;
+			}
 		}
 	}
 
@@ -2637,10 +2679,6 @@ int cmd_start_trace(struct ltt_session *session)
 		}
 	}
 
-	/* Flag this after a successful start. */
-	session->has_been_started = 1;
-	session->active = 1;
-
 	/*
 	 * Clear the flag that indicates that a rotation was done while the
 	 * session was stopped.
@@ -2661,6 +2699,15 @@ int cmd_start_trace(struct ltt_session *session)
 	ret = LTTNG_OK;
 
 error:
+	if (ret == LTTNG_OK) {
+		/* Flag this after a successful start. */
+		session->has_been_started |= 1;
+	} else {
+		session->active = 0;
+		/* Restore initial state on error. */
+		session->rotated_after_last_stop =
+				session_rotated_after_last_stop;
+	}
 	return ret;
 }
 
