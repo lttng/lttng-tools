@@ -922,6 +922,7 @@ end:
 int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
 {
 	int retval = LTTNG_OK;
+	bool should_update_apps = false;
 
 	if (pid == -1) {
 		/* Create empty tracker, replace old tracker. */
@@ -938,7 +939,7 @@ int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
 		fini_pid_tracker(&tmp_tracker);
 
 		/* Remove session from all applications */
-		ust_app_global_update_all(session);
+		should_update_apps = true;
 	} else {
 		int ret;
 		struct ust_app *app;
@@ -957,8 +958,11 @@ int trace_ust_untrack_pid(struct ltt_ust_session *session, int pid)
 		/* Remove session from application. */
 		app = ust_app_find_by_pid(pid);
 		if (app) {
-			ust_app_global_update(session, app);
+			should_update_apps = true;
 		}
+	}
+	if (should_update_apps && session->active) {
+		ust_app_global_update_all(session);
 	}
 end:
 	return retval;
