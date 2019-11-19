@@ -90,7 +90,6 @@ static int stream_create_data_output_file_from_trace_chunk(
 	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 
 	ASSERT_LOCKED(stream->lock);
-	assert(stream->trace_chunk);
 
 	ret = utils_stream_file_path(stream->path_name, stream->channel_name,
 			stream->tracefile_size, stream->tracefile_current_index,
