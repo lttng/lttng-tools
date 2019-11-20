@@ -3134,7 +3134,7 @@ static int lttng_track_untrack_id(struct lttng_handle *handle,
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	const char *var_data;
+	const char *var_data = NULL;
 	size_t var_data_len = 0;
 	int value;
 	enum lttng_tracker_id_status status;
