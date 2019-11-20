@@ -20,6 +20,7 @@
 
 #include <lttng/constant.h>
 #include <common/macros.h>
+#include <lttng/session.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,7 +50,6 @@ enum lttng_tracker_id_status {
 	LTTNG_TRACKER_ID_STATUS_UNSET = 1,
 };
 
-struct lttng_handle;
 struct lttng_tracker_id;
 struct lttng_tracker_ids;
 
