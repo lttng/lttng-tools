@@ -50,7 +50,14 @@ enum lttng_tracker_id_status {
 	LTTNG_TRACKER_ID_STATUS_UNSET = 1,
 };
 
+/*
+ * A tracker id.
+ */
 struct lttng_tracker_id;
+
+/*
+ * A collection of tracker id.
+ */
 struct lttng_tracker_ids;
 
 /*
@@ -101,18 +108,18 @@ extern enum lttng_tracker_id_status lttng_tracker_id_set_all(
 		struct lttng_tracker_id *id);
 
 /*
- * Destroys (frees) a tracker id.
+ * Destroy a tracker id.
  */
 extern void lttng_tracker_id_destroy(struct lttng_tracker_id *id);
 
 /*
- * Returns the type of the tracker id.
+ * Get the type of a tracker id.
  */
 extern enum lttng_tracker_id_type lttng_tracker_id_get_type(
 		const struct lttng_tracker_id *id);
 
 /*
- * Returns the value of the tracker id.
+ * Get the value of a tracker id.
  *
  * Returns LTTNG_TRACKER_ID_OK on success,
  * LTTNG_TRACKER_ID_STATUS_INVALID when the tracker is not of type
@@ -123,7 +130,7 @@ extern enum lttng_tracker_id_status lttng_tracker_id_get_value(
 		const struct lttng_tracker_id *id, int *value);
 
 /*
- * Returns the string representation of the tracker id.
+ * Get the string representation of the tracker id.
  *
  * Returns LTTNG_TRACKER_ID_OK on success,
  * LTTNG_TRACKER_ID_STATUS_INVALID when the tracker is not of type
@@ -157,13 +164,10 @@ extern int lttng_untrack_id(struct lttng_handle *handle,
 		const struct lttng_tracker_id *id);
 
 /*
- * List IDs in the tracker.
+ * List IDs of a tracker.
  *
- * tracker_type is the type of tracker.
- * ids is set to an allocated lttng_tracker_ids representing IDs
- * currently tracked.
- * On success, caller is responsible for freeing ids
- * using lttng_tracker_ids_destroy.
+ * On success, ids is allocated.
+ * The ids collection must be freed by the caller with lttng_destroy_ids().
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
