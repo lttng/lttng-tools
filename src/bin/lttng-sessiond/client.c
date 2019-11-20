@@ -1569,7 +1569,8 @@ error_add_context:
 	{
 		struct lttcomm_tracker_command_header cmd_header;
 		struct lttng_tracker_ids *ids = NULL;
-		size_t nr_ids, i;
+		enum lttng_tracker_id_status status;
+		unsigned int nr_ids, i;
 		struct lttng_dynamic_buffer buf;
 
 		ret = cmd_list_tracker_ids(
@@ -1580,7 +1581,12 @@ error_add_context:
 			goto error;
 		}
 
-		nr_ids = lttng_tracker_ids_get_count(ids);
+		status = lttng_tracker_ids_get_count(ids, &nr_ids);
+		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+			ret = LTTNG_ERR_INVALID;
+			goto error_list_tracker;
+		}
+
 		lttng_dynamic_buffer_init(&buf);
 		for (i = 0; i < nr_ids; i++) {
 			const struct lttng_tracker_id *id;

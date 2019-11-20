@@ -1836,7 +1836,7 @@ static int save_id_tracker(struct config_writer *writer,
 		enum lttng_tracker_type tracker_type)
 {
 	int ret = LTTNG_OK;
-	size_t nr_ids = 0, i;
+	unsigned int nr_ids, i;
 	struct lttng_tracker_ids *ids = NULL;
 	const char *element_id_tracker, *element_target_id, *element_id;
 	const struct lttng_tracker_id *id;
@@ -1909,7 +1909,11 @@ static int save_id_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	nr_ids = lttng_tracker_ids_get_count(ids);
+	status = lttng_tracker_ids_get_count(ids, &nr_ids);
+	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
 
 	if (nr_ids == 1) {
 		id = lttng_tracker_ids_get_at_index(ids, 0);

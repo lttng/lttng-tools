@@ -223,8 +223,12 @@ extern const struct lttng_tracker_id *lttng_tracker_ids_get_at_index(
 
 /*
  * Get the number of tracker id in a tracker id list.
+ *
+ * Return LTTNG_TRACKER_ID_STATUS on sucess,
+ * LTTNG_TRACKER_ID_STATUS_INVALID when passed invalid parameters.
  */
-extern int lttng_tracker_ids_get_count(const struct lttng_tracker_ids *ids);
+extern enum lttng_tracker_id_status lttng_tracker_ids_get_count(
+		const struct lttng_tracker_ids *ids, unsigned int *count);
 
 /*
  * Destroy a tracker id list.

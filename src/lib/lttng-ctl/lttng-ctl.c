@@ -2943,7 +2943,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *_enabled, int32_t **_pids, size_t *_nr_pids)
 {
 	struct lttng_tracker_ids *ids = NULL;
-	size_t nr_ids = 0;
+	unsigned int nr_ids = 0;
 	int *pids = NULL;
 	int ret = 0, i;
 	enum lttng_tracker_id_status status;
@@ -2954,7 +2954,11 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		return ret;
 	}
 
-	nr_ids = lttng_tracker_ids_get_count(ids);
+	status = lttng_tracker_ids_get_count(ids, &nr_ids);
+	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
 
 	if (nr_ids == 1) {
 		id = lttng_tracker_ids_get_at_index(ids, 0);

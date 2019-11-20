@@ -493,14 +493,19 @@ error:
 int lttng_tracker_id_set_list(struct lttng_tracker_list *tracker_list,
 		const struct lttng_tracker_ids *ids)
 {
-	size_t i, count;
+	unsigned int i, count;
 	const struct lttng_tracker_id *id;
+	enum lttng_tracker_id_status status;
 
 	assert(tracker_list);
 	assert(ids);
 
 	lttng_tracker_list_reset(tracker_list);
-	count = lttng_tracker_ids_get_count(ids);
+
+	status = lttng_tracker_ids_get_count(ids, &count);
+	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		return LTTNG_ERR_INVALID;
+	}
 
 	if (count == 0) {
 		/* Set state to "track none". */

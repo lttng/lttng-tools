@@ -1540,15 +1540,21 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 	int ret = 0;
 	int enabled = 1;
 	struct lttng_tracker_ids *ids = NULL;
-	size_t nr_ids, i;
+	unsigned int nr_ids, i;
 	const struct lttng_tracker_id *id;
+	enum lttng_tracker_id_status status;
 
 	ret = lttng_list_tracker_ids(handle, tracker_type, &ids);
 	if (ret) {
 		return ret;
 	}
 
-	nr_ids = lttng_tracker_ids_get_count(ids);
+	status = lttng_tracker_ids_get_count(ids, &nr_ids);
+	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		ret = CMD_ERROR;
+		goto end;
+	}
+
 	if (nr_ids == 1) {
 		id = lttng_tracker_ids_get_at_index(ids, 0);
 		if (id && lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
