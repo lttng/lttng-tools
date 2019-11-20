@@ -85,7 +85,7 @@ enum lttng_tracker_id_status lttng_tracker_id_set_all(
 	return LTTNG_TRACKER_ID_STATUS_OK;
 }
 
-void lttng_tracker_id_destroy(struct lttng_tracker_id *id)
+static void lttng_tracker_id_reset(struct lttng_tracker_id *id)
 {
 	if (id == NULL) {
 		return;
@@ -93,20 +93,22 @@ void lttng_tracker_id_destroy(struct lttng_tracker_id *id)
 
 	if (id->string != NULL) {
 		free(id->string);
+		id->string = NULL;
 	}
 
-	free(id);
+	id->type = LTTNG_ID_UNKNOWN;
+	id->value = -1;
 }
 
-void lttng_tracker_ids_destroy(struct lttng_tracker_id **ids, size_t nr_ids)
+void lttng_tracker_id_destroy(struct lttng_tracker_id *id)
 {
-	if (ids == NULL) {
+	if (id == NULL) {
 		return;
 	}
 
-	for (int i = 0; i < nr_ids; i++) {
-		lttng_tracker_id_destroy(ids[i]);
-	}
+	lttng_tracker_id_reset(id);
+
+	free(id);
 }
 
 enum lttng_tracker_id_type lttng_tracker_id_get_type(
@@ -162,32 +164,24 @@ bool lttng_tracker_id_is_equal(const struct lttng_tracker_id *left,
 	return 1;
 }
 
-struct lttng_tracker_id *lttng_tracker_id_copy(
+int lttng_tracker_id_copy(struct lttng_tracker_id *dest,
 		const struct lttng_tracker_id *orig)
 {
-	struct lttng_tracker_id *copy = NULL;
+	int ret = 0;
 	enum lttng_tracker_id_status status;
 
-	copy = lttng_tracker_id_create();
-	if (copy == NULL) {
-		goto error;
-	}
+	assert(dest);
+	assert(orig);
 
 	switch (orig->type) {
 	case LTTNG_ID_ALL:
-		status = lttng_tracker_id_set_all(copy);
+		status = lttng_tracker_id_set_all(dest);
 		break;
 	case LTTNG_ID_VALUE:
-		status = lttng_tracker_id_set_value(copy, orig->value);
-		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			goto error;
-		}
+		status = lttng_tracker_id_set_value(dest, orig->value);
 		break;
 	case LTTNG_ID_STRING:
-		status = lttng_tracker_id_set_string(copy, orig->string);
-		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			goto error;
-		}
+		status = lttng_tracker_id_set_string(dest, orig->string);
 		break;
 	default:
 		status = LTTNG_TRACKER_ID_STATUS_OK;
@@ -195,6 +189,26 @@ struct lttng_tracker_id *lttng_tracker_id_copy(
 	}
 
 	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		ret = -1;
+		goto error;
+	}
+error:
+	return ret;
+}
+
+struct lttng_tracker_id *lttng_tracker_id_duplicate(
+		const struct lttng_tracker_id *orig)
+{
+	int ret;
+	struct lttng_tracker_id *copy = NULL;
+
+	copy = lttng_tracker_id_create();
+	if (copy == NULL) {
+		goto error;
+	}
+
+	ret = lttng_tracker_id_copy(copy, orig);
+	if (ret) {
 		goto error;
 	}
 
@@ -220,4 +234,64 @@ enum lttng_tracker_id_status lttng_tracker_id_get_string(
 
 	*value = id->string;
 	return LTTNG_TRACKER_ID_STATUS_OK;
+}
+
+struct lttng_tracker_ids *lttng_tracker_ids_create(unsigned int count)
+{
+	struct lttng_tracker_ids *ids = NULL;
+
+	ids = zmalloc(sizeof(*ids));
+	if (!ids) {
+		goto error;
+	}
+
+	ids->id_array = zmalloc(sizeof(struct lttng_tracker_id) * count);
+	if (!ids->id_array) {
+		goto error;
+	}
+
+	ids->count = count;
+
+	return ids;
+error:
+	free(ids);
+	return NULL;
+}
+
+LTTNG_HIDDEN
+struct lttng_tracker_id *lttng_tracker_ids_get_pointer_of_index(
+		const struct lttng_tracker_ids *ids, unsigned int index)
+{
+	assert(ids);
+	if (index >= ids->count) {
+		return NULL;
+	}
+
+	return &ids->id_array[index];
+}
+
+const struct lttng_tracker_id *lttng_tracker_ids_get_at_index(
+		const struct lttng_tracker_ids *ids, unsigned int index)
+{
+	assert(ids);
+	return lttng_tracker_ids_get_pointer_of_index(ids, index);
+}
+
+int lttng_tracker_ids_get_count(const struct lttng_tracker_ids *ids)
+{
+	assert(ids);
+	return ids->count;
+}
+
+void lttng_tracker_ids_destroy(struct lttng_tracker_ids *ids)
+{
+	if (!ids) {
+		return;
+	}
+
+	for (int i = 0; i < ids->count; i++) {
+		lttng_tracker_id_reset(&ids->id_array[i]);
+	}
+	free(ids->id_array);
+	free(ids);
 }

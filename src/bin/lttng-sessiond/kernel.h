@@ -72,9 +72,9 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session);
 enum lttng_error_code kernel_clear_session(struct ltt_session *session);
 
 int init_kernel_workarounds(void);
-ssize_t kernel_list_tracker_ids(enum lttng_tracker_type tracker_type,
+int kernel_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_kernel_session *session,
-		struct lttng_tracker_id ***_ids);
+		struct lttng_tracker_ids **ids);
 int kernel_supports_ring_buffer_snapshot_sample_positions(void);
 int kernel_supports_ring_buffer_packet_sequence_number(void);
 int init_kernel_tracer(void);

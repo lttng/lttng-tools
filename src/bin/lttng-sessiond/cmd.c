@@ -2581,13 +2581,12 @@ ssize_t cmd_list_syscalls(struct lttng_event **events)
  *
  * Called with session lock held.
  */
-ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
+int cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_session *session,
 		enum lttng_domain_type domain,
-		struct lttng_tracker_id ***ids)
+		struct lttng_tracker_ids **ids)
 {
-	int ret;
-	ssize_t nr_pids = 0;
+	int ret = LTTNG_OK;
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
@@ -2595,9 +2594,9 @@ ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_kernel_session *ksess;
 
 		ksess = session->kernel_session;
-		nr_pids = kernel_list_tracker_ids(tracker_type, ksess, ids);
-		if (nr_pids < 0) {
-			ret = LTTNG_ERR_KERN_LIST_FAIL;
+		ret = kernel_list_tracker_ids(tracker_type, ksess, ids);
+		if (ret != LTTNG_OK) {
+			ret = -LTTNG_ERR_KERN_LIST_FAIL;
 			goto error;
 		}
 		break;
@@ -2607,9 +2606,9 @@ ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *usess;
 
 		usess = session->ust_session;
-		nr_pids = trace_ust_list_tracker_ids(tracker_type, usess, ids);
-		if (nr_pids < 0) {
-			ret = LTTNG_ERR_UST_LIST_FAIL;
+		ret = trace_ust_list_tracker_ids(tracker_type, usess, ids);
+		if (ret != LTTNG_OK) {
+			ret = -LTTNG_ERR_UST_LIST_FAIL;
 			goto error;
 		}
 		break;
@@ -2618,15 +2617,13 @@ ssize_t cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_PYTHON:
 	default:
-		ret = LTTNG_ERR_UND;
+		ret = -LTTNG_ERR_UND;
 		goto error;
 	}
 
-	return nr_pids;
-
 error:
 	/* Return negative value to differentiate return code */
-	return -ret;
+	return ret;
 }
 
 /*

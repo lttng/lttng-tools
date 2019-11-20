@@ -238,9 +238,9 @@ int trace_ust_id_tracker_lookup(enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *session,
 		int id);
 
-ssize_t trace_ust_list_tracker_ids(enum lttng_tracker_type tracker_type,
+int trace_ust_list_tracker_ids(enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *session,
-		struct lttng_tracker_id ***_ids);
+		struct lttng_tracker_ids **_ids);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -352,10 +352,10 @@ static inline int trace_ust_id_tracker_lookup(
 {
 	return 0;
 }
-static inline ssize_t trace_ust_list_tracker_ids(
+static inline int trace_ust_list_tracker_ids(
 		enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *session,
-		struct lttng_tracker_id **_ids)
+		struct lttng_tracker_ids **_ids)
 {
 	return -1;
 }

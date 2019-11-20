@@ -2839,8 +2839,7 @@ end:
  */
 int lttng_list_tracker_ids(struct lttng_handle *handle,
 		enum lttng_tracker_type tracker_type,
-		struct lttng_tracker_id ***_ids,
-		size_t *_nr_ids)
+		struct lttng_tracker_ids **_ids)
 {
 	int ret, i;
 	struct lttcomm_session_msg lsm;
@@ -2848,7 +2847,7 @@ int lttng_list_tracker_ids(struct lttng_handle *handle,
 	char *cmd_payload = NULL, *p;
 	size_t cmd_header_len;
 	size_t nr_ids = 0;
-	struct lttng_tracker_id **ids = NULL;
+	struct lttng_tracker_ids *ids = NULL;
 
 	if (handle == NULL) {
 		return -LTTNG_ERR_INVALID;
@@ -2877,7 +2876,7 @@ int lttng_list_tracker_ids(struct lttng_handle *handle,
 	free(cmd_header);
 	cmd_header = NULL;
 
-	ids = zmalloc(sizeof(*ids) * nr_ids);
+	ids = lttng_tracker_ids_create(nr_ids);
 	if (!ids) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
@@ -2891,9 +2890,9 @@ int lttng_list_tracker_ids(struct lttng_handle *handle,
 
 		tracker_id = (struct lttcomm_tracker_id_header *) p;
 		p += sizeof(struct lttcomm_tracker_id_header);
-		id = lttng_tracker_id_create();
+		id = lttng_tracker_ids_get_pointer_of_index(ids, i);
 		if (!id) {
-			ret = -LTTNG_ERR_NOMEM;
+			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
 
@@ -2918,18 +2917,13 @@ int lttng_list_tracker_ids(struct lttng_handle *handle,
 			ret = -LTTNG_ERR_INVALID;
 			goto error;
 		}
-
-		/* Assign the new object to the list */
-		ids[i] = id;
 	}
 	free(cmd_payload);
 	*_ids = ids;
-	*_nr_ids = nr_ids;
 	return 0;
 
 error:
-	lttng_tracker_ids_destroy(ids, nr_ids);
-	free(ids);
+	lttng_tracker_ids_destroy(ids);
 	free(cmd_payload);
 	free(cmd_header);
 	return ret;
@@ -2948,20 +2942,28 @@ error:
 int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *_enabled, int32_t **_pids, size_t *_nr_pids)
 {
-	struct lttng_tracker_id **ids = NULL;
+	struct lttng_tracker_ids *ids = NULL;
 	size_t nr_ids = 0;
 	int *pids = NULL;
 	int ret = 0, i;
 	enum lttng_tracker_id_status status;
+	const struct lttng_tracker_id *id;
 
-	ret = lttng_list_tracker_ids(handle, LTTNG_TRACKER_PID, &ids, &nr_ids);
-	if (ret < 0)
+	ret = lttng_list_tracker_ids(handle, LTTNG_TRACKER_PID, &ids);
+	if (ret < 0) {
 		return ret;
-
-	if (nr_ids == 1 && lttng_tracker_id_get_type(ids[0]) == LTTNG_ID_ALL) {
-		*_enabled = 0;
-		goto end;
 	}
+
+	nr_ids = lttng_tracker_ids_get_count(ids);
+
+	if (nr_ids == 1) {
+		id = lttng_tracker_ids_get_at_index(ids, 0);
+		if (id && lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
+			*_enabled = 0;
+			goto end;
+		}
+	}
+
 	*_enabled = 1;
 
 	pids = zmalloc(nr_ids * sizeof(*pids));
@@ -2970,8 +2972,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 		goto end;
 	}
 	for (i = 0; i < nr_ids; i++) {
-		struct lttng_tracker_id *id = ids[i];
-
+		id = lttng_tracker_ids_get_at_index(ids, i);
 		status = lttng_tracker_id_get_value(id, &pids[i]);
 		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
 			ret = -LTTNG_ERR_UNK;
@@ -2981,8 +2982,7 @@ int lttng_list_tracker_pids(struct lttng_handle *handle,
 	*_pids = pids;
 	*_nr_pids = nr_ids;
 end:
-	lttng_tracker_ids_destroy(ids, nr_ids);
-	free(ids);
+	lttng_tracker_ids_destroy(ids);
 	if (ret < 0) {
 		free(pids);
 	}

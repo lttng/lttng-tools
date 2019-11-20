@@ -1568,28 +1568,33 @@ error_add_context:
 	case LTTNG_LIST_TRACKER_IDS:
 	{
 		struct lttcomm_tracker_command_header cmd_header;
-		struct lttng_tracker_id **ids = NULL;
-		ssize_t nr_ids, i;
+		struct lttng_tracker_ids *ids = NULL;
+		size_t nr_ids, i;
 		struct lttng_dynamic_buffer buf;
 
-		nr_ids = cmd_list_tracker_ids(
+		ret = cmd_list_tracker_ids(
 				cmd_ctx->lsm->u.id_tracker.tracker_type,
 				cmd_ctx->session, cmd_ctx->lsm->domain.type,
 				&ids);
-		if (nr_ids < 0) {
-			/* Return value is a negative lttng_error_code. */
-			ret = -nr_ids;
+		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
+		nr_ids = lttng_tracker_ids_get_count(ids);
 		lttng_dynamic_buffer_init(&buf);
 		for (i = 0; i < nr_ids; i++) {
-			struct lttng_tracker_id *id = ids[i];
+			const struct lttng_tracker_id *id;
 			struct lttcomm_tracker_id_header id_hdr;
 			size_t var_data_len = 0;
 			enum lttng_tracker_id_status status;
 			const char *string;
 			int value;
+
+			id = lttng_tracker_ids_get_at_index(ids, i);
+			if (!id) {
+				ret = LTTNG_ERR_INVALID;
+				goto error_list_tracker;
+			}
 
 			memset(&id_hdr, 0, sizeof(id_hdr));
 			id_hdr.type = lttng_tracker_id_get_type(id);
@@ -1637,8 +1642,7 @@ error_add_context:
 		ret = setup_lttng_msg(cmd_ctx, buf.data, buf.size, &cmd_header,
 				sizeof(cmd_header));
 	error_list_tracker:
-		lttng_tracker_ids_destroy(ids, nr_ids);
-		free(ids);
+		lttng_tracker_ids_destroy(ids);
 		lttng_dynamic_buffer_reset(&buf);
 		if (ret < 0) {
 			goto setup_error;

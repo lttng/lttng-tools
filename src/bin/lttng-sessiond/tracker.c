@@ -178,7 +178,7 @@ int lttng_tracker_list_add(struct lttng_tracker_list *tracker_list,
 		goto error;
 	}
 
-	n->id = lttng_tracker_id_copy(_id);
+	n->id = lttng_tracker_id_duplicate(_id);
 	if (!n->id) {
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
@@ -415,12 +415,14 @@ int lttng_tracker_id_lookup_string(enum lttng_tracker_type tracker_type,
  * Protected by session mutex held by caller.
  * On success, _ids and the ids it contains must be freed by the caller.
  */
-ssize_t lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id ***_ids)
+int lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
+		struct lttng_tracker_ids **_ids)
 {
+	int retval = LTTNG_OK, ret;
 	struct lttng_tracker_list_node *n;
-	ssize_t count = 0, i = 0, retval = 0;
-	struct lttng_tracker_id **ids;
+	ssize_t count = 0, i = 0;
+	struct lttng_tracker_ids *ids = NULL;
+	struct lttng_tracker_id *id;
 	enum lttng_tracker_id_status status;
 
 	switch (tracker_list->state) {
@@ -429,7 +431,7 @@ ssize_t lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
 				n, &tracker_list->list_head, list_node) {
 			count++;
 		}
-		ids = zmalloc(sizeof(*ids) * count);
+		ids = lttng_tracker_ids_create(count);
 		if (ids == NULL) {
 			PERROR("Failed to allocate tracked ID list");
 			retval = -LTTNG_ERR_NOMEM;
@@ -437,67 +439,86 @@ ssize_t lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
 		}
 		cds_list_for_each_entry (
 				n, &tracker_list->list_head, list_node) {
-			ids[i] = lttng_tracker_id_copy(n->id);
-			if (!ids[i]) {
+			id = lttng_tracker_ids_get_pointer_of_index(ids, i);
+			if (!id) {
+				retval = -LTTNG_ERR_INVALID;
+				goto error;
+			}
+
+			ret = lttng_tracker_id_copy(id, n->id);
+			if (ret) {
 				retval = -LTTNG_ERR_NOMEM;
 				goto error;
 			}
 			i++;
 		}
-		*_ids = ids;
-		retval = count;
 		break;
 	case LTTNG_TRACK_ALL:
-		ids = zmalloc(sizeof(*ids));
+
+		ids = lttng_tracker_ids_create(1);
 		if (ids == NULL) {
 			PERROR("Failed to allocate tracked ID list");
 			retval = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
-		ids[0] = lttng_tracker_id_create();
-		status = lttng_tracker_id_set_all(ids[0]);
+
+		id = lttng_tracker_ids_get_pointer_of_index(ids, 0);
+		status = lttng_tracker_id_set_all(id);
 		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
 			ERR("Invalid tracker id for track all");
 			retval = -LTTNG_ERR_INVALID;
 			goto error;
 		}
-		*_ids = ids;
-		retval = 1;
 		break;
 	case LTTNG_TRACK_NONE:
-		/* No ids track, so we return 0 element. */
-		*_ids = NULL;
+		/* No ids track, so we return 0 element collection. */
+		ids = lttng_tracker_ids_create(0);
+		if (ids == NULL) {
+			PERROR("alloc list ids");
+			retval = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 		break;
 	}
+	*_ids = ids;
+
 end:
 	return retval;
 
 error:
-	lttng_tracker_ids_destroy(ids, count);
-	free(ids);
+	lttng_tracker_ids_destroy(ids);
 	return retval;
 }
 
 int lttng_tracker_id_set_list(struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id **_ids,
-		size_t count)
+		const struct lttng_tracker_ids *ids)
 {
-	size_t i;
+	size_t i, count;
+	const struct lttng_tracker_id *id;
+
+	assert(tracker_list);
+	assert(ids);
 
 	lttng_tracker_list_reset(tracker_list);
-	if (count == 1 && lttng_tracker_id_get_type(_ids[0])) {
-		/* Track all. */
-		return LTTNG_OK;
-	}
+	count = lttng_tracker_ids_get_count(ids);
+
 	if (count == 0) {
 		/* Set state to "track none". */
 		tracker_list->state = LTTNG_TRACK_NONE;
 		return LTTNG_OK;
 	}
-	for (i = 0; i < count; i++) {
-		struct lttng_tracker_id *id = _ids[i];
-		int ret;
 
+	if (count == 1) {
+		id = lttng_tracker_ids_get_at_index(ids, 0);
+		if (lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
+			/* Track all. */
+			return LTTNG_OK;
+		}
+	}
+
+	for (i = 0; i < count; i++) {
+		int ret;
+		id = lttng_tracker_ids_get_at_index(ids, i);
 		ret = lttng_tracker_list_add(tracker_list, id);
 		if (ret != LTTNG_OK) {
 			return ret;

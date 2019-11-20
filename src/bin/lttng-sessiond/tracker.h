@@ -56,10 +56,9 @@ int lttng_tracker_list_remove(struct lttng_tracker_list *tracker_list,
 int lttng_tracker_id_lookup_string(enum lttng_tracker_type tracker_type,
 		const struct lttng_tracker_id *id,
 		int *result);
-ssize_t lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id ***_ids);
+int lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
+		struct lttng_tracker_ids **_ids);
 int lttng_tracker_id_set_list(struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_id **_ids,
-		size_t count);
+		const struct lttng_tracker_ids *_ids);
 
 #endif /* _LTT_TRACKER_H */

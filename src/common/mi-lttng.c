@@ -1662,7 +1662,7 @@ int mi_lttng_targets_open(struct mi_writer *writer)
 LTTNG_HIDDEN
 int mi_lttng_id_target(struct mi_writer *writer,
 		enum lttng_tracker_type tracker_type,
-		struct lttng_tracker_id *id,
+		const struct lttng_tracker_id *id,
 		int is_open)
 {
 	int ret;

@@ -51,6 +51,7 @@ enum lttng_tracker_id_status {
 
 struct lttng_handle;
 struct lttng_tracker_id;
+struct lttng_tracker_ids;
 
 /*
  * Create a tracker id for the passed tracker type.
@@ -133,12 +134,6 @@ extern enum lttng_tracker_id_status lttng_tracker_id_get_string(
 		const struct lttng_tracker_id *id, const char **value);
 
 /*
- * Destroys (frees) an array of tracker id.
- */
-extern void lttng_tracker_ids_destroy(
-		struct lttng_tracker_id **ids, size_t nr_ids);
-
-/*
  * Add ID to session tracker.
  *
  * tracker_type is the type of tracker.
@@ -165,17 +160,16 @@ extern int lttng_untrack_id(struct lttng_handle *handle,
  * List IDs in the tracker.
  *
  * tracker_type is the type of tracker.
- * ids is set to an allocated array of IDs currently tracked.
- * On success, ids must be freed using lttng_tracker_id_destroy on each
- * constituent of the returned array  or using lttng_tracker_ids_destroy.
- * nr_ids is set to the number of entries contained by the ids array.
+ * ids is set to an allocated lttng_tracker_ids representing IDs
+ * currently tracked.
+ * On success, caller is responsible for freeing ids
+ * using lttng_tracker_ids_destroy.
  *
  * Returns 0 on success, else a negative LTTng error code.
  */
 extern int lttng_list_tracker_ids(struct lttng_handle *handle,
 		enum lttng_tracker_type tracker_type,
-		struct lttng_tracker_id ***ids,
-		size_t *nr_ids);
+		struct lttng_tracker_ids **ids);
 
 /*
  * Backward compatibility.
@@ -214,6 +208,28 @@ extern int lttng_list_tracker_pids(struct lttng_handle *handle,
 		int *enabled,
 		int32_t **pids,
 		size_t *nr_pids);
+
+/*
+ * Get a tracker id from the list at a given index.
+ *
+ * Note that the list maintains the ownership of the returned tracker id.
+ * It must not be destroyed by the user, nor should it be held beyond the
+ * lifetime of the tracker id list.
+ *
+ * Returns a tracker id, or NULL on error.
+ */
+extern const struct lttng_tracker_id *lttng_tracker_ids_get_at_index(
+		const struct lttng_tracker_ids *ids, unsigned int index);
+
+/*
+ * Get the number of tracker id in a tracker id list.
+ */
+extern int lttng_tracker_ids_get_count(const struct lttng_tracker_ids *ids);
+
+/*
+ * Destroy a tracker id list.
+ */
+extern void lttng_tracker_ids_destroy(struct lttng_tracker_ids *ids);
 
 #ifdef __cplusplus
 }

@@ -1539,16 +1539,23 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 {
 	int ret = 0;
 	int enabled = 1;
-	struct lttng_tracker_id **ids = NULL;
+	struct lttng_tracker_ids *ids = NULL;
 	size_t nr_ids, i;
+	const struct lttng_tracker_id *id;
 
-	ret = lttng_list_tracker_ids(handle, tracker_type, &ids, &nr_ids);
+	ret = lttng_list_tracker_ids(handle, tracker_type, &ids);
 	if (ret) {
 		return ret;
 	}
-	if (nr_ids == 1 && lttng_tracker_id_get_type(ids[0]) == LTTNG_ID_ALL) {
-		enabled = 0;
+
+	nr_ids = lttng_tracker_ids_get_count(ids);
+	if (nr_ids == 1) {
+		id = lttng_tracker_ids_get_at_index(ids, 0);
+		if (id && lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
+			enabled = 0;
+		}
 	}
+
 	if (enabled) {
 		_MSG("%s tracker: [", get_tracker_str(tracker_type));
 
@@ -1562,10 +1569,16 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 		}
 
 		for (i = 0; i < nr_ids; i++) {
-			struct lttng_tracker_id *id = ids[i];
-			enum lttng_tracker_id_status status;
+			enum lttng_tracker_id_status status =
+					LTTNG_TRACKER_ID_STATUS_OK;
 			int value;
 			const char *value_string;
+
+			id = lttng_tracker_ids_get_at_index(ids, i);
+			if (!id) {
+				ret = CMD_ERROR;
+				goto end;
+			}
 
 			switch (lttng_tracker_id_get_type(id)) {
 			case LTTNG_ID_ALL:
@@ -1627,7 +1640,7 @@ static int list_tracker_ids(enum lttng_tracker_type tracker_type)
 		}
 	}
 end:
-	lttng_tracker_ids_destroy(ids, nr_ids);
+	lttng_tracker_ids_destroy(ids);
 	return ret;
 }
 

@@ -1836,10 +1836,10 @@ static int save_id_tracker(struct config_writer *writer,
 		enum lttng_tracker_type tracker_type)
 {
 	int ret = LTTNG_OK;
-	ssize_t nr_ids = 0, i;
-	struct lttng_tracker_id **ids = NULL;
+	size_t nr_ids = 0, i;
+	struct lttng_tracker_ids *ids = NULL;
 	const char *element_id_tracker, *element_target_id, *element_id;
-	struct lttng_tracker_id *id;
+	const struct lttng_tracker_id *id;
 	enum lttng_tracker_id_status status;
 	int value;
 	const char *string;
@@ -1883,9 +1883,9 @@ static int save_id_tracker(struct config_writer *writer,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		nr_ids = kernel_list_tracker_ids(
+		ret = kernel_list_tracker_ids(
 				tracker_type, sess->kernel_session, &ids);
-		if (nr_ids < 0) {
+		if (ret != LTTNG_OK) {
 			ret = LTTNG_ERR_KERN_LIST_FAIL;
 			goto end;
 		}
@@ -1893,9 +1893,9 @@ static int save_id_tracker(struct config_writer *writer,
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		nr_ids = trace_ust_list_tracker_ids(
+		ret = trace_ust_list_tracker_ids(
 				tracker_type, sess->ust_session, &ids);
-		if (nr_ids < 0) {
+		if (ret != LTTNG_OK) {
 			ret = LTTNG_ERR_UST_LIST_FAIL;
 			goto end;
 		}
@@ -1909,10 +1909,15 @@ static int save_id_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	if (nr_ids == 1 && lttng_tracker_id_get_type(ids[0]) == LTTNG_ID_ALL) {
-		/* Tracking all, nothing to output. */
-		ret = LTTNG_OK;
-		goto end;
+	nr_ids = lttng_tracker_ids_get_count(ids);
+
+	if (nr_ids == 1) {
+		id = lttng_tracker_ids_get_at_index(ids, 0);
+		if (id && lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
+			/* Tracking all, nothing to output. */
+			ret = LTTNG_OK;
+			goto end;
+		}
 	}
 
 	ret = config_writer_open_element(writer, element_id_tracker);
@@ -1944,7 +1949,11 @@ static int save_id_tracker(struct config_writer *writer,
 	} else {
 		/* Tracking list. */
 		for (i = 0; i < nr_ids; i++) {
-			id = ids[i];
+			id = lttng_tracker_ids_get_at_index(ids, i);
+			if (!id) {
+				ret = LTTNG_ERR_SAVE_IO_FAIL;
+				goto end;
+			}
 			switch (lttng_tracker_id_get_type(id)) {
 			case LTTNG_ID_VALUE:
 				ret = config_writer_open_element(
@@ -2008,8 +2017,7 @@ static int save_id_tracker(struct config_writer *writer,
 
 	ret = LTTNG_OK;
 end:
-	lttng_tracker_ids_destroy(ids, nr_ids);
-	free(ids);
+	lttng_tracker_ids_destroy(ids);
 	return ret;
 }
 

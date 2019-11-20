@@ -29,12 +29,46 @@ struct lttng_tracker_id {
 	char *string;
 };
 
+struct lttng_tracker_ids {
+	struct lttng_tracker_id *id_array;
+	unsigned int count;
+};
+
 LTTNG_HIDDEN
 bool lttng_tracker_id_is_equal(const struct lttng_tracker_id *left,
 		const struct lttng_tracker_id *right);
 
+/*
+ * A copy acts like memcpy. It does not allocate new memory.
+ */
 LTTNG_HIDDEN
-struct lttng_tracker_id *lttng_tracker_id_copy(
-		const struct lttng_tracker_id *orig);
+int lttng_tracker_id_copy(struct lttng_tracker_id *dest,
+		const struct lttng_tracker_id *src);
+
+/*
+ * Duplicate an lttng_tracker_id.
+ * The returned object must be freed via lttng_tracker_id_destroy.
+ */
+LTTNG_HIDDEN
+struct lttng_tracker_id *lttng_tracker_id_duplicate(
+		const struct lttng_tracker_id *src);
+
+/*
+ * Allocate a new list of lttng_tracker_id.
+ * The returned object must be freed via lttng_tracker_ids_destroy.
+ */
+LTTNG_HIDDEN
+struct lttng_tracker_ids *lttng_tracker_ids_create(unsigned int base_count);
+
+/*
+ * Return the non-const pointer of an element at index "index" of a
+ * lttng_tracker_ids.
+ *
+ * The ownership of the lttng_tracker_id element is NOT transfered.
+ * The returned object can NOT be freed via lttng_tracker_id_destroy.
+ */
+LTTNG_HIDDEN
+struct lttng_tracker_id *lttng_tracker_ids_get_pointer_of_index(
+		const struct lttng_tracker_ids *list, unsigned int index);
 
 #endif /* LTTNG_TRACKER_INTERNAL_H */
