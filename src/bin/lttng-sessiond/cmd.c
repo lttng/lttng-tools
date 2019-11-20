@@ -4925,9 +4925,6 @@ int cmd_rotate_session(struct ltt_session *session,
 		cmd_ret = LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP;
 		goto end;
 	}
-
-	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
-
 	if (session->active) {
 		new_trace_chunk = session_create_new_trace_chunk(session, NULL,
 				NULL, NULL);
@@ -4951,11 +4948,6 @@ int cmd_rotate_session(struct ltt_session *session,
 		goto error;
 	}
 
-	assert(chunk_being_archived);
-	chunk_status = lttng_trace_chunk_get_id(chunk_being_archived,
-			&ongoing_rotation_chunk_id);
-	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
-
 	if (session->kernel_session) {
 		cmd_ret = kernel_rotate_session(session);
 		if (cmd_ret != LTTNG_OK) {
@@ -4970,6 +4962,26 @@ int cmd_rotate_session(struct ltt_session *session,
 			rotation_fail_code = cmd_ret;
 		}
 	}
+
+	if (!session->active) {
+		session->rotated_after_last_stop = true;
+	}
+
+	if (!chunk_being_archived) {
+		DBG("Rotating session \"%s\" from a \"NULL\" trace chunk to a new trace chunk, skipping completion check",
+				session->name);
+		if (failed_to_rotate) {
+			cmd_ret = rotation_fail_code;
+			goto error;
+		}
+		cmd_ret = LTTNG_OK;
+		goto end;
+	}
+
+	session->rotation_state = LTTNG_ROTATION_STATE_ONGOING;
+	chunk_status = lttng_trace_chunk_get_id(chunk_being_archived,
+			&ongoing_rotation_chunk_id);
+	assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 
 	ret = session_close_trace_chunk(session, chunk_being_archived,
 			quiet_rotation ?
@@ -4993,10 +5005,6 @@ int cmd_rotate_session(struct ltt_session *session,
 	if (ret) {
 		cmd_ret = LTTNG_ERR_UNK;
 		goto error;
-	}
-
-	if (!session->active) {
-		session->rotated_after_last_stop = true;
 	}
 
 	if (rotate_return) {
