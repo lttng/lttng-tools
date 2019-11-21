@@ -304,3 +304,74 @@ void lttng_tracker_ids_destroy(struct lttng_tracker_ids *ids)
 	free(ids->id_array);
 	free(ids);
 }
+
+int lttng_tracker_ids_serialize(const struct lttng_tracker_ids *ids,
+		struct lttng_dynamic_buffer *buffer)
+{
+	int ret;
+	int value;
+	const char *string;
+	unsigned int count;
+	enum lttng_tracker_id_status status;
+	const struct lttng_tracker_id *id;
+
+	status = lttng_tracker_ids_get_count(ids, &count);
+	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+	for (unsigned int i = 0; i < count; i++) {
+		struct lttcomm_tracker_id_header id_hdr;
+		size_t var_data_len = 0;
+
+		id = lttng_tracker_ids_get_at_index(ids, i);
+		if (!id) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
+
+		memset(&id_hdr, 0, sizeof(id_hdr));
+		id_hdr.type = lttng_tracker_id_get_type(id);
+		switch (id_hdr.type) {
+		case LTTNG_ID_ALL:
+			break;
+		case LTTNG_ID_VALUE:
+			status = lttng_tracker_id_get_value(id, &value);
+			id_hdr.u.value = value;
+			if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
+			break;
+		case LTTNG_ID_STRING:
+			status = lttng_tracker_id_get_string(
+					id, &string);
+			if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+				ret = -LTTNG_ERR_INVALID;
+				goto error;
+			}
+
+			id_hdr.u.var_data_len = var_data_len =
+					strlen(string) + 1;
+			break;
+		default:
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
+		ret = lttng_dynamic_buffer_append(
+				buffer, &id_hdr, sizeof(id_hdr));
+		if (ret) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto error;
+		}
+		ret = lttng_dynamic_buffer_append(
+				buffer, string, var_data_len);
+		if (ret) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto error;
+		}
+	}
+error:
+	return ret;
+}

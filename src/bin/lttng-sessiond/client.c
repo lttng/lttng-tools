@@ -28,6 +28,7 @@
 #include <lttng/event-internal.h>
 #include <lttng/session-internal.h>
 #include <lttng/session-descriptor-internal.h>
+#include <lttng/tracker-internal.h>
 
 #include "client.h"
 #include "lttng-sessiond.h"
@@ -1570,7 +1571,7 @@ error_add_context:
 		struct lttcomm_tracker_command_header cmd_header;
 		struct lttng_tracker_ids *ids = NULL;
 		enum lttng_tracker_id_status status;
-		unsigned int nr_ids, i;
+		unsigned int nr_ids;
 		struct lttng_dynamic_buffer buf;
 
 		ret = cmd_list_tracker_ids(
@@ -1581,77 +1582,28 @@ error_add_context:
 			goto error;
 		}
 
+		lttng_dynamic_buffer_init(&buf);
+
 		status = lttng_tracker_ids_get_count(ids, &nr_ids);
 		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			ret = LTTNG_ERR_INVALID;
+			ret = -LTTNG_ERR_INVALID;
 			goto error_list_tracker;
 		}
 
-		lttng_dynamic_buffer_init(&buf);
-		for (i = 0; i < nr_ids; i++) {
-			const struct lttng_tracker_id *id;
-			struct lttcomm_tracker_id_header id_hdr;
-			size_t var_data_len = 0;
-			enum lttng_tracker_id_status status;
-			const char *string;
-			int value;
+		cmd_header.nb_tracker_id = nr_ids;
 
-			id = lttng_tracker_ids_get_at_index(ids, i);
-			if (!id) {
-				ret = LTTNG_ERR_INVALID;
-				goto error_list_tracker;
-			}
-
-			memset(&id_hdr, 0, sizeof(id_hdr));
-			id_hdr.type = lttng_tracker_id_get_type(id);
-			switch (id_hdr.type) {
-			case LTTNG_ID_ALL:
-				break;
-			case LTTNG_ID_VALUE:
-				status = lttng_tracker_id_get_value(id, &value);
-				id_hdr.u.value = value;
-				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-					ret = LTTNG_ERR_INVALID;
-					goto error_list_tracker;
-				}
-				break;
-			case LTTNG_ID_STRING:
-				status = lttng_tracker_id_get_string(
-						id, &string);
-				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-					ret = LTTNG_ERR_INVALID;
-					goto error_list_tracker;
-				}
-
-				id_hdr.u.var_data_len = var_data_len =
-						strlen(string) + 1;
-				break;
-			default:
-				ret = LTTNG_ERR_INVALID;
-				goto error_list_tracker;
-			}
-			ret = lttng_dynamic_buffer_append(
-					&buf, &id_hdr, sizeof(id_hdr));
-			if (ret) {
-				ret = LTTNG_ERR_NOMEM;
-				goto error_list_tracker;
-			}
-			ret = lttng_dynamic_buffer_append(
-					&buf, string, var_data_len);
-			if (ret) {
-				ret = LTTNG_ERR_NOMEM;
-				goto error_list_tracker;
-			}
+		ret = lttng_tracker_ids_serialize(ids, &buf);
+		if (ret < 0) {
+			goto error_list_tracker;
 		}
 
-		cmd_header.nb_tracker_id = nr_ids;
 		ret = setup_lttng_msg(cmd_ctx, buf.data, buf.size, &cmd_header,
 				sizeof(cmd_header));
 	error_list_tracker:
 		lttng_tracker_ids_destroy(ids);
 		lttng_dynamic_buffer_reset(&buf);
 		if (ret < 0) {
-			goto setup_error;
+			goto error;
 		}
 
 		ret = LTTNG_OK;
