@@ -109,6 +109,17 @@ int main(int argc, char **argv)
 
 	if (optind != argc) {
 		fprintf(stderr, "Error: takes long options only.\n");
+
+		/*
+		 * Aborting the test program for now because callers typically don't check
+		 * the test program return value, and the transition from positional
+		 * arguments to getopt causes hangs when caller scripts are not updated.
+		 * An abort is easier to diagnose and fix. This is a temporary solution:
+		 * we should eventually ensure that all scripts test and report the test
+		 * app return values.
+		 */
+		abort();
+
 		ret = -1;
 		goto end;
 	}
