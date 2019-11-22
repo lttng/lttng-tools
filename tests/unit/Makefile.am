@@ -17,12 +17,14 @@ TESTS = test_kernel_data \
 	test_notification \
 	test_directory_handle \
 	test_relayd_backward_compat_group_by_session \
-	ini_config/test_ini_config
+	ini_config/test_ini_config \
+	test_fd_tracker
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
 LIBCOMMON=$(top_builddir)/src/common/libcommon.la
 LIBSTRINGUTILS=$(top_builddir)/src/common/string-utils/libstring-utils.la
+LIBFDTRACKER=$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
@@ -33,7 +35,8 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
                   test_utils_expand_path test_utils_compat_poll \
                   test_string_utils test_notification test_directory_handle \
-                  test_relayd_backward_compat_group_by_session
+                  test_relayd_backward_compat_group_by_session \
+                  test_fd_tracker
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -179,3 +182,7 @@ test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
 test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
 test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(RELAYD_OBJS)
 test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/bin/lttng-relayd
+
+# fd tracker unit test
+test_fd_tracker_SOURCES = test_fd_tracker.c
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON) $(LIBHASHTABLE)
