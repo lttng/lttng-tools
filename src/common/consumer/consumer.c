@@ -1014,13 +1014,6 @@ int lttng_consumer_channel_set_trace_chunk(
 		struct lttng_consumer_channel *channel,
 		struct lttng_trace_chunk *new_trace_chunk)
 {
-	int ret = 0;
-	const bool is_local_trace = channel->relayd_id == -1ULL;
-	bool update_stream_trace_chunk;
-	struct cds_lfht_iter iter;
-	struct lttng_consumer_stream *stream;
-	unsigned long channel_hash;
-
 	pthread_mutex_lock(&channel->lock);
 	if (channel->is_deleted) {
 		/*
@@ -1032,24 +1025,6 @@ int lttng_consumer_channel_set_trace_chunk(
 		 */
 		goto end;
 	}
-	/*
-	 * A stream can transition to a state where it and its channel
-	 * no longer belong to a trace chunk. For instance, this happens when
-	 * a session is rotated while it is inactive. After the rotation
-	 * of an inactive session completes, the channel and its streams no
-	 * longer belong to a trace chunk.
-	 *
-	 * However, if a session is stopped, rotated, and started again,
-	 * the session daemon will create a new chunk and send it to its peers.
-	 * In that case, the streams' transition to a new chunk can be performed
-	 * immediately.
-	 *
-	 * This trace chunk transition could also be performed lazily when
-	 * a buffer is consumed. However, creating the files here allows the
-	 * consumer daemon to report any creation error to the session daemon
-	 * and cause the start of the tracing session to fail.
-	 */
-	update_stream_trace_chunk = !channel->trace_chunk && new_trace_chunk;
 
 	/*
 	 * The acquisition of the reference cannot fail (barring
@@ -1065,59 +1040,9 @@ int lttng_consumer_channel_set_trace_chunk(
 
 	lttng_trace_chunk_put(channel->trace_chunk);
 	channel->trace_chunk = new_trace_chunk;
-	if (!is_local_trace || !new_trace_chunk) {
-		/* Not an error. */
-		goto end;
-	}
-
-	if (!update_stream_trace_chunk) {
-		goto end;
-	}
-
-	channel_hash = consumer_data.stream_per_chan_id_ht->hash_fct(
-			&channel->key, lttng_ht_seed);
-	rcu_read_lock();
-	cds_lfht_for_each_entry_duplicate(consumer_data.stream_per_chan_id_ht->ht,
-			channel_hash,
-			consumer_data.stream_per_chan_id_ht->match_fct,
-			&channel->key, &iter, stream, node_channel_id.node) {
-		bool acquired_reference, should_regenerate_metadata = false;
-
-		acquired_reference = lttng_trace_chunk_get(channel->trace_chunk);
-		assert(acquired_reference);
-
-		pthread_mutex_lock(&stream->lock);
-
-		/*
-		 * On a transition from "no-chunk" to a new chunk, a metadata
-		 * stream's content must be entirely dumped. This must occcur
-		 * _after_ the creation of the metadata stream's output files
-		 * as the consumption thread (not necessarily the one executing
-		 * this) may start to consume during the call to
-		 * consumer_metadata_stream_dump().
-		 */
-		should_regenerate_metadata =
-			stream->metadata_flag &&
-			!stream->trace_chunk && channel->trace_chunk;
-		stream->trace_chunk = channel->trace_chunk;
-		ret = consumer_stream_create_output_files(stream, true);
-		if (ret) {
-			pthread_mutex_unlock(&stream->lock);
-			goto end_rcu_unlock;
-		}
-		if (should_regenerate_metadata) {
-			ret = consumer_metadata_stream_dump(stream);
-		}
-		pthread_mutex_unlock(&stream->lock);
-		if (ret) {
-			goto end_rcu_unlock;
-		}
-	}
-end_rcu_unlock:
-	rcu_read_unlock();
 end:
 	pthread_mutex_unlock(&channel->lock);
-	return ret;
+	return 0;
 }
 
 /*
