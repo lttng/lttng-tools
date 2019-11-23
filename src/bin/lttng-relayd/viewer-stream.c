@@ -160,9 +160,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 
 	/* Globally visible after the add unique. */
 	lttng_ht_node_init_u64(&vstream->stream_n, stream->stream_handle);
-	lttng_ht_add_unique_u64(viewer_streams_ht, &vstream->stream_n);
-
 	urcu_ref_init(&vstream->ref);
+	lttng_ht_add_unique_u64(viewer_streams_ht, &vstream->stream_n);
 
 	return vstream;
 
