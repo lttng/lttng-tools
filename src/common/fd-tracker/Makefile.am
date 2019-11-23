@@ -6,4 +6,7 @@ else
 COMPAT=utils-poll.c
 endif
 
-libfd_tracker_la_SOURCES = fd-tracker.h fd-tracker.c utils.h utils.c $(COMPAT)
+libfd_tracker_la_SOURCES = fd-tracker.h fd-tracker.c \
+                           utils.h utils.c \
+                           inode.h inode.c \
+                           $(COMPAT)
