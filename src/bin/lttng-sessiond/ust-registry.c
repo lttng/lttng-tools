@@ -549,8 +549,8 @@ static void destroy_enum_rcu(struct rcu_head *head)
  * Lookup enumeration by name and comparing enumeration entries.
  * Needs to be called from RCU read-side critical section.
  */
-struct ust_registry_enum *
-	ust_registry_lookup_enum(struct ust_registry_session *session,
+static struct ust_registry_enum *ust_registry_lookup_enum(
+		struct ust_registry_session *session,
 		const struct ust_registry_enum *reg_enum_lookup)
 {
 	struct ust_registry_enum *reg_enum = NULL;
@@ -681,7 +681,7 @@ end:
  * the enumeration.
  * This MUST be called within a RCU read side lock section.
  */
-void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
+static void ust_registry_destroy_enum(struct ust_registry_session *reg_session,
 		struct ust_registry_enum *reg_enum)
 {
 	int ret;
