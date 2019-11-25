@@ -769,6 +769,7 @@ end:
 	return ret;
 }
 
+static
 void *thread_rotation(void *data)
 {
 	int ret;
