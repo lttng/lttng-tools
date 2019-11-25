@@ -87,6 +87,7 @@ void wait_on_file(const char *path, bool file_exist)
 	}
 }
 
+static
 int write_pipe(const char *path, uint8_t data)
 {
 	int ret = 0;
@@ -118,6 +119,7 @@ end:
 	return ret;
 }
 
+static
 int stop_consumer(const char **argv)
 {
 	int ret = 0, i;
@@ -128,6 +130,7 @@ int stop_consumer(const char **argv)
 	return ret;
 }
 
+static
 int resume_consumer(const char **argv)
 {
 	int ret = 0, i;
@@ -138,7 +141,8 @@ int resume_consumer(const char **argv)
 	return ret;
 }
 
-int suspend_application()
+static
+int suspend_application(void)
 {
 	int ret;
 	struct stat buf;
@@ -166,6 +170,7 @@ error:
 
 }
 
+static
 int resume_application()
 {
 	int ret;
@@ -196,6 +201,7 @@ error:
 }
 
 
+static
 void test_triggers_buffer_usage_condition(const char *session_name,
 		const char *channel_name,
 		enum lttng_domain_type domain_type,
@@ -389,6 +395,7 @@ void wait_data_pending(const char *session_name)
 	} while (ret != 0);
 }
 
+static
 void test_notification_channel(const char *session_name, const char *channel_name, const enum lttng_domain_type domain_type, const char **argv)
 {
 	int ret = 0;

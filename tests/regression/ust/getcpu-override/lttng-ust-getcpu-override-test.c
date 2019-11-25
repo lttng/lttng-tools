@@ -18,6 +18,7 @@
 
 static long nprocessors;
 
+static
 int plugin_getcpu(void)
 {
 	/* Generate a sequence based on the number of configurated processor
@@ -57,6 +58,7 @@ int plugin_getcpu(void)
 	return ret;
 }
 
+void lttng_ust_getcpu_plugin_init(void);
 void lttng_ust_getcpu_plugin_init(void)
 {
 	int ret;

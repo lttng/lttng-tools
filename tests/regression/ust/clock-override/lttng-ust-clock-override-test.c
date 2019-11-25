@@ -49,6 +49,7 @@ const char *plugin_description(void)
 	return "Freeze time with 1KHz for regression test";
 }
 
+void lttng_ust_clock_plugin_init(void);
 void lttng_ust_clock_plugin_init(void)
 {
 	int ret;

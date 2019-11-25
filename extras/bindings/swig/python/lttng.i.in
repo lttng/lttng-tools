@@ -29,6 +29,9 @@ multiple concurrent processes and threads. Tracing across multiple systems is al
 // This makes the typemap code useable with both Python 2 and 3.
 #define PyInt_AsSsize_t PyLong_AsSsize_t
 #endif
+
+// Avoid -Wmissing-declarations warning.
+PyObject *SWIG_init(void);
 %}
 
 typedef unsigned int uint32_t;
