@@ -500,18 +500,17 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		if (tracker->count.suspendable.active > 0) {
 			ret = fd_tracker_suspend_handles(tracker, 1);
 			if (ret) {
-				goto error_destroy;
+				goto end;
 			}
 		} else {
 			/*
 			 * There are not enough active suspendable file
-			 * descriptors to open a new fd and still accomodate the
-			 * tracker's capacity.
+			 * descriptors to open a new fd and still accommodate
+			 * the tracker's capacity.
 			 */
 			WARN("Cannot open file system handle, too many unsuspendable file descriptors are opened (%u)",
 					tracker->count.unsuspendable);
-			ret = -EMFILE;
-			goto error_destroy;
+			goto end;
 		}
 	}
 
@@ -524,15 +523,13 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	ret = pthread_mutex_init(&handle->lock, NULL);
 	if (ret) {
 		PERROR("Failed to initialize handle mutex while creating fs handle");
-		free(handle);
-		goto error_free;
+		goto error_mutex_init;
 	}
 
 	handle->fd = open_from_properties(path, &properties);
 	if (handle->fd < 0) {
 		PERROR("Failed to open fs handle to %s, open() returned", path);
-		ret = -errno;
-		goto error_destroy;
+		goto error;
 	}
 
 	handle->properties = properties;
@@ -542,28 +539,26 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	if (!handle->inode) {
 		ERR("Failed to get lttng_inode corresponding to file %s",
 				path);
-		goto error_destroy;
+		goto error;
 	}
 
 	if (fstat(handle->fd, &fd_stat)) {
 		PERROR("Failed to retrieve file descriptor inode while creating fs handle, fstat() returned");
-		ret = -errno;
-		goto error_destroy;
+		goto error;
 	}
 	handle->ino = fd_stat.st_ino;
 
 	fd_tracker_track(tracker, handle);
-	pthread_mutex_unlock(&tracker->lock);
 end:
+	pthread_mutex_unlock(&tracker->lock);
 	return handle;
-error_destroy:
-	pthread_mutex_destroy(&handle->lock);
-error_free:
+error:
 	if (handle->inode) {
 		lttng_inode_put(handle->inode);
 	}
+	pthread_mutex_destroy(&handle->lock);
+error_mutex_init:
 	free(handle);
-	pthread_mutex_unlock(&tracker->lock);
 	handle = NULL;
 	goto end;
 }
