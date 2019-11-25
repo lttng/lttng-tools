@@ -15,6 +15,7 @@
 #include "callsites.h"
 #endif
 
+void exec_callsite();
 void exec_callsite()
 {
 #if HAS_CALLSITES
@@ -22,6 +23,7 @@ void exec_callsite()
 #endif
 }
 
+static
 void print_list(void)
 {
 	fprintf(stderr, "Test list (-t X):\n");
@@ -31,6 +33,8 @@ void print_list(void)
 	fprintf(stderr, "\t2: simulate the upgrade of a library containing the callsites using dlopen() and dlclose(). \n");
 }
 
+#if HAS_CALLSITES
+static
 int dl_open_all(int nb_libraries, char **libraries)
 {
 	int i, ret = 0;
@@ -61,6 +65,7 @@ error:
  * Takes 2 paths to libraries, dlopen() the first, trace, dlopen() the second,
  * and dlclose the first to simulate the upgrade of a library.
  */
+static
 int upgrade_lib(int nb_libraries, char **libraries)
 {
 	int i, ret = 0;
@@ -92,11 +97,14 @@ int upgrade_lib(int nb_libraries, char **libraries)
 error:
 	return ret;
 }
+#endif /* HAS_CALLSITES */
 
+#if !HAS_CALLSITES
 /*
  * Simulate the upgrade of a library containing a callsite.
  * Receives two libraries containing callsites for the same tracepoint.
  */
+static
 int upgrade_callsite(int nb_libraries, char **libraries)
 {
 	int ret = 0;
@@ -159,6 +167,7 @@ int upgrade_callsite(int nb_libraries, char **libraries)
 error:
 	return ret;
 }
+#endif /* !HAS_CALLSITES */
 
 int main(int argc, const char **argv)
 {

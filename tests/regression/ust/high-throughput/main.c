@@ -21,10 +21,12 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
+static
 void inthandler(int sig)
 {
 }
 
+static
 int init_int_handler(void)
 {
 	int result;

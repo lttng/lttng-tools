@@ -22,6 +22,7 @@
 
 const char *session_name;
 
+static
 bool schedules_equal(const struct lttng_rotation_schedule *a,
 		const struct lttng_rotation_schedule *b)
 {
@@ -84,6 +85,7 @@ end:
 	return equal;
 }
 
+static
 void test_add_null_session(void)
 {
 	enum lttng_rotation_status status;
@@ -97,6 +99,7 @@ void test_add_null_session(void)
 	lttng_rotation_schedule_destroy(size_schedule);
 }
 
+static
 void test_add_null_schedule(void)
 {
 	enum lttng_rotation_status status;
@@ -106,6 +109,7 @@ void test_add_null_schedule(void)
 			"NULL schedule rejected by lttng_session_add_rotation_schedule()");
 }
 
+static
 void test_add_uninitialized_schedule(void)
 {
 	enum lttng_rotation_status status;
@@ -132,6 +136,7 @@ void test_add_uninitialized_schedule(void)
 	lttng_rotation_schedule_destroy(periodic_schedule);
 }
 
+static
 void test_remove_null_session(void)
 {
 	enum lttng_rotation_status status;
@@ -145,6 +150,7 @@ void test_remove_null_session(void)
 	lttng_rotation_schedule_destroy(size_schedule);
 }
 
+static
 void test_remove_null_schedule(void)
 {
 	enum lttng_rotation_status status;
@@ -154,6 +160,7 @@ void test_remove_null_schedule(void)
 			"NULL schedule rejected by lttng_session_remove_rotation_schedule()");
 }
 
+static
 void test_remove_uninitialized_schedule(void)
 {
 	enum lttng_rotation_status status;
@@ -176,6 +183,7 @@ void test_remove_uninitialized_schedule(void)
 	lttng_rotation_schedule_destroy(periodic_schedule);
 }
 
+static
 void test_uninitialized_schedule_get(void)
 {
 	uint64_t value;
@@ -200,6 +208,7 @@ void test_uninitialized_schedule_get(void)
 
 }
 
+static
 void test_add_list_remove_schedule(
 		const struct lttng_rotation_schedule *original_schedule)
 {
@@ -249,6 +258,7 @@ void test_add_list_remove_schedule(
 
 }
 
+static
 void test_add_list_remove_size_schedule(void)
 {
 	struct lttng_rotation_schedule *size_schedule;
@@ -261,6 +271,7 @@ void test_add_list_remove_size_schedule(void)
 	lttng_rotation_schedule_destroy(size_schedule);
 }
 
+static
 void test_add_list_remove_periodic_schedule(void)
 {
 	struct lttng_rotation_schedule *periodic_schedule;
