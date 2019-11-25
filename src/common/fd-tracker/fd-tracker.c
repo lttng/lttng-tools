@@ -870,7 +870,9 @@ int fs_handle_close(struct fs_handle *handle)
 		}
 		handle->fd = -1;
 	}
-	lttng_inode_put(handle->inode);
+	if (handle->inode) {
+		lttng_inode_put(handle->inode);
+	}
 	pthread_mutex_unlock(&handle->lock);
 	pthread_mutex_destroy(&handle->lock);
 	pthread_mutex_unlock(&handle->tracker->lock);
