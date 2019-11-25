@@ -47,6 +47,7 @@ void __attribute__((destructor)) pause_pipe_fini(void)
  * thread to create a named pipe/FIFO which a test application can use to either
  * pause or resume the consumption of data.
  */
+int __testpoint_consumerd_thread_data(void);
 int __testpoint_consumerd_thread_data(void)
 {
 	int ret = 0;
@@ -106,6 +107,7 @@ end:
 	return ret;
 }
 
+int __testpoint_consumerd_thread_data_poll(void);
 int __testpoint_consumerd_thread_data_poll(void)
 {
 	int ret = 0;
