@@ -324,7 +324,7 @@ error:
  * The returned string was allocated in the function, it is thus of
  * the responsibility of the caller to free this memory.
  */
-LTTNG_HIDDEN
+static
 char *_utils_expand_path(const char *path, bool keep_symlink)
 {
 	int ret;
