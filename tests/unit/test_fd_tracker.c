@@ -83,7 +83,9 @@ int fd_count(void)
 	}
 	/* Don't account for the file descriptor opened by opendir(). */
         count--;
-	closedir(dir);
+	if (closedir(dir)) {
+		perror("# Failed to close test program's self/fd directory file descriptor");
+	}
 end:
 	return count;
 }
