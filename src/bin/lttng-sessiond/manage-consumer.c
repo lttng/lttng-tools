@@ -61,7 +61,7 @@ static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
 /*
  * This thread manage the consumer error sent back to the session daemon.
  */
-void *thread_consumer_management(void *data)
+static void *thread_consumer_management(void *data)
 {
 	int sock = -1, i, ret, pollfd, err = -1, should_quit = 0;
 	uint32_t revents, nb_fd;
