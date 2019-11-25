@@ -42,6 +42,7 @@
 
 volatile int val = 0;
 
+long nooptimization my_gettid(void);
 long nooptimization
 my_gettid(void)
 {
@@ -68,12 +69,14 @@ my_gettid(void)
     return ret;
 }
 
+int nooptimization fct_c(void);
 int nooptimization
 fct_c(void)
 {
 	return my_gettid();
 }
 
+int nooptimization fct_b(void);
 int nooptimization
 fct_b(void)
 {
@@ -81,6 +84,7 @@ fct_b(void)
 	return val;
 }
 
+int nooptimization fct_a(void);
 int nooptimization
 fct_a(void)
 {
