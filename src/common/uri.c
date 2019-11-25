@@ -61,7 +61,7 @@ static const struct uri_proto proto_uri[] = {
  * Return pointer to the character in s matching one of the characters in
  * accept. If nothing is found, return pointer to the end of string (eos).
  */
-static const inline char *strpbrk_or_eos(const char *s, const char *accept)
+static inline const char *strpbrk_or_eos(const char *s, const char *accept)
 {
 	char *p = strpbrk(s, accept);
 	if (p == NULL) {
