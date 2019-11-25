@@ -47,7 +47,8 @@ int lttng_opt_mi;
 
 #define NUM_TESTS 182
 
-void test_condition_buffer_usage(struct lttng_condition *buffer_usage_condition)
+static void test_condition_buffer_usage(
+		struct lttng_condition *buffer_usage_condition)
 {
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 	const char *session_name = NULL;
@@ -261,8 +262,7 @@ void test_condition_buffer_usage(struct lttng_condition *buffer_usage_condition)
 	ok(domain_type == LTTNG_DOMAIN_UST, "Domain type is LTTNG_DOMAIN_UST");
 }
 
-
-void test_condition_buffer_usage_low(void)
+static void test_condition_buffer_usage_low(void)
 {
 	struct lttng_condition *buffer_usage_low = NULL;
 
@@ -277,7 +277,7 @@ void test_condition_buffer_usage_low(void)
 	lttng_condition_destroy(buffer_usage_low);
 }
 
-void test_condition_buffer_usage_high(void)
+static void test_condition_buffer_usage_high(void)
 {
 	struct lttng_condition *buffer_usage_high = NULL;
 
@@ -292,7 +292,7 @@ void test_condition_buffer_usage_high(void)
 	lttng_condition_destroy(buffer_usage_high);
 }
 
-void test_action(void)
+static void test_action(void)
 {
 	struct lttng_action *notify_action = NULL;
 
@@ -302,7 +302,7 @@ void test_action(void)
 	lttng_action_destroy(notify_action);
 }
 
-void test_trigger(void)
+static void test_trigger(void)
 {
 	struct lttng_action *notify_action = NULL;
 	struct lttng_condition *buffer_usage_high = NULL;
