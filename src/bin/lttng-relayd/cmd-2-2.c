@@ -17,6 +17,7 @@
 #include <common/compat/string.h>
 #include <lttng/constant.h>
 
+#include "cmd-2-2.h"
 #include "cmd-2-1.h"
 #include "utils.h"
 
