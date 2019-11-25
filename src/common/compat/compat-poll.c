@@ -314,7 +314,6 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 		ERR("poll wait arguments error");
 		goto error;
 	}
-	assert(events->current.nb_fd >= 0);
 
 	if (events->current.nb_fd == 0) {
 		/* Return an invalid error to be consistent with epoll. */
