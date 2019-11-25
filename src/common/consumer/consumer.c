@@ -2174,6 +2174,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 }
 
+static
 void lttng_consumer_close_all_metadata(void)
 {
 	switch (consumer_data.type) {
