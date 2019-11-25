@@ -216,20 +216,20 @@ end:
 	return ret;
 }
 
-void test_session_list(void)
+static void test_session_list(void)
 {
 	session_list = session_get_list();
 	ok(session_list != NULL, "Session list: not NULL");
 }
 
-void test_create_one_session(void)
+static void test_create_one_session(void)
 {
 	ok(create_one_session(SESSION1) == 0,
 	   "Create session: %s",
 	   SESSION1);
 }
 
-void test_validate_session(void)
+static void test_validate_session(void)
 {
 	struct ltt_session *tmp;
 
@@ -255,7 +255,7 @@ end:
 	session_unlock_list();
 }
 
-void test_destroy_session(void)
+static void test_destroy_session(void)
 {
 	struct ltt_session *tmp;
 
@@ -275,13 +275,13 @@ void test_destroy_session(void)
 	session_unlock_list();
 }
 
-void test_duplicate_session(void)
+static void test_duplicate_session(void)
 {
 	ok(two_session_same_name() == 0,
 	   "Duplicate session creation");
 }
 
-void test_session_name_generation(void)
+static void test_session_name_generation(void)
 {
 	struct ltt_session *session = NULL;
 	enum lttng_error_code ret_code;
@@ -306,7 +306,7 @@ end:
 	session_unlock_list();
 }
 
-void test_large_session_number(void)
+static void test_large_session_number(void)
 {
 	int ret, i, failed = 0;
 	struct ltt_session *iter, *tmp;
