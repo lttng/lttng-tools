@@ -363,7 +363,7 @@ const char *mi_lttng_logleveltype_string(enum lttng_loglevel_type value)
 	}
 }
 
-LTTNG_HIDDEN
+static
 const char *mi_lttng_eventtype_string(enum lttng_event_type value)
 {
 	switch (value) {
@@ -1313,7 +1313,7 @@ end:
 	return ret;
 }
 
-LTTNG_HIDDEN
+static
 int mi_lttng_event_userspace_probe(struct mi_writer *writer,
 		struct lttng_event *event)
 {
