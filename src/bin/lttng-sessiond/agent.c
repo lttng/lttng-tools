@@ -830,7 +830,8 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-int disable_context(struct agent_app_ctx *ctx, enum lttng_domain_type domain)
+static int disable_context(struct agent_app_ctx *ctx,
+		enum lttng_domain_type domain)
 {
 	int ret = LTTNG_OK;
 	struct agent_app *app;
