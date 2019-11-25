@@ -2812,6 +2812,7 @@ int lttng_set_consumer_url(struct lttng_handle *handle,
 /*
  * [OBSOLETE]
  */
+int lttng_enable_consumer(struct lttng_handle *handle);
 int lttng_enable_consumer(struct lttng_handle *handle)
 {
 	return -ENOSYS;
@@ -2820,6 +2821,7 @@ int lttng_enable_consumer(struct lttng_handle *handle)
 /*
  * [OBSOLETE]
  */
+int lttng_disable_consumer(struct lttng_handle *handle);
 int lttng_disable_consumer(struct lttng_handle *handle)
 {
 	return -ENOSYS;
@@ -2828,6 +2830,8 @@ int lttng_disable_consumer(struct lttng_handle *handle)
 /*
  * [OBSOLETE]
  */
+int _lttng_create_session_ext(const char *name, const char *url,
+		const char *datetime);
 int _lttng_create_session_ext(const char *name, const char *url,
 		const char *datetime)
 {
