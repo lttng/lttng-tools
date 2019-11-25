@@ -42,7 +42,9 @@ int handle_condition(
 		const struct lttng_condition *condition,
 		const struct lttng_evaluation *condition_evaluation);
 
-int parse_arguments(char **argv) {
+static
+int parse_arguments(char **argv)
+{
 	const char *domain_type_string = NULL;
 	const char *buffer_usage_type_string = NULL;
 	const char *buffer_usage_threshold_type = NULL;
