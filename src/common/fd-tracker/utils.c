@@ -24,14 +24,7 @@
 static
 int open_pipe_cloexec(void *data, int *fds)
 {
-	int ret;
-
-	ret = utils_create_pipe_cloexec(fds);
-	if (ret < 0) {
-		goto end;
-	}
-end:
-	return ret;
+	return utils_create_pipe_cloexec(fds);
 }
 
 static
