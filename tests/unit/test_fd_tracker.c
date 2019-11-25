@@ -700,7 +700,8 @@ void test_unlink(void)
 
 	/* Open two handles to the same file. */
 	ret = open_same_file(tracker, file_path, handles_to_open, handles);
-	ok(!ret, "Successfully %i handles to %s", handles_to_open);
+	ok(!ret, "Successfully opened %i handles to %s", handles_to_open,
+			file_path);
 	if (ret) {
 		return;
 	}
