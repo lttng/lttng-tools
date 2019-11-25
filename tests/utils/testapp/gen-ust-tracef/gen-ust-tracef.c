@@ -23,6 +23,7 @@
 
 const char *str = "test string";
 
+static
 void create_file(const char *path)
 {
 	int ret;
