@@ -34,8 +34,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 0;
 int lttng_opt_mi;
 
-int entry_handler(const struct config_entry *entry,
-		struct state *state)
+static int entry_handler(const struct config_entry *entry, struct state *state)
 {
 	int ret = 0;
 
