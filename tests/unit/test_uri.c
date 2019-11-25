@@ -30,7 +30,7 @@ int lttng_opt_mi;
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
-void test_uri_parsing(void)
+static void test_uri_parsing(void)
 {
 	ssize_t size;
 	const char *s_uri1;
@@ -198,7 +198,7 @@ void test_uri_parsing(void)
 	assert(!uri);
 }
 
-void test_uri_cmp()
+static void test_uri_cmp()
 {
 	struct lttng_uri *uri1, *uri2;
 	const char *s_uri1 = "net://localhost";
