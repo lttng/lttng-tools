@@ -14,9 +14,6 @@
 #include "filter-ast.h"
 #include "filter-parser.h"
 
-extern
-void setstring(struct filter_parser_ctx *parser_ctx, YYSTYPE *lvalp, const char *src);
-
 static void yyunput (int c, register char * yy_bp , yyscan_t yyscanner)
 	__attribute__((unused));
 static int input (yyscan_t yyscanner) __attribute__((unused));
