@@ -709,11 +709,6 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 	pthread_mutex_unlock(&consumer_data.lock);
 }
 
-void consumer_del_data_stream(struct lttng_consumer_stream *stream)
-{
-	consumer_del_stream(stream, data_ht);
-}
-
 /*
  * Add relayd socket to global consumer data hashtable. RCU read side lock MUST
  * be acquired before calling this.
