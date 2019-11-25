@@ -123,7 +123,7 @@ static const int num_invalid_tests =
 #define PRINT_ERR(fmt, args...)						\
 	fprintf(stderr, "test_utils_expand_path: error: " fmt "\n", ## args)
 
-int prepare_valid_results(void)
+static int prepare_valid_results(void)
 {
 	int i;
 	char *relative, *cur_path = NULL, *prev_path = NULL,
@@ -179,7 +179,7 @@ end:
 	return ret;
 }
 
-int free_valid_results(void)
+static int free_valid_results(void)
 {
 	int i;
 
@@ -192,7 +192,7 @@ int free_valid_results(void)
 	return 0;
 }
 
-int prepare_symlink_tree(void)
+static int prepare_symlink_tree(void)
 {
 	int i;
 	char tmppath[PATH_MAX] = {};
@@ -232,7 +232,7 @@ error:
 	return 1;
 }
 
-int free_symlink_tree(void)
+static int free_symlink_tree(void)
 {
 	int i;
 	char tmppath[PATH_MAX];
