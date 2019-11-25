@@ -666,7 +666,7 @@ void test_unlink(void)
 	char tmp_path_pattern[] = TMP_DIR_PATTERN;
 	const char *output_dir;
 	struct fs_handle *handles[handles_to_open];
-	struct fs_handle *new_handle;
+	struct fs_handle *new_handle = NULL;
 	char *file_path;
 	char *unlinked_file_path;
 	char *unlinked_file_path_suffix;
