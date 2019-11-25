@@ -111,33 +111,6 @@ end:
 	return queue;
 }
 
-void log_job_destruction(const struct rotation_thread_job *job)
-{
-	enum lttng_error_level log_level;
-	const char *job_type_str = get_job_type_str(job->type);
-
-	switch (job->type) {
-	case ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION:
-		/*
-		 * Not a problem, the scheduled rotation is racing with the teardown
-		 * of the daemon. In this case, the rotation will not happen, which
-		 * is not a problem (or at least, not important enough to delay
-		 * the shutdown of the session daemon).
-		 */
-		log_level = PRINT_DBG;
-		break;
-	case ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION:
-		/* This is not expected to happen; warn the user. */
-		log_level = PRINT_WARN;
-		break;
-	default:
-		abort();
-	}
-
-	LOG(log_level, "Rotation thread timer queue still contains job of type %s targeting session \"%s\" on destruction",
-			job_type_str, job->session->name);
-}
-
 void rotation_thread_timer_queue_destroy(
 		struct rotation_thread_timer_queue *queue)
 {
