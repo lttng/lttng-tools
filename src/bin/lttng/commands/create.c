@@ -637,6 +637,7 @@ end:
 	return ret;
 }
 
+static
 int validate_url_option_combination(void)
 {
 	int ret = 0;
