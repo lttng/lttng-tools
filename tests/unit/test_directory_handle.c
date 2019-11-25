@@ -126,6 +126,7 @@ end:
 }
 
 /* Remove "file1" from the test folder hierarchy. */
+static
 int remove_file_from_hierarchy(struct lttng_directory_handle *test_dir_handle,
 		const char *test_root_name)
 {
