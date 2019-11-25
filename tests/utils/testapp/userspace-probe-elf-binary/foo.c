@@ -16,6 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "foo.h"
+
 int dynamic_symbol(int a)
 {
 	return a + a;
