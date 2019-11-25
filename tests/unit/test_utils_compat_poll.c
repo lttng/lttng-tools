@@ -71,7 +71,7 @@ void test_epoll_compat(void)
 }
 #endif
 
-void test_alloc(void)
+static void test_alloc(void)
 {
 	struct lttng_poll_event poll_events;
 
@@ -92,7 +92,7 @@ void test_alloc(void)
 }
 
 /* Tests stuff related to what would be handled with epoll_ctl. */
-void test_add_del(void)
+static void test_add_del(void)
 {
 	struct lttng_poll_event poll_events;
 
@@ -130,7 +130,7 @@ void test_add_del(void)
 	lttng_poll_clean(&poll_events);
 }
 
-void test_mod_wait(void)
+static void test_mod_wait(void)
 {
 	struct lttng_poll_event poll_events;
 	struct lttng_poll_event cpoll_events;
@@ -186,7 +186,7 @@ void test_mod_wait(void)
 	}
 }
 
-void test_func_def(void)
+static void test_func_def(void)
 {
 #ifdef LTTNG_POLL_GETFD
 #define PASS_GETFD 1
