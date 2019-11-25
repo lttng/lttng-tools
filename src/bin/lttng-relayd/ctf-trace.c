@@ -44,7 +44,7 @@ static void rcu_destroy_ctf_trace(struct rcu_head *rcu_head)
  *
  * MUST be called with the RCU read side lock.
  */
-void ctf_trace_destroy(struct ctf_trace *trace)
+static void ctf_trace_destroy(struct ctf_trace *trace)
 {
 	/*
 	 * Getting to this point, every stream referenced by that trace
@@ -59,7 +59,7 @@ void ctf_trace_destroy(struct ctf_trace *trace)
 	call_rcu(&trace->rcu_node, rcu_destroy_ctf_trace);
 }
 
-void ctf_trace_release(struct urcu_ref *ref)
+static void ctf_trace_release(struct urcu_ref *ref)
 {
 	struct ctf_trace *trace =
 		caa_container_of(ref, struct ctf_trace, ref);
