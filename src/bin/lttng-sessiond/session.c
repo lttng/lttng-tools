@@ -302,7 +302,7 @@ end:
  *
  * The session list lock must be held.
  */
-int ltt_sessions_ht_alloc(void)
+static int ltt_sessions_ht_alloc(void)
 {
 	int ret = 0;
 
