@@ -267,22 +267,6 @@ void uri_free(struct lttng_uri *uri)
 }
 
 /*
- * Return an allocated URI.
- */
-LTTNG_HIDDEN
-struct lttng_uri *uri_create(void)
-{
-	struct lttng_uri *uri;
-
-	uri = zmalloc(sizeof(struct lttng_uri));
-	if (uri == NULL) {
-		PERROR("zmalloc uri");
-	}
-
-	return uri;
-}
-
-/*
  * Parses a string URI to a lttng_uri. This function can potentially return
  * more than one URI in uris so the size of the array is returned and uris is
  * allocated and populated. Caller must free(3) the array.
