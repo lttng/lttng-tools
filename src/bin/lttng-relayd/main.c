@@ -859,7 +859,8 @@ static int init_health_quit_pipe(void)
 /*
  * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
  */
-static int create_thread_poll_set(struct lttng_poll_event *events, int size)
+static int create_named_thread_poll_set(struct lttng_poll_event *events,
+		int size, const char *name)
 {
 	int ret;
 
@@ -868,10 +869,8 @@ static int create_thread_poll_set(struct lttng_poll_event *events, int size)
 		goto error;
 	}
 
-	ret = lttng_poll_create(events, size, LTTNG_CLOEXEC);
-	if (ret < 0) {
-		goto error;
-	}
+	ret = fd_tracker_util_poll_create(the_fd_tracker,
+		        name, events, 1, LTTNG_CLOEXEC);
 
 	/* Add quit pipe */
 	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
@@ -883,6 +882,14 @@ static int create_thread_poll_set(struct lttng_poll_event *events, int size)
 
 error:
 	return ret;
+}
+
+/*
+ * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
+ */
+static int create_thread_poll_set(struct lttng_poll_event *events, int size)
+{
+	return create_named_thread_poll_set(events, size, "Unknown epoll");
 }
 
 /*
@@ -3687,7 +3694,7 @@ static void *relay_thread_worker(void *data)
 		goto relay_connections_ht_error;
 	}
 
-	ret = create_thread_poll_set(&events, 2);
+	ret = create_named_thread_poll_set(&events, 2, "Worker thread epoll");
 	if (ret < 0) {
 		goto error_poll_create;
 	}
@@ -3956,7 +3963,7 @@ error:
 	}
 	rcu_read_unlock();
 
-	lttng_poll_clean(&events);
+	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 error_poll_create:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
