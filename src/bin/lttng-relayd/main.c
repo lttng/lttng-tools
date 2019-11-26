@@ -664,7 +664,10 @@ static void relayd_cleanup(void)
 		health_app_destroy(health_relayd);
 	}
 	/* Close thread quit pipes */
-	utils_close_pipe(health_quit_pipe);
+	if (health_quit_pipe[0] != -1) {
+		(void) fd_tracker_util_pipe_close(
+				the_fd_tracker, health_quit_pipe);
+	}
 	if (thread_quit_pipe[0] != -1) {
 		(void) fd_tracker_util_pipe_close(
 				the_fd_tracker, thread_quit_pipe);
@@ -840,6 +843,17 @@ static int init_thread_quit_pipe(void)
 {
 	return fd_tracker_util_pipe_open_cloexec(
 			the_fd_tracker, "Quit pipe", thread_quit_pipe);
+}
+
+/*
+ * Init health quit pipe.
+ *
+ * Return -1 on error or 0 if all pipes are created.
+ */
+static int init_health_quit_pipe(void)
+{
+	return fd_tracker_util_pipe_open_cloexec(the_fd_tracker,
+			"Health quit pipe", health_quit_pipe);
 }
 
 /*
@@ -4126,7 +4140,7 @@ int main(int argc, char **argv)
 		goto exit_options;
 	}
 
-	ret = utils_create_pipe(health_quit_pipe);
+	ret = init_health_quit_pipe();
 	if (ret) {
 		retval = -1;
 		goto exit_options;
