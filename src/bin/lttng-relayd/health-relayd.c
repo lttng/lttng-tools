@@ -47,6 +47,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/utils.h>
 #include <common/compat/getenv.h>
+#include <common/fd-tracker/utils.h>
 
 #include "lttng-relayd.h"
 #include "health-relayd.h"
@@ -232,6 +233,23 @@ end:
 	return ret;
 }
 
+static
+int accept_unix_socket(void *data, int *out_fd)
+{
+	int ret;
+	int accepting_sock = *((int *) data);
+
+	ret = lttcomm_accept_unix_sock(accepting_sock);
+	if (ret < 0) {
+		goto end;
+	}
+
+	*out_fd = ret;
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * Thread managing health check socket.
  */
@@ -322,6 +340,8 @@ void *thread_manage_health(void *data)
 	lttng_relay_notify_ready();
 
 	while (1) {
+		char *accepted_socket_name;
+
 		DBG("Health check ready");
 
 		/* Inifinite blocking call, waiting for transmission */
@@ -365,8 +385,18 @@ restart:
 			}
 		}
 
-		new_sock = lttcomm_accept_unix_sock(sock);
-		if (new_sock < 0) {
+		ret = asprintf(&accepted_socket_name, "Socket accepted from unix socket @ %s",
+				health_unix_sock_path);
+		if (ret == -1) {
+			PERROR("Failed to allocate name of accepted socket from unix socket @ %s",
+					health_unix_sock_path);
+			goto error;
+		}
+		ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &new_sock,
+				(const char **) &accepted_socket_name, 1,
+				accept_unix_socket, &sock);
+		free(accepted_socket_name);
+		if (ret < 0) {
 			goto error;
 		}
 
@@ -380,7 +410,9 @@ restart:
 		ret = lttcomm_recv_unix_sock(new_sock, (void *)&msg, sizeof(msg));
 		if (ret <= 0) {
 			DBG("Nothing recv() from client... continuing");
-			ret = close(new_sock);
+			ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+					&new_sock, 1, fd_tracker_util_close_fd,
+					NULL);
 			if (ret) {
 				PERROR("close");
 			}
@@ -411,7 +443,9 @@ restart:
 		}
 
 		/* End of transmission */
-		ret = close(new_sock);
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+				&new_sock, 1, fd_tracker_util_close_fd,
+				NULL);
 		if (ret) {
 			PERROR("close");
 		}
