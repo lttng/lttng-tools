@@ -64,6 +64,7 @@
 #include <common/buffer-view.h>
 #include <common/string-utils/format.h>
 #include <common/fd-tracker/fd-tracker.h>
+#include <common/fd-tracker/utils.h>
 
 #include "backward-compatibility-group-by.h"
 #include "cmd.h"
@@ -664,8 +665,10 @@ static void relayd_cleanup(void)
 	}
 	/* Close thread quit pipes */
 	utils_close_pipe(health_quit_pipe);
-	utils_close_pipe(thread_quit_pipe);
-
+	if (thread_quit_pipe[0] != -1) {
+		(void) fd_tracker_util_pipe_close(
+				the_fd_tracker, thread_quit_pipe);
+	}
 	if (sessiond_trace_chunk_registry) {
 		sessiond_trace_chunk_registry_destroy(
 				sessiond_trace_chunk_registry);
@@ -835,11 +838,8 @@ void lttng_relay_notify_ready(void)
  */
 static int init_thread_quit_pipe(void)
 {
-	int ret;
-
-	ret = utils_create_pipe_cloexec(thread_quit_pipe);
-
-	return ret;
+	return fd_tracker_util_pipe_open_cloexec(
+			the_fd_tracker, "Quit pipe", thread_quit_pipe);
 }
 
 /*
