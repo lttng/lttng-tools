@@ -4042,22 +4042,11 @@ int main(int argc, char **argv)
 
 	/* Daemonize */
 	if (opt_daemon || opt_background) {
-		int i;
-
 		ret = lttng_daemonize(&child_ppid, &recv_child_signal,
 			!opt_background);
 		if (ret < 0) {
 			retval = -1;
 			goto exit_options;
-		}
-
-		/*
-		 * We are in the child. Make sure all other file
-		 * descriptors are closed, in case we are called with
-		 * more opened file descriptors than the standard ones.
-		 */
-		for (i = 3; i < sysconf(_SC_OPEN_MAX); i++) {
-			(void) close(i);
 		}
 	}
 
