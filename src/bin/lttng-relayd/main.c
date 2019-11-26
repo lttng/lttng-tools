@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <inttypes.h>
 #include <urcu/futex.h>
 #include <urcu/uatomic.h>
@@ -41,6 +42,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <strings.h>
+#include <ctype.h>
 
 #include <lttng/lttng.h>
 #include <common/common.h>
@@ -160,6 +162,9 @@ static uint64_t last_relay_stream_id;
  */
 static struct relay_conn_queue relay_conn_queue;
 
+/* Cap of file desriptors to be in simultaneous use by the relay daemon. */
+static unsigned int lttng_opt_fd_cap;
+
 /* Global relay stream hash table. */
 struct lttng_ht *relay_streams_ht;
 
@@ -181,6 +186,7 @@ static struct option long_options[] = {
 	{ "daemonize", 0, 0, 'd', },
 	{ "background", 0, 0, 'b', },
 	{ "group", 1, 0, 'g', },
+	{ "fd-cap", 1, 0, '\0', },
 	{ "help", 0, 0, 'h', },
 	{ "output", 1, 0, 'o', },
 	{ "verbose", 0, 0, 'v', },
@@ -224,9 +230,34 @@ static int set_option(int opt, const char *arg, const char *optname)
 
 	switch (opt) {
 	case 0:
-		fprintf(stderr, "option %s", optname);
-		if (arg) {
-			fprintf(stderr, " with arg %s\n", arg);
+		if (!strcmp(optname, "fd-cap")) {
+			unsigned long v;
+
+			errno = 0;
+			v = strtoul(arg, NULL, 0);
+			if (errno != 0 || !isdigit(arg[0])) {
+				ERR("Wrong value in --fd-cap parameter: %s",
+						arg);
+				ret = -1;
+				goto end;
+			}
+			if (v < DEFAULT_RELAYD_MINIMAL_FD_CAP) {
+				ERR("File descriptor cap must be set to at least %d",
+						DEFAULT_RELAYD_MINIMAL_FD_CAP);
+			}
+			if (v >= UINT_MAX) {
+				ERR("File descriptor cap overflow in --fd-cap parameter: %s",
+						arg);
+				ret = -1;
+				goto end;
+			}
+			lttng_opt_fd_cap = (unsigned int) v;
+			DBG3("File descriptor cap set to %u", lttng_opt_fd_cap);
+		} else {
+			fprintf(stderr, "unknown option %s", optname);
+			if (arg) {
+				fprintf(stderr, " with arg %s\n", arg);
+			}
 		}
 		break;
 	case 'C':
@@ -562,6 +593,18 @@ static int set_options(int argc, char **argv)
 			retval = -1;
 			goto exit;
 		}
+	}
+	if (lttng_opt_fd_cap == 0) {
+		int ret;
+		struct rlimit rlimit;
+
+		ret = getrlimit(RLIMIT_NOFILE, &rlimit);
+		if (ret) {
+			PERROR("Failed to get file descriptor limit");
+			retval = -1;
+		}
+
+		lttng_opt_fd_cap = rlimit.rlim_cur;
 	}
 
 	if (opt_group_output_by == RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
