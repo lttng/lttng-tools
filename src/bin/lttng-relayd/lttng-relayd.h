@@ -25,6 +25,7 @@
 #include <urcu/wfcqueue.h>
 
 #include <common/hashtable/hashtable.h>
+#include <common/fd-tracker/fd-tracker.h>
 
 struct sessiond_trace_chunk_registry;
 
@@ -59,6 +60,8 @@ extern const char * const config_section_name;
 extern enum relay_group_output_by opt_group_output_by;
 
 extern int thread_quit_pipe[2];
+
+extern struct fd_tracker *the_fd_tracker;
 
 void lttng_relay_notify_ready(void);
 int lttng_relay_stop_threads(void);

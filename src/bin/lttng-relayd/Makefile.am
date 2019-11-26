@@ -36,4 +36,5 @@ lttng_relayd_LDADD = -lurcu-common -lurcu \
 		$(top_builddir)/src/common/health/libhealth.la \
 		$(top_builddir)/src/common/config/libconfig.la \
 		$(top_builddir)/src/common/testpoint/libtestpoint.la \
+		$(top_builddir)/src/common/fd-tracker/libfd-tracker.la \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la

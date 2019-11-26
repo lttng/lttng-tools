@@ -63,6 +63,7 @@
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 #include <common/string-utils/format.h>
+#include <common/fd-tracker/fd-tracker.h>
 
 #include "backward-compatibility-group-by.h"
 #include "cmd.h"
@@ -178,6 +179,9 @@ struct lttng_ht *sessions_ht;
 struct health_app *health_relayd;
 
 struct sessiond_trace_chunk_registry *sessiond_trace_chunk_registry;
+
+/* Global fd tracker. */
+struct fd_tracker *the_fd_tracker;
 
 static struct option long_options[] = {
 	{ "control-port", 1, 0, 'C', },
@@ -631,13 +635,9 @@ exit:
 
 static void print_global_objects(void)
 {
-	rcu_register_thread();
-
 	print_viewer_streams();
 	print_relay_streams();
 	print_sessions();
-
-	rcu_unregister_thread();
 }
 
 /*
@@ -670,6 +670,9 @@ static void relayd_cleanup(void)
 		sessiond_trace_chunk_registry_destroy(
 				sessiond_trace_chunk_registry);
 	}
+	if (the_fd_tracker) {
+		fd_tracker_destroy(the_fd_tracker);
+	}
 
 	uri_free(control_uri);
 	uri_free(data_uri);
@@ -678,6 +681,7 @@ static void relayd_cleanup(void)
 	if (tracing_group_name_override) {
 		free((void *) tracing_group_name);
 	}
+	fd_tracker_log(the_fd_tracker);
 }
 
 /*
@@ -3977,6 +3981,7 @@ static int create_relay_conn_pipe(void)
  */
 int main(int argc, char **argv)
 {
+	bool thread_is_rcu_registered = false;
 	int ret = 0, retval = 0;
 	void *status;
 
@@ -4067,6 +4072,21 @@ int main(int argc, char **argv)
 	sessiond_trace_chunk_registry = sessiond_trace_chunk_registry_create();
 	if (!sessiond_trace_chunk_registry) {
 		ERR("Failed to initialize session daemon trace chunk registry");
+		retval = -1;
+		goto exit_options;
+	}
+
+	/*
+	 * The RCU thread registration (and use, through the fd-tracker's
+	 * creation) is done after the daemonization to allow us to not
+	 * deal with liburcu's fork() management as the call RCU needs to
+	 * be restored.
+	 */
+	rcu_register_thread();
+	thread_is_rcu_registered = true;
+
+	the_fd_tracker = fd_tracker_create(lttng_opt_fd_cap);
+	if (!the_fd_tracker) {
 		retval = -1;
 		goto exit_options;
 	}
@@ -4224,6 +4244,10 @@ exit_options:
 
 	/* Ensure all prior call_rcu are done. */
 	rcu_barrier();
+
+	if (thread_is_rcu_registered) {
+		rcu_unregister_thread();
+	}
 
 	if (!retval) {
 		exit(EXIT_SUCCESS);
