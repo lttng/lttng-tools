@@ -3947,7 +3947,8 @@ error_poll_create:
 	lttng_ht_destroy(relay_connections_ht);
 relay_connections_ht_error:
 	/* Close relay conn pipes */
-	utils_close_pipe(relay_conn_pipe);
+	(void) fd_tracker_util_pipe_close(the_fd_tracker,
+			relay_conn_pipe);
 	if (err) {
 		DBG("Thread exited with error");
 	}
@@ -3969,11 +3970,8 @@ error_testpoint:
  */
 static int create_relay_conn_pipe(void)
 {
-	int ret;
-
-	ret = utils_create_pipe_cloexec(relay_conn_pipe);
-
-	return ret;
+	return fd_tracker_util_pipe_open_cloexec(the_fd_tracker,
+			"Relayd connection pipe", relay_conn_pipe);
 }
 
 /*
