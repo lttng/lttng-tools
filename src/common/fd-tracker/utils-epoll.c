@@ -25,8 +25,7 @@ struct create_args {
 	int flags;
 };
 
-static
-int open_epoll(void *data, int *out_fd)
+static int open_epoll(void *data, int *out_fd)
 {
 	int ret;
 	struct create_args *args = data;
@@ -41,8 +40,7 @@ end:
 	return ret;
 }
 
-static
-int close_epoll(void *data, int *in_fd)
+static int close_epoll(void *data, int *in_fd)
 {
 	/* Will close the epfd. */
 	lttng_poll_clean((struct lttng_poll_event *) data);
@@ -53,8 +51,11 @@ int close_epoll(void *data, int *in_fd)
  * The epoll variant of the poll compat layer creates an unsuspendable fd which
  * must be tracked.
  */
-int fd_tracker_util_poll_create(struct fd_tracker *tracker, const char *name,
-		struct lttng_poll_event *events, int size, int flags)
+int fd_tracker_util_poll_create(struct fd_tracker *tracker,
+		const char *name,
+		struct lttng_poll_event *events,
+		int size,
+		int flags)
 {
 	int out_fd;
 	struct create_args create_args = {
@@ -63,13 +64,13 @@ int fd_tracker_util_poll_create(struct fd_tracker *tracker, const char *name,
 		.flags = flags,
 	};
 
-	return fd_tracker_open_unsuspendable_fd(tracker, &out_fd, &name, 1,
-			open_epoll, &create_args);
+	return fd_tracker_open_unsuspendable_fd(
+			tracker, &out_fd, &name, 1, open_epoll, &create_args);
 }
 
-int fd_tracker_util_poll_clean(struct fd_tracker *tracker,
-		struct lttng_poll_event *events)
+int fd_tracker_util_poll_clean(
+		struct fd_tracker *tracker, struct lttng_poll_event *events)
 {
-	return fd_tracker_close_unsuspendable_fd(tracker, &events->epfd, 1,
-			close_epoll, events);
+	return fd_tracker_close_unsuspendable_fd(
+			tracker, &events->epfd, 1, close_epoll, events);
 }

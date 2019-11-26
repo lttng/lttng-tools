@@ -15,18 +15,18 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <inttypes.h>
-#include <urcu.h>
-#include <urcu/ref.h>
-#include <urcu/rculfhash.h>
-#include <common/hashtable/utils.h>
-#include <common/macros.h>
 #include <common/defaults.h>
 #include <common/error.h>
+#include <common/hashtable/utils.h>
+#include <common/macros.h>
+#include <inttypes.h>
 #include <lttng/constant.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <urcu.h>
+#include <urcu/rculfhash.h>
+#include <urcu/ref.h>
 
 #include "inode.h"
 
@@ -57,40 +57,36 @@ static struct {
 	bool initialized;
 	unsigned long value;
 } seed = {
-	.lock = PTHREAD_MUTEX_INITIALIZER,
+		.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-static
-unsigned long lttng_inode_id_hash(struct inode_id *id)
+static unsigned long lttng_inode_id_hash(struct inode_id *id)
 {
 	uint64_t device = id->device, inode_no = id->inode;
 
-        return hash_key_u64(&device, seed.value) ^
-			hash_key_u64(&inode_no, seed.value);
+	return hash_key_u64(&device, seed.value) ^
+	       hash_key_u64(&inode_no, seed.value);
 }
 
-static
-int lttng_inode_match(struct cds_lfht_node *node, const void *key)
+static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 {
 	const struct inode_id *id = key;
-	struct lttng_inode *inode = caa_container_of(node, struct lttng_inode,
-			registry_node);
+	struct lttng_inode *inode = caa_container_of(
+			node, struct lttng_inode, registry_node);
 
 	return inode->id.device == id->device && inode->id.inode == id->inode;
 }
 
-static
-void lttng_inode_delete(struct rcu_head *head)
+static void lttng_inode_delete(struct rcu_head *head)
 {
-	struct lttng_inode *inode = caa_container_of(head,
-			struct lttng_inode, rcu_head);
+	struct lttng_inode *inode =
+			caa_container_of(head, struct lttng_inode, rcu_head);
 
 	free(inode->path);
 	free(inode);
 }
 
-static
-void lttng_inode_destroy(struct lttng_inode *inode)
+static void lttng_inode_destroy(struct lttng_inode *inode)
 {
 	if (!inode) {
 		return;
@@ -109,14 +105,12 @@ void lttng_inode_destroy(struct lttng_inode *inode)
 	call_rcu(&inode->rcu_head, lttng_inode_delete);
 }
 
-static
-void lttng_inode_release(struct urcu_ref *ref)
+static void lttng_inode_release(struct urcu_ref *ref)
 {
-        lttng_inode_destroy(caa_container_of(ref, struct lttng_inode, ref));
+	lttng_inode_destroy(caa_container_of(ref, struct lttng_inode, ref));
 }
 
-static
-void lttng_inode_get(struct lttng_inode *inode)
+static void lttng_inode_get(struct lttng_inode *inode)
 {
 	urcu_ref_get(&inode->ref);
 }
@@ -131,8 +125,8 @@ const char *lttng_inode_get_path(const struct lttng_inode *inode)
 	return inode->path;
 }
 
-int lttng_inode_rename(struct lttng_inode *inode, const char *new_path,
-	bool overwrite)
+int lttng_inode_rename(
+		struct lttng_inode *inode, const char *new_path, bool overwrite)
 {
 	int ret = 0;
 	char *new_path_copy = NULL;
@@ -205,7 +199,8 @@ int lttng_inode_defer_unlink(struct lttng_inode *inode)
 		int p_ret;
 
 		if (i != 0) {
-			p_ret = snprintf(suffix, sizeof(suffix), "-deleted-%" PRIu16, i);
+			p_ret = snprintf(suffix, sizeof(suffix),
+					"-deleted-%" PRIu16, i);
 
 			if (p_ret < 0) {
 				PERROR("Failed to form suffix to rename file %s",
@@ -238,9 +233,9 @@ end:
 	return ret;
 }
 
-static
-struct lttng_inode *lttng_inode_create(const struct inode_id *id,
-		const char *path, struct cds_lfht *ht)
+static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
+		const char *path,
+		struct cds_lfht *ht)
 {
 	struct lttng_inode *inode = zmalloc(sizeof(*inode));
 
@@ -304,8 +299,7 @@ void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
 }
 
 struct lttng_inode *lttng_inode_registry_get_inode(
-		struct lttng_inode_registry *registry,
-		int fd, const char *path)
+		struct lttng_inode_registry *registry, int fd, const char *path)
 {
 	int ret;
 	struct stat statbuf;
@@ -324,14 +318,12 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 	id.inode = statbuf.st_ino;
 
 	rcu_read_lock();
-	cds_lfht_lookup(registry->inodes,
-			lttng_inode_id_hash(&id),
-			lttng_inode_match,
-		        &id,
-			&iter);
+	cds_lfht_lookup(registry->inodes, lttng_inode_id_hash(&id),
+			lttng_inode_match, &id, &iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
-	        inode = caa_container_of(node, struct lttng_inode, registry_node);
+		inode = caa_container_of(
+				node, struct lttng_inode, registry_node);
 		/* Renames should happen through the fs-handle interface. */
 		assert(!strcmp(path, inode->path));
 		lttng_inode_get(inode);
@@ -340,10 +332,8 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 
 	inode = lttng_inode_create(&id, path, registry->inodes);
 	node = cds_lfht_add_unique(registry->inodes,
-			lttng_inode_id_hash(&inode->id),
-			lttng_inode_match,
-			&inode->id,
-			&inode->registry_node);
+			lttng_inode_id_hash(&inode->id), lttng_inode_match,
+			&inode->id, &inode->registry_node);
 	assert(node == &inode->registry_node);
 end_unlock:
 	rcu_read_unlock();

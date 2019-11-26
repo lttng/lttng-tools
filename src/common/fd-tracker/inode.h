@@ -27,13 +27,15 @@ struct lttng_inode_registry;
 struct lttng_inode_registry *lttng_inode_registry_create(void);
 
 struct lttng_inode *lttng_inode_registry_get_inode(
-		struct lttng_inode_registry *registry, int fd,
+		struct lttng_inode_registry *registry,
+		int fd,
 		const char *path);
 
 void lttng_inode_registry_destroy(struct lttng_inode_registry *registry);
 
 const char *lttng_inode_get_path(const struct lttng_inode *inode);
-int lttng_inode_rename(struct lttng_inode *inode, const char *new_path,
+int lttng_inode_rename(struct lttng_inode *inode,
+		const char *new_path,
 		bool overwrite);
 int lttng_inode_defer_unlink(struct lttng_inode *inode);
 void lttng_inode_put(struct lttng_inode *inode);

@@ -81,7 +81,9 @@ int fd_tracker_destroy(struct fd_tracker *tracker);
  * open.
  */
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
-		const char *path, int flags, mode_t *mode);
+		const char *path,
+		int flags,
+		mode_t *mode);
 
 /*
  * Open a tracked unsuspendable file descriptor.
@@ -106,8 +108,11 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
  *             accomodate the request for a new unsuspendable entry.
  */
 int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
-		int *out_fds, const char **names, unsigned int fd_count,
-		fd_open_cb open, void *data);
+		int *out_fds,
+		const char **names,
+		unsigned int fd_count,
+		fd_open_cb open,
+		void *data);
 
 /*
  * Close a tracked unsuspendable file descriptor.
@@ -125,7 +130,9 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
  * allows the user to know which file descriptors are no longer being tracked.
  */
 int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
-		int *fds, unsigned int fd_count, fd_close_cb close,
+		int *fds,
+		unsigned int fd_count,
+		fd_close_cb close,
 		void *data);
 
 /*
