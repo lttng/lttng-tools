@@ -500,6 +500,42 @@ int close_sock(void *data, int *in_fd)
 	return sock->ops->close(sock);
 }
 
+static int accept_sock(void *data, int *out_fd)
+{
+	int ret = 0;
+	/* Socks is an array of in_sock, out_sock. */
+	struct lttcomm_sock **socks = data;
+	struct lttcomm_sock *in_sock = socks[0];
+
+	socks[1] = in_sock->ops->accept(in_sock);
+	if (!socks[1]) {
+		ret = -1;
+		goto end;
+	}
+	*out_fd = socks[1]->fd;
+end:
+	return ret;
+}
+
+static
+struct lttcomm_sock *accept_live_sock(struct lttcomm_sock *listening_sock,
+		const char *name)
+{
+	int out_fd, ret;
+	struct lttcomm_sock *socks[2] = { listening_sock, NULL };
+	struct lttcomm_sock *new_sock = NULL;
+
+	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &out_fd,
+			(const char **) &name, 1, accept_sock, &socks);
+	if (ret) {
+		goto end;
+	}
+	new_sock = socks[1];
+	DBG("%s accepted, socket %d", name, new_sock->fd);
+end:
+	return new_sock;
+}
+
 /*
  * Create and init socket from uri.
  */
@@ -645,7 +681,8 @@ restart:
 				struct relay_connection *new_conn;
 				struct lttcomm_sock *newsock;
 
-				newsock = live_control_sock->ops->accept(live_control_sock);
+				newsock = accept_live_sock(live_control_sock,
+						"Live socket to client");
 				if (!newsock) {
 					PERROR("accepting control sock");
 					goto error;
@@ -2187,7 +2224,8 @@ void cleanup_connection_pollfd(struct lttng_poll_event *events, int pollfd)
 
 	(void) lttng_poll_del(events, pollfd);
 
-	ret = close(pollfd);
+	ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &pollfd, 1,
+			fd_tracker_util_close_fd, NULL);
 	if (ret < 0) {
 		ERR("Closing pollfd %d", pollfd);
 	}
