@@ -27,8 +27,6 @@ components:
     by Mathieu Desnoyers and Paul E. McKenney.
   - **`libpopt` >= 1.13**:  command line arguments parsing library.
     - Debian/Ubuntu package: `libpopt-dev`
-  - **`libuuid`**: universally unique ID library
-    - Debian/Ubuntu package: `uuid-dev`
   - **`libxml2` >= 2.7.6**:  XML document parsing library. Needed for
     tracing session configuration saving/loading and machine interface
     output support.
