@@ -55,7 +55,7 @@
 static
 char health_unix_sock_path[PATH_MAX];
 
-int health_quit_pipe[2];
+int health_quit_pipe[2] = { -1, -1 };
 
 /*
  * Check if the thread quit pipe was triggered.

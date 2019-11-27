@@ -659,8 +659,17 @@ static void relayd_cleanup(void)
 	free(opt_output_path);
 	free(opt_working_directory);
 
+	if (health_relayd) {
+		health_app_destroy(health_relayd);
+	}
 	/* Close thread quit pipes */
+	utils_close_pipe(health_quit_pipe);
 	utils_close_pipe(thread_quit_pipe);
+
+	if (sessiond_trace_chunk_registry) {
+		sessiond_trace_chunk_registry_destroy(
+				sessiond_trace_chunk_registry);
+	}
 
 	uri_free(control_uri);
 	uri_free(data_uri);
@@ -4059,7 +4068,7 @@ int main(int argc, char **argv)
 	if (!sessiond_trace_chunk_registry) {
 		ERR("Failed to initialize session daemon trace chunk registry");
 		retval = -1;
-		goto exit_sessiond_trace_chunk_registry;
+		goto exit_options;
 	}
 
 	/* Initialize thread health monitoring */
@@ -4067,19 +4076,19 @@ int main(int argc, char **argv)
 	if (!health_relayd) {
 		PERROR("health_app_create error");
 		retval = -1;
-		goto exit_health_app_create;
+		goto exit_options;
 	}
 
 	/* Create thread quit pipe */
 	if (init_thread_quit_pipe()) {
 		retval = -1;
-		goto exit_init_data;
+		goto exit_options;
 	}
 
 	/* Setup the thread apps communication pipe. */
 	if (create_relay_conn_pipe()) {
 		retval = -1;
-		goto exit_init_data;
+		goto exit_options;
 	}
 
 	/* Init relay command queue. */
@@ -4093,27 +4102,27 @@ int main(int argc, char **argv)
 	sessions_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!sessions_ht) {
 		retval = -1;
-		goto exit_init_data;
+		goto exit_options;
 	}
 
 	/* tables of streams indexed by stream ID */
 	relay_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!relay_streams_ht) {
 		retval = -1;
-		goto exit_init_data;
+		goto exit_options;
 	}
 
 	/* tables of streams indexed by stream ID */
 	viewer_streams_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 	if (!viewer_streams_ht) {
 		retval = -1;
-		goto exit_init_data;
+		goto exit_options;
 	}
 
 	ret = utils_create_pipe(health_quit_pipe);
 	if (ret) {
 		retval = -1;
-		goto exit_health_quit_pipe;
+		goto exit_options;
 	}
 
 	/* Create thread to manage the client socket */
@@ -4123,7 +4132,7 @@ int main(int argc, char **argv)
 		errno = ret;
 		PERROR("pthread_create health");
 		retval = -1;
-		goto exit_health_thread;
+		goto exit_options;
 	}
 
 	/* Setup the dispatcher thread */
@@ -4204,16 +4213,6 @@ exit_dispatcher_thread:
 		PERROR("pthread_join health_thread");
 		retval = -1;
 	}
-exit_health_thread:
-
-	utils_close_pipe(health_quit_pipe);
-exit_health_quit_pipe:
-
-exit_init_data:
-	health_app_destroy(health_relayd);
-	sessiond_trace_chunk_registry_destroy(sessiond_trace_chunk_registry);
-exit_health_app_create:
-exit_sessiond_trace_chunk_registry:
 exit_options:
 	/*
 	 * Wait for all pending call_rcu work to complete before tearing
