@@ -462,15 +462,6 @@ error:
 }
 
 /*
- * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
- */
-static
-int create_thread_poll_set(struct lttng_poll_event *events, int size)
-{
-	return create_named_thread_poll_set(events, size, "Unknown epoll");
-}
-
-/*
  * Check if the thread quit pipe was triggered.
  *
  * Return 1 if it was triggered else 0;
@@ -2187,7 +2178,8 @@ void *thread_worker(void *data)
 		goto viewer_connections_ht_error;
 	}
 
-	ret = create_thread_poll_set(&events, 2);
+	ret = create_named_thread_poll_set(&events, 2,
+			"Live viewer worker thread epoll");
 	if (ret < 0) {
 		goto error_poll_create;
 	}
@@ -2310,7 +2302,7 @@ restart:
 
 exit:
 error:
-	lttng_poll_clean(&events);
+	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 
 	/* Cleanup remaining connection object. */
 	rcu_read_lock();
