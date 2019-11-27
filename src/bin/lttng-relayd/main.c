@@ -677,6 +677,11 @@ static void relayd_cleanup(void)
 				sessiond_trace_chunk_registry);
 	}
 	if (the_fd_tracker) {
+		untrack_stdio();
+		/*
+		 * fd_tracker_destroy() will log the contents of the fd-tracker
+		 * if a leak is detected.
+		 */
 		fd_tracker_destroy(the_fd_tracker);
 	}
 
@@ -687,7 +692,6 @@ static void relayd_cleanup(void)
 	if (tracing_group_name_override) {
 		free((void *) tracing_group_name);
 	}
-	fd_tracker_log(the_fd_tracker);
 }
 
 /*
@@ -3987,6 +3991,39 @@ static int create_relay_conn_pipe(void)
 			"Relayd connection pipe", relay_conn_pipe);
 }
 
+static int stdio_open(void *data, int *fds)
+{
+	fds[0] = fileno(stdout);
+	fds[1] = fileno(stderr);
+	return 0;
+}
+
+static int noop_close(void *data, int *fds)
+{
+	return 0;
+}
+
+static int track_stdio(void)
+{
+	int fds[2];
+	const char *names[] = { "stdout", "stderr" };
+
+	return fd_tracker_open_unsuspendable_fd(the_fd_tracker, fds,
+			names, 2, stdio_open, NULL);
+}
+
+static void untrack_stdio(void)
+{
+	int fds[] = { fileno(stdout), fileno(stderr) };
+
+	/*
+	 * noop_close is used since we don't really want to close
+	 * the stdio output fds; we merely want to stop tracking them.
+	 */
+	(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+			fds, 2, noop_close, NULL);
+}
+
 /*
  * main
  */
@@ -4087,6 +4124,12 @@ int main(int argc, char **argv)
 
 	the_fd_tracker = fd_tracker_create(lttng_opt_fd_cap);
 	if (!the_fd_tracker) {
+		retval = -1;
+		goto exit_options;
+	}
+
+	ret = track_stdio();
+	if (ret) {
 		retval = -1;
 		goto exit_options;
 	}
