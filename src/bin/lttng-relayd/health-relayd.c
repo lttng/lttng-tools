@@ -250,6 +250,23 @@ end:
 	return ret;
 }
 
+static
+int open_unix_socket(void *data, int *out_fd)
+{
+	int ret;
+	const char *path = data;
+
+	ret = lttcomm_create_unix_sock(path);
+	if (ret < 0) {
+		goto end;
+	}
+
+	*out_fd = ret;
+	ret = 0;
+end:
+	return ret;
+}
+
 /*
  * Thread managing health check socket.
  */
@@ -261,6 +278,7 @@ void *thread_manage_health(void *data)
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
 	int is_root;
+	char *sock_name;
 
 	DBG("[thread] Manage health check started");
 
@@ -272,8 +290,17 @@ void *thread_manage_health(void *data)
 	lttng_poll_init(&events);
 
 	/* Create unix socket */
-	sock = lttcomm_create_unix_sock(health_unix_sock_path);
-	if (sock < 0) {
+	ret = asprintf(&sock_name, "Unix socket @ %s", health_unix_sock_path);
+	if (ret == -1) {
+		PERROR("Failed to allocate unix socket name");
+		err = -1;
+		goto error;
+	}
+	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock,
+			(const char **) &sock_name, 1, open_unix_socket,
+			health_unix_sock_path);
+	free(sock_name);
+	if (ret < 0) {
 		ERR("Unable to create health check Unix socket");
 		err = -1;
 		goto error;
@@ -463,7 +490,8 @@ exit:
 	DBG("Health check thread dying");
 	unlink(health_unix_sock_path);
 	if (sock >= 0) {
-		ret = close(sock);
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker, &sock,
+				1, fd_tracker_util_close_fd, NULL);
 		if (ret) {
 			PERROR("close");
 		}
