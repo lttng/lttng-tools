@@ -165,7 +165,7 @@ static uint64_t last_relay_stream_id;
 static struct relay_conn_queue relay_conn_queue;
 
 /* Cap of file desriptors to be in simultaneous use by the relay daemon. */
-static unsigned int lttng_opt_fd_cap;
+static unsigned int lttng_opt_fd_pool_size = -1;
 
 /* Global relay stream hash table. */
 struct lttng_ht *relay_streams_ht;
@@ -191,7 +191,7 @@ static struct option long_options[] = {
 	{ "daemonize", 0, 0, 'd', },
 	{ "background", 0, 0, 'b', },
 	{ "group", 1, 0, 'g', },
-	{ "fd-cap", 1, 0, '\0', },
+	{ "fd-pool-size", 1, 0, '\0', },
 	{ "help", 0, 0, 'h', },
 	{ "output", 1, 0, 'o', },
 	{ "verbose", 0, 0, 'v', },
@@ -235,29 +235,22 @@ static int set_option(int opt, const char *arg, const char *optname)
 
 	switch (opt) {
 	case 0:
-		if (!strcmp(optname, "fd-cap")) {
+		if (!strcmp(optname, "fd-pool-size")) {
 			unsigned long v;
 
 			errno = 0;
 			v = strtoul(arg, NULL, 0);
 			if (errno != 0 || !isdigit(arg[0])) {
-				ERR("Wrong value in --fd-cap parameter: %s",
-						arg);
+				ERR("Wrong value in --fd-pool-size parameter: %s", arg);
 				ret = -1;
 				goto end;
-			}
-			if (v < DEFAULT_RELAYD_MINIMAL_FD_CAP) {
-				ERR("File descriptor cap must be set to at least %d",
-						DEFAULT_RELAYD_MINIMAL_FD_CAP);
 			}
 			if (v >= UINT_MAX) {
-				ERR("File descriptor cap overflow in --fd-cap parameter: %s",
-						arg);
+				ERR("File descriptor cap overflow in --fd-pool-size parameter: %s", arg);
 				ret = -1;
 				goto end;
 			}
-			lttng_opt_fd_cap = (unsigned int) v;
-			DBG3("File descriptor cap set to %u", lttng_opt_fd_cap);
+			lttng_opt_fd_pool_size = (unsigned int) v;
 		} else {
 			fprintf(stderr, "unknown option %s", optname);
 			if (arg) {
@@ -482,6 +475,56 @@ static int parse_env_options(void)
 	return ret;
 }
 
+static int set_fd_pool_size(void)
+{
+	int ret = 0;
+	struct rlimit rlimit;
+
+	ret = getrlimit(RLIMIT_NOFILE, &rlimit);
+	if (ret) {
+		PERROR("Failed to get file descriptor limit");
+		ret = -1;
+		goto end;
+	}
+
+	DBG("File descriptor count limits are %" PRIu64 " (soft) and %" PRIu64 " (hard)",
+			(uint64_t) rlimit.rlim_cur,
+			(uint64_t) rlimit.rlim_max);
+	if (lttng_opt_fd_pool_size == -1) {
+		/* Use default value (soft limit - reserve). */
+		if (rlimit.rlim_cur < DEFAULT_RELAYD_MIN_FD_POOL_SIZE) {
+			ERR("The process' file number limit is too low (%" PRIu64 "). The process' file number limit must be set to at least %i.",
+					(uint64_t) rlimit.rlim_cur, DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
+			ret = -1;
+			goto end;
+		}
+		lttng_opt_fd_pool_size = rlimit.rlim_cur -
+				DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE;
+		goto end;
+	}
+
+	if (lttng_opt_fd_pool_size < DEFAULT_RELAYD_MIN_FD_POOL_SIZE) {
+		ERR("File descriptor pool size must be set to at least %d",
+				DEFAULT_RELAYD_MIN_FD_POOL_SIZE);
+		ret = -1;
+		goto end;
+	}
+
+	if (lttng_opt_fd_pool_size > rlimit.rlim_cur) {
+		ERR("File descriptor pool size argument (%u) exceeds the process' soft limit (%" PRIu64 ").",
+				lttng_opt_fd_pool_size, (uint64_t) rlimit.rlim_cur);
+		ret = -1;
+		goto end;
+	}
+
+	DBG("File descriptor pool size argument (%u) adjusted to %u to accomodate transient fd uses",
+			lttng_opt_fd_pool_size,
+			lttng_opt_fd_pool_size - DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE);
+	lttng_opt_fd_pool_size -= DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE;
+end:
+	return ret;
+}
+
 static int set_options(int argc, char **argv)
 {
 	int c, ret = 0, option_index = 0, retval = 0;
@@ -599,17 +642,10 @@ static int set_options(int argc, char **argv)
 			goto exit;
 		}
 	}
-	if (lttng_opt_fd_cap == 0) {
-		int ret;
-		struct rlimit rlimit;
-
-		ret = getrlimit(RLIMIT_NOFILE, &rlimit);
-		if (ret) {
-			PERROR("Failed to get file descriptor limit");
-			retval = -1;
-		}
-
-		lttng_opt_fd_cap = rlimit.rlim_cur;
+	ret = set_fd_pool_size();
+	if (ret) {
+		retval = -1;
+		goto exit;
 	}
 
 	if (opt_group_output_by == RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
@@ -639,6 +675,23 @@ static void print_global_objects(void)
 	print_viewer_streams();
 	print_relay_streams();
 	print_sessions();
+}
+
+static int noop_close(void *data, int *fds)
+{
+	return 0;
+}
+
+static void untrack_stdio(void)
+{
+	int fds[] = { fileno(stdout), fileno(stderr) };
+
+	/*
+	 * noop_close is used since we don't really want to close
+	 * the stdio output fds; we merely want to stop tracking them.
+	 */
+	(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+			fds, 2, noop_close, NULL);
 }
 
 /*
@@ -4047,11 +4100,6 @@ static int stdio_open(void *data, int *fds)
 	return 0;
 }
 
-static int noop_close(void *data, int *fds)
-{
-	return 0;
-}
-
 static int track_stdio(void)
 {
 	int fds[2];
@@ -4059,18 +4107,6 @@ static int track_stdio(void)
 
 	return fd_tracker_open_unsuspendable_fd(the_fd_tracker, fds,
 			names, 2, stdio_open, NULL);
-}
-
-static void untrack_stdio(void)
-{
-	int fds[] = { fileno(stdout), fileno(stderr) };
-
-	/*
-	 * noop_close is used since we don't really want to close
-	 * the stdio output fds; we merely want to stop tracking them.
-	 */
-	(void) fd_tracker_close_unsuspendable_fd(the_fd_tracker,
-			fds, 2, noop_close, NULL);
 }
 
 /*
@@ -4171,7 +4207,7 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 	thread_is_rcu_registered = true;
 
-	the_fd_tracker = fd_tracker_create(lttng_opt_fd_cap);
+	the_fd_tracker = fd_tracker_create(lttng_opt_fd_pool_size);
 	if (!the_fd_tracker) {
 		retval = -1;
 		goto exit_options;

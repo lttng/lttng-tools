@@ -93,7 +93,20 @@
 #define DEFAULT_RELAYD_RUNDIR			"%s"
 #define DEFAULT_RELAYD_PATH			DEFAULT_RELAYD_RUNDIR "/relayd"
 
-#define DEFAULT_RELAYD_MINIMAL_FD_CAP		30
+#define DEFAULT_RELAYD_MIN_FD_POOL_SIZE		100
+/*
+ * The file descriptor pool size needs a reserve buffer to accomodate the
+ * indirect use of short-lived file descriptors. For instance, glibc will
+ * create a socket (and thus, use an fd) during calls to gethostname() or
+ * when querying the user's group. Other calls also probably make use of
+ * short-lived FDs.
+ *
+ * The theoritical maximal reserve corresponds to the number of threads as,
+ * in the worst case, they could all be making such calls.
+ *
+ * This value must be less than DEFAULT_RELAYD_MIN_FD_POOL_SIZE.
+ */
+#define DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE	10
 
 /* Default lttng run directory */
 #define DEFAULT_LTTNG_HOME_ENV_VAR              "LTTNG_HOME"
