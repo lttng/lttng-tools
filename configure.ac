@@ -866,6 +866,7 @@ build_lib_kernel_consumer=no
 build_lib_kernel_ctl=no
 build_lib_lttng_ctl=no
 build_lib_relayd=no
+build_lib_fd_tracker=no
 build_lib_sessiond_comm=no
 build_lib_testpoint=no
 build_lib_ust_consumer=no
@@ -905,6 +906,7 @@ AS_IF([test x$enable_bin_lttng_relayd != xno],
        build_lib_index=yes
        build_lib_health=yes
        build_lib_testpoint=yes
+       build_lib_fd_tracker=yes
       ]
 )
 AS_IF([test x$enable_bin_lttng_sessiond != xno],
@@ -1030,6 +1032,7 @@ AM_CONDITIONAL([BUILD_LIB_KERNEL_CONSUMER], [test x$build_lib_kernel_consumer = 
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CTL], [test x$build_lib_kernel_ctl = xyes])
 AM_CONDITIONAL([BUILD_LIB_LTTNG_CTL], [test x$build_lib_lttng_ctl = xyes])
 AM_CONDITIONAL([BUILD_LIB_RELAYD], [test x$build_lib_relayd = xyes])
+AM_CONDITIONAL([BUILD_LIB_FD_TRACKER], [test x$build_lib_fd_tracker = xyes])
 AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes])
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])

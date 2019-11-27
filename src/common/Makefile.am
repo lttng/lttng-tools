@@ -95,7 +95,11 @@ SUBDIRS += sessiond-comm
 endif
 
 if BUILD_LIB_RELAYD
-SUBDIRS += relayd fd-tracker
+SUBDIRS += relayd
+endif
+
+if BUILD_LIB_FD_TRACKER
+SUBDIRS += fd-tracker
 endif
 
 if BUILD_LIB_KERNEL_CONSUMER
