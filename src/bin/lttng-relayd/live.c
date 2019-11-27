@@ -476,14 +476,40 @@ int check_thread_quit_pipe(int fd, uint32_t events)
 	return 0;
 }
 
+static
+int create_sock(void *data, int *out_fd)
+{
+	int ret;
+	struct lttcomm_sock *sock = data;
+
+	ret = lttcomm_create_sock(sock);
+	if (ret < 0) {
+		goto end;
+	}
+
+	*out_fd = sock->fd;
+end:
+	return ret;
+}
+
+static
+int close_sock(void *data, int *in_fd)
+{
+	struct lttcomm_sock *sock = data;
+
+	return sock->ops->close(sock);
+}
+
 /*
  * Create and init socket from uri.
  */
 static
-struct lttcomm_sock *init_socket(struct lttng_uri *uri)
+struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 {
-	int ret;
+	int ret, sock_fd;
 	struct lttcomm_sock *sock = NULL;
+	char uri_str[LTTNG_PATH_MAX];
+	char *formated_name = NULL;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	if (sock == NULL) {
@@ -491,11 +517,25 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri)
 		goto error;
 	}
 
-	ret = lttcomm_create_sock(sock);
-	if (ret < 0) {
-		goto error;
+	/*
+	 * Don't fail to create the socket if the name can't be built as it is
+	 * only used for debugging purposes.
+	 */
+	ret = uri_to_str_url(uri, uri_str, sizeof(uri_str));
+	uri_str[sizeof(uri_str) - 1] = '\0';
+	if (ret >= 0) {
+		ret = asprintf(&formated_name, "%s socket @ %s", name,
+				uri_str);
+		if (ret < 0) {
+			formated_name = NULL;
+		}
 	}
-	DBG("Listening on sock %d for lttng-live", sock->fd);
+
+	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock_fd,
+			(const char **) (formated_name ? &formated_name : NULL),
+			1, create_sock, sock);
+	free(formated_name);
+	DBG("Listening on %s socket %d", name, sock->fd);
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
@@ -535,7 +575,7 @@ void *thread_listener(void *data)
 
 	health_code_update();
 
-	live_control_sock = init_socket(live_uri);
+	live_control_sock = init_socket(live_uri, "Live listener");
 	if (!live_control_sock) {
 		goto error_sock_control;
 	}
@@ -654,10 +694,15 @@ error_testpoint:
 	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 error_create_poll:
 	if (live_control_sock->fd >= 0) {
-		ret = live_control_sock->ops->close(live_control_sock);
+		int sock_fd = live_control_sock->fd;
+
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+				&sock_fd, 1, close_sock,
+				live_control_sock);
 		if (ret) {
 			PERROR("close");
 		}
+		live_control_sock->fd = -1;
 	}
 	lttcomm_destroy_sock(live_control_sock);
 error_sock_control:
