@@ -902,13 +902,38 @@ static int check_thread_quit_pipe(int fd, uint32_t events)
 	return 0;
 }
 
+static int create_sock(void *data, int *out_fd)
+{
+	int ret;
+	struct lttcomm_sock *sock = data;
+
+	ret = lttcomm_create_sock(sock);
+	if (ret < 0) {
+		goto end;
+	}
+
+	*out_fd = sock->fd;
+end:
+	return ret;
+}
+
+static int close_sock(void *data, int *in_fd)
+{
+	struct lttcomm_sock *sock = data;
+
+	return sock->ops->close(sock);
+}
+
 /*
  * Create and init socket from uri.
  */
-static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri)
+static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri,
+		const char *name)
 {
-	int ret;
+	int ret, sock_fd;
 	struct lttcomm_sock *sock = NULL;
+	char uri_str[PATH_MAX];
+	char *formated_name = NULL;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	if (sock == NULL) {
@@ -916,11 +941,25 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri)
 		goto error;
 	}
 
-	ret = lttcomm_create_sock(sock);
-	if (ret < 0) {
-		goto error;
+	/*
+	 * Don't fail to create the socket if the name can't be built as it is
+	 * only used for debugging purposes.
+	 */
+	ret = uri_to_str_url(uri, uri_str, sizeof(uri_str));
+	uri_str[sizeof(uri_str) - 1] = '\0';
+	if (ret >= 0) {
+		ret = asprintf(&formated_name, "%s socket @ %s", name,
+				uri_str);
+		if (ret < 0) {
+			formated_name = NULL;
+		}
 	}
-	DBG("Listening on sock %d", sock->fd);
+
+	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock_fd,
+			(const char **) (formated_name ? &formated_name : NULL),
+			1, create_sock, sock);
+	free(formated_name);
+	DBG("Listening on %s socket %d", name, sock->fd);
 
 	ret = sock->ops->bind(sock);
 	if (ret < 0) {
@@ -959,12 +998,12 @@ static void *relay_thread_listener(void *data)
 
 	health_code_update();
 
-	control_sock = relay_socket_create(control_uri);
+	control_sock = relay_socket_create(control_uri, "Control listener");
 	if (!control_sock) {
 		goto error_sock_control;
 	}
 
-	data_sock = relay_socket_create(data_uri);
+	data_sock = relay_socket_create(data_uri, "Data listener");
 	if (!data_sock) {
 		goto error_sock_relay;
 	}
@@ -1110,18 +1149,28 @@ error_testpoint:
 	(void) fd_tracker_util_poll_clean(the_fd_tracker, &events);
 error_create_poll:
 	if (data_sock->fd >= 0) {
-		ret = data_sock->ops->close(data_sock);
+		int data_sock_fd = data_sock->fd;
+
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+				&data_sock_fd, 1, close_sock,
+				data_sock);
 		if (ret) {
-			PERROR("close");
+			PERROR("Failed to close the data listener socket file descriptor");
 		}
+		data_sock->fd = -1;
 	}
 	lttcomm_destroy_sock(data_sock);
 error_sock_relay:
 	if (control_sock->fd >= 0) {
-		ret = control_sock->ops->close(control_sock);
+		int control_sock_fd = control_sock->fd;
+
+		ret = fd_tracker_close_unsuspendable_fd(the_fd_tracker,
+				&control_sock_fd, 1, close_sock,
+				control_sock);
 		if (ret) {
-			PERROR("close");
+			PERROR("Failed to close the control listener socket file descriptor");
 		}
+		control_sock->fd = -1;
 	}
 	lttcomm_destroy_sock(control_sock);
 error_sock_control:
