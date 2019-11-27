@@ -53,6 +53,7 @@
 #include <common/sessiond-comm/relayd.h>
 #include <common/uri.h>
 #include <common/utils.h>
+#include <common/fd-tracker/utils.h>
 
 #include "cmd.h"
 #include "live.h"
@@ -2315,7 +2316,7 @@ error_poll_create:
 	lttng_ht_destroy(viewer_connections_ht);
 viewer_connections_ht_error:
 	/* Close relay conn pipes */
-	utils_close_pipe(live_conn_pipe);
+	(void) fd_tracker_util_pipe_close(the_fd_tracker, live_conn_pipe);
 	if (err) {
 		DBG("Viewer worker thread exited with error");
 	}
@@ -2339,7 +2340,8 @@ error_testpoint:
  */
 static int create_conn_pipe(void)
 {
-	return utils_create_pipe_cloexec(live_conn_pipe);
+	return fd_tracker_util_pipe_open_cloexec(the_fd_tracker,
+			"Live connection pipe", live_conn_pipe);
 }
 
 int relayd_live_join(void)
