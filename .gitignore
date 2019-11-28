@@ -89,6 +89,7 @@ compile_commands.json
 /tests/unit/test_relayd_backward_compat_group_by_session
 /tests/unit/test_fd_tracker
 /tests/unit/test_payload
+/tests/unit/test_event_rule
 /tests/unit/test_unix_socket
 kernel_all_events_basic
 kernel_event_basic

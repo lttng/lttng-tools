@@ -17,6 +17,7 @@ TESTS = test_kernel_data \
 	test_utils_compat_poll \
 	test_string_utils \
 	test_notification \
+	test_event_rule \
 	test_directory_handle \
 	test_relayd_backward_compat_group_by_session \
 	ini_config/test_ini_config \
@@ -47,7 +48,8 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_buffer_view \
                   test_payload \
                   test_unix_socket \
-                  test_kernel_probe
+                  test_kernel_probe \
+                  test_event_rule 
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -191,6 +193,10 @@ test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
 # Notification api
 test_notification_SOURCES = test_notification.c
 test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
+#
+# Event rule api
+test_event_rule_SOURCES = test_event_rule.c
+test_event_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # relayd backward compat for groou-by-session utilities
 test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
