@@ -61,11 +61,11 @@ compile_commands.json
 /src/bin/lttng-crash/lttng-crash
 /src/bin/lttng-relayd/lttng-relayd
 /src/lib/lttng-ctl/lttng-ctl.pc
-/src/lib/lttng-ctl/filter/filter-grammar-test
-/src/lib/lttng-ctl/filter/filter-lexer.c
-/src/lib/lttng-ctl/filter/filter-parser.c
-/src/lib/lttng-ctl/filter/filter-parser.h
-/src/lib/lttng-ctl/filter/filter-parser.output
+/src/common/filter/filter-grammar-test
+/src/common/filter/filter-lexer.c
+/src/common/filter/filter-parser.c
+/src/common/filter/filter-parser.h
+/src/common/filter/filter-parser.output
 
 /extras/bindings/swig/python/lttng.i
 /extras/bindings/swig/python/lttng.py

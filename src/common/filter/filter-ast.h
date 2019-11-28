@@ -164,6 +164,8 @@ struct filter_parser_ctx {
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input);
 void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx);
 int filter_parser_ctx_append_ast(struct filter_parser_ctx *parser_ctx);
+int filter_parser_ctx_create_from_filter_expression(
+		const char *filter_expression, struct filter_parser_ctx **ctxp);
 
 static inline
 struct filter_ast *filter_parser_get_ast(struct filter_parser_ctx *parser_ctx)

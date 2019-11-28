@@ -1081,7 +1081,7 @@ AC_SUBST(AM_LDFLAGS)
 # In a scenario where lttng-tools is built from a distribution tarball and in a
 # out-of-tree manner, the generated "version.i" has priority on the one from
 # the source (distribution tarball) and must be found first.
-AM_CPPFLAGS="-I\$(top_builddir)/include -I\$(top_srcdir)/include -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
+AM_CPPFLAGS="-I\$(top_builddir)/include -I\$(top_srcdir)/include -I\$(top_builddir)/src -I\$(top_srcdir)/src -include config.h $AM_CPPFLAGS"
 AC_SUBST(AM_CPPFLAGS)
 
 lttngincludedir="${includedir}/lttng"
@@ -1129,9 +1129,9 @@ AC_CONFIG_FILES([
 	src/common/config/Makefile
 	src/common/string-utils/Makefile
 	src/common/fd-tracker/Makefile
+	src/common/filter/Makefile
 	src/lib/Makefile
 	src/lib/lttng-ctl/Makefile
-	src/lib/lttng-ctl/filter/Makefile
 	src/lib/lttng-ctl/lttng-ctl.pc
 	src/bin/Makefile
 	src/bin/lttng-consumerd/Makefile

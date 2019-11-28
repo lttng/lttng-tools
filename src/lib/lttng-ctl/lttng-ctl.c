@@ -43,25 +43,11 @@
 #include <lttng/userspace-probe-internal.h>
 #include <lttng/lttng-error.h>
 
-#include "filter/filter-ast.h"
-#include "filter/filter-parser.h"
-#include "filter/filter-bytecode.h"
-#include "filter/memstream.h"
+#include <common/filter/filter-ast.h>
+#include <common/filter/filter-parser.h>
+#include <common/filter/filter-bytecode.h>
+#include <common/filter/memstream.h>
 #include "lttng-ctl-helper.h"
-
-#ifdef DEBUG
-static const int print_xml = 1;
-#define dbg_printf(fmt, args...)	\
-	printf("[debug liblttng-ctl] " fmt, ## args)
-#else
-static const int print_xml = 0;
-#define dbg_printf(fmt, args...)				\
-do {								\
-	/* do nothing but check printf format */		\
-	if (0)							\
-		printf("[debug liblttnctl] " fmt, ## args);	\
-} while (0)
-#endif
 
 #define COPY_DOMAIN_PACKED(dst, src)				\
 do {								\
@@ -1051,133 +1037,6 @@ error:
 }
 
 /*
- * Generate the filter bytecode from a given filter expression string. Put the
- * newly allocated parser context in ctxp and populate the lsm object with the
- * expression len.
- *
- * Return 0 on success else a LTTNG_ERR_* code and ctxp is untouched.
- */
-static int generate_filter(char *filter_expression,
-		struct lttcomm_session_msg *lsm, struct filter_parser_ctx **ctxp)
-{
-	int ret;
-	struct filter_parser_ctx *ctx = NULL;
-	FILE *fmem = NULL;
-
-	assert(filter_expression);
-	assert(lsm);
-	assert(ctxp);
-
-	/*
-	 * Casting const to non-const, as the underlying function will use it in
-	 * read-only mode.
-	 */
-	fmem = lttng_fmemopen((void *) filter_expression,
-			strlen(filter_expression), "r");
-	if (!fmem) {
-		fprintf(stderr, "Error opening memory as stream\n");
-		ret = -LTTNG_ERR_FILTER_NOMEM;
-		goto error;
-	}
-	ctx = filter_parser_ctx_alloc(fmem);
-	if (!ctx) {
-		fprintf(stderr, "Error allocating parser\n");
-		ret = -LTTNG_ERR_FILTER_NOMEM;
-		goto filter_alloc_error;
-	}
-	ret = filter_parser_ctx_append_ast(ctx);
-	if (ret) {
-		fprintf(stderr, "Parse error\n");
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-	if (print_xml) {
-		ret = filter_visitor_print_xml(ctx, stdout, 0);
-		if (ret) {
-			fflush(stdout);
-			fprintf(stderr, "XML print error\n");
-			ret = -LTTNG_ERR_FILTER_INVAL;
-			goto parse_error;
-		}
-	}
-
-	dbg_printf("Generating IR... ");
-	fflush(stdout);
-	ret = filter_visitor_ir_generate(ctx);
-	if (ret) {
-		fprintf(stderr, "Generate IR error\n");
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-	dbg_printf("done\n");
-
-	dbg_printf("Validating IR... ");
-	fflush(stdout);
-	ret = filter_visitor_ir_check_binary_op_nesting(ctx);
-	if (ret) {
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-
-	/* Normalize globbing patterns in the expression. */
-	ret = filter_visitor_ir_normalize_glob_patterns(ctx);
-	if (ret) {
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-
-	/* Validate strings used as literals in the expression. */
-	ret = filter_visitor_ir_validate_string(ctx);
-	if (ret) {
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-
-	/* Validate globbing patterns in the expression. */
-	ret = filter_visitor_ir_validate_globbing(ctx);
-	if (ret) {
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-
-	dbg_printf("done\n");
-
-	dbg_printf("Generating bytecode... ");
-	fflush(stdout);
-	ret = filter_visitor_bytecode_generate(ctx);
-	if (ret) {
-		fprintf(stderr, "Generate bytecode error\n");
-		ret = -LTTNG_ERR_FILTER_INVAL;
-		goto parse_error;
-	}
-	dbg_printf("done\n");
-	dbg_printf("Size of bytecode generated: %u bytes.\n",
-			bytecode_get_len(&ctx->bytecode->b));
-
-	lsm->u.enable.bytecode_len = sizeof(ctx->bytecode->b)
-		+ bytecode_get_len(&ctx->bytecode->b);
-	lsm->u.enable.expression_len = strlen(filter_expression) + 1;
-
-	/* No need to keep the memory stream. */
-	if (fclose(fmem) != 0) {
-		PERROR("fclose");
-	}
-
-	*ctxp = ctx;
-	return 0;
-
-parse_error:
-	filter_ir_free(ctx);
-	filter_parser_ctx_free(ctx);
-filter_alloc_error:
-	if (fclose(fmem) != 0) {
-		PERROR("fclose");
-	}
-error:
-	return ret;
-}
-
-/*
  * Enable event(s) for a channel, possibly with exclusions and a filter.
  * If no event name is specified, all events are enabled.
  * If no channel name is specified, the default name is used.
@@ -1279,10 +1138,14 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 			}
 		}
 
-		ret = generate_filter(filter_expression, &lsm, &ctx);
+		ret = filter_parser_ctx_create_from_filter_expression(filter_expression, &ctx);
 		if (ret) {
 			goto filter_error;
 		}
+
+		lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
+			+ bytecode_get_len(&ctx->bytecode->b);
+		lsm.u.enable.expression_len = strlen(filter_expression) + 1;
 	}
 
 	ret = lttng_dynamic_buffer_set_capacity(&payload.buffer,
@@ -1509,10 +1372,14 @@ int lttng_disable_event_ext(struct lttng_handle *handle,
 			}
 		}
 
-		ret = generate_filter(filter_expression, &lsm, &ctx);
+		ret = filter_parser_ctx_create_from_filter_expression(filter_expression, &ctx);
 		if (ret) {
 			goto filter_error;
 		}
+
+		lsm.u.enable.bytecode_len = sizeof(ctx->bytecode->b)
+			+ bytecode_get_len(&ctx->bytecode->b);
+		lsm.u.enable.expression_len = strlen(filter_expression) + 1;
 	}
 
 	varlen_data = zmalloc(lsm.u.disable.bytecode_len

@@ -20,6 +20,8 @@
 #include <inttypes.h>
 #include "filter-ast.h"
 #include "filter-parser.h"
+#include "filter-bytecode.h"
+#include "memstream.h"
 
 #include <common/macros.h>
 
@@ -27,6 +29,20 @@
 #define WIDTH_o64_SCANF_IS_A_BROKEN_API	"22"
 #define WIDTH_x64_SCANF_IS_A_BROKEN_API	"17"
 #define WIDTH_lg_SCANF_IS_A_BROKEN_API	"4096"	/* Hugely optimistic approximation */
+
+#ifdef DEBUG
+static const int print_xml = 1;
+#define dbg_printf(fmt, args...)	\
+	printf("[debug filter_parser] " fmt, ## args)
+#else
+static const int print_xml = 0;
+#define dbg_printf(fmt, args...)				\
+do {								\
+	/* do nothing but check printf format */		\
+	if (0)							\
+		printf("[debug filter_parser] " fmt, ## args);	\
+} while (0)
+#endif
 
 LTTNG_HIDDEN
 int yydebug;
@@ -286,6 +302,123 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 	if (ret)
 		fprintf(stderr, "yylex_destroy error\n");
 	free(parser_ctx);
+}
+
+LTTNG_HIDDEN
+int filter_parser_ctx_create_from_filter_expression(
+		const char *filter_expression, struct filter_parser_ctx **ctxp)
+{
+	int ret;
+	struct filter_parser_ctx *ctx = NULL;
+	FILE *fmem = NULL;
+
+	assert(filter_expression);
+	assert(ctxp);
+
+	/*
+	 * Casting const to non-const, as the underlying function will use it in
+	 * read-only mode.
+	 */
+	fmem = lttng_fmemopen((void *) filter_expression,
+			strlen(filter_expression), "r");
+	if (!fmem) {
+		fprintf(stderr, "Error opening memory as stream\n");
+		ret = -LTTNG_ERR_FILTER_NOMEM;
+		goto error;
+	}
+	ctx = filter_parser_ctx_alloc(fmem);
+	if (!ctx) {
+		fprintf(stderr, "Error allocating parser\n");
+		ret = -LTTNG_ERR_FILTER_NOMEM;
+		goto filter_alloc_error;
+	}
+	ret = filter_parser_ctx_append_ast(ctx);
+	if (ret) {
+		fprintf(stderr, "Parse error\n");
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+	if (print_xml) {
+		ret = filter_visitor_print_xml(ctx, stdout, 0);
+		if (ret) {
+			fflush(stdout);
+			fprintf(stderr, "XML print error\n");
+			ret = -LTTNG_ERR_FILTER_INVAL;
+			goto parse_error;
+		}
+	}
+
+	dbg_printf("Generating IR... ");
+	fflush(stdout);
+	ret = filter_visitor_ir_generate(ctx);
+	if (ret) {
+		fprintf(stderr, "Generate IR error\n");
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+	dbg_printf("done\n");
+
+	dbg_printf("Validating IR... ");
+	fflush(stdout);
+	ret = filter_visitor_ir_check_binary_op_nesting(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
+	/* Normalize globbing patterns in the expression. */
+	ret = filter_visitor_ir_normalize_glob_patterns(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
+	/* Validate strings used as literals in the expression. */
+	ret = filter_visitor_ir_validate_string(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
+	/* Validate globbing patterns in the expression. */
+	ret = filter_visitor_ir_validate_globbing(ctx);
+	if (ret) {
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+
+	dbg_printf("done\n");
+
+	dbg_printf("Generating bytecode... ");
+	fflush(stdout);
+	ret = filter_visitor_bytecode_generate(ctx);
+	if (ret) {
+		fprintf(stderr, "Generate bytecode error\n");
+		ret = -LTTNG_ERR_FILTER_INVAL;
+		goto parse_error;
+	}
+	dbg_printf("done\n");
+	dbg_printf("Size of bytecode generated: %u bytes.\n",
+			bytecode_get_len(&ctx->bytecode->b));
+
+	/* No need to keep the memory stream. */
+	if (fclose(fmem) != 0) {
+		fprintf(stderr, "fclose (%d) \n", errno);
+		ret = -LTTNG_ERR_FILTER_INVAL;
+	}
+
+	*ctxp = ctx;
+	return 0;
+
+parse_error:
+	filter_ir_free(ctx);
+	filter_parser_ctx_free(ctx);
+filter_alloc_error:
+	if (fclose(fmem) != 0) {
+		fprintf(stderr, "fclose (%d) \n", errno);
+	}
+error:
+	return ret;
 }
 
 %}
