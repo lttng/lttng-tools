@@ -19,6 +19,9 @@ typedef bool (*action_validate_cb)(struct lttng_action *action);
 typedef void (*action_destroy_cb)(struct lttng_action *action);
 typedef int (*action_serialize_cb)(struct lttng_action *action,
 		struct lttng_dynamic_buffer *buf);
+typedef ssize_t (*action_create_from_buffer_cb)(
+		const struct lttng_buffer_view *view,
+		struct lttng_action **action);
 
 struct lttng_action {
 	enum lttng_action_type type;

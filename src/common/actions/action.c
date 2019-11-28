@@ -78,34 +78,48 @@ end:
 
 LTTNG_HIDDEN
 ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
-		struct lttng_action **_action)
+		struct lttng_action **action)
 {
-	ssize_t ret, action_size = sizeof(struct lttng_action_comm);
-	struct lttng_action *action;
+	ssize_t consumed_len, specific_action_consumed_len;
 	const struct lttng_action_comm *action_comm;
+	action_create_from_buffer_cb create_from_buffer_cb;
+	struct lttng_buffer_view specific_action_view;
 
-	if (!view || !_action) {
-		ret = -1;
+	if (!view || !action) {
+		consumed_len = -1;
 		goto end;
 	}
 
 	action_comm = (const struct lttng_action_comm *) view->data;
+
 	DBG("Deserializing action from buffer");
 	switch (action_comm->action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
-		action = lttng_action_notify_create();
+		create_from_buffer_cb = lttng_action_notify_create_from_buffer;
 		break;
 	default:
-		ret = -1;
+		consumed_len = -1;
 		goto end;
 	}
 
-	if (!action) {
-		ret = -1;
+	/* Create buffer view for the action-type-specific data. */
+	specific_action_view = lttng_buffer_view_from_view(view,
+			sizeof(struct lttng_action_comm),
+			view->size - sizeof(struct lttng_action_comm));
+
+	specific_action_consumed_len =
+			create_from_buffer_cb(&specific_action_view, action);
+	if (specific_action_consumed_len < 0) {
+		ERR("Failed to create specific action from buffer.");
+		consumed_len = -1;
 		goto end;
 	}
-	ret = action_size;
-	*_action = action;
+
+	assert(*action);
+
+	consumed_len = sizeof(struct lttng_action_comm) +
+		       specific_action_consumed_len;
+
 end:
-	return ret;
+	return consumed_len;
 }

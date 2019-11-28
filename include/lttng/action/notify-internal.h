@@ -15,4 +15,9 @@ struct lttng_action_notify {
 	struct lttng_action parent;
 };
 
+LTTNG_HIDDEN
+ssize_t lttng_action_notify_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_action **action);
+
 #endif /* LTTNG_ACTION_NOTIFY_INTERNAL_H */

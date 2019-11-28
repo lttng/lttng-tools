@@ -38,3 +38,20 @@ struct lttng_action *lttng_action_notify_create(void)
 end:
 	return &notify->parent;
 }
+
+ssize_t lttng_action_notify_create_from_buffer(
+		const struct lttng_buffer_view *view,
+		struct lttng_action **action)
+{
+	ssize_t consumed_length;
+
+	*action = lttng_action_notify_create();
+	if (!*action) {
+		consumed_length = -1;
+		goto end;
+	}
+
+	consumed_length = 0;
+end:
+	return consumed_length;
+}
