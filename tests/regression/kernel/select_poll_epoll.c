@@ -31,7 +31,7 @@
 #define MSEC_PER_NSEC (MSEC_PER_USEC * 1000)
 
 static int timeout; /* seconds, -1 to disable */
-volatile static int stop_thread;
+static volatile int stop_thread;
 static int wait_fd;
 
 struct ppoll_thread_data {
