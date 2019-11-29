@@ -1830,7 +1830,7 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	msg.u.create_trace_chunk.chunk_id = chunk_id;
 
 	if (chunk_has_local_output) {
-		chunk_status = lttng_trace_chunk_get_chunk_directory_handle(
+		chunk_status = lttng_trace_chunk_borrow_chunk_directory_handle(
 				chunk, &chunk_directory_handle);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -LTTNG_ERR_FATAL;

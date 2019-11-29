@@ -575,7 +575,7 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	const time_t chunk_creation_ts = time(NULL);
 	bool is_local_trace;
 	const char *base_path;
-	struct lttng_directory_handle session_output_directory;
+	struct lttng_directory_handle *session_output_directory = NULL;
 	const struct lttng_credentials session_credentials = {
 		.uid = session->uid,
 		.gid = session->gid,
@@ -640,20 +640,21 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	if (ret) {
 		goto error;
 	}
-	ret = lttng_directory_handle_init(&session_output_directory,
-			base_path);
-	if (ret) {
+	session_output_directory = lttng_directory_handle_create(base_path);
+	if (!session_output_directory) {
 		goto error;
 	}
 	chunk_status = lttng_trace_chunk_set_as_owner(trace_chunk,
-			&session_output_directory);
-	lttng_directory_handle_fini(&session_output_directory);
+			session_output_directory);
+	lttng_directory_handle_put(session_output_directory);
+	session_output_directory = NULL;
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto error;
 	}
 end:
 	return trace_chunk;
 error:
+	lttng_directory_handle_put(session_output_directory);
 	lttng_trace_chunk_put(trace_chunk);
 	trace_chunk = NULL;
 	goto end;

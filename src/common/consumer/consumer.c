@@ -4463,6 +4463,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		 */
 		chunk_status = lttng_trace_chunk_set_as_user(created_chunk,
 				chunk_directory_handle);
+		chunk_directory_handle = NULL;
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ERR("Failed to set trace chunk's directory handle");
 			ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;

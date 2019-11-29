@@ -20,6 +20,7 @@
 
 #include <common/macros.h>
 #include <common/credentials.h>
+#include <urcu/ref.h>
 
 enum lttng_directory_handle_rmdir_recursive_flags {
 	LTTNG_DIRECTORY_HANDLE_FAIL_NON_EMPTY_FLAG = (1U << 0),
@@ -35,6 +36,7 @@ enum lttng_directory_handle_rmdir_recursive_flags {
  */
 #ifdef COMPAT_DIRFD
 struct lttng_directory_handle {
+	struct urcu_ref ref;
 	int dirfd;
 };
 
@@ -47,23 +49,24 @@ int lttng_directory_handle_get_dirfd(
 
 #else
 struct lttng_directory_handle {
+	struct urcu_ref ref;
 	char *base_path;
 };
 #endif
 
 /*
- * Initialize a directory handle to the provided path. Passing a NULL path
+ * Create a directory handle to the provided path. Passing a NULL path
  * returns a handle to the current working directory.
  *
- * An initialized directory handle must be finalized using
- * lttng_directory_handle_fini().
+ * The reference to the directory handle must be released using
+ * lttng_directory_handle_put().
  */
 LTTNG_HIDDEN
-int lttng_directory_handle_init(struct lttng_directory_handle *handle,
+struct lttng_directory_handle *lttng_directory_handle_create(
 		const char *path);
 
 /*
- * Initialize a new directory handle to a path relative to an existing handle.
+ * Create a new directory handle to a path relative to an existing handle.
  *
  * The provided path must already exist. Note that the creation of a
  * subdirectory and the creation of a handle are kept as separate operations
@@ -72,53 +75,49 @@ int lttng_directory_handle_init(struct lttng_directory_handle *handle,
  *
  * Passing a NULL path effectively copies the original handle.
  *
- * An initialized directory handle must be finalized using
- * lttng_directory_handle_fini().
+ * The reference to the directory handle must be released using
+ * lttng_directory_handle_put().
  */
 LTTNG_HIDDEN
-int lttng_directory_handle_init_from_handle(
-		struct lttng_directory_handle *new_handle,
+struct lttng_directory_handle *lttng_directory_handle_create_from_handle(
 		const char *path,
-		const struct lttng_directory_handle *handle);
+		const struct lttng_directory_handle *ref_handle);
 
 /*
- * Initialize a new directory handle from an existing directory fd.
+ * Create a new directory handle from an existing directory fd.
  *
  * The new directory handle assumes the ownership of the directory fd.
  * Note that this method should only be used in very specific cases, such as
  * re-creating a directory handle from a dirfd passed over a unix socket.
  *
- * An initialized directory handle must be finalized using
- * lttng_directory_handle_fini().
+ * The reference to the directory handle must be released using
+ * lttng_directory_handle_put().
  */
 LTTNG_HIDDEN
-int lttng_directory_handle_init_from_dirfd(
-		struct lttng_directory_handle *handle, int dirfd);
+struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
+		int dirfd);
 
 /*
  * Copy a directory handle.
- */
-LTTNG_HIDDEN
-int lttng_directory_handle_copy(const struct lttng_directory_handle *handle,
-		struct lttng_directory_handle *new_copy);
-
-/*
- * Move a directory handle. The original directory handle may no longer be
- * used after this call. This call cannot fail; directly assign the
- * return value to the new directory handle.
  *
- * It is safe (but unnecessary) to call lttng_directory_handle_fini on the
- * original handle.
+ * The reference to the directory handle must be released using
+ * lttng_directory_handle_put().
  */
 LTTNG_HIDDEN
-struct lttng_directory_handle
-lttng_directory_handle_move(struct lttng_directory_handle *original);
+struct lttng_directory_handle *lttng_directory_handle_copy(
+		const struct lttng_directory_handle *handle);
 
 /*
- * Release the resources of a directory handle.
+ * Acquire a reference to a directory handle.
  */
 LTTNG_HIDDEN
-void lttng_directory_handle_fini(struct lttng_directory_handle *handle);
+bool lttng_directory_handle_get(struct lttng_directory_handle *handle);
+
+/*
+ * Release a reference to a directory handle.
+ */
+LTTNG_HIDDEN
+void lttng_directory_handle_put(struct lttng_directory_handle *handle);
 
 /*
  * Create a subdirectory relative to a directory handle.

@@ -2437,7 +2437,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttng_trace_chunk *chunk = NULL, *published_chunk = NULL;
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
-	struct lttng_directory_handle session_output;
+	struct lttng_directory_handle *session_output = NULL;
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to create a trace chunk before version check");
@@ -2512,14 +2512,15 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end;
 	}
 
-	ret = session_init_output_directory_handle(
-			conn->session, &session_output);
-	if (ret) {
+	session_output = session_create_output_directory_handle(
+			conn->session);
+	if (!session_output) {
 		reply_code = LTTNG_ERR_CREATE_DIR_FAIL;
 		goto end;
 	}
-	chunk_status = lttng_trace_chunk_set_as_owner(chunk, &session_output);
-	lttng_directory_handle_fini(&session_output);
+	chunk_status = lttng_trace_chunk_set_as_owner(chunk, session_output);
+	lttng_directory_handle_put(session_output);
+	session_output = NULL;
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		reply_code = LTTNG_ERR_UNK;
 		ret = -1;
@@ -2575,6 +2576,7 @@ end:
 end_no_reply:
 	lttng_trace_chunk_put(chunk);
 	lttng_trace_chunk_put(published_chunk);
+	lttng_directory_handle_put(session_output);
 	return ret;
 }
 

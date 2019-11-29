@@ -682,21 +682,22 @@ LTTNG_HIDDEN
 int utils_mkdir(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 	const struct lttng_credentials creds = {
 		.uid = (uid_t) uid,
 		.gid = (gid_t) gid,
 	};
 
-	ret = lttng_directory_handle_init(&handle, NULL);
-	if (ret) {
+	handle = lttng_directory_handle_create(NULL);
+	if (!handle) {
+		ret = -1;
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_as_user(
-			&handle, path, mode,
+			handle, path, mode,
 			(uid >= 0 || gid >= 0) ? &creds : NULL);
-	lttng_directory_handle_fini(&handle);
 end:
+	lttng_directory_handle_put(handle);
 	return ret;
 }
 
@@ -710,21 +711,22 @@ LTTNG_HIDDEN
 int utils_mkdir_recursive(const char *path, mode_t mode, int uid, int gid)
 {
 	int ret;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 	const struct lttng_credentials creds = {
 		.uid = (uid_t) uid,
 		.gid = (gid_t) gid,
 	};
 
-	ret = lttng_directory_handle_init(&handle, NULL);
-	if (ret) {
+	handle = lttng_directory_handle_create(NULL);
+	if (!handle) {
+		ret = -1;
 		goto end;
 	}
 	ret = lttng_directory_handle_create_subdirectory_recursive_as_user(
-			&handle, path, mode,
+			handle, path, mode,
 			(uid >= 0 || gid >= 0) ? &creds : NULL);
-	lttng_directory_handle_fini(&handle);
 end:
+	lttng_directory_handle_put(handle);
 	return ret;
 }
 
@@ -1353,15 +1355,16 @@ LTTNG_HIDDEN
 int utils_recursive_rmdir(const char *path)
 {
 	int ret;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
-	ret = lttng_directory_handle_init(&handle, NULL);
-	if (ret) {
+	handle = lttng_directory_handle_create(NULL);
+	if (!handle) {
+		ret = -1;
 		goto end;
 	}
-	ret = lttng_directory_handle_remove_subdirectory(&handle, path);
-	lttng_directory_handle_fini(&handle);
+	ret = lttng_directory_handle_remove_subdirectory(handle, path);
 end:
+	lttng_directory_handle_put(handle);
 	return ret;
 }
 

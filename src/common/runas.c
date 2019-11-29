@@ -351,22 +351,27 @@ int _mkdirat_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
 	path = data->u.mkdir.path;
 	mode = data->u.mkdir.mode;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.mkdir.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.mkdir.dirfd);
+	if (!handle) {
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		ret_value->u.ret = -1;
+		goto end;
+	}
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret =
-			lttng_directory_handle_create_subdirectory_recursive(
-					&handle, path, mode);
+	ret_value->u.ret = lttng_directory_handle_create_subdirectory_recursive(
+			handle, path, mode);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
@@ -375,22 +380,27 @@ int _mkdirat(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *path;
 	mode_t mode;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
 	path = data->u.mkdir.path;
 	mode = data->u.mkdir.mode;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.mkdir.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.mkdir.dirfd);
+	if (!handle) {
+		ret_value->u.ret = -1;
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		goto end;
+	}
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.mkdir.dirfd = -1;
 	/* Safe to call as we have transitioned to the requested uid/gid. */
-	ret_value->u.ret =
-			lttng_directory_handle_create_subdirectory(
-					&handle, path, mode);
+	ret_value->u.ret = lttng_directory_handle_create_subdirectory(
+			handle, path, mode);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
@@ -398,14 +408,19 @@ static
 int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	int fd;
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.open.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.open.dirfd);
+	if (!handle) {
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		ret_value->u.ret = -1;
+		goto end;
+	}
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.open.dirfd = -1;
 
-	fd = lttng_directory_handle_open_file(&handle,
+	fd = lttng_directory_handle_open_file(handle,
 			data->u.open.path, data->u.open.flags,
 			data->u.open.mode);
 	if (fd < 0) {
@@ -418,64 +433,83 @@ int _open(struct run_as_data *data, struct run_as_ret *ret_value)
 
 	ret_value->_errno = errno;
 	ret_value->_error = fd < 0;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
 static
 int _unlink(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.unlink.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.unlink.dirfd);
+	if (!handle) {
+		ret_value->u.ret = -1;
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		goto end;
+	}
 
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.unlink.dirfd = -1;
 
-	ret_value->u.ret = lttng_directory_handle_unlink_file(&handle,
+	ret_value->u.ret = lttng_directory_handle_unlink_file(handle,
 			data->u.unlink.path);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
 static
 int _rmdir(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.rmdir.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.rmdir.dirfd);
+	if (!handle) {
+		ret_value->u.ret = -1;
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		goto end;
+	}
 
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.rmdir.dirfd = -1;
 
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory(
-			&handle, data->u.rmdir.path);
+			handle, data->u.rmdir.path);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
 static
 int _rmdir_recursive(struct run_as_data *data, struct run_as_ret *ret_value)
 {
-	struct lttng_directory_handle handle;
+	struct lttng_directory_handle *handle;
 
-	(void) lttng_directory_handle_init_from_dirfd(&handle,
-			data->u.rmdir.dirfd);
+	handle = lttng_directory_handle_create_from_dirfd(data->u.rmdir.dirfd);
+	if (!handle) {
+		ret_value->u.ret = -1;
+		ret_value->_errno = errno;
+		ret_value->_error = true;
+		goto end;
+	}
 
 	/* Ownership of dirfd is transferred to the handle. */
 	data->u.rmdir.dirfd = -1;
 
 	ret_value->u.ret = lttng_directory_handle_remove_subdirectory_recursive(
-			&handle, data->u.rmdir.path, data->u.rmdir.flags);
+			handle, data->u.rmdir.path, data->u.rmdir.flags);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&handle);
+	lttng_directory_handle_put(handle);
+end:
 	return ret_value->u.ret;
 }
 
@@ -483,26 +517,35 @@ static
 int _rename(struct run_as_data *data, struct run_as_ret *ret_value)
 {
 	const char *old_path, *new_path;
-	struct lttng_directory_handle old_handle, new_handle;
+	struct lttng_directory_handle *old_handle = NULL, *new_handle = NULL;
 
 	old_path = data->u.rename.old_path;
 	new_path = data->u.rename.new_path;
 
-	(void) lttng_directory_handle_init_from_dirfd(&old_handle,
+	old_handle = lttng_directory_handle_create_from_dirfd(
 			data->u.rename.dirfds[0]);
-	(void) lttng_directory_handle_init_from_dirfd(&new_handle,
+	if (!old_handle) {
+		ret_value->u.ret = -1;
+		goto end;
+	}
+	new_handle = lttng_directory_handle_create_from_dirfd(
 			data->u.rename.dirfds[1]);
+	if (!new_handle) {
+		ret_value->u.ret = -1;
+		goto end;
+	}
 
 	/* Ownership of dirfds are transferred to the handles. */
 	data->u.rename.dirfds[0] = data->u.rename.dirfds[1] = -1;
 
 	/* Safe to call as we have transitioned to the requested uid/gid. */
 	ret_value->u.ret = lttng_directory_handle_rename(
-			&old_handle, old_path, &new_handle, new_path);
+			old_handle, old_path, new_handle, new_path);
+end:
+	lttng_directory_handle_put(old_handle);
+	lttng_directory_handle_put(new_handle);
 	ret_value->_errno = errno;
 	ret_value->_error = (ret_value->u.ret) ? true : false;
-	lttng_directory_handle_fini(&old_handle);
-	lttng_directory_handle_fini(&new_handle);
 	return ret_value->u.ret;
 }
 

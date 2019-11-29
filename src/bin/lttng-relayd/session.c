@@ -185,10 +185,10 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 	int ret = 0;
 	struct lttng_trace_chunk *chunk = NULL;
 	enum lttng_trace_chunk_status status;
-	struct lttng_directory_handle output_directory;
+	struct lttng_directory_handle *output_directory;
 
-	ret = session_init_output_directory_handle(session, &output_directory);
-	if (ret) {
+	output_directory = session_create_output_directory_handle(session);
+	if (!output_directory) {
 		goto end;
 	}
 
@@ -203,16 +203,17 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 		goto end;
 	}
 
-	status = lttng_trace_chunk_set_as_owner(chunk, &output_directory);
+	status = lttng_trace_chunk_set_as_owner(chunk, output_directory);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
 	}
+	output_directory = NULL;
 	session->current_trace_chunk = chunk;
 	chunk = NULL;
 end:
 	lttng_trace_chunk_put(chunk);
-	lttng_directory_handle_fini(&output_directory);
+	lttng_directory_handle_put(output_directory);
 	return ret;
 }
 
@@ -531,8 +532,8 @@ void print_sessions(void)
 	rcu_read_unlock();
 }
 
-int session_init_output_directory_handle(struct relay_session *session,
-		struct lttng_directory_handle *handle)
+struct lttng_directory_handle *session_create_output_directory_handle(
+		struct relay_session *session)
 {
 	int ret;
 	/*
@@ -540,11 +541,11 @@ int session_init_output_directory_handle(struct relay_session *session,
 	 * e.g. /home/user/lttng-traces/hostname/session_name
 	 */
 	char *full_session_path = NULL;
+	struct lttng_directory_handle *handle = NULL;
 
 	pthread_mutex_lock(&session->lock);
 	full_session_path = create_output_path(session->output_path);
 	if (!full_session_path) {
-		ret = -1;
 		goto end;
 	}
 
@@ -556,12 +557,9 @@ int session_init_output_directory_handle(struct relay_session *session,
 		goto end;
 	}
 
-	ret = lttng_directory_handle_init(handle, full_session_path);
-	if (ret) {
-		goto end;
-	}
+	handle = lttng_directory_handle_create(full_session_path);
 end:
 	pthread_mutex_unlock(&session->lock);
 	free(full_session_path);
-	return ret;
+	return handle;
 }

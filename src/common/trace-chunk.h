@@ -131,20 +131,18 @@ LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_set_credentials_current_user(
 		struct lttng_trace_chunk *chunk);
 
-/* session_output_directory ownership is transferred to the chunk on success. */
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 		struct lttng_trace_chunk *chunk,
 		struct lttng_directory_handle *session_output_directory);
 
-/* chunk_output_directory ownership is transferred to the chunk on success. */
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_set_as_user(
 		struct lttng_trace_chunk *chunk,
 		struct lttng_directory_handle *chunk_directory);
 
 LTTNG_HIDDEN
-enum lttng_trace_chunk_status lttng_trace_chunk_get_chunk_directory_handle(
+enum lttng_trace_chunk_status lttng_trace_chunk_borrow_chunk_directory_handle(
 		struct lttng_trace_chunk *chunk,
 		const struct lttng_directory_handle **handle);
 

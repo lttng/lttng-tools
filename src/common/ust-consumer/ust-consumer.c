@@ -2039,8 +2039,7 @@ end_rotate_channel_nosignal:
 				*msg.u.create_trace_chunk.override_name ?
 					msg.u.create_trace_chunk.override_name :
 					NULL;
-		LTTNG_OPTIONAL(struct lttng_directory_handle) chunk_directory_handle =
-				LTTNG_OPTIONAL_INIT;
+		struct lttng_directory_handle *chunk_directory_handle = NULL;
 
 		/*
 		 * The session daemon will only provide a chunk directory file
@@ -2065,17 +2064,15 @@ end_rotate_channel_nosignal:
 
 			DBG("Received trace chunk directory fd (%d)",
 					chunk_dirfd);
-			ret = lttng_directory_handle_init_from_dirfd(
-					&chunk_directory_handle.value,
+			chunk_directory_handle = lttng_directory_handle_create_from_dirfd(
 					chunk_dirfd);
-			if (ret) {
+			if (!chunk_directory_handle) {
 				ERR("Failed to initialize chunk directory handle from directory file descriptor");
 				if (close(chunk_dirfd)) {
 					PERROR("Failed to close chunk directory file descriptor");
 				}
 				goto error_fatal;
 			}
-			chunk_directory_handle.is_set = true;
 		}
 
 		ret_code = lttng_consumer_create_trace_chunk(
@@ -2088,14 +2085,8 @@ end_rotate_channel_nosignal:
 				msg.u.create_trace_chunk.credentials.is_set ?
 						&credentials :
 						NULL,
-				chunk_directory_handle.is_set ?
-						&chunk_directory_handle.value :
-						NULL);
-
-		if (chunk_directory_handle.is_set) {
-			lttng_directory_handle_fini(
-					&chunk_directory_handle.value);
-		}
+				chunk_directory_handle);
+		lttng_directory_handle_put(chunk_directory_handle);
 		goto end_msg_sessiond;
 	}
 	case LTTNG_CONSUMER_CLOSE_TRACE_CHUNK:
