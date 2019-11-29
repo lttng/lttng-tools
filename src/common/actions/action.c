@@ -10,6 +10,18 @@
 #include <common/error.h>
 #include <assert.h>
 
+static const char *lttng_action_type_string(enum lttng_action_type action_type)
+{
+	switch (action_type) {
+	case LTTNG_ACTION_TYPE_UNKNOWN:
+		return "UNKNOWN";
+	case LTTNG_ACTION_TYPE_NOTIFY:
+		return "NOTIFY";
+	default:
+		return "???";
+	}
+}
+
 enum lttng_action_type lttng_action_get_type(struct lttng_action *action)
 {
 	return action ? action->type : LTTNG_ACTION_TYPE_UNKNOWN;
@@ -106,12 +118,18 @@ ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
 
 	action_comm = (const struct lttng_action_comm *) view->data;
 
-	DBG("Deserializing action from buffer");
+	DBG("Create action from buffer: action-type=%s",
+			lttng_action_type_string(action_comm->action_type));
+
 	switch (action_comm->action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		create_from_buffer_cb = lttng_action_notify_create_from_buffer;
 		break;
 	default:
+		ERR("Failed to create action from buffer, unhandled action type: action-type=%u (%s)",
+				action_comm->action_type,
+				lttng_action_type_string(
+						action_comm->action_type));
 		consumed_len = -1;
 		goto end;
 	}
