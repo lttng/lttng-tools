@@ -22,6 +22,20 @@ enum lttng_action_type lttng_action_get_type_const(
 	return action->type;
 }
 
+LTTNG_HIDDEN
+void lttng_action_init(
+		struct lttng_action *action,
+		enum lttng_action_type type,
+		action_validate_cb validate,
+		action_serialize_cb serialize,
+		action_destroy_cb destroy)
+{
+	action->type = type;
+	action->validate = validate;
+	action->serialize = serialize;
+	action->destroy = destroy;
+}
+
 void lttng_action_destroy(struct lttng_action *action)
 {
 	if (!action) {

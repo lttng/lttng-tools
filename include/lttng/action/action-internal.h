@@ -36,6 +36,13 @@ struct lttng_action_comm {
 } LTTNG_PACKED;
 
 LTTNG_HIDDEN
+void lttng_action_init(struct lttng_action *action,
+		enum lttng_action_type type,
+		action_validate_cb validate,
+		action_serialize_cb serialize,
+		action_destroy_cb destroy);
+
+LTTNG_HIDDEN
 bool lttng_action_validate(struct lttng_action *action);
 
 LTTNG_HIDDEN

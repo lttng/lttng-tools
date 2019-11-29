@@ -32,9 +32,9 @@ struct lttng_action *lttng_action_notify_create(void)
 		goto end;
 	}
 
-	notify->parent.type = LTTNG_ACTION_TYPE_NOTIFY;
-	notify->parent.serialize = lttng_action_notify_serialize;
-	notify->parent.destroy = lttng_action_notify_destroy;
+	lttng_action_init(&notify->parent, LTTNG_ACTION_TYPE_NOTIFY, NULL,
+			lttng_action_notify_serialize,
+			lttng_action_notify_destroy);
 end:
 	return &notify->parent;
 }
