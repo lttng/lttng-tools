@@ -121,7 +121,8 @@ lttnginclude_HEADERS = \
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
-	lttng/action/notify.h
+	lttng/action/notify.h \
+	lttng/action/start-session.h
 
 lttngconditioninclude_HEADERS= \
 	lttng/condition/condition.h \
@@ -144,6 +145,7 @@ noinst_HEADERS = \
 	lttng/load-internal.h \
 	lttng/action/action-internal.h \
 	lttng/action/notify-internal.h \
+	lttng/action/start-session-internal.h \
 	lttng/condition/condition-internal.h \
 	lttng/condition/buffer-usage-internal.h \
 	lttng/condition/session-consumed-size-internal.h \

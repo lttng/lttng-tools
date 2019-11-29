@@ -18,6 +18,7 @@
 /* Include every LTTng ABI/API available. */
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
+#include <lttng/action/start-session.h>
 #include <lttng/channel.h>
 #include <lttng/clear-handle.h>
 #include <lttng/clear.h>

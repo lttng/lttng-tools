@@ -9,6 +9,7 @@
 #include <common/error.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/notify-internal.h>
+#include <lttng/action/start-session-internal.h>
 
 static const char *lttng_action_type_string(enum lttng_action_type action_type)
 {
@@ -17,6 +18,8 @@ static const char *lttng_action_type_string(enum lttng_action_type action_type)
 		return "UNKNOWN";
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		return "NOTIFY";
+	case LTTNG_ACTION_TYPE_START_SESSION:
+		return "START_SESSION";
 	default:
 		return "???";
 	}
@@ -126,6 +129,10 @@ ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
 	switch (action_comm->action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		create_from_buffer_cb = lttng_action_notify_create_from_buffer;
+		break;
+	case LTTNG_ACTION_TYPE_START_SESSION:
+		create_from_buffer_cb =
+				lttng_action_start_session_create_from_buffer;
 		break;
 	default:
 		ERR("Failed to create action from buffer, unhandled action type: action-type=%u (%s)",
