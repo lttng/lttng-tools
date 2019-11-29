@@ -27,12 +27,17 @@
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/compat/getenv.h>
+#include <common/compat/string.h>
 #include <common/unix.h>
 #include <common/defaults.h>
 #include <common/lttng-elf.h>
 #include <common/thread.h>
 
 #include <lttng/constant.h>
+
+#include <common/sessiond-comm/sessiond-comm.h>
+#include <common/filter/filter-ast.h>
+#include <common/filter/filter-bytecode.h>
 
 #include "runas.h"
 
@@ -57,6 +62,7 @@ enum run_as_cmd {
 	RUN_AS_RENAMEAT,
 	RUN_AS_EXTRACT_ELF_SYMBOL_OFFSET,
 	RUN_AS_EXTRACT_SDT_PROBE_OFFSETS,
+	RUN_AS_GENERATE_FILTER_BYTECODE,
 };
 
 struct run_as_mkdir_data {
@@ -80,7 +86,7 @@ struct run_as_unlink_data {
 struct run_as_rmdir_data {
 	int dirfd;
 	char path[LTTNG_PATH_MAX];
-	int flags; /* enum lttng_directory_handle_rmdir_recursive_flags */
+	int flags; /* enum lttng_directory_handle_rmdir_recursive_flags. */
 } LTTNG_PACKED;
 
 struct run_as_extract_elf_symbol_offset_data {
@@ -92,6 +98,10 @@ struct run_as_extract_sdt_probe_offsets_data {
 	int fd;
 	char probe_name[LTTNG_SYMBOL_NAME_LEN];
 	char provider_name[LTTNG_SYMBOL_NAME_LEN];
+} LTTNG_PACKED;
+
+struct run_as_generate_filter_bytecode_data {
+	char filter_expression[LTTNG_FILTER_MAX_LEN];
 } LTTNG_PACKED;
 
 struct run_as_rename_data {
@@ -117,6 +127,11 @@ struct run_as_extract_sdt_probe_offsets_ret {
 	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
 } LTTNG_PACKED;
 
+struct run_as_generate_filter_bytecode_ret {
+	/* A lttng_bytecode_filter struct with 'dynamic' payload. */
+	char bytecode[LTTNG_FILTER_MAX_LEN];
+} LTTNG_PACKED;
+
 struct run_as_data {
 	enum run_as_cmd cmd;
 	union {
@@ -127,6 +142,7 @@ struct run_as_data {
 		struct run_as_rename_data rename;
 		struct run_as_extract_elf_symbol_offset_data extract_elf_symbol_offset;
 		struct run_as_extract_sdt_probe_offsets_data extract_sdt_probe_offsets;
+		struct run_as_generate_filter_bytecode_data generate_filter_bytecode;
 	} u;
 	uid_t uid;
 	gid_t gid;
@@ -153,6 +169,7 @@ struct run_as_ret {
 		struct run_as_open_ret open;
 		struct run_as_extract_elf_symbol_offset_ret extract_elf_symbol_offset;
 		struct run_as_extract_sdt_probe_offsets_ret extract_sdt_probe_offsets;
+		struct run_as_generate_filter_bytecode_ret generate_filter_bytecode;
 	} u;
 	int _errno;
 	bool _error;
@@ -302,6 +319,13 @@ static const struct run_as_command_properties command_properties[] = {
 		.in_fds_offset = offsetof(struct run_as_data,
 				u.extract_sdt_probe_offsets.fd),
 		.in_fd_count = 1,
+		.out_fds_offset = -1,
+		.out_fd_count = 0,
+		.use_cwd_fd = false,
+	},
+	[RUN_AS_GENERATE_FILTER_BYTECODE] = {
+		.in_fds_offset = -1,
+		.in_fd_count = 0,
 		.out_fds_offset = -1,
 		.out_fd_count = 0,
 		.use_cwd_fd = false,
@@ -620,6 +644,48 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 #endif
 
 static
+int _generate_filter_bytecode(struct run_as_data *data,
+		struct run_as_ret *ret_value) {
+	int ret = 0;
+	const char *filter_expression = NULL;
+	struct filter_parser_ctx *ctx = NULL;
+
+	ret_value->_error = false;
+
+	filter_expression = data->u.generate_filter_bytecode.filter_expression;
+
+	if (lttng_strnlen(filter_expression, LTTNG_FILTER_MAX_LEN - 1) == LTTNG_FILTER_MAX_LEN - 1) {
+		ret_value->_error = true;
+		ret = -1;
+		goto end;
+	}
+
+	ret = filter_parser_ctx_create_from_filter_expression(filter_expression, &ctx);
+	if (ret < 0) {
+		ret_value->_error = true;
+		ret = -1;
+		goto end;
+	}
+
+	DBG("Size of bytecode generated: %u bytes.",
+			bytecode_get_len(&ctx->bytecode->b));
+
+	/* Copy the lttng_bytecode_filter object to the return structure. */
+	memcpy(ret_value->u.generate_filter_bytecode.bytecode,
+			&ctx->bytecode->b,
+			sizeof(ctx->bytecode->b) +
+					bytecode_get_len(&ctx->bytecode->b));
+
+end:
+	if (ctx) {
+		filter_bytecode_free(ctx);
+		filter_ir_free(ctx);
+		filter_parser_ctx_free(ctx);
+	}
+
+	return ret;
+}
+static
 run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 {
 	switch (cmd) {
@@ -648,6 +714,8 @@ run_as_fct run_as_enum_to_fct(enum run_as_cmd cmd)
 		return _extract_elf_symbol_offset;
 	case RUN_AS_EXTRACT_SDT_PROBE_OFFSETS:
 		return _extract_sdt_probe_offsets;
+	case RUN_AS_GENERATE_FILTER_BYTECODE:
+		return _generate_filter_bytecode;
 	default:
 		ERR("Unknown command %d", (int) cmd);
 		return NULL;
@@ -791,6 +859,10 @@ int recv_fds_from_master(struct run_as_worker *worker, struct run_as_data *data)
 		for (i = 0; i < COMMAND_IN_FD_COUNT(data); i++) {
 			COMMAND_IN_FDS(data)[i] = AT_FDCWD;
 		}
+		goto end;
+	}
+
+	if (COMMAND_IN_FD_COUNT(data) == 0) {
 		goto end;
 	}
 
@@ -1721,6 +1793,49 @@ int run_as_extract_sdt_probe_offsets(int fd, const char* provider_name,
 
 	memcpy(*offsets, run_as_ret.u.extract_sdt_probe_offsets.offsets,
 			*num_offset * sizeof(uint64_t));
+error:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int run_as_generate_filter_bytecode(const char *filter_expression,
+		uid_t uid,
+		gid_t gid,
+		struct lttng_filter_bytecode **bytecode)
+{
+	int ret;
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
+	const struct lttng_filter_bytecode *view_bytecode = NULL;
+	struct lttng_filter_bytecode *local_bytecode = NULL;
+
+	DBG3("generate_filter_bytecode() from expression=\"%s\" for uid %d and gid %d",
+			filter_expression, (int) uid, (int) gid);
+
+	ret = lttng_strncpy(data.u.generate_filter_bytecode.filter_expression, filter_expression,
+			sizeof(data.u.generate_filter_bytecode.filter_expression));
+	if (ret) {
+		goto error;
+	}
+
+	run_as(RUN_AS_GENERATE_FILTER_BYTECODE, &data, &run_as_ret, uid, gid);
+	errno = run_as_ret._errno;
+	if (run_as_ret._error) {
+		ret = -1;
+		goto error;
+	}
+
+	view_bytecode = (const struct lttng_filter_bytecode *) run_as_ret.u.generate_filter_bytecode.bytecode;
+
+	local_bytecode = zmalloc(sizeof(*local_bytecode) + view_bytecode->len);
+	if (!local_bytecode) {
+		ret = -ENOMEM;
+		goto error;
+	}
+
+	memcpy(local_bytecode, run_as_ret.u.generate_filter_bytecode.bytecode,
+			sizeof(*local_bytecode) + view_bytecode->len);
+	*bytecode = local_bytecode;
 error:
 	return ret;
 }
