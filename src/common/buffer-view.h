@@ -8,9 +8,10 @@
 #ifndef LTTNG_BUFFER_VIEW_H
 #define LTTNG_BUFFER_VIEW_H
 
+#include <common/macros.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <common/macros.h>
 
 struct lttng_dynamic_buffer;
 
@@ -69,5 +70,19 @@ LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *src, size_t offset,
 		ptrdiff_t len);
+
+/**
+ * Verify that `buf` contains a string starting at `str` of length
+ * `len_with_null_terminator`.
+ *
+ * @buf				The buffer view
+ * @str				The start of the string
+ * @len_with_null_terminator	Expected length of the string, including the
+ * 				NULL terminator.
+ */
+LTTNG_HIDDEN
+bool lttng_buffer_view_contains_string(const struct lttng_buffer_view *buf,
+		const char *str,
+		size_t len_with_null_terminator);
 
 #endif /* LTTNG_BUFFER_VIEW_H */
