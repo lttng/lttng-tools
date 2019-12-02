@@ -50,7 +50,7 @@ struct lttng_snapshot_output_list {
 	size_t count;
 
 	/*
-	 * Containes snapshot output object.
+	 * Contains snapshot output object.
 	 */
 	struct lttng_snapshot_output *array;
 };

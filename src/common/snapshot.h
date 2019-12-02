@@ -12,8 +12,8 @@
 
 #include <stdbool.h>
 
-struct lttng_buffer_view;
-struct lttng_dynamic_buffer;
+struct lttng_payload_view;
+struct lttng_payload;
 struct lttng_snapshot_output;
 
 LTTNG_HIDDEN
@@ -27,11 +27,11 @@ bool lttng_snapshot_output_is_equal(
 LTTNG_HIDDEN
 int lttng_snapshot_output_serialize(
 		const struct lttng_snapshot_output *output,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
-ssize_t lttng_snapshot_output_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_snapshot_output_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_snapshot_output **output_p);
 
 #endif /* COMMON_SNAPSHOT_H */

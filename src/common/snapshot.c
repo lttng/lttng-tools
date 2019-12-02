@@ -5,8 +5,8 @@
  *
  */
 
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
+#include <common/sessiond-comm/payload.h>
+#include <common/sessiond-comm/payload-view.h>
 #include <common/snapshot.h>
 #include <lttng/snapshot-internal.h>
 #include <lttng/snapshot.h>
@@ -92,7 +92,7 @@ struct lttng_snapshot_output_comm {
 LTTNG_HIDDEN
 int lttng_snapshot_output_serialize(
 		const struct lttng_snapshot_output *output,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	struct lttng_snapshot_output_comm comm;
 	int ret;
@@ -105,17 +105,20 @@ int lttng_snapshot_output_serialize(
 		goto end;
 	}
 
-	ret = lttng_strncpy(comm.ctrl_url, output->ctrl_url, sizeof(comm.ctrl_url));
+	ret = lttng_strncpy(
+			comm.ctrl_url, output->ctrl_url, sizeof(comm.ctrl_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_strncpy(comm.data_url, output->data_url, sizeof(comm.data_url));
+	ret = lttng_strncpy(
+			comm.data_url, output->data_url, sizeof(comm.data_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		goto end;
 	}
@@ -125,15 +128,15 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_snapshot_output_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_snapshot_output_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_snapshot_output **output_p)
 {
 	const struct lttng_snapshot_output_comm *comm;
 	struct lttng_snapshot_output *output = NULL;
 	int ret;
 
-	if (view->size != sizeof(*comm)) {
+	if (view->buffer.size != sizeof(*comm)) {
 		ret = -1;
 		goto end;
 	}
@@ -144,7 +147,7 @@ ssize_t lttng_snapshot_output_create_from_buffer(
 		goto end;
 	}
 
-	comm = (const struct lttng_snapshot_output_comm *) view->data;
+	comm = (typeof(comm)) view->buffer.data;
 
 	output->id = comm->id;
 	output->max_size = comm->max_size;
@@ -154,12 +157,14 @@ ssize_t lttng_snapshot_output_create_from_buffer(
 		goto end;
 	}
 
-	ret = lttng_strncpy(output->ctrl_url, comm->ctrl_url, sizeof(output->ctrl_url));
+	ret = lttng_strncpy(output->ctrl_url, comm->ctrl_url,
+			sizeof(output->ctrl_url));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_strncpy(output->data_url, comm->data_url, sizeof(output->data_url));
+	ret = lttng_strncpy(output->data_url, comm->data_url,
+			sizeof(output->data_url));
 	if (ret) {
 		goto end;
 	}
