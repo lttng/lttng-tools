@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <common/error.h>
 #include <lttng/action/action-internal.h>
+#include <lttng/action/group-internal.h>
 #include <lttng/action/notify-internal.h>
 #include <lttng/action/rotate-session-internal.h>
 #include <lttng/action/snapshot-session-internal.h>
@@ -19,6 +20,8 @@ static const char *lttng_action_type_string(enum lttng_action_type action_type)
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_UNKNOWN:
 		return "UNKNOWN";
+	case LTTNG_ACTION_TYPE_GROUP:
+		return "GROUP";
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		return "NOTIFY";
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
@@ -175,6 +178,9 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
 		create_from_payload_cb =
 				lttng_action_stop_session_create_from_payload;
+		break;
+	case LTTNG_ACTION_TYPE_GROUP:
+		create_from_payload_cb = lttng_action_group_create_from_payload;
 		break;
 	default:
 		ERR("Failed to create action from payload, unhandled action type: action-type=%u (%s)",

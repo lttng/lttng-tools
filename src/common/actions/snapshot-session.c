@@ -124,16 +124,9 @@ end:
 	return is_equal;
 }
 
-static size_t serialize_strlen(const char *s)
+static size_t serialize_strlen(const char *str)
 {
-
-	size_t len = 0;
-
-	if (s) {
-		len = strlen(s) + 1;
-	}
-
-	return len;
+	return str ? strlen(str) + 1 : 0;
 }
 
 static int lttng_action_snapshot_session_serialize(
@@ -258,7 +251,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 				comm->snapshot_output_len);
 
 		if (!snapshot_output_buffer_view.buffer.data) {
-			fprintf(stderr, "Failed to create buffer view for snapshot output.\n");
+			ERR("Failed to create buffer view for snapshot output.");
 			goto error;
 		}
 
@@ -267,8 +260,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 						&snapshot_output_buffer_view,
 						&snapshot_output);
 		if (snapshot_output_consumed_len != comm->snapshot_output_len) {
-			fprintf(stderr,
-					"Failed to deserialize snapshot output object: "
+			ERR("Failed to deserialize snapshot output object: "
 					"consumed-len: %zd, expected-len: %" PRIu32,
 					snapshot_output_consumed_len,
 					comm->snapshot_output_len);

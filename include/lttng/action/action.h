@@ -21,6 +21,7 @@ enum lttng_action_type {
 	LTTNG_ACTION_TYPE_STOP_SESSION = 2,
 	LTTNG_ACTION_TYPE_ROTATE_SESSION = 3,
 	LTTNG_ACTION_TYPE_SNAPSHOT_SESSION = 4,
+	LTTNG_ACTION_TYPE_GROUP = 5,
 };
 
 enum lttng_action_status {

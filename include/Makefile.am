@@ -121,6 +121,7 @@ lttnginclude_HEADERS = \
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
+	lttng/action/group.h \
 	lttng/action/notify.h \
 	lttng/action/rotate-session.h \
 	lttng/action/snapshot-session.h \
@@ -147,6 +148,7 @@ noinst_HEADERS = \
 	lttng/save-internal.h \
 	lttng/load-internal.h \
 	lttng/action/action-internal.h \
+	lttng/action/group-internal.h \
 	lttng/action/notify-internal.h \
 	lttng/action/rotate-session-internal.h \
 	lttng/action/snapshot-session-internal.h \

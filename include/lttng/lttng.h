@@ -17,6 +17,7 @@
 
 /* Include every LTTng ABI/API available. */
 #include <lttng/action/action.h>
+#include <lttng/action/group.h>
 #include <lttng/action/notify.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>
