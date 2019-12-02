@@ -19,6 +19,7 @@ enum lttng_action_type {
 	LTTNG_ACTION_TYPE_NOTIFY = 0,
 	LTTNG_ACTION_TYPE_START_SESSION = 1,
 	LTTNG_ACTION_TYPE_STOP_SESSION = 2,
+	LTTNG_ACTION_TYPE_ROTATE_SESSION = 3,
 };
 
 enum lttng_action_status {
