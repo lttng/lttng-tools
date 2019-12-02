@@ -30,6 +30,7 @@ libcommon_la_SOURCES = \
 	actions/action.c \
 	actions/notify.c \
 	actions/start-session.c \
+	actions/stop-session.c \
 	buffer-usage.c \
 	buffer-view.h buffer-view.c \
 	common.h \
