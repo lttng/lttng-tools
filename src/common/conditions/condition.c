@@ -7,6 +7,7 @@
 
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/buffer-usage-internal.h>
+#include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
 #include <common/macros.h>
@@ -168,6 +169,9 @@ ssize_t lttng_condition_create_from_payload(
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		create_from_payload = lttng_condition_session_rotation_completed_create_from_payload;
+		break;
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		create_from_payload = lttng_condition_event_rule_create_from_payload;
 		break;
 	default:
 		ERR("Attempted to create condition of unknown type (%i)",

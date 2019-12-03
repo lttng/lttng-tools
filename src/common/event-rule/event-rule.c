@@ -161,7 +161,7 @@ ssize_t lttng_event_rule_create_from_payload(
 		goto end;
 	}
 
-	DBG("Deserializing event_rule from payload.");
+	DBG("Deserializing event_rule from payload");
 	event_rule_comm = (const struct lttng_event_rule_comm *) event_rule_comm_view.buffer.data;
 	consumed += sizeof(*event_rule_comm);
 
