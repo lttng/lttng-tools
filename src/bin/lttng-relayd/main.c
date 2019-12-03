@@ -1521,7 +1521,7 @@ static int relay_close_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 
 		vstream = viewer_stream_get_by_id(stream->stream_handle);
 		if (vstream) {
-			if (vstream->metadata_sent == stream->metadata_received) {
+			if (stream->no_new_metadata_notified) {
 				/*
 				 * Since all the metadata has been sent to the
 				 * viewer and that we have a request to close
