@@ -36,7 +36,7 @@ notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-noinst_SCRIPTS = test_notification_ust test_notification_ust test_notification_multi_app test_rotation
+noinst_SCRIPTS = test_notification_ust test_notification_kernel test_notification_multi_app test_rotation
 EXTRA_DIST = test_notification_ust test_notification_kernel test_notification_multi_app test_rotation
 
 
