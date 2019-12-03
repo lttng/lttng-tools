@@ -338,7 +338,8 @@ static int make_viewer_streams(struct relay_session *session,
 		 */
 		if (!trace_has_metadata_stream &&
 				!ctf_trace->metadata_stream_sent_to_viewer) {
-			break;
+			ctf_trace_put(ctf_trace);
+			continue;
 		}
 
 		cds_list_for_each_entry_rcu(stream, &ctf_trace->stream_list, stream_node) {
