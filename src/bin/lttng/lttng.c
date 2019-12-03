@@ -65,6 +65,7 @@ static struct option long_options[] = {
 /* First level command */
 static struct cmd_struct commands[] =  {
 	{ "add-context", cmd_add_context},
+	{ "add-trigger", cmd_add_trigger},
 	{ "create", cmd_create},
 	{ "clear", cmd_clear},
 	{ "destroy", cmd_destroy},

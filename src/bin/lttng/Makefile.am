@@ -30,8 +30,8 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/disable_rotation.c \
 				commands/clear.c \
 				loglevel.c loglevel.h \
-				utils.c utils.h \
-				lttng.c \
+				commands/add_trigger.c \
+				utils.c utils.h lttng.c \
 				uprobe.c uprobe.h
 
 lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
@@ -41,4 +41,5 @@ lttng_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 			$(top_builddir)/src/common/config/libconfig.la \
 			$(top_builddir)/src/common/string-utils/libstring-utils.la \
 			$(top_builddir)/src/common/filter/libfilter.la \
+			$(top_builddir)/src/common/argpar/libargpar.la \
 			$(POPT_LIBS)

@@ -141,6 +141,23 @@ void *lttng_dynamic_pointer_array_get_pointer(
 }
 
 /*
+ * Returns the pointer at index `index`, sets the array slot to NULL. Does not
+ * run the destructor.
+ */
+
+static inline
+void *lttng_dynamic_pointer_array_steal_pointer(
+		struct lttng_dynamic_pointer_array *array, size_t index)
+{
+	void **p_element = lttng_dynamic_array_get_element(&array->array, index);
+	void *element = *p_element;
+
+	*p_element = NULL;
+
+	return element;
+}
+
+/*
  * Add a pointer to the end of a dynamic pointer array. The array's element
  * count is increased by one and its underlying capacity is adjusted
  * automatically.

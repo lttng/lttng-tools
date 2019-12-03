@@ -323,7 +323,16 @@ end:
 	return ret;
 }
 
-static
+/*
+ * FIXME: find a good place to declare this since add trigger also uses it
+ */
+LTTNG_HIDDEN
+int create_exclusion_list_and_validate(const char *event_name,
+		const char *exclusions_arg,
+		char ***exclusion_list);
+
+
+LTTNG_HIDDEN
 int create_exclusion_list_and_validate(const char *event_name,
 		const char *exclusions_arg,
 		char ***exclusion_list)
