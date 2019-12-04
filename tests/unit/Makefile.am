@@ -50,6 +50,7 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_payload \
                   test_unix_socket \
                   test_kernel_probe \
+                  test_condition \
                   test_event_rule 
 
 if HAVE_LIBLTTNG_UST_CTL
@@ -203,6 +204,10 @@ test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
 # Event rule api
 test_event_rule_SOURCES = test_event_rule.c
 test_event_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
+
+# Condition api
+test_condition_SOURCES = test_condition.c
+test_condition_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
 
 # relayd backward compat for groou-by-session utilities
 test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_compat_group_by_session.c
