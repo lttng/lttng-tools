@@ -2,7 +2,10 @@
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = string-utils filter
+SUBDIRS = \
+	string-utils \
+	filter \
+	argpar
 
 # Make sure to always distribute all folders
 # since SUBDIRS is decided at configure time.
@@ -21,7 +24,9 @@ DIST_SUBDIRS = \
 	consumer \
 	string-utils \
 	fd-tracker \
-	filter
+	filter \
+	argpar
+
 # Common library
 noinst_LTLIBRARIES = libcommon.la
 EXTRA_DIST = mi-lttng-4.0.xsd
