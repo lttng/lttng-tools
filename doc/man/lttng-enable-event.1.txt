@@ -476,7 +476,7 @@ option:--probe='SOURCE'::
     option:--kernel domain option. 'SOURCE' is one of:
 +
 * Address (`0x` prefix supported)
-* Symbol nane
+* Symbol name
 * Symbol name and offset (__SYMBOL__++pass:[+]++__OFFSET__ format)
 
 option:--userspace-probe='SOURCE'::
