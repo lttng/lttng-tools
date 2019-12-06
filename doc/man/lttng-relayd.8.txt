@@ -190,6 +190,10 @@ ENVIRONMENT VARIABLES
     Socket connection, receive and send timeout (milliseconds). A value
     of 0 or -1 uses the timeout of the operating system (default).
 
+`LTTNG_RELAYD_DISALLOW_CLEAR`::
+    Set to 1 to disallow the use of lttng-clear(1) on sessions collected by
+    this relay daemon.
+
 `LTTNG_RELAYD_HEALTH`::
     Path to relay daemon health's socket.
 
