@@ -184,6 +184,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_LOCAL, /* Trace chunk exists on consumer daemon. */
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE,/* Trace chunk exists on relay daemon. */
 	LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK,      /* Unknown trace chunk. */
+	LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED,  /* Relayd does not accept clear command. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -663,6 +664,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			lttng_uuid sessiond_uuid;
 		} LTTNG_PACKED init;
+		struct {
+			uint64_t key;
+		} LTTNG_PACKED clear_channel;
 	} u;
 } LTTNG_PACKED;
 
