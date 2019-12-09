@@ -65,6 +65,7 @@ void tracefile_array_destroy(struct tracefile_array *tfa);
 
 void tracefile_array_file_rotate(struct tracefile_array *tfa, enum tracefile_rotate_type type);
 void tracefile_array_commit_seq(struct tracefile_array *tfa);
+void tracefile_array_reset(struct tracefile_array *tfa);
 
 uint64_t tracefile_array_get_read_file_index_head(struct tracefile_array *tfa);
 /* May return -1ULL in the case where we have not received any indexes yet. */

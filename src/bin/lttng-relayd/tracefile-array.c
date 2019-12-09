@@ -62,6 +62,22 @@ void tracefile_array_destroy(struct tracefile_array *tfa)
 	free(tfa);
 }
 
+void tracefile_array_reset(struct tracefile_array *tfa)
+{
+	size_t count, i;
+
+	count = tfa->count;
+	for (i = 0; i < count; i++) {
+		tfa->tf[i].seq_head = -1ULL;
+		tfa->tf[i].seq_tail = -1ULL;
+	}
+	tfa->seq_head = -1ULL;
+	tfa->seq_tail = -1ULL;
+	tfa->file_head_read = 0;
+	tfa->file_head_write = 0;
+	tfa->file_tail = 0;
+}
+
 void tracefile_array_file_rotate(struct tracefile_array *tfa,
 		enum tracefile_rotate_type type)
 {
