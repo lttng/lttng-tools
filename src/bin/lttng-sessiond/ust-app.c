@@ -6486,6 +6486,17 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 	{
 		struct ust_app *app;
 
+		/*
+		 * Create the toplevel ust/ directory in case no apps are running.
+		 */
+		chunk_status = lttng_trace_chunk_create_subdirectory(
+				usess->current_trace_chunk,
+				DEFAULT_UST_TRACE_DIR);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = LTTNG_ERR_CREATE_DIR_FAIL;
+			goto error;
+		}
+
 		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app,
 				pid_n.node) {
 			struct ust_app_session *ua_sess;
