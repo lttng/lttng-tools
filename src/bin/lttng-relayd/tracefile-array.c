@@ -120,15 +120,16 @@ void tracefile_array_file_rotate(struct tracefile_array *tfa,
 	}
 }
 
-void tracefile_array_commit_seq(struct tracefile_array *tfa)
+void tracefile_array_commit_seq(struct tracefile_array *tfa,
+		uint64_t new_seq_head)
 {
 	uint64_t *headp, *tailp;
 
 	/* Increment overall head. */
-	tfa->seq_head++;
-	/* If we are committing our first index overall, set tail to 0. */
+	tfa->seq_head = new_seq_head;
+	/* If we are committing our first index overall, set tail to head. */
 	if (tfa->seq_tail == -1ULL) {
-		tfa->seq_tail = 0;
+		tfa->seq_tail = new_seq_head;
 	}
 	if (!tfa->count) {
 		/* Not in tracefile rotation mode. */

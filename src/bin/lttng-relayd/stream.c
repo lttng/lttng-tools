@@ -1160,7 +1160,7 @@ int stream_update_index(struct relay_stream *stream, uint64_t net_seq_num,
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
 		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_READ);
-		tracefile_array_commit_seq(stream->tfa);
+		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 		stream->index_received_seqcount++;
 		LTTNG_OPTIONAL_SET(&stream->received_packet_seq_num,
 			be64toh(index->index_data.packet_seq_num));
@@ -1256,7 +1256,7 @@ int stream_add_index(struct relay_stream *stream,
 	ret = relay_index_try_flush(index);
 	if (ret == 0) {
 		tracefile_array_file_rotate(stream->tfa, TRACEFILE_ROTATE_READ);
-		tracefile_array_commit_seq(stream->tfa);
+		tracefile_array_commit_seq(stream->tfa, stream->index_received_seqcount);
 		stream->index_received_seqcount++;
 		stream->pos_after_last_complete_data_index += index->total_size;
 		stream->prev_index_seq = index_info->net_seq_num;
