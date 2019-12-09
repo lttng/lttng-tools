@@ -1185,6 +1185,7 @@ int cmd_setup_relayd(struct ltt_session *session)
 
 	DBG("Setting relayd for session %s", session->name);
 
+	rcu_read_lock();
 	if (session->current_trace_chunk) {
 		enum lttng_trace_chunk_status status = lttng_trace_chunk_get_id(
 				session->current_trace_chunk, &current_chunk_id.value);
@@ -1197,8 +1198,6 @@ int cmd_setup_relayd(struct ltt_session *session)
 			goto error;
 		}
 	}
-
-	rcu_read_lock();
 
 	if (usess && usess->consumer && usess->consumer->type == CONSUMER_DST_NET
 			&& usess->consumer->enabled) {
