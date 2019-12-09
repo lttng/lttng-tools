@@ -140,6 +140,8 @@ enum lttcomm_relayd_command {
 	RELAYD_CLOSE_TRACE_CHUNK            = 20,
 	/* Ask the relay whether a trace chunk exists (2.11+) */
 	RELAYD_TRACE_CHUNK_EXISTS           = 21,
+
+	/* Feature branch specific commands start at 10000. */
 };
 
 /*
