@@ -744,7 +744,8 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
         char count_str[MAX_INT_DEC_LEN(count) + 1] = {};
 	const char *path_separator;
 
-	if (path_name && path_name[strlen(path_name) - 1] == '/') {
+	if (path_name && (path_name[0] == '\0' ||
+			path_name[strlen(path_name) - 1] == '/')) {
 		path_separator = "";
 	} else {
 		path_separator = "/";
