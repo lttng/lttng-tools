@@ -98,7 +98,7 @@ enum relay_connection_status {
 
 /* command line options */
 char *opt_output_path, *opt_working_directory;
-static int opt_daemon, opt_background, opt_print_version;
+static int opt_daemon, opt_background, opt_print_version, opt_allow_clear = 1;
 enum relay_group_output_by opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_UNKNOWN;
 
 /*
@@ -189,6 +189,7 @@ static struct option long_options[] = {
 	{ "working-directory", 1, 0, 'w', },
 	{ "group-output-by-session", 0, 0, 's', },
 	{ "group-output-by-host", 0, 0, 'p', },
+	{ "disallow-clear", 0, 0, 'x' },
 	{ NULL, 0, 0, 0, },
 };
 
@@ -354,6 +355,10 @@ static int set_option(int opt, const char *arg, const char *optname)
 			exit(EXIT_FAILURE);
 		}
 		opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_HOST;
+		break;
+	case 'x':
+		/* Disallow clear */
+		opt_allow_clear = 0;
 		break;
 	default:
 		/* Unknown option or other error.
@@ -561,6 +566,19 @@ static int set_options(int argc, char **argv)
 
 	if (opt_group_output_by == RELAYD_GROUP_OUTPUT_BY_UNKNOWN) {
 		opt_group_output_by = RELAYD_GROUP_OUTPUT_BY_HOST;
+	}
+	if (opt_allow_clear) {
+		/* Check if env variable exists. */
+		const char *value = lttng_secure_getenv(DEFAULT_LTTNG_RELAYD_DISALLOW_CLEAR_ENV);
+		if (value) {
+			ret = config_parse_value(value);
+			if (ret < 0) {
+				ERR("Invalid value for %s specified", DEFAULT_LTTNG_RELAYD_DISALLOW_CLEAR_ENV);
+				retval = -1;
+				goto exit;
+			}
+			opt_allow_clear = !ret;
+		}
 	}
 
 exit:
@@ -3810,6 +3828,8 @@ int main(int argc, char **argv)
 		PERROR("Failed to close stdin");
 		goto exit_options;
 	}
+
+	DBG("Clear command %s", opt_allow_clear ? "allowed" : "disallowed");
 
 	/* Try to create directory if -o, --output is specified. */
 	if (opt_output_path) {
