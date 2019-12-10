@@ -183,10 +183,6 @@ static void *thread_application_registration(void *data)
 		goto error_listen;
 	}
 
-	if (testpoint(sessiond_thread_registration_apps)) {
-		goto error_create_poll;
-	}
-
 	/*
 	 * Pass 2 as size here for the thread quit pipe and apps_sock. Nothing
 	 * more will be added to this poll set.
@@ -210,6 +206,10 @@ static void *thread_application_registration(void *data)
 
 	set_thread_status(thread_state, true);
 	pthread_cleanup_pop(0);
+
+	if (testpoint(sessiond_thread_registration_apps)) {
+		goto error_poll_add;
+	}
 
 	while (1) {
 		DBG("Accepting application registration");
