@@ -38,6 +38,7 @@
 #include "testpoint.h"
 #include "utils.h"
 #include "manage-consumer.h"
+#include "clear.h"
 
 static bool is_root;
 
@@ -747,6 +748,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_ROTATION_GET_INFO:
 	case LTTNG_ROTATION_SET_SCHEDULE:
 	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
+	case LTTNG_CLEAR_SESSION:
 		need_domain = 0;
 		break;
 	default:
@@ -1933,6 +1935,11 @@ error_add_context:
 		}
 
 		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_CLEAR_SESSION:
+	{
+		ret = cmd_clear_session(cmd_ctx->session, sock);
 		break;
 	}
 	default:
