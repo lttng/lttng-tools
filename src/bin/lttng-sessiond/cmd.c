@@ -1260,7 +1260,7 @@ error:
 /*
  * Start a kernel session by opening all necessary streams.
  */
-static int start_kernel_session(struct ltt_kernel_session *ksess)
+int start_kernel_session(struct ltt_kernel_session *ksess)
 {
 	int ret;
 	struct ltt_kernel_channel *kchan;
@@ -1318,6 +1318,53 @@ static int start_kernel_session(struct ltt_kernel_session *ksess)
 
 	ret = LTTNG_OK;
 
+error:
+	return ret;
+}
+
+int stop_kernel_session(struct ltt_kernel_session *ksess)
+{
+	struct ltt_kernel_channel *kchan;
+	bool error_occurred = false;
+	int ret;
+
+	if (!ksess || !ksess->active) {
+		return LTTNG_OK;
+	}
+	DBG("Stopping kernel tracing");
+
+	ret = kernel_stop_session(ksess);
+	if (ret < 0) {
+		ret = LTTNG_ERR_KERN_STOP_FAIL;
+		goto error;
+	}
+
+	kernel_wait_quiescent();
+
+	/* Flush metadata after stopping (if exists) */
+	if (ksess->metadata_stream_fd >= 0) {
+		ret = kernel_metadata_flush_buffer(ksess->metadata_stream_fd);
+		if (ret < 0) {
+			ERR("Kernel metadata flush failed");
+			error_occurred = true;
+		}
+	}
+
+	/* Flush all buffers after stopping */
+	cds_list_for_each_entry(kchan, &ksess->channel_list.head, list) {
+		ret = kernel_flush_buffer(kchan);
+		if (ret < 0) {
+			ERR("Kernel flush buffer error");
+			error_occurred = true;
+		}
+	}
+
+	ksess->active = 0;
+	if (error_occurred) {
+		ret = LTTNG_ERR_UNK;
+	} else {
+		ret = LTTNG_OK;
+	}
 error:
 	return ret;
 }
@@ -2716,14 +2763,12 @@ error:
 int cmd_stop_trace(struct ltt_session *session)
 {
 	int ret;
-	struct ltt_kernel_channel *kchan;
 	struct ltt_kernel_session *ksession;
 	struct ltt_ust_session *usess;
-	bool error_occurred = false;
 
 	assert(session);
 
-	DBG("Begin stop session %s (id %" PRIu64 ")", session->name, session->id);
+	DBG("Begin stop session \"%s\" (id %" PRIu64 ")", session->name, session->id);
 	/* Short cut */
 	ksession = session->kernel_session;
 	usess = session->ust_session;
@@ -2734,39 +2779,9 @@ int cmd_stop_trace(struct ltt_session *session)
 		goto error;
 	}
 
-	/* Kernel tracer */
-	if (ksession && ksession->active) {
-		DBG("Stop kernel tracing");
-
-		ret = kernel_stop_session(ksession);
-		if (ret < 0) {
-			ret = LTTNG_ERR_KERN_STOP_FAIL;
-			goto error;
-		}
-
-		kernel_wait_quiescent();
-
-		/* Flush metadata after stopping (if exists) */
-		if (ksession->metadata_stream_fd >= 0) {
-			ret = kernel_metadata_flush_buffer(ksession->metadata_stream_fd);
-			if (ret < 0) {
-				ERR("Kernel metadata flush failed");
-				error_occurred = true;
-			}
-		}
-
-		/* Flush all buffers after stopping */
-		cds_list_for_each_entry(kchan, &ksession->channel_list.head, list) {
-			ret = kernel_flush_buffer(kchan);
-			if (ret < 0) {
-				ERR("Kernel flush buffer error");
-				error_occurred = true;
-			}
-		}
-
-		ksession->active = 0;
-		DBG("Kernel session stopped %s (id %" PRIu64 ")", session->name,
-				session->id);
+	ret = stop_kernel_session(ksession);
+	if (ret != LTTNG_OK) {
+		goto error;
 	}
 
 	if (usess && usess->active) {
@@ -2777,9 +2792,11 @@ int cmd_stop_trace(struct ltt_session *session)
 		}
 	}
 
+	DBG("Completed stop session \"%s\" (id %" PRIu64 ")", session->name,
+			session->id);
 	/* Flag inactive after a successful stop. */
 	session->active = 0;
-	ret = !error_occurred ? LTTNG_OK : LTTNG_ERR_UNK;
+	ret = LTTNG_OK;
 
 error:
 	return ret;
