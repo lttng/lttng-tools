@@ -83,5 +83,8 @@ int relayd_close_trace_chunk(struct lttcomm_relayd_sock *sock,
 		char *path);
 int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 		uint64_t chunk_id, bool *chunk_exists);
+int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
+		uint64_t query_flags,
+		uint64_t *result_flags);
 
 #endif /* _RELAYD_H */

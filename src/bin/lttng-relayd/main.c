@@ -2866,6 +2866,57 @@ end_no_reply:
 	return ret;
 }
 
+/*
+ * relay_get_configuration: query whether feature is available
+ */
+static int relay_get_configuration(const struct lttcomm_relayd_hdr *recv_hdr,
+		struct relay_connection *conn,
+		const struct lttng_buffer_view *payload)
+{
+	int ret = 0;
+	ssize_t send_ret;
+	struct lttcomm_relayd_get_configuration *msg;
+	struct lttcomm_relayd_get_configuration_reply reply = {};
+	struct lttng_buffer_view header_view;
+	uint64_t query_flags = 0;
+	uint64_t result_flags = 0;
+
+	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
+	if (!header_view.data) {
+		ERR("Failed to receive payload of chunk close command");
+		ret = -1;
+		goto end_no_reply;
+	}
+
+	/* Convert to host endianness. */
+	msg = (typeof(msg)) header_view.data;
+	query_flags = be64toh(msg->query_flags);
+
+	if (query_flags) {
+		ret = LTTNG_ERR_INVALID_PROTOCOL;
+		goto reply;
+	}
+	if (opt_allow_clear) {
+		result_flags |= LTTCOMM_RELAYD_CONFIGURATION_FLAG_CLEAR_ALLOWED;
+	}
+	ret = 0;
+reply:
+	reply = (typeof(reply)){
+		.generic.ret_code = htobe32((uint32_t)
+			(ret == 0 ? LTTNG_OK : LTTNG_ERR_INVALID_PROTOCOL)),
+		.relayd_configuration_flags = htobe64(result_flags),
+	};
+	send_ret = conn->sock->ops->sendmsg(
+			conn->sock, &reply, sizeof(reply), 0);
+	if (send_ret < (ssize_t) sizeof(reply)) {
+		ERR("Failed to send \"get configuration\" command reply (ret = %zd)",
+				send_ret);
+		ret = -1;
+	}
+end_no_reply:
+	return ret;
+}
+
 #define DBG_CMD(cmd_name, conn) \
 		DBG3("Processing \"%s\" command for socket %i", cmd_name, conn->sock->fd);
 
@@ -2943,6 +2994,10 @@ static int relay_process_control_command(struct relay_connection *conn,
 	case RELAYD_TRACE_CHUNK_EXISTS:
 		DBG_CMD("RELAYD_TRACE_CHUNK_EXISTS", conn);
 		ret = relay_trace_chunk_exists(header, conn, payload);
+		break;
+	case RELAYD_GET_CONFIGURATION:
+		DBG_CMD("RELAYD_GET_CONFIGURATION", conn);
+		ret = relay_get_configuration(header, conn, payload);
 		break;
 	case RELAYD_UPDATE_SYNC_INFO:
 	default:

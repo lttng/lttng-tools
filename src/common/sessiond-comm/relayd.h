@@ -293,4 +293,25 @@ struct lttcomm_relayd_trace_chunk_exists_reply {
 	uint8_t trace_chunk_exists;
 } LTTNG_PACKED;
 
+enum lttcomm_relayd_configuration_flag {
+	/* The relay daemon (2.12) is configured to allow clear operations. */
+	LTTCOMM_RELAYD_CONFIGURATION_FLAG_CLEAR_ALLOWED = (1 << 0),
+};
+
+struct lttcomm_relayd_get_configuration {
+	uint64_t query_flags;
+} LTTNG_PACKED;
+
+/*
+ * Used to return a relay daemon's configuration in reply to the
+ * RELAYD_GET_CONFIGURATION command.
+ */
+struct lttcomm_relayd_get_configuration_reply {
+	struct lttcomm_relayd_generic_reply generic;
+	/* Set of lttcomm_relayd_configuration_flag. */
+	uint64_t relayd_configuration_flags;
+	/* Optional variable-length payload. */
+	char payload[];
+} LTTNG_PACKED;
+
 #endif	/* _RELAYD_COMM */

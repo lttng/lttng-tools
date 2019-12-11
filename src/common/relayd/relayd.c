@@ -45,6 +45,17 @@ bool relayd_supports_chunks(const struct lttcomm_relayd_sock *sock)
 	return false;
 }
 
+static
+bool relayd_supports_get_configuration(const struct lttcomm_relayd_sock *sock)
+{
+	if (sock->major > 2) {
+		return true;
+	} else if (sock->major == 2 && sock->minor >= 12) {
+		return true;
+	}
+	return false;
+}
+
 /*
  * Send command. Fill up the header and append the data.
  */
@@ -1529,6 +1540,57 @@ int relayd_trace_chunk_exists(struct lttcomm_relayd_sock *sock,
 				", exists = %s", chunk_id,
 				reply.trace_chunk_exists ? "true" : "false");
 		*chunk_exists = !!reply.trace_chunk_exists;
+	}
+end:
+	return ret;
+}
+
+int relayd_get_configuration(struct lttcomm_relayd_sock *sock,
+		uint64_t query_flags,
+		uint64_t *result_flags)
+{
+	int ret = 0;
+	struct lttcomm_relayd_get_configuration msg = (typeof(msg)) {
+		.query_flags = htobe64(query_flags),
+	};
+	struct lttcomm_relayd_get_configuration_reply reply = {};
+
+	if (!relayd_supports_get_configuration(sock)) {
+		DBG("Refusing to get relayd configuration (unsupported by relayd)");
+		if (query_flags) {
+			ret = -1;
+			goto end;
+		}
+		*result_flags = 0;
+		goto end;
+	}
+
+	ret = send_command(sock, RELAYD_GET_CONFIGURATION, &msg, sizeof(msg),
+			0);
+	if (ret < 0) {
+		ERR("Failed to send get configuration command to relay daemon");
+		goto end;
+	}
+
+	ret = recv_reply(sock, &reply, sizeof(reply));
+	if (ret < 0) {
+		ERR("Failed to receive relay daemon get configuration command reply");
+		goto end;
+	}
+
+	reply.generic.ret_code = be32toh(reply.generic.ret_code);
+	if (reply.generic.ret_code != LTTNG_OK) {
+		ret = -1;
+		ERR("Relayd get configuration replied error %d",
+				reply.generic.ret_code);
+	} else {
+		reply.relayd_configuration_flags =
+			be64toh(reply.relayd_configuration_flags);
+		ret = 0;
+		DBG("Relayd successfully got configuration: query_flags = %" PRIu64
+				", results_flags = %" PRIu64, query_flags,
+				reply.relayd_configuration_flags);
+		*result_flags = reply.relayd_configuration_flags;
 	}
 end:
 	return ret;
