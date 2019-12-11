@@ -111,6 +111,10 @@ static const
 char *close_command_names[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED] =
 		"move to completed chunk folder",
+	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION] =
+		"no operation",
+	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE] =
+		"delete",
 };
 
 static const
@@ -1078,7 +1082,15 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 		DBG("Setting trace chunk close command to \"%s\"",
 				close_command_names[close_command]);
         }
-	LTTNG_OPTIONAL_SET(&chunk->close_command, close_command);
+	/*
+	 * Unset close command for no-op for backward compatibility with relayd
+	 * 2.11.
+	 */
+	if (close_command != LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION) {
+		LTTNG_OPTIONAL_SET(&chunk->close_command, close_command);
+	} else {
+		LTTNG_OPTIONAL_UNSET(&chunk->close_command);
+	}
 	pthread_mutex_unlock(&chunk->lock);
 end:
 	return status;
@@ -1091,6 +1103,10 @@ const char *lttng_trace_chunk_command_type_get_name(
 	switch (command) {
 	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED:
 		return "move to completed trace chunk folder";
+	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION:
+		return "no operation";
+	case LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE:
+		return "delete";
 	default:
 		abort();
 	}

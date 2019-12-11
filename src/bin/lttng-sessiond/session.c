@@ -662,9 +662,9 @@ error:
 	goto end;
 }
 
-int session_close_trace_chunk(const struct ltt_session *session,
+int session_close_trace_chunk(struct ltt_session *session,
 		struct lttng_trace_chunk *trace_chunk,
-		const enum lttng_trace_chunk_command_type *close_command,
+		enum lttng_trace_chunk_command_type close_command,
 		char *closed_trace_chunk_path)
 {
 	int ret = 0;
@@ -674,13 +674,11 @@ int session_close_trace_chunk(const struct ltt_session *session,
 	enum lttng_trace_chunk_status chunk_status;
 	const time_t chunk_close_timestamp = time(NULL);
 
-	if (close_command) {
-		chunk_status = lttng_trace_chunk_set_close_command(
-				trace_chunk, *close_command);
-		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-			ret = -1;
-			goto end;
-		}
+	chunk_status = lttng_trace_chunk_set_close_command(
+			trace_chunk, close_command);
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		ret = -1;
+		goto end;
 	}
 
 	if (chunk_close_timestamp == (time_t) -1) {

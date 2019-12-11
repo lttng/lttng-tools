@@ -1850,7 +1850,8 @@ error_add_context:
 		}
 
 		ret = cmd_rotate_session(cmd_ctx->session, &rotate_return,
-				false);
+			false,
+			LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 		if (ret < 0) {
 			ret = -ret;
 			goto error;

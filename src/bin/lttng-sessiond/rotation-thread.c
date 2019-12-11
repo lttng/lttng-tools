@@ -537,7 +537,8 @@ int launch_session_rotation(struct ltt_session *session)
 	DBG("[rotation-thread] Launching scheduled time-based rotation on session \"%s\"",
 			session->name);
 
-	ret = cmd_rotate_session(session, &rotation_return, false);
+	ret = cmd_rotate_session(session, &rotation_return, false,
+		LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	if (ret == LTTNG_OK) {
 		DBG("[rotation-thread] Scheduled time-based rotation successfully launched on session \"%s\"",
 				session->name);
@@ -684,7 +685,8 @@ int handle_condition(const struct lttng_condition *condition,
 		goto end_unlock;
 	}
 
-	ret = cmd_rotate_session(session, NULL, false);
+	ret = cmd_rotate_session(session, NULL, false,
+		LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED);
 	if (ret == -LTTNG_ERR_ROTATION_PENDING) {
 		DBG("Rotate already pending, subscribe to the next threshold value");
 	} else if (ret != LTTNG_OK) {

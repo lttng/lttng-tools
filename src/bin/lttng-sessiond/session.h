@@ -251,9 +251,9 @@ int session_set_trace_chunk(struct ltt_session *session,
  * Close a chunk on the remote peers of a session. Has no effect on the
  * ltt_session itself.
  */
-int session_close_trace_chunk(const struct ltt_session *session,
+int session_close_trace_chunk(struct ltt_session *session,
 		struct lttng_trace_chunk *trace_chunk,
-		const enum lttng_trace_chunk_command_type *close_command,
+		enum lttng_trace_chunk_command_type close_command,
 		char *path);
 
 bool session_output_supports_trace_chunks(const struct ltt_session *session);
