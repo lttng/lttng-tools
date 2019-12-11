@@ -399,6 +399,7 @@ int get_metadata(void)
 
 	rq.stream_id = htobe64(session->streams[metadata_stream_id].id);
 
+retry:
 	ret_len = lttng_live_send(control_sock, &cmd, sizeof(cmd));
 	if (ret_len < 0) {
 		diag("Error sending cmd");
@@ -423,8 +424,8 @@ int get_metadata(void)
 		break;
 	case LTTNG_VIEWER_NO_NEW_METADATA:
 		diag("Got LTTNG_VIEWER_NO_NEW_METADATA:");
-		ret = 0;
-		goto end;
+		usleep(50);
+		goto retry;
 	case LTTNG_VIEWER_METADATA_ERR:
 		diag("Got LTTNG_VIEWER_METADATA_ERR:");
 		goto error;
@@ -454,7 +455,7 @@ int get_metadata(void)
 	}
 	free(data);
 	ret = len;
-end:
+
 	return ret;
 
 error_free_data:
