@@ -51,6 +51,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	char index_file_path[LTTNG_PATH_MAX];
 	const mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 	const bool acquired_reference = lttng_trace_chunk_get(chunk);
+	const char *separator;
 
 	assert(acquired_reference);
 
@@ -61,8 +62,13 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	}
 
 	index_file->trace_chunk = chunk;
+	if (channel_path[0] == '\0') {
+		separator = "";
+	} else {
+		separator = "/";
+	}
 	ret = snprintf(index_directory_path, sizeof(index_directory_path),
-			"%s/" DEFAULT_INDEX_DIR, channel_path);
+			"%s%s" DEFAULT_INDEX_DIR, channel_path, separator);
 	if (ret < 0 || ret >= sizeof(index_directory_path)) {
 		ERR("Failed to format index directory path");
 		goto error;
