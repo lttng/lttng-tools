@@ -152,6 +152,9 @@ struct consumer_output {
 	uint32_t relay_major_version;
 	uint32_t relay_minor_version;
 
+	/* True if relayd supports the clear feature. */
+	bool relay_allows_clear;
+
 	/*
 	 * Subdirectory path name used for both local and network
 	 * consumer ("kernel", "ust", or empty).
