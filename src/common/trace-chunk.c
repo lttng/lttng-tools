@@ -78,6 +78,11 @@ struct lttng_trace_chunk {
 	 * Only used by _owner_ mode chunks.
 	 */
 	struct lttng_dynamic_pointer_array top_level_directories;
+	/*
+	 * All files contained within the trace chunk.
+	 * Array of paths (char *).
+	 */
+	struct lttng_dynamic_pointer_array files;
 	/* Is contained within an lttng_trace_chunk_registry_element? */
 	bool in_registry_element;
 	bool name_overridden;
@@ -220,6 +225,7 @@ void lttng_trace_chunk_init(struct lttng_trace_chunk *chunk)
 	urcu_ref_init(&chunk->ref);
 	pthread_mutex_init(&chunk->lock, NULL);
 	lttng_dynamic_pointer_array_init(&chunk->top_level_directories, free);
+	lttng_dynamic_pointer_array_init(&chunk->files, free);
 }
 
 static
@@ -237,6 +243,7 @@ void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 	free(chunk->name);
 	chunk->name = NULL;
 	lttng_dynamic_pointer_array_reset(&chunk->top_level_directories);
+	lttng_dynamic_pointer_array_reset(&chunk->files);
 	pthread_mutex_destroy(&chunk->lock);
 }
 
@@ -817,6 +824,80 @@ end:
 	return status;
 }
 
+/*
+ * TODO: Implement O(1) lookup.
+ */
+static
+bool lttng_trace_chunk_find_file(struct lttng_trace_chunk *chunk,
+		const char *path, size_t *index)
+{
+	size_t i, count;
+
+	count = lttng_dynamic_pointer_array_get_count(&chunk->files);
+	for (i = 0; i < count; i++) {
+		const char *iter_path =
+				lttng_dynamic_pointer_array_get_pointer(
+					&chunk->files, i);
+		if (!strcmp(iter_path, path)) {
+			if (index) {
+				*index = i;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
+static
+enum lttng_trace_chunk_status lttng_trace_chunk_add_file(
+		struct lttng_trace_chunk *chunk,
+		const char *path)
+{
+	char *copy;
+	int ret;
+	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+
+	if (lttng_trace_chunk_find_file(chunk, path, NULL)) {
+		return LTTNG_TRACE_CHUNK_STATUS_OK;
+	}
+	DBG("Adding new file \"%s\" to trace chunk \"%s\"",
+			path, chunk->name ? : "(unnamed)");
+	copy = strdup(path);
+	if (!copy) {
+		PERROR("Failed to copy path");
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+	ret = lttng_dynamic_pointer_array_add_pointer(
+			&chunk->files, copy);
+	if (ret) {
+		ERR("Allocation failure while adding file to a trace chunk");
+		free(copy);
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+end:
+	return status;
+}
+
+static
+void lttng_trace_chunk_remove_file(
+		struct lttng_trace_chunk *chunk,
+		const char *path)
+{
+	size_t index;
+	bool found;
+	int ret;
+
+	found = lttng_trace_chunk_find_file(chunk, path, &index);
+	if (!found) {
+		return;
+	}
+	ret = lttng_dynamic_pointer_array_remove_pointer(
+			&chunk->files, index);
+	assert(!ret);
+}
+
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		struct lttng_trace_chunk *chunk, const char *file_path,
@@ -843,6 +924,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}
+	status = lttng_trace_chunk_add_file(chunk, file_path);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		goto end;
+	}
 	ret = lttng_directory_handle_open_file_as_user(
 			chunk->chunk_directory, file_path, flags, mode,
 			chunk->credentials.value.use_current_user ?
@@ -855,6 +940,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 				file_path, flags, (int) mode);
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		}
+		lttng_trace_chunk_remove_file(chunk, file_path);
 		goto end;
 	}
 	*out_fd = ret;
@@ -896,6 +982,7 @@ int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk,
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}
+	lttng_trace_chunk_remove_file(chunk, file_path);
 end:
 	pthread_mutex_unlock(&chunk->lock);
 	return status;
