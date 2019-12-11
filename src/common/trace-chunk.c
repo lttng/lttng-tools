@@ -816,7 +816,7 @@ end:
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		struct lttng_trace_chunk *chunk, const char *file_path,
-		int flags, mode_t mode, int *out_fd)
+		int flags, mode_t mode, int *out_fd, bool expect_no_file)
 {
 	int ret;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
@@ -844,9 +844,13 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 			chunk->credentials.value.use_current_user ?
 					NULL : &chunk->credentials.value.user);
 	if (ret < 0) {
-		PERROR("Failed to open file relative to trace chunk file_path = \"%s\", flags = %d, mode = %d",
+		if (errno == ENOENT && expect_no_file) {
+			status = LTTNG_TRACE_CHUNK_STATUS_NO_FILE;
+		} else {
+			PERROR("Failed to open file relative to trace chunk file_path = \"%s\", flags = %d, mode = %d",
 				file_path, flags, (int) mode);
-		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		}
 		goto end;
 	}
 	*out_fd = ret;

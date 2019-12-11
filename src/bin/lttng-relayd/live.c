@@ -1222,6 +1222,7 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 	int ret = 0;
 	const uint32_t connection_major = rstream->trace->session->major;
 	const uint32_t connection_minor = rstream->trace->session->minor;
+	enum lttng_trace_chunk_status chunk_status;
 
 	if (vstream->index_file) {
 		goto end;
@@ -1234,14 +1235,19 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 		ret = -ENOENT;
 		goto end;
 	}
-	vstream->index_file = lttng_index_file_create_from_trace_chunk_read_only(
+	chunk_status = lttng_index_file_create_from_trace_chunk_read_only(
 			vstream->stream_file.trace_chunk, rstream->path_name,
 			rstream->channel_name, rstream->tracefile_size,
 			vstream->current_tracefile_id,
 			lttng_to_index_major(connection_major, connection_minor),
-			lttng_to_index_minor(connection_major, connection_minor));
-	if (!vstream->index_file) {
-		ret = -1;
+			lttng_to_index_minor(connection_major, connection_minor),
+			true, &vstream->index_file);
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+		if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE) {
+			ret = -ENOENT;
+		} else {
+			ret = -1;
+		}
 	}
 
 end:
@@ -1460,9 +1466,14 @@ int viewer_get_next_index(struct relay_connection *conn)
 			goto error_put;
 		}
 
+		/*
+		 * It is possible the the file we are trying to open is
+		 * missing if the stream has been closed (application exits with
+		 * per-pid buffers) and a clear command has been performed.
+		 */
 		status = lttng_trace_chunk_open_file(
 				vstream->stream_file.trace_chunk,
-				file_path, O_RDONLY, 0, &fd);
+				file_path, O_RDONLY, 0, &fd, true);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			PERROR("Failed to open trace file for viewer stream");
 			goto error_put;
@@ -1759,9 +1770,14 @@ int viewer_get_metadata(struct relay_connection *conn)
 			goto error;
 		}
 
+		/*
+		 * It is possible the the metadata file we are trying to open is
+		 * missing if the stream has been closed (application exits with
+		 * per-pid buffers) and a clear command has been performed.
+		 */
 		status = lttng_trace_chunk_open_file(
 				vstream->stream_file.trace_chunk,
-				file_path, O_RDONLY, 0, &fd);
+				file_path, O_RDONLY, 0, &fd, true);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			PERROR("Failed to open metadata file for viewer stream");
 			goto error;

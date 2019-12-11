@@ -129,8 +129,9 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	} else {
 		const uint32_t connection_major = stream->trace->session->major;
 		const uint32_t connection_minor = stream->trace->session->minor;
+		enum lttng_trace_chunk_status chunk_status;
 
-		vstream->index_file = lttng_index_file_create_from_trace_chunk_read_only(
+		chunk_status = lttng_index_file_create_from_trace_chunk_read_only(
 				vstream->stream_file.trace_chunk,
 				stream->path_name,
 				stream->channel_name, stream->tracefile_size,
@@ -138,9 +139,14 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 				lttng_to_index_major(connection_major,
 						connection_minor),
 				lttng_to_index_minor(connection_major,
-						connection_minor));
-		if (!vstream->index_file) {
-			goto error_unlock;
+						connection_minor),
+				true, &vstream->index_file);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE) {
+				vstream->index_file = NULL;
+			} else {
+				goto error_unlock;
+			}
 		}
 	}
 
@@ -268,6 +274,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 	const struct relay_stream *stream = vstream->stream;
 	const uint32_t connection_major = stream->trace->session->major;
 	const uint32_t connection_minor = stream->trace->session->minor;
+	enum lttng_trace_chunk_status chunk_status;
 
 	/* Detect the last tracefile to open. */
 	if (stream->index_received_seqcount
@@ -316,8 +323,7 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 		stream_fd_put(vstream->stream_file.fd);
 		vstream->stream_file.fd = NULL;
 	}
-	vstream->index_file =
-			lttng_index_file_create_from_trace_chunk_read_only(
+	chunk_status = lttng_index_file_create_from_trace_chunk_read_only(
 					vstream->stream_file.trace_chunk,
 					stream->path_name,
 					stream->channel_name,
@@ -326,8 +332,9 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 					lttng_to_index_major(connection_major,
 							connection_minor),
 					lttng_to_index_minor(connection_major,
-							connection_minor));
-	if (!vstream->index_file) {
+							connection_minor),
+					true, &vstream->index_file);
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
 	} else {

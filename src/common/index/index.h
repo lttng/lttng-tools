@@ -39,17 +39,20 @@ struct lttng_index_file {
  * create and open have refcount of 1. Use put to decrement the
  * refcount. Destroys when reaching 0. Use "get" to increment refcount.
  */
-struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+enum lttng_trace_chunk_status lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_count,
 		uint32_t index_major, uint32_t index_minor,
-		bool unlink_existing_file);
-struct lttng_index_file *lttng_index_file_create_from_trace_chunk_read_only(
+		bool unlink_existing_file, struct lttng_index_file **file);
+
+enum lttng_trace_chunk_status lttng_index_file_create_from_trace_chunk_read_only(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_file_index,
-		uint32_t index_major, uint32_t index_minor);
+		uint32_t index_major, uint32_t index_minor,
+		bool expect_no_file, struct lttng_index_file **file);
+
 int lttng_index_file_write(const struct lttng_index_file *index_file,
 		const struct ctf_packet_index *element);
 int lttng_index_file_read(const struct lttng_index_file *index_file,

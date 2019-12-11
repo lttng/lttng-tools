@@ -34,13 +34,13 @@
 #define WRITE_FILE_FLAGS	(O_WRONLY | O_CREAT | O_TRUNC)
 #define READ_ONLY_FILE_FLAGS	O_RDONLY
 
-static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
+static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_file_index,
 		uint32_t index_major, uint32_t index_minor,
 		bool unlink_existing_file,
-		int flags)
+		int flags, bool expect_no_file, struct lttng_index_file **file)
 {
 	struct lttng_index_file *index_file;
 	enum lttng_trace_chunk_status chunk_status;
@@ -58,6 +58,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	index_file = zmalloc(sizeof(*index_file));
 	if (!index_file) {
 		PERROR("Failed to allocate lttng_index_file");
+		chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto error;
 	}
 
@@ -71,6 +72,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 			"%s%s" DEFAULT_INDEX_DIR, channel_path, separator);
 	if (ret < 0 || ret >= sizeof(index_directory_path)) {
 		ERR("Failed to format index directory path");
+		chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto error;
 	}
 
@@ -79,6 +81,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 			DEFAULT_INDEX_FILE_SUFFIX,
 			index_file_path, sizeof(index_file_path));
 	if (ret) {
+		chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto error;
 	}
 
@@ -101,7 +104,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	}
 
 	chunk_status = lttng_trace_chunk_open_file(chunk, index_file_path,
-			flags, mode, &fd);
+			flags, mode, &fd, expect_no_file);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto error;
 	}
@@ -111,6 +114,7 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 		size_ret = lttng_write(fd, &hdr, sizeof(hdr));
 		if (size_ret < sizeof(hdr)) {
 			PERROR("Failed to write index header");
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		index_file->element_len = ctf_packet_index_len(index_major, index_minor);
@@ -120,25 +124,30 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 		size_ret = lttng_read(fd, &hdr, sizeof(hdr));
 		if (size_ret < 0) {
 			PERROR("Failed to read index header");
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		if (be32toh(hdr.magic) != CTF_INDEX_MAGIC) {
 			ERR("Invalid header magic");
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		if (index_major != be32toh(hdr.index_major)) {
 			ERR("Index major number mismatch: %u, expect %u",
 				be32toh(hdr.index_major), index_major);
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		if (index_minor != be32toh(hdr.index_minor)) {
 			ERR("Index minor number mismatch: %u, expect %u",
 				be32toh(hdr.index_minor), index_minor);
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		element_len = be32toh(hdr.packet_index_len);
 		if (element_len > sizeof(struct ctf_packet_index)) {
 			ERR("Index element length too long");
+			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto error;
 		}
 		index_file->element_len = element_len;
@@ -148,7 +157,8 @@ static struct lttng_index_file *_lttng_index_file_create_from_trace_chunk(
 	index_file->minor = index_minor;
 	urcu_ref_init(&index_file->ref);
 
-	return index_file;
+	*file = index_file;
+	return LTTNG_TRACE_CHUNK_STATUS_OK;
 
 error:
 	if (fd >= 0) {
@@ -159,32 +169,33 @@ error:
 	}
 	lttng_trace_chunk_put(chunk);
 	free(index_file);
-	return NULL;
+	return chunk_status;
 }
 
-struct lttng_index_file *lttng_index_file_create_from_trace_chunk(
+enum lttng_trace_chunk_status lttng_index_file_create_from_trace_chunk(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_file_index,
 		uint32_t index_major, uint32_t index_minor,
-		bool unlink_existing_file)
+		bool unlink_existing_file, struct lttng_index_file **file)
 {
 	return _lttng_index_file_create_from_trace_chunk(chunk, channel_path,
 			stream_name, stream_file_size, stream_file_index,
 			index_major, index_minor, unlink_existing_file,
-			WRITE_FILE_FLAGS);
+			WRITE_FILE_FLAGS, false, file);
 }
 
-struct lttng_index_file *lttng_index_file_create_from_trace_chunk_read_only(
+enum lttng_trace_chunk_status lttng_index_file_create_from_trace_chunk_read_only(
 		struct lttng_trace_chunk *chunk,
 		const char *channel_path, const char *stream_name,
 		uint64_t stream_file_size, uint64_t stream_file_index,
-		uint32_t index_major, uint32_t index_minor)
+		uint32_t index_major, uint32_t index_minor,
+		bool expect_no_file, struct lttng_index_file **file)
 {
 	return _lttng_index_file_create_from_trace_chunk(chunk, channel_path,
 			stream_name, stream_file_size, stream_file_index,
 			index_major, index_minor, false,
-			READ_ONLY_FILE_FLAGS);
+			READ_ONLY_FILE_FLAGS, expect_no_file, file);
 }
 
 /*

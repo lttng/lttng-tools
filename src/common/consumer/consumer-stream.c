@@ -594,7 +594,7 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
 
 	DBG("Opening stream output file \"%s\"", stream_path);
 	chunk_status = lttng_trace_chunk_open_file(stream->trace_chunk, stream_path,
-			flags, mode, &stream->out_fd);
+			flags, mode, &stream->out_fd, false);
         if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to open stream file \"%s\"", stream->name);
 		ret = -1;
@@ -605,15 +605,15 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
 		if (stream->index_file) {
 			lttng_index_file_put(stream->index_file);
 		}
-                stream->index_file = lttng_index_file_create_from_trace_chunk(
+		chunk_status = lttng_index_file_create_from_trace_chunk(
 				stream->trace_chunk,
 				stream->chan->pathname,
 				stream->name,
 				stream->chan->tracefile_size,
 				stream->tracefile_count_current,
 				CTF_INDEX_MAJOR, CTF_INDEX_MINOR,
-				false);
-		if (!stream->index_file) {
+				false, &stream->index_file);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
 			goto end;
 		}

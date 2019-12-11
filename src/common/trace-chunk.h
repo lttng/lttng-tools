@@ -68,6 +68,7 @@ enum lttng_trace_chunk_status {
 	LTTNG_TRACE_CHUNK_STATUS_INVALID_ARGUMENT,
 	LTTNG_TRACE_CHUNK_STATUS_INVALID_OPERATION,
 	LTTNG_TRACE_CHUNK_STATUS_ERROR,
+	LTTNG_TRACE_CHUNK_STATUS_NO_FILE,
 };
 
 enum lttng_trace_chunk_command_type {
@@ -154,7 +155,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_create_subdirectory(
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		struct lttng_trace_chunk *chunk, const char *filename,
-		int flags, mode_t mode, int *out_fd);
+		int flags, mode_t mode, int *out_fd, bool expect_no_file);
 
 LTTNG_HIDDEN
 int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk,

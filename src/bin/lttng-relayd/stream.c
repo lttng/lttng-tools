@@ -123,7 +123,7 @@ static int stream_create_data_output_file_from_trace_chunk(
 	}
 
 	status = lttng_trace_chunk_open_file(
-			trace_chunk, stream_path, flags, mode, &fd);
+			trace_chunk, stream_path, flags, mode, &fd, false);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to open stream file \"%s\"", stream->channel_name);
 		ret = -1;
@@ -445,13 +445,14 @@ static int create_index_file(struct relay_stream *stream,
 		ret = -1;
 		goto end;
 	}
-	stream->index_file = lttng_index_file_create_from_trace_chunk(
+	status = lttng_index_file_create_from_trace_chunk(
 			chunk, stream->path_name,
 			stream->channel_name, stream->tracefile_size,
 			stream->tracefile_current_index,
 			lttng_to_index_major(major, minor),
-			lttng_to_index_minor(major, minor), true);
-	if (!stream->index_file) {
+			lttng_to_index_minor(major, minor), true,
+			&stream->index_file);
+	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
 		goto end;
 	}
