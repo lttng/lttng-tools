@@ -20,6 +20,7 @@
 
 #include "context.h"
 #include "session.h"
+#include "lttng-sessiond.h"
 
 struct notification_thread_handle;
 
