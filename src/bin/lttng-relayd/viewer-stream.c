@@ -21,6 +21,10 @@
 #include <common/common.h>
 #include <common/index/index.h>
 #include <common/compat/string.h>
+#include <common/utils.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "lttng-relayd.h"
 #include "viewer-stream.h"
@@ -124,7 +128,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 * If we never received an index for the current stream, delay
 	 * the opening of the index, otherwise open it right now.
 	 */
-	if (stream->index_received_seqcount == 0) {
+	if (stream->index_file == NULL) {
 		vstream->index_file = NULL;
 	} else {
 		const uint32_t connection_major = stream->trace->session->major;
@@ -147,6 +151,39 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 			} else {
 				goto error_unlock;
 			}
+		}
+	}
+
+	/*
+	 * If we never received a data file for the current stream, delay the
+	 * opening, otherwise open it right now.
+	 */
+	if (stream->stream_fd) {
+		int fd, ret;
+		char file_path[LTTNG_PATH_MAX];
+		enum lttng_trace_chunk_status status;
+
+		ret = utils_stream_file_path(stream->path_name,
+				stream->channel_name, stream->tracefile_size,
+				vstream->current_tracefile_id, NULL, file_path,
+				sizeof(file_path));
+		if (ret < 0) {
+			goto error_unlock;
+		}
+
+		status = lttng_trace_chunk_open_file(
+				vstream->stream_file.trace_chunk,
+				file_path, O_RDONLY, 0, &fd, true);
+		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			goto error_unlock;
+		}
+		vstream->stream_file.fd = stream_fd_create(fd);
+		if (!vstream->stream_file.fd) {
+			if (close(fd)) {
+				PERROR("Failed to close viewer %sfile",
+					stream->is_metadata ? "metadata " : "");
+			}
+			goto error_unlock;
 		}
 	}
 
@@ -290,16 +327,13 @@ void viewer_stream_sync_tracefile_array_tail(struct relay_viewer_stream *vstream
  * Rotate a stream to the next tracefile.
  *
  * Must be called with the rstream lock held.
- * Returns 0 on success, 1 on EOF, a negative value on error.
+ * Returns 0 on success, 1 on EOF.
  */
 int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 {
 	int ret;
 	uint64_t new_id;
 	const struct relay_stream *stream = vstream->stream;
-	const uint32_t connection_major = stream->trace->session->major;
-	const uint32_t connection_minor = stream->trace->session->minor;
-	enum lttng_trace_chunk_status chunk_status;
 
 	/* Detect the last tracefile to open. */
 	if (stream->index_received_seqcount
@@ -339,32 +373,8 @@ int viewer_stream_rotate(struct relay_viewer_stream *vstream)
 			tracefile_array_get_file_index_tail(stream->tfa);
 		vstream->index_sent_seqcount = seq_tail;
 	}
-
-	if (vstream->index_file) {
-		lttng_index_file_put(vstream->index_file);
-		vstream->index_file = NULL;
-	}
-	if (vstream->stream_file.fd) {
-		stream_fd_put(vstream->stream_file.fd);
-		vstream->stream_file.fd = NULL;
-	}
-	chunk_status = lttng_index_file_create_from_trace_chunk_read_only(
-					vstream->stream_file.trace_chunk,
-					stream->path_name,
-					stream->channel_name,
-					stream->tracefile_size,
-					vstream->current_tracefile_id,
-					lttng_to_index_major(connection_major,
-							connection_minor),
-					lttng_to_index_minor(connection_major,
-							connection_minor),
-					true, &vstream->index_file);
-	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-		ret = -1;
-		goto end;
-	} else {
-		ret = 0;
-	}
+	viewer_stream_close_files(vstream);
+	ret = 0;
 end:
 	return ret;
 }
