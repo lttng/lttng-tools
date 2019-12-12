@@ -55,5 +55,7 @@ int viewer_session_is_attached(struct relay_viewer_session *vsession,
 		struct relay_session *session);
 void viewer_session_close_one_session(struct relay_viewer_session *vsession,
 		struct relay_session *session);
+int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
+		struct lttng_trace_chunk *relay_session_trace_chunk);
 
 #endif /* _VIEWER_SESSION_H */

@@ -41,7 +41,7 @@ end:
 	return vsession;
 }
 
-static int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
+int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
 		struct lttng_trace_chunk *relay_session_trace_chunk)
 {
 	int ret = 0;
