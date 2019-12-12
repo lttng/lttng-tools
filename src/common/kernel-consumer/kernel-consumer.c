@@ -1159,6 +1159,32 @@ end_destroy_channel:
 error_rotate_channel:
 		goto end_nosignal;
 	}
+	case LTTNG_CONSUMER_CLEAR_CHANNEL:
+	{
+		struct lttng_consumer_channel *channel;
+		uint64_t key = msg.u.clear_channel.key;
+
+		channel = consumer_find_channel(key);
+		if (!channel) {
+			DBG("Channel %" PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		} else {
+			ret = lttng_consumer_clear_channel(channel);
+			if (ret) {
+				ERR("Clear channel failed");
+				ret_code = ret;
+			}
+
+			health_code_update();
+		}
+		ret = consumer_send_status_msg(sock, ret_code);
+		if (ret < 0) {
+			/* Somehow, the session daemon is not responding anymore. */
+			goto end_nosignal;
+		}
+
+		break;
+	}
 	case LTTNG_CONSUMER_INIT:
 	{
 		ret_code = lttng_consumer_init_command(ctx,

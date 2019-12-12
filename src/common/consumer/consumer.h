@@ -70,6 +70,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
 	LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
 	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
+	LTTNG_CONSUMER_CLEAR_CHANNEL,
 };
 
 enum lttng_consumer_type {
@@ -875,5 +876,6 @@ void lttng_consumer_cleanup_relayd(struct consumer_relayd_sock_pair *relayd);
 enum lttcomm_return_code lttng_consumer_init_command(
 		struct lttng_consumer_local_data *ctx,
 		const lttng_uuid sessiond_uuid);
+int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel);
 
 #endif /* LIB_CONSUMER_H */
