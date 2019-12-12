@@ -4025,14 +4025,23 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
-		 * Active flush; has no effect if the production position
-		 * is at a packet boundary.
+		 * Do not flush an empty packet when rotating from a NULL trace
+		 * chunk. The stream has no means to output data, and the prior
+		 * rotation which rotated to NULL performed that side-effect already.
 		 */
-		ret = consumer_flush_buffer(stream, 1);
-		if (ret < 0) {
-			ERR("Failed to flush stream %" PRIu64 " during channel rotation",
-					stream->key);
-			goto end_unlock_stream;
+		if (stream->trace_chunk) {
+			/*
+			 * For metadata stream, do an active flush, which does not
+			 * produce empty packets. For data streams, empty-flush;
+			 * ensures we have at least one packet in each stream per trace
+			 * chunk, even if no data was produced.
+			 */
+			ret = consumer_flush_buffer(stream, stream->metadata_flag ? 1 : 0);
+			if (ret < 0) {
+				ERR("Failed to flush stream %" PRIu64 " during channel rotation",
+						stream->key);
+				goto end_unlock_stream;
+			}
 		}
 
 		ret = lttng_consumer_take_snapshot(stream);
