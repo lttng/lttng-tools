@@ -117,6 +117,9 @@ enum lttng_trace_chunk_status lttng_trace_chunk_get_name(
 		bool *name_overridden);
 
 LTTNG_HIDDEN
+bool lttng_trace_chunk_get_name_overridden(struct lttng_trace_chunk *chunk);
+
+LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 		struct lttng_trace_chunk *chunk, const char *name);
 

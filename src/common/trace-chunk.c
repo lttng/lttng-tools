@@ -483,6 +483,17 @@ end:
 	return status;
 }
 
+LTTNG_HIDDEN
+bool lttng_trace_chunk_get_name_overridden(struct lttng_trace_chunk *chunk)
+{
+	bool name_overridden;
+
+	pthread_mutex_lock(&chunk->lock);
+	name_overridden = chunk->name_overridden;
+	pthread_mutex_unlock(&chunk->lock);
+	return name_overridden;
+}
+
 static
 bool is_valid_chunk_name(const char *name)
 {
