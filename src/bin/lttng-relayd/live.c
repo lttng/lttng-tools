@@ -1271,6 +1271,12 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 {
 	int ret;
 
+	DBG("Check index status: index_received_seqcount %" PRIu64 " "
+				"index_sent_seqcount %" PRIu64 " "
+				"for stream %" PRIu64,
+				rstream->index_received_seqcount,
+				vstream->index_sent_seqcount,
+				vstream->stream->stream_handle);
 	if ((trace->session->connection_closed || rstream->closed)
 			&& rstream->index_received_seqcount
 				== vstream->index_sent_seqcount) {
@@ -1295,6 +1301,8 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		index->status = htobe32(LTTNG_VIEWER_INDEX_INACTIVE);
 		index->timestamp_end = htobe64(rstream->beacon_ts_end);
 		index->stream_id = htobe64(rstream->ctf_stream_id);
+		DBG("Check index status: inactive with beacon, for stream %" PRIu64,
+				vstream->stream->stream_handle);
 		goto index_ready;
 	} else if (rstream->index_received_seqcount
 			== vstream->index_sent_seqcount) {
@@ -1304,6 +1312,8 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 		 * we can only ask the client to retry later.
 		 */
 		index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+		DBG("Check index status: retry for stream %" PRIu64,
+				vstream->stream->stream_handle);
 		goto index_ready;
 	} else if (!tracefile_array_seq_in_file(rstream->tfa,
 			vstream->current_tracefile_id,
@@ -1343,6 +1353,11 @@ static int check_index_status(struct relay_viewer_stream *vstream,
 					vstream->current_tracefile_id,
 					vstream->index_sent_seqcount)) {
 			index->status = htobe32(LTTNG_VIEWER_INDEX_RETRY);
+			DBG("Check index status: retry: "
+				"tracefile array sequence number %" PRIu64
+				" not in file for stream %" PRIu64,
+				vstream->index_sent_seqcount,
+				vstream->stream->stream_handle);
 			goto index_ready;
 		}
 		assert(tracefile_array_seq_in_file(rstream->tfa,
