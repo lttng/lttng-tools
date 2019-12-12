@@ -4713,7 +4713,13 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 		}
 	}
 
-	if (session_close_trace_chunk(session, session->current_trace_chunk,
+	if (session_set_trace_chunk(session, NULL, &snapshot_trace_chunk)) {
+		ERR("Failed to release the current trace chunk of session \"%s\"",
+				session->name);
+		ret_code = LTTNG_ERR_UNK;
+	}
+
+	if (session_close_trace_chunk(session, snapshot_trace_chunk,
 			LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION, NULL)) {
 		/*
 		 * Don't goto end; make sure the chunk is closed for the session
@@ -4722,11 +4728,6 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 		ERR("Failed to close snapshot trace chunk of session \"%s\"",
 				session->name);
 		ret_code = LTTNG_ERR_CLOSE_TRACE_CHUNK_FAIL_CONSUMER;
-	}
-	if (session_set_trace_chunk(session, NULL, NULL)) {
-		ERR("Failed to release the current trace chunk of session \"%s\"",
-				session->name);
-		ret_code = LTTNG_ERR_UNK;
 	}
 error:
 	if (original_ust_consumer_output) {
