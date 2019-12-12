@@ -2636,6 +2636,8 @@ int cmd_start_trace(struct ltt_session *session)
 	struct ltt_ust_session *usess;
 	const bool session_rotated_after_last_stop =
 			session->rotated_after_last_stop;
+	const bool session_cleared_after_last_stop =
+			session->cleared_after_last_stop;
 
 	assert(session);
 
@@ -2682,6 +2684,7 @@ int cmd_start_trace(struct ltt_session *session)
 
 	session->active = 1;
 	session->rotated_after_last_stop = false;
+	session->cleared_after_last_stop = false;
 	if (session->output_traces && !session->current_trace_chunk) {
 		if (!session->has_been_started) {
 			struct lttng_trace_chunk *trace_chunk;
@@ -2770,6 +2773,8 @@ error:
 		/* Restore initial state on error. */
 		session->rotated_after_last_stop =
 				session_rotated_after_last_stop;
+		session->cleared_after_last_stop =
+				session_cleared_after_last_stop;
 	}
 	return ret;
 }
@@ -4967,6 +4972,18 @@ int cmd_rotate_session(struct ltt_session *session,
 		cmd_ret = LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP;
 		goto end;
 	}
+
+	/*
+	 * After a stop followed by a clear, disallow following rotations a they would
+	 * generate empty chunks.
+	 */
+	if (session->cleared_after_last_stop) {
+		DBG("Session \"%s\" was already cleared after stop, refusing rotation",
+				session->name);
+		cmd_ret = LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR;
+		goto end;
+	}
+
 	if (session->active) {
 		new_trace_chunk = session_create_new_trace_chunk(session, NULL,
 				NULL, NULL);

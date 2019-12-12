@@ -174,6 +174,12 @@ struct ltt_session {
 	 */
 	bool rotated_after_last_stop;
 	/*
+	 * Track whether the session was cleared after last stop. All subsequent
+	 * clear (without prior start) will succeed, but will be effect-less. A
+	 * subsequent rotate (without prior start) will return an error.
+	 */
+	bool cleared_after_last_stop;
+	/*
 	 * Condition and trigger for size-based rotations.
 	 */
 	struct lttng_condition *rotate_condition;
