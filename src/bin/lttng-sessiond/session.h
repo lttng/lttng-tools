@@ -182,6 +182,10 @@ struct ltt_session {
 	 */
 	bool cleared_after_last_stop;
 	/*
+	 * True if the session has had an explicit non-quiet rotation.
+	 */
+	bool rotated;
+	/*
 	 * Condition and trigger for size-based rotations.
 	 */
 	struct lttng_condition *rotate_condition;

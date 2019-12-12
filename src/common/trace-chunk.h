@@ -84,7 +84,8 @@ struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous(void);
 LTTNG_HIDDEN
 struct lttng_trace_chunk *lttng_trace_chunk_create(
 		uint64_t chunk_id,
-		time_t chunk_creation_time);
+		time_t chunk_creation_time,
+		const char *path);
 
 /*
  * Copy a trace chunk. The copy that is returned is always a _user_
@@ -122,6 +123,10 @@ bool lttng_trace_chunk_get_name_overridden(struct lttng_trace_chunk *chunk);
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 		struct lttng_trace_chunk *chunk, const char *name);
+
+LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path(
+		struct lttng_trace_chunk *chunk, const char *path);
 
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_get_credentials(

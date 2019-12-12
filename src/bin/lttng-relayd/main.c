@@ -2459,6 +2459,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
 	struct lttng_directory_handle *session_output = NULL;
+	const char *new_path;
 
 	if (!session || !conn->version_check_done) {
 		ERR("Trying to create a trace chunk before version check");
@@ -2485,8 +2486,29 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	msg->creation_timestamp = be64toh(msg->creation_timestamp);
 	msg->override_name_length = be32toh(msg->override_name_length);
 
+	if (session->current_trace_chunk &&
+			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
+					DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ERR("Failed to rename old chunk");
+			ret = -1;
+			reply_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+	}
+	session->ongoing_rotation = true;
+	if (!session->current_trace_chunk) {
+		if (!session->has_rotated) {
+			new_path = "";
+		} else {
+			new_path = NULL;
+		}
+	} else {
+		new_path = DEFAULT_CHUNK_TMP_NEW_DIRECTORY;
+	}
 	chunk = lttng_trace_chunk_create(
-			msg->chunk_id, msg->creation_timestamp);
+			msg->chunk_id, msg->creation_timestamp, new_path);
 	if (!chunk) {
 		ERR("Failed to create trace chunk in trace chunk creation command");
 		ret = -1;
@@ -2581,6 +2603,9 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 			conn->session->current_trace_chunk;
 	conn->session->current_trace_chunk = published_chunk;
 	published_chunk = NULL;
+	if (!conn->session->pending_closure_trace_chunk) {
+		session->ongoing_rotation = false;
+	}
 end_unlock_session:
 	pthread_mutex_unlock(&conn->session->lock);
 end:
@@ -2624,6 +2649,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	size_t path_length = 0;
 	const char *chunk_name = NULL;
 	struct lttng_dynamic_buffer reply_payload;
+	const char *new_path;
 
 	lttng_dynamic_buffer_init(&reply_payload);
 
@@ -2683,6 +2709,43 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		goto end_unlock_session;
 	}
 
+	if (session->current_trace_chunk && session->current_trace_chunk != chunk &&
+			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+		if (close_command.is_set &&
+				close_command.value == LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE &&
+				!session->has_rotated) {
+			/* New chunk stays in session output directory. */
+			new_path = "";
+		} else {
+			/* Use chunk name for new chunk. */
+			new_path = NULL;
+		}
+		/* Rename new chunk path. */
+		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
+				new_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+		session->ongoing_rotation = false;
+	}
+	if ((!close_command.is_set ||
+			close_command.value == LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION) &&
+			!lttng_trace_chunk_get_name_overridden(chunk)) {
+		const char *old_path;
+
+		if (!session->has_rotated) {
+			old_path = "";
+		} else {
+			old_path = NULL;
+		}
+		/* We need to move back the .tmp_old_chunk to its rightful place. */
+		chunk_status = lttng_trace_chunk_rename_path(chunk, old_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+	}
 	chunk_status = lttng_trace_chunk_set_close_timestamp(
 			chunk, close_timestamp);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {

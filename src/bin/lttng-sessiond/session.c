@@ -589,6 +589,7 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	};
 	uint64_t next_chunk_id;
 	const struct consumer_output *output;
+	const char *new_path;
 
 	if (consumer_output_override) {
 		output = consumer_output_override;
@@ -612,8 +613,26 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	next_chunk_id = session->most_recent_chunk_id.is_set ?
 			session->most_recent_chunk_id.value + 1 : 0;
 
+	if (session->current_trace_chunk &&
+			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
+					DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			goto error;
+		}
+	}
+	if (!session->current_trace_chunk) {
+		if (!session->rotated) {
+			new_path = "";
+		} else {
+			new_path = NULL;
+		}
+	} else {
+		new_path = DEFAULT_CHUNK_TMP_NEW_DIRECTORY;
+	}
+
 	trace_chunk = lttng_trace_chunk_create(next_chunk_id,
-			chunk_creation_ts);
+			chunk_creation_ts, new_path);
 	if (!trace_chunk) {
 		goto error;
 	}
@@ -678,6 +697,7 @@ int session_close_trace_chunk(struct ltt_session *session,
 	struct consumer_socket *socket;
 	enum lttng_trace_chunk_status chunk_status;
 	const time_t chunk_close_timestamp = time(NULL);
+	const char *new_path;
 
 	chunk_status = lttng_trace_chunk_set_close_command(
 			trace_chunk, close_command);
@@ -691,6 +711,44 @@ int session_close_trace_chunk(struct ltt_session *session,
 				session->name);
 		ret = -1;
 		goto end;
+	}
+
+	if (close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE && !session->rotated) {
+		/* New chunk stays in session output directory. */
+		new_path = "";
+	} else {
+		/* Use chunk name for new chunk. */
+		new_path = NULL;
+	}
+	if (session->current_trace_chunk &&
+			!lttng_trace_chunk_get_name_overridden(session->current_trace_chunk)) {
+		/* Rename new chunk path. */
+		chunk_status = lttng_trace_chunk_rename_path(session->current_trace_chunk,
+					new_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+	}
+	if (!lttng_trace_chunk_get_name_overridden(trace_chunk) &&
+			close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION) {
+		const char *old_path;
+
+		if (!session->rotated) {
+			old_path = "";
+		} else {
+			old_path = NULL;
+		}
+		/* We need to move back the .tmp_old_chunk to its rightful place. */
+		chunk_status = lttng_trace_chunk_rename_path(trace_chunk,
+					old_path);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ret = -1;
+			goto end;
+		}
+	}
+	if (close_command == LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED) {
+		session->rotated = true;
 	}
 	chunk_status = lttng_trace_chunk_set_close_timestamp(trace_chunk,
 			chunk_close_timestamp);

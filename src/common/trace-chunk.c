@@ -55,18 +55,26 @@ enum trace_chunk_mode {
  * since only one thread may access a chunk during its destruction (the last
  * to release its reference to the chunk).
  */
-typedef void (*chunk_close_command)(struct lttng_trace_chunk *trace_chunk);
+typedef int (*chunk_command)(struct lttng_trace_chunk *trace_chunk);
 
 /* Move a completed trace chunk to the 'completed' trace archive folder. */
 static
-void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk);
+int lttng_trace_chunk_move_to_completed_post_release(struct lttng_trace_chunk *trace_chunk);
+static
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
+		struct lttng_trace_chunk *chunk, const char *path);
 
 struct chunk_credentials {
 	bool use_current_user;
 	struct lttng_credentials user;
 };
 
-/* NOTE: Make sure to update lttng_trace_chunk_copy if you modify this. */
+/*
+ * NOTE: Make sure to update:
+ * - lttng_trace_chunk_copy(),
+ * - lttng_trace_chunk_registry_element_create_from_chunk()
+ * if you modify this structure.
+ */
 struct lttng_trace_chunk {
 	pthread_mutex_t lock;
 	struct urcu_ref ref;
@@ -87,6 +95,7 @@ struct lttng_trace_chunk {
 	bool in_registry_element;
 	bool name_overridden;
 	char *name;
+	char *path;
 	/* An unset id means the chunk is anonymous. */
 	LTTNG_OPTIONAL(uint64_t) id;
 	LTTNG_OPTIONAL(time_t) timestamp_creation;
@@ -123,9 +132,9 @@ char *close_command_names[] = {
 };
 
 static const
-chunk_close_command close_command_funcs[] = {
+chunk_command close_command_post_release_funcs[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED] =
-			lttng_trace_chunk_move_to_completed,
+			lttng_trace_chunk_move_to_completed_post_release,
 };
 
 static
@@ -242,6 +251,8 @@ void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 	}
 	free(chunk->name);
 	chunk->name = NULL;
+	free(chunk->path);
+	chunk->path = NULL;
 	lttng_dynamic_pointer_array_reset(&chunk->top_level_directories);
 	lttng_dynamic_pointer_array_reset(&chunk->files);
 	pthread_mutex_destroy(&chunk->lock);
@@ -271,7 +282,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_create_anonymous(void)
 
 LTTNG_HIDDEN
 struct lttng_trace_chunk *lttng_trace_chunk_create(
-		uint64_t chunk_id, time_t chunk_creation_time)
+		uint64_t chunk_id, time_t chunk_creation_time, const char *path)
 {
 	struct lttng_trace_chunk *chunk;
         char chunk_creation_datetime_buf[16] = {};
@@ -309,6 +320,19 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 			goto error;
 		}
         }
+	if (path) {
+		chunk->path = strdup(path);
+		if (!chunk->path) {
+			goto error;
+		}
+	} else {
+		if (chunk->name) {
+			chunk->path = strdup(chunk->name);
+			if (!chunk->path) {
+				goto error;
+			}
+		}
+	}
 
         DBG("Chunk name set to \"%s\"", chunk->name ? : "(none)");
 end:
@@ -350,6 +374,13 @@ struct lttng_trace_chunk *lttng_trace_chunk_copy(
 			ERR("Failed to copy source trace chunk name in %s()",
 					__FUNCTION__);
 			goto error_unlock;
+		}
+	}
+	if (source_chunk->path) {
+		new_chunk->path = strdup(source_chunk->path);
+		if (!new_chunk->path) {
+			ERR("Failed to copy source trace chunk path in %s()",
+					__FUNCTION__);
 		}
 	}
 	new_chunk->id = source_chunk->id;
@@ -520,9 +551,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 		struct lttng_trace_chunk *chunk, const char *name)
 
 {
-	char *new_name;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+	char *new_name, *new_path;
 
+	DBG("Override trace chunk name from %s to %s", chunk->name, name);
 	if (!is_valid_chunk_name(name)) {
 		ERR("Attempted to set an invalid name on a trace chunk: name = %s",
 				name ? : "NULL");
@@ -537,6 +569,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_OPERATION;
 		goto end_unlock;
 	}
+
 	new_name = strdup(name);
 	if (!new_name) {
 		ERR("Failed to allocate new trace chunk name");
@@ -545,10 +578,236 @@ enum lttng_trace_chunk_status lttng_trace_chunk_override_name(
 	}
 	free(chunk->name);
 	chunk->name = new_name;
+
+	new_path = strdup(name);
+	if (!new_path) {
+		ERR("Failed to allocate new trace chunk path");
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end_unlock;
+	}
+	free(chunk->path);
+	chunk->path = new_path;
+
 	chunk->name_overridden = true;
-end_unlock:	
+end_unlock:
 	pthread_mutex_unlock(&chunk->lock);
 end:
+	return status;
+}
+
+static
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
+		struct lttng_trace_chunk *chunk, const char *path)
+
+{
+	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+	struct lttng_directory_handle *rename_directory = NULL;
+	char *new_path, *old_path;
+	int ret;
+
+	if (chunk->name_overridden) {
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+
+	old_path = chunk->path;
+	DBG("lttng_trace_chunk_rename_path from %s to %s", old_path, path);
+
+	if ((!old_path && !path) ||
+			(old_path && path && !strcmp(old_path, path)))  {
+		goto end;
+	}
+	/*
+	 * Use chunk name as path if NULL path is specified.
+	 */
+	if (!path) {
+		path = chunk->name;
+	}
+
+	/* Renaming from "" to "" is not accepted. */
+	if (path[0] == '\0' && old_path[0] == '\0') {
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+
+	/*
+	 * If a rename is performed on a chunk for which the chunk_directory
+	 * is not set (yet), or the session_output_directory is not set
+	 * (interacting with a relay daemon), there is no rename to perform.
+	 */
+	if (!chunk->chunk_directory ||
+			!chunk->session_output_directory) {
+		goto skip_move;
+	}
+
+	if (old_path[0] != '\0' && path[0] != '\0') {
+		/* Rename chunk directory. */
+		ret = lttng_directory_handle_rename_as_user(
+			chunk->session_output_directory,
+			old_path,
+			chunk->session_output_directory,
+			path,
+			LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
+				NULL :
+				&chunk->credentials.value.user);
+		if (ret) {
+			PERROR("Failed to move trace chunk directory \"%s\" to \"%s\"",
+					old_path, path);
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+		rename_directory = lttng_directory_handle_create_from_handle(
+				path,
+				chunk->session_output_directory);
+		if (!rename_directory) {
+			ERR("Failed to get handle to trace chunk rename directory");
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+
+		/* Release old handle. */
+		lttng_directory_handle_put(chunk->chunk_directory);
+		/*
+		 * Transfer new handle reference to chunk as the current chunk
+		 * handle.
+		 */
+		chunk->chunk_directory = rename_directory;
+		rename_directory = NULL;
+	} else if (old_path[0] == '\0') {
+		size_t i, count = lttng_dynamic_pointer_array_get_count(
+				&chunk->top_level_directories);
+
+		ret = lttng_directory_handle_create_subdirectory_as_user(
+				chunk->session_output_directory,
+				path,
+				DIR_CREATION_MODE,
+				LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
+					NULL :
+					&chunk->credentials.value.user);
+		if (ret) {
+			PERROR("Failed to create trace chunk rename directory \"%s\"",
+					path);
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+
+		rename_directory = lttng_directory_handle_create_from_handle(
+				path, chunk->session_output_directory);
+		if (!rename_directory) {
+			ERR("Failed to get handle to trace chunk rename directory");
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+
+		/* Move toplevel directories. */
+		for (i = 0; i < count; i++) {
+			const char *top_level_name =
+				lttng_dynamic_pointer_array_get_pointer(
+					&chunk->top_level_directories, i);
+
+			ret = lttng_directory_handle_rename_as_user(
+					chunk->chunk_directory,
+					top_level_name,
+					rename_directory,
+					top_level_name,
+					LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
+						NULL :
+						&chunk->credentials.value.user);
+			if (ret) {
+				PERROR("Failed to move \"%s\" to trace chunk rename directory",
+						top_level_name);
+				status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+				goto end;
+			}
+		}
+		/* Release old handle. */
+		lttng_directory_handle_put(chunk->chunk_directory);
+		/*
+		 * Transfer new handle reference to chunk as the current chunk
+		 * handle.
+		 */
+		chunk->chunk_directory = rename_directory;
+		rename_directory = NULL;
+	} else {
+		size_t i, count = lttng_dynamic_pointer_array_get_count(
+				&chunk->top_level_directories);
+		const bool reference_acquired = lttng_directory_handle_get(
+				chunk->session_output_directory);
+
+		assert(reference_acquired);
+		rename_directory = chunk->session_output_directory;
+
+		/* Move toplevel directories. */
+		for (i = 0; i < count; i++) {
+			const char *top_level_name =
+				lttng_dynamic_pointer_array_get_pointer(
+					&chunk->top_level_directories, i);
+
+			ret = lttng_directory_handle_rename_as_user(
+					chunk->chunk_directory,
+					top_level_name,
+					rename_directory,
+					top_level_name,
+					LTTNG_OPTIONAL_GET(chunk->credentials).use_current_user ?
+						NULL :
+						&chunk->credentials.value.user);
+			if (ret) {
+				PERROR("Failed to move \"%s\" to trace chunk rename directory",
+						top_level_name);
+				status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+				goto end;
+			}
+		}
+		/* Release old handle. */
+		lttng_directory_handle_put(chunk->chunk_directory);
+		/*
+		 * Transfer new handle reference to chunk as the current chunk
+		 * handle.
+		 */
+		chunk->chunk_directory = rename_directory;
+		rename_directory = NULL;
+
+		/* Remove old directory. */
+		status = lttng_directory_handle_remove_subdirectory(
+				chunk->session_output_directory,
+				old_path);
+		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ERR("Error removing subdirectory '%s' file when deleting chunk",
+				old_path);
+			ret = -1;
+			goto end;
+		}
+	}
+
+skip_move:
+	if (path) {
+		new_path = strdup(path);
+		if (!new_path) {
+			ERR("Failed to allocate new trace chunk path");
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+	} else {
+		new_path = NULL;
+	}
+	free(chunk->path);
+	chunk->path = new_path;
+end:
+	lttng_directory_handle_put(rename_directory);
+	return status;
+}
+
+LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_rename_path(
+		struct lttng_trace_chunk *chunk, const char *path)
+
+{
+	enum lttng_trace_chunk_status status;
+
+	pthread_mutex_lock(&chunk->lock);
+	status = lttng_trace_chunk_rename_path_no_lock(chunk, path);
+	pthread_mutex_unlock(&chunk->lock);
+
 	return status;
 }
 
@@ -641,32 +900,39 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}
-
-	if (chunk->name) {
-		/*
-		 * A nameless chunk does not need its own output directory.
-		 * The session's output directory will be used.
-		 */
+	if (chunk->path[0] != '\0') {
 		ret = lttng_directory_handle_create_subdirectory_as_user(
 				session_output_directory,
-				chunk->name,
+				chunk->path,
 				DIR_CREATION_MODE,
 				!chunk->credentials.value.use_current_user ?
 					&chunk->credentials.value.user : NULL);
 		if (ret) {
 			PERROR("Failed to create chunk output directory \"%s\"",
-				chunk->name);
+				chunk->path);
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto end;
 		}
-	}
-	chunk_directory_handle = lttng_directory_handle_create_from_handle(
-			chunk->name,
-			session_output_directory);
-	if (!chunk_directory_handle) {
-		/* The function already logs on all error paths. */
-		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
-		goto end;
+		chunk_directory_handle =
+				lttng_directory_handle_create_from_handle(
+					chunk->path,
+					session_output_directory);
+		if (!chunk_directory_handle) {
+			/* The function already logs on all error paths. */
+			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+			goto end;
+		}
+	} else {
+		/*
+		 * A nameless chunk does not need its own output directory.
+		 * The session's output directory will be used.
+		 */
+		const bool reference_acquired =
+				lttng_directory_handle_get(
+					session_output_directory);
+
+		assert(reference_acquired);
+		chunk_directory_handle = session_output_directory;
 	}
 	chunk->chunk_directory = chunk_directory_handle;
 	chunk_directory_handle = NULL;
@@ -972,7 +1238,7 @@ int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk,
 	if (!chunk->credentials.is_set) {
 		/*
 		 * Fatal error, credentials must be set before a
-		 * directory is created.
+		 * file is unlinked.
 		 */
 		ERR("Credentials of trace chunk are unset: refusing to unlink file \"%s\"",
 				file_path);
@@ -999,12 +1265,50 @@ end:
 	return status;
 }
 
-static
-void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
+LTTNG_HIDDEN
+int lttng_trace_chunk_remove_subdirectory_recursive(struct lttng_trace_chunk *chunk,
+		const char *path)
 {
 	int ret;
-	char *directory_to_rename = NULL;
-	bool free_directory_to_rename = false;
+	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+
+	DBG("Recursively removing trace chunk directory \"%s\"", path);
+	pthread_mutex_lock(&chunk->lock);
+	if (!chunk->credentials.is_set) {
+		/*
+		 * Fatal error, credentials must be set before a
+		 * directory is removed.
+		 */
+		ERR("Credentials of trace chunk are unset: refusing to recursively remove directory \"%s\"",
+				path);
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+	if (!chunk->chunk_directory) {
+		ERR("Attempted to recursively remove trace chunk directory \"%s\" before setting the chunk output directory",
+				path);
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+	ret = lttng_directory_handle_remove_subdirectory_recursive_as_user(
+			chunk->chunk_directory, path,
+			chunk->credentials.value.use_current_user ?
+					NULL : &chunk->credentials.value.user,
+			LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
+	if (ret < 0) {
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
+	}
+end:
+	pthread_mutex_unlock(&chunk->lock);
+	return status;
+}
+
+static
+int lttng_trace_chunk_move_to_completed_post_release(
+		struct lttng_trace_chunk *trace_chunk)
+{
+	int ret = 0;
 	char *archived_chunk_name = NULL;
 	const uint64_t chunk_id = LTTNG_OPTIONAL_GET(trace_chunk->id);
 	const time_t creation_timestamp =
@@ -1012,6 +1316,7 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 	const time_t close_timestamp =
 			LTTNG_OPTIONAL_GET(trace_chunk->timestamp_close);
 	struct lttng_directory_handle *archived_chunks_directory = NULL;
+	enum lttng_trace_chunk_status status;
 
 	if (!trace_chunk->mode.is_set ||
 			trace_chunk->mode.value != TRACE_CHUNK_MODE_OWNER ||
@@ -1025,76 +1330,13 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 
 	assert(trace_chunk->mode.value == TRACE_CHUNK_MODE_OWNER);
 	assert(!trace_chunk->name_overridden);
-
-	/*
-	 * The fist trace chunk of a session is directly output to the
-	 * session's output folder. In this case, the top level directories
-	 * must be moved to a temporary folder before that temporary directory
-	 * is renamed to match the chunk's name.
-	 */
-	if (chunk_id == 0) {
-		struct lttng_directory_handle *temporary_rename_directory =
-				NULL;
-		size_t i, count = lttng_dynamic_pointer_array_get_count(
-					  &trace_chunk->top_level_directories);
-
-		ret = lttng_directory_handle_create_subdirectory_as_user(
-				trace_chunk->session_output_directory,
-				DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY,
-				DIR_CREATION_MODE,
-				!trace_chunk->credentials.value.use_current_user ?
-					&trace_chunk->credentials.value.user : NULL);
-		if (ret) {
-			PERROR("Failed to create temporary trace chunk rename directory \"%s\"",
-					DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY);
-		}
-
-		temporary_rename_directory = lttng_directory_handle_create_from_handle(
-				DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY,
-				trace_chunk->session_output_directory);
-		if (!temporary_rename_directory) {
-			ERR("Failed to get handle to temporary trace chunk rename directory");
-			goto end;
-		}
-
-		for (i = 0; i < count; i++) {
-			const char *top_level_name =
-					lttng_dynamic_pointer_array_get_pointer(
-						&trace_chunk->top_level_directories, i);
-
-			ret = lttng_directory_handle_rename_as_user(
-					trace_chunk->session_output_directory,
-					top_level_name,
-					temporary_rename_directory,
-					top_level_name,
-					LTTNG_OPTIONAL_GET(trace_chunk->credentials).use_current_user ?
-						NULL :
-						&trace_chunk->credentials.value.user);
-			if (ret) {
-				PERROR("Failed to move \"%s\" to temporary trace chunk rename directory",
-						top_level_name);
-				lttng_directory_handle_put(
-						temporary_rename_directory);
-				goto end;
-			}
-		}
-		lttng_directory_handle_put(temporary_rename_directory);
-		directory_to_rename = DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY;
-		free_directory_to_rename = false;
-	} else {
-		directory_to_rename = generate_chunk_name(chunk_id,
-				creation_timestamp, NULL);
-		if (!directory_to_rename) {
-			ERR("Failed to generate initial trace chunk name while renaming trace chunk");
-			goto end;
-		}
-		free_directory_to_rename = true;
-	}
+	assert(trace_chunk->path);
 
 	archived_chunk_name = generate_chunk_name(chunk_id, creation_timestamp,
 			&close_timestamp);
 	if (!archived_chunk_name) {
 		ERR("Failed to generate archived trace chunk name while renaming trace chunk");
+		ret = -1;
 		goto end;
 	}
 
@@ -1116,12 +1358,29 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 			trace_chunk->session_output_directory);
 	if (!archived_chunks_directory) {
 		PERROR("Failed to get handle to archived trace chunks directory");
+		ret = -1;
 		goto end;
+	}
+
+	/*
+	 * Make sure chunk is renamed to old directory if not already done by
+	 * the creation of the next chunk. This happens if a rotation is
+	 * performed while tracing is stopped.
+	 */
+	if (!trace_chunk->path || strcmp(trace_chunk->path,
+			DEFAULT_CHUNK_TMP_OLD_DIRECTORY)) {
+		status = lttng_trace_chunk_rename_path_no_lock(trace_chunk,
+				DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
+		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			ERR("Failed to rename chunk to %s", DEFAULT_CHUNK_TMP_OLD_DIRECTORY);
+			ret = -1;
+			goto end;
+		}
 	}
 
 	ret = lttng_directory_handle_rename_as_user(
 			trace_chunk->session_output_directory,
-			directory_to_rename,
+			trace_chunk->path,
 			archived_chunks_directory,
 			archived_chunk_name,
 			LTTNG_OPTIONAL_GET(trace_chunk->credentials).use_current_user ?
@@ -1129,15 +1388,14 @@ void lttng_trace_chunk_move_to_completed(struct lttng_trace_chunk *trace_chunk)
 				&trace_chunk->credentials.value.user);
 	if (ret) {
 		PERROR("Failed to rename folder \"%s\" to \"%s\"",
-				directory_to_rename, archived_chunk_name);
+				trace_chunk->path,
+				archived_chunk_name);
 	}
 
 end:
 	lttng_directory_handle_put(archived_chunks_directory);
 	free(archived_chunk_name);
-	if (free_directory_to_rename) {
-		free(directory_to_rename);
-	}
+	return ret;
 }
 
 LTTNG_HIDDEN
@@ -1233,7 +1491,11 @@ void lttng_trace_chunk_release(struct urcu_ref *ref)
 			ref);
 
 	if (chunk->close_command.is_set) {
-		close_command_funcs[chunk->close_command.value](chunk);
+		if (close_command_post_release_funcs[
+				chunk->close_command.value](chunk)) {
+			ERR("Trace chunk post-release command %s has failed.",
+					close_command_names[chunk->close_command.value]);
+		}
 	}
 
 	if (chunk->in_registry_element) {
@@ -1333,10 +1595,11 @@ lttng_trace_chunk_registry_element_create_from_chunk(
 		chunk->chunk_directory = NULL;
 	}
 	/*
-	 * The original chunk becomes invalid; the name attribute is transferred
-	 * to the new chunk instance.
+	 * The original chunk becomes invalid; the name and path attributes are
+	 * transferred to the new chunk instance.
 	 */
 	chunk->name = NULL;
+	chunk->path = NULL;
 	element->chunk.in_registry_element = true;
 end:
 	return element;

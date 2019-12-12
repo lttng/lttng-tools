@@ -353,7 +353,8 @@
  * Name of the intermediate directory used to rename the trace chunk of a
  * session's first rotation.
  */
-#define DEFAULT_TEMPORARY_CHUNK_RENAME_DIRECTORY	".tmp_rename_chunk"
+#define DEFAULT_CHUNK_TMP_OLD_DIRECTORY			".tmp_old_chunk"
+#define DEFAULT_CHUNK_TMP_NEW_DIRECTORY			".tmp_new_chunk"
 #define DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY		"archives"
 
 /*

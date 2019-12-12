@@ -3328,9 +3328,7 @@ int cmd_destroy_session(struct ltt_session *session,
 		session->rotate_size = 0;
 	}
 
-	if (session->most_recent_chunk_id.is_set &&
-			session->most_recent_chunk_id.value != 0 &&
-			session->current_trace_chunk && session->output_traces) {
+	if (session->rotated && session->current_trace_chunk && session->output_traces) {
 		/*
 		 * Perform a last rotation on destruction if rotations have
 		 * occurred during the session's lifetime.

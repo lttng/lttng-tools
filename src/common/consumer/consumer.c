@@ -4603,7 +4603,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	 * and LTTNG_CONSUMER_DESTROY_TRACE_CHUNK commands.
 	 */
 	created_chunk = lttng_trace_chunk_create(chunk_id,
-			chunk_creation_timestamp);
+			chunk_creation_timestamp, NULL);
 	if (!created_chunk) {
 		ERR("Failed to create trace chunk");
 		ret_code = LTTCOMM_CONSUMERD_CREATE_TRACE_CHUNK_FAILED;
