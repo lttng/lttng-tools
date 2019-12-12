@@ -3940,15 +3940,23 @@ int consumer_flush_buffer(struct lttng_consumer_stream *stream, int producer_act
 
 	switch (consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
-		ret = kernctl_buffer_flush(stream->wait_fd);
-		if (ret < 0) {
-			ERR("Failed to flush kernel stream");
-			goto end;
+		if (producer_active) {
+			ret = kernctl_buffer_flush(stream->wait_fd);
+			if (ret < 0) {
+				ERR("Failed to flush kernel stream");
+				goto end;
+			}
+		} else {
+			ret = kernctl_buffer_flush_empty(stream->wait_fd);
+			if (ret < 0) {
+				ERR("Failed to flush kernel stream");
+				goto end;
+			}
 		}
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		lttng_ustctl_flush_buffer(stream, producer_active);
+		lttng_ustconsumer_flush_buffer(stream, producer_active);
 		break;
 	default:
 		ERR("Unknown consumer_data type");
