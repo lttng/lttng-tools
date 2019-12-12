@@ -261,6 +261,31 @@ void viewer_stream_put(struct relay_viewer_stream *vstream)
 	rcu_read_unlock();
 }
 
+void viewer_stream_close_files(struct relay_viewer_stream *vstream)
+{
+	if (vstream->index_file) {
+		lttng_index_file_put(vstream->index_file);
+		vstream->index_file = NULL;
+	}
+	if (vstream->stream_file.fd) {
+		stream_fd_put(vstream->stream_file.fd);
+		vstream->stream_file.fd = NULL;
+	}
+}
+
+void viewer_stream_sync_tracefile_array_tail(struct relay_viewer_stream *vstream)
+{
+	const struct relay_stream *stream = vstream->stream;
+	uint64_t seq_tail;
+
+	vstream->current_tracefile_id = tracefile_array_get_file_index_tail(stream->tfa);
+	seq_tail = tracefile_array_get_seq_tail(stream->tfa);
+	if (seq_tail == -1ULL) {
+		seq_tail = 0;
+	}
+	vstream->index_sent_seqcount = seq_tail;
+}
+
 /*
  * Rotate a stream to the next tracefile.
  *
