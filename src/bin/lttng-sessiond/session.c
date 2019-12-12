@@ -46,6 +46,11 @@ struct ltt_session_destroy_notifier_element {
 	void *user_data;
 };
 
+struct ltt_session_clear_notifier_element {
+	ltt_session_clear_notifier notifier;
+	void *user_data;
+};
+
 /*
  * NOTES:
  *
@@ -769,6 +774,25 @@ void session_notify_destruction(const struct ltt_session *session)
 	}
 }
 
+/*
+ * Fire each clear notifier once, and remove them from the array.
+ */
+void session_notify_clear(struct ltt_session *session)
+{
+	size_t i;
+	const size_t count = lttng_dynamic_array_get_count(
+			&session->clear_notifiers);
+
+	for (i = 0; i < count; i++) {
+		const struct ltt_session_clear_notifier_element *element =
+			lttng_dynamic_array_get_element(
+					&session->clear_notifiers, i);
+
+		element->notifier(session, element->user_data);
+	}
+	lttng_dynamic_array_clear(&session->clear_notifiers);
+}
+
 static
 void session_release(struct urcu_ref *ref)
 {
@@ -831,6 +855,7 @@ void session_release(struct urcu_ref *ref)
 		session->ust_session = NULL;
 	}
 	lttng_dynamic_array_reset(&session->destroy_notifiers);
+	lttng_dynamic_array_reset(&session->clear_notifiers);
 	free(session->last_archived_chunk_name);
 	free(session->base_path);
 	free(session);
@@ -896,6 +921,18 @@ int session_add_destroy_notifier(struct ltt_session *session,
 	};
 
 	return lttng_dynamic_array_add_element(&session->destroy_notifiers,
+			&element);
+}
+
+int session_add_clear_notifier(struct ltt_session *session,
+		ltt_session_clear_notifier notifier, void *user_data)
+{
+	const struct ltt_session_clear_notifier_element element = {
+		.notifier = notifier,
+		.user_data = user_data
+	};
+
+	return lttng_dynamic_array_add_element(&session->clear_notifiers,
 			&element);
 }
 
@@ -989,6 +1026,9 @@ enum lttng_error_code session_create(const char *name, uid_t uid, gid_t gid,
 
 	lttng_dynamic_array_init(&new_session->destroy_notifiers,
 			sizeof(struct ltt_session_destroy_notifier_element),
+			NULL);
+	lttng_dynamic_array_init(&new_session->clear_notifiers,
+			sizeof(struct ltt_session_clear_notifier_element),
 			NULL);
 	urcu_ref_init(&new_session->ref);
 	pthread_mutex_init(&new_session->lock, NULL);
@@ -1184,6 +1224,11 @@ int session_reset_rotation_state(struct ltt_session *session,
 				chunk_id);
 		lttng_trace_chunk_put(session->chunk_being_archived);
 		session->chunk_being_archived = NULL;
+		/*
+		 * Fire the clear reply notifiers if we are completing a clear
+		 * rotation.
+		 */
+		session_notify_clear(session);
 	}
 	return ret;
 }

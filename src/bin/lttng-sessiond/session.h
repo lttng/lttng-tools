@@ -36,6 +36,8 @@ struct ltt_ust_session;
 
 typedef void (*ltt_session_destroy_notifier)(const struct ltt_session *session,
 		void *user_data);
+typedef void (*ltt_session_clear_notifier)(const struct ltt_session *session,
+		void *user_data);
 
 /*
  * Tracing session list
@@ -193,6 +195,7 @@ struct ltt_session {
 	char *last_archived_chunk_name;
 	LTTNG_OPTIONAL(uint64_t) last_archived_chunk_id;
 	struct lttng_dynamic_array destroy_notifiers;
+	struct lttng_dynamic_array clear_notifiers;
 	/* Session base path override. Set non-null. */
 	char *base_path;
 };
@@ -209,6 +212,10 @@ void session_unlock_list(void);
 void session_destroy(struct ltt_session *session);
 int session_add_destroy_notifier(struct ltt_session *session,
 		ltt_session_destroy_notifier notifier, void *user_data);
+
+int session_add_clear_notifier(struct ltt_session *session,
+		ltt_session_clear_notifier notifier, void *user_data);
+void session_notify_clear(struct ltt_session *session);
 
 bool session_get(struct ltt_session *session);
 void session_put(struct ltt_session *session);
