@@ -2699,6 +2699,20 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	pthread_mutex_lock(&session->lock);
+	if (close_command.is_set &&
+			close_command.value == LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE) {
+		/*
+		 * Clear command. It is a protocol error to ask for a
+		 * clear on a relay which does not allow it. Querying
+		 * the configuration allows figuring out whether
+		 * clearing is allowed before doing the clear.
+		 */
+		if (!opt_allow_clear) {
+			ret = -1;
+			reply_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end_unlock_session;
+		}
+	}
 	if (session->pending_closure_trace_chunk &&
 			session->pending_closure_trace_chunk != chunk) {
 		ERR("Trace chunk close command for session \"%s\" does not target the trace chunk pending closure",
