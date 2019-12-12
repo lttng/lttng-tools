@@ -1727,6 +1727,34 @@ error:
 	return ret;
 }
 
+int consumer_clear_channel(struct consumer_socket *socket, uint64_t key)
+{
+	int ret;
+	struct lttcomm_consumer_msg msg;
+
+	assert(socket);
+
+	DBG("Consumer clear channel %" PRIu64, key);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd_type = LTTNG_CONSUMER_CLEAR_CHANNEL;
+	msg.u.clear_channel.key = key;
+
+	health_code_update();
+
+	pthread_mutex_lock(socket->lock);
+	ret = consumer_send_msg(socket, &msg);
+	if (ret < 0) {
+		goto error_socket;
+	}
+
+error_socket:
+	pthread_mutex_unlock(socket->lock);
+
+	health_code_update();
+	return ret;
+}
+
 int consumer_init(struct consumer_socket *socket,
 		const lttng_uuid sessiond_uuid)
 {
