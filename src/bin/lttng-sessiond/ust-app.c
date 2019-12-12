@@ -6547,3 +6547,151 @@ error:
 	rcu_read_unlock();
 	return ret;
 }
+
+/*
+ * Clear all the channels of a session.
+ *
+ * Return LTTNG_OK on success or else an LTTng error code.
+ */
+enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
+{
+	int ret;
+	enum lttng_error_code cmd_ret = LTTNG_OK;
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+	struct ltt_ust_session *usess = session->ust_session;
+
+	assert(usess);
+
+	rcu_read_lock();
+
+	if (usess->active) {
+		ERR("Expecting inactive session %s (%" PRIu64 ")", session->name, session->id);
+		cmd_ret = LTTNG_ERR_FATAL;
+		goto end;
+	}
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+			struct consumer_socket *socket;
+
+			/* Get consumer socket to use to push the metadata.*/
+			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
+					usess->consumer);
+			if (!socket) {
+				cmd_ret = LTTNG_ERR_INVALID;
+				goto error_socket;
+			}
+
+			/* Clear the data channels. */
+			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
+					reg_chan, node.node) {
+				ret = consumer_clear_channel(socket,
+						reg_chan->consumer_key);
+				if (ret < 0) {
+					goto error;
+				}
+			}
+
+			(void) push_metadata(reg->registry->reg.ust, usess->consumer);
+
+			/*
+			 * Clear the metadata channel.
+			 * Metadata channel is not cleared per se but we still need to
+			 * perform a rotation operation on it behind the scene.
+			 */
+			ret = consumer_clear_channel(socket,
+					reg->registry->reg.ust->metadata_key);
+			if (ret < 0) {
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct consumer_socket *socket;
+			struct lttng_ht_iter chan_iter;
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			/* Get the right consumer socket for the application. */
+			socket = consumer_find_socket_by_bitness(app->bits_per_long,
+					usess->consumer);
+			if (!socket) {
+				cmd_ret = LTTNG_ERR_INVALID;
+				goto error_socket;
+			}
+
+			registry = get_session_registry(ua_sess);
+			if (!registry) {
+				DBG("Application session is being torn down. Skip application.");
+				continue;
+			}
+
+			/* Clear the data channels. */
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+					ua_chan, node.node) {
+				ret = consumer_clear_channel(socket, ua_chan->key);
+				if (ret < 0) {
+					/* Per-PID buffer and application going away. */
+					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+						continue;
+					}
+					goto error;
+				}
+			}
+
+			(void) push_metadata(registry, usess->consumer);
+
+			/*
+			 * Clear the metadata channel.
+			 * Metadata channel is not cleared per se but we still need to
+			 * perform rotation operation on it behind the scene.
+			 */
+			ret = consumer_clear_channel(socket, registry->metadata_key);
+			if (ret < 0) {
+				/* Per-PID buffer and application going away. */
+				if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+					continue;
+				}
+				goto error;
+			}
+		}
+		break;
+	}
+	default:
+		assert(0);
+		break;
+	}
+
+	cmd_ret = LTTNG_OK;
+	goto end;
+
+error:
+	switch (-ret) {
+	case LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED:
+		cmd_ret = LTTNG_ERR_CLEAR_RELAY_DISALLOWED;
+		break;
+	default:
+		cmd_ret = LTTNG_ERR_CLEAR_FAIL_CONSUMER;
+	}
+
+error_socket:
+end:
+	rcu_read_unlock();
+	return cmd_ret;
+}

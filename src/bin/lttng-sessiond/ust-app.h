@@ -365,6 +365,7 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 		const struct ltt_ust_session *session);
 int ust_app_release_object(struct ust_app *app,
 		struct lttng_ust_object_data *data);
+enum lttng_error_code ust_app_clear_session(struct ltt_session *session);
 
 static inline
 int ust_app_supported(void)
@@ -607,6 +608,12 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 
 static inline
 int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
+{
+	return 0;
+}
+
+static inline
+enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 {
 	return 0;
 }
