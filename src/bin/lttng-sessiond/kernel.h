@@ -65,6 +65,7 @@ enum lttng_error_code kernel_snapshot_record(
 		uint64_t nb_packets_per_stream);
 int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits);
 enum lttng_error_code kernel_rotate_session(struct ltt_session *session);
+enum lttng_error_code kernel_clear_session(struct ltt_session *session);
 
 int init_kernel_workarounds(void);
 ssize_t kernel_list_tracker_pids(struct ltt_kernel_session *session,
