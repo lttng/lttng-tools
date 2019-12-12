@@ -72,6 +72,11 @@ end:
 static void stream_complete_rotation(struct relay_stream *stream)
 {
 	DBG("Rotation completed for stream %" PRIu64, stream->stream_handle);
+	if (stream->ongoing_rotation.value.next_trace_chunk) {
+		tracefile_array_reset(stream->tfa);
+		tracefile_array_commit_seq(stream->tfa,
+				stream->index_received_seqcount);
+	}
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = stream->ongoing_rotation.value.next_trace_chunk;
 	stream->ongoing_rotation = (typeof(stream->ongoing_rotation)) {};
@@ -525,8 +530,10 @@ static int try_rotate_stream_index(struct relay_stream *stream)
 				stream->ongoing_rotation.value.packet_seq_num);
 		DBG("Rotating stream %" PRIu64 " index file",
 				stream->stream_handle);
-		ret = create_index_file(stream,
-				stream->ongoing_rotation.value.next_trace_chunk);
+		if (stream->index_file) {
+			lttng_index_file_put(stream->index_file);
+			stream->index_file = NULL;
+		}
 		stream->ongoing_rotation.value.index_rotated = true;
 
 		/*
@@ -868,6 +875,12 @@ int stream_set_pending_rotation(struct relay_stream *stream,
 		 * A metadata stream has no index; consider it already rotated.
 		 */
 		stream->ongoing_rotation.value.index_rotated = true;
+		if (next_trace_chunk) {
+			/*
+			 * The metadata will be received again in the new chunk.
+			 */
+			stream->metadata_received = 0;
+		}
 		ret = stream_rotate_data_file(stream);
 	} else {
 		ret = try_rotate_stream_index(stream);
