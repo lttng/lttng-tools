@@ -2372,7 +2372,6 @@ static int relay_rotate_session_streams(
 		} else {
 			chunk_id_str = chunk_id_buf;
 		}
-		session->has_rotated = true;
 	}
 
 	DBG("Rotate %" PRIu32 " streams of session \"%s\" to chunk \"%s\"",
@@ -2802,6 +2801,10 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 			ret = -1;
 			goto end_unlock_session;
 		}
+	}
+	if (close_command.is_set &&
+			close_command.value == LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED) {
+		session->has_rotated = true;
 	}
 	DBG("Reply chunk path on close: %s", closed_trace_chunk_path);
 	path_length = strlen(closed_trace_chunk_path) + 1;
