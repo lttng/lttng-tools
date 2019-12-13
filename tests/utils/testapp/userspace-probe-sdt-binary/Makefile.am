@@ -1,5 +1,14 @@
 EXTRA_DIST = foobar_provider.d
+
+# Although this is redundant with the check performed in the parent
+# Makefile.am, this is needed for autotools v1.16+ as BUILT_SOURCES is
+# evaluated for the 'dist' target.
+#
+# It is fine to generate this header in the 'dist' target (when
+# enabled) as it won't be distributed anyhow (it is marked as nodist).
+if TEST_SDT_UPROBE
 BUILT_SOURCES = foobar_provider.h
+endif
 
 noinst_PROGRAMS = userspace-probe-sdt-binary
 userspace_probe_sdt_binary_SOURCES = userspace-probe-sdt-binary.c sema.h sema.c
