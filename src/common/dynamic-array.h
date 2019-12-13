@@ -117,8 +117,7 @@ size_t lttng_dynamic_pointer_array_get_count(
 }
 
 /*
- * Returns a pointer to the element. Mutating operations on the array invalidate
- * the returned pointer.
+ * Returns the pointer at index `index`.
  */
 static inline
 void *lttng_dynamic_pointer_array_get_pointer(
