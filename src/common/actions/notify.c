@@ -23,6 +23,14 @@ int lttng_action_notify_serialize(struct lttng_action *action,
 	return 0;
 }
 
+static
+bool lttng_action_notify_is_equal(const struct lttng_action *a,
+		const struct lttng_action *b)
+{
+	/* There is no discriminant between notify actions. */
+	return true;
+}
+
 struct lttng_action *lttng_action_notify_create(void)
 {
 	struct lttng_action_notify *notify;
@@ -34,6 +42,7 @@ struct lttng_action *lttng_action_notify_create(void)
 
 	lttng_action_init(&notify->parent, LTTNG_ACTION_TYPE_NOTIFY, NULL,
 			lttng_action_notify_serialize,
+			lttng_action_notify_is_equal,
 			lttng_action_notify_destroy);
 end:
 	return &notify->parent;

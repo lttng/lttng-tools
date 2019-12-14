@@ -40,11 +40,13 @@ void lttng_action_init(
 		enum lttng_action_type type,
 		action_validate_cb validate,
 		action_serialize_cb serialize,
+		action_equal_cb equal,
 		action_destroy_cb destroy)
 {
 	action->type = type;
 	action->validate = validate;
 	action->serialize = serialize;
+	action->equal = equal;
 	action->destroy = destroy;
 }
 
@@ -154,4 +156,29 @@ ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
 
 end:
 	return consumed_len;
+}
+
+LTTNG_HIDDEN
+bool lttng_action_is_equal(const struct lttng_action *a,
+		const struct lttng_action *b)
+{
+	bool is_equal = false;
+
+	if (!a || !b) {
+		goto end;
+	}
+
+	if (a->type != b->type) {
+		goto end;
+	}
+
+	if (a == b) {
+		is_equal = true;
+		goto end;
+	}
+
+	assert(a->equal);
+	is_equal = a->equal(a, b);
+end:
+	return is_equal;
 }
