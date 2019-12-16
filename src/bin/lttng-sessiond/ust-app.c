@@ -1194,7 +1194,7 @@ error:
  * Return allocated filter or NULL on error.
  */
 static struct lttng_ust_filter_bytecode *create_ust_bytecode_from_bytecode(
-		struct lttng_filter_bytecode *orig_f)
+		const struct lttng_filter_bytecode *orig_f)
 {
 	struct lttng_ust_filter_bytecode *filter = NULL;
 
@@ -1343,33 +1343,28 @@ error:
 /*
  * Set the filter on the tracer.
  */
-static
-int set_ust_event_filter(struct ust_app_event *ua_event,
-		struct ust_app *app)
+static int set_ust_object_filter(struct ust_app *app,
+		const struct lttng_filter_bytecode *bytecode,
+		struct lttng_ust_object_data *ust_object)
 {
 	int ret;
 	struct lttng_ust_filter_bytecode *ust_bytecode = NULL;
 
 	health_code_update();
 
-	if (!ua_event->filter) {
-		ret = 0;
-		goto error;
-	}
-
-	ust_bytecode = create_ust_bytecode_from_bytecode(ua_event->filter);
+	ust_bytecode = create_ust_bytecode_from_bytecode(bytecode);
 	if (!ust_bytecode) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_set_filter(app->sock, ust_bytecode,
-			ua_event->obj);
+			ust_object);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s filter failed for app (pid: %d) "
-					"with ret %d", ua_event->attr.name, app->pid, ret);
+			ERR("UST app set object filter failed for object %p of app (pid: %d) "
+					"with ret %d", ust_object, app->pid, ret);
 		} else {
 			/*
 			 * This is normal behavior, an application can die during the
@@ -1377,12 +1372,12 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 			 * continue normally.
 			 */
 			ret = 0;
-			DBG3("UST app filter event failed. Application is dead.");
+			DBG3("Failed to set UST app object filter. Application is dead.");
 		}
 		goto error;
 	}
 
-	DBG2("UST filter set successfully for event %s", ua_event->name);
+	DBG2("UST filter successfully set for object %p", ust_object);
 
 error:
 	health_code_update();
@@ -1711,7 +1706,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 
 	/* Set filter if one is present. */
 	if (ua_event->filter) {
-		ret = set_ust_event_filter(ua_event, app);
+		ret = set_ust_object_filter(app, ua_event->filter, ua_event->obj);
 		if (ret < 0) {
 			goto error;
 		}
