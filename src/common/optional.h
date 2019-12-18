@@ -73,8 +73,8 @@
  */
 #define LTTNG_OPTIONAL_GET(optional)			\
         ({						\
-		assert(optional.is_set);		\
-		optional.value;				\
+		assert((optional).is_set);		\
+		(optional).value;			\
 	})
 
 /*
@@ -86,12 +86,16 @@
 #define LTTNG_OPTIONAL_INIT { .is_set = 0 }
 
 /* Set the value of an optional field. */
-#define LTTNG_OPTIONAL_SET(field_ptr, val) \
-	(field_ptr)->value = val;	   \
-	(field_ptr)->is_set = 1;
+#define LTTNG_OPTIONAL_SET(field_ptr, val)	\
+	do {					\
+		(field_ptr)->value = (val);	\
+		(field_ptr)->is_set = 1;	\
+	} while (0)
 
 /* Put an optional field in the "unset" (NULL-ed) state. */
-#define LTTNG_OPTIONAL_UNSET(field_ptr)    \
-	(field_ptr)->is_set = 0;
+#define LTTNG_OPTIONAL_UNSET(field_ptr)		\
+	do {					\
+		(field_ptr)->is_set = 0;	\
+	} while (0)
 
 #endif /* LTTNG_OPTIONAL_H */
