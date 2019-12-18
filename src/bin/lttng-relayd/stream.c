@@ -209,7 +209,7 @@ static int rotate_truncate_stream(struct relay_stream *stream)
 	struct stream_fd *previous_stream_fd = NULL;
 	struct lttng_trace_chunk *previous_chunk = NULL;
 
-	if (!LTTNG_OPTIONAL_GET(&stream->ongoing_rotation)->next_trace_chunk) {
+	if (!LTTNG_OPTIONAL_GET(stream->ongoing_rotation).next_trace_chunk) {
 		ERR("Protocol error encoutered in %s(): stream rotation "
 			"sequence number is before the current sequence number "
 			"and the next trace chunk is unset. Honoring this "
