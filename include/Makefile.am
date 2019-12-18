@@ -113,7 +113,9 @@ lttnginclude_HEADERS = \
 	lttng/location.h \
 	lttng/userspace-probe.h \
 	lttng/session-descriptor.h \
-	lttng/destruction-handle.h
+	lttng/destruction-handle.h \
+	lttng/clear.h \
+	lttng/clear-handle.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
