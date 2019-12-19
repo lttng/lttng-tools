@@ -16,6 +16,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <common/compat/string.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ int lttng_uuid_from_str(const char *str_in, lttng_uuid uuid_out)
 		goto end;
 	}
 
-	if (strnlen(str_in, LTTNG_UUID_STR_LEN) != LTTNG_UUID_STR_LEN - 1) {
+	if (lttng_strnlen(str_in, LTTNG_UUID_STR_LEN) != LTTNG_UUID_STR_LEN - 1) {
 		ret = -1;
 		goto end;
 	}
