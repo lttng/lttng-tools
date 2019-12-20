@@ -61,6 +61,7 @@
  */
 
 struct lttng_trace_chunk;
+struct fd_tracker;
 
 enum lttng_trace_chunk_status {
         LTTNG_TRACE_CHUNK_STATUS_OK,
@@ -86,6 +87,10 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 		uint64_t chunk_id,
 		time_t chunk_creation_time,
 		const char *path);
+
+LTTNG_HIDDEN
+void lttng_trace_chunk_set_fd_tracker(struct lttng_trace_chunk *chunk,
+		struct fd_tracker *fd_tracker);
 
 /*
  * Copy a trace chunk. The copy that is returned is always a _user_

@@ -15,27 +15,28 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <lttng/constant.h>
-#include <common/string-utils/format.h>
-#include <common/trace-chunk.h>
-#include <common/trace-chunk-registry.h>
-#include <common/hashtable/utils.h>
-#include <common/hashtable/hashtable.h>
-#include <common/error.h>
-#include <common/utils.h>
-#include <common/time.h>
-#include <common/optional.h>
 #include <common/compat/directory-handle.h>
 #include <common/credentials.h>
 #include <common/defaults.h>
 #include <common/dynamic-array.h>
+#include <common/error.h>
+#include <common/fd-tracker/fd-tracker.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
+#include <common/optional.h>
+#include <common/string-utils/format.h>
+#include <common/time.h>
+#include <common/trace-chunk-registry.h>
+#include <common/trace-chunk.h>
+#include <common/utils.h>
+#include <lttng/constant.h>
 
-#include <urcu/ref.h>
-#include <urcu/rculfhash.h>
-#include <sys/stat.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <urcu/rculfhash.h>
+#include <urcu/ref.h>
 
 /*
  * Two ISO 8601-compatible timestamps, separated by a hypen, followed an
@@ -110,6 +111,14 @@ struct lttng_trace_chunk {
 	struct lttng_directory_handle *session_output_directory;
 	struct lttng_directory_handle *chunk_directory;
 	LTTNG_OPTIONAL(enum lttng_trace_chunk_command_type) close_command;
+	/*
+	 * fd_tracker instance through which file descriptors should be
+	 * created/closed.
+	 *
+	 * An fd_tracker always outlives any trace chunk; there is no
+	 * need to perform any reference counting of that object.
+	 */
+	struct fd_tracker *fd_tracker;
 };
 
 /* A trace chunk is uniquely identified by its (session id, chunk id) tuple. */
@@ -353,6 +362,16 @@ error:
 }
 
 LTTNG_HIDDEN
+void lttng_trace_chunk_set_fd_tracker(struct lttng_trace_chunk *chunk,
+		struct fd_tracker *fd_tracker)
+{
+	assert(!chunk->session_output_directory);
+	assert(!chunk->chunk_directory);
+	assert(lttng_dynamic_pointer_array_get_count(&chunk->files) == 0);
+	chunk->fd_tracker = fd_tracker;
+}
+
+LTTNG_HIDDEN
 struct lttng_trace_chunk *lttng_trace_chunk_copy(
 		struct lttng_trace_chunk *source_chunk)
 {
@@ -413,6 +432,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_copy(
 		new_chunk->chunk_directory = source_chunk->chunk_directory;
 	}
 	new_chunk->close_command = source_chunk->close_command;
+	new_chunk->fd_tracker = source_chunk->fd_tracker;
 	pthread_mutex_unlock(&source_chunk->lock);
 end:
 	return new_chunk;
@@ -1746,6 +1766,7 @@ lttng_trace_chunk_registry_element_create_from_chunk(
 	 */
 	chunk->name = NULL;
 	chunk->path = NULL;
+	element->chunk.fd_tracker = chunk->fd_tracker;
 	element->chunk.in_registry_element = true;
 end:
 	return element;
