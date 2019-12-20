@@ -168,7 +168,7 @@ int cmd_clear(int argc, const char **argv)
 	static poptContext pc;
 	char *session_name = NULL;
 	const char *leftover = NULL;
-
+	bool free_session_name = false;
 	struct lttng_session *sessions = NULL;
 	int count;
 	int found;
@@ -224,13 +224,7 @@ int cmd_clear(int argc, const char **argv)
 	}
 
 	if (!opt_clear_all) {
-		/*
-		 * popt expects us to free this even if it returns a const char *.
-		 * See https://www.mail-archive.com/popt-devel@rpm5.org/msg00193.html
-		 * Force cast to char * allowing later freeing if necessary.
-		 */
 		session_name = (char *) poptGetArg(pc);
-
 		if (!session_name) {
 			/* No session name specified, lookup default */
 			session_name = get_session_name();
@@ -239,6 +233,7 @@ int cmd_clear(int argc, const char **argv)
 				success = 0;
 				goto mi_closing;
 			}
+			free_session_name = true;
 		}
 	} else {
 		session_name = NULL;
@@ -323,7 +318,9 @@ end:
 	}
 
 	free(sessions);
-	free(session_name);
+	if (free_session_name) {
+		free(session_name);
+	}
 
 	/* Overwrite ret if an error occurred during clear_session/all */
 	ret = command_ret ? command_ret : ret;
