@@ -139,6 +139,7 @@ struct relay_session {
 	 * while new chunk has a temporary directory name.
 	 */
 	bool ongoing_rotation;
+	struct lttng_directory_handle *output_directory;
 	struct rcu_head rcu_node;	/* For call_rcu teardown. */
 };
 
@@ -159,9 +160,6 @@ void session_put(struct relay_session *session);
 
 int session_close(struct relay_session *session);
 int session_abort(struct relay_session *session);
-
-struct lttng_directory_handle *session_create_output_directory_handle(
-		struct relay_session *session);
 
 void print_sessions(void);
 

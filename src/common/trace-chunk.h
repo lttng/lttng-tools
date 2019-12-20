@@ -153,6 +153,12 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_user(
 		struct lttng_directory_handle *chunk_directory);
 
 LTTNG_HIDDEN
+enum lttng_trace_chunk_status
+lttng_trace_chunk_get_session_output_directory_handle(
+		struct lttng_trace_chunk *chunk,
+		struct lttng_directory_handle **handle);
+
+LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_borrow_chunk_directory_handle(
 		struct lttng_trace_chunk *chunk,
 		const struct lttng_directory_handle **handle);

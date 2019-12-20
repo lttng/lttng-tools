@@ -181,6 +181,38 @@ static int init_session_output_path(struct relay_session *session)
 	return ret;
 }
 
+static struct lttng_directory_handle *session_create_output_directory_handle(
+		struct relay_session *session)
+{
+	int ret;
+	/*
+	 * relayd_output_path/session_directory
+	 * e.g. /home/user/lttng-traces/hostname/session_name
+	 */
+	char *full_session_path = NULL;
+	struct lttng_directory_handle *handle = NULL;
+
+	pthread_mutex_lock(&session->lock);
+	full_session_path = create_output_path(session->output_path);
+	if (!full_session_path) {
+		goto end;
+	}
+
+	ret = utils_mkdir_recursive(
+			full_session_path, S_IRWXU | S_IRWXG, -1, -1);
+	if (ret) {
+		ERR("Failed to create session output path \"%s\"",
+				full_session_path);
+		goto end;
+	}
+
+	handle = lttng_directory_handle_create(full_session_path);
+end:
+	pthread_mutex_unlock(&session->lock);
+	free(full_session_path);
+	return handle;
+}
+
 static int session_set_anonymous_chunk(struct relay_session *session)
 {
 	int ret = 0;
@@ -353,6 +385,9 @@ struct relay_session *session_create(const char *session_name,
 	}
 
 	if (id_sessiond && current_chunk_id) {
+		enum lttng_trace_chunk_status chunk_status;
+		struct lttng_directory_handle *session_output_directory;
+
 		session->current_trace_chunk =
 				sessiond_trace_chunk_registry_get_chunk(
 					sessiond_trace_chunk_registry,
@@ -368,6 +403,16 @@ struct relay_session *session_create(const char *session_name,
 					*current_chunk_id);
 			goto error;
                 }
+
+		chunk_status = lttng_trace_chunk_get_session_output_directory_handle(
+				session->current_trace_chunk,
+				&session_output_directory);
+		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+			goto error;
+		}
+
+		assert(session_output_directory);
+		session->output_directory = session_output_directory;
 	} else if (!id_sessiond) {
 		/*
 		 * Pre-2.11 peers will not announce trace chunks. An
@@ -376,6 +421,12 @@ struct relay_session *session_create(const char *session_name,
 		 */
 		ret = session_set_anonymous_chunk(session);
 		if (ret) {
+			goto error;
+		}
+	} else {
+		session->output_directory =
+				session_create_output_directory_handle(session);
+		if (!session->output_directory) {
 			goto error;
 		}
 	}
@@ -467,6 +518,8 @@ static void destroy_session(struct relay_session *session)
 	ret = sessiond_trace_chunk_registry_session_destroyed(
 			sessiond_trace_chunk_registry, session->sessiond_uuid);
 	assert(!ret);
+	lttng_directory_handle_put(session->output_directory);
+	session->output_directory = NULL;
 	call_rcu(&session->rcu_node, rcu_destroy_session);
 }
 
@@ -561,36 +614,4 @@ void print_sessions(void)
 		session_put(session);
 	}
 	rcu_read_unlock();
-}
-
-struct lttng_directory_handle *session_create_output_directory_handle(
-		struct relay_session *session)
-{
-	int ret;
-	/*
-	 * relayd_output_path/session_directory
-	 * e.g. /home/user/lttng-traces/hostname/session_name
-	 */
-	char *full_session_path = NULL;
-	struct lttng_directory_handle *handle = NULL;
-
-	pthread_mutex_lock(&session->lock);
-	full_session_path = create_output_path(session->output_path);
-	if (!full_session_path) {
-		goto end;
-	}
-
-	ret = utils_mkdir_recursive(
-			full_session_path, S_IRWXU | S_IRWXG, -1, -1);
-	if (ret) {
-		ERR("Failed to create session output path \"%s\"",
-				full_session_path);
-		goto end;
-	}
-
-	handle = lttng_directory_handle_create(full_session_path);
-end:
-	pthread_mutex_unlock(&session->lock);
-	free(full_session_path);
-	return handle;
 }

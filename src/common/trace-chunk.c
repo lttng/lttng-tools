@@ -984,6 +984,31 @@ end:
 }
 
 LTTNG_HIDDEN
+enum lttng_trace_chunk_status
+lttng_trace_chunk_get_session_output_directory_handle(
+		struct lttng_trace_chunk *chunk,
+		struct lttng_directory_handle **handle)
+{
+	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
+
+	pthread_mutex_lock(&chunk->lock);
+	if (!chunk->session_output_directory) {
+		status = LTTNG_TRACE_CHUNK_STATUS_NONE;
+		*handle = NULL;
+		goto end;
+	} else {
+		const bool reference_acquired = lttng_directory_handle_get(
+				chunk->session_output_directory);
+
+		assert(reference_acquired);
+		*handle = chunk->session_output_directory;
+	}
+end:
+	pthread_mutex_unlock(&chunk->lock);
+	return status;
+}
+
+LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_borrow_chunk_directory_handle(
 		struct lttng_trace_chunk *chunk,
 		const struct lttng_directory_handle **handle)
