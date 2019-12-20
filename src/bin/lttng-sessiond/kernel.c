@@ -1445,9 +1445,10 @@ int kernel_supports_ring_buffer_packet_sequence_number(void)
 	}
 
 	/*
-	 * Packet sequence number was introduced in 2.8
+	 * Packet sequence number was introduced in LTTng 2.8,
+	 * lttng-modules ABI 2.1.
 	 */
-	if (abi.major >= 2 && abi.minor >= 8) {
+	if (abi.major >= 2 && abi.minor >= 1) {
 		/* Supported */
 		ret = 1;
 	} else {
