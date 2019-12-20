@@ -366,6 +366,7 @@ struct relay_session *session_create(const char *session_name,
 			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64 ", trace chunk id = %" PRIu64,
 					uuid_str, *id_sessiond,
 					*current_chunk_id);
+			goto error;
                 }
 	} else if (!id_sessiond) {
 		/*
