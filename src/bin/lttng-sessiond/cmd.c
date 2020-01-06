@@ -2651,7 +2651,8 @@ int cmd_start_trace(struct ltt_session *session)
 	/* Is the session already started? */
 	if (session->active) {
 		ret = LTTNG_ERR_TRACE_ALREADY_STARTED;
-		goto error;
+		/* Perform nothing */
+		goto end;
 	}
 
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING &&
@@ -2779,6 +2780,7 @@ error:
 		session->cleared_after_last_stop =
 				session_cleared_after_last_stop;
 	}
+end:
 	return ret;
 }
 
