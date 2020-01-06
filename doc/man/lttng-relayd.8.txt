@@ -40,7 +40,7 @@ it can write to the output directory and listen on the configured ports.
 If a user is within a secured network and/or has proper firewall
 settings, `lttng-relayd` can listen to LTTng live connections from _all_
 network interfaces by specifying
-+--live-port=tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+.
++--live-port=tcp://0.0.0.0:{default_network_viewer_port}+.
 
 Once a trace has been streamed completely, the trace can be processed by
 any tool that can process an LTTng trace located on the local
