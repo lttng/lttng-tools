@@ -4347,6 +4347,11 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto end;
 	}
 
+	if (ua_sess->enabled) {
+		pthread_mutex_unlock(&ua_sess->lock);
+		goto end;
+	}
+
 	/* Upon restart, we skip the setup, already done */
 	if (ua_sess->started) {
 		goto skip_setup;
@@ -4387,6 +4392,7 @@ skip_setup:
 
 	/* Indicate that the session has been started once */
 	ua_sess->started = 1;
+	ua_sess->enabled = 1;
 
 	pthread_mutex_unlock(&ua_sess->lock);
 
@@ -4476,6 +4482,7 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	}
 
 	health_code_update();
+	ua_sess->enabled = 0;
 
 	/* Quiescent wait after stopping trace */
 	pthread_mutex_lock(&app->sock_lock);
