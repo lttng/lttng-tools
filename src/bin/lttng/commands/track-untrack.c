@@ -594,6 +594,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	enum cmd_error_code command_ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
+	const char *leftover = NULL;
 	struct mi_writer *writer = NULL;
 
 	if (argc < 1) {
@@ -713,6 +714,13 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		}
 	} else {
 		session_name = opt_session_name;
+	}
+
+	leftover = poptGetArg(pc);
+	if (leftover) {
+		ERR("Unknown argument: %s", leftover);
+		ret = CMD_ERROR;
+		goto end;
 	}
 
 	/* Mi check */

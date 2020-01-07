@@ -1469,6 +1469,7 @@ function lttng_load_fail()
 function lttng_track()
 {
 	local expected_to_fail="$1"
+	shift 1
 	local opts="$@"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN track $opts >$OUTPUT_DEST
 	ret=$?
@@ -1493,6 +1494,7 @@ function lttng_track_fail()
 function lttng_untrack()
 {
 	local expected_to_fail="$1"
+	shift 1
 	local opts="$@"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN untrack $opts >$OUTPUT_DEST
 	ret=$?
