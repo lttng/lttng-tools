@@ -590,9 +590,8 @@ static
 int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		int argc, const char **argv, const char *help_msg)
 {
-	int opt, ret = 0;
+	int opt, ret = 0, success = 1;
 	enum cmd_error_code command_ret = CMD_SUCCESS;
-	int success = 1;
 	static poptContext pc;
 	char *session_name = NULL;
 	struct mi_writer *writer = NULL;
