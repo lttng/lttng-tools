@@ -28,7 +28,7 @@ TESTAPP_KERNEL_BIN="$TESTAPP_PATH/$TESTAPP_KERNEL_NAME/$TESTAPP_KERNEL_NAME"
 SESSION_NAME="tracker"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=265
+NUM_UST_TESTS=283
 NUM_KERNEL_TESTS=462
 NUM_TESTS=$((NUM_UST_TESTS+NUM_KERNEL_TESTS+NUM_GLOBAL_TESTS))
 
@@ -389,6 +389,10 @@ if [ ! -x "$TESTAPP_BIN" ]; then
 fi
 
 EVENT_NAME="tp:tptest"
+
+# Both ordering of tracker type and `--all` are valid.
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--vgid --all"
+test_event_track_untrack ust 0 "${EVENT_NAME}" "--all --vgid"
 
 #vuid, vgid
 

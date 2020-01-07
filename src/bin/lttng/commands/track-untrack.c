@@ -19,6 +19,7 @@
 #define _LGPL_SOURCE
 #include <ctype.h>
 #include <popt.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -591,6 +592,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 		int argc, const char **argv, const char *help_msg)
 {
 	int opt, ret = 0, success = 1;
+	bool opt_all_present = false;
 	enum cmd_error_code command_ret = CMD_SUCCESS;
 	static poptContext pc;
 	char *session_name = NULL;
@@ -670,29 +672,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 			type_state = STATE_VGID;
 			break;
 		case OPT_ALL:
-			switch (type_state) {
-			case STATE_PID:
-				opt_pid.all = 1;
-				break;
-			case STATE_VPID:
-				opt_vpid.all = 1;
-				break;
-			case STATE_UID:
-				opt_uid.all = 1;
-				break;
-			case STATE_VUID:
-				opt_vuid.all = 1;
-				break;
-			case STATE_GID:
-				opt_gid.all = 1;
-				break;
-			case STATE_VGID:
-				opt_vgid.all = 1;
-				break;
-			default:
-				command_ret = CMD_ERROR;
-				goto end;
-			}
+			opt_all_present = true;
 			break;
 		default:
 			command_ret = CMD_UNDEFINED;
@@ -704,6 +684,36 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	if (ret) {
 		command_ret = CMD_ERROR;
 		goto end;
+	}
+
+	/*
+	 * If the `--all` option is present set the appropriate tracker's `all`
+	 * field.
+	 */
+	if (opt_all_present) {
+		switch (type_state) {
+		case STATE_PID:
+			opt_pid.all = 1;
+			break;
+		case STATE_VPID:
+			opt_vpid.all = 1;
+			break;
+		case STATE_UID:
+			opt_uid.all = 1;
+			break;
+		case STATE_VUID:
+			opt_vuid.all = 1;
+			break;
+		case STATE_GID:
+			opt_gid.all = 1;
+			break;
+		case STATE_VGID:
+			opt_vgid.all = 1;
+			break;
+		default:
+			command_ret = CMD_ERROR;
+			goto end;
+		}
 	}
 
 	if (!opt_session_name) {
