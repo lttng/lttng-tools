@@ -36,6 +36,7 @@ static void update_ust_app(int app_sock)
 {
 	struct ltt_session *sess, *stmp;
 	const struct ltt_session_list *session_list = session_get_list();
+	struct ust_app *app;
 
 	/* Consumer is in an ERROR state. Stop any application update. */
 	if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
@@ -43,10 +44,25 @@ static void update_ust_app(int app_sock)
 		return;
 	}
 
+	rcu_read_lock();
+	assert(app_sock >= 0);
+	app = ust_app_find_by_sock(app_sock);
+	if (app == NULL) {
+		/*
+		 * Application can be unregistered before so
+		 * this is possible hence simply stopping the
+		 * update.
+		 */
+		DBG3("UST app update failed to find app sock %d",
+			app_sock);
+		goto unlock_rcu;
+	}
+
+	/* Update all event notifiers for the app. */
+	ust_app_global_update_event_notifier_rules(app);
+
 	/* For all tracing session(s) */
 	cds_list_for_each_entry_safe(sess, stmp, &session_list->head, list) {
-		struct ust_app *app;
-
 		if (!session_get(sess)) {
 			continue;
 		}
@@ -55,26 +71,14 @@ static void update_ust_app(int app_sock)
 			goto unlock_session;
 		}
 
-		rcu_read_lock();
-		assert(app_sock >= 0);
-		app = ust_app_find_by_sock(app_sock);
-		if (app == NULL) {
-			/*
-			 * Application can be unregistered before so
-			 * this is possible hence simply stopping the
-			 * update.
-			 */
-			DBG3("UST app update failed to find app sock %d",
-				app_sock);
-			goto unlock_rcu;
-		}
 		ust_app_global_update(sess->ust_session, app);
-	unlock_rcu:
-		rcu_read_unlock();
 	unlock_session:
 		session_unlock(sess);
 		session_put(sess);
 	}
+
+unlock_rcu:
+	rcu_read_unlock();
 }
 
 /*

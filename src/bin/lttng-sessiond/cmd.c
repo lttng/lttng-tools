@@ -29,6 +29,11 @@
 #include <lttng/location-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition.h>
+#include <lttng/condition/condition-internal.h>
+#include <lttng/condition/event-rule.h>
+#include <lttng/condition/event-rule-internal.h>
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/action/action.h>
 #include <lttng/channel.h>
 #include <lttng/channel-internal.h>
@@ -4288,12 +4293,44 @@ end:
 	return ret;
 }
 
-int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
+static enum lttng_error_code trigger_modifies_event_notifier(
+		const struct lttng_trigger *trigger, bool *adds_event_notifier)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+	const struct lttng_condition *condition = NULL;
+
+	condition = lttng_trigger_get_const_condition(trigger);
+	if (!condition) {
+		ret_code = LTTNG_ERR_INVALID_TRIGGER;
+		goto end;
+	}
+
+	*adds_event_notifier = lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_HIT;
+end:
+	return ret_code;
+}
+
+enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 		struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread,
 		struct lttng_trigger **return_trigger)
 {
-	int ret;
+	enum lttng_error_code ret_code;
+	bool must_update_event_notifier;
+	const char *trigger_name;
+	uid_t trigger_owner;
+	enum lttng_trigger_status trigger_status;
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	trigger_status = lttng_trigger_get_owner_uid(
+		trigger, &trigger_owner);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	DBG("Running register trigger command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+			trigger_name, (int) trigger_owner,
+			(int) lttng_credentials_get_uid(cmd_creds));
 
 	/*
 	 * Validate the trigger credentials against the command credentials.
@@ -4304,8 +4341,10 @@ int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 			lttng_trigger_get_credentials(trigger),
 			cmd_creds)) {
 		if (lttng_credentials_get_uid(cmd_creds) != 0) {
-			ERR("Trigger credentials do not match the command credentials");
-			ret = LTTNG_ERR_INVALID_TRIGGER;
+			ERR("Trigger credentials do not match the command credentials: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+					trigger_name, (int) trigger_owner,
+					(int) lttng_credentials_get_uid(cmd_creds));
+			ret_code = LTTNG_ERR_INVALID_TRIGGER;
 			goto end;
 		}
 	}
@@ -4314,8 +4353,10 @@ int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 	 * The bytecode generation also serves as a validation step for the
 	 * bytecode expressions.
 	 */
-	ret = lttng_trigger_generate_bytecode(trigger, cmd_creds);
-	if (ret != LTTNG_OK) {
+	ret_code = lttng_trigger_generate_bytecode(trigger, cmd_creds);
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to generate bytecode of trigger: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
 		goto end;
 	}
 
@@ -4329,10 +4370,49 @@ int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 	 * it is safe to use without any locking as its properties are
 	 * immutable.
 	 */
-	ret = notification_thread_command_register_trigger(notification_thread,
+	ret_code = notification_thread_command_register_trigger(notification_thread,
 			trigger);
-	if (ret != LTTNG_OK) {
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
 		goto end_notification_thread;
+	}
+
+	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifier);
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
+		goto end_notification_thread;
+	}
+
+	/*
+	 * Synchronize tracers if the trigger adds an event notifier.
+	 */
+	if (must_update_event_notifier) {
+		if (lttng_trigger_get_underlying_domain_type_restriction(
+				    trigger) == LTTNG_DOMAIN_KERNEL) {
+
+			ret_code = kernel_register_event_notifier(
+					trigger, cmd_creds);
+			if (ret_code != LTTNG_OK) {
+				const enum lttng_error_code notif_thread_unregister_ret =
+						notification_thread_command_unregister_trigger(
+								notification_thread,
+								trigger);
+
+				if (notif_thread_unregister_ret != LTTNG_OK) {
+					/* Return the original error code. */
+					ERR("Failed to unregister trigger from notification thread during error recovery: trigger name = '%s', trigger owner uid = %d, error code = %d",
+							trigger_name,
+							(int) trigger_owner,
+							ret_code);
+				}
+
+				goto end;
+			}
+		} else {
+			ust_app_global_update_all_event_notifier_rules();
+		}
 	}
 
 	/*
@@ -4349,14 +4429,28 @@ end_notification_thread:
 	/* Ownership of trigger was transferred. */
 	trigger = NULL;
 end:
-	return ret;
+	return ret_code;
 }
 
-int cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
+enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
 		const struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread)
 {
-	int ret;
+	enum lttng_error_code ret_code;
+	bool must_update_event_notifier;
+	const char *trigger_name;
+	uid_t trigger_owner;
+	enum lttng_trigger_status trigger_status;
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	trigger_status = lttng_trigger_get_owner_uid(
+		trigger, &trigger_owner);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	DBG("Running unregister trigger command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+			trigger_name, (int) trigger_owner,
+			(int) lttng_credentials_get_uid(cmd_creds));
 
 	/*
 	 * Validate the trigger credentials against the command credentials.
@@ -4367,16 +4461,44 @@ int cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
 			lttng_trigger_get_credentials(trigger),
 			cmd_creds)) {
 		if (lttng_credentials_get_uid(cmd_creds) != 0) {
-			ERR("Trigger credentials do not match the command credentials");
-			ret = LTTNG_ERR_INVALID_TRIGGER;
+			ERR("Trigger credentials do not match the command credentials: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+					trigger_name, (int) trigger_owner,
+					(int) lttng_credentials_get_uid(cmd_creds));
+			ret_code = LTTNG_ERR_INVALID_TRIGGER;
 			goto end;
 		}
 	}
 
-	ret = notification_thread_command_unregister_trigger(notification_thread,
-			trigger);
+	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifier);
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
+		goto end;
+	}
+
+	ret_code = notification_thread_command_unregister_trigger(notification_thread,
+								  trigger);
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to unregister trigger from notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
+	}
+
+	/*
+	 * Synchronize tracers if the trigger removes an event notifier.
+	 */
+	if (must_update_event_notifier) {
+		if (lttng_trigger_get_underlying_domain_type_restriction(
+				    trigger) == LTTNG_DOMAIN_KERNEL) {
+
+			ret_code = kernel_unregister_event_notifier(
+					trigger);
+		} else {
+			ust_app_global_update_all_event_notifier_rules();
+		}
+	}
+
 end:
-	return ret;
+	return ret_code;
 }
 
 int cmd_list_triggers(struct command_ctx *cmd_ctx,

@@ -141,11 +141,13 @@ int cmd_set_session_shm_path(struct ltt_session *session,
 int cmd_regenerate_metadata(struct ltt_session *session);
 int cmd_regenerate_statedump(struct ltt_session *session);
 
-int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
+enum lttng_error_code cmd_register_trigger(
+		const struct lttng_credentials *cmd_creds,
 		struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread_handle,
 		struct lttng_trigger **return_trigger);
-int cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
+enum lttng_error_code cmd_unregister_trigger(
+		const struct lttng_credentials *cmd_creds,
 		const struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread_handle);
 
