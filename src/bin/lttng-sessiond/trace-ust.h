@@ -335,7 +335,7 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 }
 static inline int trace_ust_track_id(enum lttng_tracker_type tracker_type,
 		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id);
+		const struct lttng_tracker_id *id)
 {
 	return 0;
 }

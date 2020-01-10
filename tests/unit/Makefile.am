@@ -79,6 +79,7 @@ SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT)
 	 $(top_builddir)/src/bin/lttng-sessiond/thread-utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/process-utils.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/thread.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/tracker.$(OBJEXT) \
 	 $(top_builddir)/src/common/libcommon.la \
 	 $(top_builddir)/src/common/testpoint/libtestpoint.la \
 	 $(top_builddir)/src/common/compat/libcompat.la \
@@ -93,8 +94,7 @@ SESSIOND_OBJS += $(top_builddir)/src/bin/lttng-sessiond/trace-ust.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/notify-apps.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/ust-metadata.$(OBJEXT) \
 		 $(top_builddir)/src/bin/lttng-sessiond/agent-thread.$(OBJEXT) \
-		 $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT) \
-		 $(top_builddir)/src/bin/lttng-sessiond/tracker.$(OBJEXT)
+		 $(top_builddir)/src/bin/lttng-sessiond/ust-field-utils.$(OBJEXT)
 endif
 
 RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-by.$(OBJEXT)
