@@ -292,6 +292,17 @@ struct ust_app {
 	 * Used for path creation
 	 */
 	time_t registration_time;
+	/*
+	 * Event notifier
+	 */
+	struct {
+		/*
+		 * Handle to the lttng_ust object representing the event
+		 * notifier group.
+		 */
+		struct lttng_ust_object_data *object;
+		struct lttng_pipe *event_pipe;
+	} event_notifier_group;
 };
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
@@ -355,6 +366,8 @@ int ust_app_release_object(struct ust_app *app,
 		struct lttng_ust_object_data *data);
 enum lttng_error_code ust_app_clear_session(struct ltt_session *session);
 enum lttng_error_code ust_app_open_packets(struct ltt_session *session);
+
+int ust_app_setup_event_notifier_group(struct ust_app *app);
 
 static inline
 int ust_app_supported(void)
@@ -443,6 +456,14 @@ int ust_app_ht_alloc(void)
 static inline
 void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 {}
+static inline
+void ust_app_global_update_tokens(struct ust_app *app)
+{}
+static inline
+int ust_app_setup_event_notifier_group(struct ust_app *app)
+{
+	return 0;
+}
 static inline
 int ust_app_disable_channel_glb(struct ltt_ust_session *usess,
 		struct ltt_ust_channel *uchan)

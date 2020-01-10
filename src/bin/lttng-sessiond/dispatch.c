@@ -386,6 +386,8 @@ static void *thread_dispatch_ust_registration(void *data)
 				/* Set app version. This call will print an error if needed. */
 				(void) ust_app_version(app);
 
+				(void) ust_app_setup_event_notifier_group(app);
+
 				/* Send notify socket through the notify pipe. */
 				ret = send_socket_to_thread(
 						notifiers->apps_cmd_notify_pipe_write_fd,
