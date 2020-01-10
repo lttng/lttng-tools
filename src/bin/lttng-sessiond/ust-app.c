@@ -1572,21 +1572,20 @@ error:
 /*
  * Enable the specified event on to UST tracer for the UST session.
  */
-static int enable_ust_event(struct ust_app *app,
-		struct ust_app_session *ua_sess, struct ust_app_event *ua_event)
+static int enable_ust_object(
+		struct ust_app *app, struct lttng_ust_object_data *ust_object)
 {
 	int ret;
 
 	health_code_update();
 
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_enable(app->sock, ua_event->obj);
+	ret = ustctl_enable(app->sock, ust_object);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s enable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_event->attr.name, app->pid, ua_sess->handle, ret);
+			ERR("UST app enable failed for object %p app (pid: %d) with ret %d",
+					ust_object, app->pid, ret);
 		} else {
 			/*
 			 * This is normal behavior, an application can die during the
@@ -1594,13 +1593,13 @@ static int enable_ust_event(struct ust_app *app,
 			 * continue normally.
 			 */
 			ret = 0;
-			DBG3("UST app enable event failed. Application is dead.");
+			DBG3("Failed to enable UST app object. Application is dead.");
 		}
 		goto error;
 	}
 
-	DBG2("UST app event %s enabled successfully for app (pid: %d)",
-			ua_event->attr.name, app->pid);
+	DBG2("UST app object %p enabled successfully for app (pid: %d)",
+			ust_object, app->pid);
 
 error:
 	health_code_update();
@@ -1696,8 +1695,8 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 
 	ua_event->handle = ua_event->obj->handle;
 
-	DBG2("UST app event %s created successfully for pid:%d",
-			ua_event->attr.name, app->pid);
+	DBG2("UST app event %s created successfully for pid:%d object: %p",
+			ua_event->attr.name, app->pid, ua_event->obj);
 
 	health_code_update();
 
@@ -1723,7 +1722,7 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 		 * We now need to explicitly enable the event, since it
 		 * is now disabled at creation.
 		 */
-		ret = enable_ust_event(app, ua_sess, ua_event);
+		ret = enable_ust_object(app, ua_event->obj);
 		if (ret < 0) {
 			/*
 			 * If we hit an EPERM, something is wrong with our enable call. If
@@ -2334,7 +2333,7 @@ int enable_ust_app_event(struct ust_app_session *ua_sess,
 {
 	int ret;
 
-	ret = enable_ust_event(app, ua_sess, ua_event);
+	ret = enable_ust_object(app, ua_event->obj);
 	if (ret < 0) {
 		goto error;
 	}
