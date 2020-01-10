@@ -85,6 +85,14 @@ int ustctl_disable(int sock, struct lttng_ust_object_data *object);
 int ustctl_start_session(int sock, int handle);
 int ustctl_stop_session(int sock, int handle);
 
+int ustctl_create_event_notifier_group(int sock,
+		int pipe_fd,
+		struct lttng_ust_object_data **event_notifier_group_handle);
+int ustctl_create_event_notifier(int sock,
+		struct lttng_ust_event_notifier *event_notifier,
+		struct lttng_ust_object_data *event_notifier_group_handle,
+		struct lttng_ust_object_data **event_notifier_data);
+
 /*
  * ustctl_tracepoint_list returns a tracepoint list handle, or negative
  * error value.

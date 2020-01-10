@@ -103,6 +103,18 @@ struct lttng_ust_event {
 	} u;
 } LTTNG_PACKED;
 
+#define LTTNG_UST_EVENT_NOTIFIER_PADDING	40
+struct lttng_ust_event_notifier {
+	struct lttng_ust_event event;
+	char padding[LTTNG_UST_EVENT_NOTIFIER_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_UST_EVENT_NOTIFIER_NOTIFICATION_PADDING 34
+struct lttng_ust_event_notifier_notification {
+	uint64_t token;
+	char padding[LTTNG_UST_EVENT_NOTIFIER_NOTIFICATION_PADDING];
+} LTTNG_PACKED;
+
 enum lttng_ust_field_type {
 	LTTNG_UST_FIELD_OTHER			= 0,
 	LTTNG_UST_FIELD_INTEGER			= 1,
@@ -305,6 +317,9 @@ struct lttng_ust_event_exclusion {
 /* Event FD commands */
 #define LTTNG_UST_FILTER			_UST_CMD(0xA0)
 #define LTTNG_UST_EXCLUSION			_UST_CMD(0xA1)
+
+#define LTTNG_UST_EVENT_NOTIFIER_SEND_FD	_UST_CMD(0xB0)
+#define LTTNG_UST_EVENT_NOTIFIER_CREATE		_UST_CMDW(0xB1, struct lttng_ust_event_notifier)
 
 #define LTTNG_UST_ROOT_HANDLE	0
 
