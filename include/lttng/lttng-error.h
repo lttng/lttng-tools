@@ -183,11 +183,12 @@ enum lttng_error_code {
 	LTTNG_ERR_USER_NOT_FOUND         = 160, /* User not found. */
 	LTTNG_ERR_GROUP_NOT_FOUND        = 161, /* Group not found. */
 
+	/* MUST be last element of the manually-assigned section of the enum */
+	LTTNG_ERR_NR,
+
+	/* Backward-compatibility assignments */
 	LTTNG_ERR_PID_TRACKED            = LTTNG_ERR_ID_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_TRACKED */
 	LTTNG_ERR_PID_NOT_TRACKED        = LTTNG_ERR_ID_NOT_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_NOT_TRACKED */
-
-	/* MUST be last element */
-	LTTNG_ERR_NR,                           /* Last element */
 };
 
 /*
