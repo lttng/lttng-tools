@@ -10,6 +10,7 @@
 
 #include <common/macros.h>
 #include <common/credentials.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/domain.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/lttng-error.h>
@@ -20,6 +21,13 @@
 
 struct lttng_payload;
 struct lttng_payload_view;
+
+enum lttng_event_rule_generate_exclusions_status {
+	LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK,
+	LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE,
+	LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_ERROR,
+	LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OUT_OF_MEMORY,
+};
 
 typedef void (*event_rule_destroy_cb)(struct lttng_event_rule *event_rule);
 typedef bool (*event_rule_validate_cb)(
@@ -40,8 +48,10 @@ typedef const char *(*event_rule_get_filter_cb)(
 typedef const struct lttng_filter_bytecode *(
 		*event_rule_get_filter_bytecode_cb)(
 		const struct lttng_event_rule *event_rule);
-typedef struct lttng_event_exclusion *(*event_rule_generate_exclusions_cb)(
-		const struct lttng_event_rule *event_rule);
+typedef enum lttng_event_rule_generate_exclusions_status (
+		*event_rule_generate_exclusions_cb)(
+		const struct lttng_event_rule *event_rule,
+		struct lttng_event_exclusion **exclusions);
 typedef unsigned long (*event_rule_hash_cb)(
 		const struct lttng_event_rule *event_rule);
 
@@ -120,8 +130,9 @@ const struct lttng_filter_bytecode *lttng_event_rule_get_filter_bytecode(
  * Caller OWNS the returned object.
  */
 LTTNG_HIDDEN
-struct lttng_event_exclusion *lttng_event_rule_generate_exclusions(
-		const struct lttng_event_rule *rule);
+enum lttng_event_rule_generate_exclusions_status
+lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
+		struct lttng_event_exclusion **exclusions);
 
 LTTNG_HIDDEN
 const char *lttng_event_rule_type_str(enum lttng_event_rule_type type);

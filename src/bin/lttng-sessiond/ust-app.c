@@ -20,6 +20,13 @@
 
 #include <common/compat/errno.h>
 #include <common/common.h>
+#include <common/hashtable/utils.h>
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/tracepoint.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/event-rule-internal.h>
+#include <lttng/condition/event-rule.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "buffer-registry.h"
@@ -311,6 +318,51 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event,
 		free(ua_event->obj);
 	}
 	free(ua_event);
+}
+
+/*
+ * Delayed reclaim of a ust_app_event_notifier_rule object. This MUST be called
+ * through a call_rcu().
+ */
+static
+void free_ust_app_event_notifier_rule_rcu(struct rcu_head *head)
+{
+	struct ust_app_event_notifier_rule *obj = caa_container_of(
+			head, struct ust_app_event_notifier_rule, rcu_head);
+
+	free(obj);
+}
+
+/*
+ * Delete ust app event notifier rule safely.
+ */
+static void delete_ust_app_event_notifier_rule(int sock,
+		struct ust_app_event_notifier_rule *ua_event_notifier_rule,
+		struct ust_app *app)
+{
+	int ret;
+
+	assert(ua_event_notifier_rule);
+
+	if (ua_event_notifier_rule->exclusion != NULL) {
+		free(ua_event_notifier_rule->exclusion);
+	}
+
+	if (ua_event_notifier_rule->obj != NULL) {
+		pthread_mutex_lock(&app->sock_lock);
+		ret = ustctl_release_object(sock, ua_event_notifier_rule->obj);
+		pthread_mutex_unlock(&app->sock_lock);
+		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("Failed to release event notifier object: app = '%s' (ppid %d), ret = %d",
+					app->name, (int) app->ppid, ret);
+		}
+
+		free(ua_event_notifier_rule->obj);
+	}
+
+	lttng_event_rule_put(ua_event_notifier_rule->event_rule);
+	call_rcu(&ua_event_notifier_rule->rcu_head,
+			free_ust_app_event_notifier_rule_rcu);
 }
 
 /*
@@ -898,6 +950,8 @@ void delete_ust_app(struct ust_app *app)
 {
 	int ret, sock;
 	struct ust_app_session *ua_sess, *tmp_ua_sess;
+	struct lttng_ht_iter iter;
+	struct ust_app_event_notifier_rule *event_notifier_rule;
 
 	/*
 	 * The session list lock must be held during this function to guarantee
@@ -917,9 +971,23 @@ void delete_ust_app(struct ust_app *app)
 		rcu_read_unlock();
 	}
 
+	/* Remove the event notifier rules associated with this app. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry (app->token_to_event_notifier_rule_ht->ht,
+			&iter.iter, event_notifier_rule, node.node) {
+		ret = lttng_ht_del(app->token_to_event_notifier_rule_ht, &iter);
+		assert(!ret);
+
+		delete_ust_app_event_notifier_rule(
+				app->sock, event_notifier_rule, app);
+	}
+
+	rcu_read_unlock();
+
 	ht_cleanup_push(app->sessions);
 	ht_cleanup_push(app->ust_sessions_objd);
 	ht_cleanup_push(app->ust_objd);
+	ht_cleanup_push(app->token_to_event_notifier_rule_ht);
 
 	/*
 	 * This could be NULL if the event notifier setup failed (e.g the app
@@ -1148,6 +1216,57 @@ error:
 }
 
 /*
+ * Allocate a new UST app event notifier rule.
+ */
+static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
+		struct lttng_event_rule *event_rule, uint64_t token)
+{
+	enum lttng_event_rule_generate_exclusions_status
+			generate_exclusion_status;
+	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
+
+	ua_event_notifier_rule = zmalloc(sizeof(struct ust_app_event_notifier_rule));
+	if (ua_event_notifier_rule == NULL) {
+		PERROR("Failed to allocate ust_app_event_notifier_rule structure");
+		goto error;
+	}
+
+	ua_event_notifier_rule->enabled = 1;
+	ua_event_notifier_rule->token = token;
+	lttng_ht_node_init_u64(&ua_event_notifier_rule->node, token);
+
+	/* Get reference of the event rule. */
+	if (!lttng_event_rule_get(event_rule)) {
+		abort();
+	}
+
+	ua_event_notifier_rule->event_rule = event_rule;
+	ua_event_notifier_rule->filter = lttng_event_rule_get_filter_bytecode(event_rule);
+	generate_exclusion_status = lttng_event_rule_generate_exclusions(
+			event_rule, &ua_event_notifier_rule->exclusion);
+	switch (generate_exclusion_status) {
+	case LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK:
+	case LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE:
+		break;
+	default:
+		/* Error occured. */
+		ERR("Failed to generate exclusions from event rule while allocating an event notifier rule");
+		goto error_put_event_rule;
+	}
+
+	DBG3("UST app event notifier rule allocated: token = %" PRIu64,
+			ua_event_notifier_rule->token);
+
+	return ua_event_notifier_rule;
+
+error_put_event_rule:
+	lttng_event_rule_put(event_rule);
+error:
+	free(ua_event_notifier_rule);
+	return NULL;
+}
+
+/*
  * Alloc new UST app context.
  */
 static
@@ -1317,6 +1436,35 @@ static struct ust_app_event *find_ust_app_event(struct lttng_ht *ht,
 
 end:
 	return event;
+}
+
+/*
+ * Look-up an event notifier rule based on its token id.
+ *
+ * Must be called with the RCU read lock held.
+ * Return an ust_app_event_notifier_rule object or NULL on error.
+ */
+static struct ust_app_event_notifier_rule *find_ust_app_event_notifier_rule(
+		struct lttng_ht *ht, uint64_t token)
+{
+	struct lttng_ht_iter iter;
+	struct lttng_ht_node_u64 *node;
+	struct ust_app_event_notifier_rule *event_notifier_rule = NULL;
+
+	assert(ht);
+
+	lttng_ht_lookup(ht, &token, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (node == NULL) {
+		DBG2("UST app event notifier rule token not found: token = %" PRIu64,
+				token);
+		goto end;
+	}
+
+	event_notifier_rule = caa_container_of(
+			node, struct ust_app_event_notifier_rule, node);
+end:
+	return event_notifier_rule;
 }
 
 /*
@@ -1764,6 +1912,179 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			goto error;
 		}
 	}
+
+error:
+	health_code_update();
+	return ret;
+}
+
+static int init_ust_event_notifier_from_event_rule(
+		const struct lttng_event_rule *rule,
+		struct lttng_ust_event_notifier *event_notifier)
+{
+	enum lttng_event_rule_status status;
+	enum lttng_loglevel_type loglevel_type;
+	enum lttng_ust_loglevel_type ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+	int loglevel = -1, ret = 0;
+	const char *pattern;
+
+	/* For now only LTTNG_EVENT_RULE_TYPE_TRACEPOINT are supported. */
+	assert(lttng_event_rule_get_type(rule) ==
+			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+
+	memset(event_notifier, 0, sizeof(*event_notifier));
+
+	status = lttng_event_rule_tracepoint_get_pattern(rule, &pattern);
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		/* At this point, this is a fatal error. */
+		abort();
+	}
+
+	status = lttng_event_rule_tracepoint_get_log_level_type(
+			rule, &loglevel_type);
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		/* At this point, this is a fatal error. */
+		abort();
+	}
+
+	switch (loglevel_type) {
+	case LTTNG_EVENT_LOGLEVEL_ALL:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		break;
+	case LTTNG_EVENT_LOGLEVEL_RANGE:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		break;
+	case LTTNG_EVENT_LOGLEVEL_SINGLE:
+		ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		break;
+	default:
+		/* Unknown log level specification type. */
+		abort();
+	}
+
+	if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+		status = lttng_event_rule_tracepoint_get_log_level(
+				rule, &loglevel);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	}
+
+	event_notifier->event.instrumentation = LTTNG_UST_TRACEPOINT;
+	ret = lttng_strncpy(event_notifier->event.name, pattern,
+			    LTTNG_UST_SYM_NAME_LEN - 1);
+	if (ret) {
+		ERR("Failed to copy event rule pattern to notifier: pattern = '%s' ",
+				pattern);
+		goto end;
+	}
+
+	event_notifier->event.loglevel_type = ust_loglevel_type;
+	event_notifier->event.loglevel = loglevel;
+end:
+	return ret;
+}
+
+/*
+ * Create the specified event notifier against the user space tracer of a
+ * given application.
+ */
+static int create_ust_event_notifier(struct ust_app *app,
+		struct ust_app_event_notifier_rule *ua_event_notifier_rule)
+{
+	int ret = 0;
+	struct lttng_ust_event_notifier event_notifier;
+
+	health_code_update();
+	assert(app->event_notifier_group.object);
+
+	ret = init_ust_event_notifier_from_event_rule(
+			ua_event_notifier_rule->event_rule, &event_notifier);
+	if (ret) {
+		ERR("Failed to initialize UST event notifier from event rule: app = '%s' (ppid: %d)",
+				app->name, app->ppid);
+		goto error;
+	}
+
+	event_notifier.event.token = ua_event_notifier_rule->token;
+
+	/* Create UST event notifier against the tracer. */
+	pthread_mutex_lock(&app->sock_lock);
+	ret = ustctl_create_event_notifier(app->sock, &event_notifier,
+			app->event_notifier_group.object,
+			&ua_event_notifier_rule->obj);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("Error ustctl create event notifier: name = '%s', app = '%s' (ppid: %d), ret = %d",
+					event_notifier.event.name, app->name,
+					app->ppid, ret);
+		} else {
+			/*
+			 * This is normal behavior, an application can die
+			 * during the creation process. Don't report an error so
+			 * the execution can continue normally.
+			 */
+			ret = 0;
+			DBG3("UST app create event notifier failed (application is dead): app = '%s' (ppid = %d)",
+					app->name, app->ppid);
+		}
+
+		goto error;
+	}
+
+	ua_event_notifier_rule->handle = ua_event_notifier_rule->obj->handle;
+
+	DBG2("UST app event notifier %s created successfully: app = '%s' (ppid: %d), object: %p",
+			event_notifier.event.name, app->name, app->ppid,
+			ua_event_notifier_rule->obj);
+
+	health_code_update();
+
+	/* Set filter if one is present. */
+	if (ua_event_notifier_rule->filter) {
+		ret = set_ust_object_filter(app, ua_event_notifier_rule->filter,
+				ua_event_notifier_rule->obj);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* Set exclusions for the event. */
+	if (ua_event_notifier_rule->exclusion) {
+		ret = set_ust_object_exclusions(app,
+				ua_event_notifier_rule->exclusion,
+				ua_event_notifier_rule->obj);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/*
+	 * We now need to explicitly enable the event, since it
+	 * is disabled at creation.
+	 */
+	ret = enable_ust_object(app, ua_event_notifier_rule->obj);
+	if (ret < 0) {
+		/*
+		 * If we hit an EPERM, something is wrong with our enable call.
+		 * If we get an EEXIST, there is a problem on the tracer side
+		 * since we just created it.
+		 */
+		switch (ret) {
+		case -LTTNG_UST_ERR_PERM:
+			/* Code flow problem. */
+			abort();
+		case -LTTNG_UST_ERR_EXIST:
+			/* It's OK for our use case. */
+			ret = 0;
+			break;
+		default:
+			break;
+		}
+
+		goto error;
+	}
+
+	ua_event_notifier_rule->enabled = true;
 
 error:
 	health_code_update();
@@ -3139,6 +3460,7 @@ error:
 /*
  * Create UST app event and create it on the tracer side.
  *
+ * Must be called with the RCU read side lock held.
  * Called with ust app session mutex held.
  */
 static
@@ -3178,8 +3500,8 @@ int create_ust_app_event(struct ust_app_session *ua_sess,
 
 	add_unique_ust_app_event(ua_chan, ua_event);
 
-	DBG2("UST app create event %s for PID %d completed", ua_event->name,
-			app->pid);
+	DBG2("UST app create event completed: app = '%s' (ppid: %d)",
+			app->name, app->ppid);
 
 end:
 	return ret;
@@ -3187,6 +3509,59 @@ end:
 error:
 	/* Valid. Calling here is already in a read side lock */
 	delete_ust_app_event(-1, ua_event, app);
+	return ret;
+}
+
+/*
+ * Create UST app event notifier rule and create it on the tracer side.
+ *
+ * Must be called with the RCU read side lock held.
+ * Called with ust app session mutex held.
+ */
+static
+int create_ust_app_event_notifier_rule(struct lttng_event_rule *rule,
+		struct ust_app *app, uint64_t token)
+{
+	int ret = 0;
+	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
+
+	ua_event_notifier_rule = alloc_ust_app_event_notifier_rule(rule, token);
+	if (ua_event_notifier_rule == NULL) {
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	/* Create it on the tracer side. */
+	ret = create_ust_event_notifier(app, ua_event_notifier_rule);
+	if (ret < 0) {
+		/*
+		 * Not found previously means that it does not exist on the
+		 * tracer. If the application reports that the event existed,
+		 * it means there is a bug in the sessiond or lttng-ust
+		 * (or corruption, etc.)
+		 */
+		if (ret == -LTTNG_UST_ERR_EXIST) {
+			ERR("Tracer for application reported that an event notifier being created already exists: "
+					"token = \"%" PRIu64 "\", pid = %d, ppid = %d, uid = %d, gid = %d",
+					token,
+					app->pid, app->ppid, app->uid,
+					app->gid);
+		}
+		goto error;
+	}
+
+	lttng_ht_add_unique_u64(app->token_to_event_notifier_rule_ht,
+			&ua_event_notifier_rule->node);
+
+	DBG2("UST app create token event rule completed: app = '%s' (ppid: %d), token = %" PRIu64,
+			app->name, app->ppid, token);
+
+end:
+	return ret;
+
+error:
+	/* The RCU read side lock is already being held by the caller. */
+	delete_ust_app_event_notifier_rule(-1, ua_event_notifier_rule, app);
 	return ret;
 }
 
@@ -3384,6 +3759,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	lta->ust_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->ust_sessions_objd = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
 	lta->notify_sock = -1;
+	lta->token_to_event_notifier_rule_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
 	/* Copy name and make sure it's NULL terminated. */
 	strncpy(lta->name, msg->name, sizeof(lta->name));
@@ -5074,6 +5450,149 @@ end:
 	return ret;
 }
 
+/* Called with RCU read-side lock held. */
+static
+void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
+{
+	int ret = 0;
+	enum lttng_error_code ret_code;
+	enum lttng_trigger_status t_status;
+	struct lttng_ht_iter app_trigger_iter;
+	struct lttng_triggers *triggers = NULL;
+	struct ust_app_event_notifier_rule *event_notifier_rule;
+	unsigned int count, i;
+
+	/*
+	 * Currrently, registering or unregistering a trigger with an
+	 * event rule condition causes a full synchronization of the event
+	 * notifiers.
+	 *
+	 * The first step attempts to add an event notifier for all registered
+	 * triggers that apply to the user space tracers. Then, the
+	 * application's event notifiers rules are all checked against the list
+	 * of registered triggers. Any event notifier that doesn't have a
+	 * matching trigger can be assumed to have been disabled.
+	 *
+	 * All of this is inefficient, but is put in place to get the feature
+	 * rolling as it is simpler at this moment. It will be optimized Soon™
+	 * to allow the state of enabled
+	 * event notifiers to be synchronized in a piece-wise way.
+	 */
+
+	/* Get all triggers using uid 0 (root) */
+	ret_code = notification_thread_command_list_triggers(
+			notification_thread_handle, 0, &triggers);
+	if (ret_code != LTTNG_OK) {
+		ret = -1;
+		goto end;
+	}
+
+	assert(triggers);
+
+	t_status = lttng_triggers_get_count(triggers, &count);
+	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
+		ret = -1;
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		struct lttng_condition *condition;
+		struct lttng_event_rule *event_rule;
+		struct lttng_trigger *trigger;
+		const struct ust_app_event_notifier_rule *looked_up_event_notifier_rule;
+		enum lttng_condition_status condition_status;
+		uint64_t token;
+
+		trigger = lttng_triggers_borrow_mutable_at_index(triggers, i);
+		assert(trigger);
+
+		token = lttng_trigger_get_tracer_token(trigger);
+		condition = lttng_trigger_get_condition(trigger);
+
+		if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_EVENT_RULE_HIT) {
+			/* Does not apply */
+			continue;
+		}
+
+		condition_status = lttng_condition_event_rule_borrow_rule_mutable(condition, &event_rule);
+		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+		if (lttng_event_rule_get_domain_type(event_rule) == LTTNG_DOMAIN_KERNEL) {
+			/* Skip kernel related triggers. */
+			continue;
+		}
+
+		/*
+		 * Find or create the associated token event rule. The caller
+		 * holds the RCU read lock, so this is safe to call without
+		 * explicitly acquiring it here.
+		 */
+		looked_up_event_notifier_rule = find_ust_app_event_notifier_rule(
+				app->token_to_event_notifier_rule_ht, token);
+		if (!looked_up_event_notifier_rule) {
+			ret = create_ust_app_event_notifier_rule(event_rule, app, token);
+			if (ret < 0) {
+				goto end;
+			}
+		}
+	}
+
+	rcu_read_lock();
+	/* Remove all unknown event sources from the app. */
+	cds_lfht_for_each_entry (app->token_to_event_notifier_rule_ht->ht,
+			&app_trigger_iter.iter, event_notifier_rule,
+			node.node) {
+		const uint64_t app_token = event_notifier_rule->token;
+		bool found = false;
+
+		/*
+		 * Check if the app event trigger still exists on the
+		 * notification side.
+		 */
+		for (i = 0; i < count; i++) {
+			uint64_t notification_thread_token;
+			const struct lttng_trigger *trigger =
+					lttng_triggers_get_at_index(
+							triggers, i);
+
+			assert(trigger);
+
+			notification_thread_token =
+					lttng_trigger_get_tracer_token(trigger);
+
+			if (notification_thread_token == app_token) {
+				found = true;
+				break;
+			}
+		}
+
+		if (found) {
+			/* Still valid. */
+			continue;
+		}
+
+		/*
+		 * This trigger was unregistered, disable it on the tracer's
+		 * side.
+		 */
+		ret = lttng_ht_del(app->token_to_event_notifier_rule_ht,
+				&app_trigger_iter);
+		assert(ret == 0);
+
+		/* Callee logs errors. */
+		(void) disable_ust_object(app, event_notifier_rule->obj);
+
+		delete_ust_app_event_notifier_rule(
+				app->sock, event_notifier_rule, app);
+	}
+
+	rcu_read_unlock();
+
+end:
+	lttng_triggers_destroy(triggers);
+	return;
+}
+
 /*
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
@@ -5232,6 +5751,30 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 }
 
 /*
+ * Add all event notifiers to an application.
+ *
+ * Called with session lock held.
+ * Called with RCU read-side lock held.
+ */
+void ust_app_global_update_event_notifier_rules(struct ust_app *app)
+{
+	DBG2("UST application global event notifier rules update: app = '%s' (ppid: %d)",
+			app->name, app->ppid);
+
+	if (!app->compatible) {
+		return;
+	}
+
+	if (app->event_notifier_group.object == NULL) {
+		WARN("UST app global update of event notifiers for app skipped since communication handle is null: app = '%s' (ppid: %d)",
+				app->name, app->ppid);
+		return;
+	}
+
+	ust_app_synchronize_event_notifier_rules(app);
+}
+
+/*
  * Called with session lock held.
  */
 void ust_app_global_update_all(struct ltt_ust_session *usess)
@@ -5243,6 +5786,19 @@ void ust_app_global_update_all(struct ltt_ust_session *usess)
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
 		ust_app_global_update(usess, app);
 	}
+	rcu_read_unlock();
+}
+
+void ust_app_global_update_all_event_notifier_rules(void)
+{
+	struct lttng_ht_iter iter;
+	struct ust_app *app;
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+		ust_app_global_update_event_notifier_rules(app);
+	}
+
 	rcu_read_unlock();
 }
 

@@ -267,11 +267,12 @@ const struct lttng_filter_bytecode *lttng_event_rule_get_filter_bytecode(
 }
 
 LTTNG_HIDDEN
-struct lttng_event_exclusion *lttng_event_rule_generate_exclusions(
-		const struct lttng_event_rule *rule)
+enum lttng_event_rule_generate_exclusions_status
+lttng_event_rule_generate_exclusions(const struct lttng_event_rule *rule,
+		struct lttng_event_exclusion **exclusions)
 {
 	assert(rule->generate_exclusions);
-	return rule->generate_exclusions(rule);
+	return rule->generate_exclusions(rule, exclusions);
 }
 
 LTTNG_HIDDEN

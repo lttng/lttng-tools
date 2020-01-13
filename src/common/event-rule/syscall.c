@@ -217,12 +217,13 @@ lttng_event_rule_syscall_get_internal_filter_bytecode(
 	return syscall->internal_filter.bytecode;
 }
 
-static struct lttng_event_exclusion *
-lttng_event_rule_syscall_generate_exclusions(
-		const struct lttng_event_rule *rule)
+static enum lttng_event_rule_generate_exclusions_status
+lttng_event_rule_syscall_generate_exclusions(const struct lttng_event_rule *rule,
+		struct lttng_event_exclusion **exclusions)
 {
-	/* Not supported. */
-	return NULL;
+	/* Unsupported. */
+	*exclusions = NULL;
+	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
 static unsigned long

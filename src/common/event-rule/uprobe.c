@@ -162,11 +162,13 @@ lttng_event_rule_uprobe_get_filter_bytecode(const struct lttng_event_rule *rule)
 	return NULL;
 }
 
-static struct lttng_event_exclusion *
-lttng_event_rule_uprobe_generate_exclusions(const struct lttng_event_rule *rule)
+static enum lttng_event_rule_generate_exclusions_status
+lttng_event_rule_uprobe_generate_exclusions(const struct lttng_event_rule *rule,
+		struct lttng_event_exclusion **exclusions)
 {
 	/* Unsupported. */
-	return NULL;
+	*exclusions = NULL;
+	return LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_NONE;
 }
 
 static unsigned long
