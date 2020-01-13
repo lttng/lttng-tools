@@ -2598,13 +2598,7 @@ int handle_notification_thread_command_unregister_trigger(
 
 		cds_list_for_each_entry_safe(trigger_element, tmp,
 				&trigger_list->list, node) {
-			const struct lttng_condition *current_condition =
-					lttng_trigger_get_const_condition(
-						trigger_element->trigger);
-
-			assert(current_condition);
-			if (!lttng_condition_is_equal(condition,
-					current_condition)) {
+			if (!lttng_trigger_is_equal(trigger, trigger_element->trigger)) {
 				continue;
 			}
 
