@@ -47,6 +47,15 @@ struct notification_event_tracer_event_source_element {
 	struct cds_list_head node;
 };
 
+struct notification_trigger_tokens_ht_element {
+	uint64_t token;
+	/* Weak reference to the trigger. */
+	struct lttng_trigger *trigger;
+	struct cds_lfht_node node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
+};
+
 struct notification_thread_handle {
 	/*
 	 * Queue of struct notification command.
@@ -258,6 +267,7 @@ struct notification_thread_state {
 	struct cds_lfht *sessions_ht;
 	struct cds_lfht *triggers_ht;
 	struct cds_lfht *triggers_by_name_uid_ht;
+	struct cds_lfht *trigger_tokens_ht;
 	struct {
 		uint64_t next_tracer_token;
 		uint64_t name_offset;
