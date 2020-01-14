@@ -23,6 +23,7 @@
 #include <common/time.h>
 #include <common/utils.h>
 #include <common/uuid.h>
+#include <common/compat/path.h>
 #include <urcu/rculist.h>
 
 #include <sys/stat.h>
@@ -218,6 +219,37 @@ end:
 }
 
 /*
+ * Check if a name is safe to use in a path.
+ *
+ * A name that is deemed "path-safe":
+ *   - Does not contains a path separator (/ or \, platform dependant),
+ *   - Does not start with a '.' (hidden file/folder),
+ *   - Is not empty.
+ */
+static bool is_name_path_safe(const char *name)
+{
+	const size_t name_len = strlen(name);
+
+	/* Not empty. */
+	if (name_len == 0) {
+		WARN("An empty name is not allowed to be used in a path");
+		return false;
+	}
+	/* Does not start with '.'. */
+	if (name[0] == '.') {
+		WARN("Name \"%s\" is not allowed to be used in a path since it starts with '.'", name);
+		return false;
+	}
+	/* Does not contain a path-separator. */
+	if (strchr(name, LTTNG_PATH_SEPARATOR)) {
+		WARN("Name \"%s\" is not allowed to be used in a path since it contains a path separator", name);
+		return false;
+	}
+
+	return true;
+}
+
+/*
  * Create a new session by assigning a new session ID.
  *
  * Return allocated session or else NULL.
@@ -241,19 +273,17 @@ struct relay_session *session_create(const char *session_name,
 	assert(hostname);
 	assert(base_path);
 
-	if (strstr(session_name, ".")) {
-		ERR("Illegal character in session name: \"%s\"",
-				session_name);
+	if (!is_name_path_safe(session_name)) {
+		ERR("Refusing to create session as the provided session name is not path-safe");
+		goto error;
+	}
+	if (!is_name_path_safe(hostname)) {
+		ERR("Refusing to create session as the provided hostname is not path-safe");
 		goto error;
 	}
 	if (strstr(base_path, "../")) {
 		ERR("Invalid session base path walks up the path hierarchy: \"%s\"",
 				base_path);
-		goto error;
-	}
-	if (strstr(hostname, ".")) {
-		ERR("Invalid character in hostname: \"%s\"",
-				hostname);
 		goto error;
 	}
 
