@@ -9,4 +9,4 @@ endif
 libcompat_la_SOURCES = poll.h fcntl.h endian.h mman.h dirent.h \
 		socket.h compat-fcntl.c tid.h \
 		getenv.h string.h prctl.h paths.h netdb.h $(COMPAT) \
-		time.h directory-handle.h directory-handle.c
+		time.h directory-handle.h directory-handle.c path.h
