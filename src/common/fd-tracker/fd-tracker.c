@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright (C) 2018, 2020 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -585,9 +585,13 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 {
 	int ret, user_ret, i, fds_to_suspend;
 	unsigned int active_fds;
-	struct unsuspendable_fd *entries[fd_count];
+	struct unsuspendable_fd **entries;
 
-	memset(entries, 0, sizeof(entries));
+	entries = zmalloc(fd_count * sizeof(*entries));
+	if (!entries) {
+		ret = -1;
+		goto end;
+	}
 
 	pthread_mutex_lock(&tracker->lock);
 
@@ -599,7 +603,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 			ret = fd_tracker_suspend_handles(
 					tracker, fds_to_suspend);
 			if (ret) {
-				goto end;
+				goto end_unlock;
 			}
 		} else {
 			/*
@@ -610,14 +614,14 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 			WARN("Cannot open unsuspendable fd, too many unsuspendable file descriptors are opened (%u)",
 					tracker->count.unsuspendable);
 			ret = -EMFILE;
-			goto end;
+			goto end_unlock;
 		}
 	}
 
 	user_ret = open(user_data, out_fds);
 	if (user_ret) {
 		ret = user_ret;
-		goto end;
+		goto end_unlock;
 	}
 
 	/*
@@ -657,14 +661,16 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 	tracker->count.unsuspendable += fd_count;
 	rcu_read_unlock();
 	ret = user_ret;
-end:
+end_unlock:
 	pthread_mutex_unlock(&tracker->lock);
+end:
+	free(entries);
 	return ret;
 end_free_entries:
 	for (i = 0; i < fd_count; i++) {
 		unsuspendable_fd_destroy(entries[i]);
 	}
-	goto end;
+	goto end_unlock;
 }
 
 int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
@@ -674,12 +680,17 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 		void *user_data)
 {
 	int i, ret, user_ret;
-	int fds[fd_count];
+	int *fds = NULL;
 
 	/*
 	 * Maintain a local copy of fds_in as the user's callback may modify its
 	 * contents (e.g. setting the fd(s) to -1 after close).
 	 */
+	fds = malloc(sizeof(*fds) * fd_count);
+	if (!fds) {
+		ret = -1;
+		goto end;
+	}
 	memcpy(fds, fds_in, sizeof(*fds) * fd_count);
 
 	pthread_mutex_lock(&tracker->lock);
@@ -689,7 +700,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 	user_ret = close(user_data, fds_in);
 	if (user_ret) {
 		ret = user_ret;
-		goto end;
+		goto end_unlock;
 	}
 
 	/* Untrack the fds that were just closed by the user's callback. */
@@ -709,7 +720,7 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 			WARN("Untracked file descriptor %d passed to fd_tracker_close_unsuspendable_fd()",
 					fds[i]);
 			ret = -EINVAL;
-			goto end;
+			goto end_unlock;
 		}
 		entry = caa_container_of(
 				node, struct unsuspendable_fd, tracker_node);
@@ -721,9 +732,11 @@ int fd_tracker_close_unsuspendable_fd(struct fd_tracker *tracker,
 
 	tracker->count.unsuspendable -= fd_count;
 	ret = 0;
-end:
+end_unlock:
 	rcu_read_unlock();
 	pthread_mutex_unlock(&tracker->lock);
+	free(fds);
+end:
 	return ret;
 }
 
