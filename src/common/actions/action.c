@@ -15,7 +15,8 @@
 #include <lttng/action/start-session-internal.h>
 #include <lttng/action/stop-session-internal.h>
 
-static const char *lttng_action_type_string(enum lttng_action_type action_type)
+LTTNG_HIDDEN
+const char *lttng_action_type_string(enum lttng_action_type action_type)
 {
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_UNKNOWN:

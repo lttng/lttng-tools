@@ -75,4 +75,7 @@ void lttng_action_get(struct lttng_action *action);
 LTTNG_HIDDEN
 void lttng_action_put(struct lttng_action *action);
 
+LTTNG_HIDDEN
+const char* lttng_action_type_string(enum lttng_action_type action_type);
+
 #endif /* LTTNG_ACTION_INTERNAL_H */
