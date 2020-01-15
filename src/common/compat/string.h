@@ -10,6 +10,7 @@
 #define _COMPAT_STRING_H
 
 #include <string.h>
+#include <stdlib.h>
 
 #ifdef HAVE_STRNLEN
 static inline
