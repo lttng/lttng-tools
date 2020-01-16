@@ -111,8 +111,8 @@ extern const char * const mi_lttng_element_save;
 
 /* Strings related to load command */
 extern const char * const mi_lttng_element_load;
-LTTNG_HIDDEN const char * const mi_lttng_element_load_overrides;
-LTTNG_HIDDEN const char * const mi_lttng_element_load_override_url;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_load_overrides;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_load_override_url;
 
 /* General element of mi_lttng */
 extern const char * const mi_lttng_element_empty;
@@ -187,40 +187,40 @@ extern const char * const mi_lttng_element_snapshot_session_name;
 extern const char * const mi_lttng_element_snapshots;
 
 /* String related to track/untrack command */
-const char * const mi_lttng_element_track_untrack_all_wildcard;
+extern const char * const mi_lttng_element_track_untrack_all_wildcard;
 
-LTTNG_HIDDEN const char * const mi_lttng_element_session_name;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_session_name;
 
 /* String related to rotate command */
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotate_status;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedules;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_periodic_time_us;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_result;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_schedule_results;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_state;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_local_absolute_path;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_host;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_control_port;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_data_port;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_protocol;
-LTTNG_HIDDEN const char * const mi_lttng_element_rotation_location_relay_relative_path;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotate_status;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedules;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_periodic;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_periodic_time_us;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_size_threshold;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_size_threshold_bytes;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_result;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_schedule_results;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_state;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_local;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_local_absolute_path;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_host;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_control_port;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_data_port;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_protocol;
+LTTNG_HIDDEN extern const char * const mi_lttng_element_rotation_location_relay_relative_path;
 
 /* String related to enum lttng_rotation_state */
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_ongoing;
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_completed;
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_expired;
-LTTNG_HIDDEN const char * const mi_lttng_rotation_state_str_error;
+LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_ongoing;
+LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_completed;
+LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_expired;
+LTTNG_HIDDEN extern const char * const mi_lttng_rotation_state_str_error;
 
 /* String related to enum lttng_trace_archive_location_relay_protocol_type */
-LTTNG_HIDDEN const char * const mi_lttng_rotation_location_relay_protocol_str_tcp;
+LTTNG_HIDDEN extern const char * const mi_lttng_rotation_location_relay_protocol_str_tcp;
 
 /* String related to add-context command */
 LTTNG_HIDDEN extern const char * const mi_lttng_element_context_symbol;
