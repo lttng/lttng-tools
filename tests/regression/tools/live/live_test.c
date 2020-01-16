@@ -51,9 +51,6 @@
 #define NUM_TESTS 11
 #define mmap_size 524288
 
-int ust_consumerd32_fd;
-int ust_consumerd64_fd;
-
 static int control_sock;
 struct live_session *session;
 

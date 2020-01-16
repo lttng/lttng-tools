@@ -44,16 +44,12 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
-struct health_app *health_sessiond;
 static struct ltt_session_list *session_list;
 
 /* For error.h */
 int lttng_opt_quiet = 1;
 int lttng_opt_verbose = 0;
 int lttng_opt_mi;
-
-int ust_consumerd32_fd;
-int ust_consumerd64_fd;
 
 static const char alphanum[] =
 	"0123456789"

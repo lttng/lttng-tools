@@ -45,6 +45,10 @@
 #include "notification-thread-commands.h"
 #include "rotate.h"
 
+struct lttng_ht *ust_app_ht;
+struct lttng_ht *ust_app_ht_by_sock;
+struct lttng_ht *ust_app_ht_by_notify_sock;
+
 static
 int ust_app_flush_app_session(struct ust_app *app, struct ust_app_session *ua_sess);
 

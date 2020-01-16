@@ -47,13 +47,6 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-int ust_consumerd32_fd;
-int ust_consumerd64_fd;
-
-/* Global variables required by sessiond objects being linked-in */
-struct lttng_ht *agent_apps_ht_by_sock;
-struct notification_thread_handle *notification_thread_handle;
-
 static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"

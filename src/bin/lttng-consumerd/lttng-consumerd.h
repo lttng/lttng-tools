@@ -23,7 +23,7 @@
 #define NR_LTTNG_CONSUMER_READY		1
 extern int lttng_consumer_ready;
 
-const char *tracing_group_name;
+extern const char *tracing_group_name;
 
 enum lttng_consumer_type lttng_consumer_get_type(void);
 
