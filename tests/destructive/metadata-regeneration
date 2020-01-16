@@ -129,7 +129,7 @@ function test_ust_local ()
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} /dev/null 2>&1 &
+		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
@@ -167,7 +167,7 @@ function test_ust_streaming ()
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-after-first-event ${file_sync_after_first} \
-		--sync-before-last-event ${file_sync_before_last} /dev/null 2>&1 &
+		--sync-before-last-event ${file_sync_before_last} > /dev/null 2>&1 &
 
 	start_lttng_tracing_ok $SESSION_NAME
 
