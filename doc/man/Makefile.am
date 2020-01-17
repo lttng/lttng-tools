@@ -36,7 +36,9 @@ MAN1_NAMES = \
 	lttng-rotate \
 	lttng-enable-rotation \
 	lttng-disable-rotation \
-	lttng-clear
+	lttng-clear \
+	lttng-add-trigger
+
 MAN3_NAMES =
 MAN8_NAMES = lttng-sessiond lttng-relayd
 MAN1_NO_ASCIIDOC_NAMES =

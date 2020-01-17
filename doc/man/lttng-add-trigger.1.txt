@@ -1,0 +1,124 @@
+lttng-add-trigger(1)
+=====================
+:revdate: 17 January 2020
+
+
+NAME
+----
+lttng-add-trigger - Create LTTng triggers
+
+
+SYNOPSIS
+--------
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-trigger* [--id ID]
+      [--fire-every N] [--fire-once-after N]
+      --condition CONDITION-NAME CONDITION-ARGS
+      --action ACTION-NAME ACTION-ARGS
+      [--action ACTION-NAME ACTION-ARGS]...
+
+
+DESCRIPTION
+-----------
+
+The `lttng add-trigger` command is used to create triggers.  A
+trigger is an association between a *condition* and one or more
+*actions*.  When the condition associated to a trigger is met, the
+actions associated to that trigger are executed.  The tracing does not
+have to be active for the conditions to be met, and triggers are
+independent from tracing sessions.
+
+By default, a trigger fires every time its condition is met.  The
+'--fire-every' and '--fire-once-after' options can be used to change
+this mode.
+
+The syntax by which conditions and actions are specified is described
+below.
+
+Conditions
+~~~~~~~~~~
+
+Conditions are specified with the `--condition` option, followed by a
+condition name, and possibly some more arguments, depending on the
+specific condition.  There must be exactly one condition given in the
+`lttng add-trigger` invocation.
+
+The available conditions are:
+
+Event rule: `on-event [event rule arguments]`::
+    This type of condition is met when the tracer encounters an event
+    matching the given even rule.  The arguments describing the event
+    rule are the same as those describing the event rules of the
+    man:lttng-enable-event(1) command, with these exceptions:
+
+    - It is not possible to use filter operands that use values from
+      the context.
+
+Actions
+~~~~~~~
+
+Actions are specified with the `--action` option, followed by an action
+name, and possibly some more arguments, depending on the specific
+action.  There must be at least one action given in the
+`lttng add-trigger` invocation.
+
+The available actions are:
+
+Notify: *notify*::
+    This action causes the LTTng session daemon to send a notification,
+    through its notification mechanism (see man:lttng-sessiond(8)).
+    Some details about the condition evaluation are sent along with the
+    notification.
+
+Start session: *start-session* session-name::
+    This action causes the LTTng session daemon to start tracing for the
+    session with the given name.  If no session with the given name exist
+    at the time the condition is met, nothing is done.
+
+Stop session: *stop-session* session-name::
+    This action causes the LTTng session daemon to stop tracing for the
+    session with the given name.  If no session with the given name exist
+    at the time the condition is met, nothing is done.
+
+Rotate session: *rotate-session* session-name::
+    This action causes the LTTng session daemon to rotate the session
+    with the given name.  See  man:lttng-rotate(1) for more information
+    about the session rotation concept.  If no session with the given
+    name exist at the time the condition is met, nothing is done.
+
+Snapshot session: *snapshot-session* session-name::
+    This action causes the LTTng session daemon to take a snapshot of the
+    session with the given name.  See man:lttng-snapshot(1) for more
+    information about the session snapshot concept.  If no session with
+    the given name exist at the time the condition is met, nothing is
+    done.
+
+OPTIONS
+-------
+
+option:--id='ID'::
+    Set the id of the trigger to 'ID'.  If omitted, an id will
+    automatically be assigned to the trigger by the session daemon.
++
+If a trigger with the specified 'ID' already exists, the trigger
+creation will fail.
+
+option:--fire-every 'N'::
+    Execute the trigger's actions every 'N' times the condition is met.
+
+option:--fire-once-after 'N'::
+    Execute the trigger's actions once after 'N' times the condition is
+    met, then never after that.
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng-list-triggers(1),
+man:lttng-remove-trigger(1),
+man:lttng(1)
