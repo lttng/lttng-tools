@@ -143,7 +143,7 @@ static int parse_probe_opts(struct lttng_event *ev, char *opt)
 	}
 
 	/* Check for symbol */
-	if (isalpha(name[0])) {
+	if (isalpha(name[0]) || name[0] == '_') {
 		match = sscanf(opt, "%" LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "s",
 			name);
 		if (match == 1) {
