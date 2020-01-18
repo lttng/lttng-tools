@@ -130,6 +130,15 @@ enum lttng_event_output {
 %rename("EVENT_CONTEXT_PPID") LTTNG_EVENT_CONTEXT_PPID;
 %rename("EVENT_CONTEXT_VPPID") LTTNG_EVENT_CONTEXT_VPPID;
 %rename("EVENT_CONTEXT_PTHREAD_ID") LTTNG_EVENT_CONTEXT_PTHREAD_ID;
+%rename("EVENT_CONTEXT_HOSTNAME") LTTNG_EVENT_CONTEXT_HOSTNAME;
+%rename("EVENT_CONTEXT_IP") LTTNG_EVENT_CONTEXT_IP;
+%rename("EVENT_CONTEXT_PERF_CPU_COUNTER") LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER;
+%rename("EVENT_CONTEXT_PERF_THREAD_COUNTER") LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER;
+%rename("EVENT_CONTEXT_APP_CONTEXT") LTTNG_EVENT_CONTEXT_APP_CONTEXT;
+%rename("EVENT_CONTEXT_INTERRUPTIBLE") LTTNG_EVENT_CONTEXT_INTERRUPTIBLE;
+%rename("EVENT_CONTEXT_PREEMPTIBLE") LTTNG_EVENT_CONTEXT_PREEMPTIBLE;
+%rename("EVENT_CONTEXT_NEED_RESCHEDULE") LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE;
+%rename("EVENT_CONTEXT_MIGRATABLE") LTTNG_EVENT_CONTEXT_MIGRATABLE;
 enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PID               = 0,
 	LTTNG_EVENT_CONTEXT_PERF_COUNTER      = 1,
@@ -142,6 +151,15 @@ enum lttng_event_context_type {
 	LTTNG_EVENT_CONTEXT_PPID              = 8,
 	LTTNG_EVENT_CONTEXT_VPPID             = 9,
 	LTTNG_EVENT_CONTEXT_PTHREAD_ID        = 10,
+	LTTNG_EVENT_CONTEXT_HOSTNAME          = 11,
+	LTTNG_EVENT_CONTEXT_IP                = 12,
+	LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER  = 13,
+	LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER = 14,
+	LTTNG_EVENT_CONTEXT_APP_CONTEXT       = 15,
+	LTTNG_EVENT_CONTEXT_INTERRUPTIBLE     = 16,
+	LTTNG_EVENT_CONTEXT_PREEMPTIBLE       = 17,
+	LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE   = 18,
+	LTTNG_EVENT_CONTEXT_MIGRATABLE        = 19,
 };
 
 
@@ -867,6 +885,33 @@ struct lttng_event_context {
 				break;
 			case 10:
 				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PTHREAD_ID)");
+				break;
+			case 11:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_HOSTNAME)");
+				break;
+			case 12:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_IP)");
+				break;
+			case 13:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PERF_CPU_COUNTER)");
+				break;
+			case 14:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PERF_THREAD_COUNTER)");
+				break;
+			case 15:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_APP_CONTEXT)");
+				break;
+			case 16:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_INTERRUPTIBLE)");
+				break;
+			case 17:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_PREEMPTIBLE)");
+				break;
+			case 18:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_NEED_RESCHEDULE)");
+				break;
+			case 19:
+				sprintf(temp, "lttng.EventContext; ctx(EVENT_CONTEXT_MIGRATABLE)");
 				break;
 			default:
 				sprintf(temp, "lttng.EventContext; type(%i)", $self->ctx);
