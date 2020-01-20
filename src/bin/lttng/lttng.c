@@ -79,6 +79,7 @@ static struct cmd_struct commands[] =  {
 	{ "load", cmd_load},
 	{ "metadata", cmd_metadata},
 	{ "regenerate", cmd_regenerate},
+	{ "remove-trigger", cmd_remove_trigger},
 	{ "rotate", cmd_rotate},
 	{ "enable-rotation", cmd_enable_rotation},
 	{ "disable-rotation", cmd_disable_rotation},

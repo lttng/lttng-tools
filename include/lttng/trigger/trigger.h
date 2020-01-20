@@ -190,7 +190,7 @@ extern int lttng_register_trigger(struct lttng_trigger *trigger);
  *
  * Return 0 on success, a negative LTTng error code on error.
  */
-extern int lttng_unregister_trigger(struct lttng_trigger *trigger);
+extern int lttng_unregister_trigger(const struct lttng_trigger *trigger);
 
 /*
  * List triggers for the current user.

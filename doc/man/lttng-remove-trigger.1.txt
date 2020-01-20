@@ -1,0 +1,38 @@
+lttng-remove-trigger(1)
+========================
+:revdate: 20 January 2020
+
+
+NAME
+----
+lttng-remove-trigger - Remove LTTng triggers
+
+
+SYNOPSIS
+--------
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *remove-trigger* 'ID'
+
+
+DESCRIPTION
+-----------
+
+The `lttng remove-trigger` command removes the trigger with the given
+'ID'.
+
+
+OPTIONS
+-------
+
+include::common-cmd-help-options.txt[]
+
+
+include::common-cmd-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng-add-trigger(1),
+man:lttng-list-trigger(1),
+man:lttng(1)

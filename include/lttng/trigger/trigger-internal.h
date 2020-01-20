@@ -84,7 +84,7 @@ int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
-bool lttng_trigger_validate(struct lttng_trigger *trigger);
+bool lttng_trigger_validate(const struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN
 int lttng_trigger_assign_name(
@@ -192,5 +192,8 @@ LTTNG_HIDDEN
 enum lttng_error_code lttng_trigger_generate_bytecode(
 		struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds);
+
+LTTNG_HIDDEN
+struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

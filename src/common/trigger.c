@@ -23,7 +23,7 @@
 #include <inttypes.h>
 
 LTTNG_HIDDEN
-bool lttng_trigger_validate(struct lttng_trigger *trigger)
+bool lttng_trigger_validate(const struct lttng_trigger *trigger)
 {
 	bool valid;
 
@@ -970,4 +970,35 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 	}
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
+{
+	int ret;
+	struct lttng_payload copy_buffer;
+	struct lttng_trigger *copy = NULL;
+
+	lttng_payload_init(&copy_buffer);
+
+	ret = lttng_trigger_serialize(trigger, &copy_buffer);
+	if (ret < 0) {
+		goto end;
+	}
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&copy_buffer, 0, -1);
+		ret = lttng_trigger_create_from_payload(
+				&view, &copy);
+		if (ret < 0) {
+			copy = NULL;
+			goto end;
+		}
+	}
+
+end:
+	lttng_payload_reset(&copy_buffer);
+	return copy;
 }

@@ -1,7 +1,9 @@
 noinst_SCRIPTS = test_add_trigger_cli \
-	test_list_triggers_cli
+	test_list_triggers_cli \
+	test_remove_trigger_cli
 EXTRA_DIST = test_add_trigger_cli \
-	test_list_triggers_cli
+	test_list_triggers_cli \
+	test_remove_trigger_cli
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

@@ -3201,13 +3201,14 @@ end:
 	return ret;
 }
 
-int lttng_unregister_trigger(struct lttng_trigger *trigger)
+int lttng_unregister_trigger(const struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
+	struct lttng_trigger *copy = NULL;
 	const struct lttng_credentials user_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
@@ -3221,9 +3222,15 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	if (!trigger->creds.uid.is_set) {
-		/* Use the client's credentials as the trigger credentials. */
-		lttng_trigger_set_credentials(trigger, &user_creds);
+	copy = lttng_trigger_copy(trigger);
+	if (!copy) {
+		ret = -LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	if (!copy->creds.uid.is_set) {
+		/* Use the client credentials as the trigger credentials */
+		lttng_trigger_set_credentials(copy, &user_creds);
 	} else {
 		/*
 		 * Validate that either the current trigger credentials and the
@@ -3236,8 +3243,7 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 		 * "safety" checks.
 		 */
 		const struct lttng_credentials *trigger_creds =
-				lttng_trigger_get_credentials(trigger);
-
+				lttng_trigger_get_credentials(copy);
 		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
 			if (lttng_credentials_get_uid(&user_creds) != 0) {
 				ret = -LTTNG_ERR_EPERM;
@@ -3246,7 +3252,7 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 		}
 	}
 
-	if (!lttng_trigger_validate(trigger)) {
+	if (!lttng_trigger_validate(copy)) {
 		ret = -LTTNG_ERR_INVALID_TRIGGER;
 		goto end;
 	}
@@ -3266,7 +3272,7 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 	*/
 	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
 
-	ret = lttng_trigger_serialize(trigger, &message);
+	ret = lttng_trigger_serialize(copy, &message);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
@@ -3294,6 +3300,7 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 
 	ret = 0;
 end:
+	lttng_trigger_destroy(copy);
 	lttng_payload_reset(&message);
 	lttng_payload_reset(&reply);
 	return ret;

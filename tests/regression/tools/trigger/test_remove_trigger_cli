@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# Copyright (C) - 2020 EfficiOS, inc
+#
+# This library is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; version 2.1 of the License.
+#
+# This library is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+
+# Test the `lttng remove-trigger` command line interface.
+
+CURDIR="$(dirname "$0")"
+TESTDIR="$CURDIR/../../.."
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+plan_tests 17
+
+FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
+
+tmp_stdout=$(mktemp -t test_list_triggers_cli_stdout.XXXXXX)
+tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
+tmp_expected_stdout=$(mktemp -t test_list_triggers_cli_expected_stdout.XXXXXX)
+
+uid=$(id --user)
+gid=$(id --group)
+
+function add_trigger ()
+{
+	"${FULL_LTTNG_BIN}" add-trigger "$@"
+	ok $? "add trigger \`$*\`: exit code is 0"
+}
+
+function list_triggers ()
+{
+	local test_name="$1"
+	local expected_stdout_file="$2"
+
+	"${FULL_LTTNG_BIN}" list-triggers > "${tmp_stdout}" 2> "${tmp_stderr}"
+	ok $? "${test_name}: exit code is 0"
+
+	diff -u "${expected_stdout_file}" "${tmp_stdout}"
+	ok $? "${test_name}: expected stdout"
+
+	diff -u /dev/null "${tmp_stderr}"
+	ok $? "${test_name}: expected stderr"
+}
+
+function remove_trigger ()
+{
+	local id="$1"
+	local test_name="remove trigger ${id}"
+
+	"${FULL_LTTNG_BIN}" remove-trigger "${id}" > "${tmp_stdout}" 2> "${tmp_stderr}"
+	ok $? "${test_name}: exit code is 0"
+
+	diff -u <(echo "Removed trigger \`${id}\`.") "${tmp_stdout}"
+	ok $? "${test_name}: expected stdout"
+
+	diff -u /dev/null "${tmp_stderr}"
+	ok $? "${test_name}: expected stderr"
+}
+
+# shellcheck disable=SC2119
+start_lttng_sessiond_notap
+
+# Add a few triggers
+add_trigger --condition on-event -u -a --action notify
+add_trigger --id ABC --condition on-event aaa -u --filter 'p == 2' --action notify
+
+cat > "${tmp_expected_stdout}" <<- EOF
+- id: ABC
+  user id: ${uid}
+  condition: event rule hit
+    rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
+  actions:
+    notify
+- id: T0
+  user id: ${uid}
+  condition: event rule hit
+    rule: * (type: tracepoint, domain: ust)
+  actions:
+    notify
+EOF
+list_triggers "two triggers left" "${tmp_expected_stdout}"
+
+remove_trigger "ABC"
+
+cat > "${tmp_expected_stdout}" <<- EOF
+- id: T0
+  user id: ${uid}
+  condition: event rule hit
+    rule: * (type: tracepoint, domain: ust)
+  actions:
+    notify
+EOF
+list_triggers "one trigger left" "${tmp_expected_stdout}"
+
+remove_trigger "T0"
+
+list_triggers "no triggers left" "/dev/null"
+
+# Cleanup
+stop_lttng_sessiond_notap
+rm -f "${tmp_stdout}"
+rm -f "${tmp_stderr}"
+rm -f "${tmp_expected_stdout}"

@@ -41,7 +41,8 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/clear/test_kernel \
 	tools/tracker/test_event_tracker \
 	tools/trigger/test_add_trigger_cli \
-	tools/trigger/test_list_triggers_cli
+	tools/trigger/test_list_triggers_cli \
+	tools/trigger/test_remove_trigger_cli
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
