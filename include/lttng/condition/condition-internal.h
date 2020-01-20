@@ -71,4 +71,7 @@ LTTNG_HIDDEN
 bool lttng_condition_is_equal(const struct lttng_condition *a,
 		const struct lttng_condition *b);
 
+LTTNG_HIDDEN
+const char *lttng_condition_type_str(enum lttng_condition_type type);
+
 #endif /* LTTNG_CONDITION_INTERNAL_H */

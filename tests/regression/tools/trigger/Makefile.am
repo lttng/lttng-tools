@@ -1,5 +1,7 @@
-noinst_SCRIPTS = test_add_trigger_cli
-EXTRA_DIST = test_add_trigger_cli
+noinst_SCRIPTS = test_add_trigger_cli \
+	test_list_triggers_cli
+EXTRA_DIST = test_add_trigger_cli \
+	test_list_triggers_cli
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

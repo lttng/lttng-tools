@@ -265,29 +265,29 @@ void lttng_snapshot_output_destroy(struct lttng_snapshot_output *obj)
  * Getter family functions of snapshot output.
  */
 
-uint32_t lttng_snapshot_output_get_id(struct lttng_snapshot_output *output)
+uint32_t lttng_snapshot_output_get_id(const struct lttng_snapshot_output *output)
 {
 	return output->id;
 }
 
 const char *lttng_snapshot_output_get_name(
-		struct lttng_snapshot_output *output)
+		const struct lttng_snapshot_output *output)
 {
 	return output->name;
 }
 
-const char *lttng_snapshot_output_get_data_url(struct lttng_snapshot_output *output)
+const char *lttng_snapshot_output_get_data_url(const struct lttng_snapshot_output *output)
 {
 	return output->data_url;
 }
 
-const char *lttng_snapshot_output_get_ctrl_url(struct lttng_snapshot_output *output)
+const char *lttng_snapshot_output_get_ctrl_url(const struct lttng_snapshot_output *output)
 {
 	return output->ctrl_url;
 }
 
 uint64_t lttng_snapshot_output_get_maxsize(
-		struct lttng_snapshot_output *output)
+		const struct lttng_snapshot_output *output)
 {
 	return output->max_size;
 }

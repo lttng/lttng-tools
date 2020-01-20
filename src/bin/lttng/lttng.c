@@ -75,6 +75,7 @@ static struct cmd_struct commands[] =  {
 	{ "enable-event", cmd_enable_events},
 	{ "help", NULL},
 	{ "list", cmd_list},
+	{ "list-triggers", cmd_list_triggers},
 	{ "load", cmd_load},
 	{ "metadata", cmd_metadata},
 	{ "regenerate", cmd_regenerate},

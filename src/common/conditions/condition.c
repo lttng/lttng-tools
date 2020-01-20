@@ -207,3 +207,33 @@ void lttng_condition_init(struct lttng_condition *condition,
 	condition->type = type;
 	urcu_ref_init(&condition->ref);
 }
+
+LTTNG_HIDDEN
+const char *lttng_condition_type_str(enum lttng_condition_type type)
+{
+	switch (type) {
+	case LTTNG_CONDITION_TYPE_UNKNOWN:
+		return "unknown";
+
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+		return "session consumed size";
+
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+		return "buffer usage high";
+
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+		return "buffer usage low";
+
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+		return "session rotation ongoing";
+
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		return "session rotation completed";
+
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		return "event rule hit";
+
+	default:
+		return "???";
+	}
+}

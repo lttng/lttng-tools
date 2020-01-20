@@ -84,14 +84,6 @@ int lttng_trigger_serialize(const struct lttng_trigger *trigger,
 		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
-const struct lttng_condition *lttng_trigger_get_const_condition(
-		const struct lttng_trigger *trigger);
-
-LTTNG_HIDDEN
-const struct lttng_action *lttng_trigger_get_const_action(
-		const struct lttng_trigger *trigger);
-
-LTTNG_HIDDEN
 bool lttng_trigger_validate(struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN

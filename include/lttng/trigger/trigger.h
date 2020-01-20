@@ -94,6 +94,9 @@ extern enum lttng_trigger_status lttng_trigger_get_owner_uid(
 extern struct lttng_condition *lttng_trigger_get_condition(
 		struct lttng_trigger *trigger);
 
+const struct lttng_condition *lttng_trigger_get_const_condition(
+		const struct lttng_trigger *trigger);
+
 /*
  * Get the action of a trigger.
  *
@@ -104,6 +107,8 @@ extern struct lttng_condition *lttng_trigger_get_condition(
 extern struct lttng_action *lttng_trigger_get_action(
 		struct lttng_trigger *trigger);
 
+const struct lttng_action *lttng_trigger_get_const_action(
+		const struct lttng_trigger *trigger);
 
 /*
  * Get the name of a trigger.

@@ -39,15 +39,15 @@ void lttng_snapshot_output_destroy(struct lttng_snapshot_output *output);
  */
 
 /* Return snapshot ID. */
-uint32_t lttng_snapshot_output_get_id(struct lttng_snapshot_output *output);
+uint32_t lttng_snapshot_output_get_id(const struct lttng_snapshot_output *output);
 /* Return maximum size of a snapshot. */
-uint64_t lttng_snapshot_output_get_maxsize(struct lttng_snapshot_output *output);
+uint64_t lttng_snapshot_output_get_maxsize(const struct lttng_snapshot_output *output);
 /* Return snapshot name. */
-const char *lttng_snapshot_output_get_name(struct lttng_snapshot_output *output);
+const char *lttng_snapshot_output_get_name(const struct lttng_snapshot_output *output);
 /* Return snapshot control URL in a text format. */
-const char *lttng_snapshot_output_get_ctrl_url(struct lttng_snapshot_output *output);
+const char *lttng_snapshot_output_get_ctrl_url(const struct lttng_snapshot_output *output);
 /* Return snapshot data URL in a text format. */
-const char *lttng_snapshot_output_get_data_url(struct lttng_snapshot_output *output);
+const char *lttng_snapshot_output_get_data_url(const struct lttng_snapshot_output *output);
 
 /*
  * Snapshot output setter family functions.
