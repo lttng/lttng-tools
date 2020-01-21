@@ -133,6 +133,7 @@ health_check
 /tests/utils/testapp/gen-ust-nevents/gen-ust-nevents
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/utils/testapp/gen-syscall-events/gen-syscall-events
+/tests/utils/testapp/gen-kernel-test-events/gen-kernel-test-events
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 /tests/perf/find_event
