@@ -63,7 +63,8 @@ libcommon_la_SOURCES = \
 	utils.c utils.h \
 	uuid.c uuid.h \
 	tracker.c \
-	waiter.c waiter.h
+	waiter.c waiter.h \
+	fs-handle.h fs-handle-internal.h fs-handle.c
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += \

@@ -26,11 +26,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "common/defaults.h"
-#include "common/error.h"
-#include "common/hashtable/hashtable.h"
-#include "common/hashtable/utils.h"
-#include "common/macros.h"
+#include <common/defaults.h>
+#include <common/error.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
+#include <common/macros.h>
+#include <common/fs-handle-internal.h>
 
 #include "fd-tracker.h"
 #include "inode.h"
@@ -94,7 +95,7 @@ struct open_properties {
 };
 
 /*
- * A fs_handle is not ref-counted. Therefore, it is assumed that a
+ * A fs_handle_tracked is not ref-counted. Therefore, it is assumed that a
  * handle is never in-use while it is being reclaimed. It can be
  * shared by multiple threads, but external synchronization is required
  * to ensure it is not still being used when it is reclaimed (close method).
@@ -102,7 +103,8 @@ struct open_properties {
  *
  * The fs_handle lock always nests _within_ the tracker's lock.
  */
-struct fs_handle {
+struct fs_handle_tracked {
+	struct fs_handle parent;
 	pthread_mutex_t lock;
 	/*
 	 * Weak reference to the tracker. All fs_handles are assumed to have
@@ -146,18 +148,29 @@ static struct unsuspendable_fd *unsuspendable_fd_create(
 static int open_from_properties(
 		const char *path, struct open_properties *properties);
 
-static void fs_handle_log(struct fs_handle *handle);
-static int fs_handle_suspend(struct fs_handle *handle);
-static int fs_handle_restore(struct fs_handle *handle);
+static void fs_handle_tracked_log(struct fs_handle_tracked *handle);
+static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle);
+static int fs_handle_tracked_restore(struct fs_handle_tracked *handle);
+static int fs_handle_tracked_get_fd(struct fs_handle *_handle);
+static void fs_handle_tracked_put_fd(struct fs_handle *_handle);
+static int fs_handle_tracked_unlink(struct fs_handle *_handle);
+static int fs_handle_tracked_close(struct fs_handle *_handle);
 
 static void fd_tracker_track(
-		struct fd_tracker *tracker, struct fs_handle *handle);
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle);
 static void fd_tracker_untrack(
-		struct fd_tracker *tracker, struct fs_handle *handle);
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle);
 static int fd_tracker_suspend_handles(
 		struct fd_tracker *tracker, unsigned int count);
 static int fd_tracker_restore_handle(
-		struct fd_tracker *tracker, struct fs_handle *handle);
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle);
+
+static const struct fs_handle fs_handle_tracked_callbacks = {
+	.get_fd = fs_handle_tracked_get_fd,
+	.put_fd = fs_handle_tracked_put_fd,
+	.unlink = fs_handle_tracked_unlink,
+	.close = fs_handle_tracked_close,
+};
 
 /* Match function of the tracker's unsuspendable_fds hash table. */
 static int match_fd(struct cds_lfht_node *node, const void *key)
@@ -208,7 +221,7 @@ error:
 	return NULL;
 }
 
-static void fs_handle_log(struct fs_handle *handle)
+static void fs_handle_tracked_log(struct fs_handle_tracked *handle)
 {
 	const char *path;
 
@@ -225,7 +238,7 @@ static void fs_handle_log(struct fs_handle *handle)
 }
 
 /* Tracker lock must be held by the caller. */
-static int fs_handle_suspend(struct fs_handle *handle)
+static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle)
 {
 	int ret = 0;
 	struct stat fs_stat;
@@ -283,7 +296,7 @@ end:
 }
 
 /* Caller must hold the tracker and handle's locks. */
-static int fs_handle_restore(struct fs_handle *handle)
+static int fs_handle_tracked_restore(struct fs_handle_tracked *handle)
 {
 	int ret, fd = -1;
 	const char *path = lttng_inode_get_path(handle->inode);
@@ -393,7 +406,7 @@ error:
 
 void fd_tracker_log(struct fd_tracker *tracker)
 {
-	struct fs_handle *handle;
+	struct fs_handle_tracked *handle;
 	struct unsuspendable_fd *unsuspendable_fd;
 	struct cds_lfht_iter iter;
 
@@ -411,13 +424,13 @@ void fd_tracker_log(struct fd_tracker *tracker)
 	DBG_NO_LOC("    capacity:        %u", tracker->capacity);
 
 	DBG_NO_LOC("  Tracked suspendable file descriptors");
-	cds_list_for_each_entry (
+	cds_list_for_each_entry(
 			handle, &tracker->active_handles, handles_list_node) {
-		fs_handle_log(handle);
+		fs_handle_tracked_log(handle);
 	}
-	cds_list_for_each_entry (handle, &tracker->suspended_handles,
+	cds_list_for_each_entry(handle, &tracker->suspended_handles,
 			handles_list_node) {
-		fs_handle_log(handle);
+		fs_handle_tracked_log(handle);
 	}
 	if (!SUSPENDABLE_COUNT(tracker)) {
 		DBG_NO_LOC("    None");
@@ -425,7 +438,7 @@ void fd_tracker_log(struct fd_tracker *tracker)
 
 	DBG_NO_LOC("  Tracked unsuspendable file descriptors");
 	rcu_read_lock();
-	cds_lfht_for_each_entry (tracker->unsuspendable_fds, &iter,
+	cds_lfht_for_each_entry(tracker->unsuspendable_fds, &iter,
 			unsuspendable_fd, tracker_node) {
 		DBG_NO_LOC("    %s [active, fd %d]",
 				unsuspendable_fd->name ?: "Unnamed",
@@ -476,7 +489,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		mode_t *mode)
 {
 	int ret;
-	struct fs_handle *handle = NULL;
+	struct fs_handle_tracked *handle = NULL;
 	struct stat fd_stat;
 	struct open_properties properties = {
 		.flags = flags,
@@ -507,6 +520,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	if (!handle) {
 		goto end;
 	}
+	handle->parent = fs_handle_tracked_callbacks;
 	handle->tracker = tracker;
 
 	ret = pthread_mutex_init(&handle->lock, NULL);
@@ -539,7 +553,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	fd_tracker_track(tracker, handle);
 end:
 	pthread_mutex_unlock(&tracker->lock);
-	return handle;
+	return handle ? &handle->parent : NULL;
 error:
 	if (handle->inode) {
 		lttng_inode_put(handle->inode);
@@ -556,14 +570,14 @@ static int fd_tracker_suspend_handles(
 		struct fd_tracker *tracker, unsigned int count)
 {
 	unsigned int left_to_close = count;
-	struct fs_handle *handle, *tmp;
+	struct fs_handle_tracked *handle, *tmp;
 
-	cds_list_for_each_entry_safe (handle, tmp, &tracker->active_handles,
+	cds_list_for_each_entry_safe(handle, tmp, &tracker->active_handles,
 			handles_list_node) {
 		int ret;
 
 		fd_tracker_untrack(tracker, handle);
-		ret = fs_handle_suspend(handle);
+		ret = fs_handle_tracked_suspend(handle);
 		fd_tracker_track(tracker, handle);
 		if (!ret) {
 			left_to_close--;
@@ -742,7 +756,7 @@ end:
 
 /* Caller must have taken the tracker's and handle's locks. */
 static void fd_tracker_track(
-		struct fd_tracker *tracker, struct fs_handle *handle)
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle)
 {
 	if (handle->fd >= 0) {
 		tracker->count.suspendable.active++;
@@ -757,7 +771,7 @@ static void fd_tracker_track(
 
 /* Caller must have taken the tracker's and handle's locks. */
 static void fd_tracker_untrack(
-		struct fd_tracker *tracker, struct fs_handle *handle)
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle)
 {
 	if (handle->fd >= 0) {
 		tracker->count.suspendable.active--;
@@ -769,7 +783,7 @@ static void fd_tracker_untrack(
 
 /* Caller must have taken the tracker's and handle's locks. */
 static int fd_tracker_restore_handle(
-		struct fd_tracker *tracker, struct fs_handle *handle)
+		struct fd_tracker *tracker, struct fs_handle_tracked *handle)
 {
 	int ret;
 
@@ -780,15 +794,17 @@ static int fd_tracker_restore_handle(
 			goto end;
 		}
 	}
-	ret = fs_handle_restore(handle);
+	ret = fs_handle_tracked_restore(handle);
 end:
 	fd_tracker_track(tracker, handle);
 	return ret ? ret : handle->fd;
 }
 
-int fs_handle_get_fd(struct fs_handle *handle)
+static int fs_handle_tracked_get_fd(struct fs_handle *_handle)
 {
 	int ret;
+	struct fs_handle_tracked *handle =
+			container_of(_handle, struct fs_handle_tracked, parent);
 
 	/*
 	 * TODO This should be optimized as it is a fairly hot path.
@@ -826,16 +842,21 @@ end:
 	return ret;
 }
 
-void fs_handle_put_fd(struct fs_handle *handle)
+static void fs_handle_tracked_put_fd(struct fs_handle *_handle)
 {
+	struct fs_handle_tracked *handle =
+			container_of(_handle, struct fs_handle_tracked, parent);
+
 	pthread_mutex_lock(&handle->lock);
 	handle->in_use = false;
 	pthread_mutex_unlock(&handle->lock);
 }
 
-int fs_handle_unlink(struct fs_handle *handle)
+static int fs_handle_tracked_unlink(struct fs_handle *_handle)
 {
 	int ret;
+	struct fs_handle_tracked *handle =
+			container_of(_handle, struct fs_handle_tracked, parent);
 
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
@@ -845,10 +866,12 @@ int fs_handle_unlink(struct fs_handle *handle)
 	return ret;
 }
 
-int fs_handle_close(struct fs_handle *handle)
+static int fs_handle_tracked_close(struct fs_handle *_handle)
 {
 	int ret = 0;
 	const char *path = NULL;
+	struct fs_handle_tracked *handle =
+			container_of(_handle, struct fs_handle_tracked, parent);
 
 	if (!handle) {
 		ret = -EINVAL;
