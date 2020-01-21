@@ -277,13 +277,13 @@ const struct lttng_tracker_id *lttng_tracker_ids_get_at_index(
 	return lttng_tracker_ids_get_pointer_of_index(ids, index);
 }
 
-int lttng_tracker_ids_get_count(const struct lttng_tracker_ids *ids, unsigned int *count)
+enum lttng_tracker_id_status lttng_tracker_ids_get_count(const struct lttng_tracker_ids *ids, unsigned int *count)
 {
 
-	enum lttng_tracker_id_status status = LTTNG_ROTATION_STATUS_OK;
+	enum lttng_tracker_id_status status = LTTNG_TRACKER_ID_STATUS_OK;
 
 	if (!ids || !count) {
-		status = LTTNG_ROTATION_STATUS_INVALID;
+		status = LTTNG_TRACKER_ID_STATUS_INVALID;
 		goto end;
 	}
 
