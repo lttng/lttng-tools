@@ -13,6 +13,8 @@
 struct lttng_action;
 struct lttng_condition;
 struct lttng_trigger;
+/* A set of triggers. */
+struct lttng_triggers;
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,6 +149,33 @@ extern int lttng_register_trigger(struct lttng_trigger *trigger);
  * Return 0 on success, a negative LTTng error code on error.
  */
 extern int lttng_unregister_trigger(struct lttng_trigger *trigger);
+
+/*
+ * Get a trigger from the set at a given index.
+ *
+ * Note that the trigger set maintains the ownership of the returned trigger.
+ * It must not be destroyed by the user, nor should a reference to it be held
+ * beyond the lifetime of the trigger set.
+ *
+ * Returns a trigger, or NULL on error.
+ */
+extern const struct lttng_trigger *lttng_triggers_get_at_index(
+		const struct lttng_triggers *triggers, unsigned int index);
+
+/*
+ * Get the number of triggers in a trigger set.
+ *
+ * Return LTTNG_TRIGGER_STATUS_OK on success,
+ * LTTNG_TRIGGER_STATUS_INVALID when invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_triggers_get_count(
+		const struct lttng_triggers *triggers, unsigned int *count);
+
+/*
+ * Destroy a trigger set.
+ */
+extern void lttng_triggers_destroy(struct lttng_triggers *triggers);
+
 
 #ifdef __cplusplus
 }
