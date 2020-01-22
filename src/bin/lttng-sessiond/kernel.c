@@ -230,7 +230,7 @@ error:
 static
 int extract_userspace_probe_offset_function_elf(
 		const struct lttng_userspace_probe_location *probe_location,
-		struct ltt_kernel_session *session, uint64_t *offset)
+		uid_t uid, gid_t gid, uint64_t *offset)
 {
 	int fd;
 	int ret = 0;
@@ -267,8 +267,7 @@ int extract_userspace_probe_offset_function_elf(
 		goto end;
 	}
 
-	ret = run_as_extract_elf_symbol_offset(fd, symbol, session->uid,
-			session->gid, offset);
+	ret = run_as_extract_elf_symbol_offset(fd, symbol, uid, gid, offset);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for "
 				"function %s", symbol);
@@ -292,7 +291,7 @@ end:
 static
 int extract_userspace_probe_offset_tracepoint_sdt(
 		const struct lttng_userspace_probe_location *probe_location,
-		struct ltt_kernel_session *session, uint64_t **offsets,
+		uid_t uid, gid_t gid, uint64_t **offsets,
 		uint32_t *offsets_count)
 {
 	enum lttng_userspace_probe_location_lookup_method_type lookup_method_type;
@@ -338,7 +337,7 @@ int extract_userspace_probe_offset_tracepoint_sdt(
 	}
 
 	ret = run_as_extract_sdt_probe_offsets(fd, provider_name, probe_name,
-			session->uid, session->gid, offsets, offsets_count);
+			uid, gid, offsets, offsets_count);
 	if (ret < 0) {
 		DBG("userspace probe offset calculation failed for sdt "
 				"probe %s:%s", provider_name, probe_name);
@@ -359,29 +358,16 @@ end:
 	return ret;
 }
 
-/*
- * Extract the offsets of the instrumentation point for the different lookup
- * methods.
- */
 static
-int userspace_probe_add_callsites(struct lttng_event *ev,
-			struct ltt_kernel_session *session, int fd)
+int userspace_probe_add_callsite(
+		const struct lttng_userspace_probe_location *location,
+		uid_t uid, gid_t gid, int fd)
 {
 	const struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
 	enum lttng_userspace_probe_location_lookup_method_type type;
-	const struct lttng_userspace_probe_location *location = NULL;
 	int ret;
 
-	assert(ev);
-	assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
-
-	location = lttng_event_get_userspace_probe_location(ev);
-	if (!location) {
-		ret = -1;
-		goto end;
-	}
-	lookup_method =
-			lttng_userspace_probe_location_get_lookup_method(location);
+	lookup_method = lttng_userspace_probe_location_get_lookup_method(location);
 	if (!lookup_method) {
 		ret = -1;
 		goto end;
@@ -394,7 +380,8 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		struct lttng_kernel_event_callsite callsite;
 		uint64_t offset;
 
-		ret = extract_userspace_probe_offset_function_elf(location, session, &offset);
+		ret = extract_userspace_probe_offset_function_elf(location,
+				uid, gid, &offset);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
@@ -403,8 +390,7 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		callsite.u.uprobe.offset = offset;
 		ret = kernctl_add_callsite(fd, &callsite);
 		if (ret) {
-			WARN("Adding callsite to userspace probe "
-					"event %s failed.", ev->name);
+			WARN("Failed to add callsite to ELF userspace probe.");
 			ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			goto end;
 		}
@@ -421,8 +407,8 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		 * This call allocates the offsets buffer. This buffer must be freed
 		 * by the caller
 		 */
-		ret = extract_userspace_probe_offset_tracepoint_sdt(location, session,
-				&offsets, &offsets_count);
+		ret = extract_userspace_probe_offset_tracepoint_sdt(location,
+				uid, gid, &offsets, &offsets_count);
 		if (ret) {
 			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto end;
@@ -431,8 +417,7 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 			callsite.u.uprobe.offset = offsets[i];
 			ret = kernctl_add_callsite(fd, &callsite);
 			if (ret) {
-				WARN("Adding callsite to userspace probe "
-						"event %s failed.", ev->name);
+				WARN("Failed to add callsite to SDT userspace probe");
 				ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 				free(offsets);
 				goto end;
@@ -445,6 +430,37 @@ int userspace_probe_add_callsites(struct lttng_event *ev,
 		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 		goto end;
 	}
+end:
+	return ret;
+}
+
+/*
+ * Extract the offsets of the instrumentation point for the different lookup
+ * methods.
+ */
+static
+int userspace_probe_event_add_callsites(struct lttng_event *ev,
+			struct ltt_kernel_session *session, int fd)
+{
+	int ret;
+	const struct lttng_userspace_probe_location *location = NULL;
+
+	assert(ev);
+	assert(ev->type == LTTNG_EVENT_USERSPACE_PROBE);
+
+	location = lttng_event_get_userspace_probe_location(ev);
+	if (!location) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = userspace_probe_add_callsite(location, session->uid, session->gid,
+		fd);
+	if (ret) {
+		WARN("Failed to add callsite to userspace probe event '%s'",
+				ev->name);
+	}
+
 end:
 	return ret;
 }
@@ -518,7 +534,8 @@ int kernel_create_event(struct lttng_event *ev,
 	}
 
 	if (ev->type == LTTNG_EVENT_USERSPACE_PROBE) {
-		ret = userspace_probe_add_callsites(ev, channel->session, event->fd);
+		ret = userspace_probe_event_add_callsites(ev, channel->session,
+				event->fd);
 		if (ret) {
 			goto add_callsite_error;
 		}
