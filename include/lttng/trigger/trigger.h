@@ -188,6 +188,19 @@ extern int lttng_register_trigger(struct lttng_trigger *trigger);
 extern int lttng_unregister_trigger(struct lttng_trigger *trigger);
 
 /*
+ * List triggers for the current user.
+ *
+ * On success, a newly-allocated trigger set is returned.
+ *
+ * The trigger set must be destroyed by the caller (see
+ * lttng_triggers_destroy()).
+ *
+ * Returns LTTNG_OK on success, else a suitable LTTng error code.
+ */
+extern enum lttng_error_code lttng_list_triggers(
+		struct lttng_triggers **triggers);
+
+/*
  * Get a trigger from the set at a given index.
  *
  * Note that the trigger set maintains the ownership of the returned trigger.

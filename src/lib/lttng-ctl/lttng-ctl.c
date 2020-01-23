@@ -3174,6 +3174,52 @@ end:
 }
 
 /*
+ * Ask the session daemon for all registered triggers for the current user.
+ *
+ * Allocates and return an lttng_triggers set.
+ * On error, returns a suitable lttng_error_code.
+ */
+enum lttng_error_code lttng_list_triggers(struct lttng_triggers **triggers)
+{
+	int ret;
+	enum lttng_error_code ret_code = LTTNG_OK;
+	struct lttcomm_session_msg lsm = { .cmd_type = LTTNG_LIST_TRIGGERS };
+	struct lttng_triggers *local_triggers = NULL;
+	struct lttng_payload reply;
+	struct lttng_payload_view lsm_view =
+			lttng_payload_view_init_from_buffer(
+				(const char *) &lsm, 0, sizeof(lsm));
+
+	lttng_payload_init(&reply);
+
+	ret = lttng_ctl_ask_sessiond_payload(&lsm_view, &reply);
+	if (ret < 0) {
+		ret_code = (enum lttng_error_code) -ret;
+		goto end;
+	}
+
+	{
+		struct lttng_payload_view reply_view =
+				lttng_payload_view_from_payload(
+						&reply, 0, reply.buffer.size);
+
+		ret = lttng_triggers_create_from_payload(
+				&reply_view, &local_triggers);
+		if (ret < 0) {
+			ret_code = LTTNG_ERR_FATAL;
+			goto end;
+		}
+	}
+
+	*triggers = local_triggers;
+	local_triggers = NULL;
+end:
+	lttng_payload_reset(&reply);
+	lttng_triggers_destroy(local_triggers);
+	return ret_code;
+}
+
+/*
  * lib constructor.
  */
 static void __attribute__((constructor)) init(void)
