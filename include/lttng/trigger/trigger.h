@@ -9,6 +9,7 @@
 #define LTTNG_TRIGGER_H
 
 #include <sys/types.h>
+#include <inttypes.h>
 
 struct lttng_action;
 struct lttng_condition;
@@ -33,6 +34,11 @@ enum lttng_trigger_status {
 	LTTNG_TRIGGER_STATUS_UNSET = -4,
 	LTTNG_TRIGGER_STATUS_UNSUPPORTED = -5,
 	LTTNG_TRIGGER_STATUS_PERMISSION_DENIED = -6,
+};
+
+enum lttng_trigger_firing_policy {
+	LTTNG_TRIGGER_FIRING_POLICY_EVERY_N = 0,
+	LTTNG_TRIGGER_FIRING_POLICY_ONCE_AFTER_N = 1,
 };
 
 /*
@@ -126,6 +132,37 @@ extern enum lttng_trigger_status lttng_trigger_get_name(
  */
 extern enum lttng_trigger_status lttng_trigger_set_name(
 		struct lttng_trigger *trigger, const char *name);
+
+/*
+ * Set the trigger firing policy.
+ *
+ * This is optional. By default a trigger is set to fire each time the
+ * associated condition occurs.
+ *
+ * Threshold is the number of times the condition must be hit before the policy
+ * is enacted.
+ *
+ * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
+ * if invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_trigger_set_firing_policy(
+		struct lttng_trigger *trigger,
+		enum lttng_trigger_firing_policy policy_type,
+		uint64_t threshold);
+
+/*
+ * Get the trigger firing policy.
+ *
+ * Threshold is the number of time the condition must be hit before the policy is
+ * enacted.
+ *
+ * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
+ * if invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_trigger_get_firing_policy(
+		const struct lttng_trigger *trigger,
+		enum lttng_trigger_firing_policy *policy_type,
+		uint64_t *threshold);
 
 /*
  * Destroy (frees) a trigger object.
