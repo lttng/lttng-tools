@@ -37,6 +37,7 @@ enum lttng_directory_handle_rmdir_recursive_flags {
 #ifdef COMPAT_DIRFD
 struct lttng_directory_handle {
 	struct urcu_ref ref;
+	ino_t directory_inode;
 	int dirfd;
 };
 
@@ -255,5 +256,14 @@ int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const char *name,
 		const struct lttng_credentials *creds,
 		int flags);
+
+/*
+ * Compare two directory handles.
+ *
+ * Returns true if the two directory handles are equal, false otherwise.
+ */
+LTTNG_HIDDEN
+bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
+		const struct lttng_directory_handle *rhs);
 
 #endif /* _COMPAT_PATH_HANDLE_H */

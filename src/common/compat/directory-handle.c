@@ -93,6 +93,26 @@ void lttng_directory_handle_release(struct urcu_ref *ref);
 
 #ifdef COMPAT_DIRFD
 
+/*
+ * Special inode number reserved to represent the "current working directory".
+ * ino_t is spec'ed as being an unsigned integral type.
+ */
+#define RESERVED_AT_FDCWD_INO                      \
+	({                                         \
+		uint64_t reserved_val;             \
+		switch (sizeof(ino_t)) {           \
+		case 4:                            \
+			reserved_val = UINT32_MAX; \
+			break;                     \
+		case 8:                            \
+			reserved_val = UINT64_MAX; \
+			break;                     \
+		default:                           \
+			abort();                   \
+		}                                  \
+		(ino_t) reserved_val;              \
+	})
+
 LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create(const char *path)
 {
@@ -144,10 +164,22 @@ LTTNG_HIDDEN
 struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		int dirfd)
 {
+	int ret;
 	struct lttng_directory_handle *handle = zmalloc(sizeof(*handle));
+	struct stat stat_buf;
 
 	if (!handle) {
 		goto end;
+	}
+
+	if (dirfd != AT_FDCWD) {
+		ret = fstat(dirfd, &stat_buf);
+		if (ret) {
+			PERROR("Failed to fstat directory file descriptor %i", dirfd);
+			lttng_directory_handle_release(&handle->ref);
+		}
+	} else {
+		handle->directory_inode = RESERVED_AT_FDCWD_INO;
 	}
 	handle->dirfd = dirfd;
 	urcu_ref_init(&handle->ref);
@@ -197,6 +229,13 @@ struct lttng_directory_handle *lttng_directory_handle_copy(
 	}
 end:
 	return new_handle;
+}
+
+LTTNG_HIDDEN
+bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
+		const struct lttng_directory_handle *rhs)
+{
+	return lhs->directory_inode == rhs->directory_inode;
 }
 
 static
@@ -548,6 +587,13 @@ struct lttng_directory_handle *lttng_directory_handle_copy(
 	new_handle = _lttng_directory_handle_create(new_path);
 end:
 	return new_handle;
+}
+
+LTTNG_HIDDEN
+bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
+		const struct lttng_directory_handle *rhs)
+{
+	return strcmp(lhs->path, rhs->path) == 0;
 }
 
 static
