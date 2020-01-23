@@ -28,10 +28,11 @@
 
 #include <common/defaults.h>
 #include <common/error.h>
+#include <common/fs-handle-internal.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
 #include <common/macros.h>
-#include <common/fs-handle-internal.h>
+#include <common/optional.h>
 
 #include "fd-tracker.h"
 #include "inode.h"
@@ -88,10 +89,7 @@ struct fd_tracker {
 
 struct open_properties {
 	int flags;
-	struct {
-		bool is_set;
-		mode_t value;
-	} mode;
+	LTTNG_OPTIONAL(mode_t) mode;
 };
 
 /*
