@@ -4181,14 +4181,17 @@ int handle_notification_thread_event_notification(struct notification_thread_sta
 	int ret;
 	struct lttng_ust_event_notifier_notification ust_notification;
 	struct lttng_kernel_event_notifier_notification kernel_notification;
+	struct lttng_evaluation *evaluation = NULL;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct notification_trigger_tokens_ht_element *element;
-	enum lttng_action_type action_type;
-	const struct lttng_action *action;
+	enum lttng_trigger_status status;
 	struct lttng_event_notifier_notification notification;
 	void *reception_buffer;
 	size_t reception_size;
+	enum action_executor_status executor_status;
+	struct notification_client_list *client_list = NULL;
+	const char *trigger_name;
 
 	notification.type = domain;
 
@@ -4237,11 +4240,12 @@ int handle_notification_thread_event_notification(struct notification_thread_sta
 			hash_key_u64(&notification.token, lttng_ht_seed),
 			match_trigger_token, &notification.token, &iter);
 	node = cds_lfht_iter_get_node(&iter);
-	if (caa_likely(!node)) {
+	if (caa_unlikely(!node)) {
 		/*
-		 * This is not an error, slow consumption of the pipe can lead
-		 * to situations where a trigger is removed but we still get
-		 * tracer notification matching to a previous trigger.
+		 * This is not an error, slow consumption of the tracer
+		 * notifications can lead to situations where a trigger is
+		 * removed but we still get tracer notifications matching a
+		 * trigger that no longer exists.
 		 */
 		ret = 0;
 		goto end_unlock;
@@ -4251,17 +4255,91 @@ int handle_notification_thread_event_notification(struct notification_thread_sta
 			struct notification_trigger_tokens_ht_element,
 			node);
 
-	action = lttng_trigger_get_const_action(element->trigger);
-	action_type = lttng_action_get_type(action);
-	DBG("Received message from tracer event source: event source fd = %d, token = %" PRIu64 ", action type = '%s'",
-			notification_pipe_read_fd, notification.token,
-			lttng_action_type_string(action_type));
+	if (!lttng_trigger_should_fire(element->trigger)) {
+		ret = 0;
+		goto end_unlock;
+	}
 
-	/* TODO: Perform actions */
+	lttng_trigger_fire(element->trigger);
 
-	ret = 0;
+	status = lttng_trigger_get_name(element->trigger, &trigger_name);
+	assert(status == LTTNG_TRIGGER_STATUS_OK);
+	evaluation = lttng_evaluation_event_rule_create(trigger_name);
+	if (evaluation == NULL) {
+		ERR("Failed to create event rule evaluation while creating and enqueuing action executor job");
+		ret = -1;
+		goto end_unlock;
+	}
+
+	client_list = get_client_list_from_condition(state,
+			lttng_trigger_get_const_condition(element->trigger));
+	executor_status = action_executor_enqueue(state->executor,
+			element->trigger, evaluation, NULL, client_list);
+	switch (executor_status) {
+	case ACTION_EXECUTOR_STATUS_OK:
+		ret = 0;
+		break;
+	case ACTION_EXECUTOR_STATUS_OVERFLOW:
+	{
+		struct notification_client_list_element *client_list_element,
+				*tmp;
+
+		/*
+		 * Not a fatal error; this is expected and simply means the
+		 * executor has too much work queued already.
+		 */
+		ret = 0;
+
+		/* No clients subscribed to notifications for this trigger. */
+		if (!client_list) {
+			break;
+		}
+
+		/* Warn clients that a notification (or more) was dropped. */
+		pthread_mutex_lock(&client_list->lock);
+		cds_list_for_each_entry_safe(client_list_element, tmp,
+				&client_list->list, node) {
+			enum client_transmission_status transmission_status;
+			struct notification_client *client =
+					client_list_element->client;
+
+			pthread_mutex_lock(&client->lock);
+			ret = client_notification_overflow(client);
+			if (ret) {
+				/* Fatal error. */
+				goto next_client;
+			}
+
+			transmission_status =
+					client_flush_outgoing_queue(client);
+			ret = client_handle_transmission_status(
+					client, transmission_status, state);
+			if (ret) {
+				/* Fatal error. */
+				goto next_client;
+			}
+next_client:
+			pthread_mutex_unlock(&client->lock);
+			if (ret) {
+				break;
+			}
+		}
+
+		pthread_mutex_unlock(&client_list->lock);
+		break;
+	}
+	case ACTION_EXECUTOR_STATUS_ERROR:
+		/* Fatal error, shut down everything. */
+		ERR("Fatal error encoutered while enqueuing action to the action executor");
+		ret = -1;
+		goto end_unlock;
+	default:
+		/* Unhandled error. */
+		abort();
+	}
 
 end_unlock:
+	notification_client_list_put(client_list);
 	rcu_read_unlock();
 end:
 	return ret;
