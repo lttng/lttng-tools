@@ -18,8 +18,9 @@
 #ifndef _COMPAT_DIRECTORY_HANDLE_H
 #define _COMPAT_DIRECTORY_HANDLE_H
 
-#include <common/macros.h>
 #include <common/credentials.h>
+#include <common/macros.h>
+#include <sys/stat.h>
 #include <urcu/ref.h>
 
 enum lttng_directory_handle_rmdir_recursive_flags {
@@ -256,6 +257,15 @@ int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		const char *name,
 		const struct lttng_credentials *creds,
 		int flags);
+
+/*
+ * stat() a file relative to a directory handle.
+ */
+LTTNG_HIDDEN
+int lttng_directory_handle_stat(
+		const struct lttng_directory_handle *handle,
+		const char *name,
+		struct stat *stat_buf);
 
 /*
  * Compare two directory handles.

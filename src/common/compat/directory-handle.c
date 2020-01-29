@@ -36,9 +36,6 @@
  * of the internal API below.
  */
 static
-int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
-		const char *path, struct stat *st);
-static
 int lttng_directory_handle_mkdir(
 		const struct lttng_directory_handle *handle,
 		const char *path, mode_t mode);
@@ -244,7 +241,7 @@ void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
 	handle->dirfd = -1;
 }
 
-static
+LTTNG_HIDDEN
 int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 		const char *path, struct stat *st)
 {
@@ -602,7 +599,7 @@ void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle)
 	handle->base_path = NULL;
 }
 
-static
+LTTNG_HIDDEN
 int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 		const char *subdirectory, struct stat *st)
 {
