@@ -268,6 +268,14 @@ int lttng_directory_handle_stat(
 		struct stat *stat_buf);
 
 /*
+ * Returns true if this directory handle is backed by a file
+ * descriptor, false otherwise.
+ */
+LTTNG_HIDDEN
+bool lttng_directory_handle_uses_fd(
+		const struct lttng_directory_handle *handle);
+
+/*
  * Compare two directory handles.
  *
  * Returns true if the two directory handles are equal, false otherwise.

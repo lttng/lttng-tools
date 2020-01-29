@@ -248,6 +248,13 @@ int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 	return fstatat(handle->dirfd, path, st, 0);
 }
 
+LTTNG_HIDDEN
+bool lttng_directory_handle_uses_fd(
+		const struct lttng_directory_handle *handle)
+{
+	return handle->dirfd != AT_FDCWD;
+}
+
 static
 int lttng_directory_handle_mkdir(
 		const struct lttng_directory_handle *handle,
@@ -615,6 +622,13 @@ int lttng_directory_handle_stat(const struct lttng_directory_handle *handle,
 	ret = stat(fullpath, st);
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+bool lttng_directory_handle_uses_fd(
+		const struct lttng_directory_handle *handle)
+{
+	return false;
 }
 
 static
