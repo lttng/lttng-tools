@@ -85,6 +85,9 @@ struct fd_tracker {
 	struct cds_list_head suspended_handles;
 	struct cds_lfht *unsuspendable_fds;
 	struct lttng_inode_registry *inode_registry;
+	/* Unlinked files are moved in this directory under a unique name. */
+	struct lttng_directory_handle *unlink_directory_handle;
+	struct lttng_unlinked_file_pool *unlinked_file_pool;
 };
 
 struct open_properties {
@@ -143,7 +146,7 @@ static int match_fd(struct cds_lfht_node *node, const void *key);
 static void unsuspendable_fd_destroy(struct unsuspendable_fd *entry);
 static struct unsuspendable_fd *unsuspendable_fd_create(
 		const char *name, int fd);
-static int open_from_properties(
+static int open_from_properties(const struct lttng_directory_handle *dir_handle,
 		const char *path, struct open_properties *properties);
 
 static void fs_handle_tracked_log(struct fs_handle_tracked *handle);
@@ -162,13 +165,6 @@ static int fd_tracker_suspend_handles(
 		struct fd_tracker *tracker, unsigned int count);
 static int fd_tracker_restore_handle(
 		struct fd_tracker *tracker, struct fs_handle_tracked *handle);
-
-static const struct fs_handle fs_handle_tracked_callbacks = {
-	.get_fd = fs_handle_tracked_get_fd,
-	.put_fd = fs_handle_tracked_put_fd,
-	.unlink = fs_handle_tracked_unlink,
-	.close = fs_handle_tracked_close,
-};
 
 /* Match function of the tracker's unsuspendable_fds hash table. */
 static int match_fd(struct cds_lfht_node *node, const void *key)
@@ -224,7 +220,7 @@ static void fs_handle_tracked_log(struct fs_handle_tracked *handle)
 	const char *path;
 
 	pthread_mutex_lock(&handle->lock);
-	path = lttng_inode_get_path(handle->inode);
+	lttng_inode_get_location(handle->inode, NULL, &path);
 
 	if (handle->fd >= 0) {
 		DBG_NO_LOC("    %s [active, fd %d%s]", path, handle->fd,
@@ -241,9 +237,10 @@ static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle)
 	int ret = 0;
 	struct stat fs_stat;
 	const char *path;
+	const struct lttng_directory_handle *node_directory_handle;
 
 	pthread_mutex_lock(&handle->lock);
-	path = lttng_inode_get_path(handle->inode);
+	lttng_inode_get_location(handle->inode, &node_directory_handle, &path);
 	assert(handle->fd >= 0);
 	if (handle->in_use) {
 		/* This handle can't be suspended as it is currently in use. */
@@ -251,7 +248,8 @@ static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle)
 		goto end;
 	}
 
-	ret = stat(path, &fs_stat);
+	ret = lttng_directory_handle_stat(
+			node_directory_handle, path, &fs_stat);
 	if (ret) {
 		PERROR("Filesystem handle to %s cannot be suspended as stat() failed",
 				path);
@@ -297,11 +295,15 @@ end:
 static int fs_handle_tracked_restore(struct fs_handle_tracked *handle)
 {
 	int ret, fd = -1;
-	const char *path = lttng_inode_get_path(handle->inode);
+	const char *path;
+	const struct lttng_directory_handle *node_directory_handle;
+
+	lttng_inode_get_location(handle->inode, &node_directory_handle, &path);
 
 	assert(handle->fd == -1);
 	assert(path);
-	ret = open_from_properties(path, &handle->properties);
+	ret = open_from_properties(
+			node_directory_handle, path, &handle->properties);
 	if (ret < 0) {
 		PERROR("Failed to restore filesystem handle to %s, open() failed",
 				path);
@@ -329,7 +331,7 @@ end:
 	return ret;
 }
 
-static int open_from_properties(
+static int open_from_properties(const struct lttng_directory_handle *dir_handle,
 		const char *path, struct open_properties *properties)
 {
 	int ret;
@@ -341,9 +343,11 @@ static int open_from_properties(
 	 * thus it is ignored here.
 	 */
 	if ((properties->flags & O_CREAT) && properties->mode.is_set) {
-		ret = open(path, properties->flags, properties->mode.value);
+		ret = lttng_directory_handle_open_file(dir_handle, path,
+				properties->flags, properties->mode.value);
 	} else {
-		ret = open(path, properties->flags);
+		ret = lttng_directory_handle_open_file(dir_handle, path,
+				properties->flags, 0);
 	}
 	/*
 	 * Some flags should not be used beyond the initial open() of a
@@ -364,7 +368,8 @@ end:
 	return ret;
 }
 
-struct fd_tracker *fd_tracker_create(unsigned int capacity)
+struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
+		unsigned int capacity)
 {
 	struct fd_tracker *tracker = zmalloc(sizeof(struct fd_tracker));
 
@@ -391,6 +396,12 @@ struct fd_tracker *fd_tracker_create(unsigned int capacity)
 	tracker->inode_registry = lttng_inode_registry_create();
 	if (!tracker->inode_registry) {
 		ERR("Failed to create fd-tracker's inode registry");
+		goto error;
+	}
+
+	tracker->unlinked_file_pool =
+			lttng_unlinked_file_pool_create(unlinked_file_path);
+	if (!tracker->unlinked_file_pool) {
 		goto error;
 	}
 	DBG("File descriptor tracker created with a limit of %u simultaneously-opened FDs",
@@ -475,6 +486,7 @@ int fd_tracker_destroy(struct fd_tracker *tracker)
 	}
 
 	lttng_inode_registry_destroy(tracker->inode_registry);
+	lttng_unlinked_file_pool_destroy(tracker->unlinked_file_pool);
 	pthread_mutex_destroy(&tracker->lock);
 	free(tracker);
 end:
@@ -482,6 +494,7 @@ end:
 }
 
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
+		struct lttng_directory_handle *directory,
 		const char *path,
 		int flags,
 		mode_t *mode)
@@ -518,7 +531,13 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 	if (!handle) {
 		goto end;
 	}
-	handle->parent = fs_handle_tracked_callbacks;
+	handle->parent = (typeof(handle->parent)) {
+		.get_fd = fs_handle_tracked_get_fd,
+		.put_fd = fs_handle_tracked_put_fd,
+		.unlink = fs_handle_tracked_unlink,
+		.close = fs_handle_tracked_close,
+	};
+
 	handle->tracker = tracker;
 
 	ret = pthread_mutex_init(&handle->lock, NULL);
@@ -527,7 +546,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 		goto error_mutex_init;
 	}
 
-	handle->fd = open_from_properties(path, &properties);
+	handle->fd = open_from_properties(directory, path, &properties);
 	if (handle->fd < 0) {
 		PERROR("Failed to open fs handle to %s, open() returned", path);
 		goto error;
@@ -535,8 +554,9 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
 
 	handle->properties = properties;
 
-	handle->inode = lttng_inode_registry_get_inode(
-			tracker->inode_registry, handle->fd, path);
+	handle->inode = lttng_inode_registry_get_inode(tracker->inode_registry,
+			directory, path, handle->fd,
+			tracker->unlinked_file_pool);
 	if (!handle->inode) {
 		ERR("Failed to get lttng_inode corresponding to file %s", path);
 		goto error;
@@ -568,6 +588,7 @@ static int fd_tracker_suspend_handles(
 		struct fd_tracker *tracker, unsigned int count)
 {
 	unsigned int left_to_close = count;
+	unsigned int attempts_left = tracker->count.suspendable.active;
 	struct fs_handle_tracked *handle, *tmp;
 
 	cds_list_for_each_entry_safe(handle, tmp, &tracker->active_handles,
@@ -580,8 +601,9 @@ static int fd_tracker_suspend_handles(
 		if (!ret) {
 			left_to_close--;
 		}
+		attempts_left--;
 
-		if (!left_to_close) {
+		if (left_to_close == 0 || attempts_left == 0) {
 			break;
 		}
 	}
@@ -858,7 +880,7 @@ static int fs_handle_tracked_unlink(struct fs_handle *_handle)
 
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
-	ret = lttng_inode_defer_unlink(handle->inode);
+	ret = lttng_inode_unlink(handle->inode);
 	pthread_mutex_unlock(&handle->lock);
 	pthread_mutex_unlock(&handle->tracker->lock);
 	return ret;
@@ -879,7 +901,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
 	if (handle->inode) {
-		path = lttng_inode_get_path(handle->inode);
+		lttng_inode_get_location(handle->inode, NULL, &path);
 	}
 	fd_tracker_untrack(handle->tracker, handle);
 	if (handle->fd >= 0) {

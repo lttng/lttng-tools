@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
+ * Copyright (C) 2020 - Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License, version 2 only, as
@@ -19,6 +19,9 @@
 #include <common/error.h>
 #include <common/hashtable/utils.h>
 #include <common/macros.h>
+#include <common/optional.h>
+#include <common/string-utils/format.h>
+#include <common/utils.h>
 #include <inttypes.h>
 #include <lttng/constant.h>
 #include <sys/stat.h>
@@ -42,14 +45,29 @@ struct lttng_inode_registry {
 
 struct lttng_inode {
 	struct inode_id id;
-	char *path;
-	bool unlink_pending;
 	/* Node in the lttng_inode_registry's ht. */
 	struct cds_lfht_node registry_node;
 	/* Weak reference to ht containing the node. */
 	struct cds_lfht *registry_ht;
 	struct urcu_ref ref;
 	struct rcu_head rcu_head;
+	/* Location from which this file can be opened. */
+	struct {
+		struct lttng_directory_handle *directory_handle;
+		char *path;
+	} location;
+	/* Unlink the underlying file at the release of the inode. */
+	bool unlink_pending;
+	LTTNG_OPTIONAL(unsigned int) unlinked_id;
+	/* Weak reference. */
+	struct lttng_unlinked_file_pool *unlinked_file_pool;
+};
+
+struct lttng_unlinked_file_pool {
+	struct lttng_directory_handle *unlink_directory_handle;
+	char *unlink_directory_path;
+	unsigned int file_count;
+	unsigned int next_id;
 };
 
 static struct {
@@ -60,7 +78,7 @@ static struct {
 		.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-static unsigned long lttng_inode_id_hash(struct inode_id *id)
+static unsigned long lttng_inode_id_hash(const struct inode_id *id)
 {
 	uint64_t device = id->device, inode_no = id->inode;
 
@@ -71,19 +89,123 @@ static unsigned long lttng_inode_id_hash(struct inode_id *id)
 static int lttng_inode_match(struct cds_lfht_node *node, const void *key)
 {
 	const struct inode_id *id = key;
-	struct lttng_inode *inode = caa_container_of(
+	const struct lttng_inode *inode = caa_container_of(
 			node, struct lttng_inode, registry_node);
 
 	return inode->id.device == id->device && inode->id.inode == id->inode;
 }
 
-static void lttng_inode_delete(struct rcu_head *head)
+static void lttng_inode_free(struct rcu_head *head)
 {
 	struct lttng_inode *inode =
 			caa_container_of(head, struct lttng_inode, rcu_head);
 
-	free(inode->path);
 	free(inode);
+}
+
+static int lttng_unlinked_file_pool_add_inode(
+		struct lttng_unlinked_file_pool *pool,
+		struct lttng_inode *inode)
+{
+	int ret;
+	const unsigned int unlinked_id = pool->next_id++;
+	char *inode_unlinked_name;
+	bool reference_acquired;
+
+	DBG("Adding inode of %s to unlinked file pool as id %u",
+			inode->location.path, unlinked_id);
+	ret = asprintf(&inode_unlinked_name, "%u", unlinked_id);
+	if (ret < 0) {
+		ERR("Failed to format unlinked inode name");
+		ret = -1;
+		goto end;
+	}
+
+	if (pool->file_count == 0) {
+		DBG("Creating unlinked files directory at %s",
+				pool->unlink_directory_path);
+		assert(!pool->unlink_directory_handle);
+		ret = utils_mkdir(pool->unlink_directory_path,
+				S_IRWXU | S_IRWXG, -1, -1);
+		if (ret) {
+			if (errno == EEXIST) {
+				/*
+				 * Unexpected (previous crash?), but not an
+				 * error.
+				 */
+				DBG("Unlinked file directory \"%s\" already exists",
+						pool->unlink_directory_path);
+			} else {
+				PERROR("Failed to create unlinked files directory at %s",
+						pool->unlink_directory_path);
+				goto end;
+			}
+		}
+		pool->unlink_directory_handle = lttng_directory_handle_create(
+				pool->unlink_directory_path);
+	}
+
+	ret = lttng_directory_handle_rename(inode->location.directory_handle,
+			inode->location.path, pool->unlink_directory_handle,
+			inode_unlinked_name);
+	if (ret) {
+		goto end;
+	}
+
+	lttng_directory_handle_put(inode->location.directory_handle);
+	inode->location.directory_handle = NULL;
+	reference_acquired = lttng_directory_handle_get(
+			pool->unlink_directory_handle);
+	assert(reference_acquired);
+	inode->location.directory_handle = pool->unlink_directory_handle;
+
+	free(inode->location.path);
+	inode->location.path = inode_unlinked_name;
+	inode_unlinked_name = NULL;
+	LTTNG_OPTIONAL_SET(&inode->unlinked_id, unlinked_id);
+	pool->file_count++;
+end:
+	free(inode_unlinked_name);
+	return ret;
+}
+
+static int lttng_unlinked_file_pool_remove_inode(
+		struct lttng_unlinked_file_pool *pool,
+		struct lttng_inode *inode)
+{
+	int ret;
+
+	DBG("Removing inode with unlinked id %u from unlinked file pool",
+			LTTNG_OPTIONAL_GET(inode->unlinked_id));
+
+	ret = lttng_directory_handle_unlink_file(
+			inode->location.directory_handle, inode->location.path);
+	if (ret) {
+		PERROR("Failed to unlink file %s from unlinked file directory",
+				inode->location.path);
+		goto end;
+	}
+	free(inode->location.path);
+	inode->location.path = NULL;
+	lttng_directory_handle_put(inode->location.directory_handle);
+	inode->location.directory_handle = NULL;
+
+	pool->file_count--;
+	if (pool->file_count == 0) {
+		ret = utils_recursive_rmdir(pool->unlink_directory_path);
+		if (ret) {
+			/*
+			 * There is nothing the caller can do, don't report an
+			 * error except through logging.
+			 */
+			PERROR("Failed to remove unlinked files directory at %s",
+					pool->unlink_directory_path);
+		}
+		lttng_directory_handle_put(pool->unlink_directory_handle);
+		pool->unlink_directory_handle = NULL;
+	}
+end:
+	return ret;
 }
 
 static void lttng_inode_destroy(struct lttng_inode *inode)
@@ -91,18 +213,30 @@ static void lttng_inode_destroy(struct lttng_inode *inode)
 	if (!inode) {
 		return;
 	}
-	if (inode->unlink_pending) {
-		int ret = unlink(inode->path);
 
-		DBG("Unlinking %s during lttng_inode destruction", inode->path);
-		if (ret) {
-			PERROR("Failed to unlink %s", inode->path);
-		}
-	}
 	rcu_read_lock();
 	cds_lfht_del(inode->registry_ht, &inode->registry_node);
 	rcu_read_unlock();
-	call_rcu(&inode->rcu_head, lttng_inode_delete);
+
+	if (inode->unlink_pending) {
+		int ret;
+
+		assert(inode->location.directory_handle);
+		assert(inode->location.path);
+		DBG("Removing %s from unlinked file pool",
+				inode->location.path);
+		ret = lttng_unlinked_file_pool_remove_inode(inode->unlinked_file_pool, inode);
+		if (ret) {
+			PERROR("Failed to unlink %s", inode->location.path);
+		}
+	}
+
+	lttng_directory_handle_put(
+			inode->location.directory_handle);
+	inode->location.directory_handle = NULL;
+	free(inode->location.path);
+	inode->location.path = NULL;
+	call_rcu(&inode->rcu_head, lttng_inode_free);
 }
 
 static void lttng_inode_release(struct urcu_ref *ref)
@@ -115,34 +249,99 @@ static void lttng_inode_get(struct lttng_inode *inode)
 	urcu_ref_get(&inode->ref);
 }
 
+struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
+		const char *path)
+{
+	struct lttng_unlinked_file_pool *pool = zmalloc(sizeof(*pool));
+
+	if (!path || *path != '/') {
+		ERR("Unlinked file pool must be created with an absolute path, path = \"%s\"",
+				path ? path : "NULL");
+		goto error;
+	}
+
+	pool->unlink_directory_path = strdup(path);
+	if (!pool->unlink_directory_path) {
+		PERROR("Failed to allocation unlinked file pool path");
+		goto error;
+	}
+	DBG("Unlinked file pool created at: %s", path);
+	return pool;
+error:
+	lttng_unlinked_file_pool_destroy(pool);
+	return NULL;
+}
+
+void lttng_unlinked_file_pool_destroy(
+		struct lttng_unlinked_file_pool *pool)
+{
+	if (!pool) {
+		return;
+	}
+
+	assert(pool->file_count == 0);
+	lttng_directory_handle_put(pool->unlink_directory_handle);
+	free(pool->unlink_directory_path);
+	free(pool);
+}
+
 void lttng_inode_put(struct lttng_inode *inode)
 {
 	urcu_ref_put(&inode->ref, lttng_inode_release);
 }
 
-const char *lttng_inode_get_path(const struct lttng_inode *inode)
+void lttng_inode_get_location(struct lttng_inode *inode,
+		const struct lttng_directory_handle **out_directory_handle,
+		const char **out_path)
 {
-	return inode->path;
+	if (out_directory_handle) {
+		*out_directory_handle = inode->location.directory_handle;
+	}
+	if (out_path) {
+		*out_path = inode->location.path;
+	}
 }
 
 int lttng_inode_rename(
-		struct lttng_inode *inode, const char *new_path, bool overwrite)
+		struct lttng_inode *inode,
+		struct lttng_directory_handle *old_directory_handle,
+		const char *old_path,
+		struct lttng_directory_handle *new_directory_handle,
+		const char *new_path,
+		bool overwrite)
 {
 	int ret = 0;
-	char *new_path_copy = NULL;
+	char *new_path_copy = strdup(new_path);
+	bool reference_acquired;
+
+	DBG("Performing rename of inode from %s to %s with %s directory handles",
+			old_path, new_path,
+			lttng_directory_handle_equals(old_directory_handle,
+					new_directory_handle) ?
+					"identical" :
+					"different");
+
+	if (!new_path_copy) {
+		ret = -ENOMEM;
+		goto end;
+	}
 
 	if (inode->unlink_pending) {
-		WARN("An attempt to rename an unlinked file, %s to %s, has been performed",
-				inode->path, new_path);
+		WARN("An attempt to rename an unlinked file from %s to %s has been performed",
+				old_path, new_path);
 		ret = -ENOENT;
 		goto end;
 	}
 
 	if (!overwrite) {
+		/* Verify that file doesn't exist. */
 		struct stat statbuf;
 
-		ret = stat(new_path, &statbuf);
+		ret = lttng_directory_handle_stat(
+				new_directory_handle, new_path, &statbuf);
 		if (ret == 0) {
+			ERR("Refusing to rename %s as the destination already exists",
+					old_path);
 			ret = -EEXIST;
 			goto end;
 		} else if (ret < 0 && errno != ENOENT) {
@@ -152,93 +351,75 @@ int lttng_inode_rename(
 		}
 	}
 
-	new_path_copy = strdup(new_path);
-	if (!new_path_copy) {
-		ERR("Failed to allocate storage for path %s", new_path);
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	ret = rename(inode->path, new_path);
+	ret = lttng_directory_handle_rename(old_directory_handle, old_path,
+			new_directory_handle, new_path);
 	if (ret) {
-		PERROR("Failed to rename %s to %s", inode->path, new_path);
+		PERROR("Failed to rename file %s to %s", old_path, new_path);
 		ret = -errno;
 		goto end;
 	}
 
-	free(inode->path);
-	inode->path = new_path_copy;
+	reference_acquired = lttng_directory_handle_get(new_directory_handle);
+	assert(reference_acquired);
+	lttng_directory_handle_put(inode->location.directory_handle);
+	free(inode->location.path);
+	inode->location.directory_handle = new_directory_handle;
+	/* Ownership transferred. */
+	inode->location.path = new_path_copy;
 	new_path_copy = NULL;
 end:
 	free(new_path_copy);
 	return ret;
 }
 
-int lttng_inode_defer_unlink(struct lttng_inode *inode)
+int lttng_inode_unlink(struct lttng_inode *inode)
 {
 	int ret = 0;
-	uint16_t i = 0;
-	char suffix[sizeof("-deleted-65535")] = "-deleted";
-	char new_path[LTTNG_PATH_MAX];
-	size_t original_path_len = strlen(inode->path);
+
+	DBG("Attempting unlink of inode %s", inode->location.path);
 
 	if (inode->unlink_pending) {
 		WARN("An attempt to re-unlink %s has been performed, ignoring.",
-				inode->path);
+				inode->location.path);
 		ret = -ENOENT;
 		goto end;
 	}
 
-	ret = lttng_strncpy(new_path, inode->path, sizeof(new_path));
-	if (ret < 0) {
-		ret = -ENAMETOOLONG;
+	/*
+	 * Move to the temporary "deleted" directory until all
+	 * references are released.
+	 */
+	ret = lttng_unlinked_file_pool_add_inode(
+			inode->unlinked_file_pool, inode);
+	if (ret) {
+		PERROR("Failed to add inode \"%s\" to the unlinked file pool",
+				inode->location.path);
 		goto end;
 	}
-
-	for (i = 0; i < UINT16_MAX; i++) {
-		int p_ret;
-
-		if (i != 0) {
-			p_ret = snprintf(suffix, sizeof(suffix),
-					"-deleted-%" PRIu16, i);
-
-			if (p_ret < 0) {
-				PERROR("Failed to form suffix to rename file %s",
-						inode->path);
-				ret = -errno;
-				goto end;
-			}
-			assert(p_ret != sizeof(suffix));
-		} else {
-			/* suffix is initialy set to '-deleted'. */
-			p_ret = strlen(suffix);
-		}
-
-		if (original_path_len + p_ret + 1 >= sizeof(new_path)) {
-			ret = -ENAMETOOLONG;
-			goto end;
-		}
-
-		strcat(&new_path[original_path_len], suffix);
-		ret = lttng_inode_rename(inode, new_path, false);
-		if (ret != -EEXIST) {
-			break;
-		}
-		new_path[original_path_len] = '\0';
-	}
-	if (!ret) {
-		inode->unlink_pending = true;
-	}
+	inode->unlink_pending = true;
 end:
 	return ret;
 }
 
 static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
-		const char *path,
-		struct cds_lfht *ht)
+		struct cds_lfht *ht,
+		struct lttng_unlinked_file_pool *unlinked_file_pool,
+		struct lttng_directory_handle *directory_handle,
+		const char *path)
 {
-	struct lttng_inode *inode = zmalloc(sizeof(*inode));
+	struct lttng_inode *inode = NULL;
+	char *path_copy;
+	bool reference_acquired;
 
+	path_copy = strdup(path);
+	if (!path_copy) {
+		goto end;
+	}
+
+	reference_acquired = lttng_directory_handle_get(directory_handle);
+	assert(reference_acquired);
+
+	inode = zmalloc(sizeof(*inode));
 	if (!inode) {
 		goto end;
 	}
@@ -246,16 +427,15 @@ static struct lttng_inode *lttng_inode_create(const struct inode_id *id,
 	urcu_ref_init(&inode->ref);
 	cds_lfht_node_init(&inode->registry_node);
 	inode->id = *id;
-	inode->path = strdup(path);
 	inode->registry_ht = ht;
-	if (!inode->path) {
-		goto error;
-	}
+	inode->unlinked_file_pool = unlinked_file_pool;
+	/* Ownership of path copy is transferred to inode. */
+	inode->location.path = path_copy;
+	path_copy = NULL;
+	inode->location.directory_handle = directory_handle;
 end:
+	free(path_copy);
 	return inode;
-error:
-	lttng_inode_destroy(inode);
-	return NULL;
 }
 
 struct lttng_inode_registry *lttng_inode_registry_create(void)
@@ -299,7 +479,11 @@ void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
 }
 
 struct lttng_inode *lttng_inode_registry_get_inode(
-		struct lttng_inode_registry *registry, int fd, const char *path)
+		struct lttng_inode_registry *registry,
+		struct lttng_directory_handle *handle,
+		const char *path,
+		int fd,
+		struct lttng_unlinked_file_pool *unlinked_file_pool)
 {
 	int ret;
 	struct stat statbuf;
@@ -310,7 +494,7 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 
 	ret = fstat(fd, &statbuf);
 	if (ret < 0) {
-		PERROR("stat() failed on file %s, fd = %i", path, fd);
+		PERROR("stat() failed on fd %i", fd);
 		goto end;
 	}
 
@@ -324,13 +508,12 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 	if (node) {
 		inode = caa_container_of(
 				node, struct lttng_inode, registry_node);
-		/* Renames should happen through the fs-handle interface. */
-		assert(!strcmp(path, inode->path));
 		lttng_inode_get(inode);
 		goto end_unlock;
 	}
 
-	inode = lttng_inode_create(&id, path, registry->inodes);
+	inode = lttng_inode_create(&id, registry->inodes, unlinked_file_pool,
+			handle, path);
 	node = cds_lfht_add_unique(registry->inodes,
 			lttng_inode_id_hash(&inode->id), lttng_inode_match,
 			&inode->id, &inode->registry_node);

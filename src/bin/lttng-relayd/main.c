@@ -4109,6 +4109,7 @@ int main(int argc, char **argv)
 	bool thread_is_rcu_registered = false;
 	int ret = 0, retval = 0;
 	void *status;
+	char *unlinked_file_directory_path = NULL, *output_path = NULL;
 
 	/* Parse environment variables */
 	ret = parse_env_options();
@@ -4199,7 +4200,23 @@ int main(int argc, char **argv)
 	rcu_register_thread();
 	thread_is_rcu_registered = true;
 
-	the_fd_tracker = fd_tracker_create(lttng_opt_fd_pool_size);
+	output_path = create_output_path("");
+	if (!output_path) {
+		ERR("Failed to get output path");
+		retval = -1;
+		goto exit_options;
+	}
+	ret = asprintf(&unlinked_file_directory_path, "%s/%s", output_path,
+			DEFAULT_UNLINKED_FILES_DIRECTORY);
+	free(output_path);
+	if (ret < 0) {
+		ERR("Failed to format unlinked file directory path");
+		retval = -1;
+		goto exit_options;
+	}
+	the_fd_tracker = fd_tracker_create(
+			unlinked_file_directory_path, lttng_opt_fd_pool_size);
+	free(unlinked_file_directory_path);
 	if (!the_fd_tracker) {
 		retval = -1;
 		goto exit_options;

@@ -18,6 +18,7 @@
 #ifndef FD_TRACKER_H
 #define FD_TRACKER_H
 
+#include <common/compat/directory-handle.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -52,8 +53,13 @@ typedef int (*fd_close_cb)(void *, int *in_fds);
  * Set the maximal number of fds that the process should be allowed to open at
  * any given time. This function must be called before any other of this
  * interface.
+ *
+ * The unlinked_file_path is an absolute path (which does not need to exist)
+ * under which unlinked files will be stored for as long as a reference to them
+ * is held.
  */
-struct fd_tracker *fd_tracker_create(unsigned int capacity);
+struct fd_tracker *fd_tracker_create(const char *unlinked_file_path,
+		unsigned int capacity);
 
 /* Returns an error if file descriptors are leaked. */
 int fd_tracker_destroy(struct fd_tracker *tracker);
@@ -81,6 +87,7 @@ int fd_tracker_destroy(struct fd_tracker *tracker);
  * open.
  */
 struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
+		struct lttng_directory_handle *directory,
 		const char *path,
 		int flags,
 		mode_t *mode);

@@ -33,8 +33,9 @@
 
 #include <urcu.h>
 
-#include <common/fd-tracker/fd-tracker.h>
+#include <common/compat/directory-handle.h>
 #include <common/error.h>
+#include <common/fd-tracker/fd-tracker.h>
 
 /* For error.h */
 int lttng_opt_quiet = 1;
@@ -42,11 +43,12 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 
 /* Number of TAP tests in this file */
-#define NUM_TESTS 49
+#define NUM_TESTS 61
 /* 3 for stdin, stdout, and stderr */
 #define STDIO_FD_COUNT 3
 #define TRACKER_FD_LIMIT 50
 #define TMP_DIR_PATTERN "/tmp/fd-tracker-XXXXXX"
+#define TEST_UNLINK_DIRECTORY_NAME "unlinked_files"
 
 /*
  * Count of fds, beyond stdin, stderr, stdout that were open
@@ -61,6 +63,28 @@ const char file_contents[] = "Bacon ipsum dolor amet jerky drumstick sirloin "
 	"Strip steak brisket alcatra, venison beef chuck cupim pastrami. "
 	"Landjaeger tri-tip salami leberkas ball tip, ham hock chuck sausage "
 	"flank jerky cupim. Pig bacon chuck pancetta andouille.";
+
+void get_temporary_directories(char **_test_directory, char **_unlink_directory)
+{
+	int ret;
+	char tmp_path_pattern[] = TMP_DIR_PATTERN;
+	char *output_dir;
+
+	output_dir = mkdtemp(tmp_path_pattern);
+	if (!output_dir) {
+		diag("Failed to create temporary path of the form %s",
+				TMP_DIR_PATTERN);
+		assert(0);
+	}
+
+	*_test_directory = strdup(output_dir);
+	assert(*_test_directory);
+	ret = asprintf(_unlink_directory, "%s/%s", output_dir,
+			TEST_UNLINK_DIRECTORY_NAME);
+	if (ret < 0) {
+		assert(0);
+	}
+}
 
 int fd_count(void)
 {
@@ -163,9 +187,13 @@ void untrack_std_fds(struct fd_tracker *tracker)
 static
 void test_unsuspendable_basic(void)
 {
+	int ret;
 	struct fd_tracker *tracker;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	ok(tracker, "Created an fd tracker with a limit of %d simulateously opened file descriptors",
 			TRACKER_FD_LIMIT);
 	if (!tracker) {
@@ -176,6 +204,10 @@ void test_unsuspendable_basic(void)
 	untrack_std_fds(tracker);
 
 	fd_tracker_destroy(tracker);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 static
@@ -200,8 +232,11 @@ void test_unsuspendable_cb_return(void)
 	int ret, stdout_fd = fileno(stdout), out_fd = 42;
 	struct fd_tracker *tracker;
 	int expected_error = -ENETDOWN;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(test_directory, TRACKER_FD_LIMIT);
 	assert(tracker);
 
 	/* The error_open callback should fail and return 'expected_error'. */
@@ -227,6 +262,10 @@ void test_unsuspendable_cb_return(void)
 	assert(!ret);
 
 	fd_tracker_destroy(tracker);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 /*
@@ -238,8 +277,11 @@ void test_unsuspendable_duplicate(void)
 {
 	int ret, stdout_fd = fileno(stdout), out_fd;
 	struct fd_tracker *tracker;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	assert(tracker);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
@@ -254,6 +296,10 @@ void test_unsuspendable_duplicate(void)
 	assert(!ret);
 
 	fd_tracker_destroy(tracker);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 static
@@ -298,11 +344,14 @@ void test_unsuspendable_limit(void)
 	struct fd_tracker *tracker;
 	int ret, stdout_fd = fileno(stdout), out_fd;
 	int fds[TRACKER_FD_LIMIT];
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
+
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
 
 	/* This test assumes TRACKER_FD_LIMIT is a multiple of 2. */
 	assert((TRACKER_FD_LIMIT % 2 == 0) && TRACKER_FD_LIMIT);
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	assert(tracker);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, fds,
@@ -319,6 +368,10 @@ void test_unsuspendable_limit(void)
 	assert(!ret);
 
 	fd_tracker_destroy(tracker);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 /*
@@ -330,8 +383,11 @@ void test_unsuspendable_close_untracked(void)
 {
 	int ret, stdout_fd = fileno(stdout), unknown_fds[2], out_fd;
 	struct fd_tracker *tracker;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
 		return;
 	}
@@ -354,11 +410,17 @@ void test_unsuspendable_close_untracked(void)
 	assert(!ret);
 
 	fd_tracker_destroy(tracker);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
-static
-int open_files(struct fd_tracker *tracker, const char *dir, unsigned int count,
-		struct fs_handle **handles, char **file_paths)
+static int open_files(struct fd_tracker *tracker,
+		struct lttng_directory_handle *directory,
+		unsigned int count,
+		struct fs_handle **handles,
+		char **file_paths)
 {
 	int ret = 0;
 	unsigned int i;
@@ -369,11 +431,11 @@ int open_files(struct fd_tracker *tracker, const char *dir, unsigned int count,
 		struct fs_handle *handle;
 		mode_t mode = S_IWUSR | S_IRUSR;
 
-		p_ret = asprintf(&file_path, "%s/file-%u", dir, i);
+		p_ret = asprintf(&file_path, "file-%u", i);
 		assert(p_ret >= 0);
 	        file_paths[i] = file_path;
 
-		handle = fd_tracker_open_fs_handle(tracker, file_path,
+		handle = fd_tracker_open_fs_handle(tracker, directory, file_path,
 				O_RDWR | O_CREAT, &mode);
 		if (!handle) {
 			ret = -1;
@@ -384,9 +446,11 @@ int open_files(struct fd_tracker *tracker, const char *dir, unsigned int count,
 	return ret;
 }
 
-static
-int open_same_file(struct fd_tracker *tracker, const char *file_path,
-		unsigned int count, struct fs_handle **handles)
+static int open_same_file(struct fd_tracker *tracker,
+		struct lttng_directory_handle *directory,
+		const char *file,
+		unsigned int count,
+		struct fs_handle **handles)
 {
 	int ret = 0;
 	unsigned int i;
@@ -395,7 +459,7 @@ int open_same_file(struct fd_tracker *tracker, const char *file_path,
 		struct fs_handle *handle;
 		mode_t mode = S_IWUSR | S_IRUSR;
 
-		handle = fd_tracker_open_fs_handle(tracker, file_path,
+		handle = fd_tracker_open_fs_handle(tracker, directory, file,
 				O_RDWR | O_CREAT, &mode);
 		if (!handle) {
 			ret = -1;
@@ -420,11 +484,15 @@ int cleanup_files(struct fd_tracker *tracker, const char *dir,
 		if (!file_path) {
 			break;
 		}
-		(void) unlink(file_path);
-		free(file_path);
-	        if (fs_handle_close(handles[i])) {
+		if (fs_handle_unlink(handles[i])) {
+			diag("Failed to unlink fs_handle to file %s", file_path);
 			ret = -1;
 		}
+	        if (fs_handle_close(handles[i])) {
+			diag("Failed to close fs_handle to file %s", file_path);
+			ret = -1;
+		}
+		free(file_path);
 	}
 	return ret;
 }
@@ -435,37 +503,42 @@ void test_suspendable_limit(void)
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT * 10;
 	struct fd_tracker *tracker;
-	char tmp_path_pattern[] = TMP_DIR_PATTERN;
-	const char *output_dir;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 	char *output_files[files_to_create];
 	struct fs_handle *handles[files_to_create];
+	struct lttng_directory_handle *dir_handle = NULL;
+	int dir_handle_fd_count;
 
 	memset(output_files, 0, sizeof(output_files));
 	memset(handles, 0, sizeof(handles));
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
 		return;
 	}
 
-        output_dir = mkdtemp(tmp_path_pattern);
-	if (!output_dir) {
-		diag("Failed to create temporary path of the form %s",
-				TMP_DIR_PATTERN);
-		assert(0);
-	}
+	dir_handle = lttng_directory_handle_create(test_directory);
+	assert(dir_handle);
+	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
-	ret = open_files(tracker, output_dir, files_to_create, handles,
+	ret = open_files(tracker, dir_handle, files_to_create, handles,
 			output_files);
 	ok(!ret, "Created %d files with a limit of %d simultaneously-opened file descriptor",
 			files_to_create, TRACKER_FD_LIMIT);
-	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count);
+	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count +
+			dir_handle_fd_count);
 
-	ret = cleanup_files(tracker, output_dir, files_to_create, handles,
+	ret = cleanup_files(tracker, test_directory, files_to_create, handles,
 			output_files);
 	ok(!ret, "Close all opened filesystem handles");
-	(void) rmdir(output_dir);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
+	lttng_directory_handle_put(dir_handle);
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 static
@@ -474,32 +547,33 @@ void test_mixed_limit(void)
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT;
 	struct fd_tracker *tracker;
-	char tmp_path_pattern[] = TMP_DIR_PATTERN;
-	const char *output_dir;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 	char *output_files[files_to_create];
 	struct fs_handle *handles[files_to_create];
+	struct lttng_directory_handle *dir_handle = NULL;
+	int dir_handle_fd_count;
 
 	memset(output_files, 0, sizeof(output_files));
 	memset(handles, 0, sizeof(handles));
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+	tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
 		return;
 	}
 
-        output_dir = mkdtemp(tmp_path_pattern);
-	if (!output_dir) {
-		diag("Failed to create temporary path of the form %s",
-				TMP_DIR_PATTERN);
-		assert(0);
-	}
+	dir_handle = lttng_directory_handle_create(test_directory);
+	assert(dir_handle);
+	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
-	ret = open_files(tracker, output_dir, files_to_create, handles,
+	ret = open_files(tracker, dir_handle, files_to_create, handles,
 			output_files);
 	ok(!ret, "Created %d files with a limit of %d simultaneously-opened file descriptor",
 			files_to_create, TRACKER_FD_LIMIT);
 	diag("Check file descriptor count after opening %u files", files_to_create);
-	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count);
+	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count +
+			dir_handle_fd_count);
 
 	/*
 	 * Open unsuspendable fds (stdin, stdout, stderr) and verify that the fd
@@ -508,16 +582,22 @@ void test_mixed_limit(void)
 	diag("Check file descriptor count after adding %d unsuspendable fds",
 			STDIO_FD_COUNT);
 	track_std_fds(tracker);
-	check_fd_count(TRACKER_FD_LIMIT + unknown_fds_count);
+	check_fd_count(TRACKER_FD_LIMIT + unknown_fds_count +
+			dir_handle_fd_count);
 	diag("Untrack unsuspendable file descriptors");
 	untrack_std_fds(tracker);
-	check_fd_count(TRACKER_FD_LIMIT + unknown_fds_count);
+	check_fd_count(TRACKER_FD_LIMIT + unknown_fds_count +
+			dir_handle_fd_count);
 
-	ret = cleanup_files(tracker, output_dir, files_to_create, handles,
+	ret = cleanup_files(tracker, test_directory, files_to_create, handles,
 			output_files);
 	ok(!ret, "Close all opened filesystem handles");
-	(void) rmdir(output_dir);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
+	lttng_directory_handle_put(dir_handle);
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 /*
@@ -534,8 +614,6 @@ void test_suspendable_restore(void)
 	int ret;
 	const int files_to_create = TRACKER_FD_LIMIT * 10;
 	struct fd_tracker *tracker;
-	char tmp_path_pattern[] = TMP_DIR_PATTERN;
-	const char *output_dir;
 	char *output_files[files_to_create];
 	struct fs_handle *handles[files_to_create];
 	size_t content_index;
@@ -543,28 +621,31 @@ void test_suspendable_restore(void)
 	bool write_success = true;
 	bool fd_cap_respected = true;
 	bool content_ok = true;
+	struct lttng_directory_handle *dir_handle = NULL;
+	int dir_handle_fd_count;
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
 
 	memset(output_files, 0, sizeof(output_files));
 	memset(handles, 0, sizeof(handles));
 
-        tracker = fd_tracker_create(TRACKER_FD_LIMIT);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+
+        tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
 		return;
 	}
 
-        output_dir = mkdtemp(tmp_path_pattern);
-	if (!output_dir) {
-		diag("Failed to create temporary path of the form %s",
-				TMP_DIR_PATTERN);
-		assert(0);
-	}
+	dir_handle = lttng_directory_handle_create(test_directory);
+	assert(dir_handle);
+	dir_handle_fd_count = !!lttng_directory_handle_uses_fd(dir_handle);
 
-	ret = open_files(tracker, output_dir, files_to_create, handles,
+	ret = open_files(tracker, dir_handle, files_to_create, handles,
 			output_files);
 	ok(!ret, "Created %d files with a limit of %d simultaneously-opened file descriptor",
 			files_to_create, TRACKER_FD_LIMIT);
 	diag("Check file descriptor count after opening %u files", files_to_create);
-	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count);
+	check_fd_count(TRACKER_FD_LIMIT + STDIO_FD_COUNT + unknown_fds_count +
+			dir_handle_fd_count);
 
 	for (content_index = 0; content_index < sizeof(file_contents); content_index++) {
 		for (handle_index = 0; handle_index < files_to_create; handle_index++) {
@@ -590,13 +671,13 @@ void test_suspendable_restore(void)
 				goto skip_write;
 			}
 
-			if (fd_count() >
-					(TRACKER_FD_LIMIT + STDIO_FD_COUNT +
-					unknown_fds_count)) {
+			if (fd_count() > (TRACKER_FD_LIMIT + STDIO_FD_COUNT +
+							unknown_fds_count +
+							dir_handle_fd_count)) {
 				fd_cap_respected = false;
 			}
 
-		        fs_handle_put_fd(handle);
+			fs_handle_put_fd(handle);
 		}
 	}
 skip_write:
@@ -613,7 +694,8 @@ skip_write:
 		size_t to_read = sizeof(read_buf);
 		int fd;
 
-		fd = open(path, O_RDONLY);
+		fd = lttng_directory_handle_open_file(
+				dir_handle, path, O_RDONLY, 0);
 		assert(fd >= 0);
 		ret = fstat(fd, &fd_stat);
 		assert(!ret);
@@ -650,11 +732,15 @@ skip_write:
 		(void) close(fd);
 	}
 	ok(content_ok, "Files contain the expected content");
-	ret = cleanup_files(tracker, output_dir, files_to_create, handles,
+	ret = cleanup_files(tracker, test_directory, files_to_create, handles,
 			output_files);
 	ok(!ret, "Close all opened filesystem handles");
-	(void) rmdir(output_dir);
-	fd_tracker_destroy(tracker);	
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
+	fd_tracker_destroy(tracker);
+	lttng_directory_handle_put(dir_handle);
+	free(test_directory);
+	free(unlinked_files_directory);
 }
 
 static
@@ -663,81 +749,101 @@ void test_unlink(void)
 	int ret;
 	struct fd_tracker *tracker;
 	const int handles_to_open = 2;
-	char tmp_path_pattern[] = TMP_DIR_PATTERN;
-	const char *output_dir;
 	struct fs_handle *handles[handles_to_open];
 	struct fs_handle *new_handle = NULL;
-	char *file_path;
-	char *unlinked_file_path;
-	char *unlinked_file_path_suffix;
 	struct stat statbuf;
+	struct lttng_directory_handle *dir_handle = NULL;
+	const char file_name[] = "my_file";
+	char *test_directory = NULL, *unlinked_files_directory = NULL;
+	char *unlinked_file_zero = NULL, *unlinked_file_one = NULL;
+	int fd;
 
-        tracker = fd_tracker_create(1);
+	get_temporary_directories(&test_directory, &unlinked_files_directory);
+	ret = asprintf(&unlinked_file_zero, "%s/%u", unlinked_files_directory,
+			0);
+	assert(ret > 0);
+	ret = asprintf(&unlinked_file_one, "%s/%u", unlinked_files_directory,
+			1);
+	assert(ret > 0);
+
+	tracker = fd_tracker_create(unlinked_files_directory, 1);
 	if (!tracker) {
 		return;
 	}
-        output_dir = mkdtemp(tmp_path_pattern);
-	if (!output_dir) {
-		diag("Failed to create temporary path of the form %s",
-				TMP_DIR_PATTERN);
-		return;
-	}
-	ret = asprintf(&file_path, "%s/my_file", output_dir);
-	if (ret < 0) {
-		diag("Failed to allocate path string");
-		return;
-	}
-	ret = asprintf(&unlinked_file_path, "%s-deleted", file_path);
-	if (ret < 0) {
-		diag("Failed to allocate path string");
-		return;
-	}
-	ret = asprintf(&unlinked_file_path_suffix, "%s-1", unlinked_file_path);
-	if (ret < 0) {
-		diag("Failed to allocate path string");
-		return;
-	}
+
+	dir_handle = lttng_directory_handle_create(test_directory);
+	assert(dir_handle);
 
 	/* Open two handles to the same file. */
-	ret = open_same_file(tracker, file_path, handles_to_open, handles);
-	ok(!ret, "Successfully opened %i handles to %s", handles_to_open,
-			file_path);
+	ret = open_same_file(tracker, dir_handle, file_name, handles_to_open,
+			handles);
+	ok(!ret, "Successfully opened %i handles to %s/%s", handles_to_open,
+			test_directory, file_name);
 	if (ret) {
 		return;
 	}
 
 	/*
 	 * Unlinking the first handle should cause the file to be renamed
-	 * to 'my_file-deleted'.
+	 * to '0'.
 	 */
 	ret = fs_handle_unlink(handles[0]);
-	ok(!ret, "Successfully unlinked the first handle to %s", file_path);
+	ok(!ret, "Successfully unlinked the first handle to %s/%s",
+			test_directory, file_name);
 
 	/*
 	 * The original file should no longer exist on the file system, and a
-	 * new file, with the '-deleted' suffix should exist.
+	 * new file named '0' should exist.
 	 */
-	ok(stat(file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after unlink", file_path);
-	ok(stat(unlinked_file_path, &statbuf) == 0, "%s exists on file system after unlink", unlinked_file_path);
+	ok(lttng_directory_handle_stat(dir_handle, file_name, &statbuf) == -1 &&
+					errno == ENOENT,
+			"%s no longer present on file system after unlink",
+			file_name);
+	ok(lttng_directory_handle_stat(
+			dir_handle, unlinked_file_zero, &statbuf) == 0,
+			"%s exists on file system after unlink",
+			unlinked_file_zero);
+
+	/*
+	 * It should be possible to use the file descriptors of both handles.
+	 * Since only one file descriptor can be opened at once, this should
+	 * force the fd_tracker to suspend and restore the handles.
+	 */
+	fd = fs_handle_get_fd(handles[0]);
+	ok(fd >= 0, "Got fd from first handle");
+
+	fd = fs_handle_get_fd(handles[1]);
+	ok (fd < 0, "fd tracker does not allow two fds to be used at once");
+
+	fs_handle_put_fd(handles[0]);
+	fd = fs_handle_get_fd(handles[1]);
+	ok(fd >= 0, "Got fd from second handle");
+	fs_handle_put_fd(handles[1]);
 
 	/* The second unlink should fail with -ENOENT. */
 	ret = fs_handle_unlink(handles[1]);
-	ok(ret == -ENOENT, "ENOENT is reported when attempting to unlink the second handle to %s", file_path);
+	ok(ret == -ENOENT,
+			"ENOENT is reported when attempting to unlink the second handle to %s/%s",
+			test_directory, file_name);
 
 	/*
 	 * Opening a new handle to 'my_file' should succeed.
 	 */
-	ret = open_same_file(tracker, file_path, 1, &new_handle);
-	ok(!ret, "Successfully opened a new handle to previously unlinked file %s", file_path);
+	ret = open_same_file(tracker, dir_handle, file_name, 1, &new_handle);
+	ok(!ret, "Successfully opened a new handle to previously unlinked file %s/%s",
+			test_directory, file_name);
 	assert(new_handle);
 
 	/*
 	 * Unlinking the new handle should cause the file to be renamed
-	 * to 'my_file-deleted-1' since 'my_file-deleted' already exists.
+	 * to '1' since '0' already exists.
 	 */
 	ret = fs_handle_unlink(new_handle);
-	ok(!ret, "Successfully unlinked the new handle handle to %s", file_path);
-	ok(stat(unlinked_file_path_suffix, &statbuf) == 0, "%s exists on file system after unlink", unlinked_file_path_suffix);
+	ok(!ret, "Successfully unlinked the new handle handle to %s/%s",
+			test_directory, file_name);
+	ok(stat(unlinked_file_one, &statbuf) == 0,
+			"%s exists on file system after unlink",
+			unlinked_file_one);
 
 	ret = fs_handle_close(handles[0]);
 	ok(!ret, "Successfully closed the first handle");
@@ -746,12 +852,29 @@ void test_unlink(void)
 	ret = fs_handle_close(new_handle);
 	ok(!ret, "Successfully closed the third handle");
 
-	ok(stat(file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", file_path);
-	ok(stat(unlinked_file_path, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", unlinked_file_path);
-	ok(stat(unlinked_file_path_suffix, &statbuf) == -1 && errno == ENOENT, "%s no longer present on file system after handle close", unlinked_file_path_suffix);
+	ok(lttng_directory_handle_stat(dir_handle, file_name, &statbuf) == -1 &&
+					errno == ENOENT,
+			"%s no longer present on file system after handle close",
+			file_name);
+	ok(lttng_directory_handle_stat(
+			dir_handle, unlinked_file_zero, &statbuf) == -1 &&
+					errno == ENOENT,
+			"%s no longer present on file system after handle close",
+			unlinked_file_zero);
+	ok(lttng_directory_handle_stat(dir_handle, unlinked_file_one,
+			&statbuf) == -1 &&
+					errno == ENOENT,
+			"%s no longer present on file system after handle close",
+			unlinked_file_one);
 
-	(void) rmdir(output_dir);
+	ret = rmdir(test_directory);
+	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
+	free(test_directory);
+	free(unlinked_files_directory);
+	free(unlinked_file_zero);
+	free(unlinked_file_one);
+	lttng_directory_handle_put(dir_handle);
 }
 
 int main(int argc, char **argv)
@@ -786,6 +909,7 @@ int main(int argc, char **argv)
 	diag("Suspendable - Unlinking test");
 	test_unlink();
 
+	rcu_barrier();
 	rcu_unregister_thread();
 	return exit_status();
 }
