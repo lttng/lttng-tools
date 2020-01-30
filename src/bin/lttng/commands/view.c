@@ -69,7 +69,7 @@ enum viewer_type {
  * NOTE: "lttv" is a shell command and it's not working for exec() family
  * functions so we might think of removing this wrapper or using bash.
  */
-static struct viewers {
+static const struct viewers {
 	const char *exec_name;
 	enum viewer_type type;
 } viewers[] = {
@@ -80,7 +80,7 @@ static struct viewers {
 /* Is the session we are trying to view is in live mode. */
 static int session_live_mode;
 
-static struct viewers *parse_options(void)
+static const struct viewers *parse_options(void)
 {
 	if (opt_viewer == NULL) {
 		/* Default is babeltrace */
@@ -208,7 +208,7 @@ static int spawn_viewer(const char *trace_path)
 	int ret = 0;
 	struct stat status;
 	const char *viewer_bin = NULL;
-	struct viewers *viewer;
+	const struct viewers *viewer;
 	char **argv = NULL;
 
 	/* Check for --viewer options */
