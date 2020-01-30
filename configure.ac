@@ -245,13 +245,12 @@ AC_ARG_WITH([babeltrace-bin],
 	[BABELTRACE_BIN=''])
 AC_SUBST([BABELTRACE_BIN])
 
-# lttv-gui
-AC_ARG_WITH([lttv-gui-bin],
-	AS_HELP_STRING([--with-lttv-gui-bin],
-   [Location of the lttv GUI viewer executable (including the filename)]),
-   [LTTV_GUI_BIN="$withval"],
-   [LTTV_GUI_BIN=''])
-AC_SUBST([LTTV_GUI_BIN])
+AC_ARG_WITH([babeltrace2-bin],
+	AS_HELP_STRING([--with-babeltrace2-bin],
+	[Location of the babeltrace2 viewer executable (including the filename)]),
+	[BABELTRACE2_BIN="$withval"],
+	[BABELTRACE2_BIN=''])
+AC_SUBST([BABELTRACE2_BIN])
 
 AC_ARG_WITH([consumerd32-bin],
 	AS_HELP_STRING([--with-consumerd32-bin],
@@ -319,6 +318,7 @@ AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_BIN], "$CONSUMERD64_BIN", [Location of th
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD32_LIBDIR], "$CONSUMERD32_LIBDIR", [Search for consumerd 32-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_CONSUMERD64_LIBDIR], "$CONSUMERD64_LIBDIR", [Search for consumerd 64-bit libraries in this location.])
 AC_DEFINE_UNQUOTED([CONFIG_BABELTRACE_BIN], "$BABELTRACE_BIN", [Location of the babeltrace viewer executable.])
+AC_DEFINE_UNQUOTED([CONFIG_BABELTRACE2_BIN], "$BABELTRACE2_BIN", [Location of the babeltrace2 viewer executable.])
 AC_DEFINE_UNQUOTED([CONFIG_SESSIOND_BIN], "$SESSIOND_BIN", [Location of the sessiond executable.])
 AC_DEFINE_UNQUOTED([CONFIG_LTTNG_SYSTEM_RUNDIR], ["$LTTNG_SYSTEM_RUNDIR"], [LTTng system runtime directory])
 

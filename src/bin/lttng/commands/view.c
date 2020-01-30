@@ -30,6 +30,7 @@ static char *opt_session_name;
 static char *opt_viewer;
 static char *opt_trace_path;
 static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
+static const char *babeltrace2_bin = CONFIG_BABELTRACE2_BIN;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -55,6 +56,7 @@ static struct poptOption long_options[] = {
  * This is needed for each viewer since we are using execvp().
  */
 static const char *babeltrace_opts[] = { "babeltrace" };
+static const char *babeltrace2_opts[] = { "babeltrace2" };
 
 /*
  * Type is also use as the index in the viewers array. So please, make sure
@@ -62,7 +64,8 @@ static const char *babeltrace_opts[] = { "babeltrace" };
  */
 enum viewer_type {
 	VIEWER_BABELTRACE    = 0,
-	VIEWER_USER_DEFINED  = 1,
+	VIEWER_BABELTRACE2   = 1,
+	VIEWER_USER_DEFINED  = 2,
 };
 
 /*
@@ -74,6 +77,7 @@ static const struct viewers {
 	enum viewer_type type;
 } viewers[] = {
 	{ "babeltrace", VIEWER_BABELTRACE },
+	{ "babeltrace2", VIEWER_BABELTRACE2 },
 	{ NULL, VIEWER_USER_DEFINED },
 };
 
@@ -84,7 +88,7 @@ static const struct viewers *parse_options(void)
 {
 	if (opt_viewer == NULL) {
 		/* Default is babeltrace */
-		return &(viewers[VIEWER_BABELTRACE]);
+		return &(viewers[VIEWER_BABELTRACE2]);
 	}
 
 	/*
@@ -217,7 +221,17 @@ static int spawn_viewer(const char *trace_path)
 		goto error;
 	}
 
+retry_viewer:
 	switch (viewer->type) {
+	case VIEWER_BABELTRACE2:
+		if (stat(babeltrace2_bin, &status) == 0) {
+			viewer_bin = babeltrace2_bin;
+		} else {
+			viewer_bin = viewer->exec_name;
+		}
+		argv = alloc_argv_from_local_opts(babeltrace2_opts,
+				ARRAY_SIZE(babeltrace2_opts), trace_path);
+		break;
 	case VIEWER_BABELTRACE:
 		if (stat(babeltrace_bin, &status) == 0) {
 			viewer_bin = babeltrace_bin;
@@ -249,10 +263,20 @@ static int spawn_viewer(const char *trace_path)
 
 	ret = execvp(viewer_bin, argv);
 	if (ret) {
-		if (errno == ENOENT) {
-			ERR("%s not found on the system", viewer_bin);
+		if (errno == ENOENT && viewer->exec_name) {
+			if (viewer->type == VIEWER_BABELTRACE2) {
+				/* Fallback to legacy babeltrace. */
+				DBG("babeltrace2 not installed on the system, falling back to babeltrace 1.x");
+				viewer = &viewers[VIEWER_BABELTRACE];
+				free(argv);
+				argv = NULL;
+				goto retry_viewer;
+			} else {
+				ERR("Viewer \"%s\" not found on the system",
+						viewer_bin);
+			}
 		} else {
-			PERROR("exec: %s", viewer_bin);
+			PERROR("Failed to launch \"%s\" viewer", viewer_bin);
 		}
 		ret = CMD_FATAL;
 		goto error;

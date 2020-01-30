@@ -25,7 +25,9 @@ about the current tracing session). Otherwise, it is launched for the
 existing tracing session named 'SESSION'. `lttng list`
 outputs all the existing tracing sessions (see man:lttng-list(1)).
 
-By default, the man:babeltrace(1) trace viewer is launched.
+By default, the man:babeltrace2(1) trace viewer is launched. If it is
+not found on the system, the man:babeltrace(1) trace viewer is
+used.
 Another trace viewer command can be specified using the
 option:--viewer option.
 
