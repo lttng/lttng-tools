@@ -181,6 +181,10 @@ void lttng_directory_handle_release(struct urcu_ref *ref)
 	struct lttng_directory_handle *handle =
 			container_of(ref, struct lttng_directory_handle, ref);
 
+	if (handle->destroy_cb) {
+		handle->destroy_cb(handle, handle->destroy_cb_data);
+	}
+
 	if (handle->dirfd == AT_FDCWD || handle->dirfd == -1) {
 		goto end;
 	}

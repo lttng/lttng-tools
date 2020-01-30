@@ -14,6 +14,7 @@
 struct lttng_inode;
 struct lttng_inode_registry;
 struct lttng_unlinked_file_directory;
+struct lttng_directory_handle;
 
 /*
  * The unlinked file pool is protected by the fd-tracker's lock.
@@ -41,9 +42,13 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 
 void lttng_inode_registry_destroy(struct lttng_inode_registry *registry);
 
-void lttng_inode_get_location(struct lttng_inode *inode,
+void lttng_inode_borrow_location(struct lttng_inode *inode,
 		const struct lttng_directory_handle **out_directory_handle,
 		const char **out_path);
+
+/* Returns a new reference to the inode's location directory handle. */
+struct lttng_directory_handle *lttng_inode_get_location_directory_handle(
+		struct lttng_inode *inode);
 
 int lttng_inode_rename(struct lttng_inode *inode,
 		struct lttng_directory_handle *old_directory_handle,

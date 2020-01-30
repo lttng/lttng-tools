@@ -26,10 +26,18 @@ enum lttng_directory_handle_rmdir_recursive_flags {
  * or a directory file descriptors, depending on the platform's capabilities.
  */
 #ifdef COMPAT_DIRFD
+
+struct lttng_directory_handle;
+
+typedef void (*lttng_directory_handle_destroy_cb)(
+		struct lttng_directory_handle *handle, void *data);
+
 struct lttng_directory_handle {
 	struct urcu_ref ref;
 	ino_t directory_inode;
 	int dirfd;
+	lttng_directory_handle_destroy_cb destroy_cb;
+	void *destroy_cb_data;
 };
 
 static inline

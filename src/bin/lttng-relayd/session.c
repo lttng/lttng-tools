@@ -9,11 +9,11 @@
 
 #define _LGPL_SOURCE
 #include <common/common.h>
-#include <common/uuid.h>
+#include <common/compat/path.h>
+#include <common/fd-tracker/utils.h>
 #include <common/time.h>
 #include <common/utils.h>
 #include <common/uuid.h>
-#include <common/compat/path.h>
 #include <urcu/rculist.h>
 
 #include <sys/stat.h>
@@ -196,7 +196,7 @@ static struct lttng_directory_handle *session_create_output_directory_handle(
 		goto end;
 	}
 
-	handle = lttng_directory_handle_create(full_session_path);
+	handle = fd_tracker_create_directory_handle(the_fd_tracker, full_session_path);
 end:
 	pthread_mutex_unlock(&session->lock);
 	free(full_session_path);

@@ -280,7 +280,19 @@ void lttng_inode_put(struct lttng_inode *inode)
 	urcu_ref_put(&inode->ref, lttng_inode_release);
 }
 
-void lttng_inode_get_location(struct lttng_inode *inode,
+struct lttng_directory_handle *lttng_inode_get_location_directory_handle(
+		struct lttng_inode *inode)
+{
+	if (inode->location.directory_handle) {
+		const bool reference_acquired = lttng_directory_handle_get(
+				inode->location.directory_handle);
+
+		assert(reference_acquired);
+	}
+	return inode->location.directory_handle;
+}
+
+void lttng_inode_borrow_location(struct lttng_inode *inode,
 		const struct lttng_directory_handle **out_directory_handle,
 		const char **out_path)
 {

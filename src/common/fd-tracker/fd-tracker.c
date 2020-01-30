@@ -210,7 +210,7 @@ static void fs_handle_tracked_log(struct fs_handle_tracked *handle)
 	const char *path;
 
 	pthread_mutex_lock(&handle->lock);
-	lttng_inode_get_location(handle->inode, NULL, &path);
+	lttng_inode_borrow_location(handle->inode, NULL, &path);
 
 	if (handle->fd >= 0) {
 		DBG_NO_LOC("    %s [active, fd %d%s]", path, handle->fd,
@@ -230,7 +230,8 @@ static int fs_handle_tracked_suspend(struct fs_handle_tracked *handle)
 	const struct lttng_directory_handle *node_directory_handle;
 
 	pthread_mutex_lock(&handle->lock);
-	lttng_inode_get_location(handle->inode, &node_directory_handle, &path);
+	lttng_inode_borrow_location(
+			handle->inode, &node_directory_handle, &path);
 	assert(handle->fd >= 0);
 	if (handle->in_use) {
 		/* This handle can't be suspended as it is currently in use. */
@@ -288,7 +289,8 @@ static int fs_handle_tracked_restore(struct fs_handle_tracked *handle)
 	const char *path;
 	const struct lttng_directory_handle *node_directory_handle;
 
-	lttng_inode_get_location(handle->inode, &node_directory_handle, &path);
+	lttng_inode_borrow_location(
+			handle->inode, &node_directory_handle, &path);
 
 	assert(handle->fd == -1);
 	assert(path);
@@ -882,6 +884,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	const char *path = NULL;
 	struct fs_handle_tracked *handle =
 			container_of(_handle, struct fs_handle_tracked, parent);
+	struct lttng_directory_handle *inode_directory_handle = NULL;
 
 	if (!handle) {
 		ret = -EINVAL;
@@ -891,7 +894,29 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	pthread_mutex_lock(&handle->tracker->lock);
 	pthread_mutex_lock(&handle->lock);
 	if (handle->inode) {
-		lttng_inode_get_location(handle->inode, NULL, &path);
+		lttng_inode_borrow_location(handle->inode, NULL, &path);
+		/*
+		 * Here a reference to the inode's directory handle is acquired
+		 * to prevent the last reference to it from being released while
+		 * the tracker's lock is taken.
+		 *
+		 * If this wasn't done, the directory handle could attempt to
+		 * close its underlying directory file descriptor, which would
+		 * attempt to lock the tracker's lock, resulting in a deadlock.
+		 *
+		 * Since a new reference to the directory handle is taken within
+		 * the scope of this function, it is not possible for the last
+		 * reference to the inode's location directory handle to be
+		 * released during the call to lttng_inode_put().
+		 *
+		 * We wait until the tracker's lock is released to release the
+		 * reference. Hence, the call to the tracker is delayed just
+		 * enough to not attempt to recursively acquire the tracker's
+		 * lock twice.
+		 */
+		inode_directory_handle =
+				lttng_inode_get_location_directory_handle(
+						handle->inode);
 	}
 	fd_tracker_untrack(handle->tracker, handle);
 	if (handle->fd >= 0) {
@@ -912,6 +937,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 	pthread_mutex_destroy(&handle->lock);
 	pthread_mutex_unlock(&handle->tracker->lock);
 	free(handle);
+	lttng_directory_handle_put(inode_directory_handle);
 end:
 	return ret;
 }

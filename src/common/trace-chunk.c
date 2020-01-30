@@ -11,6 +11,7 @@
 #include <common/dynamic-array.h>
 #include <common/error.h>
 #include <common/fd-tracker/fd-tracker.h>
+#include <common/fd-tracker/utils.h>
 #include <common/fs-handle-internal.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
@@ -781,9 +782,14 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 			goto end;
 		}
-		rename_directory = lttng_directory_handle_create_from_handle(
-				path,
-				chunk->session_output_directory);
+		rename_directory = chunk->fd_tracker ?
+				fd_tracker_create_directory_handle_from_handle(
+						chunk->fd_tracker,
+						chunk->session_output_directory,
+						path) :
+				lttng_directory_handle_create_from_handle(
+						path,
+						chunk->session_output_directory);
 		if (!rename_directory) {
 			ERR("Failed to get handle to trace chunk rename directory");
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -1039,9 +1045,14 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 			goto end;
 		}
 		chunk_directory_handle =
-				lttng_directory_handle_create_from_handle(
-					chunk->path,
-					session_output_directory);
+				chunk->fd_tracker ?
+					fd_tracker_create_directory_handle_from_handle(
+							chunk->fd_tracker,
+							session_output_directory,
+							chunk->path) :
+					lttng_directory_handle_create_from_handle(
+							chunk->path,
+							session_output_directory);
 		if (!chunk_directory_handle) {
 			/* The function already logs on all error paths. */
 			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -1572,9 +1583,14 @@ int lttng_trace_chunk_move_to_completed_post_release(
 		goto end;
 	}
 
-	archived_chunks_directory = lttng_directory_handle_create_from_handle(
-		        DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY,
-			trace_chunk->session_output_directory);
+	archived_chunks_directory = trace_chunk->fd_tracker ?
+			fd_tracker_create_directory_handle_from_handle(
+					trace_chunk->fd_tracker,
+					trace_chunk->session_output_directory,
+					DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY) :
+			lttng_directory_handle_create_from_handle(
+					DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY,
+					trace_chunk->session_output_directory);
 	if (!archived_chunks_directory) {
 		PERROR("Failed to get handle to archived trace chunks directory");
 		ret = -1;
