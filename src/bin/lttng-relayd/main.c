@@ -2724,6 +2724,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		reply_code = LTTNG_ERR_NOMEM;
 		goto end;
 	}
+	lttng_trace_chunk_set_fd_tracker(chunk, the_fd_tracker);
 
 	if (msg->override_name_length) {
 		const char *name;
