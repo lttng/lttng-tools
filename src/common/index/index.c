@@ -44,7 +44,8 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 {
 	struct lttng_index_file *index_file;
 	enum lttng_trace_chunk_status chunk_status;
-	int ret, fd = -1;
+	int ret;
+	struct fs_handle *fs_handle = NULL;
 	ssize_t size_ret;
 	struct ctf_packet_index_file_hdr hdr;
 	char index_directory_path[LTTNG_PATH_MAX];
@@ -103,15 +104,15 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 		}
 	}
 
-	chunk_status = lttng_trace_chunk_open_file(chunk, index_file_path,
-			flags, mode, &fd, expect_no_file);
+	chunk_status = lttng_trace_chunk_open_fs_handle(chunk, index_file_path,
+			flags, mode, &fs_handle, expect_no_file);
 	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto error;
 	}
 
 	if (flags == WRITE_FILE_FLAGS) {
 		ctf_packet_index_file_hdr_init(&hdr, index_major, index_minor);
-		size_ret = lttng_write(fd, &hdr, sizeof(hdr));
+		size_ret = fs_handle_write(fs_handle, &hdr, sizeof(hdr));
 		if (size_ret < sizeof(hdr)) {
 			PERROR("Failed to write index header");
 			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -121,7 +122,7 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 	} else {
 		uint32_t element_len;
 
-		size_ret = lttng_read(fd, &hdr, sizeof(hdr));
+		size_ret = fs_handle_read(fs_handle, &hdr, sizeof(hdr));
 		if (size_ret < 0) {
 			PERROR("Failed to read index header");
 			chunk_status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
@@ -152,7 +153,7 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 		}
 		index_file->element_len = element_len;
 	}
-	index_file->fd = fd;
+	index_file->file = fs_handle;
 	index_file->major = index_major;
 	index_file->minor = index_minor;
 	urcu_ref_init(&index_file->ref);
@@ -161,8 +162,8 @@ static enum lttng_trace_chunk_status _lttng_index_file_create_from_trace_chunk(
 	return LTTNG_TRACE_CHUNK_STATUS_OK;
 
 error:
-	if (fd >= 0) {
-		ret = close(fd);
+	if (fs_handle) {
+		ret = fs_handle_close(fs_handle);
 		if (ret < 0) {
 			PERROR("Failed to close file descriptor of index file");
 		}
@@ -206,21 +207,17 @@ enum lttng_trace_chunk_status lttng_index_file_create_from_trace_chunk_read_only
 int lttng_index_file_write(const struct lttng_index_file *index_file,
 		const struct ctf_packet_index *element)
 {
-	int fd;
-	size_t len;
 	ssize_t ret;
+	const size_t len = index_file->element_len;;
 
 	assert(index_file);
 	assert(element);
 
-	fd = index_file->fd;
-	len = index_file->element_len;
-
-	if (fd < 0) {
+	if (!index_file->file) {
 		goto error;
 	}
 
-	ret = lttng_write(fd, element, len);
+	ret = fs_handle_write(index_file->file, element, len);
 	if (ret < len) {
 		PERROR("writing index file");
 		goto error;
@@ -240,16 +237,15 @@ int lttng_index_file_read(const struct lttng_index_file *index_file,
 		struct ctf_packet_index *element)
 {
 	ssize_t ret;
-	int fd = index_file->fd;
-	size_t len = index_file->element_len;
+	const size_t len = index_file->element_len;
 
 	assert(element);
 
-	if (fd < 0) {
+	if (!index_file->file) {
 		goto error;
 	}
 
-	ret = lttng_read(fd, element, len);
+	ret = fs_handle_read(index_file->file, element, len);
 	if (ret < 0) {
 		PERROR("read index file");
 		goto error;
@@ -274,7 +270,7 @@ static void lttng_index_file_release(struct urcu_ref *ref)
 	struct lttng_index_file *index_file = caa_container_of(ref,
 			struct lttng_index_file, ref);
 
-	if (close(index_file->fd)) {
+	if (fs_handle_close(index_file->file)) {
 		PERROR("close index fd");
 	}
 	lttng_trace_chunk_put(index_file->trace_chunk);

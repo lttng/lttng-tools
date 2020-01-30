@@ -18,8 +18,10 @@
  */
 
 #define _LGPL_SOURCE
+#include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <pthread.h>
 #include <signal.h>
@@ -33,40 +35,39 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <inttypes.h>
-#include <urcu/futex.h>
-#include <urcu/uatomic.h>
-#include <urcu/rculist.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <urcu/futex.h>
+#include <urcu/rculist.h>
+#include <urcu/uatomic.h>
 
-#include <lttng/lttng.h>
 #include <common/common.h>
+#include <common/compat/endian.h>
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
-#include <common/compat/endian.h>
 #include <common/defaults.h>
+#include <common/fd-tracker/utils.h>
+#include <common/fs-handle.h>
 #include <common/futex.h>
 #include <common/index/index.h>
-#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/sessiond-comm/inet.h>
 #include <common/sessiond-comm/relayd.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
-#include <common/fd-tracker/utils.h>
+#include <lttng/lttng.h>
 
 #include "cmd.h"
+#include "connection.h"
+#include "ctf-trace.h"
+#include "health-relayd.h"
 #include "live.h"
 #include "lttng-relayd.h"
-#include "utils.h"
-#include "health-relayd.h"
-#include "testpoint.h"
-#include "viewer-stream.h"
-#include "stream.h"
 #include "session.h"
-#include "ctf-trace.h"
-#include "connection.h"
+#include "stream.h"
+#include "testpoint.h"
+#include "utils.h"
 #include "viewer-session.h"
+#include "viewer-stream.h"
 
 #define SESSION_BUF_DEFAULT_COUNT	16
 
@@ -1629,10 +1630,10 @@ int viewer_get_next_index(struct relay_connection *conn)
 	 * overwrite caused by tracefile rotation (in association with
 	 * unlink performed before overwrite).
 	 */
-	if (!vstream->stream_file.fd) {
-		int fd;
+	if (!vstream->stream_file.handle) {
 		char file_path[LTTNG_PATH_MAX];
 		enum lttng_trace_chunk_status status;
+		struct fs_handle *fs_handle;
 
 		ret = utils_stream_file_path(rstream->path_name,
 				rstream->channel_name, rstream->tracefile_size,
@@ -1647,9 +1648,9 @@ int viewer_get_next_index(struct relay_connection *conn)
 		 * missing if the stream has been closed (application exits with
 		 * per-pid buffers) and a clear command has been performed.
 		 */
-		status = lttng_trace_chunk_open_file(
+		status = lttng_trace_chunk_open_fs_handle(
 				vstream->stream_file.trace_chunk,
-				file_path, O_RDONLY, 0, &fd, true);
+				file_path, O_RDONLY, 0, &fs_handle, true);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			if (status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE &&
 					rstream->closed) {
@@ -1659,13 +1660,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 			PERROR("Failed to open trace file for viewer stream");
 			goto error_put;
 		}
-		vstream->stream_file.fd = stream_fd_create(fd);
-		if (!vstream->stream_file.fd) {
-			if (close(fd)) {
-				PERROR("Failed to close viewer stream file");
-			}
-			goto error_put;
-		}
+		vstream->stream_file.handle = fs_handle;
 	}
 
 	ret = check_new_streams(conn);
@@ -1678,8 +1673,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 
 	ret = lttng_index_file_read(vstream->index_file, &packet_index);
 	if (ret) {
-		ERR("Relay error reading index file %d",
-				vstream->index_file->fd);
+		ERR("Relay error reading index file");
 		viewer_index.status = htobe32(LTTNG_VIEWER_INDEX_ERR);
 		goto send_reply;
 	} else {
@@ -1769,6 +1763,7 @@ int viewer_get_packet(struct relay_connection *conn)
 	uint32_t reply_size = sizeof(reply_header);
 	uint32_t packet_data_len = 0;
 	ssize_t read_len;
+	uint64_t stream_id;
 
 	DBG2("Relay get data packet");
 
@@ -1783,11 +1778,12 @@ int viewer_get_packet(struct relay_connection *conn)
 
 	/* From this point on, the error label can be reached. */
 	memset(&reply_header, 0, sizeof(reply_header));
+	stream_id = (uint64_t) be64toh(get_packet_info.stream_id);
 
-	vstream = viewer_stream_get_by_id(be64toh(get_packet_info.stream_id));
+	vstream = viewer_stream_get_by_id(stream_id);
 	if (!vstream) {
 		DBG("Client requested packet of unknown stream id %" PRIu64,
-				(uint64_t) be64toh(get_packet_info.stream_id));
+				stream_id);
 		reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 		goto send_reply_nolock;
 	} else {
@@ -1803,19 +1799,21 @@ int viewer_get_packet(struct relay_connection *conn)
 	}
 
 	pthread_mutex_lock(&vstream->stream->lock);
-	lseek_ret = lseek(vstream->stream_file.fd->fd,
+	lseek_ret = fs_handle_seek(vstream->stream_file.handle,
 			be64toh(get_packet_info.offset), SEEK_SET);
 	if (lseek_ret < 0) {
-		PERROR("lseek fd %d to offset %" PRIu64,
-				vstream->stream_file.fd->fd,
+		PERROR("Failed to seek file system handle of viewer stream %" PRIu64
+		       " to offset %" PRIu64,
+				stream_id,
 				(uint64_t) be64toh(get_packet_info.offset));
 		goto error;
 	}
-	read_len = lttng_read(vstream->stream_file.fd->fd,
+	read_len = fs_handle_read(vstream->stream_file.handle,
 			reply + sizeof(reply_header), packet_data_len);
 	if (read_len < packet_data_len) {
-		PERROR("Relay reading trace file, fd: %d, offset: %" PRIu64,
-				vstream->stream_file.fd->fd,
+		PERROR("Failed to read from file system handle of viewer stream id %" PRIu64
+		       ", offset: %" PRIu64,
+				stream_id,
 				(uint64_t) be64toh(get_packet_info.offset));
 		goto error;
 	}
@@ -1849,8 +1847,7 @@ send_reply_nolock:
 		goto end_free;
 	}
 
-	DBG("Sent %u bytes for stream %" PRIu64, reply_size,
-			(uint64_t) be64toh(get_packet_info.stream_id));
+	DBG("Sent %u bytes for stream %" PRIu64, reply_size, stream_id);
 
 end_free:
 	free(reply);
@@ -1870,6 +1867,7 @@ static
 int viewer_get_metadata(struct relay_connection *conn)
 {
 	int ret = 0;
+	int fd = -1;
 	ssize_t read_len;
 	uint64_t len = 0;
 	char *data = NULL;
@@ -1939,8 +1937,8 @@ int viewer_get_metadata(struct relay_connection *conn)
 	len = vstream->stream->metadata_received - vstream->metadata_sent;
 
 	/* first time, we open the metadata file */
-	if (!vstream->stream_file.fd) {
-		int fd;
+	if (!vstream->stream_file.handle) {
+		struct fs_handle *fs_handle;
 		char file_path[LTTNG_PATH_MAX];
 		enum lttng_trace_chunk_status status;
 		struct relay_stream *rstream = vstream->stream;
@@ -1958,9 +1956,9 @@ int viewer_get_metadata(struct relay_connection *conn)
 		 * missing if the stream has been closed (application exits with
 		 * per-pid buffers) and a clear command has been performed.
 		 */
-		status = lttng_trace_chunk_open_file(
+		status = lttng_trace_chunk_open_fs_handle(
 				vstream->stream_file.trace_chunk,
-				file_path, O_RDONLY, 0, &fd, true);
+				file_path, O_RDONLY, 0, &fs_handle, true);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			if (status == LTTNG_TRACE_CHUNK_STATUS_NO_FILE) {
 				reply.status = htobe32(LTTNG_VIEWER_NO_NEW_METADATA);
@@ -1973,13 +1971,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 			PERROR("Failed to open metadata file for viewer stream");
 			goto error;
 		}
-		vstream->stream_file.fd = stream_fd_create(fd);
-		if (!vstream->stream_file.fd) {
-			if (close(fd)) {
-				PERROR("Failed to close viewer metadata file");
-			}
-			goto error;
-		}
+		vstream->stream_file.handle = fs_handle;
 	}
 
 	reply.len = htobe64(len);
@@ -1989,7 +1981,14 @@ int viewer_get_metadata(struct relay_connection *conn)
 		goto error;
 	}
 
-	read_len = lttng_read(vstream->stream_file.fd->fd, data, len);
+	fd = fs_handle_get_fd(vstream->stream_file.handle);
+	if (fd < 0) {
+		ERR("Failed to restore viewer stream file system handle");
+		goto error;
+	}
+	read_len = lttng_read(fd, data, len);
+	fs_handle_put_fd(vstream->stream_file.handle);
+	fd = -1;
 	if (read_len < len) {
 		PERROR("Relay reading metadata file");
 		goto error;

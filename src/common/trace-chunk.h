@@ -18,12 +18,13 @@
 #ifndef LTTNG_TRACE_CHUNK_H
 #define LTTNG_TRACE_CHUNK_H
 
-#include <common/macros.h>
-#include <common/credentials.h>
 #include <common/compat/directory-handle.h>
+#include <common/credentials.h>
+#include <common/fd-tracker/fd-tracker.h>
+#include <common/macros.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 /*
  * A trace chunk is a group of directories and files forming a (or a set of)
@@ -175,8 +176,21 @@ enum lttng_trace_chunk_status lttng_trace_chunk_create_subdirectory(
 
 LTTNG_HIDDEN
 enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
-		struct lttng_trace_chunk *chunk, const char *filename,
-		int flags, mode_t mode, int *out_fd, bool expect_no_file);
+		struct lttng_trace_chunk *chunk,
+		const char *filename,
+		int flags,
+		mode_t mode,
+		int *out_fd,
+		bool expect_no_file);
+
+LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_open_fs_handle(
+		struct lttng_trace_chunk *chunk,
+		const char *filename,
+		int flags,
+		mode_t mode,
+		struct fs_handle **out_handle,
+		bool expect_no_file);
 
 LTTNG_HIDDEN
 int lttng_trace_chunk_unlink_file(struct lttng_trace_chunk *chunk,

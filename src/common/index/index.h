@@ -23,11 +23,12 @@
 #include <inttypes.h>
 #include <urcu/ref.h>
 
-#include <common/trace-chunk.h>
 #include "ctf-index.h"
+#include <common/fs-handle.h>
+#include <common/trace-chunk.h>
 
 struct lttng_index_file {
-	int fd;
+	struct fs_handle *file;
 	uint32_t major;
 	uint32_t minor;
 	uint32_t element_len;

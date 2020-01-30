@@ -15,8 +15,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include <common/fs-handle.h>
 #include <common/fs-handle-internal.h>
+#include <common/fs-handle.h>
+#include <common/readwrite.h>
 
 LTTNG_HIDDEN
 int fs_handle_get_fd(struct fs_handle *handle)
@@ -40,4 +41,72 @@ LTTNG_HIDDEN
 int fs_handle_close(struct fs_handle *handle)
 {
 	return handle->close(handle);
+}
+
+LTTNG_HIDDEN
+ssize_t fs_handle_read(struct fs_handle *handle, void *buf, size_t count)
+{
+	ssize_t ret;
+	const int fd = fs_handle_get_fd(handle);
+
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_read(fd, buf, count);
+	fs_handle_put_fd(handle);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+ssize_t fs_handle_write(struct fs_handle *handle, const void *buf, size_t count)
+{
+	ssize_t ret;
+	const int fd = fs_handle_get_fd(handle);
+
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_write(fd, buf, count);
+	fs_handle_put_fd(handle);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int fs_handle_truncate(struct fs_handle *handle, off_t offset)
+{
+        int ret;
+	const int fd = fs_handle_get_fd(handle);
+
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = ftruncate(fd, offset);
+	fs_handle_put_fd(handle);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int fs_handle_seek(struct fs_handle *handle, off_t offset, int whence)
+{
+        int ret;
+	const int fd = fs_handle_get_fd(handle);
+
+	if (fd < 0) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lseek(fd, offset, whence);
+	fs_handle_put_fd(handle);
+end:
+	return ret;
 }

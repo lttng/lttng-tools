@@ -50,8 +50,7 @@ struct relay_viewer_stream {
 	struct relay_stream *stream;
 
 	struct {
-		/* FD from which to read the stream data. */
-		struct stream_fd *fd;
+		struct fs_handle *handle;
 		struct lttng_trace_chunk *trace_chunk;
 	} stream_file;
 	/* index file from which to read the index data. */

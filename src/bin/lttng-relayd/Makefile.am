@@ -18,7 +18,6 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        viewer-stream.h viewer-stream.c \
                        session.c session.h \
                        stream.c stream.h \
-                       stream-fd.c stream-fd.h \
                        connection.c connection.h \
                        viewer-session.c viewer-session.h \
                        tracefile-array.c tracefile-array.h \
@@ -36,5 +35,4 @@ lttng_relayd_LDADD = -lurcu-common -lurcu \
 		$(top_builddir)/src/common/health/libhealth.la \
 		$(top_builddir)/src/common/config/libconfig.la \
 		$(top_builddir)/src/common/testpoint/libtestpoint.la \
-		$(top_builddir)/src/common/fd-tracker/libfd-tracker.la \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la

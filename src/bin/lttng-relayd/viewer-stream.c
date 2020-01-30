@@ -158,8 +158,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 * If we never received a data file for the current stream, delay the
 	 * opening, otherwise open it right now.
 	 */
-	if (stream->stream_fd) {
-		int fd, ret;
+	if (stream->file) {
+		int ret;
 		char file_path[LTTNG_PATH_MAX];
 		enum lttng_trace_chunk_status status;
 
@@ -171,18 +171,11 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 			goto error_unlock;
 		}
 
-		status = lttng_trace_chunk_open_file(
-				vstream->stream_file.trace_chunk,
-				file_path, O_RDONLY, 0, &fd, true);
+		status = lttng_trace_chunk_open_fs_handle(
+				vstream->stream_file.trace_chunk, file_path,
+				O_RDONLY, 0, &vstream->stream_file.handle,
+				true);
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
-			goto error_unlock;
-		}
-		vstream->stream_file.fd = stream_fd_create(fd);
-		if (!vstream->stream_file.fd) {
-			if (close(fd)) {
-				PERROR("Failed to close viewer %sfile",
-					stream->is_metadata ? "metadata " : "");
-			}
 			goto error_unlock;
 		}
 	}
@@ -190,7 +183,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	if (seek_t == LTTNG_VIEWER_SEEK_LAST && vstream->index_file) {
 		off_t lseek_ret;
 
-		lseek_ret = lseek(vstream->index_file->fd, 0, SEEK_END);
+		lseek_ret = fs_handle_seek(
+				vstream->index_file->file, 0, SEEK_END);
 		if (lseek_ret < 0) {
 			goto error_unlock;
 		}
@@ -241,9 +235,9 @@ static void viewer_stream_release(struct urcu_ref *ref)
 
 	viewer_stream_unpublish(vstream);
 
-	if (vstream->stream_file.fd) {
-		stream_fd_put(vstream->stream_file.fd);
-		vstream->stream_file.fd = NULL;
+	if (vstream->stream_file.handle) {
+		fs_handle_close(vstream->stream_file.handle);
+		vstream->stream_file.handle = NULL;
 	}
 	if (vstream->index_file) {
 		lttng_index_file_put(vstream->index_file);
@@ -304,9 +298,9 @@ void viewer_stream_close_files(struct relay_viewer_stream *vstream)
 		lttng_index_file_put(vstream->index_file);
 		vstream->index_file = NULL;
 	}
-	if (vstream->stream_file.fd) {
-		stream_fd_put(vstream->stream_file.fd);
-		vstream->stream_file.fd = NULL;
+	if (vstream->stream_file.handle) {
+	        fs_handle_close(vstream->stream_file.handle);
+		vstream->stream_file.handle = NULL;
 	}
 }
 

@@ -31,7 +31,6 @@
 #include <common/buffer-view.h>
 
 #include "session.h"
-#include "stream-fd.h"
 #include "tracefile-array.h"
 
 struct lttcomm_relayd_index;
@@ -79,8 +78,7 @@ struct relay_stream {
 	/* seq num to encounter before closing. */
 	uint64_t last_net_seq_num;
 
-	/* FD on which to write the stream data. */
-	struct stream_fd *stream_fd;
+	struct fs_handle *file;
 	/* index file on which to write the index data. */
 	struct lttng_index_file *index_file;
 

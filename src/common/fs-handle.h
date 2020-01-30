@@ -19,6 +19,7 @@
 #define FS_HANDLE_H
 
 #include <common/macros.h>
+#include <stdio.h>
 
 struct fs_handle;
 
@@ -67,5 +68,17 @@ int fs_handle_unlink(struct fs_handle *handle);
  */
 LTTNG_HIDDEN
 int fs_handle_close(struct fs_handle *handle);
+
+LTTNG_HIDDEN
+ssize_t fs_handle_read(struct fs_handle *handle, void *buf, size_t count);
+
+LTTNG_HIDDEN
+ssize_t fs_handle_write(struct fs_handle *handle, const void *buf, size_t count);
+
+LTTNG_HIDDEN
+int fs_handle_truncate(struct fs_handle *handle, off_t offset);
+
+LTTNG_HIDDEN
+int fs_handle_seek(struct fs_handle *handle, off_t offset, int whence);
 
 #endif /* FS_HANDLE_H */

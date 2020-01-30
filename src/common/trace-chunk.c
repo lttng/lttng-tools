@@ -21,6 +21,7 @@
 #include <common/dynamic-array.h>
 #include <common/error.h>
 #include <common/fd-tracker/fd-tracker.h>
+#include <common/fs-handle-internal.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
 #include <common/optional.h>
@@ -136,6 +137,24 @@ struct lttng_trace_chunk_registry {
 	struct cds_lfht *ht;
 };
 
+struct fs_handle_untracked {
+	struct fs_handle parent;
+	int fd;
+	struct {
+		struct lttng_directory_handle *directory_handle;
+		char *path;
+	} location;
+};
+
+static
+int fs_handle_untracked_get_fd(struct fs_handle *handle);
+static
+void fs_handle_untracked_put_fd(struct fs_handle *handle);
+static
+int fs_handle_untracked_unlink(struct fs_handle *handle);
+static
+int fs_handle_untracked_close(struct fs_handle *handle);
+
 static const
 char *close_command_names[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_MOVE_TO_COMPLETED] =
@@ -155,6 +174,92 @@ chunk_command close_command_post_release_funcs[] = {
 	[LTTNG_TRACE_CHUNK_COMMAND_TYPE_DELETE] =
 			lttng_trace_chunk_delete_post_release,
 };
+
+static
+struct fs_handle *fs_handle_untracked_create(
+		struct lttng_directory_handle *directory_handle,
+		const char *path,
+		int fd)
+{
+	struct fs_handle_untracked *handle = NULL;
+	bool reference_acquired;
+	char *path_copy = strdup(path);
+
+	assert(fd >= 0);
+	if (!path_copy) {
+		PERROR("Failed to copy file path while creating untracked filesystem handle");
+		goto end;
+	}
+
+	handle = zmalloc(sizeof(typeof(*handle)));
+	if (!handle) {
+		PERROR("Failed to allocate untracked filesystem handle");
+		goto end;
+	}
+
+	handle->parent = (typeof(handle->parent)) {
+		.get_fd = fs_handle_untracked_get_fd,
+		.put_fd = fs_handle_untracked_put_fd,
+		.unlink = fs_handle_untracked_unlink,
+		.close = fs_handle_untracked_close,
+	};
+
+	handle->fd = fd;
+	reference_acquired = lttng_directory_handle_get(directory_handle);
+	assert(reference_acquired);
+	handle->location.directory_handle = directory_handle;
+	/* Ownership is transferred. */
+	handle->location.path = path_copy;
+	path_copy = NULL;
+end:
+	free(path_copy);
+	return handle ? &handle->parent : NULL;
+}
+
+static
+int fs_handle_untracked_get_fd(struct fs_handle *_handle)
+{
+	struct fs_handle_untracked *handle = container_of(
+			_handle, struct fs_handle_untracked, parent);
+
+	return handle->fd;
+}
+
+static
+void fs_handle_untracked_put_fd(struct fs_handle *_handle)
+{
+	/* no-op. */
+}
+
+static
+int fs_handle_untracked_unlink(struct fs_handle *_handle)
+{
+	struct fs_handle_untracked *handle = container_of(
+			_handle, struct fs_handle_untracked, parent);
+
+	return lttng_directory_handle_unlink_file(
+			handle->location.directory_handle,
+			handle->location.path);
+}
+
+static
+void fs_handle_untracked_destroy(struct fs_handle_untracked *handle)
+{
+	lttng_directory_handle_put(handle->location.directory_handle);
+	free(handle->location.path);
+	free(handle);
+}
+
+static
+int fs_handle_untracked_close(struct fs_handle *_handle)
+{
+	struct fs_handle_untracked *handle = container_of(
+			_handle, struct fs_handle_untracked, parent);
+	int ret = close(handle->fd);
+
+	fs_handle_untracked_destroy(handle);
+	return ret;
+}
 
 static
 bool lttng_trace_chunk_registry_element_equals(
@@ -1230,16 +1335,19 @@ void lttng_trace_chunk_remove_file(
 	assert(!ret);
 }
 
-LTTNG_HIDDEN
-enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
-		struct lttng_trace_chunk *chunk, const char *file_path,
-		int flags, mode_t mode, int *out_fd, bool expect_no_file)
+static
+enum lttng_trace_chunk_status _lttng_trace_chunk_open_fs_handle_locked(
+		struct lttng_trace_chunk *chunk,
+		const char *file_path,
+		int flags,
+		mode_t mode,
+		struct fs_handle **out_handle,
+		bool expect_no_file)
 {
 	int ret;
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 
 	DBG("Opening trace chunk file \"%s\"", file_path);
-	pthread_mutex_lock(&chunk->lock);
 	if (!chunk->credentials.is_set) {
 		/*
 		 * Fatal error, credentials must be set before a
@@ -1260,10 +1368,26 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		goto end;
 	}
-	ret = lttng_directory_handle_open_file_as_user(
-			chunk->chunk_directory, file_path, flags, mode,
-			chunk->credentials.value.use_current_user ?
-					NULL : &chunk->credentials.value.user);
+	if (chunk->fd_tracker) {
+		assert(chunk->credentials.value.use_current_user);
+		*out_handle = fd_tracker_open_fs_handle(chunk->fd_tracker,
+				chunk->chunk_directory, file_path, flags, &mode);
+		ret = *out_handle ? 0 : -1;
+	} else {
+		ret = lttng_directory_handle_open_file_as_user(
+				chunk->chunk_directory, file_path, flags, mode,
+				chunk->credentials.value.use_current_user ?
+						NULL :
+						&chunk->credentials.value.user);
+		if (ret >= 0) {
+			*out_handle = fs_handle_untracked_create(
+					chunk->chunk_directory, file_path, ret);
+			if (!*out_handle) {
+				status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+				goto end;
+			}
+		}
+	}
 	if (ret < 0) {
 		if (errno == ENOENT && expect_no_file) {
 			status = LTTNG_TRACE_CHUNK_STATUS_NO_FILE;
@@ -1275,9 +1399,59 @@ enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
 		lttng_trace_chunk_remove_file(chunk, file_path);
 		goto end;
 	}
-	*out_fd = ret;
 end:
+	return status;
+}
+
+LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_open_fs_handle(
+		struct lttng_trace_chunk *chunk,
+		const char *file_path,
+		int flags,
+		mode_t mode,
+		struct fs_handle **out_handle,
+		bool expect_no_file)
+{
+	enum lttng_trace_chunk_status status;
+
+	pthread_mutex_lock(&chunk->lock);
+	status = _lttng_trace_chunk_open_fs_handle_locked(chunk, file_path,
+			flags, mode, out_handle, expect_no_file);
 	pthread_mutex_unlock(&chunk->lock);
+	return status;
+}
+
+LTTNG_HIDDEN
+enum lttng_trace_chunk_status lttng_trace_chunk_open_file(
+		struct lttng_trace_chunk *chunk,
+		const char *file_path,
+		int flags,
+		mode_t mode,
+		int *out_fd,
+		bool expect_no_file)
+{
+	enum lttng_trace_chunk_status status;
+	struct fs_handle *fs_handle;
+
+	pthread_mutex_lock(&chunk->lock);
+	/*
+	 * Using this method is never valid when an fd_tracker is being
+	 * used since the resulting file descriptor would not be tracked.
+	 */
+	assert(!chunk->fd_tracker);
+	status = _lttng_trace_chunk_open_fs_handle_locked(chunk, file_path,
+			flags, mode, &fs_handle, expect_no_file);
+	pthread_mutex_unlock(&chunk->lock);
+
+	if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+		*out_fd = fs_handle_get_fd(fs_handle);
+		/*
+		 * Does not close the fd; we just "unbox" it from the fs_handle.
+		 */
+		fs_handle_untracked_destroy(container_of(
+				fs_handle, struct fs_handle_untracked, parent));
+	}
+
 	return status;
 }
 

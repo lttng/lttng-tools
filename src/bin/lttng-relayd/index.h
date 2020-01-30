@@ -26,8 +26,6 @@
 #include <common/hashtable/hashtable.h>
 #include <common/index/index.h>
 
-#include "stream-fd.h"
-
 struct relay_stream;
 struct relay_connection;
 struct lttcomm_relayd_index;

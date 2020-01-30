@@ -74,7 +74,8 @@ endif
 libcommon_la_LIBADD = \
 	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/compat/libcompat.la \
-	$(top_builddir)/src/common/hashtable/libhashtable.la
+	$(top_builddir)/src/common/hashtable/libhashtable.la \
+	$(top_builddir)/src/common/fd-tracker/libfd-tracker.la
 
 if BUILD_LIB_COMPAT
 SUBDIRS += compat

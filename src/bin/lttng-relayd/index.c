@@ -273,7 +273,6 @@ int relay_index_try_flush(struct relay_index *index)
 {
 	int ret = 1;
 	bool flushed = false;
-	int fd;
 
 	pthread_mutex_lock(&index->lock);
 	if (index->flushed) {
@@ -283,10 +282,9 @@ int relay_index_try_flush(struct relay_index *index)
 	if (!index->has_index_data || !index->index_file) {
 		goto skip;
 	}
-	fd = index->index_file->fd;
-	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64
-			" on fd %d", index->stream->stream_handle,
-			index->index_n.key, fd);
+
+	DBG2("Writing index for stream ID %" PRIu64 " and seq num %" PRIu64,
+			index->stream->stream_handle, index->index_n.key);
 	flushed = true;
 	index->flushed = true;
 	ret = lttng_index_file_write(index->index_file, &index->index_data);
@@ -401,7 +399,6 @@ int relay_index_switch_all_files(struct relay_stream *stream)
 	rcu_read_lock();
 	cds_lfht_for_each_entry(stream->indexes_ht->ht, &iter.iter,
 			index, index_n.node) {
-		DBG("Update index to fd %d", stream->index_file->fd);
 		ret = relay_index_switch_file(index, stream->index_file,
 				stream->pos_after_last_complete_data_index);
 		if (ret) {
