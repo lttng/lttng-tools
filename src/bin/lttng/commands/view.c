@@ -30,7 +30,6 @@ static char *opt_session_name;
 static char *opt_viewer;
 static char *opt_trace_path;
 static const char *babeltrace_bin = CONFIG_BABELTRACE_BIN;
-//static const char *lttv_gui_bin = CONFIG_LTTV_GUI_BIN;
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -56,7 +55,6 @@ static struct poptOption long_options[] = {
  * This is needed for each viewer since we are using execvp().
  */
 static const char *babeltrace_opts[] = { "babeltrace" };
-//static const char *lttv_gui_opts[] = { "lttv-gui", "-t", };
 
 /*
  * Type is also use as the index in the viewers array. So please, make sure
@@ -64,8 +62,7 @@ static const char *babeltrace_opts[] = { "babeltrace" };
  */
 enum viewer_type {
 	VIEWER_BABELTRACE    = 0,
-	VIEWER_LTTV_GUI      = 1,
-	VIEWER_USER_DEFINED  = 2,
+	VIEWER_USER_DEFINED  = 1,
 };
 
 /*
@@ -77,7 +74,6 @@ static struct viewers {
 	enum viewer_type type;
 } viewers[] = {
 	{ "babeltrace", VIEWER_BABELTRACE },
-	{ "lttv-gui", VIEWER_LTTV_GUI },
 	{ NULL, VIEWER_USER_DEFINED },
 };
 
