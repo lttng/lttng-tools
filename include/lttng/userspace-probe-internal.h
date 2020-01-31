@@ -14,6 +14,10 @@
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 
+typedef bool (*userspace_probe_location_equal_cb)(
+		const struct lttng_userspace_probe_location *a,
+		const struct lttng_userspace_probe_location *b);
+
 /*
  * No elf-specific comm structure is defined since no elf-specific payload is
  * currently needed.
@@ -79,6 +83,7 @@ struct lttng_userspace_probe_location_tracepoint_comm {
 struct lttng_userspace_probe_location {
 	enum lttng_userspace_probe_location_type type;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
+	userspace_probe_location_equal_cb equal;
 };
 
 struct lttng_userspace_probe_location_function {
@@ -141,5 +146,15 @@ int lttng_userspace_probe_location_flatten(
 LTTNG_HIDDEN
 struct lttng_userspace_probe_location *lttng_userspace_probe_location_copy(
 		const struct lttng_userspace_probe_location *location);
+
+LTTNG_HIDDEN
+bool lttng_userspace_probe_location_lookup_method_is_equal(
+		const struct lttng_userspace_probe_location_lookup_method *a,
+		const struct lttng_userspace_probe_location_lookup_method *b);
+
+LTTNG_HIDDEN
+bool lttng_userspace_probe_location_is_equal(
+		const struct lttng_userspace_probe_location *a,
+		const struct lttng_userspace_probe_location *b);
 
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */
