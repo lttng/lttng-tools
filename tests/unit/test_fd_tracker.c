@@ -187,7 +187,7 @@ void test_unsuspendable_basic(void)
 	ok(tracker, "Created an fd tracker with a limit of %d simulateously opened file descriptors",
 			TRACKER_FD_LIMIT);
 	if (!tracker) {
-		return;
+		goto end;
 	}
 
 	track_std_fds(tracker);
@@ -196,6 +196,7 @@ void test_unsuspendable_basic(void)
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
 	ok(ret == 0, "Test directory is empty");
+end:
 	free(test_directory);
 	free(unlinked_files_directory);
 }
@@ -379,7 +380,7 @@ void test_unsuspendable_close_untracked(void)
 
         tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
-		return;
+		goto end;;
 	}
 
 	ret = pipe(unknown_fds);
@@ -402,6 +403,7 @@ void test_unsuspendable_close_untracked(void)
 	fd_tracker_destroy(tracker);
 	ret = rmdir(test_directory);
 	ok(ret == 0, "Test directory is empty");
+end:
 	free(test_directory);
 	free(unlinked_files_directory);
 }
@@ -506,7 +508,7 @@ void test_suspendable_limit(void)
 
         tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
-		return;
+		goto end;
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
@@ -527,6 +529,7 @@ void test_suspendable_limit(void)
 	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
 	lttng_directory_handle_put(dir_handle);
+end:
 	free(test_directory);
 	free(unlinked_files_directory);
 }
@@ -550,7 +553,7 @@ void test_mixed_limit(void)
 
 	tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
-		return;
+		goto end;
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
@@ -586,6 +589,7 @@ void test_mixed_limit(void)
 	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
 	lttng_directory_handle_put(dir_handle);
+end:
 	free(test_directory);
 	free(unlinked_files_directory);
 }
@@ -622,7 +626,7 @@ void test_suspendable_restore(void)
 
         tracker = fd_tracker_create(unlinked_files_directory, TRACKER_FD_LIMIT);
 	if (!tracker) {
-		return;
+		goto end;
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
@@ -729,6 +733,7 @@ skip_write:
 	ok(ret == 0, "Test directory is empty");
 	fd_tracker_destroy(tracker);
 	lttng_directory_handle_put(dir_handle);
+end:
 	free(test_directory);
 	free(unlinked_files_directory);
 }
@@ -758,7 +763,7 @@ void test_unlink(void)
 
 	tracker = fd_tracker_create(unlinked_files_directory, 1);
 	if (!tracker) {
-		return;
+		goto end;
 	}
 
 	dir_handle = lttng_directory_handle_create(test_directory);
@@ -770,7 +775,7 @@ void test_unlink(void)
 	ok(!ret, "Successfully opened %i handles to %s/%s", handles_to_open,
 			test_directory, file_name);
 	if (ret) {
-		return;
+		goto end;
 	}
 
 	/*
@@ -859,6 +864,7 @@ void test_unlink(void)
 
 	ret = rmdir(test_directory);
 	ok(ret == 0, "Test directory is empty");
+end:
 	fd_tracker_destroy(tracker);
 	free(test_directory);
 	free(unlinked_files_directory);

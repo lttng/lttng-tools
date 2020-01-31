@@ -457,6 +457,9 @@ int fd_tracker_destroy(struct fd_tracker *tracker)
 {
 	int ret = 0;
 
+	if (!tracker) {
+		goto end;
+	}
 	/*
 	 * Refuse to destroy the tracker as fs_handles may still old
 	 * weak references to the tracker.
