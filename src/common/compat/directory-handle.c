@@ -591,7 +591,7 @@ LTTNG_HIDDEN
 bool lttng_directory_handle_equals(const struct lttng_directory_handle *lhs,
 		const struct lttng_directory_handle *rhs)
 {
-	return strcmp(lhs->path, rhs->path) == 0;
+	return strcmp(lhs->base_path, rhs->base_path) == 0;
 }
 
 static
