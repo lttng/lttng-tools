@@ -766,7 +766,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		goto skip_move;
 	}
 
-	if (old_path[0] != '\0' && path[0] != '\0') {
+	if (old_path && old_path[0] != '\0' && path[0] != '\0') {
 		/* Rename chunk directory. */
 		ret = lttng_directory_handle_rename_as_user(
 			chunk->session_output_directory,
@@ -804,7 +804,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		 */
 		chunk->chunk_directory = rename_directory;
 		rename_directory = NULL;
-	} else if (old_path[0] == '\0') {
+	} else if (old_path && old_path[0] == '\0') {
 		size_t i, count = lttng_dynamic_pointer_array_get_count(
 				&chunk->top_level_directories);
 
