@@ -133,6 +133,12 @@ static int lttng_unlinked_file_pool_add_inode(
 		}
 		pool->unlink_directory_handle = lttng_directory_handle_create(
 				pool->unlink_directory_path);
+		if (!pool->unlink_directory_handle) {
+			ERR("Failed to create directory handle to unlinked file pool at %s",
+					pool->unlink_directory_path);
+			ret = -1;
+			goto end;
+		}
 	}
 
 	ret = lttng_directory_handle_rename(inode->location.directory_handle,
