@@ -4272,11 +4272,6 @@ error_unlock:
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&channel->lock);
 	rcu_read_unlock();
-	if (ret) {
-		goto error;
-	}
-	ret = LTTCOMM_CONSUMERD_SUCCESS;
-error:
 	return ret;
 }
 
