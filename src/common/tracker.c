@@ -300,7 +300,7 @@ void lttng_tracker_ids_destroy(struct lttng_tracker_ids *ids)
 int lttng_tracker_ids_serialize(const struct lttng_tracker_ids *ids,
 		struct lttng_dynamic_buffer *buffer)
 {
-	int ret;
+	int ret = 0;
 	int value;
 	const char *string;
 	unsigned int count;
