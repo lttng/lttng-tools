@@ -89,7 +89,7 @@ void lttng_dynamic_array_clear(struct lttng_dynamic_array *array)
 		}
 	}
 
-	lttng_dynamic_buffer_set_size(&array->buffer, 0);
+	(void) lttng_dynamic_buffer_set_size(&array->buffer, 0);
 	array->size = 0;
 }
 
