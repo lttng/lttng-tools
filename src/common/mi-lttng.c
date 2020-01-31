@@ -1743,9 +1743,6 @@ int mi_lttng_id_target(struct mi_writer *writer,
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-	if (ret) {
-		goto end;
-	}
 
 	if (!is_open) {
 		ret = mi_lttng_writer_close_element(writer);
