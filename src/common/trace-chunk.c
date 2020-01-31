@@ -911,15 +911,11 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 	}
 
 skip_move:
-	if (path) {
-		new_path = strdup(path);
-		if (!new_path) {
-			ERR("Failed to allocate new trace chunk path");
-			status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
-			goto end;
-		}
-	} else {
-		new_path = NULL;
+	new_path = strdup(path);
+	if (!new_path) {
+		ERR("Failed to allocate new trace chunk path");
+		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
+		goto end;
 	}
 	free(chunk->path);
 	chunk->path = new_path;
