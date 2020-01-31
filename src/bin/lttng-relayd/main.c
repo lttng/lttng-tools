@@ -2934,7 +2934,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 				new_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
-			goto end;
+			goto end_unlock_session;
 		}
 		session->ongoing_rotation = false;
 	}
@@ -2952,7 +2952,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 		chunk_status = lttng_trace_chunk_rename_path(chunk, old_path);
 		if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ret = -1;
-			goto end;
+			goto end_unlock_session;
 		}
 	}
 	chunk_status = lttng_trace_chunk_set_close_timestamp(
