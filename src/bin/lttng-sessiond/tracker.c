@@ -225,11 +225,14 @@ end:
 
 void lttng_tracker_list_destroy(struct lttng_tracker_list *tracker_list)
 {
+	int ret;
+
 	if (!tracker_list) {
 		return;
 	}
 	lttng_tracker_list_reset(tracker_list);
-	cds_lfht_destroy(tracker_list->ht, NULL);
+	ret = cds_lfht_destroy(tracker_list->ht, NULL);
+	assert(!ret);
 	free(tracker_list);
 }
 
