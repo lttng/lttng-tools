@@ -598,6 +598,7 @@ void *thread_listener(void *data)
 
 	DBG("[thread] Relay live listener started");
 
+	rcu_register_thread();
 	health_register(health_relayd, HEALTH_RELAYD_TYPE_LIVE_LISTENER);
 
 	health_code_update();
@@ -739,6 +740,7 @@ error_sock_control:
 		DBG("Live viewer listener thread exited with error");
 	}
 	health_unregister(health_relayd);
+	rcu_unregister_thread();
 	DBG("Live viewer listener thread cleanup complete");
 	if (lttng_relay_stop_threads()) {
 		ERR("Error stopping threads");

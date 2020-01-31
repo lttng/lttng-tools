@@ -1075,6 +1075,7 @@ static void *relay_thread_listener(void *data)
 
 	DBG("[thread] Relay listener started");
 
+	rcu_register_thread();
 	health_register(health_relayd, HEALTH_RELAYD_TYPE_LISTENER);
 
 	health_code_update();
@@ -1258,6 +1259,7 @@ error_sock_control:
 		ERR("Health error occurred in %s", __func__);
 	}
 	health_unregister(health_relayd);
+	rcu_unregister_thread();
 	DBG("Relay listener thread cleanup complete");
 	lttng_relay_stop_threads();
 	return NULL;
