@@ -26,6 +26,16 @@ AC_PROG_CXX
 RW_PROG_CXX_WORKS
 AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
 
+# Detect warning flags supported by the compiler, append them to WARN_CFLAGS.
+#
+# Pass -Werror as an extra flag during the test: this is needed to make the
+# -Wunknown-warning-option diagnostic fatal with clang.
+AX_APPEND_COMPILE_FLAGS([ dnl
+		-Wall dnl
+	],
+	[WARN_CFLAGS],
+	[-Werror])
+
 # Checks for programs.
 AC_PROG_GREP
 AC_PROG_MAKE_SET
@@ -1038,7 +1048,7 @@ AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 
-AM_CFLAGS="-Wall -fno-strict-aliasing $PTHREAD_CFLAGS"
+AM_CFLAGS="${WARN_CFLAGS} -fno-strict-aliasing $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)
 
 # The order in which the include folders are searched is important.
