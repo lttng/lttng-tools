@@ -115,11 +115,12 @@ static char *craft_expected(struct test *test)
 
 int main(int argc, char **argv)
 {
+	int i;
 	int num_test = sizeof(tests) / sizeof(struct test);
 
 	plan_tests(NUM_TESTS_PER_TEST * num_test);
 	diag("Backward compatibility utils for lttng-relayd --group-by-session");
-	for (int i = 0; i < num_test; i++) {
+	for (i = 0; i < num_test; i++) {
 		char *expected = NULL;
 		char *result = NULL;
 

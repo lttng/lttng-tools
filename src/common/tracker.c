@@ -284,11 +284,13 @@ end:
 
 void lttng_tracker_ids_destroy(struct lttng_tracker_ids *ids)
 {
+	int i;
+
 	if (!ids) {
 		return;
 	}
 
-	for (int i = 0; i < ids->count; i++) {
+	for (i = 0; i < ids->count; i++) {
 		lttng_tracker_id_reset(&ids->id_array[i]);
 	}
 	free(ids->id_array);
@@ -304,6 +306,7 @@ int lttng_tracker_ids_serialize(const struct lttng_tracker_ids *ids,
 	unsigned int count;
 	enum lttng_tracker_id_status status;
 	const struct lttng_tracker_id *id;
+	unsigned int i;
 
 	status = lttng_tracker_ids_get_count(ids, &count);
 	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
@@ -311,7 +314,7 @@ int lttng_tracker_ids_serialize(const struct lttng_tracker_ids *ids,
 		goto error;
 	}
 
-	for (unsigned int i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		struct lttcomm_tracker_id_header id_hdr;
 		size_t var_data_len = 0;
 

@@ -105,8 +105,9 @@ end:
 
 int stop_consumer(const char **argv)
 {
-	int ret = 0;
-	for (int i = named_pipe_args_start; i < nb_args; i++) {
+	int ret = 0, i;
+
+	for (i = named_pipe_args_start; i < nb_args; i++) {
 		ret = write_pipe(argv[i], 49);
 	}
 	return ret;
@@ -114,8 +115,9 @@ int stop_consumer(const char **argv)
 
 int resume_consumer(const char **argv)
 {
-	int ret = 0;
-	for (int i = named_pipe_args_start; i < nb_args; i++) {
+	int ret = 0, i;
+
+	for (i = named_pipe_args_start; i < nb_args; i++) {
 		ret = write_pipe(argv[i], 0);
 	}
 	return ret;
@@ -184,6 +186,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 		enum lttng_domain_type domain_type,
 		enum lttng_condition_type condition_type)
 {
+	unsigned int test_vector_size = 5, i;
 	enum lttng_condition_status condition_status;
 	struct lttng_action *action;
 
@@ -198,8 +201,8 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 	ok(lttng_register_trigger(NULL) == -LTTNG_ERR_INVALID, "Registering a NULL trigger fails as expected");
 
 	/* Test: register a trigger */
-	unsigned int test_vector_size = 5;
-	for (unsigned int  i = 0; i < pow(2,test_vector_size); i++) {
+
+	for (i = 0; i < pow(2,test_vector_size); i++) {
 		int loop_ret = 0;
 		char *test_tuple_string = NULL;
 		unsigned int mask_position = 0;
