@@ -145,35 +145,46 @@ function test_relayd_background_no_working_dir()
 
 function test_relayd_debug_permission()
 {
-	local output_pattern='Working directory \".*\" is not writable'
-	local working_dir
-	local cwd
-	local pid
-
-	working_dir=$(realpath "$(mktemp -d)")
+	local is_user
 
 	diag "Test lttng-relayd change working directory on non writable directory"
 
-	# Removing write access to working dir
-	okx chmod -w "$working_dir"
+	if [ "$(id -u)" == "0" ]; then
+	    is_user=0
+	else
+	    is_user=1
+	fi
 
-	# Redirect the error output to a temporary file
-	ERROR_OUTPUT_DEST=$(mktemp)
-	start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
+	skip $is_user "Skipping permission debug output test; operation can't fail as root" 6 ||
+	{
+		local output_pattern='Working directory \".*\" is not writable'
+		local working_dir
+		local cwd
+		local pid
 
-	pid=$(pgrep "$RELAYD_MATCH")
-	ok $? "Found lttng-relayd"
+		working_dir=$(realpath "$(mktemp -d)")
 
-	cwd=$(readlink "/proc/${pid}/cwd")
-	is "$cwd" "$working_dir" "Working directory changed"
+		# Removing write access to working dir
+		okx chmod -w "$working_dir"
 
-	grep -q "$output_pattern" "$ERROR_OUTPUT_DEST"
-	ok $? "Warning about missing write permission is present"
+		# Redirect the error output to a temporary file
 
-	stop_lttng_relayd
-	rm "$ERROR_OUTPUT_DEST"
-	rm -rf "$working_dir" "$ERROR_OUTPUT_DEST"
-	ERROR_OUTPUT_DEST=/dev/null
+		ERROR_OUTPUT_DEST=$(mktemp) start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
+
+		pid=$(pgrep "$RELAYD_MATCH")
+		ok $? "Found lttng-relayd"
+
+		cwd=$(readlink "/proc/${pid}/cwd")
+		is "$cwd" "$working_dir" "Working directory changed"
+
+		grep -q "$output_pattern" "$ERROR_OUTPUT_DEST"
+		ok $? "Warning about missing write permission is present"
+
+		stop_lttng_relayd
+		rm "$ERROR_OUTPUT_DEST"
+		rm -rf "$working_dir" "$ERROR_OUTPUT_DEST"
+		ERROR_OUTPUT_DEST=/dev/null
+	}
 }
 
 function test_relayd_failure()
