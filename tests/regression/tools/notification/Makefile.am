@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/tests -I$(top_srcdir)/tests/utils/ -I$(srcdir)
-AM_LDFLAGS =
-
+AM_CFLAGS += -I$(top_srcdir)/tests/utils
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 LIB_LTTNG_CTL = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
