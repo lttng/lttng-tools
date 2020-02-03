@@ -4653,7 +4653,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 			snapshot_output->max_size);
 	if (nb_packets_per_stream < 0) {
 		ret_code = LTTNG_ERR_MAX_SIZE_INVALID;
-		goto error;
+		goto error_close_trace_chunk;
 	}
 
 	if (session->kernel_session) {
@@ -4661,7 +4661,7 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 				snapshot_kernel_consumer_output, session,
 				wait, nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
-			goto error;
+			goto error_close_trace_chunk;
 		}
 	}
 
@@ -4670,10 +4670,10 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 				snapshot_ust_consumer_output, session,
 				wait, nb_packets_per_stream);
 		if (ret_code != LTTNG_OK) {
-			goto error;
+			goto error_close_trace_chunk;
 		}
 	}
-
+error_close_trace_chunk:
 	if (session_close_trace_chunk(
 			    session, session->current_trace_chunk, NULL, NULL)) {
 		/*
