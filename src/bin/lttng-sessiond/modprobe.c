@@ -52,6 +52,10 @@ struct kern_modules_param kern_modules_control_core[] = {
 		.name = (char *) "lttng-ring-buffer-metadata-mmap-client",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
 	},
+	{
+		.name = (char *) "lttng-ring-buffer-event_notifier-client",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
 };
 
 /* LTTng kerneltracer probe modules list */
