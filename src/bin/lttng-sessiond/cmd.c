@@ -4540,7 +4540,7 @@ int64_t get_session_nb_packets_per_stream(const struct ltt_session *session,
 		}
 		cur_nb_packets++;
 	}
-	if (!cur_nb_packets) {
+	if (!cur_nb_packets && size_left != max_size) {
 		/* Not enough room to grab one packet of each stream, error. */
 		return -1;
 	}
