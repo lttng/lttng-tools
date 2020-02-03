@@ -859,7 +859,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		 */
 		chunk->chunk_directory = rename_directory;
 		rename_directory = NULL;
-	} else {
+	} else if (old_path) {
 		size_t i, count = lttng_dynamic_pointer_array_get_count(
 				&chunk->top_level_directories);
 		const bool reference_acquired = lttng_directory_handle_get(
@@ -908,6 +908,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 			ret = -1;
 			goto end;
 		}
+	} else {
+		/* Unexpected !old_path && !path. */
+		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_ARGUMENT;
+		goto end;
 	}
 
 skip_move:
