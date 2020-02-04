@@ -522,6 +522,10 @@ struct lttng_inode *lttng_inode_registry_get_inode(
 
 	inode = lttng_inode_create(&id, registry->inodes, unlinked_file_pool,
 			handle, path);
+	if (!inode) {
+		goto end_unlock;
+	}
+
 	node = cds_lfht_add_unique(registry->inodes,
 			lttng_inode_id_hash(&inode->id), lttng_inode_match,
 			&inode->id, &inode->registry_node);
