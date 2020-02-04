@@ -169,7 +169,8 @@ function test_relayd_debug_permission()
 
 		# Redirect the error output to a temporary file
 
-		ERROR_OUTPUT_DEST=$(mktemp) start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
+		ERROR_OUTPUT_DEST=$(mktemp)
+		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
 
 		pid=$(pgrep "$RELAYD_MATCH")
 		ok $? "Found lttng-relayd"
