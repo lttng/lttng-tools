@@ -4099,6 +4099,12 @@ int handle_notification_thread_channel_sample(
 			goto put_list;
 		}
 
+		if (!lttng_trigger_should_fire(trigger)) {
+			goto put_list;
+		}
+
+		lttng_trigger_fire(trigger);
+
 		/*
 		 * Ownership of `evaluation` transferred to the action executor
 		 * no matter the result.
