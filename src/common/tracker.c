@@ -302,7 +302,7 @@ int lttng_tracker_ids_serialize(const struct lttng_tracker_ids *ids,
 {
 	int ret = 0;
 	int value;
-	const char *string;
+	const char *string = NULL;
 	unsigned int count;
 	enum lttng_tracker_id_status status;
 	const struct lttng_tracker_id *id;
