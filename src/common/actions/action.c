@@ -55,6 +55,7 @@ void lttng_action_init(
 		action_equal_cb equal,
 		action_destroy_cb destroy)
 {
+	urcu_ref_init(&action->ref);
 	action->type = type;
 	action->validate = validate;
 	action->serialize = serialize;
@@ -62,14 +63,35 @@ void lttng_action_init(
 	action->destroy = destroy;
 }
 
-void lttng_action_destroy(struct lttng_action *action)
+static
+void action_destroy_ref(struct urcu_ref *ref)
+{
+	struct lttng_action *action =
+			container_of(ref, struct lttng_action, ref);
+
+	action->destroy(action);
+}
+
+LTTNG_HIDDEN
+void lttng_action_get(struct lttng_action *action)
+{
+	urcu_ref_get(&action->ref);
+}
+
+LTTNG_HIDDEN
+void lttng_action_put(struct lttng_action *action)
 {
 	if (!action) {
 		return;
 	}
 
 	assert(action->destroy);
-	action->destroy(action);
+	urcu_ref_put(&action->ref, action_destroy_ref);
+}
+
+void lttng_action_destroy(struct lttng_action *action)
+{
+	lttng_action_put(action);
 }
 
 LTTNG_HIDDEN
