@@ -1,3 +1,15 @@
+2020-02-05 lttng-tools 2.10.10 (National Chocolate Fondue Day)
+	* Fix: include stdlib.h in compat/string.h
+	* Fix: lttng: sanity check of `--probe` description
+	* Fix: lttng: placing probe on symbol starting with `_`
+	* Fix: update context types for Python bindings
+	* doc: Fix bind address example for lttng-relayd
+	* Require automake >= 1.12
+	* Fix: sessiond: ust: deadlock with per-pid buffers
+	* Fix: lttng: initialize sessions pointer to NULL
+	* Fix: sessiond: use system LTTng-UST headers when available
+	* doc/man: use specific revision date for each manual page
+
 2019-10-17 lttng-tools 2.10.9 (Wear Something Gaudy Day)
 	* Fix: sessiond: TOCTOU error on save of session configuration
 	* Fix: tests: replace truncation-prone logging helper
