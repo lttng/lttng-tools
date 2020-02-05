@@ -398,7 +398,6 @@ int lttng_tracker_id_lookup_string(enum lttng_tracker_type tracker_type,
 		default:
 			return LTTNG_ERR_INVALID;
 		}
-		break;
 	default:
 		return LTTNG_ERR_INVALID;
 	}
