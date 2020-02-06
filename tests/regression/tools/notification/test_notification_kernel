@@ -46,7 +46,7 @@ NUM_TESTS=104
 
 source $TESTDIR/utils/utils.sh
 
-function kernel_event_generator_toogle_state
+function kernel_event_generator_toggle_state
 {
 	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
 
@@ -55,7 +55,7 @@ function kernel_event_generator
 {
 	state_file=$1
 	kernel_event_generator_suspended=0
-	trap kernel_event_generator_toogle_state SIGUSR1
+	trap kernel_event_generator_toggle_state SIGUSR1
 
 	while (true); do
 		if [[ $kernel_event_generator_suspended -eq "1" ]]; then

@@ -46,7 +46,7 @@ DIR=$(readlink -f $TESTDIR)
 
 source $TESTDIR/utils/utils.sh
 
-function ust_event_generator_toogle_state
+function ust_event_generator_toggle_state
 {
 	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
 
@@ -55,7 +55,7 @@ function ust_event_generator
 {
 	state_file=$1
 	ust_event_generator_suspended=0
-	trap ust_event_generator_toogle_state SIGUSR1
+	trap ust_event_generator_toggle_state SIGUSR1
 
 	while (true); do
 		if [[ $ust_event_generator_suspended -eq "1" ]]; then
