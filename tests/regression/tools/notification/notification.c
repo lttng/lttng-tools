@@ -437,7 +437,97 @@ end:
 }
 
 static
-void test_notification_channel(const char *session_name,
+void test_invalid_channel_subscription(
+		const enum lttng_domain_type domain_type)
+{
+	enum lttng_condition_status condition_status;
+	enum lttng_notification_channel_status nc_status;
+	struct lttng_condition *dummy_condition = NULL;
+	struct lttng_condition *dummy_invalid_condition = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	int ret = 0;
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+	if (!notification_channel) {
+		goto end;
+	}
+
+	/*
+	 * Create a dummy, empty (thus invalid) condition to test error paths.
+	 */
+	dummy_invalid_condition = lttng_condition_buffer_usage_low_create();
+	if (!dummy_invalid_condition) {
+		fail("Setup error on condition creation");
+		goto end;
+	}
+
+	/*
+	 * Test subscription and unsubscription of an invalid condition to/from
+	 * a channel.
+	 */
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, dummy_invalid_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Subscribing to an invalid condition");
+
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, dummy_invalid_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Unsubscribing from an invalid condition");
+
+	/* Create a valid dummy condition with a ratio of 0.5 */
+	dummy_condition = lttng_condition_buffer_usage_low_create();
+	if (!dummy_condition) {
+		fail("Setup error on dummy_condition creation");
+		goto end;
+	}
+
+	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
+			dummy_condition, 0.5);
+	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+		fail("Setup error on condition creation");
+		goto end;
+	}
+
+	ret = setup_buffer_usage_condition(dummy_condition, "dummy_condition",
+			"dummy_session", "dummy_channel", domain_type);
+	if (ret) {
+		fail("Setup error on dummy condition creation");
+		goto end;
+	}
+
+	/*
+	 * Test subscription and unsubscription to/from a channel with invalid
+	 * parameters.
+	 */
+	nc_status = lttng_notification_channel_subscribe(NULL, NULL);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NULL, NULL");
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, NULL);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NON-NULL, NULL");
+
+	nc_status = lttng_notification_channel_subscribe(NULL, dummy_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NULL, NON-NULL");
+
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, dummy_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION,
+			"Unsubscribing from a valid unknown condition");
+
+end:
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_condition_destroy(dummy_invalid_condition);
+	lttng_condition_destroy(dummy_condition);
+	return;
+}
+
+static void test_notification_channel(const char *session_name,
 		const char *channel_name,
 		const enum lttng_domain_type domain_type,
 		const char **argv)
@@ -453,8 +543,6 @@ void test_notification_channel(const char *session_name,
 
 	struct lttng_condition *low_condition = NULL;
 	struct lttng_condition *high_condition = NULL;
-	struct lttng_condition *dummy_invalid_condition = NULL;
-	struct lttng_condition *dummy_condition = NULL;
 
 	double low_ratio = 0.0;
 	double high_ratio = 0.90;
@@ -463,34 +551,6 @@ void test_notification_channel(const char *session_name,
 	action = lttng_action_notify_create();
 	if (!action) {
 		fail("Setup error on action creation");
-		goto end;
-	}
-
-	/* Create a dummy, empty condition for later test */
-	dummy_invalid_condition = lttng_condition_buffer_usage_low_create();
-	if (!dummy_invalid_condition) {
-		fail("Setup error on condition creation");
-		goto end;
-	}
-
-	/* Create a valid dummy condition with a ratio of 0.5 */
-	dummy_condition = lttng_condition_buffer_usage_low_create();
-	if (!dummy_condition) {
-		fail("Setup error on dummy_condition creation");
-		goto end;
-
-	}
-	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-			dummy_condition, 0.5);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on condition creation");
-		goto end;
-	}
-
-	ret = setup_buffer_usage_condition(dummy_condition, "dummy_condition",
-			session_name, channel_name, domain_type);
-	if (ret) {
-		fail("Setup error on dummy condition creation");
 		goto end;
 	}
 
@@ -570,34 +630,6 @@ void test_notification_channel(const char *session_name,
 	if (!notification_channel) {
 		goto end;
 	}
-
-	/* Basic error path check */
-	nc_status = lttng_notification_channel_subscribe(NULL, NULL);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NULL, NULL");
-
-	nc_status = lttng_notification_channel_subscribe(notification_channel, NULL);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NON-NULL, NULL");
-
-	nc_status = lttng_notification_channel_subscribe(NULL, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Notification channel subscription is invalid: NULL, NON-NULL");
-
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, dummy_invalid_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Subscribing to an invalid condition");
-
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, dummy_invalid_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
-			"Unsubscribing from an invalid condition");
-
-	nc_status = lttng_notification_channel_unsubscribe(
-			notification_channel, dummy_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION,
-			"Unsubscribing from a valid unknown condition");
 
 	/* Subscribe a valid low condition */
 	nc_status = lttng_notification_channel_subscribe(
@@ -746,8 +778,6 @@ end:
 	lttng_action_destroy(action);
 	lttng_condition_destroy(low_condition);
 	lttng_condition_destroy(high_condition);
-	lttng_condition_destroy(dummy_invalid_condition);
-	lttng_condition_destroy(dummy_condition);
 }
 
 int main(int argc, const char *argv[])
@@ -796,6 +826,9 @@ int main(int argc, const char *argv[])
 	test_triggers_buffer_usage_condition(session_name, channel_name, domain_type, LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
 	diag("Test trigger for domain %s with buffer_usage_high condition", domain_type_string);
 	test_triggers_buffer_usage_condition(session_name, channel_name, domain_type, LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+
+	/* Basic error path check. */
+	test_invalid_channel_subscription(domain_type);
 
 	diag("Test notification channel api for domain %s", domain_type_string);
 	test_notification_channel(session_name, channel_name, domain_type, argv);
