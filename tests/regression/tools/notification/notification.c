@@ -564,7 +564,8 @@ void test_notification_channel(const char *session_name,
 	}
 
 	/* Begin testing */
-	notification_channel = lttng_notification_channel_create(lttng_session_daemon_notification_endpoint);
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 	if (!notification_channel) {
 		goto end;
@@ -572,36 +573,53 @@ void test_notification_channel(const char *session_name,
 
 	/* Basic error path check */
 	nc_status = lttng_notification_channel_subscribe(NULL, NULL);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Notification channel subscription is invalid: NULL, NULL");
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NULL, NULL");
 
 	nc_status = lttng_notification_channel_subscribe(notification_channel, NULL);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Notification channel subscription is invalid: NON-NULL, NULL");
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NON-NULL, NULL");
 
 	nc_status = lttng_notification_channel_subscribe(NULL, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Notification channel subscription is invalid: NULL, NON-NULL");
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Notification channel subscription is invalid: NULL, NON-NULL");
 
-	nc_status = lttng_notification_channel_subscribe(notification_channel, dummy_invalid_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Subscribing to an invalid condition");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, dummy_invalid_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Subscribing to an invalid condition");
 
-	nc_status = lttng_notification_channel_unsubscribe(notification_channel, dummy_invalid_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID, "Unsubscribing from an invalid condition");
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, dummy_invalid_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID,
+			"Unsubscribing from an invalid condition");
 
-	nc_status = lttng_notification_channel_unsubscribe(notification_channel, dummy_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION, "Unsubscribing from a valid unknown condition");
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, dummy_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_UNKNOWN_CONDITION,
+			"Unsubscribing from a valid unknown condition");
 
 	/* Subscribe a valid low condition */
-	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to condition");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to condition");
 
 	/* Subscribe a valid high condition */
-	nc_status = lttng_notification_channel_subscribe(notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Subscribe to condition");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, high_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to condition");
 
-	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED, "Subscribe to a condition for which subscription was already done");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
+			"Subscribe to a condition for which subscription was already done");
 
-	nc_status = lttng_notification_channel_subscribe(notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED, "Subscribe to a condition for which subscription was already done");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, high_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
+			"Subscribe to a condition for which subscription was already done");
 
 	/* Wait for notification to happen */
 	stop_consumer(argv);
@@ -609,11 +627,13 @@ void test_notification_channel(const char *session_name,
 
 	/* Wait for high notification */
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(
+				notification_channel, &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK
-			&& notification
-			&& lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
+					lttng_condition_get_type(lttng_notification_get_condition(
+							notification)) ==
+							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 			"High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
@@ -628,18 +648,24 @@ void test_notification_channel(const char *session_name,
 	 * waiting for consumption.
 	 */
 
-	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Unsubscribe with pending notification");
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Unsubscribe with pending notification");
 
-	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "subscribe with pending notification");
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe with pending notification");
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(
+				notification_channel, &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK
-			&& notification
-			&& lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
+					lttng_condition_get_type(lttng_notification_get_condition(
+							notification)) ==
+							LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 			"Low notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
@@ -650,10 +676,13 @@ void test_notification_channel(const char *session_name,
 	lttng_start_tracing(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(
+				notification_channel, &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+					lttng_condition_get_type(lttng_notification_get_condition(
+							notification)) ==
+							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 			"High notification received after intermediary communication");
 	lttng_notification_destroy(notification);
 	notification = NULL;
@@ -664,10 +693,13 @@ void test_notification_channel(const char *session_name,
 	wait_data_pending(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(
+				notification_channel, &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
+					lttng_condition_get_type(lttng_notification_get_condition(
+							notification)) ==
+							LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 			"Low notification received after re-subscription");
 	lttng_notification_destroy(notification);
 	notification = NULL;
@@ -678,10 +710,13 @@ void test_notification_channel(const char *session_name,
 	lttng_start_tracing(session_name);
 
 	do {
-		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+		nc_status = lttng_notification_channel_get_next_notification(
+				notification_channel, &notification);
 	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
-			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
+					lttng_condition_get_type(lttng_notification_get_condition(
+							notification)) ==
+							LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 			"High notification");
 	lttng_notification_destroy(notification);
 	notification = NULL;
@@ -692,10 +727,15 @@ void test_notification_channel(const char *session_name,
 	resume_consumer(argv);
 	wait_data_pending(session_name);
 
-	nc_status = lttng_notification_channel_unsubscribe(notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Unsubscribe low condition with pending notification");
-	nc_status = lttng_notification_channel_unsubscribe(notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "Unsubscribe high condition with pending notification");
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, low_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Unsubscribe low condition with pending notification");
+
+	nc_status = lttng_notification_channel_unsubscribe(
+			notification_channel, high_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Unsubscribe high condition with pending notification");
 
 end:
 	lttng_notification_channel_destroy(notification_channel);
