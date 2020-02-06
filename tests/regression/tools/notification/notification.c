@@ -396,7 +396,51 @@ void wait_data_pending(const char *session_name)
 }
 
 static
-void test_notification_channel(const char *session_name, const char *channel_name, const enum lttng_domain_type domain_type, const char **argv)
+int setup_buffer_usage_condition(struct lttng_condition *condition,
+		const char *condition_name,
+		const char *session_name,
+		const char *channel_name,
+		const enum lttng_domain_type domain_type)
+{
+	enum lttng_condition_status condition_status;
+	int ret = 0;
+
+	condition_status = lttng_condition_buffer_usage_set_session_name(
+			condition, session_name);
+	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+		fail("Failed to set session name on creation of condition `%s`",
+				condition_name);
+		ret = -1;
+		goto end;
+	}
+
+	condition_status = lttng_condition_buffer_usage_set_channel_name(
+			condition, channel_name);
+	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+		fail("Failed to set channel name on creation of condition `%s`",
+				condition_name);
+		ret = -1;
+		goto end;
+	}
+
+	condition_status = lttng_condition_buffer_usage_set_domain_type(
+			condition, domain_type);
+	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+		fail("Failed to set domain type on creation of condition `%s`",
+				condition_name);
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
+void test_notification_channel(const char *session_name,
+		const char *channel_name,
+		const enum lttng_domain_type domain_type,
+		const char **argv)
 {
 	int ret = 0;
 	enum lttng_condition_status condition_status;
@@ -443,22 +487,10 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_session_name(
-			dummy_condition, session_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on dummy_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_channel_name(
-			dummy_condition, channel_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on dummy_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			dummy_condition, domain_type);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on dummy_condition creation");
+	ret = setup_buffer_usage_condition(dummy_condition, "dummy_condition",
+			session_name, channel_name, domain_type);
+	if (ret) {
+		fail("Setup error on dummy condition creation");
 		goto end;
 	}
 
@@ -475,24 +507,11 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_session_name(
-			low_condition, session_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on low_condition creation");
+	ret = setup_buffer_usage_condition(low_condition, "low_condition",
+			session_name, channel_name, domain_type);
+	if (ret) {
+		fail("Setup error on low condition creation");
 		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_channel_name(
-			low_condition, channel_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on low_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			low_condition, domain_type);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on low_condition creation");
-		goto end;
-
 	}
 
 	/* Register a high condition with a ratio */
@@ -509,22 +528,10 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 		goto end;
 	}
 
-	condition_status = lttng_condition_buffer_usage_set_session_name(
-			high_condition, session_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on high_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_channel_name(
-			high_condition, channel_name);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on high_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_domain_type(
-			high_condition, domain_type);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on high_condition creation");
+	ret = setup_buffer_usage_condition(high_condition, "high_condition",
+			session_name, channel_name, domain_type);
+	if (ret) {
+		fail("Setup error on high condition creation");
 		goto end;
 	}
 
