@@ -43,7 +43,7 @@ print_test_banner "$TEST_DESC"
 
 app_pids=()
 
-function kernel_event_generator_toogle_state
+function kernel_event_generator_toggle_state
 {
 	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
 
@@ -52,7 +52,7 @@ function kernel_event_generator
 {
 	state_file=$1
 	kernel_event_generator_suspended=0
-	trap kernel_event_generator_toogle_state SIGUSR1
+	trap kernel_event_generator_toggle_state SIGUSR1
 
 	while (true); do
 		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
@@ -67,7 +67,7 @@ function kernel_event_generator
 	done
 }
 
-function ust_event_generator_toogle_state
+function ust_event_generator_toggle_state
 {
 	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
 
@@ -76,7 +76,7 @@ function ust_event_generator
 {
 	state_file=$1
 	ust_event_generator_suspended=0
-	trap ust_event_generator_toogle_state SIGUSR1
+	trap ust_event_generator_toggle_state SIGUSR1
 	trap "exit" SIGTERM SIGINT
 	while (true); do
 		if [[ $ust_event_generator_suspended -eq "1" ]]; then
