@@ -46,6 +46,8 @@ struct lttng_trigger *lttng_trigger_create(
 		goto end;
 	}
 
+	urcu_ref_init(&trigger->ref);
+
 	lttng_condition_get(condition);
 	trigger->condition = condition;
 
@@ -93,15 +95,13 @@ const struct lttng_action *lttng_trigger_get_const_action(
 	return trigger->action;
 }
 
-void lttng_trigger_destroy(struct lttng_trigger *trigger)
+static void trigger_destroy_ref(struct urcu_ref *ref)
 {
+	struct lttng_trigger *trigger =
+			container_of(ref, struct lttng_trigger, ref);
 	struct lttng_action *action = lttng_trigger_get_action(trigger);
 	struct lttng_condition *condition =
 			lttng_trigger_get_condition(trigger);
-
-	if (!trigger) {
-		return;
-	}
 
 	assert(action);
 	assert(condition);
@@ -111,6 +111,11 @@ void lttng_trigger_destroy(struct lttng_trigger *trigger)
 	lttng_condition_put(condition);
 
 	free(trigger);
+}
+
+void lttng_trigger_destroy(struct lttng_trigger *trigger)
+{
+	lttng_trigger_put(trigger);
 }
 
 LTTNG_HIDDEN
@@ -229,6 +234,22 @@ int lttng_trigger_serialize(struct lttng_trigger *trigger,
 	header->length = payload->buffer.size - size_before_payload;
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_get(struct lttng_trigger *trigger)
+{
+	urcu_ref_get(&trigger->ref);
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_put(struct lttng_trigger *trigger)
+{
+	if (!trigger) {
+		return;
+	}
+
+	urcu_ref_put(&trigger->ref , trigger_destroy_ref);
 }
 
 LTTNG_HIDDEN
