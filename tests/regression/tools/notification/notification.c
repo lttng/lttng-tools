@@ -29,17 +29,17 @@
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
+#include <lttng/condition/event-rule.h>
 #include <lttng/domain.h>
 #include <lttng/endpoint.h>
+#include <lttng/event-rule/tracepoint.h>
 #include <lttng/lttng-error.h>
+#include <lttng/lttng.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
-#include <lttng/lttng.h>
 
 #include <tap/tap.h>
-
-#define NUM_TESTS 104
 
 int nb_args = 0;
 int named_pipe_args_start = 0;
@@ -852,6 +852,193 @@ end:
 	lttng_condition_destroy(high_condition);
 }
 
+static void create_tracepoint_event_rule_trigger(const char *event_pattern,
+		const char *trigger_name,
+		const char *filter,
+		unsigned int exclusion_count,
+		const char **exclusions,
+		enum lttng_domain_type domain_type,
+		struct lttng_condition **condition,
+		struct lttng_trigger **trigger)
+{
+	enum lttng_event_rule_status event_rule_status;
+	enum lttng_trigger_status trigger_status;
+
+	struct lttng_action *tmp_action = NULL;
+	struct lttng_event_rule *event_rule = NULL;
+	struct lttng_condition *tmp_condition = NULL;
+	struct lttng_trigger *tmp_trigger = NULL;
+	int ret;
+
+	assert(event_pattern);
+	assert(trigger_name);
+	assert(condition);
+	assert(trigger);
+
+	event_rule = lttng_event_rule_tracepoint_create(domain_type);
+	ok(event_rule, "Tracepoint event rule object creation");
+
+	event_rule_status = lttng_event_rule_tracepoint_set_pattern(
+			event_rule, event_pattern);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+			"Setting tracepoint event rule pattern: '%s'",
+			event_pattern);
+
+	if (filter) {
+		event_rule_status = lttng_event_rule_tracepoint_set_filter(
+				event_rule, filter);
+		ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+				"Setting tracepoint event rule filter: '%s'",
+				filter);
+	}
+
+	if (exclusions) {
+		int i;
+		bool success = true;
+
+		assert(domain_type == LTTNG_DOMAIN_UST);
+		assert(exclusion_count > 0);
+
+		for (i = 0; i < exclusion_count; i++) {
+			event_rule_status =
+					lttng_event_rule_tracepoint_add_exclusion(
+							event_rule,
+							exclusions[i]);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				fail("Setting tracepoint event rule exclusion '%s'.",
+						exclusions[i]);
+				success = false;
+			}
+		}
+
+		ok(success, "Setting tracepoint event rule exclusions");
+	}
+
+	tmp_condition = lttng_condition_event_rule_create(event_rule);
+	ok(tmp_condition, "Condition event rule object creation");
+
+	tmp_action = lttng_action_notify_create();
+	ok(tmp_action, "Action event rule object creation");
+
+	tmp_trigger = lttng_trigger_create(tmp_condition, tmp_action);
+	ok(tmp_trigger, "Trigger object creation %s", trigger_name);
+
+	trigger_status = lttng_trigger_set_name(tmp_trigger, trigger_name);
+	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
+			"Setting name to trigger %s", trigger_name);
+
+	ret = lttng_register_trigger(tmp_trigger);
+	ok(ret == 0, "Trigger registration %s", trigger_name);
+
+	lttng_event_rule_destroy(event_rule);
+
+	*condition = tmp_condition;
+	*trigger = tmp_trigger;
+
+	return;
+}
+
+static char *get_next_notification_trigger_name(
+		struct lttng_notification_channel *notification_channel)
+{
+	struct lttng_notification *notification;
+	enum lttng_notification_channel_status status;
+	const struct lttng_evaluation *notification_evaluation;
+	char *trigger_name = NULL;
+	const char *name;
+	enum lttng_condition_type notification_evaluation_type;
+
+	/* Receive the next notification. */
+	status = lttng_notification_channel_get_next_notification(
+			notification_channel, &notification);
+
+	switch (status) {
+	case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
+		break;
+	default:
+		/* Unhandled conditions / errors. */
+		fail("Failed to get next notification channel notification: status = %d",
+				status);
+		goto end;
+	}
+
+	notification_evaluation =
+			lttng_notification_get_evaluation(notification);
+
+	notification_evaluation_type =
+			lttng_evaluation_get_type(notification_evaluation);
+	switch (notification_evaluation_type) {
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		lttng_evaluation_event_rule_get_trigger_name(
+				notification_evaluation, &name);
+
+		trigger_name = strdup(name);
+		break;
+	default:
+		fail("Unexpected notification evaluation type: notification type = %d",
+				notification_evaluation_type);
+		break;
+	}
+
+	lttng_notification_destroy(notification);
+
+end:
+	return trigger_name;
+}
+
+static void test_tracepoint_event_rule_notification(
+		enum lttng_domain_type domain_type)
+{
+	int i;
+	const int notification_count = 3;
+	enum lttng_notification_channel_status nc_status;
+	struct lttng_action *action = NULL;
+	struct lttng_condition *condition = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_trigger *trigger = NULL;
+	const char * const trigger_name = "my_precious";
+	const char *pattern;
+
+	if (domain_type == LTTNG_DOMAIN_UST) {
+		pattern = "tp:tptest";
+	} else {
+		pattern = "lttng_test_filter_event";
+	}
+
+	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 0,
+			NULL, domain_type, &condition, &trigger);
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	resume_application();
+
+	/* Get 3 notifications. */
+	for (i = 0; i < notification_count; i++) {
+		char *name = get_next_notification_trigger_name(
+				notification_channel);
+
+		ok(strcmp(trigger_name, name) == 0,
+				"Received notification for the expected trigger name: '%s' (%d/%d)",
+				trigger_name, i + 1, notification_count);
+		free(name);
+	}
+
+	suspend_application();
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_unregister_trigger(trigger);
+	lttng_trigger_destroy(trigger);
+	lttng_action_destroy(action);
+	lttng_condition_destroy(condition);
+	return;
+}
+
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
@@ -882,11 +1069,29 @@ int main(int argc, const char *argv[])
 	switch (test_scenario) {
 	case 1:
 	{
-		plan_tests(7);
+		plan_tests(21);
+		if (argc < 5) {
+			fail("Missing parameter for tests to run %d", argc);
+			goto error;
+		}
+		app_pid = (pid_t) atoi(argv[3]);
+		app_state_file = argv[4];
+
+		/*
+		 * Test cases are responsible for resuming the app when needed
+		 * and making sure it's suspended when returning.
+		 */
+		suspend_application();
+
 		/* Test cases that need gen-ust-event testapp. */
 		diag("Test basic notification error paths for domain %s",
 				domain_type_string);
 		test_invalid_channel_subscription(domain_type);
+
+		diag("Test tracepoint event rule notifications for domain %s",
+				domain_type_string);
+		test_tracepoint_event_rule_notification(domain_type);
+
 		break;
 	}
 	case 2:
