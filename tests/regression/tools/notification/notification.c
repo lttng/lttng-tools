@@ -613,6 +613,55 @@ end:
 	return ret;
 }
 
+static void test_subscription_twice(const char *session_name,
+		const char *channel_name,
+		const enum lttng_domain_type domain_type)
+{
+	int ret = 0;
+	enum lttng_notification_channel_status nc_status;
+
+	struct lttng_action *action = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_trigger *trigger = NULL;
+
+	struct lttng_condition *condition = NULL;
+
+	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
+			domain_type, BUFFER_USAGE_TYPE_LOW, 0.99, &condition,
+			&action, &trigger);
+	if (ret) {
+		fail("Setup error on trigger registration");
+		goto end;
+	}
+
+	/* Begin testing. */
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+	if (!notification_channel) {
+		goto end;
+	}
+
+	/* Subscribe a valid condition. */
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to condition");
+
+	/* Subscribing again should fail. */
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
+			"Subscribe to a condition for which subscription was already done");
+
+end:
+	lttng_unregister_trigger(trigger);
+	lttng_trigger_destroy(trigger);
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_action_destroy(action);
+	lttng_condition_destroy(condition);
+}
+
 static void test_notification_channel(const char *session_name,
 		const char *channel_name,
 		const enum lttng_domain_type domain_type,
@@ -669,16 +718,6 @@ static void test_notification_channel(const char *session_name,
 			notification_channel, high_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
 			"Subscribe to condition");
-
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, low_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
-			"Subscribe to a condition for which subscription was already done");
-
-	nc_status = lttng_notification_channel_subscribe(
-			notification_channel, high_condition);
-	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
-			"Subscribe to a condition for which subscription was already done");
 
 	resume_application();
 
@@ -858,6 +897,7 @@ int main(int argc, const char *argv[])
 
 	/* Basic error path check. */
 	test_invalid_channel_subscription(domain_type);
+	test_subscription_twice(session_name, channel_name, domain_type);
 
 	diag("Test notification channel api for domain %s", domain_type_string);
 	test_notification_channel(session_name, channel_name, domain_type, argv);
