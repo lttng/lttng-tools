@@ -662,7 +662,7 @@ end:
 	lttng_condition_destroy(condition);
 }
 
-static void test_notification_channel(const char *session_name,
+static void test_buffer_usage_notification_channel(const char *session_name,
 		const char *channel_name,
 		const enum lttng_domain_type domain_type,
 		const char **argv)
@@ -711,13 +711,13 @@ static void test_notification_channel(const char *session_name,
 	nc_status = lttng_notification_channel_subscribe(
 			notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to condition");
+			"Subscribe to low condition");
 
 	/* Subscribe a valid high condition */
 	nc_status = lttng_notification_channel_subscribe(
 			notification_channel, high_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
-			"Subscribe to condition");
+			"Subscribe to high condition");
 
 	resume_application();
 
@@ -899,8 +899,8 @@ int main(int argc, const char *argv[])
 	test_invalid_channel_subscription(domain_type);
 	test_subscription_twice(session_name, channel_name, domain_type);
 
-	diag("Test notification channel api for domain %s", domain_type_string);
-	test_notification_channel(session_name, channel_name, domain_type, argv);
+	diag("Test buffer usage notification channel api for domain %s", domain_type_string);
+	test_buffer_usage_notification_channel(session_name, channel_name, domain_type, argv);
 error:
 	return exit_status();
 }
