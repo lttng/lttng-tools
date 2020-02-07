@@ -3088,8 +3088,7 @@ end:
 }
 
 static
-int client_enqueue_dropped_notification(struct notification_client *client,
-		struct notification_thread_state *state)
+int client_enqueue_dropped_notification(struct notification_client *client)
 {
 	int ret;
 	struct lttng_notification_channel_message msg = {
@@ -3167,7 +3166,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 			if (!client->communication.outbound.dropped_notification) {
 				client->communication.outbound.dropped_notification = true;
 				ret = client_enqueue_dropped_notification(
-						client, state);
+						client);
 				if (ret) {
 					goto end;
 				}
