@@ -527,97 +527,124 @@ end:
 	return;
 }
 
+enum buffer_usage_type {
+	BUFFER_USAGE_TYPE_LOW,
+	BUFFER_USAGE_TYPE_HIGH,
+};
+
+static int register_buffer_usage_notify_trigger(const char *session_name,
+		const char *channel_name,
+		const enum lttng_domain_type domain_type,
+		enum buffer_usage_type buffer_usage_type,
+		double ratio,
+		struct lttng_condition **condition,
+		struct lttng_action **action,
+		struct lttng_trigger **trigger)
+{
+	enum lttng_condition_status condition_status;
+	struct lttng_action *tmp_action = NULL;
+	struct lttng_condition *tmp_condition = NULL;
+	struct lttng_trigger *tmp_trigger = NULL;
+	int ret = 0;
+
+	/* Set-up */
+	tmp_action = lttng_action_notify_create();
+	if (!action) {
+		fail("Setup error on action creation");
+		ret = -1;
+		goto error;
+	}
+
+	if (buffer_usage_type == BUFFER_USAGE_TYPE_LOW) {
+		tmp_condition = lttng_condition_buffer_usage_low_create();
+	} else {
+		tmp_condition = lttng_condition_buffer_usage_high_create();
+	}
+
+	if (!tmp_condition) {
+		fail("Setup error on condition creation");
+		ret = -1;
+		goto error;
+	}
+
+	/* Set the buffer usage threashold */
+	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
+			tmp_condition, ratio);
+	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
+		fail("Setup error on condition creation");
+		ret = -1;
+		goto error;
+	}
+
+	ret = setup_buffer_usage_condition(tmp_condition, "condition_name",
+			session_name, channel_name, domain_type);
+	if (ret) {
+		fail("Setup error on condition creation");
+		ret = -1;
+		goto error;
+	}
+
+	/* Register the trigger for condition. */
+	tmp_trigger = lttng_trigger_create(tmp_condition, tmp_action);
+	if (!tmp_trigger) {
+		fail("Setup error on trigger creation");
+		ret = -1;
+		goto error;
+	}
+
+	ret = lttng_register_trigger(tmp_trigger);
+	if (ret) {
+		fail("Setup error on trigger registration");
+		ret = -1;
+		goto error;
+	}
+
+	*condition = tmp_condition;
+	*trigger = tmp_trigger;
+	*action = tmp_action;
+	goto end;
+
+error:
+	lttng_action_destroy(tmp_action);
+	lttng_condition_destroy(tmp_condition);
+	lttng_trigger_destroy(tmp_trigger);
+
+end:
+	return ret;
+}
+
 static void test_notification_channel(const char *session_name,
 		const char *channel_name,
 		const enum lttng_domain_type domain_type,
 		const char **argv)
 {
 	int ret = 0;
-	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
 
-	struct lttng_action *action = NULL;
+	struct lttng_action *low_action = NULL;
+	struct lttng_action *high_action = NULL;
 	struct lttng_notification *notification = NULL;
 	struct lttng_notification_channel *notification_channel = NULL;
-	struct lttng_trigger *trigger = NULL;
+	struct lttng_trigger *low_trigger = NULL;
+	struct lttng_trigger *high_trigger = NULL;
 
 	struct lttng_condition *low_condition = NULL;
 	struct lttng_condition *high_condition = NULL;
 
-	double low_ratio = 0.0;
-	double high_ratio = 0.90;
+	const double low_ratio = 0.0;
+	const double high_ratio = 0.90;
 
-	/* Set-up */
-	action = lttng_action_notify_create();
-	if (!action) {
-		fail("Setup error on action creation");
-		goto end;
-	}
-
-	/* Register a low condition with a ratio */
-	low_condition = lttng_condition_buffer_usage_low_create();
-	if (!low_condition) {
-		fail("Setup error on low_condition creation");
-		goto end;
-	}
-	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-			low_condition, low_ratio);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on low_condition creation");
-		goto end;
-	}
-
-	ret = setup_buffer_usage_condition(low_condition, "low_condition",
-			session_name, channel_name, domain_type);
-	if (ret) {
-		fail("Setup error on low condition creation");
-		goto end;
-	}
-
-	/* Register a high condition with a ratio */
-	high_condition = lttng_condition_buffer_usage_high_create();
-	if (!high_condition) {
-		fail("Setup error on high_condition creation");
-		goto end;
-	}
-
-	condition_status = lttng_condition_buffer_usage_set_threshold_ratio(
-			high_condition, high_ratio);
-	if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-		fail("Setup error on high_condition creation");
-		goto end;
-	}
-
-	ret = setup_buffer_usage_condition(high_condition, "high_condition",
-			session_name, channel_name, domain_type);
-	if (ret) {
-		fail("Setup error on high condition creation");
-		goto end;
-	}
-
-	/* Register the triggers for low and high condition */
-	trigger = lttng_trigger_create(low_condition, action);
-	if (!trigger) {
-		fail("Setup error on low trigger creation");
-		goto end;
-	}
-
-	ret = lttng_register_trigger(trigger);
+	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
+			domain_type, BUFFER_USAGE_TYPE_LOW, low_ratio,
+			&low_condition, &low_action, &low_trigger);
 	if (ret) {
 		fail("Setup error on low trigger registration");
 		goto end;
 	}
 
-	lttng_trigger_destroy(trigger);
-	trigger = NULL;
-
-	trigger = lttng_trigger_create(high_condition, action);
-	if (!trigger) {
-		fail("Setup error on high trigger creation");
-		goto end;
-	}
-
-	ret = lttng_register_trigger(trigger);
+	ret = register_buffer_usage_notify_trigger(session_name, channel_name,
+			domain_type, BUFFER_USAGE_TYPE_HIGH, high_ratio,
+			&high_condition, &high_action, &high_trigger);
 	if (ret) {
 		fail("Setup error on high trigger registration");
 		goto end;
@@ -774,8 +801,10 @@ static void test_notification_channel(const char *session_name,
 
 end:
 	lttng_notification_channel_destroy(notification_channel);
-	lttng_trigger_destroy(trigger);
-	lttng_action_destroy(action);
+	lttng_trigger_destroy(low_trigger);
+	lttng_trigger_destroy(high_trigger);
+	lttng_action_destroy(low_action);
+	lttng_action_destroy(high_action);
 	lttng_condition_destroy(low_condition);
 	lttng_condition_destroy(high_condition);
 }
