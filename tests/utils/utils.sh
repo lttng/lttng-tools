@@ -36,7 +36,7 @@ export LTTNG_SESSIOND_PATH="/bin/true"
 
 source $TESTDIR/utils/tap/tap.sh
 
-if [ -z $LTTNG_TEST_TEARDOWN_TIMEOUT ]; then
+if [ -z ${LTTNG_TEST_TEARDOWN_TIMEOUT+x} ]; then
 	LTTNG_TEST_TEARDOWN_TIMEOUT=60
 fi
 
