@@ -332,6 +332,10 @@ void fini_thread_state(struct notification_thread_state *state)
 		ret = cds_lfht_destroy(state->client_socket_ht, NULL);
 		assert(!ret);
 	}
+	if (state->client_id_ht) {
+		ret = cds_lfht_destroy(state->client_id_ht, NULL);
+		assert(!ret);
+	}
 	if (state->triggers_ht) {
 		ret = handle_notification_thread_trigger_unregister_all(state);
 		assert(!ret);
@@ -421,6 +425,12 @@ int init_thread_state(struct notification_thread_handle *handle,
 	state->client_socket_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
 			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
 	if (!state->client_socket_ht) {
+		goto error;
+	}
+
+	state->client_id_ht = cds_lfht_new(DEFAULT_HT_SIZE, 1, 0,
+			CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+	if (!state->client_id_ht) {
 		goto error;
 	}
 

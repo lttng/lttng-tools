@@ -131,6 +131,7 @@ struct notification_client_list {
 };
 
 struct notification_client {
+	notification_client_id id;
 	int socket;
 	/* Client protocol version. */
 	uint8_t major, minor;
@@ -148,6 +149,7 @@ struct notification_client {
 	 */
 	struct cds_list_head condition_list;
 	struct cds_lfht_node client_socket_ht_node;
+	struct cds_lfht_node client_id_ht_node;
 	struct {
 		struct {
 			/*
@@ -262,16 +264,25 @@ int lttng_session_trigger_list_add(struct lttng_session_trigger_list *list,
 
 
 static
-int match_client(struct cds_lfht_node *node, const void *key)
+int match_client_socket(struct cds_lfht_node *node, const void *key)
 {
 	/* This double-cast is intended to supress pointer-to-cast warning. */
-	int socket = (int) (intptr_t) key;
-	struct notification_client *client;
+	const int socket = (int) (intptr_t) key;
+	const struct notification_client *client = caa_container_of(node,
+			struct notification_client, client_socket_ht_node);
 
-	client = caa_container_of(node, struct notification_client,
-			client_socket_ht_node);
+	return client->socket == socket;
+}
 
-	return !!(client->socket == socket);
+static
+int match_client_id(struct cds_lfht_node *node, const void *key)
+{
+	/* This double-cast is intended to supress pointer-to-cast warning. */
+	const notification_client_id id = *((notification_client_id *) key);
+	const struct notification_client *client = caa_container_of(
+			node, struct notification_client, client_id_ht_node);
+
+	return client->id == id;
 }
 
 static
@@ -473,6 +484,18 @@ unsigned long hash_channel_key(struct channel_key *key)
 		(void *) (unsigned long) key->domain, lttng_ht_seed);
 
 	return key_hash ^ domain_hash;
+}
+
+static
+unsigned long hash_client_socket(int socket)
+{
+	return hash_key_ulong((void *) (unsigned long) socket, lttng_ht_seed);
+}
+
+static
+unsigned long hash_client_id(notification_client_id id)
+{
+	return hash_key_u64(&id, lttng_ht_seed);
 }
 
 /*
@@ -1138,6 +1161,7 @@ void notification_client_destroy(struct notification_client *client,
 
 	if (client->socket >= 0) {
 		(void) lttcomm_close_unix_sock(client->socket);
+		client->socket = -1;
 	}
 	lttng_dynamic_buffer_reset(&client->communication.inbound.buffer);
 	lttng_dynamic_buffer_reset(&client->communication.outbound.buffer);
@@ -1157,8 +1181,8 @@ struct notification_client *get_client_from_socket(int socket,
 	struct notification_client *client = NULL;
 
 	cds_lfht_lookup(state->client_socket_ht,
-			hash_key_ulong((void *) (unsigned long) socket, lttng_ht_seed),
-			match_client,
+			hash_client_socket(socket),
+			match_client_socket,
 			(void *) (unsigned long) socket,
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
@@ -1168,6 +1192,34 @@ struct notification_client *get_client_from_socket(int socket,
 
 	client = caa_container_of(node, struct notification_client,
 			client_socket_ht_node);
+end:
+	return client;
+}
+
+/*
+ * Call with rcu_read_lock held (and hold for the lifetime of the returned
+ * client pointer).
+ */
+static
+struct notification_client *get_client_from_id(notification_client_id id,
+		struct notification_thread_state *state)
+{
+	struct cds_lfht_iter iter;
+	struct cds_lfht_node *node;
+	struct notification_client *client = NULL;
+
+	cds_lfht_lookup(state->client_id_ht,
+			hash_client_id(id),
+			match_client_id,
+			&id,
+			&iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (!node) {
+		goto end;
+	}
+
+	client = caa_container_of(node, struct notification_client,
+			client_id_ht_node);
 end:
 	return client;
 }
@@ -2348,12 +2400,6 @@ error:
 }
 
 static
-unsigned long hash_client_socket(int socket)
-{
-	return hash_key_ulong((void *) (unsigned long) socket, lttng_ht_seed);
-}
-
-static
 int socket_set_non_blocking(int socket)
 {
 	int ret, flags;
@@ -2411,6 +2457,7 @@ int handle_notification_thread_client_connect(
 		ret = -1;
 		goto error;
 	}
+	client->id = state->next_notification_client_id++;
 	CDS_INIT_LIST_HEAD(&client->condition_list);
 	lttng_dynamic_buffer_init(&client->communication.inbound.buffer);
 	lttng_dynamic_buffer_init(&client->communication.outbound.buffer);
@@ -2459,6 +2506,9 @@ int handle_notification_thread_client_connect(
 	cds_lfht_add(state->client_socket_ht,
 			hash_client_socket(client->socket),
 			&client->client_socket_ht_node);
+	cds_lfht_add(state->client_id_ht,
+			hash_client_id(client->id),
+			&client->client_id_ht_node);
 	rcu_read_unlock();
 
 	return ret;
@@ -2492,6 +2542,8 @@ int handle_notification_thread_client_disconnect(
 	}
 	cds_lfht_del(state->client_socket_ht,
 			&client->client_socket_ht_node);
+        cds_lfht_del(state->client_id_ht,
+			&client->client_id_ht_node);
 	notification_client_destroy(client, state);
 end:
 	rcu_read_unlock();
