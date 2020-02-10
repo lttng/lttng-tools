@@ -151,6 +151,13 @@ struct notification_client {
 	struct cds_lfht_node client_socket_ht_node;
 	struct cds_lfht_node client_id_ht_node;
 	struct {
+		/*
+		 * If a client's communication is inactive, it means a fatal
+		 * error (either a protocol error or the socket API returned
+		 * a fatal error). No further communication should be attempted;
+		 * the client is queued for clean-up.
+		 */
+		bool active;
 		struct {
 			/*
 			 * During the reception of a message, the reception
@@ -2836,6 +2843,7 @@ int client_dispatch_message(struct notification_client *client,
 			goto end;
 		}
 		client->validated = true;
+		client->communication.active = true;
 		break;
 	}
 	case LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE:
