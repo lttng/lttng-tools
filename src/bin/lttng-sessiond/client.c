@@ -769,8 +769,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		int *sock_error)
 {
 	int ret = LTTNG_OK;
-	int need_tracing_session = 1;
-	int need_domain;
+	bool need_tracing_session = true;
+	bool need_domain;
+	bool need_consumerd;
 
 	DBG("Processing client command %d", cmd_ctx->lsm.cmd_type);
 
@@ -794,18 +795,27 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_SET_SESSION_SHM_PATH:
 	case LTTNG_REGENERATE_METADATA:
 	case LTTNG_REGENERATE_STATEDUMP:
-	case LTTNG_REGISTER_TRIGGER:
-	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATION_GET_INFO:
 	case LTTNG_ROTATION_SET_SCHEDULE:
 	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 	case LTTNG_CLEAR_SESSION:
 	case LTTNG_LIST_TRIGGERS:
-		need_domain = 0;
+		need_domain = false;
 		break;
 	default:
-		need_domain = 1;
+		need_domain = true;
+	}
+
+	/* Needs a functioning consumerd? */
+	switch (cmd_ctx->lsm.cmd_type) {
+	case LTTNG_REGISTER_TRIGGER:
+	case LTTNG_UNREGISTER_TRIGGER:
+		need_consumerd = false;
+		break;
+	default:
+		need_consumerd = true;
+		break;
 	}
 
 	if (config.no_kernel && need_domain
@@ -848,6 +858,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_DATA_PENDING:
 	case LTTNG_ROTATE_SESSION:
 	case LTTNG_ROTATION_GET_INFO:
+	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_LIST_TRIGGERS:
 		break;
 	default:
@@ -870,7 +881,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_LIST_TRIGGERS:
-		need_tracing_session = 0;
+		need_tracing_session = false;
 		break;
 	default:
 		DBG("Getting session %s by name", cmd_ctx->lsm.session.name);
@@ -948,7 +959,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */
-		if (uatomic_read(&kernel_consumerd_state) == CONSUMER_ERROR) {
+		if (need_consumerd && uatomic_read(&kernel_consumerd_state) ==
+						      CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_KERNCONSUMERD;
 			goto error;
 		}
@@ -999,8 +1011,10 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			ret = LTTNG_ERR_NO_UST;
 			goto error;
 		}
+
 		/* Consumer is in an ERROR state. Report back to client */
-		if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
+		if (need_consumerd && uatomic_read(&ust_consumerd_state) ==
+						      CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_USTCONSUMERD;
 			goto error;
 		}

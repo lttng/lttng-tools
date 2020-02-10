@@ -2971,6 +2971,7 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	struct lttng_payload message;
 	struct lttng_payload reply;
 	struct lttng_trigger *reply_trigger = NULL;
+	enum lttng_domain_type domain_type;
 	const struct lttng_credentials user_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
@@ -3014,6 +3015,11 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		ret = -LTTNG_ERR_INVALID_TRIGGER;
 		goto end;
 	}
+
+	domain_type = lttng_trigger_get_underlying_domain_type_restriction(
+			trigger);
+
+	lsm.domain.type = domain_type;
 
 	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
 	if (ret) {
