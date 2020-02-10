@@ -360,7 +360,7 @@ loop_end:
 			 * registered trigger fail.
 			 */
 			loop_ret = lttng_unregister_trigger(trigger);
-			ok(loop_ret == -LTTNG_ERR_TRIGGER_NOT_FOUND, "Unregister of a non-registerd  trigger fails as expected: %s", test_tuple_string);
+			ok(loop_ret == -LTTNG_ERR_TRIGGER_NOT_FOUND, "Unregister of a non-registered trigger fails as expected: %s", test_tuple_string);
 		} else {
 			ok(loop_ret == -LTTNG_ERR_INVALID_TRIGGER, "Trigger is invalid as expected and cannot be registered: %s", test_tuple_string);
 		}
