@@ -854,28 +854,19 @@ end:
 
 int main(int argc, const char *argv[])
 {
+	int test_scenario;
 	const char *session_name = NULL;
 	const char *channel_name = NULL;
 	const char *domain_type_string = NULL;
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
-	plan_tests(NUM_TESTS);
-
-	/* Argument 6 and upward are named pipe location for consumerd control */
-	named_pipe_args_start = 6;
-
-	if (argc < 7) {
-		fail("Missing parameter for tests to run %d", argc);
+	if (argc < 3) {
+		fail("Missing test scenario and/or domain type argument(s)");
 		goto error;
 	}
 
-	nb_args = argc;
-
-	domain_type_string = argv[1];
-	session_name = argv[2];
-	channel_name = argv[3];
-	app_pid = (pid_t) atoi(argv[4]);
-	app_state_file = argv[5];
+	test_scenario = atoi(argv[1]);
+	domain_type_string = argv[2];
 
 	if (!strcmp("LTTNG_DOMAIN_UST", domain_type_string)) {
 		domain_type = LTTNG_DOMAIN_UST;
@@ -888,23 +879,70 @@ int main(int argc, const char *argv[])
 		goto error;
 	}
 
-	/*
-	 * Test cases are responsible for resuming the app when needed and
-	 * making sure it's suspended when returning.
-	 */
-	suspend_application();
+	switch (test_scenario) {
+	case 1:
+	{
+		plan_tests(7);
+		/* Test cases that need gen-ust-event testapp. */
+		diag("Test basic notification error paths for domain %s",
+				domain_type_string);
+		test_invalid_channel_subscription(domain_type);
+		break;
+	}
+	case 2:
+	{
+		/* Test cases that need a tracing session enabled. */
+		plan_tests(99);
 
-	diag("Test trigger for domain %s with buffer_usage_low condition", domain_type_string);
-	test_triggers_buffer_usage_condition(session_name, channel_name, domain_type, LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
-	diag("Test trigger for domain %s with buffer_usage_high condition", domain_type_string);
-	test_triggers_buffer_usage_condition(session_name, channel_name, domain_type, LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+		/*
+		 * Argument 7 and upward are named pipe location for consumerd
+		 * control.
+		 */
+		named_pipe_args_start = 7;
 
-	/* Basic error path check. */
-	test_invalid_channel_subscription(domain_type);
-	test_subscription_twice(session_name, channel_name, domain_type);
+		if (argc < 8) {
+			fail("Missing parameter for tests to run %d", argc);
+			goto error;
+		}
 
-	diag("Test buffer usage notification channel api for domain %s", domain_type_string);
-	test_buffer_usage_notification_channel(session_name, channel_name, domain_type, argv);
+		nb_args = argc;
+
+		session_name = argv[3];
+		channel_name = argv[4];
+		app_pid = (pid_t) atoi(argv[5]);
+		app_state_file = argv[6];
+
+		/*
+		 * Test cases are responsible for resuming the app when needed
+		 * and making sure it's suspended when returning.
+		 */
+		suspend_application();
+
+		test_subscription_twice(session_name, channel_name,
+				domain_type);
+
+		diag("Test trigger for domain %s with buffer_usage_low condition",
+				domain_type_string);
+		test_triggers_buffer_usage_condition(session_name, channel_name,
+				domain_type,
+				LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
+
+		diag("Test trigger for domain %s with buffer_usage_high condition",
+				domain_type_string);
+		test_triggers_buffer_usage_condition(session_name, channel_name,
+				domain_type,
+				LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH);
+
+		diag("Test buffer usage notification channel api for domain %s",
+				domain_type_string);
+		test_buffer_usage_notification_channel(session_name, channel_name,
+				domain_type, argv);
+		break;
+	}
+	default:
+		abort();
+	}
+
 error:
 	return exit_status();
 }

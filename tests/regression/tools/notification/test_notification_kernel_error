@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# Copyright (C) 2017 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../../
+
+TMPDIR=$(mktemp -d)
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
+
+NUM_TESTS=44
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+function test_basic_error_path
+{
+	$CURDIR/notification 1 LTTNG_DOMAIN_KERNEL
+}
+
+
+if [ "$(id -u)" == "0" ]; then
+	validate_lttng_modules_present
+
+	modprobe lttng-test
+
+	start_lttng_sessiond_notap
+
+	test_basic_error_path
+
+	stop_lttng_sessiond_notap
+	rmmod lttng-test
+
+else
+	# Kernel tests are skipped.
+	plan_tests $NUM_TESTS
+	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
+fi
+
+# Just in case cleanup
+rm -rf "$TMPDIR"

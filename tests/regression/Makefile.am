@@ -27,8 +27,10 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/crash/test_crash \
 	tools/regen-metadata/test_ust \
 	tools/regen-statedump/test_ust \
-	tools/notification/test_notification_ust \
-	tools/notification/test_notification_kernel \
+	tools/notification/test_notification_ust_error \
+	tools/notification/test_notification_ust_buffer_usage \
+	tools/notification/test_notification_kernel_error \
+	tools/notification/test_notification_kernel_buffer_usage \
 	tools/notification/test_notification_multi_app \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \

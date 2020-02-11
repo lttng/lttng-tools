@@ -1,0 +1,96 @@
+#!/bin/bash
+#
+# Copyright (C) 2017 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../../
+
+TMPDIR=$(mktemp -d)
+
+#This is needed since the testpoint create a pipe with the consumerd type suffixed
+TESTPOINT_BASE_PATH=$(readlink -f "$TMPDIR/lttng.t_p_n")
+TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
+TESTPOINT=$(readlink -f "${CURDIR}/.libs/libpause_consumer.so")
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+
+GEN_UST_EVENTS_TESTAPP_NAME="gen-ust-events"
+GEN_UST_EVENTS_TESTAPP_BIN="$TESTAPP_PATH/$GEN_UST_EVENTS_TESTAPP_NAME/$GEN_UST_EVENTS_TESTAPP_NAME"
+
+TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
+
+SESSION_NAME="my_session"
+CHANNEL_NAME="my_channel"
+
+TRACE_PATH=$(mktemp -d)
+PAGE_SIZE=$(getconf PAGE_SIZE)
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+function ust_event_generator_toggle_state
+{
+	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
+
+}
+function ust_event_generator
+{
+	test_app=$1
+	state_file=$2
+	ust_event_generator_suspended=0
+	trap ust_event_generator_toggle_state SIGUSR1
+
+	while (true); do
+		if [[ $ust_event_generator_suspended -eq "1" ]]; then
+			touch $state_file
+			sleep 0.5
+		else
+			if [[ -f $state_file ]]; then
+				rm -rf $state_file 2> /dev/null
+			fi
+			taskset  -c 0 $test_app -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
+		fi
+	done
+}
+
+function test_buffer_usage_notification
+{
+	consumerd_pipe=()
+	event_name="tp:tptest"
+
+	create_lttng_session_notap $SESSION_NAME "$TRACE_PATH"
+
+	enable_ust_lttng_channel_notap $SESSION_NAME $CHANNEL_NAME --subbuf-size="$PAGE_SIZE"
+	enable_ust_lttng_event_notap $SESSION_NAME $event_name $CHANNEL_NAME
+
+	# This is needed since the testpoint create a pipe with the consumer type suffixed
+	for f in "$TESTPOINT_BASE_PATH"*; do
+		consumerd_pipe+=("$f")
+	done
+
+	ust_event_generator $GEN_UST_EVENTS_TESTAPP_BIN $TESTAPP_STATE_PATH &
+	APP_PID=$!
+
+	"$CURDIR/notification" 2 LTTNG_DOMAIN_UST $SESSION_NAME $CHANNEL_NAME $APP_PID "$TESTAPP_STATE_PATH" "${consumerd_pipe[@]}"
+
+	destroy_lttng_session_notap $SESSION_NAME
+
+	# On ungraceful kill the app is cleaned up via the full_cleanup call
+	# Suppress kill message
+	kill -9 $APP_PID
+	wait $APP_PID 2> /dev/null
+
+	# Just in case cleanup
+	rm -rf "$TRACE_PATH"
+}
+
+LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 CONSUMER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} LD_PRELOAD=${TESTPOINT}"
+start_lttng_sessiond_notap
+
+test_buffer_usage_notification
+
+stop_lttng_sessiond_notap
+
+rm -rf "$TMPDIR"
