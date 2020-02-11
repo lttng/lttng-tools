@@ -11,6 +11,13 @@
 #include <urcu/uatomic.h>
 #include <urcu/rculist.h>
 
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/tracepoint.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/event-rule.h>
+#include <lttng/domain-internal.h>
+
 #include <common/common.h>
 #include <common/sessiond-comm/agent.h>
 
@@ -101,7 +108,8 @@ no_match:
 }
 
 /*
- * Match function for the events hash table lookup by name and loglevel.
+ * Match function for the events hash table lookup by name, log level and
+ * filter expression.
  */
 static int ht_match_event(struct cds_lfht_node *node,
 		const void *_key)
@@ -681,7 +689,7 @@ int agent_enable_event(struct agent_event *event,
 		}
 	}
 
-	event->enabled = 1;
+	event->enabled_count++;
 	ret = LTTNG_OK;
 
 error:
@@ -787,7 +795,17 @@ int agent_disable_event(struct agent_event *event,
 	struct lttng_ht_iter iter;
 
 	assert(event);
-	if (!event->enabled) {
+	if (!AGENT_EVENT_IS_ENABLED(event)) {
+		goto end;
+	}
+
+	if (--event->enabled_count != 0) {
+		/*
+		 * Agent event still enabled. Disable the agent event only when
+		 * all "users" have disabled it (event notifiers, event rules,
+		 * etc.).
+		 */
+		ret = LTTNG_OK;
 		goto end;
 	}
 
@@ -806,7 +824,8 @@ int agent_disable_event(struct agent_event *event,
 		}
 	}
 
-	event->enabled = 0;
+	/* event->enabled_count is now 0. */
+	assert(!AGENT_EVENT_IS_ENABLED(event));
 
 error:
 	rcu_read_unlock();
@@ -1207,6 +1226,67 @@ void agent_find_events_by_name(const char *name, struct agent *agt,
 }
 
 /*
+ * Find the agent event matching a trigger.
+ *
+ * RCU read side lock MUST be acquired. It must be held for as long as
+ * the returned agent_event is used.
+ *
+ * Return object if found else NULL.
+ */
+struct agent_event *agent_find_event_by_trigger(
+		const struct lttng_trigger *trigger, struct agent *agt)
+{
+	enum lttng_condition_status c_status;
+	enum lttng_event_rule_status er_status;
+	enum lttng_domain_type domain;
+	const struct lttng_condition *condition;
+	const struct lttng_event_rule *rule;
+	const char *name;
+	const char *filter_expression;
+	/* Unused when loglevel_type is 'ALL'. */
+	int loglevel_value = 0;
+	enum lttng_loglevel_type loglevel_type;
+
+	assert(agt);
+	assert(agt->events);
+
+	condition = lttng_trigger_get_const_condition(trigger);
+
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+
+	c_status = lttng_condition_event_rule_get_rule(condition, &rule);
+	assert(c_status == LTTNG_CONDITION_STATUS_OK);
+
+	assert(lttng_event_rule_get_type(rule) ==
+			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+
+	domain = lttng_event_rule_get_domain_type(rule);
+	assert(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
+			domain == LTTNG_DOMAIN_PYTHON);
+
+	/* Get the event's pattern ('name' in the legacy terminology). */
+	er_status = lttng_event_rule_tracepoint_get_pattern(rule, &name);
+	assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
+
+	/* Get the internal filter expression. */
+	filter_expression = lttng_event_rule_get_filter(rule);
+
+	er_status = lttng_event_rule_tracepoint_get_log_level_type(
+			rule, &loglevel_type);
+	assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
+
+	if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+		er_status = lttng_event_rule_tracepoint_get_log_level(
+				rule, &loglevel_value);
+		assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
+	}
+
+	return agent_find_event(name, loglevel_type, loglevel_value,
+			filter_expression, agt);
+}
+
+/*
  * Get the next agent event duplicate by name. This should be called
  * after a call to agent_find_events_by_name() to iterate on events.
  *
@@ -1233,8 +1313,10 @@ void agent_event_next_duplicate(const char *name,
  * Return object if found else NULL.
  */
 struct agent_event *agent_find_event(const char *name,
-		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		char *filter_expression, struct agent *agt)
+		enum lttng_loglevel_type loglevel_type,
+		int loglevel_value,
+		const char *filter_expression,
+		struct agent *agt)
 {
 	struct lttng_ht_node_str *node;
 	struct lttng_ht_iter iter;
@@ -1337,14 +1419,8 @@ void agent_destroy(struct agent *agt)
  */
 int agent_app_ht_alloc(void)
 {
-	int ret = 0;
-
 	agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	if (!agent_apps_ht_by_sock) {
-		ret = -1;
-	}
-
-	return ret;
+	return agent_apps_ht_by_sock ? 0 : -1;
 }
 
 /*
@@ -1422,7 +1498,7 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
 
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
 		/* Skip event if disabled. */
-		if (!event->enabled) {
+		if (!AGENT_EVENT_IS_ENABLED(event)) {
 			continue;
 		}
 
@@ -1446,4 +1522,67 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
 	}
 
 	rcu_read_unlock();
+}
+
+/*
+ * Allocate the per-event notifier domain agent hash table. It is lazily
+ * populated as domains are used.
+ */
+int agent_by_event_notifier_domain_ht_create(void)
+{
+	trigger_agents_ht_by_domain = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	return trigger_agents_ht_by_domain ? 0 : -1;
+}
+
+/*
+ * Clean-up the per-event notifier domain agent hash table and destroy it.
+ */
+void agent_by_event_notifier_domain_ht_destroy(void)
+{
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+
+	if (!trigger_agents_ht_by_domain) {
+		return;
+	}
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry (trigger_agents_ht_by_domain->ht, &iter.iter,
+			node, node) {
+		struct agent *agent =
+				caa_container_of(node, struct agent, node);
+		const int ret = lttng_ht_del(
+				trigger_agents_ht_by_domain, &iter);
+
+		assert(ret == 0);
+		agent_destroy(agent);
+	}
+
+	rcu_read_unlock();
+	lttng_ht_destroy(trigger_agents_ht_by_domain);
+}
+
+struct agent *agent_find_by_event_notifier_domain(
+		enum lttng_domain_type domain_type)
+{
+	struct agent *agt = NULL;
+	struct lttng_ht_node_u64 *node;
+	struct lttng_ht_iter iter;
+	const uint64_t key = (uint64_t) domain_type;
+
+	assert(trigger_agents_ht_by_domain);
+
+	DBG3("Per-event notifier domain agent lookup for domain '%s'",
+			lttng_domain_type_str(domain_type));
+
+	lttng_ht_lookup(trigger_agents_ht_by_domain, &key, &iter);
+	node = lttng_ht_iter_get_node_u64(&iter);
+	if (!node) {
+		goto end;
+	}
+
+	agt = caa_container_of(node, struct agent, node);
+
+end:
+	return agt;
 }

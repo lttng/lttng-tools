@@ -12,6 +12,10 @@
 
 #include <common/compat/errno.h>
 #include <lttng/lttng.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/event-rule.h>
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/event-rule-internal.h>
 #include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/filter.h>
@@ -27,6 +31,7 @@
 #include "trace-kernel.h"
 #include "trace-ust.h"
 #include "agent.h"
+#include "utils.h"
 
 /*
  * Add unique UST event based on the event name, filter bytecode and loglevel.
@@ -366,6 +371,20 @@ error:
 	return ret;
 }
 
+static void agent_enable_all(struct agent *agt)
+{
+	struct agent_event *aevent;
+	struct lttng_ht_iter iter;
+
+	/* Flag every event as enabled. */
+	rcu_read_lock();
+	cds_lfht_for_each_entry (
+			agt->events->ht, &iter.iter, aevent, node.node) {
+		aevent->enabled_count++;
+	}
+	rcu_read_unlock();
+}
+
 /*
  * Enable all agent event for a given UST session.
  *
@@ -376,8 +395,6 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 		struct lttng_filter_bytecode *filter ,char *filter_expression)
 {
 	int ret;
-	struct agent_event *aevent;
-	struct lttng_ht_iter iter;
 
 	assert(usess);
 
@@ -389,13 +406,7 @@ int event_agent_enable_all(struct ltt_ust_session *usess,
 		goto error;
 	}
 
-	/* Flag every event that they are now enabled. */
-	rcu_read_lock();
-	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
-			node.node) {
-		aevent->enabled = 1;
-	}
-	rcu_read_unlock();
+	agent_enable_all(agt);
 
 	ret = LTTNG_OK;
 
@@ -467,27 +478,16 @@ end:
 	return ret;
 }
 
-/*
- * Enable a single agent event for a given UST session.
- *
- * Return LTTNG_OK on success or else a LTTNG_ERR* code.
- */
-int event_agent_enable(struct ltt_ust_session *usess,
-		struct agent *agt, struct lttng_event *event,
+static int agent_enable(struct agent *agt,
+		struct lttng_event *event,
 		struct lttng_filter_bytecode *filter,
 		char *filter_expression)
 {
 	int ret, created = 0;
 	struct agent_event *aevent;
 
-	assert(usess);
 	assert(event);
 	assert(agt);
-
-	DBG("Event agent enabling %s for session %" PRIu64 " with loglevel type %d "
-			", loglevel %d and filter \"%s\"", event->name,
-			usess->id, event->loglevel_type, event->loglevel,
-			filter_expression ? filter_expression : "NULL");
 
 	aevent = agent_find_event(event->name, event->loglevel_type,
 			event->loglevel, filter_expression, agt);
@@ -502,7 +502,7 @@ int event_agent_enable(struct ltt_ust_session *usess,
 		filter = NULL;
 		filter_expression = NULL;
 		created = 1;
-		assert(!aevent->enabled);
+		assert(!AGENT_EVENT_IS_ENABLED(aevent));
 	}
 
 	if (created && aevent->filter) {
@@ -514,7 +514,7 @@ int event_agent_enable(struct ltt_ust_session *usess,
 	}
 
 	/* Already enabled? */
-	if (aevent->enabled) {
+	if (AGENT_EVENT_IS_ENABLED(aevent)) {
 		ret = LTTNG_OK;
 		goto end;
 	}
@@ -543,6 +543,119 @@ end:
 }
 
 /*
+ * Enable a single agent event for a given UST session.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int event_agent_enable(struct ltt_ust_session *usess,
+		struct agent *agt,
+		struct lttng_event *event,
+		struct lttng_filter_bytecode *filter,
+		char *filter_expression)
+{
+	assert(usess);
+	assert(event);
+	assert(agt);
+
+	DBG("Enabling agent event: event pattern = '%s', session id = %" PRIu64 ", loglevel type = %d, loglevel = %d, filter expression = '%s'",
+			event->name, usess->id, event->loglevel_type,
+			event->loglevel,
+			filter_expression ? filter_expression : "(none)");
+
+	return agent_enable(agt, event, filter, filter_expression);
+}
+
+/*
+ * Enable a single agent event for a trigger.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
+{
+	int ret;
+	enum lttng_condition_status c_status;
+	enum lttng_trigger_status t_status;
+	enum lttng_domain_type d_type;
+	const struct lttng_condition *condition;
+	const struct lttng_event_rule *rule;
+	const char *filter_expression;
+	char *filter_expression_copy = NULL;
+	const struct lttng_filter_bytecode *filter_bytecode;
+	struct lttng_filter_bytecode *filter_bytecode_copy = NULL;
+	struct lttng_event *event = NULL;
+	uid_t trigger_owner_uid = 0;
+	const char *trigger_name;
+
+	assert(trigger);
+	assert(agt);
+
+	t_status = lttng_trigger_get_name(trigger, &trigger_name);
+	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
+		trigger_name = "(unnamed)";
+	}
+
+	t_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner_uid);
+	assert(t_status == LTTNG_TRIGGER_STATUS_OK);
+
+	condition = lttng_trigger_get_const_condition(trigger);
+
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+
+	c_status = lttng_condition_event_rule_get_rule(condition, &rule);
+	assert(c_status == LTTNG_CONDITION_STATUS_OK);
+
+	assert(lttng_event_rule_get_type(rule) ==
+			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+
+	d_type = lttng_event_rule_get_domain_type(rule);
+	assert(d_type == agt->domain);
+
+	event = lttng_event_rule_generate_lttng_event(rule);
+	if (!event) {
+		ret = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Get the internal filter expression and bytecode. */
+	filter_expression = lttng_event_rule_get_filter(rule);
+	if (filter_expression) {
+		filter_expression_copy = strdup(filter_expression);
+		if (!filter_expression_copy) {
+			ret = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* Get the filter bytecode */
+		filter_bytecode = lttng_event_rule_get_filter_bytecode(rule);
+		if (filter_bytecode) {
+			filter_bytecode_copy =
+					lttng_filter_bytecode_copy(filter_bytecode);
+			if (!filter_bytecode_copy) {
+				ret = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+		}
+	}
+
+	DBG("Enabling agent event from trigger: trigger name = '%s', trigger owner uid = %d, token = %" PRIu64,
+			trigger_name, trigger_owner_uid,
+			lttng_trigger_get_tracer_token(trigger));
+
+	ret = agent_enable(agt, event, filter_bytecode_copy,
+			filter_expression_copy);
+	/* Ownership was passed even in case of error. */
+	filter_expression_copy = NULL;
+	filter_bytecode_copy = NULL;
+
+end:
+	free(filter_expression_copy);
+	free(filter_bytecode_copy);
+	free(event);
+	return ret;
+}
+
+/*
  * Return the default event name associated with the provided UST domain. Return
  * NULL on error.
  */
@@ -565,6 +678,43 @@ const char *event_get_default_agent_ust_name(enum lttng_domain_type domain)
 	}
 
 	return default_event_name;
+}
+
+static int trigger_agent_disable_one(const struct lttng_trigger *trigger,
+		struct agent *agt,
+		struct agent_event *aevent)
+
+{
+	int ret;
+
+	assert(agt);
+	assert(trigger);
+	assert(aevent);
+
+	/*
+	 * Actual ust event un-registration happens on the trigger
+	 * un-registration at that point.
+	 */
+
+	DBG("Event agent disabling %s (loglevel type %d, loglevel value %d) for trigger %" PRIu64,
+			aevent->name, aevent->loglevel_type,
+			aevent->loglevel_value, lttng_trigger_get_tracer_token(trigger));
+
+	/* Already disabled? */
+	if (!AGENT_EVENT_IS_ENABLED(aevent)) {
+		goto end;
+	}
+
+	ret = agent_disable_event(aevent, agt->domain);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+end:
+	return LTTNG_OK;
+
+error:
+	return ret;
 }
 
 /*
@@ -590,7 +740,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 		usess->id);
 
 	/* Already disabled? */
-	if (!aevent->enabled) {
+	if (!AGENT_EVENT_IS_ENABLED(aevent)) {
 		goto end;
 	}
 
@@ -656,6 +806,44 @@ end:
 	return LTTNG_OK;
 
 error:
+	return ret;
+}
+
+/*
+ * Disable agent event matching a given trigger.
+ *
+ * Return LTTNG_OK on success or else a LTTNG_ERR* code.
+ */
+int trigger_agent_disable(
+		const struct lttng_trigger *trigger, struct agent *agt)
+{
+	int ret = LTTNG_OK;
+	struct agent_event *aevent;
+
+	assert(trigger);
+	assert(agt);
+
+	DBG("Event agent disabling for trigger %" PRIu64,
+			lttng_trigger_get_tracer_token(trigger));
+
+	rcu_read_lock();
+	aevent = agent_find_event_by_trigger(trigger, agt);
+
+	if (aevent == NULL) {
+		DBG2("Event agent NOT found by trigger %" PRIu64,
+				lttng_trigger_get_tracer_token(trigger));
+		ret = LTTNG_ERR_UST_EVENT_NOT_FOUND;
+		goto end;
+	}
+
+	ret = trigger_agent_disable_one(trigger, agt, aevent);
+
+	if (ret != LTTNG_OK) {
+		goto end;
+	}
+
+end:
+	rcu_read_unlock();
 	return ret;
 }
 
@@ -732,7 +920,7 @@ int event_agent_disable_all(struct ltt_ust_session *usess,
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, aevent,
 			node.node) {
-		if (!aevent->enabled) {
+		if (!AGENT_EVENT_IS_ENABLED(aevent)) {
 			continue;
 		}
 

@@ -488,7 +488,7 @@ static int list_lttng_agent_events(struct agent *agt,
 	cds_lfht_for_each_entry (
 			agt->events->ht, &iter.iter, agent_event, node.node) {
 		struct lttng_event event = {
-			.enabled = agent_event->enabled,
+			.enabled = AGENT_EVENT_IS_ENABLED(agent_event),
 			.loglevel = agent_event->loglevel_value,
 			.loglevel_type = agent_event->loglevel_type,
 		};
@@ -4377,7 +4377,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	if (ret_code != LTTNG_OK) {
 		DBG("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
-		goto end_notification_thread;
+		goto end;
 	}
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
@@ -4388,16 +4388,19 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	if (ret_code != LTTNG_OK) {
 		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
-		goto end_notification_thread;
+		goto end;
 	}
 
 	/*
 	 * Synchronize tracers if the trigger adds an event notifier.
 	 */
 	if (must_update_event_notifier) {
-		if (lttng_trigger_get_underlying_domain_type_restriction(
-				    trigger) == LTTNG_DOMAIN_KERNEL) {
+		const enum lttng_domain_type trigger_domain =
+				lttng_trigger_get_underlying_domain_type_restriction(trigger);
 
+		switch (trigger_domain) {
+		case LTTNG_DOMAIN_KERNEL:
+		{
 			ret_code = kernel_register_event_notifier(
 					trigger, cmd_creds);
 			if (ret_code != LTTNG_OK) {
@@ -4413,11 +4416,36 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 							(int) trigger_owner,
 							ret_code);
 				}
+			}
+			break;
+		}
+		case LTTNG_DOMAIN_UST:
+			ust_app_global_update_all_event_notifier_rules();
+			break;
+		case LTTNG_DOMAIN_NONE:
+			abort();
+		default:
+		{
+			/* Agent domains. */
+			struct agent *agt = agent_find_by_event_notifier_domain(
+					trigger_domain);
 
+			if (!agt) {
+				agt = agent_create(trigger_domain);
+				if (!agt) {
+					ret_code = LTTNG_ERR_NOMEM;
+					goto end;
+				}
+				agent_add(agt, trigger_agents_ht_by_domain);
+			}
+
+			ret_code = trigger_agent_enable(trigger, agt);
+			if (ret_code != LTTNG_OK) {
 				goto end;
 			}
-		} else {
-			ust_app_global_update_all_event_notifier_rules();
+
+			break;
+		}
 		}
 	}
 
@@ -4430,9 +4458,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 */
 	lttng_trigger_get(trigger);
 	*return_trigger = trigger;
-
-end_notification_thread:
-	/* Ownership of trigger was transferred. */
+	/* Ownership of trigger was transferred to caller. */
 	trigger = NULL;
 end:
 	return ret_code;
@@ -4491,15 +4517,49 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 
 	/*
 	 * Synchronize tracers if the trigger removes an event notifier.
+	 * Do this even if the trigger unregistration failed to at least stop
+	 * the tracers from producing notifications associated with this
+	 * event notifier.
 	 */
 	if (must_update_event_notifier) {
-		if (lttng_trigger_get_underlying_domain_type_restriction(
-				    trigger) == LTTNG_DOMAIN_KERNEL) {
+		const enum lttng_domain_type trigger_domain =
+				lttng_trigger_get_underlying_domain_type_restriction(
+						trigger);
 
+		switch (trigger_domain) {
+		case LTTNG_DOMAIN_KERNEL:
+		{
 			ret_code = kernel_unregister_event_notifier(
 					trigger);
-		} else {
+			break;
+		}
+		case LTTNG_DOMAIN_UST:
 			ust_app_global_update_all_event_notifier_rules();
+			break;
+		case LTTNG_DOMAIN_NONE:
+			abort();
+		default:
+		{
+			/* Agent domains. */
+			struct agent *agt = agent_find_by_event_notifier_domain(
+					trigger_domain);
+
+			if (!agt) {
+				agt = agent_create(trigger_domain);
+				if (!agt) {
+					ret_code = LTTNG_ERR_NOMEM;
+					goto end;
+				}
+				agent_add(agt, trigger_agents_ht_by_domain);
+			}
+
+			ret_code = trigger_agent_disable(trigger, agt);
+			if (ret_code != LTTNG_OK) {
+				goto end;
+			}
+
+			break;
+		}
 		}
 	}
 

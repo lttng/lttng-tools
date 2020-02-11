@@ -43,6 +43,7 @@
 #include "utils.h"
 #include "manage-consumer.h"
 #include "clear.h"
+#include "agent-thread.h"
 
 static bool is_root;
 
@@ -1078,6 +1079,11 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_PYTHON:
+		if (!agent_tracing_is_enabled()) {
+			ret = LTTNG_ERR_AGENT_TRACING_DISABLED;
+			goto error;
+		}
+		/* Fallthrough */
 	case LTTNG_DOMAIN_UST:
 	{
 		if (!ust_app_supported()) {

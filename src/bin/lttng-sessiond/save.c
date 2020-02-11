@@ -1190,7 +1190,7 @@ int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 	int ret;
 	enum lttng_ust_loglevel_type ust_loglevel_type;
 
-	ust_event->enabled = agent_event->enabled;
+	ust_event->enabled = AGENT_EVENT_IS_ENABLED(agent_event);
 	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
 	if (lttng_strncpy(ust_event->attr.name, agent_event->name,
 			LTTNG_SYMBOL_NAME_LEN)) {

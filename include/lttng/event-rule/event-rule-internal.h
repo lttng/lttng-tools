@@ -12,6 +12,7 @@
 #include <common/credentials.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/domain.h>
+#include <lttng/event.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/lttng-error.h>
 #include <stdbool.h>
@@ -54,6 +55,8 @@ typedef enum lttng_event_rule_generate_exclusions_status (
 		struct lttng_event_exclusion **exclusions);
 typedef unsigned long (*event_rule_hash_cb)(
 		const struct lttng_event_rule *event_rule);
+typedef struct lttng_event *(*event_rule_generate_lttng_event_cb)(
+		const struct lttng_event_rule *event_rule);
 
 struct lttng_event_rule {
 	struct urcu_ref ref;
@@ -67,6 +70,7 @@ struct lttng_event_rule {
 	event_rule_get_filter_bytecode_cb get_filter_bytecode;
 	event_rule_generate_exclusions_cb generate_exclusions;
 	event_rule_hash_cb hash;
+	event_rule_generate_lttng_event_cb generate_lttng_event;
 };
 
 struct lttng_event_rule_comm {
@@ -139,5 +143,22 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type);
 
 LTTNG_HIDDEN
 unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
+
+/*
+ * This is a compatibility helper allowing us to generate a sessiond-side (not
+ * communication) `struct lttng_event` object from an event rule.
+ *
+ * This effectively bridges older parts of the code using those structures and
+ * new event-rule based code.
+ *
+ * The caller owns the returned object.
+ */
+LTTNG_HIDDEN
+struct lttng_event *lttng_event_rule_generate_lttng_event(
+		const struct lttng_event_rule *rule);
+
+/* Test if an event rule targets an agent domain. */
+LTTNG_HIDDEN
+bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule);
 
 #endif /* LTTNG_EVENT_RULE_INTERNAL_H */

@@ -41,6 +41,7 @@
 #include "lttng-sessiond.h"
 #include "notification-thread-commands.h"
 #include "rotate.h"
+#include "event.h"
 
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
@@ -1317,29 +1318,6 @@ error:
 }
 
 /*
- * Allocate a filter and copy the given original filter.
- *
- * Return allocated filter or NULL on error.
- */
-static struct lttng_filter_bytecode *copy_filter_bytecode(
-		struct lttng_filter_bytecode *orig_f)
-{
-	struct lttng_filter_bytecode *filter = NULL;
-
-	/* Copy filter bytecode */
-	filter = zmalloc(sizeof(*filter) + orig_f->len);
-	if (!filter) {
-		PERROR("zmalloc alloc filter bytecode");
-		goto error;
-	}
-
-	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
-
-error:
-	return filter;
-}
-
-/*
  * Create a liblttng-ust filter bytecode from given bytecode.
  *
  * Return allocated filter or NULL on error.
@@ -1944,43 +1922,57 @@ static int init_ust_event_notifier_from_event_rule(
 
 	memset(event_notifier, 0, sizeof(*event_notifier));
 
-	status = lttng_event_rule_tracepoint_get_pattern(rule, &pattern);
-	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-		/* At this point, this is a fatal error. */
-		abort();
-	}
-
-	status = lttng_event_rule_tracepoint_get_log_level_type(
-			rule, &loglevel_type);
-	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-		/* At this point, this is a fatal error. */
-		abort();
-	}
-
-	switch (loglevel_type) {
-	case LTTNG_EVENT_LOGLEVEL_ALL:
+	if (lttng_event_rule_targets_agent_domain(rule)) {
+		/*
+		 * Special event for agents
+		 * The actual meat of the event is in the filter that will be
+		 * attached later on.
+		 * Set the default values for the agent event.
+		 */
+		pattern = event_get_default_agent_ust_name(
+				lttng_event_rule_get_domain_type(rule));
+		loglevel = 0;
 		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
-		break;
-	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
-		break;
-	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
-		break;
-	default:
-		/* Unknown log level specification type. */
-		abort();
-	}
+	} else {
+		status = lttng_event_rule_tracepoint_get_pattern(
+				rule, &pattern);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			/* At this point, this is a fatal error. */
+			abort();
+		}
 
-	if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-		status = lttng_event_rule_tracepoint_get_log_level(
-				rule, &loglevel);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		status = lttng_event_rule_tracepoint_get_log_level_type(
+				rule, &loglevel_type);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			/* At this point, this is a fatal error. */
+			abort();
+		}
+
+		switch (loglevel_type) {
+		case LTTNG_EVENT_LOGLEVEL_ALL:
+			ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+			break;
+		case LTTNG_EVENT_LOGLEVEL_RANGE:
+			ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+			break;
+		case LTTNG_EVENT_LOGLEVEL_SINGLE:
+			ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+			break;
+		default:
+			/* Unknown log level specification type. */
+			abort();
+		}
+
+		if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+			status = lttng_event_rule_tracepoint_get_log_level(
+					rule, &loglevel);
+			assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		}
 	}
 
 	event_notifier->event.instrumentation = LTTNG_UST_TRACEPOINT;
 	ret = lttng_strncpy(event_notifier->event.name, pattern,
-			    LTTNG_UST_SYM_NAME_LEN - 1);
+			LTTNG_UST_SYM_NAME_LEN - 1);
 	if (ret) {
 		ERR("Failed to copy event rule pattern to notifier: pattern = '%s' ",
 				pattern);
@@ -2119,7 +2111,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 
 	/* Copy filter bytecode */
 	if (uevent->filter) {
-		ua_event->filter = copy_filter_bytecode(uevent->filter);
+		ua_event->filter = lttng_filter_bytecode_copy(uevent->filter);
 		/* Filter might be NULL here in case of ENONEM. */
 	}
 

@@ -314,6 +314,9 @@ static void sessiond_cleanup(void)
 
 	pthread_mutex_destroy(&session_list->lock);
 
+	DBG("Cleaning up all per-event notifier domain agents");
+	agent_by_event_notifier_domain_ht_destroy();
+
 	DBG("Cleaning up all agent apps");
 	agent_app_ht_clean();
 	DBG("Closing all UST sockets");
@@ -1596,6 +1599,11 @@ int main(int argc, char **argv)
 		goto stop_threads;
 	}
 
+	if (agent_by_event_notifier_domain_ht_create()) {
+		ERR("Failed to allocate per-event notifier domain agent hash table");
+		retval = -1;
+		goto stop_threads;
+	}
 	/*
 	 * These actions must be executed as root. We do that *after* setting up
 	 * the sockets path because we MUST make the check for another daemon using
