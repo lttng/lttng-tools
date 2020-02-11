@@ -165,20 +165,22 @@ bool _lttng_thread_shutdown(struct lttng_thread *thread)
 		result = false;
 		goto end;
 	}
-	/* Release the list's reference to the thread. */
-	cds_list_del(&thread->node);
-	lttng_thread_put(thread);
+	DBG("Joined thread \"%s\"", thread->name);
 end:
 	return result;
 }
 
 bool lttng_thread_shutdown(struct lttng_thread *thread)
 {
-	bool result;
+	const bool result = _lttng_thread_shutdown(thread);
 
-	pthread_mutex_lock(&thread_list.lock);
-	result = _lttng_thread_shutdown(thread);
-	pthread_mutex_unlock(&thread_list.lock);
+	if (result) {
+		/* Release the list's reference to the thread. */
+		pthread_mutex_lock(&thread_list.lock);
+		cds_list_del(&thread->node);
+		lttng_thread_put(thread);
+		pthread_mutex_unlock(&thread_list.lock);
+	}
 	return result;
 }
 

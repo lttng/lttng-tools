@@ -8,9 +8,19 @@
 #ifndef NOTIFICATION_THREAD_INTERNAL_H
 #define NOTIFICATION_THREAD_INTERNAL_H
 
+#include <common/compat/socket.h>
+#include <common/credentials.h>
+#include <lttng/notification/channel-internal.h>
 #include <lttng/ref-internal.h>
-#include <urcu/rculfhash.h>
+#include <stdbool.h>
 #include <unistd.h>
+#include <urcu/rculfhash.h>
+#include <urcu/ref.h>
+#include <urcu/call-rcu.h>
+#include "notification-thread.h"
+
+struct lttng_evaluation;
+struct notification_thread_handle;
 
 struct channel_key {
 	uint64_t key;
@@ -64,6 +74,122 @@ struct channel_info {
 	struct rcu_head rcu_node;
 };
 
+struct notification_client_list_element {
+	struct notification_client *client;
+	struct cds_list_head node;
+};
+
+/*
+ * Thread safety of notification_client and notification_client_list.
+ *
+ * The notification thread (main thread) and the action executor
+ * interact through client lists. Hence, when the action executor
+ * thread looks-up the list of clients subscribed to a given
+ * condition, it will acquire a reference to the list and lock it
+ * while attempting to communicate with the various clients.
+ *
+ * It is not necessary to reference-count clients as they are guaranteed
+ * to be 'alive' if they are present in a list and that list is locked. Indeed,
+ * removing references to the client from those subscription lists is part of
+ * the work performed on destruction of a client.
+ *
+ * No provision for other access scenarios are taken into account;
+ * this is the bare minimum to make these accesses safe and the
+ * notification thread's state is _not_ "thread-safe" in any general
+ * sense.
+ */
+struct notification_client_list {
+	pthread_mutex_t lock;
+	struct urcu_ref ref;
+	const struct lttng_trigger *trigger;
+	struct cds_list_head list;
+	/* Weak reference to container. */
+	struct cds_lfht *notification_trigger_clients_ht;
+	struct cds_lfht_node notification_trigger_clients_ht_node;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
+};
+
+struct notification_client {
+	/* Nests within the notification_client_list lock. */
+	pthread_mutex_t lock;
+	notification_client_id id;
+	int socket;
+	/* Client protocol version. */
+	uint8_t major, minor;
+	uid_t uid;
+	gid_t gid;
+	/*
+	 * Indicates if the credentials and versions of the client have been
+	 * checked.
+	 */
+	bool validated;
+	/*
+	 * Conditions to which the client's notification channel is subscribed.
+	 * List of struct lttng_condition_list_node. The condition member is
+	 * owned by the client.
+	 */
+	struct cds_list_head condition_list;
+	struct cds_lfht_node client_socket_ht_node;
+	struct cds_lfht_node client_id_ht_node;
+	struct {
+		/*
+		 * If a client's communication is inactive, it means that a
+		 * fatal error has occurred (could be either a protocol error or
+		 * the socket API returned a fatal error). No further
+		 * communication should be attempted; the client is queued for
+		 * clean-up.
+		 */
+		bool active;
+		struct {
+			/*
+			 * During the reception of a message, the reception
+			 * buffers' "size" is set to contain the current
+			 * message's complete payload.
+			 */
+			struct lttng_dynamic_buffer buffer;
+			/* Bytes left to receive for the current message. */
+			size_t bytes_to_receive;
+			/* Type of the message being received. */
+			enum lttng_notification_channel_message_type msg_type;
+			/*
+			 * Indicates whether or not credentials are expected
+			 * from the client.
+			 */
+			bool expect_creds;
+			/*
+			 * Indicates whether or not credentials were received
+			 * from the client.
+			 */
+			bool creds_received;
+			/* Only used during credentials reception. */
+			lttng_sock_cred creds;
+		} inbound;
+		struct {
+			/*
+			 * Indicates whether or not a notification addressed to
+			 * this client was dropped because a command reply was
+			 * already buffered.
+			 *
+			 * A notification is dropped whenever the buffer is not
+			 * empty.
+			 */
+			bool dropped_notification;
+			/*
+			 * Indicates whether or not a command reply is already
+			 * buffered. In this case, it means that the client is
+			 * not consuming command replies before emitting a new
+			 * one. This could be caused by a protocol error or a
+			 * misbehaving/malicious client.
+			 */
+			bool queued_command_reply;
+			struct lttng_dynamic_buffer buffer;
+		} outbound;
+	} communication;
+	/* call_rcu delayed reclaim. */
+	struct rcu_head rcu_node;
+};
+
 enum client_transmission_status {
 	CLIENT_TRANSMISSION_STATUS_COMPLETE,
 	CLIENT_TRANSMISSION_STATUS_QUEUED,
@@ -72,4 +198,32 @@ enum client_transmission_status {
 	/* Fatal error. */
 	CLIENT_TRANSMISSION_STATUS_ERROR,
 };
+
+LTTNG_HIDDEN
+bool notification_client_list_get(struct notification_client_list *list);
+
+LTTNG_HIDDEN
+void notification_client_list_put(struct notification_client_list *list);
+
+typedef int (*report_client_transmission_result_cb)(
+		struct notification_client *client,
+		enum client_transmission_status status,
+		void *user_data);
+
+LTTNG_HIDDEN
+int notification_client_list_send_evaluation(
+		struct notification_client_list *list,
+		const struct lttng_condition *condition,
+		const struct lttng_evaluation *evaluation,
+		const struct lttng_credentials *trigger_creds,
+		const struct lttng_credentials *source_object_creds,
+		report_client_transmission_result_cb client_report,
+		void *user_data);
+
+LTTNG_HIDDEN
+int notification_thread_client_communication_update(
+		struct notification_thread_handle *handle,
+		notification_client_id id,
+		enum client_transmission_status transmission_status);
+
 #endif /* NOTIFICATION_THREAD_INTERNAL_H */

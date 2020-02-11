@@ -280,3 +280,18 @@ void notification_thread_command_quit(
 	ret = run_command_wait(handle, &cmd);
 	assert(!ret && cmd.reply_code == LTTNG_OK);
 }
+
+int notification_thread_client_communication_update(
+		struct notification_thread_handle *handle,
+		notification_client_id id,
+		enum client_transmission_status transmission_status)
+{
+	struct notification_thread_command cmd = {};
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE;
+	cmd.parameters.client_communication_update.id = id;
+	cmd.parameters.client_communication_update.status = transmission_status;
+	return run_command_no_wait(handle, &cmd);
+}
