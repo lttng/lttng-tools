@@ -315,7 +315,7 @@ void test_triggers_buffer_usage_condition(const char *session_name,
 			assert("Logic error for test vector generation");
 		}
 
-		loop_ret = asprintf(&test_tuple_string, "session name %s, channel name  %s, threshold ratio %s, threshold byte %s, domain type %s",
+		loop_ret = asprintf(&test_tuple_string, "session name %s, channel name %s, threshold ratio %s, threshold byte %s, domain type %s",
 				session_name_set ? "set" : "unset",
 				channel_name_set ? "set" : "unset",
 				threshold_ratio_set ? "set" : "unset",
