@@ -28,6 +28,7 @@ enum notification_thread_command_type {
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING,
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED,
 	NOTIFICATION_COMMAND_TYPE_QUIT,
+	NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE,
 };
 
 struct notification_thread_command {
@@ -63,6 +64,12 @@ struct notification_thread_command {
 			uint64_t trace_archive_chunk_id;
 			struct lttng_trace_archive_location *location;
 		} session_rotation;
+		/* Client communication update. */
+		struct {
+			notification_client_id id;
+			enum client_transmission_status status;
+		} client_communication_update;
+
 	} parameters;
 
 	/* lttng_waiter on which to wait for command reply (optional). */

@@ -65,6 +65,7 @@ SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT)
 	 $(top_builddir)/src/bin/lttng-sessiond/kernel.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/ht-cleanup.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/notification-thread.$(OBJEXT) \
+	 $(top_builddir)/src/bin/lttng-sessiond/action-executor.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/lttng-syscall.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/channel.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/agent.$(OBJEXT) \

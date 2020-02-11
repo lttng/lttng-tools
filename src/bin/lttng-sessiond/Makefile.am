@@ -54,7 +54,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        manage-kernel.c manage-kernel.h \
                        manage-consumer.c manage-consumer.h \
                        clear.c clear.h \
-                       tracker.c tracker.h
+                       tracker.c tracker.h \
+                       action-executor.c action-executor.h
 
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
