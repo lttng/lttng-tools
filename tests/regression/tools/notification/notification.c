@@ -621,6 +621,8 @@ void test_notification_channel(const char *session_name,
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_ALREADY_SUBSCRIBED,
 			"Subscribe to a condition for which subscription was already done");
 
+	resume_application();
+
 	/* Wait for notification to happen */
 	stop_consumer(argv);
 	lttng_start_tracing(session_name);
@@ -721,8 +723,9 @@ void test_notification_channel(const char *session_name,
 	lttng_notification_destroy(notification);
 	notification = NULL;
 
-	/* Resume consumer to allow event consumption */
 	suspend_application();
+
+	/* Resume consumer to allow event consumption */
 	lttng_stop_tracing_no_wait(session_name);
 	resume_consumer(argv);
 	wait_data_pending(session_name);
@@ -782,6 +785,12 @@ int main(int argc, const char *argv[])
 		fail("Unknown domain type");
 		goto error;
 	}
+
+	/*
+	 * Test cases are responsible for resuming the app when needed and
+	 * making sure it's suspended when returning.
+	 */
+	suspend_application();
 
 	diag("Test trigger for domain %s with buffer_usage_low condition", domain_type_string);
 	test_triggers_buffer_usage_condition(session_name, channel_name, domain_type, LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW);
