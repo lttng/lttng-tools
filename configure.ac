@@ -36,6 +36,14 @@ AX_APPEND_COMPILE_FLAGS([ dnl
 	[WARN_CFLAGS],
 	[-Werror])
 
+# When given, add -Werror to WARN_CFLAGS.
+AC_ARG_ENABLE([Werror],
+	[AS_HELP_STRING([--enable-Werror], [Treat compiler warnings as errors.])]
+)
+AS_IF([test "x$enable_Werror" = "xyes"],
+	[WARN_CFLAGS="${WARN_CFLAGS} -Werror"]
+)
+
 # Checks for programs.
 AC_PROG_GREP
 AC_PROG_MAKE_SET
