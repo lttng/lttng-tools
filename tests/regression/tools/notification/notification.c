@@ -1039,6 +1039,91 @@ static void test_tracepoint_event_rule_notification(
 	return;
 }
 
+static void test_tracepoint_event_rule_notification_filter(
+		enum lttng_domain_type domain_type)
+{
+	int i;
+	enum lttng_notification_channel_status nc_status;
+
+	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
+	const char * const ctrl_trigger_name = "control_trigger";
+	const char * const trigger_name = "trigger";
+	const char *pattern;
+	int ctrl_count = 0, count = 0;
+
+	if (domain_type == LTTNG_DOMAIN_UST) {
+		pattern = "tp:tptest";
+	} else {
+		pattern = "lttng_test_filter_event";
+	}
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
+			0, NULL, domain_type, &ctrl_condition, &ctrl_trigger);
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, ctrl_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	/*
+	 * Attach a filter expression to get notification only if the
+	 * `intfield` is even.
+	 */
+	create_tracepoint_event_rule_trigger(pattern, trigger_name,
+			"(intfield & 1) == 0", 0, NULL, domain_type, &condition,
+			&trigger);
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	/*
+	 * We registered 2 notifications triggers, one with a filter and one
+	 * without (control). The one with a filter will only fired when the
+	 * `intfield` is a multiple of 2. We should get two times as many
+	 * control notifications as filter notifications.
+	 */
+	resume_application();
+
+	/*
+	 * Get 3 notifications. We should get 1 for the regular trigger (with
+	 * the filter) and 2 from the control trigger. This works whatever
+	 * the order we receive the notifications.
+	 */
+	for (i = 0; i < 3; i++) {
+		char *name = get_next_notification_trigger_name(
+				notification_channel);
+
+		if (strcmp(ctrl_trigger_name, name) == 0) {
+			ctrl_count++;
+		} else if (strcmp(trigger_name, name) == 0) {
+			count++;
+		}
+
+		free(name);
+	}
+
+	ok(ctrl_count / 2 == count,
+			"Get twice as many control notif as of regular notif");
+
+	suspend_application();
+
+	lttng_unregister_trigger(trigger);
+	lttng_unregister_trigger(ctrl_trigger);
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_trigger_destroy(trigger);
+	lttng_trigger_destroy(ctrl_trigger);
+	lttng_condition_destroy(condition);
+	lttng_condition_destroy(ctrl_condition);
+}
+
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
@@ -1047,13 +1132,15 @@ int main(int argc, const char *argv[])
 	const char *domain_type_string = NULL;
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
-	if (argc < 3) {
-		fail("Missing test scenario and/or domain type argument(s)");
+	if (argc < 5) {
+		fail("Missing test scenario, domain type, pid, or application state file argument(s)");
 		goto error;
 	}
 
 	test_scenario = atoi(argv[1]);
 	domain_type_string = argv[2];
+	app_pid = (pid_t) atoi(argv[3]);
+	app_state_file = argv[4];
 
 	if (!strcmp("LTTNG_DOMAIN_UST", domain_type_string)) {
 		domain_type = LTTNG_DOMAIN_UST;
@@ -1066,25 +1153,19 @@ int main(int argc, const char *argv[])
 		goto error;
 	}
 
+	/*
+	 * Test cases are responsible for resuming the app when needed
+	 * and making sure it's suspended when returning.
+	 */
+	suspend_application();
+
 	switch (test_scenario) {
 	case 1:
 	{
-		plan_tests(21);
-		if (argc < 5) {
-			fail("Missing parameter for tests to run %d", argc);
-			goto error;
-		}
-		app_pid = (pid_t) atoi(argv[3]);
-		app_state_file = argv[4];
-
-		/*
-		 * Test cases are responsible for resuming the app when needed
-		 * and making sure it's suspended when returning.
-		 */
-		suspend_application();
+		plan_tests(38);
 
 		/* Test cases that need gen-ust-event testapp. */
-		diag("Test basic notification error paths for domain %s",
+		diag("Test basic notification error paths for %s domain",
 				domain_type_string);
 		test_invalid_channel_subscription(domain_type);
 
@@ -1092,6 +1173,9 @@ int main(int argc, const char *argv[])
 				domain_type_string);
 		test_tracepoint_event_rule_notification(domain_type);
 
+		diag("Test tracepoint event rule notifications with filter for domain %s",
+				domain_type_string);
+		test_tracepoint_event_rule_notification_filter(domain_type);
 		break;
 	}
 	case 2:
@@ -1112,16 +1196,8 @@ int main(int argc, const char *argv[])
 
 		nb_args = argc;
 
-		session_name = argv[3];
-		channel_name = argv[4];
-		app_pid = (pid_t) atoi(argv[5]);
-		app_state_file = argv[6];
-
-		/*
-		 * Test cases are responsible for resuming the app when needed
-		 * and making sure it's suspended when returning.
-		 */
-		suspend_application();
+		session_name = argv[5];
+		channel_name = argv[6];
 
 		test_subscription_twice(session_name, channel_name,
 				domain_type);

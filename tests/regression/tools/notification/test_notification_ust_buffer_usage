@@ -50,7 +50,8 @@ function test_buffer_usage_notification
 	ust_event_generator "$GEN_UST_EVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" &
 	APP_PID=$!
 
-	"$CURDIR/notification" 2 LTTNG_DOMAIN_UST $SESSION_NAME $CHANNEL_NAME $APP_PID "$TESTAPP_STATE_PATH" "${consumerd_pipe[@]}"
+	"$CURDIR/notification" 2 LTTNG_DOMAIN_UST $APP_PID "$TESTAPP_STATE_PATH" \
+		$SESSION_NAME $CHANNEL_NAME "${consumerd_pipe[@]}"
 
 	destroy_lttng_session_notap $SESSION_NAME
 
