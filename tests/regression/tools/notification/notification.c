@@ -59,16 +59,31 @@ void wait_on_file(const char *path, bool file_exist)
 		ret = stat(path, &buf);
 		if (ret == -1 && errno == ENOENT) {
 			if (file_exist) {
-				(void) poll(NULL, 0, 10);	/* 10 ms delay */
-				continue;			/* retry */
+				/*
+				 * The file does not exist. wait a bit and
+				 * continue looping until it does.
+				 */
+				(void) poll(NULL, 0, 10);
+				continue;
 			}
-			break; /* File does not exist */
+
+			/*
+			 * File does not exist and the exit condition we want.
+			 * Break from the loop and return.
+			 */
+			break;
 		}
 		if (ret) {
 			perror("stat");
 			exit(EXIT_FAILURE);
 		}
-		break;	/* found */
+		/*
+		 * stat() returned 0, so the file exists. break now only if
+		 * that's the exit condition we want.
+		 */
+		if (file_exist) {
+			break;
+		}
 	}
 }
 
