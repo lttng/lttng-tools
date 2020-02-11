@@ -856,7 +856,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		const char *trigger_name,
 		const char *filter,
 		unsigned int exclusion_count,
-		const char **exclusions,
+		const char * const *exclusions,
 		enum lttng_domain_type domain_type,
 		struct lttng_condition **condition,
 		struct lttng_trigger **trigger)
@@ -1124,6 +1124,89 @@ static void test_tracepoint_event_rule_notification_filter(
 	lttng_condition_destroy(ctrl_condition);
 }
 
+static void test_tracepoint_event_rule_notification_exclusion(
+		enum lttng_domain_type domain_type)
+{
+	enum lttng_notification_channel_status nc_status;
+	struct lttng_condition *ctrl_condition = NULL, *condition = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_trigger *ctrl_trigger = NULL, *trigger = NULL;
+	int ctrl_count = 0, count = 0, i;
+	const char * const ctrl_trigger_name = "control_exclusion_trigger";
+	const char * const trigger_name = "exclusion_trigger";
+	const char * const pattern = "tp:tptest*";
+	const char * const exclusions[] = {
+		"tp:tptest2",
+		"tp:tptest3",
+		"tp:tptest4",
+		"tp:tptest5"
+	};
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
+			0, NULL, domain_type, &ctrl_condition, &ctrl_trigger);
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, ctrl_condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 4,
+			exclusions, domain_type, &condition, &trigger);
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	/*
+	 * We registered 2 notifications triggers, one with an exclusion and
+	 * one without (control).
+	 * - The trigger with an exclusion will fire once every iteration.
+	 * - The trigger without an exclusion will fire 5 times every
+	 *   iteration.
+	 *
+	 *   We should get 5 times as many notifications from the control
+	 *   trigger.
+	 */
+	resume_application();
+
+	/*
+	 * Get 6 notifications. We should get 1 for the regular trigger (with
+	 * the exclusion) and 5 from the control trigger. This works whatever
+	 * the order we receive the notifications.
+	 */
+	for (i = 0; i < 6; i++) {
+		char *name = get_next_notification_trigger_name(
+				notification_channel);
+
+		if (strcmp(ctrl_trigger_name, name) == 0) {
+			ctrl_count++;
+		} else if (strcmp(trigger_name, name) == 0) {
+			count++;
+		}
+
+		free(name);
+	}
+
+	ok(ctrl_count / 5 == count,
+			"Got 5 times as many control notif as of regular notif");
+
+	suspend_application();
+
+	lttng_unregister_trigger(trigger);
+	lttng_unregister_trigger(ctrl_trigger);
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_trigger_destroy(trigger);
+	lttng_trigger_destroy(ctrl_trigger);
+	lttng_condition_destroy(condition);
+	lttng_condition_destroy(ctrl_condition);
+	return;
+}
+
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
@@ -1218,6 +1301,25 @@ int main(int argc, const char *argv[])
 				domain_type_string);
 		test_buffer_usage_notification_channel(session_name, channel_name,
 				domain_type, argv);
+		break;
+	}
+	case 3:
+	{
+		/*
+		 * Test cases that need a test app with more than one event
+		 * type.
+		 */
+		plan_tests(19);
+
+		/*
+		 * At the moment, the only test case of this scenario is
+		 * exclusion which is only supported by UST.
+		 */
+		assert(domain_type == LTTNG_DOMAIN_UST);
+		diag("Test tracepoint event rule notifications with exclusion for domain %s",
+				domain_type_string);
+		test_tracepoint_event_rule_notification_exclusion(domain_type);
+
 		break;
 	}
 	default:
