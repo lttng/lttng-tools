@@ -401,7 +401,7 @@ function start_lttng_relayd_opt()
 
 	DIR=$(readlink -f "$TESTDIR")
 
-	if [ -z $(pgrep $RELAYD_MATCH) ]; then
+	if [ -z $(pgrep -f $RELAYD_MATCH) ]; then
 		# shellcheck disable=SC2086
 		$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $process_mode $opt 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 		#$DIR/../src/bin/lttng-relayd/$RELAYD_BIN $opt -vvv >>/tmp/relayd.log 2>&1 &
@@ -450,7 +450,7 @@ function stop_lttng_relayd_opt()
 	local retval=0
 	local pids=
 
-	pids=$(pgrep "$RELAYD_MATCH")
+	pids=$(pgrep -f "$RELAYD_MATCH")
 	if [ -z "$pids" ]; then
 		if [ "$withtap" -eq "1" ]; then
 			pass "No relay daemon to kill"
@@ -469,7 +469,7 @@ function stop_lttng_relayd_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep "$RELAYD_MATCH")
+			out=$(pgrep -f "$RELAYD_MATCH")
 			if [ -n "$dtimeleft_s" ]; then
 				if [ $dtimeleft_s -lt 0 ]; then
 					out=
@@ -547,7 +547,7 @@ function start_lttng_sessiond_opt()
 	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/config/"}"
 	export LTTNG_SESSION_CONFIG_XSD_PATH
 
-	if [ -z "$(pgrep "${SESSIOND_MATCH}")" ]; then
+	if [ -z "$(pgrep -f "${SESSIOND_MATCH}")" ]; then
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			# shellcheck disable=SC2086
@@ -599,10 +599,10 @@ function stop_lttng_sessiond_opt()
 	local retval=0
 
 	local runas_pids=
-	runas_pids=$(pgrep "$RUNAS_MATCH")
+	runas_pids=$(pgrep -f "$RUNAS_MATCH")
 
 	local pids=
-	pids=$(pgrep "$SESSIOND_MATCH")
+	pids=$(pgrep -f "$SESSIOND_MATCH")
 
 	if [ -n "$runas_pids" ]; then
 		pids="$pids $runas_pids"
@@ -626,7 +626,7 @@ function stop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep "${SESSIOND_MATCH}")
+			out=$(pgrep -f "${SESSIOND_MATCH}")
 			if [ -n "$dtimeleft_s" ]; then
 				if [ $dtimeleft_s -lt 0 ]; then
 					out=
@@ -638,7 +638,7 @@ function stop_lttng_sessiond_opt()
 		done
 		out=1
 		while [ -n "$out" ]; do
-			out=$(pgrep "$CONSUMERD_MATCH")
+			out=$(pgrep -f "$CONSUMERD_MATCH")
 			if [ -n "$dtimeleft_s" ]; then
 				if [ $dtimeleft_s -lt 0 ]; then
 					out=
@@ -692,7 +692,7 @@ function sigstop_lttng_sessiond_opt()
 		return
 	fi
 
-	PID_SESSIOND="$(pgrep "${SESSIOND_MATCH}") $(pgrep "$RUNAS_MATCH")"
+	PID_SESSIOND="$(pgrep -f "${SESSIOND_MATCH}") $(pgrep -f "$RUNAS_MATCH")"
 
 	if [ "$withtap" -eq "1" ]; then
 		diag "Sending SIGSTOP to lt-$SESSIOND_BIN and $SESSIOND_BIN pids: $(echo "$PID_SESSIOND" | tr '\n' ' ')"
@@ -706,7 +706,7 @@ function sigstop_lttng_sessiond_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(pgrep "$SESSIOND_MATCH")"
+			pid="$(pgrep -f "$SESSIOND_MATCH")"
 
 			# Wait until state becomes stopped for session
 			# daemon(s).
@@ -754,7 +754,7 @@ function stop_lttng_consumerd_opt()
 
 	local retval=0
 
-	PID_CONSUMERD="$(pgrep "$CONSUMERD_MATCH")"
+	PID_CONSUMERD="$(pgrep -f "$CONSUMERD_MATCH")"
 
 	if [ -z "$PID_CONSUMERD" ]; then
 		if [ "$withtap" -eq "1" ]; then
@@ -774,7 +774,7 @@ function stop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(pgrep "$CONSUMERD_MATCH")"
+			pid="$(pgrep -f "$CONSUMERD_MATCH")"
 
 			# If consumerds are still present check their status.
 			# A zombie status qualifies the consumerd as *killed*
@@ -821,7 +821,7 @@ function sigstop_lttng_consumerd_opt()
 	local withtap=$1
 	local signal=SIGSTOP
 
-	PID_CONSUMERD="$(pgrep "$CONSUMERD_MATCH")"
+	PID_CONSUMERD="$(pgrep -f "$CONSUMERD_MATCH")"
 
 	diag "Sending SIGSTOP to $CONSUMERD_BIN pids: $(echo "$PID_CONSUMERD" | tr '\n' ' ')"
 
@@ -837,7 +837,7 @@ function sigstop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(pgrep "$CONSUMERD_MATCH")"
+			pid="$(pgrep -f "$CONSUMERD_MATCH")"
 
 			# Wait until state becomes stopped for all
 			# consumers.

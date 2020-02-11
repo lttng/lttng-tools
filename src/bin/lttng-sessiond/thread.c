@@ -61,9 +61,10 @@ void *launch_thread(void *data)
 	void *ret;
 	struct lttng_thread *thread = (struct lttng_thread *) data;
 
-	DBG("Launching \"%s\" thread", thread->name);
+	logger_set_thread_name(thread->name, true);
+	DBG("Entering thread entry point");
 	ret = thread->entry(thread->data);
-	DBG("Thread \"%s\" has returned", thread->name);
+	DBG("Thread entry point has returned");
 	return ret;
 }
 

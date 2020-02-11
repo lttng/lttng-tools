@@ -7,14 +7,15 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
-#include <lttng/lttng-error.h>
 #include <common/common.h>
 #include <common/compat/getenv.h>
+#include <lttng/lttng-error.h>
 
 #include "error.h"
 
@@ -28,6 +29,7 @@ static int lttng_opt_abort_on_error = -1;
 
 /* TLS variable that contains the time of one single log entry. */
 DEFINE_URCU_TLS(struct log_time, error_log_time);
+DEFINE_URCU_TLS(const char *, logger_thread_name);
 
 LTTNG_HIDDEN
 const char *log_add_time(void)
@@ -64,6 +66,30 @@ error:
 	/* Return an empty string on error so logging is not affected. */
 	errno = errsv;
 	return "";
+}
+
+LTTNG_HIDDEN
+void logger_set_thread_name(const char *name, bool set_pthread_name)
+{
+	int ret;
+
+	assert(name);
+	URCU_TLS(logger_thread_name) = name;
+
+	if (set_pthread_name) {
+		char pthread_name[16];
+
+		/*
+		 * Truncations are expected since pthread limits thread names to
+		 * a generous 16 characters.
+		 */
+		strncpy(pthread_name, name, sizeof(pthread_name));
+		pthread_name[sizeof(pthread_name) - 1] = '\0';
+		ret = pthread_setname_np(pthread_self(), pthread_name);
+		if (ret) {
+			DBG("Failed to set pthread name attribute");
+		}
+	}
 }
 
 /*

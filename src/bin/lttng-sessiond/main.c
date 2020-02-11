@@ -1302,6 +1302,7 @@ int main(int argc, char **argv)
 	struct lttng_thread *notification_thread = NULL;
 	struct lttng_thread *register_apps_thread = NULL;
 
+	logger_set_thread_name("Main", false);
 	init_kernel_workarounds();
 
 	rcu_register_thread();

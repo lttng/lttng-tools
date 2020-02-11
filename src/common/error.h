@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include <urcu/tls-compat.h>
 #include <common/compat/time.h>
+#include <common/string-utils/format.h>
+#include <common/macros.h>
 
 #ifndef _GNU_SOURCE
 #error "lttng-tools error.h needs _GNU_SOURCE"
@@ -42,6 +44,7 @@ struct log_time {
 	char str[19];
 };
 extern DECLARE_URCU_TLS(struct log_time, error_log_time);
+extern DECLARE_URCU_TLS(const char *, logger_thread_name);
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
@@ -139,13 +142,44 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 	} while (0)
 
 /* Three level of debug. Use -v, -vv or -vvv for the levels */
-#define _ERRMSG(msg, type, fmt, args...) __lttng_print(type, msg \
-		" - %s [%ld/%ld]: " fmt " (in %s() at " __FILE__ ":" XSTR(__LINE__) ")\n", \
-			log_add_time(), (long) getpid(), (long) lttng_gettid(), ## args, __func__)
+#define _ERRMSG(msg, type, fmt, args...)                                \
+	do {                                                            \
+		if (caa_unlikely(__lttng_print_check_opt(type))) {      \
+			char generic_name[MAX_INT_DEC_LEN(long) +       \
+					  MAX_INT_DEC_LEN(long)];       \
+                                                                        \
+			snprintf(generic_name, sizeof(generic_name),    \
+					"%ld/%ld", (long) getpid(),     \
+					(long) lttng_gettid());         \
+                                                                        \
+			__lttng_print(type,                             \
+					msg " - %s [%s]: " fmt          \
+					    " (in %s() at " __FILE__    \
+					    ":" XSTR(__LINE__) ")\n",   \
+					log_add_time(),                 \
+					URCU_TLS(logger_thread_name) ?: \
+							generic_name,   \
+					##args, __func__);              \
+		}                                                       \
+	} while (0)
 
-#define _ERRMSG_NO_LOC(msg, type, fmt, args...) __lttng_print(type, msg	\
-		" - %s [%ld/%ld]: " fmt "\n", \
-			log_add_time(), (long) getpid(), (long) lttng_gettid(), ## args)
+#define _ERRMSG_NO_LOC(msg, type, fmt, args...)                          \
+	do {                                                             \
+		if (caa_unlikely(__lttng_print_check_opt(type))) {       \
+			char generic_name[MAX_INT_DEC_LEN(long) +        \
+					  MAX_INT_DEC_LEN(long)];        \
+                                                                         \
+			snprintf(generic_name, sizeof(generic_name),     \
+					"%ld/%ld", (long) getpid(),      \
+					(long) lttng_gettid());          \
+                                                                         \
+			__lttng_print(type, msg " - %s [%s]: " fmt "\n", \
+					log_add_time(),                  \
+					URCU_TLS(logger_thread_name) ?:  \
+							generic_name,    \
+					##args);                         \
+		}                                                        \
+	} while (0)
 
 #define MSG(fmt, args...) \
 	__lttng_print(PRINT_MSG, fmt "\n", ## args)
@@ -158,10 +192,10 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 
 #define BUG(fmt, args...) _ERRMSG("BUG", PRINT_BUG, fmt, ## args)
 
-#define DBG(fmt, args...) _ERRMSG("DEBUG1", PRINT_DBG, fmt, ## args)
-#define DBG_NO_LOC(fmt, args...) _ERRMSG_NO_LOC("DEBUG1", PRINT_DBG, fmt, ## args)
-#define DBG2(fmt, args...) _ERRMSG("DEBUG2", PRINT_DBG2, fmt, ## args)
-#define DBG3(fmt, args...) _ERRMSG("DEBUG3", PRINT_DBG3, fmt, ## args)
+#define DBG(fmt, args...) _ERRMSG("DBG1", PRINT_DBG, fmt, ## args)
+#define DBG_NO_LOC(fmt, args...) _ERRMSG_NO_LOC("DBG1", PRINT_DBG, fmt, ## args)
+#define DBG2(fmt, args...) _ERRMSG("DBG2", PRINT_DBG2, fmt, ## args)
+#define DBG3(fmt, args...) _ERRMSG("DBG3", PRINT_DBG3, fmt, ## args)
 #define LOG(type, fmt, args...)			\
 	do {					\
 		switch (type) {			\
@@ -225,5 +259,9 @@ const char *error_get_str(int32_t code);
  * printed in the log.
  */
 const char *log_add_time(void);
+
+/* Name must be a statically-allocated string. */
+LTTNG_HIDDEN
+void logger_set_thread_name(const char *name, bool set_pthread_name);
 
 #endif /* _ERROR_H */
