@@ -30,7 +30,7 @@ function enable_ust_lttng_all_event_exclusion()
 
 function run_apps
 {
-	$TESTAPP_BIN $NR_ITER $NR_USEC_WAIT >/dev/null 2>&1
+	$TESTAPP_BIN --iter $NR_ITER --wait $NR_USEC_WAIT >/dev/null 2>&1
 	ok $? "Running test application"
 }
 

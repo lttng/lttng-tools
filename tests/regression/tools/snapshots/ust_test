@@ -358,7 +358,7 @@ function test_ust_local_snapshot_large_metadata ()
 	enable_ust_lttng_event_ok $SESSION_NAME $LM_EVENT $CHANNEL_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	lttng_snapshot_add_output_ok $SESSION_NAME file://$TRACE_PATH
-	$LM_BIN 1 1
+	$LM_BIN --iter 1 --wait 1
 	ok $? "Start application to trace"
 	lttng_snapshot_record $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
