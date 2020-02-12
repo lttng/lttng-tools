@@ -7,6 +7,7 @@
 
 #define _LGPL_SOURCE
 #include <arpa/inet.h>
+#include <getopt.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,9 +22,17 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
+static struct option long_options[] =
+{
+	/* These options set a flag. */
+	{"iter", required_argument, 0, 'i'},
+	{"wait", required_argument, 0, 'w'},
+	{0, 0, 0, 0}
+};
+
 int main(int argc, char **argv)
 {
-	int i, netint, ret = 0;
+	int i, netint, ret = 0, option_index, option;
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
 	double dbl = 2.0;
@@ -31,19 +40,29 @@ int main(int argc, char **argv)
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
 
+	while ((option = getopt_long(argc, argv, "i:w:",
+			long_options, &option_index)) != -1) {
+		switch (option) {
+		case 'i':
+			nr_iter = atoi(optarg);
+			break;
+		case 'w':
+			nr_usec = atoi(optarg);
+			break;
+		case '?':
+			/* getopt_long already printed an error message. */
+			break;
+		default:
+			ret = -1;
+			goto end;
+		}
+	}
+
 	if (set_signal_handler()) {
 		ret = -1;
 		goto end;
 	}
 
-	if (argc >= 2) {
-		nr_iter = atoi(argv[1]);
-	}
-
-	if (argc == 3) {
-		/* By default, don't wait unless user specifies. */
-		nr_usec = atoi(argv[2]);
-	}
 
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
