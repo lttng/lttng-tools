@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# Copyright (C) 2017 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../../
+
+TMPDIR=$(mktemp -d)
+
+TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
+
+NUM_TESTS=13
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+# shellcheck source=./util_event_generator.sh
+source "$CURDIR/util_event_generator.sh"
+
+function test_kernel_instrumentation_notification
+{
+	kernel_event_generator generate_filter_events "$TESTAPP_STATE_PATH" &
+	APP_PID=$!
+
+	"$CURDIR/notification" 4 LTTNG_DOMAIN_KERNEL $APP_PID \
+		"$TESTAPP_STATE_PATH"
+
+	kill -SIGUSR2 $APP_PID
+	wait $APP_PID 2> /dev/null
+}
+
+if [ "$(id -u)" == "0" ]; then
+	validate_lttng_modules_present
+
+	modprobe lttng-test
+
+	start_lttng_sessiond_notap
+
+	test_kernel_instrumentation_notification
+
+	stop_lttng_sessiond_notap
+	rmmod lttng-test
+
+else
+	# Kernel tests are skipped.
+	plan_tests $NUM_TESTS
+	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
+fi
+
+rm -rf "$TMPDIR"

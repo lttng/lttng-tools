@@ -32,6 +32,7 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/notification/test_notification_ust_event_rule_condition_exclusion \
 	tools/notification/test_notification_kernel_error \
 	tools/notification/test_notification_kernel_buffer_usage \
+	tools/notification/test_notification_kernel_instrumentation \
 	tools/notification/test_notification_multi_app \
 	tools/rotation/test_ust \
 	tools/rotation/test_kernel \
