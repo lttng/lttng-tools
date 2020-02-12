@@ -1,3 +1,11 @@
+2020-02-12 lttng-tools 2.11.2 (Hug Day)
+	* Fix: sessiond: check for lttng-modules ABI 2.1 rather than 2.8
+	* Tests: Fix: `wait_on_file()` returns too early
+	* Fix: Tests: utils.sh: fix unbound variable
+	* Tests: Fix typo: registerd -> registered
+	* Typo: 'toogle' -> 'toggle'
+	* Fix: force the use of our _FORTIFY_SOURCE definition
+
 2020-02-05 lttng-tools 2.11.1 (National Chocolate Fondue Day)
 	* Fix: sessiond: snapshot errors don't clear session's trace chunk
 	* Fix: sessiond: bounded snapshot record fails when no streams exist
