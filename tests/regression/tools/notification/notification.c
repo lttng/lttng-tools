@@ -43,7 +43,7 @@
 
 int nb_args = 0;
 int named_pipe_args_start = 0;
-pid_t app_pid = -1;
+pid_t app_pid = 0;
 const char *app_state_file = NULL;
 
 static
@@ -156,6 +156,8 @@ int suspend_application(void)
 	/*
 	 * Send SIGUSR1 to application instructing it to bypass tracepoint.
 	 */
+	assert(app_pid > 1);
+
 	ret = kill(app_pid, SIGUSR1);
 	if (ret) {
 		fail("SIGUSR1 failed. errno %d", errno);
@@ -185,6 +187,8 @@ int resume_application(void)
 		perror("stat");
 		goto error;
 	}
+
+	assert(app_pid > 1);
 
 	ret = kill(app_pid, SIGUSR1);
 	if (ret) {
