@@ -9,7 +9,6 @@
 #define LTTNG_TRACKER_H
 
 #include <lttng/constant.h>
-#include <common/macros.h>
 #include <lttng/session.h>
 
 #ifdef __cplusplus
