@@ -25,7 +25,7 @@ function enable_ust_lttng_all_event_exclusion()
 	sess_name="$1"
 	exclusion="$2"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -u "tp:*" -s $sess_name -x "$exclusion"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event -u "tp:*" -s $sess_name -x "$exclusion" > /dev/null
 }
 
 function run_apps
@@ -116,12 +116,14 @@ function test_exclusion_fail
 
 plan_tests $NUM_TESTS
 
-print_test_banner $TEST_DESC
+print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
+diag "Enable event without exclusion"
 dry_run
 
+diag "Enable event with exclusion"
 test_exclusion 'tp:tptest2' 'tp:tptest2'
 test_exclusion 'tp:tptest3' 'tp:tptest3'
 test_exclusion 'tp:tptest*' 'tp:tptest1'
@@ -145,12 +147,12 @@ test_exclusion '*3' 'tp:tptest3'
 test_exclusion 'tp*test3,*2' 'tp:tptest2'
 test_exclusion '**tp*test3,*2' 'tp:tptest3'
 
-# Cannot use exclusions with non-globbing event name
+diag "Cannot use exclusions with non-globbing event name"
 test_exclusion_fail "allo" "lol"
 test_exclusion_fail "allo" "meow,lol"
 test_exclusion_fail "allo" "z*em"
 
-# Exclusion name excludes all possible event names
+diag "Exclusion name excludes all possible event names"
 test_exclusion_fail "allo*" "all*"
 test_exclusion_fail "allo*" "ze,all*,yes"
 
