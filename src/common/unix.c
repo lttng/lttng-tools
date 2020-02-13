@@ -232,12 +232,9 @@ retry:
 		if (errno == EINTR) {
 			goto retry;
 		} else {
-			/*
-			 * Only warn about EPIPE when quiet mode is
-			 * deactivated.
-			 * We consider EPIPE as expected.
-			 */
-			if (errno != EPIPE || !lttng_opt_quiet) {
+			/* We consider EPIPE and EAGAIN as expected. */
+			if (!lttng_opt_quiet &&
+					(errno != EPIPE && errno != EAGAIN)) {
 				PERROR("recvmsg");
 			}
 			goto end;
@@ -320,12 +317,9 @@ retry:
 		if (errno == EINTR) {
 			goto retry;
 		} else {
-			/*
-			 * Only warn about EPIPE when quiet mode is
-			 * deactivated.
-			 * We consider EPIPE as expected.
-			 */
-			if (errno != EPIPE || !lttng_opt_quiet) {
+			/* We consider EPIPE and EAGAIN as expected. */
+			if (!lttng_opt_quiet &&
+					(errno != EPIPE && errno != EAGAIN)) {
 				PERROR("sendmsg");
 			}
 			goto end;
