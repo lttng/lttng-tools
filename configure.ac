@@ -32,6 +32,12 @@ AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
 # -Wunknown-warning-option diagnostic fatal with clang.
 AX_APPEND_COMPILE_FLAGS([ dnl
 		-Wall dnl
+		dnl We currently get this warning when building with Clang:
+		dnl
+		dnl /usr/include/setjmp.h:54:12: error: declaration of built-in function '__sigsetjmp' requires the declaration of the 'jmp_buf' type, commonly provided in the header <setjmp.h>. [-Werror,-Wincomplete-setjmp-declaration]
+		dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
+		dnl            ^
+		-Wno-incomplete-setjmp-declaration dnl
 	],
 	[WARN_CFLAGS],
 	[-Werror])
