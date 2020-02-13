@@ -35,12 +35,14 @@
 #include <lttng/event-rule/kprobe.h>
 #include <lttng/event-rule/syscall.h>
 #include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/uprobe.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/lttng-error.h>
 #include <lttng/lttng.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/userspace-probe.h>
 
 #include <tap/tap.h>
 
@@ -1305,6 +1307,110 @@ end:
 	return;
 }
 
+static void test_uprobe_event_rule_notification(
+		enum lttng_domain_type domain_type,
+		const char *testapp_path,
+		const char *test_symbol_name)
+{
+	int i, ret;
+	const int notification_count = 3;
+	enum lttng_notification_channel_status nc_status;
+	enum lttng_event_rule_status event_rule_status;
+	enum lttng_trigger_status trigger_status;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_userspace_probe_location *probe_location = NULL;
+	struct lttng_userspace_probe_location_lookup_method *lookup_method =
+			NULL;
+	struct lttng_condition *condition = NULL;
+	struct lttng_event_rule *event_rule = NULL;
+	struct lttng_action *action = NULL;
+	struct lttng_trigger *trigger = NULL;
+	const char * const trigger_name = "uprobe_trigger";
+
+	action = lttng_action_notify_create();
+	if (!action) {
+		fail("Failed to create notify action");
+		goto end;
+	}
+
+	lookup_method = lttng_userspace_probe_location_lookup_method_function_elf_create();
+	if (!lookup_method) {
+		fail("Setup error on userspace probe lookup method creation");
+		goto end;
+	}
+
+	probe_location = lttng_userspace_probe_location_function_create(
+			testapp_path, test_symbol_name, lookup_method);
+	if (!probe_location) {
+		fail("Failed to create userspace probe location");
+		goto end;
+	}
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	event_rule = lttng_event_rule_uprobe_create();
+	ok(event_rule, "kprobe event rule object creation");
+
+	event_rule_status = lttng_event_rule_uprobe_set_location(
+			event_rule, probe_location);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+			"Setting uprobe event rule location");
+
+	event_rule_status = lttng_event_rule_uprobe_set_name(
+			event_rule, trigger_name);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+			"Setting uprobe event rule name: '%s'", trigger_name);
+
+	condition = lttng_condition_event_rule_create(event_rule);
+	ok(condition, "Condition event rule object creation");
+
+	/* Register the trigger for condition. */
+	trigger = lttng_trigger_create(condition, action);
+	if (!trigger) {
+		fail("Failed to create trigger with userspace probe event rule condition and notify action");
+		goto end;
+	}
+
+	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
+	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
+			"Setting name to trigger '%s'", trigger_name);
+
+	ret = lttng_register_trigger(trigger);
+	if (ret) {
+		fail("Failed to register trigger with userspace probe event rule condition and notify action");
+		goto end;
+	}
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	resume_application();
+
+	for (i = 0; i < notification_count; i++) {
+		char *name = get_next_notification_trigger_name(
+				notification_channel);
+
+		ok(strcmp(trigger_name, name) == 0,
+				"Received notification for the expected trigger name: '%s' (%d/%d)",
+				trigger_name, i + 1, notification_count);
+		free(name);
+	}
+end:
+	suspend_application();
+
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_unregister_trigger(trigger);
+	lttng_trigger_destroy(trigger);
+	lttng_action_destroy(action);
+	lttng_event_rule_destroy(event_rule);
+	lttng_condition_destroy(condition);
+	return;
+}
+
 static void test_syscall_event_rule_notification(
 		enum lttng_domain_type domain_type)
 {
@@ -1388,8 +1494,6 @@ end:
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
-	const char *session_name = NULL;
-	const char *channel_name = NULL;
 	const char *domain_type_string = NULL;
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
@@ -1441,6 +1545,7 @@ int main(int argc, const char *argv[])
 	}
 	case 2:
 	{
+		const char *session_name, *channel_name;
 		/* Test cases that need a tracing session enabled. */
 		plan_tests(99);
 
@@ -1524,6 +1629,30 @@ int main(int argc, const char *argv[])
 				domain_type_string);
 
 		test_syscall_event_rule_notification(domain_type);
+
+		break;
+	}
+	case 6:
+	{
+		const char *testapp_path, *test_symbol_name;
+
+		plan_tests(10);
+
+		if (argc < 7) {
+			fail("Missing parameter for tests to run %d", argc);
+			goto error;
+		}
+
+		testapp_path = argv[5];
+		test_symbol_name = argv[6];
+		/* Test cases that need the kernel tracer. */
+		assert(domain_type == LTTNG_DOMAIN_KERNEL);
+
+		diag("Test userspace-probe event rule notifications for domain %s",
+				domain_type_string);
+
+		test_uprobe_event_rule_notification(
+				domain_type, testapp_path, test_symbol_name);
 
 		break;
 	}
