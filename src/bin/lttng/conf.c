@@ -266,7 +266,7 @@ char *config_read_session_name_quiet(const char *path)
 int config_add_session_name(const char *path, const char *name)
 {
 	int ret;
-	char *attr = "session=";
+	const char *attr = "session=";
 	/* Max name len accepted plus attribute's len and the NULL byte. */
 	char session_name[NAME_MAX + strlen(attr) + 1];
 

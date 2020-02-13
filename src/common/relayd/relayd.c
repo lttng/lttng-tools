@@ -499,7 +499,7 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	int ret;
 	struct lttcomm_relayd_status_stream reply;
 	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
-	char *separator;
+	const char *separator;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);

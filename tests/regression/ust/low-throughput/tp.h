@@ -14,7 +14,7 @@
 #include <lttng/tracepoint.h>
 
 TRACEPOINT_EVENT(tp, slow,
-	TP_ARGS(unsigned int, c, char *, thread_name),
+	TP_ARGS(unsigned int, c, const char *, thread_name),
 	TP_FIELDS(
 		ctf_integer(unsigned int, counter, c)
 		ctf_string(th_name, thread_name)

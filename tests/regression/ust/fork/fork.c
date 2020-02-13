@@ -34,7 +34,7 @@ int main(int argc, char **argv, char *env[])
 		return 1;
 	}
 	if (result == 0) {
-		char *args[] = { "fork2", NULL };
+		char *args[] = { (char *) "fork2", NULL };
 
 		tracepoint(ust_tests_fork, after_fork_child, getpid());
 

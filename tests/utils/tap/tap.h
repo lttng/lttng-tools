@@ -75,15 +75,15 @@
 
 #define skip_end() } while(0);
 
-unsigned int _gen_result(int, const char *, char *, unsigned int, char *, ...);
+unsigned int _gen_result(int, const char *, const char *, unsigned int, const char *, ...);
 
 int plan_no_plan(void);
 int plan_skip_all(char *);
 int plan_tests(unsigned int);
 
-unsigned int diag(char *, ...);
+unsigned int diag(const char *, ...);
 
-int skip(unsigned int, char *, ...);
+int skip(unsigned int, const char *, ...);
 
 void todo_start(char *, ...);
 void todo_end(void);

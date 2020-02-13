@@ -77,7 +77,7 @@ enum ir_load_string_type get_literal_string_type(const char *string)
 }
 
 static
-struct ir_op *make_op_load_string(char *string, enum ir_side side)
+struct ir_op *make_op_load_string(const char *string, enum ir_side side)
 {
 	struct ir_op *op;
 
@@ -187,7 +187,7 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 {
 	struct ir_load_expression *load_exp;
 	struct ir_load_expression_op *load_exp_op, *prev_op;
-	char *str;
+	const char *str;
 
 	/* Get forward chain. */
 	node = load_expression_get_forward_chain(node);

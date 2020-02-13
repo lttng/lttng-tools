@@ -115,10 +115,10 @@ struct filter_node {
 			enum ast_link_type post_op;	/* reverse */
 			enum ast_link_type pre_op;	/* forward */
 			union {
-				char *string;
+				const char *string;
 				uint64_t constant;
 				double float_constant;
-				char *identifier;
+				const char *identifier;
 				/*
 				 * child can be nested.
 				 */

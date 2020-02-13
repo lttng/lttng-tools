@@ -40,7 +40,7 @@ static unsigned int test_count = 0; /* Number of tests that have been run */
 static unsigned int e_tests = 0; /* Expected number of tests to run */
 static unsigned int failures = 0; /* Number of tests that failed */
 static char *todo_msg = NULL;
-static char *todo_msg_fixed = "libtap malloc issue";
+static const char *todo_msg_fixed = "libtap malloc issue";
 static int todo = 0;
 static int test_died = 0;
 
@@ -68,8 +68,8 @@ static void _cleanup(void);
  * test_comment -- a comment to print afterwards, may be NULL
  */
 unsigned int
-_gen_result(int ok, const char *func, char *file, unsigned int line,
-	    char *test_name, ...)
+_gen_result(int ok, const char *func, const char *file, unsigned int line,
+	    const char *test_name, ...)
 {
 	va_list ap;
 	char *local_test_name = NULL;
@@ -270,7 +270,7 @@ plan_tests(unsigned int tests)
 }
 
 unsigned int
-diag(char *fmt, ...)
+diag(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -294,7 +294,7 @@ _expected_tests(unsigned int tests)
 }
 
 int
-skip(unsigned int n, char *fmt, ...)
+skip(unsigned int n, const char *fmt, ...)
 {
 	va_list ap;
 	char *skip_msg = NULL;

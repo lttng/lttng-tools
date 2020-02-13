@@ -184,19 +184,19 @@ static struct poptOption long_options[] = {
  */
 #define PERF_HW(optstr, name, type, hide)				\
 	{								\
-		optstr, type, hide,					\
+		(char *) optstr, type, hide,				\
 		.u.perf = { PERF_TYPE_HARDWARE, PERF_COUNT_HW_##name, },\
 	}
 
 #define PERF_SW(optstr, name, type, hide)				\
 	{								\
-		optstr, type, hide,					\
+		(char *) optstr, type, hide,				\
 		.u.perf = { PERF_TYPE_SOFTWARE, PERF_COUNT_SW_##name, },\
 	}
 
 #define _PERF_HW_CACHE(optstr, name, type, op, result, hide)		\
 	{								\
-		optstr, type, hide,					\
+		(char *) optstr, type, hide,				\
 		.u.perf = {						\
 			PERF_TYPE_HW_CACHE,				\
 			(uint64_t) PERF_COUNT_HW_CACHE_##name		\
@@ -235,45 +235,49 @@ const struct ctx_opts {
 		} app_ctx;
 	} u;
 } ctx_opts[] = {
-	{ "pid", CONTEXT_PID },
-	{ "procname", CONTEXT_PROCNAME },
-	{ "prio", CONTEXT_PRIO },
-	{ "nice", CONTEXT_NICE },
-	{ "vpid", CONTEXT_VPID },
-	{ "tid", CONTEXT_TID },
-	{ "pthread_id", CONTEXT_PTHREAD_ID },
-	{ "vtid", CONTEXT_VTID },
-	{ "ppid", CONTEXT_PPID },
-	{ "vppid", CONTEXT_VPPID },
-	{ "hostname", CONTEXT_HOSTNAME },
-	{ "ip", CONTEXT_IP },
-	{ "interruptible", CONTEXT_INTERRUPTIBLE },
-	{ "preemptible", CONTEXT_PREEMPTIBLE },
-	{ "need_reschedule", CONTEXT_NEED_RESCHEDULE },
-	{ "migratable", CONTEXT_MIGRATABLE },
-	{ "callstack-kernel", CONTEXT_CALLSTACK_KERNEL },
+	/*
+	 * These (char *) casts (as well as those in the PERF_* macros) are
+	 * safe because we never free these instances of `struct ctx_opts`.
+	 */
+	{ (char *) "pid", CONTEXT_PID },
+	{ (char *) "procname", CONTEXT_PROCNAME },
+	{ (char *) "prio", CONTEXT_PRIO },
+	{ (char *) "nice", CONTEXT_NICE },
+	{ (char *) "vpid", CONTEXT_VPID },
+	{ (char *) "tid", CONTEXT_TID },
+	{ (char *) "pthread_id", CONTEXT_PTHREAD_ID },
+	{ (char *) "vtid", CONTEXT_VTID },
+	{ (char *) "ppid", CONTEXT_PPID },
+	{ (char *) "vppid", CONTEXT_VPPID },
+	{ (char *) "hostname", CONTEXT_HOSTNAME },
+	{ (char *) "ip", CONTEXT_IP },
+	{ (char *) "interruptible", CONTEXT_INTERRUPTIBLE },
+	{ (char *) "preemptible", CONTEXT_PREEMPTIBLE },
+	{ (char *) "need_reschedule", CONTEXT_NEED_RESCHEDULE },
+	{ (char *) "migratable", CONTEXT_MIGRATABLE },
+	{ (char *) "callstack-kernel", CONTEXT_CALLSTACK_KERNEL },
 #if HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT
-	{ "callstack-user", CONTEXT_CALLSTACK_USER },
+	{ (char *) "callstack-user", CONTEXT_CALLSTACK_USER },
 #endif
-	{ "cgroup_ns", CONTEXT_CGROUP_NS },
-	{ "ipc_ns", CONTEXT_IPC_NS },
-	{ "mnt_ns", CONTEXT_MNT_NS },
-	{ "net_ns", CONTEXT_NET_NS },
-	{ "pid_ns", CONTEXT_PID_NS },
-	{ "user_ns", CONTEXT_USER_NS },
-	{ "uts_ns", CONTEXT_UTS_NS },
-	{ "uid", CONTEXT_UID },
-	{ "euid", CONTEXT_EUID },
-	{ "suid", CONTEXT_SUID },
-	{ "gid", CONTEXT_GID },
-	{ "egid", CONTEXT_EGID },
-	{ "sgid", CONTEXT_SGID },
-	{ "vuid", CONTEXT_VUID },
-	{ "veuid", CONTEXT_VEUID },
-	{ "vsuid", CONTEXT_VSUID },
-	{ "vgid", CONTEXT_VGID },
-	{ "vegid", CONTEXT_VEGID },
-	{ "vsgid", CONTEXT_VSGID },
+	{ (char *) "cgroup_ns", CONTEXT_CGROUP_NS },
+	{ (char *) "ipc_ns", CONTEXT_IPC_NS },
+	{ (char *) "mnt_ns", CONTEXT_MNT_NS },
+	{ (char *) "net_ns", CONTEXT_NET_NS },
+	{ (char *) "pid_ns", CONTEXT_PID_NS },
+	{ (char *) "user_ns", CONTEXT_USER_NS },
+	{ (char *) "uts_ns", CONTEXT_UTS_NS },
+	{ (char *) "uid", CONTEXT_UID },
+	{ (char *) "euid", CONTEXT_EUID },
+	{ (char *) "suid", CONTEXT_SUID },
+	{ (char *) "gid", CONTEXT_GID },
+	{ (char *) "egid", CONTEXT_EGID },
+	{ (char *) "sgid", CONTEXT_SGID },
+	{ (char *) "vuid", CONTEXT_VUID },
+	{ (char *) "veuid", CONTEXT_VEUID },
+	{ (char *) "vsuid", CONTEXT_VSUID },
+	{ (char *) "vgid", CONTEXT_VGID },
+	{ (char *) "vegid", CONTEXT_VEGID },
+	{ (char *) "vsgid", CONTEXT_VSGID },
 
 	/* Perf options */
 

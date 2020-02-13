@@ -180,8 +180,8 @@ static char **alloc_argv_from_local_opts(const char **opts, size_t opts_len,
 	memcpy(argv, opts, sizeof(char *) * opts_len);
 
 	if (session_live_mode) {
-		argv[opts_len] = "-i";
-		argv[opts_len + 1] = "lttng-live";
+		argv[opts_len] = (char *) "-i";
+		argv[opts_len + 1] = (char *) "lttng-live";
 		argv[opts_len + 2] = (char *) trace_path;
 		argv[opts_len + 3] = NULL;
 	} else {

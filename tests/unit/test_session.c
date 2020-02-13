@@ -66,7 +66,7 @@ static char *get_random_string(void)
 /*
  * Return 0 if session name is found, else -1
  */
-static int find_session_name(char *name)
+static int find_session_name(const char *name)
 {
 	struct ltt_session *iter;
 
@@ -110,7 +110,7 @@ static void empty_session_list(void)
 /*
  * Test creation of 1 session
  */
-static int create_one_session(char *name)
+static int create_one_session(const char *name)
 {
 	int ret;
 	enum lttng_error_code ret_code;

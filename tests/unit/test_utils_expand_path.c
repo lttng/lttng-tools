@@ -25,19 +25,19 @@ int lttng_opt_verbose = 3;
 int lttng_opt_mi;
 
 struct valid_test_input {
-	char *input;
-	char *relative_part;
-	char *absolute_part;
+	const char *input;
+	const char *relative_part;
+	const char *absolute_part;
 };
 
 struct tree_symlink {
-	char *orig;
-	char *dest;
+	const char *orig;
+	const char *dest;
 };
 
 struct symlink_test_input {
-	char *input;
-	char *expected_result;
+	const char *input;
+	const char *expected_result;
 };
 
 /* Valid test cases */

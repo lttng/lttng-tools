@@ -896,7 +896,7 @@ static char *set_agent_filter(const char *filter, struct lttng_event *ev)
 
 	/* Add loglevel filtering if any for the JUL domain. */
 	if (ev->loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-		char *op;
+		const char *op;
 
 		if (ev->loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
 			op = ">=";

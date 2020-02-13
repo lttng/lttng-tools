@@ -501,7 +501,7 @@ error:
  *
  *  Spawn a session daemon by forking and execv.
  */
-static int spawn_sessiond(char *pathname)
+static int spawn_sessiond(const char *pathname)
 {
 	int ret = 0;
 	pid_t pid;
@@ -580,7 +580,7 @@ end:
 static int launch_sessiond(void)
 {
 	int ret;
-	char *pathname = NULL;
+	const char *pathname = NULL;
 
 	ret = lttng_session_daemon_alive();
 	if (ret) {

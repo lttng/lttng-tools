@@ -106,7 +106,7 @@ const char *print_event_type(const enum lttng_event_type ev_type)
  * enabled is 0 or 1
  * success is 0 or 1
  */
-static int mi_print_event(char *event_name, int enabled, int success)
+static int mi_print_event(const char *event_name, int enabled, int success)
 {
 	int ret;
 

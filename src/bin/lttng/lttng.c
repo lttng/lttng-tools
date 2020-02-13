@@ -33,7 +33,7 @@ NULL
 ;
 
 /* Variables */
-static char *progname;
+static const char *progname;
 int opt_no_sessiond;
 char *opt_sessiond_path;
 

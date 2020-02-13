@@ -19,7 +19,7 @@ int lttng_opt_verbose = 3;
 int lttng_opt_mi;
 
 struct valid_test_input {
-	char *input;
+	const char *input;
 	uint64_t expected_result;
 };
 
@@ -69,7 +69,7 @@ static struct valid_test_input valid_tests_inputs[] = {
 static const int num_valid_tests = sizeof(valid_tests_inputs) / sizeof(valid_tests_inputs[0]);
 
 /* Invalid test cases */
-static char *invalid_tests_inputs[] = {
+static const char *invalid_tests_inputs[] = {
 		"",
 		" ",
 		"-1",
