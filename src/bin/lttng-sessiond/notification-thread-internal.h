@@ -64,4 +64,12 @@ struct channel_info {
 	struct rcu_head rcu_node;
 };
 
+enum client_transmission_status {
+	CLIENT_TRANSMISSION_STATUS_COMPLETE,
+	CLIENT_TRANSMISSION_STATUS_QUEUED,
+	/* Communication failure. */
+	CLIENT_TRANSMISSION_STATUS_FAIL,
+	/* Fatal error. */
+	CLIENT_TRANSMISSION_STATUS_ERROR,
+};
 #endif /* NOTIFICATION_THREAD_INTERNAL_H */
