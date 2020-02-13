@@ -10,7 +10,7 @@ AM_CFLAGS += -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer
 #  available, we assume that the PIE is not enabled by default so we do not
 #  need to disable it.
 if LINKER_HAVE_NO_PIE_OPTION
-AM_CFLAGS += -no-pie
+AM_LDFLAGS += -no-pie
 endif
 
 noinst_PROGRAMS = gen-syscall-events-callstack

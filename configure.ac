@@ -1059,6 +1059,10 @@ AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
 AM_CFLAGS="${WARN_CFLAGS} -fno-strict-aliasing $PTHREAD_CFLAGS"
 AC_SUBST(AM_CFLAGS)
 
+# This is set even though it is empty, so Makefiles can do "AM_LDFLAGS += ...".
+AM_LDFLAGS=""
+AC_SUBST(AM_LDFLAGS)
+
 # The order in which the include folders are searched is important.
 # The top_builddir should always be searched first in the event that a build
 # time generated file is included. An example of this is the "version.i" file.
