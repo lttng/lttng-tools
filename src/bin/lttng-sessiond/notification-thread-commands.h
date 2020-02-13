@@ -15,6 +15,7 @@
 #include "notification-thread-internal.h"
 #include "notification-thread-events.h"
 #include <common/waiter.h>
+#include <stdbool.h>
 
 struct notification_thread_data;
 struct lttng_trigger;
@@ -67,6 +68,7 @@ struct notification_thread_command {
 	/* lttng_waiter on which to wait for command reply (optional). */
 	struct lttng_waiter reply_waiter;
 	enum lttng_error_code reply_code;
+	bool is_async;
 };
 
 enum lttng_error_code notification_thread_command_register_trigger(
