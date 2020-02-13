@@ -451,7 +451,7 @@ static enum cmd_error_code track_untrack_id(enum cmd_type cmd_type,
 
 		ret = cmd_func(handle, tracker_type, item);
 		if (ret) {
-			char *msg = NULL;
+			const char *msg = NULL;
 
 			switch (-ret) {
 			case LTTNG_ERR_ID_TRACKED:

@@ -180,9 +180,9 @@ struct lttng_crash_layout {
 };
 
 /* Variables */
-static char *progname,
-	*opt_viewer_path = NULL,
-	*opt_output_path = NULL;
+static const char *progname;
+static char *opt_viewer_path = NULL;
+static char *opt_output_path = NULL;
 
 static char *input_path;
 
@@ -296,7 +296,7 @@ static int parse_args(int argc, char **argv)
 	}
 
 	if (!opt_viewer_path) {
-		opt_viewer_path = DEFAULT_VIEWER;
+		opt_viewer_path = (char *) DEFAULT_VIEWER;
 	}
 
 	/* No leftovers, or more than one input path, print usage and quit */

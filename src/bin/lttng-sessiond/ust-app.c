@@ -1019,7 +1019,7 @@ error_free:
  * Alloc new UST app channel.
  */
 static
-struct ust_app_channel *alloc_ust_app_channel(char *name,
+struct ust_app_channel *alloc_ust_app_channel(const char *name,
 		struct ust_app_session *ua_sess,
 		struct lttng_ust_channel_attr *attr)
 {

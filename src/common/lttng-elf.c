@@ -750,7 +750,7 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 	char *curr_sym_str = NULL;
 	char *symbol_table_data = NULL;
 	char *string_table_data = NULL;
-	char *string_table_name = NULL;
+	const char *string_table_name = NULL;
 	struct lttng_elf_shdr symtab_hdr;
 	struct lttng_elf_shdr strtab_hdr;
 	struct lttng_elf *elf = NULL;

@@ -31,7 +31,7 @@ struct sessiond_config sessiond_config_build_defaults = {
 	.daemonize = 				false,
 	.sig_parent = 				false,
 
-	.tracing_group_name.value = 		DEFAULT_TRACING_GROUP,
+	.tracing_group_name.value = 		(char *) DEFAULT_TRACING_GROUP,
 	.kmod_probes_list.value =		NULL,
 	.kmod_extra_probes_list.value =		NULL,
 

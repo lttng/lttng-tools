@@ -97,7 +97,7 @@ ssize_t lttng_live_send(int fd, const void *buf, size_t len)
 }
 
 static
-int connect_viewer(char *hostname)
+int connect_viewer(const char *hostname)
 {
 	struct hostent *host;
 	struct sockaddr_in server_addr;

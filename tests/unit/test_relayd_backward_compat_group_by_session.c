@@ -18,12 +18,12 @@
 #define NUM_TESTS_PER_TEST 1
 
 struct test {
-	char *stream_path;
-	char *session_name;
-	char *hostname;
-	char *creation_time;
-	char *extra_path;
-	char *leftover;
+	const char *stream_path;
+	const char *session_name;
+	const char *hostname;
+	const char *creation_time;
+	const char *extra_path;
+	const char *leftover;
 	bool is_valid;
 };
 

@@ -38,6 +38,7 @@ AX_APPEND_COMPILE_FLAGS([ dnl
 		dnl extern int __sigsetjmp (struct __jmp_buf_tag __env[1], int __savemask) __THROWNL;
 		dnl            ^
 		-Wno-incomplete-setjmp-declaration dnl
+		-Wdiscarded-qualifiers dnl
 	],
 	[WARN_CFLAGS],
 	[-Werror])
