@@ -171,6 +171,10 @@ compile_commands.json
 
 # examples
 /doc/examples/rotation/rotate-client
+/doc/examples/trigger-condition-event-matches/instrumented-app
+/doc/examples/trigger-condition-event-matches/libtracepoint-trigger-example.a
+/doc/examples/trigger-condition-event-matches/notification-client
+
 
 /benchmark/
 

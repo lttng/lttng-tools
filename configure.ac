@@ -1097,6 +1097,8 @@ AC_SUBST(lttnglibexecdir)
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/examples/Makefile
+	doc/examples/trigger-condition-event-matches/Makefile
 	doc/man/Makefile
 	doc/man/asciidoc-attrs.conf
 	include/Makefile

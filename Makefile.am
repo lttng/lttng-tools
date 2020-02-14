@@ -2,9 +2,11 @@
 
 ACLOCAL_AMFLAGS = -I m4
 
-DIST_SUBDIRS = include doc src extras tests
+DIST_SUBDIRS = include doc src extras tests doc/examples
 
-SUBDIRS = include doc src tests
+# `doc/examples` is placed last since it requires artifact from `src` and
+# `src` can require artifact from `doc` (--enable-embedded-help).
+SUBDIRS = include doc src tests doc/examples
 
 if BUILD_EXTRAS
 SUBDIRS += extras
