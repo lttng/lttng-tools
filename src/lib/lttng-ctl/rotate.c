@@ -362,7 +362,7 @@ int get_schedules(const char *session_name,
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_session_list_schedules_return *schedules_comm;
+	struct lttng_session_list_schedules_return *schedules_comm = NULL;
 	struct lttng_rotation_schedules *schedules = NULL;
 	struct lttng_rotation_schedule *periodic = NULL, *size = NULL;
 
