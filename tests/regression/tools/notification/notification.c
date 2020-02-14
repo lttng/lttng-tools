@@ -1491,6 +1491,94 @@ end:
 	return;
 }
 
+static void test_syscall_event_rule_notification_filter(
+		enum lttng_domain_type domain_type)
+{
+	int i, ret;
+	const int notification_count = 3;
+	enum lttng_notification_channel_status nc_status;
+	enum lttng_event_rule_status event_rule_status;
+	enum lttng_trigger_status trigger_status;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_condition *condition = NULL;
+	struct lttng_event_rule *event_rule = NULL;
+	struct lttng_action *action = NULL;
+	struct lttng_trigger *trigger = NULL;
+	const char * const trigger_name = "syscall_trigger";
+	const char * const syscall_name = "openat";
+	const char * const filter_pattern = "filename == \"/proc/cpuinfo\"";
+
+	action = lttng_action_notify_create();
+	if (!action) {
+		fail("Failed to create notify action");
+		goto end;
+	}
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	event_rule = lttng_event_rule_syscall_create();
+	ok(event_rule, "syscall event rule object creation");
+
+	event_rule_status = lttng_event_rule_syscall_set_pattern(
+			event_rule, syscall_name);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+			"Setting syscall event rule pattern: '%s'", syscall_name);
+
+	event_rule_status = lttng_event_rule_syscall_set_filter(
+			event_rule, filter_pattern);
+	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
+			"Setting filter: '%s'", filter_pattern);
+
+	condition = lttng_condition_event_rule_create(event_rule);
+	ok(condition, "Condition event rule object creation");
+
+	/* Register the triggers for condition */
+	trigger = lttng_trigger_create(condition, action);
+	if (!trigger) {
+		fail("Failed to create trigger with syscall filtering event rule condition and notify action");
+		goto end;
+	}
+
+	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
+	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
+			"Setting name to trigger '%s'", trigger_name);
+
+	ret = lttng_register_trigger(trigger);
+	if (ret) {
+		fail("Failed to register trigger with syscall filtering event rule condition and notify action");
+		goto end;
+	}
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	resume_application();
+
+	for (i = 0; i < 3; i++) {
+		char *name = get_next_notification_trigger_name(
+				notification_channel);
+
+		ok(strcmp(trigger_name, name) == 0,
+				"Received notification for the expected trigger name: '%s' (%d/%d)",
+				trigger_name, i + 1, notification_count);
+		free(name);
+	}
+
+end:
+	suspend_application();
+
+	lttng_unregister_trigger(trigger);
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_trigger_destroy(trigger);
+	lttng_event_rule_destroy(event_rule);
+	lttng_condition_destroy(condition);
+	return;
+}
+
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
@@ -1621,7 +1709,7 @@ int main(int argc, const char *argv[])
 	}
 	case 5:
 	{
-		plan_tests(10);
+		plan_tests(19);
 		/* Test cases that need the kernel tracer. */
 		assert(domain_type == LTTNG_DOMAIN_KERNEL);
 
@@ -1629,6 +1717,11 @@ int main(int argc, const char *argv[])
 				domain_type_string);
 
 		test_syscall_event_rule_notification(domain_type);
+
+		diag("Test syscall filtering event rule notifications for domain %s",
+				domain_type_string);
+
+		test_syscall_event_rule_notification_filter(domain_type);
 
 		break;
 	}
