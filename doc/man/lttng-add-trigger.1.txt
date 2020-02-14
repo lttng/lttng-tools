@@ -36,6 +36,7 @@ this mode.
 The syntax by which conditions and actions are specified is described
 below.
 
+[[conditions]]
 Conditions
 ~~~~~~~~~~
 
@@ -55,6 +56,7 @@ Event rule: `on-event [event rule arguments]`::
     - It is not possible to use filter operands that use values from
       the context.
 
+[[actions]]
 Actions
 ~~~~~~~
 
@@ -96,6 +98,14 @@ Snapshot session: *snapshot-session* session-name::
 
 OPTIONS
 -------
+
+option:--condition::
+    Define the condition for the trigger.  See the
+    <<conditions,CONDITIONS>> section for more details.
+
+option:--action::
+    Define an action for the trigger.  See the <<actions,ACTIONS>>
+    section for more details.
 
 option:--id='ID'::
     Set the id of the trigger to 'ID'.  If omitted, an id will
