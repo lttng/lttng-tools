@@ -164,6 +164,8 @@ struct lttng_directory_handle *lttng_directory_handle_create_from_dirfd(
 		if (ret) {
 			PERROR("Failed to fstat directory file descriptor %i", dirfd);
 			lttng_directory_handle_release(&handle->ref);
+			handle = NULL;
+			goto end;
 		}
 	} else {
 		handle->directory_inode = RESERVED_AT_FDCWD_INO;
