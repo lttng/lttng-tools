@@ -561,7 +561,11 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock_fd,
 			(const char **) (formated_name ? &formated_name : NULL),
 			1, create_sock, sock);
-	free(formated_name);
+	if (ret) {
+		PERROR("Failed to create \"%s\" socket",
+				formated_name ?: "Unknown");
+		goto error;
+	}
 	DBG("Listening on %s socket %d", name, sock->fd);
 
 	ret = sock->ops->bind(sock);
@@ -576,12 +580,14 @@ struct lttcomm_sock *init_socket(struct lttng_uri *uri, const char *name)
 
 	}
 
+	free(formated_name);
 	return sock;
 
 error:
 	if (sock) {
 		lttcomm_destroy_sock(sock);
 	}
+	free(formated_name);
 	return NULL;
 }
 
