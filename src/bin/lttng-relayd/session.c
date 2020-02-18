@@ -206,6 +206,17 @@ struct relay_session *session_create(const char *session_name,
 		PERROR("Failed to allocate session");
 		goto error;
 	}
+
+	pthread_mutex_lock(&last_relay_session_id_lock);
+	session->id = ++last_relay_session_id;
+	pthread_mutex_unlock(&last_relay_session_id_lock);
+
+	lttng_ht_node_init_u64(&session->session_n, session->id);
+	urcu_ref_init(&session->ref);
+	CDS_INIT_LIST_HEAD(&session->recv_list);
+	pthread_mutex_init(&session->lock, NULL);
+	pthread_mutex_init(&session->recv_list_lock, NULL);
+
 	if (lttng_strncpy(session->session_name, session_name,
 			sizeof(session->session_name))) {
 	        WARN("Session name exceeds maximal allowed length");
@@ -232,17 +243,8 @@ struct relay_session *session_create(const char *session_name,
 		goto error;
 	}
 
-	pthread_mutex_lock(&last_relay_session_id_lock);
-	session->id = ++last_relay_session_id;
-	pthread_mutex_unlock(&last_relay_session_id_lock);
-
 	session->major = major;
 	session->minor = minor;
-	lttng_ht_node_init_u64(&session->session_n, session->id);
-	urcu_ref_init(&session->ref);
-	CDS_INIT_LIST_HEAD(&session->recv_list);
-	pthread_mutex_init(&session->lock, NULL);
-	pthread_mutex_init(&session->recv_list_lock, NULL);
 
 	session->live_timer = live_timer;
 	session->snapshot = snapshot;
