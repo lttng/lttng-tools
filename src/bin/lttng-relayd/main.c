@@ -1022,7 +1022,11 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri,
 	ret = fd_tracker_open_unsuspendable_fd(the_fd_tracker, &sock_fd,
 			(const char **) (formated_name ? &formated_name : NULL),
 			1, create_sock, sock);
-	free(formated_name);
+	if (ret) {
+		PERROR("Failed to open \"%s\" relay socket",
+				formated_name ?: "Unknown");
+		goto error;
+	}
 	DBG("Listening on %s socket %d", name, sock->fd);
 
 	ret = sock->ops->bind(sock);
@@ -1037,12 +1041,14 @@ static struct lttcomm_sock *relay_socket_create(struct lttng_uri *uri,
 
 	}
 
+	free(formated_name);
 	return sock;
 
 error:
 	if (sock) {
 		lttcomm_destroy_sock(sock);
 	}
+	free(formated_name);
 	return NULL;
 }
 
