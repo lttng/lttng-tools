@@ -918,6 +918,10 @@ static int create_named_thread_poll_set(struct lttng_poll_event *events,
 
 	ret = fd_tracker_util_poll_create(the_fd_tracker,
 		        name, events, 1, LTTNG_CLOEXEC);
+	if (ret) {
+		PERROR("Failed to create \"%s\" poll file descriptor", name);
+		goto error;
+	}
 
 	/* Add quit pipe */
 	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
