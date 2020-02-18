@@ -719,7 +719,7 @@ int cmd_track_untrack(enum cmd_type cmd_type, const char *cmd_str,
 	leftover = poptGetArg(pc);
 	if (leftover) {
 		ERR("Unknown argument: %s", leftover);
-		ret = CMD_ERROR;
+		command_ret = CMD_ERROR;
 		goto end;
 	}
 
