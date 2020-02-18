@@ -905,7 +905,6 @@ enum lttng_trace_chunk_status lttng_trace_chunk_rename_path_no_lock(
 		if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			ERR("Error removing subdirectory '%s' file when deleting chunk",
 				old_path);
-			ret = -1;
 			goto end;
 		}
 	} else {
