@@ -2,7 +2,7 @@
 
 AM_CPPFLAGS += -I. -I$(top_srcdir)/include
 
-COPYSCRIPTS = test_thread_exit test_thread_stall test_tp_fail \
+COPYSCRIPTS = test_thread_stall test_tp_fail \
 	test_health.sh test_thread_ok
 dist_noinst_SCRIPTS = $(COPYSCRIPTS)
 
