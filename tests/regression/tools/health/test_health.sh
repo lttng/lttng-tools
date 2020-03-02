@@ -70,7 +70,7 @@ function test_health
 	# Activate specific thread test
 	export ${test_thread_name}_${test_suffix}=1
 
-	# Spawn sessiond with preload healthexit lib
+	# Spawn sessiond with preloaded testpoint override lib
 	export LD_PRELOAD="$CURDIR/$SESSIOND_PRELOAD"
 
 	diag "Start session daemon"

@@ -10,7 +10,7 @@ if NO_SHARED
 # Do not build this test if shared libraries support was
 # explicitly disabled.
 
-EXTRA_DIST = health_exit.c health_stall.c health_fail.c \
+EXTRA_DIST = health_stall.c health_fail.c \
 	health_check.c $(COPYSCRIPTS)
 
 else
@@ -18,11 +18,6 @@ else
 # must be built as .so to be able to LD_PRELOAD them.
 FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 			   -rpath $(abs_builddir)
-
-# Health thread exit ld_preloaded test lib
-libhealthexit_la_SOURCES=health_exit.c
-libhealthexit_la_LDFLAGS= $(FORCE_SHARED_LIB_OPTIONS)
-libhealthexit_la_LIBADD = $(DL_LIBS)
 
 # Health thread stall ld_preloaded test lib
 libhealthstall_la_SOURCES=health_stall.c
@@ -35,7 +30,7 @@ libhealthtpfail_la_LDFLAGS= $(FORCE_SHARED_LIB_OPTIONS)
 libhealthtpfail_la_LIBADD = $(DL_LIBS)
 
 noinst_PROGRAMS = health_check
-noinst_LTLIBRARIES = libhealthexit.la libhealthstall.la libhealthtpfail.la
+noinst_LTLIBRARIES = libhealthstall.la libhealthtpfail.la
 
 health_check_SOURCES = health_check.c $(UTILS)
 health_check_LDADD = $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
