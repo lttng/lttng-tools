@@ -245,7 +245,7 @@ static void lttng_inode_get(struct lttng_inode *inode)
 	urcu_ref_get(&inode->ref);
 }
 
-struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
+LTTNG_HIDDEN struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 		const char *path)
 {
 	struct lttng_unlinked_file_pool *pool = zmalloc(sizeof(*pool));
@@ -268,7 +268,7 @@ error:
 	return NULL;
 }
 
-void lttng_unlinked_file_pool_destroy(
+LTTNG_HIDDEN void lttng_unlinked_file_pool_destroy(
 		struct lttng_unlinked_file_pool *pool)
 {
 	if (!pool) {
@@ -281,12 +281,13 @@ void lttng_unlinked_file_pool_destroy(
 	free(pool);
 }
 
-void lttng_inode_put(struct lttng_inode *inode)
+LTTNG_HIDDEN void lttng_inode_put(struct lttng_inode *inode)
 {
 	urcu_ref_put(&inode->ref, lttng_inode_release);
 }
 
-struct lttng_directory_handle *lttng_inode_get_location_directory_handle(
+LTTNG_HIDDEN struct lttng_directory_handle *
+lttng_inode_get_location_directory_handle(
 		struct lttng_inode *inode)
 {
 	if (inode->location.directory_handle) {
@@ -298,7 +299,7 @@ struct lttng_directory_handle *lttng_inode_get_location_directory_handle(
 	return inode->location.directory_handle;
 }
 
-void lttng_inode_borrow_location(struct lttng_inode *inode,
+LTTNG_HIDDEN void lttng_inode_borrow_location(struct lttng_inode *inode,
 		const struct lttng_directory_handle **out_directory_handle,
 		const char **out_path)
 {
@@ -310,7 +311,7 @@ void lttng_inode_borrow_location(struct lttng_inode *inode,
 	}
 }
 
-int lttng_inode_rename(
+LTTNG_HIDDEN int lttng_inode_rename(
 		struct lttng_inode *inode,
 		struct lttng_directory_handle *old_directory_handle,
 		const char *old_path,
@@ -380,7 +381,7 @@ end:
 	return ret;
 }
 
-int lttng_inode_unlink(struct lttng_inode *inode)
+LTTNG_HIDDEN int lttng_inode_unlink(struct lttng_inode *inode)
 {
 	int ret = 0;
 
@@ -446,7 +447,7 @@ end:
 	return inode;
 }
 
-struct lttng_inode_registry *lttng_inode_registry_create(void)
+LTTNG_HIDDEN struct lttng_inode_registry *lttng_inode_registry_create(void)
 {
 	struct lttng_inode_registry *registry = zmalloc(sizeof(*registry));
 
@@ -473,7 +474,8 @@ error:
 	return NULL;
 }
 
-void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
+LTTNG_HIDDEN void lttng_inode_registry_destroy(
+		struct lttng_inode_registry *registry)
 {
 	if (!registry) {
 		return;
@@ -486,7 +488,7 @@ void lttng_inode_registry_destroy(struct lttng_inode_registry *registry)
 	free(registry);
 }
 
-struct lttng_inode *lttng_inode_registry_get_inode(
+LTTNG_HIDDEN struct lttng_inode *lttng_inode_registry_get_inode(
 		struct lttng_inode_registry *registry,
 		struct lttng_directory_handle *handle,
 		const char *path,
