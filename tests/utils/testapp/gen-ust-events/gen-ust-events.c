@@ -90,7 +90,6 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 			/* getopt_long already printed an error message. */
-			break;
 		default:
 			ret = -1;
 			goto end;
