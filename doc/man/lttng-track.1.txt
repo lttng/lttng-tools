@@ -1,67 +1,99 @@
 lttng-track(1)
 ==============
-:revdate: 04 November 2019
+:revdate: 4 March 2020
 
 
 NAME
 ----
-lttng-track - Add one or more entries to an LTTng resource tracker
+lttng-track - Add one or more values to an LTTng process attribute tracker
 
 
 SYNOPSIS
 --------
+Add specific process attribute values to a Linux kernel domain tracker:
+
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* (option:--kernel | option:--userspace)
-      [option:--session='SESSION'] (option:--pid='PID'[,'PID']... |
-      option:--uid='UID'[,'UID'][,'USERNAME']... |
-      option:--gid='GID'[,'GID'][,'GROUPNAME']... |
-      option:--vpid='VPID'[,'VPID']... |
-      option:--vuid='VUID'[,'VUID'][,'USERNAME']... |
-      option:--vgid='VGID'[,'VGID'][,'GROUPNAME']... |
-      option:--all (option:--pid | option:--uid | option:--gid | option:--vpid | option:--vuid | option:--vgid))
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* option:--kernel
+      (option:--pid=PID[,PID]... | option:--vpid=VPID[,VPID]... |
+      option:--uid=UID[,UID]... | option:--vuid=VUID[,VUID]... |
+      option:--gid=GID[,GID]... | option:--vgid=VGID[,VGID]... )...
+
+Add all possible process attribute values to a Linux kernel domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* option:--kernel
+      option:--all (option:--pid | option:--vpid | option:--uid |
+      option:--vuid | option:--gid | option:--vgid )...
+
+Add specific process attribute values to a user space domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* option:--userspace
+      (option:--vpid=VPID[,VPID]... | option:--vuid=VUID[,VUID]... | option:--vgid=VGID[,VGID]...)...
+
+Add all possible process attribute values to a user space domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *track* option:--userspace
+      option:--all (option:--vpid | option:--vgid | option:--vuid)...
 
 
 DESCRIPTION
 -----------
-The `lttng track` commands adds one or more entries to a
-resource tracker.
+The `lttng track` commands adds one or more values to a
+process attribute tracker.
 
-A resource tracker is a _whitelist_ of resources. Tracked resources are
-allowed to emit events, provided those events are targeted by enabled
-event rules (see man:lttng-enable-event(1)).
+A process attribute tracker is an _inclusion set_ of process
+attributes. Tracked processes are allowed to emit events, provided
+those events are targeted by enabled event rules (see
+man:lttng-enable-event(1)).
 
-Tracker entries can be removed from the whitelist with
+Tracker values can be removed from an inclusion set with
 man:lttng-untrack(1).
 
-The following tracker are available: PID, UID, GID, VPID, VUID, VGID.
+The available process attribute trackers are:
 
-A tracker follows one or more IDs; only the processes with a tracked ID are
-allowed to emit events. By default, all possible IDs on the system are tracked:
-any process may emit enabled events (equivalent of `lttng track --pid --uid
---gid --vpid --vuid --vgid --all` for all domains).
+* Process ID (PID)
+* Virtual PID (VPID)
+* User ID (UID)
+* Virtual UID (VUID)
+* Group ID (GID)
+* Virtual GID (VGID)
 
-With the PID tracker, it is possible, for example, to record all system
-calls called by a given process:
+
+A tracker follows one or more process attribute values; only the
+processes with a tracked value are allowed to emit events. By default,
+all possible values on the system are tracked: any process may emit
+enabled events, the equivalent of:
 
 [role="term"]
 ----
-# lttng enable-event --kernel --all --syscall
-# lttng track --kernel --pid=2345
-# lttng start
+$ lttng track --kernel --pid --vpid --uid --vuid --gid --vgid --all
+$ lttng track --userspace --vpid --vuid --vgid --all
 ----
 
-If all the PIDs are tracked (i.e. `lttng track --pid --all`, which is
-the default state of all domains when creating a tracing session), then
-using the track command with one or more specific PIDs has the effect of
-first removing all the PIDs from the whitelist, then adding the
-specified PIDs.
+With the PID tracker, for example, you can record all system calls of a
+given process:
+
+[role="term"]
+----
+$ lttng enable-event --kernel --all --syscall
+$ lttng track --kernel --pid=2345
+$ lttng start
+----
+
+If all the PIDs are tracked (with the option:--pid and option:--all
+options), which is the default state of all domains when creating a
+tracing session), then using the track command with one or more
+specific PIDs has the effect of first removing all the PIDs from the
+inclusion set, then adding the specified PIDs.
 
 
 Example
 ~~~~~~~
-Assume the maximum system VPID is 7 for this example.
+Assume the maximum system PID is 7 for this example.
 
-Initial whitelist:
+Initial inclusion set:
 
 -------------------------------
 [0] [1] [2] [3] [4] [5] [6] [7]
@@ -71,10 +103,10 @@ Command:
 
 [role="term"]
 ----
-$ lttng track --userspace --vpid=3,6,7
+$ lttng track --kernel --pid=3,6,7
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [ ] [ ] [3] [ ] [ ] [6] [7]
@@ -84,10 +116,10 @@ Command:
 
 [role="term"]
 ----
-$ lttng untrack --userspace --vpid=7
+$ lttng untrack --kernel --pid=7
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [ ] [ ] [3] [ ] [ ] [6] [ ]
@@ -97,21 +129,17 @@ Command:
 
 [role="term"]
 ----
-$ lttng track --userspace --vpid=1,5
+$ lttng track --kernel --pid=1,5
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [1] [ ] [3] [ ] [5] [6] [ ]
 -------------------------------
 
-It should be noted that the VPID tracker tracks the numeric namespaced process
-IDs. Should a process with a given ID exit and another process be given this ID,
-then the latter would also be allowed to emit events.
-
 See the man:lttng-untrack(1) for more details about removing
-entries.
+values from the inclusion set.
 
 
 include::common-cmd-options-head.txt[]
@@ -122,73 +150,104 @@ Domain
 One of:
 
 option:-k, option:--kernel::
-    Track resources in the Linux kernel domain.
+    Track process attributes in the Linux kernel domain.
 
 option:-u, option:--userspace::
-    Track resources in the user space domain.
+    Track process attributes in the user space domain.
 
 
 Target
 ~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Track resources in the tracing session named 'SESSION' instead of
+    Track process attributes in the tracing session named 'SESSION' instead of
     the current tracing session.
 
 
 Tracking
 ~~~~~~~~
 option:-a, option:--all::
-    Used in conjunction with an empty tracker option, e.g: options:--pid track _all_
-    process IDs (add all entries to the whitelist).
+    Used in conjunction with a single, empty option:--pid,
+    option:--vpid, option:--uid, option:--vuid, option:--gid,
+    or option:--vgid option: track _all_ possible process attribute
+    values (add all values to the inclusion set).
 
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
-    Track process IDs 'PID' (add them to the current whitelist).
-    PID is the non-namespaced value for the process.
+    Track process ID values 'PID' (add them to the process ID inclusion
+    set).
++
+'PID' is the process ID attribute of a process as seen from the _root
+PID namespace_ (see man:pid_namespaces(7)). It can only be used with
+the option:--kernel domain option.
 +
 The 'PID' argument must be omitted when also using the option:--all
 option.
 
-option:-p ['UID'[,'UID']...], option:--uid[='UID'[,'UID'][,'USERNAME']...]::
-    Track process IDs 'UID' (add them to the current whitelist).
-    User name can also be used, name resolution is performed by
-    lttng-sessiond.
-    UID is the non-namespaced user id value for the process.
+option:--vpid[='VPID'[,'VPID']...]::
+    Track virtual process ID values 'VPID' (add them to the virtual
+    process ID inclusion set).
 +
-The 'UID' argument must be omitted when also using the option:--all
-option.
-
-option:-p ['GID'[,'GID']...], option:--gid[='GID'[,'GID'][,'GROUPNAME']...]::
-    Track process IDs 'GID' (add them to the current whitelist).
-    Group name can also be used, name resolution is performed by
-    lttng-sessiond.
-    GID is the non-namespaced group id value for the process.
-+
-The 'GID' argument must be omitted when also using the option:--all
-option.
-
-option:-p ['VPID'[,'VPID']...], option:--vpid[='VPID'[,'VPID']...]::
-    Track process IDs 'VPID' (add them to the current whitelist).
-    VPID is the namespaced PID of the process for its current context.
+'VPID' is the virtual process ID attribute of a process as seen from
+the _PID namespace_ of the process (see man:pid_namespaces(7)).
 +
 The 'VPID' argument must be omitted when also using the option:--all
 option.
 
-option:-p ['VUID'[,'VUID']...], option:--vuid[='VUID'[,'VUID'][,'USERNAME']...]::
-    Track process IDs 'VUID' (add them to the current whitelist).
-    User name can also be used, name resolution is performed by
-    lttng-sessiond.
-    VUID is the namespaced UID of the process for its current context.
+option:--uid[='USER'[,'USER']...]::
+    Track user ID process attribute values 'USER' (add them to the
+    user ID inclusion set).
 +
-The 'VUID' argument must be omitted when also using the option:--all
+'USER' is the real user ID (see man:getuid(3)) of a process as seen
+from the _root user namespace_ (see man:user_namespaces(7)). It can
+only be used with the option:--kernel domain option.
++
+'USER' can also be a user name. The user name resolution is performed
+by the session daemon (see man:lttng-sessiond(8)) on addition to the
+user ID inclusion set.
++
+The 'USER' argument must be omitted when also using the option:--all
 option.
 
-option:-p ['VGID'[,'VGID']...], option:--vgid[='VGID'[,'VGID'][,'GROUPNAME']...]::
-    Track process IDs 'VGID' (add them to the current whitelist).
-    Group name can also be used, name resolution is performed by
-    lttng-sessiond.
-    VGID is the namespaced GID of the process for its current context.
+option:--vuid[='USER'[,'USER']...]::
+    Track virtual user ID process attribute values 'USER' (add them to
+    the virtual user ID inclusion set).
 +
-The 'VGID' argument must be omitted when also using the option:--all
+'USER' is the real user ID (see man:getuid(3)) of a process as seen
+from the _user namespace_ of the process (see man:user_namespaces(7)).
++
+'USER' can also be a user name. The user name resolution is performed
+by the session daemon (see man:lttng-sessiond(8)) on addition to the
+virtual user ID inclusion set.
++
+The 'USER' argument must be omitted when also using the option:--all
+option.
+
+option:--gid[='GROUP'[,'GROUP']...]::
+    Track group ID process attribute values 'GROUP' (add them to the
+    group ID inclusion set).
++
+'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
+from the _root user namespace_ (see man:user_namespaces(7)). It can
+only be used with the option:--kernel domain option.
++
+'GROUP' can also be a group name. The group name resolution is
+performed by the session daemon (see man:lttng-sessiond(8)) on addition
+to the group ID inclusion set.
++
+The 'GROUP' argument must be omitted when also using the option:--all
+option.
+
+option:--vgid[='GROUP'[,'GROUP']...]::
+    Track virtual group ID process attribute values 'GROUP'(add them to
+    the virtual group ID inclusion set).
++
+'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
+from the _user namespace_ of the process (see man:user_namespaces(7)).
++
+'GROUP' can also be a group name. The group name resolution is performed
+by the session daemon (see man:lttng-sessiond(8)) on addition to the
+virtual group ID inclusion set.
++
+The 'GROUP' argument must be omitted when also using the option:--all
 option.
 
 
