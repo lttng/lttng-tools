@@ -952,8 +952,8 @@ int cmd_add_context(int argc, const char **argv)
 		goto end;
 	}
 
-	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace +
-			opt_jul + opt_log4j);
+	ret = print_missing_or_multiple_domains(
+			opt_kernel + opt_userspace + opt_jul + opt_log4j, true);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;

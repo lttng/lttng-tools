@@ -55,7 +55,8 @@ int get_count_order_ulong(unsigned long x);
 
 const char *get_domain_str(enum lttng_domain_type domain);
 
-int print_missing_or_multiple_domains(unsigned int sum);
+int print_missing_or_multiple_domains(unsigned int domain_count,
+		bool include_agent_domains);
 
 int spawn_relayd(const char *pathname, int port);
 int check_relayd(void);
