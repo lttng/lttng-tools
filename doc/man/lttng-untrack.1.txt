@@ -1,40 +1,62 @@
 lttng-untrack(1)
 ================
-:revdate: 14 March 2017
+:revdate: 4 March 2020
 
 
 NAME
 ----
-lttng-untrack - Remove one or more entries from an LTTng resource tracker
+lttng-untrack - Remove one or more values from an LTTng process attribute tracker
 
 
 SYNOPSIS
 --------
+Remove specific process attribute values from a Linux kernel domain tracker:
+
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* (option:--kernel | option:--userspace)
-      [option:--session='SESSION'] (option:--pid='PID'[,'PID']... | option:--all option:--pid)
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel
+      (option:--pid=PID[,PID]... | option:--vpid=VPID[,VPID]... |
+      option:--uid=UID[,UID]... | option:--vuid=VUID[,VUID]... |
+      option:--gid=GID[,GID]... | option:--vgid=VGID[,VGID]... )...
+
+Remove all possible process attribute values from a Linux kernel domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel
+      option:--all (option:--pid | option:--vpid | option:--uid |
+      option:--vuid | option:--gid | option:--vgid )...
+
+Remove specific process attribute values from a user space domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace
+      (option:--vpid=VPID[,VPID]... | option:--vuid=VUID[,VUID]... | option:--vgid=VGID[,VGID]...)...
+
+Remove all possible process attribute values from a user space domain tracker:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace
+      option:--all (option:--vpid | option:--vgid | option:--vuid)...
 
 
 DESCRIPTION
 -----------
-The `lttng untrack` commands removes one or more entries from a
-resource tracker.
+The `lttng untrack` commands removes one or more values from a
+process attribute tracker.
 
 See man:lttng-track(1) to learn more about LTTng trackers.
 
-The untrack command removes specific resources from a tracker. The
-resources to remove must have been precedently added by
-man:lttng-track(1). It is also possible to remove all the
-resources from the whitelist using the option:--all option.
-
-As of this version, the only available tracker is the PID tracker.
+The untrack command removes specific process attribute values from a
+tracker's inclusion set. The attributes to remove must have been
+precedently added by man:lttng-track(1). It is also possible to remove
+all the possible values of a process attribute from the inclusion set
+using the option:--all option.
 
 
 Example
 ~~~~~~~
 One common operation is to create a tracing session
 (see man:lttng-create(1)), remove all the entries from the PID
-tracker whitelist, start tracing, and then manually track PIDs
+tracker inclusion set, start tracing, and then manually track PIDs
 while tracing is active.
 
 Assume the maximum system PID is 7 for this example.
@@ -46,7 +68,7 @@ Command:
 $ lttng create
 ----
 
-Initial whitelist:
+Initial inclusion set:
 
 -------------------------------
 [0] [1] [2] [3] [4] [5] [6] [7]
@@ -56,10 +78,10 @@ Command:
 
 [role="term"]
 ----
-$ lttng untrack --userspace --pid --all
+$ lttng untrack --kernel --pid --all
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
@@ -69,13 +91,13 @@ Commands:
 
 [role="term"]
 ----
-$ lttng enable-event --userspace ...
+$ lttng enable-event --kernel ...
 $ lttng start
 $ # ...
-$ lttng track --userspace --pid=3,5
+$ lttng track --kernel --pid=3,5
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [ ] [ ] [3] [ ] [5] [ ] [ ]
@@ -85,10 +107,10 @@ Command:
 
 [role="term"]
 ----
-$ lttng track --userspace --pid=2
+$ lttng track --kernel --pid=2
 ----
 
-Whitelist:
+inclusion set:
 
 -------------------------------
 [ ] [ ] [2] [3] [ ] [5] [ ] [ ]
@@ -103,29 +125,100 @@ Domain
 One of:
 
 option:-k, option:--kernel::
-    Untrack resources tracked in the Linux kernel domain.
+    Track process attributes in the Linux kernel domain.
 
 option:-u, option:--userspace::
-    Untrack resources tracked in the user space domain.
+    Track process attributes in the user space domain.
 
 
 Target
 ~~~~~~
-option:-s, option:--session='SESSION'::
-    Untrack resources in the tracing session named 'SESSION' instead of
-    the current tracing session.
+option:-s 'SESSION', option:--session='SESSION'::
+    Untrack process attributes in the tracing session named 'SESSION'
+    instead of the current tracing session.
 
 
 Untracking
 ~~~~~~~~~~
 option:-a, option:--all::
-    Used in conjunction with an empty option:--pid option: untrack _all_
-    process IDs (clear the whitelist).
+    Used in conjunction with a single, empty option:--pid,
+    option:--vpid, option:--uid, option:--vuid, option:--gid,
+    or option:--vgid option: untrack _all_ possible process attribute
+    values (remove all values from the inclusion set).
 
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
-    Untrack process IDs 'PID' (remove them from the current whitelist).
+    Untrack process ID values 'PID' (remove them from the process ID
+    inclusion set).
++
+'PID' is the process ID attribute of a process as seen from the _root
+PID namespace_ (see man:pid_namespaces(7)). It can only be used with
+the option:--kernel domain option.
 +
 The 'PID' argument must be omitted when also using the option:--all
+option.
+
+option:--vpid[='VPID'[,'VPID']...]::
+    Untrack virtual process ID values 'VPID' (remove them from the
+    virtual process ID inclusion set).
++
+'VPID' is the virtual process ID attribute of a process as seen from
+the _PID namespace_ of the process (see man:pid_namespaces(7)).
++
+The 'VPID' argument must be omitted when also using the option:--all
+option.
+
+option:--uid[='USER'[,'USER']...]::
+    Untrack user ID process attribute values 'USER' (remove them from
+    the user ID inclusion set).
++
+'USER' is the real user ID (see man:getuid(3)) of a process as seen
+from the _root user namespace_ (see man:user_namespaces(7)). It can
+only be used with the option:--kernel domain option.
++
+'USER' can also be a user name. No name resolution is performed;
+'USER' will be matched against the names in the inclusion set.
++
+The 'USER' argument must be omitted when also using the option:--all
+option.
+
+option:--vuid[='USER'[,'USER']...]::
+    Untrack virtual user ID process attribute values 'USER' (remove
+    them from the virtual user ID inclusion set).
++
+'USER' is the real user ID (see man:getuid(3)) of a process as seen
+from the _user namespace_ of the process (see man:user_namespaces(7)).
++
+'USER' can also be a user name. No name resolution is performed;
+'USER' will be matched against the names in the inclusion set.
++
+The 'USER' argument must be omitted when also using the option:--all
+option.
+
+option:--gid[='GROUP'[,'GROUP']...]::
+    Untrack group ID process attribute values 'GROUP' (remove them
+    from the group ID inclusion set).
++
+'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
+from the _root user namespace_ (see man:user_namespaces(7)). It can
+only be used with the option:--kernel domain option.
++
+'GROUP' can also be a group name. No name resolution is performed;
+'GROUP' will be matched against the names in the inclusion set.
++
+The 'GROUP' argument must be omitted when also using the option:--all
+option.
+
+option:--vgid[='GROUP'[,'GROUP']...]::
+    Untrack virtual group ID process attribute values 'GROUP'(remove
+    them from the virtual group ID inclusion set).
++
+'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
+from the _user namespace_ of the process (see man:user_namespaces(7)).
++
+'GROUP' can also be a group name. No name resolution is performed;
+'GROUP' will be matched against the names in the inclusion set.
++
+The 'GROUP' argument must be omitted when also using the option:--all
 option.
 
 
