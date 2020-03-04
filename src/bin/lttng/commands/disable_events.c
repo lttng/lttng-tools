@@ -368,7 +368,9 @@ int cmd_disable_events(int argc, const char **argv)
 	}
 
 	ret = print_missing_or_multiple_domains(
-		opt_kernel + opt_userspace + opt_jul + opt_log4j + opt_python);
+			opt_kernel + opt_userspace + opt_jul + opt_log4j +
+					opt_python,
+			true);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;

@@ -228,7 +228,8 @@ int cmd_disable_channels(int argc, const char **argv)
 		}
 	}
 
-	ret = print_missing_or_multiple_domains(opt_kernel + opt_userspace);
+	ret = print_missing_or_multiple_domains(
+			opt_kernel + opt_userspace, false);
 	if (ret) {
 		ret = CMD_ERROR;
 		goto end;

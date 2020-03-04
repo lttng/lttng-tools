@@ -432,15 +432,19 @@ error_socket:
 	return ret;
 }
 
-int print_missing_or_multiple_domains(unsigned int sum)
+int print_missing_or_multiple_domains(unsigned int domain_count,
+		bool include_agent_domains)
 {
 	int ret = 0;
 
-	if (sum == 0) {
-		ERR("Please specify a domain (-k/-u/-j).");
+	if (domain_count == 0) {
+		ERR("Please specify a domain (--kernel/--userspace%s).",
+				include_agent_domains ?
+						"/--jul/--log4j/--python" :
+						"");
 		ret = -1;
-	} else if (sum > 1) {
-		ERR("Multiple domains specified.");
+	} else if (domain_count > 1) {
+		ERR("Only one domain must be specified.");
 		ret = -1;
 	}
 
