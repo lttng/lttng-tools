@@ -46,6 +46,7 @@ TESTS = tools/filtering/test_invalid_filter \
 	tools/clear/test_ust \
 	tools/clear/test_kernel \
 	tools/tracker/test_event_tracker \
+	tools/trigger/start-stop/test_start_stop \
 	tools/trigger/test_add_trigger_cli \
 	tools/trigger/test_list_triggers_cli \
 	tools/trigger/test_remove_trigger_cli

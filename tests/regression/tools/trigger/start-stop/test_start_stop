@@ -1,0 +1,198 @@
+#!/bin/bash
+#
+# Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+TEST_DESC="Triggers - Start and stop actions"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=${CURDIR}/../../../..
+
+# shellcheck source=../../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+GEN_UST_EVENTS_TESTAPP_NAME="gen-ust-events"
+GEN_UST_EVENTS_TESTAPP_BIN="$TESTAPP_PATH/$GEN_UST_EVENTS_TESTAPP_NAME/$GEN_UST_EVENTS_TESTAPP_NAME"
+FULL_LTTNG_BIN="$TESTDIR/../src/bin/lttng/$LTTNG_BIN"
+NOTIFICATION_CLIENT_BIN="$CURDIR/../utils/notification-client"
+NUM_TESTS=18
+
+NR_ITER=5
+NR_USEC_WAIT=5
+
+function lttng_add_trigger_ust()
+{
+	local expected_to_fail="$1"
+	local trigger_name="$2"
+	shift 2
+
+	"$FULL_LTTNG_BIN" add-trigger --id "$trigger_name" "$@" 1> /dev/null 2> /dev/null
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Add trigger $trigger_name failed as expected"
+	else
+		ok $ret "Add trigger $trigger_name"
+	fi
+}
+
+function lttng_remove_trigger_ust()
+{
+	local expected_to_fail="$1"
+	local trigger_name="$2"
+
+	"$FULL_LTTNG_BIN" remove-trigger "$trigger_name" 1> /dev/null 2> /dev/null
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Remove trigger $trigger_name failed as expected"
+	else
+		ok $ret "Remove trigger $trigger_name"
+	fi
+}
+
+function lttng_add_trigger_ust_ok()
+{
+	lttng_add_trigger_ust 0 "$@"
+}
+
+function lttng_remove_trigger_ust_ok()
+{
+	lttng_remove_trigger_ust 0 "$@"
+}
+
+function lttng_session_is_active()
+{
+	local SESSION_NAME="$1"
+	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Tracing session" | grep -q "\[active\]"
+
+	ok $ret "Session \"$SESSION_NAME\" is active"
+}
+
+function lttng_session_is_inactive()
+{
+	local SESSION_NAME="$1"
+	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Tracing session" | grep -q "\[inactive\]"
+
+	ok $ret "Session \"$SESSION_NAME\" is inactive"
+}
+
+function test_start_session_action()
+{
+	local SESSION_NAME="my_triggered_session"
+	local TRIGGER_NAME="trigger1"
+	local TRACE_PATH=$(mktemp -d test-start-action-trace.XXXXXX)
+	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp test-notif-register.XXXXXX)
+
+	diag "Start session action"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "tp:tptest"
+
+	lttng_session_is_inactive $SESSION_NAME
+
+	# Add `start-session` action to an event-rule condition _followed_ by
+	# a `notify` action.
+	lttng_add_trigger_ust_ok \
+		$TRIGGER_NAME \
+		--condition on-event -u "tp:tptest" \
+		--action start-session $SESSION_NAME \
+		--action notify
+
+	# Launch notification listener.
+	$NOTIFICATION_CLIENT_BIN \
+		--trigger $TRIGGER_NAME \
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+	notif_client_pid=$!
+
+	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+		sleep 0.5
+	done
+
+	# Artificially produce the desired event-rule condition.
+	$GEN_UST_EVENTS_TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
+
+	# notification-client will exit once it receives a notification.
+	wait $notif_client_pid
+	test "$?" -eq "0"
+	ok $? "notification client exited successfully"
+
+	# Test that the session has started.
+	lttng_session_is_active $SESSION_NAME
+
+	# Tearing down.
+	lttng_remove_trigger_ust_ok $TRIGGER_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+	rm -rf "$TRACE_PATH"
+}
+
+function test_stop_session_action()
+{
+	local SESSION_NAME="my_triggered_session"
+	local TRIGGER_NAME="trigger1"
+	local TRACE_PATH=$(mktemp -d test-stop-action-trace.XXXXXX)
+	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp test-notif-register.XXXXXX)
+
+	diag "Stop session action"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	enable_ust_lttng_event_ok $SESSION_NAME "tp:tptest"
+
+	start_lttng_tracing_ok $SESSION_NAME
+
+	lttng_session_is_active $SESSION_NAME
+
+	# Add `stop-session` action to an event-rule condition _followed_ by
+	# a `notify` action.
+	lttng_add_trigger_ust_ok \
+		$TRIGGER_NAME \
+		--condition on-event -u "tp:tptest" \
+		--action stop-session $SESSION_NAME \
+		--action notify
+
+	# Launch notification listener.
+	$NOTIFICATION_CLIENT_BIN \
+		--trigger $TRIGGER_NAME \
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+	notif_client_pid=$!
+
+	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+		sleep 0.5
+	done
+
+	# Artificially produce the desired event-rule condition.
+	$GEN_UST_EVENTS_TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
+
+	# notification-client will exit once it receives a notification.
+	wait $notif_client_pid
+	test "$?" -eq "0"
+	ok $? "notification client exited successfully"
+
+	# Test that the session has been stopped.
+	lttng_session_is_inactive $SESSION_NAME
+
+	# Tearing down.
+	lttng_remove_trigger_ust_ok $TRIGGER_NAME
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+	rm -rf "$TRACE_PATH"
+}
+
+ # MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond_notap
+
+test_start_session_action
+test_stop_session_action
+
+stop_lttng_sessiond_notap
