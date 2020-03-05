@@ -432,6 +432,7 @@ void utils_close_pipe(int *src)
 		if (ret) {
 			PERROR("close pipe");
 		}
+		src[i] = -1;
 	}
 }
 
