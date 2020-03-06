@@ -1604,18 +1604,6 @@ function add_context_kernel_fail()
 	add_context_lttng 1 -k "$@"
 }
 
-function validate_directory_empty ()
-{
-	local trace_path=$1
-
-	ls -A $local_path > /dev/null 2>&1
-	if [ $? -eq 0 ]; then
-		pass "Directory empty"
-	else
-		fail "Directory empty"
-	fi
-}
-
 function wait_live_trace_ready ()
 {
 	local url=$1
@@ -1868,17 +1856,24 @@ function validate_trace_empty()
 	return $ret
 }
 
-function validate_folder_is_empty()
+function validate_directory_empty ()
 {
-	local folder=$1
+	local trace_path="$1"
 
-	test -z "$(ls -A "$folder")"
-	ok $? "Folder ${folder} is empty"
+	files="$(ls -A "$trace_path")"
+	ret=$?
+	if [ $ret -ne 0 ]; then
+		fail "Failed to list content of directory \"$trace_path\""
+		return $ret
+	fi
+
+	nb_files="$(echo -n "$files" | wc -l)"
+	ok $nb_files "Directory \"$trace_path\" is empty"
 }
 
 function validate_trace_session_ust_empty()
 {
-	validate_folder_is_empty "$1"/ust
+	validate_directory_empty "$1"/ust
 }
 
 function validate_trace_session_kernel_empty()
