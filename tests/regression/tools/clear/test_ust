@@ -223,7 +223,11 @@ function test_ust_streaming_live ()
 	do_clear_session $SESSION_NAME $tracing_active $clear_twice 0 0
 	stop_lttng_tracing_ok $SESSION_NAME
 
-	validate_directory_empty $local_path
+	if [[ "$buffer_type" == "uid" ]]; then
+		validate_trace_empty $local_path
+	else	# pid
+		validate_directory_empty $local_path
+	fi
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -345,7 +349,10 @@ function test_ust_local ()
 		if [[ "$buffer_type" == "uid" ]]; then
 			validate_trace_empty $TRACE_PATH
 		else	# pid
-			validate_directory_empty $TRACE_PATH
+
+			# The sessiond always created a `ust/ directory
+			# whenever the UST domain is active
+			validate_directory_empty $TRACE_PATH/ust/
 		fi
 	fi
 
