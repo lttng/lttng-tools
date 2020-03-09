@@ -355,7 +355,12 @@ static
 int lttng_directory_handle_rmdir(
 		const struct lttng_directory_handle *handle, const char *name)
 {
-	return unlinkat(handle->dirfd, name, AT_REMOVEDIR);
+	int ret = unlinkat(handle->dirfd, name, AT_REMOVEDIR);
+	if (ret) {
+		PERROR("Failed to remove directory `%s`", name);
+	}
+
+	return ret;
 }
 
 static
