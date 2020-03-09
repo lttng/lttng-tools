@@ -14,7 +14,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-NUM_TESTS=1683
+NUM_TESTS=1915
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
 TRACE_PATH=$(mktemp -d)
@@ -109,6 +109,31 @@ function test_ust_streaming ()
 			validate_directory_empty $local_path
 		fi
 	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_streaming_no_event ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	#local rotate_before=$3 ignored
+	#local rotate_after=$4
+	local buffer_type=uid
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local channel_name="chan"
+
+	diag "Test ust streaming clear no event"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_uri $SESSION_NAME net://localhost
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name --buffers-$buffer_type
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+
+	do_clear_session $SESSION_NAME "$tracing_active" "$clear_twice" "$rotate_before" "$rotate_after"
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_directory_empty "$local_path"
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -323,6 +348,30 @@ function test_ust_local ()
 			validate_directory_empty $TRACE_PATH
 		fi
 	fi
+
+	destroy_lttng_session_ok $SESSION_NAME
+}
+
+function test_ust_local_no_event ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	#local rotate_before=$3 ignored
+	#local rotate_after=$4 ignored
+	local buffer_type=$5
+	local channel_name="chan"
+
+	diag "Test ust local no event"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, rotate_before=$rotate_before, rotate_after=$rotate_after, buffer_type=$buffer_type"
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+	enable_ust_lttng_channel_ok $SESSION_NAME $channel_name "--buffers-$buffer_type"
+	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME $channel_name
+	start_lttng_tracing_ok $SESSION_NAME
+
+	do_clear_session $SESSION_NAME "$tracing_active" "$clear_twice" "$rotate_before" "$rotate_after"
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	validate_directory_empty "$TRACE_PATH"
 
 	destroy_lttng_session_ok $SESSION_NAME
 }
@@ -665,6 +714,7 @@ streaming_tests=(test_ust_streaming
 	test_ust_streaming_clear_rotate
 	test_ust_streaming_tracefile_rotation
 	test_ust_streaming_tracefile_rotation_overwrite_files
+	test_ust_streaming_no_event
 )
 
 live_tests=(test_ust_streaming_live
@@ -675,6 +725,7 @@ live_tests=(test_ust_streaming_live
 local_tests=(test_ust_local
 	test_ust_local_rotate_clear
 	test_ust_local_clear_rotate
+	test_ust_local_no_event
 )
 
 snapshot_uid_tests=(test_ust_streaming_snapshot

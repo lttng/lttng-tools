@@ -1792,6 +1792,7 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 	char creation_timestamp_buffer[ISO8601_STR_LEN];
 	const char *creation_timestamp_str = "(none)";
 	const bool chunk_has_local_output = relayd_id == -1ULL;
+	enum lttng_trace_chunk_status tc_status;
 	struct lttcomm_consumer_msg msg = {
 		.cmd_type = LTTNG_CONSUMER_CREATE_TRACE_CHUNK,
 		.u.create_trace_chunk.session_id = session_id,
@@ -1869,12 +1870,9 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 			ret = -LTTNG_ERR_FATAL;
 			goto error;
 		}
-		ret = lttng_directory_handle_create_subdirectory_as_user(
-				chunk_directory_handle,
-				domain_subdir,
-				S_IRWXU | S_IRWXG,
-				&chunk_credentials);
-		if (ret) {
+		tc_status = lttng_trace_chunk_create_subdirectory(
+				chunk, domain_subdir);
+		if (tc_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 			PERROR("Failed to create chunk domain output directory \"%s\"",
 				domain_subdir);
 			ret = -LTTNG_ERR_FATAL;
