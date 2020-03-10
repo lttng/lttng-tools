@@ -67,10 +67,10 @@ submitting patches that apply to the LTTng-tools project.
 
 The patch's subject (the commit message's first line) should:
 
-  * begin with an uppercase letter
-  * be written in the present tense
-  * _not_ exceed 72 characters in length
-  * _not_ end with a period
+  * Begin with an uppercase letter.
+  * Be written in the present tense.
+  * _Not_ exceed 72 characters in length.
+  * _Not_ end with a period.
 
 In the case of bug fixes, the patch's subject must be prefixed with
 `Fix:` and a suitable sub-system name. For instance, a patch
