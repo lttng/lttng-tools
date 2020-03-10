@@ -43,7 +43,8 @@ rest of the code written in that language is strongly encouraged.
 
 LTTng-tools's development flow is primarily email-based, although we
 also accept pull requests on our
-[GitHub mirror](https://github.com/lttng/lttng-tools). If you're going
+[GitHub mirror](https://github.com/lttng/lttng-tools) and
+[Gerrit Code Review](https://review.lttng.org). If you're going
 to create GitHub pull requests, make sure you still follow the
 guidelines below.
 
@@ -70,10 +71,35 @@ The patch's subject (the commit message's first line) should:
   * be written in the present tense
   * _not_ exceed 72 characters in length
   * _not_ end with a period
-  * be prefixed with `Fix:` if the commit fixes a bug
 
-The commit message's body should be as detailed as possible and explain
-the reasons behind the proposed change. Any related
+In the case of bug fixes, the patch's subject must be prefixed with
+`Fix:` and a suitable sub-system name. For instance, a patch
+addressing a bug in the session daemon should start with `Fix:
+sessiond:`. Patches targeting shared code can either use the namespace
+of the interface or of the internal library, whichever is more
+precise.
+
+A non-exhaustive list of common sub-system prefixes follows:
+
+  * `relayd` (relay daemon).
+  * `sessiond` (session daemon).
+  * `lttng` (LTTng CLI client).
+  * `ust-consumerd` (user space consumer daemon).
+  * `kernel-consumerd` (kernel space consumer daemon).
+  * `consumerd` (common consumer daemon).
+  * `common` (internal `libcommon`).
+  * `trace-chunk` (internal `lttng_trace_chunk_*` interface).
+  * `lttng-ctl` (`liblttng-ctl` library).
+  * `mi` (LTTng client's machine interface).
+
+When possible, the commit title should describe the issue _as
+observed_ and not the underlying cause. For instance, prefer `Fix:
+sessiond: hang on SIGTERM after session rotation` to `Fix: sessiond:
+unchecked status on exit`.
+
+The commit message's body must be as detailed as possible and explain
+the reasons behind the proposed change. Keep in mind that this message
+will be read in a number of years and must still be clear. Any related
 [bug report(s)](https://bugs.lttng.org/projects/lttng-tools/issues)
 should be mentioned at the end of the message using the `#123` format,
 where `123` is the bug number:
@@ -82,21 +108,64 @@ where `123` is the bug number:
     fix it yet.
   * Use `Fixes: #123` to signify that this patch fixes the bug.
 
+In the case of bug fixes, the following structure must be used:
+
+  * Observed issue
+  * Cause
+  * Solution
+  * **Optional**: Known drawbacks
+
+A short commit message can be used when submitting typo fixes or minor
+cleanups that don't introduce behaviour changes.
+
+When submitting a patch that affects existing code, implement changes
+to the existing code as prelude patches in a patch series. Explain why
+those changes are needed and how they make follow-up changes
+easier/possible.
+
 Make sure to **sign-off** your submitted patches (the `-s` argument to
 Git's `commit` and `format-patch` commands).
 
 Here's a complete example:
 
 ~~~ text
-Fix: use this instead of that in some context
+Fix: relayd: missing thingy in the doodad folder on error
 
-Ball tip jowl beef ribs shankle, leberkas venison turducken tail pork
-chop t-bone meatball tri-tip. Tongue beef ribs corned beef ball tip
-kevin ground round sausage rump meatloaf pig meatball prosciutto
-landjaeger strip steak. Pork pork belly beef.
+Observed issue
+==============
+After a communication error, the relay daemon will not produce
+a thingy in the doodad folder. This results in the knickknack
+baring the foo.
 
-Biltong turkey porchetta filet mignon corned beef. T-bone bresaola
-shoulder meatloaf tongue kielbasa.
+Steps to reproduce (list of commands or narrative description).
+
+Cause
+=====
+The thingy_do_the_doodad() callback is only invoked when
+the thread responsible for receiving messages and dispatching
+them to the correct actors encounters an emoji.
+
+However, an emoji is not guaranteed to be present in the ELF
+section header [1].
+
+Solution
+========
+Flushing the doodad on every reception of a thingo ensures that
+the thingy is present in the doodad folder even if a communication
+error occurs.
+
+Known drawbacks
+===============
+Flushing the doodad too often may spam the widget and result in
+degradation of the gizmo. This doesn't matter right now since
+it happens exactly once per blue moon.
+
+If this becomes a serious issue, we could machine learn the MVP
+through the big O terminal.
+
+References
+==========
+[1] https://www.thedocs.com/elf/proving-my-point-unambiguously.aspx
 
 Fixes: #321
 Refs: #456
