@@ -1102,6 +1102,9 @@ AC_SUBST(lttngnotificationincludedir)
 lttngtriggerincludedir="${includedir}/lttng/trigger"
 AC_SUBST(lttngtriggerincludedir)
 
+lttngeventruleincludedir="${includedir}/lttng/event-rule"
+AC_SUBST(lttngeventruleincludedir)
+
 lttnglibexecdir="${libdir}/lttng/libexec"
 AC_SUBST(lttnglibexecdir)
 
