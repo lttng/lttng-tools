@@ -14,6 +14,7 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kprobe-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
+#include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/uprobe-internal.h>
 #include <stdbool.h>
 
@@ -31,9 +32,12 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 
 	switch (lttng_event_rule_get_type(event_rule)) {
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		/* TODO */
-		domain_type = LTTNG_DOMAIN_NONE;
+	{
+		enum lttng_event_rule_status status;
+		status = lttng_event_rule_tracepoint_get_domain_type(event_rule, &domain_type);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		break;
+	}
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
@@ -155,7 +159,8 @@ ssize_t lttng_event_rule_create_from_payload(
 
 	switch ((enum lttng_event_rule_type) event_rule_comm->event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		/* TODO */
+		create_from_payload =
+				lttng_event_rule_tracepoint_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KPROBE:
 		create_from_payload = lttng_event_rule_kprobe_create_from_payload;

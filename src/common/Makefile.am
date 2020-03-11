@@ -52,6 +52,7 @@ libcommon_la_SOURCES = \
 	event-rule/kprobe.c \
 	event-rule/syscall.c \
 	event-rule/uprobe.c \
+	event-rule/tracepoint.c \
 	filter.c filter.h \
 	fd-handle.c fd-handle.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
