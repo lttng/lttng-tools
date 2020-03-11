@@ -146,7 +146,8 @@ lttngtriggerinclude_HEADERS= \
 lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/event-rule.h \
 	lttng/event-rule/kprobe.h \
-	lttng/event-rule/syscall.h
+	lttng/event-rule/syscall.h \
+	lttng/event-rule/uprobe.h
 
 noinst_HEADERS = \
 	lttng/snapshot-internal.h \
@@ -181,5 +182,6 @@ noinst_HEADERS = \
 	lttng/event-rule/event-rule-internal.h \
 	lttng/event-rule/kprobe-internal.h \
 	lttng/event-rule/syscall-internal.h \
+	lttng/event-rule/uprobe-internal.h \
 	version.h \
 	version.i

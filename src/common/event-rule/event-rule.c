@@ -14,6 +14,7 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kprobe-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
+#include <lttng/event-rule/uprobe-internal.h>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(
@@ -163,7 +164,7 @@ ssize_t lttng_event_rule_create_from_payload(
 		/* TODO */
 		break;
 	case LTTNG_EVENT_RULE_TYPE_UPROBE:
-		/* TODO */
+		create_from_payload = lttng_event_rule_uprobe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 		create_from_payload =
