@@ -91,4 +91,8 @@ bool lttng_kernel_probe_location_is_equal(
 		const struct lttng_kernel_probe_location *a,
 		const struct lttng_kernel_probe_location *b);
 
+LTTNG_HIDDEN
+struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
+		const struct lttng_kernel_probe_location *location);
+
 #endif /* LTTNG_KERNEL_PROBE_INTERNAL_H */

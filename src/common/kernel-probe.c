@@ -99,7 +99,7 @@ lttng_kernel_probe_location_address_create(uint64_t address)
 
 	location = zmalloc(sizeof(*location));
 	if (!location) {
-		PERROR("Error allocating userspace probe location");
+		PERROR("Error allocating userspace probe location.");
 		goto end;
 	}
 
@@ -561,4 +561,111 @@ bool lttng_kernel_probe_location_is_equal(
 	is_equal = a->equal ? a->equal(a, b) : true;
 end:
 	return is_equal;
+}
+
+static struct lttng_kernel_probe_location *
+lttng_kernel_probe_location_symbol_copy(
+		const struct lttng_kernel_probe_location *location)
+{
+	struct lttng_kernel_probe_location *new_location = NULL;
+	struct lttng_kernel_probe_location_symbol *symbol_location;
+	enum lttng_kernel_probe_location_status status;
+	const char *symbol_name = NULL;
+	uint64_t offset;
+
+	assert(location);
+	assert(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET);
+	symbol_location = container_of(
+			location, typeof(*symbol_location), parent);
+
+	 /* Get probe location offset */
+	status = lttng_kernel_probe_location_symbol_get_offset(location, &offset);
+	if (status != LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK) {
+		ERR("Get kernel probe location offset failed.");
+		goto error;
+	}
+
+	symbol_name = lttng_kernel_probe_location_symbol_get_name(location);
+	if (!symbol_name) {
+		ERR("Kernel probe symbol name is NULL.");
+		goto error;
+	}
+
+	/* Create the probe_location */
+	new_location = lttng_kernel_probe_location_symbol_create(
+			symbol_name, offset);
+
+	goto end;
+
+error:
+	new_location = NULL;
+end:
+	return new_location;
+}
+static struct lttng_kernel_probe_location *
+lttng_kernel_probe_location_address_copy(
+		const struct lttng_kernel_probe_location *location)
+{
+	struct lttng_kernel_probe_location *new_location = NULL;
+	struct lttng_kernel_probe_location_address *address_location;
+	enum lttng_kernel_probe_location_status status;
+	uint64_t address;
+
+	assert(location);
+	assert(location->type == LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS);
+	address_location = container_of(
+			location, typeof(*address_location), parent);
+
+
+	 /* Get probe location fields */
+	status = lttng_kernel_probe_location_address_get_address(location, &address);
+	if (status != LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK) {
+		ERR("Get kernel probe address failed.");
+		goto error;
+	}
+
+	/* Create the probe_location */
+	new_location = lttng_kernel_probe_location_address_create(address);
+
+	goto end;
+
+error:
+	new_location = NULL;
+end:
+	return new_location;
+}
+
+LTTNG_HIDDEN
+struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
+		const struct lttng_kernel_probe_location *location)
+{
+	struct lttng_kernel_probe_location *new_location = NULL;
+	enum lttng_kernel_probe_location_type type;
+
+	if (!location) {
+		goto err;
+	}
+
+	type = lttng_kernel_probe_location_get_type(location);
+	switch (type) {
+	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
+		new_location =
+			lttng_kernel_probe_location_address_copy(location);
+		if (!new_location) {
+			goto err;
+		}
+		break;
+	case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
+		new_location =
+			lttng_kernel_probe_location_symbol_copy(location);
+		if (!new_location) {
+			goto err;
+		}
+		break;
+	default:
+		new_location = NULL;
+		goto err;
+	}
+err:
+	return new_location;
 }

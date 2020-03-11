@@ -12,6 +12,7 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/kprobe-internal.h>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(
@@ -146,7 +147,7 @@ ssize_t lttng_event_rule_create_from_payload(
 		goto end;
 	}
 
-	DBG("Deserializing event_rule from payload");
+	DBG("Deserializing event_rule from payload.");
 	event_rule_comm = (const struct lttng_event_rule_comm *) view->buffer.data;
 	consumed += sizeof(*event_rule_comm);
 
@@ -155,7 +156,7 @@ ssize_t lttng_event_rule_create_from_payload(
 		/* TODO */
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KPROBE:
-		/* TODO */
+		create_from_payload = lttng_event_rule_kprobe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
 		/* TODO */

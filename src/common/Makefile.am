@@ -49,6 +49,7 @@ libcommon_la_SOURCES = \
 	evaluation.c \
 	event.c \
 	event-rule/event-rule.c \
+	event-rule/kprobe.c \
 	filter.c filter.h \
 	fd-handle.c fd-handle.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
