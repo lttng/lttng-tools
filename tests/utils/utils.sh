@@ -1860,7 +1860,9 @@ function validate_directory_empty ()
 {
 	local trace_path="$1"
 
-	files="$(ls -A "$trace_path")"
+	# Do not double quote `$trace_path` below as we want wildcards to be
+	# expanded.
+	files="$(ls -A $trace_path)"
 	ret=$?
 	if [ $ret -ne 0 ]; then
 		fail "Failed to list content of directory \"$trace_path\""
