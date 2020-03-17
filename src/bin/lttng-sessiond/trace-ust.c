@@ -16,6 +16,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/trace-chunk.h>
+#include <common/utils.h>
 
 #include "buffer-registry.h"
 #include "trace-ust.h"
@@ -303,16 +304,16 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	/* Alloc agent hash table. */
 	lus->agents = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
 
-	lus->tracker_list_vpid = lttng_tracker_list_create();
-	if (!lus->tracker_list_vpid) {
+	lus->tracker_vpid = process_attr_tracker_create();
+	if (!lus->tracker_vpid) {
 		goto error;
 	}
-	lus->tracker_list_vuid = lttng_tracker_list_create();
-	if (!lus->tracker_list_vuid) {
+	lus->tracker_vuid = process_attr_tracker_create();
+	if (!lus->tracker_vuid) {
 		goto error;
 	}
-	lus->tracker_list_vgid = lttng_tracker_list_create();
-	if (!lus->tracker_list_vgid) {
+	lus->tracker_vgid = process_attr_tracker_create();
+	if (!lus->tracker_vgid) {
 		goto error;
 	}
 	lus->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
@@ -325,9 +326,9 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	return lus;
 
 error:
-	lttng_tracker_list_destroy(lus->tracker_list_vpid);
-	lttng_tracker_list_destroy(lus->tracker_list_vuid);
-	lttng_tracker_list_destroy(lus->tracker_list_vgid);
+	process_attr_tracker_destroy(lus->tracker_vpid);
+	process_attr_tracker_destroy(lus->tracker_vuid);
+	process_attr_tracker_destroy(lus->tracker_vgid);
 	ht_cleanup_push(lus->domain_global.channels);
 	ht_cleanup_push(lus->agents);
 	free(lus);
@@ -804,7 +805,7 @@ static int id_tracker_add_id(struct ust_id_tracker *id_tracker, int id)
 	tracker_node = id_tracker_lookup(id_tracker, id, &iter);
 	if (tracker_node) {
 		/* Already exists. */
-		retval = LTTNG_ERR_ID_TRACKED;
+		retval = LTTNG_ERR_PROCESS_ATTR_EXISTS;
 		goto end;
 	}
 	tracker_node = zmalloc(sizeof(*tracker_node));
@@ -831,7 +832,7 @@ static int id_tracker_del_id(struct ust_id_tracker *id_tracker, int id)
 	tracker_node = id_tracker_lookup(id_tracker, id, &iter);
 	if (!tracker_node) {
 		/* Not found */
-		retval = LTTNG_ERR_ID_NOT_TRACKED;
+		retval = LTTNG_ERR_PROCESS_ATTR_MISSING;
 		goto end;
 	}
 	ret = lttng_ht_del(id_tracker->ht, &iter);
@@ -843,47 +844,56 @@ end:
 }
 
 static struct ust_id_tracker *get_id_tracker(struct ltt_ust_session *session,
-		enum lttng_tracker_type tracker_type)
+		enum lttng_process_attr process_attr)
 {
-	switch (tracker_type) {
-	case LTTNG_TRACKER_VPID:
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
 		return &session->vpid_tracker;
-	case LTTNG_TRACKER_VUID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
 		return &session->vuid_tracker;
-	case LTTNG_TRACKER_VGID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		return &session->vgid_tracker;
 	default:
 		return NULL;
 	}
 }
 
-static struct lttng_tracker_list *get_id_tracker_list(
+static struct process_attr_tracker *_trace_ust_get_process_attr_tracker(
 		struct ltt_ust_session *session,
-		enum lttng_tracker_type tracker_type)
+		enum lttng_process_attr process_attr)
 {
-	switch (tracker_type) {
-	case LTTNG_TRACKER_VPID:
-		return session->tracker_list_vpid;
-	case LTTNG_TRACKER_VUID:
-		return session->tracker_list_vuid;
-	case LTTNG_TRACKER_VGID:
-		return session->tracker_list_vgid;
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		return session->tracker_vpid;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		return session->tracker_vuid;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		return session->tracker_vgid;
 	default:
 		return NULL;
 	}
 }
 
+const struct process_attr_tracker *trace_ust_get_process_attr_tracker(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr)
+{
+	return (const struct process_attr_tracker *)
+			_trace_ust_get_process_attr_tracker(
+					session, process_attr);
+}
+
 /*
  * The session lock is held when calling this function.
  */
-int trace_ust_id_tracker_lookup(enum lttng_tracker_type tracker_type,
+int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr,
 		struct ltt_ust_session *session,
 		int id)
 {
 	struct lttng_ht_iter iter;
 	struct ust_id_tracker *id_tracker;
 
-	id_tracker = get_id_tracker(session, tracker_type);
+	id_tracker = get_id_tracker(session, process_attr);
 	if (!id_tracker) {
 		abort();
 	}
@@ -899,229 +909,283 @@ int trace_ust_id_tracker_lookup(enum lttng_tracker_type tracker_type,
 /*
  * Called with the session lock held.
  */
-int trace_ust_track_id(enum lttng_tracker_type tracker_type,
+enum lttng_error_code trace_ust_process_attr_tracker_set_tracking_policy(
 		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id)
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy policy)
 {
-	int retval = LTTNG_OK;
+	int ret;
+	enum lttng_error_code ret_code = LTTNG_OK;
+	struct ust_id_tracker *id_tracker =
+			get_id_tracker(session, process_attr);
+	struct process_attr_tracker *tracker =
+			_trace_ust_get_process_attr_tracker(
+					session, process_attr);
 	bool should_update_apps = false;
-	struct ust_id_tracker *id_tracker;
-	struct lttng_tracker_list *tracker_list;
-	int value;
-	struct lttng_tracker_ids *saved_ids;
+	enum lttng_tracking_policy previous_policy;
 
-	if (tracker_type == LTTNG_TRACKER_PID) {
-		DBG("Backward compatible behavior: translate PID tracker to VPID tracker for UST domain.");
-		tracker_type = LTTNG_TRACKER_VPID;
-	}
-
-	retval = lttng_tracker_id_lookup_string(tracker_type, id, &value);
-	if (retval != LTTNG_OK) {
-		return retval;
-	}
-	tracker_list = get_id_tracker_list(session, tracker_type);
-	if (!tracker_list) {
-		return LTTNG_ERR_INVALID;
-	}
-	/* Save list for restore on error. */
-	retval = lttng_tracker_id_get_list(tracker_list, &saved_ids);
-	if (retval != LTTNG_OK) {
-		return LTTNG_ERR_INVALID;
-	}
-	/* Add to list. */
-	retval = lttng_tracker_list_add(tracker_list, id);
-	if (retval != LTTNG_OK) {
+	if (!tracker) {
+		ret_code = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	id_tracker = get_id_tracker(session, tracker_type);
-	if (!id_tracker) {
-		abort();
+	previous_policy = process_attr_tracker_get_tracking_policy(tracker);
+	ret = process_attr_tracker_set_tracking_policy(tracker, policy);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
 	}
-	if (value == -1) {
-		/* Track all ids: destroy tracker if exists. */
+
+	if (previous_policy == policy) {
+		goto end;
+	}
+
+	switch (policy) {
+	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
+		/* Track all values: destroy tracker if exists. */
 		if (id_tracker->ht) {
 			fini_id_tracker(id_tracker);
 			/* Ensure all apps have session. */
 			should_update_apps = true;
 		}
-	} else {
-		if (!id_tracker->ht) {
-			/* Create tracker. */
-			retval = init_id_tracker(id_tracker);
-			if (retval != LTTNG_OK) {
-				ERR("Error initializing ID tracker");
-				goto end_restore;
-			}
-			retval = id_tracker_add_id(id_tracker, value);
-			if (retval != LTTNG_OK) {
-				fini_id_tracker(id_tracker);
-				goto end_restore;
-			}
-			/* Remove all apps from session except pid. */
-			should_update_apps = true;
-		} else {
-			struct ust_app *app;
-
-			retval = id_tracker_add_id(id_tracker, value);
-			if (retval != LTTNG_OK) {
-				goto end_restore;
-			}
-			/* Add session to application */
-			switch (tracker_type) {
-			case LTTNG_TRACKER_VPID:
-				app = ust_app_find_by_pid(value);
-				if (app) {
-					should_update_apps = true;
-				}
-				break;
-			default:
-				should_update_apps = true;
-			}
+		break;
+	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
+	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
+		/* fall-through. */
+		fini_id_tracker(id_tracker);
+		ret_code = init_id_tracker(id_tracker);
+		if (ret_code != LTTNG_OK) {
+			ERR("Error initializing ID tracker");
+			goto end;
 		}
-	}
-	if (should_update_apps && session->active) {
-		ust_app_global_update_all(session);
-	}
-	goto end;
-
-end_restore:
-	if (lttng_tracker_id_set_list(tracker_list, saved_ids) != LTTNG_OK) {
-		ERR("Error on tracker add error handling.\n");
-	}
-end:
-	lttng_tracker_ids_destroy(saved_ids);
-	return retval;
-}
-
-/*
- * Called with the session lock held.
- */
-int trace_ust_untrack_id(enum lttng_tracker_type tracker_type,
-		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id)
-{
-	int retval = LTTNG_OK;
-	bool should_update_apps = false;
-	struct ust_id_tracker *id_tracker;
-	struct lttng_tracker_list *tracker_list;
-	int value;
-	struct lttng_tracker_ids *saved_ids;
-
-	if (tracker_type == LTTNG_TRACKER_PID) {
-		DBG("Backward compatible behavior: translate PID tracker to VPID tracker for UST domain.");
-		tracker_type = LTTNG_TRACKER_VPID;
-	}
-
-	retval = lttng_tracker_id_lookup_string(tracker_type, id, &value);
-	if (retval != LTTNG_OK) {
-		return retval;
-	}
-
-	tracker_list = get_id_tracker_list(session, tracker_type);
-	if (!tracker_list) {
-		return LTTNG_ERR_INVALID;
-	}
-	/* Save list for restore on error. */
-	retval = lttng_tracker_id_get_list(tracker_list, &saved_ids);
-	if (retval != LTTNG_OK) {
-		return LTTNG_ERR_INVALID;
-	}
-	/* Remove from list. */
-	retval = lttng_tracker_list_remove(tracker_list, id);
-	if (retval != LTTNG_OK) {
-		goto end;
-	}
-
-	id_tracker = get_id_tracker(session, tracker_type);
-	if (!id_tracker) {
+		/* Remove all apps from session. */
+		should_update_apps = true;
+		break;
+	default:
 		abort();
 	}
+	if (should_update_apps && session->active) {
+		ust_app_global_update_all(session);
+	}
+end:
+	return ret_code;
+}
 
-	if (value == -1) {
-		/* Create empty tracker, replace old tracker. */
-		struct ust_id_tracker tmp_tracker;
+/* Called with the session lock held. */
+enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+	bool should_update_apps = false;
+	struct ust_id_tracker *id_tracker =
+			get_id_tracker(session, process_attr);
+	struct process_attr_tracker *tracker;
+	int integral_value;
+	enum process_attr_tracker_status status;
+	struct ust_app *app;
 
-		tmp_tracker = *id_tracker;
-		retval = init_id_tracker(id_tracker);
-		if (retval != LTTNG_OK) {
-			ERR("Error initializing ID tracker");
-			/* Rollback operation. */
-			*id_tracker = tmp_tracker;
-			goto end_restore;
-		}
-		fini_id_tracker(&tmp_tracker);
+	/*
+	 * Convert process attribute tracker value to the integral
+	 * representation required by the kern-ctl API.
+	 */
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		integral_value = (int) value->value.pid;
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			uid_t uid;
 
-		/* Remove session from all applications */
-		should_update_apps = true;
-	} else {
-		struct ust_app *app;
-
-		if (!id_tracker->ht) {
-			/* No ID being tracked. */
-			retval = LTTNG_ERR_ID_NOT_TRACKED;
-			goto end_restore;
-		}
-		/* Remove ID from tracker */
-		retval = id_tracker_del_id(id_tracker, value);
-		if (retval != LTTNG_OK) {
-			goto end_restore;
-		}
-		switch (tracker_type) {
-		case LTTNG_TRACKER_VPID:
-			/* Remove session from application. */
-			app = ust_app_find_by_pid(value);
-			if (app) {
-				should_update_apps = true;
+			ret_code = utils_user_id_from_name(
+					value->value.user_name, &uid);
+			if (ret_code != LTTNG_OK) {
+				goto end;
 			}
+			integral_value = (int) uid;
+		} else {
+			integral_value = (int) value->value.uid;
+		}
+		break;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			gid_t gid;
+
+			ret_code = utils_group_id_from_name(
+					value->value.group_name, &gid);
+			if (ret_code != LTTNG_OK) {
+				goto end;
+			}
+			integral_value = (int) gid;
+		} else {
+			integral_value = (int) value->value.gid;
+		}
+		break;
+	default:
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	tracker = _trace_ust_get_process_attr_tracker(session, process_attr);
+	if (!tracker) {
+		ret_code = LTTNG_ERR_INVALID;
+	}
+
+	status = process_attr_tracker_inclusion_set_add_value(tracker, value);
+	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
+		switch (status) {
+		case PROCESS_ATTR_TRACKER_STATUS_EXISTS:
+			ret_code = LTTNG_ERR_PROCESS_ATTR_EXISTS;
 			break;
+		case PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY:
+			ret_code = LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY;
+			break;
+		case PROCESS_ATTR_TRACKER_STATUS_ERROR:
 		default:
-			/* Keep only apps matching ID. */
+			ret_code = LTTNG_ERR_UNK;
+			break;
+		}
+		goto end;
+	}
+
+	DBG("User space track %s %d for session id %" PRIu64,
+			lttng_process_attr_to_string(process_attr),
+			integral_value, session->id);
+
+	ret_code = id_tracker_add_id(id_tracker, integral_value);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+	/* Add session to application */
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		app = ust_app_find_by_pid(integral_value);
+		if (app) {
 			should_update_apps = true;
 		}
+		break;
+	default:
+		should_update_apps = true;
+		break;
 	}
 	if (should_update_apps && session->active) {
 		ust_app_global_update_all(session);
 	}
-	goto end;
-
-end_restore:
-	if (lttng_tracker_id_set_list(tracker_list, saved_ids) != LTTNG_OK) {
-		ERR("Error on tracker remove error handling.\n");
-	}
 end:
-	lttng_tracker_ids_destroy(saved_ids);
-	return retval;
+	return ret_code;
 }
 
-/*
- * Called with session lock held.
- */
-int trace_ust_list_tracker_ids(enum lttng_tracker_type tracker_type,
+/* Called with the session lock held. */
+enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 		struct ltt_ust_session *session,
-		struct lttng_tracker_ids **_ids)
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
 {
-	int ret = LTTNG_OK;
-	struct lttng_tracker_list *tracker_list;
+	enum lttng_error_code ret_code = LTTNG_OK;
+	bool should_update_apps = false;
+	struct ust_id_tracker *id_tracker =
+			get_id_tracker(session, process_attr);
+	struct process_attr_tracker *tracker;
+	int integral_value;
+	enum process_attr_tracker_status status;
+	struct ust_app *app;
 
-	if (tracker_type == LTTNG_TRACKER_PID) {
-		DBG("Backward compatible behavior: translate PID tracker to VPID tracker for UST domain.");
-		tracker_type = LTTNG_TRACKER_VPID;
-	}
+	/*
+	 * Convert process attribute tracker value to the integral
+	 * representation required by the kern-ctl API.
+	 */
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		integral_value = (int) value->value.pid;
+		break;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME) {
+			uid_t uid;
 
-	tracker_list = get_id_tracker_list(session, tracker_type);
-	if (!tracker_list) {
-		ret = -LTTNG_ERR_INVALID;
+			ret_code = utils_user_id_from_name(
+					value->value.user_name, &uid);
+			if (ret_code != LTTNG_OK) {
+				goto end;
+			}
+			integral_value = (int) uid;
+		} else {
+			integral_value = (int) value->value.uid;
+		}
+		break;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		if (value->type == LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME) {
+			gid_t gid;
+
+			ret_code = utils_group_id_from_name(
+					value->value.group_name, &gid);
+			if (ret_code != LTTNG_OK) {
+				goto end;
+			}
+			integral_value = (int) gid;
+		} else {
+			integral_value = (int) value->value.gid;
+		}
+		break;
+	default:
+		ret_code = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	ret = lttng_tracker_id_get_list(tracker_list, _ids);
-	if (ret != LTTNG_OK) {
-		ret = -LTTNG_ERR_INVALID;
+	tracker = _trace_ust_get_process_attr_tracker(session, process_attr);
+	if (!tracker) {
+		ret_code = LTTNG_ERR_INVALID;
+	}
+
+	status = process_attr_tracker_inclusion_set_remove_value(
+			tracker, value);
+	if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
+		switch (status) {
+		case PROCESS_ATTR_TRACKER_STATUS_MISSING:
+			ret_code = LTTNG_ERR_PROCESS_ATTR_MISSING;
+			break;
+		case PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY:
+			ret_code = LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY;
+			break;
+		case PROCESS_ATTR_TRACKER_STATUS_ERROR:
+		default:
+			ret_code = LTTNG_ERR_UNK;
+			break;
+		}
 		goto end;
+	}
+
+	DBG("User space untrack %s %d for session id %" PRIu64,
+			lttng_process_attr_to_string(process_attr),
+			integral_value, session->id);
+
+	ret_code = id_tracker_del_id(id_tracker, integral_value);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+	/* Add session to application */
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		app = ust_app_find_by_pid(integral_value);
+		if (app) {
+			should_update_apps = true;
+		}
+		break;
+	default:
+		should_update_apps = true;
+		break;
+	}
+	if (should_update_apps && session->active) {
+		ust_app_global_update_all(session);
 	}
 end:
-	return ret;
+	return ret_code;
 }
 
 /*
@@ -1353,9 +1417,9 @@ void trace_ust_destroy_session(struct ltt_ust_session *session)
 		buffer_reg_uid_destroy(reg, session->consumer);
 	}
 
-	lttng_tracker_list_destroy(session->tracker_list_vpid);
-	lttng_tracker_list_destroy(session->tracker_list_vuid);
-	lttng_tracker_list_destroy(session->tracker_list_vgid);
+	process_attr_tracker_destroy(session->tracker_vpid);
+	process_attr_tracker_destroy(session->tracker_vuid);
+	process_attr_tracker_destroy(session->tracker_vgid);
 
 	fini_id_tracker(&session->vpid_tracker);
 	fini_id_tracker(&session->vuid_tracker);

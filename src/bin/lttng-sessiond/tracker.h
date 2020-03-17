@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright (C) 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *
@@ -8,47 +9,38 @@
 #ifndef _LTT_TRACKER_H
 #define _LTT_TRACKER_H
 
+#include <common/tracker.h>
 #include <lttng/tracker.h>
-#include <urcu.h>
-#include <urcu/list.h>
-#include <urcu/rculfhash.h>
 
-enum lttng_tracker_list_state {
-	LTTNG_TRACK_ALL,
-	LTTNG_TRACK_NONE,
-	LTTNG_TRACK_LIST,
+struct process_attr_tracker;
+
+enum process_attr_tracker_status {
+	PROCESS_ATTR_TRACKER_STATUS_OK,
+	PROCESS_ATTR_TRACKER_STATUS_ERROR,
+	PROCESS_ATTR_TRACKER_STATUS_EXISTS,
+	PROCESS_ATTR_TRACKER_STATUS_MISSING,
+	PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY,
 };
 
-/* Tracker ID */
-struct lttng_tracker_list_node {
-	struct lttng_tracker_id *id;
+struct process_attr_tracker *process_attr_tracker_create(void);
+void process_attr_tracker_destroy(struct process_attr_tracker *tracker);
 
-	struct cds_list_head list_node;
-	struct cds_lfht_node ht_node;
-	struct rcu_head rcu_head;
-};
+enum lttng_tracking_policy process_attr_tracker_get_tracking_policy(
+		const struct process_attr_tracker *tracker);
+int process_attr_tracker_set_tracking_policy(
+		struct process_attr_tracker *tracker,
+		enum lttng_tracking_policy tracking_policy);
 
-struct lttng_tracker_list {
-	struct cds_list_head list_head;
-	/* Hash table for O(1) removal lookup. */
-	struct cds_lfht *ht;
-	enum lttng_tracker_list_state state;
-};
+enum process_attr_tracker_status process_attr_tracker_inclusion_set_add_value(
+		struct process_attr_tracker *tracker,
+		const struct process_attr_value *value);
+enum process_attr_tracker_status
+process_attr_tracker_inclusion_set_remove_value(
+		struct process_attr_tracker *tracker,
+		const struct process_attr_value *value);
 
-struct lttng_tracker_list *lttng_tracker_list_create(void);
-void lttng_tracker_list_destroy(struct lttng_tracker_list *tracker_list);
-
-int lttng_tracker_list_add(struct lttng_tracker_list *tracker_list,
-		const struct lttng_tracker_id *id);
-int lttng_tracker_list_remove(struct lttng_tracker_list *tracker_list,
-		const struct lttng_tracker_id *id);
-
-int lttng_tracker_id_lookup_string(enum lttng_tracker_type tracker_type,
-		const struct lttng_tracker_id *id,
-		int *result);
-int lttng_tracker_id_get_list(const struct lttng_tracker_list *tracker_list,
-		struct lttng_tracker_ids **_ids);
-int lttng_tracker_id_set_list(struct lttng_tracker_list *tracker_list,
-		const struct lttng_tracker_ids *_ids);
+enum process_attr_tracker_status process_attr_tracker_get_inclusion_set(
+		const struct process_attr_tracker *tracker,
+		struct lttng_process_attr_values **values);
 
 #endif /* _LTT_TRACKER_H */

@@ -6,6 +6,9 @@
  *
  */
 
+#include "bin/lttng-sessiond/tracker.h"
+#include "lttng/lttng-error.h"
+#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <inttypes.h>
@@ -1432,112 +1435,6 @@ error:
 }
 
 /*
- * Command LTTNG_TRACK_ID processed by the client thread.
- *
- * Called with session lock held.
- */
-int cmd_track_id(struct ltt_session *session,
-		enum lttng_tracker_type tracker_type,
-		enum lttng_domain_type domain,
-		const struct lttng_tracker_id *id)
-{
-	int ret;
-
-	rcu_read_lock();
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_session *ksess;
-
-		ksess = session->kernel_session;
-
-		ret = kernel_track_id(tracker_type, ksess, id);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		kernel_wait_quiescent();
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_session *usess;
-
-		usess = session->ust_session;
-
-		ret = trace_ust_track_id(tracker_type, usess, id);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-		break;
-	}
-	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
- * Command LTTNG_UNTRACK_ID processed by the client thread.
- *
- * Called with session lock held.
- */
-int cmd_untrack_id(struct ltt_session *session,
-		enum lttng_tracker_type tracker_type,
-		enum lttng_domain_type domain,
-		const struct lttng_tracker_id *id)
-{
-	int ret;
-
-	rcu_read_lock();
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_session *ksess;
-
-		ksess = session->kernel_session;
-
-		ret = kernel_untrack_id(tracker_type, ksess, id);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-
-		kernel_wait_quiescent();
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_session *usess;
-
-		usess = session->ust_session;
-
-		ret = trace_ust_untrack_id(tracker_type, usess, id);
-		if (ret != LTTNG_OK) {
-			goto error;
-		}
-		break;
-	}
-	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
-		goto error;
-	}
-
-	ret = LTTNG_OK;
-
-error:
-	rcu_read_unlock();
-	return ret;
-}
-
-/*
  * Command LTTNG_ENABLE_CHANNEL processed by the client thread.
  *
  * The wpipe arguments is used as a notifier for the kernel thread.
@@ -1706,6 +1603,211 @@ error:
 	rcu_read_unlock();
 end:
 	return ret;
+}
+
+enum lttng_error_code cmd_process_attr_tracker_get_tracking_policy(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy *policy)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+	const struct process_attr_tracker *tracker;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (!session->kernel_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		tracker = kernel_get_process_attr_tracker(
+				session->kernel_session, process_attr);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (!session->ust_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		tracker = trace_ust_get_process_attr_tracker(
+				session->ust_session, process_attr);
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		goto end;
+	}
+	if (tracker) {
+		*policy = process_attr_tracker_get_tracking_policy(tracker);
+	} else {
+		ret_code = LTTNG_ERR_INVALID;
+	}
+end:
+	return ret_code;
+}
+
+enum lttng_error_code cmd_process_attr_tracker_set_tracking_policy(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy policy)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+
+	switch (policy) {
+	case LTTNG_TRACKING_POLICY_INCLUDE_SET:
+	case LTTNG_TRACKING_POLICY_EXCLUDE_ALL:
+	case LTTNG_TRACKING_POLICY_INCLUDE_ALL:
+		break;
+	default:
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (!session->kernel_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = kernel_process_attr_tracker_set_tracking_policy(
+				session->kernel_session, process_attr, policy);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (!session->ust_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = trace_ust_process_attr_tracker_set_tracking_policy(
+				session->ust_session, process_attr, policy);
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		break;
+	}
+end:
+	return ret_code;
+}
+
+enum lttng_error_code cmd_process_attr_tracker_inclusion_set_add_value(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (!session->kernel_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = kernel_process_attr_tracker_inclusion_set_add_value(
+				session->kernel_session, process_attr, value);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (!session->ust_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = trace_ust_process_attr_tracker_inclusion_set_add_value(
+				session->ust_session, process_attr, value);
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		break;
+	}
+end:
+	return ret_code;
+}
+
+enum lttng_error_code cmd_process_attr_tracker_inclusion_set_remove_value(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (!session->kernel_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = kernel_process_attr_tracker_inclusion_set_remove_value(
+				session->kernel_session, process_attr, value);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (!session->ust_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret_code = trace_ust_process_attr_tracker_inclusion_set_remove_value(
+				session->ust_session, process_attr, value);
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		break;
+	}
+end:
+	return ret_code;
+}
+
+enum lttng_error_code cmd_process_attr_tracker_get_inclusion_set(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		struct lttng_process_attr_values **values)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+	const struct process_attr_tracker *tracker;
+	enum process_attr_tracker_status status;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		if (!session->kernel_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		tracker = kernel_get_process_attr_tracker(
+				session->kernel_session, process_attr);
+		break;
+	case LTTNG_DOMAIN_UST:
+		if (!session->ust_session) {
+			ret_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+		tracker = trace_ust_get_process_attr_tracker(
+				session->ust_session, process_attr);
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNSUPPORTED_DOMAIN;
+		goto end;
+	}
+
+	if (!tracker) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	status = process_attr_tracker_get_inclusion_set(tracker, values);
+	switch (status) {
+	case PROCESS_ATTR_TRACKER_STATUS_OK:
+		ret_code = LTTNG_OK;
+		break;
+	case PROCESS_ATTR_TRACKER_STATUS_INVALID_TRACKING_POLICY:
+		ret_code = LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY;
+		break;
+	case PROCESS_ATTR_TRACKER_STATUS_ERROR:
+		ret_code = LTTNG_ERR_NOMEM;
+		break;
+	default:
+		ret_code = LTTNG_ERR_UNK;
+		break;
+	}
+
+end:
+	return ret_code;
 }
 
 /*
@@ -2564,56 +2666,6 @@ error:
 ssize_t cmd_list_syscalls(struct lttng_event **events)
 {
 	return syscall_table_list(events);
-}
-
-/*
- * Command LTTNG_LIST_TRACKER_IDS processed by the client thread.
- *
- * Called with session lock held.
- */
-int cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
-		struct ltt_session *session,
-		enum lttng_domain_type domain,
-		struct lttng_tracker_ids **ids)
-{
-	int ret = LTTNG_OK;
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-	{
-		struct ltt_kernel_session *ksess;
-
-		ksess = session->kernel_session;
-		ret = kernel_list_tracker_ids(tracker_type, ksess, ids);
-		if (ret != LTTNG_OK) {
-			ret = -LTTNG_ERR_KERN_LIST_FAIL;
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_DOMAIN_UST:
-	{
-		struct ltt_ust_session *usess;
-
-		usess = session->ust_session;
-		ret = trace_ust_list_tracker_ids(tracker_type, usess, ids);
-		if (ret != LTTNG_OK) {
-			ret = -LTTNG_ERR_UST_LIST_FAIL;
-			goto error;
-		}
-		break;
-	}
-	case LTTNG_DOMAIN_LOG4J:
-	case LTTNG_DOMAIN_JUL:
-	case LTTNG_DOMAIN_PYTHON:
-	default:
-		ret = -LTTNG_ERR_UND;
-		goto error;
-	}
-
-error:
-	/* Return negative value to differentiate return code */
-	return ret;
 }
 
 /*

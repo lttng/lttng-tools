@@ -16,3 +16,8 @@ size_t default_kernel_channel_subbuf_size;
 size_t default_metadata_subbuf_size;
 size_t default_ust_pid_channel_subbuf_size;
 size_t default_ust_uid_channel_subbuf_size;
+
+const char * const config_element_pid_tracker;
+const char * const config_element_target_pid;
+const char * const config_element_targets;
+const char * const config_element_trackers;

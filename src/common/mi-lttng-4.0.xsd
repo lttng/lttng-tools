@@ -317,14 +317,6 @@ SPDX-License-Identifier: MIT
 		</xs:sequence>
 	</xs:complexType>
 
-	<xs:simpleType name="tracker_target_type">
-		<xs:restriction base="xs:string">
-			<xs:enumeration value="ALL" />
-			<xs:enumeration value="NONE" />
-			<xs:enumeration value="LIST" />
-		</xs:restriction>
-	</xs:simpleType>
-
 	<xs:simpleType name="pidbyint">
 		<xs:restriction base="xs:integer">
 			<xs:minInclusive value="0"/>
@@ -332,33 +324,31 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="pid_target_type_choice">
+	<xs:complexType name="pid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:pidbyint" />
-			<xs:element name="name" type="xs:string" />
 			<xs:element name="all" type="xs:boolean" />
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="pid_target_type">
+	<xs:complexType name="pid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:pid_target_type_choice" />
+			<xs:element name="type" type="tns:pid_value_type_choice" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of pid_targets-->
-	<xs:complexType name="pid_targets_type">
+	<!-- Maps to a list of pid_process_attr_values-->
+	<xs:complexType name="pid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="pid_target" type="tns:pid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="pid" type="tns:pid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to a pid_tracker-->
-	<xs:complexType name="pid_tracker_type">
+	<xs:complexType name="pid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:pid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:pid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -369,33 +359,31 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="vpid_target_type_choice">
+	<xs:complexType name="vpid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:vpidbyint" />
-			<xs:element name="name" type="xs:string" />
 			<xs:element name="all" type="xs:boolean" />
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="vpid_target_type">
+	<xs:complexType name="vpid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:vpid_target_type_choice" minOccurs="0" maxOccurs="1" />
+			<xs:element name="type" type="tns:vpid_value_type_choice" minOccurs="0" maxOccurs="1" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of vpid_targets-->
-	<xs:complexType name="vpid_targets_type">
+	<!-- Maps to a list of vpid_process_attr_values-->
+	<xs:complexType name="vpid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="vpid_target" type="tns:vpid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="vpid" type="tns:vpid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
 	<!-- Maps to a vpid_tracker-->
-	<xs:complexType name="vpid_tracker_type">
+	<xs:complexType name="vpid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:vpid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:vpid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -406,7 +394,7 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="uid_target_type_choice">
+	<xs:complexType name="uid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:uidbyint" />
 			<xs:element name="name" type="xs:string" />
@@ -414,25 +402,24 @@ SPDX-License-Identifier: MIT
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="uid_target_type">
+	<xs:complexType name="uid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:uid_target_type_choice" minOccurs="0" maxOccurs="1" />
+			<xs:element name="type" type="tns:uid_value_type_choice" minOccurs="0" maxOccurs="1" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of uid_targets-->
-	<xs:complexType name="uid_targets_type">
+	<!-- Maps to a list of uid_process_attr_values-->
+	<xs:complexType name="uid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="uid_target" type="tns:uid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="uid" type="tns:uid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
-	<!-- Maps to a uid_tracker-->
-	<xs:complexType name="uid_tracker_type">
+	<!-- Maps to a uid_process_attr_tracker-->
+	<xs:complexType name="uid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:uid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:uid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -443,7 +430,7 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="vuid_target_type_choice">
+	<xs:complexType name="vuid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:vuidbyint" />
 			<xs:element name="name" type="xs:string" />
@@ -451,25 +438,24 @@ SPDX-License-Identifier: MIT
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="vuid_target_type">
+	<xs:complexType name="vuid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:vuid_target_type_choice" minOccurs="0" maxOccurs="1" />
+			<xs:element name="type" type="tns:vuid_value_type_choice" minOccurs="0" maxOccurs="1" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of vuid_targets-->
-	<xs:complexType name="vuid_targets_type">
+	<!-- Maps to a list of vuid_process_attr_values-->
+	<xs:complexType name="vuid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="vuid_target" type="tns:vuid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="vuid" type="tns:vuid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
-	<!-- Maps to a vuid_tracker-->
-	<xs:complexType name="vuid_tracker_type">
+	<!-- Maps to a vuid_process_attr_tracker-->
+	<xs:complexType name="vuid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:vuid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:vuid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -480,7 +466,7 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="gid_target_type_choice">
+	<xs:complexType name="gid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:gidbyint" />
 			<xs:element name="name" type="xs:string" />
@@ -488,25 +474,24 @@ SPDX-License-Identifier: MIT
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="gid_target_type">
+	<xs:complexType name="gid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:gid_target_type_choice" minOccurs="0" maxOccurs="1" />
+			<xs:element name="type" type="tns:gid_value_type_choice" minOccurs="0" maxOccurs="1" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of gid_targets-->
-	<xs:complexType name="gid_targets_type">
+	<!-- Maps to a list of gid_process_attr_values-->
+	<xs:complexType name="gid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="gid_target" type="tns:gid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="gid" type="tns:gid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
-	<!-- Maps to a gid_tracker-->
-	<xs:complexType name="gid_tracker_type">
+	<!-- Maps to a gid_process_attr_tracker-->
+	<xs:complexType name="gid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:gid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:gid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -517,7 +502,7 @@ SPDX-License-Identifier: MIT
 		</xs:restriction>
 	</xs:simpleType>
 
-	<xs:complexType name="vgid_target_type_choice">
+	<xs:complexType name="vgid_value_type_choice">
 		<xs:choice>
 			<xs:element name="id" type="tns:vgidbyint" />
 			<xs:element name="name" type="xs:string" />
@@ -525,38 +510,37 @@ SPDX-License-Identifier: MIT
 		</xs:choice>
 	</xs:complexType>
 
-	<xs:complexType name="vgid_target_type">
+	<xs:complexType name="vgid_value_type">
 		<xs:all>
-			<xs:element name="type" type="tns:vgid_target_type_choice" minOccurs="0" maxOccurs="1" />
+			<xs:element name="type" type="tns:vgid_value_type_choice" minOccurs="0" maxOccurs="1" />
 			<xs:element name="success" type="xs:boolean" default="false" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of vgid_targets-->
-	<xs:complexType name="vgid_targets_type">
+	<!-- Maps to a list of vgid_process_attr_values-->
+	<xs:complexType name="vgid_process_attr_values_type">
 		<xs:sequence>
-			<xs:element name="vgid_target" type="tns:vgid_target_type" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="vgid" type="tns:vgid_value_type" minOccurs="0" maxOccurs="unbounded"/>
 		</xs:sequence>
 	</xs:complexType>
 
-	<!-- Maps to a vgid_tracker-->
-	<xs:complexType name="vgid_tracker_type">
+	<!-- Maps to a vgid_process_attr_tracker-->
+	<xs:complexType name="vgid_process_attr_tracker_type">
 		<xs:all>
-			<xs:element name="target_type" type="tns:tracker_target_type" minOccurs="0" maxOccurs="1" />
-			<xs:element name="targets" type="tns:vgid_targets_type" minOccurs="0" />
+			<xs:element name="process_attr_values" type="tns:vgid_process_attr_values_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
-	<!-- Maps to a list of trackers-->
-	<xs:complexType name="trackers_type">
+	<!-- Maps to a list of process_attr_trackers-->
+	<xs:complexType name="process_attr_trackers_type">
 		<xs:sequence>
 			<xs:choice minOccurs="0" maxOccurs="unbounded">
-				<xs:element name="pid_tracker" type="tns:pid_tracker_type" maxOccurs="1" />
-				<xs:element name="vpid_tracker" type="tns:vpid_tracker_type" maxOccurs="1" />
-				<xs:element name="uid_tracker" type="tns:uid_tracker_type" maxOccurs="1" />
-				<xs:element name="vuid_tracker" type="tns:vuid_tracker_type" maxOccurs="1" />
-				<xs:element name="gid_tracker" type="tns:gid_tracker_type" maxOccurs="1" />
-				<xs:element name="vgid_tracker" type="tns:vgid_tracker_type" maxOccurs="1" />
+				<xs:element name="pid_process_attr_tracker" type="tns:pid_process_attr_tracker_type" maxOccurs="1" />
+				<xs:element name="vpid_process_attr_tracker" type="tns:vpid_process_attr_tracker_type" maxOccurs="1" />
+				<xs:element name="uid_process_attr_tracker" type="tns:uid_process_attr_tracker_type" maxOccurs="1" />
+				<xs:element name="vuid_process_attr_tracker" type="tns:vuid_process_attr_tracker_type" maxOccurs="1" />
+				<xs:element name="gid_process_attr_tracker" type="tns:gid_process_attr_tracker_type" maxOccurs="1" />
+				<xs:element name="vgid_process_attr_tracker" type="tns:vgid_process_attr_tracker_type" maxOccurs="1" />
 			</xs:choice>
 		</xs:sequence>
 	</xs:complexType>
@@ -569,7 +553,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="pids" type="tns:pids_type" minOccurs="0" />
 			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
-			<xs:element name="trackers" type="tns:trackers_type" minOccurs="0" />
+			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
 		</xs:all>
 	</xs:complexType>
 
@@ -870,7 +854,7 @@ SPDX-License-Identifier: MIT
 			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
 			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 			<xs:element name="channel" type="tns:channel_type" minOccurs="0" />
-			<xs:element name="trackers" type="tns:trackers_type" minOccurs="0" />
+			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
 			<xs:element name="rotation" type="tns:rotate_type" minOccurs="0" />

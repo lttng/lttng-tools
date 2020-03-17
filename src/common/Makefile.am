@@ -64,7 +64,7 @@ libcommon_la_SOURCES = \
 	userspace-probe.c \
 	utils.c utils.h \
 	uuid.c uuid.h \
-	tracker.c \
+	tracker.c tracker.h \
 	waiter.c waiter.h \
 	fs-handle.h fs-handle-internal.h fs-handle.c
 

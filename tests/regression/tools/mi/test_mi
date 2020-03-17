@@ -39,8 +39,8 @@ XPATH_LIST_UST_EVENT="$XPATH_CMD_OUTPUT/lttng:domains/lttng:domain[./lttng:type 
 XPATH_SNAPSHOT_ADD_SNAPSHOT="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'add-output']/lttng:output"
 XPATH_SNAPSHOT_LIST="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'list-output']/lttng:output"
 XPATH_SNAPSHOT_DEL="$XPATH_CMD_OUTPUT/lttng:snapshot_action[./lttng:name = 'del-output']/lttng:output"
-XPATH_TRACK_UNTRACK_VPID="$XPATH_CMD_OUTPUT/lttng:trackers/lttng:vpid_tracker/lttng:targets/lttng:vpid_target/lttng:type"
-XPATH_VPID_TRACKER="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:vpid_tracker"
+XPATH_TRACK_UNTRACK_VPID="$XPATH_CMD_OUTPUT/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid/lttng:type"
+XPATH_VPID_TRACKER="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker"
 
 DEVNULL=/dev/null 2>&1
 
@@ -766,7 +766,7 @@ function test_track_untrack ()
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
-	extract_xml $OUTPUT_DEST $XPATH_VPID_TRACKER"/lttng:targets/lttng:vpid_target/lttng:type/lttng:id" result
+	extract_xml $OUTPUT_DEST $XPATH_VPID_TRACKER"/lttng:process_attr_values/lttng:vpid/lttng:type/lttng:id" result
 	num=$(echo "$result" | wc -l)
 	test "$num" -eq "3"
 	ok $? "Mi test: tracker pid listing expecting 3 target got $num"

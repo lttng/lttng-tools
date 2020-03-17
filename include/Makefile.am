@@ -161,6 +161,5 @@ noinst_HEADERS = \
 	lttng/userspace-probe-internal.h \
 	lttng/session-internal.h \
 	lttng/session-descriptor-internal.h \
-	lttng/tracker-internal.h \
 	version.h \
 	version.i

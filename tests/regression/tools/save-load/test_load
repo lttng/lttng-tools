@@ -129,21 +129,21 @@ function test_trackers()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:vpid_tracker/lttng:targets/lttng:vpid_target")
+	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VPID target is present"
 	else
 	    fail "VPID target missing"
 	fi
 
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:vuid_tracker/lttng:targets/lttng:vuid_target")
+	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vuid_process_attr_tracker/lttng:process_attr_values/lttng:vuid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VUID target is present"
 	else
 	    fail "VUID target missing"
 	fi
 
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:trackers/lttng:vgid_tracker/lttng:targets/lttng:vgid_target")
+	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vgid_process_attr_tracker/lttng:process_attr_values/lttng:vgid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VGID target is present"
 	else
