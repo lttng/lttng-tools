@@ -124,8 +124,8 @@ enum lttng_error_code {
 	LTTNG_ERR_EXCLUSION_NOMEM        = 111, /* Lack of memory while processing event exclusions */
 	LTTNG_ERR_INVALID_EVENT_NAME     = 112, /* Invalid event name */
 	LTTNG_ERR_INVALID_CHANNEL_NAME   = 113, /* Invalid channel name */
-	LTTNG_ERR_ID_TRACKED             = 114, /* ID already tracked */
-	LTTNG_ERR_ID_NOT_TRACKED         = 115, /* ID not tracked */
+	LTTNG_ERR_PROCESS_ATTR_EXISTS  = 114, /* Process attribute is already tracked */
+	LTTNG_ERR_PROCESS_ATTR_MISSING = 115, /* Process attribute was not tracked */
 	LTTNG_ERR_INVALID_CHANNEL_DOMAIN = 116, /* Invalid channel domain */
 	LTTNG_ERR_OVERFLOW		 = 117, /* Overflow occurred. */
 	LTTNG_ERR_SESSION_NOT_STARTED    = 118, /* Session not started */
@@ -172,13 +172,15 @@ enum lttng_error_code {
 	LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR = 159, /* Session was already cleared since it became inactive. */
 	LTTNG_ERR_USER_NOT_FOUND         = 160, /* User not found. */
 	LTTNG_ERR_GROUP_NOT_FOUND        = 161, /* Group not found. */
+	LTTNG_ERR_UNSUPPORTED_DOMAIN     = 162,  /* Unsupported domain used. */
+	LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY = 163, /* Operation does not apply to the process attribute tracker's tracking policy */
 
 	/* MUST be last element of the manually-assigned section of the enum */
 	LTTNG_ERR_NR,
 
 	/* Backward-compatibility assignments */
-	LTTNG_ERR_PID_TRACKED            = LTTNG_ERR_ID_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_TRACKED */
-	LTTNG_ERR_PID_NOT_TRACKED        = LTTNG_ERR_ID_NOT_TRACKED, /* Backward compat alias to LTTNG_ERR_ID_NOT_TRACKED */
+	LTTNG_ERR_PID_TRACKED            = LTTNG_ERR_PROCESS_ATTR_EXISTS, /* Backward compat alias */
+	LTTNG_ERR_PID_NOT_TRACKED        = LTTNG_ERR_PROCESS_ATTR_MISSING, /* Backward compat alias */
 };
 
 /*

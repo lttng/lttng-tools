@@ -40,9 +40,11 @@ int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
 /*
  * Calls lttng_ctl_ask_sessiond_fds_varlen() with no expected command header.
  */
-static inline
-int lttng_ctl_ask_sessiond_varlen_no_cmd_header(struct lttcomm_session_msg *lsm,
-		void *vardata, size_t vardata_len, void **user_payload_buf)
+static inline int lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+		struct lttcomm_session_msg *lsm,
+		const void *vardata,
+		size_t vardata_len,
+		void **user_payload_buf)
 {
 	return lttng_ctl_ask_sessiond_fds_varlen(lsm, NULL, 0, vardata,
 		vardata_len, user_payload_buf, NULL, NULL);

@@ -12,9 +12,10 @@
 #include <limits.h>
 #include <urcu/list.h>
 
-#include <lttng/lttng.h>
-#include <common/hashtable/hashtable.h>
 #include <common/defaults.h>
+#include <common/hashtable/hashtable.h>
+#include <common/tracker.h>
+#include <lttng/lttng.h>
 
 #include "consumer.h"
 #include "lttng-ust-ctl.h"
@@ -137,9 +138,9 @@ struct ltt_ust_session {
 	struct ust_id_tracker vgid_tracker;
 
 	/* Tracker list of keys requested by users. */
-	struct lttng_tracker_list *tracker_list_vpid;
-	struct lttng_tracker_list *tracker_list_vuid;
-	struct lttng_tracker_list *tracker_list_vgid;
+	struct process_attr_tracker *tracker_vpid;
+	struct process_attr_tracker *tracker_vuid;
+	struct process_attr_tracker *tracker_vgid;
 };
 
 /*
@@ -217,20 +218,24 @@ void trace_ust_destroy_event(struct ltt_ust_event *event);
 void trace_ust_destroy_context(struct ltt_ust_context *ctx);
 void trace_ust_free_session(struct ltt_ust_session *session);
 
-int trace_ust_track_id(enum lttng_tracker_type tracker_type,
-		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id);
-int trace_ust_untrack_id(enum lttng_tracker_type tracker_type,
-		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id);
-
-int trace_ust_id_tracker_lookup(enum lttng_tracker_type tracker_type,
+int trace_ust_id_tracker_lookup(enum lttng_process_attr process_attr,
 		struct ltt_ust_session *session,
 		int id);
-
-int trace_ust_list_tracker_ids(enum lttng_tracker_type tracker_type,
+enum lttng_error_code trace_ust_process_attr_tracker_set_tracking_policy(
 		struct ltt_ust_session *session,
-		struct lttng_tracker_ids **_ids);
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy policy);
+enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value);
+enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value);
+const struct process_attr_tracker *trace_ust_get_process_attr_tracker(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -323,32 +328,44 @@ struct agent *trace_ust_find_agent(struct ltt_ust_session *session,
 {
 	return NULL;
 }
-static inline int trace_ust_track_id(enum lttng_tracker_type tracker_type,
-		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id)
-{
-	return 0;
-}
-static inline int trace_ust_untrack_id(enum lttng_tracker_type tracker_type,
-		struct ltt_ust_session *session,
-		const struct lttng_tracker_id *id)
-{
-	return 0;
-}
 static inline int trace_ust_id_tracker_lookup(
-		enum lttng_tracker_type tracker_type,
+		enum lttng_process_attr process_attr,
 		struct ltt_ust_session *session,
-		int pid)
+		int id)
 {
 	return 0;
 }
-static inline int trace_ust_list_tracker_ids(
-		enum lttng_tracker_type tracker_type,
+static inline enum lttng_error_code
+trace_ust_process_attr_tracker_set_tracking_policy(
 		struct ltt_ust_session *session,
-		struct lttng_tracker_ids **_ids)
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy policy)
 {
-	return -1;
+	return LTTNG_OK;
 }
+static inline enum lttng_error_code
+trace_ust_process_attr_tracker_inclusion_set_add_value(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
+{
+	return LTTNG_OK;
+}
+static inline enum lttng_error_code
+trace_ust_process_attr_tracker_inclusion_set_remove_value(
+		struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value)
+{
+	return LTTNG_OK;
+}
+static inline const struct process_attr_tracker *
+trace_ust_get_process_attr_tracker(struct ltt_ust_session *session,
+		enum lttng_process_attr process_attr)
+{
+	return NULL;
+}
+
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
 #endif /* _LTT_TRACE_UST_H */

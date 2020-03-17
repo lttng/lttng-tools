@@ -50,55 +50,57 @@
 
 enum lttcomm_sessiond_command {
 	/* Tracer command */
-	LTTNG_ADD_CONTEXT                     = 0,
+	LTTNG_ADD_CONTEXT                               = 0,
 	/* LTTNG_CALIBRATE used to be here */
-	LTTNG_DISABLE_CHANNEL                 = 2,
-	LTTNG_DISABLE_EVENT                   = 3,
-	LTTNG_LIST_SYSCALLS                   = 4,
-	LTTNG_ENABLE_CHANNEL                  = 5,
-	LTTNG_ENABLE_EVENT                    = 6,
+	LTTNG_DISABLE_CHANNEL                           = 2,
+	LTTNG_DISABLE_EVENT                             = 3,
+	LTTNG_LIST_SYSCALLS                             = 4,
+	LTTNG_ENABLE_CHANNEL                            = 5,
+	LTTNG_ENABLE_EVENT                              = 6,
 	/* 7 */
 	/* Session daemon command */
 	/* 8 */
-	LTTNG_DESTROY_SESSION                 = 9,
-	LTTNG_LIST_CHANNELS                   = 10,
-	LTTNG_LIST_DOMAINS                    = 11,
-	LTTNG_LIST_EVENTS                     = 12,
-	LTTNG_LIST_SESSIONS                   = 13,
-	LTTNG_LIST_TRACEPOINTS                = 14,
-	LTTNG_REGISTER_CONSUMER               = 15,
-	LTTNG_START_TRACE                     = 16,
-	LTTNG_STOP_TRACE                      = 17,
-	LTTNG_LIST_TRACEPOINT_FIELDS          = 18,
+	LTTNG_DESTROY_SESSION                           = 9,
+	LTTNG_LIST_CHANNELS                             = 10,
+	LTTNG_LIST_DOMAINS                              = 11,
+	LTTNG_LIST_EVENTS                               = 12,
+	LTTNG_LIST_SESSIONS                             = 13,
+	LTTNG_LIST_TRACEPOINTS                          = 14,
+	LTTNG_REGISTER_CONSUMER                         = 15,
+	LTTNG_START_TRACE                               = 16,
+	LTTNG_STOP_TRACE                                = 17,
+	LTTNG_LIST_TRACEPOINT_FIELDS                    = 18,
 
 	/* Consumer */
-	LTTNG_DISABLE_CONSUMER                = 19,
-	LTTNG_ENABLE_CONSUMER                 = 20,
-	LTTNG_SET_CONSUMER_URI                = 21,
+	LTTNG_DISABLE_CONSUMER                          = 19,
+	LTTNG_ENABLE_CONSUMER                           = 20,
+	LTTNG_SET_CONSUMER_URI                          = 21,
 	/* 22 */
 	/* 23 */
-	LTTNG_DATA_PENDING                    = 24,
-	LTTNG_SNAPSHOT_ADD_OUTPUT             = 25,
-	LTTNG_SNAPSHOT_DEL_OUTPUT             = 26,
-	LTTNG_SNAPSHOT_LIST_OUTPUT            = 27,
-	LTTNG_SNAPSHOT_RECORD                 = 28,
+	LTTNG_DATA_PENDING                              = 24,
+	LTTNG_SNAPSHOT_ADD_OUTPUT                       = 25,
+	LTTNG_SNAPSHOT_DEL_OUTPUT                       = 26,
+	LTTNG_SNAPSHOT_LIST_OUTPUT                      = 27,
+	LTTNG_SNAPSHOT_RECORD                           = 28,
 	/* 29 */
 	/* 30 */
-	LTTNG_SAVE_SESSION                    = 31,
-	LTTNG_TRACK_ID                       = 32,
-	LTTNG_UNTRACK_ID                     = 33,
-	LTTNG_LIST_TRACKER_IDS               = 34,
-	LTTNG_SET_SESSION_SHM_PATH            = 40,
-	LTTNG_REGENERATE_METADATA             = 41,
-	LTTNG_REGENERATE_STATEDUMP            = 42,
-	LTTNG_REGISTER_TRIGGER                = 43,
-	LTTNG_UNREGISTER_TRIGGER              = 44,
-	LTTNG_ROTATE_SESSION                  = 45,
-	LTTNG_ROTATION_GET_INFO               = 46,
-	LTTNG_ROTATION_SET_SCHEDULE           = 47,
-	LTTNG_SESSION_LIST_ROTATION_SCHEDULES = 48,
-	LTTNG_CREATE_SESSION_EXT              = 49,
-	LTTNG_CLEAR_SESSION                   = 50,
+	LTTNG_SAVE_SESSION                              = 31,
+	LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE    = 32,
+	LTTNG_PROCESS_ATTR_TRACKER_REMOVE_INCLUDE_VALUE = 33,
+	LTTNG_PROCESS_ATTR_TRACKER_GET_POLICY           = 34,
+	LTTNG_PROCESS_ATTR_TRACKER_SET_POLICY           = 35,
+	LTTNG_PROCESS_ATTR_TRACKER_GET_INCLUSION_SET     = 36,
+	LTTNG_SET_SESSION_SHM_PATH                      = 40,
+	LTTNG_REGENERATE_METADATA                       = 41,
+	LTTNG_REGENERATE_STATEDUMP                      = 42,
+	LTTNG_REGISTER_TRIGGER                          = 43,
+	LTTNG_UNREGISTER_TRIGGER                        = 44,
+	LTTNG_ROTATE_SESSION                            = 45,
+	LTTNG_ROTATION_GET_INFO                         = 46,
+	LTTNG_ROTATION_SET_SCHEDULE                     = 47,
+	LTTNG_SESSION_LIST_ROTATION_SCHEDULES           = 48,
+	LTTNG_CREATE_SESSION_EXT                        = 49,
+	LTTNG_CLEAR_SESSION                             = 50,
 };
 
 enum lttcomm_relayd_command {
@@ -257,6 +259,13 @@ struct lttcomm_proto_ops {
 			size_t len, int flags);
 };
 
+struct process_attr_integral_value_comm {
+	union {
+		int64_t _signed;
+		uint64_t _unsigned;
+	} u;
+} LTTNG_PACKED;
+
 /*
  * Data structure received from lttng client to session daemon.
  */
@@ -344,21 +353,35 @@ struct lttcomm_session_msg {
 			char shm_path[PATH_MAX];
 		} LTTNG_PACKED set_shm_path;
 		struct {
-			uint32_t tracker_type; /* enum lttng_tracker_type */
-			uint32_t id_type; /* enum lttng_tracker_id_type */
-			union {
-				int32_t value;
-				uint32_t var_len;
-			} u;
+			/* enum lttng_process_attr */
+			int32_t process_attr;
+			/* enum lttng_process_attr_value_type */
+			int32_t value_type;
+
+			struct process_attr_integral_value_comm integral_value;
 			/*
-			 * for LTTNG_ID_STRING, followed by a variable length
-			 * zero-terminated string of length "var_len", which
-			 * includes the final \0.
+			 * For user/group names, a variable length,
+			 * zero-terminated, string of length 'name_len'
+			 * (including the terminator) follows.
+			 *
+			 * integral_value should not be used in those cases.
 			 */
-		} LTTNG_PACKED id_tracker;
+			uint32_t name_len;
+		} LTTNG_PACKED process_attr_tracker_add_remove_include_value;
 		struct {
-			uint32_t tracker_type; /* enum lttng_tracker_type */
-		} LTTNG_PACKED id_tracker_list;
+			/* enum lttng_process_attr */
+			int32_t process_attr;
+		} LTTNG_PACKED process_attr_tracker_get_inclusion_set;
+		struct {
+			/* enum lttng_process_attr */
+			int32_t process_attr;
+		} LTTNG_PACKED process_attr_tracker_get_tracking_policy;
+		struct {
+			/* enum lttng_process_attr */
+			int32_t process_attr;
+			/* enum lttng_tracking_policy */
+			int32_t tracking_policy;
+		} LTTNG_PACKED process_attr_tracker_set_tracking_policy;
 		struct {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
@@ -467,14 +490,6 @@ struct lttcomm_session_destroy_command_header {
  */
 struct lttcomm_tracker_command_header {
 	uint32_t nb_tracker_id;
-} LTTNG_PACKED;
-
-struct lttcomm_tracker_id_header {
-	uint32_t type; /* enum lttng_tracker_id_type */
-	union {
-		int32_t value;
-		uint32_t var_data_len;
-	} u;
 } LTTNG_PACKED;
 
 /*

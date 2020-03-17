@@ -169,8 +169,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_MI_NOT_IMPLEMENTED) ] = "Mi feature not implemented",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_EVENT_NAME) ] = "Invalid event name",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_CHANNEL_NAME) ] = "Invalid channel name",
-	[ ERROR_INDEX(LTTNG_ERR_ID_TRACKED) ] = "ID already tracked",
-	[ ERROR_INDEX(LTTNG_ERR_ID_NOT_TRACKED) ] = "ID not tracked",
+	[ ERROR_INDEX(LTTNG_ERR_PROCESS_ATTR_EXISTS) ] = "Process attribute is already tracked",
+	[ ERROR_INDEX(LTTNG_ERR_PROCESS_ATTR_MISSING) ] = "Process attribute was not tracked",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_CHANNEL_DOMAIN) ] = "Invalid channel domain",
 	[ ERROR_INDEX(LTTNG_ERR_OVERFLOW) ] = "Overflow occurred",
 	[ ERROR_INDEX(LTTNG_ERR_SESSION_NOT_STARTED) ] = "Session not started",
@@ -217,6 +217,8 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR) ] = "Session was already cleared since it became inactive",
 	[ ERROR_INDEX(LTTNG_ERR_USER_NOT_FOUND) ] = "User not found",
 	[ ERROR_INDEX(LTTNG_ERR_GROUP_NOT_FOUND) ] = "Group not found",
+	[ ERROR_INDEX(LTTNG_ERR_UNSUPPORTED_DOMAIN) ] = "Unsupported domain used",
+	[ ERROR_INDEX(LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY) ] = "Operation does not apply to the process attribute tracker's tracking policy",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

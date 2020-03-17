@@ -5,6 +5,7 @@
  *
  */
 
+#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -132,25 +133,26 @@ const char * const config_element_control_uri = "control_uri";
 const char * const config_element_data_uri = "data_uri";
 const char * const config_element_max_size = "max_size";
 const char * const config_element_pid = "pid";
-LTTNG_HIDDEN const char * const config_element_id = "id";
 const char * const config_element_pids = "pids";
 const char * const config_element_shared_memory_path = "shared_memory_path";
-const char * const config_element_pid_tracker = "pid_tracker";
-LTTNG_HIDDEN const char * const config_element_vpid_tracker = "vpid_tracker";
-LTTNG_HIDDEN const char * const config_element_uid_tracker = "uid_tracker";
-LTTNG_HIDDEN const char * const config_element_vuid_tracker = "vuid_tracker";
-LTTNG_HIDDEN const char * const config_element_gid_tracker = "gid_tracker";
-LTTNG_HIDDEN const char * const config_element_vgid_tracker = "vgid_tracker";
-const char * const config_element_trackers = "trackers";
-const char * const config_element_targets = "targets";
-LTTNG_HIDDEN const char * const config_element_target_type = "target_type";
-const char * const config_element_target_pid = "pid_target";
-LTTNG_HIDDEN const char * const config_element_target_vpid = "vpid_target";
-LTTNG_HIDDEN const char * const config_element_target_uid = "uid_target";
-LTTNG_HIDDEN const char * const config_element_target_vuid = "vuid_target";
-LTTNG_HIDDEN const char * const config_element_target_gid = "gid_target";
-LTTNG_HIDDEN const char * const config_element_target_vgid = "vgid_target";
-LTTNG_HIDDEN const char * const config_element_tracker_type = "tracker_type";
+
+LTTNG_HIDDEN const char * const config_element_process_attr_id = "id";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_pid = "pid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vpid = "vpid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_uid = "uid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vuid = "vuid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_gid = "gid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_vgid = "vgid_process_attr_tracker";
+LTTNG_HIDDEN const char * const config_element_process_attr_trackers = "process_attr_trackers";
+LTTNG_HIDDEN const char * const config_element_process_attr_values = "process_attr_values";
+LTTNG_HIDDEN const char * const config_element_process_attr_value_type = "process_attr_value_type";
+LTTNG_HIDDEN const char * const config_element_process_attr_pid_value = "pid";
+LTTNG_HIDDEN const char * const config_element_process_attr_vpid_value = "vpid";
+LTTNG_HIDDEN const char * const config_element_process_attr_uid_value = "uid";
+LTTNG_HIDDEN const char * const config_element_process_attr_vuid_value = "vuid";
+LTTNG_HIDDEN const char * const config_element_process_attr_gid_value = "gid";
+LTTNG_HIDDEN const char * const config_element_process_attr_vgid_value = "vgid";
+LTTNG_HIDDEN const char * const config_element_process_attr_tracker_type = "process_attr_tracker_type";
 
 LTTNG_HIDDEN const char * const config_element_rotation_schedules = "rotation_schedules";
 LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic = "periodic";
@@ -2665,56 +2667,56 @@ end:
 	return ret;
 }
 
-static int get_tracker_elements(enum lttng_tracker_type tracker_type,
+static int get_tracker_elements(enum lttng_process_attr process_attr,
 		const char **element_id_tracker,
-		const char **element_target_id,
-		const char **element_id,
-		const char **element_id_alias,
+		const char **element_value_type,
+		const char **element_value,
+		const char **element_value_alias,
 		const char **element_name)
 {
 	int ret = 0;
 
-	switch (tracker_type) {
-	case LTTNG_TRACKER_PID:
-		*element_id_tracker = config_element_pid_tracker;
-		*element_target_id = config_element_target_pid;
-		*element_id = config_element_id;
-		*element_id_alias = config_element_pid;
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		*element_id_tracker = config_element_process_attr_tracker_pid;
+		*element_value_type = config_element_process_attr_pid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = config_element_process_attr_id;
 		*element_name = NULL;
 		break;
-	case LTTNG_TRACKER_VPID:
-		*element_id_tracker = config_element_vpid_tracker;
-		*element_target_id = config_element_target_vpid;
-		*element_id = config_element_id;
-		*element_id_alias = NULL;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		*element_id_tracker = config_element_process_attr_tracker_vpid;
+		*element_value_type = config_element_process_attr_vpid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = NULL;
 		*element_name = NULL;
 		break;
-	case LTTNG_TRACKER_UID:
-		*element_id_tracker = config_element_uid_tracker;
-		*element_target_id = config_element_target_uid;
-		*element_id = config_element_id;
-		*element_id_alias = NULL;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		*element_id_tracker = config_element_process_attr_tracker_uid;
+		*element_value_type = config_element_process_attr_uid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = NULL;
 		*element_name = config_element_name;
 		break;
-	case LTTNG_TRACKER_VUID:
-		*element_id_tracker = config_element_vuid_tracker;
-		*element_target_id = config_element_target_vuid;
-		*element_id = config_element_id;
-		*element_id_alias = NULL;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		*element_id_tracker = config_element_process_attr_tracker_vuid;
+		*element_value_type = config_element_process_attr_vuid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = NULL;
 		*element_name = config_element_name;
 		break;
-	case LTTNG_TRACKER_GID:
-		*element_id_tracker = config_element_gid_tracker;
-		*element_target_id = config_element_target_gid;
-		*element_id = config_element_id;
-		*element_id_alias = NULL;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		*element_id_tracker = config_element_process_attr_tracker_gid;
+		*element_value_type = config_element_process_attr_gid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = NULL;
 		*element_name = config_element_name;
 		break;
-	case LTTNG_TRACKER_VGID:
-		*element_id_tracker = config_element_vgid_tracker;
-		*element_target_id = config_element_target_vgid;
-		*element_id = config_element_id;
-		*element_id_alias = NULL;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		*element_id_tracker = config_element_process_attr_tracker_vgid;
+		*element_value_type = config_element_process_attr_vgid_value;
+		*element_value = config_element_process_attr_id;
+		*element_value_alias = NULL;
 		*element_name = config_element_name;
 		break;
 	default:
@@ -2725,9 +2727,9 @@ static int get_tracker_elements(enum lttng_tracker_type tracker_type,
 
 static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 		struct lttng_handle *handle,
-		enum lttng_tracker_type tracker_type)
+		enum lttng_process_attr process_attr)
 {
-	int ret = 0, child;
+	int ret = 0, child_count;
 	xmlNodePtr targets_node = NULL;
 	xmlNodePtr node;
 	const char *element_id_tracker;
@@ -2735,23 +2737,33 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	const char *element_id;
 	const char *element_id_alias;
 	const char *element_name;
-	enum lttng_tracker_id_status status;
+	enum lttng_error_code tracker_handle_ret_code;
+	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	enum lttng_process_attr_tracker_handle_status status;
 
 	assert(handle);
 	assert(id_tracker_node);
 
-	ret = get_tracker_elements(tracker_type, &element_id_tracker,
+	tracker_handle_ret_code = lttng_session_get_tracker_handle(
+			handle->session_name, handle->domain.type, process_attr,
+			&tracker_handle);
+	if (tracker_handle_ret_code != LTTNG_OK) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = get_tracker_elements(process_attr, &element_id_tracker,
 			&element_target_id, &element_id, &element_id_alias,
 			&element_name);
 	if (ret) {
-		return ret;
+		goto end;
 	}
 
 	/* get the targets node */
 	for (node = xmlFirstElementChild(id_tracker_node); node;
 			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
-				config_element_targets)) {
+				config_element_process_attr_values)) {
 			targets_node = node;
 			break;
 		}
@@ -2763,27 +2775,17 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	}
 
 	/* Go through all id target node */
-	child = xmlChildElementCount(targets_node);
-	if (child == 0) {
-		struct lttng_tracker_id *tracker_id = NULL;
-		tracker_id = lttng_tracker_id_create();
-		if (tracker_id == NULL) {
-			ret = LTTNG_ERR_NOMEM;
-			goto end;
-		}
-		status = lttng_tracker_id_set_all(tracker_id);
-		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			ret = LTTNG_ERR_INVALID;
-			goto end;
-		}
-
-		/* The session is explicitly set to target nothing. */
-		ret = lttng_untrack_id(handle, tracker_type, tracker_id);
-		lttng_tracker_id_destroy(tracker_id);
-		if (ret) {
-			goto end;
-		}
+	child_count = xmlChildElementCount(targets_node);
+	status = lttng_process_attr_tracker_handle_set_tracking_policy(
+			tracker_handle,
+			child_count == 0 ? LTTNG_TRACKING_POLICY_EXCLUDE_ALL :
+					   LTTNG_TRACKING_POLICY_INCLUDE_SET);
+	if (status != LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK) {
+		ret = LTTNG_ERR_UNK;
+		goto end;
 	}
+
+	/* Add all tracked values. */
 	for (node = xmlFirstElementChild(targets_node); node;
 			node = xmlNextElementSibling(node)) {
 		xmlNodePtr id_target_node = node;
@@ -2796,10 +2798,8 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 							!strcmp((const char *) node->name,
 									element_id_alias))) {
 				int64_t id;
-				xmlChar *content = NULL;
-				struct lttng_tracker_id *tracker_id = NULL;
+				xmlChar *content = xmlNodeGetContent(node);
 
-				content = xmlNodeGetContent(node);
 				if (!content) {
 					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
 					goto end;
@@ -2812,65 +2812,103 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 					goto end;
 				}
 
-				tracker_id = lttng_tracker_id_create();
-				if (tracker_id == NULL) {
-					ret = LTTNG_ERR_NOMEM;
+				switch (process_attr) {
+				case LTTNG_PROCESS_ATTR_PROCESS_ID:
+					status = lttng_process_attr_process_id_tracker_handle_add_pid(
+							tracker_handle,
+							(pid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+					status = lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
+							tracker_handle,
+							(pid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_USER_ID:
+					status = lttng_process_attr_user_id_tracker_handle_add_uid(
+							tracker_handle,
+							(uid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+					status = lttng_process_attr_virtual_user_id_tracker_handle_add_uid(
+							tracker_handle,
+							(uid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_GROUP_ID:
+					status = lttng_process_attr_group_id_tracker_handle_add_gid(
+							tracker_handle,
+							(gid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+					status = lttng_process_attr_virtual_group_id_tracker_handle_add_gid(
+							tracker_handle,
+							(gid_t) id);
+					break;
+				default:
+					ret = LTTNG_ERR_INVALID;
 					goto end;
 				}
+			} else if (element_name &&
+					!strcmp((const char *) node->name,
+							element_name)) {
+				xmlChar *content = xmlNodeGetContent(node);
 
-				status = lttng_tracker_id_set_value(
-						tracker_id, id);
-				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-					lttng_tracker_id_destroy(tracker_id);
-					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto end;
-				}
-
-				ret = lttng_track_id(handle, tracker_type,
-						tracker_id);
-				lttng_tracker_id_destroy(tracker_id);
-				if (ret) {
-					goto end;
-				}
-			}
-			if (element_name && !strcmp((const char *) node->name,
-							    element_name)) {
-				xmlChar *content = NULL;
-				struct lttng_tracker_id *tracker_id = NULL;
-
-				content = xmlNodeGetContent(node);
 				if (!content) {
 					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
 					goto end;
 				}
 
-				tracker_id = lttng_tracker_id_create();
-				if (tracker_id == NULL) {
-					ret = LTTNG_ERR_NOMEM;
+				switch (process_attr) {
+				case LTTNG_PROCESS_ATTR_USER_ID:
+					status = lttng_process_attr_user_id_tracker_handle_add_user_name(
+							tracker_handle,
+							(const char *) content);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+					status = lttng_process_attr_virtual_user_id_tracker_handle_add_user_name(
+							tracker_handle,
+							(const char *) content);
+					break;
+				case LTTNG_PROCESS_ATTR_GROUP_ID:
+					status = lttng_process_attr_group_id_tracker_handle_add_group_name(
+							tracker_handle,
+							(const char *) content);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+					status = lttng_process_attr_virtual_group_id_tracker_handle_add_group_name(
+							tracker_handle,
+							(const char *) content);
+					break;
+				default:
+					free(content);
+					ret = LTTNG_ERR_INVALID;
 					goto end;
 				}
-
-				status = lttng_tracker_id_set_string(tracker_id,
-						(const char *) content);
-				if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-					lttng_tracker_id_destroy(tracker_id);
-					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
-					goto end;
-				}
-
-				ret = lttng_track_id(handle, tracker_type,
-						tracker_id);
-				lttng_tracker_id_destroy(tracker_id);
 				free(content);
-				if (ret) {
-					goto end;
-				}
+			}
+			switch (status) {
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK:
+				continue;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID:
+				ret = LTTNG_ERR_INVALID;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_EXISTS:
+				ret = LTTNG_ERR_PROCESS_ATTR_EXISTS;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_MISSING:
+				ret = LTTNG_ERR_PROCESS_ATTR_MISSING;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_ERROR:
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_COMMUNICATION_ERROR:
+			default:
+				ret = LTTNG_ERR_UNK;
+				goto end;
 			}
 		}
 		node = id_target_node;
 	}
 
 end:
+	lttng_process_attr_tracker_handle_destroy(tracker_handle);
 	return ret;
 }
 
@@ -2989,7 +3027,7 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	for (node = xmlFirstElementChild(domain_node); node;
 			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
-					config_element_trackers)) {
+				config_element_process_attr_trackers)) {
 			trackers_node = node;
 			break;
 		}
@@ -3002,55 +3040,55 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	for (node = xmlFirstElementChild(trackers_node); node;
 			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
-				    config_element_pid_tracker)) {
+				    config_element_process_attr_tracker_pid)) {
 			pid_tracker_node = node;
 			ret = process_id_tracker_node(pid_tracker_node, handle,
-					LTTNG_TRACKER_PID);
+					LTTNG_PROCESS_ATTR_PROCESS_ID);
 			if (ret) {
 				goto end;
 			}
 		}
 		if (!strcmp((const char *) node->name,
-				    config_element_vpid_tracker)) {
+				    config_element_process_attr_tracker_vpid)) {
 			vpid_tracker_node = node;
 			ret = process_id_tracker_node(vpid_tracker_node, handle,
-					LTTNG_TRACKER_VPID);
+					LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
 			if (ret) {
 				goto end;
 			}
 		}
 		if (!strcmp((const char *) node->name,
-				    config_element_uid_tracker)) {
+				    config_element_process_attr_tracker_uid)) {
 			uid_tracker_node = node;
 			ret = process_id_tracker_node(uid_tracker_node, handle,
-					LTTNG_TRACKER_UID);
+					LTTNG_PROCESS_ATTR_USER_ID);
 			if (ret) {
 				goto end;
 			}
 		}
 		if (!strcmp((const char *) node->name,
-				    config_element_vuid_tracker)) {
+				    config_element_process_attr_tracker_vuid)) {
 			vuid_tracker_node = node;
 			ret = process_id_tracker_node(vuid_tracker_node, handle,
-					LTTNG_TRACKER_VUID);
+					LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
 			if (ret) {
 				goto end;
 			}
 		}
 		if (!strcmp((const char *) node->name,
-				    config_element_gid_tracker)) {
+				    config_element_process_attr_tracker_gid)) {
 			gid_tracker_node = node;
 			ret = process_id_tracker_node(gid_tracker_node, handle,
-					LTTNG_TRACKER_GID);
+					LTTNG_PROCESS_ATTR_GROUP_ID);
 			if (ret) {
 				goto end;
 			}
 		}
 		if (!strcmp((const char *) node->name,
-				    config_element_vgid_tracker)) {
+				    config_element_process_attr_tracker_vgid)) {
 			vgid_tracker_node = node;
 			ret = process_id_tracker_node(vgid_tracker_node, handle,
-					LTTNG_TRACKER_VGID);
+					LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
 			if (ret) {
 				goto end;
 			}

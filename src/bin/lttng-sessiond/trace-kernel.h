@@ -114,12 +114,12 @@ struct ltt_kernel_session {
 	/* Current trace chunk of the ltt_session. */
 	struct lttng_trace_chunk *current_trace_chunk;
 	/* Tracker lists */
-	struct lttng_tracker_list *tracker_list_pid;
-	struct lttng_tracker_list *tracker_list_vpid;
-	struct lttng_tracker_list *tracker_list_uid;
-	struct lttng_tracker_list *tracker_list_vuid;
-	struct lttng_tracker_list *tracker_list_gid;
-	struct lttng_tracker_list *tracker_list_vgid;
+	struct process_attr_tracker *tracker_pid;
+	struct process_attr_tracker *tracker_vpid;
+	struct process_attr_tracker *tracker_uid;
+	struct process_attr_tracker *tracker_vuid;
+	struct process_attr_tracker *tracker_gid;
+	struct process_attr_tracker *tracker_vgid;
 };
 
 /*

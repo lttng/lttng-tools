@@ -7,6 +7,7 @@
  *
  */
 
+#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #define __USE_LINUX_IOCTL_DEFS
 #include <sys/ioctl.h>
@@ -221,32 +222,32 @@ int kernctl_list_tracker_pids(int fd)
 }
 
 static enum lttng_kernel_tracker_type get_kernel_tracker_type(
-		enum lttng_tracker_type type)
+		enum lttng_process_attr process_attr)
 {
-	switch (type) {
-	case LTTNG_TRACKER_PID:
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
 		return LTTNG_KERNEL_TRACKER_PID;
-	case LTTNG_TRACKER_VPID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
 		return LTTNG_KERNEL_TRACKER_VPID;
-	case LTTNG_TRACKER_UID:
+	case LTTNG_PROCESS_ATTR_USER_ID:
 		return LTTNG_KERNEL_TRACKER_UID;
-	case LTTNG_TRACKER_VUID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
 		return LTTNG_KERNEL_TRACKER_VUID;
-	case LTTNG_TRACKER_GID:
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
 		return LTTNG_KERNEL_TRACKER_GID;
-	case LTTNG_TRACKER_VGID:
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
 		return LTTNG_KERNEL_TRACKER_VGID;
 	default:
 		return LTTNG_KERNEL_TRACKER_UNKNOWN;
 	}
 }
 
-int kernctl_track_id(int fd, enum lttng_tracker_type tracker_type, int id)
+int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
 {
 	struct lttng_kernel_tracker_args args;
 
 	args.id = id;
-	args.type = get_kernel_tracker_type(tracker_type);
+	args.type = get_kernel_tracker_type(process_attr);
 	if (args.type == LTTNG_KERNEL_TRACKER_UNKNOWN) {
 		errno = EINVAL;
 		return -1;
@@ -254,12 +255,12 @@ int kernctl_track_id(int fd, enum lttng_tracker_type tracker_type, int id)
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_TRACK_ID, &args);
 }
 
-int kernctl_untrack_id(int fd, enum lttng_tracker_type tracker_type, int id)
+int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
 {
 	struct lttng_kernel_tracker_args args;
 
 	args.id = id;
-	args.type = get_kernel_tracker_type(tracker_type);
+	args.type = get_kernel_tracker_type(process_attr);
 	if (args.type == LTTNG_KERNEL_TRACKER_UNKNOWN) {
 		errno = EINVAL;
 		return -1;
@@ -267,12 +268,12 @@ int kernctl_untrack_id(int fd, enum lttng_tracker_type tracker_type, int id)
 	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_SESSION_UNTRACK_ID, &args);
 }
 
-int kernctl_list_tracker_ids(int fd, enum lttng_tracker_type tracker_type)
+int kernctl_list_tracker_ids(int fd, enum lttng_process_attr process_attr)
 {
 	struct lttng_kernel_tracker_args args;
 
 	args.id = -1;
-	args.type = get_kernel_tracker_type(tracker_type);
+	args.type = get_kernel_tracker_type(process_attr);
 	if (args.type == LTTNG_KERNEL_TRACKER_UNKNOWN) {
 		errno = EINVAL;
 		return -1;

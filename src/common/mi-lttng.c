@@ -7,13 +7,14 @@
  *
  */
 
+#include "lttng/tracker.h"
 #define _LGPL_SOURCE
+#include "mi-lttng.h"
 #include <common/config/session-config.h>
 #include <common/defaults.h>
-#include <lttng/snapshot-internal.h>
-#include <lttng/tracker-internal.h>
+#include <common/tracker.h>
 #include <lttng/channel.h>
-#include "mi-lttng.h"
+#include <lttng/snapshot-internal.h>
 
 #include <assert.h>
 
@@ -1528,39 +1529,52 @@ end:
 LTTNG_HIDDEN
 int mi_lttng_trackers_open(struct mi_writer *writer)
 {
-	return mi_lttng_writer_open_element(writer, config_element_trackers);
+	return mi_lttng_writer_open_element(
+			writer, config_element_process_attr_trackers);
 }
 
-static int get_tracker_elements(enum lttng_tracker_type tracker_type,
-		const char **element_id_tracker,
-		const char **element_target_id)
+static int get_tracker_elements(enum lttng_process_attr process_attr,
+		const char **element_process_attr_tracker,
+		const char **element_process_attr_value)
 {
 	int ret = 0;
 
-	switch (tracker_type) {
-	case LTTNG_TRACKER_PID:
-		*element_id_tracker = config_element_pid_tracker;
-		*element_target_id = config_element_target_pid;
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_pid;
+		*element_process_attr_value =
+				config_element_process_attr_pid_value;
 		break;
-	case LTTNG_TRACKER_VPID:
-		*element_id_tracker = config_element_vpid_tracker;
-		*element_target_id = config_element_target_vpid;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_vpid;
+		*element_process_attr_value =
+				config_element_process_attr_vpid_value;
 		break;
-	case LTTNG_TRACKER_UID:
-		*element_id_tracker = config_element_uid_tracker;
-		*element_target_id = config_element_target_uid;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_uid;
+		*element_process_attr_value =
+				config_element_process_attr_uid_value;
 		break;
-	case LTTNG_TRACKER_VUID:
-		*element_id_tracker = config_element_vuid_tracker;
-		*element_target_id = config_element_target_vuid;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_vuid;
+		*element_process_attr_value =
+				config_element_process_attr_vuid_value;
 		break;
-	case LTTNG_TRACKER_GID:
-		*element_id_tracker = config_element_gid_tracker;
-		*element_target_id = config_element_target_gid;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_gid;
+		*element_process_attr_value =
+				config_element_process_attr_gid_value;
 		break;
-	case LTTNG_TRACKER_VGID:
-		*element_id_tracker = config_element_vgid_tracker;
-		*element_target_id = config_element_target_vgid;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		*element_process_attr_tracker =
+				config_element_process_attr_tracker_vgid;
+		*element_process_attr_value =
+				config_element_process_attr_vgid_value;
 		break;
 	default:
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -1569,26 +1583,26 @@ static int get_tracker_elements(enum lttng_tracker_type tracker_type,
 }
 
 LTTNG_HIDDEN
-int mi_lttng_id_tracker_open(
-		struct mi_writer *writer, enum lttng_tracker_type tracker_type)
+int mi_lttng_process_attribute_tracker_open(
+		struct mi_writer *writer, enum lttng_process_attr process_attr)
 {
 	int ret;
-	const char *element_id_tracker, *element_target_id;
+	const char *element_tracker, *element_value;
 
 	ret = get_tracker_elements(
-			tracker_type, &element_id_tracker, &element_target_id);
+			process_attr, &element_tracker, &element_value);
 	if (ret) {
 		return ret;
 	}
 
-	/* Open element $id_tracker */
-	ret = mi_lttng_writer_open_element(writer, element_id_tracker);
+	/* Open process attribute tracker element */
+	ret = mi_lttng_writer_open_element(writer, element_tracker);
 	if (ret) {
 		goto end;
 	}
 
-	/* Open targets element */
-	ret = mi_lttng_targets_open(writer);
+	/* Open values element */
+	ret = mi_lttng_process_attr_values_open(writer);
 end:
 	return ret;
 }
@@ -1643,104 +1657,137 @@ end:
 }
 
 LTTNG_HIDDEN
-int mi_lttng_targets_open(struct mi_writer *writer)
+int mi_lttng_process_attr_values_open(struct mi_writer *writer)
 {
-	return mi_lttng_writer_open_element(writer,
-			config_element_targets);
+	return mi_lttng_writer_open_element(
+			writer, config_element_process_attr_values);
 }
 
 LTTNG_HIDDEN
-int mi_lttng_id_target(struct mi_writer *writer,
-		enum lttng_tracker_type tracker_type,
-		const struct lttng_tracker_id *id,
-		int is_open)
+int mi_lttng_all_process_attribute_value(struct mi_writer *writer,
+		enum lttng_process_attr process_attr,
+		bool is_open)
 {
 	int ret;
 	const char *element_id_tracker, *element_target_id;
-	enum lttng_tracker_id_status status;
-	int value;
-	const char *string;
 
 	ret = get_tracker_elements(
-			tracker_type, &element_id_tracker, &element_target_id);
+			process_attr, &element_id_tracker, &element_target_id);
 	if (ret) {
 		return ret;
 	}
 
-	switch (lttng_tracker_id_get_type(id)) {
-	case LTTNG_ID_ALL:
-		ret = mi_lttng_writer_open_element(writer, element_target_id);
-		if (ret) {
-			goto end;
-		}
-		ret = mi_lttng_writer_open_element(writer, config_element_type);
-		if (ret) {
-			goto end;
-		}
-		ret = mi_lttng_writer_write_element_bool(
-				writer, config_element_all, 1);
-		if (ret) {
-			goto end;
-		}
+	ret = mi_lttng_writer_open_element(writer, element_target_id);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, config_element_type);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_bool(writer, config_element_all, 1);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+
+	if (!is_open) {
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
 			goto end;
 		}
-		break;
-	case LTTNG_ID_VALUE:
-		ret = mi_lttng_writer_open_element(writer, element_target_id);
-		if (ret) {
-			goto end;
-		}
-		ret = mi_lttng_writer_open_element(writer, config_element_type);
-		if (ret) {
-			goto end;
-		}
+	}
+end:
+	return ret;
+}
 
-		status = lttng_tracker_id_get_value(id, &value);
-		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			ret = -1;
-			goto end;
-		}
+LTTNG_HIDDEN
+int mi_lttng_integral_process_attribute_value(struct mi_writer *writer,
+		enum lttng_process_attr process_attr,
+		int64_t value,
+		bool is_open)
+{
+	int ret;
+	const char *element_id_tracker, *element_target_id;
 
-		ret = mi_lttng_writer_write_element_signed_int(
-				writer, config_element_id, value);
-		if (ret) {
-			goto end;
-		}
+	ret = get_tracker_elements(
+			process_attr, &element_id_tracker, &element_target_id);
+	if (ret) {
+		return ret;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, element_target_id);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, config_element_type);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_signed_int(
+			writer, config_element_process_attr_id, value);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto end;
+	}
+
+	if (!is_open) {
 		ret = mi_lttng_writer_close_element(writer);
 		if (ret) {
 			goto end;
 		}
-		break;
-	case LTTNG_ID_STRING:
-		ret = mi_lttng_writer_open_element(writer, element_target_id);
-		if (ret) {
-			goto end;
-		}
-		ret = mi_lttng_writer_open_element(writer, config_element_type);
-		if (ret) {
-			goto end;
-		}
+	}
 
-		status = lttng_tracker_id_get_string(id, &string);
-		if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-			ret = -1;
-			goto end;
-		}
+end:
+	return ret;
+}
 
-		ret = mi_lttng_writer_write_element_string(
-				writer, config_element_name, string);
-		if (ret) {
-			goto end;
-		}
-		ret = mi_lttng_writer_close_element(writer);
-		if (ret) {
-			goto end;
-		}
-		break;
-	case LTTNG_ID_UNKNOWN:
-		ret = -LTTNG_ERR_INVALID;
+LTTNG_HIDDEN
+int mi_lttng_string_process_attribute_value(struct mi_writer *writer,
+		enum lttng_process_attr process_attr,
+		const char *value,
+		bool is_open)
+
+{
+	int ret;
+	const char *element_id_tracker, *element_target_id;
+
+	ret = get_tracker_elements(
+			process_attr, &element_id_tracker, &element_target_id);
+	if (ret) {
+		return ret;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, element_target_id);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_open_element(writer, config_element_type);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, value);
+	if (ret) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
 		goto end;
 	}
 

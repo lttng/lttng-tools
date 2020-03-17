@@ -9,8 +9,10 @@
 #define CMD_H
 
 #include "context.h"
-#include "session.h"
 #include "lttng-sessiond.h"
+#include "lttng/tracker.h"
+#include "session.h"
+#include <common/tracker.h>
 
 struct notification_thread_handle;
 
@@ -47,14 +49,33 @@ int cmd_disable_channel(struct ltt_session *session,
 int cmd_enable_channel(struct ltt_session *session,
 		const struct lttng_domain *domain, const struct lttng_channel *attr,
 		int wpipe);
-int cmd_track_id(struct ltt_session *session,
-		enum lttng_tracker_type tracker_type,
+
+/* Process attribute tracker commands */
+enum lttng_error_code cmd_process_attr_tracker_get_tracking_policy(
+		struct ltt_session *session,
 		enum lttng_domain_type domain,
-		const struct lttng_tracker_id *id);
-int cmd_untrack_id(struct ltt_session *session,
-		enum lttng_tracker_type tracker_type,
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy *policy);
+enum lttng_error_code cmd_process_attr_tracker_set_tracking_policy(
+		struct ltt_session *session,
 		enum lttng_domain_type domain,
-		const struct lttng_tracker_id *id);
+		enum lttng_process_attr process_attr,
+		enum lttng_tracking_policy policy);
+enum lttng_error_code cmd_process_attr_tracker_inclusion_set_add_value(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value);
+enum lttng_error_code cmd_process_attr_tracker_inclusion_set_remove_value(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		const struct process_attr_value *value);
+enum lttng_error_code cmd_process_attr_tracker_get_inclusion_set(
+		struct ltt_session *session,
+		enum lttng_domain_type domain,
+		enum lttng_process_attr process_attr,
+		struct lttng_process_attr_values **values);
 
 /* Event commands */
 int cmd_disable_event(struct ltt_session *session,
@@ -104,10 +125,6 @@ ssize_t cmd_list_tracepoints(enum lttng_domain_type domain,
 ssize_t cmd_snapshot_list_outputs(struct ltt_session *session,
 		struct lttng_snapshot_output **outputs);
 ssize_t cmd_list_syscalls(struct lttng_event **events);
-int cmd_list_tracker_ids(enum lttng_tracker_type tracker_type,
-		struct ltt_session *session,
-		enum lttng_domain_type domain,
-		struct lttng_tracker_ids **ids);
 
 int cmd_data_pending(struct ltt_session *session);
 

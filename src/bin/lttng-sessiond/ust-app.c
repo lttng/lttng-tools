@@ -5116,11 +5116,14 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app)
 	if (!app->compatible) {
 		return;
 	}
-	if (trace_ust_id_tracker_lookup(LTTNG_TRACKER_VPID, usess, app->pid) &&
+	if (trace_ust_id_tracker_lookup(LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID,
+			    usess, app->pid) &&
 			trace_ust_id_tracker_lookup(
-					LTTNG_TRACKER_VUID, usess, app->uid) &&
+					LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID,
+					usess, app->uid) &&
 			trace_ust_id_tracker_lookup(
-					LTTNG_TRACKER_VGID, usess, app->gid)) {
+					LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID,
+					usess, app->gid)) {
 		/*
 		 * Synchronize the application's internal tracing configuration
 		 * and start tracing.

@@ -8,12 +8,12 @@
 #ifndef _COMMON_UTILS_H
 #define _COMMON_UTILS_H
 
+#include <getopt.h>
+#include <lttng/lttng-error.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <getopt.h>
-#include <stdbool.h>
-#include <sys/types.h>
 
 #include <common/compat/directory-handle.h>
 
@@ -54,5 +54,9 @@ int utils_show_help(int section, const char *page_name, const char *help_msg);
 int utils_get_memory_available(size_t *value);
 int utils_get_memory_total(size_t *value);
 int utils_change_working_directory(const char *path);
+enum lttng_error_code utils_user_id_from_name(
+		const char *user_name, uid_t *user_id);
+enum lttng_error_code utils_group_id_from_name(
+		const char *group_name, gid_t *group_id);
 
 #endif /* _COMMON_UTILS_H */

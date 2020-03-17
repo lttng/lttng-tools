@@ -254,154 +254,153 @@ by its signed 32-bit representation when converted to msec.
 	</xs:sequence>
 </xs:complexType>
 
-<xs:complexType name="pid_target_type">
+<xs:complexType name="pid_value_type">
 	<xs:choice minOccurs="0">
-		<xs:element name="pid" type="xs:integer" />
 		<xs:element name="id" type="xs:integer" />
 	</xs:choice>
 </xs:complexType>
 
-<!-- Maps to a list of pid_targets-->
-<xs:complexType name="pid_targets_type">
+<!-- Maps to a list of pid_process_attr_values-->
+<xs:complexType name="pid_process_attr_values_type">
 	<xs:sequence>
 		<xs:choice minOccurs="0" maxOccurs="unbounded" >
-			<xs:element name="pid_target" type="pid_target_type" />
+			<xs:element name="pid" type="pid_value_type" />
 		</xs:choice>
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a pid_tracker-->
-<xs:complexType name="pid_tracker_type">
+<!-- Maps to a pid_process_attr_tracker-->
+<xs:complexType name="pid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="pid_targets_type" />
+		<xs:element name="process_attr_values" type="pid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
-<xs:complexType name="vpid_target_type">
+<xs:complexType name="vpid_value_type">
 	<xs:all>
 		<xs:element name="id" type="xs:integer" />
 	</xs:all>
 </xs:complexType>
 
-<!-- Maps to a list of vpid_targets-->
-<xs:complexType name="vpid_targets_type">
+<!-- Maps to a list of vpid_process_attr_values-->
+<xs:complexType name="vpid_process_attr_values_type">
 	<xs:sequence>
-		<xs:element name="vpid_target" type="vpid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:element name="vpid" type="vpid_value_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a pid_tracker-->
-<xs:complexType name="vpid_tracker_type">
+<!-- Maps to a pid_process_attr_tracker-->
+<xs:complexType name="vpid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="vpid_targets_type" />
+		<xs:element name="process_attr_values" type="vpid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
-<xs:complexType name="uid_target_type">
+<xs:complexType name="uid_value_type">
 	<xs:choice>
 		<xs:element name="id" type="xs:integer" />
 		<xs:element name="name" type="xs:string" />
 	</xs:choice>
 </xs:complexType>
 
-<!-- Maps to a list of uid_targets-->
-<xs:complexType name="uid_targets_type">
+<!-- Maps to a list of uid_process_attr_values-->
+<xs:complexType name="uid_process_attr_values_type">
 	<xs:sequence>
-		<xs:element name="uid_target" type="uid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:element name="uid" type="uid_value_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a uid_tracker-->
-<xs:complexType name="uid_tracker_type">
+<!-- Maps to a uid_process_attr_tracker-->
+<xs:complexType name="uid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="uid_targets_type" />
+		<xs:element name="process_attr_values" type="uid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
-<xs:complexType name="vuid_target_type">
+<xs:complexType name="vuid_value_type">
 	<xs:choice>
 		<xs:element name="id" type="xs:integer" />
 		<xs:element name="name" type="xs:string" />
 	</xs:choice>
 </xs:complexType>
 
-<!-- Maps to a list of vuid_targets-->
-<xs:complexType name="vuid_targets_type">
+<!-- Maps to a list of vuid_process_attr_values-->
+<xs:complexType name="vuid_process_attr_values_type">
 	<xs:sequence>
-		<xs:element name="vuid_target" type="vuid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:element name="vuid" type="vuid_value_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a uid_tracker-->
-<xs:complexType name="vuid_tracker_type">
+<!-- Maps to a vuid_process_attr_tracker-->
+<xs:complexType name="vuid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="vuid_targets_type" />
+		<xs:element name="process_attr_values" type="vuid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
-<xs:complexType name="gid_target_type">
+<xs:complexType name="gid_value_type">
 	<xs:choice>
 		<xs:element name="id" type="xs:integer" />
 		<xs:element name="name" type="xs:string" />
 	</xs:choice>
 </xs:complexType>
 
-<!-- Maps to a list of gid_targets-->
-<xs:complexType name="gid_targets_type">
+<!-- Maps to a list of gid_process_attr_values-->
+<xs:complexType name="gid_process_attr_values_type">
 	<xs:sequence>
-		<xs:element name="gid_target" type="gid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:element name="gid" type="gid_value_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a gid_tracker-->
-<xs:complexType name="gid_tracker_type">
+<!-- Maps to a gid_process_attr_tracker-->
+<xs:complexType name="gid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="gid_targets_type" />
+		<xs:element name="process_attr_values" type="gid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
-<xs:complexType name="vgid_target_type">
+<xs:complexType name="vgid_value_type">
 	<xs:choice>
 		<xs:element name="id" type="xs:integer" />
 		<xs:element name="name" type="xs:string" />
 	</xs:choice>
 </xs:complexType>
 
-<!-- Maps to a list of vgid_targets-->
-<xs:complexType name="vgid_targets_type">
+<!-- Maps to a list of vgid_process_attr_values-->
+<xs:complexType name="vgid_process_attr_values_type">
 	<xs:sequence>
-		<xs:element name="vgid_target" type="vgid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		<xs:element name="vgid" type="vgid_value_type" minOccurs="0" maxOccurs="unbounded" />
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to a gid_tracker-->
-<xs:complexType name="vgid_tracker_type">
+<!-- Maps to a vgid_process_attr_tracker-->
+<xs:complexType name="vgid_process_attr_tracker_type">
 	<xs:all>
-		<xs:element name="targets" type="vgid_targets_type" />
+		<xs:element name="process_attr_values" type="vgid_process_attr_values_type" />
 	</xs:all>
 </xs:complexType>
 
 <!-- Maps to a list of trackers-->
-<xs:complexType name="trackers_type">
+<xs:complexType name="process_attr_tracker_type">
 	<xs:sequence>
 		<xs:choice minOccurs="0" maxOccurs="unbounded" >
-			<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
-			<xs:element name="vpid_tracker" type="vpid_tracker_type" maxOccurs="1" />
-			<xs:element name="uid_tracker" type="uid_tracker_type" maxOccurs="1" />
-			<xs:element name="vuid_tracker" type="vuid_tracker_type" maxOccurs="1" />
-			<xs:element name="gid_tracker" type="gid_tracker_type" maxOccurs="1" />
-			<xs:element name="vgid_tracker" type="vgid_tracker_type" maxOccurs="1" />
+			<xs:element name="pid_process_attr_tracker" type="pid_process_attr_tracker_type" maxOccurs="1" />
+			<xs:element name="vpid_process_attr_tracker" type="vpid_process_attr_tracker_type" maxOccurs="1" />
+			<xs:element name="uid_process_attr_tracker" type="uid_process_attr_tracker_type" maxOccurs="1" />
+			<xs:element name="vuid_process_attr_tracker" type="vuid_process_attr_tracker_type" maxOccurs="1" />
+			<xs:element name="gid_process_attr_tracker" type="gid_process_attr_tracker_type" maxOccurs="1" />
+			<xs:element name="vgid_process_attr_tracker" type="vgid_process_attr_tracker_type" maxOccurs="1" />
 		</xs:choice>
 	</xs:sequence>
 </xs:complexType>
 
-<!-- Maps to struct lttng_domain, contains channels and pid_tracker -->
+<!-- Maps to struct lttng_domain, contains channels and pid_process_attr_tracker -->
 <xs:complexType name="domain_type">
 	<xs:all>
 		<xs:element name="type" type="domain_type_type"/>
 		<xs:element name="buffer_type" type="domain_buffer_type"/>
 		<xs:element name="channels" type="channel_list_type" minOccurs="0"/>
-		<xs:element name="trackers" type="trackers_type" minOccurs="0"/>
+		<xs:element name="process_attr_trackers" type="process_attr_tracker_type" minOccurs="0"/>
 	</xs:all>
 </xs:complexType>
 

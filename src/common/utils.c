@@ -7,6 +7,7 @@
  *
  */
 
+#include "common/macros.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -49,6 +50,9 @@
 #else
 #error MAX_NAME_LEN_SCANF_IS_A_BROKEN_API must be updated to match (PROC_MEMINFO_FIELD_MAX_NAME_LEN - 1)
 #endif
+
+#define FALLBACK_USER_BUFLEN 16384
+#define FALLBACK_GROUP_BUFLEN 16384
 
 /*
  * Return a partial realpath(3) of the path even if the full path does not
@@ -1527,4 +1531,135 @@ int utils_change_working_directory(const char *path)
 
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code utils_user_id_from_name(const char *user_name, uid_t *uid)
+{
+	struct passwd p, *pres;
+	int ret;
+	enum lttng_error_code ret_val = LTTNG_OK;
+	char *buf = NULL;
+	ssize_t buflen;
+
+	buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (buflen < 0) {
+		buflen = FALLBACK_USER_BUFLEN;
+	}
+
+	buf = zmalloc(buflen);
+	if (!buf) {
+		ret_val = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	for (;;) {
+		ret = getpwnam_r(user_name, &p, buf, buflen, &pres);
+		switch (ret) {
+		case EINTR:
+			continue;
+		case ERANGE:
+			buflen *= 2;
+			free(buf);
+			buf = zmalloc(buflen);
+			if (!buf) {
+				ret_val = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+			continue;
+		default:
+			goto end_loop;
+		}
+	}
+end_loop:
+
+	switch (ret) {
+	case 0:
+		if (pres == NULL) {
+			ret_val = LTTNG_ERR_USER_NOT_FOUND;
+		} else {
+			*uid = p.pw_uid;
+			DBG("Lookup of tracker UID/VUID: name '%s' maps to uid %" PRId64,
+					user_name, (int64_t) *uid);
+			ret_val = LTTNG_OK;
+		}
+		break;
+	case ENOENT:
+	case ESRCH:
+	case EBADF:
+	case EPERM:
+		ret_val = LTTNG_ERR_USER_NOT_FOUND;
+		break;
+	default:
+		ret_val = LTTNG_ERR_NOMEM;
+	}
+end:
+	free(buf);
+	return ret_val;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code utils_group_id_from_name(
+		const char *group_name, gid_t *gid)
+{
+	struct group g, *gres;
+	int ret;
+	enum lttng_error_code ret_val = LTTNG_OK;
+	char *buf = NULL;
+	ssize_t buflen;
+
+	buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (buflen < 0) {
+		buflen = FALLBACK_GROUP_BUFLEN;
+	}
+
+	buf = zmalloc(buflen);
+	if (!buf) {
+		ret_val = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	for (;;) {
+		ret = getgrnam_r(group_name, &g, buf, buflen, &gres);
+		switch (ret) {
+		case EINTR:
+			continue;
+		case ERANGE:
+			buflen *= 2;
+			free(buf);
+			buf = zmalloc(buflen);
+			if (!buf) {
+				ret_val = LTTNG_ERR_NOMEM;
+				goto end;
+			}
+			continue;
+		default:
+			goto end_loop;
+		}
+	}
+end_loop:
+
+	switch (ret) {
+	case 0:
+		if (gres == NULL) {
+			ret_val = LTTNG_ERR_GROUP_NOT_FOUND;
+		} else {
+			*gid = g.gr_gid;
+			DBG("Lookup of tracker GID/GUID: name '%s' maps to gid %" PRId64,
+					group_name, (int64_t) *gid);
+			ret_val = LTTNG_OK;
+		}
+		break;
+	case ENOENT:
+	case ESRCH:
+	case EBADF:
+	case EPERM:
+		ret_val = LTTNG_ERR_GROUP_NOT_FOUND;
+		break;
+	default:
+		ret_val = LTTNG_ERR_NOMEM;
+	}
+end:
+	free(buf);
+	return ret_val;
 }

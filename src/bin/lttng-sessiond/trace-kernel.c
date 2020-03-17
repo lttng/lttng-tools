@@ -154,28 +154,28 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 	lks->metadata = NULL;
 	CDS_INIT_LIST_HEAD(&lks->channel_list.head);
 
-	lks->tracker_list_pid = lttng_tracker_list_create();
-	if (!lks->tracker_list_pid) {
+	lks->tracker_pid = process_attr_tracker_create();
+	if (!lks->tracker_pid) {
 		goto error;
 	}
-	lks->tracker_list_vpid = lttng_tracker_list_create();
-	if (!lks->tracker_list_vpid) {
+	lks->tracker_vpid = process_attr_tracker_create();
+	if (!lks->tracker_vpid) {
 		goto error;
 	}
-	lks->tracker_list_uid = lttng_tracker_list_create();
-	if (!lks->tracker_list_uid) {
+	lks->tracker_uid = process_attr_tracker_create();
+	if (!lks->tracker_uid) {
 		goto error;
 	}
-	lks->tracker_list_vuid = lttng_tracker_list_create();
-	if (!lks->tracker_list_vuid) {
+	lks->tracker_vuid = process_attr_tracker_create();
+	if (!lks->tracker_vuid) {
 		goto error;
 	}
-	lks->tracker_list_gid = lttng_tracker_list_create();
-	if (!lks->tracker_list_gid) {
+	lks->tracker_gid = process_attr_tracker_create();
+	if (!lks->tracker_gid) {
 		goto error;
 	}
-	lks->tracker_list_vgid = lttng_tracker_list_create();
-	if (!lks->tracker_list_vgid) {
+	lks->tracker_vgid = process_attr_tracker_create();
+	if (!lks->tracker_vgid) {
 		goto error;
 	}
 	lks->consumer = consumer_create_output(CONSUMER_DST_LOCAL);
@@ -186,12 +186,12 @@ struct ltt_kernel_session *trace_kernel_create_session(void)
 	return lks;
 
 error:
-	lttng_tracker_list_destroy(lks->tracker_list_pid);
-	lttng_tracker_list_destroy(lks->tracker_list_vpid);
-	lttng_tracker_list_destroy(lks->tracker_list_uid);
-	lttng_tracker_list_destroy(lks->tracker_list_vuid);
-	lttng_tracker_list_destroy(lks->tracker_list_gid);
-	lttng_tracker_list_destroy(lks->tracker_list_vgid);
+	process_attr_tracker_destroy(lks->tracker_pid);
+	process_attr_tracker_destroy(lks->tracker_vpid);
+	process_attr_tracker_destroy(lks->tracker_uid);
+	process_attr_tracker_destroy(lks->tracker_vuid);
+	process_attr_tracker_destroy(lks->tracker_gid);
+	process_attr_tracker_destroy(lks->tracker_vgid);
 	free(lks);
 
 alloc_error:
@@ -738,12 +738,12 @@ void trace_kernel_free_session(struct ltt_kernel_session *session)
 	/* Wipe consumer output object */
 	consumer_output_put(session->consumer);
 
-	lttng_tracker_list_destroy(session->tracker_list_pid);
-	lttng_tracker_list_destroy(session->tracker_list_vpid);
-	lttng_tracker_list_destroy(session->tracker_list_uid);
-	lttng_tracker_list_destroy(session->tracker_list_vuid);
-	lttng_tracker_list_destroy(session->tracker_list_gid);
-	lttng_tracker_list_destroy(session->tracker_list_vgid);
+	process_attr_tracker_destroy(session->tracker_pid);
+	process_attr_tracker_destroy(session->tracker_vpid);
+	process_attr_tracker_destroy(session->tracker_uid);
+	process_attr_tracker_destroy(session->tracker_vuid);
+	process_attr_tracker_destroy(session->tracker_gid);
+	process_attr_tracker_destroy(session->tracker_vgid);
 
 	free(session);
 }

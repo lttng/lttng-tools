@@ -1820,50 +1820,47 @@ const char *get_config_domain_str(enum lttng_domain_type domain)
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_id_tracker(struct config_writer *writer,
+static int save_process_attr_tracker(struct config_writer *writer,
 		struct ltt_session *sess,
 		int domain,
-		enum lttng_tracker_type tracker_type)
+		enum lttng_process_attr process_attr)
 {
 	int ret = LTTNG_OK;
-	unsigned int nr_ids, i;
-	struct lttng_tracker_ids *ids = NULL;
 	const char *element_id_tracker, *element_target_id, *element_id;
-	const struct lttng_tracker_id *id;
-	enum lttng_tracker_id_status status;
-	int value;
-	const char *string;
+	const struct process_attr_tracker *tracker;
+	enum lttng_tracking_policy tracking_policy;
+	struct lttng_process_attr_values *values = NULL;
 
-	switch (tracker_type) {
-	case LTTNG_TRACKER_PID:
-		element_id_tracker = config_element_pid_tracker;
-		element_target_id = config_element_target_pid;
-		element_id = config_element_pid;
+	switch (process_attr) {
+	case LTTNG_PROCESS_ATTR_PROCESS_ID:
+		element_id_tracker = config_element_process_attr_tracker_pid;
+		element_target_id = config_element_process_attr_pid_value;
+		element_id = config_element_process_attr_id;
 		break;
-	case LTTNG_TRACKER_VPID:
-		element_id_tracker = config_element_vpid_tracker;
-		element_target_id = config_element_target_vpid;
-		element_id = config_element_id;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+		element_id_tracker = config_element_process_attr_tracker_vpid;
+		element_target_id = config_element_process_attr_vpid_value;
+		element_id = config_element_process_attr_id;
 		break;
-	case LTTNG_TRACKER_UID:
-		element_id_tracker = config_element_uid_tracker;
-		element_target_id = config_element_target_uid;
-		element_id = config_element_id;
+	case LTTNG_PROCESS_ATTR_USER_ID:
+		element_id_tracker = config_element_process_attr_tracker_uid;
+		element_target_id = config_element_process_attr_uid_value;
+		element_id = config_element_process_attr_id;
 		break;
-	case LTTNG_TRACKER_VUID:
-		element_id_tracker = config_element_vuid_tracker;
-		element_target_id = config_element_target_vuid;
-		element_id = config_element_id;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID:
+		element_id_tracker = config_element_process_attr_tracker_vuid;
+		element_target_id = config_element_process_attr_vuid_value;
+		element_id = config_element_process_attr_id;
 		break;
-	case LTTNG_TRACKER_GID:
-		element_id_tracker = config_element_gid_tracker;
-		element_target_id = config_element_target_gid;
-		element_id = config_element_id;
+	case LTTNG_PROCESS_ATTR_GROUP_ID:
+		element_id_tracker = config_element_process_attr_tracker_gid;
+		element_target_id = config_element_process_attr_gid_value;
+		element_id = config_element_process_attr_id;
 		break;
-	case LTTNG_TRACKER_VGID:
-		element_id_tracker = config_element_vgid_tracker;
-		element_target_id = config_element_target_vgid;
-		element_id = config_element_id;
+	case LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID:
+		element_id_tracker = config_element_process_attr_tracker_vgid;
+		element_target_id = config_element_process_attr_vgid_value;
+		element_id = config_element_process_attr_id;
 		break;
 	default:
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -1873,45 +1870,31 @@ static int save_id_tracker(struct config_writer *writer,
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
 	{
-		ret = kernel_list_tracker_ids(
-				tracker_type, sess->kernel_session, &ids);
-		if (ret != LTTNG_OK) {
-			ret = LTTNG_ERR_KERN_LIST_FAIL;
-			goto end;
-		}
+		tracker = kernel_get_process_attr_tracker(
+				sess->kernel_session, process_attr);
+		assert(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_UST:
 	{
-		ret = trace_ust_list_tracker_ids(
-				tracker_type, sess->ust_session, &ids);
-		if (ret != LTTNG_OK) {
-			ret = LTTNG_ERR_UST_LIST_FAIL;
-			goto end;
-		}
+		tracker = trace_ust_get_process_attr_tracker(
+				sess->ust_session, process_attr);
+		assert(tracker);
 		break;
 	}
 	case LTTNG_DOMAIN_JUL:
 	case LTTNG_DOMAIN_LOG4J:
 	case LTTNG_DOMAIN_PYTHON:
 	default:
-		ret = LTTNG_ERR_UNKNOWN_DOMAIN;
+		ret = LTTNG_ERR_UNSUPPORTED_DOMAIN;
 		goto end;
 	}
 
-	status = lttng_tracker_ids_get_count(ids, &nr_ids);
-	if (status != LTTNG_TRACKER_ID_STATUS_OK) {
-		ret = LTTNG_ERR_INVALID;
+	tracking_policy = process_attr_tracker_get_tracking_policy(tracker);
+	if (tracking_policy == LTTNG_TRACKING_POLICY_INCLUDE_ALL) {
+		/* Tracking all, nothing to output. */
+		ret = LTTNG_OK;
 		goto end;
-	}
-
-	if (nr_ids == 1) {
-		id = lttng_tracker_ids_get_at_index(ids, 0);
-		if (id && lttng_tracker_id_get_type(id) == LTTNG_ID_ALL) {
-			/* Tracking all, nothing to output. */
-			ret = LTTNG_OK;
-			goto end;
-		}
 	}
 
 	ret = config_writer_open_element(writer, element_id_tracker);
@@ -1920,14 +1903,15 @@ static int save_id_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	ret = config_writer_open_element(writer, config_element_targets);
+	ret = config_writer_open_element(
+			writer, config_element_process_attr_values);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
 		goto end;
 	}
 
-	if (nr_ids == 0) {
-		/* Tracking none: empty list. */
+	if (tracking_policy == LTTNG_TRACKING_POLICY_EXCLUDE_ALL) {
+		/* Tracking nothing; empty list. */
 		ret = config_writer_open_element(writer, element_target_id);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -1941,47 +1925,68 @@ static int save_id_tracker(struct config_writer *writer,
 			goto end;
 		}
 	} else {
-		/* Tracking list. */
-		for (i = 0; i < nr_ids; i++) {
-			id = lttng_tracker_ids_get_at_index(ids, i);
-			if (!id) {
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
-			switch (lttng_tracker_id_get_type(id)) {
-			case LTTNG_ID_VALUE:
-				ret = config_writer_open_element(
-						writer, element_target_id);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-				status = lttng_tracker_id_get_value(id, &value);
-				ret = config_writer_write_element_unsigned_int(
-						writer, element_id, value);
-				break;
-			case LTTNG_ID_STRING:
-				ret = config_writer_open_element(
-						writer, element_target_id);
-				if (ret) {
-					ret = LTTNG_ERR_SAVE_IO_FAIL;
-					goto end;
-				}
-				status = lttng_tracker_id_get_string(
-						id, &string);
-				ret = config_writer_write_element_string(writer,
-						config_element_name, string);
-				break;
-			default:
-				/* Unexpected. */
-				ret = LTTNG_ERR_SAVE_IO_FAIL;
-				goto end;
-			}
+		unsigned int i, count;
+		enum process_attr_tracker_status status =
+				process_attr_tracker_get_inclusion_set(
+						tracker, &values);
+
+		if (status != PROCESS_ATTR_TRACKER_STATUS_OK) {
+			ret = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		count = _lttng_process_attr_values_get_count(values);
+
+		for (i = 0; i < count; i++) {
+			unsigned int integral_value = UINT_MAX;
+			const char *name = NULL;
+			const struct process_attr_value *value =
+					lttng_process_attr_tracker_values_get_at_index(
+							values, i);
+
+			assert(value);
+			ret = config_writer_open_element(
+					writer, element_target_id);
 			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
-			if (status != LTTNG_TRACKER_ID_STATUS_OK) {
+
+			switch (value->type) {
+			case LTTNG_PROCESS_ATTR_VALUE_TYPE_PID:
+				integral_value =
+						(unsigned int) value->value.pid;
+				break;
+			case LTTNG_PROCESS_ATTR_VALUE_TYPE_UID:
+				integral_value =
+						(unsigned int) value->value.uid;
+				break;
+			case LTTNG_PROCESS_ATTR_VALUE_TYPE_GID:
+				integral_value =
+						(unsigned int) value->value.gid;
+				break;
+			case LTTNG_PROCESS_ATTR_VALUE_TYPE_USER_NAME:
+				name = value->value.user_name;
+				assert(name);
+				break;
+			case LTTNG_PROCESS_ATTR_VALUE_TYPE_GROUP_NAME:
+				name = value->value.group_name;
+				assert(name);
+				break;
+			default:
+				abort();
+			}
+
+			if (name) {
+				ret = config_writer_write_element_string(writer,
+						config_element_name, name);
+			} else {
+				ret = config_writer_write_element_unsigned_int(
+						writer, element_id,
+						integral_value);
+			}
+
+			if (ret) {
 				ret = LTTNG_ERR_SAVE_IO_FAIL;
 				goto end;
 			}
@@ -2011,12 +2016,12 @@ static int save_id_tracker(struct config_writer *writer,
 
 	ret = LTTNG_OK;
 end:
-	lttng_tracker_ids_destroy(ids);
+	lttng_process_attr_values_destroy(values);
 	return ret;
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
-static int save_id_trackers(struct config_writer *writer,
+static int save_process_attr_trackers(struct config_writer *writer,
 		struct ltt_session *sess,
 		int domain)
 {
@@ -2024,40 +2029,60 @@ static int save_id_trackers(struct config_writer *writer,
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_PID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VPID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_UID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VUID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_GID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VGID);
-		if (ret != LTTNG_OK)
-			return ret;
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_PROCESS_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_USER_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_GROUP_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
 		break;
 	case LTTNG_DOMAIN_UST:
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VPID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VUID);
-		if (ret != LTTNG_OK)
-			return ret;
-		ret = save_id_tracker(writer, sess, domain, LTTNG_TRACKER_VGID);
-		if (ret != LTTNG_OK)
-			return ret;
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_USER_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+		ret = save_process_attr_tracker(writer, sess, domain,
+				LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
 		break;
 	default:
-		return LTTNG_ERR_INVALID;
+		ret = LTTNG_ERR_INVALID;
 	}
-	return LTTNG_OK;
+	ret = LTTNG_OK;
+end:
+	return ret;
 }
 
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
@@ -2138,14 +2163,15 @@ int save_ust_domain(struct config_writer *writer,
 	}
 
 	if (domain == LTTNG_DOMAIN_UST) {
-		ret = config_writer_open_element(writer,
-				config_element_trackers);
+		ret = config_writer_open_element(
+				writer, config_element_process_attr_trackers);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = save_id_trackers(writer, session, LTTNG_DOMAIN_UST);
+		ret = save_process_attr_trackers(
+				writer, session, LTTNG_DOMAIN_UST);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
@@ -2202,14 +2228,15 @@ int save_domains(struct config_writer *writer, struct ltt_session *session)
 			goto end;
 		}
 
-		ret = config_writer_open_element(writer,
-			config_element_trackers);
+		ret = config_writer_open_element(
+				writer, config_element_process_attr_trackers);
 		if (ret) {
 			ret = LTTNG_ERR_SAVE_IO_FAIL;
 			goto end;
 		}
 
-		ret = save_id_trackers(writer, session, LTTNG_DOMAIN_KERNEL);
+		ret = save_process_attr_trackers(
+				writer, session, LTTNG_DOMAIN_KERNEL);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
