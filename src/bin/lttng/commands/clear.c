@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+ * Copyright (C) 2019 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
  *
  * SPDX-License-Identifier: GPL-2.0-only
  *

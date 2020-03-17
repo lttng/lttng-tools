@@ -27,7 +27,7 @@
 #
 # LICENSE
 #
-#   Copyright (c) 2015 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#   Copyright (c) 2015 Jonathan Rajotte <jonathan.rajotte-julien@efficios.com>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice
