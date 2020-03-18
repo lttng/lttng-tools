@@ -31,6 +31,29 @@ enum ir_data_type {
 	IR_DATA_EXPRESSION,
 };
 
+static inline
+const char *ir_data_type_str(enum ir_data_type type)
+{
+	switch (type) {
+	case IR_DATA_UNKNOWN:
+		return "IR_DATA_UNKNOWN";
+	case IR_DATA_STRING:
+		return "IR_DATA_STRING";
+	case IR_DATA_NUMERIC:
+		return "IR_DATA_NUMERIC";
+	case IR_DATA_FLOAT:
+		return "IR_DATA_FLOAT";
+	case IR_DATA_FIELD_REF:
+		return "IR_DATA_FIELD_REF";
+	case IR_DATA_GET_CONTEXT_REF:
+		return "IR_DATA_GET_CONTEXT_REF";
+	case IR_DATA_EXPRESSION:
+		return "IR_DATA_EXPRESSION";
+	default:
+		abort();
+	}
+}
+
 enum ir_op_type {
 	IR_OP_UNKNOWN = 0,
 	IR_OP_ROOT,
@@ -39,6 +62,27 @@ enum ir_op_type {
 	IR_OP_BINARY,
 	IR_OP_LOGICAL,
 };
+
+static inline
+const char *ir_op_type_str(enum ir_op_type type)
+{
+	switch (type) {
+	case IR_OP_UNKNOWN:
+		return "IR_OP_UNKNOWN";
+	case IR_OP_ROOT:
+		return "IR_OP_ROOT";
+	case IR_OP_LOAD:
+		return "IR_OP_LOAD";
+	case IR_OP_UNARY:
+		return "IR_OP_UNARY";
+	case IR_OP_BINARY:
+		return "IR_OP_BINARY";
+	case IR_OP_LOGICAL:
+		return "IR_OP_LOGICAL";
+	default:
+		abort();
+	}
+}
 
 /* left or right child */
 enum ir_side {
@@ -70,6 +114,27 @@ enum ir_load_expression_type {
 	IR_LOAD_EXPRESSION_GET_INDEX,
 	IR_LOAD_EXPRESSION_LOAD_FIELD,
 };
+
+static inline
+const char *ir_load_expression_type_str(enum ir_load_expression_type type)
+{
+	switch (type) {
+	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
+		return "IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT";
+	case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
+		return "IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT";
+	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
+		return "IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT";
+	case IR_LOAD_EXPRESSION_GET_SYMBOL:
+		return "IR_LOAD_EXPRESSION_GET_SYMBOL";
+	case IR_LOAD_EXPRESSION_GET_INDEX:
+		return "IR_LOAD_EXPRESSION_GET_INDEX";
+	case IR_LOAD_EXPRESSION_LOAD_FIELD:
+		return "IR_LOAD_EXPRESSION_LOAD_FIELD";
+	default:
+		abort();
+	}
+}
 
 struct ir_load_expression_op {
 	struct ir_load_expression_op *next;

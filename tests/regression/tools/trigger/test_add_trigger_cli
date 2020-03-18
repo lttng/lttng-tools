@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 174
+plan_tests 222
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -158,6 +158,34 @@ test_success "--action notify" \
 	--condition on-event some-event-notify -u \
 	--action notify
 
+test_success "--action notify --capture foo" \
+	--condition on-event some-event-notify-foo -u \
+	--capture foo --action notify
+
+test_success "--action notify --capture foo[2]" \
+	--condition on-event some-event-notify-foo2 -u \
+	--capture 'foo[2]' --action notify
+
+test_success '--action notify --capture $ctx.foo' \
+	--condition on-event some-event-notify-ctx-foo -u \
+	--capture '$ctx.foo' --action notify
+
+test_success '--action notify --capture $ctx.foo[2]' \
+	--condition on-event some-event-notify-ctx-foo2 -u \
+	--capture '$ctx.foo[2]' --action notify
+
+test_success '--action notify --capture $app.prov:type' \
+	--condition on-event some-event-notify-app-prov-type -u \
+	--capture '$app.prov:type' --action notify
+
+test_success '--action notify --capture $app.prov:type[2]' \
+	--condition on-event some-event-notify-app-prov-type-2 -u \
+	--capture '$app.prov:type[2]' --action notify
+
+test_success '--action notify multiple captures' \
+	--condition on-event some-event-notify-multiple-captures -u \
+	--capture foo --capture '$app.hello:world' --action notify
+
 # `--action start-session` successes
 test_success "--action start-session" \
 	--condition on-event some-event-start-session -u \
@@ -272,6 +300,51 @@ test_failure "--condition on-event: extra argument with --syscall" \
 test_failure "--condition on-event: both -a and a tracepoint name with --syscall" \
 	"Error: Can't provide a tracepoint name with -a/--all." \
 	--condition on-event -k --syscall -a open
+
+test_failure "--condition on-event --capture: missing argument (end of arg list)" \
+	'Error: While parsing argument #3 (`--capture`): Missing required argument for option `--capture`' \
+	--action notify \
+	--condition on-event -u -a --capture
+
+test_failure "--condition on-event --capture: missing argument (before another option)" \
+	'Error: While parsing expression `--action`: Unary operators are not allowed in capture expressions.' \
+	--condition on-event -u -a --capture \
+	--action notify \
+
+test_failure "--condition on-event --capture: binary operator" \
+	'Error: While parsing expression `foo == 2`: Binary operators are not allowed in capture expressions.' \
+	--condition on-event -u -a \
+	--capture 'foo == 2' --action notify
+
+test_failure "--condition on-event --capture: unary operator" \
+	'Error: While parsing expression `!foo`: Unary operators are not allowed in capture expressions.' \
+	--condition on-event -u -a \
+	--capture '!foo' --action notify
+
+test_failure "--condition on-event --capture: logical operator" \
+	'Error: While parsing expression `foo || bar`: Logical operators are not allowed in capture expressions.' \
+	--condition on-event -u -a \
+	--capture 'foo || bar' --action notify
+
+test_failure "--condition on-event --capture: accessing a sub-field" \
+	'Error: While parsing expression `foo.bar`: Capturing subfields is not supported.' \
+	--condition on-event -u -a \
+	--capture 'foo.bar' --action notify
+
+test_failure "--condition on-event --capture: accessing the sub-field of an array element" \
+	'Error: While parsing expression `foo[3].bar`: Capturing subfields is not supported.' \
+	--condition on-event -u -a \
+	--capture 'foo[3].bar' --action notify
+
+test_failure "--condition on-event --capture: missing colon in app-specific context field" \
+	'Error: Invalid app-specific context field name: missing colon in `foo`.' \
+	--condition on-event -u -a \
+	--capture '$app.foo' --action notify
+
+test_failure "--condition on-event --capture: missing colon in app-specific context field" \
+	'Error: Invalid app-specific context field name: missing type name after colon in `foo:`.' \
+	--condition on-event -u -a \
+	--capture '$app.foo:' --action notify
 
 # `--action` failures
 test_failure "missing args after --action" \

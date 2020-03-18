@@ -19,6 +19,9 @@
 /* For lttng_event_rule_type_str(). */
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/lttng.h>
+#include "common/filter/filter-ast.h"
+#include "common/filter/filter-ir.h"
+#include "common/dynamic-array.h"
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"
@@ -65,6 +68,8 @@ enum {
 	OPT_CTRL_URL,
 	OPT_URL,
 	OPT_PATH,
+
+	OPT_CAPTURE,
 };
 
 static const struct argpar_opt_descr event_rule_opt_descrs[] = {
@@ -87,6 +92,9 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_USERSPACE_PROBE, '\0', "userspace-probe", true },
 	{ OPT_SYSCALL, '\0', "syscall" },
 	{ OPT_TRACEPOINT, '\0', "tracepoint" },
+
+	/* Capture descriptor */
+	{ OPT_CAPTURE, '\0', "capture", true },
 
 	ARGPAR_OPT_DESCR_SENTINEL
 };
@@ -291,9 +299,233 @@ end:
 	return ret;
 }
 
-static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
+static
+struct lttng_event_expr *ir_op_load_expr_to_event_expr(
+		const struct ir_load_expression *load_exp, const char *capture_str)
 {
-	struct lttng_event_rule *er = NULL;
+	char *provider_name = NULL;
+	struct lttng_event_expr *event_expr = NULL;
+	const struct ir_load_expression_op *load_expr_op = load_exp->child;
+
+	switch (load_expr_op->type) {
+	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
+	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
+	{
+		const char *field_name;
+
+		load_expr_op = load_expr_op->next;
+		assert(load_expr_op);
+		assert(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
+		field_name = load_expr_op->u.symbol;
+		assert(field_name);
+
+		event_expr = load_expr_op->type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
+				lttng_event_expr_event_payload_field_create(field_name) :
+				lttng_event_expr_channel_context_field_create(field_name);
+		if (!event_expr) {
+			ERR("Failed to create %s event expression: field name = `%s`.",
+					load_expr_op->type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
+							"payload field" : "channel context",
+							field_name);
+			goto error;
+		}
+
+		break;
+	}
+	case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
+	{
+		const char *colon;
+		const char *type_name;
+		const char *field_name;
+
+		load_expr_op = load_expr_op->next;
+		assert(load_expr_op);
+		assert(load_expr_op->type == IR_LOAD_EXPRESSION_GET_SYMBOL);
+		field_name = load_expr_op->u.symbol;
+		assert(field_name);
+
+		/*
+		 * The field name needs to be of the form PROVIDER:TYPE. We
+		 * split it here.
+		 */
+		colon = strchr(field_name, ':');
+		if (!colon) {
+			ERR("Invalid app-specific context field name: missing colon in `%s`.",
+					field_name);
+			goto error;
+		}
+
+		type_name = colon + 1;
+		if (*type_name == '\0') {
+			ERR("Invalid app-specific context field name: missing type name after colon in `%s`.",
+					field_name);
+			goto error;
+		}
+
+		provider_name = strndup(field_name, colon - field_name);
+		if (!provider_name) {
+			PERROR("Failed to allocate field name string");
+			goto error;
+		}
+
+		event_expr = lttng_event_expr_app_specific_context_field_create(
+				provider_name, type_name);
+		if (!event_expr) {
+			ERR("Failed to create app-specific context field event expression: provider name = `%s`, type name = `%s`",
+					provider_name, type_name);
+			goto error;
+		}
+
+		break;
+	}
+	default:
+		ERR("%s: unexpected load expr type %d.", __func__,
+				load_expr_op->type);
+		abort();
+	}
+
+	load_expr_op = load_expr_op->next;
+
+	/* There may be a single array index after that. */
+	if (load_expr_op->type == IR_LOAD_EXPRESSION_GET_INDEX) {
+		struct lttng_event_expr *index_event_expr;
+		const uint64_t index = load_expr_op->u.index;
+
+		index_event_expr = lttng_event_expr_array_field_element_create(event_expr, index);
+		if (!index_event_expr) {
+			ERR("Failed to create array field element event expression.");
+			goto error;
+		}
+
+		event_expr = index_event_expr;
+		load_expr_op = load_expr_op->next;
+	}
+
+	switch (load_expr_op->type) {
+	case IR_LOAD_EXPRESSION_LOAD_FIELD:
+		/*
+		 * This is what we expect, IR_LOAD_EXPRESSION_LOAD_FIELD is
+		 * always found at the end of the chain.
+		 */
+		break;
+	case IR_LOAD_EXPRESSION_GET_SYMBOL:
+		ERR("While parsing expression `%s`: Capturing subfields is not supported.",
+				capture_str);
+		goto error;
+
+	default:
+		ERR("%s: unexpected load expression operator %s.", __func__,
+				ir_load_expression_type_str(load_expr_op->type));
+		abort();
+	}
+
+	goto end;
+
+error:
+	lttng_event_expr_destroy(event_expr);
+	event_expr = NULL;
+
+end:
+	free(provider_name);
+
+	return event_expr;
+}
+
+static
+struct lttng_event_expr *ir_op_load_to_event_expr(
+		const struct ir_op *ir, const char *capture_str)
+{
+	struct lttng_event_expr *event_expr = NULL;
+
+	assert(ir->op == IR_OP_LOAD);
+
+	switch (ir->data_type) {
+	case IR_DATA_EXPRESSION:
+	{
+		const struct ir_load_expression *ir_load_expr =
+				ir->u.load.u.expression;
+
+		event_expr = ir_op_load_expr_to_event_expr(
+				ir_load_expr, capture_str);
+		break;
+	}
+	default:
+		ERR("%s: unexpected data type: %s.", __func__,
+				ir_data_type_str(ir->data_type));
+		abort();
+	}
+
+	return event_expr;
+}
+
+static
+const char *ir_operator_type_human_str(enum ir_op_type op)
+{
+	const char *name;
+
+	switch (op) {
+	case IR_OP_BINARY:
+		name = "Binary";
+		break;
+	case IR_OP_UNARY:
+		name = "Unary";
+		break;
+	case IR_OP_LOGICAL:
+		name = "Logical";
+		break;
+	default:
+		abort();
+	}
+
+	return name;
+}
+
+static
+struct lttng_event_expr *ir_op_root_to_event_expr(const struct ir_op *ir,
+		const char *capture_str)
+{
+	struct lttng_event_expr *event_expr = NULL;
+
+	assert(ir->op == IR_OP_ROOT);
+	ir = ir->u.root.child;
+
+	switch (ir->op) {
+	case IR_OP_LOAD:
+		event_expr = ir_op_load_to_event_expr(ir, capture_str);
+		break;
+	case IR_OP_BINARY:
+	case IR_OP_UNARY:
+	case IR_OP_LOGICAL:
+		ERR("While parsing expression `%s`: %s operators are not allowed in capture expressions.",
+				capture_str,
+				ir_operator_type_human_str(ir->op));
+		break;
+	default:
+		ERR("%s: unexpected IR op type: %s.", __func__,
+				ir_op_type_str(ir->op));
+		abort();
+	}
+
+	return event_expr;
+}
+
+static
+void destroy_event_expr(void *ptr)
+{
+	lttng_event_expr_destroy(ptr);
+}
+
+struct parse_event_rule_res {
+	/* Owned by this. */
+	struct lttng_event_rule *er;
+
+	/* Array of `struct lttng_event_expr *` */
+	struct lttng_dynamic_pointer_array capture_descriptors;
+};
+
+static
+struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
+{
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 	enum lttng_event_rule_type event_rule_type =
 			LTTNG_EVENT_RULE_TYPE_UNKNOWN;
@@ -303,6 +535,9 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 	int consumed_args = -1;
 	struct lttng_kernel_probe_location *kernel_probe_location = NULL;
 	struct lttng_userspace_probe_location *userspace_probe_location = NULL;
+	struct parse_event_rule_res res = { 0 };
+	struct lttng_event_expr *event_expr = NULL;
+	struct filter_parser_ctx *parser_ctx = NULL;
 
 	/* Was the -a/--all flag provided? */
 	bool all_events = false;
@@ -324,6 +559,8 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 	char *loglevel_str = NULL;
 	bool loglevel_only = false;
 
+	lttng_dynamic_pointer_array_init(&res.capture_descriptors,
+				destroy_event_expr);
 	state = argpar_state_create(*argc, *argv, event_rule_opt_descrs);
 	if (!state) {
 		ERR("Failed to allocate an argpar state.");
@@ -455,6 +692,45 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 				loglevel_only = item_opt->descr->id ==
 						OPT_LOGLEVEL_ONLY;
 				break;
+			case OPT_CAPTURE:
+			{
+				int ret;
+				const char *capture_str = item_opt->arg;
+
+				ret = filter_parser_ctx_create_from_filter_expression(
+						capture_str, &parser_ctx);
+				if (ret) {
+					ERR("Failed to parse capture expression `%s`.",
+							capture_str);
+					goto error;
+				}
+
+				event_expr = ir_op_root_to_event_expr(
+						parser_ctx->ir_root,
+						capture_str);
+				if (!event_expr) {
+					/*
+					 * ir_op_root_to_event_expr has printed
+					 * an error message.
+					 */
+					goto error;
+				}
+
+				ret = lttng_dynamic_pointer_array_add_pointer(
+						&res.capture_descriptors,
+						event_expr);
+				if (ret) {
+					goto error;
+				}
+
+				/*
+				 * The ownership of event expression was
+				 * transferred to the dynamic array.
+				 */
+				event_expr = NULL;
+
+				break;
+			}
 			default:
 				abort();
 			}
@@ -599,15 +875,15 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 	{
 		enum lttng_event_rule_status event_rule_status;
 
-		er = lttng_event_rule_tracepoint_create(domain_type);
-		if (!er) {
+		res.er = lttng_event_rule_tracepoint_create(domain_type);
+		if (!res.er) {
 			ERR("Failed to create tracepoint event rule.");
 			goto error;
 		}
 
 		/* Set pattern. */
 		event_rule_status = lttng_event_rule_tracepoint_set_pattern(
-				er, tracepoint_name);
+				res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set tracepoint event rule's pattern to '%s'.",
 					tracepoint_name);
@@ -617,7 +893,7 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 		/* Set filter. */
 		if (filter) {
 			event_rule_status = lttng_event_rule_tracepoint_set_filter(
-					er, filter);
+					res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set tracepoint event rule's filter to '%s'.",
 						filter);
@@ -631,7 +907,7 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 
 			for (n = 0; exclusion_list[n]; n++) {
 				event_rule_status = lttng_event_rule_tracepoint_add_exclusion(
-						er,
+						res.er,
 						exclusion_list[n]);
 				if (event_rule_status !=
 						LTTNG_EVENT_RULE_STATUS_OK) {
@@ -660,10 +936,12 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 
 			if (loglevel_only) {
 				event_rule_status = lttng_event_rule_tracepoint_set_log_level(
-						er, loglevel);
+						res.er,
+						loglevel);
 			} else {
 				event_rule_status = lttng_event_rule_tracepoint_set_log_level_range_lower_bound(
-						er, loglevel);
+						res.er,
+						loglevel);
 			}
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
@@ -679,8 +957,8 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-		er = lttng_event_rule_kprobe_create();
-		if (!er) {
+		res.er = lttng_event_rule_kprobe_create();
+		if (!res.er) {
 			ERR("Failed to create kprobe event rule.");
 			goto error;
 		}
@@ -691,14 +969,14 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_kprobe_set_name(er, tracepoint_name);
+		event_rule_status = lttng_event_rule_kprobe_set_name(res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's name to '%s'.", tracepoint_name);
 			goto error;
 		}
 
 		assert(kernel_probe_location);
-		event_rule_status = lttng_event_rule_kprobe_set_location(er, kernel_probe_location);
+		event_rule_status = lttng_event_rule_kprobe_set_location(res.er, kernel_probe_location);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's location.");
 			goto error;
@@ -718,21 +996,21 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		er = lttng_event_rule_uprobe_create();
-		if (!er) {
-			ERR("Failed to create user space probe event rule.");
+		res.er = lttng_event_rule_uprobe_create();
+		if (!res.er) {
+			ERR("Failed to create userspace probe event rule.");
 			goto error;
 		}
 
 		event_rule_status = lttng_event_rule_uprobe_set_location(
-				er, userspace_probe_location);
+				res.er, userspace_probe_location);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's location.");
 			goto error;
 		}
 
 		event_rule_status = lttng_event_rule_uprobe_set_name(
-				er, tracepoint_name);
+				res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
 					tracepoint_name);
@@ -745,14 +1023,14 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 	{
 		enum lttng_event_rule_status event_rule_status;
 
-		er = lttng_event_rule_syscall_create();
-		if (!er) {
+		res.er = lttng_event_rule_syscall_create();
+		if (!res.er) {
 			ERR("Failed to create syscall event rule.");
 			goto error;
 		}
 
 		event_rule_status = lttng_event_rule_syscall_set_pattern(
-				er, tracepoint_name);
+				res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set syscall event rule's pattern to '%s'.",
 					tracepoint_name);
@@ -761,7 +1039,7 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 
 		if (filter) {
 			event_rule_status = lttng_event_rule_syscall_set_filter(
-					er, filter);
+					res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set syscall event rule's filter to '%s'.",
 						filter);
@@ -779,10 +1057,16 @@ static struct lttng_event_rule *parse_event_rule(int *argc, const char ***argv)
 	goto end;
 
 error:
-	lttng_event_rule_destroy(er);
-	er = NULL;
+	lttng_event_rule_destroy(res.er);
+	res.er = NULL;
+	lttng_dynamic_pointer_array_reset(&res.capture_descriptors);
 
 end:
+	if (parser_ctx) {
+		filter_parser_ctx_free(parser_ctx);
+	}
+
+	lttng_event_expr_destroy(event_expr);
 	argpar_item_destroy(item);
 	free(error);
 	argpar_state_destroy(state);
@@ -793,28 +1077,57 @@ end:
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);
 	lttng_userspace_probe_location_destroy(userspace_probe_location);
-	return er;
+	return res;
 }
 
 static
 struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
 {
-	struct lttng_event_rule *er;
+	struct parse_event_rule_res res;
 	struct lttng_condition *c;
+	size_t i;
 
-	er = parse_event_rule(argc, argv);
-	if (!er) {
+	res = parse_event_rule(argc, argv);
+	if (!res.er) {
 		c = NULL;
-		goto end;
+		goto error;
 	}
 
-	c = lttng_condition_event_rule_create(er);
-	lttng_event_rule_destroy(er);
+	c = lttng_condition_event_rule_create(res.er);
+	lttng_event_rule_destroy(res.er);
+	res.er = NULL;
 	if (!c) {
-		goto end;
+		goto error;
 	}
+
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&res.capture_descriptors);
+			i++) {
+		enum lttng_condition_status status;
+		struct lttng_event_expr **expr =
+				lttng_dynamic_array_get_element(
+					&res.capture_descriptors.array, i);
+
+		assert(expr);
+		assert(*expr);
+		status = lttng_condition_event_rule_append_capture_descriptor(
+				c, *expr);
+		if (status != LTTNG_CONDITION_STATUS_OK) {
+			goto error;
+		}
+
+		/* Ownership of event expression moved to `c` */
+		*expr = NULL;
+	}
+
+	goto end;
+
+error:
+	lttng_condition_destroy(c);
+	c = NULL;
 
 end:
+	lttng_dynamic_pointer_array_reset(&res.capture_descriptors);
+	lttng_event_rule_destroy(res.er);
 	return c;
 }
 
