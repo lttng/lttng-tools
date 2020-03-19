@@ -17,7 +17,7 @@
 
 #include <assert.h>
 
-#define MI_SCHEMA_MAJOR_VERSION 3
+#define MI_SCHEMA_MAJOR_VERSION 4
 #define MI_SCHEMA_MINOR_VERSION 0
 
 /* Machine interface namespace URI */
