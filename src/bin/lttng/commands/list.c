@@ -2344,22 +2344,22 @@ int cmd_list(int argc, const char **argv)
 			for (i = 0; i < nb_domain; i++) {
 				switch (domains[i].type) {
 				case LTTNG_DOMAIN_KERNEL:
-					MSG("=== Domain: Kernel ===\n");
+					MSG("=== Domain: Linux kernel ===\n");
 					break;
 				case LTTNG_DOMAIN_UST:
-					MSG("=== Domain: UST global ===\n");
+					MSG("=== Domain: User space ===\n");
 					MSG("Buffering scheme: %s\n",
 							domains[i].buf_type ==
 							LTTNG_BUFFER_PER_PID ? "per-process" : "per-user");
 					break;
 				case LTTNG_DOMAIN_JUL:
-					MSG("=== Domain: JUL (Java Util Logging) ===\n");
+					MSG("=== Domain: java.util.logging (JUL) ===\n");
 					break;
 				case LTTNG_DOMAIN_LOG4J:
-					MSG("=== Domain: LOG4j (Logging for Java) ===\n");
+					MSG("=== Domain: log4j ===\n");
 					break;
 				case LTTNG_DOMAIN_PYTHON:
-					MSG("=== Domain: Python (logging) ===\n");
+					MSG("=== Domain: Python logging ===\n");
 					break;
 				default:
 					MSG("=== Domain: Unimplemented ===\n");
