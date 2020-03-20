@@ -2348,9 +2348,9 @@ int cmd_list(int argc, const char **argv)
 					break;
 				case LTTNG_DOMAIN_UST:
 					MSG("=== Domain: UST global ===\n");
-					MSG("Buffer type: %s\n",
+					MSG("Buffering scheme: %s\n",
 							domains[i].buf_type ==
-							LTTNG_BUFFER_PER_PID ? "per PID" : "per UID");
+							LTTNG_BUFFER_PER_PID ? "per-process" : "per-user");
 					break;
 				case LTTNG_DOMAIN_JUL:
 					MSG("=== Domain: JUL (Java Util Logging) ===\n");
