@@ -418,6 +418,25 @@ int kernctl_stop_session(int fd)
 			LTTNG_KERNEL_SESSION_STOP);
 }
 
+int kernctl_create_event_notifier_group(int fd)
+{
+	return LTTNG_IOCTL_NO_CHECK(fd,
+			LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_CREATE);
+}
+
+int kernctl_create_event_notifier_group_notification_fd(int group_fd)
+{
+	return LTTNG_IOCTL_NO_CHECK(group_fd,
+			LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD);
+}
+
+int kernctl_create_event_notifier(int group_fd,
+		const struct lttng_kernel_event_notifier *event_notifier)
+{
+	return LTTNG_IOCTL_NO_CHECK(group_fd,
+			LTTNG_KERNEL_EVENT_NOTIFIER_CREATE, event_notifier);
+}
+
 int kernctl_filter(int fd, struct lttng_filter_bytecode *filter)
 {
 	struct lttng_kernel_filter_bytecode *kb;

@@ -117,6 +117,8 @@
 #define LTTNG_KERNEL_SYSCALL_LIST		_IO(0xF6, 0x4A)
 #define LTTNG_KERNEL_TRACER_ABI_VERSION		\
 	_IOR(0xF6, 0x4B, struct lttng_kernel_tracer_abi_version)
+#define LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_CREATE \
+	_IO(0xF6, 0x4C)
 
 /* Session FD ioctl */
 #define LTTNG_KERNEL_METADATA			\
@@ -154,11 +156,11 @@
 #define LTTNG_KERNEL_CONTEXT			\
 	_IOW(0xF6, 0x71, struct lttng_kernel_context)
 
-/* Event, Channel and Session ioctl */
+/* Event, event notifier, Channel and Session ioctl */
 #define LTTNG_KERNEL_ENABLE			_IO(0xF6, 0x82)
 #define LTTNG_KERNEL_DISABLE			_IO(0xF6, 0x83)
 
-/* Event FD ioctl */
+/* Event and event notifier FD ioctl */
 #define LTTNG_KERNEL_FILTER			_IO(0xF6, 0x90)
 #define LTTNG_KERNEL_ADD_CALLSITE	_IO(0xF6, 0x91)
 
@@ -169,5 +171,11 @@
 	_IOR(0xF6, 0xA1, struct lttng_kernel_tracker_args)
 #define LTTNG_KERNEL_SESSION_UNTRACK_ID		\
 	_IOR(0xF6, 0xA2, struct lttng_kernel_tracker_args)
+
+/* Event notifier group file descriptor ioctl */
+#define LTTNG_KERNEL_EVENT_NOTIFIER_CREATE			\
+	_IOW(0xF6, 0xB0, struct lttng_kernel_event_notifier)
+#define LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD	\
+	_IO(0xF6, 0xB1)
 
 #endif /* _LTT_KERNEL_IOCTL_H */

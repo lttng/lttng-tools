@@ -178,6 +178,18 @@ struct lttng_kernel_event {
 	} u;
 } LTTNG_PACKED;
 
+#define LTTNG_KERNEL_EVENT_NOTIFIER_PADDING	40
+struct lttng_kernel_event_notifier {
+	struct lttng_kernel_event event;
+	char padding[LTTNG_KERNEL_EVENT_NOTIFIER_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING 34
+struct lttng_kernel_event_notifier_notification {
+	uint64_t token;
+	char padding[LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING];
+} LTTNG_PACKED;
+
 struct lttng_kernel_tracer_version {
 	uint32_t major;
 	uint32_t minor;
