@@ -192,4 +192,13 @@ LTTNG_HIDDEN
 enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 		const struct lttng_trigger *trigger);
 
+/*
+ * Generate any bytecode related to the trigger.
+ * On success LTTNG_OK. On error, returns lttng_error code.
+ */
+LTTNG_HIDDEN
+enum lttng_error_code lttng_trigger_generate_bytecode(
+		struct lttng_trigger *trigger,
+		const struct lttng_credentials *creds);
+
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

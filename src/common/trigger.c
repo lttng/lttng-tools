@@ -8,6 +8,7 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/event-rule.h>
+#include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/action/action-internal.h>
@@ -927,4 +928,48 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 	}
 
 	return type;
+}
+
+/*
+ * Generate bytecode related to the trigger.
+ * On success LTTNG_OK. On error, returns lttng_error code.
+ */
+LTTNG_HIDDEN
+enum lttng_error_code lttng_trigger_generate_bytecode(
+		struct lttng_trigger *trigger,
+		const struct lttng_credentials *creds)
+{
+	enum lttng_error_code ret;
+	struct lttng_condition *condition = NULL;
+
+	condition = lttng_trigger_get_condition(trigger);
+	if (!condition) {
+		ret = LTTNG_ERR_INVALID_TRIGGER;
+		goto end;
+	}
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+	{
+		struct lttng_event_rule *event_rule;
+		const enum lttng_condition_status condition_status =
+				lttng_condition_event_rule_borrow_rule_mutable(
+					condition, &event_rule);
+
+		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+		ret = lttng_event_rule_generate_filter_bytecode(
+				event_rule, creds);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+		ret = LTTNG_OK;
+		break;
+	}
+	default:
+		ret = LTTNG_OK;
+		break;
+	}
+end:
+	return ret;
 }

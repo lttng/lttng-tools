@@ -4343,6 +4343,15 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	}
 
 	/*
+	 * The bytecode generation also serves as a validation step for the
+	 * bytecode expressions.
+	 */
+	ret = lttng_trigger_generate_bytecode(trigger, &cmd_creds);
+	if (ret != LTTNG_OK) {
+		goto end;
+	}
+
+	/*
 	 * A reference to the trigger is acquired by the notification thread.
 	 * It is safe to return the same trigger to the caller since it the
 	 * other user holds a reference.

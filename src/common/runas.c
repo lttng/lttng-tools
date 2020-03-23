@@ -1799,8 +1799,7 @@ error:
 
 LTTNG_HIDDEN
 int run_as_generate_filter_bytecode(const char *filter_expression,
-		uid_t uid,
-		gid_t gid,
+		const struct lttng_credentials *creds,
 		struct lttng_filter_bytecode **bytecode)
 {
 	int ret;
@@ -1808,6 +1807,8 @@ int run_as_generate_filter_bytecode(const char *filter_expression,
 	struct run_as_ret run_as_ret = {};
 	const struct lttng_filter_bytecode *view_bytecode = NULL;
 	struct lttng_filter_bytecode *local_bytecode = NULL;
+	const uid_t uid = lttng_credentials_get_uid(creds);
+	const gid_t gid = lttng_credentials_get_gid(creds);
 
 	DBG3("generate_filter_bytecode() from expression=\"%s\" for uid %d and gid %d",
 			filter_expression, (int) uid, (int) gid);

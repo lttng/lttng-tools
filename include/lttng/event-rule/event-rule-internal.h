@@ -9,6 +9,7 @@
 #define LTTNG_EVENT_RULE_INTERNAL_H
 
 #include <common/macros.h>
+#include <common/credentials.h>
 #include <lttng/domain.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/lttng-error.h>
@@ -32,7 +33,8 @@ typedef ssize_t (*event_rule_create_from_payload_cb)(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **event_rule);
 typedef enum lttng_error_code (*event_rule_generate_filter_bytecode_cb)(
-		struct lttng_event_rule *event_rule, uid_t uid, gid_t gid);
+		struct lttng_event_rule *event_rule,
+		const struct lttng_credentials *creds);
 typedef const char *(*event_rule_get_filter_cb)(
 		const struct lttng_event_rule *event_rule);
 typedef const struct lttng_filter_bytecode *(
@@ -92,7 +94,8 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 
 LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
-		struct lttng_event_rule *rule, uid_t uid, gid_t gid);
+		struct lttng_event_rule *rule,
+		const struct lttng_credentials *creds);
 
 /*
  * If not present/implemented returns NULL.

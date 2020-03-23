@@ -72,8 +72,7 @@ int run_as_extract_sdt_probe_offsets(int fd, const char *provider_name,
 		uint64_t **offsets, uint32_t *num_offset);
 LTTNG_HIDDEN
 int run_as_generate_filter_bytecode(const char *filter_expression,
-		uid_t uid,
-		gid_t gid,
+		const struct lttng_credentials *creds,
 		struct lttng_filter_bytecode **bytecode);
 LTTNG_HIDDEN
 int run_as_create_worker(const char *procname,

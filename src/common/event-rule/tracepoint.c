@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <common/credentials.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/payload.h>
@@ -357,7 +358,8 @@ end:
 
 static enum lttng_error_code
 lttng_event_rule_tracepoint_generate_filter_bytecode(
-		struct lttng_event_rule *rule, uid_t uid, gid_t gid)
+		struct lttng_event_rule *rule,
+		const struct lttng_credentials *creds)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -429,7 +431,7 @@ lttng_event_rule_tracepoint_generate_filter_bytecode(
 	}
 
 	ret = run_as_generate_filter_bytecode(
-			tracepoint->internal_filter.filter, uid, gid,
+			tracepoint->internal_filter.filter, creds,
 			&bytecode);
 	if (ret) {
 		ret_code = LTTNG_ERR_FILTER_INVAL;

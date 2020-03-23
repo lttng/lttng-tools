@@ -242,10 +242,11 @@ void lttng_event_rule_put(struct lttng_event_rule *event_rule)
 
 LTTNG_HIDDEN
 enum lttng_error_code lttng_event_rule_generate_filter_bytecode(
-		struct lttng_event_rule *rule, uid_t uid, gid_t gid)
+		struct lttng_event_rule *rule,
+		const struct lttng_credentials *creds)
 {
 	assert(rule->generate_filter_bytecode);
-	return rule->generate_filter_bytecode(rule, uid, gid);
+	return rule->generate_filter_bytecode(rule, creds);
 }
 
 LTTNG_HIDDEN

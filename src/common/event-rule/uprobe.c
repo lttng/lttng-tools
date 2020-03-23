@@ -6,6 +6,7 @@
  */
 
 #include <assert.h>
+#include <common/credentials.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/payload.h>
@@ -138,7 +139,8 @@ end:
 }
 
 static enum lttng_error_code lttng_event_rule_uprobe_generate_filter_bytecode(
-		struct lttng_event_rule *rule, uid_t uid, gid_t gid)
+		struct lttng_event_rule *rule,
+		const struct lttng_credentials *creds)
 {
 	/* Nothing to do. */
 	return LTTNG_OK;
