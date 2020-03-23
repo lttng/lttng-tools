@@ -142,7 +142,8 @@ int cmd_regenerate_metadata(struct ltt_session *session);
 int cmd_regenerate_statedump(struct ltt_session *session);
 
 int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
-		struct notification_thread_handle *notification_thread_handle);
+		struct notification_thread_handle *notification_thread_handle,
+		struct lttng_trigger **return_trigger);
 int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		struct notification_thread_handle *notification_thread_handle);
 

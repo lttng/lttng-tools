@@ -2956,10 +2956,12 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
+	struct lttng_trigger *reply_trigger = NULL;
 	const struct lttng_credentials user_creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
+
 
 	lttng_payload_init(&message);
 	lttng_payload_init(&reply);
@@ -3032,10 +3034,30 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		}
 	}
 
+	{
+		struct lttng_payload_view reply_view =
+				lttng_payload_view_from_payload(
+						&reply, 0, reply.buffer.size);
+
+		ret = lttng_trigger_create_from_payload(
+				&reply_view, &reply_trigger);
+		if (ret < 0) {
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
+		}
+	}
+
+	ret = lttng_trigger_assign_name(trigger, reply_trigger);
+	if (ret < 0) {
+		ret = -LTTNG_ERR_FATAL;
+		goto end;
+	}
+
 	ret = 0;
 end:
 	lttng_payload_reset(&message);
 	lttng_payload_reset(&reply);
+	lttng_trigger_destroy(reply_trigger);
 	return ret;
 }
 

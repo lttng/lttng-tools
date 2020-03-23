@@ -96,6 +96,35 @@ extern struct lttng_condition *lttng_trigger_get_condition(
 extern struct lttng_action *lttng_trigger_get_action(
 		struct lttng_trigger *trigger);
 
+
+/*
+ * Get the name of a trigger.
+ *
+ * The caller does not assume the ownership of the returned name.
+ * The name shall only only be used for the duration of the trigger's
+ * lifetime, or until a different name is set.
+ *
+ * Returns LTTNG_TRIGGER_STATUS_OK and a pointer to the trigger's name on
+ * success, LTTNG_TRIGGER_STATUS_INVALID if an invalid parameter is passed,
+ * or LTTNG_TRIGGER_STATUS_UNSET if a name was not set prior to this call.
+ */
+extern enum lttng_trigger_status lttng_trigger_get_name(
+		const struct lttng_trigger *trigger, const char **name);
+
+/*
+ * Set the trigger name.
+ *
+ * A name is optional.
+ * A name will be assigned on trigger registration if no name is set.
+ *
+ * The name is copied.
+ *
+ * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
+ * if invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_trigger_set_name(
+		struct lttng_trigger *trigger, const char *name);
+
 /*
  * Destroy (frees) a trigger object.
  */

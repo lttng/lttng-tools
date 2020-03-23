@@ -111,6 +111,7 @@ struct lttng_session_trigger_list {
 struct lttng_trigger_ht_element {
 	struct lttng_trigger *trigger;
 	struct cds_lfht_node node;
+	struct cds_lfht_node node_by_name_uid;
 	/* call_rcu delayed reclaim. */
 	struct rcu_head rcu_node;
 };
@@ -189,6 +190,9 @@ int client_handle_transmission_status(
 		struct notification_thread_state *state);
 
 static
+void free_lttng_trigger_ht_element_rcu(struct rcu_head *node);
+
+static
 int match_client_socket(struct cds_lfht_node *node, const void *key)
 {
 	/* This double-cast is intended to supress pointer-to-cast warning. */
@@ -262,18 +266,15 @@ int match_channel_info(struct cds_lfht_node *node, const void *key)
 }
 
 static
-int match_condition(struct cds_lfht_node *node, const void *key)
+int match_trigger(struct cds_lfht_node *node, const void *key)
 {
-	struct lttng_condition *condition_key = (struct lttng_condition *) key;
-	struct lttng_trigger_ht_element *trigger;
-	struct lttng_condition *condition;
+	struct lttng_trigger *trigger_key = (struct lttng_trigger *) key;
+	struct lttng_trigger_ht_element *trigger_ht_element;
 
-	trigger = caa_container_of(node, struct lttng_trigger_ht_element,
+	trigger_ht_element = caa_container_of(node, struct lttng_trigger_ht_element,
 			node);
-	condition = lttng_trigger_get_condition(trigger->trigger);
-	assert(condition);
 
-	return !!lttng_condition_is_equal(condition_key, condition);
+	return !!lttng_trigger_is_equal(trigger_key, trigger_ht_element->trigger);
 }
 
 static
@@ -300,6 +301,71 @@ int match_session(struct cds_lfht_node *node, const void *key)
 		node, struct session_info, sessions_ht_node);
 
 	return !strcmp(session_info->name, name);
+}
+
+/*
+ * Match trigger based on name and credentials only.
+ * Name duplication is NOT allowed for the same uid.
+ */
+static
+int match_trigger_by_name_uid(struct cds_lfht_node *node,
+		const void *key)
+{
+	bool match = false;
+	const char *name;
+	const char *key_name;
+	enum lttng_trigger_status status;
+	const struct lttng_credentials *key_creds;
+	const struct lttng_credentials *node_creds;
+	const struct lttng_trigger *trigger_key =
+			(const struct lttng_trigger *) key;
+	const struct lttng_trigger_ht_element *trigger_ht_element =
+			caa_container_of(node,
+				struct lttng_trigger_ht_element,
+				node_by_name_uid);
+
+	status = lttng_trigger_get_name(trigger_ht_element->trigger, &name);
+	assert(status == LTTNG_TRIGGER_STATUS_OK);
+
+	status = lttng_trigger_get_name(trigger_key, &key_name);
+	assert(status == LTTNG_TRIGGER_STATUS_OK);
+
+	/* Compare the names. */
+	if (strcmp(name, key_name) != 0) {
+		goto end;
+	}
+
+	/* Compare the owners' UIDs. */
+	key_creds = lttng_trigger_get_credentials(trigger_key);
+	node_creds = lttng_trigger_get_credentials(trigger_ht_element->trigger);
+
+	match = lttng_credentials_is_equal_uid(key_creds, node_creds);
+
+end:
+	return match;
+}
+
+/*
+ * Hash trigger based on name and credentials only.
+ */
+static
+unsigned long hash_trigger_by_name_uid(const struct lttng_trigger *trigger)
+{
+	unsigned long hash = 0;
+	const struct lttng_credentials *trigger_creds;
+	const char *trigger_name;
+	enum lttng_trigger_status status;
+
+	status = lttng_trigger_get_name(trigger, &trigger_name);
+	if (status == LTTNG_TRIGGER_STATUS_OK) {
+		hash = hash_key_str(trigger_name, lttng_ht_seed);
+	}
+
+	trigger_creds = lttng_trigger_get_credentials(trigger);
+	hash ^= hash_key_ulong((void *) (unsigned long) LTTNG_OPTIONAL_GET(trigger_creds->uid),
+			lttng_ht_seed);
+
+	return hash;
 }
 
 static
@@ -2086,6 +2152,50 @@ end:
 	return is_notify;
 }
 
+static bool trigger_name_taken(struct notification_thread_state *state,
+		const struct lttng_trigger *trigger)
+{
+	struct cds_lfht_iter iter;
+
+	/*
+	 * No duplicata is allowed in the triggers_by_name_uid_ht.
+	 * The match is done against the trigger name and uid.
+	 */
+	cds_lfht_lookup(state->triggers_by_name_uid_ht,
+			hash_trigger_by_name_uid(trigger),
+			match_trigger_by_name_uid,
+			trigger,
+			&iter);
+	return !!cds_lfht_iter_get_node(&iter);
+}
+
+static
+enum lttng_error_code generate_trigger_name(
+		struct notification_thread_state *state,
+		struct lttng_trigger *trigger, const char **name)
+{
+	enum lttng_error_code ret_code = LTTNG_OK;
+	bool taken = false;
+	enum lttng_trigger_status status;
+
+	do {
+		const int ret = lttng_trigger_generate_name(trigger,
+				state->trigger_id.name_offset++);
+		if (ret) {
+			/* The only reason this can fail right now. */
+			ret_code = LTTNG_ERR_NOMEM;
+			break;
+		}
+
+		status = lttng_trigger_get_name(trigger, name);
+		assert(status == LTTNG_TRIGGER_STATUS_OK);
+
+		taken = trigger_name_taken(state, trigger);
+	} while (taken || state->trigger_id.name_offset == UINT64_MAX);
+
+	return ret_code;
+}
+
 /*
  * FIXME A client's credentials are not checked when registering a trigger.
  *
@@ -2115,6 +2225,7 @@ int handle_notification_thread_command_register_trigger(
 	struct notification_client_list_element *client_list_element;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
+	const char* trigger_name;
 	bool free_trigger = true;
 	struct lttng_evaluation *evaluation = NULL;
 	struct lttng_credentials object_creds;
@@ -2123,6 +2234,24 @@ int handle_notification_thread_command_register_trigger(
 	enum action_executor_status executor_status;
 
 	rcu_read_lock();
+
+	if (lttng_trigger_get_name(trigger, &trigger_name) ==
+			LTTNG_TRIGGER_STATUS_UNSET) {
+		const enum lttng_error_code ret_code = generate_trigger_name(
+				state, trigger, &trigger_name);
+
+		if (ret_code != LTTNG_OK) {
+			/* Fatal error. */
+			ret = -1;
+			*cmd_result = ret_code;
+			goto error;
+		}
+	} else if (trigger_name_taken(state, trigger)) {
+		/* Not a fatal error. */
+		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
+		ret = 0;
+		goto error;
+	}
 
 	condition = lttng_trigger_get_condition(trigger);
 	assert(condition);
@@ -2146,15 +2275,28 @@ int handle_notification_thread_command_register_trigger(
 
 	/* Add trigger to the trigger_ht. */
 	cds_lfht_node_init(&trigger_ht_element->node);
+	cds_lfht_node_init(&trigger_ht_element->node_by_name_uid);
 	trigger_ht_element->trigger = trigger;
 
 	node = cds_lfht_add_unique(state->triggers_ht,
 			lttng_condition_hash(condition),
-			match_condition,
-			condition,
+			match_trigger,
+			trigger,
 			&trigger_ht_element->node);
 	if (node != &trigger_ht_element->node) {
 		/* Not a fatal error, simply report it to the client. */
+		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
+		goto error_free_ht_element;
+	}
+
+	node = cds_lfht_add_unique(state->triggers_by_name_uid_ht,
+			hash_trigger_by_name_uid(trigger),
+			match_trigger_by_name_uid,
+			trigger,
+			&trigger_ht_element->node_by_name_uid);
+	if (node != &trigger_ht_element->node_by_name_uid) {
+		/* Not a fatal error, simply report it to the client. */
+		cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
 		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
 		goto error_free_ht_element;
 	}
@@ -2273,11 +2415,11 @@ int handle_notification_thread_command_register_trigger(
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
 		ret = 0;
-		goto error_put_client_list;
+		break;
 	case LTTNG_OBJECT_TYPE_UNKNOWN:
 	default:
 		ret = -1;
-		goto error_put_client_list;
+		break;
 	}
 
 	if (ret) {
@@ -2293,7 +2435,7 @@ int handle_notification_thread_command_register_trigger(
 	if (!evaluation) {
 		/* Evaluation yielded nothing. Normal exit. */
 		ret = 0;
-		goto error_put_client_list;
+		goto end;
 	}
 
 	/*
@@ -2324,18 +2466,24 @@ int handle_notification_thread_command_register_trigger(
 		 */
 		WARN("No space left when enqueuing action associated to newly registered trigger");
 		ret = 0;
-		goto error_put_client_list;
+		goto end;
 	default:
 		abort();
 	}
 
+end:
 	*cmd_result = LTTNG_OK;
 
 error_put_client_list:
 	notification_client_list_put(client_list);
 
 error_free_ht_element:
-	free(trigger_ht_element);
+	if (trigger_ht_element) {
+		/* Delayed removal due to RCU constraint on delete. */
+		call_rcu(&trigger_ht_element->rcu_node,
+				free_lttng_trigger_ht_element_rcu);
+	}
+
 error:
 	if (free_trigger) {
 		lttng_trigger_destroy(trigger);
@@ -2370,8 +2518,8 @@ int handle_notification_thread_command_unregister_trigger(
 
 	cds_lfht_lookup(state->triggers_ht,
 			lttng_condition_hash(condition),
-			match_condition,
-			condition,
+			match_trigger,
+			trigger,
 			&iter);
 	triggers_ht_node = cds_lfht_iter_get_node(&iter);
 	if (!triggers_ht_node) {
@@ -2420,6 +2568,7 @@ int handle_notification_thread_command_unregister_trigger(
 	/* Remove trigger from triggers_ht. */
 	trigger_ht_element = caa_container_of(triggers_ht_node,
 			struct lttng_trigger_ht_element, node);
+	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
 	cds_lfht_del(state->triggers_ht, triggers_ht_node);
 
 	/* Release the ownership of the trigger. */

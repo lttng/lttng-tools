@@ -4257,7 +4257,8 @@ end:
 }
 
 int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
-		struct notification_thread_handle *notification_thread)
+		struct notification_thread_handle *notification_thread,
+		struct lttng_trigger **return_trigger)
 {
 	int ret;
 	size_t trigger_len;
@@ -4314,7 +4315,6 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		}
 	}
 
-
 	/*
 	 * Validate the trigger credentials against the command credentials.
 	 * Only the root user can register a trigger with non-matching
@@ -4330,9 +4330,26 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		}
 	}
 
-	/* Inform the notification thread */
+	/*
+	 * A reference to the trigger is acquired by the notification thread.
+	 * It is safe to return the same trigger to the caller since it the
+	 * other user holds a reference.
+	 *
+	 * The trigger is modified during the execution of the
+	 * "register trigger" command. However, by the time the command returns,
+	 * it is safe to use without any locking as its properties are
+	 * immutable.
+	 */
 	ret = notification_thread_command_register_trigger(notification_thread,
 			trigger);
+	if (ret != LTTNG_OK) {
+		goto end_notification_thread;
+	}
+
+	/* Return an updated trigger to the client. */
+	*return_trigger = trigger;
+
+end_notification_thread:
 	/* Ownership of trigger was transferred. */
 	trigger = NULL;
 end:
