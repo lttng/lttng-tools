@@ -1726,6 +1726,18 @@ int main(int argc, char **argv)
 			retval = -1;
 			goto stop_threads;
 		}
+
+		if (kernel_get_notification_fd() >= 0) {
+			ret = notification_thread_command_add_tracer_event_source(
+					notification_thread_handle,
+					kernel_get_notification_fd(),
+					LTTNG_DOMAIN_KERNEL);
+			if (ret != LTTNG_OK) {
+				ERR("Failed to add kernel trigger event source to notification thread");
+				retval = -1;
+				goto stop_threads;
+			}
+		}
 	}
 
 	/* Load sessions. */

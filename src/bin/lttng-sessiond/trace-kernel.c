@@ -13,9 +13,18 @@
 
 #include <lttng/event.h>
 #include <lttng/lttng-error.h>
+#include <lttng/kernel-probe.h>
 #include <lttng/userspace-probe.h>
 #include <lttng/userspace-probe-internal.h>
-
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/kprobe.h>
+#include <lttng/event-rule/kprobe-internal.h>
+#include <lttng/event-rule/syscall.h>
+#include <lttng/event-rule/syscall-internal.h>
+#include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/tracepoint-internal.h>
+#include <lttng/event-rule/uprobe-internal.h>
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/trace-chunk.h>
@@ -369,9 +378,6 @@ enum lttng_error_code trace_kernel_create_event(
 		 */
 		attr->instrumentation = LTTNG_KERNEL_UPROBE;
 
-		/*
-		 * Only the elf lookup method is supported at the moment.
-		 */
 		lookup = lttng_userspace_probe_location_get_lookup_method(
 				location);
 		if (!lookup) {
@@ -471,6 +477,230 @@ error:
 	return ret;
 }
 
+/*
+ * Allocate and initialize a kernel token event rule.
+ *
+ * Return pointer to structure or NULL.
+ */
+enum lttng_error_code trace_kernel_create_event_notifier_rule(
+		struct lttng_trigger *trigger,
+		uint64_t token,
+		struct ltt_kernel_event_notifier_rule **event_notifier_rule)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	enum lttng_condition_type condition_type;
+	enum lttng_event_rule_type event_rule_type;
+	enum lttng_condition_status condition_status;
+	struct ltt_kernel_event_notifier_rule *local_kernel_token_event_rule;
+	const struct lttng_condition *condition = NULL;
+	const struct lttng_event_rule *event_rule = NULL;
+
+	assert(event_notifier_rule);
+
+	condition = lttng_trigger_get_condition(trigger);
+	assert(condition);
+
+	condition_type = lttng_condition_get_type(condition);
+	assert(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+
+	condition_status = lttng_condition_event_rule_get_rule(
+			condition, &event_rule);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	assert(event_rule);
+
+	event_rule_type = lttng_event_rule_get_type(event_rule);
+	assert(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
+
+	local_kernel_token_event_rule =
+			zmalloc(sizeof(struct ltt_kernel_event_notifier_rule));
+	if (local_kernel_token_event_rule == NULL) {
+		PERROR("Failed to allocate ltt_kernel_token_event_rule structure");
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	local_kernel_token_event_rule->fd = -1;
+	local_kernel_token_event_rule->enabled = 1;
+	local_kernel_token_event_rule->token = token;
+
+	/* Get the reference of the event rule. */
+	lttng_trigger_get(trigger);
+
+	local_kernel_token_event_rule->trigger = trigger;
+	/* The event rule still owns the filter and bytecode. */
+	local_kernel_token_event_rule->filter =
+			lttng_event_rule_get_filter_bytecode(event_rule);
+
+	DBG3("Created kernel event notifier rule: token =  %" PRIu64,
+			local_kernel_token_event_rule->token);
+error:
+	*event_notifier_rule = local_kernel_token_event_rule;
+	return ret;
+}
+
+/*
+ * Initialize a kernel trigger from an event rule.
+ */
+enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
+		const struct lttng_event_rule *rule,
+		struct lttng_kernel_event_notifier *kernel_event_notifier)
+{
+	enum lttng_error_code ret;
+	const char *name;
+
+	switch (lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	{
+		uint64_t address = 0, offset = 0;
+		const char *symbol_name = NULL;
+		const struct lttng_kernel_probe_location *location = NULL;
+		enum lttng_kernel_probe_location_status k_status;
+		enum lttng_event_rule_status status;
+
+		status = lttng_event_rule_kprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+
+		switch (lttng_kernel_probe_location_get_type(location)) {
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS:
+		{
+			k_status = lttng_kernel_probe_location_address_get_address(
+					location, &address);
+			assert(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			break;
+		}
+		case LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET:
+		{
+			k_status = lttng_kernel_probe_location_symbol_get_offset(
+					location, &offset);
+			assert(k_status == LTTNG_KERNEL_PROBE_LOCATION_STATUS_OK);
+			symbol_name = lttng_kernel_probe_location_symbol_get_name(
+					location);
+			break;
+		}
+		default:
+			abort();
+		}
+
+		kernel_event_notifier->event.instrumentation = LTTNG_KERNEL_KPROBE;
+		kernel_event_notifier->event.u.kprobe.addr = address;
+		kernel_event_notifier->event.u.kprobe.offset = offset;
+		if (symbol_name) {
+			const int copy_ret = lttng_strncpy(
+					kernel_event_notifier->event.u.kprobe.symbol_name,
+					symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
+
+			if (copy_ret) {
+				ret = LTTNG_ERR_INVALID;
+				goto error;
+			}
+		}
+
+		kernel_event_notifier->event.u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
+		status = lttng_event_rule_kprobe_get_name(rule, &name);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_UPROBE:
+	{
+		const struct lttng_userspace_probe_location* location = NULL;
+		const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
+		enum lttng_event_rule_status status;
+
+		status = lttng_event_rule_uprobe_get_location(rule, &location);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+
+		kernel_event_notifier->event.instrumentation = LTTNG_KERNEL_UPROBE;
+
+		lookup = lttng_userspace_probe_location_get_lookup_method(
+				location);
+		if (!lookup) {
+			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			goto error;
+		}
+
+		/*
+		 * From the kernel tracer's perspective, all userspace probe
+		 * event types are all the same: a file and an offset.
+		 */
+		switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+			/* Get the file descriptor on the target binary. */
+			kernel_event_notifier->event.u.uprobe.fd =
+					lttng_userspace_probe_location_function_get_binary_fd(location);
+
+			break;
+		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+			/* Get the file descriptor on the target binary. */
+			kernel_event_notifier->event.u.uprobe.fd =
+					lttng_userspace_probe_location_tracepoint_get_binary_fd(location);
+			break;
+		default:
+			abort();
+		}
+
+		status = lttng_event_rule_uprobe_get_name(rule, &name);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	{
+		const enum lttng_domain_type domain =
+				lttng_event_rule_get_domain_type(rule);
+		const enum lttng_event_rule_status status =
+				lttng_event_rule_tracepoint_get_pattern(
+						rule, &name);
+
+		assert(domain == LTTNG_DOMAIN_KERNEL);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		kernel_event_notifier->event.instrumentation =
+				LTTNG_KERNEL_TRACEPOINT;
+
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	{
+		const enum lttng_event_rule_status status =
+				lttng_event_rule_syscall_get_pattern(
+						rule, &name);
+
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+
+		kernel_event_notifier->event.instrumentation =
+				LTTNG_KERNEL_SYSCALL;
+		kernel_event_notifier->event.u.syscall.abi =
+				LTTNG_KERNEL_SYSCALL_ABI_ALL;
+		kernel_event_notifier->event.u.syscall.entryexit =
+				LTTNG_KERNEL_SYSCALL_ENTRY;
+		kernel_event_notifier->event.u.syscall.match =
+				LTTNG_KERNEL_SYSCALL_MATCH_NAME;
+		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	default:
+		abort();
+		break;
+	}
+
+	ret = lttng_strncpy(kernel_event_notifier->event.name, name,
+			LTTNG_KERNEL_SYM_NAME_LEN);
+	if (ret) {
+		ret = LTTNG_ERR_INVALID;
+		goto error;
+	}
+
+error:
+	return ret;
+}
 /*
  * Allocate and initialize a kernel metadata.
  *
@@ -613,7 +843,7 @@ void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 			PERROR("close");
 		}
 	} else {
-		DBG("[trace] Tearing down event (no associated fd)");
+		DBG("[trace] Tearing down event (no associated file descriptor)");
 	}
 
 	/* Remove from event list */
@@ -626,6 +856,38 @@ void trace_kernel_destroy_event(struct ltt_kernel_event *event)
 	free(event);
 }
 
+/*
+ * Cleanup kernel event structure.
+ */
+static void free_token_event_rule_rcu(struct rcu_head *rcu_node)
+{
+	struct ltt_kernel_event_notifier_rule *rule = caa_container_of(rcu_node,
+			struct ltt_kernel_event_notifier_rule, rcu_node);
+
+	free(rule);
+}
+
+void trace_kernel_destroy_event_notifier_rule(
+		struct ltt_kernel_event_notifier_rule *event)
+{
+	assert(event);
+
+	if (event->fd >= 0) {
+		const int ret = close(event->fd);
+
+		DBG("Closing kernel event notifier rule file descriptor: fd = %d",
+				event->fd);
+		if (ret) {
+			PERROR("Failed to close kernel event notifier file descriptor: fd = %d",
+					event->fd);
+		}
+	} else {
+		DBG("Destroying kernel event notifier rule (no associated file descriptor)");
+	}
+
+	lttng_trigger_put(event->trigger);
+	call_rcu(&event->rcu_node, free_token_event_rule_rcu);
+}
 /*
  * Cleanup kernel context structure.
  */
