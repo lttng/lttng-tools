@@ -1456,21 +1456,20 @@ error:
 /*
  * Disable the specified event on to UST tracer for the UST session.
  */
-static int disable_ust_event(struct ust_app *app,
-		struct ust_app_session *ua_sess, struct ust_app_event *ua_event)
+static int disable_ust_object(struct ust_app *app,
+		struct lttng_ust_object_data *object)
 {
 	int ret;
 
 	health_code_update();
 
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_disable(app->sock, ua_event->obj);
+	ret = ustctl_disable(app->sock, object);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s disable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_event->attr.name, app->pid, ua_sess->handle, ret);
+			ERR("Failed to disable UST app object %p app (pid: %d) with ret %d",
+					object, app->pid, ret);
 		} else {
 			/*
 			 * This is normal behavior, an application can die during the
@@ -1478,13 +1477,13 @@ static int disable_ust_event(struct ust_app *app,
 			 * continue normally.
 			 */
 			ret = 0;
-			DBG3("UST app disable event failed. Application is dead.");
+			DBG3("Failed to disable UST app object. Application is dead.");
 		}
 		goto error;
 	}
 
-	DBG2("UST app event %s disabled successfully for app (pid: %d)",
-			ua_event->attr.name, app->pid);
+	DBG2("UST app object %p disabled successfully for app (pid: %d)",
+			object, app->pid);
 
 error:
 	health_code_update();
@@ -2352,7 +2351,7 @@ static int disable_ust_app_event(struct ust_app_session *ua_sess,
 {
 	int ret;
 
-	ret = disable_ust_event(app, ua_sess, ua_event);
+	ret = disable_ust_object(app, ua_event->obj);
 	if (ret < 0) {
 		goto error;
 	}
