@@ -1446,7 +1446,6 @@ static int list_channels(const char *channel_name)
 				count = 0;
 			} else {
 				ret = CMD_SUCCESS;
-				WARN("No kernel channel");
 				goto error_channels;
 			}
 			break;
