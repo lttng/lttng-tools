@@ -62,6 +62,10 @@ LTTNG_HIDDEN
 bool lttng_trigger_validate(struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN
+bool lttng_trigger_is_equal(
+		const struct lttng_trigger *a, const struct lttng_trigger *b);
+
+LTTNG_HIDDEN
 void lttng_trigger_get(struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN

@@ -27,6 +27,7 @@
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
 #include <lttng/notification/channel-internal.h>
+#include <lttng/trigger/trigger-internal.h>
 
 #include <time.h>
 #include <unistd.h>
