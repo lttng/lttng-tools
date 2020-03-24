@@ -3099,7 +3099,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		const struct lttng_evaluation *evaluation,
 		struct notification_client_list* client_list,
 		struct notification_thread_state *state,
-		uid_t channel_uid, gid_t channel_gid)
+		uid_t object_uid, gid_t object_gid)
 {
 	int ret = 0;
 	struct lttng_payload msg_payload;
@@ -3111,6 +3111,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 	struct lttng_notification_channel_message msg_header = {
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
 	};
+	const struct lttng_credentials *trigger_creds = lttng_trigger_get_credentials(trigger);
 
 	lttng_payload_init(&msg_payload);
 
@@ -3136,10 +3137,15 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		struct notification_client *client =
 				client_list_element->client;
 
-		if (client->uid != channel_uid && client->gid != channel_gid &&
+		if (client->uid != object_uid && client->gid != object_gid &&
 				client->uid != 0) {
 			/* Client is not allowed to monitor this channel. */
-			DBG("[notification-thread] Skipping client at it does not have the permission to receive notification for this channel");
+			DBG("[notification-thread] Skipping client at it does not have the object permission to receive notification for this trigger");
+			continue;
+		}
+
+		if (client->uid != trigger_creds->uid && client->gid != trigger_creds->gid) {
+			DBG("[notification-thread] Skipping client at it does not have the permission to receive notification for this trigger");
 			continue;
 		}
 
