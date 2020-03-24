@@ -39,7 +39,7 @@ libcommon_la_SOURCES = \
 	common.h \
 	condition.c \
 	context.c context.h \
-	credentials.h \
+	credentials.c credentials.h \
 	daemonize.c daemonize.h \
 	defaults.c \
 	dynamic-array.c dynamic-array.h \
