@@ -9,7 +9,9 @@
 #define LTTNG_TRIGGER_INTERNAL_H
 
 #include <lttng/trigger/trigger.h>
+#include <common/credentials.h>
 #include <common/macros.h>
+#include <common/optional.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -20,6 +22,7 @@ struct lttng_payload_view;
 struct lttng_trigger {
 	struct lttng_condition *condition;
 	struct lttng_action *action;
+	LTTNG_OPTIONAL(struct lttng_credentials) creds;
 };
 
 struct lttng_trigger_comm {
@@ -47,5 +50,14 @@ const struct lttng_action *lttng_trigger_get_const_action(
 
 LTTNG_HIDDEN
 bool lttng_trigger_validate(struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+const struct lttng_credentials *lttng_trigger_get_credentials(
+		const struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_set_credentials(
+		struct lttng_trigger *trigger,
+		const struct lttng_credentials *creds);
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

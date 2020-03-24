@@ -17,6 +17,7 @@
 #include <common/time.h>
 #include <common/hashtable/utils.h>
 #include <common/kernel-ctl/kernel-ctl.h>
+#include <common/credentials.h>
 #include <sys/eventfd.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -46,6 +47,10 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status nc_status;
 	struct lttng_action *action;
+	const struct lttng_credentials session_creds = {
+		.uid = session->uid,
+		.gid = session->gid,
+	};
 
 	session->rotate_condition = lttng_condition_session_consumed_size_create();
 	if (!session->rotate_condition) {
@@ -87,6 +92,9 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 		ret = -1;
 		goto end;
 	}
+
+	lttng_trigger_set_credentials(
+			session->rotate_trigger, &session_creds);
 
 	nc_status = lttng_notification_channel_subscribe(
 			rotate_notification_channel, session->rotate_condition);

@@ -8,9 +8,11 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/action/action-internal.h>
+#include <common/credentials.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/error.h>
+#include <common/optional.h>
 #include <assert.h>
 
 LTTNG_HIDDEN
@@ -46,6 +48,7 @@ struct lttng_trigger *lttng_trigger_create(
 
 	trigger->condition = condition;
 	trigger->action = action;
+
 end:
 	return trigger;
 }
@@ -191,4 +194,20 @@ int lttng_trigger_serialize(struct lttng_trigger *trigger,
 	header->length = payload->buffer.size - size_before_payload;
 end:
 	return ret;
+}
+
+LTTNG_HIDDEN
+const struct lttng_credentials *lttng_trigger_get_credentials(
+		const struct lttng_trigger *trigger)
+{
+	return LTTNG_OPTIONAL_GET_PTR(trigger->creds);
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_set_credentials(
+		struct lttng_trigger *trigger,
+		const struct lttng_credentials *creds)
+{
+	assert(creds);
+	LTTNG_OPTIONAL_SET(&trigger->creds, *creds);
 }

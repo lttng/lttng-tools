@@ -68,6 +68,17 @@
 	})
 
 /*
+ * This macro is available as a 'convenience' to allow sites that assume
+ * an optional value is set to assert() that it is set when fecthing the
+ * underlying value's address.
+ */
+#define LTTNG_OPTIONAL_GET_PTR(optional)			\
+	({						\
+		assert((optional).is_set);		\
+		&(optional).value;			\
+	})
+
+/*
  * Initialize an optional field.
  *
  * The wrapped field is set to the value it would gave if it had static storage
