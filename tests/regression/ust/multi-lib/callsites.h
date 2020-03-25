@@ -7,5 +7,5 @@
 
 #ifndef CALLSITES_H
 #define CALLSITES_H
-void call_tracepoint();
+void call_tracepoint(void);
 #endif /* CALLSITES_H */
