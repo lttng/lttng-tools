@@ -54,6 +54,7 @@ const char file_contents[] = "Bacon ipsum dolor amet jerky drumstick sirloin "
 	"Landjaeger tri-tip salami leberkas ball tip, ham hock chuck sausage "
 	"flank jerky cupim. Pig bacon chuck pancetta andouille.";
 
+static
 void get_temporary_directories(char **_test_directory, char **_unlink_directory)
 {
 	int ret;
