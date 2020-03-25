@@ -270,6 +270,60 @@ end:
 	return ret_code;
 }
 
+enum lttng_error_code notification_thread_command_add_tracer_event_source(
+		struct notification_thread_handle *handle,
+		int tracer_event_source_fd,
+		enum lttng_domain_type domain)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct notification_thread_command cmd = {};
+
+	assert(tracer_event_source_fd >= 0);
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE;
+	cmd.parameters.tracer_event_source.tracer_event_source_fd =
+			tracer_event_source_fd;
+	cmd.parameters.tracer_event_source.domain = domain;
+
+	ret = run_command_wait(handle, &cmd);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	ret_code = cmd.reply_code;
+end:
+	return ret_code;
+}
+
+enum lttng_error_code notification_thread_command_remove_tracer_event_source(
+		struct notification_thread_handle *handle,
+		int tracer_event_source_fd)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct notification_thread_command cmd = {};
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_REMOVE_TRACER_EVENT_SOURCE;
+	cmd.parameters.tracer_event_source.tracer_event_source_fd =
+			tracer_event_source_fd;
+
+	ret = run_command_wait(handle, &cmd);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	ret_code = cmd.reply_code;
+end:
+	return ret_code;
+}
+
 enum lttng_error_code notification_thread_command_list_triggers(
 		struct notification_thread_handle *handle,
 		uid_t uid,

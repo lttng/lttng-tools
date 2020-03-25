@@ -14,14 +14,38 @@
 #include <common/hashtable/hashtable.h>
 #include <common/pipe.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/domain.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
-
 typedef uint64_t notification_client_id;
+
+/*
+ * The notification thread holds no ownership of the tracer event source pipe
+ * file descriptor. The tracer management logic must remove the event source
+ * from the notification thread (see external commands) before releasing
+ * this file descriptor.
+ */
+struct notification_event_tracer_event_source_element {
+	int fd;
+	/*
+	 * A tracer event source can be removed from the notification thread's
+	 * poll set before the end of its lifetime (for instance, when an error
+	 * or hang-up is detected on its file descriptor). This is done to
+	 * allow the notification thread to ignore follow-up events on this
+	 * file descriptors.
+	 *
+	 * Under such circumstances, the notification thread still expects
+	 * the normal clean-up to occur through the 'REMOVE_TRACER_EVENT_SOURCE'
+	 * command.
+	 */
+	bool is_fd_in_poll_set;
+	enum lttng_domain_type domain;
+	struct cds_list_head node;
+};
 
 struct notification_thread_handle {
 	/*
@@ -116,21 +140,27 @@ struct notification_thread_handle {
  *             a struct lttng_trigger_ht_element.
  *             The hash table does not hold any ownership and is used strictly
  *             for lookup on registration.
+ *   - tracer_event_sources_list:
+ *             A list of tracer event source (read side fd) of type
+*              struct notification_event_tracer_event_source_element.
+*
  *
  * The thread reacts to the following internal events:
  *   1) creation of a tracing channel,
  *   2) destruction of a tracing channel,
  *   3) registration of a trigger,
  *   4) unregistration of a trigger,
- *   5) reception of a channel monitor sample from the consumer daemon.
- *   6) Session rotation ongoing
- *   7) Session rotation completed
+ *   5) reception of a channel monitor sample from the consumer daemon,
+ *   6) Session rotation ongoing,
+ *   7) Session rotation completed,
+ *   8) registration of a tracer event source,
+ *   9) unregistration of a tracer event source,
  *
  * Events specific to notification-emitting triggers:
- *   8) connection of a notification client,
- *   9) disconnection of a notification client,
- *   10) subscription of a client to a conditions' notifications,
- *   11) unsubscription of a client from a conditions' notifications,
+ *   9) connection of a notification client,
+ *   10) disconnection of a notification client,
+ *   11) subscription of a client to a conditions' notifications,
+ *   12) unsubscription of a client from a conditions' notifications,
  *
  *
  * 1) Creation of a tracing channel
@@ -183,24 +213,34 @@ struct notification_thread_handle {
  *
  * 7) Session rotation completed
  *
- * 8) Connection of a client
+ * 8) Registration of a tracer event source
+ *    - Add the tracer event source of the application to
+ *      tracer_event_sources_list,
+ *    - Add the trace event source to the pollset.
+ *
+ * 8) Unregistration of a tracer event source
+ *    - Remove the tracer event source of the application from
+ *      tracer_event_sources_list,
+ *    - Remove the trace event source from the pollset.
+ *
+ * 10) Connection of a client
  *    - add client socket to the client_socket_ht,
  *    - add client socket to the client_id_ht.
  *
- * 9) Disconnection of a client
+ * 11) Disconnection of a client
  *    - remove client socket from the client_id_ht,
  *    - remove client socket from the client_socket_ht,
  *    - traverse all conditions to which the client is subscribed and remove
  *      the client from the notification_trigger_clients_ht.
  *
- * 10) Subscription of a client to a condition's notifications
+ * 12) Subscription of a client to a condition's notifications
  *    - Add the condition to the client's list of subscribed conditions,
  *    - Look-up notification_trigger_clients_ht and add the client to
  *      list of clients.
  *    - Evaluate the condition for the client that subscribed if the trigger
  *      was already registered.
  *
- * 11) Unsubscription of a client to a condition's notifications
+ * 13) Unsubscription of a client to a condition's notifications
  *    - Remove the condition from the client's list of subscribed conditions,
  *    - Look-up notification_trigger_clients_ht and remove the client
  *      from the list of clients.
@@ -222,6 +262,17 @@ struct notification_thread_state {
 		uint64_t next_tracer_token;
 		uint64_t name_offset;
 	} trigger_id;
+	/*
+	 * Read side of the pipes used to receive tracer events. As their name
+	 * implies, tracer event source activity originate from either
+	 * registered applications (user space tracer) or from the kernel
+	 * tracer.
+	 *
+	 * The list is not protected by a lock since add and remove operations
+	 * are currently done only by the notification thread through in
+	 * response to blocking commands.
+	 */
+	struct cds_list_head tracer_event_sources_list;
 	notification_client_id next_notification_client_id;
 	struct action_executor *executor;
 };

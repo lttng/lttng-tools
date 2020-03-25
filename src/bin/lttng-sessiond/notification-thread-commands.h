@@ -27,6 +27,8 @@ enum notification_thread_command_type {
 	NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL,
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING,
 	NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED,
+	NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE,
+	NOTIFICATION_COMMAND_TYPE_REMOVE_TRACER_EVENT_SOURCE,
 	NOTIFICATION_COMMAND_TYPE_LIST_TRIGGERS,
 	NOTIFICATION_COMMAND_TYPE_QUIT,
 	NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE,
@@ -65,6 +67,11 @@ struct notification_thread_command {
 			uint64_t trace_archive_chunk_id;
 			struct lttng_trace_archive_location *location;
 		} session_rotation;
+		/* Add/Remove tracer event source fd. */
+		struct {
+			int tracer_event_source_fd;
+			enum lttng_domain_type domain;
+		} tracer_event_source;
 		/* List triggers. */
 		struct {
 			/* Credentials of the requesting user. */
@@ -136,6 +143,19 @@ enum lttng_error_code notification_thread_command_list_triggers(
 		struct notification_thread_handle *handle,
 		uid_t client_uid,
 		struct lttng_triggers **triggers);
+
+/*
+ * The ownership of trigger_event_application_pipe is _not_ transferred to
+ * the notification thread.
+ */
+enum lttng_error_code notification_thread_command_add_tracer_event_source(
+		struct notification_thread_handle *handle,
+		int tracer_event_source_fd,
+		enum lttng_domain_type domain);
+
+enum lttng_error_code notification_thread_command_remove_tracer_event_source(
+		struct notification_thread_handle *handle,
+		int tracer_event_source_fd);
 
 void notification_thread_command_quit(
 		struct notification_thread_handle *handle);

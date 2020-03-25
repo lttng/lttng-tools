@@ -134,6 +134,7 @@ struct notification_thread_handle *notification_thread_handle_create(
 	} else {
 		handle->channel_monitoring_pipes.kernel_consumer = -1;
 	}
+
 end:
 	return handle;
 error:
@@ -378,6 +379,9 @@ void fini_thread_state(struct notification_thread_state *state)
 		notification_channel_socket_destroy(
 				state->notification_channel_socket);
 	}
+
+	assert(cds_list_empty(&state->tracer_event_sources_list));
+
 	if (state->executor) {
 		action_executor_destroy(state->executor);
 	}
@@ -485,6 +489,8 @@ int init_thread_state(struct notification_thread_handle *handle,
 	if (!state->triggers_by_name_uid_ht) {
 		goto error;
 	}
+
+	CDS_INIT_LIST_HEAD(&state->tracer_event_sources_list);
 
 	state->executor = action_executor_create(handle);
 	if (!state->executor) {
