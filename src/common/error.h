@@ -224,6 +224,6 @@ const char *error_get_str(int32_t code);
  * the caller. On error, an empty string is returned thus no time will be
  * printed in the log.
  */
-const char *log_add_time();
+const char *log_add_time(void);
 
 #endif /* _ERROR_H */
