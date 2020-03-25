@@ -55,6 +55,7 @@ int lttng_opt_mi;
 #define CLOE_VALUE FD_CLOEXEC
 #endif
 
+static
 void test_epoll_compat(void)
 {
 	/*
