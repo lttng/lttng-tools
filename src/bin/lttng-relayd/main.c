@@ -230,7 +230,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 
 			errno = 0;
 			v = strtoul(arg, NULL, 0);
-			if (errno != 0 || !isdigit(arg[0])) {
+			if (errno != 0 || !isdigit((unsigned char) arg[0])) {
 				ERR("Wrong value in --fd-pool-size parameter: %s", arg);
 				ret = -1;
 				goto end;
