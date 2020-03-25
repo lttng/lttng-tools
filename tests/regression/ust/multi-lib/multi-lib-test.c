@@ -15,8 +15,8 @@
 #include "callsites.h"
 #endif
 
-void exec_callsite();
-void exec_callsite()
+void exec_callsite(void);
+void exec_callsite(void)
 {
 #if HAS_CALLSITES
 	call_tracepoint();
