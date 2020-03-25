@@ -7,10 +7,14 @@
 
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
+#include <lttng/condition/event-rule.h>
+#include <lttng/condition/buffer-usage.h>
+#include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/action/action-internal.h>
 #include <common/credentials.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
+#include <lttng/domain.h>
 #include <common/error.h>
 #include <common/dynamic-array.h>
 #include <common/optional.h>
@@ -880,4 +884,47 @@ void lttng_trigger_fire(struct lttng_trigger *trigger)
 	default:
 		abort();
 	};
+}
+
+LTTNG_HIDDEN
+enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
+		const struct lttng_trigger *trigger)
+{
+	enum lttng_domain_type type = LTTNG_DOMAIN_NONE;
+	const struct lttng_event_rule *event_rule;
+	enum lttng_condition_status c_status;
+	enum lttng_condition_type c_type;
+
+	assert(trigger);
+	assert(trigger->condition);
+
+	c_type = lttng_condition_get_type(trigger->condition);
+	assert (c_type != LTTNG_CONDITION_TYPE_UNKNOWN);
+
+	switch (c_type) {
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		/* Apply to any domain. */
+		type = LTTNG_DOMAIN_NONE;
+		break;
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		/* Return the domain of the event rule. */
+		c_status = lttng_condition_event_rule_get_rule(
+				trigger->condition, &event_rule);
+		assert(c_status == LTTNG_CONDITION_STATUS_OK);
+		type = lttng_event_rule_get_domain_type(event_rule);
+		break;
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+		/* Return the domain of the channel being monitored. */
+		c_status = lttng_condition_buffer_usage_get_domain_type(
+				trigger->condition, &type);
+		assert(c_status == LTTNG_CONDITION_STATUS_OK);
+		break;
+	default:
+		abort();
+	}
+
+	return type;
 }
