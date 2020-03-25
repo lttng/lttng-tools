@@ -39,6 +39,11 @@ AX_APPEND_COMPILE_FLAGS([ dnl
 		dnl            ^
 		-Wno-incomplete-setjmp-declaration dnl
 		-Wdiscarded-qualifiers dnl
+		-Wmissing-declarations dnl
+		-Wmissing-prototypes dnl
+		-Wmissing-parameter-type dnl
+		-Wold-style-definition dnl
+		-Wstrict-prototypes dnl
 	],
 	[WARN_CFLAGS],
 	[-Werror])
