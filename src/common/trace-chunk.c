@@ -1494,7 +1494,7 @@ end:
 	return status;
 }
 
-LTTNG_HIDDEN
+static
 int lttng_trace_chunk_remove_subdirectory_recursive(struct lttng_trace_chunk *chunk,
 		const char *path)
 {
