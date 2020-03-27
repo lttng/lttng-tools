@@ -32,6 +32,11 @@ multiple concurrent processes and threads. Tracing across multiple systems is al
 
 // Avoid -Wmissing-declarations warning.
 PyObject *SWIG_init(void);
+
+// Avoid -Wmissing-prototypes warning with SWIG 3.0.10.
+#if SWIG_VERSION < 0x30012
+static size_t SWIG_strnlen(const char* s, size_t maxlen);
+#endif
 %}
 
 typedef unsigned int uint32_t;
