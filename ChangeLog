@@ -1,3 +1,6 @@
+2020-03-27 lttng-tools 2.12.0-rc3 (International Stay at Home Month)
+	* Fix: remove duplicated AC_INIT directive
+
 2020-03-27 lttng-tools 2.12.0-rc2 (International Stay at Home Month)
 	* Fix: sessiond: NULL pointer dereference after NULL check
 	* Fix: sessiond: missing goto in error handler
