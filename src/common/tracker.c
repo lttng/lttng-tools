@@ -173,6 +173,7 @@ enum lttng_error_code process_attr_value_from_comm(
 
 	*_value = value;
 	value = NULL;
+	free(name);
 	return LTTNG_OK;
 error:
 	free(name);
