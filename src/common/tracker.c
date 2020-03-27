@@ -106,7 +106,8 @@ enum lttng_error_code process_attr_value_from_comm(
 	if (is_value_type_name(value_type) && value_view->size == 0) {
 		ret = LTTNG_ERR_INVALID_PROTOCOL;
 		goto error;
-	} else if (!is_value_type_name(value_type) && value_view->size != 0) {
+	} else if (!is_value_type_name(value_type) && value_view &&
+			value_view->size != 0) {
 		ret = LTTNG_ERR_INVALID_PROTOCOL;
 		goto error;
 	}
