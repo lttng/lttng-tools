@@ -1033,6 +1033,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_add_value(
 	tracker = _trace_ust_get_process_attr_tracker(session, process_attr);
 	if (!tracker) {
 		ret_code = LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	status = process_attr_tracker_inclusion_set_add_value(tracker, value);
@@ -1141,6 +1142,7 @@ enum lttng_error_code trace_ust_process_attr_tracker_inclusion_set_remove_value(
 	tracker = _trace_ust_get_process_attr_tracker(session, process_attr);
 	if (!tracker) {
 		ret_code = LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	status = process_attr_tracker_inclusion_set_remove_value(

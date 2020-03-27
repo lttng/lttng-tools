@@ -2079,6 +2079,7 @@ static int save_process_attr_trackers(struct config_writer *writer,
 		break;
 	default:
 		ret = LTTNG_ERR_INVALID;
+		goto end;
 	}
 	ret = LTTNG_OK;
 end:

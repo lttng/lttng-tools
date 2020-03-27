@@ -85,6 +85,7 @@ enum lttng_error_code process_attr_value_from_comm(
 		name = strdup(value_view->data);
 		if (!name) {
 			ret = LTTNG_ERR_NOMEM;
+			goto error;
 		}
 	}
 
