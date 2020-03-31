@@ -16,6 +16,8 @@
 extern "C" {
 #endif
 
+struct lttng_event_expr;
+
 /**
  * Event rule conditions allows an action to be taken whenever an event matching
  * the event rule is hit by the tracers.
@@ -71,6 +73,70 @@ extern enum lttng_evaluation_status
 lttng_evaluation_event_rule_get_trigger_name(
 		const struct lttng_evaluation *evaluation,
 		const char **name);
+
+/*
+ * Appends (transfering the ownership) the capture descriptor `expr` to
+ * the event rule condition `condition`.
+ *
+ * Returns:
+ *
+ * `LTTNG_CONDITION_STATUS_OK`:
+ *     Success.
+ *
+ * `LTTNG_CONDITION_STATUS_ERROR`:
+ *     Memory error.
+ *
+ * `LTTNG_CONDITION_STATUS_INVALID`:
+ *     * `condition` is `NULL`.
+ *     * The type of `condition` is not
+ *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *     * `expr` is `NULL`.
+ *     * `expr` is not a locator expression, that is, its type is not
+ *       one of:
+ *
+ *       * `LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD`
+ *       * `LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD`
+ *       * `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`
+ *       * `LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT`
+ */
+extern enum lttng_condition_status
+lttng_condition_event_rule_append_capture_descriptor(
+		struct lttng_condition *condition,
+		struct lttng_event_expr *expr);
+
+/*
+ * Sets `*count` to the number of capture descriptors in the event rule
+ * condition `condition`.
+ *
+ * Returns:
+ *
+ * `LTTNG_CONDITION_STATUS_OK`:
+ *     Success.
+ *
+ * `LTTNG_CONDITION_STATUS_INVALID`:
+ *     * `condition` is `NULL`.
+ *     * The type of `condition` is not
+ *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *     * `count` is `NULL`.
+ */
+extern enum lttng_condition_status
+lttng_condition_event_rule_get_capture_descriptor_count(
+		const struct lttng_condition *condition, unsigned int *count);
+
+/*
+ * Returns the capture descriptor (borrowed) of the event rule condition
+ * `condition` at the index `index`, or `NULL` if:
+ *
+ * * `condition` is `NULL`.
+ * * The type of `condition` is not
+ *   `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ * * `index` is greater than or equal to the number of capture
+ *   descriptors in `condition` (as returned by
+ *   lttng_condition_event_rule_get_capture_descriptor_count()).
+ */
+extern const struct lttng_event_expr *
+lttng_condition_event_rule_get_capture_descriptor_at_index(
+		const struct lttng_condition *condition, unsigned int index);
 
 #ifdef __cplusplus
 }

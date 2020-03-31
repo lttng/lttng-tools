@@ -12,18 +12,15 @@
 #include <common/buffer-view.h>
 #include <common/macros.h>
 #include <lttng/condition/evaluation-internal.h>
+#include <common/dynamic-array.h>
 
 struct lttng_condition_event_rule {
 	struct lttng_condition parent;
 	struct lttng_event_rule *rule;
-};
 
-struct lttng_condition_event_rule_comm {
-	/* length excludes the header's length. */
-	uint32_t event_rule_length;
-	/* Event rule follows. */
-	char payload[];
-} LTTNG_PACKED;
+	/* Array of `struct lttng_event_expr *`. */
+	struct lttng_dynamic_pointer_array capture_descriptors;
+};
 
 struct lttng_evaluation_event_rule {
 	struct lttng_evaluation parent;
