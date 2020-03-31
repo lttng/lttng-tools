@@ -28,6 +28,9 @@
 #include "health-sessiond.h"
 #include "thread.h"
 
+#include "kernel.h"
+#include <common/kernel-ctl/kernel-ctl.h>
+
 #include <urcu.h>
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
@@ -69,6 +72,7 @@ void notification_thread_handle_destroy(
 			PERROR("close kernel consumer channel monitoring pipe");
 		}
 	}
+
 end:
 	free(handle);
 }
@@ -550,6 +554,59 @@ end:
 	return ret;
 }
 
+static int handle_event_notification_pipe(int event_source_fd,
+		enum lttng_domain_type domain,
+		uint32_t revents,
+		struct notification_thread_state *state)
+{
+	int ret = 0;
+
+	if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+		ret = handle_notification_thread_remove_tracer_event_source_no_result(
+				state, event_source_fd);
+		if (ret) {
+			ERR("[notification-thread] Failed to remove event notification pipe from poll set: fd = %d",
+					event_source_fd);
+		}
+		goto end;
+	}
+
+	ret = handle_notification_thread_event_notification(
+			state, event_source_fd, domain);
+	if (ret) {
+		ERR("[notification-thread] Event notification handling error occurred for fd: %d",
+				event_source_fd);
+		ret = -1;
+		goto end;
+	}
+end:
+	return ret;
+}
+
+/*
+ * Return the event source domain type via parameter.
+ */
+static bool fd_is_event_notification_source(const struct notification_thread_state *state,
+		int fd,
+		enum lttng_domain_type *domain)
+{
+	struct notification_event_tracer_event_source_element *source_element;
+
+	assert(domain);
+
+	cds_list_for_each_entry(source_element,
+			&state->tracer_event_sources_list, node) {
+		if (source_element->fd != fd) {
+			continue;
+		}
+
+		*domain = source_element->domain;
+		return true;
+	}
+
+	return false;
+}
+
 /*
  * This thread services notification channel clients and commands received
  * from various lttng-sessiond components over a command queue.
@@ -560,6 +617,7 @@ void *thread_notification(void *data)
 	int ret;
 	struct notification_thread_handle *handle = data;
 	struct notification_thread_state state;
+	enum lttng_domain_type domain;
 
 	DBG("[notification-thread] Started notification thread");
 
@@ -634,6 +692,11 @@ void *thread_notification(void *data)
 					fd == handle->channel_monitoring_pipes.kernel_consumer) {
 				ret = handle_channel_monitoring_pipe(fd,
 						revents, handle, &state);
+				if (ret) {
+					goto error;
+				}
+			} else if (fd_is_event_notification_source(&state, fd, &domain)) {
+				ret = handle_event_notification_pipe(fd, domain, revents, &state);
 				if (ret) {
 					goto error;
 				}

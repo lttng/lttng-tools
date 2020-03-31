@@ -125,6 +125,19 @@ struct lttng_condition_list_element {
 	struct cds_list_head node;
 };
 
+/*
+ * Facilities to carry the different notifications type in the action processing
+ * code path.
+ */
+struct lttng_event_notifier_notification {
+	union {
+		struct lttng_ust_event_notifier_notification *ust;
+		struct lttng_kernel_event_notifier_notification *kernel;
+	} notification;
+	uint64_t token;
+	enum lttng_domain_type type;
+};
+
 struct channel_state_sample {
 	struct channel_key key;
 	struct cds_lfht_node channel_state_ht_node;
@@ -4130,6 +4143,99 @@ end_unlock_list:
 	pthread_mutex_unlock(&client_list->lock);
 end:
 	lttng_payload_reset(&msg_payload);
+	return ret;
+}
+
+int handle_notification_thread_event_notification(struct notification_thread_state *state,
+		int notification_pipe_read_fd,
+		enum lttng_domain_type domain)
+{
+	int ret;
+	struct lttng_ust_event_notifier_notification ust_notification;
+	struct lttng_kernel_event_notifier_notification kernel_notification;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+	struct notification_trigger_tokens_ht_element *element;
+	enum lttng_action_type action_type;
+	const struct lttng_action *action;
+	struct lttng_event_notifier_notification notification;
+	void *reception_buffer;
+	size_t reception_size;
+
+	notification.type = domain;
+
+	switch(domain) {
+	case LTTNG_DOMAIN_UST:
+		reception_buffer = (void *) &ust_notification;
+		reception_size = sizeof(ust_notification);
+		notification.notification.ust = &ust_notification;
+		break;
+	case LTTNG_DOMAIN_KERNEL:
+		reception_buffer = (void *) &kernel_notification;
+		reception_size = sizeof(kernel_notification);
+		notification.notification.kernel = &kernel_notification;
+		break;
+	default:
+		abort();
+	}
+
+	/*
+	 * The monitoring pipe only holds messages smaller than PIPE_BUF,
+	 * ensuring that read/write of tracer notifications are atomic.
+	 */
+	ret = lttng_read(notification_pipe_read_fd, reception_buffer,
+			reception_size);
+	if (ret != reception_size) {
+		PERROR("Failed to read from event source notification pipe: fd = %d, size to read = %zu, ret = %d",
+				notification_pipe_read_fd, reception_size, ret);
+		ret = -1;
+		goto end;
+	}
+
+	switch(domain) {
+	case LTTNG_DOMAIN_UST:
+		notification.token = ust_notification.token;
+		break;
+	case LTTNG_DOMAIN_KERNEL:
+		notification.token = kernel_notification.token;
+		break;
+	default:
+		abort();
+	}
+
+	/* Find triggers associated with this token. */
+	rcu_read_lock();
+	cds_lfht_lookup(state->trigger_tokens_ht,
+			hash_key_u64(&notification.token, lttng_ht_seed),
+			match_trigger_token, &notification.token, &iter);
+	node = cds_lfht_iter_get_node(&iter);
+	if (caa_likely(!node)) {
+		/*
+		 * This is not an error, slow consumption of the pipe can lead
+		 * to situations where a trigger is removed but we still get
+		 * tracer notification matching to a previous trigger.
+		 */
+		ret = 0;
+		goto end_unlock;
+	}
+
+	element = caa_container_of(node,
+			struct notification_trigger_tokens_ht_element,
+			node);
+
+	action = lttng_trigger_get_const_action(element->trigger);
+	action_type = lttng_action_get_type(action);
+	DBG("Received message from tracer event source: event source fd = %d, token = %" PRIu64 ", action type = '%s'",
+			notification_pipe_read_fd, notification.token,
+			lttng_action_type_string(action_type));
+
+	/* TODO: Perform actions */
+
+	ret = 0;
+
+end_unlock:
+	rcu_read_unlock();
+end:
 	return ret;
 }
 
