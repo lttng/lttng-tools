@@ -61,6 +61,7 @@ int print_missing_or_multiple_domains(unsigned int domain_count,
 int spawn_relayd(const char *pathname, int port);
 int check_relayd(void);
 void print_session_stats(const char *session_name);
+int get_session_stats_str(const char *session_name, char **str);
 int show_cmd_help(const char *cmd_name, const char *help_msg);
 
 int print_trace_archive_location(

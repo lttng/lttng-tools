@@ -69,18 +69,20 @@ static int destroy_session(struct lttng_session *session)
 {
 	int ret;
 	char *session_name = NULL;
-	bool session_was_stopped;
+	bool session_was_already_stopped;
 	enum lttng_error_code ret_code;
 	struct lttng_destruction_handle *handle = NULL;
-        enum lttng_destruction_handle_status status;
-	bool printed_wait_msg = false;
+	enum lttng_destruction_handle_status status;
+	bool newline_needed = false, printed_destroy_msg = false;
 	enum lttng_rotation_state rotation_state;
+	char *stats_str = NULL;
 
 	ret = lttng_stop_tracing_no_wait(session->name);
 	if (ret < 0 && ret != -LTTNG_ERR_TRACE_ALREADY_STOPPED) {
 		ERR("%s", lttng_strerror(ret));
 	}
-	session_was_stopped = ret == -LTTNG_ERR_TRACE_ALREADY_STOPPED;
+
+	session_was_already_stopped = ret == -LTTNG_ERR_TRACE_ALREADY_STOPPED;
 	if (!opt_no_wait) {
 		do {
 			ret = lttng_data_pending(session->name);
@@ -90,16 +92,15 @@ static int destroy_session(struct lttng_session *session)
 			}
 
 			/*
-			 * Data sleep time before retrying (in usec). Don't sleep if the call
-			 * returned value indicates availability.
+			 * Data sleep time before retrying (in usec). Don't
+			 * sleep if the call returned value indicates
+			 * availability.
 			 */
 			if (ret) {
-				if (!printed_wait_msg) {
-					_MSG("Waiting for destruction of session \"%s\"",
-							session->name);
-					printed_wait_msg = true;
-					fflush(stdout);
-				}
+				_MSG("Destroying session %s", session->name);
+				newline_needed = true;
+				printed_destroy_msg = true;
+				fflush(stdout);
 
 				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 				_MSG(".");
@@ -107,12 +108,16 @@ static int destroy_session(struct lttng_session *session)
 			}
 		} while (ret != 0);
 	}
-	if (!session_was_stopped) {
+
+	if (!session_was_already_stopped) {
 		/*
 		 * Don't print the event and packet loss warnings since the user
 		 * already saw them when stopping the trace.
 		 */
-		print_session_stats(session->name);
+		ret = get_session_stats_str(session->name, &stats_str);
+		if (ret < 0) {
+			goto error;
+		}
 	}
 
 	ret_code = lttng_destroy_session_ext(session->name, &handle);
@@ -126,14 +131,15 @@ static int destroy_session(struct lttng_session *session)
 	}
 
 	do {
-		status = lttng_destruction_handle_wait_for_completion(handle,
-				DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US / USEC_PER_MSEC);
+		status = lttng_destruction_handle_wait_for_completion(
+				handle, DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US /
+							USEC_PER_MSEC);
 		switch (status) {
 		case LTTNG_DESTRUCTION_HANDLE_STATUS_TIMEOUT:
-			if (!printed_wait_msg) {
-				_MSG("Waiting for destruction of session \"%s\"",
-						session->name);
-				printed_wait_msg = true;
+			if (!printed_destroy_msg) {
+				_MSG("Destroying session %s", session->name);
+				newline_needed = true;
+				printed_destroy_msg = true;
 			}
 			_MSG(".");
 			fflush(stdout);
@@ -141,8 +147,10 @@ static int destroy_session(struct lttng_session *session)
 		case LTTNG_DESTRUCTION_HANDLE_STATUS_COMPLETED:
 			break;
 		default:
-			ERR("Failed to wait for the completion of the destruction of session \"%s\"",
+			ERR("%sFailed to wait for the completion of the destruction of session \"%s\"",
+					newline_needed ? "\n" : "",
 					session->name);
+			newline_needed = false;
 			ret = -1;
 			goto error;
 		}
@@ -150,8 +158,10 @@ static int destroy_session(struct lttng_session *session)
 
 	status = lttng_destruction_handle_get_result(handle, &ret_code);
 	if (status != LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
-		ERR("Failed to get the result of session destruction");
+		ERR("%sFailed to get the result of session destruction",
+				newline_needed ? "\n" : "");
 		ret = -1;
+		newline_needed = false;
 		goto error;
 	}
 	if (ret_code != LTTNG_OK) {
@@ -159,44 +169,50 @@ static int destroy_session(struct lttng_session *session)
 		goto error;
 	}
 
-	status = lttng_destruction_handle_get_rotation_state(handle,
-			&rotation_state);
+	status = lttng_destruction_handle_get_rotation_state(
+			handle, &rotation_state);
 	if (status != LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
-		ERR("Failed to get rotation state from destruction handle");
+		ERR("%sFailed to get rotation state from destruction handle",
+				newline_needed ? "\n" : "");
+		newline_needed = false;
 		goto skip_wait_rotation;
 	}
+
 	switch (rotation_state) {
 	case LTTNG_ROTATION_STATE_NO_ROTATION:
 		break;
-        case LTTNG_ROTATION_STATE_COMPLETED:
+	case LTTNG_ROTATION_STATE_COMPLETED:
 	{
 		const struct lttng_trace_archive_location *location;
 
-		status = lttng_destruction_handle_get_archive_location(handle,
-				&location);
+		status = lttng_destruction_handle_get_archive_location(
+				handle, &location);
 		if (status == LTTNG_DESTRUCTION_HANDLE_STATUS_OK) {
-			if (printed_wait_msg) {
-				MSG("");
-				printed_wait_msg = false;
-			}
-			ret = print_trace_archive_location(location,
-					session->name);
+			ret = print_trace_archive_location(
+					location, session->name);
 			if (ret) {
-				ERR("Failed to print the location of trace archive");
+				ERR("%sFailed to print the location of trace archive",
+						newline_needed ? "\n" : "");
+				newline_needed = false;
 				goto skip_wait_rotation;
 			}
 			break;
 		}
 		/* fall-through. */
-        }
-        default:
-		ERR("Failed to get the location of the rotation performed during the session's destruction");
+	}
+	default:
+		ERR("%sFailed to get the location of the rotation performed during the session's destruction",
+				newline_needed ? "\n" : "");
+		newline_needed = false;
 		goto skip_wait_rotation;
 	}
 skip_wait_rotation:
-	MSG("%sSession \"%s\" destroyed", printed_wait_msg ? "\n" : "",
+	MSG("%sSession %s destroyed", newline_needed ? "\n" : "",
 			session->name);
-	printed_wait_msg = false;
+	newline_needed = false;
+	if (stats_str) {
+		MSG("%s", stats_str);
+	}
 
 	session_name = get_session_name_quiet();
 	if (session_name && !strncmp(session->name, session_name, NAME_MAX)) {
@@ -213,11 +229,12 @@ skip_wait_rotation:
 
 	ret = CMD_SUCCESS;
 error:
-	if (printed_wait_msg) {
+	if (newline_needed) {
 		MSG("");
 	}
 	lttng_destruction_handle_destroy(handle);
 	free(session_name);
+	free(stats_str);
 	return ret;
 }
 
