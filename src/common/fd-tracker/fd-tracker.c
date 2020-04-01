@@ -934,7 +934,7 @@ static int fs_handle_tracked_close(struct fs_handle *_handle)
 		 * isn't much the user can do about it.
 		 */
 		if (close(handle->fd)) {
-			PERROR("Failed to close the file descritptor (%d) of fs handle to %s, close() returned",
+			PERROR("Failed to close the file descriptor (%d) of fs handle to %s, close() returned",
 					handle->fd, path ? path : "Unknown");
 		}
 		handle->fd = -1;
