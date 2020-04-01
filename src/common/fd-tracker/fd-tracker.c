@@ -642,7 +642,7 @@ int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,
 		} else {
 			/*
 			 * There are not enough active suspendable file
-			 * descriptors to open a new fd and still accomodate the
+			 * descriptors to open a new fd and still accommodates the
 			 * tracker's capacity.
 			 */
 			WARN("Cannot open unsuspendable fd, too many unsuspendable file descriptors are opened (%u)",

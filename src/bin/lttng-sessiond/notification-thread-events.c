@@ -2949,7 +2949,7 @@ bool evaluate_buffer_usage_condition(const struct lttng_condition *condition,
 		 * forego this double-multiplication or it could be performed
 		 * as fixed-point math.
 		 *
-		 * Note that caching should accomodate the case where the
+		 * Note that caching should accommodates the case where the
 		 * condition applies to multiple channels (i.e. don't assume
 		 * that all channels matching my_chann* have the same size...)
 		 */

@@ -50,7 +50,7 @@ int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 
 /*
  * Set the buffer's size to new_size. The capacity of the buffer will
- * be expanded (if necessary) to accomodate new_size. Areas acquired by
+ * be expanded (if necessary) to accommodates new_size. Areas acquired by
  * a size increase will be zeroed.
  *
  * Be careful to expand the buffer's size _before_ calling out external
@@ -69,7 +69,7 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 		size_t new_size);
 
 /*
- * Set the buffer's capacity to accomodate the new_capacity, allocating memory
+ * Set the buffer's capacity to accommodates the new_capacity, allocating memory
  * as necessary. The buffer's content is preserved. Setting a buffer's capacity
  * is meant as a _hint_ to the underlying buffer and is only optimization; no
  * guarantee is offered that subsequent calls to append or set_size will succeed.

@@ -106,7 +106,7 @@ struct fs_handle *fd_tracker_open_fs_handle(struct fd_tracker *tracker,
  * negative tracker-specific codes may be returned:
  *   - ENOMEM: allocation of a new entry failed,
  *   - EMFILE: too many unsuspendable fds are opened and the tracker can't
- *             accomodate the request for a new unsuspendable entry.
+ *             accommodates the request for a new unsuspendable entry.
  */
 LTTNG_HIDDEN
 int fd_tracker_open_unsuspendable_fd(struct fd_tracker *tracker,

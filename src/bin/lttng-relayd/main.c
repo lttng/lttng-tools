@@ -507,7 +507,7 @@ static int set_fd_pool_size(void)
 		goto end;
 	}
 
-	DBG("File descriptor pool size argument (%u) adjusted to %u to accomodate transient fd uses",
+	DBG("File descriptor pool size argument (%u) adjusted to %u to accommodates transient fd uses",
 			lttng_opt_fd_pool_size,
 			lttng_opt_fd_pool_size - DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE);
 	lttng_opt_fd_pool_size -= DEFAULT_RELAYD_FD_POOL_SIZE_RESERVE;
