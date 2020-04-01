@@ -60,7 +60,7 @@ char *backward_compat_group_by_session(
 	/*
 	 * The use of strtok with '/' as delimiter is valid since we refuse '/'
 	 * in session name and '/' is not a valid hostname character based on
-	 * RFC-952 [1], RFC-921 [2] and refined in RFC-1123 [2].
+	 * RFC-952 [1], RFC-921 [2] and refined in RFC-1123 [3].
 	 * [1] https://tools.ietf.org/html/rfc952
 	 * [2] https://tools.ietf.org/html/rfc921
 	 * [3] https://tools.ietf.org/html/rfc1123#page-13
