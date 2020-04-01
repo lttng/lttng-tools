@@ -222,9 +222,20 @@ int validate_event_field(struct ustctl_field *field,
 	case ustctl_atype_sequence:
 	case ustctl_atype_string:
 	case ustctl_atype_variant:
+	case ustctl_atype_array_nestable:
+	case ustctl_atype_sequence_nestable:
+	case ustctl_atype_enum_nestable:
+	case ustctl_atype_variant_nestable:
 		break;
 	case ustctl_atype_struct:
-		if (field->type.u._struct.nr_fields != 0) {
+		if (field->type.u.legacy._struct.nr_fields != 0) {
+			WARN("Unsupported non-empty struct field.");
+			ret = -EINVAL;
+			goto end;
+		}
+		break;
+	case ustctl_atype_struct_nestable:
+		if (field->type.u.struct_nestable.nr_fields != 0) {
 			WARN("Unsupported non-empty struct field.");
 			ret = -EINVAL;
 			goto end;
@@ -232,12 +243,12 @@ int validate_event_field(struct ustctl_field *field,
 		break;
 
 	case ustctl_atype_float:
-		switch (field->type.u.basic._float.mant_dig) {
+		switch (field->type.u._float.mant_dig) {
 		case 0:
 			WARN("UST application '%s' (pid: %d) has unknown float mantissa '%u' "
 				"in field '%s', rejecting event '%s'",
 				app->name, app->pid,
-				field->type.u.basic._float.mant_dig,
+				field->type.u._float.mant_dig,
 				field->name,
 				event_name);
 			ret = -EINVAL;

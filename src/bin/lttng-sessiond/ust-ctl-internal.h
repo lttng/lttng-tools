@@ -279,13 +279,18 @@ enum ustctl_channel_header {
 
 enum ustctl_abstract_types {
 	ustctl_atype_integer,
-	ustctl_atype_enum,
-	ustctl_atype_array,
-	ustctl_atype_sequence,
+	ustctl_atype_enum,	/* legacy */
+	ustctl_atype_array,	/* legacy */
+	ustctl_atype_sequence,	/* legacy */
 	ustctl_atype_string,
 	ustctl_atype_float,
-	ustctl_atype_variant,
-	ustctl_atype_struct,
+	ustctl_atype_variant,	/* legacy */
+	ustctl_atype_struct,	/* legacy */
+	ustctl_atype_enum_nestable,
+	ustctl_atype_array_nestable,
+	ustctl_atype_sequence_nestable,
+	ustctl_atype_struct_nestable,
+	ustctl_atype_variant_nestable,
 	NR_USTCTL_ABSTRACT_TYPES,
 };
 
@@ -339,6 +344,7 @@ struct ustctl_enum_entry {
 	} u;
 } LTTNG_PACKED;
 
+/* legacy */
 #define USTCTL_UST_BASIC_TYPE_PADDING	296
 union _ustctl_basic_type {
 	struct ustctl_integer_type integer;
@@ -354,6 +360,7 @@ union _ustctl_basic_type {
 	char padding[USTCTL_UST_BASIC_TYPE_PADDING];
 } LTTNG_PACKED;
 
+/* legacy */
 struct ustctl_basic_type {
 	enum ustctl_abstract_types atype;
 	union {
@@ -361,28 +368,67 @@ struct ustctl_basic_type {
 	} u;
 } LTTNG_PACKED;
 
-#define USTCTL_UST_TYPE_PADDING	128
+/*
+ * Padding is derived from largest member: u.legacy.sequence which
+ * contains two basic types, each with USTCTL_UST_BASIC_TYPE_PADDING.
+ */
+#define USTCTL_UST_TYPE_PADDING	(2 * USTCTL_UST_BASIC_TYPE_PADDING)
 struct ustctl_type {
 	enum ustctl_abstract_types atype;
 	union {
-		union _ustctl_basic_type basic;
+		struct ustctl_integer_type integer;
+		struct ustctl_float_type _float;
 		struct {
-			struct ustctl_basic_type elem_type;
+			int32_t encoding;	/* enum ustctl_string_encodings */
+		} string;
+		struct {
+			char name[LTTNG_UST_SYM_NAME_LEN];
+			uint64_t id;	/* enum ID in sessiond. */
+			/* container_type follows after this struct ustctl_field. */
+		} enum_nestable;
+		struct {
 			uint32_t length;		/* num. elems. */
-		} array;
+			uint32_t alignment;
+			/* elem_type follows after this struct ustctl_field. */
+		} array_nestable;
 		struct {
-			struct ustctl_basic_type length_type;
-			struct ustctl_basic_type elem_type;
-		} sequence;
+			char length_name[LTTNG_UST_SYM_NAME_LEN];
+			uint32_t alignment;		/* Alignment before elements. */
+			/* elem_type follows after the length_type. */
+		} sequence_nestable;
+		struct {
+			uint32_t nr_fields;
+			uint32_t alignment;
+			/* Followed by nr_fields struct ustctl_field. */
+		} struct_nestable;
 		struct {
 			uint32_t nr_choices;
 			char tag_name[LTTNG_UST_SYM_NAME_LEN];
+			uint32_t alignment;
 			/* Followed by nr_choices struct ustctl_field. */
-		} variant;
-		struct {
-			uint32_t nr_fields;
-			/* Followed by nr_fields struct ustctl_field. */
-		} _struct;
+		} variant_nestable;
+
+		/* Legacy ABI */
+		union {
+			union _ustctl_basic_type basic;
+			struct {
+				struct ustctl_basic_type elem_type;
+				uint32_t length;		/* num. elems. */
+			} array;
+			struct {
+				struct ustctl_basic_type length_type;
+				struct ustctl_basic_type elem_type;
+			} sequence;
+			struct {
+				uint32_t nr_fields;
+				/* Followed by nr_fields struct ustctl_field. */
+			} _struct;
+			struct {
+				uint32_t nr_choices;
+				char tag_name[LTTNG_UST_SYM_NAME_LEN];
+				/* Followed by nr_choices struct ustctl_field. */
+			} variant;
+		} legacy;
 		char padding[USTCTL_UST_TYPE_PADDING];
 	} u;
 } LTTNG_PACKED;

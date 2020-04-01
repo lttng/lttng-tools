@@ -219,53 +219,113 @@ int match_ustctl_field(const struct ustctl_field *first,
 	case ustctl_atype_string:
 	case ustctl_atype_float:
 		if (!match_ustctl_field_raw_basic_type(first->type.atype,
-					&first->type.u.basic, second->type.atype,
-					&second->type.u.basic)) {
+					&first->type.u.legacy.basic, second->type.atype,
+					&second->type.u.legacy.basic)) {
 			goto no_match;
 		}
 		break;
 	case ustctl_atype_sequence:
 		/* Match element type of the sequence. */
-		if (!match_ustctl_field_basic_type(&first->type.u.sequence.elem_type,
-					&second->type.u.sequence.elem_type)) {
+		if (!match_ustctl_field_basic_type(&first->type.u.legacy.sequence.elem_type,
+					&second->type.u.legacy.sequence.elem_type)) {
 			goto no_match;
 		}
 
 		/* Match length type of the sequence. */
-		if (!match_ustctl_field_basic_type(&first->type.u.sequence.length_type,
-					&second->type.u.sequence.length_type)) {
+		if (!match_ustctl_field_basic_type(&first->type.u.legacy.sequence.length_type,
+					&second->type.u.legacy.sequence.length_type)) {
 			goto no_match;
 		}
 		break;
 	case ustctl_atype_array:
 		/* Match element type of the array. */
-		if (!match_ustctl_field_basic_type(&first->type.u.array.elem_type,
-					&second->type.u.array.elem_type)) {
+		if (!match_ustctl_field_basic_type(&first->type.u.legacy.array.elem_type,
+					&second->type.u.legacy.array.elem_type)) {
 			goto no_match;
 		}
 
 		/* Match length of the array. */
-		if (first->type.u.array.length != second->type.u.array.length) {
+		if (first->type.u.legacy.array.length != second->type.u.legacy.array.length) {
 			goto no_match;
 		}
 		break;
 	case ustctl_atype_variant:
 		/* Compare number of choice of the variants. */
-		if (first->type.u.variant.nr_choices !=
-					second->type.u.variant.nr_choices) {
+		if (first->type.u.legacy.variant.nr_choices !=
+					second->type.u.legacy.variant.nr_choices) {
 			goto no_match;
 		}
 
 		/* Compare tag name of the variants. */
-		if (strncmp(first->type.u.variant.tag_name,
-					second->type.u.variant.tag_name,
+		if (strncmp(first->type.u.legacy.variant.tag_name,
+					second->type.u.legacy.variant.tag_name,
 					LTTNG_UST_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		break;
 	case ustctl_atype_struct:
 		/* Compare number of fields of the structs. */
-		if (first->type.u._struct.nr_fields != second->type.u._struct.nr_fields) {
+		if (first->type.u.legacy._struct.nr_fields != second->type.u.legacy._struct.nr_fields) {
+			goto no_match;
+		}
+		break;
+	case ustctl_atype_sequence_nestable:
+		if (first->type.u.sequence_nestable.alignment != second->type.u.sequence_nestable.alignment) {
+			goto no_match;
+		}
+		/* Compare length_name of the sequences. */
+		if (strncmp(first->type.u.sequence_nestable.length_name,
+					second->type.u.sequence_nestable.length_name,
+					LTTNG_UST_SYM_NAME_LEN)) {
+			goto no_match;
+		}
+		/* Comparison will be done when marshalling following items. */
+		break;
+	case ustctl_atype_array_nestable:
+		if (first->type.u.array_nestable.alignment != second->type.u.array_nestable.alignment) {
+			goto no_match;
+		}
+		/* Match length of the array. */
+		if (first->type.u.array_nestable.length != second->type.u.array_nestable.length) {
+			goto no_match;
+		}
+		/* Comparison of element type will be done when marshalling following item. */
+		break;
+	case ustctl_atype_enum_nestable:
+		if (first->type.u.enum_nestable.id != second->type.u.enum_nestable.id) {
+			goto no_match;
+		}
+		/* Compare name of the enums. */
+		if (strncmp(first->type.u.enum_nestable.name,
+					second->type.u.enum_nestable.name,
+					LTTNG_UST_SYM_NAME_LEN)) {
+			goto no_match;
+		}
+		/* Comparison of element type will be done when marshalling following item. */
+		break;
+	case ustctl_atype_struct_nestable:
+		if (first->type.u.struct_nestable.alignment != second->type.u.struct_nestable.alignment) {
+			goto no_match;
+		}
+		/* Compare number of fields of the structs. */
+		if (first->type.u.struct_nestable.nr_fields != second->type.u.struct_nestable.nr_fields) {
+			goto no_match;
+		}
+		break;
+	case ustctl_atype_variant_nestable:
+		if (first->type.u.variant_nestable.alignment != second->type.u.variant_nestable.alignment) {
+			goto no_match;
+		}
+		/* Compare number of choice of the variants. */
+		if (first->type.u.variant_nestable.nr_choices !=
+					second->type.u.variant_nestable.nr_choices) {
+			goto no_match;
+		}
+
+		/* Compare tag name of the variants. */
+		if (strncmp(first->type.u.variant_nestable.tag_name,
+					second->type.u.variant_nestable.tag_name,
+					LTTNG_UST_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		break;
