@@ -85,7 +85,7 @@
 
 #define DEFAULT_RELAYD_MIN_FD_POOL_SIZE		100
 /*
- * The file descriptor pool size needs a reserve buffer to accomodate the
+ * The file descriptor pool size needs a reserve buffer to accommodates the
  * indirect use of short-lived file descriptors. For instance, glibc will
  * create a socket (and thus, use an fd) during calls to gethostname() or
  * when querying the user's group. Other calls also probably make use of

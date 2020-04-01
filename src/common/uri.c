@@ -126,7 +126,7 @@ static int set_ip_address(const char *addr, int af, char *dst, size_t size)
 			 * We choose to use the system name resolution API first
 			 * to honor its network configuration. If this fails, we
 			 * resolve to the appropriate loopback address. This is
-			 * done to accomodate systems which may want to start
+			 * done to accommodates systems which may want to start
 			 * tracing before their network configured.
 			 */
 			const char *loopback_addr = af == AF_INET ?
