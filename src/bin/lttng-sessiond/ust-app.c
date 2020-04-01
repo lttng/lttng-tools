@@ -4996,7 +4996,7 @@ end:
 
 /*
  * The caller must ensure that the application is compatible and is tracked
- * by the PID tracker.
+ * by the process attribute trackers.
  */
 static
 void ust_app_synchronize(struct ltt_ust_session *usess,
