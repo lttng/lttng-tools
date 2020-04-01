@@ -456,16 +456,30 @@ int print_missing_or_multiple_domains(unsigned int domain_count,
  */
 void print_session_stats(const char *session_name)
 {
-	int count, nb_domains, domain_idx, channel_idx, session_idx;
+	char *str;
+	const int ret = get_session_stats_str(session_name, &str);
+
+	if (ret >= 0 && str) {
+		MSG("%s", str);
+		free(str);
+	}
+}
+
+int get_session_stats_str(const char *session_name, char **out_str)
+{
+	int count, nb_domains, domain_idx, channel_idx, session_idx, ret;
 	struct lttng_domain *domains;
 	struct lttng_channel *channels;
 	uint64_t discarded_events_total = 0, lost_packets_total = 0;
 	struct lttng_session *sessions = NULL;
 	const struct lttng_session *selected_session = NULL;
+	char *stats_str = NULL;
+	bool print_discarded_events = false, print_lost_packets = false;
 
 	count = lttng_list_sessions(&sessions);
 	if (count < 1) {
 		ERR("Failed to retrieve session descriptions while printing session statistics.");
+		ret = -1;
 		goto end;
 	}
 
@@ -478,11 +492,13 @@ void print_session_stats(const char *session_name)
 	}
 	if (!selected_session) {
 		ERR("Failed to retrieve session \"%s\" description while printing session statistics.", session_name);
+		ret = -1;
 		goto end;
 	}
 
 	nb_domains = lttng_list_domains(session_name, &domains);
 	if (nb_domains < 0) {
+		ret = -1;
 		goto end;
 	}
 	for (domain_idx = 0; domain_idx < nb_domains; domain_idx++) {
@@ -491,12 +507,12 @@ void print_session_stats(const char *session_name)
 
 		if (!handle) {
 			ERR("Failed to create session handle while printing session statistics.");
+			ret = -1;
 			goto end;
 		}
 
 		count = lttng_list_channels(handle, &channels);
 		for (channel_idx = 0; channel_idx < count; channel_idx++) {
-			int ret;
 			uint64_t discarded_events = 0, lost_packets = 0;
 			struct lttng_channel *channel = &channels[channel_idx];
 
@@ -519,19 +535,44 @@ void print_session_stats(const char *session_name)
 		}
 		lttng_destroy_handle(handle);
 	}
-	if (discarded_events_total > 0 && !selected_session->snapshot_mode) {
-		MSG("[warning] %" PRIu64 " events discarded, please refer to "
+
+	print_discarded_events = discarded_events_total > 0 &&
+				 !selected_session->snapshot_mode;
+	print_lost_packets = lost_packets_total > 0 &&
+			     !selected_session->snapshot_mode;
+
+	if (print_discarded_events && print_lost_packets) {
+		ret = asprintf(&stats_str,
+				"Warning: %" PRIu64
+				" events were discarded and %" PRIu64
+				" packets were lost, please refer to "
+				"the documentation on channel configuration.",
+				discarded_events_total, lost_packets_total);
+	} else if (print_discarded_events) {
+		ret = asprintf(&stats_str,
+				"Warning: %" PRIu64
+				" events were discarded, please refer to "
 				"the documentation on channel configuration.",
 				discarded_events_total);
-	}
-	if (lost_packets_total > 0 && !selected_session->snapshot_mode) {
-		MSG("[warning] %" PRIu64 " packets lost, please refer to "
+	} else if (print_lost_packets) {
+		ret = asprintf(&stats_str,
+				"Warning: %" PRIu64
+				" packets were lost, please refer to "
 				"the documentation on channel configuration.",
 				lost_packets_total);
+	} else {
+		ret = 0;
 	}
 
+	if (ret < 0) {
+		ERR("Failed to format lost packet and discarded events statistics");
+	} else {
+		*out_str = stats_str;
+		ret = 0;
+	}
 end:
 	free(sessions);
+	return ret;
 }
 
 int show_cmd_help(const char *cmd_name, const char *help_msg)
