@@ -329,7 +329,7 @@ int close_pipes(void *data, int *fds)
 
 /*
  * Validate that the tracker enforces the open file descriptor limit
- * when unsuspendable file descritptors are being opened.
+ * when unsuspendable file descriptors are being opened.
  */
 static
 void test_unsuspendable_limit(void)
@@ -349,7 +349,7 @@ void test_unsuspendable_limit(void)
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, fds,
 			NULL, TRACKER_FD_LIMIT, open_pipes, NULL);
-	ok(ret == 0, "File descriptor tracker allowed the user to meet its limit with unsuspendable file descritptors (%d)",
+	ok(ret == 0, "File descriptor tracker allowed the user to meet its limit with unsuspendable file descriptors (%d)",
 			TRACKER_FD_LIMIT);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
@@ -893,15 +893,15 @@ int main(int argc, char **argv)
 	test_unsuspendable_duplicate();
 	diag("Unsuspendable - closing an untracked file descriptor");
 	test_unsuspendable_close_untracked();
-	diag("Unsuspendable - check that file descritptor limit is enforced");
+	diag("Unsuspendable - check that file descriptor limit is enforced");
 	test_unsuspendable_limit();
 
-	diag("Suspendable - check that file descritptor limit is enforced");
+	diag("Suspendable - check that file descriptor limit is enforced");
 	test_suspendable_limit();
 	diag("Suspendable - restoration test");
 	test_suspendable_restore();
 
-	diag("Mixed - check that file descritptor limit is enforced");
+	diag("Mixed - check that file descriptor limit is enforced");
 	test_mixed_limit();
 
 	diag("Suspendable - Unlinking test");
