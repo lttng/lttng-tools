@@ -309,4 +309,4 @@ man:lttng(1),
 man:lttng-sessiond(8),
 man:lttng-crash(1),
 man:lttng-ust(3),
-man:babeltrace(1)
+man:babeltrace2(1)
