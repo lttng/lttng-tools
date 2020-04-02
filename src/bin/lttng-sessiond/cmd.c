@@ -3402,9 +3402,17 @@ int cmd_destroy_session(struct ltt_session *session,
 		 */
 		ret = cmd_rotate_session(session, NULL, true,
 			LTTNG_TRACE_CHUNK_COMMAND_TYPE_NO_OPERATION);
-		if (ret != LTTNG_OK) {
+		/*
+		 * Rotation operations may not be supported by the kernel
+		 * tracer. Hence, do not consider this implicit rotation as
+		 * a session destruction error. The library has already stopped
+		 * the session and waited for pending data; there is nothing
+		 * left to do but complete the destruction of the session.
+		 */
+		if (ret != LTTNG_OK &&
+				ret != -LTTNG_ERR_ROTATION_NOT_AVAILABLE_KERNEL) {
 			ERR("Failed to perform a quiet rotation as part of the destruction of session \"%s\": %s",
-					session->name, lttng_strerror(-ret));
+			    session->name, lttng_strerror(ret));
 			destruction_last_error = -ret;
 		}
 	}
