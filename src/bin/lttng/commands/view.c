@@ -58,7 +58,7 @@ enum viewer_type {
 	VIEWER_USER_DEFINED  = 2,
 };
 
-static const struct viewers {
+static const struct viewer {
 	const char *exec_name;
 	enum viewer_type type;
 } viewers[] = {
@@ -70,7 +70,7 @@ static const struct viewers {
 /* Is the session we are trying to view is in live mode. */
 static int session_live_mode;
 
-static const struct viewers *parse_options(void)
+static const struct viewer *parse_options(void)
 {
 	if (opt_viewer == NULL) {
 		/* Default is babeltrace */
@@ -192,7 +192,7 @@ static int spawn_viewer(const char *trace_path)
 	int ret = 0;
 	struct stat status;
 	const char *viewer_bin = NULL;
-	const struct viewers *viewer;
+	const struct viewer *viewer;
 	char **argv = NULL;
 
 	/* Check for --viewer options */
