@@ -1741,7 +1741,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 					ksess->uid, ksess->gid, ksess->consumer,
 					/* is_metadata_channel */ false);
 			if (ret < 0) {
-				status = LTTNG_ERR_KERN_CONSUMER_FAIL;
+				status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 				goto error;
 			}
 		}
@@ -1753,7 +1753,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 				ksess->uid, ksess->gid, ksess->consumer,
 				/* is_metadata_channel */ true);
 		if (ret < 0) {
-			status = LTTNG_ERR_KERN_CONSUMER_FAIL;
+			status = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 			goto error;
 		}
 	}
