@@ -220,6 +220,7 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 		goto end;
 	}
 
+	lttng_trace_chunk_set_fd_tracker(chunk, the_fd_tracker);
 	status = lttng_trace_chunk_set_credentials_current_user(chunk);
 	if (status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ret = -1;
@@ -232,8 +233,6 @@ static int session_set_anonymous_chunk(struct relay_session *session)
 		goto end;
 	}
 
-	lttng_trace_chunk_set_fd_tracker(chunk, the_fd_tracker);
-	output_directory = NULL;
 	session->current_trace_chunk = chunk;
 	chunk = NULL;
 end:
