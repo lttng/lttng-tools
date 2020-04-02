@@ -42,7 +42,7 @@ to interact with multiple tracers (kernel and user space) within the
 same container, a _tracing session_. Traces can be gathered from the
 Linux kernel and/or from instrumented applications (see
 man:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using man:babeltrace(1).
+traces using man:babeltrace2(1).
 
 To trace the Linux kernel, the session daemon needs to be running as
 `root`. LTTng uses a _tracing group_ to allow specific users to interact
@@ -347,4 +347,4 @@ man:lttng(1),
 man:lttng-relayd(8),
 man:lttng-crash(1),
 man:lttng-ust(3),
-man:babeltrace(1)
+man:babeltrace2(1)
