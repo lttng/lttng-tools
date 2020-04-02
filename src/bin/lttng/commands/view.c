@@ -58,10 +58,6 @@ enum viewer_type {
 	VIEWER_USER_DEFINED  = 2,
 };
 
-/*
- * NOTE: "lttv" is a shell command and it's not working for exec() family
- * functions so we might think of removing this wrapper or using bash.
- */
 static const struct viewers {
 	const char *exec_name;
 	enum viewer_type type;
@@ -81,11 +77,6 @@ static const struct viewers *parse_options(void)
 		return &(viewers[VIEWER_BABELTRACE2]);
 	}
 
-	/*
-	 * This means that if -e, --viewers is used, we just override everything
-	 * with it. For supported viewers like lttv, we could simply detect if "-t"
-	 * is passed and if not, add the trace directory to it.
-	 */
 	return &(viewers[VIEWER_USER_DEFINED]);
 }
 
