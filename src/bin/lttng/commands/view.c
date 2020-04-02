@@ -70,10 +70,10 @@ static const struct viewer {
 /* Is the session we are trying to view is in live mode. */
 static int session_live_mode;
 
-static const struct viewer *parse_options(void)
+static const struct viewer *parse_viewer_option(void)
 {
 	if (opt_viewer == NULL) {
-		/* Default is babeltrace */
+		/* Default is babeltrace2 */
 		return &(viewers[VIEWER_BABELTRACE2]);
 	}
 
@@ -195,8 +195,8 @@ static int spawn_viewer(const char *trace_path)
 	const struct viewer *viewer;
 	char **argv = NULL;
 
-	/* Check for --viewer options */
-	viewer = parse_options();
+	/* Check for --viewer option. */
+	viewer = parse_viewer_option();
 	if (viewer == NULL) {
 		ret = CMD_ERROR;
 		goto error;
