@@ -4193,7 +4193,7 @@ int consumer_clear_buffer(struct lttng_consumer_stream *stream)
 	case LTTNG_CONSUMER_KERNEL:
 		ret = kernctl_buffer_clear(stream->wait_fd);
 		if (ret < 0) {
-			ERR("Failed to flush kernel stream");
+			ERR("Failed to clear kernel stream (ret = %d)", ret);
 			goto end;
 		}
 		break;
