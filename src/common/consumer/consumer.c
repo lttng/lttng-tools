@@ -3953,8 +3953,18 @@ int consumer_flush_buffer(struct lttng_consumer_stream *stream, int producer_act
 		} else {
 			ret = kernctl_buffer_flush_empty(stream->wait_fd);
 			if (ret < 0) {
-				ERR("Failed to flush kernel stream");
-				goto end;
+				/*
+				 * Doing a buffer flush which does not take into
+				 * account empty packets. This is not perfect,
+				 * but required as a fall-back when
+				 * "flush_empty" is not implemented by
+				 * lttng-modules.
+				 */
+				ret = kernctl_buffer_flush(stream->wait_fd);
+				if (ret < 0) {
+					ERR("Failed to flush kernel stream");
+					goto end;
+				}
 			}
 		}
 		break;
