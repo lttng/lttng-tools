@@ -1030,7 +1030,7 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 		status = LTTNG_TRACE_CHUNK_STATUS_ERROR;
 		goto end;
 	}
-	if (chunk->path[0] != '\0') {
+	if (chunk->path && chunk->path[0] != '\0') {
 		ret = lttng_directory_handle_create_subdirectory_as_user(
 				session_output_directory,
 				chunk->path,
