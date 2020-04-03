@@ -11,7 +11,7 @@ lttng-crash - Recover and view LTTng 2 trace buffers in the event of a crash
 SYNOPSIS
 --------
 [verse]
-*lttng-crash* [option:--extract='PATH' | option:--viewer='VIEWER'] [option:-v | option:-vv | option:-vvv]
+*lttng-crash* [option:--extract='PATH' | option:--viewer='VIEWER'] [option:-v | option:-vv | option:-vvv] 'SHMDIR'
 
 
 DESCRIPTION
@@ -23,8 +23,22 @@ user applications, and user libraries.
 LTTng consists of Linux kernel modules (for Linux kernel tracing) and
 dynamically loaded libraries (for user application and library tracing).
 
-The _`lttng-crash`_ command-line tool is used to recover and view
+The `lttng-crash` command-line tool is used to recover and view
 LTTng trace buffers in the event of a system crash.
+
+`lttng-crash` reads files within the directory 'SHMDIR' and does one
+of:
+
+Without the option:--extract option::
+    Launches a trace reader (see the option:--viewer option) to view the
+    recovered traces.
+
+With the option:--extract option::
+    Extracts them as uncorrupted LTTng traces on the file system.
+
+'SHMDIR' is the directory specified as the argument of the
+nloption:--shm-path option of the man:lttng-create(1) command used to
+create the tracing session for which to recover the traces.
 
 
 OPTIONS
