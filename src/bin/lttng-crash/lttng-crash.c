@@ -27,9 +27,8 @@
 #include <version.h>
 #include <lttng/lttng.h>
 #include <common/common.h>
+#include <common/spawn-viewer.h>
 #include <common/utils.h>
-
-#define DEFAULT_VIEWER "babeltrace"
 
 #define COPY_BUFLEN		4096
 #define RB_CRASH_DUMP_ABI_LEN	32
@@ -293,10 +292,6 @@ static int parse_args(int argc, char **argv)
 			ERR("Unknown command-line option");
 			goto error;
 		}
-	}
-
-	if (!opt_viewer_path) {
-		opt_viewer_path = (char *) DEFAULT_VIEWER;
 	}
 
 	/* No leftovers, or more than one input path, print usage and quit */
@@ -1181,7 +1176,7 @@ end_no_closedir:
 }
 
 static
-int view_trace(const char *viewer_path, const char *trace_path)
+int view_trace(const char *trace_path, char *viewer_path)
 {
 	pid_t pid;
 
@@ -1202,13 +1197,12 @@ int view_trace(const char *viewer_path, const char *trace_path)
 		/* Child */
 		int ret;
 
-		ret = execlp(viewer_path, viewer_path,
-			trace_path, (char *) NULL);
+		ret = spawn_viewer(trace_path, viewer_path, false);
 		if (ret) {
-			PERROR("execlp");
 			exit(EXIT_FAILURE);
 		}
-		exit(EXIT_SUCCESS);	/* Never reached */
+		/* Never reached */
+		exit(EXIT_SUCCESS);
 	}
 	return 0;
 }
@@ -1260,7 +1254,7 @@ int main(int argc, char *argv[])
 	}
 	if (!opt_output_path) {
 		/* View trace */
-		ret = view_trace(opt_viewer_path, output_path);
+		ret = view_trace(output_path, opt_viewer_path);
 		if (ret) {
 			has_warning = true;
 		}
