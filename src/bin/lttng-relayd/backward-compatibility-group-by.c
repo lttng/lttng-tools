@@ -5,6 +5,7 @@
  *
  */
 
+#include "common/time.h"
 #include <assert.h>
 #include <regex.h>
 #include <stdio.h>
@@ -28,8 +29,9 @@
  *
  * Return the allocated string containing the new stream path or else NULL.
  */
-char *backward_compat_group_by_session(
-		const char *path, const char *local_session_name)
+char *backward_compat_group_by_session(const char *path,
+		const char *local_session_name,
+		time_t relay_session_creation_time)
 {
 	int ret;
 	size_t len;
@@ -162,7 +164,7 @@ char *backward_compat_group_by_session(
 		ret = regexec(&regex, local_session_name, 0, NULL, 0);
 		if (ret == 0) {
 			const ssize_t local_session_name_offset =
-					strlen(local_session_name) - DATETIME_STRING_SIZE + 1;
+					strlen(local_session_name) - DATETIME_STR_LEN + 1;
 
 			assert(local_session_name_offset >= 0);
 			datetime = strdup(local_session_name +
@@ -171,8 +173,21 @@ char *backward_compat_group_by_session(
 				PERROR("Failed to parse session path: couldn't copy datetime on regex match");
 				goto error_regex;
 			}
+		} else {
+			datetime = zmalloc(DATETIME_STR_LEN);
+			if (!datetime) {
+				PERROR("Failed to allocate DATETIME string");
+				goto error;
+			}
+
+			ret = time_to_datetime_str(relay_session_creation_time,
+					datetime, DATETIME_STR_LEN);
+			if (ret) {
+				/* time_to_datetime_str already logs errors. */
+				goto error;
+			}
 		}
-	} else if (len == DATETIME_STRING_SIZE &&
+	} else if (len == DATETIME_STR_LEN &&
 			!regexec(&regex, leftover_second_token_ptr, 0, NULL,
 					0)) {
 		/*

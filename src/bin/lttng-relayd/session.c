@@ -343,6 +343,12 @@ struct relay_session *session_create(const char *session_name,
 	}
 	if (creation_time) {
 		LTTNG_OPTIONAL_SET(&session->creation_time, *creation_time);
+	} else {
+		LTTNG_OPTIONAL_SET(&session->creation_time, time(NULL));
+		if (session->creation_time.value == (time_t) -1) {
+			PERROR("Failed to sample session creation time");
+			goto error;
+		}
 	}
 	session->session_name_contains_creation_time =
 			session_name_contains_creation_time;

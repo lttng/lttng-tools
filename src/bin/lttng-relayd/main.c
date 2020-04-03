@@ -1632,7 +1632,8 @@ static int relay_add_stream(const struct lttcomm_relayd_hdr *recv_hdr,
 			group_by_session_path_name =
 					backward_compat_group_by_session(
 							path_name,
-							session->session_name);
+							session->session_name,
+							session->creation_time.value);
 			if (!group_by_session_path_name) {
 				ERR("Failed to apply group by session to stream of session %" PRIu64,
 						session->id);
