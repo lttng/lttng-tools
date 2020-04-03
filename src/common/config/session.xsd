@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-elementFormDefault="qualified" version="2.11">
+elementFormDefault="qualified" version="2.12">
 
 <xs:simpleType name="name_type">
 	<xs:restriction base="xs:string">
