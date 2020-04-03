@@ -99,7 +99,7 @@ option:-b, option:--background::
     Use the option:--daemonize option instead to close the file
     descriptors.
 
-option:-f, option:--config='PATH'::
+option:-f 'PATH', option:--config='PATH'::
     Load session daemon configuration from path 'PATH'.
 
 option:-d, option:--daemonize::
@@ -107,10 +107,10 @@ option:-d, option:--daemonize::
     option:--background option instead to keep the file descriptors
     open.
 
-option:-g, option:--group='GROUP'::
+option:-g 'GROUP', option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
 
-option:-l, option:--load='PATH'::
+option:-l 'PATH', option:--load='PATH'::
     Automatically load tracing session configurations from 'PATH',
     either a directory or a file, instead of loading them from the
     default search directories.
