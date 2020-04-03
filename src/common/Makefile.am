@@ -43,6 +43,7 @@ libcommon_la_SOURCES = \
 	evaluation.c \
 	event.c \
 	filter.c filter.h \
+	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
 	location.c \
 	mi-lttng.c mi-lttng.h \
@@ -66,8 +67,7 @@ libcommon_la_SOURCES = \
 	utils.c utils.h \
 	uuid.c uuid.h \
 	tracker.c tracker.h \
-	waiter.c waiter.h \
-	fs-handle.h fs-handle-internal.h fs-handle.c
+	waiter.c waiter.h
 
 if HAVE_ELF_H
 libcommon_la_SOURCES += \
