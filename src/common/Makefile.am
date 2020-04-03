@@ -55,6 +55,7 @@ libcommon_la_SOURCES = \
 	session-consumed-size.c \
 	session-descriptor.c \
 	session-rotation.c \
+	spawn-viewer.c spawn-viewer.h \
 	time.c \
 	trace-chunk.c trace-chunk.h \
 	trace-chunk-registry.h \
