@@ -99,13 +99,13 @@ option:-b, option:--background::
     Use the option:--daemonize option instead to close the file
     descriptors.
 
+option:-f, option:--config='PATH'::
+    Load session daemon configuration from path 'PATH'.
+
 option:-d, option:--daemonize::
     Start as Unix daemon, and close file descriptors (console). Use the
     option:--background option instead to keep the file descriptors
     open.
-
-option:-f, option:--config='PATH'::
-    Load session daemon configuration from path 'PATH'.
 
 option:-g, option:--group='GROUP'::
     Use 'GROUP' as Unix tracing group (default: `tracing`).
