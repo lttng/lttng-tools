@@ -8,7 +8,10 @@
 #ifndef BACKWARD_COMPATIBILITY_GROUP_BY_H
 #define BACKWARD_COMPATIBILITY_GROUP_BY_H
 
-char *backward_compat_group_by_session(
-		const char *path, const char *local_session_name);
+#include <time.h>
+
+char *backward_compat_group_by_session(const char *path,
+		const char *local_session_name,
+		time_t session_creation_time);
 
 #endif /* BACKWARD_COMPATIBILITY_GROUP_BY_H */

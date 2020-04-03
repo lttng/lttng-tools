@@ -42,6 +42,11 @@ struct relay_session {
 	 * the other cases.
 	 */
 	lttng_uuid sessiond_uuid;
+	/*
+	 * Contains the creation time on the session daemon's end for 2.11+
+	 * peers. Otherwise, this contains the session creation time on the
+	 * relay daemon's end.
+	 */
 	LTTNG_OPTIONAL(time_t) creation_time;
 	/* Must _not_ be empty for 2.4+ peers. */
 	char session_name[LTTNG_NAME_MAX];

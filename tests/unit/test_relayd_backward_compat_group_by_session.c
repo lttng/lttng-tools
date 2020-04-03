@@ -12,6 +12,8 @@
 #include <string.h>
 #include <tap/tap.h>
 
+#include <common/time.h>
+
 #include "backward-compatibility-group-by.h"
 
 /* Number of TAP tests in this file */
@@ -97,19 +99,32 @@ struct test tests[] = {
 				"", "ust/uid/1000/64-bit", true},
 };
 
-static char *craft_expected(struct test *test)
+static char *craft_expected(struct test *test, time_t relay_session_creation_time)
 {
 	int ret;
 	char *result = NULL;
+	char relay_session_creation_datetime[DATETIME_STR_LEN];
 
-	ret = asprintf(&result, "%s/%s%s%s/%s%s%s", test->session_name,
+	ret = time_to_datetime_str(relay_session_creation_time,
+			relay_session_creation_datetime,
+			sizeof(relay_session_creation_datetime));
+	if (ret < 0) {
+		result = NULL;
+		goto end;
+	}
+
+	ret = asprintf(&result, "%s/%s-%s/%s%s%s", test->session_name,
 			test->hostname,
-			test->creation_time[0] != '\0' ? "-" : "",
-			test->creation_time, test->extra_path,
+			test->creation_time[0] == '\0' ?
+					relay_session_creation_datetime :
+					test->creation_time,
+			test->extra_path,
 			test->extra_path[0] != '\0' ? "/" : "", test->leftover);
 	if (ret < 0) {
 		result = NULL;
+		goto end;
 	}
+end:
 	return result;
 }
 
@@ -117,21 +132,28 @@ int main(int argc, char **argv)
 {
 	int i;
 	int num_test = sizeof(tests) / sizeof(struct test);
+	const time_t test_time = time(NULL);
 
 	plan_tests(NUM_TESTS_PER_TEST * num_test);
 	diag("Backward compatibility utils for lttng-relayd --group-by-session");
+
+	if (test_time == (time_t) -1) {
+		perror("Failed to sample time");
+		return exit_status();
+	}
+
 	for (i = 0; i < num_test; i++) {
 		char *expected = NULL;
 		char *result = NULL;
 
-		expected = craft_expected(&tests[i]);
+		expected = craft_expected(&tests[i], test_time);
 		if (!expected) {
 			fprintf(stderr, "Failed to craft expected output\n");
 			goto loop;
 		}
 
-		result = backward_compat_group_by_session(
-				tests[i].stream_path, tests[i].session_name);
+		result = backward_compat_group_by_session(tests[i].stream_path,
+				tests[i].session_name, test_time);
 		if (!result && tests[i].is_valid) {
 			fprintf(stderr, "Failed to get result\n");
 			goto loop;
