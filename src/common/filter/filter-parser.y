@@ -17,9 +17,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <inttypes.h>
+#include "common/bytecode/bytecode.h"
 #include "filter-ast.h"
 #include "filter-parser.h"
-#include "filter-bytecode.h"
 #include "memstream.h"
 
 #include <common/compat/errno.h>

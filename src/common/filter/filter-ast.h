@@ -17,6 +17,7 @@
  */
 
 #include <urcu/list.h>
+#include <stdio.h>
 #include <stdint.h>
 
 #define printf_debug(fmt, args...)					\

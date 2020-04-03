@@ -4,6 +4,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 SUBDIRS = \
 	string-utils \
+	bytecode \
 	filter \
 	argpar
 
@@ -24,6 +25,7 @@ DIST_SUBDIRS = \
 	consumer \
 	string-utils \
 	fd-tracker \
+	bytecode \
 	filter \
 	argpar
 
@@ -98,6 +100,7 @@ libcommon_la_SOURCES += \
 endif
 
 libcommon_la_LIBADD = \
+	$(top_builddir)/src/common/bytecode/libbytecode.la \
 	$(top_builddir)/src/common/config/libconfig.la \
 	$(top_builddir)/src/common/compat/libcompat.la \
 	$(top_builddir)/src/common/hashtable/libhashtable.la \

@@ -19,7 +19,6 @@ libfilter_la_SOURCES = \
 	filter-visitor-ir-normalize-glob-patterns.c \
 	filter-visitor-generate-bytecode.c \
 	filter-ast.h \
-	filter-bytecode.h \
 	filter-ir.h \
 	memstream.h
 libfilter_la_CFLAGS = -include filter-symbols.h $(AM_CFLAGS)
@@ -63,4 +62,6 @@ all-local: filter-lexer.c
 endif # HAVE_FLEX
 
 filter_grammar_test_SOURCES = filter-grammar-test.c
-filter_grammar_test_LDADD = libfilter.la
+filter_grammar_test_LDADD = \
+	libfilter.la \
+	../bytecode/libbytecode.la

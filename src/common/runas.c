@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <signal.h>
 
+#include <common/bytecode/bytecode.h>
 #include <common/lttng-kernel.h>
 #include <common/common.h>
 #include <common/utils.h>
@@ -37,7 +38,6 @@
 
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/filter/filter-ast.h>
-#include <common/filter/filter-bytecode.h>
 
 #include "runas.h"
 

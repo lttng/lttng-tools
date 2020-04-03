@@ -1,21 +1,17 @@
-#ifndef _FILTER_BYTECODE_H
-#define _FILTER_BYTECODE_H
-
 /*
- * filter-bytecode.h
- *
- * LTTng filter bytecode
- *
- * Copyright 2012 Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+ * Copyright 2020 EfficiOS, Inc.
  *
  * SPDX-License-Identifier: LGPL-2.1-only
  *
  */
 
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/macros.h>
+#ifndef LTTNG_COMMON_BYTECODE_H
+#define LTTNG_COMMON_BYTECODE_H
 
-#include "filter-ast.h"
+#include <stdint.h>
+
+#include "common/macros.h"
+#include "common/sessiond-comm/sessiond-comm.h"
 
 /*
  * offsets are absolute from start of bytecode.
@@ -234,10 +230,19 @@ struct lttng_filter_bytecode_alloc {
 	struct lttng_filter_bytecode b;
 };
 
+LTTNG_HIDDEN int bytecode_init(struct lttng_filter_bytecode_alloc **fb);
+LTTNG_HIDDEN int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb,
+		uint32_t align, uint32_t len);
+LTTNG_HIDDEN int bytecode_push(struct lttng_filter_bytecode_alloc **fb,
+		const void *data, uint32_t align, uint32_t len);
+LTTNG_HIDDEN int bytecode_push_logical(struct lttng_filter_bytecode_alloc **fb,
+		struct logical_op *data, uint32_t align, uint32_t len,
+		uint16_t *skip_offset);
+
 static inline
 unsigned int bytecode_get_len(struct lttng_filter_bytecode *bytecode)
 {
 	return bytecode->len;
 }
 
-#endif /* _FILTER_BYTECODE_H */
+#endif /* LTTNG_COMMON_BYTECODE_H */

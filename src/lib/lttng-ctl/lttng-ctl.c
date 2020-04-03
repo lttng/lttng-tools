@@ -18,6 +18,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <common/bytecode/bytecode.h>
 #include <common/common.h>
 #include <common/compat/errno.h>
 #include <common/compat/string.h>
@@ -45,7 +46,6 @@
 
 #include <common/filter/filter-ast.h>
 #include <common/filter/filter-parser.h>
-#include <common/filter/filter-bytecode.h>
 #include <common/filter/memstream.h>
 #include "lttng-ctl-helper.h"
 
