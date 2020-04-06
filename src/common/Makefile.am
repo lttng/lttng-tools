@@ -59,6 +59,7 @@ libcommon_la_SOURCES = \
 	error.c error.h \
 	evaluation.c \
 	event.c \
+	event-expr-to-bytecode.c event-expr-to-bytecode.h \
 	event-rule/event-rule.c \
 	event-rule/kprobe.c \
 	event-rule/syscall.c \

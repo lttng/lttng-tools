@@ -25,6 +25,7 @@ TESTS = test_kernel_data \
 	test_fd_tracker \
 	test_uuid \
 	test_buffer_view \
+	test_event_expr_to_bytecode \
 	test_payload \
 	test_unix_socket \
 	test_kernel_probe
@@ -51,6 +52,7 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_unix_socket \
                   test_kernel_probe \
                   test_condition \
+		  test_event_expr_to_bytecode \
                   test_event_rule 
 
 if HAVE_LIBLTTNG_UST_CTL
@@ -238,3 +240,7 @@ test_unix_socket_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON)
 # Kernel probe location api test
 test_kernel_probe_SOURCES = test_kernel_probe.c
 test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
+#
+# Event expression to bytecode test
+test_event_expr_to_bytecode_SOURCES = test_event_expr_to_bytecode.c
+test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON)
