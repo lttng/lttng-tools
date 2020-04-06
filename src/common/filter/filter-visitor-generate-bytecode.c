@@ -240,124 +240,55 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		switch (op->type) {
 		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
 		{
-			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op);
-			int ret;
+			const int ret = bytecode_push_get_context_root(&ctx->bytecode);
 
-			insn = calloc(insn_len, 1);
-			if (!insn)
-				return -ENOMEM;
-			insn->op = BYTECODE_OP_GET_CONTEXT_ROOT;
-			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-			free(insn);
 			if (ret) {
 				return ret;
 			}
+
 			break;
 		}
 		case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
 		{
-			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op);
-			int ret;
+			const int ret = bytecode_push_get_app_context_root(&ctx->bytecode);
 
-			insn = calloc(insn_len, 1);
-			if (!insn)
-				return -ENOMEM;
-			insn->op = BYTECODE_OP_GET_APP_CONTEXT_ROOT;
-			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-			free(insn);
 			if (ret) {
 				return ret;
 			}
+
 			break;
 		}
 		case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
 		{
-			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op);
-			int ret;
+			const int ret = bytecode_push_get_payload_root(&ctx->bytecode);
 
-			insn = calloc(insn_len, 1);
-			if (!insn)
-				return -ENOMEM;
-			insn->op = BYTECODE_OP_GET_PAYLOAD_ROOT;
-			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-			free(insn);
 			if (ret) {
 				return ret;
 			}
+
 			break;
 		}
 		case IR_LOAD_EXPRESSION_GET_SYMBOL:
 		{
-			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op)
-				+ sizeof(struct get_symbol);
-			struct get_symbol symbol_offset;
-			uint32_t reloc_offset_u32;
-			uint16_t reloc_offset;
-			uint32_t bytecode_reloc_offset_u32;
-			int ret;
+			const int ret = bytecode_push_get_symbol(
+					&ctx->bytecode,
+					&ctx->bytecode_reloc,
+					op->u.symbol);
 
-			insn = calloc(insn_len, 1);
-			if (!insn)
-				return -ENOMEM;
-			insn->op = BYTECODE_OP_GET_SYMBOL;
-			bytecode_reloc_offset_u32 =
-					bytecode_get_len(&ctx->bytecode_reloc->b)
-					+ sizeof(reloc_offset);
-			symbol_offset.offset =
-					(uint16_t) bytecode_reloc_offset_u32;
-			memcpy(insn->data, &symbol_offset,
-					sizeof(symbol_offset));
-			/* reloc_offset points to struct load_op */
-			reloc_offset_u32 = bytecode_get_len(&ctx->bytecode->b);
-			if (reloc_offset_u32 > LTTNG_FILTER_MAX_LEN - 1) {
-				free(insn);
-				return -EINVAL;
-			}
-			reloc_offset = (uint16_t) reloc_offset_u32;
-			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-			if (ret) {
-				free(insn);
-				return ret;
-			}
-			/* append reloc */
-			ret = bytecode_push(&ctx->bytecode_reloc, &reloc_offset,
-					1, sizeof(reloc_offset));
-			if (ret) {
-				free(insn);
-				return ret;
-			}
-			ret = bytecode_push(&ctx->bytecode_reloc,
-					op->u.symbol,
-					1, strlen(op->u.symbol) + 1);
-			free(insn);
 			if (ret) {
 				return ret;
 			}
+
 			break;
 		}
 		case IR_LOAD_EXPRESSION_GET_INDEX:
 		{
-			struct load_op *insn;
-			uint32_t insn_len = sizeof(struct load_op)
-				+ sizeof(struct get_index_u64);
-			struct get_index_u64 index;
-			int ret;
+			const int ret = bytecode_push_get_index_u64(&ctx->bytecode, op->u.index);
 
-			insn = calloc(insn_len, 1);
-			if (!insn)
-				return -ENOMEM;
-			insn->op = BYTECODE_OP_GET_INDEX_U64;
-			index.index = op->u.index;
-			memcpy(insn->data, &index, sizeof(index));
-			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
-			free(insn);
 			if (ret) {
 				return ret;
 			}
+
 			break;
 		}
 		case IR_LOAD_EXPRESSION_LOAD_FIELD:
