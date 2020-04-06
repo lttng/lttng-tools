@@ -22,7 +22,7 @@
 /* Process name (short). */
 #define UST_APP_PROCNAME_LEN	16
 
-struct lttng_filter_bytecode;
+struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
 
 extern int ust_consumerd64_fd, ust_consumerd32_fd;
@@ -39,7 +39,7 @@ struct ust_app_notify_sock_obj {
 
 struct ust_app_ht_key {
 	const char *name;
-	const struct lttng_filter_bytecode *filter;
+	const struct lttng_bytecode *filter;
 	enum lttng_ust_loglevel_type loglevel_type;
 	const struct lttng_event_exclusion *exclusion;
 };
@@ -108,7 +108,7 @@ struct ust_app_event {
 	struct lttng_ust_event attr;
 	char name[LTTNG_UST_SYM_NAME_LEN];
 	struct lttng_ht_node_str node;
-	struct lttng_filter_bytecode *filter;
+	struct lttng_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
 };
 
@@ -122,7 +122,7 @@ struct ust_app_event_notifier_rule {
 	uint64_t token;
 	struct lttng_ht_node_u64 node;
 	/* The event_rule object owns the filter. */
-	const struct lttng_filter_bytecode *filter;
+	const struct lttng_bytecode *filter;
 	/* Owned by this. */
 	struct lttng_event_exclusion *exclusion;
 	/* For delayed reclaim. */

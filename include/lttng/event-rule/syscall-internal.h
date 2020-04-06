@@ -21,7 +21,7 @@ struct lttng_event_rule_syscall {
 	/* Internal use only. */
 	struct {
 		char *filter;
-		struct lttng_filter_bytecode *bytecode;
+		struct lttng_bytecode *bytecode;
 	} internal_filter;
 };
 

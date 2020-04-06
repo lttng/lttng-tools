@@ -155,7 +155,7 @@ static const char *lttng_event_rule_uprobe_get_filter(
 	return NULL;
 }
 
-static const struct lttng_filter_bytecode *
+static const struct lttng_bytecode *
 lttng_event_rule_uprobe_get_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	/* Unsupported. */

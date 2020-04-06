@@ -18,7 +18,7 @@ struct bytecode_symbol_iterator;
  */
 LTTNG_HIDDEN
 struct bytecode_symbol_iterator *bytecode_symbol_iterator_create(
-		struct lttng_filter_bytecode *bytecode);
+		struct lttng_bytecode *bytecode);
 
 /*
  * Advance iterator of one element.

@@ -194,7 +194,7 @@ error:
  * MUST be acquired before calling this.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter,
+		char *name, struct lttng_bytecode *filter,
 		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion)
 {
@@ -446,7 +446,7 @@ end:
  */
 enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event,
 		struct ltt_ust_event **ust_event)

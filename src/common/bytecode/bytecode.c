@@ -24,11 +24,11 @@ static inline int get_count_order(unsigned int count)
 }
 
 LTTNG_HIDDEN
-int bytecode_init(struct lttng_filter_bytecode_alloc **fb)
+int bytecode_init(struct lttng_bytecode_alloc **fb)
 {
 	uint32_t alloc_len;
 
-	alloc_len = sizeof(struct lttng_filter_bytecode_alloc) + INIT_ALLOC_SIZE;
+	alloc_len = sizeof(struct lttng_bytecode_alloc) + INIT_ALLOC_SIZE;
 	*fb = calloc(alloc_len, 1);
 	if (!*fb) {
 		return -ENOMEM;
@@ -39,19 +39,19 @@ int bytecode_init(struct lttng_filter_bytecode_alloc **fb)
 }
 
 LTTNG_HIDDEN
-int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align, uint32_t len)
+int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;
 	uint32_t padding = offset_align((*fb)->b.len, align);
 	uint32_t new_len = (*fb)->b.len + padding + len;
-	uint32_t new_alloc_len = sizeof(struct lttng_filter_bytecode_alloc) + new_len;
+	uint32_t new_alloc_len = sizeof(struct lttng_bytecode_alloc) + new_len;
 	uint32_t old_alloc_len = (*fb)->alloc_len;
 
 	if (new_len > LTTNG_FILTER_MAX_LEN)
 		return -EINVAL;
 
 	if (new_alloc_len > old_alloc_len) {
-		struct lttng_filter_bytecode_alloc *newptr;
+		struct lttng_bytecode_alloc *newptr;
 
 		new_alloc_len =
 			max_t(uint32_t, 1U << get_count_order(new_alloc_len), old_alloc_len << 1);
@@ -70,7 +70,7 @@ int32_t bytecode_reserve(struct lttng_filter_bytecode_alloc **fb, uint32_t align
 }
 
 LTTNG_HIDDEN
-int bytecode_push(struct lttng_filter_bytecode_alloc **fb, const void *data,
+int bytecode_push(struct lttng_bytecode_alloc **fb, const void *data,
 		uint32_t align, uint32_t len)
 {
 	int32_t offset;
@@ -83,7 +83,7 @@ int bytecode_push(struct lttng_filter_bytecode_alloc **fb, const void *data,
 }
 
 LTTNG_HIDDEN
-int bytecode_push_logical(struct lttng_filter_bytecode_alloc **fb,
+int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
 		struct logical_op *data,
 		uint32_t align, uint32_t len,
 		uint16_t *skip_offset)
@@ -106,10 +106,10 @@ int bytecode_push_logical(struct lttng_filter_bytecode_alloc **fb,
  * Return allocated bytecode or NULL on error.
  */
 LTTNG_HIDDEN
-struct lttng_filter_bytecode *lttng_filter_bytecode_copy(
-		const struct lttng_filter_bytecode *orig_f)
+struct lttng_bytecode *lttng_bytecode_copy(
+		const struct lttng_bytecode *orig_f)
 {
-	struct lttng_filter_bytecode *bytecode = NULL;
+	struct lttng_bytecode *bytecode = NULL;
 
 	bytecode = zmalloc(sizeof(*bytecode) + orig_f->len);
 	if (!bytecode) {

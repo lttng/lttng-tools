@@ -36,7 +36,7 @@ int kernctl_create_event_notifier(int fd,
 		const struct lttng_kernel_event_notifier *event_notifier);
 
 /* Apply on event file descriptor. */
-int kernctl_filter(int fd, const struct lttng_filter_bytecode *filter);
+int kernctl_filter(int fd, const struct lttng_bytecode *filter);
 int kernctl_add_callsite(int fd, struct lttng_kernel_event_callsite *callsite);
 
 int kernctl_tracepoint_list(int fd);

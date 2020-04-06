@@ -437,7 +437,7 @@ int kernctl_create_event_notifier(int group_fd,
 			LTTNG_KERNEL_EVENT_NOTIFIER_CREATE, event_notifier);
 }
 
-int kernctl_filter(int fd, const struct lttng_filter_bytecode *filter)
+int kernctl_filter(int fd, const struct lttng_bytecode *filter)
 {
 	struct lttng_kernel_filter_bytecode *kb;
 	uint32_t len;

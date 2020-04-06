@@ -1128,7 +1128,7 @@ error:
  */
 struct agent_event *agent_create_event(const char *name,
 		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		struct lttng_filter_bytecode *filter, char *filter_expression)
+		struct lttng_bytecode *filter, char *filter_expression)
 {
 	struct agent_event *event = NULL;
 

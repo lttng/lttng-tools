@@ -71,7 +71,7 @@ struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 struct ltt_kernel_event *trace_kernel_find_event(
 		char *name, struct ltt_kernel_channel *channel,
 		enum lttng_event_type type,
-		struct lttng_filter_bytecode *filter)
+		struct lttng_bytecode *filter)
 {
 	struct ltt_kernel_event *ev;
 	int found = 0;
@@ -330,7 +330,7 @@ error:
  */
 enum lttng_error_code trace_kernel_create_event(
 		struct lttng_event *ev, char *filter_expression,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		struct ltt_kernel_event **kernel_event)
 {
 	enum lttng_error_code ret;

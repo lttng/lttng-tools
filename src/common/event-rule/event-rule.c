@@ -259,7 +259,7 @@ const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule)
 }
 
 LTTNG_HIDDEN
-const struct lttng_filter_bytecode *lttng_event_rule_get_filter_bytecode(
+const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 		const struct lttng_event_rule *rule)
 {
 	assert(rule->get_filter_bytecode);

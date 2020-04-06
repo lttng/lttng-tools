@@ -24,7 +24,7 @@ struct agent;
 
 struct ltt_ust_ht_key {
 	const char *name;
-	const struct lttng_filter_bytecode *filter;
+	const struct lttng_bytecode *filter;
 	enum lttng_ust_loglevel_type loglevel_type;
 	int loglevel_value;
 	const struct lttng_event_exclusion *exclusion;
@@ -43,7 +43,7 @@ struct ltt_ust_event {
 	struct lttng_ust_event attr;
 	struct lttng_ht_node_str node;
 	char *filter_expression;
-	struct lttng_filter_bytecode *filter;
+	struct lttng_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
 	/*
 	 * An internal event is an event which was created by the session daemon
@@ -182,7 +182,7 @@ int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
  * Lookup functions. NULL is returned if not found.
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter,
+		char *name, struct lttng_bytecode *filter,
 		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
@@ -198,7 +198,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 		enum lttng_domain_type domain);
 enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		char *filter_expression,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event, struct ltt_ust_event **ust_event);
 struct ltt_ust_context *trace_ust_create_context(
@@ -270,7 +270,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *attr,
 static inline
 enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 		const char *filter_expression,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		bool internal_event, struct ltt_ust_event **ust_event)
 {
@@ -310,7 +310,7 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 }
 static inline
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
-		char *name, struct lttng_filter_bytecode *filter,
+		char *name, struct lttng_bytecode *filter,
 		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion)
 {

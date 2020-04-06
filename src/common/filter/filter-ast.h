@@ -158,8 +158,8 @@ struct filter_parser_ctx {
 	struct filter_ast *ast;
 	struct cds_list_head allocated_strings;
 	struct ir_op *ir_root;
-	struct lttng_filter_bytecode_alloc *bytecode;
-	struct lttng_filter_bytecode_alloc *bytecode_reloc;
+	struct lttng_bytecode_alloc *bytecode;
+	struct lttng_bytecode_alloc *bytecode_reloc;
 };
 
 struct filter_parser_ctx *filter_parser_ctx_alloc(FILE *input);

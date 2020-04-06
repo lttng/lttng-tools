@@ -1556,7 +1556,7 @@ error_add_context:
 	{
 		struct lttng_event *ev = NULL;
 		struct lttng_event_exclusion *exclusion = NULL;
-		struct lttng_filter_bytecode *bytecode = NULL;
+		struct lttng_bytecode *bytecode = NULL;
 		char *filter_expression = NULL;
 
 		/* Handle exclusion events and receive it from the client. */

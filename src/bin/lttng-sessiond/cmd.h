@@ -86,11 +86,11 @@ int cmd_add_context(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, const struct lttng_event_context *ctx, int kwpipe);
 int cmd_set_filter(struct ltt_session *session, enum lttng_domain_type domain,
 		char *channel_name, struct lttng_event *event,
-		struct lttng_filter_bytecode *bytecode);
+		struct lttng_bytecode *bytecode);
 int cmd_enable_event(struct ltt_session *session, const struct lttng_domain *domain,
 		char *channel_name, struct lttng_event *event,
 		char *filter_expression,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		struct lttng_event_exclusion *exclusion,
 		int wpipe);
 

@@ -31,7 +31,7 @@ int recursive_visit_gen_bytecode(struct filter_parser_ctx *ctx,
 		struct ir_op *node);
 
 static
-int bytecode_patch(struct lttng_filter_bytecode_alloc **fb,
+int bytecode_patch(struct lttng_bytecode_alloc **fb,
 		const void *data,
 		uint16_t offset,
 		uint32_t len)
@@ -55,7 +55,7 @@ int visit_node_root(struct filter_parser_ctx *ctx, struct ir_op *node)
 		return ret;
 
 	/* Generate end of bytecode instruction */
-	insn.op = FILTER_OP_RETURN;
+	insn.op = BYTECODE_OP_RETURN;
 	return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 }
 
@@ -87,7 +87,7 @@ int append_str(char **s, const char *append)
  */
 static
 int load_expression_legacy_match(const struct ir_load_expression *exp,
-		enum filter_op *op_type,
+		enum bytecode_op *op_type,
 		char **symbol)
 {
 	const struct ir_load_expression_op *op;
@@ -96,21 +96,21 @@ int load_expression_legacy_match(const struct ir_load_expression *exp,
 	op = exp->child;
 	switch (op->type) {
 	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
-		*op_type = FILTER_OP_GET_CONTEXT_REF;
+		*op_type = BYTECODE_OP_GET_CONTEXT_REF;
 		if (append_str(symbol, "$ctx.")) {
 			return -ENOMEM;
 		}
 		need_dot = false;
 		break;
 	case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
-		*op_type = FILTER_OP_GET_CONTEXT_REF;
+		*op_type = BYTECODE_OP_GET_CONTEXT_REF;
 		if (append_str(symbol, "$app.")) {
 			return -ENOMEM;
 		}
 		need_dot = false;
 		break;
 	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
-		*op_type = FILTER_OP_LOAD_FIELD_REF;
+		*op_type = BYTECODE_OP_LOAD_FIELD_REF;
 		need_dot = false;
 		break;
 
@@ -162,7 +162,7 @@ int visit_node_load_expression_legacy(struct filter_parser_ctx *ctx,
 	struct field_ref ref_offset;
 	uint32_t reloc_offset_u32;
 	uint16_t reloc_offset;
-	enum filter_op op_type;
+	enum bytecode_op op_type;
 	char *symbol = NULL;
 	int ret;
 
@@ -247,7 +247,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_GET_CONTEXT_ROOT;
+			insn->op = BYTECODE_OP_GET_CONTEXT_ROOT;
 			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 			free(insn);
 			if (ret) {
@@ -264,7 +264,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_GET_APP_CONTEXT_ROOT;
+			insn->op = BYTECODE_OP_GET_APP_CONTEXT_ROOT;
 			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 			free(insn);
 			if (ret) {
@@ -281,7 +281,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_GET_PAYLOAD_ROOT;
+			insn->op = BYTECODE_OP_GET_PAYLOAD_ROOT;
 			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 			free(insn);
 			if (ret) {
@@ -303,7 +303,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_GET_SYMBOL;
+			insn->op = BYTECODE_OP_GET_SYMBOL;
 			bytecode_reloc_offset_u32 =
 					bytecode_get_len(&ctx->bytecode_reloc->b)
 					+ sizeof(reloc_offset);
@@ -350,7 +350,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_GET_INDEX_U64;
+			insn->op = BYTECODE_OP_GET_INDEX_U64;
 			index.index = op->u.index;
 			memcpy(insn->data, &index, sizeof(index));
 			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
@@ -369,7 +369,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 			insn = calloc(insn_len, 1);
 			if (!insn)
 				return -ENOMEM;
-			insn->op = FILTER_OP_LOAD_FIELD;
+			insn->op = BYTECODE_OP_LOAD_FIELD;
 			ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 			free(insn);
 			if (ret) {
@@ -412,7 +412,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 			 * that the appropriate matching function can be
 			 * called. Also, see comment below.
 			 */
-			insn->op = FILTER_OP_LOAD_STAR_GLOB_STRING;
+			insn->op = BYTECODE_OP_LOAD_STAR_GLOB_STRING;
 			break;
 		default:
 			/*
@@ -425,7 +425,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 			 * can be anywhere in the string) is a special
 			 * case.
 			 */
-			insn->op = FILTER_OP_LOAD_STRING;
+			insn->op = BYTECODE_OP_LOAD_STRING;
 			break;
 		}
 
@@ -443,7 +443,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		insn = calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
-		insn->op = FILTER_OP_LOAD_S64;
+		insn->op = BYTECODE_OP_LOAD_S64;
 		memcpy(insn->data, &node->u.load.u.num, sizeof(int64_t));
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
@@ -458,7 +458,7 @@ int visit_node_load(struct filter_parser_ctx *ctx, struct ir_op *node)
 		insn = calloc(insn_len, 1);
 		if (!insn)
 			return -ENOMEM;
-		insn->op = FILTER_OP_LOAD_DOUBLE;
+		insn->op = BYTECODE_OP_LOAD_DOUBLE;
 		memcpy(insn->data, &node->u.load.u.flt, sizeof(double));
 		ret = bytecode_push(&ctx->bytecode, insn, 1, insn_len);
 		free(insn);
@@ -491,13 +491,13 @@ int visit_node_unary(struct filter_parser_ctx *ctx, struct ir_op *node)
 		/* Nothing to do. */
 		return 0;
 	case AST_UNARY_MINUS:
-		insn.op = FILTER_OP_UNARY_MINUS;
+		insn.op = BYTECODE_OP_UNARY_MINUS;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	case AST_UNARY_NOT:
-		insn.op = FILTER_OP_UNARY_NOT;
+		insn.op = BYTECODE_OP_UNARY_NOT;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	case AST_UNARY_BIT_NOT:
-		insn.op = FILTER_OP_UNARY_BIT_NOT;
+		insn.op = BYTECODE_OP_UNARY_BIT_NOT;
 		return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
 	}
 }
@@ -534,53 +534,53 @@ int visit_node_binary(struct filter_parser_ctx *ctx, struct ir_op *node)
 		return -EINVAL;
 
 	case AST_OP_MUL:
-		insn.op = FILTER_OP_MUL;
+		insn.op = BYTECODE_OP_MUL;
 		break;
 	case AST_OP_DIV:
-		insn.op = FILTER_OP_DIV;
+		insn.op = BYTECODE_OP_DIV;
 		break;
 	case AST_OP_MOD:
-		insn.op = FILTER_OP_MOD;
+		insn.op = BYTECODE_OP_MOD;
 		break;
 	case AST_OP_PLUS:
-		insn.op = FILTER_OP_PLUS;
+		insn.op = BYTECODE_OP_PLUS;
 		break;
 	case AST_OP_MINUS:
-		insn.op = FILTER_OP_MINUS;
+		insn.op = BYTECODE_OP_MINUS;
 		break;
 	case AST_OP_BIT_RSHIFT:
-		insn.op = FILTER_OP_BIT_RSHIFT;
+		insn.op = BYTECODE_OP_BIT_RSHIFT;
 		break;
 	case AST_OP_BIT_LSHIFT:
-		insn.op = FILTER_OP_BIT_LSHIFT;
+		insn.op = BYTECODE_OP_BIT_LSHIFT;
 		break;
 	case AST_OP_BIT_AND:
-		insn.op = FILTER_OP_BIT_AND;
+		insn.op = BYTECODE_OP_BIT_AND;
 		break;
 	case AST_OP_BIT_OR:
-		insn.op = FILTER_OP_BIT_OR;
+		insn.op = BYTECODE_OP_BIT_OR;
 		break;
 	case AST_OP_BIT_XOR:
-		insn.op = FILTER_OP_BIT_XOR;
+		insn.op = BYTECODE_OP_BIT_XOR;
 		break;
 
 	case AST_OP_EQ:
-		insn.op = FILTER_OP_EQ;
+		insn.op = BYTECODE_OP_EQ;
 		break;
 	case AST_OP_NE:
-		insn.op = FILTER_OP_NE;
+		insn.op = BYTECODE_OP_NE;
 		break;
 	case AST_OP_GT:
-		insn.op = FILTER_OP_GT;
+		insn.op = BYTECODE_OP_GT;
 		break;
 	case AST_OP_LT:
-		insn.op = FILTER_OP_LT;
+		insn.op = BYTECODE_OP_LT;
 		break;
 	case AST_OP_GE:
-		insn.op = FILTER_OP_GE;
+		insn.op = BYTECODE_OP_GE;
 		break;
 	case AST_OP_LE:
-		insn.op = FILTER_OP_LE;
+		insn.op = BYTECODE_OP_LE;
 		break;
 	}
 	return bytecode_push(&ctx->bytecode, &insn, 1, sizeof(insn));
@@ -611,9 +611,9 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (node->u.binary.left->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.left->data_type == IR_DATA_GET_CONTEXT_REF
 				|| node->u.binary.left->data_type == IR_DATA_EXPRESSION) {
-			cast_insn.op = FILTER_OP_CAST_TO_S64;
+			cast_insn.op = BYTECODE_OP_CAST_TO_S64;
 		} else {
-			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
+			cast_insn.op = BYTECODE_OP_CAST_DOUBLE_TO_S64;
 		}
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));
@@ -627,10 +627,10 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		return -EINVAL;
 
 	case AST_OP_AND:
-		insn.op = FILTER_OP_AND;
+		insn.op = BYTECODE_OP_AND;
 		break;
 	case AST_OP_OR:
-		insn.op = FILTER_OP_OR;
+		insn.op = BYTECODE_OP_OR;
 		break;
 	}
 	insn.skip_offset = (uint16_t) -1UL;	/* Temporary */
@@ -652,9 +652,9 @@ int visit_node_logical(struct filter_parser_ctx *ctx, struct ir_op *node)
 		if (node->u.binary.right->data_type == IR_DATA_FIELD_REF
 				|| node->u.binary.right->data_type == IR_DATA_GET_CONTEXT_REF
 				|| node->u.binary.right->data_type == IR_DATA_EXPRESSION) {
-			cast_insn.op = FILTER_OP_CAST_TO_S64;
+			cast_insn.op = BYTECODE_OP_CAST_TO_S64;
 		} else {
-			cast_insn.op = FILTER_OP_CAST_DOUBLE_TO_S64;
+			cast_insn.op = BYTECODE_OP_CAST_DOUBLE_TO_S64;
 		}
 		ret = bytecode_push(&ctx->bytecode, &cast_insn,
 					1, sizeof(cast_insn));

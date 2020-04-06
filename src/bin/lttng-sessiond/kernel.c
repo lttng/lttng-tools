@@ -568,7 +568,7 @@ end:
 int kernel_create_event(struct lttng_event *ev,
 		struct ltt_kernel_channel *channel,
 		char *filter_expression,
-		struct lttng_filter_bytecode *filter)
+		struct lttng_bytecode *filter)
 {
 	int err, fd;
 	enum lttng_error_code ret;

@@ -48,7 +48,7 @@ struct ltt_kernel_event {
 	struct lttng_kernel_event *event;
 	struct cds_list_head list;
 	char *filter_expression;
-	struct lttng_filter_bytecode *filter;
+	struct lttng_bytecode *filter;
 	struct lttng_userspace_probe_location *userspace_probe_location;
 };
 
@@ -59,7 +59,7 @@ struct ltt_kernel_event_notifier_rule {
 	enum lttng_event_type type;
 	struct lttng_trigger *trigger;
 	uint64_t token;
-	const struct lttng_filter_bytecode *filter;
+	const struct lttng_bytecode *filter;
 	struct lttng_userspace_probe_location *userspace_probe_location;
 	struct cds_lfht_node ht_node;
 	/* call_rcu delayed reclaim. */
@@ -146,7 +146,7 @@ struct ltt_kernel_event *trace_kernel_get_event_by_name(
 struct ltt_kernel_event *trace_kernel_find_event(
 		char *name, struct ltt_kernel_channel *channel,
 		enum lttng_event_type type,
-		struct lttng_filter_bytecode *filter);
+		struct lttng_bytecode *filter);
 struct ltt_kernel_channel *trace_kernel_get_channel_by_name(
 		const char *name, struct ltt_kernel_session *session);
 
@@ -157,7 +157,7 @@ struct ltt_kernel_session *trace_kernel_create_session(void);
 struct ltt_kernel_channel *trace_kernel_create_channel(
 		struct lttng_channel *chan);
 enum lttng_error_code trace_kernel_create_event(struct lttng_event *ev,
-		char *filter_expression, struct lttng_filter_bytecode *filter,
+		char *filter_expression, struct lttng_bytecode *filter,
 		struct ltt_kernel_event **kernel_event);
 struct ltt_kernel_metadata *trace_kernel_create_metadata(void);
 struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,

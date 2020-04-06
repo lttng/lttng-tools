@@ -46,7 +46,7 @@ typedef enum lttng_error_code (*event_rule_generate_filter_bytecode_cb)(
 		const struct lttng_credentials *creds);
 typedef const char *(*event_rule_get_filter_cb)(
 		const struct lttng_event_rule *event_rule);
-typedef const struct lttng_filter_bytecode *(
+typedef const struct lttng_bytecode *(
 		*event_rule_get_filter_bytecode_cb)(
 		const struct lttng_event_rule *event_rule);
 typedef enum lttng_event_rule_generate_exclusions_status (
@@ -126,7 +126,7 @@ const char *lttng_event_rule_get_filter(const struct lttng_event_rule *rule);
  * Caller DOES NOT own the returned object.
  */
 LTTNG_HIDDEN
-const struct lttng_filter_bytecode *lttng_event_rule_get_filter_bytecode(
+const struct lttng_bytecode *lttng_event_rule_get_filter_bytecode(
 		const struct lttng_event_rule *rule);
 
 /*

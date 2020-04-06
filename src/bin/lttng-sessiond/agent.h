@@ -98,7 +98,7 @@ struct agent_event {
 	struct lttng_ht_node_str node;
 
 	/* Filter associated with the event. NULL if none. */
-	struct lttng_filter_bytecode *filter;
+	struct lttng_bytecode *filter;
 	char *filter_expression;
 	struct lttng_event_exclusion *exclusion;
 };
@@ -146,7 +146,7 @@ void agent_add(struct agent *agt, struct lttng_ht *ht);
 /* Agent event API. */
 struct agent_event *agent_create_event(const char *name,
 		enum lttng_loglevel_type loglevel_type, int loglevel_value,
-		struct lttng_filter_bytecode *filter,
+		struct lttng_bytecode *filter,
 		char *filter_expression);
 void agent_add_event(struct agent_event *event, struct agent *agt);
 

@@ -522,7 +522,7 @@ struct lttcomm_session_msg {
  * starts at reloc_table_offset.
  */
 #define LTTNG_FILTER_PADDING	32
-struct lttng_filter_bytecode {
+struct lttng_bytecode {
 	uint32_t len;	/* len of data */
 	uint32_t reloc_table_offset;
 	uint64_t seqnum;
