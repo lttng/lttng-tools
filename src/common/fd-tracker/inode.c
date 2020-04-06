@@ -250,6 +250,10 @@ LTTNG_HIDDEN struct lttng_unlinked_file_pool *lttng_unlinked_file_pool_create(
 {
 	struct lttng_unlinked_file_pool *pool = zmalloc(sizeof(*pool));
 
+	if (!pool) {
+		goto error;
+	}
+
 	if (!path || *path != '/') {
 		ERR("Unlinked file pool must be created with an absolute path, path = \"%s\"",
 				path ? path : "NULL");
