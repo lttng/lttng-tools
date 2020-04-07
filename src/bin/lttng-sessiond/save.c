@@ -1910,21 +1910,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 		goto end;
 	}
 
-	if (tracking_policy == LTTNG_TRACKING_POLICY_EXCLUDE_ALL) {
-		/* Tracking nothing; empty list. */
-		ret = config_writer_open_element(writer, element_target_id);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-
-		/* /$element_target_id */
-		ret = config_writer_close_element(writer);
-		if (ret) {
-			ret = LTTNG_ERR_SAVE_IO_FAIL;
-			goto end;
-		}
-	} else {
+	if (tracking_policy == LTTNG_TRACKING_POLICY_INCLUDE_SET) {
 		unsigned int i, count;
 		enum process_attr_tracker_status status =
 				process_attr_tracker_get_inclusion_set(
@@ -2000,7 +1986,7 @@ static int save_process_attr_tracker(struct config_writer *writer,
 		}
 	}
 
-	/* /targets */
+	/* /values */
 	ret = config_writer_close_element(writer);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
