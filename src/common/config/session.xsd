@@ -394,6 +394,35 @@ by its signed 32-bit representation when converted to msec.
 	</xs:sequence>
 </xs:complexType>
 
+<xs:complexType name="pid_target_type">
+	<xs:all>
+		<xs:element name="pid" type="xs:integer" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a list of pid_targets (legacy)-->
+<xs:complexType name="targets_type">
+	<xs:sequence>
+		<xs:choice>
+			<xs:element name="pid_target" type="pid_target_type" minOccurs="0" maxOccurs="unbounded" />
+		</xs:choice>
+	</xs:sequence>
+</xs:complexType>
+
+<!-- Maps to a pid_tracker (legacy)-->
+<xs:complexType name="pid_tracker_type">
+	<xs:all>
+		<xs:element name="targets" type="targets_type" />
+	</xs:all>
+</xs:complexType>
+
+<!-- Maps to a list of trackers (legacy)-->
+<xs:complexType name="trackers_type">
+	<xs:sequence minOccurs="0" maxOccurs="unbounded">
+		<xs:element name="pid_tracker" type="pid_tracker_type" maxOccurs="1" />
+	</xs:sequence>
+</xs:complexType>
+
 <!-- Maps to struct lttng_domain, contains channels and pid_process_attr_tracker -->
 <xs:complexType name="domain_type">
 	<xs:all>
@@ -401,6 +430,8 @@ by its signed 32-bit representation when converted to msec.
 		<xs:element name="buffer_type" type="domain_buffer_type"/>
 		<xs:element name="channels" type="channel_list_type" minOccurs="0"/>
 		<xs:element name="process_attr_trackers" type="process_attr_tracker_type" minOccurs="0"/>
+		<!-- Support of legacy tracker specification -->
+		<xs:element name="trackers" type="trackers_type" minOccurs="0"/>
 	</xs:all>
 </xs:complexType>
 

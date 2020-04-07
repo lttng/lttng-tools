@@ -154,6 +154,13 @@ LTTNG_HIDDEN const char * const config_element_process_attr_gid_value = "gid";
 LTTNG_HIDDEN const char * const config_element_process_attr_vgid_value = "vgid";
 LTTNG_HIDDEN const char * const config_element_process_attr_tracker_type = "process_attr_tracker_type";
 
+/* Used for support of legacy tracker serialization (< 2.12). */
+LTTNG_HIDDEN const char * const config_element_trackers_legacy = "trackers";
+LTTNG_HIDDEN const char * const config_element_pid_tracker_legacy = "pid_tracker";
+LTTNG_HIDDEN const char * const config_element_tracker_targets_legacy = "targets";
+LTTNG_HIDDEN const char * const config_element_tracker_pid_target_legacy = "pid_target";
+LTTNG_HIDDEN const char * const config_element_tracker_pid_legacy = "pid";
+
 LTTNG_HIDDEN const char * const config_element_rotation_schedules = "rotation_schedules";
 LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic = "periodic";
 LTTNG_HIDDEN const char * const config_element_rotation_schedule_periodic_time_us = "time_us";
@@ -2725,12 +2732,143 @@ static int get_tracker_elements(enum lttng_process_attr process_attr,
 	return ret;
 }
 
+static int process_legacy_pid_tracker_node(
+		xmlNodePtr trackers_node, struct lttng_handle *handle)
+{
+	int ret = 0, child_count;
+	xmlNodePtr targets_node = NULL;
+	xmlNodePtr node;
+	const char *element_id_tracker;
+	const char *element_target_id;
+	const char *element_id;
+	const char *element_id_alias;
+	const char *element_name;
+	enum lttng_error_code tracker_handle_ret_code;
+	struct lttng_process_attr_tracker_handle *tracker_handle = NULL;
+	enum lttng_process_attr_tracker_handle_status status;
+	const enum lttng_process_attr process_attr =
+			handle->domain.type == LTTNG_DOMAIN_UST ?
+					LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID :
+					LTTNG_PROCESS_ATTR_PROCESS_ID;
+
+	assert(handle);
+
+	tracker_handle_ret_code = lttng_session_get_tracker_handle(
+			handle->session_name, handle->domain.type,
+			process_attr,
+			&tracker_handle);
+	if (tracker_handle_ret_code != LTTNG_OK) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = get_tracker_elements(process_attr, &element_id_tracker,
+			&element_target_id, &element_id, &element_id_alias,
+			&element_name);
+	if (ret) {
+		goto end;
+	}
+
+	/* Get the targets node */
+	for (node = xmlFirstElementChild(trackers_node); node;
+			node = xmlNextElementSibling(node)) {
+		if (!strcmp((const char *) node->name,
+				config_element_tracker_targets_legacy)) {
+			targets_node = node;
+			break;
+		}
+	}	
+
+	if (!targets_node) {
+		ret = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	/* Go through all id target node */
+	child_count = xmlChildElementCount(targets_node);
+	status = lttng_process_attr_tracker_handle_set_tracking_policy(
+			tracker_handle,
+			child_count == 0 ? LTTNG_TRACKING_POLICY_EXCLUDE_ALL :
+					   LTTNG_TRACKING_POLICY_INCLUDE_SET);
+	if (status != LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK) {
+		ret = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	/* Add all tracked values. */
+	for (node = xmlFirstElementChild(targets_node); node;
+			node = xmlNextElementSibling(node)) {
+		xmlNodePtr pid_target_node = node;
+
+		/* get pid_target node and track it */
+		for (node = xmlFirstElementChild(pid_target_node); node;
+				node = xmlNextElementSibling(node)) {
+			if (!strcmp((const char *) node->name,
+					    config_element_tracker_pid_legacy)) {
+				int64_t id;
+				xmlChar *content = xmlNodeGetContent(node);
+
+				if (!content) {
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
+				ret = parse_int(content, &id);
+				free(content);
+				if (ret) {
+					ret = LTTNG_ERR_LOAD_INVALID_CONFIG;
+					goto end;
+				}
+
+				switch (process_attr) {
+				case LTTNG_PROCESS_ATTR_PROCESS_ID:
+					status = lttng_process_attr_process_id_tracker_handle_add_pid(
+							tracker_handle,
+							(pid_t) id);
+					break;
+				case LTTNG_PROCESS_ATTR_VIRTUAL_PROCESS_ID:
+					status = lttng_process_attr_virtual_process_id_tracker_handle_add_pid(
+							tracker_handle,
+							(pid_t) id);
+					break;
+				default:
+					ret = LTTNG_ERR_INVALID;
+					goto end;
+				}
+			}
+			switch (status) {
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK:
+				continue;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID:
+				ret = LTTNG_ERR_INVALID;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_EXISTS:
+				ret = LTTNG_ERR_PROCESS_ATTR_EXISTS;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_MISSING:
+				ret = LTTNG_ERR_PROCESS_ATTR_MISSING;
+				break;
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_ERROR:
+			case LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_COMMUNICATION_ERROR:
+			default:
+				ret = LTTNG_ERR_UNK;
+				goto end;
+			}
+		}
+		node = pid_target_node;
+	}
+
+end:
+	lttng_process_attr_tracker_handle_destroy(tracker_handle);
+	return ret;
+ }
+
 static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 		struct lttng_handle *handle,
 		enum lttng_process_attr process_attr)
 {
 	int ret = 0, child_count;
-	xmlNodePtr targets_node = NULL;
+	xmlNodePtr values_node = NULL;
 	xmlNodePtr node;
 	const char *element_id_tracker;
 	const char *element_target_id;
@@ -2759,23 +2897,23 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 		goto end;
 	}
 
-	/* get the targets node */
+	/* get the values node */
 	for (node = xmlFirstElementChild(id_tracker_node); node;
 			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
 				config_element_process_attr_values)) {
-			targets_node = node;
+			values_node = node;
 			break;
 		}
 	}
 
-	if (!targets_node) {
+	if (!values_node) {
 		ret = LTTNG_ERR_INVALID;
 		goto end;
 	}
 
 	/* Go through all id target node */
-	child_count = xmlChildElementCount(targets_node);
+	child_count = xmlChildElementCount(values_node);
 	status = lttng_process_attr_tracker_handle_set_tracking_policy(
 			tracker_handle,
 			child_count == 0 ? LTTNG_TRACKING_POLICY_EXCLUDE_ALL :
@@ -2786,7 +2924,7 @@ static int process_id_tracker_node(xmlNodePtr id_tracker_node,
 	}
 
 	/* Add all tracked values. */
-	for (node = xmlFirstElementChild(targets_node); node;
+	for (node = xmlFirstElementChild(values_node); node;
 			node = xmlNextElementSibling(node)) {
 		xmlNodePtr id_target_node = node;
 
@@ -3027,7 +3165,16 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 	for (node = xmlFirstElementChild(domain_node); node;
 			node = xmlNextElementSibling(node)) {
 		if (!strcmp((const char *) node->name,
-				config_element_process_attr_trackers)) {
+				    config_element_process_attr_trackers) ||
+				!strcmp((const char *) node->name,
+						config_element_trackers_legacy)) {
+			if (trackers_node) {
+				ERR("Only one instance of `%s` or `%s` is allowed in a session configuration",
+						config_element_process_attr_trackers,
+						config_element_trackers_legacy);
+				ret = -1;
+				goto end;
+			}
 			trackers_node = node;
 			break;
 		}
@@ -3089,6 +3236,13 @@ int process_domain_node(xmlNodePtr domain_node, const char *session_name)
 			vgid_tracker_node = node;
 			ret = process_id_tracker_node(vgid_tracker_node, handle,
 					LTTNG_PROCESS_ATTR_VIRTUAL_GROUP_ID);
+			if (ret) {
+				goto end;
+			}
+		}
+		if (!strcmp((const char *) node->name,
+				    config_element_pid_tracker_legacy)) {
+			ret = process_legacy_pid_tracker_node(node, handle);
 			if (ret) {
 				goto end;
 			}
