@@ -16,7 +16,7 @@ EVENT_NAME="tp:tptest"
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=72
+NUM_TESTS=75
 
 source $TESTDIR/utils/utils.sh
 
@@ -101,6 +101,9 @@ function test_all_load()
 	destroy_lttng_session_ok $SESSION_NAME
 	destroy_lttng_session_ok "$SESSION_NAME-complex"
 	destroy_lttng_session_ok "$SESSION_NAME-trackers"
+	destroy_lttng_session_ok "tracker_legacy_all"
+	destroy_lttng_session_ok "tracker_legacy_none"
+	destroy_lttng_session_ok "tracker_legacy_selective"
 
 	stop_lttng_relayd
 }
