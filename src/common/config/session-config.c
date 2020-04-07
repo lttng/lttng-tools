@@ -3309,10 +3309,24 @@ int load_session_from_file(const char *path, const char *session_name,
 			xmlNextElementSibling(session_node)) {
 		ret = process_session_node(session_node,
 			session_name, overwrite, overrides);
-		if (session_name && ret == 0) {
-			/* Target session found and loaded */
-			session_found = 1;
-			break;
+		if (!session_name && ret) {
+			/* Loading error occurred. */
+			goto end;
+		} else if (session_name) {
+			if (ret == 0) {
+				/* Target session found and loaded */
+				session_found = 1;
+				break;
+			} else if (ret == -LTTNG_ERR_NO_SESSION) {
+				/*
+				 * Ignore this error, we are looking for the
+				 * session.
+				 */
+				ret = 0;
+			} else {
+				/* Loading error occurred. */
+				goto end;
+			}
 		}
 	}
 end:
@@ -3444,10 +3458,27 @@ int load_session_from_path(const char *path, const char *session_name,
 
 			ret = load_session_from_file(file_path.data, session_name,
 				validation_ctx, overwrite, overrides);
-			if (session_name && !ret) {
-				session_found = 1;
-				break;
+			if (!session_name && ret) {
+				/* Loading error occured. */
+				goto end;
+			} else if (session_name) {
+				if (ret == 0) {
+					/* Target session found and loaded */
+					session_found = 1;
+					break;
+				} else if (ret ==
+						-LTTNG_ERR_LOAD_SESSION_NOENT) {
+					/*
+					 * Ignore this error, we are looking for
+					 * the session.
+					 */
+					ret = 0;
+				} else {
+					/* Loading error occured. */
+					goto end;
+				}
 			}
+
 			/*
 			 * Reset the buffer's size to the location of the
 			 * path's trailing '/'.
