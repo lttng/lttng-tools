@@ -1,3 +1,37 @@
+2020-04-07 lttng-tools 2.12.0 (National Beer Day)
+	* lttng-crash(1): document the command's positional argument
+	* lttng-sessiond(8): append missing argument to short options
+	* lttng-sessiond(8): sort the option list by long option name
+	* lttng-relayd(8): mention the `--config` option
+	* Fix: lttng-load: support legacy PID tracker specification
+	* Fix: sessiond: invalid session configuration on EXCLUDE_ALL policy
+	* Fix: relayd: unchecked allocation result of unlinked file pool
+	* Clean-up: trace-ust comment still refers to only PID trackers
+	* lttng-crash: use `spawn_viewer()` to launch trace viewer
+	* lttng-view: clean-up: move `--viewer` code to specific file
+	* lttng-crash: clean-up: fix alignment of format string
+	* lttng-view: clean-up: rename `parse_options()` -> `parse_viewer_option()`
+	* Fix: python: suppress -Wmissing-prototypes warning with SWIG 3.0.10
+	* lttng-view: clean-up: use singular form for type name
+	* lttng-view: clean-up: remove references to LTTv
+	* Fix: relayd: harmonize path format in backward-compat mode
+	* Bump session.xsd version to 2.12
+	* lttng-relayd(8): normalize style and add details
+	* doc/man: refer to Babeltrace 2 instead of Babeltrace 1
+	* lttng-clear(1): normalize style and add details
+	* Fix: filter-grammar-test: add dependencies between steps
+	* Fix: relayd: assertion fails on creation of session by peer < 2.11
+	* Fix: relayd: crash on creation of session by peer < 2.11
+	* Fix: consumer: fallback to flush when flush empty is unsupported
+	* Fix: consumerd: incorrect clear logging statement
+	* Fix: sessiond: error reported on session destruction for old modules
+	* Fix: sessiond: erroneous error code returned on rotation failure
+	* Fix: lttng-destroy: missing newline on session destruction message
+	* relayd: clean-up: reference is repeated in comment
+	* Typo: 'Descritptor' -> 'Descriptor'
+	* Typo: 'Accomodate' -> 'Accommodate'
+	* Fix: tracker: NULL pointer dereference after NULL check
+
 2020-03-27 lttng-tools 2.12.0-rc3 (International Stay at Home Month)
 	* Fix: remove duplicated AC_INIT directive
 
