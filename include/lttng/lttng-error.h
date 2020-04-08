@@ -175,6 +175,7 @@ enum lttng_error_code {
 	LTTNG_ERR_UNSUPPORTED_DOMAIN     = 162,  /* Unsupported domain used. */
 	LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY = 163, /* Operation does not apply to the process attribute tracker's tracking policy */
 	LTTNG_ERR_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD = 164, /* Error initializing event notifier group notification file descriptor */
+	LTTNG_ERR_INVALID_CAPTURE_EXPRESSION = 165, /* Invalid capture expression. */
 
 	/* MUST be last element of the manually-assigned section of the enum */
 	LTTNG_ERR_NR,

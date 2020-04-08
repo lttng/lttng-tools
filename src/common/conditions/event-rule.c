@@ -7,14 +7,16 @@
 
 #include <assert.h>
 #include <common/error.h>
+#include <common/event-expr-to-bytecode.h>
 #include <common/macros.h>
 #include <inttypes.h>
 #include <lttng/condition/condition-internal.h>
+#include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/event-rule.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-expr.h>
-#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/lttng-error.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <vendor/msgpack/msgpack.h>
@@ -921,4 +923,52 @@ enum lttng_evaluation_status lttng_evaluation_event_rule_get_trigger_name(
 	*name = hit->name;
 end:
 	return status;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code
+lttng_condition_event_rule_generate_capture_descriptor_bytecode(
+		struct lttng_condition *condition)
+{
+	enum lttng_error_code ret;
+	enum lttng_condition_status status;
+	unsigned int capture_count, i;
+
+	if (!condition || !IS_EVENT_RULE_CONDITION(condition)) {
+		ret = LTTNG_ERR_FATAL;
+		goto end;
+	}
+
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &capture_count);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ret = LTTNG_ERR_FATAL;
+		goto end;
+	}
+
+	for (i = 0; i < capture_count; i++) {
+		struct lttng_capture_descriptor *local_capture_desc =
+				lttng_condition_event_rule_get_internal_capture_descriptor_at_index(
+						condition, i);
+
+		if (local_capture_desc == NULL) {
+			ret = LTTNG_ERR_FATAL;
+			goto end;
+		}
+
+		/* Generate the bytecode. */
+		status = lttng_event_expr_to_bytecode(
+				local_capture_desc->event_expression,
+				&local_capture_desc->bytecode);
+		if (status < 0 || local_capture_desc->bytecode == NULL) {
+			ret = LTTNG_ERR_INVALID_CAPTURE_EXPRESSION;
+			goto end;
+		}
+	}
+
+	/* Everything went better than expected */
+	ret = LTTNG_OK;
+
+end:
+	return ret;
 }

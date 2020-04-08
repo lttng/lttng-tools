@@ -39,7 +39,6 @@ struct lttng_evaluation_event_rule_comm {
 	char payload[];
 } LTTNG_PACKED;
 
-
 LTTNG_HIDDEN
 ssize_t lttng_condition_event_rule_create_from_payload(
 		struct lttng_payload_view *view,
@@ -59,5 +58,10 @@ LTTNG_HIDDEN
 ssize_t lttng_evaluation_event_rule_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation);
+
+LTTNG_HIDDEN
+enum lttng_error_code
+lttng_condition_event_rule_generate_capture_descriptor_bytecode(
+		struct lttng_condition *condition);
 
 #endif /* LTTNG_CONDITION_EVENT_RULE_INTERNAL_H */
