@@ -18,6 +18,7 @@
 #include <urcu/compiler.h>
 #include <signal.h>
 
+#include <common/bytecode/bytecode.h>
 #include <common/compat/errno.h>
 #include <common/common.h>
 #include <common/hashtable/utils.h>

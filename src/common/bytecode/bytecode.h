@@ -238,6 +238,8 @@ LTTNG_HIDDEN int bytecode_push(struct lttng_filter_bytecode_alloc **fb,
 LTTNG_HIDDEN int bytecode_push_logical(struct lttng_filter_bytecode_alloc **fb,
 		struct logical_op *data, uint32_t align, uint32_t len,
 		uint16_t *skip_offset);
+LTTNG_HIDDEN struct lttng_filter_bytecode *lttng_filter_bytecode_copy(
+		const struct lttng_filter_bytecode *orig_f);
 
 static inline
 unsigned int bytecode_get_len(struct lttng_filter_bytecode *bytecode)

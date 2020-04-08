@@ -16,6 +16,7 @@
 #include <lttng/condition/event-rule.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
+#include <common/bytecode/bytecode.h>
 #include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/filter.h>

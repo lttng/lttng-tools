@@ -98,26 +98,3 @@ const char *consumer_output_get_base_path(const struct consumer_output *output)
 			output->dst.session_root_path :
 			output->dst.net.base_dir;
 }
-
-/*
- * Allocate a filter and copy the given original filter.
- *
- * Return allocated filter or NULL on error.
- */
-struct lttng_filter_bytecode *lttng_filter_bytecode_copy(
-		const struct lttng_filter_bytecode *orig_f)
-{
-	struct lttng_filter_bytecode *filter = NULL;
-
-	/* Copy filter bytecode */
-	filter = zmalloc(sizeof(*filter) + orig_f->len);
-	if (!filter) {
-		PERROR("zmalloc alloc filter bytecode");
-		goto error;
-	}
-
-	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
-
-error:
-	return filter;
-}
