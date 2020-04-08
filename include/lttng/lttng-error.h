@@ -43,7 +43,7 @@ enum lttng_error_code {
 	LTTNG_ERR_CONNECT_FAIL           = 30,  /* Unable to connect to unix socket */
 	LTTNG_ERR_SNAPSHOT_OUTPUT_EXIST  = 31,  /* Snapshot output already exists */
 	LTTNG_ERR_EPERM                  = 32,  /* Permission denied */
-	LTTNG_ERR_KERN_NA                = 33,  /* Kernel tracer unavalable */
+	LTTNG_ERR_KERN_NA                = 33,  /* Kernel tracer unavailable */
 	LTTNG_ERR_KERN_VERSION           = 34,  /* Kernel tracer not compatible */
 	LTTNG_ERR_KERN_EVENT_EXIST       = 35,  /* Kernel event already exists */
 	LTTNG_ERR_KERN_SESS_FAIL         = 36,  /* Kernel create session failed */
