@@ -362,7 +362,7 @@ static void delete_ust_app_event_notifier_rule(int sock,
 		free(ua_event_notifier_rule->obj);
 	}
 
-	lttng_event_rule_put(ua_event_notifier_rule->event_rule);
+	lttng_trigger_put(ua_event_notifier_rule->trigger);
 	call_rcu(&ua_event_notifier_rule->rcu_head,
 			free_ust_app_event_notifier_rule_rcu);
 }
@@ -1231,11 +1231,13 @@ error:
  * Allocate a new UST app event notifier rule.
  */
 static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
-		struct lttng_event_rule *event_rule, uint64_t token)
+		struct lttng_trigger *trigger)
 {
 	enum lttng_event_rule_generate_exclusions_status
 			generate_exclusion_status;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
+	struct lttng_condition *condition = NULL;
+	const struct lttng_event_rule *event_rule = NULL;
 
 	ua_event_notifier_rule = zmalloc(sizeof(struct ust_app_event_notifier_rule));
 	if (ua_event_notifier_rule == NULL) {
@@ -1244,15 +1246,21 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 	}
 
 	ua_event_notifier_rule->enabled = 1;
-	ua_event_notifier_rule->token = token;
-	lttng_ht_node_init_u64(&ua_event_notifier_rule->node, token);
+	ua_event_notifier_rule->token = lttng_trigger_get_tracer_token(trigger);
+	lttng_ht_node_init_u64(&ua_event_notifier_rule->node,
+			ua_event_notifier_rule->token);
 
-	/* Get reference of the event rule. */
-	if (!lttng_event_rule_get(event_rule)) {
-		abort();
-	}
+	condition = lttng_trigger_get_condition(trigger);
+	assert(condition);
+	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
 
-	ua_event_notifier_rule->event_rule = event_rule;
+	assert(LTTNG_CONDITION_STATUS_OK == lttng_condition_event_rule_get_rule(condition, &event_rule));
+	assert(event_rule);
+
+	/* Acquire the event notifier's reference to the trigger. */
+	lttng_trigger_get(trigger);
+
+	ua_event_notifier_rule->trigger = trigger;
 	ua_event_notifier_rule->filter = lttng_event_rule_get_filter_bytecode(event_rule);
 	generate_exclusion_status = lttng_event_rule_generate_exclusions(
 			event_rule, &ua_event_notifier_rule->exclusion);
@@ -1262,8 +1270,8 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 		break;
 	default:
 		/* Error occured. */
-		ERR("Failed to generate exclusions from event rule while allocating an event notifier rule");
-		goto error_put_event_rule;
+		ERR("Failed to generate exclusions from trigger while allocating an event notifier rule");
+		goto error_put_trigger;
 	}
 
 	DBG3("UST app event notifier rule allocated: token = %" PRIu64,
@@ -1271,8 +1279,8 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 
 	return ua_event_notifier_rule;
 
-error_put_event_rule:
-	lttng_event_rule_put(event_rule);
+error_put_trigger:
+	lttng_trigger_put(trigger);
 error:
 	free(ua_event_notifier_rule);
 	return NULL;
@@ -1994,19 +2002,25 @@ static int create_ust_event_notifier(struct ust_app *app,
 		struct ust_app_event_notifier_rule *ua_event_notifier_rule)
 {
 	int ret = 0;
+	enum lttng_condition_status condition_status;
+	const struct lttng_condition *condition = NULL;
 	struct lttng_ust_event_notifier event_notifier;
+	const struct lttng_event_rule *event_rule = NULL;
 
 	health_code_update();
 	assert(app->event_notifier_group.object);
 
-	ret = init_ust_event_notifier_from_event_rule(
-			ua_event_notifier_rule->event_rule, &event_notifier);
-	if (ret) {
-		ERR("Failed to initialize UST event notifier from event rule: app = '%s' (ppid: %d)",
-				app->name, app->ppid);
-		goto error;
-	}
+	condition = lttng_trigger_get_const_condition(
+			ua_event_notifier_rule->trigger);
+	assert(condition);
+	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
 
+	condition_status = lttng_condition_event_rule_get_rule(condition, &event_rule);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+	assert(event_rule);
+	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+
+	init_ust_event_notifier_from_event_rule(event_rule, &event_notifier);
 	event_notifier.event.token = ua_event_notifier_rule->token;
 
 	/* Create UST event notifier against the tracer. */
@@ -3522,13 +3536,13 @@ error:
  * Called with ust app session mutex held.
  */
 static
-int create_ust_app_event_notifier_rule(struct lttng_event_rule *rule,
-		struct ust_app *app, uint64_t token)
+int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger,
+		struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
 
-	ua_event_notifier_rule = alloc_ust_app_event_notifier_rule(rule, token);
+	ua_event_notifier_rule = alloc_ust_app_event_notifier_rule(trigger);
 	if (ua_event_notifier_rule == NULL) {
 		ret = -ENOMEM;
 		goto end;
@@ -3546,7 +3560,7 @@ int create_ust_app_event_notifier_rule(struct lttng_event_rule *rule,
 		if (ret == -LTTNG_UST_ERR_EXIST) {
 			ERR("Tracer for application reported that an event notifier being created already exists: "
 					"token = \"%" PRIu64 "\", pid = %d, ppid = %d, uid = %d, gid = %d",
-					token,
+					lttng_trigger_get_tracer_token(trigger),
 					app->pid, app->ppid, app->uid,
 					app->gid);
 		}
@@ -3557,7 +3571,7 @@ int create_ust_app_event_notifier_rule(struct lttng_event_rule *rule,
 			&ua_event_notifier_rule->node);
 
 	DBG2("UST app create token event rule completed: app = '%s' (ppid: %d), token = %" PRIu64,
-			app->name, app->ppid, token);
+			app->name, app->ppid, lttng_trigger_get_tracer_token(trigger));
 
 end:
 	return ret;
@@ -5556,7 +5570,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		looked_up_event_notifier_rule = find_ust_app_event_notifier_rule(
 				app->token_to_event_notifier_rule_ht, token);
 		if (!looked_up_event_notifier_rule) {
-			ret = create_ust_app_event_notifier_rule(event_rule, app, token);
+			ret = create_ust_app_event_notifier_rule(trigger, app);
 			if (ret < 0) {
 				goto end;
 			}

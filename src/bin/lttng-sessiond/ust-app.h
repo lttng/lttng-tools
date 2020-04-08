@@ -117,11 +117,11 @@ struct ust_app_event_notifier_rule {
 	int handle;
 	struct lttng_ust_object_data *obj;
 	/* Holds a strong reference. */
-	struct lttng_event_rule *event_rule;
+	struct lttng_trigger *trigger;
 	/* Unique ID returned by the tracer to identify this event notifier. */
 	uint64_t token;
 	struct lttng_ht_node_u64 node;
-	/* The event_rule object owns the filter. */
+	/* The trigger object owns the filter. */
 	const struct lttng_bytecode *filter;
 	/* Owned by this. */
 	struct lttng_event_exclusion *exclusion;
