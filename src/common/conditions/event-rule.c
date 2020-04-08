@@ -198,6 +198,7 @@ static int lttng_condition_event_rule_serialize(
 {
 	int ret;
 	struct lttng_condition_event_rule *event_rule;
+	enum lttng_condition_status status;
 	/* Used for iteration and communication (size matters). */
 	uint32_t i, capture_descr_count;
 
@@ -216,8 +217,13 @@ static int lttng_condition_event_rule_serialize(
 		goto end;
 	}
 
-	capture_descr_count = lttng_dynamic_pointer_array_get_count(
-			&event_rule->capture_descriptors);
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &capture_descr_count);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		ret = -1;
+		goto end;
+	};
+
 	DBG("Serializing event rule condition's capture descriptor count: %" PRIu32,
 			capture_descr_count);
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &capture_descr_count,
@@ -228,8 +234,8 @@ static int lttng_condition_event_rule_serialize(
 
 	for (i = 0; i < capture_descr_count; i++) {
 		const struct lttng_event_expr *expr =
-				lttng_dynamic_pointer_array_get_pointer(
-					&event_rule->capture_descriptors, i);
+				lttng_condition_event_rule_get_capture_descriptor_at_index(
+						condition, i);
 
 		DBG("Serializing event rule condition's capture descriptor %" PRIu32,
 				i);
@@ -245,18 +251,26 @@ end:
 
 static
 bool capture_descriptors_are_equal(
-		const struct lttng_condition_event_rule *condition_a,
-		const struct lttng_condition_event_rule *condition_b)
+		const struct lttng_condition *condition_a,
+		const struct lttng_condition *condition_b)
 {
 	bool is_equal = true;
-	size_t capture_descr_count_a;
-	size_t capture_descr_count_b;
+	unsigned int capture_descr_count_a;
+	unsigned int capture_descr_count_b;
 	size_t i;
+	enum lttng_condition_status status;
 
-	capture_descr_count_a = lttng_dynamic_pointer_array_get_count(
-			&condition_a->capture_descriptors);
-	capture_descr_count_b = lttng_dynamic_pointer_array_get_count(
-			&condition_b->capture_descriptors);
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition_a, &capture_descr_count_a);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto not_equal;
+	}
+
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition_b, &capture_descr_count_b);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto not_equal;
+	}
 
 	if (capture_descr_count_a != capture_descr_count_b) {
 		goto not_equal;
@@ -264,12 +278,12 @@ bool capture_descriptors_are_equal(
 
 	for (i = 0; i < capture_descr_count_a; i++) {
 		const struct lttng_event_expr *expr_a =
-				lttng_dynamic_pointer_array_get_pointer(
-					&condition_a->capture_descriptors,
+				lttng_condition_event_rule_get_capture_descriptor_at_index(
+					condition_a,
 					i);
 		const struct lttng_event_expr *expr_b =
-				lttng_dynamic_pointer_array_get_pointer(
-					&condition_b->capture_descriptors,
+				lttng_condition_event_rule_get_capture_descriptor_at_index(
+					condition_b,
 					i);
 
 		if (!lttng_event_expr_is_equal(expr_a, expr_b)) {
@@ -307,7 +321,7 @@ static bool lttng_condition_event_rule_is_equal(
 		goto end;
 	}
 
-	is_equal = capture_descriptors_are_equal(a, b);
+	is_equal = capture_descriptors_are_equal(_a, _b);
 
 end:
 	return is_equal;
@@ -327,9 +341,14 @@ static void lttng_condition_event_rule_destroy(
 }
 
 static
-void destroy_event_expr(void *ptr)
+void destroy_capture_descriptor(void *ptr)
 {
-	lttng_event_expr_destroy(ptr);
+	struct lttng_capture_descriptor *desc =
+			(struct lttng_capture_descriptor *) ptr;
+
+	lttng_event_expr_destroy(desc->event_expression);
+	free(desc->bytecode);
+	free(desc);
 }
 
 struct lttng_condition *lttng_condition_event_rule_create(
@@ -359,7 +378,7 @@ struct lttng_condition *lttng_condition_event_rule_create(
 	rule = NULL;
 
 	lttng_dynamic_pointer_array_init(&condition->capture_descriptors,
-			destroy_event_expr);
+			destroy_capture_descriptor);
 
 	parent = &condition->parent;
 end:
@@ -647,6 +666,7 @@ lttng_condition_event_rule_append_capture_descriptor(
 	struct lttng_condition_event_rule *event_rule_cond =
 			container_of(condition,
 				struct lttng_condition_event_rule, parent);
+	struct lttng_capture_descriptor *descriptor = NULL;
 
 	/* Only accept l-values. */
 	if (!condition || !IS_EVENT_RULE_CONDITION(condition) || !expr ||
@@ -655,14 +675,26 @@ lttng_condition_event_rule_append_capture_descriptor(
 		goto end;
 	}
 
+	descriptor = malloc(sizeof(*descriptor));
+	if (descriptor == NULL) {
+		status = LTTNG_CONDITION_STATUS_ERROR;
+		goto end;
+	}
+
+	descriptor->event_expression = expr;
+	descriptor->bytecode = NULL;
+
 	ret = lttng_dynamic_pointer_array_add_pointer(
-			&event_rule_cond->capture_descriptors, expr);
+			&event_rule_cond->capture_descriptors, descriptor);
 	if (ret) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
 		goto end;
 	}
 
+	/* Ownership is transfered to the internal capture_descriptors array */
+	descriptor = NULL;
 end:
+	free(descriptor);
 	return status;
 }
 
@@ -697,15 +729,26 @@ lttng_condition_event_rule_get_capture_descriptor_at_index(
 				const struct lttng_condition_event_rule,
 				parent);
 	const struct lttng_event_expr *expr = NULL;
+	struct lttng_capture_descriptor *desc = NULL;
+	unsigned int count;
+	enum lttng_condition_status status;
 
-	if (!condition || !IS_EVENT_RULE_CONDITION(condition) ||
-			index >= lttng_dynamic_pointer_array_get_count(
-				&event_rule_cond->capture_descriptors)) {
+	if (!condition || !IS_EVENT_RULE_CONDITION(condition)) {
 		goto end;
 	}
 
-	expr = lttng_dynamic_pointer_array_get_pointer(
+	status = lttng_condition_event_rule_get_capture_descriptor_count(condition, &count);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto end;
+	}
+
+	if (index >= count) {
+		goto end;
+	}
+
+	desc = lttng_dynamic_pointer_array_get_pointer(
 			&event_rule_cond->capture_descriptors, index);
+	expr = desc->event_expression;
 
 end:
 	return expr;

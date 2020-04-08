@@ -14,11 +14,16 @@
 #include <lttng/condition/evaluation-internal.h>
 #include <common/dynamic-array.h>
 
+struct lttng_capture_descriptor {
+	struct lttng_event_expr *event_expression;
+	struct lttng_bytecode *bytecode;
+};
+
 struct lttng_condition_event_rule {
 	struct lttng_condition parent;
 	struct lttng_event_rule *rule;
 
-	/* Array of `struct lttng_event_expr *`. */
+	/* Array of `struct lttng_capture_descriptor *`. */
 	struct lttng_dynamic_pointer_array capture_descriptors;
 };
 
