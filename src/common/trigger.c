@@ -7,10 +7,12 @@
 
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
+#include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/event-rule.h>
 #include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-expr-internal.h>
 #include <lttng/action/action-internal.h>
 #include <common/credentials.h>
 #include <common/payload.h>
@@ -955,8 +957,17 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 					condition, &event_rule);
 
 		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+		/* Generate the filter bytecode. */
 		ret = lttng_event_rule_generate_filter_bytecode(
 				event_rule, creds);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+
+		/* Generate the capture bytecode. */
+		ret = lttng_condition_event_rule_generate_capture_descriptor_bytecode(
+				condition);
 		if (ret != LTTNG_OK) {
 			goto end;
 		}
