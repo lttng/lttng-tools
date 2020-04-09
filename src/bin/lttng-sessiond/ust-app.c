@@ -28,6 +28,7 @@
 #include <lttng/condition/condition.h>
 #include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/event-rule.h>
+#include <lttng/trigger/trigger-internal.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "buffer-registry.h"
@@ -2077,6 +2078,8 @@ static int create_ust_event_notifier(struct ust_app *app,
 	const struct lttng_condition *condition = NULL;
 	struct lttng_ust_event_notifier event_notifier;
 	const struct lttng_event_rule *event_rule = NULL;
+	unsigned int capture_bytecode_count = 0, i;
+	enum lttng_condition_status cond_status;
 
 	health_code_update();
 	assert(app->event_notifier_group.object);
@@ -2140,6 +2143,23 @@ static int create_ust_event_notifier(struct ust_app *app,
 	if (ua_event_notifier_rule->exclusion) {
 		ret = set_ust_object_exclusions(app,
 				ua_event_notifier_rule->exclusion,
+				ua_event_notifier_rule->obj);
+		if (ret < 0) {
+			goto error;
+		}
+	}
+
+	/* Set the capture bytecodes. */
+	cond_status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &capture_bytecode_count);
+	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
+
+	for (i = 0; i < capture_bytecode_count; i++) {
+		const struct lttng_bytecode *capture_bytecode =
+				lttng_condition_event_rule_get_capture_bytecode_at_index(
+						condition, i);
+
+		ret = set_ust_capture(app, capture_bytecode,
 				ua_event_notifier_rule->obj);
 		if (ret < 0) {
 			goto error;
