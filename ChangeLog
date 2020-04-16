@@ -1,3 +1,6 @@
+2020-04-16 lttng-tools 2.9.15 (National Eggs Benedict Day)
+	* doc: Fix bind address example for lttng-relayd
+
 2019-10-17 lttng-tools 2.9.14 (Wear Something Gaudy Day)
 	* Fix: sessiond: TOCTOU error on save of session configuration
 	* Fix: tests: replace truncation-prone logging helper
