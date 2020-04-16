@@ -1579,9 +1579,12 @@ error:
 
 /*
  * Set a capture bytecode for the passed object.
+ * The sequence number enforces the ordering at runtime and on reception of
+ * the captured payloads.
  */
 static int set_ust_capture(struct ust_app *app,
 		const struct lttng_bytecode *bytecode,
+		unsigned int capture_seqnum,
 		struct lttng_ust_object_data *ust_object)
 {
 	int ret;
@@ -1594,6 +1597,11 @@ static int set_ust_capture(struct ust_app *app,
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
 	}
+
+	/*
+	 * Set the sequence number to ensure the capture of fields is ordered.
+	 */
+	ust_bytecode->seqnum = capture_seqnum;
 
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_set_capture(app->sock, ust_bytecode,
@@ -2159,7 +2167,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 				lttng_condition_event_rule_get_capture_bytecode_at_index(
 						condition, i);
 
-		ret = set_ust_capture(app, capture_bytecode,
+		ret = set_ust_capture(app, capture_bytecode, i,
 				ua_event_notifier_rule->obj);
 		if (ret < 0) {
 			goto error;
