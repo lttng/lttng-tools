@@ -3767,19 +3767,30 @@ int load_session_from_file(const char *path, const char *session_name,
 			xmlNextElementSibling(session_node)) {
 		ret = process_session_node(session_node,
 			session_name, overwrite, overrides);
-		if (session_name && ret == 0) {
-			/* Target session found and loaded */
-			session_found = 1;
-			break;
+		if (!session_name && ret) {
+			/* Loading error occurred. */
+			goto end;
+		} else if (session_name) {
+			if (ret == 0) {
+				/* Target session found and loaded */
+				session_found = 1;
+				break;
+			} else if (ret == -LTTNG_ERR_NO_SESSION) {
+				/*
+				 * Ignore this error, we are looking for a
+				 * specific session.
+				 */
+				ret = 0;
+			} else {
+				/* Loading error occurred. */
+				goto end;
+			}
 		}
 	}
 end:
 	xmlFreeDoc(doc);
 	if (!ret) {
 		ret = session_found ? 0 : -LTTNG_ERR_LOAD_SESSION_NOENT;
-	}
-	if (ret == -LTTNG_ERR_NO_SESSION) {
-		ret = -LTTNG_ERR_LOAD_SESSION_NOENT;
 	}
 	return ret;
 }
