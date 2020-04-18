@@ -5,10 +5,10 @@
  *
  */
 
+#include <assert.h>
+#include <common/error.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/notify-internal.h>
-#include <common/error.h>
-#include <assert.h>
 
 static const char *lttng_action_type_string(enum lttng_action_type action_type)
 {
