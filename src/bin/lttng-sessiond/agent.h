@@ -163,7 +163,7 @@ int agent_enable_event(struct agent_event *event,
 		enum lttng_domain_type domain);
 int agent_disable_event(struct agent_event *event,
 		enum lttng_domain_type domain);
-void agent_update(struct agent *agt, int sock);
+void agent_update(const struct agent *agt, const struct agent_app *app);
 int agent_list_events(struct lttng_event **events,
 		enum lttng_domain_type domain);
 
