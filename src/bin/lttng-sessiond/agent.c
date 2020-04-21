@@ -380,7 +380,7 @@ error:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int enable_event(struct agent_app *app, struct agent_event *event)
+static int enable_event(const struct agent_app *app, struct agent_event *event)
 {
 	int ret;
 	char *bytes_to_send;
@@ -495,8 +495,8 @@ end:
  *
  * Return LTTNG_OK on success or else a LTTNG_ERR* code.
  */
-static int app_context_op(struct agent_app *app,
-		struct agent_app_ctx *ctx, enum lttcomm_agent_command cmd)
+static int app_context_op(const struct agent_app *app,
+		const struct agent_app_ctx *ctx, enum lttcomm_agent_command cmd)
 {
 	int ret;
 	uint32_t reply_ret_code;
@@ -946,7 +946,7 @@ struct agent_app *agent_create_app(pid_t pid, enum lttng_domain_type domain,
 
 	app = zmalloc(sizeof(*app));
 	if (!app) {
-		PERROR("zmalloc agent create");
+		PERROR("Failed to allocate agent application instance");
 		goto error;
 	}
 
@@ -1402,26 +1402,24 @@ void agent_app_ht_clean(void)
  * Note that this function is most likely to be used with a tracing session
  * thus the caller should make sure to hold the appropriate lock(s).
  */
-void agent_update(struct agent *agt, int sock)
+void agent_update(const struct agent *agt, const struct agent_app *app)
 {
 	int ret;
-	struct agent_app *app;
 	struct agent_event *event;
 	struct lttng_ht_iter iter;
 	struct agent_app_ctx *ctx;
 
 	assert(agt);
-	assert(sock >= 0);
+	assert(app);
 
-	DBG("Agent updating app socket %d", sock);
+	DBG("Agent updating app: pid = %ld", (long) app->pid);
 
 	rcu_read_lock();
-	app = agent_find_app_by_sock(sock);
 	/*
 	 * We are in the registration path thus if the application is gone,
 	 * there is a serious code flow error.
 	 */
-	assert(app);
+
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
 		/* Skip event if disabled. */
 		if (!event->enabled) {

@@ -28,6 +28,15 @@ struct thread_notifiers {
 	sem_t ready;
 };
 
+struct agent_app_id {
+	pid_t pid;
+	enum lttng_domain_type domain;
+};
+
+struct agent_protocol_version {
+	unsigned int major, minor;
+};
+
 static int agent_tracing_enabled = -1;
 
 /*
@@ -42,10 +51,11 @@ static const char *default_reg_uri =
  * Update agent application using the given socket. This is done just after
  * registration was successful.
  *
- * This is a quite heavy call in terms of locking since the session list lock
- * AND session lock are acquired.
+ * This will acquire the various sessions' lock; none must be held by the
+ * caller.
+ * The caller must hold the session list lock.
  */
-static void update_agent_app(struct agent_app *app)
+static void update_agent_app(const struct agent_app *app)
 {
 	struct ltt_session *session, *stmp;
 	struct ltt_session_list *list;
@@ -53,7 +63,6 @@ static void update_agent_app(struct agent_app *app)
 	list = session_get_list();
 	assert(list);
 
-	session_lock_list();
 	cds_list_for_each_entry_safe(session, stmp, &list->head, list) {
 		if (!session_get(session)) {
 			continue;
@@ -61,19 +70,18 @@ static void update_agent_app(struct agent_app *app)
 
 		session_lock(session);
 		if (session->ust_session) {
-			struct agent *agt;
+			const struct agent *agt;
 
 			rcu_read_lock();
 			agt = trace_ust_find_agent(session->ust_session, app->domain);
 			if (agt) {
-				agent_update(agt, app->sock->fd);
+				agent_update(agt, app);
 			}
 			rcu_read_unlock();
 		}
 		session_unlock(session);
 		session_put(session);
 	}
-	session_unlock_list();
 }
 
 /*
@@ -188,23 +196,56 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 	lttcomm_destroy_sock(sock);
 }
 
+static const char *domain_type_str(enum lttng_domain_type domain_type)
+{
+	switch (domain_type) {
+	case LTTNG_DOMAIN_NONE:
+		return "none";
+	case LTTNG_DOMAIN_KERNEL:
+		return "kernel";
+	case LTTNG_DOMAIN_UST:
+		return "ust";
+	case LTTNG_DOMAIN_JUL:
+		return "jul";
+	case LTTNG_DOMAIN_LOG4J:
+		return "log4j";
+	case LTTNG_DOMAIN_PYTHON:
+		return "python";
+	default:
+		return "unknown";
+	}
+}
+
+static bool is_agent_protocol_version_supported(
+		const struct agent_protocol_version *version)
+{
+	const bool is_supported = version->major == AGENT_MAJOR_VERSION &&
+			version->minor == AGENT_MINOR_VERSION;
+
+	if (!is_supported) {
+		WARN("Refusing agent connection: unsupported protocol version %ui.%ui, expected %i.%i",
+				version->major, version->minor,
+				AGENT_MAJOR_VERSION, AGENT_MINOR_VERSION);
+	}
+
+	return is_supported;
+}
+
 /*
- * Handle a new agent registration using the reg socket. After that, a new
- * agent application is added to the global hash table and attach to an UST app
- * object. If r_app is not NULL, the created app is set to the pointer.
+ * Handle a new agent connection on the registration socket.
  *
- * Return the new FD created upon accept() on success or else a negative errno
- * value.
+ * Returns 0 on success, or else a negative errno value.
+ * On success, the resulting socket is returned through `agent_app_socket`
+ * and the application's reported id is updated through `agent_app_id`.
  */
-static int handle_registration(struct lttcomm_sock *reg_sock,
-		struct agent_app **r_app)
+static int accept_agent_connection(
+		struct lttcomm_sock *reg_sock,
+		struct agent_app_id *agent_app_id,
+		struct lttcomm_sock **agent_app_socket)
 {
 	int ret;
-	pid_t pid;
-	uint32_t major_version, minor_version;
+	struct agent_protocol_version agent_version;
 	ssize_t size;
-	enum lttng_domain_type domain;
-	struct agent_app *app;
 	struct agent_register_msg msg;
 	struct lttcomm_sock *new_sock;
 
@@ -213,60 +254,52 @@ static int handle_registration(struct lttcomm_sock *reg_sock,
 	new_sock = reg_sock->ops->accept(reg_sock);
 	if (!new_sock) {
 		ret = -ENOTCONN;
-		goto error;
+		goto end;
 	}
 
 	size = new_sock->ops->recvmsg(new_sock, &msg, sizeof(msg), 0);
 	if (size < sizeof(msg)) {
+		if (size < 0) {
+			PERROR("Failed to register new agent application");
+		} else if (size != 0) {
+			ERR("Failed to register new agent application: invalid registration message length: expected length = %zu, message length = %zd",
+					sizeof(msg), size);
+		} else {
+			DBG("Failed to register new agent application: connection closed");
+		}
 		ret = -EINVAL;
-		goto error_socket;
+		goto error_close_socket;
 	}
-	domain = be32toh(msg.domain);
-	pid = be32toh(msg.pid);
-	major_version = be32toh(msg.major_version);
-	minor_version = be32toh(msg.minor_version);
 
-	/* Test communication protocol version of the registring agent. */
-	if (major_version != AGENT_MAJOR_VERSION) {
+	agent_version = (struct agent_protocol_version) {
+		be32toh(msg.major_version),
+		be32toh(msg.minor_version),
+	};
+
+	/* Test communication protocol version of the registering agent. */
+	if (!is_agent_protocol_version_supported(&agent_version)) {
 		ret = -EINVAL;
-		goto error_socket;
-	}
-	if (minor_version != AGENT_MINOR_VERSION) {
-		ret = -EINVAL;
-		goto error_socket;
+		goto error_close_socket;
 	}
 
-	DBG2("[agent-thread] New registration for pid %d domain %d on socket %d",
-			pid, domain, new_sock->fd);
+	*agent_app_id = (struct agent_app_id) {
+		.domain = (enum lttng_domain_type) be32toh(msg.domain),
+		.pid = (pid_t) be32toh(msg.pid),
+	};
 
-	app = agent_create_app(pid, domain, new_sock);
-	if (!app) {
-		ret = -ENOMEM;
-		goto error_socket;
-	}
+	DBG2("New registration for agent application: pid = %ld, domain = %s, socket fd = %d",
+			(long) agent_app_id->pid,
+			domain_type_str(agent_app_id->domain), new_sock->fd);
 
-	/*
-	 * Add before assigning the socket value to the UST app so it can be found
-	 * concurrently.
-	 */
-	agent_add_app(app);
+	*agent_app_socket = new_sock;
+	new_sock = NULL;
+	ret = 0;
+	goto end;
 
-	/*
-	 * We don't need to attach the agent app to the app. If we ever do so, we
-	 * should consider both registration order of agent before app and app
-	 * before agent.
-	 */
-
-	if (r_app) {
-		*r_app = app;
-	}
-
-	return new_sock->fd;
-
-error_socket:
+error_close_socket:
 	new_sock->ops->close(new_sock);
 	lttcomm_destroy_sock(new_sock);
-error:
+end:
 	return ret;
 }
 
@@ -362,7 +395,7 @@ static void *thread_agent_management(void *data)
 	uatomic_set(&agent_tracing_enabled, 1);
 	mark_thread_as_ready(notifiers);
 
-	/* Add TCP socket to poll set. */
+	/* Add TCP socket to the poll set. */
 	ret = lttng_poll_add(&events, reg_sock->fd,
 			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 	if (ret < 0) {
@@ -399,43 +432,79 @@ restart:
 				goto exit;
 			}
 
+			/* Activity on the registration socket. */
 			if (revents & LPOLLIN) {
-				int new_fd;
-				struct agent_app *app = NULL;
+				struct agent_app_id new_app_id;
+				struct agent_app *new_app = NULL;
+				struct lttcomm_sock *new_app_socket;
+				int new_app_socket_fd;
 
 				assert(pollfd == reg_sock->fd);
-				new_fd = handle_registration(reg_sock, &app);
-				if (new_fd < 0) {
+
+				ret = accept_agent_connection(
+					reg_sock, &new_app_id, &new_app_socket);
+				if (ret < 0) {
+					/* Errors are already logged. */
 					continue;
 				}
-				/* Should not have a NULL app on success. */
-				assert(app);
 
 				/*
-				 * Since this is a command socket (write then read),
-				 * only add poll error event to only detect shutdown.
+				 * new_app_socket's ownership has been
+				 * transferred to the new agent app.
 				 */
-				ret = lttng_poll_add(&events, new_fd,
+				new_app = agent_create_app(new_app_id.pid,
+						new_app_id.domain,
+						new_app_socket);
+				if (!new_app) {
+					new_app_socket->ops->close(
+							new_app_socket);
+					continue;
+				}
+				new_app_socket_fd = new_app_socket->fd;
+				new_app_socket = NULL;
+
+				/*
+				 * Since this is a command socket (write then
+				 * read), only add poll error event to only
+				 * detect shutdown.
+				 */
+				ret = lttng_poll_add(&events, new_app_socket_fd,
 						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
 				if (ret < 0) {
-					agent_destroy_app_by_sock(new_fd);
+					agent_destroy_app(new_app);
 					continue;
 				}
 
-				/* Update newly registered app. */
-				update_agent_app(app);
+				/*
+				 * Prevent sessions from being modified while
+				 * the agent application's configuration is
+				 * updated.
+				 */
+				session_lock_list();
 
-				/* On failure, the poll will detect it and clean it up. */
-				ret = agent_send_registration_done(app);
+				/*
+				 * Update the newly registered applications's
+				 * configuration.
+				 */
+				update_agent_app(new_app);
+
+				ret = agent_send_registration_done(new_app);
 				if (ret < 0) {
-					/* Removing from the poll set */
-					ret = lttng_poll_del(&events, new_fd);
+					agent_destroy_app(new_app);
+					/* Removing from the poll set. */
+					ret = lttng_poll_del(&events,
+							new_app_socket_fd);
 					if (ret < 0) {
+						session_unlock_list();
 						goto error;
 					}
-					agent_destroy_app_by_sock(new_fd);
 					continue;
 				}
+
+				/* Publish the new agent app. */
+				agent_add_app(new_app);
+
+				session_unlock_list();
 			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
 				/* Removing from the poll set */
 				ret = lttng_poll_del(&events, pollfd);
