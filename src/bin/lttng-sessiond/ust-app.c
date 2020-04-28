@@ -1331,15 +1331,15 @@ error:
  *
  * Return allocated filter or NULL on error.
  */
-static struct lttng_ust_filter_bytecode *create_ust_bytecode_from_bytecode(
-		const struct lttng_bytecode *orig_f)
+static struct lttng_ust_filter_bytecode *
+create_ust_filter_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 {
 	struct lttng_ust_filter_bytecode *filter = NULL;
 
-	/* Copy filter bytecode */
+	/* Copy filter bytecode. */
 	filter = zmalloc(sizeof(*filter) + orig_f->len);
 	if (!filter) {
-		PERROR("zmalloc alloc ust filter bytecode");
+		PERROR("Failed to allocate lttng_ust_filter_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
 		goto error;
 	}
 
@@ -1348,6 +1348,30 @@ static struct lttng_ust_filter_bytecode *create_ust_bytecode_from_bytecode(
 	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
 error:
 	return filter;
+}
+
+/*
+ * Create a liblttng-ust capture bytecode from given bytecode.
+ *
+ * Return allocated filter or NULL on error.
+ */
+static struct lttng_ust_capture_bytecode *
+create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
+{
+	struct lttng_ust_capture_bytecode *capture = NULL;
+
+	/* Copy capture bytecode. */
+	capture = zmalloc(sizeof(*capture) + orig_f->len);
+	if (!capture) {
+		PERROR("Failed to allocate lttng_ust_capture_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
+		goto error;
+	}
+
+	assert(sizeof(struct lttng_bytecode) ==
+			sizeof(struct lttng_ust_capture_bytecode));
+	memcpy(capture, orig_f, sizeof(*capture) + orig_f->len);
+error:
+	return capture;
 }
 
 /*
@@ -1519,7 +1543,7 @@ static int set_ust_object_filter(struct ust_app *app,
 
 	health_code_update();
 
-	ust_bytecode = create_ust_bytecode_from_bytecode(bytecode);
+	ust_bytecode = create_ust_filter_bytecode_from_bytecode(bytecode);
 	if (!ust_bytecode) {
 		ret = -LTTNG_ERR_NOMEM;
 		goto error;
@@ -1530,8 +1554,8 @@ static int set_ust_object_filter(struct ust_app *app,
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app set object filter failed for object %p of app (pid: %d) "
-					"with ret %d", ust_object, app->pid, ret);
+			ERR("UST app set object filter failed: object = %p of app pid = %d, ret = %d",
+					ust_object, app->pid, ret);
 		} else {
 			/*
 			 * This is normal behavior, an application can die during the
@@ -1544,7 +1568,54 @@ static int set_ust_object_filter(struct ust_app *app,
 		goto error;
 	}
 
-	DBG2("UST filter successfully set for object %p", ust_object);
+	DBG2("UST filter successfully set: object = %p", ust_object);
+
+error:
+	health_code_update();
+	free(ust_bytecode);
+	return ret;
+}
+
+/*
+ * Set a capture bytecode for the passed object.
+ */
+static int set_ust_capture(struct ust_app *app,
+		const struct lttng_bytecode *bytecode,
+		struct lttng_ust_object_data *ust_object)
+{
+	int ret;
+	struct lttng_ust_capture_bytecode *ust_bytecode = NULL;
+
+	health_code_update();
+
+	ust_bytecode = create_ust_capture_bytecode_from_bytecode(bytecode);
+	if (!ust_bytecode) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	pthread_mutex_lock(&app->sock_lock);
+	ret = ustctl_set_capture(app->sock, ust_bytecode,
+			ust_object);
+	pthread_mutex_unlock(&app->sock_lock);
+	if (ret < 0) {
+		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
+			ERR("UST app set object capture failed: object = %p of app pid = %d, ret = %d",
+					ust_object, app->pid, ret);
+		} else {
+			/*
+			 * This is normal behavior, an application can die during the
+			 * creation process. Don't report an error so the execution can
+			 * continue normally.
+			 */
+			ret = 0;
+			DBG3("Failed to set UST app object capture. Application is dead.");
+		}
+
+		goto error;
+	}
+
+	DBG2("UST capture successfully set: object = %p", ust_object);
 
 error:
 	health_code_update();

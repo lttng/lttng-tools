@@ -79,6 +79,8 @@ int ustctl_set_filter(int sock, struct lttng_ust_filter_bytecode *bytecode,
 		struct lttng_ust_object_data *obj_data);
 int ustctl_set_exclusion(int sock, struct lttng_ust_event_exclusion *exclusion,
 		struct lttng_ust_object_data *obj_data);
+int ustctl_set_capture(int sock, struct lttng_ust_capture_bytecode *bytecode,
+		struct lttng_ust_object_data *obj_data);
 
 int ustctl_enable(int sock, struct lttng_ust_object_data *object);
 int ustctl_disable(int sock, struct lttng_ust_object_data *object);
