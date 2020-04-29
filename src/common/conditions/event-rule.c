@@ -192,6 +192,39 @@ end:
 	return ret;
 }
 
+static
+struct lttng_capture_descriptor *
+lttng_condition_event_rule_get_internal_capture_descriptor_at_index(
+		const struct lttng_condition *condition, unsigned int index)
+{
+	const struct lttng_condition_event_rule *event_rule_cond =
+			container_of(condition,
+				const struct lttng_condition_event_rule,
+				parent);
+	struct lttng_capture_descriptor *desc = NULL;
+	unsigned int count;
+	enum lttng_condition_status status;
+
+	if (!condition || !IS_EVENT_RULE_CONDITION(condition)) {
+		goto end;
+	}
+
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &count);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto end;
+	}
+
+	if (index >= count) {
+		goto end;
+	}
+
+	desc = lttng_dynamic_pointer_array_get_pointer(
+			&event_rule_cond->capture_descriptors, index);
+end:
+	return desc;
+}
+
 static int lttng_condition_event_rule_serialize(
 		const struct lttng_condition *condition,
 		struct lttng_payload *payload)
@@ -233,13 +266,13 @@ static int lttng_condition_event_rule_serialize(
 	}
 
 	for (i = 0; i < capture_descr_count; i++) {
-		const struct lttng_event_expr *expr =
-				lttng_condition_event_rule_get_capture_descriptor_at_index(
+		const struct lttng_capture_descriptor *desc =
+				lttng_condition_event_rule_get_internal_capture_descriptor_at_index(
 						condition, i);
 
 		DBG("Serializing event rule condition's capture descriptor %" PRIu32,
 				i);
-		ret = serialize_event_expr(expr, payload);
+		ret = serialize_event_expr(desc->event_expression, payload);
 		if (ret) {
 			goto end;
 		}
@@ -586,9 +619,9 @@ ssize_t lttng_condition_event_rule_create_from_payload(
 
 	/* Capture descriptors. */
 	for (i = 0; i < capture_descr_count; i++) {
+		enum lttng_condition_status status;
 		struct lttng_event_expr *expr = event_expr_from_payload(
 				view, &offset);
-		enum lttng_condition_status status;
 
 		if (!expr) {
 			goto error;
@@ -724,30 +757,14 @@ const struct lttng_event_expr *
 lttng_condition_event_rule_get_capture_descriptor_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
-	const struct lttng_condition_event_rule *event_rule_cond =
-			container_of(condition,
-				const struct lttng_condition_event_rule,
-				parent);
 	const struct lttng_event_expr *expr = NULL;
-	struct lttng_capture_descriptor *desc = NULL;
-	unsigned int count;
-	enum lttng_condition_status status;
+	const struct lttng_capture_descriptor *desc = NULL;
 
-	if (!condition || !IS_EVENT_RULE_CONDITION(condition)) {
+	desc = lttng_condition_event_rule_get_internal_capture_descriptor_at_index(
+			condition, index);
+	if (desc == NULL) {
 		goto end;
 	}
-
-	status = lttng_condition_event_rule_get_capture_descriptor_count(condition, &count);
-	if (status != LTTNG_CONDITION_STATUS_OK) {
-		goto end;
-	}
-
-	if (index >= count) {
-		goto end;
-	}
-
-	desc = lttng_dynamic_pointer_array_get_pointer(
-			&event_rule_cond->capture_descriptors, index);
 	expr = desc->event_expression;
 
 end:
