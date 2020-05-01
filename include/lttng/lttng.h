@@ -38,6 +38,7 @@
 #include <lttng/endpoint.h>
 #include <lttng/event.h>
 #include <lttng/event-expr.h>
+#include <lttng/event-field-value.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/kprobe.h>
 #include <lttng/event-rule/syscall.h>

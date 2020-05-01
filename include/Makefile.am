@@ -104,6 +104,7 @@ lttnginclude_HEADERS = \
 	lttng/domain.h \
 	lttng/event.h \
 	lttng/event-expr.h \
+	lttng/event-field-value.h \
 	lttng/handle.h \
 	lttng/session.h \
 	lttng/lttng-error.h \
@@ -178,6 +179,7 @@ noinst_HEADERS = \
 	lttng/domain-internal.h \
 	lttng/event-internal.h \
 	lttng/event-expr-internal.h \
+	lttng/event-field-value-internal.h \
 	lttng/rotate-internal.h \
 	lttng/ref-internal.h \
 	lttng/location-internal.h \
