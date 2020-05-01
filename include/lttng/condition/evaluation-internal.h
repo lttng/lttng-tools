@@ -9,6 +9,7 @@
 #define LTTNG_EVALUATION_INTERNAL_H
 
 #include <lttng/condition/evaluation.h>
+#include <lttng/condition/condition.h>
 #include <common/macros.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -38,7 +39,9 @@ void lttng_evaluation_init(struct lttng_evaluation *evaluation,
 		enum lttng_condition_type type);
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_create_from_payload(struct lttng_payload_view *view,
+ssize_t lttng_evaluation_create_from_payload(
+		const struct lttng_condition *condition,
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
 LTTNG_HIDDEN

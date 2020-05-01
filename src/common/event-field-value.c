@@ -517,21 +517,23 @@ end:
 	return ret;
 }
 
-const char *lttng_event_field_value_string_get_value(
-		const struct lttng_event_field_value *field_val)
+enum lttng_event_field_value_status lttng_event_field_value_string_get_value(
+		const struct lttng_event_field_value *field_val,
+		const char **value)
 {
-	const char *ret;
+	enum lttng_event_field_value_status status;
 
 	if (!field_val || field_val->type != LTTNG_EVENT_FIELD_VALUE_TYPE_STRING) {
-		ret = NULL;
+		status = LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
 		goto end;
 	}
 
-	ret = container_of(field_val,
+	*value = container_of(field_val,
 			const struct lttng_event_field_value_string, parent)->val;
+	status = LTTNG_EVENT_FIELD_VALUE_STATUS_OK;
 
 end:
-	return ret;
+	return status;
 }
 
 enum lttng_event_field_value_status lttng_event_field_value_array_get_length(

@@ -4350,6 +4350,7 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	struct notification_client_list *client_list = NULL;
 	const char *trigger_name;
 	int ret;
+	unsigned int capture_count = 0;
 
 	/* Find triggers associated with this token. */
 	rcu_read_lock();
@@ -4382,14 +4383,34 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	trigger_status = lttng_trigger_get_name(element->trigger, &trigger_name);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
+	if (lttng_condition_event_rule_get_capture_descriptor_count(
+			    lttng_trigger_get_const_condition(element->trigger),
+			    &capture_count) != LTTNG_CONDITION_STATUS_OK) {
+		ERR("Failed to get capture count");
+		ret = -1;
+		goto end;
+	}
+
+	if (!notification->capture_buffer && capture_count != 0) {
+		ERR("Expected capture but capture buffer is null");
+		ret = -1;
+		goto end;
+	}
+
 	evaluation = lttng_evaluation_event_rule_create(
-			trigger_name);
+			container_of(lttng_trigger_get_const_condition(
+						     element->trigger),
+					struct lttng_condition_event_rule,
+					parent),
+			trigger_name,
+			notification->capture_buffer,
+			notification->capture_buf_size, false);
+
 	if (evaluation == NULL) {
 		ERR("[notification-thread] Failed to create event rule hit evaluation while creating and enqueuing action executor job");
 		ret = -1;
 		goto end_unlock;
 	}
-
 	client_list = get_client_list_from_condition(state,
 			lttng_trigger_get_const_condition(element->trigger));
 	executor_status = action_executor_enqueue(state->executor,
@@ -4460,6 +4481,7 @@ next_client:
 end_unlock:
 	notification_client_list_put(client_list);
 	rcu_read_unlock();
+end:
 	return ret;
 }
 

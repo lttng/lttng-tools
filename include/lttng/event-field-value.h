@@ -169,12 +169,18 @@ lttng_event_field_value_real_get_value(
  * Returns the raw value (an UTF-8 C string) of the string event field
  * value `field_val`, or `NULL` if:
  *
- * * `field_val` is `NULL`.
- * * The type of `field_val` is not
- *   `LTTNG_EVENT_FIELD_VALUE_TYPE_STRING`.
+ * `LTTNG_EVENT_FIELD_VALUE_STATUS_OK`:
+ *     Success.
+ *
+ * `LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID`:
+ *     * `field_val` is `NULL`.
+ *     * The type of `field_val` is not
+ *       `LTTNG_EVENT_FIELD_VALUE_TYPE_STRING`.
  */
-extern const char *lttng_event_field_value_string_get_value(
-		const struct lttng_event_field_value *field_val);
+extern enum lttng_event_field_value_status
+lttng_event_field_value_string_get_value(
+		const struct lttng_event_field_value *field_val,
+		const char **value);
 
 /*
  * Sets `*length` to the length (the number of contained elements) of

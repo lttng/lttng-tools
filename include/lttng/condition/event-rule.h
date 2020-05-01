@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 struct lttng_event_expr;
+struct lttng_event_field_value;
 
 /**
  * Event rule conditions allows an action to be taken whenever an event matching
@@ -73,6 +74,30 @@ extern enum lttng_evaluation_status
 lttng_evaluation_event_rule_get_trigger_name(
 		const struct lttng_evaluation *evaluation,
 		const char **name);
+
+/*
+ * Sets `*field_val` to the array event field value of the event rule
+ * condition evaluation `evaluation` which contains its captured values.
+ *
+ * Returns:
+ *
+ * `LTTNG_EVALUATION_STATUS_OK`:
+ *     Success.
+ *
+ *     `*field_val` is an array event field value with a length of at
+ *     least one.
+ *
+ * `LTTNG_EVALUATION_STATUS_INVALID`:
+ *     * `evaluation` is `NULL`.
+ *     * The type of the condition of `evaluation` is not
+ *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *     * The condition of `evaluation` has no capture descriptors.
+ *     * `field_val` is `NULL`.
+ */
+extern enum lttng_evaluation_status
+lttng_evaluation_event_rule_get_captured_values(
+		const struct lttng_evaluation *evaluation,
+		const struct lttng_event_field_value **field_val);
 
 /*
  * Appends (transfering the ownership) the capture descriptor `expr` to

@@ -10,12 +10,15 @@
 #include <common/event-expr-to-bytecode.h>
 #include <common/macros.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/condition/event-rule-internal.h>
 #include <lttng/condition/event-rule.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-expr.h>
+#include <lttng/event-field-value-internal.h>
+#include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/lttng-error.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -56,13 +59,59 @@ static bool lttng_condition_event_rule_validate(
 	event_rule = container_of(
 			condition, struct lttng_condition_event_rule, parent);
 	if (!event_rule->rule) {
-		ERR("Invalid event rule condition: a rule must be set.");
+		ERR("Invalid event rule condition: a rule must be set");
 		goto end;
 	}
 
 	valid = lttng_event_rule_validate(event_rule->rule);
 end:
 	return valid;
+}
+
+static const char *msgpack_object_type_str(msgpack_object_type type)
+{
+	const char *name;
+
+	switch (type) {
+	case MSGPACK_OBJECT_NIL:
+		name = "MSGPACK_OBJECT_NIL";
+		break;
+	case MSGPACK_OBJECT_BOOLEAN:
+		name = "MSGPACK_OBJECT_BOOLEAN";
+		break;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		name = "MSGPACK_OBJECT_POSITIVE_INTEGER";
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+		name = "MSGPACK_OBJECT_NEGATIVE_INTEGER";
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+		name = "MSGPACK_OBJECT_FLOAT32";
+		break;
+	case MSGPACK_OBJECT_FLOAT:
+		/* Same value as MSGPACK_OBJECT_FLOAT64 */
+		name = "MSGPACK_OBJECT_FLOAT(64)";
+		break;
+	case MSGPACK_OBJECT_STR:
+		name = "MSGPACK_OBJECT_STR";
+		break;
+	case MSGPACK_OBJECT_ARRAY:
+		name = "MSGPACK_OBJECT_ARRAY";
+		break;
+	case MSGPACK_OBJECT_MAP:
+		name = "MSGPACK_OBJECT_MAP";
+		break;
+	case MSGPACK_OBJECT_BIN:
+		name = "MSGPACK_OBJECT_BIN";
+		break;
+	case MSGPACK_OBJECT_EXT:
+		name = "MSGPACK_OBJECT_EXT";
+		break;
+	default:
+		abort();
+	}
+
+	return name;
 }
 
 /*
@@ -178,7 +227,7 @@ int serialize_event_expr(const struct lttng_event_expr *expr,
 
 		/* Serialize the parent array field expression. */
 		DBG("Serializing array field element event expression's "
-				"parent array field event expression.");
+				"parent array field event expression");
 		ret = serialize_event_expr(elem_expr->array_field_expr, payload);
 		if (ret) {
 			goto end;
@@ -775,6 +824,7 @@ end:
 
 LTTNG_HIDDEN
 ssize_t lttng_evaluation_event_rule_create_from_payload(
+		const struct lttng_condition_event_rule *condition,
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
@@ -785,6 +835,8 @@ ssize_t lttng_evaluation_event_rule_create_from_payload(
 	const struct lttng_payload_view header_view =
 			lttng_payload_view_from_view(
 					view, 0, sizeof(*header));
+	uint32_t capture_payload_size;
+	const char *capture_payload = NULL;
 
 	if (!_evaluation) {
 		ret = -1;
@@ -802,7 +854,7 @@ ssize_t lttng_evaluation_event_rule_create_from_payload(
 	/* Map the originating trigger's name. */
 	offset += sizeof(*header);
 	{
-		struct lttng_payload_view current_view =
+		const struct lttng_payload_view current_view =
 				lttng_payload_view_from_view(view, offset,
 						header->trigger_name_length);
 
@@ -822,13 +874,40 @@ ssize_t lttng_evaluation_event_rule_create_from_payload(
 	}
 
 	offset += header->trigger_name_length;
+	{
+		const struct lttng_payload_view current_view =
+				lttng_payload_view_from_view(view, offset, -1);
 
-	evaluation = lttng_evaluation_event_rule_create(trigger_name);
+		if (current_view.buffer.size < sizeof(capture_payload_size)) {
+			ret = -1;
+			goto error;
+		}
+
+		memcpy(&capture_payload_size, current_view.buffer.data,
+				sizeof(capture_payload_size));
+	}
+	offset += sizeof(capture_payload_size);
+
+	if (capture_payload_size > 0) {
+		const struct lttng_payload_view current_view =
+				lttng_payload_view_from_view(view, offset, -1);
+
+		if (current_view.buffer.size < capture_payload_size) {
+			ret = -1;
+			goto error;
+		}
+
+		capture_payload = current_view.buffer.data;
+	}
+
+	evaluation = lttng_evaluation_event_rule_create(condition, trigger_name,
+			capture_payload, capture_payload_size, true);
 	if (!evaluation) {
 		ret = -1;
 		goto error;
 	}
 
+	offset += capture_payload_size;
 	*_evaluation = evaluation;
 	evaluation = NULL;
 	ret = offset;
@@ -845,6 +924,7 @@ static int lttng_evaluation_event_rule_serialize(
 	int ret = 0;
 	struct lttng_evaluation_event_rule *hit;
 	struct lttng_evaluation_event_rule_comm comm;
+	uint32_t capture_payload_size;
 
 	hit = container_of(
 			evaluation, struct lttng_evaluation_event_rule, parent);
@@ -860,6 +940,68 @@ static int lttng_evaluation_event_rule_serialize(
 
 	ret = lttng_dynamic_buffer_append(
 			&payload->buffer, hit->name, comm.trigger_name_length);
+	if (ret) {
+		goto end;
+	}
+
+	capture_payload_size = (uint32_t) hit->capture_payload.size;
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &capture_payload_size,
+			sizeof(capture_payload_size));
+	if (ret) {
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(&payload->buffer, hit->capture_payload.data,
+			hit->capture_payload.size);
+	if (ret) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
+bool msgpack_str_is_equal(const struct msgpack_object *obj, const char *str)
+{
+	bool is_equal = true;
+
+	assert(obj->type == MSGPACK_OBJECT_STR);
+
+	if (obj->via.str.size != strlen(str)) {
+		is_equal = false;
+		goto end;
+	}
+
+	if (strncmp(obj->via.str.ptr, str, obj->via.str.size) != 0) {
+		is_equal = false;
+		goto end;
+	}
+
+end:
+	return is_equal;
+}
+
+static
+const msgpack_object *get_msgpack_map_obj(const struct msgpack_object *map_obj,
+		const char *name)
+{
+	const msgpack_object *ret = NULL;
+	size_t i;
+
+	assert(map_obj->type == MSGPACK_OBJECT_MAP);
+
+	for (i = 0; i < map_obj->via.map.size; i++) {
+		const struct msgpack_object_kv *kv = &map_obj->via.map.ptr[i];
+
+		assert(kv->key.type == MSGPACK_OBJECT_STR);
+
+		if (msgpack_str_is_equal(&kv->key, name)) {
+			ret = &kv->val;
+			goto end;
+		}
+	}
+
 end:
 	return ret;
 }
@@ -872,24 +1014,333 @@ static void lttng_evaluation_event_rule_destroy(
 	hit = container_of(
 			evaluation, struct lttng_evaluation_event_rule, parent);
 	free(hit->name);
+	lttng_dynamic_buffer_reset(&hit->capture_payload);
+	lttng_event_field_value_destroy(hit->captured_values);
 	free(hit);
+}
+
+static
+int event_field_value_from_obj(const msgpack_object *obj,
+		struct lttng_event_field_value **field_val)
+{
+	int ret = 0;
+
+	assert(obj);
+	assert(field_val);
+
+	switch (obj->type) {
+	case MSGPACK_OBJECT_NIL:
+		/* Unavailable. */
+		*field_val = NULL;
+		goto end;
+	case MSGPACK_OBJECT_POSITIVE_INTEGER:
+		*field_val = lttng_event_field_value_uint_create(
+				obj->via.u64);
+		break;
+	case MSGPACK_OBJECT_NEGATIVE_INTEGER:
+		*field_val = lttng_event_field_value_int_create(
+				obj->via.i64);
+		break;
+	case MSGPACK_OBJECT_FLOAT32:
+	case MSGPACK_OBJECT_FLOAT64:
+		*field_val = lttng_event_field_value_real_create(
+				obj->via.f64);
+		break;
+	case MSGPACK_OBJECT_STR:
+		*field_val = lttng_event_field_value_string_create_with_size(
+				obj->via.str.ptr, obj->via.str.size);
+		break;
+	case MSGPACK_OBJECT_ARRAY:
+	{
+		size_t i;
+
+		*field_val = lttng_event_field_value_array_create();
+		if (!*field_val) {
+			goto error;
+		}
+
+		for (i = 0; i < obj->via.array.size; i++) {
+			const msgpack_object *elem_obj = &obj->via.array.ptr[i];
+			struct lttng_event_field_value *elem_field_val;
+
+			ret = event_field_value_from_obj(elem_obj,
+					&elem_field_val);
+			if (ret) {
+				goto error;
+			}
+
+			if (elem_field_val) {
+				ret = lttng_event_field_value_array_append(
+						*field_val, elem_field_val);
+			} else {
+				ret = lttng_event_field_value_array_append_unavailable(
+						*field_val);
+			}
+
+			if (ret) {
+				lttng_event_field_value_destroy(elem_field_val);
+				goto error;
+			}
+		}
+
+		break;
+	}
+	case MSGPACK_OBJECT_MAP:
+	{
+		/*
+		 * As of this version, the only valid map object is
+		 * for an enumeration value, for example:
+		 *
+		 *     type: enum
+		 *     value: 177
+		 *     labels:
+		 *     - Labatt 50
+		 *     - Molson Dry
+		 *     - Carling Black Label
+		 */
+		const msgpack_object *inner_obj;
+		size_t label_i;
+
+		inner_obj = get_msgpack_map_obj(obj, "type");
+		if (!inner_obj) {
+			ERR("Missing `type` entry in map object");
+			goto error;
+		}
+
+		if (inner_obj->type != MSGPACK_OBJECT_STR) {
+			ERR("Map object's `type` entry is not a string: type = %s",
+					msgpack_object_type_str(inner_obj->type));
+			goto error;
+		}
+
+		if (!msgpack_str_is_equal(inner_obj, "enum")) {
+			ERR("Map object's `type` entry: expecting `enum`");
+			goto error;
+		}
+
+		inner_obj = get_msgpack_map_obj(obj, "value");
+		if (!inner_obj) {
+			ERR("Missing `value` entry in map object");
+			goto error;
+		}
+
+		if (inner_obj->type == MSGPACK_OBJECT_POSITIVE_INTEGER) {
+			*field_val = lttng_event_field_value_enum_uint_create(
+					inner_obj->via.u64);
+		} else if (inner_obj->type == MSGPACK_OBJECT_NEGATIVE_INTEGER) {
+			*field_val = lttng_event_field_value_enum_int_create(
+					inner_obj->via.i64);
+		} else {
+			ERR("Map object's `value` entry is not an integer: type = %s",
+					msgpack_object_type_str(inner_obj->type));
+			goto error;
+		}
+
+		if (!*field_val) {
+			goto error;
+		}
+
+		inner_obj = get_msgpack_map_obj(obj, "labels");
+		if (!inner_obj) {
+			/* No labels */
+			goto end;
+		}
+
+		if (inner_obj->type != MSGPACK_OBJECT_ARRAY) {
+			ERR("Map object's `labels` entry is not an array: type = %s",
+					msgpack_object_type_str(inner_obj->type));
+			goto error;
+		}
+
+		for (label_i = 0; label_i < inner_obj->via.array.size;
+				label_i++) {
+			int iret;
+			const msgpack_object *elem_obj =
+					&inner_obj->via.array.ptr[label_i];
+
+			if (elem_obj->type != MSGPACK_OBJECT_STR) {
+				ERR("Map object's `labels` entry's type is not a string: type = %s",
+						msgpack_object_type_str(elem_obj->type));
+				goto error;
+			}
+
+			iret = lttng_event_field_value_enum_append_label_with_size(
+					*field_val, elem_obj->via.str.ptr,
+					elem_obj->via.str.size);
+			if (iret) {
+				goto error;
+			}
+		}
+
+		break;
+	}
+	default:
+		ERR("Unexpected object type: type = %s",
+				msgpack_object_type_str(obj->type));
+		goto error;
+	}
+
+	if (!*field_val) {
+		goto error;
+	}
+
+	goto end;
+
+error:
+	lttng_event_field_value_destroy(*field_val);
+	*field_val = NULL;
+	ret = -1;
+
+end:
+	return ret;
+}
+
+static
+struct lttng_event_field_value *event_field_value_from_capture_payload(
+		const struct lttng_condition_event_rule *condition,
+		const char *capture_payload, size_t capture_payload_size)
+{
+	struct lttng_event_field_value *ret = NULL;
+	msgpack_unpacked unpacked;
+	msgpack_unpack_return unpack_return;
+	const msgpack_object *root_obj;
+	const msgpack_object_array *root_array_obj;
+	size_t i;
+	size_t count;
+
+	assert(condition);
+	assert(capture_payload);
+
+	/* Initialize value. */
+	msgpack_unpacked_init(&unpacked);
+
+	/* Decode. */
+	unpack_return = msgpack_unpack_next(&unpacked, capture_payload,
+			capture_payload_size, NULL);
+	if (unpack_return != MSGPACK_UNPACK_SUCCESS) {
+		ERR("msgpack_unpack_next() failed to decode the "
+				"MessagePack-encoded capture payload: "
+				"size = %zu, ret = %d",
+				capture_payload_size, unpack_return);
+		goto error;
+	}
+
+	/* Get root array. */
+	root_obj = &unpacked.data;
+
+	if (root_obj->type != MSGPACK_OBJECT_ARRAY) {
+		ERR("Expecting an array as the root object: type = %s",
+				msgpack_object_type_str(root_obj->type));
+		goto error;
+	}
+
+	root_array_obj = &root_obj->via.array;
+
+	/* Create an empty root array event field value. */
+	ret = lttng_event_field_value_array_create();
+	if (!ret) {
+		goto error;
+	}
+
+	/*
+	 * For each capture descriptor in the condition object:
+	 *
+	 * 1. Get its corresponding captured field value MessagePack
+	 *    object.
+	 *
+	 * 2. Create a corresponding event field value.
+	 *
+	 * 3. Append it to `ret` (the root array event field value).
+	 */
+	count = lttng_dynamic_pointer_array_get_count(
+			&condition->capture_descriptors);
+	assert(count > 0);
+
+	for (i = 0; i < count; i++) {
+		const struct lttng_capture_descriptor *capture_descriptor =
+				lttng_condition_event_rule_get_internal_capture_descriptor_at_index(
+						&condition->parent, i);
+		const msgpack_object *elem_obj;
+		struct lttng_event_field_value *elem_field_val;
+		int iret;
+
+		assert(capture_descriptor);
+
+		elem_obj = &root_array_obj->ptr[i];
+		iret = event_field_value_from_obj(elem_obj,
+				&elem_field_val);
+		if (iret) {
+			goto error;
+		}
+
+		if (elem_field_val) {
+			iret = lttng_event_field_value_array_append(ret,
+					elem_field_val);
+		} else {
+			iret = lttng_event_field_value_array_append_unavailable(
+					ret);
+		}
+
+		if (iret) {
+			lttng_event_field_value_destroy(elem_field_val);
+			goto error;
+		}
+	}
+
+	goto end;
+
+error:
+	lttng_event_field_value_destroy(ret);
+	ret = NULL;
+
+end:
+	msgpack_unpacked_destroy(&unpacked);
+	return ret;
 }
 
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_event_rule_create(
-		const char *trigger_name)
+		const struct lttng_condition_event_rule *condition,
+		const char *trigger_name,
+		const char *capture_payload, size_t capture_payload_size,
+		bool decode_capture_payload)
 {
 	struct lttng_evaluation_event_rule *hit;
 	struct lttng_evaluation *evaluation = NULL;
 
 	hit = zmalloc(sizeof(struct lttng_evaluation_event_rule));
 	if (!hit) {
-		goto end;
+		goto error;
 	}
 
 	hit->name = strdup(trigger_name);
 	if (!hit->name) {
-		goto end;
+		goto error;
+	}
+
+	lttng_dynamic_buffer_init(&hit->capture_payload);
+
+	if (capture_payload) {
+		const int ret = lttng_dynamic_buffer_append(
+				&hit->capture_payload, capture_payload,
+				capture_payload_size);
+		if (ret) {
+			ERR("Failed to initialize capture payload of event rule evaluation");
+			goto error;
+		}
+
+		if (decode_capture_payload) {
+			hit->captured_values =
+					event_field_value_from_capture_payload(
+						condition,
+						capture_payload,
+						capture_payload_size);
+			if (!hit->captured_values) {
+				ERR("Failed to decode the capture payload: size = %zu",
+						capture_payload_size);
+				goto error;
+			}
+		}
 	}
 
 	hit->parent.type = LTTNG_CONDITION_TYPE_EVENT_RULE_HIT;
@@ -899,12 +1350,38 @@ struct lttng_evaluation *lttng_evaluation_event_rule_create(
 	evaluation = &hit->parent;
 	hit = NULL;
 
-end:
+error:
 	if (hit) {
 		lttng_evaluation_event_rule_destroy(&hit->parent);
 	}
 
 	return evaluation;
+}
+
+enum lttng_evaluation_status lttng_evaluation_event_rule_get_captured_values(
+		const struct lttng_evaluation *evaluation,
+		const struct lttng_event_field_value **field_val)
+{
+	struct lttng_evaluation_event_rule *hit;
+	enum lttng_evaluation_status status = LTTNG_EVALUATION_STATUS_OK;
+
+	if (!evaluation || !is_event_rule_evaluation(evaluation) ||
+			!field_val) {
+		status = LTTNG_EVALUATION_STATUS_INVALID;
+		goto end;
+	}
+
+	hit = container_of(evaluation, struct lttng_evaluation_event_rule,
+			parent);
+	if (!hit->captured_values) {
+		status = LTTNG_EVALUATION_STATUS_INVALID;
+		goto end;
+	}
+
+	*field_val = hit->captured_values;
+
+end:
+	return status;
 }
 
 enum lttng_evaluation_status lttng_evaluation_event_rule_get_trigger_name(

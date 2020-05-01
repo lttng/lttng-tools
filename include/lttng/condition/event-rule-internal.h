@@ -13,6 +13,7 @@
 #include <common/macros.h>
 #include <lttng/condition/evaluation-internal.h>
 #include <common/dynamic-array.h>
+#include <lttng/event-field-value.h>
 
 struct lttng_capture_descriptor {
 	struct lttng_event_expr *event_expression;
@@ -30,6 +31,18 @@ struct lttng_condition_event_rule {
 struct lttng_evaluation_event_rule {
 	struct lttng_evaluation parent;
 	char *name;
+
+	/* MessagePack-encoded captured event field values. */
+	struct lttng_dynamic_buffer capture_payload;
+
+	/*
+	 * The content of this array event field value is the decoded
+	 * version of `capture_payload` above.
+	 *
+	 * This is a cache: it's not serialized/deserialized in
+	 * communications from/to the library and the session daemon.
+	 */
+	struct lttng_event_field_value *captured_values;
 };
 
 struct lttng_evaluation_event_rule_comm {
@@ -52,10 +65,14 @@ lttng_condition_event_rule_borrow_rule_mutable(
 
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_event_rule_create(
-		const char* trigger_name);
+		const struct lttng_condition_event_rule *condition,
+		const char* trigger_name,
+		const char *capture_payload, size_t capture_payload_size,
+		bool decode_capture_payload);
 
 LTTNG_HIDDEN
 ssize_t lttng_evaluation_event_rule_create_from_payload(
+		const struct lttng_condition_event_rule *condition,
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation);
 

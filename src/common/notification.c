@@ -122,7 +122,7 @@ ssize_t lttng_notification_create_from_payload(
 						notification_size, -1);
 
 		evaluation_size = lttng_evaluation_create_from_payload(
-				&evaluation_view, &evaluation);
+				condition, &evaluation_view, &evaluation);
 	}
 
 	if (evaluation_size < 0) {
