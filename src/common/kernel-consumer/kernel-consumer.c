@@ -17,6 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "common/buffer-view.h"
 #include <stdint.h>
 #define _LGPL_SOURCE
 #include <assert.h>
@@ -259,9 +260,9 @@ static int lttng_kconsumer_snapshot_channel(
 			ssize_t read_len;
 			unsigned long len, padded_len;
 			const char *subbuf_addr;
+			struct lttng_buffer_view subbuf_view;
 
 			health_code_update();
-
 			DBG("Kernel consumer taking snapshot at pos %lu", consumed_pos);
 
 			ret = kernctl_get_subbuf(stream->wait_fd, &consumed_pos);
@@ -293,8 +294,10 @@ static int lttng_kconsumer_snapshot_channel(
 				goto error_put_subbuf;
 			}
 
+			subbuf_view = lttng_buffer_view_init(
+					subbuf_addr, 0, padded_len);
 			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx,
-					stream, subbuf_addr, len,
+					stream, &subbuf_view,
 					padded_len - len, NULL);
 			/*
 			 * We write the padded len in local tracefiles but the data len
@@ -1713,6 +1716,7 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	case CONSUMER_CHANNEL_MMAP:
 	{
 		const char *subbuf_addr;
+		struct lttng_buffer_view subbuf_view;
 
 		/* Get subbuffer size without padding */
 		err = kernctl_get_subbuf_size(infd, &subbuf_size);
@@ -1743,15 +1747,15 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 		padding = len - subbuf_size;
 
+		subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, len);
+
 		/* write the subbuffer to the tracefile */
-		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream,
-				subbuf_addr,
-				subbuf_size,
-				padding, &index);
+		ret = lttng_consumer_on_read_subbuffer_mmap(
+				ctx, stream, &subbuf_view, padding, &index);
 		/*
-		 * The mmap operation should write subbuf_size amount of data when
-		 * network streaming or the full padding (len) size when we are _not_
-		 * streaming.
+		 * The mmap operation should write subbuf_size amount of data
+		 * when network streaming or the full padding (len) size when we
+		 * are _not_ streaming.
 		 */
 		if ((ret != subbuf_size && stream->net_seq_idx != (uint64_t) -1ULL) ||
 				(ret != len && stream->net_seq_idx == (uint64_t) -1ULL)) {
