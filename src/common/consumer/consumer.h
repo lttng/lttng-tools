@@ -791,7 +791,9 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len,
+		struct lttng_consumer_stream *stream,
+		const char *buffer,
+		unsigned long len,
 		unsigned long padding,
 		struct ctf_packet_index *index);
 ssize_t lttng_consumer_on_read_subbuffer_splice(

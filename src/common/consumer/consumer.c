@@ -1670,12 +1670,12 @@ end:
  */
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
-		struct lttng_consumer_stream *stream, unsigned long len,
+		struct lttng_consumer_stream *stream,
+		const char *buffer,
+		unsigned long len,
 		unsigned long padding,
 		struct ctf_packet_index *index)
 {
-	unsigned long mmap_offset;
-	void *mmap_base;
 	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
 	/* Default is on the disk */
@@ -1695,36 +1695,6 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			ret = -EPIPE;
 			goto end;
 		}
-	}
-
-	/* get the offset inside the fd to mmap */
-	switch (consumer_data.type) {
-	case LTTNG_CONSUMER_KERNEL:
-		mmap_base = stream->mmap_base;
-		ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
-		if (ret < 0) {
-			PERROR("tracer ctl get_mmap_read_offset");
-			goto end;
-		}
-		break;
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		mmap_base = lttng_ustctl_get_mmap_base(stream);
-		if (!mmap_base) {
-			ERR("read mmap get mmap base for stream %s", stream->name);
-			ret = -EPERM;
-			goto end;
-		}
-		ret = lttng_ustctl_get_mmap_read_offset(stream, &mmap_offset);
-		if (ret != 0) {
-			PERROR("tracer ctl get_mmap_read_offset");
-			ret = -EINVAL;
-			goto end;
-		}
-		break;
-	default:
-		ERR("Unknown consumer_data type");
-		assert(0);
 	}
 
 	/* Handle stream on the relayd if the output is on the network */
@@ -1803,7 +1773,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	 * This call guarantee that len or less is returned. It's impossible to
 	 * receive a ret value that is bigger than len.
 	 */
-	ret = lttng_write(outfd, mmap_base + mmap_offset, len);
+	ret = lttng_write(outfd, buffer, len);
 	DBG("Consumer mmap write() ret %zd (len %lu)", ret, len);
 	if (ret < 0 || ((size_t) ret != len)) {
 		/*

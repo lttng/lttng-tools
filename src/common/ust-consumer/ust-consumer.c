@@ -7,6 +7,7 @@
  *
  */
 
+#include <stdint.h>
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <lttng/ust-ctl.h>
@@ -1078,6 +1079,35 @@ error:
 	return ret;
 }
 
+static
+int get_current_subbuf_addr(struct lttng_consumer_stream *stream,
+		const char **addr)
+{
+	int ret;
+	unsigned long mmap_offset;
+	const char *mmap_base;
+
+	mmap_base = ustctl_get_mmap_base(stream->ustream);
+	if (!mmap_base) {
+		ERR("Failed to get mmap base for stream `%s`",
+				stream->name);
+		ret = -EPERM;
+		goto error;
+	}
+
+	ret = ustctl_get_mmap_read_offset(stream->ustream, &mmap_offset);
+	if (ret != 0) {
+		ERR("Failed to get mmap offset for stream `%s`", stream->name);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	*addr = mmap_base + mmap_offset;
+error:
+	return ret;
+
+}
+
 /*
  * Take a snapshot of all the stream of a channel.
  * RCU read-side lock and the channel lock must be held by the caller.
@@ -1180,6 +1210,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
+			const char *subbuf_addr;
 
 			health_code_update();
 
@@ -1209,7 +1240,13 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 				goto error_put_subbuf;
 			}
 
-			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len,
+			ret = get_current_subbuf_addr(stream, &subbuf_addr);
+			if (ret) {
+				goto error_put_subbuf;
+			}
+
+			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx,
+					stream, subbuf_addr, len,
 					padded_len - len, NULL);
 			if (use_relayd) {
 				if (read_len != len) {
@@ -2205,31 +2242,6 @@ end:
 	return ret;
 }
 
-/*
- * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
- * compiled out, we isolate it in this library.
- */
-int lttng_ustctl_get_mmap_read_offset(struct lttng_consumer_stream *stream,
-		unsigned long *off)
-{
-	assert(stream);
-	assert(stream->ustream);
-
-	return ustctl_get_mmap_read_offset(stream->ustream, off);
-}
-
-/*
- * Wrapper over the mmap() read offset from ust-ctl library. Since this can be
- * compiled out, we isolate it in this library.
- */
-void *lttng_ustctl_get_mmap_base(struct lttng_consumer_stream *stream)
-{
-	assert(stream);
-	assert(stream->ustream);
-
-	return ustctl_get_mmap_base(stream->ustream);
-}
-
 void lttng_ustctl_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer_active)
 {
@@ -2795,6 +2807,7 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	long ret = 0;
 	struct ustctl_consumer_stream *ustream;
 	struct ctf_packet_index index;
+	const char *subbuf_addr;
 
 	assert(stream);
 	assert(stream->ustream);
@@ -2904,11 +2917,19 @@ retry:
 
 	padding = len - subbuf_size;
 
+	ret = get_current_subbuf_addr(stream, &subbuf_addr);
+	if (ret) {
+		write_index = 0;
+		goto error_put_subbuf;
+	}
+
 	/* write the subbuffer to the tracefile */
-	ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, subbuf_size, padding, &index);
+	ret = lttng_consumer_on_read_subbuffer_mmap(
+			ctx, stream, subbuf_addr, subbuf_size, padding, &index);
 	/*
-	 * The mmap operation should write subbuf_size amount of data when network
-	 * streaming or the full padding (len) size when we are _not_ streaming.
+	 * The mmap operation should write subbuf_size amount of data when
+	 * network streaming or the full padding (len) size when we are _not_
+	 * streaming.
 	 */
 	if ((ret != subbuf_size && stream->net_seq_idx != (uint64_t) -1ULL) ||
 			(ret != len && stream->net_seq_idx == (uint64_t) -1ULL)) {
@@ -2925,6 +2946,7 @@ retry:
 				ret, len, subbuf_size);
 		write_index = 0;
 	}
+error_put_subbuf:
 	err = ustctl_put_next_subbuf(ustream);
 	assert(err == 0);
 
