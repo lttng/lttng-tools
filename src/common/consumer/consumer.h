@@ -26,6 +26,7 @@
 #include <common/index/ctf-index.h>
 #include <common/trace-chunk-registry.h>
 #include <common/credentials.h>
+#include <common/buffer-view.h>
 
 /* Commands for consumer */
 enum lttng_consumer_command {
@@ -792,8 +793,7 @@ void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream,
-		const char *buffer,
-		unsigned long len,
+		const struct lttng_buffer_view *buffer,
 		unsigned long padding,
 		struct ctf_packet_index *index);
 ssize_t lttng_consumer_on_read_subbuffer_splice(
