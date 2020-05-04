@@ -7,6 +7,7 @@
  *
  */
 
+#include <stdint.h>
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <poll.h>
@@ -110,6 +111,25 @@ int lttng_kconsumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 		PERROR("kernctl_snapshot_get_consumed");
 	}
 
+	return ret;
+}
+
+static
+int get_current_subbuf_addr(struct lttng_consumer_stream *stream,
+		const char **addr)
+{
+	int ret;
+	unsigned long mmap_offset;
+	const char *mmap_base = stream->mmap_base;
+
+	ret = kernctl_get_mmap_read_offset(stream->wait_fd, &mmap_offset);
+	if (ret < 0) {
+		PERROR("Failed to get mmap read offset");
+		goto error;
+	}
+
+	*addr = mmap_base + mmap_offset;
+error:
 	return ret;
 }
 
@@ -228,6 +248,7 @@ static int lttng_kconsumer_snapshot_channel(
 		while ((long) (consumed_pos - produced_pos) < 0) {
 			ssize_t read_len;
 			unsigned long len, padded_len;
+			const char *subbuf_addr;
 
 			health_code_update();
 
@@ -257,7 +278,13 @@ static int lttng_kconsumer_snapshot_channel(
 				goto error_put_subbuf;
 			}
 
-			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, len,
+			ret = get_current_subbuf_addr(stream, &subbuf_addr);
+			if (ret) {
+				goto error_put_subbuf;
+			}
+
+			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx,
+					stream, subbuf_addr, len,
 					padded_len - len, NULL);
 			/*
 			 * We write the padded len in local tracefiles but the data len
@@ -1691,6 +1718,9 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 		break;
 	case CONSUMER_CHANNEL_MMAP:
+	{
+		const char *subbuf_addr;
+
 		/* Get subbuffer size without padding */
 		err = kernctl_get_subbuf_size(infd, &subbuf_size);
 		if (err != 0) {
@@ -1710,13 +1740,20 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			goto error;
 		}
 
+		ret = get_current_subbuf_addr(stream, &subbuf_addr);
+		if (ret) {
+			goto error_put_subbuf;
+		}
+
 		/* Make sure the tracer is not gone mad on us! */
 		assert(len >= subbuf_size);
 
 		padding = len - subbuf_size;
 
 		/* write the subbuffer to the tracefile */
-		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream, subbuf_size,
+		ret = lttng_consumer_on_read_subbuffer_mmap(ctx, stream,
+				subbuf_addr,
+				subbuf_size,
 				padding, &index);
 		/*
 		 * The mmap operation should write subbuf_size amount of data when
@@ -1736,11 +1773,12 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 			write_index = 0;
 		}
 		break;
+	}
 	default:
 		ERR("Unknown output method");
 		ret = -EPERM;
 	}
-
+error_put_subbuf:
 	err = kernctl_put_next_subbuf(infd);
 	if (err != 0) {
 		if (err == -EFAULT) {
