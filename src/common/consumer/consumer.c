@@ -568,7 +568,9 @@ void consumer_stream_update_channel_attributes(
 			channel->tracefile_size;
 }
 
-struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
+struct lttng_consumer_stream *consumer_allocate_stream(
+		struct lttng_consumer_channel *channel,
+		uint64_t channel_key,
 		uint64_t stream_key,
 		const char *channel_name,
 		uint64_t relayd_id,
@@ -596,6 +598,7 @@ struct lttng_consumer_stream *consumer_allocate_stream(uint64_t channel_key,
 	}
 
 	rcu_read_lock();
+	stream->chan = channel;
 	stream->key = stream_key;
 	stream->trace_chunk = trace_chunk;
 	stream->out_fd = -1;

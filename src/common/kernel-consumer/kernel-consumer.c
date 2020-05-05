@@ -654,7 +654,9 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		pthread_mutex_lock(&channel->lock);
-		new_stream = consumer_allocate_stream(channel->key,
+		new_stream = consumer_allocate_stream(
+				channel,
+				channel->key,
 				fd,
 				channel->name,
 				channel->relayd_id,
@@ -676,7 +678,6 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_add_stream_nosignal;
 		}
 
-		new_stream->chan = channel;
 		new_stream->wait_fd = fd;
 		ret = kernctl_get_max_subbuf_size(new_stream->wait_fd,
 				&new_stream->max_sb_size);
