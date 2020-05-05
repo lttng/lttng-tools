@@ -1,0 +1,253 @@
+// Render with Asciidoctor
+
+:nbh: &#8209;
+:lt: LTTng{nbh}tools
+:lib: liblttng{nbh}ctl
+
+ifdef::env-github[]
+:toc: macro
+endif::env-github[]
+
+ifndef::env-github[]
+:toc: left
+endif::env-github[]
+
+= {lt}
+5 May 2020
+
+[.normal]
+https://ci.lttng.org/job/lttng-tools_master_build/[image:https://img.shields.io/jenkins/s/https/ci.lttng.org/lttng-tools_master_build.svg[Jenkins, title="Jenkins"]]
+https://scan.coverity.com/projects/lttng-tools[image:https://img.shields.io/coverity/scan/lttng-tools.svg[Coverity, title="Coverity"]]
+
+[.lead]
+_**{lt}**_ is a set of components to control https://lttng.org/[LTTng]
+tracing.
+
+The project includes:
+
+* The LTTng https://lttng.org/man/8/lttng-sessiond/[session daemon].
+
+* The LTTng consumer daemon.
+
+* The LTTng https://lttng.org/man/8/lttng-relayd/[relay daemon].
+
+* {lib}, a library with a C{nbsp}API used to communicate with
+  the session daemon.
+
+* Python{nbsp}3 bindings of liblttng{nbh}ctl.
+
+* https://lttng.org/man/1/lttng/[`lttng`], a command-line tool over
+  {lib}.
+
+* https://lttng.org/man/1/lttng-crash/[`lttng{nbh}crash`], a command-line
+  tool to recover and view LTTng{nbsp}2 trace buffers in the event of a
+  crash.
+
+ifdef::env-github[]
+toc::[]
+endif::env-github[]
+
+== Required and optional dependencies
+
+You need the following dependencies to build and run the {lt}
+components:
+
+* **Linux kernel{nbsp}≥{nbsp}2.6.27**
++
+Use `{nbh}{nbh}disable{nbh}epoll` at <<configure,build configuration>>
+time to build {lt} for an older kernel. However, note that we can't
+provide any guarantee below 2.6.27.
+
+* **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.9.0**.
++
+Debian/Ubuntu package: `liburcu{nbh}dev`.
+
+* **popt{nbsp}≥{nbsp}1.13**
++
+Debian/Ubuntu package: `libpopt{nbh}dev`.
+
+* **http://xmlsoft.org/[Libxml2]{nbsp}≥{nbsp}2.7.6**
++
+Debian/Ubuntu package: `libxml2{nbh}dev`
+
+The following dependencies are optional:
+
+* **https://babeltrace.org/[Babeltrace{nbsp}2]**: default viewer
+  of the https://lttng.org/man/1/lttng-view/[`lttng view`] command.
++
+Debian/Ubuntu package: `babeltrace2`
+
+* **https://lttng.org/[LTTng{nbh}UST]** (same minor version as {lt}):
+  LTTng user space tracing (applications and libraries).
++
+Debian/Ubuntu package: `liblttng{nbh}ust{nbh}dev`
+
+* **Perl**: `make{nbsp}check` and tests.
+
+* **https://www.python.org/[Python]{nbsp}≥{nbsp}3.0**:
+  `make{nbsp}check` and tests.
++
+Debian/Ubuntu package: `python3`
+
+* **http://www.swig.org/[SWIG]{nbsp}≥{nbsp}2.0** and
+  **Python{nbsp}3 development headers**: Python bindings
+  (enabled at <<configure,build configuration>> time with the
+  `{nbh}{nbh}enable{nbh}python{nbh}bindings` option).
++
+Debian/Ubuntu packages: `swig2.0` and `python3{nbh}dev`
+
+* **modprobe** and/or
+  **https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/[kmod]{nbsp}≥{nbsp}22**:
+  automatic LTTng kernel modules loading (kernel tracing).
+
+* **Bash**: `make{nbsp}check`.
+
+* **http://man7.org/linux/man-pages/man1/man.1.html[`man`]**
+  (manual pager): view `lttng` command manual
+  pages with the `{nbh}{nbh}help` option or with the
+  https://lttng.org/man/1/lttng-help/[`lttng{nbsp}help`] command.
++
+NOTE: You can use the <<configure,build configuration>> option
+`{nbh}{nbh}enable{nbh}embedded{nbh}help` to embed the manual pages into
+the `lttng`, `lttng{nbh}sessiond`, `lttng{nbh}relayd`, and
+`lttng{nbh}crash` programs so that you don't need `man` to view them.
+
+* **http://perfmon2.sourceforge.net/[libpfm]{nbsp}≥{nbsp}4.0**:
+  perf regression test suite.
++
+Debian/Ubuntu package: `libpfm4-dev`
+
+{lt} supports both the LTTng Linux kernel tracer and LTTng user space
+tracer sharing the same _minor_ version. While some minor releases do
+not change the tracer ABIs and _could_ work, no testing is performed to
+ensure that cross-version compatibility is maintained.
+
+You don't need to rebuild or modify applications instrumented with older
+versions of the LTTng{nbh}UST project to make them work with the
+components of the latest {lt} release.
+
+See the https://lttng.org/docs/[LTTng Documentation] for more
+information on versioning.
+
+== Build from source
+
+=== Dependencies
+
+You need the following tools to build {lt}:
+
+* **https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html[GNU{nbsp}Autotools]**
+  (**Automake{nbsp}≥{nbsp}1.10**,
+  **Autoconf{nbsp}≥{nbsp}2.64**, and **Autoheader{nbsp}≥{nbsp}2.50**)
+
+* **http://www.gnu.org/software/autoconf/[GNU{nbsp}Libtool]{nbsp}≥{nbsp}2.2**
+
+* **https://github.com/westes/flex/[Flex]{nbsp}≥{nbsp}2.5.35**
+
+* **https://www.gnu.org/software/bison/[Bison]{nbsp}≥{nbsp}2.4**
+
+To build the {lt} manual pages:
+
+* **https://www.methods.co.nz/asciidoc/[AsciiDoc]{nbsp}≥{nbsp}8.4.5**
++
+NOTE: Previous versions could work, but were not tested.
+
+* **https://pagure.io/xmlto[xmlto]{nbsp}≥{nbsp}0.0.21**
++
+NOTE: Previous versions could work, but were not tested.
+
+If you use GNU{nbsp}gold, which is _not_ mandatory:
+
+* **GNU{nbsp}gold{nbsp}≥{nbsp}2.22**
+
+NOTE: With GNU{nbsp}gold, you might need to add
+`-L/usr/local/lib` to the `LDFLAGS` environment variable.
+
+=== Build steps
+
+. **If you have the {lt} Git source**, run:
++
+----
+$ ./bootstrap
+----
++
+This script creates the `configure` script.
+
+. [[configure]]Configure the build:
++
+--
+----
+$ ./configure
+----
+
+If you want the {lib} Python bindings, use the
+`{nbh}{nbh}enable{nbh}python{nbh}bindings` option. See also the `PYTHON`
+and `PYTHON_CONFIG` environment variables in
+`./configure{nbsp}{nbh}{nbh}help`.
+
+If you don't want to build the manual pages, use the
+`{nbh}{nbh}disable{nbh}man{nbh}pages` option.
+
+If you want to embed the manual pages into the `lttng`,
+`lttng{nbh}sessiond`, `lttng{nbh}relayd`, and `lttng{nbh}crash` programs
+so that you don't need `man` to view them, use the
+`{nbh}{nbh}enable{nbh}embedded{nbh}help` option.
+
+If your Linux kernel is older than 2.6.27, use the
+`{nbh}{nbh}disable{nbh}epoll` option.
+
+This build configuration script finds LTTng{nbh}UST with
+https://www.freedesktop.org/wiki/Software/pkg-config/[pkg{nbh}config]:
+set the `PKG_CONFIG_PATH` environment variable accordingly if
+pkg{nbh}config cannot find the `lttng{nbh}ust` package information.
+
+See `./configure{nbsp}{nbh}{nbh}help` for the complete list of options.
+--
+
+. Build the project:
++
+----
+$ make
+----
+
+. Install the project:
++
+----
+$ sudo make install
+$ sudo ldconfig
+----
+
+== Usage
+
+See the https://lttng.org/docs/#doc-controlling-tracing[Tracing control]
+section of the LTTng Documentation to learn how to use the {lt}
+components.
+
+See also the https://lttng.org/man/[LTTng manual pages] (all
+section{nbsp}1 and{nbsp}8 pages).
+
+As there's no official {lib} Python bindings yet, see
+link:doc/python-howto.txt[`doc/python-howto.txt`] to understand how to
+use them.
+
+== Community
+
+Mailing list::
+    https://lists.lttng.org/cgi-bin/mailman/listinfo/lttng-dev[lttng-dev]
+    (mailto:lttng-dev@lists.lttng.org[lttng-dev@lists.lttng.org])
+
+IRC channel::
+    irc://irc.oftc.net/lttng[`#lttng`] on the OFTC network
+
+Bug tracker::
+    https://bugs.lttng.org/projects/lttng-tools[{lt} bug tracker]
+
+GitHub project::
+    https://github.com/lttng/lttng-tools/[lttng/lttng{nbh}tools]
+
+Continuous integration::
+    https://ci.lttng.org/job/lttng-tools_master_build/[{lt}'s master build]
+    on LTTng's CI
+
+Code review::
+    https://review.lttng.org/q/project:lttng-tools[_lttng{nbh}tools_ project]
+    on LTTng Review

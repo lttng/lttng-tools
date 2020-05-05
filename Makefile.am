@@ -12,7 +12,7 @@ endif
 
 dist_doc_DATA = LICENSE \
                 ChangeLog \
-		README.md
+		README.adoc
 
 dist_noinst_DATA = CodingStyle
 
