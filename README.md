@@ -16,9 +16,9 @@ The project includes:
   with the session daemon.
 * Python&nbsp;3 bindings of liblttng&#8209;ctl.
 * [`lttng`](https://lttng.org/man/1/lttng/),
-  a command-line tool to liblttng&#8209;ctl.
+  a command-line tool over liblttng&#8209;ctl.
 * [`lttng-crash`](https://lttng.org/man/1/lttng-crash/), a command-line
-  tool recover and view LTTng&nbsp;2 trace buffers in the event of
+  tool to recover and view LTTng&nbsp;2 trace buffers in the event of
   a crash.
 
 Required and optional dependencies
