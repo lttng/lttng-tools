@@ -27,6 +27,8 @@ static struct option long_options[] =
 	/* These options set a flag. */
 	{"iter", required_argument, 0, 'i'},
 	{"wait", required_argument, 0, 'w'},
+	{"create-in-main", required_argument, 0, 'm'},
+	{"wait-before-first-event", required_argument, 0, 'b'},
 	{0, 0, 0, 0}
 };
 
@@ -39,10 +41,18 @@ int main(int argc, char **argv)
 	float flt = 2222.0;
 	unsigned int nr_iter = 100;
 	useconds_t nr_usec = 0;
+	char *wait_before_first_event_file_path = NULL;
+	char *create_in_main_file_path = NULL;
 
-	while ((option = getopt_long(argc, argv, "i:w:",
+	while ((option = getopt_long(argc, argv, "i:w:b:m:",
 			long_options, &option_index)) != -1) {
 		switch (option) {
+		case 'b':
+			wait_before_first_event_file_path = strdup(optarg);
+			break;
+		case 'm':
+			create_in_main_file_path = strdup(optarg);
+			break;
 		case 'i':
 			nr_iter = atoi(optarg);
 			break;
@@ -62,6 +72,23 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	/*
+	 * The two following sync points allow for tests to do work after the
+	 * app has started BUT before it generates any events.
+	 */
+	if (create_in_main_file_path) {
+		ret = create_file(create_in_main_file_path);
+		if (ret != 0) {
+			goto end;
+		}
+	}
+
+	if (wait_before_first_event_file_path) {
+		ret = wait_on_file(wait_before_first_event_file_path);
+		if (ret != 0) {
+			goto end;
+		}
+	}
 
 	for (i = 0; i < nr_iter; i++) {
 		netint = htonl(i);
@@ -87,5 +114,7 @@ int main(int argc, char **argv)
 	}
 
 end:
-        exit(!ret ? EXIT_SUCCESS : EXIT_FAILURE);
+	free(create_in_main_file_path);
+	free(wait_before_first_event_file_path);
+	exit(!ret ? EXIT_SUCCESS : EXIT_FAILURE);
 }
