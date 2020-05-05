@@ -157,7 +157,9 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 	assert(channel);
 	assert(ctx);
 
-	stream = consumer_allocate_stream(channel->key,
+	stream = consumer_allocate_stream(
+			channel,
+			channel->key,
 			key,
 			channel->name,
 			channel->relayd_id,
@@ -186,7 +188,6 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 	}
 
 	consumer_stream_update_channel_attributes(stream, channel);
-	stream->chan = channel;
 
 error:
 	if (_alloc_ret) {
