@@ -495,6 +495,7 @@ static int create_kernel_session(struct ltt_session *session)
 	session->kernel_session->gid = session->gid;
 	session->kernel_session->output_traces = session->output_traces;
 	session->kernel_session->snapshot_mode = session->snapshot_mode;
+	session->kernel_session->is_live_session = session->live_timer != 0;
 
 	return LTTNG_OK;
 

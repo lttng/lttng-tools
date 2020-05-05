@@ -111,6 +111,7 @@ struct ltt_kernel_session {
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
 	unsigned int has_non_default_channel;
+	bool is_live_session;
 	/* Current trace chunk of the ltt_session. */
 	struct lttng_trace_chunk *current_trace_chunk;
 	/* Tracker lists */
