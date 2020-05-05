@@ -2412,6 +2412,8 @@ int handle_notification_thread_command(
 	pthread_mutex_lock(&handle->cmd_queue.lock);
 	cmd = cds_list_first_entry(&handle->cmd_queue.list,
 			struct notification_thread_command, cmd_list_node);
+	cds_list_del(&cmd->cmd_list_node);
+	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	switch (cmd->type) {
 	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
 		DBG("[notification-thread] Received register trigger command");
@@ -2474,19 +2476,16 @@ int handle_notification_thread_command(
 		goto error_unlock;
 	}
 end:
-	cds_list_del(&cmd->cmd_list_node);
 	if (cmd->is_async) {
 		free(cmd);
 		cmd = NULL;
 	} else {
 		lttng_waiter_wake_up(&cmd->reply_waiter);
 	}
-	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	return ret;
 error_unlock:
 	/* Wake-up and return a fatal error to the calling thread. */
 	lttng_waiter_wake_up(&cmd->reply_waiter);
-	pthread_mutex_unlock(&handle->cmd_queue.lock);
 	cmd->reply_code = LTTNG_ERR_FATAL;
 error:
 	/* Indicate a fatal error to the caller. */
