@@ -23,36 +23,8 @@ NUM_TESTS=104
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-
-function kernel_event_generator_toggle_state
-{
-	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
-}
-
-function generate_filter_events
-{
-	/bin/echo -n "10" > /proc/lttng-test-filter-event 2> /dev/null
-}
-
-function kernel_event_generator
-{
-	command_to_run=$1
-	state_file=$2
-	kernel_event_generator_suspended=0
-	trap kernel_event_generator_toggle_state SIGUSR1
-
-	while (true); do
-		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
-			touch $state_file
-			sleep 0.5
-		else
-			if [[ -f $state_file ]]; then
-				rm $state_file 2> /dev/null
-			fi
-			$command_to_run
-		fi
-	done
-}
+# shellcheck source=./util_event_generator.sh
+source "$CURDIR/util_event_generator.sh"
 
 function test_buffer_usage_notification
 {
@@ -84,7 +56,7 @@ function test_buffer_usage_notification
 
 	destroy_lttng_session_notap $SESSION_NAME
 
-	kill -9 $APP_PID
+	kill -SIGUSR2 $APP_PID
 	wait $APP_PID 2> /dev/null
 }
 

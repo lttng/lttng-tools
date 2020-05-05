@@ -32,6 +32,7 @@ NUM_TEST_KERNEL=50
 NUM_TESTS=$(($NUM_TEST_UST + $NUM_TEST_KERNEL))
 
 source $TESTDIR/utils/utils.sh
+source $CURDIR/util_event_generator.sh
 
 consumerd_pipe=()
 file_sync_after_first_event=$(mktemp -u)
@@ -42,54 +43,6 @@ plan_tests $NUM_TESTS
 print_test_banner "$TEST_DESC"
 
 app_pids=()
-
-function kernel_event_generator_toggle_state
-{
-	kernel_event_generator_suspended=$((kernel_event_generator_suspended==0))
-
-}
-function kernel_event_generator
-{
-	state_file=$1
-	kernel_event_generator_suspended=0
-	trap kernel_event_generator_toggle_state SIGUSR1
-
-	while (true); do
-		if [[ $kernel_event_generator_suspended -eq "1" ]]; then
-			touch $state_file
-			sleep 0.5
-		else
-			if [[ -f $state_file ]]; then
-				rm $state_file 2> /dev/null
-			fi
-			echo -n "1000" > /proc/lttng-test-filter-event
-		fi
-	done
-}
-
-function ust_event_generator_toggle_state
-{
-	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
-
-}
-function ust_event_generator
-{
-	state_file=$1
-	ust_event_generator_suspended=0
-	trap ust_event_generator_toggle_state SIGUSR1
-	trap "exit" SIGTERM SIGINT
-	while (true); do
-		if [[ $ust_event_generator_suspended -eq "1" ]]; then
-			touch $state_file
-			sleep 0.5
-		else
-			if [[ -f $state_file ]]; then
-				rm $state_file 2> /dev/null
-			fi
-			taskset  -c 0 $TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
-		fi
-	done
-}
 
 function start_client {
 	local pid=-1
@@ -300,12 +253,12 @@ function test_multi_app ()
 function test_multi_app_ust ()
 {
 	diag "Multi client app UST notification"
-	ust_event_generator $TESTAPP_STATE_FILE &
+	ust_event_generator "$TESTAPP_BIN" "$TESTAPP_STATE_FILE" &
 	local generator_pid=$!
 
 	test_multi_app ust $generator_pid
 
-	kill -s SIGTERM $generator_pid 2> /dev/null
+	kill -s SIGUSR2 $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 }
@@ -315,13 +268,13 @@ function test_multi_app_kernel ()
 	diag "Multi client app kernel notification"
 	modprobe lttng-test
 
-	kernel_event_generator $TESTAPP_STATE_FILE &
+	kernel_event_generator generate_filter_events $TESTAPP_STATE_FILE &
 	local generator_pid=$!
 
 	test_multi_app kernel $generator_pid
 
 
-	kill -s SIGTERM $generator_pid 2> /dev/null
+	kill -s SIGUSR2 $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -333,12 +286,12 @@ function test_on_register_evaluation_ust ()
 	diag "On register notification UST"
 
 	# Start app in infinite loop
-	ust_event_generator $TESTAPP_STATE_FILE &
+	ust_event_generator "$TESTAPP_BIN" "$TESTAPP_STATE_FILE" &
 	local generator_pid=$!
 
 	test_on_register_evaluation ust $generator_pid
 
-	kill -s SIGTERM $generator_pid 2> /dev/null
+	kill -s SIGUSR2 $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -350,13 +303,13 @@ function test_on_register_evaluation_kernel()
 
 	modprobe lttng-test
 
-	kernel_event_generator $TESTAPP_STATE_FILE &
+	kernel_event_generator generate_filter_events $TESTAPP_STATE_FILE &
 	local generator_pid=$!
 
 	test_on_register_evaluation kernel $generator_pid
 
 
-	kill -s SIGTERM $generator_pid 2> /dev/null
+	kill -s SIGUSR2 $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
@@ -447,7 +400,7 @@ function test_on_register_evaluation ()
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
 
-	kill -s SIGTERM $generator_pid 2> /dev/null
+	kill -s SIGUSR2 $generator_pid 2> /dev/null
 	wait $generator_pid 2> /dev/null
 
 	for pipe in "${consumerd_pipe[@]}"; do

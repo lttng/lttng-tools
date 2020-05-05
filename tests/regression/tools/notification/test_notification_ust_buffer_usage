@@ -29,31 +29,8 @@ PAGE_SIZE=$(getconf PAGE_SIZE)
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
-
-function ust_event_generator_toggle_state
-{
-	ust_event_generator_suspended=$((ust_event_generator_suspended==0))
-
-}
-function ust_event_generator
-{
-	test_app=$1
-	state_file=$2
-	ust_event_generator_suspended=0
-	trap ust_event_generator_toggle_state SIGUSR1
-
-	while (true); do
-		if [[ $ust_event_generator_suspended -eq "1" ]]; then
-			touch $state_file
-			sleep 0.5
-		else
-			if [[ -f $state_file ]]; then
-				rm -rf $state_file 2> /dev/null
-			fi
-			taskset  -c 0 $test_app -i $NR_ITER -w $NR_USEC_WAIT > /dev/null 2>&1
-		fi
-	done
-}
+# shellcheck source=./util_event_generator.sh
+source "$CURDIR/util_event_generator.sh"
 
 function test_buffer_usage_notification
 {
@@ -70,7 +47,7 @@ function test_buffer_usage_notification
 		consumerd_pipe+=("$f")
 	done
 
-	ust_event_generator $GEN_UST_EVENTS_TESTAPP_BIN $TESTAPP_STATE_PATH &
+	ust_event_generator "$GEN_UST_EVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" &
 	APP_PID=$!
 
 	"$CURDIR/notification" 2 LTTNG_DOMAIN_UST $SESSION_NAME $CHANNEL_NAME $APP_PID "$TESTAPP_STATE_PATH" "${consumerd_pipe[@]}"
@@ -79,7 +56,7 @@ function test_buffer_usage_notification
 
 	# On ungraceful kill the app is cleaned up via the full_cleanup call
 	# Suppress kill message
-	kill -9 $APP_PID
+	kill -SIGUSR2 $APP_PID
 	wait $APP_PID 2> /dev/null
 
 	# Just in case cleanup

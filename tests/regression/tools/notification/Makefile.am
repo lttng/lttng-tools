@@ -10,7 +10,7 @@ noinst_PROGRAMS = base_client notification rotation
 if NO_SHARED
 
 CLEANFILES = libpause_consumer.so libpause_consumer.so.debug
-EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app base_client.c notification.c consumer_testpoints.c
+EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app base_client.c notification.c consumer_testpoints.c util_event_generator.sh
 
 else
 
@@ -37,8 +37,8 @@ notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-noinst_SCRIPTS = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app test_rotation
-EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app test_rotation
+noinst_SCRIPTS = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app test_rotation util_event_generator.sh
+EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_multi_app test_rotation util_event_generator.sh
 
 
 all-local:
