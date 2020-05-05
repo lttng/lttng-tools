@@ -81,17 +81,17 @@ static void test_create_kernel_metadata(void)
 	ok(kern->metadata->fd == -1 &&
 	   kern->metadata->conf != NULL &&
 	   kern->metadata->conf->attr.overwrite
-			== DEFAULT_CHANNEL_OVERWRITE &&
+			== DEFAULT_METADATA_OVERWRITE &&
 	   kern->metadata->conf->attr.subbuf_size
 			== default_get_metadata_subbuf_size() &&
 	   kern->metadata->conf->attr.num_subbuf
 			== DEFAULT_METADATA_SUBBUF_NUM &&
 	   kern->metadata->conf->attr.switch_timer_interval
-			== DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER &&
+			== DEFAULT_METADATA_SWITCH_TIMER &&
 	   kern->metadata->conf->attr.read_timer_interval
-			== DEFAULT_KERNEL_CHANNEL_READ_TIMER &&
+			== DEFAULT_METADATA_READ_TIMER &&
 	   kern->metadata->conf->attr.output
-	       == DEFAULT_KERNEL_CHANNEL_OUTPUT,
+			== LTTNG_EVENT_MMAP,
 	   "Validate kernel session metadata");
 
 	trace_kernel_destroy_metadata(kern->metadata);

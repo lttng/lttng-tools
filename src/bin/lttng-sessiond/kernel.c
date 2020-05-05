@@ -8,6 +8,7 @@
 #include "bin/lttng-sessiond/tracker.h"
 #include "common/tracker.h"
 #include "common/utils.h"
+#include "lttng/event.h"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
