@@ -16,6 +16,7 @@
  */
 
 #define _LGPL_SOURCE
+
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
