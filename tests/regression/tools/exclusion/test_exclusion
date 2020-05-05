@@ -16,7 +16,7 @@ TESTAPP_NAME="gen-ust-nevents"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NR_ITER=100
 NR_USEC_WAIT=1
-NUM_TESTS=178
+NUM_TESTS=185
 
 source $TESTDIR/utils/utils.sh
 
@@ -95,6 +95,59 @@ function test_exclusion
 	fi
 }
 
+function test_exclusion_tracing_started
+{
+	local exclusions="$1"
+	local event_name_expected_to_be_missing="$2"
+	local trace_path=$(mktemp -d)
+	local file_wait_before_first=$(mktemp -u)
+	local file_create_in_main=$(mktemp -u)
+
+	# Create session
+	create_lttng_session_ok $SESSION_NAME $trace_path
+
+	# Enable a dummy event so that the session is active after we start the
+	# session.
+	enable_ust_lttng_event_ok $SESSION_NAME "non-existent-event"
+
+	# Start the tracing
+	start_lttng_tracing_ok $SESSION_NAME
+
+	# Launch the test app and make it create a sync file once it's in the
+	# main function.
+	$TESTAPP_BIN -i 1 -w 10000 \
+		--create-in-main ${file_create_in_main} \
+		--wait-before-first-event ${file_wait_before_first} 2>&1 &
+
+	while [ ! -f "${file_create_in_main}" ]; do
+		sleep 0.5
+	done
+
+	# Enable an event with an exclusion once the tracing is active in the
+	# UST app.
+	enable_ust_lttng_all_event_exclusion $SESSION_NAME "$exclusions"
+	ok $? "Enable lttng event with event \"$exclusions\" excluded"
+
+	# Create the sync file so that the test app starts generating events.
+	touch ${file_wait_before_first}
+
+	# Wait for the testapp to finish.
+	wait
+
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Destroy session
+	destroy_lttng_session_ok $SESSION_NAME
+
+	stats=$(babeltrace $trace_path | $STATS_BIN --tracepoint "$event_name_expected_to_be_missing" | grep -v index 2> /dev/null)
+	if [ ! -z "$stats" ]; then
+		fail "Excluded event \"$event_name_expected_to_be_missing\" was found in trace!"
+	else
+		ok 0 "Validate trace exclusion output"
+		rm -rf $trace_path
+	fi
+}
+
 function test_exclusion_fail
 {
 	event_name="$1"
@@ -146,6 +199,8 @@ test_exclusion '*p*test*' 'tp:tptest5'
 test_exclusion '*3' 'tp:tptest3'
 test_exclusion 'tp*test3,*2' 'tp:tptest2'
 test_exclusion '**tp*test3,*2' 'tp:tptest3'
+
+test_exclusion_tracing_started 'tp:tptest1' 'tp:tptest1'
 
 diag "Cannot use exclusions with non-globbing event name"
 test_exclusion_fail "allo" "lol"
