@@ -112,26 +112,6 @@ error:
 }
 
 /*
- * Allocate and return a consumer channel object.
- */
-static struct lttng_consumer_channel *allocate_channel(uint64_t session_id,
-		const uint64_t *chunk_id, const char *pathname, const char *name,
-		uint64_t relayd_id, uint64_t key, enum lttng_event_output output,
-		uint64_t tracefile_size, uint64_t tracefile_count,
-		uint64_t session_id_per_pid, unsigned int monitor,
-		unsigned int live_timer_interval,
-		const char *root_shm_path, const char *shm_path)
-{
-	assert(pathname);
-	assert(name);
-
-	return consumer_allocate_channel(key, session_id, chunk_id, pathname,
-			name, relayd_id, output, tracefile_size,
-			tracefile_count, session_id_per_pid, monitor,
-			live_timer_interval, root_shm_path, shm_path);
-}
-
-/*
  * Allocate and return a consumer stream object. If _alloc_ret is not NULL, the
  * error value if applicable is set in it else it is kept untouched.
  *
@@ -1480,19 +1460,21 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		};
 
 		/* Create a plain object and reserve a channel key. */
-		channel = allocate_channel(msg.u.ask_channel.session_id,
+		channel = consumer_allocate_channel(
+				msg.u.ask_channel.key,
+				msg.u.ask_channel.session_id,
 				msg.u.ask_channel.chunk_id.is_set ?
 						&chunk_id : NULL,
 				msg.u.ask_channel.pathname,
 				msg.u.ask_channel.name,
 				msg.u.ask_channel.relayd_id,
-				msg.u.ask_channel.key,
 				(enum lttng_event_output) msg.u.ask_channel.output,
 				msg.u.ask_channel.tracefile_size,
 				msg.u.ask_channel.tracefile_count,
 				msg.u.ask_channel.session_id_per_pid,
 				msg.u.ask_channel.monitor,
 				msg.u.ask_channel.live_timer_interval,
+				msg.u.ask_channel.is_live,
 				msg.u.ask_channel.root_shm_path,
 				msg.u.ask_channel.shm_path);
 		if (!channel) {
