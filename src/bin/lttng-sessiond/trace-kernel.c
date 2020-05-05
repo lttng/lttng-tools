@@ -19,6 +19,7 @@
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/trace-chunk.h>
+#include <common/macros.h>
 
 #include "consumer.h"
 #include "trace-kernel.h"
@@ -485,6 +486,7 @@ error:
  */
 struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 {
+	int ret;
 	struct ltt_kernel_metadata *lkm;
 	struct lttng_channel *chan;
 
@@ -495,13 +497,38 @@ struct ltt_kernel_metadata *trace_kernel_create_metadata(void)
 		goto error;
 	}
 
+	ret = lttng_strncpy(
+			chan->name, DEFAULT_METADATA_NAME, sizeof(chan->name));
+	if (ret) {
+		ERR("Failed to initialize metadata channel name to `%s`",
+				DEFAULT_METADATA_NAME);
+		goto error;
+	}
+
 	/* Set default attributes */
-	chan->attr.overwrite = DEFAULT_CHANNEL_OVERWRITE;
+	chan->attr.overwrite = DEFAULT_METADATA_OVERWRITE;
 	chan->attr.subbuf_size = default_get_metadata_subbuf_size();
 	chan->attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
-	chan->attr.switch_timer_interval = DEFAULT_KERNEL_CHANNEL_SWITCH_TIMER;
-	chan->attr.read_timer_interval = DEFAULT_KERNEL_CHANNEL_READ_TIMER;
-	chan->attr.output = DEFAULT_KERNEL_CHANNEL_OUTPUT;
+	chan->attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
+	chan->attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;;
+
+
+	/*
+	 * The metadata channel of kernel sessions must use the "mmap"
+	 * back-end since the consumer daemon accumulates complete
+	 * metadata units before sending them to the relay daemon in
+	 * live mode. The consumer daemon also needs to extract the contents
+	 * of the metadata cache when computing a rotation position.
+	 *
+	 * In both cases, it is not possible to rely on the splice
+	 * back-end as the consumer daemon may need to accumulate more
+	 * content than can be backed by the ring buffer's underlying
+	 * pages.
+	 */
+	chan->attr.output = LTTNG_EVENT_MMAP;
+	chan->attr.tracefile_size = 0;
+	chan->attr.tracefile_count = 0;
+	chan->attr.live_timer_interval = 0;
 
 	/* Init metadata */
 	lkm->fd = -1;
