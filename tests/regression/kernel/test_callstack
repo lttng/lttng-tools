@@ -33,12 +33,15 @@ function lttng_track_pid()
 function run_workload()
 {
 	local TEST_APP=$1
+	# shift the first argument, passing along the other args if any to the
+	# test app.
+	shift
 	local start_file_sync
 	start_file_sync=$(mktemp -u)
 
 	lttng_untrack_all
 
-	./"$TEST_APP" "$start_file_sync" &
+	./"$TEST_APP" "$start_file_sync" "$@" &
 	PID=$!
 	lttng_track_pid $PID
 
@@ -108,7 +111,7 @@ function test_kernel_callstack()
 	lttng_enable_kernel_syscall_ok "$SESSION_NAME" "$EVENT_NAME" "$CHANNEL_NAME"
 	add_context_kernel_ok "$SESSION_NAME" "$CHANNEL_NAME" "callstack-kernel"
 
-	run_workload $TEST_APP_KERNELSPACE
+	run_workload "$TEST_APP_KERNELSPACE" "/proc/cpuinfo" "/proc/cmdline"
 
 	destroy_lttng_session_ok "$SESSION_NAME"
 

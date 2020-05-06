@@ -27,7 +27,7 @@ function trace_testapp()
 	lttng_untrack_kernel_all_ok
 
 	# Launch the testapp and save its Process ID
-	./"$TESTCMD" "$start_file_sync" &
+	./"$TESTCMD" "$start_file_sync" "/proc/cpuinfo" "/proc/cmdline" &
 	PID=$!
 
 	# Set LTTng to track this PID and start the tracing

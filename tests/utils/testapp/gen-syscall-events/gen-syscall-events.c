@@ -88,16 +88,19 @@ error:
 int main(int argc, char **argv)
 {
 	int ret;
-	char *start_file;
+	const char *start_file, *path1, *path2;
 
-	if (argc != 2) {
+	if (argc != 4) {
 		fprintf(stderr, "Error: Missing argument\n");
+		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE PATH1_TO_OPEN PATH2_TO_OPEN\n", argv[0]);
 		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE\n", argv[0]);
 		ret = -1;
 		goto error;
 	}
 
 	start_file = argv[1];
+	path1 = argv[2];
+	path2 = argv[3];
 
 	/*
 	 * Wait for the start_file to be created by an external process
@@ -112,13 +115,13 @@ int main(int argc, char **argv)
 	 * Start generating syscalls. We use syscall(2) to prevent libc to change
 	 * the underlying syscall. e.g. calling openat(2) instead of open(2).
 	 */
-	ret = open_read_close("/proc/cpuinfo");
+	ret = open_read_close(path1);
 	if (ret == -1) {
 		ret = -1;
 		goto error;
 	}
 
-	ret = open_read_close("/proc/cmdline");
+	ret = open_read_close(path2);
 	if (ret == -1) {
 		ret = -1;
 		goto error;
