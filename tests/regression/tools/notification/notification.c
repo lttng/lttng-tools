@@ -28,10 +28,553 @@
 
 #include <tap/tap.h>
 
+#define FIELD_NAME_MAX_LEN 256
+
+/* A callback to populate the condition capture descriptor. */
+typedef int (*condition_capture_desc_cb)(struct lttng_condition *condition);
+
+/* A callback for captured field validation. */
+typedef int (*validate_cb)(const struct lttng_event_field_value *event_field, unsigned iteration);
+
 int nb_args = 0;
 int named_pipe_args_start = 0;
 pid_t app_pid = 0;
 const char *app_state_file = NULL;
+
+enum field_type {
+	FIELD_TYPE_PAYLOAD,
+	FIELD_TYPE_CONTEXT,
+	FIELD_TYPE_APP_CONTEXT,
+	FIELD_TYPE_ARRAY_FIELD,
+};
+
+struct capture_base_field_tuple {
+	char* field_name;
+	enum field_type field_type;
+	/* Do we expect a userspace capture? */
+	bool expected_ust;
+	/* Do we expect a kernel capture? */
+	bool expected_kernel;
+	validate_cb validate_ust;
+	validate_cb validate_kernel;
+};
+
+static
+const char *field_value_type_to_str(enum lttng_event_field_value_type type)
+{
+	switch (type) {
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNKNOWN:
+		return "UNKNOWN";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID:
+		return "INVALID";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT:
+		return "UNSIGNED INT";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT:
+		return "SIGNED INT";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM:
+		return "UNSIGNED ENUM";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM:
+		return "SIGNED ENUM";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_REAL:
+		return "REAL";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_STRING:
+		return "STRING";
+	case LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY:
+		return "ARRAY";
+	default:
+		abort();
+	}
+}
+
+static int validate_type(const struct lttng_event_field_value *event_field,
+		enum lttng_event_field_value_type expect)
+{
+	int ret;
+	enum lttng_event_field_value_type value;
+
+	value = lttng_event_field_value_get_type(event_field);
+	if (value == LTTNG_EVENT_FIELD_VALUE_TYPE_INVALID) {
+		ret = 1;
+		goto end;
+	}
+
+	ok(expect == value, "Expected field type %s, got %s",
+			field_value_type_to_str(expect),
+			field_value_type_to_str(value));
+
+	ret = expect != value;
+
+end:
+	return ret;
+}
+
+/*
+ * Validate unsigned captured field against the iteration number.
+ */
+static int validate_unsigned_int_field(
+		const struct lttng_event_field_value *event_field,
+		unsigned int expected_value)
+{
+	int ret;
+	uint64_t value;
+	enum lttng_event_field_value_status status;
+
+	ret = validate_type(
+			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_unsigned_int_get_value(
+			event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == (uint64_t) expected_value,
+			"Expected unsigned integer value %u, got %" PRIu64,
+			expected_value, value);
+
+	ret = value != (uint64_t) expected_value;
+
+end:
+	return ret;
+}
+
+/*
+ * Validate signed captured field.
+ */
+static int validate_signed_int_field(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	const int64_t expected = -1;
+	int64_t value;
+	enum lttng_event_field_value_status status;
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(
+			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_INT);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_signed_int_get_value(
+			event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_signed_int_get_value returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == expected,
+			"Expected signed integer value %" PRId64
+			", got %" PRId64,
+			expected, value);
+
+	ret = value != expected;
+
+end:
+
+	return ret;
+}
+
+/*
+ * Validate array of unsigned int.
+ */
+static int validate_array_unsigned_int_field(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	enum lttng_event_field_value_status status;
+	const unsigned int expected = 3;
+	unsigned int i, count;
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_array_get_length(event_field, &count);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_array_get_length");
+		ret = 1;
+		goto end;
+	}
+
+	ok(count == expected, "Expected %d subelements, got %d", expected,
+			count);
+	if (count != expected) {
+		ret = 1;
+		goto end;
+	}
+
+	for (i = 1; i < count + 1; i++) {
+		const struct lttng_event_field_value *value;
+
+		status = lttng_event_field_value_array_get_element_at_index(
+				event_field, i - 1, &value);
+		if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
+					(int) status);
+			ret = 1;
+			goto end;
+		}
+
+		ret = validate_unsigned_int_field(value, i);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	ret = 0;
+end:
+
+	return ret;
+}
+
+static int validate_array_unsigned_int_field_at_index(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	const uint64_t expected_value = 2;
+	enum lttng_event_field_value_status status;
+	uint64_t value;
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(
+			event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_INT);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_unsigned_int_get_value(
+			event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == expected_value,
+			"Expected unsigned integer value %u, got %" PRIu64,
+			expected_value, value);
+
+	ret = 0;
+end:
+	return ret;
+}
+
+/*
+ * Validate sequence for a string (seqfield1):
+ *
+ * Value: "test" encoded in UTF-8: [116, 101, 115, 116]
+ */
+static int validate_seqfield1(const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	enum lttng_event_field_value_status status;
+	unsigned int i, count;
+	const unsigned int expect[] = {116, 101, 115, 116};
+	const size_t array_count = sizeof(expect) / sizeof(*expect);
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_ARRAY);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_array_get_length(event_field, &count);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_array_get_length returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(count == array_count, "Expected %zu array sub-elements, got %d",
+			array_count, count);
+	if (count != array_count) {
+		ret = 1;
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		const struct lttng_event_field_value *value;
+
+		status = lttng_event_field_value_array_get_element_at_index(
+				event_field, i, &value);
+		if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
+					(int) status);
+			ret = 1;
+			goto end;
+		}
+
+		ret = validate_unsigned_int_field(value, expect[i]);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	ret = 0;
+end:
+	return ret;
+}
+
+static int validate_string(
+		const struct lttng_event_field_value *event_field,
+		const char *expect)
+{
+	int ret;
+	const char *value = NULL;
+	enum lttng_event_field_value_status status;
+
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_STRING);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_string_get_value(event_field, &value);
+	if (!value) {
+		fail("lttng_event_field_value_array_get_length returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(!strcmp(value, expect), "Expected string value \"%s\", got \"%s\"",
+			expect, value);
+
+	ret = 0;
+end:
+
+	return ret;
+}
+
+/*
+ * Validate string. Expected value is "test".
+ */
+static int validate_string_test(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	const char * const expect = "test";
+
+	/* Unused. */
+	(void) iteration;
+
+	return validate_string(event_field, expect);
+}
+
+/*
+ * Validate escaped string. Expected value is "\*".
+ */
+static int validate_string_escaped(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	const char * const expect = "\\*";
+
+	/* Unused. */
+	(void) iteration;
+
+	return validate_string(event_field, expect);
+}
+
+/*
+ * Validate real field.
+ */
+static int validate_real(
+		const struct lttng_event_field_value *event_field,
+		double expect)
+{
+	int ret;
+	double value;
+	enum lttng_event_field_value_status status;
+
+	ret = validate_type(event_field, LTTNG_EVENT_FIELD_VALUE_TYPE_REAL);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_real_get_value(event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_real_get_value returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == expect, "Expected real value %f, got %f", expect, value);
+	ret = value != expect;
+end:
+	return ret;
+}
+
+/*
+ * Validate floatfield.
+ */
+static int validate_floatfield(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	const double expect = 2222.0;
+
+	/* Unused. */
+	(void) iteration;
+
+	return validate_real(event_field, expect);
+}
+
+/*
+ * Validate doublefield.
+ */
+static int validate_doublefield(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	const double expect = 2.0;
+
+	/* Unused. */
+	(void) iteration;
+
+	return validate_real(event_field, expect);
+}
+
+/*
+ * Validate enum0: enum0 = ( "AUTO: EXPECT 0" : container = 0 )
+ */
+static int validate_enum0(const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	enum lttng_event_field_value_status status;
+	uint64_t value;
+	const uint64_t expected_value = 0;
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(event_field,
+			LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_unsigned_int_get_value(
+			event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_unsigned_int_get_value returned an error: status = %d",
+				(int) status);
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == expected_value,
+			"Expected enum value %" PRIu64 ", got %" PRIu64,
+			expected_value, value);
+
+end:
+	return ret;
+}
+
+/*
+ * Validate enumnegative: enumnegative = ( "AUTO: EXPECT 0" : container = 0 )
+ *
+ * We expect 2 labels here.
+ */
+static int validate_enumnegative(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	int ret;
+	enum lttng_event_field_value_status status;
+	int64_t value;
+	const int64_t expected_value = -1;
+
+	/* Unused. */
+	(void) iteration;
+
+	ret = validate_type(event_field,
+			LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM);
+	if (ret) {
+		goto end;
+	}
+
+	status = lttng_event_field_value_signed_int_get_value(
+			event_field, &value);
+	if (status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("lttng_event_field_value_unsigned_int_get_value");
+		ret = 1;
+		goto end;
+	}
+
+	ok(value == expected_value,
+			"Expected enum value %" PRId64 ", got %" PRId64,
+			expected_value, value);
+
+end:
+	return ret;
+}
+
+static int validate_context_procname_ust(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	/* Unused. */
+	(void) iteration;
+	return validate_string(event_field, "gen-ust-events");
+}
+
+static int validate_context_procname_kernel(
+		const struct lttng_event_field_value *event_field,
+		unsigned int iteration)
+{
+	/* Unused. */
+	(void) iteration;
+	return validate_string(event_field, "echo");
+}
+
+struct capture_base_field_tuple test_capture_base_fields[] = {
+	{ "DOESNOTEXIST", FIELD_TYPE_PAYLOAD, false, false, NULL, NULL },
+	{ "intfield", FIELD_TYPE_PAYLOAD, true, true, validate_unsigned_int_field, validate_unsigned_int_field },
+	{ "longfield", FIELD_TYPE_PAYLOAD, true, true, validate_unsigned_int_field, validate_unsigned_int_field },
+	{ "signedfield", FIELD_TYPE_PAYLOAD, true, true, validate_signed_int_field, validate_signed_int_field },
+	{ "arrfield1", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "arrfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
+	{ "arrfield3", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "seqfield1", FIELD_TYPE_PAYLOAD, true, true, validate_seqfield1, validate_seqfield1 },
+	{ "seqfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
+	{ "seqfield3", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "seqfield4", FIELD_TYPE_PAYLOAD, true, true, validate_array_unsigned_int_field, validate_array_unsigned_int_field },
+	{ "arrfield1[1]", FIELD_TYPE_ARRAY_FIELD, true, true, validate_array_unsigned_int_field_at_index, validate_array_unsigned_int_field_at_index },
+	{ "stringfield", FIELD_TYPE_PAYLOAD, true, true, validate_string_test, validate_string_test },
+	{ "stringfield2", FIELD_TYPE_PAYLOAD, true, true, validate_string_escaped, validate_string_escaped },
+	{ "floatfield", FIELD_TYPE_PAYLOAD, true, false, validate_floatfield, validate_floatfield },
+	{ "doublefield", FIELD_TYPE_PAYLOAD, true, false, validate_doublefield, validate_doublefield },
+	{ "enum0", FIELD_TYPE_PAYLOAD, true, true, validate_enum0, validate_enum0 },
+	{ "enumnegative", FIELD_TYPE_PAYLOAD, true, true, validate_enumnegative, validate_enumnegative },
+	{ "$ctx.procname", FIELD_TYPE_CONTEXT, true, true, validate_context_procname_ust, validate_context_procname_kernel },
+};
 
 static const char *get_notification_trigger_name(
 		struct lttng_notification *notification)
@@ -904,6 +1447,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		unsigned int exclusion_count,
 		const char * const *exclusions,
 		enum lttng_domain_type domain_type,
+		condition_capture_desc_cb capture_desc_cb,
 		struct lttng_condition **condition,
 		struct lttng_trigger **trigger)
 {
@@ -962,6 +1506,14 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 
 	tmp_condition = lttng_condition_event_rule_create(event_rule);
 	ok(tmp_condition, "Condition event rule object creation");
+
+	if (capture_desc_cb) {
+		ret = capture_desc_cb(tmp_condition);
+		if (ret) {
+			fail("Failed to generate the condition capture descriptor");
+			abort();
+		}
+	}
 
 	tmp_action = lttng_action_notify_create();
 	ok(tmp_action, "Action event rule object creation");
@@ -1033,7 +1585,7 @@ static void test_tracepoint_event_rule_notification(
 	}
 
 	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 0,
-			NULL, domain_type, &condition, &trigger);
+			NULL, domain_type, NULL, &condition, &trigger);
 
 	notification_channel = lttng_notification_channel_create(
 			lttng_session_daemon_notification_endpoint);
@@ -1101,7 +1653,7 @@ static void test_tracepoint_event_rule_notification_filter(
 	ok(notification_channel, "Notification channel object creation");
 
 	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
-			0, NULL, domain_type, &ctrl_condition, &ctrl_trigger);
+			0, NULL, domain_type, NULL, &ctrl_condition, &ctrl_trigger);
 
 	nc_status = lttng_notification_channel_subscribe(
 			notification_channel, ctrl_condition);
@@ -1113,7 +1665,7 @@ static void test_tracepoint_event_rule_notification_filter(
 	 * `intfield` is even.
 	 */
 	create_tracepoint_event_rule_trigger(pattern, trigger_name,
-			"(intfield & 1) == 0", 0, NULL, domain_type, &condition,
+			"(intfield & 1) == 0", 0, NULL, domain_type, NULL, &condition,
 			&trigger);
 
 	nc_status = lttng_notification_channel_subscribe(
@@ -1201,7 +1753,8 @@ static void test_tracepoint_event_rule_notification_exclusion(
 	ok(notification_channel, "Notification channel object creation");
 
 	create_tracepoint_event_rule_trigger(pattern, ctrl_trigger_name, NULL,
-			0, NULL, domain_type, &ctrl_condition, &ctrl_trigger);
+			0, NULL, domain_type, NULL, &ctrl_condition,
+			&ctrl_trigger);
 
 	nc_status = lttng_notification_channel_subscribe(
 			notification_channel, ctrl_condition);
@@ -1209,7 +1762,8 @@ static void test_tracepoint_event_rule_notification_exclusion(
 			"Subscribe to tracepoint event rule condition");
 
 	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 4,
-			exclusions, domain_type, &condition, &trigger);
+			exclusions, domain_type, NULL, &condition,
+			&trigger);
 
 	nc_status = lttng_notification_channel_subscribe(
 			notification_channel, condition);
@@ -1681,6 +2235,254 @@ end:
 	return;
 }
 
+static int generate_capture_descr(struct lttng_condition *condition)
+{
+	int ret, i;
+	struct lttng_event_expr *expr = NULL;
+	const unsigned int basic_field_count = sizeof(test_capture_base_fields) /
+			sizeof(*test_capture_base_fields);
+	enum lttng_condition_status cond_status;
+
+	for (i = 0; i < basic_field_count; i++) {
+		diag("Adding capture descriptor '%s'",
+				test_capture_base_fields[i].field_name);
+
+		switch (test_capture_base_fields[i].field_type) {
+		case FIELD_TYPE_PAYLOAD:
+			expr = lttng_event_expr_event_payload_field_create(
+					test_capture_base_fields[i].field_name);
+			break;
+		case FIELD_TYPE_CONTEXT:
+			expr = lttng_event_expr_channel_context_field_create(
+					test_capture_base_fields[i].field_name);
+			break;
+		case FIELD_TYPE_ARRAY_FIELD:
+		{
+			int nb_matches;
+			unsigned int index;
+			char field_name[FIELD_NAME_MAX_LEN];
+			struct lttng_event_expr *array_expr = NULL;
+
+			nb_matches = sscanf(test_capture_base_fields[i].field_name,
+					"%[^[][%u]", field_name, &index);
+			if (nb_matches != 2) {
+				fail("Unexpected array field name format: field name = '%s'",
+						test_capture_base_fields[i].field_name);
+				ret = 1;
+				goto end;
+			}
+
+			array_expr = lttng_event_expr_event_payload_field_create(
+				field_name);
+
+			expr = lttng_event_expr_array_field_element_create(
+				array_expr, index);
+			break;
+		}
+		case FIELD_TYPE_APP_CONTEXT:
+			fail("Application context tests are not implemented yet.");
+			/* fallthrough. */
+		default:
+			ret = 1;
+			goto end;
+		}
+
+		if (expr == NULL) {
+			fail("Failed to create capture expression");
+			ret = -1;
+			goto end;
+		}
+
+		cond_status = lttng_condition_event_rule_append_capture_descriptor(
+				condition, expr);
+		if (cond_status != LTTNG_CONDITION_STATUS_OK) {
+			fail("Failed to append capture descriptor");
+			ret = -1;
+			lttng_event_expr_destroy(expr);
+			goto end;
+		}
+	}
+
+	ret = 0;
+
+end:
+	return ret;
+}
+
+static int validator_notification_trigger_capture(
+		enum lttng_domain_type domain,
+		struct lttng_notification *notification,
+		const int iteration)
+{
+	int ret;
+	unsigned int capture_count, i;
+	enum lttng_evaluation_status evaluation_status;
+	enum lttng_event_field_value_status event_field_value_status;
+	const struct lttng_evaluation *evaluation;
+	const struct lttng_event_field_value *captured_fields;
+	bool at_least_one_error = false;
+
+	evaluation = lttng_notification_get_evaluation(notification);
+	if (evaluation == NULL) {
+		fail("Failed to get evaluation from notification during trigger capture test");
+		ret = 1;
+		goto end;
+	}
+
+	evaluation_status = lttng_evaluation_event_rule_get_captured_values(
+			evaluation, &captured_fields);
+	if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
+		diag("Failed to get event rule evaluation captured values: status = %d",
+				(int) evaluation_status);
+		ret = 1;
+		goto end;
+	}
+
+	event_field_value_status =
+		lttng_event_field_value_array_get_length(captured_fields,
+				&capture_count);
+	if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+		fail("Failed to get count of captured value field array");
+		ret = 1;
+		goto end;
+	}
+
+	for (i = 0; i < capture_count; i++) {
+		const struct lttng_event_field_value *captured_field = NULL;
+		validate_cb validate;
+		bool expected;
+
+		diag("Validating capture of field '%s'",
+				test_capture_base_fields[i].field_name);
+		event_field_value_status =
+				lttng_event_field_value_array_get_element_at_index(
+						captured_fields, i,
+						&captured_field);
+
+		switch(domain) {
+		case LTTNG_DOMAIN_UST:
+			expected = test_capture_base_fields[i].expected_ust;
+			break;
+		case LTTNG_DOMAIN_KERNEL:
+			expected = test_capture_base_fields[i].expected_kernel;
+			break;
+		default:
+			fail("Unexpected domain encountered: domain = %d",
+					(int) domain);
+			ret = 1;
+			goto end;
+		}
+
+		if (domain == LTTNG_DOMAIN_UST) {
+			validate = test_capture_base_fields[i].validate_ust;
+		} else {
+			validate = test_capture_base_fields[i].validate_kernel;
+		}
+
+		if (!expected) {
+			ok(event_field_value_status == LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE,
+					"No payload captured");
+			continue;
+		}
+
+		if (event_field_value_status != LTTNG_EVENT_FIELD_VALUE_STATUS_OK) {
+			if (event_field_value_status ==
+					LTTNG_EVENT_FIELD_VALUE_STATUS_UNAVAILABLE) {
+				fail("Expected a capture but it is unavailable");
+			} else {
+				fail("lttng_event_field_value_array_get_element_at_index returned an error: status = %d",
+						(int) event_field_value_status);
+			}
+
+			ret = 1;
+			goto end;
+		}
+
+		diag("Captured field of type %s",
+				field_value_type_to_str(
+					lttng_event_field_value_get_type(captured_field)));
+
+		assert(validate);
+		ret = validate(captured_field, iteration);
+		if (ret) {
+			at_least_one_error = true;
+		}
+	}
+
+	ret = at_least_one_error;
+
+end:
+	return ret;
+}
+
+static void test_tracepoint_event_rule_notification_capture(
+		enum lttng_domain_type domain_type)
+{
+	enum lttng_notification_channel_status nc_status;
+
+	int i, ret;
+	struct lttng_condition *condition = NULL;
+	struct lttng_notification_channel *notification_channel = NULL;
+	struct lttng_trigger *trigger = NULL;
+	const char *trigger_name = "my_precious";
+	const char *pattern;
+
+	if (domain_type == LTTNG_DOMAIN_UST) {
+		pattern = "tp:tptest";
+	} else {
+		pattern = "lttng_test_filter_event";
+	}
+
+	create_tracepoint_event_rule_trigger(pattern, trigger_name, NULL, 0,
+			NULL, domain_type, generate_capture_descr, &condition,
+			&trigger);
+
+	notification_channel = lttng_notification_channel_create(
+			lttng_session_daemon_notification_endpoint);
+	ok(notification_channel, "Notification channel object creation");
+
+	nc_status = lttng_notification_channel_subscribe(
+			notification_channel, condition);
+	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK,
+			"Subscribe to tracepoint event rule condition");
+
+	resume_application();
+
+	/* Get 3 notifications */
+	for (i = 0; i < 3; i++) {
+		struct lttng_notification *notification = get_next_notification(
+				notification_channel);
+		ok(notification, "Received notification");
+
+		/* Error */
+		if (notification == NULL) {
+			goto end;
+		}
+
+		ret = validator_notification_trigger_name(notification, trigger_name);
+		if (ret) {
+			lttng_notification_destroy(notification);
+			goto end;
+		}
+
+		ret = validator_notification_trigger_capture(domain_type, notification, i);
+		if (ret) {
+			lttng_notification_destroy(notification);
+			goto end;
+		}
+
+		lttng_notification_destroy(notification);
+	}
+
+end:
+	suspend_application();
+	lttng_notification_channel_destroy(notification_channel);
+	lttng_unregister_trigger(trigger);
+	lttng_trigger_destroy(trigger);
+	lttng_condition_destroy(condition);
+	return;
+}
+
 int main(int argc, const char *argv[])
 {
 	int test_scenario;
@@ -1851,6 +2653,26 @@ int main(int argc, const char *argv[])
 
 		break;
 	}
+	case 7:
+	{
+		switch(domain_type) {
+		case LTTNG_DOMAIN_UST:
+			plan_tests(222);
+			break;
+		case LTTNG_DOMAIN_KERNEL:
+			plan_tests(216);
+			break;
+		default:
+			assert(0);
+		}
+
+		diag("Test tracepoint event rule notification captures for domain %s",
+				domain_type_string);
+		test_tracepoint_event_rule_notification_capture(domain_type);
+
+		break;
+	}
+
 	default:
 		abort();
 	}

@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# Copyright (C) 2017 Jonathan Rajotte-Julien <jonathan.rajotte-julien@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../../
+
+TMPDIR=$(mktemp -d)
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+
+GEN_UST_EVENTS_TESTAPP_NAME="gen-ust-events"
+GEN_UST_EVENTS_TESTAPP_BIN="$TESTAPP_PATH/$GEN_UST_EVENTS_TESTAPP_NAME/$GEN_UST_EVENTS_TESTAPP_NAME"
+
+TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+# shellcheck source=./util_event_generator.sh
+source "$CURDIR/util_event_generator.sh"
+
+function test_basic_error_path
+{
+	ust_event_generator_run_once_per_transition \
+		"$GEN_UST_EVENTS_TESTAPP_BIN" "$TESTAPP_STATE_PATH" 3 10 &
+	APP_PID=$!
+
+	"$CURDIR/notification" 7 LTTNG_DOMAIN_UST $APP_PID "$TESTAPP_STATE_PATH"
+
+	kill -SIGUSR2 $APP_PID
+	wait $APP_PID 2> /dev/null
+}
+
+start_lttng_sessiond_notap
+
+test_basic_error_path
+
+stop_lttng_sessiond_notap
