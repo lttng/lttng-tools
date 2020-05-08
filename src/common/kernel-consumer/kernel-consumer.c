@@ -1590,26 +1590,14 @@ ssize_t lttng_kconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
 	unsigned long len, subbuf_size, padding;
-	int err, write_index = 1, rotation_ret;
+	int err, write_index = 1;
 	ssize_t ret = 0;
 	int infd = stream->wait_fd;
 	struct ctf_packet_index index = {};
+	bool in_error_state = false;
 
 	DBG("In read_subbuffer (infd : %d)", infd);
 
-	/*
-	 * If the stream was flagged to be ready for rotation before we extract the
-	 * next packet, rotate it now.
-	 */
-	if (stream->rotate_ready) {
-		DBG("Rotate stream before extracting data");
-		rotation_ret = lttng_consumer_rotate_stream(ctx, stream);
-		if (rotation_ret < 0) {
-			ERR("Stream rotation error");
-			ret = -1;
-			goto error;
-		}
-	}
 
 	/* Get the next subbuffer */
 	err = kernctl_get_next_subbuf(infd);
@@ -1795,11 +1783,13 @@ error_put_subbuf:
 		}
 		ret = err;
 		goto error;
+	} else if (in_error_state) {
+		goto error;
 	}
 
 	/* Write index if needed. */
 	if (!write_index) {
-		goto rotate;
+		goto end;
 	}
 
 	if (stream->chan->live_timer_interval && !stream->metadata_flag) {
@@ -1832,25 +1822,7 @@ error_put_subbuf:
 		goto error;
 	}
 
-rotate:
-	/*
-	 * After extracting the packet, we check if the stream is now ready to be
-	 * rotated and perform the action immediately.
-	 */
-	rotation_ret = lttng_consumer_stream_is_rotate_ready(stream);
-	if (rotation_ret == 1) {
-		rotation_ret = lttng_consumer_rotate_stream(ctx, stream);
-		if (rotation_ret < 0) {
-			ERR("Stream rotation error");
-			ret = -1;
-			goto error;
-		}
-	} else if (rotation_ret < 0) {
-		ERR("Checking if stream is ready to rotate");
-		ret = -1;
-		goto error;
-	}
-
+end:
 error:
 	return ret;
 }
