@@ -7,6 +7,7 @@
  *
  */
 
+#include "common/index/ctf-index.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <poll.h>
@@ -566,98 +567,6 @@ void consumer_stream_update_channel_attributes(
 {
 	stream->channel_read_only_attributes.tracefile_size =
 			channel->tracefile_size;
-}
-
-struct lttng_consumer_stream *consumer_allocate_stream(
-		struct lttng_consumer_channel *channel,
-		uint64_t channel_key,
-		uint64_t stream_key,
-		const char *channel_name,
-		uint64_t relayd_id,
-		uint64_t session_id,
-		struct lttng_trace_chunk *trace_chunk,
-		int cpu,
-		int *alloc_ret,
-		enum consumer_channel_type type,
-		unsigned int monitor)
-{
-	int ret;
-	struct lttng_consumer_stream *stream;
-
-	stream = zmalloc(sizeof(*stream));
-	if (stream == NULL) {
-		PERROR("malloc struct lttng_consumer_stream");
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	if (trace_chunk && !lttng_trace_chunk_get(trace_chunk)) {
-		ERR("Failed to acquire trace chunk reference during the creation of a stream");
-		ret = -1;
-		goto error;
-	}
-
-	rcu_read_lock();
-	stream->chan = channel;
-	stream->key = stream_key;
-	stream->trace_chunk = trace_chunk;
-	stream->out_fd = -1;
-	stream->out_fd_offset = 0;
-	stream->output_written = 0;
-	stream->net_seq_idx = relayd_id;
-	stream->session_id = session_id;
-	stream->monitor = monitor;
-	stream->endpoint_status = CONSUMER_ENDPOINT_ACTIVE;
-	stream->index_file = NULL;
-	stream->last_sequence_number = -1ULL;
-	stream->rotate_position = -1ULL;
-	pthread_mutex_init(&stream->lock, NULL);
-	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
-
-	/* If channel is the metadata, flag this stream as metadata. */
-	if (type == CONSUMER_CHANNEL_TYPE_METADATA) {
-		stream->metadata_flag = 1;
-		/* Metadata is flat out. */
-		strncpy(stream->name, DEFAULT_METADATA_NAME, sizeof(stream->name));
-		/* Live rendez-vous point. */
-		pthread_cond_init(&stream->metadata_rdv, NULL);
-		pthread_mutex_init(&stream->metadata_rdv_lock, NULL);
-	} else {
-		/* Format stream name to <channel_name>_<cpu_number> */
-		ret = snprintf(stream->name, sizeof(stream->name), "%s_%d",
-				channel_name, cpu);
-		if (ret < 0) {
-			PERROR("snprintf stream name");
-			goto error;
-		}
-	}
-
-	/* Key is always the wait_fd for streams. */
-	lttng_ht_node_init_u64(&stream->node, stream->key);
-
-	/* Init node per channel id key */
-	lttng_ht_node_init_u64(&stream->node_channel_id, channel_key);
-
-	/* Init session id node with the stream session id */
-	lttng_ht_node_init_u64(&stream->node_session_id, stream->session_id);
-
-	DBG3("Allocated stream %s (key %" PRIu64 ", chan_key %" PRIu64
-			" relayd_id %" PRIu64 ", session_id %" PRIu64,
-			stream->name, stream->key, channel_key,
-			stream->net_seq_idx, stream->session_id);
-
-	rcu_read_unlock();
-	return stream;
-
-error:
-	rcu_read_unlock();
-	lttng_trace_chunk_put(stream->trace_chunk);
-	free(stream);
-end:
-	if (alloc_ret) {
-		*alloc_ret = ret;
-	}
-	return NULL;
 }
 
 /*
@@ -1467,7 +1376,7 @@ void lttng_consumer_sync_trace_file(struct lttng_consumer_stream *stream,
 struct lttng_consumer_local_data *lttng_consumer_create(
 		enum lttng_consumer_type type,
 		ssize_t (*buffer_ready)(struct lttng_consumer_stream *stream,
-			struct lttng_consumer_local_data *ctx),
+			struct lttng_consumer_local_data *ctx, bool locked_by_caller),
 		int (*recv_channel)(struct lttng_consumer_channel *channel),
 		int (*recv_stream)(struct lttng_consumer_stream *stream),
 		int (*update_stream)(uint64_t stream_key, uint32_t state))
@@ -1677,8 +1586,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream,
 		const struct lttng_buffer_view *buffer,
-		unsigned long padding,
-		struct ctf_packet_index *index)
+		unsigned long padding)
 {
 	ssize_t ret = 0;
 	off_t orig_offset = stream->out_fd_offset;
@@ -1770,10 +1678,6 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 			orig_offset = 0;
 		}
 		stream->tracefile_size_current += buffer->size;
-		if (index) {
-			index->offset = htobe64(stream->out_fd_offset);
-		}
-
 		write_len = buffer->size;
 	}
 
@@ -1850,8 +1754,7 @@ end:
 ssize_t lttng_consumer_on_read_subbuffer_splice(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream, unsigned long len,
-		unsigned long padding,
-		struct ctf_packet_index *index)
+		unsigned long padding)
 {
 	ssize_t ret = 0, written = 0, ret_splice = 0;
 	loff_t offset = 0;
@@ -1955,7 +1858,6 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 			orig_offset = 0;
 		}
 		stream->tracefile_size_current += len;
-		index->offset = htobe64(stream->out_fd_offset);
 	}
 
 	while (len > 0) {
@@ -2522,7 +2424,7 @@ restart:
 				do {
 					health_code_update();
 
-					len = ctx->on_buffer_ready(stream, ctx);
+					len = ctx->on_buffer_ready(stream, ctx, false);
 					/*
 					 * We don't check the return value here since if we get
 					 * a negative len, it means an error occurred thus we
@@ -2549,7 +2451,7 @@ restart:
 					do {
 						health_code_update();
 
-						len = ctx->on_buffer_ready(stream, ctx);
+						len = ctx->on_buffer_ready(stream, ctx, false);
 						/*
 						 * We don't check the return value here since if we get
 						 * a negative len, it means an error occurred thus we
@@ -2765,7 +2667,7 @@ void *consumer_thread_data_poll(void *data)
 			if (pollfd[i].revents & POLLPRI) {
 				DBG("Urgent read on fd %d", pollfd[i].fd);
 				high_prio = 1;
-				len = ctx->on_buffer_ready(local_stream[i], ctx);
+				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
@@ -2796,7 +2698,7 @@ void *consumer_thread_data_poll(void *data)
 					local_stream[i]->hangup_flush_done ||
 					local_stream[i]->has_data) {
 				DBG("Normal read on fd %d", pollfd[i].fd);
-				len = ctx->on_buffer_ready(local_stream[i], ctx);
+				len = ctx->on_buffer_ready(local_stream[i], ctx, false);
 				/* it's ok to have an unavailable sub-buffer */
 				if (len < 0 && len != -EAGAIN && len != -ENODATA) {
 					/* Clean the stream and free it. */
@@ -3410,15 +3312,22 @@ error_testpoint:
 }
 
 ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx)
+		struct lttng_consumer_local_data *ctx,
+		bool locked_by_caller)
 {
-	ssize_t ret;
+	ssize_t ret, written_bytes;
 	int rotation_ret;
+	struct stream_subbuffer subbuffer = {};
 
-	pthread_mutex_lock(&stream->chan->lock);
-	pthread_mutex_lock(&stream->lock);
-	if (stream->metadata_flag) {
-		pthread_mutex_lock(&stream->metadata_rdv_lock);
+	if (!locked_by_caller) {
+		stream->read_subbuffer_ops.lock(stream);
+	}
+
+	if (stream->read_subbuffer_ops.on_wake_up) {
+		ret = stream->read_subbuffer_ops.on_wake_up(stream);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/*
@@ -3434,23 +3343,53 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 	}
 
-	switch (consumer_data.type) {
-	case LTTNG_CONSUMER_KERNEL:
-		ret = lttng_kconsumer_read_subbuffer(stream, ctx);
-		break;
-	case LTTNG_CONSUMER32_UST:
-	case LTTNG_CONSUMER64_UST:
-		ret = lttng_ustconsumer_read_subbuffer(stream, ctx);
-		break;
-	default:
-		ERR("Unknown consumer_data type");
-		assert(0);
-		ret = -ENOSYS;
-		break;
+	ret = stream->read_subbuffer_ops.get_next_subbuffer(stream, &subbuffer);
+	if (ret) {
+		if (ret == -ENODATA) {
+			/* Not an error. */
+			ret = 0;
+		}
+		goto end;
 	}
 
-	if (ret < 0) {
+	ret = stream->read_subbuffer_ops.pre_consume_subbuffer(
+			stream, &subbuffer);
+	if (ret) {
+		goto error_put_subbuf;
+	}
+
+	written_bytes = stream->read_subbuffer_ops.consume_subbuffer(
+			ctx, stream, &subbuffer);
+	/*
+	 * Should write subbuf_size amount of data when network streaming or
+	 * the full padded size when we are not streaming.
+	 */
+	if ((written_bytes != subbuffer.info.data.subbuf_size &&
+			    stream->net_seq_idx != (uint64_t) -1ULL) ||
+			(written_bytes != subbuffer.info.data.padded_subbuf_size &&
+					stream->net_seq_idx ==
+							(uint64_t) -1ULL)) {
+		/*
+		 * Display the error but continue processing to try to
+		 * release the subbuffer. This is a DBG statement
+		 * since this can happen without being a critical
+		 * error.
+		 */
+		DBG("Failed to write to tracefile (written_bytes: %zd != padded subbuffer size: %lu, subbuffer size: %lu)",
+				written_bytes, subbuffer.info.data.subbuf_size,
+				subbuffer.info.data.padded_subbuf_size);
+	}
+
+	ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
+	if (ret) {
 		goto end;
+	}
+
+	if (stream->read_subbuffer_ops.post_consume) {
+		ret = stream->read_subbuffer_ops.post_consume(stream, &subbuffer, ctx);
+		if (ret) {
+			goto end;
+		}
 	}
 
 	/*
@@ -3474,14 +3413,20 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-end:
-	if (stream->metadata_flag) {
-		pthread_cond_broadcast(&stream->metadata_rdv);
-		pthread_mutex_unlock(&stream->metadata_rdv_lock);
+	if (stream->read_subbuffer_ops.on_sleep) {
+		stream->read_subbuffer_ops.on_sleep(stream, ctx);
 	}
-	pthread_mutex_unlock(&stream->lock);
-	pthread_mutex_unlock(&stream->chan->lock);
+
+	ret = written_bytes;
+end:
+	if (!locked_by_caller) {
+		stream->read_subbuffer_ops.unlock(stream);
+	}
+
 	return ret;
+error_put_subbuf:
+	(void) stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
+	goto end;
 }
 
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)

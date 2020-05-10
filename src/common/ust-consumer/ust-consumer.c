@@ -7,7 +7,6 @@
  *
  */
 
-#include <stdint.h>
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <lttng/ust-ctl.h>
@@ -24,6 +23,7 @@
 #include <urcu/list.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <bin/lttng-consumerd/health-consumerd.h>
 #include <common/common.h>
@@ -36,6 +36,7 @@
 #include <common/consumer/consumer-timer.h>
 #include <common/utils.h>
 #include <common/index/index.h>
+#include <common/consumer/consumer.h>
 
 #include "ust-consumer.h"
 
@@ -127,7 +128,7 @@ static struct lttng_consumer_stream *allocate_stream(int cpu, int key,
 	assert(channel);
 	assert(ctx);
 
-	stream = consumer_allocate_stream(
+	stream = consumer_stream_create(
 			channel,
 			channel->key,
 			key,
@@ -1040,7 +1041,7 @@ static int snapshot_metadata(struct lttng_consumer_channel *metadata_channel,
 	do {
 		health_code_update();
 
-		ret = lttng_consumer_read_subbuffer(metadata_stream, ctx);
+		ret = lttng_consumer_read_subbuffer(metadata_stream, ctx, true);
 		if (ret < 0) {
 			goto error_stream;
 		}
@@ -1230,8 +1231,7 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 			subbuf_view = lttng_buffer_view_init(
 					subbuf_addr, 0, padded_len);
 			read_len = lttng_consumer_on_read_subbuffer_mmap(ctx,
-					stream, &subbuf_view, padded_len - len,
-					NULL);
+					stream, &subbuf_view, padded_len - len);
 			if (use_relayd) {
 				if (read_len != len) {
 					ret = -EPERM;
@@ -2428,113 +2428,14 @@ int lttng_ustconsumer_close_wakeup_fd(struct lttng_consumer_stream *stream)
 	return ustctl_stream_close_wakeup_fd(stream->ustream);
 }
 
-/*
- * Populate index values of a UST stream. Values are set in big endian order.
- *
- * Return 0 on success or else a negative value.
- */
-static int get_index_values(struct ctf_packet_index *index,
-		struct ustctl_consumer_stream *ustream)
-{
-	int ret;
-	uint64_t packet_size, content_size, timestamp_begin, timestamp_end,
-			events_discarded, stream_id, stream_instance_id,
-			packet_seq_num;
-
-	ret = ustctl_get_timestamp_begin(ustream, &timestamp_begin);
-	if (ret < 0) {
-		PERROR("ustctl_get_timestamp_begin");
-		goto error;
-	}
-
-	ret = ustctl_get_timestamp_end(ustream, &timestamp_end);
-	if (ret < 0) {
-		PERROR("ustctl_get_timestamp_end");
-		goto error;
-	}
-
-	ret = ustctl_get_events_discarded(ustream, &events_discarded);
-	if (ret < 0) {
-		PERROR("ustctl_get_events_discarded");
-		goto error;
-	}
-
-	ret = ustctl_get_content_size(ustream, &content_size);
-	if (ret < 0) {
-		PERROR("ustctl_get_content_size");
-		goto error;
-	}
-
-	ret = ustctl_get_packet_size(ustream, &packet_size);
-	if (ret < 0) {
-		PERROR("ustctl_get_packet_size");
-		goto error;
-	}
-
-	ret = ustctl_get_stream_id(ustream, &stream_id);
-	if (ret < 0) {
-		PERROR("ustctl_get_stream_id");
-		goto error;
-	}
-
-	ret = ustctl_get_instance_id(ustream, &stream_instance_id);
-	if (ret < 0) {
-		PERROR("ustctl_get_instance_id");
-		goto error;
-	}
-
-	ret = ustctl_get_sequence_number(ustream, &packet_seq_num);
-	if (ret < 0) {
-		PERROR("ustctl_get_sequence_number");
-		goto error;
-	}
-
-	*index = (typeof(*index)) {
-		.offset = index->offset,
-		.packet_size = htobe64(packet_size),
-		.content_size = htobe64(content_size),
-		.timestamp_begin = htobe64(timestamp_begin),
-		.timestamp_end = htobe64(timestamp_end),
-		.events_discarded = htobe64(events_discarded),
-		.stream_id = htobe64(stream_id),
-		.stream_instance_id = htobe64(stream_instance_id),
-		.packet_seq_num = htobe64(packet_seq_num),
-	};
-
-error:
-	return ret;
-}
-
 static
-void metadata_stream_reset_cache(struct lttng_consumer_stream *stream,
-		struct consumer_metadata_cache *cache)
+void metadata_stream_reset_cache(struct lttng_consumer_stream *stream)
 {
-	DBG("Metadata stream update to version %" PRIu64,
-			cache->version);
+	DBG("Reset metadata cache of session %" PRIu64,
+			stream->chan->session_id);
 	stream->ust_metadata_pushed = 0;
-	stream->metadata_version = cache->version;
+	stream->metadata_version = stream->chan->metadata_cache->version;
 	stream->reset_metadata_flag = 1;
-}
-
-/*
- * Check if the version of the metadata stream and metadata cache match.
- * If the cache got updated, reset the metadata stream.
- * The stream lock and metadata cache lock MUST be held.
- * Return 0 on success, a negative value on error.
- */
-static
-int metadata_stream_check_version(struct lttng_consumer_stream *stream)
-{
-	int ret = 0;
-	struct consumer_metadata_cache *cache = stream->chan->metadata_cache;
-
-	if (cache->version == stream->metadata_version) {
-		goto end;
-	}
-	metadata_stream_reset_cache(stream, cache);
-
-end:
-	return ret;
 }
 
 /*
@@ -2550,10 +2451,6 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	int ret;
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-	ret = metadata_stream_check_version(stream);
-	if (ret < 0) {
-		goto end;
-	}
 	if (stream->chan->metadata_cache->max_offset
 			== stream->ust_metadata_pushed) {
 		ret = 0;
@@ -2723,98 +2620,20 @@ end:
 	return ret;
 }
 
-static
-int update_stream_stats(struct lttng_consumer_stream *stream)
+static int consumer_stream_ust_on_wake_up(struct lttng_consumer_stream *stream)
 {
-	int ret;
-	uint64_t seq, discarded;
-
-	ret = ustctl_get_sequence_number(stream->ustream, &seq);
-	if (ret < 0) {
-		PERROR("ustctl_get_sequence_number");
-		goto end;
-	}
-	/*
-	 * Start the sequence when we extract the first packet in case we don't
-	 * start at 0 (for example if a consumer is not connected to the
-	 * session immediately after the beginning).
-	 */
-	if (stream->last_sequence_number == -1ULL) {
-		stream->last_sequence_number = seq;
-	} else if (seq > stream->last_sequence_number) {
-		stream->chan->lost_packets += seq -
-				stream->last_sequence_number - 1;
-	} else {
-		/* seq <= last_sequence_number */
-		ERR("Sequence number inconsistent : prev = %" PRIu64
-				", current = %" PRIu64,
-				stream->last_sequence_number, seq);
-		ret = -1;
-		goto end;
-	}
-	stream->last_sequence_number = seq;
-
-	ret = ustctl_get_events_discarded(stream->ustream, &discarded);
-	if (ret < 0) {
-		PERROR("kernctl_get_events_discarded");
-		goto end;
-	}
-	if (discarded < stream->last_discarded_events) {
-		/*
-		 * Overflow has occurred. We assume only one wrap-around
-		 * has occurred.
-		 */
-		stream->chan->discarded_events +=
-				(1ULL << (CAA_BITS_PER_LONG - 1)) -
-				stream->last_discarded_events + discarded;
-	} else {
-		stream->chan->discarded_events += discarded -
-				stream->last_discarded_events;
-	}
-	stream->last_discarded_events = discarded;
-	ret = 0;
-
-end:
-	return ret;
-}
-
-/*
- * Read subbuffer from the given stream.
- *
- * Stream and channel locks MUST be acquired by the caller.
- *
- * Return 0 on success else a negative value.
- */
-int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
-		struct lttng_consumer_local_data *ctx)
-{
-	unsigned long len, subbuf_size, padding;
-	int err, write_index = 1;
-	long ret = 0;
-	struct ustctl_consumer_stream *ustream;
-	struct ctf_packet_index index;
-	const char *subbuf_addr;
-	struct lttng_buffer_view subbuf_view;
-
-	assert(stream);
-	assert(stream->ustream);
-	assert(ctx);
-
-	DBG("In UST read_subbuffer (wait_fd: %d, name: %s)", stream->wait_fd,
-			stream->name);
-
-	/* Ease our life for what's next. */
-	ustream = stream->ustream;
+	int ret = 0;
 
 	/*
-	 * We can consume the 1 byte written into the wait_fd by UST. Don't trigger
-	 * error if we cannot read this one byte (read returns 0), or if the error
-	 * is EAGAIN or EWOULDBLOCK.
+	 * We can consume the 1 byte written into the wait_fd by
+	 * UST. Don't trigger error if we cannot read this one byte
+	 * (read returns 0), or if the error is EAGAIN or EWOULDBLOCK.
 	 *
-	 * This is only done when the stream is monitored by a thread, before the
-	 * flush is done after a hangup and if the stream is not flagged with data
-	 * since there might be nothing to consume in the wait fd but still have
-	 * data available flagged by the consumer wake up pipe.
+	 * This is only done when the stream is monitored by a thread,
+	 * before the flush is done after a hangup and if the stream
+	 * is not flagged with data since there might be nothing to
+	 * consume in the wait fd but still have data available
+	 * flagged by the consumer wake up pipe.
 	 */
 	if (stream->monitor && !stream->hangup_flush_done && !stream->has_data) {
 		char dummy;
@@ -2823,159 +2642,240 @@ int lttng_ustconsumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		readlen = lttng_read(stream->wait_fd, &dummy, 1);
 		if (readlen < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			ret = readlen;
-			goto error;
 		}
 	}
 
-retry:
-	/* Get the next subbuffer */
-	err = ustctl_get_next_subbuf(ustream);
-	if (err != 0) {
-		/*
-		 * Populate metadata info if the existing info has
-		 * already been read.
-		 */
-		if (stream->metadata_flag) {
-			ret = commit_one_metadata_packet(stream);
-			if (ret <= 0) {
-				goto error;
-			}
-			goto retry;
-		}
+	return ret;
+}
 
-		ret = err;	/* ustctl_get_next_subbuf returns negative, caller expect positive. */
-		/*
-		 * This is a debug message even for single-threaded consumer,
-		 * because poll() have more relaxed criterions than get subbuf,
-		 * so get_subbuf may fail for short race windows where poll()
-		 * would issue wakeups.
-		 */
-		DBG("Reserving sub buffer failed (everything is normal, "
-				"it is due to concurrency) [ret: %d]", err);
-		goto error;
-	}
-	assert(stream->chan->output == CONSUMER_CHANNEL_MMAP);
+static int extract_common_subbuffer_info(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuf)
+{
+	int ret;
 
-	if (!stream->metadata_flag) {
-		index.offset = htobe64(stream->out_fd_offset);
-		ret = get_index_values(&index, ustream);
-		if (ret < 0) {
-			err = ustctl_put_subbuf(ustream);
-			assert(err == 0);
-			goto error;
-		}
-
-		/* Update the stream's sequence and discarded events count. */
-		ret = update_stream_stats(stream);
-		if (ret < 0) {
-			PERROR("kernctl_get_events_discarded");
-			err = ustctl_put_subbuf(ustream);
-			assert(err == 0);
-			goto error;
-		}
-	} else {
-		write_index = 0;
-	}
-
-	/* Get the full padded subbuffer size */
-	err = ustctl_get_padded_subbuf_size(ustream, &len);
-	assert(err == 0);
-
-	/* Get subbuffer data size (without padding) */
-	err = ustctl_get_subbuf_size(ustream, &subbuf_size);
-	assert(err == 0);
-
-	/* Make sure we don't get a subbuffer size bigger than the padded */
-	assert(len >= subbuf_size);
-
-	padding = len - subbuf_size;
-
-	ret = get_current_subbuf_addr(stream, &subbuf_addr);
+	ret = ustctl_get_subbuf_size(
+			stream->ustream, &subbuf->info.data.subbuf_size);
 	if (ret) {
-		write_index = 0;
-		goto error_put_subbuf;
-	}
-
-	subbuf_view = lttng_buffer_view_init(subbuf_addr, 0, len);
-
-	/* write the subbuffer to the tracefile */
-	ret = lttng_consumer_on_read_subbuffer_mmap(
-			ctx, stream, &subbuf_view, padding, &index);
-	/*
-	 * The mmap operation should write subbuf_size amount of data when
-	 * network streaming or the full padding (len) size when we are _not_
-	 * streaming.
-	 */
-	if ((ret != subbuf_size && stream->net_seq_idx != (uint64_t) -1ULL) ||
-			(ret != len && stream->net_seq_idx == (uint64_t) -1ULL)) {
-		/*
-		 * Display the error but continue processing to try to release the
-		 * subbuffer. This is a DBG statement since any unexpected kill or
-		 * signal, the application gets unregistered, relayd gets closed or
-		 * anything that affects the buffer lifetime will trigger this error.
-		 * So, for the sake of the user, don't print this error since it can
-		 * happen and it is OK with the code flow.
-		 */
-		DBG("Error writing to tracefile "
-				"(ret: %ld != len: %lu != subbuf_size: %lu)",
-				ret, len, subbuf_size);
-		write_index = 0;
-	}
-error_put_subbuf:
-	err = ustctl_put_next_subbuf(ustream);
-	assert(err == 0);
-
-	/*
-	 * This will consumer the byte on the wait_fd if and only if there is not
-	 * next subbuffer to be acquired.
-	 */
-	if (!stream->metadata_flag) {
-		ret = notify_if_more_data(stream, ctx);
-		if (ret < 0) {
-			goto error;
-		}
-	}
-
-	/* Write index if needed. */
-	if (!write_index) {
 		goto end;
 	}
 
-	if (stream->chan->live_timer_interval && !stream->metadata_flag) {
-		/*
-		 * In live, block until all the metadata is sent.
-		 */
-		pthread_mutex_lock(&stream->metadata_timer_lock);
-		assert(!stream->missed_metadata_flush);
-		stream->waiting_on_metadata = true;
-		pthread_mutex_unlock(&stream->metadata_timer_lock);
-
-		err = consumer_stream_sync_metadata(ctx, stream->session_id);
-
-		pthread_mutex_lock(&stream->metadata_timer_lock);
-		stream->waiting_on_metadata = false;
-		if (stream->missed_metadata_flush) {
-			stream->missed_metadata_flush = false;
-			pthread_mutex_unlock(&stream->metadata_timer_lock);
-			(void) consumer_flush_ust_index(stream);
-		} else {
-			pthread_mutex_unlock(&stream->metadata_timer_lock);
-		}
-
-		if (err < 0) {
-			goto error;
-		}
-	}
-
-	assert(!stream->metadata_flag);
-	err = consumer_stream_write_index(stream, &index);
-	if (err < 0) {
-		goto error;
+	ret = ustctl_get_padded_subbuf_size(
+			stream->ustream, &subbuf->info.data.padded_subbuf_size);
+	if (ret) {
+		goto end;
 	}
 
 end:
-error:
 	return ret;
+}
+
+static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuf)
+{
+	int ret;
+
+	ret = extract_common_subbuffer_info(stream, subbuf);
+	if (ret) {
+		goto end;
+	}
+
+	subbuf->info.metadata.version = stream->chan->metadata_cache->version;
+
+end:
+	return ret;
+}
+
+static int extract_data_subbuffer_info(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuf)
+{
+	int ret;
+
+	ret = extract_common_subbuffer_info(stream, subbuf);
+	if (ret) {
+		goto end;
+	}
+
+	ret = ustctl_get_packet_size(
+			stream->ustream, &subbuf->info.data.packet_size);
+	if (ret < 0) {
+		PERROR("Failed to get sub-buffer packet size");
+		goto end;
+	}
+
+	ret = ustctl_get_content_size(
+			stream->ustream, &subbuf->info.data.content_size);
+	if (ret < 0) {
+		PERROR("Failed to get sub-buffer content size");
+		goto end;
+	}
+
+	ret = ustctl_get_timestamp_begin(
+			stream->ustream, &subbuf->info.data.timestamp_begin);
+	if (ret < 0) {
+		PERROR("Failed to get sub-buffer begin timestamp");
+		goto end;
+	}
+
+	ret = ustctl_get_timestamp_end(
+			stream->ustream, &subbuf->info.data.timestamp_end);
+	if (ret < 0) {
+		PERROR("Failed to get sub-buffer end timestamp");
+		goto end;
+	}
+
+	ret = ustctl_get_events_discarded(
+			stream->ustream, &subbuf->info.data.events_discarded);
+	if (ret) {
+		PERROR("Failed to get sub-buffer events discarded count");
+		goto end;
+	}
+
+	ret = ustctl_get_sequence_number(stream->ustream,
+			&subbuf->info.data.sequence_number.value);
+	if (ret) {
+		/* May not be supported by older LTTng-modules. */
+		if (ret != -ENOTTY) {
+			PERROR("Failed to get sub-buffer sequence number");
+			goto end;
+		}
+	} else {
+		subbuf->info.data.sequence_number.is_set = true;
+	}
+
+	ret = ustctl_get_stream_id(
+			stream->ustream, &subbuf->info.data.stream_id);
+	if (ret < 0) {
+		PERROR("Failed to get stream id");
+		goto end;
+	}
+
+	ret = ustctl_get_instance_id(stream->ustream,
+			&subbuf->info.data.stream_instance_id.value);
+	if (ret) {
+		/* May not be supported by older LTTng-modules. */
+		if (ret != -ENOTTY) {
+			PERROR("Failed to get stream instance id");
+			goto end;
+		}
+	} else {
+		subbuf->info.data.stream_instance_id.is_set = true;
+	}
+end:
+	return ret;
+}
+
+static int get_next_subbuffer_common(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuffer)
+{
+	int ret;
+	const char *addr;
+
+	ret = stream->read_subbuffer_ops.extract_subbuffer_info(
+			stream, subbuffer);
+	if (ret) {
+		goto end;
+	}
+
+	ret = get_current_subbuf_addr(stream, &addr);
+	if (ret) {
+		goto end;
+	}
+
+	subbuffer->buffer.buffer = lttng_buffer_view_init(
+			addr, 0, subbuffer->info.data.padded_subbuf_size);
+	assert(subbuffer->buffer.buffer.data != NULL);
+end:
+	return ret;
+}
+
+static int get_next_subbuffer(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuffer)
+{
+	int ret;
+
+	ret = ustctl_get_next_subbuf(stream->ustream);
+	if (ret) {
+		goto end;
+	}
+
+	ret = get_next_subbuffer_common(stream, subbuffer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuffer)
+{
+	int ret;
+
+	ret = ustctl_get_next_subbuf(stream->ustream);
+	if (ret) {
+		ret = commit_one_metadata_packet(stream);
+		if (ret < 0) {
+			goto end;
+		} else if (ret == 0) {
+			/* Not an error, the cache is empty. */
+			ret = -ENODATA;
+			goto end;
+		}
+
+		ret = ustctl_get_next_subbuf(stream->ustream);
+		if (ret) {
+			goto end;
+		}
+	}
+
+	ret = get_next_subbuffer_common(stream, subbuffer);
+	if (ret) {
+		goto end;
+	}
+end:
+	return ret;
+}
+
+static int put_next_subbuffer(struct lttng_consumer_stream *stream,
+		struct stream_subbuffer *subbuffer)
+{
+	const int ret = ustctl_put_next_subbuf(stream->ustream);
+
+	assert(ret == 0);
+	return ret;
+}
+
+static int signal_metadata(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
+}
+
+static void lttng_ustconsumer_set_stream_ops(
+		struct lttng_consumer_stream *stream)
+{
+	stream->read_subbuffer_ops.on_wake_up = consumer_stream_ust_on_wake_up;
+	if (stream->metadata_flag) {
+		stream->read_subbuffer_ops.get_next_subbuffer =
+				get_next_subbuffer_metadata;
+		stream->read_subbuffer_ops.extract_subbuffer_info =
+				extract_metadata_subbuffer_info;
+		stream->read_subbuffer_ops.reset_metadata =
+				metadata_stream_reset_cache;
+		stream->read_subbuffer_ops.on_sleep = signal_metadata;
+	} else {
+		stream->read_subbuffer_ops.get_next_subbuffer =
+				get_next_subbuffer;
+		stream->read_subbuffer_ops.extract_subbuffer_info =
+				extract_data_subbuffer_info;
+		stream->read_subbuffer_ops.on_sleep = notify_if_more_data;
+		if (stream->chan->is_live) {
+			stream->read_subbuffer_ops.send_live_beacon =
+					consumer_flush_ust_index;
+		}
+	}
+
+	stream->read_subbuffer_ops.put_next_subbuffer = put_next_subbuffer;
 }
 
 /*
@@ -3000,6 +2900,8 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream)
 			goto error;
 		}
 	}
+
+	lttng_ustconsumer_set_stream_ops(stream);
 	ret = 0;
 
 error:
