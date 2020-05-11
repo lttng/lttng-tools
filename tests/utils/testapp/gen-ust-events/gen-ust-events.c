@@ -48,8 +48,10 @@ int main(int argc, char **argv)
 	int option;
 	long values[] = { 1, 2, 3 };
 	char text[10] = "test";
+	char escape[10] = "\\*";
 	double dbl = 2.0;
 	float flt = 2222.0;
+	uint32_t net_values[] = { 1, 2, 3 };
 	int nr_iter = 100, ret = 0, first_event_file_created = 0;
 	useconds_t nr_usec = 0;
 	char *after_first_event_file_path = NULL;
@@ -63,6 +65,10 @@ int main(int argc, char **argv)
 	char *before_exit_file_path_touch = NULL;
 	/* Wait on file before exiting */
 	char *before_exit_file_path = NULL;
+
+	for (i = 0; i < 3; i++) {
+		net_values[i] = htonl(net_values[i]);
+	}
 
 	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:",
 			long_options, &option_index)) != -1) {
@@ -141,7 +147,7 @@ int main(int argc, char **argv)
 		}
 		netint = htonl(i);
 		tracepoint(tp, tptest, i, netint, values, text,
-			strlen(text), dbl, flt);
+			strlen(text), escape, net_values, dbl, flt);
 
 		/*
 		 * First loop we create the file if asked to indicate
