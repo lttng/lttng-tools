@@ -75,5 +75,8 @@ extern enum lttng_clear_handle_status
 	lttng_clear_handle_get_result(
 		const struct lttng_clear_handle *handle,
 		enum lttng_error_code *result);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTTNG_CLEAR_HANDLE_H */
