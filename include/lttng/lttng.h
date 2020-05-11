@@ -16,29 +16,29 @@
 #include <lttng/lttng-error.h>
 
 /* Include every LTTng ABI/API available. */
+#include <lttng/action/action.h>
+#include <lttng/action/notify.h>
 #include <lttng/channel.h>
+#include <lttng/condition/buffer-usage.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/evaluation.h>
+#include <lttng/condition/session-consumed-size.h>
+#include <lttng/condition/session-rotation.h>
+#include <lttng/destruction-handle.h>
 #include <lttng/domain.h>
+#include <lttng/endpoint.h>
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
-#include <lttng/save.h>
-#include <lttng/session.h>
-#include <lttng/snapshot.h>
-#include <lttng/endpoint.h>
-#include <lttng/session-descriptor.h>
-#include <lttng/destruction-handle.h>
-#include <lttng/action/action.h>
-#include <lttng/action/notify.h>
-#include <lttng/condition/condition.h>
-#include <lttng/condition/buffer-usage.h>
-#include <lttng/condition/session-consumed-size.h>
-#include <lttng/condition/session-rotation.h>
-#include <lttng/condition/evaluation.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
-#include <lttng/trigger/trigger.h>
 #include <lttng/rotation.h>
+#include <lttng/save.h>
+#include <lttng/session-descriptor.h>
+#include <lttng/session.h>
+#include <lttng/snapshot.h>
 #include <lttng/tracker.h>
+#include <lttng/trigger/trigger.h>
 
 #ifdef __cplusplus
 extern "C" {
