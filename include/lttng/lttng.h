@@ -32,6 +32,8 @@
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
+#include <lttng/load.h>
+#include <lttng/location.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/rotation.h>
@@ -41,6 +43,7 @@
 #include <lttng/snapshot.h>
 #include <lttng/tracker.h>
 #include <lttng/trigger/trigger.h>
+#include <lttng/userspace-probe.h>
 
 #ifdef __cplusplus
 extern "C" {
