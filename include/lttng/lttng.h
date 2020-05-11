@@ -19,6 +19,8 @@
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
 #include <lttng/channel.h>
+#include <lttng/clear-handle.h>
+#include <lttng/clear.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
