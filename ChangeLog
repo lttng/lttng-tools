@@ -1,3 +1,11 @@
+2020-05-12 lttng-tools 2.12.1 (International Nurses' Day)
+	* API: missing includes in lttng.h
+	* API: missing clear and clear-handle includes in lttng.h
+	* API: sort lttng.h includes
+	* Fix: API: missing end brace for C++ linkage specification.
+	* Fix: tests: `-Wstringop-overflow` warning
+	* Fix: load: incomplete error handling for load_session_from_file
+
 2020-04-07 lttng-tools 2.12.0 (National Beer Day)
 	* lttng-crash(1): document the command's positional argument
 	* lttng-sessiond(8): append missing argument to short options
