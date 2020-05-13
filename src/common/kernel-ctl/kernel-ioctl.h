@@ -178,4 +178,7 @@
 #define LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD	\
 	_IO(0xF6, 0xB1)
 
+/* Trigger file descriptor ioctl */
+#define LTTNG_KERNEL_CAPTURE			_IO(0xF6, 0xB8)
+
 #endif /* _LTT_KERNEL_IOCTL_H */

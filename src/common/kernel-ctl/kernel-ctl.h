@@ -38,6 +38,7 @@ int kernctl_create_event_notifier(int fd,
 /* Apply on event file descriptor. */
 int kernctl_filter(int fd, const struct lttng_bytecode *filter);
 int kernctl_add_callsite(int fd, struct lttng_kernel_event_callsite *callsite);
+int kernctl_capture(int fd, const struct lttng_bytecode *capture);
 
 int kernctl_tracepoint_list(int fd);
 int kernctl_syscall_list(int fd);

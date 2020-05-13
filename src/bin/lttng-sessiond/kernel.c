@@ -2299,8 +2299,10 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	enum lttng_event_rule_type event_rule_type;
 	struct ltt_kernel_event_notifier_rule *event_notifier_rule;
 	struct lttng_kernel_event_notifier kernel_event_notifier = {};
+	unsigned int capture_bytecode_count = 0, i;
 	const struct lttng_condition *condition = NULL;
 	const struct lttng_event_rule *event_rule = NULL;
+	enum lttng_condition_status cond_status;
 
 	assert(trigger);
 
@@ -2390,6 +2392,31 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		if (ret) {
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
 			goto add_callsite_error;
+		}
+	}
+
+	/* Set the capture bytecode, if any. */
+	cond_status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &capture_bytecode_count);
+	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
+
+	for (i = 0; i < capture_bytecode_count; i++) {
+		const struct lttng_bytecode *capture_bytecode =
+				lttng_condition_event_rule_get_capture_bytecode_at_index(
+						condition, i);
+
+		if (capture_bytecode == NULL) {
+			ERR("Unexpected NULL capture bytecode on condition");
+			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
+			goto error;
+		}
+
+		ret = kernctl_capture(event_notifier_rule->fd, capture_bytecode);
+		if (ret < 0) {
+			ERR("Failed to set capture bytecode on event notifier rule fd: fd = %d",
+					event_notifier_rule->fd);
+			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
+			goto error;
 		}
 	}
 

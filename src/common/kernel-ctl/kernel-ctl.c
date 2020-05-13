@@ -437,6 +437,28 @@ int kernctl_create_event_notifier(int group_fd,
 			LTTNG_KERNEL_EVENT_NOTIFIER_CREATE, event_notifier);
 }
 
+int kernctl_capture(int fd, const struct lttng_bytecode *capture)
+{
+	int ret;
+	struct lttng_kernel_capture_bytecode *kb;
+
+	/* Translate bytecode to kernel bytecode. */
+	kb = zmalloc(sizeof(*kb) + capture->len);
+	if (!kb) {
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	kb->len = capture->len;
+	kb->reloc_offset = capture->reloc_table_offset;
+	kb->seqnum = capture->seqnum;
+	memcpy(kb->data, capture->data, capture->len);
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_CAPTURE, kb);
+	free(kb);
+end:
+	return ret;
+}
+
 int kernctl_filter(int fd, const struct lttng_bytecode *filter)
 {
 	struct lttng_kernel_filter_bytecode *kb;

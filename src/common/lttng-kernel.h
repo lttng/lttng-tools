@@ -184,10 +184,19 @@ struct lttng_kernel_event_notifier {
 	char padding[LTTNG_KERNEL_EVENT_NOTIFIER_PADDING];
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING 34
+#define LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING 32
 struct lttng_kernel_event_notifier_notification {
 	uint64_t token;
+	uint16_t capture_buf_size;
 	char padding[LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_CAPTURE_BYTECODE_MAX_LEN		65536
+struct lttng_kernel_capture_bytecode {
+	uint32_t len;
+	uint32_t reloc_offset;
+	uint64_t seqnum;
+	char data[0];
 } LTTNG_PACKED;
 
 struct lttng_kernel_tracer_version {
