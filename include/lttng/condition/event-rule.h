@@ -123,6 +123,9 @@ lttng_evaluation_event_rule_get_captured_values(
  *       * `LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD`
  *       * `LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD`
  *       * `LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT`
+ *
+ * `LTTNG_CONDITION_STATUS_UNSUPPORTED`:
+ *     * The associated event-rule does not support runtime capture.
  */
 extern enum lttng_condition_status
 lttng_condition_event_rule_append_capture_descriptor(

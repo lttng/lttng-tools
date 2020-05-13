@@ -751,11 +751,35 @@ lttng_condition_event_rule_append_capture_descriptor(
 			container_of(condition,
 				struct lttng_condition_event_rule, parent);
 	struct lttng_capture_descriptor *descriptor = NULL;
+	const struct lttng_event_rule *rule = NULL;
 
 	/* Only accept l-values. */
 	if (!condition || !IS_EVENT_RULE_CONDITION(condition) || !expr ||
 			!lttng_event_expr_is_lvalue(expr)) {
 		status = LTTNG_CONDITION_STATUS_INVALID;
+		goto end;
+	}
+
+	status = lttng_condition_event_rule_get_rule(condition, &rule);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto end;
+	}
+
+	switch(lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+		/* Supported. */
+		status = LTTNG_CONDITION_STATUS_OK;
+		break;
+	case LTTNG_EVENT_RULE_TYPE_UNKNOWN:
+		status = LTTNG_CONDITION_STATUS_INVALID;
+		break;
+	default:
+		status = LTTNG_CONDITION_STATUS_UNSUPPORTED;
+		break;
+	}
+
+	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto end;
 	}
 
