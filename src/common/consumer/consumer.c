@@ -1583,7 +1583,6 @@ end:
  * Returns the number of bytes written
  */
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
-		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream,
 		const struct lttng_buffer_view *buffer,
 		unsigned long padding)
