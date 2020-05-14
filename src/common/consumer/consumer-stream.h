@@ -121,4 +121,13 @@ int consumer_stream_rotate_output_files(struct lttng_consumer_stream *stream);
  */
 bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream);
 
+/*
+ * Enable metadata bucketization. This must only be enabled if the tracer
+ * provides a reliable metadata `coherent` flag.
+ *
+ * This must be called on initialization before any subbuffer is consumed.
+ */
+int consumer_stream_enable_metadata_bucketization(
+		struct lttng_consumer_stream *stream);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */
