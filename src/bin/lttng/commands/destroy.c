@@ -97,10 +97,13 @@ static int destroy_session(struct lttng_session *session)
 			 * availability.
 			 */
 			if (ret) {
-				_MSG("Destroying session %s", session->name);
-				newline_needed = true;
-				printed_destroy_msg = true;
-				fflush(stdout);
+				if (!printed_destroy_msg) {
+					_MSG("Destroying session %s",
+							session->name);
+					newline_needed = true;
+					printed_destroy_msg = true;
+					fflush(stdout);
+				}
 
 				usleep(DEFAULT_DATA_AVAILABILITY_WAIT_TIME_US);
 				_MSG(".");
