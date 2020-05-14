@@ -139,10 +139,19 @@ function conf_proc_count()
 # Bail out on failure
 function validate_lttng_modules_present ()
 {
+	# Check for loadable modules.
 	modprobe -n lttng-tracer 2>/dev/null
-	if [ $? -ne 0  ]; then
-		BAIL_OUT "LTTng modules not detected."
+	if [ $? -eq 0 ]; then
+		return 0
 	fi
+
+	# Check for builtin modules.
+	ls /proc/lttng > /dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		return 0
+	fi
+
+	BAIL_OUT "LTTng modules not detected."
 }
 
 function enable_kernel_lttng_event
