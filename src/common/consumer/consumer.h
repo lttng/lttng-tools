@@ -265,6 +265,14 @@ struct stream_subbuffer {
 			unsigned long subbuf_size;
 			unsigned long padded_subbuf_size;
 			uint64_t version;
+			/*
+			 * Left unset when unsupported.
+			 *
+			 * Indicates that this is the last sub-buffer of
+			 * a series of sub-buffer that makes-up a coherent
+			 * (parseable) unit of metadata.
+			 */
+			LTTNG_OPTIONAL(bool) coherent;
 		} metadata;
 		struct {
 			unsigned long subbuf_size;
@@ -623,6 +631,7 @@ struct lttng_consumer_stream {
 		on_sleep_cb on_sleep;
 		unlock_cb unlock;
 	} read_subbuffer_ops;
+	struct metadata_bucket *metadata_bucket;
 };
 
 /*
@@ -954,7 +963,6 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 		int (*update_stream)(uint64_t sessiond_key, uint32_t state));
 void lttng_consumer_destroy(struct lttng_consumer_local_data *ctx);
 ssize_t lttng_consumer_on_read_subbuffer_mmap(
-		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *stream,
 		const struct lttng_buffer_view *buffer,
 		unsigned long padding);
