@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <common/macros.h>
 
+struct lttng_buffer_view;
+
 struct lttng_dynamic_buffer {
 	char *data;
 	/* size is the buffer's currently used capacity. */
@@ -57,6 +59,15 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
 LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 		struct lttng_dynamic_buffer *src_buffer);
+
+/*
+ * Performs the same action as lttng_dynamic_buffer_append(), but using a
+ * buffer view as the source buffer. The source buffer's size is used in lieu
+ * of "len".
+ */
+LTTNG_HIDDEN
+int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
+		const struct lttng_buffer_view *view);
 
 /*
  * Set the buffer's size to new_size. The capacity of the buffer will

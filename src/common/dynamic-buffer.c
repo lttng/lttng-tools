@@ -16,6 +16,7 @@
  */
 
 #include <common/dynamic-buffer.h>
+#include <common/buffer-view.h>
 #include <common/utils.h>
 #include <assert.h>
 
@@ -89,6 +90,23 @@ int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
 
 	ret = lttng_dynamic_buffer_append(dst_buffer, src_buffer->data,
 			src_buffer->size);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_dynamic_buffer_append_view(struct lttng_dynamic_buffer *buffer,
+		const struct lttng_buffer_view *src)
+{
+	int ret;
+
+	if (!buffer || !src) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(buffer, src->data,
+			src->size);
 end:
 	return ret;
 }
