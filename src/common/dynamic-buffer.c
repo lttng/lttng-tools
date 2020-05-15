@@ -68,7 +68,7 @@ end:
 
 LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
-		struct lttng_dynamic_buffer *src_buffer)
+		const struct lttng_dynamic_buffer *src_buffer)
 {
 	int ret;
 

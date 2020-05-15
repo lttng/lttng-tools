@@ -46,7 +46,7 @@ int lttng_dynamic_buffer_append(struct lttng_dynamic_buffer *buffer,
  */
 LTTNG_HIDDEN
 int lttng_dynamic_buffer_append_buffer(struct lttng_dynamic_buffer *dst_buffer,
-		struct lttng_dynamic_buffer *src_buffer);
+		const struct lttng_dynamic_buffer *src_buffer);
 
 /*
  * Set the buffer's size to new_size. The capacity of the buffer will
