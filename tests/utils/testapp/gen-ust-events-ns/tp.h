@@ -11,6 +11,7 @@
 #if !defined(_TRACEPOINT_TP_H) || defined(TRACEPOINT_HEADER_MULTI_READ)
 #define _TRACEPOINT_TP_H
 
+#include <sys/types.h>
 #include <lttng/tracepoint.h>
 
 TRACEPOINT_EVENT(tp, tptest,
