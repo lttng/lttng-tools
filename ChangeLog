@@ -1,3 +1,8 @@
+2020-05-19 lttng-tools 2.11.4 (Dinosaur Day)
+	* Fix: common: abort on rotation after time manipulation
+	* Fix: tests: `-Wstringop-overflow` warning
+	* Fix: load: incomplete error handling for load_session_from_file
+
 2020-04-16 lttng-tools 2.11.3 (National Eggs Benedict Day)
 	* Fix: lttng-destroy: missing newline on session destruction message
 	* Fix: common: add `void` parameter to log_add_time declaration
