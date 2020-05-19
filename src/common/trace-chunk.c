@@ -97,8 +97,14 @@ struct lttng_trace_chunk {
 	char *path;
 	/* An unset id means the chunk is anonymous. */
 	LTTNG_OPTIONAL(uint64_t) id;
+
+	/*
+	 * The creation and close timestamps are NOT monotonic.
+	 * They must not be used in context were monotonicity is required.
+	 */
 	LTTNG_OPTIONAL(time_t) timestamp_creation;
 	LTTNG_OPTIONAL(time_t) timestamp_close;
+
 	LTTNG_OPTIONAL(struct chunk_credentials) credentials;
 	struct lttng_directory_handle *session_output_directory;
 	struct lttng_directory_handle *chunk_directory;
@@ -599,11 +605,20 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_timestamp(
 		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_OPERATION;
 		goto end;
 	}
+
+	/*
+	 * Note: we do not enforce that the closing timestamp be greater or
+	 * equal to the begin timestamp. These timestamps are used for
+	 * generating the chunk name and should only be used in context where
+	 * the monotonicity of time is not important. The source of those
+	 * timestamps is NOT monotonic and represent the system calendar time,
+	 * also know as the wall time.
+	 */
 	if (chunk->timestamp_creation.value > close_ts) {
-		ERR("Failed to set trace chunk close timestamp: close timestamp is before creation timestamp");
-		status = LTTNG_TRACE_CHUNK_STATUS_INVALID_ARGUMENT;
-		goto end;
+		WARN("Set trace chunk close timestamp: close timestamp is before creation timestamp, begin : %ld, close : %ld",
+				chunk->timestamp_creation.value, close_ts);
 	}
+
 	LTTNG_OPTIONAL_SET(&chunk->timestamp_close, close_ts);
 	if (!chunk->name_overridden) {
 		free(chunk->name);
