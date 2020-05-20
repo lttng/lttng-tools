@@ -574,6 +574,7 @@ int lttng_track_pid(struct lttng_handle *handle, int pid)
 							(pid_t) pid);
 	ret_code = handle_status_to_error_code(handle_status);
 end:
+	lttng_process_attr_tracker_handle_destroy(tracker_handle);
 	return ret_code == LTTNG_OK ? 0 : -ret_code;
 }
 
@@ -637,6 +638,7 @@ int lttng_untrack_pid(struct lttng_handle *handle, int pid)
 		ret_code = LTTNG_ERR_PID_NOT_TRACKED;
 	}
 end:
+	lttng_process_attr_tracker_handle_destroy(tracker_handle);
 	return ret_code == LTTNG_OK ? 0 : -ret_code;
 }
 
