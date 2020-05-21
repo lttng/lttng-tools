@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 40
+plan_tests 44
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -110,6 +110,11 @@ test_on_event_tracepoint ()
 	add_trigger --condition on-event 'hello*' -u -x 'hello2,hello3,hello4' --action notify
 	add_trigger --id BCD --condition on-event -u gerboise --loglevel INFO --action notify
 	add_trigger --condition on-event -u lemming --loglevel-only WARNING --action notify
+	add_trigger --condition on-event -u capture-payload-field --capture a --action notify
+	add_trigger --condition on-event -u capture-array --capture 'a[2]' --capture '$ctx.tourlou[18]' --action notify
+	add_trigger --condition on-event -u capture-chan-ctx --capture '$ctx.vpid' --action notify
+	add_trigger --condition on-event -u capture-app-ctx --capture '$app.iga:active_clients' --action notify
+
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- id: ABC
@@ -140,6 +145,39 @@ test_on_event_tracepoint ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: lemming (type: tracepoint, domain: ust, log level == TRACE_WARNING)
+	  actions:
+	    notify
+	- id: T3
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: capture-payload-field (type: tracepoint, domain: ust)
+	    captures:
+	      - a
+	  actions:
+	    notify
+	- id: T4
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: capture-array (type: tracepoint, domain: ust)
+	    captures:
+	      - a[2]
+	      - \$ctx.tourlou[18]
+	  actions:
+	    notify
+	- id: T5
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: capture-chan-ctx (type: tracepoint, domain: ust)
+	    captures:
+	      - \$ctx.vpid
+	  actions:
+	    notify
+	- id: T6
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: capture-app-ctx (type: tracepoint, domain: ust)
+	    captures:
+	      - \$app.iga:active_clients
 	  actions:
 	    notify
 	EOF

@@ -295,16 +295,103 @@ void print_event_rule(const struct lttng_event_rule *event_rule)
 }
 
 static
+void print_one_event_expr(const struct lttng_event_expr *event_expr)
+{
+	enum lttng_event_expr_type type;
+
+	type = lttng_event_expr_get_type(event_expr);
+
+	switch (type) {
+	case LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD:
+	{
+		const char *name;
+
+		name = lttng_event_expr_event_payload_field_get_name(
+				event_expr);
+		_MSG("%s", name);
+
+		break;
+	}
+	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
+	{
+		const char *name;
+
+		name = lttng_event_expr_channel_context_field_get_name(
+				event_expr);
+		_MSG("$ctx.%s", name);
+
+		break;
+	}
+	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
+	{
+		const char *provider_name;
+		const char *type_name;
+
+		provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
+				event_expr);
+		type_name = lttng_event_expr_app_specific_context_field_get_type_name(
+				event_expr);
+
+		_MSG("$app.%s:%s", provider_name, type_name);
+
+		break;
+	}
+	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
+	{
+		unsigned int index;
+		const struct lttng_event_expr *parent_expr;
+		enum lttng_event_expr_status status;
+
+		parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
+				event_expr);
+		assert(parent_expr != NULL);
+
+		print_one_event_expr(parent_expr);
+
+		status = lttng_event_expr_array_field_element_get_index(
+				event_expr, &index);
+		assert(status == LTTNG_EVENT_EXPR_STATUS_OK);
+
+		_MSG("[%u]", index);
+
+		break;
+	}
+	default:
+		abort();
+	}
+}
+
+static
 void print_condition_event_rule_hit(const struct lttng_condition *condition)
 {
 	const struct lttng_event_rule *event_rule;
 	enum lttng_condition_status condition_status;
+	unsigned int cap_desc_count, i;
 
 	condition_status =
 		lttng_condition_event_rule_get_rule(condition, &event_rule);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	print_event_rule(event_rule);
+
+	condition_status =
+			lttng_condition_event_rule_get_capture_descriptor_count(
+					condition, &cap_desc_count);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	if (cap_desc_count > 0) {
+		MSG("    captures:");
+
+		for (i = 0; i < cap_desc_count; i++) {
+			const struct lttng_event_expr *cap_desc =
+					lttng_condition_event_rule_get_capture_descriptor_at_index(
+							condition, i);
+
+			_MSG("      - ");
+			print_one_event_expr(cap_desc);
+			MSG("");
+		}
+	}
 }
 
 static
