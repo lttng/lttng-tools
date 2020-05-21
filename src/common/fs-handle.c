@@ -70,7 +70,7 @@ end:
 LTTNG_HIDDEN
 int fs_handle_truncate(struct fs_handle *handle, off_t offset)
 {
-        int ret;
+	int ret;
 	const int fd = fs_handle_get_fd(handle);
 
 	if (fd < 0) {
@@ -85,9 +85,9 @@ end:
 }
 
 LTTNG_HIDDEN
-int fs_handle_seek(struct fs_handle *handle, off_t offset, int whence)
+off_t fs_handle_seek(struct fs_handle *handle, off_t offset, int whence)
 {
-        int ret;
+	off_t ret;
 	const int fd = fs_handle_get_fd(handle);
 
 	if (fd < 0) {

@@ -69,6 +69,6 @@ LTTNG_HIDDEN
 int fs_handle_truncate(struct fs_handle *handle, off_t offset);
 
 LTTNG_HIDDEN
-int fs_handle_seek(struct fs_handle *handle, off_t offset, int whence);
+off_t fs_handle_seek(struct fs_handle *handle, off_t offset, int whence);
 
 #endif /* FS_HANDLE_H */
