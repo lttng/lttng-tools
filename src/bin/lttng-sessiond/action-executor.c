@@ -548,7 +548,7 @@ static void *action_executor_thread(void *_data)
 			continue;
 		}
 
-		/* Pop item from front of the listwith work lock held. */
+		/* Pop item from front of the list with work lock held. */
 		work_item = cds_list_first_entry(&executor->work.list,
 				struct action_work_item, list_node);
 		cds_list_del(&work_item->list_node);
@@ -670,8 +670,7 @@ enum action_executor_status action_executor_enqueue(
 	if (executor->work.pending_count >= MAX_QUEUED_WORK_COUNT) {
 		/* Most likely spammy, remove if it is the case. */
 		DBG("Refusing to enqueue action for trigger `%p` as work item %" PRIu64
-		    " (overflow)",
-				trigger, work_item_id);
+			" (overflow)", trigger, work_item_id);
 		executor_status = ACTION_EXECUTOR_STATUS_OVERFLOW;
 		goto error_unlock;
 	}
