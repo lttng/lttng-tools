@@ -67,7 +67,7 @@ function test_relayd_daemon()
 
 	start_lttng_relayd_opt 1 "-d" "--working-directory $working_dir"
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -88,7 +88,7 @@ function test_relayd_daemon_no_working_dir()
 
 	start_lttng_relayd_opt 1 "-d" ""
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -111,7 +111,7 @@ function test_relayd_background()
 
 	start_lttng_relayd_opt 1 "-b" "--working-directory $working_dir"
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -132,7 +132,7 @@ function test_relayd_background_no_working_dir()
 
 	start_lttng_relayd_opt 1 "-b" ""
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/${pid}/cwd")
@@ -172,7 +172,7 @@ function test_relayd_debug_permission()
 		ERROR_OUTPUT_DEST=$(mktemp)
 		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
 
-		pid=$(pgrep "$RELAYD_MATCH")
+		pid=$(lttng_pgrep "$RELAYD_MATCH")
 		ok $? "Found lttng-relayd"
 
 		cwd=$(readlink "/proc/${pid}/cwd")
@@ -208,7 +208,7 @@ function test_relayd_failure()
 	test $? -eq "1"
 	ok $? "Expect failure to start lttng-relayd for non-existent working directory"
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	if [ -z "$pid" ]; then
 		pass "No lttng-relayd present"
 	else
@@ -237,7 +237,7 @@ function test_relayd_env()
 	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir}
 	start_lttng_relayd_opt 1 "-b" ""
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
@@ -264,7 +264,7 @@ function test_relayd_cmdline_overwrite_env()
 	export LTTNG_RELAYD_WORKING_DIRECTORY=${working_dir_env}
 	start_lttng_relayd_opt 1 "-b" "--working-dir ${working_dir_cmdline}"
 
-	pid=$(pgrep "$RELAYD_MATCH")
+	pid=$(lttng_pgrep "$RELAYD_MATCH")
 	ok $? "Found lttng-relayd"
 
 	cwd=$(readlink "/proc/$pid/cwd")
