@@ -24,8 +24,8 @@ EVENT_NAME="bogus"
 ENABLE_EVENT_STDERR="/tmp/invalid-filters-stderr"
 TRACE_PATH=$(mktemp -d)
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=135
-NUM_KERNEL_TESTS=135
+NUM_UST_TESTS=138
+NUM_KERNEL_TESTS=138
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -149,6 +149,8 @@ INVALID_FILTERS=(
 		'field > "hello*world"'
 		'field && "hello*world"'
 		'field || "hello*world"'
+		# Array expression must contain constant index
+		'field[abc] == 1'
 )
 IFS="$OLDIFS"
 
