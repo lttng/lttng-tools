@@ -254,6 +254,11 @@ struct ir_load_expression *create_load_expression(struct filter_node *node)
 				bracket_node != NULL;
 				bracket_node = bracket_node->u.expression.next_bracket) {
 			prev_op = load_exp_op;
+			if (bracket_node->type != NODE_EXPRESSION ||
+				bracket_node->u.expression.type != AST_EXP_CONSTANT) {
+					fprintf(stderr, "[error] Expecting constant index in array expression\n");
+					goto error;
+				}
 			load_exp_op = calloc(sizeof(struct ir_load_expression_op), 1);
 			if (!load_exp_op)
 				goto error;
