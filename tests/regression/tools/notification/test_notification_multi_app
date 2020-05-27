@@ -286,7 +286,6 @@ function test_multi_app ()
 		print_errors $output_dir "${high_output_file_pattern}"
 	fi
 
-	rm -rf $output_dir
 
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -294,6 +293,8 @@ function test_multi_app ()
 	for pipe in "${consumerd_pipe[@]}"; do
 		rm -rf "${pipe}"
 	done
+
+	rm -rf $output_dir
 }
 
 function test_multi_app_ust ()
@@ -442,7 +443,6 @@ function test_on_register_evaluation ()
 		print_errors "${high_output_file_pattern}"
 	fi
 
-	rm -rf $output_dir
 
 	destroy_lttng_session_ok $SESSION_NAME
 	stop_lttng_sessiond
@@ -454,6 +454,7 @@ function test_on_register_evaluation ()
 		rm -rf "${pipe}"
 	done
 
+	rm -rf "$output_dir"
 }
 
 
