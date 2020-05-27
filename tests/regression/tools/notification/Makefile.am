@@ -10,8 +10,20 @@ noinst_PROGRAMS = base_client notification rotation
 if NO_SHARED
 
 CLEANFILES = libpause_consumer.so libpause_consumer.so.debug
-EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_ust_event_rule_condition_exclusion test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_kernel_instrumentation test_notification_kernel_syscall test_notification_kernel_userspace_probe test_notification_multi_app base_client.c notification.c consumer_testpoints.c util_event_generator.sh
-
+EXTRA_DIST = \
+	     base_client.c \
+	     consumer_testpoints.c \
+	     notification.c \
+	     test_notification_kernel_buffer_usage \
+	     test_notification_kernel_error \
+	     test_notification_kernel_instrumentation \
+	     test_notification_kernel_syscall \
+	     test_notification_kernel_userspace_probe \
+	     test_notification_multi_app \
+	     test_notification_ust_buffer_usage \
+	     test_notification_ust_error \
+	     test_notification_ust_event_rule_condition_exclusion \
+	     util_event_generator.sh
 else
 
 # In order to test the health check feature, the helper library
@@ -37,8 +49,31 @@ notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 rotation_SOURCES = rotation.c
 rotation_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
-noinst_SCRIPTS = test_notification_ust_error test_notification_ust_buffer_usage test_notification_ust_event_rule_condition_exclusion test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_kernel_instrumentation test_notification_kernel_syscall test_notification_kernel_userspace_probe test_notification_multi_app test_rotation util_event_generator.sh
-EXTRA_DIST = test_notification_ust_error test_notification_ust_buffer_usage test_notification_ust_event_rule_condition_exclusion test_notification_kernel_error test_notification_kernel_buffer_usage test_notification_kernel_instrumentation test_notification_kernel_syscall test_notification_kernel_userspace_probe test_notification_multi_app test_rotation util_event_generator.sh
+noinst_SCRIPTS = \
+	test_notification_kernel_buffer_usage \
+	test_notification_kernel_error \
+	test_notification_kernel_instrumentation \
+	test_notification_kernel_syscall \
+	test_notification_kernel_userspace_probe \
+	test_notification_multi_app \
+	test_notification_ust_buffer_usage \
+	test_notification_ust_error \
+	test_notification_ust_event_rule_condition_exclusion \
+	test_rotation \
+	util_event_generator.sh
+
+EXTRA_DIST = \
+	test_notification_kernel_buffer_usage \
+	test_notification_kernel_error \
+	test_notification_kernel_instrumentation \
+	test_notification_kernel_syscall \
+	test_notification_kernel_userspace_probe \
+	test_notification_multi_app \
+	test_notification_ust_buffer_usage \
+	test_notification_ust_error \
+	test_notification_ust_event_rule_condition_exclusion \
+	test_rotation \
+	util_event_generator.sh
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
