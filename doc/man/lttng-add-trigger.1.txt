@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 =====================
-:revdate: 17 January 2020
+:revdate: 27 May 2020
 
 
 NAME
@@ -56,6 +56,11 @@ Event rule: `on-event [event rule arguments]`::
     - It is not possible to use filter operands that use values from
       the context.
 
++
+Fields to capture can be specified with the option:--capture option, followed by
+a capture expression. Zero or more captures can be configured. See the
+<<capture-expr, Capture expression>> section below for more information.
+
 [[actions]]
 Actions
 ~~~~~~~
@@ -95,6 +100,74 @@ Snapshot session: *snapshot-session* session-name::
     information about the session snapshot concept.  If no session with
     the given name exist at the time the condition is met, nothing is
     done.
+
+
+[[capture-expr]]
+Capture expression
+~~~~~~~~~~~~~~~~~~
+
+A capture expression can be specified with the option:--capture option when
+creating a new on-event condition. If the capture expression corresponds with an
+event's field when tracing, the runtime dynamic value corresponding to the
+capture expression is captured.
+
+NOTE: Make sure to **single-quote** the capture expression when running
+the command from a shell, as capture expressions typically include
+characters having a special meaning for most shells.
+
+* Supported field types:
+ - integer,
+ - unsigned integer,
+ - floating point value,
+ - fixed-size array of integers,
+ - variable-size array of integers (sequence),
+ - enumeration,
+ - text string,
+ - element of any allowing previous type.
+
+* The dynamic value of an event field is captured by using its name as a C
+  identifier.
++
+The square bracket notation is available, like in the C
+language, to access array/sequence field.
+Only a constant, positive integer number can be used within square
+brackets. If the index is out of bounds, the capture expression
+evaluates to `unavailable`.
++
+An enumeration field's value is an integer.
++
+When the capture's field does not exist, the capture expression
+evaluates to `unavailable`.
++
+Examples: `my_field`, `target_cpu`, `seq[7]`
+
+* The dynamic value of a statically-known context field is captured by
+  prefixing its name with `$ctx.`. See man:lttng-add-context(1) to get a list of
+  available contexts.
++
+When the expression's statically-known context field does not exist,
+the capture expression evaluates to `unavailable`.
++
+Examples: `$ctx.prio`, `$ctx.preemptible`,
+`$ctx.perf:cpu:stalled-cycles-frontend`.
++
+NOTE: The statically-known context field does NOT need to be added using the
+man:lttng-add-context(1) command. The statically-known context fields are
+always available in the context of triggers.
+
+* The dynamic value of an application-specific context field is captured by
+  prefixing its name with `$app.` (follows the format used to add such a context
+  field with the man:lttng-add-context(1) command).
++
+When the expression's application-specific context field does not exist,
+the capture expression evaluates to `unavailable`.
++
+Example: `$app.server:cur_user`.
++
+NOTE: The application-specific context field does NOT need to be added using the
+man:lttng-add-context(1) command. The application-specific context fields fields
+are always available in the context of triggers.
+
 
 OPTIONS
 -------
