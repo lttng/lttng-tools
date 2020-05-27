@@ -1685,7 +1685,7 @@ ssize_t lttng_consumer_on_read_subbuffer_mmap(
 	 * receive a ret value that is bigger than len.
 	 */
 	ret = lttng_write(outfd, buffer->data, write_len);
-	DBG("Consumer mmap write() ret %zd (len %lu)", ret, write_len);
+	DBG("Consumer mmap write() ret %zd (len %zu)", ret, write_len);
 	if (ret < 0 || ((size_t) ret != write_len)) {
 		/*
 		 * Report error to caller if nothing was written else at least send the
