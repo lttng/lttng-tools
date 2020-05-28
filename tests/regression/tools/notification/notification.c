@@ -418,7 +418,7 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	struct lttng_condition *dummy_condition = NULL;
 
 	double low_ratio = 0.0;
-	double high_ratio = 0.99;
+	double high_ratio = 0.90;
 
 	/* Set-up */
 	action = lttng_action_notify_create();
