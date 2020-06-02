@@ -125,19 +125,6 @@ struct lttng_condition_list_element {
 	struct cds_list_head node;
 };
 
-/*
- * Facilities to carry the different notifications type in the action processing
- * code path.
- */
-struct lttng_event_notifier_notification {
-	union {
-		struct lttng_ust_event_notifier_notification *ust;
-		struct lttng_kernel_event_notifier_notification *kernel;
-	} notification;
-	uint64_t token;
-	enum lttng_domain_type type;
-};
-
 struct channel_state_sample {
 	struct channel_key key;
 	struct cds_lfht_node channel_state_ht_node;
@@ -4174,37 +4161,27 @@ end:
 	return ret;
 }
 
-int handle_notification_thread_event_notification(struct notification_thread_state *state,
-		int notification_pipe_read_fd,
-		enum lttng_domain_type domain)
+static struct lttng_event_notifier_notification *receive_notification(
+		int notification_pipe_read_fd, enum lttng_domain_type domain)
 {
 	int ret;
-	struct lttng_ust_event_notifier_notification ust_notification;
-	struct lttng_kernel_event_notifier_notification kernel_notification;
-	struct lttng_evaluation *evaluation = NULL;
-	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
-	struct notification_trigger_tokens_ht_element *element;
-	enum lttng_trigger_status status;
-	struct lttng_event_notifier_notification notification;
+	uint64_t token;
+	struct lttng_event_notifier_notification *notification = NULL;
 	void *reception_buffer;
 	size_t reception_size;
-	enum action_executor_status executor_status;
-	struct notification_client_list *client_list = NULL;
-	const char *trigger_name;
 
-	notification.type = domain;
+	struct lttng_ust_event_notifier_notification ust_notification;
+	struct lttng_kernel_event_notifier_notification kernel_notification;
 
+	/* Init lttng_event_notifier_notification */
 	switch(domain) {
 	case LTTNG_DOMAIN_UST:
 		reception_buffer = (void *) &ust_notification;
 		reception_size = sizeof(ust_notification);
-		notification.notification.ust = &ust_notification;
 		break;
 	case LTTNG_DOMAIN_KERNEL:
 		reception_buffer = (void *) &kernel_notification;
 		reception_size = sizeof(kernel_notification);
-		notification.notification.kernel = &kernel_notification;
 		break;
 	default:
 		abort();
@@ -4225,20 +4202,49 @@ int handle_notification_thread_event_notification(struct notification_thread_sta
 
 	switch(domain) {
 	case LTTNG_DOMAIN_UST:
-		notification.token = ust_notification.token;
+		token = ust_notification.token;
 		break;
 	case LTTNG_DOMAIN_KERNEL:
-		notification.token = kernel_notification.token;
+		token = kernel_notification.token;
 		break;
 	default:
 		abort();
 	}
 
+	notification = lttng_event_notifier_notification_create(
+			token, domain);
+end:
+	return notification;
+}
+
+int handle_notification_thread_event_notification(struct notification_thread_state *state,
+		int pipe,
+		enum lttng_domain_type domain)
+{
+	int ret;
+	enum lttng_trigger_status trigger_status;
+	struct cds_lfht_node *node;
+	struct cds_lfht_iter iter;
+	struct notification_trigger_tokens_ht_element *element;
+	struct lttng_evaluation *evaluation = NULL;
+	struct lttng_event_notifier_notification *notification = NULL;
+	enum action_executor_status executor_status;
+	struct notification_client_list *client_list = NULL;
+	const char *trigger_name;
+
+	notification = receive_notification(pipe, domain);
+	if (notification == NULL) {
+		ERR("[notification-thread] Error receiving notification from tracer (fd = %i, domain = %s)",
+				pipe, lttng_domain_type_str(domain));
+		ret = -1;
+		goto end;
+	}
+
 	/* Find triggers associated with this token. */
 	rcu_read_lock();
 	cds_lfht_lookup(state->trigger_tokens_ht,
-			hash_key_u64(&notification.token, lttng_ht_seed),
-			match_trigger_token, &notification.token, &iter);
+			hash_key_u64(&notification->tracer_token, lttng_ht_seed),
+			match_trigger_token, &notification->tracer_token, &iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (caa_unlikely(!node)) {
 		/*
@@ -4262,11 +4268,13 @@ int handle_notification_thread_event_notification(struct notification_thread_sta
 
 	lttng_trigger_fire(element->trigger);
 
-	status = lttng_trigger_get_name(element->trigger, &trigger_name);
-	assert(status == LTTNG_TRIGGER_STATUS_OK);
-	evaluation = lttng_evaluation_event_rule_create(trigger_name);
+	trigger_status = lttng_trigger_get_name(element->trigger, &trigger_name);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	evaluation = lttng_evaluation_event_rule_create(
+			trigger_name);
 	if (evaluation == NULL) {
-		ERR("Failed to create event rule evaluation while creating and enqueuing action executor job");
+		ERR("[notification-thread] Failed to create event rule hit evaluation while creating and enqueuing action executor job");
 		ret = -1;
 		goto end_unlock;
 	}
@@ -4339,6 +4347,7 @@ next_client:
 	}
 
 end_unlock:
+	lttng_event_notifier_notification_destroy(notification);
 	notification_client_list_put(client_list);
 	rcu_read_unlock();
 end:

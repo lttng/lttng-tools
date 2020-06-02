@@ -381,3 +381,37 @@ int notification_thread_client_communication_update(
 	cmd.parameters.client_communication_update.status = transmission_status;
 	return run_command_no_wait(handle, &cmd);
 }
+
+LTTNG_HIDDEN
+struct lttng_event_notifier_notification *
+lttng_event_notifier_notification_create(uint64_t tracer_token,
+		enum lttng_domain_type domain)
+{
+	struct lttng_event_notifier_notification *notification = NULL;
+
+	assert(domain != LTTNG_DOMAIN_NONE);
+
+	notification = zmalloc(
+			sizeof(struct lttng_event_notifier_notification));
+	if (notification == NULL) {
+		ERR("[notification-thread] Error allocating notification");
+		goto end;
+	}
+
+	notification->tracer_token = tracer_token;
+	notification->type = domain;
+
+end:
+	return notification;
+}
+
+LTTNG_HIDDEN
+void lttng_event_notifier_notification_destroy(
+		struct lttng_event_notifier_notification *notification)
+{
+	if (!notification) {
+		return;
+	}
+
+	free(notification);
+}

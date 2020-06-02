@@ -75,6 +75,15 @@ struct channel_info {
 	struct rcu_head rcu_node;
 };
 
+/*
+ * Facilities to carry the different notifications type in the action
+ * processing code path.
+ */
+struct lttng_event_notifier_notification {
+	uint64_t tracer_token;
+	enum lttng_domain_type type;
+};
+
 struct notification_client_list_element {
 	struct notification_client *client;
 	struct cds_list_head node;
@@ -238,5 +247,14 @@ int notification_thread_client_communication_update(
 		struct notification_thread_handle *handle,
 		notification_client_id id,
 		enum client_transmission_status transmission_status);
+
+LTTNG_HIDDEN
+struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
+		uint64_t tracer_token,
+		enum lttng_domain_type domain);
+
+LTTNG_HIDDEN
+void lttng_event_notifier_notification_destroy(
+		struct lttng_event_notifier_notification *event_notifier_notification);
 
 #endif /* NOTIFICATION_THREAD_INTERNAL_H */
