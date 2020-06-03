@@ -1654,7 +1654,7 @@ int handle_notification_thread_command_add_channel(
 
 	DBG("[notification-thread] Adding channel %s from session %s, channel key = %" PRIu64 " in %s domain",
 			channel_name, session_name, channel_key_int,
-			channel_domain == LTTNG_DOMAIN_KERNEL ? "kernel" : "user space");
+			lttng_domain_type_str(channel_domain));
 
 	CDS_INIT_LIST_HEAD(&trigger_list);
 
@@ -1755,7 +1755,7 @@ int handle_notification_thread_command_remove_channel(
 	struct channel_info *channel_info;
 
 	DBG("[notification-thread] Removing channel key = %" PRIu64 " in %s domain",
-			channel_key, domain == LTTNG_DOMAIN_KERNEL ? "kernel" : "user space");
+			channel_key, lttng_domain_type_str(domain));
 
 	rcu_read_lock();
 
@@ -4398,8 +4398,7 @@ int handle_notification_thread_channel_sample(
 		 */
 		DBG("[notification-thread] Received a sample for an unknown channel from consumerd, key = %" PRIu64 " in %s domain",
 				latest_sample.key.key,
-				domain == LTTNG_DOMAIN_KERNEL ? "kernel" :
-					"user space");
+				lttng_domain_type_str(domain));
 		goto end_unlock;
 	}
 	channel_info = caa_container_of(node, struct channel_info,
