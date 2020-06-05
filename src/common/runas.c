@@ -667,9 +667,9 @@ int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 			/* Return 0 as this is not a fatal error. */
 			return 0;
 		}
-        }
+	}
 
-        len = lttcomm_send_fds_unix_sock(sock, fds, fd_count);
+	len = lttcomm_send_fds_unix_sock(sock, fds, fd_count);
 	return len < 0 ? -1 : 0;
 }
 

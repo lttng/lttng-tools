@@ -2353,8 +2353,8 @@ static void *thread_manage_clients(void *data)
 				if (ret) {
 					PERROR("close");
 				}
-                        }
-                        sock = -1;
+			}
+			sock = -1;
 			/*
 			 * TODO: Inform client somehow of the fatal error. At
 			 * this point, ret < 0 means that a zmalloc failed
@@ -2396,8 +2396,8 @@ static void *thread_manage_clients(void *data)
 			if (ret) {
 				PERROR("close");
 			}
-                }
-                sock = -1;
+		}
+		sock = -1;
 
 		clean_command_ctx(&cmd_ctx);
 
