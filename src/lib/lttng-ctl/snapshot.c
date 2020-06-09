@@ -323,3 +323,126 @@ int lttng_snapshot_output_set_data_url(const char *url,
 	lttng_ctl_copy_string(output->data_url, url, sizeof(output->data_url));
 	return 0;
 }
+
+int lttng_snapshot_output_set_local_path(const char *path,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+	struct lttng_uri *uris = NULL;
+	ssize_t num_uris;
+
+	if (!path || !output) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	num_uris = uri_parse_str_urls(path, NULL, &uris);
+	if (num_uris != 1) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uris[0].dtype != LTTNG_DST_PATH) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = lttng_strncpy(output->ctrl_url, path, sizeof(output->ctrl_url));
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	free(uris);
+	return ret;
+}
+
+int lttng_snapshot_output_set_network_url(const char *url,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+	struct lttng_uri *uris = NULL;
+	ssize_t num_uris;
+
+	if (!url || !output) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	num_uris = uri_parse_str_urls(url, NULL, &uris);
+	if (num_uris != 2) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uris[0].dtype != LTTNG_DST_IPV4 &&
+			uris[0].dtype != LTTNG_DST_IPV6) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uris[1].dtype != LTTNG_DST_IPV4 &&
+			uris[1].dtype != LTTNG_DST_IPV6) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = lttng_strncpy(output->ctrl_url, url, sizeof(output->ctrl_url));
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	free(uris);
+	return ret;
+}
+
+int lttng_snapshot_output_set_network_urls(
+		const char *ctrl_url, const char *data_url,
+		struct lttng_snapshot_output *output)
+{
+	int ret;
+	struct lttng_uri *uris = NULL;
+	ssize_t num_uris;
+
+	if (!ctrl_url || !data_url || !output) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	num_uris = uri_parse_str_urls(ctrl_url, data_url, &uris);
+	if (num_uris != 2) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uris[0].dtype != LTTNG_DST_IPV4 &&
+			uris[0].dtype != LTTNG_DST_IPV6) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (uris[1].dtype != LTTNG_DST_IPV4 &&
+			uris[1].dtype != LTTNG_DST_IPV6) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = lttng_strncpy(output->ctrl_url, ctrl_url, sizeof(output->ctrl_url));
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	ret = lttng_strncpy(output->data_url, data_url, sizeof(output->data_url));
+	if (ret != 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	free(uris);
+	return ret;
+}
