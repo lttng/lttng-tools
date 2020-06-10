@@ -55,10 +55,10 @@ end:
 
 LTTNG_HIDDEN
 int lttng_condition_serialize(const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_condition_comm condition_comm = { 0 };
+	struct lttng_condition_comm condition_comm = {};
 
 	if (!condition) {
 		ret = -1;
@@ -67,13 +67,13 @@ int lttng_condition_serialize(const struct lttng_condition *condition,
 
 	condition_comm.condition_type = (int8_t) condition->type;
 
-	ret = lttng_dynamic_buffer_append(buf, &condition_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &condition_comm,
 			sizeof(condition_comm));
 	if (ret) {
 		goto end;
 	}
 
-	ret = condition->serialize(condition, buf);
+	ret = condition->serialize(condition, payload);
 	if (ret) {
 		goto end;
 	}
@@ -106,38 +106,38 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+ssize_t lttng_condition_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
 {
 	ssize_t ret, condition_size = 0;
 	const struct lttng_condition_comm *condition_comm;
-	condition_create_from_buffer_cb create_from_buffer = NULL;
+	condition_create_from_payload_cb create_from_payload = NULL;
 
-	if (!buffer || !condition) {
+	if (!view || !condition) {
 		ret = -1;
 		goto end;
 	}
 
 	DBG("Deserializing condition from buffer");
-	condition_comm = (const struct lttng_condition_comm *) buffer->data;
+	condition_comm = (typeof(condition_comm)) view->buffer.data;
 	condition_size += sizeof(*condition_comm);
 
 	switch ((enum lttng_condition_type) condition_comm->condition_type) {
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-		create_from_buffer = lttng_condition_buffer_usage_low_create_from_buffer;
+		create_from_payload = lttng_condition_buffer_usage_low_create_from_payload;
 		break;
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-		create_from_buffer = lttng_condition_buffer_usage_high_create_from_buffer;
+		create_from_payload = lttng_condition_buffer_usage_high_create_from_payload;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-		create_from_buffer = lttng_condition_session_consumed_size_create_from_buffer;
+		create_from_payload = lttng_condition_session_consumed_size_create_from_payload;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-		create_from_buffer = lttng_condition_session_rotation_ongoing_create_from_buffer;
+		create_from_payload = lttng_condition_session_rotation_ongoing_create_from_payload;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		create_from_buffer = lttng_condition_session_rotation_completed_create_from_buffer;
+		create_from_payload = lttng_condition_session_rotation_completed_create_from_payload;
 		break;
 	default:
 		ERR("Attempted to create condition of unknown type (%i)",
@@ -146,12 +146,12 @@ ssize_t lttng_condition_create_from_buffer(
 		goto end;
 	}
 
-	if (create_from_buffer) {
-		const struct lttng_buffer_view view =
-				lttng_buffer_view_from_view(buffer,
+	if (create_from_payload) {
+		struct lttng_payload_view condition_view =
+				lttng_payload_view_from_view(view,
 					sizeof(*condition_comm), -1);
 
-		ret = create_from_buffer(&view, condition);
+		ret = create_from_payload(&condition_view, condition);
 		if (ret < 0) {
 			goto end;
 		}

@@ -14,6 +14,9 @@
 #include <common/buffer-view.h>
 #include <common/macros.h>
 
+struct lttng_payload;
+struct lttng_payload_view;
+
 struct lttng_condition_session_consumed_size {
 	struct lttng_condition parent;
 	struct {
@@ -44,13 +47,13 @@ struct lttng_evaluation *lttng_evaluation_session_consumed_size_create(
 		uint64_t consumed);
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_session_consumed_size_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_session_consumed_size_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_session_consumed_size_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_session_consumed_size_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
 #endif /* LTTNG_CONDITION_SESSION_CONSUMED_SIZE_INTERNAL_H */

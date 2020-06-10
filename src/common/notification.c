@@ -10,6 +10,8 @@
 #include <lttng/condition/evaluation-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
+#include <common/sessiond-comm/payload.h>
+#include <common/sessiond-comm/payload-view.h>
 #include <assert.h>
 
 LTTNG_HIDDEN
@@ -36,81 +38,89 @@ end:
 
 LTTNG_HIDDEN
 int lttng_notification_serialize(const struct lttng_notification *notification,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t header_offset, size_before_payload;
 	struct lttng_notification_comm notification_comm = { 0 };
 	struct lttng_notification_comm *header;
 
-	header_offset = buf->size;
-	ret = lttng_dynamic_buffer_append(buf, &notification_comm,
+	header_offset = payload->buffer.size;
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &notification_comm,
 			sizeof(notification_comm));
 	if (ret) {
 		goto end;
 	}
 
-	size_before_payload = buf->size;
+	size_before_payload = payload->buffer.size;
 	ret = lttng_condition_serialize(notification->condition,
-			buf);
+			payload);
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_evaluation_serialize(notification->evaluation, buf);
+	ret = lttng_evaluation_serialize(notification->evaluation, payload);
 	if (ret) {
 		goto end;
 	}
 
 	/* Update payload size. */
-	header = (struct lttng_notification_comm *) ((char *) buf->data + header_offset);
-	header->length = (uint32_t) (buf->size - size_before_payload);
+	header = (typeof(header)) (payload->buffer.data + header_offset);
+	header->length = (uint32_t) (payload->buffer.size - size_before_payload);
 end:
 	return ret;
 
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_notification_create_from_buffer(
-		const struct lttng_buffer_view *src_view,
+ssize_t lttng_notification_create_from_payload(
+		struct lttng_payload_view *src_view,
 		struct lttng_notification **notification)
 {
 	ssize_t ret, notification_size = 0, condition_size, evaluation_size;
 	const struct lttng_notification_comm *notification_comm;
 	struct lttng_condition *condition;
 	struct lttng_evaluation *evaluation;
-	struct lttng_buffer_view condition_view;
-	struct lttng_buffer_view evaluation_view;
 
 	if (!src_view || !notification) {
 		ret = -1;
 		goto end;
 	}
 
-	notification_comm =
-			(const struct lttng_notification_comm *) src_view->data;
+	notification_comm = (typeof(notification_comm)) src_view->buffer.data;
 	notification_size += sizeof(*notification_comm);
+	{
+		/* struct lttng_condition */
+		struct lttng_payload_view condition_view =
+				lttng_payload_view_from_view(src_view,
+						notification_size, -1);
 
-	/* struct lttng_condition */
-	condition_view = lttng_buffer_view_from_view(src_view,
-			sizeof(*notification_comm), -1);
-	condition_size = lttng_condition_create_from_buffer(&condition_view,
-			&condition);
+		condition_size = lttng_condition_create_from_payload(
+				&condition_view, &condition);
+	}
+
 	if (condition_size < 0) {
 		ret = condition_size;
 		goto end;
 	}
+
 	notification_size += condition_size;
 
-	/* struct lttng_evaluation */
-	evaluation_view = lttng_buffer_view_from_view(&condition_view,
-			condition_size, -1);
-	evaluation_size = lttng_evaluation_create_from_buffer(&evaluation_view,
-			&evaluation);
+	{
+		/* struct lttng_evaluation */
+		struct lttng_payload_view evaluation_view =
+				lttng_payload_view_from_view(src_view,
+						notification_size, -1);
+
+		evaluation_size = lttng_evaluation_create_from_payload(
+				&evaluation_view, &evaluation);
+	}
+
 	if (evaluation_size < 0) {
 		ret = evaluation_size;
 		goto end;
 	}
+
 	notification_size += evaluation_size;
 
 	/* Unexpected size of inner-elements; the buffer is corrupted. */

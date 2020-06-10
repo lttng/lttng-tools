@@ -2801,14 +2801,14 @@ int client_dispatch_message(struct notification_client *client,
 		struct lttng_condition *condition;
 		enum lttng_notification_channel_status status =
 				LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
-		const struct lttng_buffer_view condition_view =
-				lttng_buffer_view_from_dynamic_buffer(
+		struct lttng_payload_view condition_view =
+				lttng_payload_view_from_dynamic_buffer(
 					&client->communication.inbound.buffer,
 					0, -1);
 		size_t expected_condition_size =
 				client->communication.inbound.buffer.size;
 
-		ret = lttng_condition_create_from_buffer(&condition_view,
+		ret = lttng_condition_create_from_payload(&condition_view,
 				&condition);
 		if (ret != expected_condition_size) {
 			ERR("[notification-thread] Malformed condition received from client");
@@ -3112,7 +3112,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		uid_t channel_uid, gid_t channel_gid)
 {
 	int ret = 0;
-	struct lttng_dynamic_buffer msg_buffer;
+	struct lttng_payload msg_payload;
 	struct notification_client_list_element *client_list_element, *tmp;
 	const struct lttng_notification notification = {
 		.condition = (struct lttng_condition *) lttng_trigger_get_const_condition(trigger),
@@ -3122,15 +3122,15 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
 	};
 
-	lttng_dynamic_buffer_init(&msg_buffer);
+	lttng_payload_init(&msg_payload);
 
-	ret = lttng_dynamic_buffer_append(&msg_buffer, &msg_header,
+	ret = lttng_dynamic_buffer_append(&msg_payload.buffer, &msg_header,
 			sizeof(msg_header));
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_notification_serialize(&notification, &msg_buffer);
+	ret = lttng_notification_serialize(&notification, &msg_payload);
 	if (ret) {
 		ERR("[notification-thread] Failed to serialize notification");
 		ret = -1;
@@ -3138,8 +3138,8 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 	}
 
 	/* Update payload size. */
-	((struct lttng_notification_channel_message * ) msg_buffer.data)->size =
-			(uint32_t) (msg_buffer.size - sizeof(msg_header));
+	((struct lttng_notification_channel_message * ) msg_payload.buffer.data)->size =
+			(uint32_t) (msg_payload.buffer.size - sizeof(msg_header));
 
 	cds_list_for_each_entry_safe(client_list_element, tmp,
 			&client_list->list, node) {
@@ -3154,7 +3154,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		}
 
 		DBG("[notification-thread] Sending notification to client (fd = %i, %zu bytes)",
-				client->socket, msg_buffer.size);
+				client->socket, msg_payload.buffer.size);
 		if (client->communication.outbound.buffer.size) {
 			/*
 			 * Outgoing data is already buffered for this client;
@@ -3178,7 +3178,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 
 		ret = lttng_dynamic_buffer_append_buffer(
 				&client->communication.outbound.buffer,
-				&msg_buffer);
+				&msg_payload.buffer);
 		if (ret) {
 			goto end;
 		}
@@ -3190,7 +3190,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 	}
 	ret = 0;
 end:
-	lttng_dynamic_buffer_reset(&msg_buffer);
+	lttng_payload_reset(&msg_payload);
 	return ret;
 }
 

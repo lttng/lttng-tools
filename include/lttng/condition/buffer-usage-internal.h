@@ -68,23 +68,23 @@ struct lttng_evaluation *lttng_evaluation_buffer_usage_create(
 		uint64_t capacity);
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_buffer_usage_low_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_buffer_usage_low_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_buffer_usage_high_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_buffer_usage_high_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_buffer_usage_low_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_buffer_usage_high_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_buffer_usage_high_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
 #endif /* LTTNG_CONDITION_BUFFER_USAGE_INTERNAL_H */

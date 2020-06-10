@@ -10,15 +10,16 @@
 
 #include <lttng/condition/evaluation.h>
 #include <common/macros.h>
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
 #include <stdbool.h>
 #include <sys/types.h>
+
+struct lttng_payload;
+struct lttng_payload_view;
 
 typedef void (*evaluation_destroy_cb)(struct lttng_evaluation *evaluation);
 typedef int (*evaluation_serialize_cb)(
 		const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 
 struct lttng_evaluation_comm {
 	/* enum lttng_condition_type type */
@@ -37,11 +38,11 @@ void lttng_evaluation_init(struct lttng_evaluation *evaluation,
 		enum lttng_condition_type type);
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_create_from_buffer(const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation);
 
 LTTNG_HIDDEN
 int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 
 #endif /* LTTNG_EVALUATION_INTERNAL_H */

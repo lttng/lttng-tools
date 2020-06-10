@@ -23,21 +23,21 @@ void lttng_evaluation_init(struct lttng_evaluation *evaluation,
 
 LTTNG_HIDDEN
 int lttng_evaluation_serialize(const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_evaluation_comm evaluation_comm = {
 		.type = (int8_t) evaluation->type
 	};
 
-	ret = lttng_dynamic_buffer_append(buf, &evaluation_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &evaluation_comm,
 			sizeof(evaluation_comm));
 	if (ret) {
 		goto end;
 	}
 
 	if (evaluation->serialize) {
-		ret = evaluation->serialize(evaluation, buf);
+		ret = evaluation->serialize(evaluation, payload);
 		if (ret) {
 			goto end;
 		}
@@ -47,27 +47,27 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_create_from_buffer(
-		const struct lttng_buffer_view *src_view,
+ssize_t lttng_evaluation_create_from_payload(
+		struct lttng_payload_view *src_view,
 		struct lttng_evaluation **evaluation)
 {
 	ssize_t ret, evaluation_size = 0;
 	const struct lttng_evaluation_comm *evaluation_comm;
-	const struct lttng_buffer_view evaluation_view =
-			lttng_buffer_view_from_view(src_view,
-			sizeof(*evaluation_comm), -1);
+	struct lttng_payload_view evaluation_view =
+			lttng_payload_view_from_view(
+					src_view, sizeof(*evaluation_comm), -1);
 
 	if (!src_view || !evaluation) {
 		ret = -1;
 		goto end;
 	}
 
-	evaluation_comm = (const struct lttng_evaluation_comm *) src_view->data;
+	evaluation_comm = (typeof(evaluation_comm)) src_view->buffer.data;
 	evaluation_size += sizeof(*evaluation_comm);
 
 	switch ((enum lttng_condition_type) evaluation_comm->type) {
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-		ret = lttng_evaluation_buffer_usage_low_create_from_buffer(
+		ret = lttng_evaluation_buffer_usage_low_create_from_payload(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;
@@ -75,7 +75,7 @@ ssize_t lttng_evaluation_create_from_buffer(
 		evaluation_size += ret;
 		break;
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-		ret = lttng_evaluation_buffer_usage_high_create_from_buffer(
+		ret = lttng_evaluation_buffer_usage_high_create_from_payload(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;
@@ -83,7 +83,7 @@ ssize_t lttng_evaluation_create_from_buffer(
 		evaluation_size += ret;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-		ret = lttng_evaluation_session_consumed_size_create_from_buffer(
+		ret = lttng_evaluation_session_consumed_size_create_from_payload(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;
@@ -91,7 +91,7 @@ ssize_t lttng_evaluation_create_from_buffer(
 		evaluation_size += ret;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-		ret = lttng_evaluation_session_rotation_ongoing_create_from_buffer(
+		ret = lttng_evaluation_session_rotation_ongoing_create_from_payload(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;
@@ -99,7 +99,7 @@ ssize_t lttng_evaluation_create_from_buffer(
 		evaluation_size += ret;
 		break;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		ret = lttng_evaluation_session_rotation_completed_create_from_buffer(
+		ret = lttng_evaluation_session_rotation_completed_create_from_payload(
 				&evaluation_view, evaluation);
 		if (ret < 0) {
 			goto end;
@@ -112,6 +112,7 @@ ssize_t lttng_evaluation_create_from_buffer(
 		ret = -1;
 		goto end;
 	}
+
 	ret = evaluation_size;
 end:
 	return ret;

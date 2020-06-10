@@ -97,17 +97,22 @@ struct lttng_notification *create_notification_from_current_message(
 {
 	ssize_t ret;
 	struct lttng_notification *notification = NULL;
-	struct lttng_buffer_view view;
 
 	if (channel->reception_buffer.size <=
 			sizeof(struct lttng_notification_channel_message)) {
 		goto end;
 	}
 
-	view = lttng_buffer_view_from_dynamic_buffer(&channel->reception_buffer,
-			sizeof(struct lttng_notification_channel_message), -1);
+	{
+		struct lttng_payload_view view = lttng_payload_view_from_dynamic_buffer(
+				&channel->reception_buffer,
+				sizeof(struct lttng_notification_channel_message),
+				-1);
 
-	ret = lttng_notification_create_from_buffer(&view, &notification);
+		ret = lttng_notification_create_from_payload(
+				&view, &notification);
+	}
+
 	if (ret != channel->reception_buffer.size -
 			sizeof(struct lttng_notification_channel_message)) {
 		lttng_notification_destroy(notification);
@@ -603,12 +608,12 @@ enum lttng_notification_channel_status send_condition_command(
 	ssize_t ret;
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
-	struct lttng_dynamic_buffer buffer;
+	struct lttng_payload payload;
 	struct lttng_notification_channel_message cmd_header = {
 		.type = (int8_t) type,
 	};
 
-	lttng_dynamic_buffer_init(&buffer);
+	lttng_payload_init(&payload);
 
 	if (!channel) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
@@ -625,24 +630,25 @@ enum lttng_notification_channel_status send_condition_command(
 		goto end_unlock;
 	}
 
-	ret = lttng_dynamic_buffer_append(&buffer, &cmd_header,
+	ret = lttng_dynamic_buffer_append(&payload.buffer, &cmd_header,
 			sizeof(cmd_header));
 	if (ret) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 		goto end_unlock;
 	}
 
-	ret = lttng_condition_serialize(condition, &buffer);
+	ret = lttng_condition_serialize(condition, &payload);
 	if (ret) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
 		goto end_unlock;
 	}
 
 	/* Update payload length. */
-	((struct lttng_notification_channel_message *) buffer.data)->size =
-			(uint32_t) (buffer.size - sizeof(cmd_header));
+	((struct lttng_notification_channel_message *) payload.buffer.data)->size =
+			(uint32_t) (payload.buffer.size - sizeof(cmd_header));
 
-	ret = lttcomm_send_unix_sock(socket, buffer.data, buffer.size);
+	ret = lttcomm_send_unix_sock(
+			socket, payload.buffer.data, payload.buffer.size);
 	if (ret < 0) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
 		goto end_unlock;
@@ -656,7 +662,7 @@ enum lttng_notification_channel_status send_condition_command(
 end_unlock:
 	pthread_mutex_unlock(&channel->lock);
 end:
-	lttng_dynamic_buffer_reset(&buffer);
+	lttng_payload_reset(&payload);
 	return status;
 }
 

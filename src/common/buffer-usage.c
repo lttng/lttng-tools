@@ -91,7 +91,7 @@ end:
 static
 int lttng_condition_buffer_usage_serialize(
 		const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_condition_buffer_usage *usage;
@@ -134,17 +134,19 @@ int lttng_condition_buffer_usage_serialize(
 		usage_comm.threshold = val;
 	}
 
-	ret = lttng_dynamic_buffer_append(buf, &usage_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &usage_comm,
 			sizeof(usage_comm));
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buf, usage->session_name,
+
+	ret = lttng_dynamic_buffer_append(&payload->buffer, usage->session_name,
 			session_name_len);
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buf, usage->channel_name,
+
+	ret = lttng_dynamic_buffer_append(&payload->buffer, usage->channel_name,
 			channel_name_len);
 	if (ret) {
 		goto end;
@@ -243,8 +245,8 @@ struct lttng_condition *lttng_condition_buffer_usage_high_create(void)
 }
 
 static
-ssize_t init_condition_from_buffer(struct lttng_condition *condition,
-		const struct lttng_buffer_view *src_view)
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+		struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -253,14 +255,14 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 	const char *session_name, *channel_name;
 	struct lttng_buffer_view names_view;
 
-	if (src_view->size < sizeof(*condition_comm)) {
+	if (src_view->buffer.size < sizeof(*condition_comm)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain header");
 		ret = -1;
 		goto end;
 	}
 
-	condition_comm = (const struct lttng_condition_buffer_usage_comm *) src_view->data;
-	names_view = lttng_buffer_view_from_view(src_view,
+	condition_comm = (typeof(condition_comm)) src_view->buffer.data;
+	names_view = lttng_buffer_view_from_view(&src_view->buffer,
 			sizeof(*condition_comm), -1);
 
 	if (condition_comm->session_name_len > LTTNG_NAME_MAX ||
@@ -286,6 +288,7 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 				condition,
 				fixed_to_double(condition_comm->threshold));
 	}
+
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Failed to initialize buffer usage condition threshold");
 		ret = -1;
@@ -354,8 +357,8 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_buffer_usage_low_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_buffer_usage_low_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
 {
 	ssize_t ret;
@@ -367,7 +370,7 @@ ssize_t lttng_condition_buffer_usage_low_create_from_buffer(
 		goto error;
 	}
 
-	ret = init_condition_from_buffer(condition, view);
+	ret = init_condition_from_payload(condition, view);
 	if (ret < 0) {
 		goto error;
 	}
@@ -380,8 +383,8 @@ error:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_buffer_usage_high_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_buffer_usage_high_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
 {
 	ssize_t ret;
@@ -393,7 +396,7 @@ ssize_t lttng_condition_buffer_usage_high_create_from_buffer(
 		goto error;
 	}
 
-	ret = init_condition_from_buffer(condition, view);
+	ret = init_condition_from_payload(condition, view);
 	if (ret < 0) {
 		goto error;
 	}
@@ -406,15 +409,15 @@ error:
 }
 
 static
-struct lttng_evaluation *create_evaluation_from_buffer(
+struct lttng_evaluation *create_evaluation_from_payload(
 		enum lttng_condition_type type,
-		const struct lttng_buffer_view *view)
+		struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_buffer_usage_comm *comm =
-			(const struct lttng_evaluation_buffer_usage_comm *) view->data;
+			(typeof(comm)) view->buffer.data;
 	struct lttng_evaluation *evaluation = NULL;
 
-	if (view->size < sizeof(*comm)) {
+	if (view->buffer.size < sizeof(*comm)) {
 		goto end;
 	}
 
@@ -425,8 +428,8 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_buffer_usage_low_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_buffer_usage_low_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
@@ -437,7 +440,7 @@ ssize_t lttng_evaluation_buffer_usage_low_create_from_buffer(
 		goto error;
 	}
 
-	evaluation = create_evaluation_from_buffer(
+	evaluation = create_evaluation_from_payload(
 			LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW, view);
 	if (!evaluation) {
 		ret = -1;
@@ -453,8 +456,8 @@ error:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_buffer_usage_high_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_buffer_usage_high_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
@@ -465,7 +468,7 @@ ssize_t lttng_evaluation_buffer_usage_high_create_from_buffer(
 		goto error;
 	}
 
-	evaluation = create_evaluation_from_buffer(
+	evaluation = create_evaluation_from_payload(
 			LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH, view);
 	if (!evaluation) {
 		ret = -1;
@@ -730,7 +733,7 @@ end:
 static
 int lttng_evaluation_buffer_usage_serialize(
 		const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	struct lttng_evaluation_buffer_usage *usage;
 	struct lttng_evaluation_buffer_usage_comm comm;
@@ -740,7 +743,8 @@ int lttng_evaluation_buffer_usage_serialize(
 	comm.buffer_use = usage->buffer_use;
 	comm.buffer_capacity = usage->buffer_capacity;
 
-	return lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	return lttng_dynamic_buffer_append(
+			&payload->buffer, &comm, sizeof(comm));
 }
 
 static

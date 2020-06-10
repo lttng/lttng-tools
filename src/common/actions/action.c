@@ -92,20 +92,20 @@ end:
 
 LTTNG_HIDDEN
 int lttng_action_serialize(struct lttng_action *action,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_action_comm action_comm = {
 		.action_type = (int8_t) action->type,
 	};
 
-	ret = lttng_dynamic_buffer_append(buf, &action_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &action_comm,
 			sizeof(action_comm));
 	if (ret) {
 		goto end;
 	}
 
-	ret = action->serialize(action, buf);
+	ret = action->serialize(action, payload);
 	if (ret) {
 		goto end;
 	}
@@ -114,42 +114,41 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
+ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action)
 {
 	ssize_t consumed_len, specific_action_consumed_len;
 	const struct lttng_action_comm *action_comm;
-	action_create_from_buffer_cb create_from_buffer_cb;
-	struct lttng_buffer_view specific_action_view;
+	action_create_from_payload_cb create_from_payload_cb;
 
 	if (!view || !action) {
 		consumed_len = -1;
 		goto end;
 	}
 
-	action_comm = (const struct lttng_action_comm *) view->data;
+	action_comm = (const struct lttng_action_comm *) view->buffer.data;
 
-	DBG("Create action from buffer: action-type=%s",
+	DBG("Create action from payload: action-type=%s",
 			lttng_action_type_string(action_comm->action_type));
 
 	switch (action_comm->action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
-		create_from_buffer_cb = lttng_action_notify_create_from_buffer;
+		create_from_payload_cb = lttng_action_notify_create_from_payload;
 		break;
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
-		create_from_buffer_cb =
-				lttng_action_rotate_session_create_from_buffer;
+		create_from_payload_cb =
+				lttng_action_rotate_session_create_from_payload;
 		break;
 	case LTTNG_ACTION_TYPE_START_SESSION:
-		create_from_buffer_cb =
-				lttng_action_start_session_create_from_buffer;
+		create_from_payload_cb =
+				lttng_action_start_session_create_from_payload;
 		break;
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
-		create_from_buffer_cb =
-				lttng_action_stop_session_create_from_buffer;
+		create_from_payload_cb =
+				lttng_action_stop_session_create_from_payload;
 		break;
 	default:
-		ERR("Failed to create action from buffer, unhandled action type: action-type=%u (%s)",
+		ERR("Failed to create action from payload, unhandled action type: action-type=%u (%s)",
 				action_comm->action_type,
 				lttng_action_type_string(
 						action_comm->action_type));
@@ -157,13 +156,16 @@ ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
 		goto end;
 	}
 
-	/* Create buffer view for the action-type-specific data. */
-	specific_action_view = lttng_buffer_view_from_view(view,
-			sizeof(struct lttng_action_comm),
-			view->size - sizeof(struct lttng_action_comm));
+	{
+		/* Create buffer view for the action-type-specific data. */
+		struct lttng_payload_view specific_action_view =
+				lttng_payload_view_from_view(view,
+						sizeof(struct lttng_action_comm),
+						-1);
 
-	specific_action_consumed_len =
-			create_from_buffer_cb(&specific_action_view, action);
+		specific_action_consumed_len = create_from_payload_cb(
+				&specific_action_view, action);
+	}
 	if (specific_action_consumed_len < 0) {
 		ERR("Failed to create specific action from buffer.");
 		consumed_len = -1;

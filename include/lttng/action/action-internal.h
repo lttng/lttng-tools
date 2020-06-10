@@ -12,17 +12,19 @@
 #include <common/macros.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
+#include <common/sessiond-comm/payload-view.h>
+#include <common/sessiond-comm/payload.h>
 #include <stdbool.h>
 #include <sys/types.h>
 
 typedef bool (*action_validate_cb)(struct lttng_action *action);
 typedef void (*action_destroy_cb)(struct lttng_action *action);
 typedef int (*action_serialize_cb)(struct lttng_action *action,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 typedef bool (*action_equal_cb)(const struct lttng_action *a,
 		const struct lttng_action *b);
-typedef ssize_t (*action_create_from_buffer_cb)(
-		const struct lttng_buffer_view *view,
+typedef ssize_t (*action_create_from_payload_cb)(
+		struct lttng_payload_view *view,
 		struct lttng_action **action);
 
 struct lttng_action {
@@ -51,10 +53,10 @@ bool lttng_action_validate(struct lttng_action *action);
 
 LTTNG_HIDDEN
 int lttng_action_serialize(struct lttng_action *action,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *buf);
 
 LTTNG_HIDDEN
-ssize_t lttng_action_create_from_buffer(const struct lttng_buffer_view *view,
+ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action);
 
 LTTNG_HIDDEN

@@ -8,6 +8,8 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/action/action-internal.h>
+#include <common/sessiond-comm/payload.h>
+#include <common/sessiond-comm/payload-view.h>
 #include <common/error.h>
 #include <assert.h>
 
@@ -84,16 +86,14 @@ void lttng_trigger_destroy(struct lttng_trigger *trigger)
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_trigger_create_from_buffer(
-		const struct lttng_buffer_view *src_view,
+ssize_t lttng_trigger_create_from_payload(
+		struct lttng_payload_view *src_view,
 		struct lttng_trigger **trigger)
 {
 	ssize_t ret, offset = 0, condition_size, action_size;
 	struct lttng_condition *condition = NULL;
 	struct lttng_action *action = NULL;
 	const struct lttng_trigger_comm *trigger_comm;
-	struct lttng_buffer_view condition_view;
-	struct lttng_buffer_view action_view;
 
 	if (!src_view || !trigger) {
 		ret = -1;
@@ -101,23 +101,33 @@ ssize_t lttng_trigger_create_from_buffer(
 	}
 
 	/* lttng_trigger_comm header */
-	trigger_comm = (const struct lttng_trigger_comm *) src_view->data;
+	trigger_comm = (typeof(trigger_comm)) src_view->buffer.data;
 	offset += sizeof(*trigger_comm);
+	{
+		/* struct lttng_condition */
+		struct lttng_payload_view condition_view =
+				lttng_payload_view_from_view(
+						src_view, offset, -1);
 
-	condition_view = lttng_buffer_view_from_view(src_view, offset, -1);
+		condition_size = lttng_condition_create_from_payload(&condition_view,
+				&condition);
+	}
 
-	/* struct lttng_condition */
-	condition_size = lttng_condition_create_from_buffer(&condition_view,
-			&condition);
 	if (condition_size < 0) {
 		ret = condition_size;
 		goto end;
 	}
-	offset += condition_size;
 
-	/* struct lttng_action */
-	action_view = lttng_buffer_view_from_view(src_view, offset, -1);
-	action_size = lttng_action_create_from_buffer(&action_view, &action);
+	offset += condition_size;
+	{
+		/* struct lttng_action */
+		struct lttng_payload_view action_view =
+				lttng_payload_view_from_view(
+					src_view, offset, -1);
+
+		action_size = lttng_action_create_from_payload(&action_view, &action);
+	}
+
 	if (action_size < 0) {
 		ret = action_size;
 		goto end;
@@ -135,6 +145,7 @@ ssize_t lttng_trigger_create_from_buffer(
 		ret = -1;
 		goto error;
 	}
+
 	ret = offset;
 end:
 	return ret;
@@ -150,34 +161,34 @@ error:
  */
 LTTNG_HIDDEN
 int lttng_trigger_serialize(struct lttng_trigger *trigger,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t header_offset, size_before_payload;
-	struct lttng_trigger_comm trigger_comm = { 0 };
+	struct lttng_trigger_comm trigger_comm = {};
 	struct lttng_trigger_comm *header;
 
-	header_offset = buf->size;
-	ret = lttng_dynamic_buffer_append(buf, &trigger_comm,
+	header_offset = payload->buffer.size;
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &trigger_comm,
 			sizeof(trigger_comm));
 	if (ret) {
 		goto end;
 	}
 
-	size_before_payload = buf->size;
-	ret = lttng_condition_serialize(trigger->condition, buf);
+	size_before_payload = payload->buffer.size;
+	ret = lttng_condition_serialize(trigger->condition, payload);
 	if (ret) {
 		goto end;
 	}
 
-	ret = lttng_action_serialize(trigger->action, buf);
+	ret = lttng_action_serialize(trigger->action, payload);
 	if (ret) {
 		goto end;
 	}
 
 	/* Update payload size. */
-	header = (struct lttng_trigger_comm *) ((char *) buf->data + header_offset);
-	header->length = buf->size - size_before_payload;
+	header = (typeof(header)) (payload->buffer.data + header_offset);
+	header->length = payload->buffer.size - size_before_payload;
 end:
 	return ret;
 }

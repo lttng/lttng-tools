@@ -21,6 +21,7 @@ FORCE_SHARED_LIB_OPTIONS = -module -shared -avoid-version \
 
 libpause_consumer_la_SOURCES = consumer_testpoints.c
 libpause_consumer_la_LIBADD = \
+	$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 	$(top_builddir)/src/common/libcommon.la \
 	$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 	$(DL_LIBS)

@@ -7,6 +7,7 @@
  */
 
 #include "bin/lttng-sessiond/tracker.h"
+#include "common/sessiond-comm/payload.h"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
@@ -26,6 +27,8 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
+#include <common/sessiond-comm/payload.h>
+#include <common/sessiond-comm/payload-view.h>
 #include <common/trace-chunk.h>
 #include <lttng/location-internal.h>
 #include <lttng/trigger/trigger-internal.h>
@@ -4350,19 +4353,19 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	size_t trigger_len;
 	ssize_t sock_recv_len;
 	struct lttng_trigger *trigger = NULL;
-	struct lttng_buffer_view view;
-	struct lttng_dynamic_buffer trigger_buffer;
+	struct lttng_payload trigger_payload;
 
-	lttng_dynamic_buffer_init(&trigger_buffer);
+	lttng_payload_init(&trigger_payload);
 	trigger_len = (size_t) cmd_ctx->lsm->u.trigger.length;
-	ret = lttng_dynamic_buffer_set_size(&trigger_buffer, trigger_len);
+	ret = lttng_dynamic_buffer_set_size(
+			&trigger_payload.buffer, trigger_len);
 	if (ret) {
 		ret = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(sock, trigger_buffer.data,
-			trigger_len);
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, trigger_payload.buffer.data, trigger_len);
 	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
 		ERR("Failed to receive \"register trigger\" command payload");
 		/* TODO: should this be a new error enum ? */
@@ -4370,12 +4373,17 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		goto end;
 	}
 
-	view = lttng_buffer_view_from_dynamic_buffer(&trigger_buffer, 0, -1);
-	if (lttng_trigger_create_from_buffer(&view, &trigger) !=
-			trigger_len) {
-		ERR("Invalid trigger payload received in \"register trigger\" command");
-		ret = LTTNG_ERR_INVALID_TRIGGER;
-		goto end;
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&trigger_payload, 0, -1);
+
+		if (lttng_trigger_create_from_payload(&view, &trigger) !=
+				trigger_len) {
+			ERR("Invalid trigger payload received in \"register trigger\" command");
+			ret = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
 	}
 
 	ret = notification_thread_command_register_trigger(notification_thread,
@@ -4384,7 +4392,7 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	trigger = NULL;
 end:
 	lttng_trigger_destroy(trigger);
-	lttng_dynamic_buffer_reset(&trigger_buffer);
+	lttng_payload_reset(&trigger_payload);
 	return ret;
 }
 
@@ -4395,19 +4403,19 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 	size_t trigger_len;
 	ssize_t sock_recv_len;
 	struct lttng_trigger *trigger = NULL;
-	struct lttng_buffer_view view;
-	struct lttng_dynamic_buffer trigger_buffer;
+	struct lttng_payload trigger_payload;
 
-	lttng_dynamic_buffer_init(&trigger_buffer);
+	lttng_payload_init(&trigger_payload);
 	trigger_len = (size_t) cmd_ctx->lsm->u.trigger.length;
-	ret = lttng_dynamic_buffer_set_size(&trigger_buffer, trigger_len);
+	ret = lttng_dynamic_buffer_set_size(
+			&trigger_payload.buffer, trigger_len);
 	if (ret) {
 		ret = LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
-	sock_recv_len = lttcomm_recv_unix_sock(sock, trigger_buffer.data,
-			trigger_len);
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, trigger_payload.buffer.data, trigger_len);
 	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
 		ERR("Failed to receive \"unregister trigger\" command payload");
 		/* TODO: should this be a new error enum ? */
@@ -4415,19 +4423,24 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		goto end;
 	}
 
-	view = lttng_buffer_view_from_dynamic_buffer(&trigger_buffer, 0, -1);
-	if (lttng_trigger_create_from_buffer(&view, &trigger) !=
-			trigger_len) {
-		ERR("Invalid trigger payload received in \"unregister trigger\" command");
-		ret = LTTNG_ERR_INVALID_TRIGGER;
-		goto end;
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&trigger_payload, 0, -1);
+
+		if (lttng_trigger_create_from_payload(&view, &trigger) !=
+				trigger_len) {
+			ERR("Invalid trigger payload received in \"unregister trigger\" command");
+			ret = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
 	}
 
 	ret = notification_thread_command_unregister_trigger(notification_thread,
 			trigger);
 end:
 	lttng_trigger_destroy(trigger);
-	lttng_dynamic_buffer_reset(&trigger_buffer);
+	lttng_payload_reset(&trigger_payload);
 	return ret;
 }
 

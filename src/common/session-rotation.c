@@ -19,7 +19,7 @@ bool lttng_condition_session_rotation_validate(
 static
 int lttng_condition_session_rotation_serialize(
 		const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 static
 bool lttng_condition_session_rotation_is_equal(const struct lttng_condition *_a,
 		const struct lttng_condition *_b);
@@ -39,7 +39,7 @@ struct lttng_condition rotation_condition_template = {
 static
 int lttng_evaluation_session_rotation_serialize(
 		const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 static
 void lttng_evaluation_session_rotation_destroy(
 		struct lttng_evaluation *evaluation);
@@ -95,7 +95,7 @@ end:
 static
 int lttng_condition_session_rotation_serialize(
 		const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t session_name_len;
@@ -118,13 +118,13 @@ int lttng_condition_session_rotation_serialize(
 	}
 
 	rotation_comm.session_name_len = session_name_len;
-	ret = lttng_dynamic_buffer_append(buf, &rotation_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &rotation_comm,
 			sizeof(rotation_comm));
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buf, rotation->session_name,
-			session_name_len);
+	ret = lttng_dynamic_buffer_append(&payload->buffer,
+			rotation->session_name, session_name_len);
 	if (ret) {
 		goto end;
 	}
@@ -202,8 +202,8 @@ struct lttng_condition *lttng_condition_session_rotation_completed_create(void)
 }
 
 static
-ssize_t init_condition_from_buffer(struct lttng_condition *condition,
-		const struct lttng_buffer_view *src_view)
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+		struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -211,14 +211,14 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 	const char *session_name;
 	struct lttng_buffer_view name_view;
 
-	if (src_view->size < sizeof(*condition_comm)) {
+	if (src_view->buffer.size < sizeof(*condition_comm)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain header");
 		ret = -1;
 		goto end;
 	}
 
-	condition_comm = (const struct lttng_condition_session_rotation_comm *) src_view->data;
-	name_view = lttng_buffer_view_from_view(src_view,
+	condition_comm = (typeof(condition_comm)) src_view->buffer.data;
+	name_view = lttng_buffer_view_from_view(&src_view->buffer,
 			sizeof(*condition_comm), -1);
 
 	if (condition_comm->session_name_len > LTTNG_NAME_MAX) {
@@ -261,8 +261,8 @@ end:
 }
 
 static
-ssize_t lttng_condition_session_rotation_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_session_rotation_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **_condition,
 		enum lttng_condition_type type)
 {
@@ -286,7 +286,7 @@ ssize_t lttng_condition_session_rotation_create_from_buffer(
 		goto error;
 	}
 
-	ret = init_condition_from_buffer(condition, view);
+	ret = init_condition_from_payload(condition, view);
 	if (ret < 0) {
 		goto error;
 	}
@@ -299,21 +299,21 @@ error:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_session_rotation_ongoing_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_session_rotation_ongoing_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
 {
-	return lttng_condition_session_rotation_create_from_buffer(view,
+	return lttng_condition_session_rotation_create_from_payload(view,
 			condition,
 			LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING);
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_session_rotation_completed_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_session_rotation_completed_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition)
 {
-	return lttng_condition_session_rotation_create_from_buffer(view,
+	return lttng_condition_session_rotation_create_from_payload(view,
 			condition,
 			LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED);
 }
@@ -339,26 +339,26 @@ struct lttng_evaluation *lttng_evaluation_session_rotation_create(
 }
 
 static
-ssize_t create_evaluation_from_buffer(
+ssize_t create_evaluation_from_payload(
 		enum lttng_condition_type type,
-		const struct lttng_buffer_view *view,
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret, size;
 	struct lttng_evaluation *evaluation = NULL;
 	struct lttng_trace_archive_location *location = NULL;
 	const struct lttng_evaluation_session_rotation_comm *comm =
-			(const struct lttng_evaluation_session_rotation_comm *) view->data;
-        struct lttng_buffer_view location_view;
+			(typeof(comm)) view->buffer.data;
+	struct lttng_buffer_view location_view;
 
-	if (view->size < sizeof(*comm)) {
+	if (view->buffer.size < sizeof(*comm)) {
 		goto error;
 	}
 
 	size = sizeof(*comm);
 	if (comm->has_location) {
-		location_view = lttng_buffer_view_from_view(view, sizeof(*comm),
-				-1);
+		location_view = lttng_buffer_view_from_view(
+				&view->buffer, sizeof(*comm), -1);
 		if (!location_view.data) {
 			goto error;
 		}
@@ -387,9 +387,9 @@ error:
 }
 
 static
-ssize_t lttng_evaluation_session_rotation_create_from_buffer(
+ssize_t lttng_evaluation_session_rotation_create_from_payload(
 		enum lttng_condition_type type,
-		const struct lttng_buffer_view *view,
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
@@ -400,7 +400,7 @@ ssize_t lttng_evaluation_session_rotation_create_from_buffer(
 		goto error;
 	}
 
-	ret = create_evaluation_from_buffer(type, view, &evaluation);
+	ret = create_evaluation_from_payload(type, view, &evaluation);
 	if (ret < 0) {
 		goto error;
 	}
@@ -413,21 +413,21 @@ error:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_session_rotation_ongoing_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_session_rotation_ongoing_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation)
 {
-	return lttng_evaluation_session_rotation_create_from_buffer(
+	return lttng_evaluation_session_rotation_create_from_payload(
 			LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING,
 			view, evaluation);
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_session_rotation_completed_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_session_rotation_completed_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **evaluation)
 {
-	return lttng_evaluation_session_rotation_create_from_buffer(
+	return lttng_evaluation_session_rotation_create_from_payload(
 			LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED,
 			view, evaluation);
 }
@@ -505,7 +505,7 @@ end:
 static
 int lttng_evaluation_session_rotation_serialize(
 		const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_evaluation_session_rotation *rotation;
@@ -515,7 +515,8 @@ int lttng_evaluation_session_rotation_serialize(
 			struct lttng_evaluation_session_rotation, parent);
 	comm.id = rotation->id;
 	comm.has_location = !!rotation->location;
-        ret = lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		goto end;
 	}
@@ -523,7 +524,7 @@ int lttng_evaluation_session_rotation_serialize(
 		goto end;
 	}
 	ret = lttng_trace_archive_location_serialize(rotation->location,
-			buf);
+			&payload->buffer);
 end:
 	return ret;
 }

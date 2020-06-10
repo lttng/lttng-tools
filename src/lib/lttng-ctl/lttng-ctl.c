@@ -23,6 +23,8 @@
 #include <common/compat/string.h>
 #include <common/defaults.h>
 #include <common/dynamic-buffer.h>
+#include <common/sessiond-comm/payload.h>
+#include <common/sessiond-comm/payload-view.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/tracker.h>
 #include <common/uri.h>
@@ -2889,9 +2891,9 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_dynamic_buffer buffer;
+	struct lttng_payload payload;
 
-	lttng_dynamic_buffer_init(&buffer);
+	lttng_payload_init(&payload);
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2902,7 +2904,7 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	ret = lttng_trigger_serialize(trigger, &buffer);
+	ret = lttng_trigger_serialize(trigger, &payload);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
@@ -2910,11 +2912,11 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_REGISTER_TRIGGER;
-	lsm.u.trigger.length = (uint32_t) buffer.size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data,
-			buffer.size, NULL);
+	lsm.u.trigger.length = (uint32_t) payload.buffer.size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+			&lsm, payload.buffer.data, payload.buffer.size, NULL);
 end:
-	lttng_dynamic_buffer_reset(&buffer);
+	lttng_payload_reset(&payload);
 	return ret;
 }
 
@@ -2922,9 +2924,9 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_dynamic_buffer buffer;
+	struct lttng_payload payload;
 
-	lttng_dynamic_buffer_init(&buffer);
+	lttng_payload_init(&payload);
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -2935,7 +2937,7 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	ret = lttng_trigger_serialize(trigger, &buffer);
+	ret = lttng_trigger_serialize(trigger, &payload);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
@@ -2943,11 +2945,11 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
-	lsm.u.trigger.length = (uint32_t) buffer.size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(&lsm, buffer.data,
-			buffer.size, NULL);
+	lsm.u.trigger.length = (uint32_t) payload.buffer.size;
+	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
+			&lsm, payload.buffer.data, payload.buffer.size, NULL);
 end:
-	lttng_dynamic_buffer_reset(&buffer);
+	lttng_payload_reset(&payload);
 	return ret;
 }
 

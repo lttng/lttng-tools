@@ -65,7 +65,7 @@ end:
 static
 int lttng_condition_session_consumed_size_serialize(
 		const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t session_name_len;
@@ -92,12 +92,13 @@ int lttng_condition_session_consumed_size_serialize(
 			consumed->consumed_threshold_bytes.value;
 	consumed_comm.session_name_len = (uint32_t) session_name_len;
 
-	ret = lttng_dynamic_buffer_append(buf, &consumed_comm,
+	ret = lttng_dynamic_buffer_append(&payload->buffer, &consumed_comm,
 			sizeof(consumed_comm));
 	if (ret) {
 		goto end;
 	}
-	ret = lttng_dynamic_buffer_append(buf, consumed->session_name,
+
+	ret = lttng_dynamic_buffer_append(&payload->buffer, consumed->session_name,
 			session_name_len);
 	if (ret) {
 		goto end;
@@ -155,8 +156,8 @@ struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 }
 
 static
-ssize_t init_condition_from_buffer(struct lttng_condition *condition,
-		const struct lttng_buffer_view *src_view)
+ssize_t init_condition_from_payload(struct lttng_condition *condition,
+		struct lttng_payload_view *src_view)
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
@@ -164,14 +165,14 @@ ssize_t init_condition_from_buffer(struct lttng_condition *condition,
 	const char *session_name;
 	struct lttng_buffer_view names_view;
 
-	if (src_view->size < sizeof(*condition_comm)) {
+	if (src_view->buffer.size < sizeof(*condition_comm)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain header");
 		ret = -1;
 		goto end;
 	}
 
-	condition_comm = (const struct lttng_condition_session_consumed_size_comm *) src_view->data;
-	names_view = lttng_buffer_view_from_view(src_view,
+	condition_comm = (typeof(condition_comm)) src_view->buffer.data;
+	names_view = lttng_buffer_view_from_view(&src_view->buffer,
 			sizeof(*condition_comm), -1);
 
 	if (condition_comm->session_name_len > LTTNG_NAME_MAX) {
@@ -222,8 +223,8 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_session_consumed_size_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_condition_session_consumed_size_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
 {
 	ssize_t ret;
@@ -235,7 +236,7 @@ ssize_t lttng_condition_session_consumed_size_create_from_buffer(
 		goto error;
 	}
 
-	ret = init_condition_from_buffer(condition, view);
+	ret = init_condition_from_payload(condition, view);
 	if (ret < 0) {
 		goto error;
 	}
@@ -248,14 +249,14 @@ error:
 }
 
 static
-struct lttng_evaluation *create_evaluation_from_buffer(
-		const struct lttng_buffer_view *view)
+struct lttng_evaluation *create_evaluation_from_payload(
+		const struct lttng_payload_view *view)
 {
 	const struct lttng_evaluation_session_consumed_size_comm *comm =
-			(const struct lttng_evaluation_session_consumed_size_comm *) view->data;
+			(typeof(comm)) view->buffer.data;
 	struct lttng_evaluation *evaluation = NULL;
 
-	if (view->size < sizeof(*comm)) {
+	if (view->buffer.size < sizeof(*comm)) {
 		goto end;
 	}
 
@@ -266,8 +267,8 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_session_consumed_size_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_evaluation_session_consumed_size_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret;
@@ -278,7 +279,7 @@ ssize_t lttng_evaluation_session_consumed_size_create_from_buffer(
 		goto error;
 	}
 
-	evaluation = create_evaluation_from_buffer(view);
+	evaluation = create_evaluation_from_payload(view);
 	if (!evaluation) {
 		ret = -1;
 		goto error;
@@ -393,15 +394,16 @@ end:
 static
 int lttng_evaluation_session_consumed_size_serialize(
 		const struct lttng_evaluation *evaluation,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	struct lttng_evaluation_session_consumed_size *consumed;
 	struct lttng_evaluation_session_consumed_size_comm comm;
 
-	consumed = container_of(evaluation, struct lttng_evaluation_session_consumed_size,
-			parent);
+	consumed = container_of(evaluation,
+			struct lttng_evaluation_session_consumed_size, parent);
 	comm.session_consumed = consumed->session_consumed;
-	return lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	return lttng_dynamic_buffer_append(
+			&payload->buffer, &comm, sizeof(comm));
 }
 
 static

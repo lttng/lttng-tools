@@ -95,7 +95,7 @@ end:
 	return is_equal;
 }
 static int lttng_action_rotate_session_serialize(
-		struct lttng_action *action, struct lttng_dynamic_buffer *buf)
+		struct lttng_action *action, struct lttng_payload *payload)
 {
 	struct lttng_action_rotate_session *action_rotate_session;
 	struct lttng_action_rotate_session_comm comm;
@@ -103,7 +103,7 @@ static int lttng_action_rotate_session_serialize(
 	int ret;
 
 	assert(action);
-	assert(buf);
+	assert(payload);
 
 	action_rotate_session = action_rotate_session_from_action(action);
 
@@ -115,13 +115,14 @@ static int lttng_action_rotate_session_serialize(
 	session_name_len = strlen(action_rotate_session->session_name) + 1;
 	comm.session_name_len = session_name_len;
 
-	ret = lttng_dynamic_buffer_append(buf, &comm, sizeof(comm));
+	ret = lttng_dynamic_buffer_append(
+			&payload->buffer, &comm, sizeof(comm));
 	if (ret) {
 		ret = -1;
 		goto end;
 	}
 
-	ret = lttng_dynamic_buffer_append(buf,
+	ret = lttng_dynamic_buffer_append(&payload->buffer,
 			action_rotate_session->session_name, session_name_len);
 	if (ret) {
 		ret = -1;
@@ -150,8 +151,8 @@ end:
 	return;
 }
 
-ssize_t lttng_action_rotate_session_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_action_rotate_session_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_action **p_action)
 {
 	ssize_t consumed_len;
@@ -166,11 +167,11 @@ ssize_t lttng_action_rotate_session_create_from_buffer(
 		goto end;
 	}
 
-	comm = (const struct lttng_action_rotate_session_comm *) view->data;
+	comm = (typeof(comm)) view->buffer.data;
 	session_name = (const char *) &comm->data;
 
 	if (!lttng_buffer_view_contains_string(
-			view, session_name, comm->session_name_len)) {
+			&view->buffer, session_name, comm->session_name_len)) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -182,8 +183,7 @@ ssize_t lttng_action_rotate_session_create_from_buffer(
 		goto end;
 	}
 
-	consumed_len = sizeof(struct lttng_action_rotate_session_comm) +
-		comm->session_name_len;
+	consumed_len = sizeof(*comm) + comm->session_name_len;
 	*p_action = action;
 	action = NULL;
 

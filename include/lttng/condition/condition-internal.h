@@ -10,8 +10,8 @@
 
 #include <lttng/condition/condition.h>
 #include <common/macros.h>
-#include <common/buffer-view.h>
-#include <common/dynamic-buffer.h>
+#include <common/sessiond-comm/payload-view.h>
+#include <common/sessiond-comm/payload.h>
 #include <stdbool.h>
 #include <urcu/list.h>
 #include <stdint.h>
@@ -21,11 +21,11 @@ typedef void (*condition_destroy_cb)(struct lttng_condition *condition);
 typedef bool (*condition_validate_cb)(const struct lttng_condition *condition);
 typedef int (*condition_serialize_cb)(
 		const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 typedef bool (*condition_equal_cb)(const struct lttng_condition *a,
 		const struct lttng_condition *b);
-typedef ssize_t (*condition_create_from_buffer_cb)(
-		const struct lttng_buffer_view *view,
+typedef ssize_t (*condition_create_from_payload_cb)(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
 struct lttng_condition {
@@ -50,13 +50,13 @@ LTTNG_HIDDEN
 bool lttng_condition_validate(const struct lttng_condition *condition);
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+ssize_t lttng_condition_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_condition **condition);
 
 LTTNG_HIDDEN
 int lttng_condition_serialize(const struct lttng_condition *condition,
-		struct lttng_dynamic_buffer *buf);
+		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
 bool lttng_condition_is_equal(const struct lttng_condition *a,

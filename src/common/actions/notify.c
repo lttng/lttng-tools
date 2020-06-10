@@ -18,7 +18,7 @@ void lttng_action_notify_destroy(struct lttng_action *action)
 
 static
 int lttng_action_notify_serialize(struct lttng_action *action,
-		struct lttng_dynamic_buffer *buf)
+		struct lttng_payload *payload)
 {
 	return 0;
 }
@@ -48,8 +48,8 @@ end:
 	return &notify->parent;
 }
 
-ssize_t lttng_action_notify_create_from_buffer(
-		const struct lttng_buffer_view *view,
+ssize_t lttng_action_notify_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_action **action)
 {
 	ssize_t consumed_length;
