@@ -17,10 +17,9 @@
 static
 size_t round_to_power_of_2(size_t val)
 {
-	int order;
 	size_t rounded;
+	const int order = utils_get_count_order_u64(val);
 
-	order = utils_get_count_order_u64(val);
 	assert(order >= 0);
 	rounded = (1ULL << order);
 	assert(rounded >= val);
@@ -135,6 +134,7 @@ int lttng_dynamic_buffer_set_size(struct lttng_dynamic_buffer *buffer,
 		 * size _before_ making such calls.
 		 */
 	}
+
 	buffer->size = new_size;
 end:
 	return ret;
@@ -168,6 +168,7 @@ int lttng_dynamic_buffer_set_capacity(struct lttng_dynamic_buffer *buffer,
 		ret = -1;
 		goto end;
 	}
+
 	buffer->data = new_buf;
 	buffer->_capacity = new_capacity;
 end:
@@ -181,6 +182,7 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 	if (!buffer) {
 		return;
 	}
+
 	buffer->size = 0;
 	buffer->_capacity = 0;
 	free(buffer->data);
@@ -193,5 +195,6 @@ size_t lttng_dynamic_buffer_get_capacity_left(
 	if (!buffer) {
 		return 0;
 	}
+
 	return buffer->_capacity - buffer->size;
 }
