@@ -186,6 +186,7 @@ void lttng_dynamic_buffer_reset(struct lttng_dynamic_buffer *buffer)
 	buffer->size = 0;
 	buffer->_capacity = 0;
 	free(buffer->data);
+	buffer->data = NULL;
 }
 
 LTTNG_HIDDEN
