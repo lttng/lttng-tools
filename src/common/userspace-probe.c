@@ -1096,12 +1096,14 @@ int lttng_userspace_probe_location_function_create_from_buffer(
 	function_name = lttng_strndup(function_name_src, LTTNG_SYMBOL_NAME_LEN);
 	if (!function_name) {
 		PERROR("lttng_strndup");
+		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
 	binary_path = lttng_strndup(binary_path_src, LTTNG_PATH_MAX);
 	if (!binary_path) {
 		PERROR("lttng_strndup");
+		ret = -LTTNG_ERR_NOMEM;
 		goto end;
 	}
 
