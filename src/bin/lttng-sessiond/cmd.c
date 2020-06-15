@@ -819,8 +819,7 @@ end:
 	return nb_event;
 
 error:
-	/* Negate the error code to differentiate the size from an error */
-	return -ret;
+	return ret;
 }
 
 /*
