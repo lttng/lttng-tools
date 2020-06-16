@@ -13,6 +13,7 @@
 #include <urcu/wfcqueue.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/sessiond-comm/payload.h>
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
 #include <common/uuid.h>
@@ -78,8 +79,10 @@ extern struct notification_thread_handle *notification_thread_handle;
 struct command_ctx {
 	unsigned int lttng_msg_size;
 	struct ltt_session *session;
-	struct lttcomm_lttng_msg *llm;
-	struct lttcomm_session_msg *lsm;
+	/* Input message */
+	struct lttcomm_session_msg lsm;
+	/* Reply content, starts with an lttcomm_lttng_msg header. */
+	struct lttng_payload reply_payload;
 	lttng_sock_cred creds;
 };
 

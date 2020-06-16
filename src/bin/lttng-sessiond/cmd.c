@@ -3186,19 +3186,19 @@ enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
 	enum lttng_error_code ret_code;
 
 	lttng_dynamic_buffer_init(&payload);
-	if (cmd_ctx->lsm->u.create_session.home_dir_size >=
+	if (cmd_ctx->lsm.u.create_session.home_dir_size >=
 			LTTNG_PATH_MAX) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
-	if (cmd_ctx->lsm->u.create_session.session_descriptor_size >
+	if (cmd_ctx->lsm.u.create_session.session_descriptor_size >
 			LTTNG_SESSION_DESCRIPTOR_MAX_LEN) {
 		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
-	payload_size = cmd_ctx->lsm->u.create_session.home_dir_size +
-			cmd_ctx->lsm->u.create_session.session_descriptor_size;
+	payload_size = cmd_ctx->lsm.u.create_session.home_dir_size +
+			cmd_ctx->lsm.u.create_session.session_descriptor_size;
 	ret = lttng_dynamic_buffer_set_size(&payload, payload_size);
 	if (ret) {
 		ret_code = LTTNG_ERR_NOMEM;
@@ -3215,11 +3215,11 @@ enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
 	home_dir_view = lttng_buffer_view_from_dynamic_buffer(
 			&payload,
 			0,
-			cmd_ctx->lsm->u.create_session.home_dir_size);
+			cmd_ctx->lsm.u.create_session.home_dir_size);
 	session_descriptor_view = lttng_buffer_view_from_dynamic_buffer(
 			&payload,
-			cmd_ctx->lsm->u.create_session.home_dir_size,
-			cmd_ctx->lsm->u.create_session.session_descriptor_size);
+			cmd_ctx->lsm.u.create_session.home_dir_size,
+			cmd_ctx->lsm.u.create_session.session_descriptor_size);
 
 	ret = lttng_session_descriptor_create_from_buffer(
 			&session_descriptor_view, &session_descriptor);
@@ -4365,7 +4365,7 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	struct lttng_payload trigger_payload;
 
 	lttng_payload_init(&trigger_payload);
-	trigger_len = (size_t) cmd_ctx->lsm->u.trigger.length;
+	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
 	ret = lttng_dynamic_buffer_set_size(
 			&trigger_payload.buffer, trigger_len);
 	if (ret) {
@@ -4415,7 +4415,7 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 	struct lttng_payload trigger_payload;
 
 	lttng_payload_init(&trigger_payload);
-	trigger_len = (size_t) cmd_ctx->lsm->u.trigger.length;
+	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
 	ret = lttng_dynamic_buffer_set_size(
 			&trigger_payload.buffer, trigger_len);
 	if (ret) {
