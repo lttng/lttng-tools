@@ -2215,7 +2215,7 @@ static void *thread_manage_clients(void *data)
 	}
 
 	/* Set state as running. */
-        set_thread_status(true);
+	set_thread_status(true);
 	pthread_cleanup_pop(0);
 
 	/* This testpoint is after we signal readiness to the parent. */
