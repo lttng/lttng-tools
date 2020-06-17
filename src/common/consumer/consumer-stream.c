@@ -393,12 +393,8 @@ int metadata_stream_check_version(struct lttng_consumer_stream *stream,
 	}
 
 	DBG("New metadata version detected");
-	stream->metadata_version = subbuffer->info.metadata.version;
-	stream->reset_metadata_flag = 1;
-
-	if (stream->metadata_bucket) {
-		metadata_bucket_reset(stream->metadata_bucket);
-	}
+	consumer_stream_metadata_set_version(stream,
+			subbuffer->info.metadata.version);
 
 	if (stream->read_subbuffer_ops.reset_metadata) {
 		stream->read_subbuffer_ops.reset_metadata(stream);
@@ -1052,4 +1048,16 @@ int consumer_stream_enable_metadata_bucketization(
 	stream->read_subbuffer_ops.consume_subbuffer = metadata_bucket_consume;
 end:
 	return ret;
+}
+
+void consumer_stream_metadata_set_version(
+		struct lttng_consumer_stream *stream, uint64_t new_version)
+{
+	assert(new_version > stream->metadata_version);
+	stream->metadata_version = new_version;
+	stream->reset_metadata_flag = 1;
+
+	if (stream->metadata_bucket) {
+		metadata_bucket_reset(stream->metadata_bucket);
+	}
 }
