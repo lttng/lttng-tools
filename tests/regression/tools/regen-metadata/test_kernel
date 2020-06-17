@@ -13,45 +13,67 @@ SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=18
+NUM_TESTS=24
 
 source $TESTDIR/utils/utils.sh
 
 function test_kernel_streaming ()
 {
+	local metadata_path
+
 	diag "Test kernel streaming with metadata regeneration"
 	create_lttng_session_uri $SESSION_NAME net://localhost
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
 	echo -n "100" > /proc/lttng-test-filter-event
+
+	# Baseline
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
+
+	# Find the metadata file
+	metadata_path=$(find "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"* | grep metadata)
+
+	# Empty the metadata file
+	echo -n > "$metadata_path"
+
+	start_lttng_tracing_ok $SESSION_NAME
 	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
 	# Validate test
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	else
-		break
-	fi
 	destroy_lttng_session_ok $SESSION_NAME
+	rm -rf "$TRACE_PATH"
 }
 
 function test_kernel_local ()
 {
+	local metadata_path
+
 	diag "Test kernel local with metadata regeneration"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	lttng_enable_kernel_event $SESSION_NAME $EVENT_NAME
 	start_lttng_tracing_ok $SESSION_NAME
+
+	# Baseline
 	echo -n "100" > /proc/lttng-test-filter-event
+	stop_lttng_tracing_ok $SESSION_NAME
+	validate_trace $EVENT_NAME "$TRACE_PATH"
+
+	# Find the metadata file
+	metadata_path=$(find "$TRACE_PATH"* | grep metadata)
+
+	# Empty the metadata file
+	echo -n > "$metadata_path"
+
+	start_lttng_tracing_ok $SESSION_NAME
 	regenerate_metadata_ok $SESSION_NAME
 	stop_lttng_tracing_ok $SESSION_NAME
+
 	validate_trace $EVENT_NAME $TRACE_PATH
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
 	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
 }
 
 plan_tests $NUM_TESTS
