@@ -3314,7 +3314,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx,
 		bool locked_by_caller)
 {
-	ssize_t ret, written_bytes;
+	ssize_t ret, written_bytes = 0;
 	int rotation_ret;
 	struct stream_subbuffer subbuffer = {};
 
