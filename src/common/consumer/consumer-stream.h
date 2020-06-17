@@ -130,4 +130,14 @@ bool consumer_stream_is_deleted(struct lttng_consumer_stream *stream);
 int consumer_stream_enable_metadata_bucketization(
 		struct lttng_consumer_stream *stream);
 
+/*
+ * Set the version of a metadata stream (i.e. following a metadata
+ * regeneration).
+ *
+ * Changing the version of a metadata stream will cause any bucketized metadata
+ * to be discarded and will mark the metadata stream for future `reset`.
+ */
+void consumer_stream_metadata_set_version(
+		struct lttng_consumer_stream *stream, uint64_t new_version);
+
 #endif /* LTTNG_CONSUMER_STREAM_H */

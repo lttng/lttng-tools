@@ -2413,13 +2413,12 @@ int lttng_ustconsumer_close_wakeup_fd(struct lttng_consumer_stream *stream)
 }
 
 static
-void metadata_stream_reset_cache(struct lttng_consumer_stream *stream)
+void metadata_stream_reset_cache_consumed_position(
+		struct lttng_consumer_stream *stream)
 {
 	DBG("Reset metadata cache of session %" PRIu64,
 			stream->chan->session_id);
 	stream->ust_metadata_pushed = 0;
-	stream->metadata_version = stream->chan->metadata_cache->version;
-	stream->reset_metadata_flag = 1;
 }
 
 /*
@@ -2435,10 +2434,41 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	int ret;
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-	if (stream->chan->metadata_cache->max_offset
-			== stream->ust_metadata_pushed) {
-		ret = 0;
-		goto end;
+	if (stream->chan->metadata_cache->max_offset ==
+	    stream->ust_metadata_pushed) {
+		/*
+		 * In the context of a user space metadata channel, a
+		 * change in version can be detected in two ways:
+		 *   1) During the pre-consume of the `read_subbuffer` loop,
+		 *   2) When populating the metadata ring buffer (i.e. here).
+		 *
+		 * This function is invoked when there is no metadata
+		 * available in the ring-buffer. If all data was consumed
+		 * up to the size of the metadata cache, there is no metadata
+		 * to insert in the ring-buffer.
+		 *
+		 * However, the metadata version could still have changed (a
+		 * regeneration without any new data will yield the same cache
+		 * size).
+		 *
+		 * The cache's version is checked for a version change and the
+		 * consumed position is reset if one occurred.
+		 *
+		 * This check is only necessary for the user space domain as
+		 * it has to manage the cache explicitly. If this reset was not
+		 * performed, no metadata would be consumed (and no reset would
+		 * occur as part of the pre-consume) until the metadata size
+		 * exceeded the cache size.
+		 */
+		if (stream->metadata_version !=
+				stream->chan->metadata_cache->version) {
+			metadata_stream_reset_cache_consumed_position(stream);
+			consumer_stream_metadata_set_version(stream,
+					stream->chan->metadata_cache->version);
+		} else {
+			ret = 0;
+			goto end;
+		}
 	}
 
 	write_len = ustctl_write_one_packet_to_channel(stream->chan->uchan,
@@ -2663,7 +2693,7 @@ static int extract_metadata_subbuffer_info(struct lttng_consumer_stream *stream,
 		goto end;
 	}
 
-	subbuf->info.metadata.version = stream->chan->metadata_cache->version;
+	subbuf->info.metadata.version = stream->metadata_version;
 
 end:
 	return ret;
@@ -2907,7 +2937,7 @@ static int lttng_ustconsumer_set_stream_ops(
 		stream->read_subbuffer_ops.extract_subbuffer_info =
 				extract_metadata_subbuffer_info;
 		stream->read_subbuffer_ops.reset_metadata =
-				metadata_stream_reset_cache;
+				metadata_stream_reset_cache_consumed_position;
 		if (stream->chan->is_live) {
 			stream->read_subbuffer_ops.on_sleep = signal_metadata;
 			ret = consumer_stream_enable_metadata_bucketization(
