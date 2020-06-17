@@ -79,8 +79,7 @@ static int consumer_stream_update_stats(struct lttng_consumer_stream *stream,
 {
 	int ret = 0;
 	uint64_t sequence_number;
-	const uint64_t discarded_events =
-			LTTNG_OPTIONAL_GET(subbuf->info.data.sequence_number);
+	const uint64_t discarded_events = subbuf->info.data.events_discarded;
 
 	if (!subbuf->info.data.sequence_number.is_set) {
 		/* Command not supported by the tracer. */
