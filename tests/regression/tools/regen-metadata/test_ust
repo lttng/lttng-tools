@@ -28,7 +28,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=33
+NUM_TESTS=39
 
 source $TESTDIR/utils/utils.sh
 
@@ -51,6 +51,7 @@ function test_ust_streaming ()
 {
 	local file_sync_after_first=$(mktemp -u)
 	local file_sync_before_last=$(mktemp -u)
+	local metadata_path
 
 	diag "Test UST streaming with metadata regeneration"
 	create_lttng_session_uri $SESSION_NAME net://localhost
@@ -64,16 +65,26 @@ function test_ust_streaming ()
 
 	# Wait for the applications started in background
 	wait
-	regenerate_metadata_ok $SESSION_NAME
 
+	# Expect a valid trace
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	# Validate test
+	validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"*
+
+	# Find the metadata file
+	metadata_path=$(find "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"* | grep metadata)
+
+	# Empty the metadata file
+	echo -n > "$metadata_path"
+
+	start_lttng_tracing_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Metadata file must have been regenerated
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}
 }
@@ -82,6 +93,7 @@ function test_ust_local ()
 {
 	local file_sync_after_first=$(mktemp -u)
 	local file_sync_before_last=$(mktemp -u)
+	local metadata_path
 
 	diag "Test UST local with metadata regeneration"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -95,16 +107,26 @@ function test_ust_local ()
 
 	# Wait for the applications started in background
 	wait
-	regenerate_metadata_ok $SESSION_NAME
 
+	# Expect a valid trace
 	stop_lttng_tracing_ok $SESSION_NAME
-	destroy_lttng_session_ok $SESSION_NAME
-	# Validate test
+	validate_trace $EVENT_NAME "$TRACE_PATH"
+
+	# Find the metadata file
+	metadata_path=$(find "$TRACE_PATH"* | grep metadata)
+
+	# Empty the metadata file
+	echo -n > "$metadata_path"
+
+	start_lttng_tracing_ok $SESSION_NAME
+	regenerate_metadata_ok $SESSION_NAME
+	stop_lttng_tracing_ok $SESSION_NAME
+
+	# Metadata file must have been regenerated
 	validate_trace $EVENT_NAME $TRACE_PATH
-	if [ $? -eq 0 ]; then
-		# Only delete if successful
-		rm -rf $TRACE_PATH
-	fi
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
 	rm -f ${file_sync_after_first}
 	rm -f ${file_sync_before_last}
 }
