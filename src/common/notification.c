@@ -10,8 +10,8 @@
 #include <lttng/condition/evaluation-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <assert.h>
 
 LTTNG_HIDDEN

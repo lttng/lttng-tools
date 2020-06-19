@@ -12,8 +12,8 @@
 #include <common/macros.h>
 #include <common/buffer-view.h>
 #include <common/dynamic-buffer.h>
-#include <common/sessiond-comm/payload-view.h>
-#include <common/sessiond-comm/payload.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
 #include <stdbool.h>
 #include <sys/types.h>
 #include <urcu/ref.h>

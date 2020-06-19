@@ -10,8 +10,8 @@
 
 #include <lttng/condition/condition.h>
 #include <common/macros.h>
-#include <common/sessiond-comm/payload-view.h>
-#include <common/sessiond-comm/payload.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
 #include <stdbool.h>
 #include <urcu/list.h>
 #include <stdint.h>

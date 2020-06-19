@@ -7,7 +7,6 @@
  */
 
 #include "bin/lttng-sessiond/tracker.h"
-#include "common/sessiond-comm/payload.h"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #define _LGPL_SOURCE
@@ -27,8 +26,8 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <common/trace-chunk.h>
 #include <lttng/location-internal.h>
 #include <lttng/trigger/trigger-internal.h>

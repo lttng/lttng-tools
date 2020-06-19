@@ -5,8 +5,8 @@
  *
  */
 
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <common/snapshot.h>
 #include <lttng/snapshot-internal.h>
 #include <lttng/snapshot.h>

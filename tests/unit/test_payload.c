@@ -5,8 +5,8 @@
  *
  */
 
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <tap/tap.h>
 
 static const int TEST_COUNT = 5;

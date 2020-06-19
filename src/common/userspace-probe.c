@@ -9,6 +9,8 @@
 #include <common/compat/string.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <fcntl.h>
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.h>

@@ -13,7 +13,7 @@
 #include <urcu/wfcqueue.h>
 
 #include <common/sessiond-comm/sessiond-comm.h>
-#include <common/sessiond-comm/payload.h>
+#include <common/payload.h>
 #include <common/compat/poll.h>
 #include <common/compat/socket.h>
 #include <common/uuid.h>

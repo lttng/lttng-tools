@@ -8,8 +8,8 @@
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/action/action-internal.h>
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <common/error.h>
 #include <assert.h>
 

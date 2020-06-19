@@ -7,8 +7,8 @@
 
 #include <assert.h>
 #include <common/dynamic-array.h>
-#include <common/sessiond-comm/payload.h>
-#include <common/sessiond-comm/payload-view.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 #include <common/error.h>
 #include <common/macros.h>
 #include <lttng/action/action-internal.h>

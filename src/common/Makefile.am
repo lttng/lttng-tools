@@ -55,6 +55,8 @@ libcommon_la_SOURCES = \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
 	optional.h \
+	payload.c payload.h \
+	payload-view.c payload-view.h \
 	pipe.c pipe.h \
 	readwrite.c readwrite.h \
 	runas.c runas.h \
