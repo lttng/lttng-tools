@@ -87,7 +87,7 @@ struct lttng_payload_view lttng_payload_view_from_view(
  * from an existing dynamic buffer.
  *
  * @src		Source dynamic buffer to reference
- * @offset	Offset to apply to the payload's buffer
+ * @offset	Offset to apply to the dynamic buffer
  * @len		Length of the buffer contents to reference. Passing -1 will
  *		cause the payload view to reference the whole payload from the
  *		offset provided.
@@ -96,6 +96,33 @@ LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *buffer, size_t offset,
 		ptrdiff_t len);
+/**
+ *
+ * Return a payload view referencing a subset of a dynamic buffer.
+ *
+ * Meant as an adapter for code paths that need to create a payload view
+ * from an existing buffer view.
+ *
+ * @src		Source buffer view to reference
+ * @offset	Offset to apply to the buffer view
+ * @len		Length of the buffer contents to reference. Passing -1 will
+ *		cause the payload view to reference the whole payload from the
+ *		offset provided.
+ */
+LTTNG_HIDDEN
+struct lttng_payload_view lttng_payload_view_from_buffer_view(
+		const struct lttng_buffer_view *view, size_t offset,
+		ptrdiff_t len);
+
+/**
+ * Get the number of file descriptors left in a payload view.
+ *
+ * @payload	Payload instance
+ *
+ * Returns the number of file descriptors left on success, -1 on error.
+ */
+LTTNG_HIDDEN
+int lttng_payload_view_get_fd_count(struct lttng_payload_view *payload_view);
 
 /**
  * Pop an fd from a payload view.

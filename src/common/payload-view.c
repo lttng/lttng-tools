@@ -5,6 +5,7 @@
  *
  */
 
+#include <common/dynamic-array.h>
 #include <common/buffer-view.h>
 #include "payload-view.h"
 #include "payload.h"
@@ -44,6 +45,41 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		.buffer = lttng_buffer_view_from_dynamic_buffer(
 			buffer, offset, len)
 	};
+}
+
+LTTNG_HIDDEN
+struct lttng_payload_view lttng_payload_view_from_buffer_view(
+		const struct lttng_buffer_view *view, size_t offset,
+		ptrdiff_t len)
+{
+	return (struct lttng_payload_view) {
+		.buffer = lttng_buffer_view_from_view(
+			view, offset, len)
+	};
+}
+
+LTTNG_HIDDEN
+int lttng_payload_view_get_fd_count(struct lttng_payload_view *payload_view)
+{
+	int ret;
+	size_t position;
+
+	if (!payload_view) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_dynamic_array_get_count(&payload_view->_fds);
+	if (ret < 0) {
+		goto end;
+	}
+
+	position = payload_view->_iterator.p_fds_position ?
+			*payload_view->_iterator.p_fds_position :
+			payload_view->_iterator.fds_position;
+	ret = ret - (int) position;
+end:
+	return ret;
 }
 
 LTTNG_HIDDEN
