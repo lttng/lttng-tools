@@ -11,8 +11,11 @@
 
 #include <lttng/userspace-probe.h>
 #include <common/macros.h>
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
+#include <stdbool.h>
+
+struct lttng_payload;
+struct lttng_payload_view;
+struct lttng_dynamic_buffer;
 
 typedef bool (*userspace_probe_location_equal_cb)(
 		const struct lttng_userspace_probe_location *a,
@@ -117,12 +120,11 @@ struct lttng_userspace_probe_location_tracepoint {
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer,
-		int *binary_fd);
+		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
-int lttng_userspace_probe_location_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+int lttng_userspace_probe_location_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location **probe_location);
 
 LTTNG_HIDDEN

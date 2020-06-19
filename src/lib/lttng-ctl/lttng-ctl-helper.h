@@ -38,6 +38,16 @@ int lttng_ctl_ask_sessiond_fds_varlen(struct lttcomm_session_msg *lsm,
 		size_t *user_cmd_header_len);
 
 /*
+ * Sends the lttcomm message to the session daemon and fills the reply payload.
+ *
+ * Return the size of the received data on success or else a negative lttng
+ * error code.
+ */
+LTTNG_HIDDEN
+int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
+		struct lttng_payload *reply);
+
+/*
  * Calls lttng_ctl_ask_sessiond_fds_varlen() with no expected command header.
  */
 static inline int lttng_ctl_ask_sessiond_varlen_no_cmd_header(

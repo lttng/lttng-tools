@@ -5,6 +5,7 @@
  *
  */
 
+#include "lttng/lttng-error.h"
 #include <assert.h>
 #include <common/compat/string.h>
 #include <common/error.h>
@@ -931,7 +932,7 @@ lttng_userspace_probe_location_get_lookup_method(
 static
 int lttng_userspace_probe_location_lookup_method_serialize(
 		struct lttng_userspace_probe_location_lookup_method *method,
-		struct lttng_dynamic_buffer *buffer)
+		struct lttng_payload *payload)
 {
 	int ret;
 	struct lttng_userspace_probe_location_lookup_method_comm
@@ -939,8 +940,8 @@ int lttng_userspace_probe_location_lookup_method_serialize(
 
 	lookup_method_comm.type = (int8_t) (method ? method->type :
 			LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT);
-	if (buffer) {
-		ret = lttng_dynamic_buffer_append(buffer, &lookup_method_comm,
+	if (payload) {
+		ret = lttng_dynamic_buffer_append(&payload->buffer, &lookup_method_comm,
 				sizeof(lookup_method_comm));
 		if (ret) {
 			goto end;
@@ -954,8 +955,7 @@ end:
 static
 int lttng_userspace_probe_location_function_serialize(
 		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer,
-		int *binary_fd)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t function_name_len, binary_path_len;
@@ -974,13 +974,9 @@ int lttng_userspace_probe_location_function_serialize(
 		goto end;
 	}
 
-	if (binary_fd && location_function->binary_fd < 0) {
+	if (payload && location_function->binary_fd < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
-	}
-
-	if (binary_fd) {
-		*binary_fd = location_function->binary_fd;
 	}
 
 	function_name_len = strlen(location_function->function_name);
@@ -997,24 +993,30 @@ int lttng_userspace_probe_location_function_serialize(
 	location_function_comm.function_name_len = function_name_len + 1;
 	location_function_comm.binary_path_len = binary_path_len + 1;
 
-	if (buffer) {
-		ret = lttng_dynamic_buffer_append(buffer,
+	if (payload) {
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				&location_function_comm,
 				sizeof(location_function_comm));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_dynamic_buffer_append(buffer,
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				location_function->function_name,
 				location_function_comm.function_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_dynamic_buffer_append(buffer,
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				location_function->binary_path,
 				location_function_comm.binary_path_len);
+		if (ret) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
+		ret = lttng_payload_push_fd(
+				payload, location_function->binary_fd);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
@@ -1030,8 +1032,7 @@ end:
 static
 int lttng_userspace_probe_location_tracepoint_serialize(
 		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer,
-		int *binary_fd)
+		struct lttng_payload *payload)
 {
 	int ret;
 	size_t probe_name_len, provider_name_len, binary_path_len;
@@ -1052,13 +1053,9 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 		goto end;
 	}
 
-	if (binary_fd && location_tracepoint->binary_fd < 0) {
+	if (payload && location_tracepoint->binary_fd < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
-	}
-
-	if (binary_fd) {
-		*binary_fd = location_tracepoint->binary_fd;
 	}
 
 	probe_name_len = strlen(location_tracepoint->probe_name);
@@ -1083,36 +1080,43 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 	location_tracepoint_comm.provider_name_len = provider_name_len + 1;
 	location_tracepoint_comm.binary_path_len = binary_path_len + 1;
 
-	if (buffer) {
-		ret = lttng_dynamic_buffer_append(buffer,
+	if (payload) {
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				&location_tracepoint_comm,
 				sizeof(location_tracepoint_comm));
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_dynamic_buffer_append(buffer,
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				location_tracepoint->probe_name,
 				location_tracepoint_comm.probe_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_dynamic_buffer_append(buffer,
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				location_tracepoint->provider_name,
 				location_tracepoint_comm.provider_name_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
-		ret = lttng_dynamic_buffer_append(buffer,
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
 				location_tracepoint->binary_path,
 				location_tracepoint_comm.binary_path_len);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
 		}
+		ret = lttng_payload_push_fd(
+				payload, location_tracepoint->binary_fd);
+		if (ret) {
+			ret = -LTTNG_ERR_INVALID;
+			goto end;
+		}
 	}
+
 	ret = sizeof(location_tracepoint_comm) +
 			location_tracepoint_comm.probe_name_len +
 			location_tracepoint_comm.provider_name_len +
@@ -1124,8 +1128,7 @@ end:
 LTTNG_HIDDEN
 int lttng_userspace_probe_location_serialize(
 		const struct lttng_userspace_probe_location *location,
-		struct lttng_dynamic_buffer *buffer,
-		int *binary_fd)
+		struct lttng_payload *payload)
 {
 	int ret, buffer_use = 0;
 	struct lttng_userspace_probe_location_comm location_generic_comm;
@@ -1139,8 +1142,9 @@ int lttng_userspace_probe_location_serialize(
 	memset(&location_generic_comm, 0, sizeof(location_generic_comm));
 
 	location_generic_comm.type = (int8_t) location->type;
-	if (buffer) {
-		ret = lttng_dynamic_buffer_append(buffer, &location_generic_comm,
+	if (payload) {
+		ret = lttng_dynamic_buffer_append(&payload->buffer,
+				&location_generic_comm,
 				sizeof(location_generic_comm));
 		if (ret) {
 			goto end;
@@ -1151,11 +1155,11 @@ int lttng_userspace_probe_location_serialize(
 	switch (lttng_userspace_probe_location_get_type(location)) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 		ret = lttng_userspace_probe_location_function_serialize(
-				location, buffer, binary_fd);
+				location, payload);
 		break;
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
 		ret = lttng_userspace_probe_location_tracepoint_serialize(
-				location, buffer, binary_fd);
+				location, payload);
 		break;
 	default:
 		ERR("Unsupported probe location type");
@@ -1168,7 +1172,7 @@ int lttng_userspace_probe_location_serialize(
 	buffer_use += ret;
 
 	ret = lttng_userspace_probe_location_lookup_method_serialize(
-			location->lookup_method, buffer);
+			location->lookup_method, payload);
 	if (ret < 0) {
 		goto end;
 	}
@@ -1178,32 +1182,42 @@ end:
 }
 
 static
-int lttng_userspace_probe_location_function_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+int lttng_userspace_probe_location_function_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_function_comm *location_function_comm;
 	const char *function_name_src, *binary_path_src;
 	char *function_name = NULL, *binary_path = NULL;
 	int ret = 0;
+	size_t expected_size;
+	const int binary_fd = lttng_payload_view_pop_fd(view);
 
-	assert(buffer);
-	assert(buffer->data);
 	assert(location);
 
-	location_function_comm =
-		(struct lttng_userspace_probe_location_function_comm *) buffer->data;
-
-	const size_t expected_size = sizeof(*location_function_comm) +
-			location_function_comm->function_name_len +
-			location_function_comm->binary_path_len;
-
-	if (buffer->size < expected_size) {
+	if (binary_fd < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	function_name_src = buffer->data + sizeof(*location_function_comm);
+	if (view->buffer.size < sizeof(*location_function_comm)) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	location_function_comm =
+			(typeof(location_function_comm)) view->buffer.data;
+
+	expected_size = sizeof(*location_function_comm) +
+			location_function_comm->function_name_len +
+			location_function_comm->binary_path_len;
+
+	if (view->buffer.size < expected_size) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	function_name_src = view->buffer.data + sizeof(*location_function_comm);
 	binary_path_src = function_name_src +
 			location_function_comm->function_name_len;
 
@@ -1237,6 +1251,18 @@ int lttng_userspace_probe_location_function_create_from_buffer(
 		goto end;
 	}
 
+	ret = lttng_userspace_probe_location_function_set_binary_fd(
+			*location, binary_fd);
+	if (ret) {
+		const int close_ret = close(binary_fd);
+
+		if (close_ret) {
+			PERROR("Failed to close userspace probe function binary fd");
+		}
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	ret = (int) expected_size;
 end:
 	free(function_name);
@@ -1245,33 +1271,43 @@ end:
 }
 
 static
-int lttng_userspace_probe_location_tracepoint_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+int lttng_userspace_probe_location_tracepoint_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_tracepoint_comm *location_tracepoint_comm;
 	const char *probe_name_src, *provider_name_src, *binary_path_src;
 	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
 	int ret = 0;
+	size_t expected_size;
+	const int binary_fd = lttng_payload_view_pop_fd(view);
 
-	assert(buffer);
-	assert(buffer->data);
 	assert(location);
 
-	location_tracepoint_comm =
-		(struct lttng_userspace_probe_location_tracepoint_comm *) buffer->data;
-
-	const size_t expected_size = sizeof(*location_tracepoint_comm) +
-			location_tracepoint_comm->probe_name_len +
-			location_tracepoint_comm->provider_name_len +
-			location_tracepoint_comm->binary_path_len;
-
-	if (buffer->size < expected_size) {
+	if (binary_fd < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	probe_name_src = buffer->data + sizeof(*location_tracepoint_comm);
+	if (view->buffer.size < sizeof(*location_tracepoint_comm)) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	location_tracepoint_comm =
+			(typeof(location_tracepoint_comm)) view->buffer.data;
+
+	expected_size = sizeof(*location_tracepoint_comm) +
+			location_tracepoint_comm->probe_name_len +
+			location_tracepoint_comm->provider_name_len +
+			location_tracepoint_comm->binary_path_len;
+
+	if (view->buffer.size < expected_size) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	probe_name_src = view->buffer.data + sizeof(*location_tracepoint_comm);
 	provider_name_src = probe_name_src +
 			location_tracepoint_comm->probe_name_len;
 	binary_path_src = provider_name_src +
@@ -1316,6 +1352,18 @@ int lttng_userspace_probe_location_tracepoint_create_from_buffer(
 		goto end;
 	}
 
+	ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
+			*location, binary_fd);
+	if (ret) {
+		const int close_ret = close(binary_fd);
+
+		if (close_ret) {
+			PERROR("Failed to close userspace probe tracepoint binary fd");
+		}
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	ret = (int) expected_size;
 end:
 	free(probe_name);
@@ -1325,25 +1373,23 @@ end:
 }
 
 static
-int lttng_userspace_probe_location_lookup_method_create_from_buffer(
-		struct lttng_buffer_view *buffer,
+int lttng_userspace_probe_location_lookup_method_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location_lookup_method **lookup_method)
 {
 	int ret;
 	struct lttng_userspace_probe_location_lookup_method_comm *lookup_comm;
 	enum lttng_userspace_probe_location_lookup_method_type type;
 
-	assert(buffer);
-	assert(buffer->data);
+	assert(view);
 	assert(lookup_method);
 
-	if (buffer->size < sizeof(*lookup_comm)) {
+	if (view->buffer.size < sizeof(*lookup_comm)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	lookup_comm = (struct lttng_userspace_probe_location_lookup_method_comm *)
-			buffer->data;
+	lookup_comm = (typeof(lookup_comm)) view->buffer.data;
 	type = (enum lttng_userspace_probe_location_lookup_method_type)
 			lookup_comm->type;
 	switch (type) {
@@ -1377,42 +1423,39 @@ end:
 }
 
 LTTNG_HIDDEN
-int lttng_userspace_probe_location_create_from_buffer(
-		const struct lttng_buffer_view *buffer,
+int lttng_userspace_probe_location_create_from_payload(
+		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	struct lttng_userspace_probe_location_comm *probe_location_comm;
 	enum lttng_userspace_probe_location_type type;
-	struct lttng_buffer_view lookup_method_view;
 	int consumed = 0;
 	int ret;
 
-
-	assert(buffer);
-	assert(buffer->data);
+	assert(view);
 	assert(location);
 
 	lookup_method = NULL;
 
-	if (buffer->size <= sizeof(*probe_location_comm)) {
+	if (view->buffer.size <= sizeof(*probe_location_comm)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	probe_location_comm =
-		(struct lttng_userspace_probe_location_comm *) buffer->data;
+	probe_location_comm = (typeof(probe_location_comm)) view->buffer.data;
 	type = (enum lttng_userspace_probe_location_type) probe_location_comm->type;
 	consumed += sizeof(*probe_location_comm);
 
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
-		struct lttng_buffer_view view = lttng_buffer_view_from_view(
-			buffer, consumed, buffer->size - consumed);
+		struct lttng_payload_view location_view =
+				lttng_payload_view_from_view(
+						view, consumed, -1);
 
-		ret = lttng_userspace_probe_location_function_create_from_buffer(
-				&view, location);
+		ret = lttng_userspace_probe_location_function_create_from_payload(
+				&location_view, location);
 		if (ret < 0) {
 			goto end;
 		}
@@ -1420,11 +1463,11 @@ int lttng_userspace_probe_location_create_from_buffer(
 	}
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
 	{
-		struct lttng_buffer_view view = lttng_buffer_view_from_view(
-			buffer, consumed, buffer->size - consumed);
+		struct lttng_payload_view location_view =
+				lttng_payload_view_from_view(view, consumed, -1);
 
-		ret = lttng_userspace_probe_location_tracepoint_create_from_buffer(
-				&view, location);
+		ret = lttng_userspace_probe_location_tracepoint_create_from_payload(
+				&location_view, location);
 		if (ret < 0) {
 			goto end;
 		}
@@ -1436,15 +1479,19 @@ int lttng_userspace_probe_location_create_from_buffer(
 	}
 
 	consumed += ret;
-	if (buffer->size <= consumed) {
+	if (view->buffer.size <= consumed) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	lookup_method_view = lttng_buffer_view_from_view(buffer, consumed,
-			buffer->size - consumed);
-	ret = lttng_userspace_probe_location_lookup_method_create_from_buffer(
-			&lookup_method_view, &lookup_method);
+	{
+		struct lttng_payload_view lookup_method_view =
+				lttng_payload_view_from_view(
+						view, consumed, -1);
+
+		ret = lttng_userspace_probe_location_lookup_method_create_from_payload(
+				&lookup_method_view, &lookup_method);
+	}
 	if (ret < 0) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;

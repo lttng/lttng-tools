@@ -391,16 +391,10 @@ enum lttng_error_code trace_kernel_create_event(
 
 			/*
 			 * Save a reference to the probe location used during
-			 * the listing of events. Close its FD since it won't
-			 * be needed for listing.
+			 * the listing of events.
 			 */
 			userspace_probe_location =
 					lttng_userspace_probe_location_copy(location);
-			ret = lttng_userspace_probe_location_function_set_binary_fd(
-					userspace_probe_location, -1);
-			if (ret) {
-				goto error;
-			}
 			break;
 		case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
 			/* Get the file descriptor on the target binary. */
@@ -409,15 +403,10 @@ enum lttng_error_code trace_kernel_create_event(
 
 			/*
 			 * Save a reference to the probe location used during the listing of
-			 * events. Close its FD since it won't be needed for listing.
+			 * events.
 			 */
 			userspace_probe_location =
 					lttng_userspace_probe_location_copy(location);
-			ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
-					userspace_probe_location, -1);
-			if (ret) {
-				goto error;
-			}
 			break;
 		default:
 			DBG("Unsupported lookup method type");

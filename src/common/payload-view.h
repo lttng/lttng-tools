@@ -115,6 +115,21 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
 		ptrdiff_t len);
 
 /**
+ * Return a payload view referencing a subset of the memory referenced by a raw
+ * pointer.
+ *
+ * @src		Source buffer to reference
+ * @offset	Offset to apply to the source memory buffer
+ * @len		Length of the memory contents to reference.
+ *
+ * Note that a payload view never assumes the ownership of the memory it
+ * references.
+ */
+LTTNG_HIDDEN
+struct lttng_payload_view lttng_payload_view_init_from_buffer(
+		const char *src, size_t offset, ptrdiff_t len);
+
+/**
  * Get the number of file descriptors left in a payload view.
  *
  * @payload	Payload instance

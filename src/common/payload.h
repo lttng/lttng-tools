@@ -29,6 +29,11 @@ struct lttng_payload {
 LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload);
 
+/* Copy a payload. */
+LTTNG_HIDDEN
+int lttng_payload_copy(const struct lttng_payload *src_payload,
+		struct lttng_payload *dst_payload);
+
 /* Release any memory used by the payload. */
 LTTNG_HIDDEN
 void lttng_payload_reset(struct lttng_payload *payload);

@@ -60,6 +60,16 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
 }
 
 LTTNG_HIDDEN
+struct lttng_payload_view lttng_payload_view_init_from_buffer(
+	const char *src, size_t offset, ptrdiff_t len)
+{
+	return (struct lttng_payload_view) {
+		.buffer = lttng_buffer_view_init(
+			src, offset, len)
+	};
+}
+
+LTTNG_HIDDEN
 int lttng_payload_view_get_fd_count(struct lttng_payload_view *payload_view)
 {
 	int ret;

@@ -14,6 +14,8 @@
 #include "common/payload.h"
 #include "common/payload-view.h"
 #include "common/sessiond-comm/sessiond-comm.h"
+#include "common/payload.h"
+#include "common/payload-view.h"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #include <common/compat/getenv.h>
@@ -90,6 +92,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	};
 
 	lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+	lttng_dynamic_array_clear(&cmd_ctx->reply_payload._fds);
 
 	cmd_ctx->lttng_msg_size = total_msg_size;
 
@@ -122,6 +125,48 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 
 end:
 	return ret;
+}
+
+static int setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
+{
+	int ret;
+	const struct lttcomm_lttng_msg llm = {};
+
+	lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+
+	/* Append place-holder reply header. */
+	ret = lttng_dynamic_buffer_append(
+			&cmd_ctx->reply_payload.buffer, &llm, sizeof(llm));
+	if (ret) {
+		goto end;
+	}
+
+	cmd_ctx->lttng_msg_size = sizeof(llm);
+end:
+	return ret;
+}
+
+static void update_lttng_msg(struct command_ctx *cmd_ctx, size_t cmd_header_len,
+		size_t payload_len)
+{
+	const size_t header_len = sizeof(struct lttcomm_lttng_msg);
+	const size_t total_msg_size = header_len + cmd_header_len + payload_len;
+	const struct lttcomm_lttng_msg llm = {
+		.cmd_type = cmd_ctx->lsm.cmd_type,
+		.pid = cmd_ctx->lsm.domain.attr.pid,
+		.cmd_header_size = cmd_header_len,
+		.data_size = payload_len,
+	};
+	struct lttcomm_lttng_msg *p_llm;
+
+	assert(cmd_ctx->reply_payload.buffer.size >= sizeof(llm));
+
+	p_llm = (typeof(p_llm)) cmd_ctx->reply_payload.buffer.data;
+
+	/* Update existing header. */
+	memcpy(p_llm, &llm, sizeof(llm));
+
+	cmd_ctx->lttng_msg_size = total_msg_size;
 }
 
 /*
@@ -549,16 +594,15 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 {
 	int fd, ret;
 	struct lttng_userspace_probe_location *probe_location;
-	const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
-	struct lttng_dynamic_buffer probe_location_buffer;
-	struct lttng_buffer_view buffer_view;
+	struct lttng_payload probe_location_payload;
 
 	/*
-	 * Create a buffer to store the serialized version of the probe
+	 * Create a payload to store the serialized version of the probe
 	 * location.
 	 */
-	lttng_dynamic_buffer_init(&probe_location_buffer);
-	ret = lttng_dynamic_buffer_set_size(&probe_location_buffer,
+	lttng_payload_init(&probe_location_payload);
+
+	ret = lttng_dynamic_buffer_set_size(&probe_location_payload.buffer,
 			cmd_ctx->lsm.u.enable.userspace_probe_location_len);
 	if (ret) {
 		ret = LTTNG_ERR_NOMEM;
@@ -568,27 +612,11 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	/*
 	 * Receive the probe location.
 	 */
-	ret = lttcomm_recv_unix_sock(sock, probe_location_buffer.data,
-			probe_location_buffer.size);
+	ret = lttcomm_recv_unix_sock(sock, probe_location_payload.buffer.data,
+			probe_location_payload.buffer.size);
 	if (ret <= 0) {
 		DBG("Nothing recv() from client var len data... continuing");
 		*sock_error = 1;
-		lttng_dynamic_buffer_reset(&probe_location_buffer);
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-	buffer_view = lttng_buffer_view_from_dynamic_buffer(
-			&probe_location_buffer, 0, probe_location_buffer.size);
-
-	/*
-	 * Extract the probe location from the serialized version.
-	 */
-	ret = lttng_userspace_probe_location_create_from_buffer(
-				&buffer_view, &probe_location);
-	if (ret < 0) {
-		WARN("Failed to create a userspace probe location from the received buffer");
-		lttng_dynamic_buffer_reset( &probe_location_buffer);
 		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 		goto error;
 	}
@@ -605,35 +633,23 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 		goto error;
 	}
 
-	/*
-	 * Set the file descriptor received from the client through the unix
-	 * socket in the probe location.
-	 */
-	lookup = lttng_userspace_probe_location_get_lookup_method(probe_location);
-	if (!lookup) {
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
-	/*
-	 * From the kernel tracer's perspective, all userspace probe event types
-	 * are all the same: a file and an offset.
-	 */
-	switch (lttng_userspace_probe_location_lookup_method_get_type(lookup)) {
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
-		ret = lttng_userspace_probe_location_function_set_binary_fd(
-				probe_location, fd);
-		break;
-	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
-		ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
-				probe_location, fd);
-		break;
-	default:
-		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
-		goto error;
-	}
-
+	ret = lttng_payload_push_fd(&probe_location_payload, fd);
 	if (ret) {
+		ERR("Failed to add userspace probe file descriptor to payload");
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	{
+		struct lttng_payload_view view = lttng_payload_view_from_payload(
+			&probe_location_payload, 0, -1);
+
+		/* Extract the probe location from the serialized version. */
+		ret = lttng_userspace_probe_location_create_from_payload(
+				&view, &probe_location);
+	}
+	if (ret < 0) {
+		WARN("Failed to create a userspace probe location from the received buffer");
 		ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
 		goto error;
 	}
@@ -645,8 +661,8 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 		goto error;
 	}
 
-	lttng_dynamic_buffer_reset(&probe_location_buffer);
 error:
+	lttng_payload_reset(&probe_location_payload);
 	return ret;
 }
 
@@ -1739,31 +1755,33 @@ error_add_context:
 	}
 	case LTTNG_LIST_EVENTS:
 	{
-		ssize_t nb_event;
-		struct lttng_event *events = NULL;
-		struct lttcomm_event_command_header cmd_header;
-		size_t total_size;
+		ssize_t list_ret;
+		struct lttcomm_event_command_header cmd_header = {};
+		size_t original_payload_size;
+		size_t payload_size;
 
-		memset(&cmd_header, 0, sizeof(cmd_header));
-		/* Extended infos are included at the end of events */
-		nb_event = cmd_list_events(cmd_ctx->lsm.domain.type,
-			cmd_ctx->session, cmd_ctx->lsm.u.list.channel_name,
-			&events, &total_size);
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
+			goto setup_error;
+		}
 
-		if (nb_event < 0) {
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		/* Extended infos are included at the end of the payload. */
+		list_ret = cmd_list_events(cmd_ctx->lsm.domain.type,
+				cmd_ctx->session,
+				cmd_ctx->lsm.u.list.channel_name,
+				&cmd_ctx->reply_payload);
+		if (list_ret < 0) {
 			/* Return value is a negative lttng_error_code. */
-			ret = -nb_event;
+			ret = -list_ret;
 			goto error;
 		}
 
-		cmd_header.nb_events = nb_event;
-		ret = setup_lttng_msg(cmd_ctx, events, total_size,
-			&cmd_header, sizeof(cmd_header));
-		free(events);
-
-		if (ret < 0) {
-			goto setup_error;
-		}
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+				sizeof(cmd_header) - original_payload_size;
+		update_lttng_msg(cmd_ctx, sizeof(cmd_header), payload_size);
 
 		ret = LTTNG_OK;
 		break;
@@ -2250,6 +2268,7 @@ static void *thread_manage_clients(void *data)
 		cmd_ctx.session = NULL;
 		lttng_dynamic_buffer_set_size(&cmd_ctx.reply_payload.buffer, 0);
 		lttng_dynamic_array_clear(&cmd_ctx.reply_payload._fds);
+		cmd_ctx.lttng_msg_size = 0;
 
 		DBG("Accepting client command ...");
 
@@ -2384,12 +2403,14 @@ static void *thread_manage_clients(void *data)
 					lttng_payload_view_from_payload(
 							&cmd_ctx.reply_payload,
 							0, -1);
-			const struct lttcomm_lttng_msg *llm = (typeof(
+			struct lttcomm_lttng_msg *llm = (typeof(
 					llm)) cmd_ctx.reply_payload.buffer.data;
 
 			assert(cmd_ctx.reply_payload.buffer.size >=
 			       sizeof(llm));
 			assert(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
+
+			llm->fd_count = lttng_payload_view_get_fd_count(&view);
 
 			DBG("Sending response (size: %d, retcode: %s (%d))",
 					cmd_ctx.lttng_msg_size,
