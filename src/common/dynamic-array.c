@@ -19,6 +19,35 @@ void lttng_dynamic_array_init(struct lttng_dynamic_array *array,
 }
 
 LTTNG_HIDDEN
+int lttng_dynamic_array_set_count(struct lttng_dynamic_array *array,
+		size_t new_element_count)
+{
+	int ret;
+
+	if (!array) {
+		ret = -1;
+		goto end;
+	}
+
+	if (array->destructor) {
+		size_t i;
+
+		for (i = new_element_count; i < array->size; i++) {
+			void *element = lttng_dynamic_array_get_element(
+					array, i);
+
+			array->destructor(element);
+		}
+	}
+
+	array->size = new_element_count;
+	ret = lttng_dynamic_buffer_set_size(&array->buffer,
+			new_element_count * array->element_size);
+end:
+	return ret;
+}
+
+LTTNG_HIDDEN
 int lttng_dynamic_array_add_element(struct lttng_dynamic_array *array,
 		const void *element)
 {
