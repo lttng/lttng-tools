@@ -24,7 +24,7 @@ struct lttng_payload {
 
 /*
  * Initialize a payload. This performs no allocation and is meant
- * to be used instead.
+ * to be used instead of zero-ing the payload structure.
  */
 LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload);
