@@ -273,7 +273,7 @@ static void print_userspace_probe_location(struct lttng_event *event)
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
 	{
 		const char *function_name;
-		const char *binary_path;
+		char *binary_path;
 
 		MSG("%sType: Function", indent8);
 		function_name = lttng_userspace_probe_location_function_get_function_name(location);
@@ -292,12 +292,14 @@ static void print_userspace_probe_location(struct lttng_event *event)
 			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
 			break;
 		}
+
+		free(binary_path);
 		break;
 	}
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
 	{
 		const char *probe_name, *provider_name;
-		const char *binary_path;
+		char *binary_path;
 
 		MSG("%sType: Tracepoint", indent8);
 		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(location);
@@ -313,6 +315,8 @@ static void print_userspace_probe_location(struct lttng_event *event)
 			MSG("%sLookup method: INVALID LOOKUP TYPE ENCOUNTERED", indent8);
 			break;
 		}
+
+		free(binary_path);
 		break;
 	}
 	default:
