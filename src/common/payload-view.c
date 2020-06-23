@@ -30,9 +30,10 @@ struct lttng_payload_view lttng_payload_view_from_view(
 {
 	return (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_view(
-			&view->buffer, offset, len),
+				&view->buffer, offset, len),
 		._fds = view->_fds,
-		._iterator.p_fds_position = &view->_iterator.fds_position,
+		._iterator.p_fds_position = view->_iterator.p_fds_position ?:
+				&view->_iterator.fds_position,
 	};
 }
 
