@@ -596,6 +596,9 @@ struct lttng_consumer_stream {
 	 */
 	uint64_t rotate_position;
 
+	/* Whether or not a packet was opened during the current trace chunk. */
+	bool opened_packet_in_current_trace_chunk;
+
 	/*
 	 * Read-only copies of channel values. We cannot safely access the
 	 * channel from a stream, so we need to have a local copy of these
