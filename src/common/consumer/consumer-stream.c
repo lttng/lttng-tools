@@ -452,6 +452,8 @@ struct lttng_consumer_stream *consumer_stream_create(
 	stream->index_file = NULL;
 	stream->last_sequence_number = -1ULL;
 	stream->rotate_position = -1ULL;
+	/* Buffer is created with an open packet. */
+	stream->opened_packet_in_current_trace_chunk = true;
 	pthread_mutex_init(&stream->lock, NULL);
 	pthread_mutex_init(&stream->metadata_timer_lock, NULL);
 
