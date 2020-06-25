@@ -4122,11 +4122,14 @@ int ust_app_channel_create(struct ltt_ust_session *usess,
 		ret = ust_app_channel_allocate(ua_sess, uchan,
 			LTTNG_UST_CHAN_PER_CPU, usess,
 			&ua_chan);
-		if (ret == 0) {
-			ret = ust_app_channel_send(app, usess,
-				ua_sess, ua_chan);
-		} else {
-			goto end;
+		if (ret < 0) {
+			goto error;
+		}
+
+		ret = ust_app_channel_send(app, usess,
+			ua_sess, ua_chan);
+		if (ret) {
+			goto error;
 		}
 
 		/* Add contexts. */
@@ -4134,10 +4137,12 @@ int ust_app_channel_create(struct ltt_ust_session *usess,
 			ret = create_ust_app_channel_context(ua_chan,
 				&uctx->ctx, app);
 			if (ret) {
-				goto end;
+				goto error;
 			}
 		}
 	}
+
+error:
 	if (ret < 0) {
 		switch (ret) {
 		case -ENOTCONN:
@@ -4153,7 +4158,7 @@ int ust_app_channel_create(struct ltt_ust_session *usess,
 			break;
 		}
 	}
-end:
+
 	if (ret == 0 && _ua_chan) {
 		/*
 		 * Only return the application's channel on success. Note

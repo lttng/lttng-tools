@@ -88,6 +88,11 @@ static void destroy_channel(struct lttng_consumer_channel *channel)
 		lttng_ustconsumer_del_channel(channel);
 		lttng_ustconsumer_free_channel(channel);
 	}
+
+	if (channel->trace_chunk) {
+		lttng_trace_chunk_put(channel->trace_chunk);
+	}
+
 	free(channel);
 }
 
