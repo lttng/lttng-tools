@@ -93,7 +93,8 @@ error:
  *
  * Return 0 on success else a negative value on error.
  */
-int consumer_socket_send(struct consumer_socket *socket, void *msg, size_t len)
+int consumer_socket_send(
+		struct consumer_socket *socket, const void *msg, size_t len)
 {
 	int fd;
 	ssize_t size;
@@ -861,7 +862,7 @@ error:
  * The consumer socket lock must be held by the caller.
  */
 int consumer_send_msg(struct consumer_socket *sock,
-		struct lttcomm_consumer_msg *msg)
+		const struct lttcomm_consumer_msg *msg)
 {
 	int ret;
 
@@ -1717,6 +1718,32 @@ int consumer_rotate_channel(struct consumer_socket *socket, uint64_t key,
 	}
 error:
 	pthread_mutex_unlock(socket->lock);
+	health_code_update();
+	return ret;
+}
+
+int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key)
+{
+	int ret;
+	const struct lttcomm_consumer_msg msg = {
+		.cmd_type = LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
+		.u.open_channel_packets.key = key,
+	};
+
+	assert(socket);
+
+	DBG("Consumer open channel packets: channel key = %" PRIu64, key);
+
+	health_code_update();
+
+	pthread_mutex_lock(socket->lock);
+	ret = consumer_send_msg(socket, &msg);
+	pthread_mutex_unlock(socket->lock);
+	if (ret < 0) {
+		goto error_socket;
+	}
+
+error_socket:
 	health_code_update();
 	return ret;
 }

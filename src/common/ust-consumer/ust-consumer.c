@@ -2181,6 +2181,28 @@ end_rotate_channel_nosignal:
 				msg.u.trace_chunk_exists.chunk_id);
 		goto end_msg_sessiond;
 	}
+	case LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS:
+	{
+		const uint64_t key = msg.u.open_channel_packets.key;
+		struct lttng_consumer_channel *channel =
+				consumer_find_channel(key);
+
+		if (channel) {
+			pthread_mutex_lock(&channel->lock);
+			ret_code = lttng_consumer_open_channel_packets(channel);
+			pthread_mutex_unlock(&channel->lock);
+		} else {
+			/*
+			 * The channel could have disappeared in per-pid
+			 * buffering mode.
+			 */
+			DBG("Channel %" PRIu64 " not found", key);
+			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
+		}
+
+		health_code_update();
+		goto end_msg_sessiond;
+	}
 	default:
 		break;
 	}

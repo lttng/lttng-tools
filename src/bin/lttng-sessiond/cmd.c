@@ -2792,6 +2792,16 @@ int cmd_start_trace(struct ltt_session *session)
 	}
 
 	/*
+	 * Open a packet in every stream of the session to ensure that viewers
+	 * can correctly identify the boundaries of the periods during which
+	 * tracing was active for this session.
+	 */
+	ret = session_open_packets(session);
+	if (ret != LTTNG_OK) {
+		goto error;
+	}
+
+	/*
 	 * Clear the flag that indicates that a rotation was done while the
 	 * session was stopped.
 	 */

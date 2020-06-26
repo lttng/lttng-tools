@@ -793,6 +793,83 @@ end:
 }
 
 /*
+ * This function skips the metadata channel as the begin/end timestamps of a
+ * metadata packet are useless.
+ *
+ * Moreover, opening a packet after a "clear" will cause problems for live
+ * sessions as it will introduce padding that was not part of the first trace
+ * chunk. The relay daemon expects the content of the metadata stream of
+ * successive metadata trace chunks to be strict supersets of one another.
+ *
+ * For example, flushing a packet at the beginning of the metadata stream of
+ * a trace chunk resulting from a "clear" session command will cause the
+ * size of the metadata stream of the new trace chunk to not match the size of
+ * the metadata stream of the original chunk. This will confuse the relay
+ * daemon as the same "offset" in a metadata stream will no longer point
+ * to the same content.
+ */
+static
+enum lttng_error_code session_kernel_open_packets(struct ltt_session *session)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct consumer_socket *socket;
+	struct lttng_ht_iter iter;
+	struct cds_lfht_node *node;
+	struct ltt_kernel_channel *chan;
+
+	rcu_read_lock();
+
+	cds_lfht_first(session->kernel_session->consumer->socks->ht, &iter.iter);
+	node = cds_lfht_iter_get_node(&iter.iter);
+	socket = container_of(node, typeof(*socket), node.node);
+
+	cds_list_for_each_entry(chan,
+			&session->kernel_session->channel_list.head, list) {
+		int open_ret;
+
+		DBG("Open packet of kernel channel: channel key = %" PRIu64
+				", session name = %s, session_id = %" PRIu64,
+				chan->key, session->name, session->id);
+
+		open_ret = consumer_open_channel_packets(socket, chan->key);
+		if (open_ret < 0) {
+			/* General error (no known error expected). */
+			ret = LTTNG_ERR_UNK;
+			goto end;
+		}
+	}
+
+end:
+	rcu_read_unlock();
+	return ret;
+}
+
+enum lttng_error_code session_open_packets(struct ltt_session *session)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+
+	DBG("Opening packets of session channels: session name = %s, session id = %" PRIu64,
+			session->name, session->id);
+
+	if (session->ust_session) {
+		ret = ust_app_open_packets(session);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	if (session->kernel_session) {
+		ret = session_kernel_open_packets(session);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Set a session's current trace chunk.
  *
  * Must be called with the session lock held.

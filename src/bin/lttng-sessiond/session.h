@@ -273,6 +273,9 @@ int session_close_trace_chunk(struct ltt_session *session,
 		enum lttng_trace_chunk_command_type close_command,
 		char *path);
 
+/* Open a packet in all channels of a given session. */
+enum lttng_error_code session_open_packets(struct ltt_session *session);
+
 bool session_output_supports_trace_chunks(const struct ltt_session *session);
 
 #endif /* _LTT_SESSION_H */
