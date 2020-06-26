@@ -187,7 +187,7 @@ void consumer_destroy_socket(struct consumer_socket *sock);
 int consumer_copy_sockets(struct consumer_output *dst,
 		struct consumer_output *src);
 void consumer_destroy_output_sockets(struct consumer_output *obj);
-int consumer_socket_send(struct consumer_socket *socket, void *msg,
+int consumer_socket_send(struct consumer_socket *socket, const void *msg,
 		size_t len);
 int consumer_socket_recv(struct consumer_socket *socket, void *msg,
 		size_t len);
@@ -202,7 +202,7 @@ int consumer_set_network_uri(const struct ltt_session *session,
 int consumer_send_fds(struct consumer_socket *sock, const int *fds,
 		size_t nb_fd);
 int consumer_send_msg(struct consumer_socket *sock,
-		struct lttcomm_consumer_msg *msg);
+		const struct lttcomm_consumer_msg *msg);
 int consumer_send_stream(struct consumer_socket *sock,
 		struct consumer_output *dst, struct lttcomm_consumer_msg *msg,
 		const int *fds, size_t nb_fd);
@@ -320,6 +320,7 @@ int consumer_trace_chunk_exists(struct consumer_socket *socket,
 		uint64_t relayd_id, uint64_t session_id,
 		struct lttng_trace_chunk *chunk,
 		enum consumer_trace_chunk_exists_status *result);
+int consumer_open_channel_packets(struct consumer_socket *socket, uint64_t key);
 
 char *setup_channel_trace_path(struct consumer_output *consumer,
 		const char *session_path, size_t *consumer_path_offset);

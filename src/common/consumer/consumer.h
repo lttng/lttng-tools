@@ -64,6 +64,7 @@ enum lttng_consumer_command {
 	LTTNG_CONSUMER_CLOSE_TRACE_CHUNK,
 	LTTNG_CONSUMER_TRACE_CHUNK_EXISTS,
 	LTTNG_CONSUMER_CLEAR_CHANNEL,
+	LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS,
 };
 
 enum lttng_consumer_type {
@@ -1048,5 +1049,7 @@ enum lttcomm_return_code lttng_consumer_init_command(
 		struct lttng_consumer_local_data *ctx,
 		const lttng_uuid sessiond_uuid);
 int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel);
+enum lttcomm_return_code lttng_consumer_open_channel_packets(
+		struct lttng_consumer_channel *channel);
 
 #endif /* LIB_CONSUMER_H */

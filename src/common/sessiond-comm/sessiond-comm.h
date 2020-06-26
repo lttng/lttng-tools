@@ -179,6 +179,7 @@ enum lttcomm_return_code {
 	LTTCOMM_CONSUMERD_TRACE_CHUNK_EXISTS_REMOTE,/* Trace chunk exists on relay daemon. */
 	LTTCOMM_CONSUMERD_UNKNOWN_TRACE_CHUNK,      /* Unknown trace chunk. */
 	LTTCOMM_CONSUMERD_RELAYD_CLEAR_DISALLOWED,  /* Relayd does not accept clear command. */
+	LTTCOMM_CONSUMERD_UNKNOWN_ERROR,            /* Unknown error. */
 
 	/* MUST be last element */
 	LTTCOMM_NR,						/* Last element */
@@ -705,6 +706,9 @@ struct lttcomm_consumer_msg {
 		struct {
 			uint64_t key;
 		} LTTNG_PACKED clear_channel;
+		struct {
+			uint64_t key;
+		} LTTNG_PACKED open_channel_packets;
 	} u;
 } LTTNG_PACKED;
 

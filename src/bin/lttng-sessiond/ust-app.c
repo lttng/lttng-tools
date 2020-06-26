@@ -6644,3 +6644,126 @@ end:
 	rcu_read_unlock();
 	return cmd_ret;
 }
+
+/*
+ * This function skips the metadata channel as the begin/end timestamps of a
+ * metadata packet are useless.
+ *
+ * Moreover, opening a packet after a "clear" will cause problems for live
+ * sessions as it will introduce padding that was not part of the first trace
+ * chunk. The relay daemon expects the content of the metadata stream of
+ * successive metadata trace chunks to be strict supersets of one another.
+ *
+ * For example, flushing a packet at the beginning of the metadata stream of
+ * a trace chunk resulting from a "clear" session command will cause the
+ * size of the metadata stream of the new trace chunk to not match the size of
+ * the metadata stream of the original chunk. This will confuse the relay
+ * daemon as the same "offset" in a metadata stream will no longer point
+ * to the same content.
+ */
+enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
+{
+	enum lttng_error_code ret = LTTNG_OK;
+	struct lttng_ht_iter iter;
+	struct ltt_ust_session *usess = session->ust_session;
+
+	assert(usess);
+
+	rcu_read_lock();
+
+	switch (usess->buffer_type) {
+	case LTTNG_BUFFER_PER_UID:
+	{
+		struct buffer_reg_uid *reg;
+
+		cds_list_for_each_entry (
+				reg, &usess->buffer_reg_uid_list, lnode) {
+			struct buffer_reg_channel *reg_chan;
+			struct consumer_socket *socket;
+
+			socket = consumer_find_socket_by_bitness(
+					reg->bits_per_long, usess->consumer);
+			if (!socket) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			cds_lfht_for_each_entry(reg->registry->channels->ht,
+					&iter.iter, reg_chan, node.node) {
+				const int open_ret =
+						consumer_open_channel_packets(
+							socket,
+							reg_chan->consumer_key);
+
+				if (open_ret < 0) {
+					ret = LTTNG_ERR_UNK;
+					goto error;
+				}
+			}
+		}
+		break;
+	}
+	case LTTNG_BUFFER_PER_PID:
+	{
+		struct ust_app *app;
+
+		cds_lfht_for_each_entry (
+				ust_app_ht->ht, &iter.iter, app, pid_n.node) {
+			struct consumer_socket *socket;
+			struct lttng_ht_iter chan_iter;
+			struct ust_app_channel *ua_chan;
+			struct ust_app_session *ua_sess;
+			struct ust_registry_session *registry;
+
+			ua_sess = lookup_session_by_app(usess, app);
+			if (!ua_sess) {
+				/* Session not associated with this app. */
+				continue;
+			}
+
+			/* Get the right consumer socket for the application. */
+			socket = consumer_find_socket_by_bitness(
+					app->bits_per_long, usess->consumer);
+			if (!socket) {
+				ret = LTTNG_ERR_FATAL;
+				goto error;
+			}
+
+			registry = get_session_registry(ua_sess);
+			if (!registry) {
+				DBG("Application session is being torn down. Skip application.");
+				continue;
+			}
+
+			cds_lfht_for_each_entry(ua_sess->channels->ht,
+					&chan_iter.iter, ua_chan, node.node) {
+				const int open_ret =
+						consumer_open_channel_packets(
+							socket,
+							ua_chan->key);
+
+				if (open_ret < 0) {
+					/*
+					 * Per-PID buffer and application going
+					 * away.
+					 */
+					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+						continue;
+					}
+
+					ret = LTTNG_ERR_UNK;
+					goto error;
+				}
+			}
+		}
+		break;
+	}
+	default:
+		abort();
+		break;
+	}
+
+error:
+	rcu_read_unlock();
+	return ret;
+}

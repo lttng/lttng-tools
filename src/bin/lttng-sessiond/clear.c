@@ -194,6 +194,16 @@ int cmd_clear_session(struct ltt_session *session, int *sock_fd)
 				goto end;
 			}
 		}
+
+		/*
+		 * Open a packet in every stream of the session to ensure that
+		 * viewers can correctly identify the boundaries of the periods
+		 * during which tracing was active for this session.
+		 */
+		ret = session_open_packets(session);
+		if (ret != LTTNG_OK) {
+			goto end;
+		}
 	}
 	ret = LTTNG_OK;
 end:
