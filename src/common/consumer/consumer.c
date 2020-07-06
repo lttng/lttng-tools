@@ -3376,8 +3376,8 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		 * error.
 		 */
 		DBG("Failed to write to tracefile (written_bytes: %zd != padded subbuffer size: %lu, subbuffer size: %lu)",
-				written_bytes, subbuffer.info.data.subbuf_size,
-				subbuffer.info.data.padded_subbuf_size);
+				written_bytes, subbuffer.info.data.padded_subbuf_size,
+				subbuffer.info.data.subbuf_size);
 	}
 
 	ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
