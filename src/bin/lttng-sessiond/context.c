@@ -272,6 +272,9 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	case LTTNG_EVENT_CONTEXT_PID_NS:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PID_NS;
 		break;
+	case LTTNG_EVENT_CONTEXT_TIME_NS:
+		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_TIME_NS;
+		break;
 	case LTTNG_EVENT_CONTEXT_USER_NS:
 		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_USER_NS;
 		break;

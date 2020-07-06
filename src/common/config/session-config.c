@@ -223,6 +223,7 @@ LTTNG_HIDDEN const char * const config_event_context_ipc_ns = "IPC_NS";
 LTTNG_HIDDEN const char * const config_event_context_mnt_ns = "MNT_NS";
 LTTNG_HIDDEN const char * const config_event_context_net_ns = "NET_NS";
 LTTNG_HIDDEN const char * const config_event_context_pid_ns = "PID_NS";
+LTTNG_HIDDEN const char * const config_event_context_time_ns = "TIME_NS";
 LTTNG_HIDDEN const char * const config_event_context_user_ns = "USER_NS";
 LTTNG_HIDDEN const char * const config_event_context_uts_ns = "UTS_NS";
 LTTNG_HIDDEN const char * const config_event_context_uid = "UID";
@@ -1094,6 +1095,9 @@ int get_context_type(xmlChar *context_type)
 	} else if (!strcmp((char *) context_type,
 		config_event_context_pid_ns)) {
 		ret = LTTNG_EVENT_CONTEXT_PID_NS;
+	} else if (!strcmp((char *) context_type,
+		config_event_context_time_ns)) {
+		ret = LTTNG_EVENT_CONTEXT_TIME_NS;
 	} else if (!strcmp((char *) context_type,
 		config_event_context_user_ns)) {
 		ret = LTTNG_EVENT_CONTEXT_USER_NS;

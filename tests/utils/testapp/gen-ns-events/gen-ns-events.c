@@ -53,6 +53,9 @@
 #ifndef CLONE_NEWNET
 #define CLONE_NEWNET    0x40000000
 #endif
+#ifndef CLONE_NEWTIME
+#define CLONE_NEWTIME   0x00000080
+#endif
 
 static int debug = 0;
 static char *ns_opt = NULL;
@@ -217,7 +220,7 @@ int main(int argc, const char **argv)
 		goto end;
 	}
 
-	if (strncmp(ns_opt, "cgroup", 3) == 0) {
+	if (strncmp(ns_opt, "cgroup", 6) == 0) {
 		ret = do_the_needful(CLONE_NEWCGROUP, "cgroup");
 	} else if (strncmp(ns_opt, "ipc", 3) == 0) {
 		ret = do_the_needful(CLONE_NEWIPC, "ipc");
@@ -227,7 +230,9 @@ int main(int argc, const char **argv)
 		ret = do_the_needful(CLONE_NEWNET, "net");
 	} else if (strncmp(ns_opt, "pid", 3) == 0) {
 		ret = do_the_needful(CLONE_NEWPID, "pid");
-	} else if (strncmp(ns_opt, "user", 3) == 0) {
+	} else if (strncmp(ns_opt, "time", 4) == 0) {
+		ret = do_the_needful(CLONE_NEWTIME, "time");
+	} else if (strncmp(ns_opt, "user", 4) == 0) {
 		/*
 		 * Will always fail, requires a single threaded application,
 		 * which can't happen with UST.

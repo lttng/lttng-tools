@@ -585,6 +585,9 @@ int trace_ust_context_type_event_to_ust(
 	case LTTNG_EVENT_CONTEXT_PID_NS:
 		utype = LTTNG_UST_CONTEXT_PID_NS;
 		break;
+	case LTTNG_EVENT_CONTEXT_TIME_NS:
+		utype = LTTNG_UST_CONTEXT_TIME_NS;
+		break;
 	case LTTNG_EVENT_CONTEXT_USER_NS:
 		utype = LTTNG_UST_CONTEXT_USER_NS;
 		break;

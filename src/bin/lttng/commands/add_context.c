@@ -95,6 +95,7 @@ enum context_type {
 	CONTEXT_VGID         = 38,
 	CONTEXT_VEGID        = 39,
 	CONTEXT_VSGID        = 40,
+	CONTEXT_TIME_NS      = 41,
 };
 
 /*
@@ -264,6 +265,7 @@ const struct ctx_opts {
 	{ (char *) "mnt_ns", CONTEXT_MNT_NS },
 	{ (char *) "net_ns", CONTEXT_NET_NS },
 	{ (char *) "pid_ns", CONTEXT_PID_NS },
+	{ (char *) "time_ns", CONTEXT_TIME_NS },
 	{ (char *) "user_ns", CONTEXT_USER_NS },
 	{ (char *) "uts_ns", CONTEXT_UTS_NS },
 	{ (char *) "uid", CONTEXT_UID },

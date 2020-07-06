@@ -322,6 +322,9 @@ const char *get_kernel_context_type_string(
 	case LTTNG_KERNEL_CONTEXT_PID_NS:
 		context_type_string = config_event_context_pid_ns;
 		break;
+	case LTTNG_KERNEL_CONTEXT_TIME_NS:
+		context_type_string = config_event_context_time_ns;
+		break;
 	case LTTNG_KERNEL_CONTEXT_USER_NS:
 		context_type_string = config_event_context_user_ns;
 		break;
@@ -407,6 +410,9 @@ const char *get_ust_context_type_string(
 		break;
 	case LTTNG_UST_CONTEXT_NET_NS:
 		context_type_string = config_event_context_net_ns;
+		break;
+	case LTTNG_UST_CONTEXT_TIME_NS:
+		context_type_string = config_event_context_time_ns;
 		break;
 	case LTTNG_UST_CONTEXT_PID_NS:
 		context_type_string = config_event_context_pid_ns;

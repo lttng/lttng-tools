@@ -118,5 +118,6 @@ test_ns ipc
 test_ns mnt
 test_ns net
 #test_ns pid # pid_ns is special, can't be changed that way
+#test_ns time # time_ns is special, can't be changed that way
 #test_ns user # user_ns can only be change when the app is single threaded, this is always false for an ust instrumented app
 test_ns uts

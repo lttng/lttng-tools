@@ -109,6 +109,7 @@ SPDX-License-Identifier: MIT
 			<xs:enumeration value="MNT_NS" />
 			<xs:enumeration value="NET_NS" />
 			<xs:enumeration value="PID_NS" />
+			<xs:enumeration value="TIME_NS" />
 			<xs:enumeration value="USER_NS" />
 			<xs:enumeration value="UTS_NS" />
 			<xs:enumeration value="UID" />

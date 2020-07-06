@@ -143,6 +143,7 @@ enum lttng_ust_context_type {
 	LTTNG_UST_CONTEXT_VGID			= 18,
 	LTTNG_UST_CONTEXT_VEGID			= 19,
 	LTTNG_UST_CONTEXT_VSGID			= 20,
+	LTTNG_UST_CONTEXT_TIME_NS		= 21,
 };
 
 struct lttng_ust_perf_counter_ctx {

@@ -161,6 +161,7 @@ extern const char * const config_event_context_ipc_ns;
 extern const char * const config_event_context_mnt_ns;
 extern const char * const config_event_context_net_ns;
 extern const char * const config_event_context_pid_ns;
+extern const char * const config_event_context_time_ns;
 extern const char * const config_event_context_user_ns;
 extern const char * const config_event_context_uts_ns;
 extern const char * const config_event_context_uid;

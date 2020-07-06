@@ -431,6 +431,8 @@ const char *mi_lttng_event_contexttype_string(enum lttng_event_context_type val)
 		return config_event_context_net_ns;
 	case LTTNG_EVENT_CONTEXT_PID_NS:
 		return config_event_context_pid_ns;
+	case LTTNG_EVENT_CONTEXT_TIME_NS:
+		return config_event_context_time_ns;
 	case LTTNG_EVENT_CONTEXT_USER_NS:
 		return config_event_context_user_ns;
 	case LTTNG_EVENT_CONTEXT_UTS_NS:

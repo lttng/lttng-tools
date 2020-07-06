@@ -17,7 +17,7 @@ EVENT_NAME="tp:tptest"
 
 TESTS_PER_NS=13
 
-NUM_TESTS=$((TESTS_PER_NS * 7))
+NUM_TESTS=$((TESTS_PER_NS * 8))
 
 source "$TESTDIR/utils/utils.sh"
 
@@ -89,5 +89,6 @@ test_ns ipc
 test_ns mnt
 test_ns net
 test_ns pid
+test_ns time
 test_ns user
 test_ns uts
