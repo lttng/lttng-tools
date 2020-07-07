@@ -3253,7 +3253,7 @@ void *consumer_thread_sessiond_poll(void *data)
 			err = 0;	/* All is OK */
 			goto end;
 		}
-		DBG("received command on sock");
+		DBG("Received command on sock");
 	}
 	/* All is OK */
 	err = 0;
