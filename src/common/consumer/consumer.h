@@ -88,6 +88,12 @@ enum consumer_channel_type {
 	CONSUMER_CHANNEL_TYPE_DATA	= 1,
 };
 
+enum sync_metadata_status {
+	SYNC_METADATA_STATUS_NEW_DATA,
+	SYNC_METADATA_STATUS_NO_DATA,
+	SYNC_METADATA_STATUS_ERROR,
+};
+
 extern struct lttng_consumer_global_data consumer_data;
 
 struct stream_list {

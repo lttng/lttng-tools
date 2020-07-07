@@ -2446,8 +2446,8 @@ void metadata_stream_reset_cache_consumed_position(
 /*
  * Write up to one packet from the metadata cache to the channel.
  *
- * Returns the number of bytes pushed in the cache, or a negative value
- * on error.
+ * Returns the number of bytes pushed from the cache into the ring buffer, or a
+ * negative value on error.
  */
 static
 int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
@@ -2531,15 +2531,13 @@ end:
  * awaiting on metadata to be pushed out.
  *
  * The RCU read side lock must be held by the caller.
- *
- * Return 0 if new metadatda is available, EAGAIN if the metadata stream
- * is empty or a negative value on error.
  */
-int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
+enum sync_metadata_status lttng_ustconsumer_sync_metadata(
+		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *metadata_stream)
 {
 	int ret;
-	int retry = 0;
+	enum sync_metadata_status status;
 	struct lttng_consumer_channel *metadata_channel;
 
 	assert(ctx);
@@ -2554,6 +2552,7 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	ret = lttng_ustconsumer_request_metadata(ctx, metadata_channel, 0, 0);
 	pthread_mutex_lock(&metadata_stream->lock);
 	if (ret < 0) {
+		status = SYNC_METADATA_STATUS_ERROR;
 		goto end;
 	}
 
@@ -2571,38 +2570,30 @@ int lttng_ustconsumer_sync_metadata(struct lttng_consumer_local_data *ctx,
 	if (consumer_stream_is_deleted(metadata_stream)) {
 		DBG("Metadata stream %" PRIu64 " was deleted during the metadata synchronization",
 				metadata_stream->key);
-		ret = 0;
+		status = SYNC_METADATA_STATUS_NO_DATA;
 		goto end;
 	}
 
 	ret = commit_one_metadata_packet(metadata_stream);
-	if (ret <= 0) {
+	if (ret < 0) {
+		status = SYNC_METADATA_STATUS_ERROR;
 		goto end;
 	} else if (ret > 0) {
-		retry = 1;
+		status = SYNC_METADATA_STATUS_NEW_DATA;
+	} else /* ret == 0 */ {
+		status = SYNC_METADATA_STATUS_NO_DATA;
+		goto end;
 	}
 
 	ret = ustctl_snapshot(metadata_stream->ustream);
 	if (ret < 0) {
-		if (errno != EAGAIN) {
-			ERR("Sync metadata, taking UST snapshot");
-			goto end;
-		}
-		DBG("No new metadata when syncing them.");
-		/* No new metadata, exit. */
-		ret = ENODATA;
+		ERR("Failed to take a snapshot of the metadata ring-buffer positions, ret = %d", ret);
+		status = SYNC_METADATA_STATUS_ERROR;
 		goto end;
 	}
 
-	/*
-	 * After this flush, we still need to extract metadata.
-	 */
-	if (retry) {
-		ret = EAGAIN;
-	}
-
 end:
-	return ret;
+	return status;
 }
 
 /*
