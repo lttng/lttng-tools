@@ -88,6 +88,7 @@ compile_commands.json
 /tests/unit/test_directory_handle
 /tests/unit/test_relayd_backward_compat_group_by_session
 /tests/unit/test_fd_tracker
+/tests/unit/test_payload
 kernel_all_events_basic
 kernel_event_basic
 ust_global_event_wildcard
