@@ -278,7 +278,7 @@ enum lttng_action_status lttng_action_group_add_action(
 	enum lttng_action_status status;
 	int ret;
 
-	if (!group || !IS_GROUP_ACTION(action) || !action) {
+	if (!group || !IS_GROUP_ACTION(group) || !action) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
