@@ -1348,36 +1348,38 @@ end:
  * metadata thread can consumer them.
  *
  * Metadata stream lock MUST be acquired.
- *
- * Return 0 if new metadatda is available, EAGAIN if the metadata stream
- * is empty or a negative value on error.
  */
-int lttng_kconsumer_sync_metadata(struct lttng_consumer_stream *metadata)
+enum sync_metadata_status lttng_kconsumer_sync_metadata(
+		struct lttng_consumer_stream *metadata)
 {
 	int ret;
+	enum sync_metadata_status status;
 
 	assert(metadata);
 
 	ret = kernctl_buffer_flush(metadata->wait_fd);
 	if (ret < 0) {
 		ERR("Failed to flush kernel stream");
+		status = SYNC_METADATA_STATUS_ERROR;
 		goto end;
 	}
 
 	ret = kernctl_snapshot(metadata->wait_fd);
 	if (ret < 0) {
-		if (ret != -EAGAIN) {
+		if (errno == EAGAIN) {
+			/* No new metadata, exit. */
+			DBG("Sync metadata, no new kernel metadata");
+			status = SYNC_METADATA_STATUS_NO_DATA;
+		} else {
 			ERR("Sync metadata, taking kernel snapshot failed.");
-			goto end;
+			status = SYNC_METADATA_STATUS_ERROR;
 		}
-		DBG("Sync metadata, no new kernel metadata");
-		/* No new metadata, exit. */
-		ret = ENODATA;
-		goto end;
+	} else {
+		status = SYNC_METADATA_STATUS_NEW_DATA;
 	}
 
 end:
-	return ret;
+	return status;
 }
 
 static

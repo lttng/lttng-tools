@@ -196,6 +196,7 @@ static int do_sync_metadata(struct lttng_consumer_stream *metadata,
 		struct lttng_consumer_local_data *ctx)
 {
 	int ret;
+	enum sync_metadata_status status;
 
 	assert(metadata);
 	assert(metadata->metadata_flag);
@@ -243,7 +244,7 @@ static int do_sync_metadata(struct lttng_consumer_stream *metadata,
 			/*
 			 * Empty the metadata cache and flush the current stream.
 			 */
-			ret = lttng_kconsumer_sync_metadata(metadata);
+			status = lttng_kconsumer_sync_metadata(metadata);
 			break;
 		case LTTNG_CONSUMER32_UST:
 		case LTTNG_CONSUMER64_UST:
@@ -251,18 +252,23 @@ static int do_sync_metadata(struct lttng_consumer_stream *metadata,
 			 * Ask the sessiond if we have new metadata waiting and update the
 			 * consumer metadata cache.
 			 */
-			ret = lttng_ustconsumer_sync_metadata(ctx, metadata);
+			status = lttng_ustconsumer_sync_metadata(ctx, metadata);
 			break;
 		default:
-			assert(0);
-			ret = -1;
-			break;
+			abort();
 		}
-		/*
-		 * Error or no new metadata, we exit here.
-		 */
-		if (ret <= 0 || ret == ENODATA) {
+
+		switch (status) {
+		case SYNC_METADATA_STATUS_NEW_DATA:
+			break;
+		case SYNC_METADATA_STATUS_NO_DATA:
+			ret = 0;
 			goto end_unlock_mutex;
+		case SYNC_METADATA_STATUS_ERROR:
+			ret = -1;
+			goto end_unlock_mutex;
+		default:
+			abort();
 		}
 
 		/*
@@ -284,7 +290,7 @@ static int do_sync_metadata(struct lttng_consumer_stream *metadata,
 		 */
 		pthread_cond_wait(&metadata->metadata_rdv, &metadata->metadata_rdv_lock);
 		pthread_mutex_unlock(&metadata->metadata_rdv_lock);
-	} while (ret == EAGAIN);
+	} while (status == SYNC_METADATA_STATUS_NEW_DATA);
 
 	/* Success */
 	return 0;
