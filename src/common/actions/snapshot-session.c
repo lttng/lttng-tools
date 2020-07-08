@@ -141,7 +141,6 @@ static int lttng_action_snapshot_session_serialize(
 	assert(payload);
 
 	size_before_comm = payload->buffer.size;
-	size_before_comm = size_before_comm + sizeof(comm);
 
 	action_snapshot_session = action_snapshot_session_from_action(action);
 	comm.session_name_len =
