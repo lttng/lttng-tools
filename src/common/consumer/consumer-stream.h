@@ -10,6 +10,12 @@
 
 #include "consumer.h"
 
+enum consumer_stream_open_packet_status {
+	CONSUMER_STREAM_OPEN_PACKET_STATUS_OPENED,
+	CONSUMER_STREAM_OPEN_PACKET_STATUS_NO_SPACE,
+	CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR,
+};
+
 /*
  * Create a consumer stream.
  *
@@ -129,5 +135,35 @@ int consumer_stream_enable_metadata_bucketization(
  */
 void consumer_stream_metadata_set_version(
 		struct lttng_consumer_stream *stream, uint64_t new_version);
+
+/*
+ * Set the version of a metadata stream (i.e. following a metadata
+ * regeneration).
+ *
+ * Changing the version of a metadata stream will cause any bucketized metadata
+ * to be discarded and will mark the metadata stream for future `reset`.
+ */
+void consumer_stream_metadata_set_version(
+		struct lttng_consumer_stream *stream, uint64_t new_version);
+
+/*
+ * Attempt to open a packet in a stream.
+ *
+ * This function must be called with the stream and channel locks held.
+ */
+enum consumer_stream_open_packet_status consumer_stream_open_packet(
+	        struct lttng_consumer_stream *stream);
+
+/*
+ * Flush a stream's buffer.
+ *
+ * producer_active: if true, causes a flush to occur only if there is
+ * content present in the current sub-buffer. If false, forces a flush to take
+ * place (otherwise known as "flush_empty").
+ *
+ * This function must be called with the stream and channel locks held.
+ */
+int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream,
+		bool producer_active);
 
 #endif /* LTTNG_CONSUMER_STREAM_H */

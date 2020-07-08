@@ -27,6 +27,7 @@
 #include <common/trace-chunk-registry.h>
 #include <common/credentials.h>
 #include <common/buffer-view.h>
+#include <common/dynamic-array.h>
 
 struct lttng_consumer_local_data;
 
@@ -636,7 +637,7 @@ struct lttng_consumer_stream {
 		reset_metadata_cb reset_metadata;
 		consume_subbuffer_cb consume_subbuffer;
 		put_next_subbuffer_cb put_next_subbuffer;
-		post_consume_cb post_consume;
+		struct lttng_dynamic_array post_consume_cbs;
 		send_live_beacon_cb send_live_beacon;
 		on_sleep_cb on_sleep;
 		unlock_cb unlock;
