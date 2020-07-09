@@ -161,9 +161,40 @@ static ssize_t consumer_stream_consume_mmap(
 	const unsigned long padding_size =
 			subbuffer->info.data.padded_subbuf_size -
 			subbuffer->info.data.subbuf_size;
-
-	return lttng_consumer_on_read_subbuffer_mmap(
+	const ssize_t written_bytes = lttng_consumer_on_read_subbuffer_mmap(
 			stream, &subbuffer->buffer.buffer, padding_size);
+
+	if (stream->net_seq_idx == -1ULL) {
+		/*
+		 * When writing on disk, check that only the subbuffer (no
+		 * padding) was written to disk.
+		 */
+		if (written_bytes != subbuffer->info.data.padded_subbuf_size) {
+			DBG("Failed to write the entire padded subbuffer on disk (written_bytes: %zd, padded subbuffer size %lu)",
+					written_bytes,
+					subbuffer->info.data.padded_subbuf_size);
+		}
+	} else {
+		/*
+		 * When streaming over the network, check that the entire
+		 * subbuffer including padding was successfully written.
+		 */
+		if (written_bytes != subbuffer->info.data.subbuf_size) {
+			DBG("Failed to write only the subbuffer over the network (written_bytes: %zd, subbuffer size %lu)",
+					written_bytes,
+					subbuffer->info.data.subbuf_size);
+		}
+	}
+
+	/*
+	 * If `lttng_consumer_on_read_subbuffer_mmap()` returned an error, pass
+	 * it along to the caller, else return zero.
+	 */
+	if (written_bytes < 0) {
+		ERR("Error reading mmap subbuffer: %zd", written_bytes);
+	}
+
+	return written_bytes;
 }
 
 static ssize_t consumer_stream_consume_splice(
@@ -171,8 +202,24 @@ static ssize_t consumer_stream_consume_splice(
 		struct lttng_consumer_stream *stream,
 		const struct stream_subbuffer *subbuffer)
 {
-	return lttng_consumer_on_read_subbuffer_splice(ctx, stream,
-			subbuffer->info.data.padded_subbuf_size, 0);
+	const ssize_t written_bytes = lttng_consumer_on_read_subbuffer_splice(
+			ctx, stream, subbuffer->info.data.padded_subbuf_size, 0);
+
+	if (written_bytes != subbuffer->info.data.padded_subbuf_size) {
+		DBG("Failed to write the entire padded subbuffer (written_bytes: %zd, padded subbuffer size %lu)",
+				written_bytes,
+				subbuffer->info.data.padded_subbuf_size);
+	}
+
+	/*
+	 * If `lttng_consumer_on_read_subbuffer_splice()` returned an error,
+	 * pass it along to the caller, else return zero.
+	 */
+	if (written_bytes < 0) {
+		ERR("Error reading splice subbuffer: %zd", written_bytes);
+	}
+
+	return written_bytes;
 }
 
 static int consumer_stream_send_index(
