@@ -220,6 +220,9 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
  * Receive data of size len in put that data into the buf param. Using recvmsg
  * API. Only use with sockets set in non-blocking mode.
  *
+ * NOTE: EPIPE errors are NOT reported. This call expects the socket to be in a
+ * poll set. The poll loop will handle the EPIPE original cause.
+ *
  * Return the size of received data.
  */
 LTTNG_HIDDEN
@@ -242,11 +245,21 @@ retry:
 		if (errno == EINTR) {
 			goto retry;
 		} else {
-			/* We consider EPIPE and EAGAIN as expected. */
-			if (!lttng_opt_quiet &&
-					(errno != EPIPE && errno != EAGAIN)) {
-				PERROR("recvmsg");
+			/*
+			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
+			 */
+			if (errno == EAGAIN || errno == EWOULDBLOCK ||
+					errno == EPIPE) {
+				/*
+				 * Nothing was recv.
+				 */
+				ret = 0;
+				goto end;
 			}
+
+			/* Unexpected error */
+			PERROR("recvmsg");
+			ret = -1;
 			goto end;
 		}
 	}
@@ -305,6 +318,9 @@ end:
  * of the function is that this one does not retry to send on partial sends,
  * except if the interruption was caused by a signal (EINTR).
  *
+ * NOTE: EPIPE errors are NOT reported. This call expects the socket to be in a
+ * poll set. The poll loop will handle the EPIPE original cause.
+ *
  * Return the size of sent data.
  */
 LTTNG_HIDDEN
@@ -327,11 +343,22 @@ retry:
 		if (errno == EINTR) {
 			goto retry;
 		} else {
-			/* We consider EPIPE and EAGAIN as expected. */
-			if (!lttng_opt_quiet &&
-					(errno != EPIPE && errno != EAGAIN)) {
-				PERROR("sendmsg");
+			/*
+			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
+			 */
+			if (errno == EAGAIN || errno == EWOULDBLOCK ||
+					errno == EPIPE) {
+				/*
+				 * This can happen in non blocking mode.
+				 * Nothing was sent.
+				 */
+				ret = 0;
+				goto end;
 			}
+
+			/* Unexpected error */
+			PERROR("sendmsg");
+			ret = -1;
 			goto end;
 		}
 	}

@@ -2574,8 +2574,7 @@ int client_flush_outgoing_queue(struct notification_client *client,
 	ret = lttcomm_send_unix_sock_non_block(client->socket,
 			client->communication.outbound.buffer.data,
 			to_send_count);
-	if ((ret < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) ||
-			(ret > 0 && ret < to_send_count)) {
+	if ((ret >= 0 && ret < to_send_count)) {
 		DBG("[notification-thread] Client (socket fd = %i) outgoing queue could not be completely flushed",
 				client->socket);
 		to_send_count -= max(ret, 0);
