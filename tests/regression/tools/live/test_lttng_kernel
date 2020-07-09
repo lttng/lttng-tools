@@ -12,7 +12,7 @@ TESTDIR=$CURDIR/../../../
 DELAY_USEC=2000000
 
 SESSION_NAME="live"
-EVENT_NAME="sched_switch"
+EVENT_NAME="lttng_test_filter_event"
 
 TRACE_PATH=$(mktemp -d)
 
@@ -53,13 +53,14 @@ fi
 
 skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 {
+	modprobe lttng-test
+
 	start_lttng_sessiond
 	start_lttng_relayd "-o $TRACE_PATH"
 
 	setup_live_tracing
 
-	# Just hit some events
-	sleep 2
+	echo -n "1" > /proc/lttng-test-filter-event
 
 	clean_live_tracing
 
@@ -68,4 +69,6 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	stop_lttng_relayd
 	stop_lttng_sessiond
+
+	modprobe --remove lttng-test
 }
