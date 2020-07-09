@@ -3383,24 +3383,10 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 
 	written_bytes = stream->read_subbuffer_ops.consume_subbuffer(
 			ctx, stream, &subbuffer);
-	/*
-	 * Should write subbuf_size amount of data when network streaming or
-	 * the full padded size when we are not streaming.
-	 */
-	if ((written_bytes != subbuffer.info.data.subbuf_size &&
-			    stream->net_seq_idx != (uint64_t) -1ULL) ||
-			(written_bytes != subbuffer.info.data.padded_subbuf_size &&
-					stream->net_seq_idx ==
-							(uint64_t) -1ULL)) {
-		/*
-		 * Display the error but continue processing to try to
-		 * release the subbuffer. This is a DBG statement
-		 * since this can happen without being a critical
-		 * error.
-		 */
-		DBG("Failed to write to tracefile (written_bytes: %zd != padded subbuffer size: %lu, subbuffer size: %lu)",
-				written_bytes, subbuffer.info.data.padded_subbuf_size,
-				subbuffer.info.data.subbuf_size);
+	if (written_bytes <= 0) {
+		ERR("Error consuming subbuffer: (%zd)", written_bytes);
+		ret = (int) written_bytes;
+		goto error_put_subbuf;
 	}
 
 	ret = stream->read_subbuffer_ops.put_next_subbuffer(stream, &subbuffer);
