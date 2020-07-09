@@ -601,7 +601,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	lttng_start_tracing(session_name);
 
 	/* Wait for high notification */
-	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	do {
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK
 			&& notification
 			&& lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
@@ -625,7 +627,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	nc_status = lttng_notification_channel_subscribe(notification_channel, low_condition);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK, "subscribe with pending notification");
 
-	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	do {
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK
 			&& notification
 			&& lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
@@ -638,7 +642,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	resume_application();
 	lttng_start_tracing(session_name);
 
-	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	do {
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
 			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 			"High notification received after intermediary communication");
@@ -650,7 +656,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	resume_consumer(argv);
 	wait_data_pending(session_name);
 
-	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	do {
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
 			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW,
 			"Low notification received after re-subscription");
@@ -662,7 +670,9 @@ void test_notification_channel(const char *session_name, const char *channel_nam
 	/* Stop consumer to force a high notification */
 	lttng_start_tracing(session_name);
 
-	nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	do {
+		nc_status = lttng_notification_channel_get_next_notification(notification_channel, &notification);
+	} while (nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED);
 	ok(nc_status == LTTNG_NOTIFICATION_CHANNEL_STATUS_OK && notification &&
 			lttng_condition_get_type(lttng_notification_get_condition(notification)) == LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH,
 			"High notification");
