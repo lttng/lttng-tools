@@ -263,7 +263,7 @@ retry:
 			goto end;
 		}
 	}
-	ret = len;
+
 end:
 	return ret;
 }
@@ -362,7 +362,6 @@ retry:
 			goto end;
 		}
 	}
-	ret = len;
 end:
 	return ret;
 }
