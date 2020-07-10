@@ -437,6 +437,85 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 }
 
 /*
+ * Send a message accompanied by fd(s) over a unix socket.
+ * Only use for non blocking socket.
+ *
+ * Returns the size of data sent, or negative error value.
+ */
+LTTNG_HIDDEN
+ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb_fd)
+{
+	struct msghdr msg;
+	struct cmsghdr *cmptr;
+	struct iovec iov[1];
+	ssize_t ret = -1;
+	unsigned int sizeof_fds = nb_fd * sizeof(int);
+	char tmp[CMSG_SPACE(sizeof_fds)];
+	char dummy = 0;
+
+	memset(&msg, 0, sizeof(msg));
+	memset(tmp, 0, sizeof(tmp));
+
+	if (nb_fd > LTTCOMM_MAX_SEND_FDS)
+		return -EINVAL;
+
+	msg.msg_control = (caddr_t)tmp;
+	msg.msg_controllen = CMSG_LEN(sizeof_fds);
+
+	cmptr = CMSG_FIRSTHDR(&msg);
+	if (!cmptr) {
+		return -1;
+	}
+
+	cmptr->cmsg_level = SOL_SOCKET;
+	cmptr->cmsg_type = SCM_RIGHTS;
+	cmptr->cmsg_len = CMSG_LEN(sizeof_fds);
+	memcpy(CMSG_DATA(cmptr), fds, sizeof_fds);
+	/* Sum of the length of all control messages in the buffer: */
+	msg.msg_controllen = cmptr->cmsg_len;
+
+	iov[0].iov_base = &dummy;
+	iov[0].iov_len = 1;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+retry:
+	ret = sendmsg(sock, &msg, 0);
+	if (ret < 0) {
+		if (errno == EINTR) {
+			goto retry;
+		} else {
+			/*
+			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
+			 */
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				/*
+				 * This can happen in non blocking mode.
+				 * Nothing was sent.
+				 */
+				ret = 0;
+				goto end;
+			}
+
+			if (errno == EPIPE) {
+				/* Expected error, pass error to caller */
+				DBG3("EPIPE on sendmsg");
+				ret = -1;
+				goto end;
+			}
+
+			/* Unexpected error */
+			PERROR("sendmsg");
+			ret = -1;
+			goto end;
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Recv a message accompanied by fd(s) from a unix socket.
  *
  * Returns the size of received data, or negative error value.
@@ -480,12 +559,155 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	msg.msg_controllen = CMSG_LEN(sizeof(recv_buf));
 	msg.msg_flags = 0;
 
-	do {
-		ret = recvmsg(sock, &msg, 0);
-	} while (ret < 0 && errno == EINTR);
+retry:
+	ret = lttng_recvmsg_nosigpipe(sock, &msg);
 	if (ret < 0) {
-		PERROR("recvmsg fds");
+		if (errno == EINTR) {
+			goto retry;
+		} else {
+			/* We consider EPIPE and EAGAIN as expected. */
+			if (!lttng_opt_quiet &&
+					(errno != EPIPE && errno != EAGAIN)) {
+				PERROR("recvmsg");
+			}
+			goto end;
+		}
+	}
+
+	if (ret != 1) {
+		fprintf(stderr, "Error: Received %zd bytes, expected %d\n",
+				ret, 1);
 		goto end;
+	}
+
+	if (msg.msg_flags & MSG_CTRUNC) {
+		fprintf(stderr, "Error: Control message truncated.\n");
+		ret = -1;
+		goto end;
+	}
+
+	/*
+	 * If the socket was configured with SO_PASSCRED, the kernel will add a
+	 * control message (cmsg) to the ancillary data of the unix socket. We
+	 * need to expect a cmsg of the SCM_CREDENTIALS as the first control
+	 * message.
+	 */
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_level != SOL_SOCKET) {
+			fprintf(stderr, "Error: The socket needs to be of type SOL_SOCKET\n");
+			ret = -1;
+			goto end;
+		}
+		if (cmsg->cmsg_type == SCM_RIGHTS) {
+			/*
+			 * We found the controle message for file descriptors,
+			 * now copy the fds to the fds ptr and return success.
+			 */
+			if (cmsg->cmsg_len != CMSG_LEN(sizeof_fds)) {
+				fprintf(stderr, "Error: Received %zu bytes of"
+					"ancillary data for FDs, expected %zu\n",
+					(size_t) cmsg->cmsg_len,
+					(size_t) CMSG_LEN(sizeof_fds));
+				ret = -1;
+				goto end;
+			}
+			memcpy(fds, CMSG_DATA(cmsg), sizeof_fds);
+			ret = sizeof_fds;
+			goto end;
+		}
+#ifdef __linux__
+		if (cmsg->cmsg_type == SCM_CREDENTIALS) {
+			/*
+			 * Expect credentials to be sent when expecting fds even
+			 * if no credential were include in the send(). The
+			 * kernel adds them...
+			 */
+			ret = -1;
+		}
+#endif /* __linux__ */
+	}
+end:
+	return ret;
+}
+
+/*
+ * Recv a message accompanied by fd(s) from a non-blocking unix socket.
+ * Only use with non-blocking sockets.
+ *
+ * Returns the size of received data, or negative error value.
+ *
+ * Expect at most "nb_fd" file descriptors.
+ *
+ * Note that based on our comprehension, partial reception of fds is not
+ * possible since the FDs are actually in the control message. It is all or
+ * nothing, still the sender side can send the wrong number of fds.
+ */
+LTTNG_HIDDEN
+ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
+{
+	struct iovec iov[1];
+	ssize_t ret = 0;
+	struct cmsghdr *cmsg;
+	size_t sizeof_fds = nb_fd * sizeof(int);
+
+#ifdef __linux__
+/* Account for the struct ucred cmsg in the buffer size */
+#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds) + CMSG_SPACE(sizeof(struct ucred))
+#else
+#define LTTNG_SOCK_RECV_FDS_BUF_SIZE CMSG_SPACE(sizeof_fds)
+#endif /* __linux__ */
+
+	char recv_buf[LTTNG_SOCK_RECV_FDS_BUF_SIZE];
+	struct msghdr msg;
+	char dummy;
+
+	memset(&msg, 0, sizeof(msg));
+
+	/* Prepare to receive the structures */
+	iov[0].iov_base = &dummy;
+	iov[0].iov_len = 1;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+
+	cmsg = (struct cmsghdr *) recv_buf;
+	cmsg->cmsg_len = CMSG_LEN(sizeof_fds);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+
+	msg.msg_control = cmsg;
+	msg.msg_controllen = CMSG_LEN(sizeof(recv_buf));
+	msg.msg_flags = 0;
+
+retry:
+	ret = lttng_recvmsg_nosigpipe(sock, &msg);
+	if (ret < 0) {
+		if (errno == EINTR) {
+			goto retry;
+		} else {
+			/*
+			 * We consider EPIPE and EAGAIN/EWOULDBLOCK as expected.
+			 */
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				/*
+				 * This can happen in non blocking mode.
+				 * Nothing was recv.
+				 */
+				ret = 0;
+				goto end;
+			}
+
+			if (errno == EPIPE) {
+				/* Expected error, pass error to caller */
+				DBG3("EPIPE on recvmsg");
+				ret = -1;
+				goto end;
+			}
+
+			/* Unexpected error */
+			PERROR("recvmsg");
+			ret = -1;
+			goto end;
+		}
 	}
 
 	if (ret != 1) {
