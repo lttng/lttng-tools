@@ -38,7 +38,8 @@ int viewer_session_set_trace_chunk_copy(struct relay_viewer_session *vsession,
 	struct lttng_trace_chunk *viewer_chunk;
 
 	assert(relay_session_trace_chunk);
-	assert(!vsession->current_trace_chunk);
+	lttng_trace_chunk_put(vsession->current_trace_chunk);
+	vsession->current_trace_chunk = NULL;
 
 	DBG("Copying relay session's current trace chunk to the viewer session");
 	viewer_chunk = lttng_trace_chunk_copy(relay_session_trace_chunk);

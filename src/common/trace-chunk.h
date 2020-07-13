@@ -200,6 +200,10 @@ LTTNG_HIDDEN
 const char *lttng_trace_chunk_command_type_get_name(
 		enum lttng_trace_chunk_command_type command);
 
+LTTNG_HIDDEN
+bool lttng_trace_chunk_ids_equal(const struct lttng_trace_chunk *chunk_a,
+		const struct lttng_trace_chunk *chunk_b);
+
 /* Returns true on success. */
 LTTNG_HIDDEN
 bool lttng_trace_chunk_get(struct lttng_trace_chunk *chunk);

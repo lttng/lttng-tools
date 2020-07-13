@@ -1829,6 +1829,32 @@ const char *lttng_trace_chunk_command_type_get_name(
 }
 
 LTTNG_HIDDEN
+bool lttng_trace_chunk_ids_equal(const struct lttng_trace_chunk *chunk_a,
+		const struct lttng_trace_chunk *chunk_b)
+{
+	bool equal = false;
+
+	if (!chunk_a || !chunk_b) {
+		goto end;
+	}
+
+	if (chunk_a->id.is_set ^ chunk_a->id.is_set) {
+		/* One id is set and not the other, thus they are not equal. */
+		goto end;
+	}
+
+	if (!chunk_a->id.is_set) {
+		/* Both ids are unset. */
+		equal = true;
+	} else {
+		equal = chunk_a->id.value == chunk_b->id.value;
+	}
+
+end:
+	return equal;
+}
+
+LTTNG_HIDDEN
 bool lttng_trace_chunk_get(struct lttng_trace_chunk *chunk)
 {
 	return urcu_ref_get_unless_zero(&chunk->ref);
