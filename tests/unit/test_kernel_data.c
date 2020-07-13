@@ -202,6 +202,5 @@ int main(int argc, char **argv)
 	test_create_kernel_event();
 	test_create_kernel_stream();
 
-	/* Success */
-	return 0;
+	return exit_status();
 }

@@ -424,5 +424,5 @@ int main(int argc, const char *argv[])
 error:
 	lttng_notification_channel_destroy(notification_channel);
 	lttng_rotation_handle_destroy(rotation_handle);
-	return ret;
+	return exit_status();
 }
