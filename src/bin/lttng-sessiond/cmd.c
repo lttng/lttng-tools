@@ -4283,6 +4283,20 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		goto end;
 	}
 
+	/* Receive fds, if any. */
+	if (cmd_ctx->lsm.fd_count > 0) {
+		ret = lttcomm_recv_payload_fds_unix_sock(
+				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
+		if (ret > 0 && ret != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			ret = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		} else if (ret <= 0) {
+			ret = LTTNG_ERR_FATAL;
+			goto end;
+		}
+	}
+
+	/* Deserialize trigger. */
 	{
 		struct lttng_payload_view view =
 				lttng_payload_view_from_payload(
@@ -4331,6 +4345,19 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		/* TODO: should this be a new error enum ? */
 		ret = LTTNG_ERR_INVALID_TRIGGER;
 		goto end;
+	}
+
+	/* Receive fds, if any. */
+	if (cmd_ctx->lsm.fd_count > 0) {
+		ret = lttcomm_recv_payload_fds_unix_sock(
+				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
+		if (ret > 0 && ret != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			ret = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		} else if (ret <= 0) {
+			ret = LTTNG_ERR_FATAL;
+			goto end;
+		}
 	}
 
 	{

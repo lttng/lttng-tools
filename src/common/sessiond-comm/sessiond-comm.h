@@ -416,6 +416,8 @@ struct lttcomm_session_msg {
 			/* An lttng_session_descriptor follows. */
 		} LTTNG_PACKED create_session;
 	} u;
+	/* Count of fds sent. */
+	uint32_t fd_count;
 } LTTNG_PACKED;
 
 #define LTTNG_FILTER_MAX_LEN	65536

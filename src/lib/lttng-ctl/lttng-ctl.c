@@ -3083,10 +3083,16 @@ end:
 int lttng_register_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
-	struct lttcomm_session_msg lsm;
-	struct lttng_payload payload;
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_REGISTER_TRIGGER,
+	};
+	struct lttcomm_session_msg *message_lsm;
+	struct lttng_payload message;
+	struct lttng_payload reply;
 
-	lttng_payload_init(&payload);
+	lttng_payload_init(&message);
+	lttng_payload_init(&reply);
+
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -3097,19 +3103,39 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	ret = lttng_trigger_serialize(trigger, &payload);
+	lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+
+	/*
+	 * This is needed to populate the trigger object size for the command
+	 * header.
+	*/
+	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
+
+	ret = lttng_trigger_serialize(trigger, &message);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_REGISTER_TRIGGER;
-	lsm.u.trigger.length = (uint32_t) payload.buffer.size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
-			&lsm, payload.buffer.data, payload.buffer.size, NULL);
+	message_lsm->u.trigger.length = (uint32_t) message.buffer.size - sizeof(lsm);
+
+	{
+		struct lttng_payload_view message_view =
+				lttng_payload_view_from_payload(
+						&message, 0, -1);
+
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
+				&message_view);
+		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	ret = 0;
 end:
-	lttng_payload_reset(&payload);
+	lttng_payload_reset(&message);
+	lttng_payload_reset(&reply);
 	return ret;
 }
 
@@ -3117,9 +3143,13 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttcomm_session_msg lsm;
-	struct lttng_payload payload;
+	struct lttcomm_session_msg *message_lsm;
+	struct lttng_payload message;
+	struct lttng_payload reply;
 
-	lttng_payload_init(&payload);
+	lttng_payload_init(&message);
+	lttng_payload_init(&reply);
+
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -3130,19 +3160,47 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	ret = lttng_trigger_serialize(trigger, &payload);
+	memset(&lsm, 0, sizeof(lsm));
+	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
+
+	lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+
+	/*
+	 * This is needed to populate the trigger object size for the command
+	 * header and number of fds sent.
+	*/
+	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
+
+	ret = lttng_trigger_serialize(trigger, &message);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
 	}
 
-	memset(&lsm, 0, sizeof(lsm));
-	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
-	lsm.u.trigger.length = (uint32_t) payload.buffer.size;
-	ret = lttng_ctl_ask_sessiond_varlen_no_cmd_header(
-			&lsm, payload.buffer.data, payload.buffer.size, NULL);
+	message_lsm->u.trigger.length = (uint32_t) message.buffer.size - sizeof(lsm);
+
+	{
+		struct lttng_payload_view message_view =
+				lttng_payload_view_from_payload(
+						&message, 0, -1);
+
+		/*
+		 * Update the message header with the number of fd that will be
+		 * sent.
+		 */
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
+				&message_view);
+
+		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	ret = 0;
 end:
-	lttng_payload_reset(&payload);
+	lttng_payload_reset(&message);
+	lttng_payload_reset(&reply);
 	return ret;
 }
 
