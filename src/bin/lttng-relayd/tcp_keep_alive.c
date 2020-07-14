@@ -513,10 +513,10 @@ error:
 
 /* Initialize the TCP keep-alive configuration. */
 __attribute__((constructor)) static
-int tcp_keep_alive_init(void)
+void tcp_keep_alive_init(void)
 {
 	tcp_keep_alive_init_support(&support);
-	return tcp_keep_alive_init_config(&support, &config);
+	(void) tcp_keep_alive_init_config(&support, &config);
 }
 
 /*
