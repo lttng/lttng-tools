@@ -10,6 +10,7 @@
 
 #include <common/compat/socket.h>
 #include <common/credentials.h>
+#include <common/payload.h>
 #include <lttng/notification/channel-internal.h>
 #include <lttng/ref-internal.h>
 #include <stdbool.h>
@@ -156,9 +157,11 @@ struct notification_client {
 			 * buffers' "size" is set to contain the current
 			 * message's complete payload.
 			 */
-			struct lttng_dynamic_buffer buffer;
+			struct lttng_payload payload;
 			/* Bytes left to receive for the current message. */
 			size_t bytes_to_receive;
+			/* FDs left to receive for the current message. */
+			int fds_to_receive;
 			/* Type of the message being received. */
 			enum lttng_notification_channel_message_type msg_type;
 			/*
@@ -192,7 +195,7 @@ struct notification_client {
 			 * misbehaving/malicious client.
 			 */
 			bool queued_command_reply;
-			struct lttng_dynamic_buffer buffer;
+			struct lttng_payload payload;
 		} outbound;
 	} communication;
 	/* call_rcu delayed reclaim. */

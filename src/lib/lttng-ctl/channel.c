@@ -14,6 +14,9 @@
 #include <common/dynamic-buffer.h>
 #include <common/utils.h>
 #include <common/defaults.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
+#include <common/unix.h>
 #include <assert.h>
 #include "lttng-ctl-helper.h"
 #include <common/compat/poll.h>
@@ -31,10 +34,7 @@ int receive_message(struct lttng_notification_channel *channel)
 	ssize_t ret;
 	struct lttng_notification_channel_message msg;
 
-	if (lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0)) {
-		ret = -1;
-		goto end;
-	}
+	lttng_payload_clear(&channel->reception_payload);
 
 	ret = lttcomm_recv_unix_sock(channel->socket, &msg, sizeof(msg));
 	if (ret <= 0) {
@@ -48,33 +48,41 @@ int receive_message(struct lttng_notification_channel *channel)
 	}
 
 	/* Add message header at buffer's start. */
-	ret = lttng_dynamic_buffer_append(&channel->reception_buffer, &msg,
+	ret = lttng_dynamic_buffer_append(&channel->reception_payload.buffer, &msg,
 			sizeof(msg));
 	if (ret) {
 		goto error;
 	}
 
 	/* Reserve space for the payload. */
-	ret = lttng_dynamic_buffer_set_size(&channel->reception_buffer,
-			channel->reception_buffer.size + msg.size);
+	ret = lttng_dynamic_buffer_set_size(&channel->reception_payload.buffer,
+			channel->reception_payload.buffer.size + msg.size);
 	if (ret) {
 		goto error;
 	}
 
 	/* Receive message payload. */
 	ret = lttcomm_recv_unix_sock(channel->socket,
-			channel->reception_buffer.data + sizeof(msg), msg.size);
+			channel->reception_payload.buffer.data + sizeof(msg), msg.size);
 	if (ret < (ssize_t) msg.size) {
 		ret = -1;
 		goto error;
+	}
+
+	/* Receive message fds. */
+	if (msg.fds != 0) {
+		ret = lttcomm_recv_payload_fds_unix_sock(channel->socket,
+				msg.fds, &channel->reception_payload);
+		if (ret < sizeof(int) * msg.fds) {
+			ret = -1;
+			goto error;
+		}
 	}
 	ret = 0;
 end:
 	return ret;
 error:
-	if (lttng_dynamic_buffer_set_size(&channel->reception_buffer, 0)) {
-		ret = -1;
-	}
+	lttng_payload_clear(&channel->reception_payload);
 	goto end;
 }
 
@@ -84,10 +92,10 @@ enum lttng_notification_channel_message_type get_current_message_type(
 {
 	struct lttng_notification_channel_message *msg;
 
-	assert(channel->reception_buffer.size >= sizeof(*msg));
+	assert(channel->reception_payload.buffer.size >= sizeof(*msg));
 
 	msg = (struct lttng_notification_channel_message *)
-			channel->reception_buffer.data;
+			channel->reception_payload.buffer.data;
 	return (enum lttng_notification_channel_message_type) msg->type;
 }
 
@@ -98,14 +106,14 @@ struct lttng_notification *create_notification_from_current_message(
 	ssize_t ret;
 	struct lttng_notification *notification = NULL;
 
-	if (channel->reception_buffer.size <=
+	if (channel->reception_payload.buffer.size <=
 			sizeof(struct lttng_notification_channel_message)) {
 		goto end;
 	}
 
 	{
-		struct lttng_payload_view view = lttng_payload_view_from_dynamic_buffer(
-				&channel->reception_buffer,
+		struct lttng_payload_view view = lttng_payload_view_from_payload(
+				&channel->reception_payload,
 				sizeof(struct lttng_notification_channel_message),
 				-1);
 
@@ -113,7 +121,7 @@ struct lttng_notification *create_notification_from_current_message(
 				&view, &notification);
 	}
 
-	if (ret != channel->reception_buffer.size -
+	if (ret != channel->reception_payload.buffer.size -
 			sizeof(struct lttng_notification_channel_message)) {
 		lttng_notification_destroy(notification);
 		notification = NULL;
@@ -147,7 +155,7 @@ struct lttng_notification_channel *lttng_notification_channel_create(
 	}
 	channel->socket = -1;
 	pthread_mutex_init(&channel->lock, NULL);
-	lttng_dynamic_buffer_init(&channel->reception_buffer);
+	lttng_payload_init(&channel->reception_payload);
 	CDS_INIT_LIST_HEAD(&channel->pending_notifications.list);
 
 	is_root = (getuid() == 0);
@@ -520,7 +528,7 @@ int receive_command_reply(struct lttng_notification_channel *channel,
 			struct lttng_notification_channel_command_handshake *handshake;
 
 			handshake = (struct lttng_notification_channel_command_handshake *)
-					(channel->reception_buffer.data +
+					(channel->reception_payload.buffer.data +
 					sizeof(struct lttng_notification_channel_message));
 			channel->version.major = handshake->major;
 			channel->version.minor = handshake->minor;
@@ -534,7 +542,7 @@ int receive_command_reply(struct lttng_notification_channel *channel,
 	}
 
 exit_loop:
-	if (channel->reception_buffer.size <
+	if (channel->reception_payload.buffer.size <
 			(sizeof(struct lttng_notification_channel_message) +
 			sizeof(*reply))) {
 		/* Invalid message received. */
@@ -543,7 +551,7 @@ exit_loop:
 	}
 
 	reply = (struct lttng_notification_channel_command_reply *)
-			(channel->reception_buffer.data +
+			(channel->reception_payload.buffer.data +
 			sizeof(struct lttng_notification_channel_message));
 	*status = (enum lttng_notification_channel_status) reply->status;
 end:
@@ -625,6 +633,7 @@ enum lttng_notification_channel_status send_condition_command(
 
 	pthread_mutex_lock(&channel->lock);
 	socket = channel->socket;
+
 	if (!lttng_condition_validate(condition)) {
 		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_INVALID;
 		goto end_unlock;
@@ -647,11 +656,33 @@ enum lttng_notification_channel_status send_condition_command(
 	((struct lttng_notification_channel_message *) payload.buffer.data)->size =
 			(uint32_t) (payload.buffer.size - sizeof(cmd_header));
 
-	ret = lttcomm_send_unix_sock(
-			socket, payload.buffer.data, payload.buffer.size);
-	if (ret < 0) {
-		status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
-		goto end_unlock;
+	{
+		struct lttng_payload_view pv =
+				lttng_payload_view_from_payload(
+						&payload, 0, -1);
+		const int fd_count =
+				lttng_payload_view_get_fd_handle_count(&pv);
+
+		/* Update fd count. */
+		((struct lttng_notification_channel_message *) payload.buffer.data)->fds =
+			(uint32_t) fd_count;
+
+		ret = lttcomm_send_unix_sock(
+			socket, pv.buffer.data, pv.buffer.size);
+		if (ret < 0) {
+			status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+			goto end_unlock;
+		}
+
+		/* Pass fds if present. */
+		if (fd_count > 0) {
+			ret = lttcomm_send_payload_view_fds_unix_sock(socket,
+					&pv);
+			if (ret < 0) {
+				status = LTTNG_NOTIFICATION_CHANNEL_STATUS_ERROR;
+				goto end_unlock;
+			}
+		}
 	}
 
 	ret = receive_command_reply(channel, &status);
@@ -695,6 +726,6 @@ void lttng_notification_channel_destroy(
 		(void) lttcomm_close_unix_sock(channel->socket);
 	}
 	pthread_mutex_destroy(&channel->lock);
-	lttng_dynamic_buffer_reset(&channel->reception_buffer);
+	lttng_payload_reset(&channel->reception_payload);
 	free(channel);
 }

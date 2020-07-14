@@ -10,7 +10,7 @@
 
 #include <lttng/notification/channel.h>
 #include <common/macros.h>
-#include <common/dynamic-buffer.h>
+#include <common/payload.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <pthread.h>
@@ -44,6 +44,8 @@ struct lttng_notification_channel_message {
 	int8_t type;
 	/* Size of the payload following this field. */
 	uint32_t size;
+	/* Number of FDs sent. */
+	uint32_t fds;
 	char payload[];
 } LTTNG_PACKED;
 
@@ -88,7 +90,7 @@ struct lttng_notification_channel {
 		/* List of struct pending_notification. */
 		struct cds_list_head list;
 	} pending_notifications;
-	struct lttng_dynamic_buffer reception_buffer;
+	struct lttng_payload reception_payload;
 	/* Sessiond notification protocol version. */
 	struct {
 		bool set;
