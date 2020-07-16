@@ -9,12 +9,14 @@ TEST_DESC="Clear - UST tracing"
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="tp:tptest"
+EVENT_STATE_DUMP_START="lttng_ust_statedump:start"
+EVENT_STATE_DUMP_END="lttng_ust_statedump:end"
 SESSION_NAME=""
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-NUM_TESTS=1915
+NUM_TESTS=2071
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
 TRACE_PATH=$(mktemp -d)
@@ -273,7 +275,7 @@ function test_ust_basic_streaming_live_viewer ()
 
 	destroy_lttng_session_ok $SESSION_NAME
 	touch $file_sync_before_exit
-	diag "Wait for application to exit"
+	diag "Waiting for application to exit"
 	wait $app_pid
 	pass "Wait for application to exit"
 	diag "Wait for viewer to exit"
@@ -322,6 +324,93 @@ function test_ust_streaming_live_viewer ()
 	pass "Wait for viewer to exit"
 
 	clean_path $bt_output_path
+}
+
+function test_ust_streaming_live_viewer_new_metadata_after_clear ()
+{
+	local tracing_active=$1
+	local clear_twice=$2
+	# 3, 4 unused
+	local buffer_type=$5
+	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
+	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
+	local channel_name="chan"
+	local bt_output_path
+	local bt_error_path
+	local file_sync_before_exit
+
+	bt_output_path=$(mktemp -d)/bt-output.txt
+	bt_error_path=$(mktemp -d)/bt-output.err
+	file_sync_before_exit=$(mktemp -u)
+
+	diag "Test ust streaming live clear with viewer with new metadata after clear"
+	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
+	create_lttng_session_uri "$SESSION_NAME" net://localhost "--live"
+	enable_ust_lttng_channel_ok "$SESSION_NAME" $channel_name "--buffers-$buffer_type"
+
+	# The vpid context is added to filter events based on the vpid of the
+	# test application as state dump events are used. Regenerating a
+	# state dump will cause other instrumented application on the system
+	# to trigger a state dump which would throw off checks that rely on an
+	# event count.
+	add_context_ust_ok "$SESSION_NAME" $channel_name "vpid"
+	enable_ust_lttng_event_ok "$SESSION_NAME" $EVENT_NAME $channel_name
+	start_lttng_tracing_ok "$SESSION_NAME"
+
+	wait_live_trace_ready net://localhost
+
+	# Connect a live viewer
+	$BABELTRACE_BIN -i lttng-live "net://localhost/host/$remote_trace_path" 1> "$bt_output_path" 2> "$bt_error_path" &
+	local viewer_pid=$!
+
+	wait_live_viewer_connect net://localhost
+
+	$TESTAPP_BIN -i 10 --sync-before-exit "$file_sync_before_exit" &
+	local app_pid=$!
+
+	diag "Wait until viewer sees all 10 expected events"
+	local evcount=0
+	while [ $evcount -ne 10 ]; do
+		evcount=$(wc -l < "$bt_output_path")
+		sleep 0.5
+	done
+	pass "Live viewer read $evcount events, expect 10"
+
+	do_clear_session "$SESSION_NAME" "$tracing_active" "$clear_twice" 0 0
+
+	# Enable new events which will add their descriptions to the metadata
+	# file. This validates that, following a clear, the relay daemon rotates
+	# the metadata viewer stream to	the new metadata file.
+	enable_ust_lttng_event_filter "$SESSION_NAME" $EVENT_STATE_DUMP_START "\$ctx.vpid == $app_pid" $channel_name
+	enable_ust_lttng_event_filter "$SESSION_NAME" $EVENT_STATE_DUMP_END "\$ctx.vpid == $app_pid" $channel_name
+
+	# Forcing a state dump to produce the two events enabled above
+	regenerate_statedump_ok "$SESSION_NAME"
+
+	diag "Wait until viewer sees all 12 expected events"
+	local evcount=0
+	while [ $evcount -ne 12 ]; do
+		evcount=$(wc -l < "$bt_output_path")
+		sleep 0.5
+	done
+	pass "Live viewer read $evcount events, expect 12"
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+
+	destroy_lttng_session_ok "$SESSION_NAME"
+
+	touch "$file_sync_before_exit"
+	diag "Waiting for application to exit"
+	wait $app_pid
+	pass "Wait for application to exit"
+
+	diag "Wait for viewer to exit"
+	wait $viewer_pid
+	ok $? "Babeltrace succeeds"
+	pass "Wait for viewer to exit"
+
+	clean_path "$bt_output_path"
+	clean_path "$bt_error_path"
 }
 
 function test_ust_local ()
@@ -727,6 +816,7 @@ streaming_tests=(test_ust_streaming
 live_tests=(test_ust_streaming_live
 	test_ust_basic_streaming_live_viewer
 	test_ust_streaming_live_viewer
+	test_ust_streaming_live_viewer_new_metadata_after_clear
 )
 
 local_tests=(test_ust_local
