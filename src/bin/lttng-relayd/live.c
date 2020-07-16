@@ -200,7 +200,6 @@ ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 		uint64_t session_id, unsigned int ignore_sent_flag)
 {
 	ssize_t ret;
-	struct lttng_viewer_stream send_stream;
 	struct lttng_ht_iter iter;
 	struct relay_viewer_stream *vstream;
 
@@ -209,6 +208,7 @@ ssize_t send_viewer_streams(struct lttcomm_sock *sock,
 	cds_lfht_for_each_entry(viewer_streams_ht->ht, &iter.iter, vstream,
 			stream_n.node) {
 		struct ctf_trace *ctf_trace;
+		struct lttng_viewer_stream send_stream = {};
 
 		health_code_update();
 
