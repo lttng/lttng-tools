@@ -2048,7 +2048,7 @@ int viewer_get_metadata(struct relay_connection *conn)
 					vstream->stream_file.handle, -read_len,
 					SEEK_CUR);
 
-			DBG("Failed to read metadata: requested = %zd, got = %zd",
+			DBG("Failed to read metadata: requested = %" PRIu64 ", got = %zd",
 					len, read_len);
 			read_len = 0;
 			len = 0;
