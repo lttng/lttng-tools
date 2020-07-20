@@ -1258,7 +1258,7 @@ int relayd_rotate_streams(struct lttcomm_relayd_sock *sock,
 					position->rotate_at_seq_num),
 		};
 
-		DBG("Rotate stream %" PRIu64 "at sequence number %" PRIu64,
+		DBG("Rotate stream %" PRIu64 " at sequence number %" PRIu64,
 				position->stream_id,
 				position->rotate_at_seq_num);
 		ret = lttng_dynamic_buffer_append(&payload, &comm_position,
