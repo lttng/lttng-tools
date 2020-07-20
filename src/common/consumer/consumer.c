@@ -4102,11 +4102,15 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	const bool is_local_trace = relayd_id == -1ULL;
 	struct consumer_relayd_sock_pair *relayd = NULL;
 	bool rotating_to_new_chunk = true;
+	/* Array of `struct lttng_consumer_stream *` */
+	struct lttng_dynamic_pointer_array streams_packet_to_open;
+	size_t stream_idx;
 
 	DBG("Consumer sample rotate position for channel %" PRIu64, key);
 
 	lttng_dynamic_array_init(&stream_rotation_positions,
 			sizeof(struct relayd_stream_rotation_position), NULL);
+	lttng_dynamic_pointer_array_init(&streams_packet_to_open, NULL);
 
 	rcu_read_lock();
 
@@ -4283,67 +4287,88 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 			 * packets in this scenario and allows the tracer to
 			 * "stamp" the beginning of the new trace chunk at the
 			 * earliest possible point.
+			 *
+			 * The packet open is performed after the channel
+			 * rotation to ensure that no attempt to open a packet
+			 * is performed in a stream that has no active trace
+			 * chunk.
 			 */
-			const enum open_packet_status status =
-				open_packet(stream);
-
-			switch (status) {
-			case OPEN_PACKET_STATUS_OPENED:
-				DBG("Opened a packet after a rotation: stream id = %" PRIu64
-						", channel name = %s, session id = %" PRIu64,
-						stream->key, stream->chan->name,
-						stream->chan->session_id);
-				break;
-			case OPEN_PACKET_STATUS_NO_SPACE:
-				/*
-				 * Can't open a packet as there is no space left
-				 * in the buffer. A new packet will be opened
-				 * once one has been consumed.
-				 */
-				DBG("No space left to open a packet after a rotation: stream id = %" PRIu64
-						", channel name = %s, session id = %" PRIu64,
-						stream->key, stream->chan->name,
-						stream->chan->session_id);
-				break;
-			case OPEN_PACKET_STATUS_ERROR:
-				/* Logged by callee. */
+			ret = lttng_dynamic_pointer_array_add_pointer(
+					&streams_packet_to_open, stream);
+			if (ret) {
+				PERROR("Failed to add a stream pointer to array of streams in which to open a packet");
 				ret = -1;
 				goto end_unlock_stream;
-			default:
-				abort();
 			}
 		}
 
 		pthread_mutex_unlock(&stream->lock);
 	}
 	stream = NULL;
+
+	if (!is_local_trace) {
+		relayd = consumer_find_relayd(relayd_id);
+		if (!relayd) {
+			ERR("Failed to find relayd %" PRIu64, relayd_id);
+			ret = -1;
+			goto end_unlock_channel;
+		}
+
+		pthread_mutex_lock(&relayd->ctrl_sock_mutex);
+		ret = relayd_rotate_streams(&relayd->control_sock, stream_count,
+				rotating_to_new_chunk ? &next_chunk_id : NULL,
+				(const struct relayd_stream_rotation_position *)
+						stream_rotation_positions.buffer
+								.data);
+		pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
+		if (ret < 0) {
+			ERR("Relayd rotate stream failed. Cleaning up relayd %" PRIu64,
+					relayd->net_seq_idx);
+			lttng_consumer_cleanup_relayd(relayd);
+			goto end_unlock_channel;
+		}
+	}
+
+	for (stream_idx = 0;
+			stream_idx < lttng_dynamic_pointer_array_get_count(
+				&streams_packet_to_open);
+			stream_idx++) {
+		enum open_packet_status status;
+
+		stream = lttng_dynamic_pointer_array_get_pointer(
+				&streams_packet_to_open, stream_idx);
+
+		pthread_mutex_lock(&stream->lock);
+		status = open_packet(stream);
+		pthread_mutex_unlock(&stream->lock);
+		switch (status) {
+		case OPEN_PACKET_STATUS_OPENED:
+			DBG("Opened a packet after a rotation: stream id = %" PRIu64
+			    ", channel name = %s, session id = %" PRIu64,
+					stream->key, stream->chan->name,
+					stream->chan->session_id);
+			break;
+		case OPEN_PACKET_STATUS_NO_SPACE:
+			/*
+			 * Can't open a packet as there is no space left
+			 * in the buffer. A new packet will be opened
+			 * once one has been consumed.
+			 */
+			DBG("No space left to open a packet after a rotation: stream id = %" PRIu64
+			    ", channel name = %s, session id = %" PRIu64,
+					stream->key, stream->chan->name,
+					stream->chan->session_id);
+			break;
+		case OPEN_PACKET_STATUS_ERROR:
+			/* Logged by callee. */
+			ret = -1;
+			goto end_unlock_stream;
+		default:
+			abort();
+		}
+	}
+
 	pthread_mutex_unlock(&channel->lock);
-
-	if (is_local_trace) {
-		ret = 0;
-		goto end;
-	}
-
-	relayd = consumer_find_relayd(relayd_id);
-	if (!relayd) {
-		ERR("Failed to find relayd %" PRIu64, relayd_id);
-		ret = -1;
-		goto end;
-	}
-
-	pthread_mutex_lock(&relayd->ctrl_sock_mutex);
-	ret = relayd_rotate_streams(&relayd->control_sock, stream_count,
-			rotating_to_new_chunk ? &next_chunk_id : NULL,
-			(const struct relayd_stream_rotation_position *)
-					stream_rotation_positions.buffer.data);
-	pthread_mutex_unlock(&relayd->ctrl_sock_mutex);
-	if (ret < 0) {
-		ERR("Relayd rotate stream failed. Cleaning up relayd %" PRIu64,
-				relayd->net_seq_idx);
-		lttng_consumer_cleanup_relayd(relayd);
-		goto end;
-	}
-
 	ret = 0;
 	goto end;
 
@@ -4354,6 +4379,7 @@ end_unlock_channel:
 end:
 	rcu_read_unlock();
 	lttng_dynamic_array_reset(&stream_rotation_positions);
+	lttng_dynamic_pointer_array_reset(&streams_packet_to_open);
 	return ret;
 }
 
