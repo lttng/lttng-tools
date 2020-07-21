@@ -6747,7 +6747,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 					 * Per-PID buffer and application going
 					 * away.
 					 */
-					if (ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
+					if (open_ret == -LTTNG_ERR_CHAN_NOT_FOUND) {
 						continue;
 					}
 
