@@ -11,6 +11,7 @@
 #include <common/macros.h>
 
 #include <stdbool.h>
+#include <sys/types.h>
 
 struct lttng_payload_view;
 struct lttng_payload;
