@@ -4207,7 +4207,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		case CONSUMER_STREAM_OPEN_PACKET_STATUS_ERROR:
 			/* Logged by callee. */
 			ret = -1;
-			goto end_unlock_stream;
+			goto end_unlock_channel;
 		default:
 			abort();
 		}
