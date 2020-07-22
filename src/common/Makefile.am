@@ -49,6 +49,7 @@ libcommon_la_SOURCES = \
 	evaluation.c \
 	event.c \
 	filter.c filter.h \
+	fd-handle.c fd-handle.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
 	location.c \
