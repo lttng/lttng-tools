@@ -10,6 +10,7 @@
 
 #include <common/dynamic-buffer.h>
 #include <common/dynamic-array.h>
+#include <common/fd-handle.h>
 
 /*
  * An lttng_payload encompasses the 'data' (bytes) and any passed file
@@ -19,7 +20,7 @@
 struct lttng_payload {
 	struct lttng_dynamic_buffer buffer;
 	/* private */
-	struct lttng_dynamic_array _fds;
+	struct lttng_dynamic_pointer_array _fd_handles;
 };
 
 /*
@@ -34,20 +35,31 @@ LTTNG_HIDDEN
 int lttng_payload_copy(const struct lttng_payload *src_payload,
 		struct lttng_payload *dst_payload);
 
-/* Release any memory used by the payload. */
+/* Release any memory and references held by the payload. */
 LTTNG_HIDDEN
 void lttng_payload_reset(struct lttng_payload *payload);
 
+/*
+ * Empty the contents of a payload, releasing all references held.
+ * This should be used to put a payload in a re-usable state.
+ *
+ * lttng_payload_reset must still be called on an lttng_payload to
+ * free all allocated memory.
+ */
+LTTNG_HIDDEN
+void lttng_payload_clear(struct lttng_payload *payload);
+
 /**
  * Add an fd to the payload.
- * No ownership of the file descriptor is assumed by the payload.
+ * The payload acquires a reference to the fd_handle.
  *
  * @payload	Payload instance
- * @fd		File descriptor to add to the payload
+ * @fd_handle	File descriptor handle to add to the payload
  *
  * Returns 0 on success, -1 on allocation error.
  */
 LTTNG_HIDDEN
-int lttng_payload_push_fd(struct lttng_payload *payload, int fd);
+int lttng_payload_push_fd_handle(struct lttng_payload *payload,
+		struct fd_handle *fd_handle);
 
 #endif /* LTTNG_PAYLOAD_H */

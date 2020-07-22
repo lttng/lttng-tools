@@ -120,7 +120,7 @@ extern const char *lttng_userspace_probe_location_function_get_function_name(
 
 /*
  * Get the FD to the target binary file to the probe location of the function
- * type.
+ * type. The FD is only valid for the duration of the lifetime of `location`.
  */
 extern int lttng_userspace_probe_location_function_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);
@@ -191,7 +191,7 @@ extern const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
 
 /*
  * Get the FD to the target binary file to the probe location of the tracepoint
- * type.
+ * type. The FD is only valid for the duration of the lifetime of `location`.
  */
 extern int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 		const struct lttng_userspace_probe_location *location);

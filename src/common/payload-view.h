@@ -12,6 +12,7 @@
 #include <common/dynamic-array.h>
 
 struct lttng_payload;
+struct fd_handle;
 
 /*
  * An lttng_payload_view references a payload and allows code to share
@@ -21,22 +22,23 @@ struct lttng_payload;
  * payload view) is modified.
  *
  * While a payload view does not allow users to modify the underlying bytes
- * of the payload, it can be used to 'pop' file descriptors using an iterator
- * belonging to the top-level payload view.
+ * of the payload, it can be used to 'pop' file descriptor handles using an
+ * iterator belonging to the top-level payload view.
  *
  * Hence, a payload view created from a	payload or a dynamic buffer contains
- * an implicit file descriptor iterator. Any payload view created from another
- * payload view will share the same underlying file descriptor iterator.
+ * an implicit file descriptor handle iterator. Any payload view created from
+ * another payload view will share the same underlying file descriptor handle
+ * iterator.
  *
- * The rationale for this is that a payload is never consumed directly, it
- * must be consumed through a payload view.
+ * The rationale for this is that a payload is never consumed directly, it must
+ * be consumed through a payload view.
  *
  * Typically, a payload view will be used to rebuild a previously serialized
  * object hierarchy. Sharing an underlying iterator allows aggregate objects
  * to provide a restricted view of the payload to their members, which will
- * report the number of bytes consumed and `pop` the file descriptors they
+ * report the number of bytes consumed and `pop` the file descriptor handle they
  * should own. In return, those objects can create an even narrower view for
- * their children, allowing them to also consume file descriptors.
+ * their children, allowing them to also consume file descriptor handles.
  *
  * Note that a payload view never assumes any ownership of the underlying
  * payload.
@@ -44,10 +46,10 @@ struct lttng_payload;
 struct lttng_payload_view {
 	struct lttng_buffer_view buffer;
 	/* private */
-	const struct lttng_dynamic_array _fds;
+	const struct lttng_dynamic_pointer_array _fd_handles;
 	struct {
-		size_t *p_fds_position;
-		size_t fds_position;
+		size_t *p_fd_handles_position;
+		size_t fd_handles_position;
 	} _iterator;
 };
 
@@ -130,24 +132,27 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
 		const char *src, size_t offset, ptrdiff_t len);
 
 /**
- * Get the number of file descriptors left in a payload view.
+ * Get the number of file descriptor handles left in a payload view.
  *
  * @payload	Payload instance
  *
- * Returns the number of file descriptors left on success, -1 on error.
+ * Returns the number of file descriptor handles left on success, -1 on error.
  */
 LTTNG_HIDDEN
-int lttng_payload_view_get_fd_count(struct lttng_payload_view *payload_view);
+int lttng_payload_view_get_fd_handle_count(
+		struct lttng_payload_view *payload_view);
 
 /**
- * Pop an fd from a payload view.
- * No ownership of the file descriptor is assumed by the payload.
+ * Pop an fd handle from a payload view.
+ *
+ * A reference to the returned fd_handle is acquired on behalf of the caller.
  *
  * @payload	Payload instance
  *
- * Returns a file descriptor on success, -1 on error.
+ * Returns an fd_handle on success, -1 on error.
  */
 LTTNG_HIDDEN
-int lttng_payload_view_pop_fd(struct lttng_payload_view *payload_view);
+struct fd_handle *lttng_payload_view_pop_fd_handle(
+		struct lttng_payload_view *payload_view);
 
 #endif /* LTTNG_PAYLOAD_VIEW_H */

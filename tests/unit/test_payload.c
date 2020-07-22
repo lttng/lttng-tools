@@ -8,6 +8,7 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <tap/tap.h>
+#include <sys/eventfd.h>
 
 static const int TEST_COUNT = 5;
 
@@ -20,16 +21,28 @@ static void test_fd_push_pop_order(void)
 {
 	int ret, i;
 	struct lttng_payload payload;
+	int fds[3];
 
 	lttng_payload_init(&payload);
 
 	diag("Validating fd push/pop order");
 	for (i = 0; i < 3; i++) {
-		ret = lttng_payload_push_fd(&payload, i);
+		int fd = eventfd(0, 0);
+		struct fd_handle *handle;
+
+		assert(fd >= 0);
+		fds[i] = fd;
+
+		handle = fd_handle_create(fd);
+		assert(handle);
+
+		ret = lttng_payload_push_fd_handle(&payload, handle);
+		fd_handle_put(handle);
 		if (ret) {
 			break;
 		}
 	}
+
 	ok(ret == 0, "Added three file descriptors to an lttng_payload");
 
 	{
@@ -39,8 +52,11 @@ static void test_fd_push_pop_order(void)
 					&payload, 0, -1);
 
 		for (i = 0; i < 3; i++) {
-			ret = lttng_payload_view_pop_fd(&view);
-			fail_pop |= ret != i;
+			struct fd_handle *handle =
+					lttng_payload_view_pop_fd_handle(&view);
+
+			fail_pop |= fd_handle_get_fd(handle) != fds[i];
+			fd_handle_put(handle);
 		}
 
 		ok(!fail_pop, "File descriptors are popped from a payload view in the order of insertion");
@@ -59,26 +75,38 @@ static void test_fd_push_pop_imbalance(void)
 
 	diag("Validating fd pop imbalance");
 	for (i = 0; i < 10; i++) {
-		ret = lttng_payload_push_fd(&payload, i);
+		struct fd_handle *handle;
+		int fd = eventfd(0, 0);
+
+		assert(fd >= 0);
+
+		handle = fd_handle_create(fd);
+		assert(handle);
+
+		ret = lttng_payload_push_fd_handle(&payload, handle);
+		fd_handle_put(handle);
 		if (ret) {
 			break;
 		}
 	}
 
 	{
+		struct fd_handle *handle;
 		struct lttng_payload_view view =
 				lttng_payload_view_from_payload(
 					&payload, 0, -1);
 
 		for (i = 0; i < 10; i++) {
-			ret = lttng_payload_view_pop_fd(&view);
-			if (ret == -1) {
+			handle = lttng_payload_view_pop_fd_handle(&view);
+			fd_handle_put(handle);
+			if (!handle) {
 				goto fail;
 			}
 		}
 
-		ret = lttng_payload_view_pop_fd(&view);
-		ok(ret == -1, test_description);
+		handle = lttng_payload_view_pop_fd_handle(&view);
+		ok(!handle, test_description);
+		fd_handle_put(handle);
 	}
 
 	lttng_payload_reset(&payload);
@@ -91,53 +119,70 @@ fail:
 static void test_fd_pop_fd_root_views(void)
 {
 	int ret, i;
-	const int fd = 42;
+	const int fd = eventfd(0, 0);
+	struct fd_handle *handle = fd_handle_create(fd);
 	struct lttng_payload payload;
 	const char * const test_description = "Same file descriptor returned when popping from different top-level views";
 
 	lttng_payload_init(&payload);
+	assert(handle);
 
 	diag("Validating root view fd pop behaviour");
-	ret = lttng_payload_push_fd(&payload, fd);
+	ret = lttng_payload_push_fd_handle(&payload, handle);
 	if (ret) {
 		goto fail;
 	}
 
 	for (i = 0; i < 5; i++) {
+		int view_fd;
+		struct fd_handle *view_handle;
 		struct lttng_payload_view view =
 				lttng_payload_view_from_payload(
 					&payload, 0, -1);
 
-		ret = lttng_payload_view_pop_fd(&view);
-		if (ret != fd) {
+		view_handle = lttng_payload_view_pop_fd_handle(&view);
+		if (!view_handle) {
+			goto fail;
+		}
+
+		view_fd = fd_handle_get_fd(view_handle);
+		fd_handle_put(view_handle);
+		if (view_fd != fd || view_handle != handle) {
 			goto fail;
 		}
 	}
 
 	lttng_payload_reset(&payload);
 	pass(test_description);
+	fd_handle_put(handle);
 	return;
 fail:
 	lttng_payload_reset(&payload);
 	fail(test_description);
+	fd_handle_put(handle);
 }
 
 static void test_fd_pop_fd_descendant_views(void)
 {
 	int ret;
 	const int fd1 = 42, fd2 = 1837;
+	struct fd_handle *handle1 = fd_handle_create(fd1);
+	struct fd_handle *handle2 = fd_handle_create(fd2);
+	struct fd_handle *view_handle1 = NULL, *view_handle2 = NULL;
 	struct lttng_payload payload;
 	const char * const test_description = "Different file descriptors returned when popping from descendant views";
 
 	lttng_payload_init(&payload);
+	assert(handle1);
+	assert(handle2);
 
 	diag("Validating descendant view fd pop behaviour");
-	ret = lttng_payload_push_fd(&payload, fd1);
+	ret = lttng_payload_push_fd_handle(&payload, handle1);
 	if (ret) {
 		goto fail;
 	}
 
-	ret = lttng_payload_push_fd(&payload, fd2);
+	ret = lttng_payload_push_fd_handle(&payload, handle2);
 	if (ret) {
 		goto fail;
 	}
@@ -150,23 +195,31 @@ static void test_fd_pop_fd_descendant_views(void)
 			lttng_payload_view_from_view(
 				&view1, 0, -1);
 
-		ret = lttng_payload_view_pop_fd(&view1);
-		if (ret != fd1) {
+		view_handle1 = lttng_payload_view_pop_fd_handle(&view1);
+		if (!view_handle1 || fd_handle_get_fd(view_handle1) != fd1) {
 			goto fail;
 		}
 
-		ret = lttng_payload_view_pop_fd(&view2);
-		if (ret != fd2) {
+		view_handle2 = lttng_payload_view_pop_fd_handle(&view2);
+		if (!view_handle2 || fd_handle_get_fd(view_handle2) != fd2) {
 			goto fail;
 		}
 	}
 
 	lttng_payload_reset(&payload);
 	pass(test_description);
+	fd_handle_put(handle1);
+	fd_handle_put(handle2);
+	fd_handle_put(view_handle1);
+	fd_handle_put(view_handle2);
 	return;
 fail:
 	lttng_payload_reset(&payload);
 	fail(test_description);
+	fd_handle_put(handle1);
+	fd_handle_put(handle2);
+	fd_handle_put(view_handle1);
+	fd_handle_put(view_handle2);
 }
 
 int main(void)

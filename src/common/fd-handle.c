@@ -58,14 +58,20 @@ end:
 LTTNG_HIDDEN
 void fd_handle_get(struct fd_handle *handle)
 {
-	assert(handle);
+	if (!handle) {
+		return;
+	}
+
 	urcu_ref_get(&handle->ref);
 }
 
 LTTNG_HIDDEN
 void fd_handle_put(struct fd_handle *handle)
 {
-	assert(handle);
+	if (!handle) {
+		return;
+	}
+
 	urcu_ref_put(&handle->ref, fd_handle_release);
 }
 

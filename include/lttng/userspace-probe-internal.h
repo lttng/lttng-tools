@@ -11,6 +11,7 @@
 
 #include <lttng/userspace-probe.h>
 #include <common/macros.h>
+#include <common/fd-handle.h>
 #include <stdbool.h>
 
 struct lttng_payload;
@@ -97,9 +98,8 @@ struct lttng_userspace_probe_location_function {
 	 * binary_fd is a file descriptor to the executable file. It's open
 	 * early on to keep the backing inode valid over the course of the
 	 * intrumentation and use. It prevents deletion and reuse races.
-	 * Set to -1 if not open.
 	 */
-	int binary_fd;
+	struct fd_handle *binary_fd;
 	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type;
 };
 
@@ -112,9 +112,8 @@ struct lttng_userspace_probe_location_tracepoint {
 	 * binary_fd is a file descriptor to the executable file. It's open
 	 * early on to keep the backing inode valid over the course of the
 	 * intrumentation and use. It prevents deletion and reuse races.
-	 * Set to -1 if not open.
 	 */
-	int binary_fd;
+	struct fd_handle *binary_fd;
 };
 
 LTTNG_HIDDEN
@@ -126,14 +125,6 @@ LTTNG_HIDDEN
 int lttng_userspace_probe_location_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_userspace_probe_location **probe_location);
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_function_set_binary_fd(
-		struct lttng_userspace_probe_location *location, int binary_fd);
-
-LTTNG_HIDDEN
-int lttng_userspace_probe_location_tracepoint_set_binary_fd(
-		struct lttng_userspace_probe_location *location, int binary_fd);
 
 /*
  * Returns a version of the location that is serialized to a contiguous region

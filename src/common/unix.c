@@ -19,6 +19,7 @@
 
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/fd-handle.h>
 
 #include "unix.h"
 
@@ -436,6 +437,73 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 }
 
 /*
+ * Send the fd(s) of a payload view over a unix socket.
+ *
+ * Returns the size of data sent, or negative error value.
+ */
+static
+ssize_t _lttcomm_send_payload_view_fds_unix_sock(int sock,
+		struct lttng_payload_view *view,
+		bool blocking)
+{
+	int i;
+	ssize_t ret;
+	struct lttng_dynamic_array raw_fds;
+	const int fd_count = lttng_payload_view_get_fd_handle_count(view);
+
+	lttng_dynamic_array_init(&raw_fds, sizeof(int), NULL);
+
+	/*
+	 * Prepare a contiguous array of file descriptors to send them.
+	 *
+	 * Note that the reference to each fd is released during the iteration;
+	 * we're just getting the numerical value of the fds to conform to the
+	 * syscall's interface. We rely on the fact that "view" must remain
+	 * valid for the duration of the call and that the underlying payload
+	 * owns a reference to the fd_handles.
+	 */
+	for (i = 0; i < fd_count; i++) {
+		struct fd_handle *handle =
+				lttng_payload_view_pop_fd_handle(view);
+		const int raw_fd = fd_handle_get_fd(handle);
+		const int add_ret = lttng_dynamic_array_add_element(
+				&raw_fds, &raw_fd);
+
+		fd_handle_put(handle);
+		if (add_ret) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+	if (blocking) {
+		ret = lttcomm_send_fds_unix_sock(sock,
+				(const int *) raw_fds.buffer.data, fd_count);
+	} else {
+		ret = lttcomm_send_fds_unix_sock_non_block(sock,
+				(const int *) raw_fds.buffer.data, fd_count);
+	}
+
+end:
+	lttng_dynamic_array_reset(&raw_fds);
+	return ret;
+}
+
+LTTNG_HIDDEN
+ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock,
+		struct lttng_payload_view *view)
+{
+	return _lttcomm_send_payload_view_fds_unix_sock(sock, view, true);
+}
+
+LTTNG_HIDDEN
+ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock,
+		struct lttng_payload_view *view)
+{
+	return _lttcomm_send_payload_view_fds_unix_sock(sock, view, false);
+}
+
+/*
  * Send a message accompanied by fd(s) over a unix socket.
  * Only use for non blocking socket.
  *
@@ -627,6 +695,107 @@ retry:
 	}
 end:
 	return ret;
+}
+
+static
+void close_raw_fd(void *ptr)
+{
+	const int raw_fd = *((const int *) ptr);
+
+	if (raw_fd >= 0) {
+		const int ret = close(raw_fd);
+
+		if (ret) {
+			PERROR("Failed to close file descriptor %d", raw_fd);
+		}
+	}
+}
+
+static
+enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
+		struct lttng_payload *payload)
+{
+	int i;
+	enum lttng_error_code ret_code = LTTNG_OK;
+	const int fd_count = lttng_dynamic_array_get_count(raw_fds);
+
+	for (i = 0; i < fd_count; i++) {
+		int ret;
+		struct fd_handle *handle;
+		int *raw_fd = (int *) lttng_dynamic_array_get_element(
+			raw_fds, i);
+
+		handle = fd_handle_create(*raw_fd);
+		if (!handle) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		/* FD ownership transferred to the handle. */
+		*raw_fd = -1;
+
+		ret = lttng_payload_push_fd_handle(payload, handle);
+		fd_handle_put(handle);
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+	}
+
+end:
+	return ret_code;
+}
+
+static
+ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
+		struct lttng_payload *payload, bool blocking)
+{
+	enum lttng_error_code add_ret;
+	ssize_t ret;
+	struct lttng_dynamic_array raw_fds;
+
+	lttng_dynamic_array_init(&raw_fds, sizeof(int), close_raw_fd);
+	ret = lttng_dynamic_array_set_count(&raw_fds, nb_fd);
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	if (blocking) {
+		ret = lttcomm_recv_fds_unix_sock(
+				sock, (int *) raw_fds.buffer.data, nb_fd);
+	} else {
+		ret = lttcomm_recv_fds_unix_sock_non_block(
+				sock, (int *) raw_fds.buffer.data, nb_fd);
+	}
+
+	if (ret < 0) {
+		goto end;
+	}
+
+	add_ret = add_fds_to_payload(&raw_fds, payload);
+	if (add_ret != LTTNG_OK) {
+		ret = - (int) add_ret;
+		goto end;
+	}
+
+end:
+	lttng_dynamic_array_reset(&raw_fds);
+	return ret;
+}
+
+LTTNG_HIDDEN
+ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
+			   struct lttng_payload *payload)
+{
+	return _lttcomm_recv_payload_fds_unix_sock(sock, nb_fd, payload, true);
+}
+
+LTTNG_HIDDEN
+ssize_t lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd,
+			   struct lttng_payload *payload)
+{
+	return _lttcomm_recv_payload_fds_unix_sock(sock, nb_fd, payload, false);
 }
 
 /*

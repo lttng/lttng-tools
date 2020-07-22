@@ -13,6 +13,8 @@
 
 #include <common/compat/socket.h>
 #include <common/macros.h>
+#include <common/payload.h>
+#include <common/payload-view.h>
 
 LTTNG_HIDDEN
 int lttcomm_create_unix_sock(const char *pathname);
@@ -31,13 +33,26 @@ int lttcomm_close_unix_sock(int sock);
 LTTNG_HIDDEN
 ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd);
 LTTNG_HIDDEN
+ssize_t lttcomm_send_payload_view_fds_unix_sock(int sock,
+		struct lttng_payload_view *view);
+LTTNG_HIDDEN
 ssize_t lttcomm_send_fds_unix_sock_non_block(
 		int sock, const int *fds, size_t nb_fd);
+LTTNG_HIDDEN
+ssize_t lttcomm_send_payload_view_fds_unix_sock_non_block(int sock,
+		struct lttng_payload_view *view);
+
 /* Recv a message accompanied by fd(s) from a unix socket */
 LTTNG_HIDDEN
 ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd);
 LTTNG_HIDDEN
+ssize_t lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
+		struct lttng_payload *payload);
+LTTNG_HIDDEN
 ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd);
+LTTNG_HIDDEN
+ssize_t lttcomm_recv_payload_fds_unix_sock_non_block(int sock, size_t nb_fd,
+		struct lttng_payload *payload);
 
 LTTNG_HIDDEN
 ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len);

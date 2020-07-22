@@ -10,12 +10,21 @@
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
 
+static
+void release_fd_handle_ref(void *ptr)
+{
+	struct fd_handle *fd_handle = ptr;
+
+	fd_handle_put(fd_handle);
+}
+
 LTTNG_HIDDEN
 void lttng_payload_init(struct lttng_payload *payload)
 {
 	assert(payload);
 	lttng_dynamic_buffer_init(&payload->buffer);
-	lttng_dynamic_array_init(&payload->_fds, sizeof(int), NULL);
+	lttng_dynamic_pointer_array_init(&payload->_fd_handles,
+			release_fd_handle_ref);
 }
 
 LTTNG_HIDDEN
@@ -28,38 +37,33 @@ int lttng_payload_copy(const struct lttng_payload *src_payload,
 	ret = lttng_dynamic_buffer_append_buffer(
 			&dst_payload->buffer, &src_payload->buffer);
 	if (ret) {
-		goto error;
+		goto end;
 	}
 
-	for (i = 0; i < lttng_dynamic_array_get_count(&src_payload->_fds);
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(
+					&src_payload->_fd_handles);
 			i++) {
-		int dst_fd;
-		const int src_fd = *((int *) lttng_dynamic_array_get_element(
-					     &src_payload->_fds, i));
+		struct fd_handle *new_fd_handle;
+		const struct fd_handle *src_fd_handle =
+				lttng_dynamic_pointer_array_get_pointer(
+						&src_payload->_fd_handles, i);
 
-		dst_fd = dup(src_fd);
-		if (dst_fd < 0) {
-			PERROR("Failed to duplicate file descriptor while copying a payload");
-			ret = dst_fd;
-			goto error;
+		new_fd_handle = fd_handle_copy(src_fd_handle);
+		if (!new_fd_handle) {
+			PERROR("Failed to copy fd_handle while copying a payload");
+			ret = -1;
+			goto end;
 		}
 
-		ret = lttng_payload_push_fd(dst_payload, dst_fd);
+		ret = lttng_payload_push_fd_handle(dst_payload, new_fd_handle);
+		fd_handle_put(new_fd_handle);
 		if (ret) {
-			const int close_ret = close(dst_fd);
-
-			if (close_ret < 0) {
-				PERROR("Failed to close duplicated file descriptor while copying a payload");
-			}
-
-			goto error;
+			goto end;
 		}
 	}
 
 end:
 	return ret;
-error:
-	goto end;
 }
 
 LTTNG_HIDDEN
@@ -70,11 +74,19 @@ void lttng_payload_reset(struct lttng_payload *payload)
 	}
 
 	lttng_dynamic_buffer_reset(&payload->buffer);
-	lttng_dynamic_array_reset(&payload->_fds);
+	lttng_dynamic_pointer_array_reset(&payload->_fd_handles);
 }
 
 LTTNG_HIDDEN
-int lttng_payload_push_fd(struct lttng_payload *payload, int fd)
+void lttng_payload_clear(struct lttng_payload *payload)
+{
+	lttng_dynamic_buffer_set_size(&payload->buffer, 0);
+	lttng_dynamic_pointer_array_clear(&payload->_fd_handles);
+}
+
+LTTNG_HIDDEN
+int lttng_payload_push_fd_handle(struct lttng_payload *payload,
+		struct fd_handle *fd_handle)
 {
 	int ret;
 
@@ -83,7 +95,13 @@ int lttng_payload_push_fd(struct lttng_payload *payload, int fd)
 		goto end;
 	}
 
-	ret = lttng_dynamic_array_add_element(&payload->_fds, &fd);
+	ret = lttng_dynamic_pointer_array_add_pointer(
+			&payload->_fd_handles, fd_handle);
+	if (ret) {
+		goto end;
+	}
+
+	fd_handle_get(fd_handle);
 end:
 	return ret;
 }

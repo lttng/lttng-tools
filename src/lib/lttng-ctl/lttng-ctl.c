@@ -23,10 +23,12 @@
 #include <common/compat/string.h>
 #include <common/defaults.h>
 #include <common/dynamic-buffer.h>
+#include <common/dynamic-array.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/tracker.h>
+#include <common/unix.h>
 #include <common/uri.h>
 #include <common/utils.h>
 #include <lttng/channel-internal.h>
@@ -39,6 +41,7 @@
 #include <lttng/session-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/userspace-probe-internal.h>
+#include <lttng/lttng-error.h>
 
 #include "filter/filter-ast.h"
 #include "filter/filter-parser.h"
@@ -627,9 +630,10 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 {
 	int ret;
 	struct lttcomm_lttng_msg llm;
+	const int fd_count = lttng_payload_view_get_fd_handle_count(message);
 
 	assert(reply->buffer.size == 0);
-	assert(reply->_fds.size == 0);
+	assert(lttng_dynamic_pointer_array_get_count(&reply->_fd_handles) == 0);
 
 	ret = connect_sessiond();
 	if (ret < 0) {
@@ -648,10 +652,13 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 		goto end;
 	}
 
-	if (lttng_payload_view_get_fd_count(message) > 0) {
-		ret = lttcomm_send_fds_unix_sock(sessiond_socket,
-				(const int *) message->_fds.buffer.data,
-				lttng_dynamic_array_get_count(&message->_fds));
+	if (fd_count > 0) {
+		ret = lttcomm_send_payload_view_fds_unix_sock(sessiond_socket,
+				message);
+		if (ret < 0) {
+			ret = -LTTNG_ERR_FATAL;
+			goto end;
+		}
 	}
 
 	/* Get header from data transmission */
@@ -685,19 +692,9 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 	}
 
 	if (llm.fd_count > 0) {
-		ret = lttng_dynamic_array_set_count(&reply->_fds, llm.fd_count);
-		if (ret) {
-			ret = -LTTNG_ERR_NOMEM;
-			goto end;
-		}
-
-		ret = lttcomm_recv_fds_unix_sock(sessiond_socket,
-				(int *) reply->_fds.buffer.data, llm.fd_count);
-		if (ret > 0 && ret != llm.fd_count * sizeof(int)) {
-			ret = -LTTNG_ERR_INVALID_PROTOCOL;
-			goto end;
-		} else if (ret <= 0) {
-			ret = -LTTNG_ERR_FATAL;
+		ret = lttcomm_recv_payload_fds_unix_sock(
+				sessiond_socket, llm.fd_count, reply);
+		if (ret < 0) {
 			goto end;
 		}
 	}
@@ -1360,7 +1357,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	{
 		struct lttng_payload_view view = lttng_payload_view_from_payload(
 			&payload, 0, -1);
-		int fd_count = lttng_payload_view_get_fd_count(&view);
+		int fd_count = lttng_payload_view_get_fd_handle_count(&view);
 		int fd_to_send;
 
 		if (fd_count < 0) {
@@ -1369,12 +1366,15 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 
 		assert(fd_count == 0 || fd_count == 1);
 		if (fd_count == 1) {
-			ret = lttng_payload_view_pop_fd(&view);
-			if (ret < 0) {
+			struct fd_handle *handle =
+					lttng_payload_view_pop_fd_handle(&view);
+
+			if (!handle) {
 				goto mem_error;
 			}
 
-			fd_to_send = ret;
+			fd_to_send = fd_handle_get_fd(handle);
+			fd_handle_put(handle);
 		}
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,

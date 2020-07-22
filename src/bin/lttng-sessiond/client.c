@@ -13,6 +13,7 @@
 #include "common/dynamic-array.h"
 #include "common/payload.h"
 #include "common/payload-view.h"
+#include "common/fd-handle.h"
 #include "common/sessiond-comm/sessiond-comm.h"
 #include "common/payload.h"
 #include "common/payload-view.h"
@@ -92,7 +93,7 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 	};
 
 	lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
-	lttng_dynamic_array_clear(&cmd_ctx->reply_payload._fds);
+	lttng_dynamic_pointer_array_clear(&cmd_ctx->reply_payload._fd_handles);
 
 	cmd_ctx->lttng_msg_size = total_msg_size;
 
@@ -592,9 +593,10 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 		int *sock_error, struct lttng_event *event)
 {
-	int fd, ret;
+	int fd = -1, ret;
 	struct lttng_userspace_probe_location *probe_location;
 	struct lttng_payload probe_location_payload;
+	struct fd_handle *handle = NULL;
 
 	/*
 	 * Create a payload to store the serialized version of the probe
@@ -633,12 +635,24 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 		goto error;
 	}
 
-	ret = lttng_payload_push_fd(&probe_location_payload, fd);
+	handle = fd_handle_create(fd);
+	if (!handle) {
+		ret = LTTNG_ERR_NOMEM;
+		goto error;
+	}
+
+	/* Transferred to the handle. */
+	fd = -1;
+
+	ret = lttng_payload_push_fd_handle(&probe_location_payload, handle);
 	if (ret) {
 		ERR("Failed to add userspace probe file descriptor to payload");
 		ret = LTTNG_ERR_NOMEM;
 		goto error;
 	}
+
+	fd_handle_put(handle);
+	handle = NULL;
 
 	{
 		struct lttng_payload_view view = lttng_payload_view_from_payload(
@@ -662,6 +676,13 @@ static int receive_userspace_probe(struct command_ctx *cmd_ctx, int sock,
 	}
 
 error:
+	if (fd >= 0) {
+		if (close(fd)) {
+			PERROR("Failed to close userspace probe location binary fd");
+		}
+	}
+
+	fd_handle_put(handle);
 	lttng_payload_reset(&probe_location_payload);
 	return ret;
 }
@@ -699,6 +720,7 @@ static int check_rotate_compatible(void)
 static int send_unix_sock(int sock, struct lttng_payload_view *view)
 {
 	int ret;
+	const int fd_count = lttng_payload_view_get_fd_handle_count(view);
 
 	/* Check valid length */
 	if (view->buffer.size == 0) {
@@ -712,10 +734,33 @@ static int send_unix_sock(int sock, struct lttng_payload_view *view)
 		goto end;
 	}
 
-	if (lttng_dynamic_array_get_count(&view->_fds) > 0) {
+	if (fd_count > 0) {
+		int i;
+		struct lttng_dynamic_array raw_fds;
+
+		/*
+		 * Never holds ownership of the FDs; this is just used
+		 * to put the FDs in a contiguous array.
+		 */
+		lttng_dynamic_array_init(&raw_fds, sizeof(int), NULL);
+
+		for (i = 0; i < fd_count; i++) {
+			struct fd_handle *handle =
+				lttng_payload_view_pop_fd_handle(view);
+			const int raw_fd = fd_handle_get_fd(handle);
+
+			ret = lttng_dynamic_array_add_element(&raw_fds, &raw_fd);
+			fd_handle_put(handle);
+			if (ret) {
+				lttng_dynamic_array_reset(&raw_fds);
+				goto end;
+			}
+		}
+
 		ret = lttcomm_send_fds_unix_sock(sock,
-				(const int *) view->_fds.buffer.data,
-				lttng_dynamic_array_get_count(&view->_fds));
+				(const int *) raw_fds.buffer.data,
+				fd_count);
+		lttng_dynamic_array_reset(&raw_fds);
 	}
 
 end:
@@ -2266,8 +2311,7 @@ static void *thread_manage_clients(void *data)
 			.gid = UINT32_MAX,
 		};
 		cmd_ctx.session = NULL;
-		lttng_dynamic_buffer_set_size(&cmd_ctx.reply_payload.buffer, 0);
-		lttng_dynamic_array_clear(&cmd_ctx.reply_payload._fds);
+		lttng_payload_clear(&cmd_ctx.reply_payload);
 		cmd_ctx.lttng_msg_size = 0;
 
 		DBG("Accepting client command ...");
@@ -2410,7 +2454,7 @@ static void *thread_manage_clients(void *data)
 			       sizeof(llm));
 			assert(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
 
-			llm->fd_count = lttng_payload_view_get_fd_count(&view);
+			llm->fd_count = lttng_payload_view_get_fd_handle_count(&view);
 
 			DBG("Sending response (size: %d, retcode: %s (%d))",
 					cmd_ctx.lttng_msg_size,
