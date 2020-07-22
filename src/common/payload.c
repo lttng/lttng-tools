@@ -25,7 +25,6 @@ int lttng_payload_copy(const struct lttng_payload *src_payload,
 	int ret;
 	size_t i;
 
-	lttng_payload_init(dst_payload);
 	ret = lttng_dynamic_buffer_append_buffer(
 			&dst_payload->buffer, &src_payload->buffer);
 	if (ret) {
@@ -60,7 +59,6 @@ int lttng_payload_copy(const struct lttng_payload *src_payload,
 end:
 	return ret;
 error:
-	lttng_payload_reset(dst_payload);
 	goto end;
 }
 
