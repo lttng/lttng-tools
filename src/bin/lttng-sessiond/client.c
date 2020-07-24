@@ -735,32 +735,10 @@ static int send_unix_sock(int sock, struct lttng_payload_view *view)
 	}
 
 	if (fd_count > 0) {
-		int i;
-		struct lttng_dynamic_array raw_fds;
-
-		/*
-		 * Never holds ownership of the FDs; this is just used
-		 * to put the FDs in a contiguous array.
-		 */
-		lttng_dynamic_array_init(&raw_fds, sizeof(int), NULL);
-
-		for (i = 0; i < fd_count; i++) {
-			struct fd_handle *handle =
-				lttng_payload_view_pop_fd_handle(view);
-			const int raw_fd = fd_handle_get_fd(handle);
-
-			ret = lttng_dynamic_array_add_element(&raw_fds, &raw_fd);
-			fd_handle_put(handle);
-			if (ret) {
-				lttng_dynamic_array_reset(&raw_fds);
-				goto end;
-			}
+		ret = lttcomm_send_payload_view_fds_unix_sock(sock, view);
+		if (ret < 0) {
+			goto end;
 		}
-
-		ret = lttcomm_send_fds_unix_sock(sock,
-				(const int *) raw_fds.buffer.data,
-				fd_count);
-		lttng_dynamic_array_reset(&raw_fds);
 	}
 
 end:
