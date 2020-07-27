@@ -1545,7 +1545,7 @@ int viewer_get_next_index(struct relay_connection *conn)
 	if (rstream->trace_chunk && !lttng_trace_chunk_ids_equal(
 			conn->viewer_session->current_trace_chunk,
 			rstream->trace_chunk)) {
-		DBG("Metadata relay stream and viewer chunk ids differ");
+		DBG("Relay stream and viewer chunk ids differ");
 
 		ret = viewer_session_set_trace_chunk_copy(
 				conn->viewer_session,
