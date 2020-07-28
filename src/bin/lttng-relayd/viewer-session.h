@@ -30,7 +30,6 @@ struct relay_viewer_session {
 	 */
 	struct cds_list_head session_list;	/* RCU list. */
 	pthread_mutex_t session_list_lock;	/* Protects list updates. */
-	/* Once set, the current trace chunk of a viewer must not change. */
 	struct lttng_trace_chunk *current_trace_chunk;
 };
 
