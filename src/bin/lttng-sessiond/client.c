@@ -92,7 +92,11 @@ static int setup_lttng_msg(struct command_ctx *cmd_ctx,
 		.data_size = payload_len,
 	};
 
-	lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+	ret = lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+	if (ret) {
+		goto end;
+	}
+
 	lttng_dynamic_pointer_array_clear(&cmd_ctx->reply_payload._fd_handles);
 
 	cmd_ctx->lttng_msg_size = total_msg_size;
