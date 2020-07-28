@@ -133,7 +133,10 @@ static int setup_empty_lttng_msg(struct command_ctx *cmd_ctx)
 	int ret;
 	const struct lttcomm_lttng_msg llm = {};
 
-	lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+	ret = lttng_dynamic_buffer_set_size(&cmd_ctx->reply_payload.buffer, 0);
+	if (ret) {
+		goto end;
+	}
 
 	/* Append place-holder reply header. */
 	ret = lttng_dynamic_buffer_append(
