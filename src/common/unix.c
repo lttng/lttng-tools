@@ -453,6 +453,11 @@ ssize_t _lttcomm_send_payload_view_fds_unix_sock(int sock,
 
 	lttng_dynamic_array_init(&raw_fds, sizeof(int), NULL);
 
+	if (fd_count < 0) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	/*
 	 * Prepare a contiguous array of file descriptors to send them.
 	 *
