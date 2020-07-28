@@ -80,7 +80,7 @@ void lttng_payload_reset(struct lttng_payload *payload)
 LTTNG_HIDDEN
 void lttng_payload_clear(struct lttng_payload *payload)
 {
-	lttng_dynamic_buffer_set_size(&payload->buffer, 0);
+	(void) lttng_dynamic_buffer_set_size(&payload->buffer, 0);
 	lttng_dynamic_pointer_array_clear(&payload->_fd_handles);
 }
 
