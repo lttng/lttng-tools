@@ -1,12 +1,13 @@
 #!/bin/bash
 #
 # Copyright (C) 2013 Christian Babeux <christian.babeux@efficios.com>
+# Copyright (C) 2020 Jérémie Galarneau <jeremie.galarneau@efficios.com>
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
 TEST_DESC="Tracefile count limits"
 
-CURDIR=$(dirname $0)/
+CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -16,10 +17,11 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 STATS_BIN="$TESTDIR/utils/babelstats.pl"
 NUM_TESTS=74
 
-NUM_CPUS=`nproc`
+NUM_CPUS=$(nproc)
 PAGE_SIZE=$(getconf PAGE_SIZE)
+TRACEFILE_SIZE=$PAGE_SIZE
 
-source $TESTDIR/utils/utils.sh
+source "$TESTDIR"/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
 	BAIL_OUT "No UST events binary detected."
@@ -31,35 +33,20 @@ function enable_lttng_channel_count_limit ()
 	channel_name="$2"
 	tracefile_count_limit="$3"
 
-	test_name="Enable channel $channel_name "
-	test_name+="for session $sess_name: "
+	test_name="Enable channel \`$channel_name\` "
+	test_name+="for session \`$sess_name\`: "
 	test_name+="$tracefile_count_limit tracefiles"
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-channel \
-	    -u $channel_name -s $sess_name \
-	    -C $(($PAGE_SIZE*3)) -W $tracefile_count_limit \
-	    --overwrite >/dev/null 2>&1
+	"$TESTDIR"/../src/bin/lttng/"$LTTNG_BIN" enable-channel \
+	    -u "$channel_name" -s "$sess_name" \
+	    --subbuf-size "$PAGE_SIZE" \
+	    --tracefile-size "$TRACEFILE_SIZE" \
+	    --tracefile-count "$tracefile_count_limit" >/dev/null 2>&1
 
 	ok $? "$test_name"
 }
 
-function enable_ust_lttng_event_per_channel ()
-{
-	sess_name="$1"
-	event_name="$2"
-	channel_name="$3"
-
-	test_name="Enable event $event_name "
-	test_name+="for session $sess_name "
-	test_name+="in channel $channel_name"
-
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN enable-event "$event_name" \
-	    -s $sess_name -u -c $channel_name >/dev/null 2>&1
-
-	ok $? "$test_name"
-}
-
-function validate_min_max
+function validate_min_max ()
 {
 	stats="$1"
 	field="$2"
@@ -70,59 +57,83 @@ function validate_min_max
 	return $?
 }
 
-function validate_file_count
+function get_total_stream_file_size ()
 {
-	path="$1"
-	file_pattern="$2"
-	expected_max_count="$3"
+	local trace_path="$1"
+	local stream_name_pattern="$2"
+	local size
 
-	count=`find $path -name "$file_pattern" -type f \( ! -iname "*.idx" \) | wc -l`
+	size=$(find "$trace_path" -type f -regex "$stream_name_pattern" -exec du -b -c {} + | tail -n1 | cut -f 1)
+	echo "$size"
+}
 
-	if [ "$count" -gt "$expected_max_count" ]; then
-	    fail "Validate file count: $file_pattern"
-	    diag "File count: $count expected: $expected_max_count"
-	else
-	    pass "Validate file count: $file_pattern"
-	fi
+function get_stream_file_count ()
+{
+	local trace_path="$1"
+	local stream_name_pattern="$2"
+	local count
+
+	count=$(find "$trace_path" -type f -regex "$stream_name_pattern" | wc -l)
+	echo "$count"
 }
 
 function test_tracefile_count_limit ()
 {
-	count_limit="$1"
-	trace_path=$(mktemp -d)
+	local count_limit="$1"
+
+	local channel_name="channel"
+	local cpuno=$((RANDOM % NUM_CPUS))
+	local event_name="tp:tptest"
+	local expected_size=$((count_limit * TRACEFILE_SIZE))
+	local num_iter=100000
+	local previous_stream_size=-1
+	local session_name
+	local stream_pattern=".*${channel_name}_${cpuno}_[0-9]*"
+	local stream_size=0
+	local trace_path
+
 	session_name=$(randstring 16 0)
-	channel_name="channel"
-	event_name="tp:tptest"
-	num_iter=100000
-	expected_max=$(($num_iter - 1))
+	trace_path=$(mktemp -d)
 
-	diag "Test tracefile count limit : $count_limit tracefiles"
+	diag "Test tracefile count limit : CPU $cpuno, $count_limit tracefiles, expecting a maximum of $expected_size bytes per CPU"
 
-	create_lttng_session_ok $session_name $trace_path
+	create_lttng_session_ok "$session_name" "$trace_path"
 
 	enable_lttng_channel_count_limit \
-	    $session_name $channel_name $count_limit
+	    "$session_name" "$channel_name" "$count_limit"
 
-	enable_ust_lttng_event_per_channel \
-	    $session_name $event_name $channel_name
+	enable_ust_lttng_event_ok \
+	    "$session_name" "$event_name" "$channel_name"
 
-	start_lttng_tracing_ok $session_name
+	# Run the test app until the total stream size stops changing the
+	# expected size is exceeded (error).
+	#
+	# The `$stream_size` will not stabilize until the trace file count
+	# limit is reached. This is guaranteed by the use of start/produce/stop
+	# cycles forcing the consumption of buffers, preventing unwanted stall
+	# in stream size.
+	while [ "$stream_size" -ne "$previous_stream_size" ]; do
+		start_lttng_tracing_notap "$session_name"
+		taskset -c "$cpuno" "$TESTAPP_BIN" -i "$num_iter" >/dev/null 2>&1
+		stop_lttng_tracing_notap "$session_name"
 
-	$TESTAPP_BIN -i $num_iter >/dev/null 2>&1
+		previous_stream_size="$stream_size"
+		stream_size=$(get_total_stream_file_size "$trace_path" "$stream_pattern")
+		diag "Completed an iteration: previous size = $previous_stream_size bytes, new size = $stream_size bytes"
 
-	stop_lttng_tracing_ok $session_name
-
-	destroy_lttng_session_ok $session_name
-
-	# Validate tracing dir
-
-	for cpuno in $(seq 0 $(($NUM_CPUS - 1)))
-	do
-		validate_file_count \
-		    $trace_path "${channel_name}_${cpuno}_*" $count_limit
+		if [ "$stream_size" -gt "$expected_size" ]; then
+			diag "Total size for CPU $cpuno exceeds expected size: stream size = $stream_size bytes, expected size = $expected_size"
+			break
+		fi
 	done
 
-	# Validate tracing data
+	destroy_lttng_session_ok "$session_name"
+
+	[ "$expected_size" -eq "$stream_size" ]
+	ok $? "Total stream size of CPU $cpuno is $expected_size"
+
+	[ "$(get_stream_file_count "$trace_path" "$stream_pattern")" -eq "$count_limit" ]
+	ok $? "Stream meets the trace file limit of $count_limit"
 
 	stats=`babeltrace $trace_path | $STATS_BIN --tracepoint $event_name`
 
@@ -135,23 +146,20 @@ function test_tracefile_count_limit ()
 	validate_min_max "$stats" "longfield" "[0-9]+" "$expected_max"
 	ok $? "Trace validation - longfield"
 
-	rm -rf $trace_path
+	rm -rf "$trace_path"
 }
 
 LIMITS=("1" "2" "4" "8" "10" "16" "32" "64")
 
-# The file count validation depends on the number of streams (1 per cpu)
-TOTAL_TESTS=$(($NUM_TESTS + (${#LIMITS[@]} * $NUM_CPUS)))
-
-plan_tests $TOTAL_TESTS
+plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-for limit in ${LIMITS[@]};
+for limit in "${LIMITS[@]}";
 do
-	test_tracefile_count_limit $limit
+	test_tracefile_count_limit "$limit"
 done
 
 stop_lttng_sessiond
