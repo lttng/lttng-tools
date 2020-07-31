@@ -4065,6 +4065,36 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 	return start_pos;
 }
 
+/* Stream lock must be held by the caller. */
+static int sample_stream_positions(struct lttng_consumer_stream *stream,
+			    unsigned long *produced, unsigned long *consumed)
+{
+	int ret;
+
+	ASSERT_LOCKED(stream->lock);
+
+	ret = lttng_consumer_sample_snapshot_positions(stream);
+	if (ret < 0) {
+		ERR("Failed to sample snapshot positions");
+		goto end;
+	}
+
+	ret = lttng_consumer_get_produced_snapshot(stream, produced);
+	if (ret < 0) {
+		ERR("Failed to sample produced position");
+		goto end;
+	}
+
+	ret = lttng_consumer_get_consumed_snapshot(stream, consumed);
+	if (ret < 0) {
+		ERR("Failed to sample consumed position");
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
 /*
  * Sample the rotate position for all the streams of a channel. If a stream
  * is already at the rotate position (produced == consumed), we flag it as
@@ -4127,18 +4157,97 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		}
 
 		/*
-		 * Do not flush an empty packet when rotating from a NULL trace
+		 * Do not flush a packet when rotating from a NULL trace
 		 * chunk. The stream has no means to output data, and the prior
-		 * rotation which rotated to NULL performed that side-effect already.
+		 * rotation which rotated to NULL performed that side-effect
+		 * already. No new data can be produced when a stream has no
+		 * associated trace chunk (e.g. a stop followed by a rotate).
 		 */
 		if (stream->trace_chunk) {
+			bool flush_active;
+
+			if (stream->metadata_flag) {
+				/*
+				 * Don't produce an empty metadata packet,
+				 * simply close the current one.
+				 *
+				 * Metadata is regenerated on every trace chunk
+				 * switch; there is no concern that no data was
+				 * produced.
+				 */
+				flush_active = true;
+			} else {
+				/*
+				 * Only flush an empty packet if the "packet
+				 * open" could not be performed on transition
+				 * to a new trace chunk and no packets were
+				 * consumed within the chunk's lifetime.
+				 */
+				if (stream->opened_packet_in_current_trace_chunk) {
+					flush_active = true;
+				} else {
+					/*
+					 * Stream could have been full at the
+					 * time of rotation, but then have had
+					 * no activity at all.
+					 *
+					 * It is important to flush a packet
+					 * to prevent 0-length files from being
+					 * produced as most viewers choke on
+					 * them.
+					 *
+					 * Unfortunately viewers will not be
+					 * able to know that tracing was active
+					 * for this stream during this trace
+					 * chunk's lifetime.
+					 */
+					ret = sample_stream_positions(stream, &produced_pos, &consumed_pos);
+					if (ret) {
+						goto end_unlock_stream;
+					}
+
+					/*
+					 * Don't flush an empty packet if data
+					 * was produced; it will be consumed
+					 * before the rotation completes.
+					 */
+					flush_active = produced_pos != consumed_pos;
+					if (!flush_active) {
+						enum lttng_trace_chunk_status chunk_status;
+						const char *trace_chunk_name;
+						uint64_t trace_chunk_id;
+
+						chunk_status = lttng_trace_chunk_get_name(
+								stream->trace_chunk,
+								&trace_chunk_name,
+								NULL);
+						if (chunk_status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
+							trace_chunk_name = "none";
+						}
+
+						/*
+						 * Consumer trace chunks are
+						 * never anonymous.
+						 */
+						chunk_status = lttng_trace_chunk_get_id(
+								stream->trace_chunk,
+								&trace_chunk_id);
+						assert(chunk_status ==
+								LTTNG_TRACE_CHUNK_STATUS_OK);
+
+						DBG("Unable to open packet for stream during trace chunk's lifetime. "
+								"Flushing an empty packet to prevent an empty file from being created: "
+								"stream id = %" PRIu64 ", trace chunk name = `%s`, trace chunk id = %" PRIu64,
+								stream->key, trace_chunk_name, trace_chunk_id);
+					}
+				}
+			}
+
 			/*
-			 * For metadata stream, do an active flush, which does not
-			 * produce empty packets. For data streams, empty-flush;
-			 * ensures we have at least one packet in each stream per trace
-			 * chunk, even if no data was produced.
+			 * Close the current packet before sampling the
+			 * ring buffer positions.
 			 */
-			ret = consumer_flush_buffer(stream, stream->metadata_flag ? 1 : 0);
+			ret = consumer_flush_buffer(stream, flush_active);
 			if (ret < 0) {
 				ERR("Failed to flush stream %" PRIu64 " during channel rotation",
 						stream->key);
