@@ -1,3 +1,60 @@
+2020-08-03 lttng-tools 2.12.2 (National Watermelon Day)
+	* Tests: rework tracefile_count test to meet the tracefile count limit
+	* Fix: extraneous empty/inactive flush on rotation out of a trace chunk
+	* Fix: relayd: double unlock on viewer stream creation error
+	* Fix: relayd: live connection fails to open file during clear
+	* Fix: relayd: wrong stream type used in DBG statement
+	* Fix: lttng: leak of userspace probe path on listing
+	* Fix: uprobe: missing error code on allocation failure
+	* Fix: sessiond: don't negate error code on list error
+	* Fix: send/received actual size is overwritten by 'expected' size
+	* Fix: partial recv lead to client disconnect
+	* tests: return the proper TAP exit code
+	* Tests: live/test_{lttng_,}kernel: use lttng_test_filter_event instead of sched_switch
+	* Fix: consumer: Move sanity check within `consumer_subbuffer` functions
+	* Fix: sessiond: wrong variable checked for error code
+	* Fix: consumerd: double unlock on rotate channel error path
+	* Fix: consumerd: packet sent before channel rotation
+	* Fix: relayd: wrong specifier used in DBG format string
+	* Tests: add a "new metadata after clear" test
+	* Fix: relayd: send_viewer_streams sends stack data in padding
+	* Fix: stream intersection fails on snapshot of cleared session
+	* Fix: relayd: viewer metadata is not rotated after a session clear
+	* Fix: post-clear trace chunk has a late beginning packet
+	* Fix: kconsumer: missing wait for metadata thread in do_sync_metadata
+	* Fix: tests: interrupting get_next_notification causes test to fail
+	* Fix: consumer.c: wrong order of parameter in `DBG()` statement
+	* Fix: consumer: dangling chunk on buffer allocation failure
+	* Fix: consumerd: uninitialized written_bytes on no-data sleep
+	* Build fix: consumerd misnamed label
+	* consumerd: on_sleep not called on stream when no data is available
+	* Fix: invalid discarded events on start/stop without event production
+	* tests: truncate metadata file for regenerate metadata test
+	* Fix: consumerd: user space metadata not regenerated
+	* tests: gen-ust-events-ns/tp.h: Fix build with musl libc
+	* Fix: tests: output_dir contains the consumerd pipe
+	* Fix: unix: don't PERROR on EAGAIN for non-blocking sockets
+	* Fix: sessiond: sessiond and agent deadlock on destroy
+	* Fix: incorrect specifier %lu used with size_t argument
+	* Fix: consumerd: live client receives incomplete metadata
+	* consumerd: refactor: split read_subbuf into sub-operations
+	* consumerd: move rotation logic to domain-agnostic read path
+	* sessiond: enforce mmap output type for kernel metadata channel
+	* consumerd: tag metadata channel as being part of a live session
+	* consumerd: pass channel instance to stream creation function
+	* consumerd: cleanup: use buffer view interface for mmap read subbuf
+	* consumerd: move address computation from on_read_subbuffer_mmap
+	* consumerd: refactor: combine duplicated check_*_functions
+	* kerner-ctl: add RING_RING_BUFFER_GET_NEXT_SUBBUF_METADATA_CHECK
+	* Add lttng_dynamic_buffer_append_view util
+	* Fix: lttng: Destroying session message repeated during destruction
+	* Fix: liblttng-ctl: leak of tracker handle in lttng_[un]track_pid
+	* Fix: common: fs_handle_seek returns negative value on success
+	* Fix: common: abort on rotation after time manipulation
+	* Tests: test_exclusion: exclusion after tracing active
+	* Tests: `gen-ust-nevents`: add syncpoints
+	* Tests: accept built-in kernel modules
+
 2020-05-12 lttng-tools 2.12.1 (International Nurses' Day)
 	* API: missing includes in lttng.h
 	* API: missing clear and clear-handle includes in lttng.h
