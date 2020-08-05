@@ -20,14 +20,14 @@
 #include <sys/unistd.h>
 
 static
-int lttng_userspace_probe_location_function_set_binary_fd(
+int lttng_userspace_probe_location_function_set_binary_fd_handle(
 		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd);
+		struct fd_handle *binary_fd_handle);
 
 static
-int lttng_userspace_probe_location_tracepoint_set_binary_fd(
+int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 		struct lttng_userspace_probe_location *location,
-		struct fd_handle *binary_fd);
+		struct fd_handle *binary_fd_handle);
 
 enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
@@ -105,7 +105,7 @@ void lttng_userspace_probe_location_function_destroy(
 
 	free(location_function->function_name);
 	free(location_function->binary_path);
-	fd_handle_put(location_function->binary_fd);
+	fd_handle_put(location_function->binary_fd_handle);
 	free(location);
 }
 
@@ -126,7 +126,7 @@ void lttng_userspace_probe_location_tracepoint_destroy(
 	free(location_tracepoint->probe_name);
 	free(location_tracepoint->provider_name);
 	free(location_tracepoint->binary_path);
-	fd_handle_put(location_tracepoint->binary_fd);
+	fd_handle_put(location_tracepoint->binary_fd_handle);
 	free(location);
 }
 
@@ -227,8 +227,8 @@ static bool lttng_userspace_probe_location_function_is_equal(
 		goto end;
 	}
 
-	is_equal = fd_is_equal(a->binary_fd ? fd_handle_get_fd(a->binary_fd) : -1,
-			b->binary_fd ? fd_handle_get_fd(b->binary_fd) : -1);
+	is_equal = fd_is_equal(a->binary_fd_handle ? fd_handle_get_fd(a->binary_fd_handle) : -1,
+			b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
 end:
 	return is_equal;
 }
@@ -281,7 +281,7 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 
 	location->function_name = function_name_copy;
 	location->binary_path = binary_path_copy;
-	location->binary_fd = binary_fd_handle;
+	location->binary_fd_handle = binary_fd_handle;
 	binary_fd_handle = NULL;
 	location->instrumentation_type =
 			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY;
@@ -335,8 +335,8 @@ static bool lttng_userspace_probe_location_tracepoint_is_equal(
 		goto end;
 	}
 
-	is_equal = fd_is_equal(a->binary_fd ? fd_handle_get_fd(a->binary_fd) : -1,
-			b->binary_fd ? fd_handle_get_fd(b->binary_fd) : -1);
+	is_equal = fd_is_equal(a->binary_fd_handle ? fd_handle_get_fd(a->binary_fd_handle) : -1,
+			b->binary_fd_handle ? fd_handle_get_fd(b->binary_fd_handle) : -1);
 
 end:
 	return is_equal;
@@ -399,7 +399,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 	location->probe_name = probe_name_copy;
 	location->provider_name = provider_name_copy;
 	location->binary_path = binary_path_copy;
-	location->binary_fd = binary_fd_handle;
+	location->binary_fd_handle = binary_fd_handle;
 	binary_fd_handle = NULL;
 
 	ret = &location->parent;
@@ -588,8 +588,8 @@ lttng_userspace_probe_location_function_copy(
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_function_set_binary_fd(new_location,
-			function_location->binary_fd) < 0) {
+	if (lttng_userspace_probe_location_function_set_binary_fd_handle(new_location,
+			function_location->binary_fd_handle) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -668,8 +668,8 @@ lttng_userspace_probe_location_tracepoint_copy(
 	}
 
 	/* Set the duplicated fd to the new probe_location */
-	if (lttng_userspace_probe_location_tracepoint_set_binary_fd(new_location,
-			tracepoint_location->binary_fd) < 0) {
+	if (lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(new_location,
+			tracepoint_location->binary_fd_handle) < 0) {
 		goto destroy_probe_location;
 	}
 
@@ -796,8 +796,8 @@ int lttng_userspace_probe_location_function_get_binary_fd(
 
 	function_location = container_of(location,
 		struct lttng_userspace_probe_location_function, parent);
-	ret = function_location->binary_fd ?
-			fd_handle_get_fd(function_location->binary_fd) : -1;
+	ret = function_location->binary_fd_handle ?
+			fd_handle_get_fd(function_location->binary_fd_handle) : -1;
 end:
 	return ret;
 }
@@ -862,8 +862,8 @@ int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 
 	tracepoint_location = container_of(location,
 		struct lttng_userspace_probe_location_tracepoint, parent);
-	ret = tracepoint_location->binary_fd ?
-			fd_handle_get_fd(tracepoint_location->binary_fd) : -1;
+	ret = tracepoint_location->binary_fd_handle ?
+			fd_handle_get_fd(tracepoint_location->binary_fd_handle) : -1;
 end:
 	return ret;
 }
@@ -970,7 +970,7 @@ int lttng_userspace_probe_location_function_serialize(
 		goto end;
 	}
 
-	if (payload && location_function->binary_fd < 0) {
+	if (payload && !location_function->binary_fd_handle) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1012,7 +1012,7 @@ int lttng_userspace_probe_location_function_serialize(
 			goto end;
 		}
 		ret = lttng_payload_push_fd_handle(
-				payload, location_function->binary_fd);
+				payload, location_function->binary_fd_handle);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
@@ -1049,7 +1049,7 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 		goto end;
 	}
 
-	if (payload && location_tracepoint->binary_fd < 0) {
+	if (payload && !location_tracepoint->binary_fd_handle) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1106,7 +1106,7 @@ int lttng_userspace_probe_location_tracepoint_serialize(
 			goto end;
 		}
 		ret = lttng_payload_push_fd_handle(
-				payload, location_tracepoint->binary_fd);
+				payload, location_tracepoint->binary_fd_handle);
 		if (ret) {
 			ret = -LTTNG_ERR_INVALID;
 			goto end;
@@ -1187,7 +1187,7 @@ int lttng_userspace_probe_location_function_create_from_payload(
 	char *function_name = NULL, *binary_path = NULL;
 	int ret = 0;
 	size_t expected_size;
-	struct fd_handle *binary_fd = lttng_payload_view_pop_fd_handle(view);
+	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
 
 	assert(location);
 
@@ -1242,8 +1242,8 @@ int lttng_userspace_probe_location_function_create_from_payload(
 		goto end;
 	}
 
-	ret = lttng_userspace_probe_location_function_set_binary_fd(
-			*location, binary_fd);
+	ret = lttng_userspace_probe_location_function_set_binary_fd_handle(
+			*location, binary_fd_handle);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1251,7 +1251,7 @@ int lttng_userspace_probe_location_function_create_from_payload(
 
 	ret = (int) expected_size;
 end:
-	fd_handle_put(binary_fd);
+	fd_handle_put(binary_fd_handle);
 	free(function_name);
 	free(binary_path);
 	return ret;
@@ -1267,11 +1267,11 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	char *probe_name = NULL, *provider_name = NULL, *binary_path = NULL;
 	int ret = 0;
 	size_t expected_size;
-	struct fd_handle *binary_fd = lttng_payload_view_pop_fd_handle(view);
+	struct fd_handle *binary_fd_handle = lttng_payload_view_pop_fd_handle(view);
 
 	assert(location);
 
-	if (binary_fd < 0) {
+	if (!binary_fd_handle) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1339,8 +1339,8 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 		goto end;
 	}
 
-	ret = lttng_userspace_probe_location_tracepoint_set_binary_fd(
-			*location, binary_fd);
+	ret = lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
+			*location, binary_fd_handle);
 	if (ret) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
@@ -1348,7 +1348,7 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 
 	ret = (int) expected_size;
 end:
-	fd_handle_put(binary_fd);
+	fd_handle_put(binary_fd_handle);
 	free(probe_name);
 	free(provider_name);
 	free(binary_path);
@@ -1489,7 +1489,7 @@ end:
 }
 
 static
-int lttng_userspace_probe_location_function_set_binary_fd(
+int lttng_userspace_probe_location_function_set_binary_fd_handle(
 		struct lttng_userspace_probe_location *location,
 		struct fd_handle *binary_fd)	
 {
@@ -1501,14 +1501,14 @@ int lttng_userspace_probe_location_function_set_binary_fd(
 
 	function_location = container_of(location,
 			struct lttng_userspace_probe_location_function, parent);
-	fd_handle_put(function_location->binary_fd);
+	fd_handle_put(function_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
-	function_location->binary_fd = binary_fd;
+	function_location->binary_fd_handle = binary_fd;
 	return ret;
 }
 
 static
-int lttng_userspace_probe_location_tracepoint_set_binary_fd(
+int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 		struct lttng_userspace_probe_location *location,
 		struct fd_handle *binary_fd)
 {
@@ -1520,9 +1520,9 @@ int lttng_userspace_probe_location_tracepoint_set_binary_fd(
 
 	tracepoint_location = container_of(location,
 			struct lttng_userspace_probe_location_tracepoint, parent);
-	fd_handle_put(tracepoint_location->binary_fd);
+	fd_handle_put(tracepoint_location->binary_fd_handle);
 	fd_handle_get(binary_fd);
-	tracepoint_location->binary_fd = binary_fd;
+	tracepoint_location->binary_fd_handle = binary_fd;
 	return ret;
 }
 
@@ -1606,7 +1606,7 @@ int lttng_userspace_probe_location_function_flatten(
 
 	flat_probe.function_name = flat_probe_start + sizeof(flat_probe);
 	flat_probe.binary_path = flat_probe.function_name + function_name_len;
-	flat_probe.binary_fd = NULL;
+	flat_probe.binary_fd_handle = NULL;
 	ret = lttng_dynamic_buffer_append(buffer, &flat_probe,
 			sizeof(flat_probe));
 	if (ret) {
@@ -1741,7 +1741,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	flat_probe.probe_name = flat_probe_start + sizeof(flat_probe);
 	flat_probe.provider_name = flat_probe.probe_name + probe_name_len;
 	flat_probe.binary_path = flat_probe.provider_name + provider_name_len;
-	flat_probe.binary_fd = NULL;
+	flat_probe.binary_fd_handle = NULL;
 	ret = lttng_dynamic_buffer_append(buffer, &flat_probe, sizeof(flat_probe));
 	if (ret) {
 		goto end;

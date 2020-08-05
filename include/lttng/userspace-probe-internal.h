@@ -99,7 +99,7 @@ struct lttng_userspace_probe_location_function {
 	 * early on to keep the backing inode valid over the course of the
 	 * intrumentation and use. It prevents deletion and reuse races.
 	 */
-	struct fd_handle *binary_fd;
+	struct fd_handle *binary_fd_handle;
 	enum lttng_userspace_probe_location_function_instrumentation_type instrumentation_type;
 };
 
@@ -113,7 +113,7 @@ struct lttng_userspace_probe_location_tracepoint {
 	 * early on to keep the backing inode valid over the course of the
 	 * intrumentation and use. It prevents deletion and reuse races.
 	 */
-	struct fd_handle *binary_fd;
+	struct fd_handle *binary_fd_handle;
 };
 
 LTTNG_HIDDEN
