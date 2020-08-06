@@ -140,7 +140,7 @@ struct lttng_payload_view lttng_payload_view_init_from_buffer(
  */
 LTTNG_HIDDEN
 int lttng_payload_view_get_fd_handle_count(
-		struct lttng_payload_view *payload_view);
+		const struct lttng_payload_view *payload_view);
 
 /**
  * Pop an fd handle from a payload view.
