@@ -41,7 +41,12 @@
 #define LTTNG_SESSIOND_COMM_MAX_LISTEN 64
 
 /* Maximum number of FDs that can be sent over a Unix socket */
-#define LTTCOMM_MAX_SEND_FDS           4
+#if defined(__linux__)
+/* Based on the kernel's SCM_MAX_FD which is 253 since 2.6.38 (255 before) */
+#define LTTCOMM_MAX_SEND_FDS           253
+#else
+#define LTTCOMM_MAX_SEND_FDS           16
+#endif
 
 /*
  * Get the error code index from 0 since LTTCOMM_OK start at 1000
