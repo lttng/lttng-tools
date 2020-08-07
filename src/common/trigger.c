@@ -46,13 +46,21 @@ struct lttng_trigger *lttng_trigger_create(
 		goto end;
 	}
 
+	lttng_condition_get(condition);
 	trigger->condition = condition;
+
+	lttng_action_get(action);
 	trigger->action = action;
 
 end:
 	return trigger;
 }
 
+/*
+ * Note: the lack of reference counting 'get' on the condition object is normal.
+ * This API was exposed as such in 2.11. The client is not expected to call
+ * lttng_condition_destroy on the returned object.
+ */
 struct lttng_condition *lttng_trigger_get_condition(
 		struct lttng_trigger *trigger)
 {
@@ -66,6 +74,12 @@ const struct lttng_condition *lttng_trigger_get_const_condition(
 	return trigger->condition;
 }
 
+
+/*
+ * Note: the lack of reference counting 'get' on the action object is normal.
+ * This API was exposed as such in 2.11. The client is not expected to call
+ * lttng_action_destroy on the returned object.
+ */
 struct lttng_action *lttng_trigger_get_action(
 		struct lttng_trigger *trigger)
 {
@@ -81,9 +95,20 @@ const struct lttng_action *lttng_trigger_get_const_action(
 
 void lttng_trigger_destroy(struct lttng_trigger *trigger)
 {
+	struct lttng_action *action = lttng_trigger_get_action(trigger);
+	struct lttng_condition *condition =
+			lttng_trigger_get_condition(trigger);
+
 	if (!trigger) {
 		return;
 	}
+
+	assert(action);
+	assert(condition);
+
+	/* Release ownership. */
+	lttng_action_put(action);
+	lttng_condition_put(condition);
 
 	free(trigger);
 }
@@ -149,12 +174,22 @@ ssize_t lttng_trigger_create_from_payload(
 		goto error;
 	}
 
+	/*
+	 * The trigger object owns references to the action and condition
+	 * objects.
+	 */
+	lttng_condition_put(condition);
+	condition = NULL;
+
+	lttng_action_put(action);
+	action = NULL;
+
 	ret = offset;
-end:
-	return ret;
+
 error:
 	lttng_condition_destroy(condition);
 	lttng_action_destroy(action);
+end:
 	return ret;
 }
 
