@@ -24,13 +24,34 @@ enum lttng_condition_type lttng_condition_get_type(
 
 void lttng_condition_destroy(struct lttng_condition *condition)
 {
+	lttng_condition_put(condition);
+}
+
+static void condition_destroy_ref(struct urcu_ref *ref)
+{
+	struct lttng_condition *condition =
+		container_of(ref, struct lttng_condition, ref);
+
+	condition->destroy(condition);
+}
+
+LTTNG_HIDDEN
+void lttng_condition_get(struct lttng_condition *condition)
+{
+	urcu_ref_get(&condition->ref);
+}
+
+LTTNG_HIDDEN
+void lttng_condition_put(struct lttng_condition *condition)
+{
 	if (!condition) {
 		return;
 	}
 
 	assert(condition->destroy);
-	condition->destroy(condition);
+	urcu_ref_put(&condition->ref, condition_destroy_ref);
 }
+
 
 LTTNG_HIDDEN
 bool lttng_condition_validate(const struct lttng_condition *condition)
@@ -171,4 +192,5 @@ void lttng_condition_init(struct lttng_condition *condition,
 		enum lttng_condition_type type)
 {
 	condition->type = type;
+	urcu_ref_init(&condition->ref);
 }

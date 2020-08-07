@@ -14,6 +14,7 @@
 #include <common/payload.h>
 #include <stdbool.h>
 #include <urcu/list.h>
+#include <urcu/ref.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -29,6 +30,8 @@ typedef ssize_t (*condition_create_from_payload_cb)(
 		struct lttng_condition **condition);
 
 struct lttng_condition {
+	/* Reference counting is only exposed to internal users. */
+	struct urcu_ref ref;
 	enum lttng_condition_type type;
 	condition_validate_cb validate;
 	condition_serialize_cb serialize;
@@ -41,6 +44,12 @@ struct lttng_condition_comm {
 	int8_t condition_type;
 	char payload[];
 };
+
+LTTNG_HIDDEN
+void lttng_condition_get(struct lttng_condition *condition);
+
+LTTNG_HIDDEN
+void lttng_condition_put(struct lttng_condition *condition);
 
 LTTNG_HIDDEN
 void lttng_condition_init(struct lttng_condition *condition,
