@@ -59,7 +59,7 @@ int relay_index_set_file(struct relay_index *index,
 		struct lttng_index_file *index_file,
 		uint64_t data_offset);
 int relay_index_set_data(struct relay_index *index,
-                const struct ctf_packet_index *data);
+		const struct ctf_packet_index *data);
 int relay_index_try_flush(struct relay_index *index);
 
 void relay_index_close_all(struct relay_stream *stream);
