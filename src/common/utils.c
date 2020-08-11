@@ -736,7 +736,7 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
 		char *out_stream_path, size_t stream_path_len)
 {
 	int ret;
-        char count_str[MAX_INT_DEC_LEN(count) + 1] = {};
+	char count_str[MAX_INT_DEC_LEN(count) + 1] = {};
 	const char *path_separator;
 
 	if (path_name && (path_name[0] == '\0' ||
@@ -754,7 +754,7 @@ int utils_stream_file_path(const char *path_name, const char *file_name,
 		assert(ret > 0 && ret < sizeof(count_str));
 	}
 
-        ret = snprintf(out_stream_path, stream_path_len, "%s%s%s%s%s",
+	ret = snprintf(out_stream_path, stream_path_len, "%s%s%s%s%s",
 			path_name, path_separator, file_name, count_str,
 			suffix);
 	if (ret < 0 || ret >= stream_path_len) {
