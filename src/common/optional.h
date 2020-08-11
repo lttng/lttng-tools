@@ -62,7 +62,7 @@
  * wrapped optional types. It is meant to be used with PODs.
  */
 #define LTTNG_OPTIONAL_GET(optional)			\
-        ({						\
+	({						\
 		assert((optional).is_set);		\
 		(optional).value;			\
 	})
