@@ -56,8 +56,8 @@ void lttng_destruction_handle_destroy(struct lttng_destruction_handle *handle)
 		if (ret) {
 			PERROR("Failed to close lttng-sessiond command socket");
 		}
-        }
-        lttng_poll_clean(&handle->communication.events);
+	}
+	lttng_poll_clean(&handle->communication.events);
 	lttng_dynamic_buffer_reset(&handle->communication.buffer);
 	lttng_trace_archive_location_destroy(handle->location);
 	free(handle);
@@ -82,9 +82,9 @@ struct lttng_destruction_handle *lttng_destruction_handle_create(
 
 	ret = lttng_poll_add(&handle->communication.events, sessiond_socket,
 			LPOLLIN | LPOLLHUP | LPOLLRDHUP | LPOLLERR);
-        if (ret) {
+	if (ret) {
 		goto error;
-        }
+	}
 
 	handle->communication.bytes_left_to_receive =
 			sizeof(struct lttcomm_lttng_msg);
@@ -231,39 +231,39 @@ lttng_destruction_handle_wait_for_completion(
 	enum lttng_destruction_handle_status status;
 	unsigned long time_left_ms = 0;
 	const bool has_timeout = timeout_ms > 0;
-        struct timespec initial_time;
+	struct timespec initial_time;
 
 	if (!handle) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_INVALID;
 		goto end;
 	}
 
-        if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
+	if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
 		goto end;
 	} else if (handle->communication.state == COMMUNICATION_STATE_END) {
 		status = LTTNG_DESTRUCTION_HANDLE_STATUS_COMPLETED;
 		goto end;
 	}
-        if (has_timeout) {
+	if (has_timeout) {
 		ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
 		if (ret) {
 			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 		time_left_ms = (unsigned long) timeout_ms;
-        }
+	}
 
-        while (handle->communication.state != COMMUNICATION_STATE_END &&
+	while (handle->communication.state != COMMUNICATION_STATE_END &&
 			(time_left_ms || !has_timeout)) {
 		int ret;
 		uint32_t revents;
-                struct timespec current_time, diff;
+		struct timespec current_time, diff;
 		unsigned long diff_ms;
 
-                ret = lttng_poll_wait(&handle->communication.events,
+		ret = lttng_poll_wait(&handle->communication.events,
 				has_timeout ? time_left_ms : -1);
-                if (ret == 0) {
+		if (ret == 0) {
 			/* timeout */
 			break;
 		} else if (ret < 0) {
@@ -388,7 +388,7 @@ enum lttng_error_code lttng_destroy_session_ext(const char *session_name,
 	int ret;
 	ssize_t comm_ret;
 	enum lttng_error_code ret_code = LTTNG_OK;
-        struct lttcomm_session_msg lsm = {
+	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_DESTROY_SESSION,
 	};
 	int sessiond_socket = -1;
