@@ -118,12 +118,12 @@ int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel)
 				 * the available data.
 				 */
 				ret = 0;
-                        } else {
+			} else {
 				PERROR("Wake-up UST metadata pipe");
 				ret = -1;
 				goto end;
-                        }
-                }
+			}
+		}
 	}
 
 end:
