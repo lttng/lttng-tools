@@ -1734,7 +1734,7 @@ enum lttng_error_code kernel_rotate_session(struct ltt_session *session)
 			socket, node.node) {
 		struct ltt_kernel_channel *chan;
 
-                /* For each channel, ask the consumer to rotate it. */
+		/* For each channel, ask the consumer to rotate it. */
 		cds_list_for_each_entry(chan, &ksess->channel_list.head, list) {
 			DBG("Rotate kernel channel %" PRIu64 ", session %s",
 					chan->key, session->name);
