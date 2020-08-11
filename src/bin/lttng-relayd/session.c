@@ -328,7 +328,7 @@ struct relay_session *session_create(const char *session_name,
 
 	if (lttng_strncpy(session->session_name, session_name,
 			sizeof(session->session_name))) {
-	        WARN("Session name exceeds maximal allowed length");
+		WARN("Session name exceeds maximal allowed length");
 		goto error;
 	}
 	if (lttng_strncpy(session->hostname, hostname,
@@ -394,14 +394,14 @@ struct relay_session *session_create(const char *session_name,
 					session->id_sessiond.value,
 					*current_chunk_id);
 		if (!session->current_trace_chunk) {
-		        char uuid_str[LTTNG_UUID_STR_LEN];
+			char uuid_str[LTTNG_UUID_STR_LEN];
 
 			lttng_uuid_to_str(sessiond_uuid, uuid_str);
 			ERR("Could not find trace chunk: sessiond = {%s}, sessiond session id = %" PRIu64 ", trace chunk id = %" PRIu64,
 					uuid_str, *id_sessiond,
 					*current_chunk_id);
 			goto error;
-                }
+		}
 
 		chunk_status = lttng_trace_chunk_get_session_output_directory_handle(
 				session->current_trace_chunk,
