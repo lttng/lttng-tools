@@ -6,9 +6,6 @@
  *
  */
 
-#include "bin/lttng-sessiond/tracker.h"
-#include "lttng/lttng-error.h"
-#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <inttypes.h>
@@ -40,6 +37,8 @@
 #include <lttng/session-internal.h>
 #include <lttng/userspace-probe-internal.h>
 #include <lttng/session-descriptor-internal.h>
+#include <lttng/lttng-error.h>
+#include <lttng/tracker.h>
 #include <common/string-utils/string-utils.h>
 
 #include "channel.h"
@@ -59,6 +58,7 @@
 #include "rotation-thread.h"
 #include "timer.h"
 #include "agent-thread.h"
+#include "tracker.h"
 
 #include "cmd.h"
 
