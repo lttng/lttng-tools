@@ -695,9 +695,9 @@ int do_recv_fds(int sock, int *fds, unsigned int fd_count)
 			ERR("Invalid file descriptor received from worker (fd = %i)", fds[i]);
 			/* Return 0 as this is not a fatal error. */
 		}
-        }
+	}
 end:
-        return ret;
+	return ret;
 }
 
 static
@@ -718,9 +718,9 @@ int send_fds_to_worker(const struct run_as_worker *worker,
 			ret = -1;
 			goto end;
 		}
-        }
+	}
 
-        ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data),
+	ret = do_send_fds(worker->sockpair[0], COMMAND_IN_FDS(data),
 			COMMAND_IN_FD_COUNT(data));
 	if (ret < 0) {
 		PERROR("Failed to send file descriptor to run-as worker");
@@ -830,10 +830,10 @@ static
 int handle_one_cmd(struct run_as_worker *worker)
 {
 	int ret = 0;
-        struct run_as_data data = {};
-        ssize_t readlen, writelen;
-        struct run_as_ret sendret = {};
-        run_as_fct cmd;
+	struct run_as_data data = {};
+	ssize_t readlen, writelen;
+	struct run_as_ret sendret = {};
+	run_as_fct cmd;
 	uid_t prev_euid;
 
 	/*
@@ -1258,7 +1258,7 @@ int run_as_create_worker_no_lock(const char *procname,
 			ret = -1;
 		}
 		worker->sockpair[1] = -1;
-	        free(worker->procname);
+		free(worker->procname);
 		free(worker);
 		LOG(ret ? PRINT_ERR : PRINT_DBG, "run_as worker exiting (ret = %d)", ret);
 		exit(ret ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -1337,7 +1337,7 @@ void run_as_destroy_worker_no_lock(void)
 		if (WIFEXITED(status)) {
 			LOG(WEXITSTATUS(status) == 0 ? PRINT_DBG : PRINT_ERR,
 					DEFAULT_RUN_AS_WORKER_NAME " terminated with status code %d",
-				        WEXITSTATUS(status));
+					WEXITSTATUS(status));
 			break;
 		} else if (WIFSIGNALED(status)) {
 			ERR(DEFAULT_RUN_AS_WORKER_NAME " was killed by signal %d",
@@ -1479,7 +1479,7 @@ error:
 
 LTTNG_HIDDEN
 int run_as_open(const char *path, int flags, mode_t mode, uid_t uid,
-                gid_t gid)
+		gid_t gid)
 {
 	return run_as_openat(AT_FDCWD, path, flags, mode, uid, gid);
 }
@@ -1489,8 +1489,8 @@ int run_as_openat(int dirfd, const char *path, int flags, mode_t mode,
 		uid_t uid, gid_t gid)
 {
 	int ret;
-        struct run_as_data data = {};
-        struct run_as_ret run_as_ret = {};
+	struct run_as_data data = {};
+	struct run_as_ret run_as_ret = {};
 
 	DBG3("openat() fd = %d%s, path = %s, flags = %X, mode = %d, uid %d, gid %d",
 			dirfd, dirfd == AT_FDCWD ? " (AT_FDCWD)" : "",
@@ -1650,7 +1650,7 @@ int run_as_extract_elf_symbol_offset(int fd, const char* function,
 {
 	int ret;
 	struct run_as_data data = {};
-        struct run_as_ret run_as_ret = {};
+	struct run_as_ret run_as_ret = {};
 
 	DBG3("extract_elf_symbol_offset() on fd=%d and function=%s "
 			"with for uid %d and gid %d", fd, function,
