@@ -471,7 +471,7 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 				CONSUMER_DST_LOCAL;
 
 		session->ust_session->current_trace_chunk = new_trace_chunk;
-                if (is_local_trace) {
+		if (is_local_trace) {
 			enum lttng_error_code ret_error_code;
 
 			ret_error_code = ust_app_create_channel_subdirectories(
@@ -479,7 +479,7 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			if (ret_error_code != LTTNG_OK) {
 				goto error;
 			}
-                }
+		}
 		cds_lfht_for_each_entry(
 				session->ust_session->consumer->socks->ht,
 				&iter, socket, node.node) {
@@ -489,11 +489,11 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 					session->id, new_trace_chunk,
 					DEFAULT_UST_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
-                        if (ret) {
+			if (ret) {
 				goto error;
-                        }
-                }
-        }
+			}
+		}
+	}
 	if (session->kernel_session) {
 		const uint64_t relayd_id =
 				session->kernel_session->consumer->net_seq_index;
@@ -510,7 +510,7 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 			if (ret_error_code != LTTNG_OK) {
 				goto error;
 			}
-                }
+		}
 		cds_lfht_for_each_entry(
 				session->kernel_session->consumer->socks->ht,
 				&iter, socket, node.node) {
@@ -520,11 +520,11 @@ int _session_set_trace_chunk_no_lock_check(struct ltt_session *session,
 					session->id, new_trace_chunk,
 					DEFAULT_KERNEL_TRACE_DIR);
 			pthread_mutex_unlock(socket->lock);
-                        if (ret) {
+			if (ret) {
 				goto error;
-                        }
-                }
-        }
+			}
+		}
+	}
 
 	/*
 	 * Update local current trace chunk state last, only if all remote
@@ -548,7 +548,7 @@ error:
 	if (session->kernel_session) {
 		session->kernel_session->current_trace_chunk = NULL;
 	}
-        /*
+	/*
 	 * Release references taken in the case where all references could not
 	 * be acquired.
 	 */
@@ -932,7 +932,7 @@ void session_release(struct urcu_ref *ref)
 	usess = session->ust_session;
 	ksess = session->kernel_session;
 
-        /* Clean kernel session teardown, keeping data for destroy notifier. */
+	/* Clean kernel session teardown, keeping data for destroy notifier. */
 	kernel_destroy_session(ksess);
 
 	/* UST session teardown, keeping data for destroy notifier. */
