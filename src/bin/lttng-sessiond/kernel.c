@@ -5,12 +5,6 @@
  *
  */
 
-#include "bin/lttng-sessiond/tracker.h"
-#include "common/tracker.h"
-#include "common/utils.h"
-#include "lttng/event.h"
-#include "lttng/lttng-error.h"
-#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #include <fcntl.h>
 #include <stdlib.h>
@@ -25,6 +19,11 @@
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/kernel-ctl/kernel-ioctl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
+#include <common/tracker.h>
+#include <common/utils.h>
+#include <lttng/event.h>
+#include <lttng/lttng-error.h>
+#include <lttng/tracker.h>
 
 #include "lttng-sessiond.h"
 #include "lttng-syscall.h"
@@ -35,6 +34,7 @@
 #include "utils.h"
 #include "rotate.h"
 #include "modprobe.h"
+#include "tracker.h"
 
 /*
  * Key used to reference a channel between the sessiond and the consumer. This
