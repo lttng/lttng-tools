@@ -657,7 +657,7 @@ static int set_option(int opt, const char *arg, const char *optname)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-l, --load");
 		} else {
-		        config_string_set(&config.load_session_path, strdup(arg));
+			config_string_set(&config.load_session_path, strdup(arg));
 			if (!config.load_session_path.value) {
 				PERROR("strdup");
 				ret = -ENOMEM;
@@ -869,7 +869,7 @@ end:
  */
 static int create_lockfile(void)
 {
-        return utils_create_lock_file(config.lock_file_path.value);
+	return utils_create_lock_file(config.lock_file_path.value);
 }
 
 /*
@@ -1183,7 +1183,7 @@ static void set_ulimit(void)
 
 static int write_pidfile(void)
 {
-        return utils_create_pid_file(getpid(), config.pid_file_path.value);
+	return utils_create_pid_file(getpid(), config.pid_file_path.value);
 }
 
 static int set_clock_plugin_env(void)
@@ -1195,7 +1195,7 @@ static int set_clock_plugin_env(void)
 		goto end;
 	}
 
-        ret = asprintf(&env_value, "LTTNG_UST_CLOCK_PLUGIN=%s",
+	ret = asprintf(&env_value, "LTTNG_UST_CLOCK_PLUGIN=%s",
 			config.lttng_ust_clock_plugin.value);
 	if (ret < 0) {
 		PERROR("asprintf");
