@@ -352,13 +352,13 @@ void check_session_rotation_pending_on_consumers(struct ltt_session *session,
 			goto end;
 		}
 
-                if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
+		if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
 			pthread_mutex_unlock(socket->lock);
 			chunk_exists_on_peer = true;
 			goto end;
-                }
+		}
 		pthread_mutex_unlock(socket->lock);
-        }
+	}
 
 skip_ust:
 	if (!session->kernel_session) {
@@ -381,11 +381,11 @@ skip_ust:
 			goto end;
 		}
 
-                if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
+		if (exists_status != CONSUMER_TRACE_CHUNK_EXISTS_STATUS_UNKNOWN_CHUNK) {
 			pthread_mutex_unlock(socket->lock);
 			chunk_exists_on_peer = true;
 			goto end;
-                }
+		}
 		pthread_mutex_unlock(socket->lock);
 	}
 skip_kernel:
@@ -548,7 +548,7 @@ int run_job(struct rotation_thread_job *job, struct ltt_session *session,
 
 	switch (job->type) {
 	case ROTATION_THREAD_JOB_TYPE_SCHEDULED_ROTATION:
-	        ret = launch_session_rotation(session);
+		ret = launch_session_rotation(session);
 		break;
 	case ROTATION_THREAD_JOB_TYPE_CHECK_PENDING_ROTATION:
 		ret = check_session_rotation_pending(session,
@@ -604,7 +604,7 @@ int handle_job_queue(struct rotation_thread_handle *handle,
 		}
 
 		session_lock(session);
-	        ret = run_job(job, session, handle->notification_thread_handle);
+		ret = run_job(job, session, handle->notification_thread_handle);
 		session_unlock(session);
 		/* Release reference held by the job. */
 		session_put(session);
