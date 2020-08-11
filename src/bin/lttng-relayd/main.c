@@ -917,7 +917,7 @@ static int create_named_thread_poll_set(struct lttng_poll_event *events,
 	}
 
 	ret = fd_tracker_util_poll_create(the_fd_tracker,
-		        name, events, 1, LTTNG_CLOEXEC);
+			name, events, 1, LTTNG_CLOEXEC);
 	if (ret) {
 		PERROR("Failed to create \"%s\" poll file descriptor", name);
 		goto error;
@@ -978,7 +978,7 @@ static int accept_sock(void *data, int *out_fd)
 	struct lttcomm_sock **socks = data;
 	struct lttcomm_sock *in_sock = socks[0];
 
-        socks[1] = in_sock->ops->accept(in_sock);
+	socks[1] = in_sock->ops->accept(in_sock);
 	if (!socks[1]) {
 		ret = -1;
 		goto end;
@@ -1060,7 +1060,7 @@ struct lttcomm_sock *accept_relayd_sock(struct lttcomm_sock *listening_sock,
 	struct lttcomm_sock *socks[2] = { listening_sock, NULL };
 	struct lttcomm_sock *new_sock = NULL;
 
-        ret = fd_tracker_open_unsuspendable_fd(
+	ret = fd_tracker_open_unsuspendable_fd(
 			the_fd_tracker, &out_fd,
 			(const char **) &name,
 			1, accept_sock, &socks);
