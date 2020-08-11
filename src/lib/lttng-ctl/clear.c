@@ -54,8 +54,8 @@ void lttng_clear_handle_destroy(struct lttng_clear_handle *handle)
 		if (ret) {
 			PERROR("Failed to close lttng-sessiond command socket");
 		}
-        }
-        lttng_poll_clean(&handle->communication.events);
+	}
+	lttng_poll_clean(&handle->communication.events);
 	lttng_dynamic_buffer_reset(&handle->communication.buffer);
 	free(handle);
 }
@@ -78,9 +78,9 @@ struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 
 	ret = lttng_poll_add(&handle->communication.events, sessiond_socket,
 			LPOLLIN | LPOLLHUP | LPOLLRDHUP | LPOLLERR);
-        if (ret) {
+	if (ret) {
 		goto error;
-        }
+	}
 
 	handle->communication.bytes_left_to_receive =
 			sizeof(struct lttcomm_lttng_msg);
@@ -179,32 +179,32 @@ extern enum lttng_clear_handle_status
 	const bool has_timeout = timeout_ms > 0;
 	struct timespec initial_time;
 
-        if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
+	if (handle->communication.state == COMMUNICATION_STATE_ERROR) {
 		status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 		goto end;
 	} else if (handle->communication.state == COMMUNICATION_STATE_END) {
 		status = LTTNG_CLEAR_HANDLE_STATUS_COMPLETED;
 		goto end;
 	}
-        if (has_timeout) {
+	if (has_timeout) {
 		ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
 		if (ret) {
 			status = LTTNG_CLEAR_HANDLE_STATUS_ERROR;
 			goto end;
 		}
 		time_left_ms = (unsigned long) timeout_ms;
-        }
+	}
 
-        while (handle->communication.state != COMMUNICATION_STATE_END &&
+	while (handle->communication.state != COMMUNICATION_STATE_END &&
 			(time_left_ms || !has_timeout)) {
 		int ret;
 		uint32_t revents;
-                struct timespec current_time, diff;
+		struct timespec current_time, diff;
 		unsigned long diff_ms;
 
-                ret = lttng_poll_wait(&handle->communication.events,
+		ret = lttng_poll_wait(&handle->communication.events,
 				has_timeout ? time_left_ms : -1);
-                if (ret == 0) {
+		if (ret == 0) {
 			/* timeout */
 			break;
 		} else if (ret < 0) {
