@@ -3094,6 +3094,39 @@ int client_enqueue_dropped_notification(struct notification_client *client)
 	return ret;
 }
 
+/*
+ * Permission checks relative to notification channel clients are performed
+ * here. Notice how object, client, and trigger credentials are involved in
+ * this check.
+ *
+ * The `object` credentials are the credentials associated with the "subject"
+ * of a condition. For instance, a `rotation completed` condition applies
+ * to a session. When that condition is met, it will produce an evaluation
+ * against a session. Hence, in this case, the `object` credentials are the
+ * credentials of the "subject" session.
+ *
+ * The `trigger` credentials are the credentials of the user that registered the
+ * trigger.
+ *
+ * The `client` credentials are the credentials of the user that created a given
+ * notification channel.
+ *
+ * In terms of visibility, it is expected that non-privilieged users can only
+ * register triggers against "their" objects (their own sessions and
+ * applications they are allowed to interact with). They can then open a
+ * notification channel and subscribe to notifications associated with those
+ * triggers.
+ *
+ * As for privilieged users, they can register triggers against the objects of
+ * other users. They can then subscribe to the notifications associated to their
+ * triggers. Privilieged users _can't_ subscribe to the notifications of
+ * triggers owned by other users; they must create their own triggers.
+ *
+ * This is more a concern of usability than security. It would be difficult for
+ * a root user reliably subscribe to a specific set of conditions without
+ * interference from external users (those could, for instance, unregister
+ * their triggers).
+ */
 static
 int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		const struct lttng_evaluation *evaluation,
