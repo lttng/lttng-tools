@@ -365,7 +365,7 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 	lttng_uuid_copy(key.sessiond_uuid, sessiond_uuid);
 
 	status = lttng_trace_chunk_get_id(new_chunk, &chunk_id);
-        if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
+	if (status == LTTNG_TRACE_CHUNK_STATUS_OK) {
 		int ret;
 
 		ret = snprintf(chunk_id_str, sizeof(chunk_id_str), "%" PRIu64,
@@ -375,25 +375,25 @@ struct lttng_trace_chunk *sessiond_trace_chunk_registry_publish_chunk(
 			WARN("Failed to format trace chunk id");
 		}
 		is_anonymous_chunk = false;
-        } else if (status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
+	} else if (status == LTTNG_TRACE_CHUNK_STATUS_NONE) {
 		is_anonymous_chunk = true;
 	} else {
 		ERR("Failed to get trace chunk id");
 		goto end;
 	}
 
-        DBG("Attempting to publish trace chunk: sessiond {%s}, session_id = "
+	DBG("Attempting to publish trace chunk: sessiond {%s}, session_id = "
 			"%" PRIu64 ", chunk_id = %s",
 			uuid_str, session_id,
 			is_anonymous_chunk ? "anonymous" : chunk_id_str);
 
-        element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
+	element = trace_chunk_registry_ht_element_find(sessiond_registry, &key);
 	if (!element) {
 		ERR("Failed to find registry of sessiond {%s}", uuid_str);
 		goto end;
 	}
 
-        published_chunk = lttng_trace_chunk_registry_publish_chunk(
+	published_chunk = lttng_trace_chunk_registry_publish_chunk(
 			element->trace_chunk_registry, session_id, new_chunk);
 	/*
 	 * At this point, two references to the published chunks exist. One
