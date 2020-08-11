@@ -167,7 +167,7 @@ end:
 }
 
 int relay_index_set_data(struct relay_index *index,
-                const struct ctf_packet_index *data)
+		const struct ctf_packet_index *data)
 {
 	int ret = 0;
 
