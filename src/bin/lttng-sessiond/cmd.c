@@ -946,7 +946,7 @@ static enum lttng_error_code send_consumer_relayd_socket(
 		struct consumer_socket *consumer_sock,
 		const char *session_name, const char *hostname,
 		const char *base_path, int session_live_timer,
-	        const uint64_t *current_chunk_id,
+		const uint64_t *current_chunk_id,
 		time_t session_creation_time,
 		bool session_name_contains_creation_time)
 {
@@ -1074,9 +1074,9 @@ int cmd_setup_relayd(struct ltt_session *session)
 	struct ltt_kernel_session *ksess;
 	struct consumer_socket *socket;
 	struct lttng_ht_iter iter;
-        LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
+	LTTNG_OPTIONAL(uint64_t) current_chunk_id = {};
 
-        assert(session);
+	assert(session);
 
 	usess = session->ust_session;
 	ksess = session->kernel_session;
@@ -2288,7 +2288,7 @@ static int _cmd_enable_event(struct ltt_session *session,
 			 */
 			ret = validate_ust_event_name(event->name);
 			if (ret) {
-			        WARN("Userspace event name %s failed validation.",
+				WARN("Userspace event name %s failed validation.",
 						event->name);
 				ret = LTTNG_ERR_INVALID_EVENT_NAME;
 				goto error;
@@ -3164,10 +3164,10 @@ void cmd_destroy_session_reply(const struct ltt_session *session,
 	lttng_dynamic_buffer_init(&payload);
 
 	ret = lttng_dynamic_buffer_append(&payload, &llm, sizeof(llm));
-        if (ret) {
+	if (ret) {
 		ERR("Failed to append session destruction message");
 		goto error;
-        }
+	}
 
 	cmd_header.rotation_state =
 			(int32_t) (reply_context->implicit_rotation_on_destroy ?
@@ -3290,10 +3290,10 @@ int cmd_destroy_session(struct ltt_session *session,
 					session->name, lttng_strerror(-ret));
 			destruction_last_error = -ret;
 		}
-                if (reply_context) {
+		if (reply_context) {
 			reply_context->implicit_rotation_on_destroy = true;
-                }
-        } else if (session->has_been_started && session->current_trace_chunk) {
+		}
+	} else if (session->has_been_started && session->current_trace_chunk) {
 		/*
 		 * The user has not triggered a session rotation. However, to
 		 * ensure all data has been consumed, the session is rotated
@@ -3391,8 +3391,8 @@ int cmd_destroy_session(struct ltt_session *session,
 		} else {
 			*sock_fd = -1;
 		}
-        }
-        ret = LTTNG_OK;
+	}
+	ret = LTTNG_OK;
 end:
 	return ret;
 }
@@ -3699,7 +3699,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 	unsigned int i = 0;
 	struct ltt_session *session;
 	struct ltt_session_list *list = session_get_list();
-        struct lttng_session_extended *extended =
+	struct lttng_session_extended *extended =
 			(typeof(extended)) (&sessions[session_count]);
 
 	DBG("Getting all available session for UID %d GID %d",
@@ -5010,7 +5010,7 @@ int cmd_rotate_session(struct ltt_session *session,
 			cmd_ret = LTTNG_ERR_CREATE_DIR_FAIL;
 			goto error;
 		}
-        }
+	}
 
 	/*
 	 * The current trace chunk becomes the chunk being archived.
