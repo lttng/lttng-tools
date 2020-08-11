@@ -368,7 +368,7 @@ void lttng_trace_chunk_fini(struct lttng_trace_chunk *chunk)
 	}
 	if (chunk->chunk_directory) {
 		lttng_directory_handle_put(chunk->chunk_directory);
-	        chunk->chunk_directory = NULL;
+		chunk->chunk_directory = NULL;
 	}
 	free(chunk->name);
 	chunk->name = NULL;
@@ -406,9 +406,9 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 		uint64_t chunk_id, time_t chunk_creation_time, const char *path)
 {
 	struct lttng_trace_chunk *chunk;
-        char chunk_creation_datetime_buf[16] = {};
+	char chunk_creation_datetime_buf[16] = {};
 	const char *chunk_creation_datetime_str = "(formatting error)";
-        struct tm timeinfo_buf, *timeinfo;
+	struct tm timeinfo_buf, *timeinfo;
 
 	timeinfo = localtime_r(&chunk_creation_time, &timeinfo_buf);
 	if (timeinfo) {
@@ -440,7 +440,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 			ERR("Failed to allocate trace chunk name storage");
 			goto error;
 		}
-        }
+	}
 	if (path) {
 		chunk->path = strdup(path);
 		if (!chunk->path) {
@@ -455,7 +455,7 @@ struct lttng_trace_chunk *lttng_trace_chunk_create(
 		}
 	}
 
-        DBG("Chunk name set to \"%s\"", chunk->name ? : "(none)");
+	DBG("Chunk name set to \"%s\"", chunk->name ? : "(none)");
 end:
 	return chunk;
 error:
@@ -642,10 +642,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_get_name(
 	enum lttng_trace_chunk_status status = LTTNG_TRACE_CHUNK_STATUS_OK;
 
 	pthread_mutex_lock(&chunk->lock);
-        if (name_overridden) {
+	if (name_overridden) {
 		*name_overridden = chunk->name_overridden;
-        }
-        if (!chunk->name) {
+	}
+	if (!chunk->name) {
 		status = LTTNG_TRACE_CHUNK_STATUS_NONE;
 		goto end;
 	}
@@ -1586,7 +1586,7 @@ int lttng_trace_chunk_move_to_completed_post_release(
 
 	ret = lttng_directory_handle_create_subdirectory_as_user(
 			trace_chunk->session_output_directory,
-		        DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY,
+			DEFAULT_ARCHIVED_TRACE_CHUNKS_DIRECTORY,
 			DIR_CREATION_MODE,
 			!trace_chunk->credentials.value.use_current_user ?
 					&trace_chunk->credentials.value.user :
@@ -1794,10 +1794,10 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_close_command(
 		DBG("Overriding trace chunk close command from \"%s\" to \"%s\"",
 				close_command_names[chunk->close_command.value],
 				close_command_names[close_command]);
-        } else {
+	} else {
 		DBG("Setting trace chunk close command to \"%s\"",
 				close_command_names[close_command]);
-        }
+	}
 	/*
 	 * Unset close command for no-op for backward compatibility with relayd
 	 * 2.11.
@@ -2022,13 +2022,13 @@ lttng_trace_chunk_registry_publish_chunk(
 		struct lttng_trace_chunk_registry_element *published_element;
 
 		published_node = cds_lfht_add_unique(registry->ht,
-			        element_hash,
+				element_hash,
 				lttng_trace_chunk_registry_element_match,
-			        element,
+				element,
 				&element->trace_chunk_registry_ht_node);
 		if (published_node == &element->trace_chunk_registry_ht_node) {
 			/* Successfully published the new element. */
-		        element->registry = registry;
+			element->registry = registry;
 			/* Acquire a reference for the caller. */
 			if (lttng_trace_chunk_get(&element->chunk)) {
 				break;
@@ -2125,7 +2125,7 @@ lttng_trace_chunk_registry_find_chunk(
 		const struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id, uint64_t chunk_id)
 {
-        return _lttng_trace_chunk_registry_find_chunk(registry,
+	return _lttng_trace_chunk_registry_find_chunk(registry,
 			session_id, &chunk_id);
 }
 
@@ -2170,7 +2170,7 @@ lttng_trace_chunk_registry_find_anonymous_chunk(
 		const struct lttng_trace_chunk_registry *registry,
 		uint64_t session_id)
 {
-        return _lttng_trace_chunk_registry_find_chunk(registry,
+	return _lttng_trace_chunk_registry_find_chunk(registry,
 			session_id, NULL);
 }
 
