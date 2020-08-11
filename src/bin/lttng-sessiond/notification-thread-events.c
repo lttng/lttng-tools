@@ -491,7 +491,7 @@ enum lttng_object_type get_condition_binding_object(
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-	        return LTTNG_OBJECT_TYPE_CHANNEL;
+		return LTTNG_OBJECT_TYPE_CHANNEL;
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return LTTNG_OBJECT_TYPE_SESSION;
@@ -682,7 +682,7 @@ struct notification_client_list *get_client_list_from_condition(
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 
-        return node ? caa_container_of(node,
+	return node ? caa_container_of(node,
 			struct notification_client_list,
 			notification_trigger_ht_node) : NULL;
 }
@@ -1306,7 +1306,7 @@ struct lttng_session_trigger_list *get_session_trigger_list(
 		goto end;
 	}
 
-        list = caa_container_of(node,
+	list = caa_container_of(node,
 			struct lttng_session_trigger_list,
 			session_triggers_ht_node);
 end:
@@ -2426,7 +2426,7 @@ int handle_notification_thread_client_connect(
 	ret = client_reset_inbound_state(client);
 	if (ret) {
 		ERR("[notification-thread] Failed to reset client communication's inbound state");
-	        ret = 0;
+		ret = 0;
 		goto error;
 	}
 
@@ -2498,7 +2498,7 @@ int handle_notification_thread_client_disconnect(
 	if (ret) {
 		ERR("[notification-thread] Failed to remove client socket from poll set");
 	}
-        cds_lfht_del(state->client_socket_ht,
+	cds_lfht_del(state->client_socket_ht,
 			&client->client_socket_ht_node);
 	notification_client_destroy(client, state);
 end:
@@ -3327,7 +3327,7 @@ int handle_notification_thread_channel_sample(
 	trigger_list = caa_container_of(node, struct lttng_channel_trigger_list,
 			channel_triggers_ht_node);
 	cds_list_for_each_entry(trigger_list_element, &trigger_list->list,
-		        node) {
+			node) {
 		const struct lttng_condition *condition;
 		const struct lttng_action *action;
 		const struct lttng_trigger *trigger;
