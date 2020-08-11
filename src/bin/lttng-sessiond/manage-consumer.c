@@ -22,7 +22,7 @@
 struct thread_notifiers {
 	struct lttng_pipe *quit_pipe;
 	struct consumer_data *consumer_data;
-        sem_t ready;
+	sem_t ready;
 	int initialization_result;
 };
 
@@ -36,7 +36,7 @@ static void mark_thread_as_ready(struct thread_notifiers *notifiers)
 static void mark_thread_intialization_as_failed(
 		struct thread_notifiers *notifiers)
 {
-        ERR("Consumer management thread entering error state");
+	ERR("Consumer management thread entering error state");
 	notifiers->initialization_result = -1;
 	sem_post(&notifiers->ready);
 }
