@@ -1143,7 +1143,7 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx)
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
 		if (uctx->ctx == LTTNG_UST_CONTEXT_APP_CONTEXT) {
-		        char *provider_name = NULL, *ctx_name = NULL;
+			char *provider_name = NULL, *ctx_name = NULL;
 
 			provider_name = strdup(uctx->u.app_ctx.provider_name);
 			ctx_name = strdup(uctx->u.app_ctx.ctx_name);
@@ -2296,7 +2296,7 @@ end:
  */
 static
 int create_ust_app_channel_context(struct ust_app_channel *ua_chan,
-	        struct lttng_ust_context_attr *uctx,
+		struct lttng_ust_context_attr *uctx,
 		struct ust_app *app)
 {
 	int ret = 0;
@@ -5045,7 +5045,7 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 		 * allocated (if necessary) and sent to the application, and
 		 * all enabled contexts will be added to the channel.
 		 */
-	        ret = find_or_create_ust_app_channel(usess, ua_sess,
+		ret = find_or_create_ust_app_channel(usess, ua_sess,
 			app, uchan, &ua_chan);
 		if (ret) {
 			/* Tracer is probably gone or ENOMEM. */
@@ -5897,7 +5897,7 @@ enum lttng_error_code ust_app_snapshot_record(
 				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
-                        /* Add the UST default trace dir to path. */
+			/* Add the UST default trace dir to path. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
 					reg_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
@@ -5961,7 +5961,7 @@ enum lttng_error_code ust_app_snapshot_record(
 				status = LTTNG_ERR_INVALID;
 				goto error;
 			}
-                        cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
+			cds_lfht_for_each_entry(ua_sess->channels->ht, &chan_iter.iter,
 					ua_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
 						ua_chan->key, output, 0,
