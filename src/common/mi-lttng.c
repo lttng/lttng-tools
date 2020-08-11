@@ -2250,13 +2250,13 @@ int mi_lttng_rotation_schedule(struct mi_writer *writer,
 		status = lttng_rotation_schedule_periodic_get_period(schedule,
 				&value);
 		element_name = mi_lttng_element_rotation_schedule_periodic;
-	        value_name = mi_lttng_element_rotation_schedule_periodic_time_us;
+		value_name = mi_lttng_element_rotation_schedule_periodic_time_us;
 		break;
 	case LTTNG_ROTATION_SCHEDULE_TYPE_SIZE_THRESHOLD:
 		status = lttng_rotation_schedule_size_threshold_get_threshold(
 				schedule, &value);
 		element_name = mi_lttng_element_rotation_schedule_size_threshold;
-	        value_name = mi_lttng_element_rotation_schedule_size_threshold_bytes;
+		value_name = mi_lttng_element_rotation_schedule_size_threshold_bytes;
 		break;
 	default:
 		ret = -1;
@@ -2331,7 +2331,7 @@ int mi_lttng_rotation_schedule_result(struct mi_writer *writer,
 	}
 
 	/* Close rotation_schedule_result element */
-        ret = mi_lttng_writer_close_element(writer);
+	ret = mi_lttng_writer_close_element(writer);
 	if (ret) {
 		goto end;
 	}
