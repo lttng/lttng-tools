@@ -4706,9 +4706,9 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 		} else {
 			relayd_id_str = "(formatting error)";
 		}
-        }
+	}
 
-        /* Local protocol error. */
+	/* Local protocol error. */
 	assert(chunk_creation_timestamp);
 	ret = time_to_iso8601_str(chunk_creation_timestamp,
 			creation_timestamp_buffer,
@@ -5017,7 +5017,7 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 		} else {
 			relayd_id_str = "(formatting error)";
 		}
-        }
+	}
 
 	DBG("Consumer trace chunk exists command: relayd_id = %s"
 			", chunk_id = %" PRIu64, relayd_id_str,
