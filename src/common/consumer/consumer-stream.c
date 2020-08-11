@@ -1150,16 +1150,16 @@ int consumer_stream_create_output_files(struct lttng_consumer_stream *stream,
 			goto end;
 		}
 		stream->out_fd = -1;
-        }
+	}
 
 	DBG("Opening stream output file \"%s\"", stream_path);
 	chunk_status = lttng_trace_chunk_open_file(stream->trace_chunk, stream_path,
 			flags, mode, &stream->out_fd, false);
-        if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
+	if (chunk_status != LTTNG_TRACE_CHUNK_STATUS_OK) {
 		ERR("Failed to open stream file \"%s\"", stream->name);
 		ret = -1;
 		goto end;
-        }
+	}
 
 	if (!stream->metadata_flag && (create_index || stream->index_file)) {
 		if (stream->index_file) {
