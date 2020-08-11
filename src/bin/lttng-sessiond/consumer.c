@@ -938,19 +938,19 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 {
 	assert(msg);
 
-        /* Zeroed structure */
+	/* Zeroed structure */
 	memset(msg, 0, sizeof(struct lttcomm_consumer_msg));
 	msg->u.ask_channel.buffer_credentials.uid = UINT32_MAX;
 	msg->u.ask_channel.buffer_credentials.gid = UINT32_MAX;
 
-        if (trace_chunk) {
+	if (trace_chunk) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
 
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk, &chunk_id);
 		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&msg->u.ask_channel.chunk_id, chunk_id);
-        }
+	}
 	msg->u.ask_channel.buffer_credentials.uid = buffer_credentials->uid;
 	msg->u.ask_channel.buffer_credentials.gid = buffer_credentials->gid;
 
@@ -1026,14 +1026,14 @@ void consumer_init_add_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 	/* Zeroed structure */
 	memset(msg, 0, sizeof(struct lttcomm_consumer_msg));
 
-        if (trace_chunk) {
+	if (trace_chunk) {
 		uint64_t chunk_id;
 		enum lttng_trace_chunk_status chunk_status;
 
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk, &chunk_id);
 		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&msg->u.channel.chunk_id, chunk_id);
-        }
+	}
 
 	/* Send channel */
 	msg->cmd_type = LTTNG_CONSUMER_ADD_CHANNEL;
