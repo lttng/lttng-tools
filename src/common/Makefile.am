@@ -75,6 +75,7 @@ libcommon_la_SOURCES = \
 	userspace-probe.c \
 	utils.c utils.h \
 	uuid.c uuid.h \
+	thread.c thread.h \
 	tracker.c tracker.h \
 	waiter.c waiter.h
 

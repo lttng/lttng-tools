@@ -27,10 +27,10 @@
 #include <common/common.h>
 #include <common/utils.h>
 #include <common/compat/getenv.h>
-#include <common/compat/prctl.h>
 #include <common/unix.h>
 #include <common/defaults.h>
 #include <common/lttng-elf.h>
+#include <common/thread.h>
 
 #include <lttng/constant.h>
 
@@ -958,11 +958,10 @@ int run_as_worker(struct run_as_worker *worker)
 	memset(worker->procname, 0, proc_orig_len);
 	strncpy(worker->procname, DEFAULT_RUN_AS_WORKER_NAME, proc_orig_len);
 
-	ret = lttng_prctl(PR_SET_NAME,
-			(unsigned long) DEFAULT_RUN_AS_WORKER_NAME, 0, 0, 0);
+	ret = lttng_thread_setname(DEFAULT_RUN_AS_WORKER_NAME);
 	if (ret && ret != -ENOSYS) {
 		/* Don't fail as this is not essential. */
-		PERROR("prctl PR_SET_NAME");
+		DBG("Failed to set pthread name attribute");
 	}
 
 	memset(&sendret, 0, sizeof(sendret));

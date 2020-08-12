@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <common/common.h>
+#include <common/thread.h>
 #include <common/compat/getenv.h>
 #include <lttng/lttng-error.h>
 
@@ -77,16 +78,9 @@ void logger_set_thread_name(const char *name, bool set_pthread_name)
 	URCU_TLS(logger_thread_name) = name;
 
 	if (set_pthread_name) {
-		char pthread_name[16];
-
-		/*
-		 * Truncations are expected since pthread limits thread names to
-		 * a generous 16 characters.
-		 */
-		strncpy(pthread_name, name, sizeof(pthread_name));
-		pthread_name[sizeof(pthread_name) - 1] = '\0';
-		ret = pthread_setname_np(pthread_self(), pthread_name);
-		if (ret) {
+		ret = lttng_thread_setname(name);
+		if (ret && ret != -ENOSYS) {
+			/* Don't fail as this is not essential. */
 			DBG("Failed to set pthread name attribute");
 		}
 	}
