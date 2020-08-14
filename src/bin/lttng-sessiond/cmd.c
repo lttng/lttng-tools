@@ -3715,7 +3715,7 @@ void cmd_list_lttng_sessions(struct lttng_session *sessions,
 		/*
 		 * Only list the sessions the user can control.
 		 */
-		if (!session_access_ok(session, uid, gid) ||
+		if (!session_access_ok(session, uid) ||
 				session->destroyed) {
 			session_put(session);
 			continue;

@@ -579,15 +579,14 @@ static unsigned int lttng_sessions_count(uid_t uid, gid_t gid)
 	struct ltt_session *session;
 	const struct ltt_session_list *session_list = session_get_list();
 
-	DBG("Counting number of available session for UID %d GID %d",
-			uid, gid);
+	DBG("Counting number of available session for UID %d", uid);
 	cds_list_for_each_entry(session, &session_list->head, list) {
 		if (!session_get(session)) {
 			continue;
 		}
 		session_lock(session);
 		/* Only count the sessions the user can control. */
-		if (session_access_ok(session, uid, gid) &&
+		if (session_access_ok(session, uid) &&
 				!session->destroyed) {
 			i++;
 		}
@@ -1106,13 +1105,12 @@ skip_domain:
 	}
 
 	/*
-	 * Check that the UID or GID match that of the tracing session.
+	 * Check that the UID matches that of the tracing session.
 	 * The root user can interact with all sessions.
 	 */
 	if (need_tracing_session) {
 		if (!session_access_ok(cmd_ctx->session,
-				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds),
-				LTTNG_SOCK_GET_GID_CRED(&cmd_ctx->creds)) ||
+				LTTNG_SOCK_GET_UID_CRED(&cmd_ctx->creds)) ||
 				cmd_ctx->session->destroyed) {
 			ret = LTTNG_ERR_EPERM;
 			goto error;

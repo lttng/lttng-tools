@@ -2633,8 +2633,7 @@ int save_session(struct ltt_session *session,
 	memset(config_file_path, 0, sizeof(config_file_path));
 
 	if (!session_access_ok(session,
-		LTTNG_SOCK_GET_UID_CRED(creds),
-		LTTNG_SOCK_GET_GID_CRED(creds)) || session->destroyed) {
+		LTTNG_SOCK_GET_UID_CRED(creds)) || session->destroyed) {
 		ret = LTTNG_ERR_EPERM;
 		goto end;
 	}

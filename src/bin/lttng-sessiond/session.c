@@ -1296,18 +1296,13 @@ error:
 }
 
 /*
- * Check if the UID or GID match the session. Root user has access to all
+ * Check if the UID matches the session. Root user has access to all
  * sessions.
  */
-int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid)
+bool session_access_ok(struct ltt_session *session, uid_t uid)
 {
 	assert(session);
-
-	if (uid != session->uid && gid != session->gid && uid != 0) {
-		return 0;
-	} else {
-		return 1;
-	}
+	return (uid == session->uid) || uid == 0;
 }
 
 /*

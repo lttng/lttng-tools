@@ -240,7 +240,7 @@ struct ltt_session *session_find_by_id(uint64_t id);
 struct ltt_session_list *session_get_list(void);
 void session_list_wait_empty(void);
 
-int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid);
+bool session_access_ok(struct ltt_session *session, uid_t uid);
 
 int session_reset_rotation_state(struct ltt_session *session,
 		enum lttng_rotation_state result);
