@@ -1303,13 +1303,7 @@ int session_access_ok(struct ltt_session *session, uid_t uid, gid_t gid)
 {
 	assert(session);
 
-	if (uid == 0) {
-		return 1;
-	}
-
-	return uid == session->uid && gid == session->gid;
-
-	if ((uid != session->uid || gid != session->gid) && uid != 0) {
+	if (uid != session->uid && gid != session->gid && uid != 0) {
 		return 0;
 	} else {
 		return 1;
