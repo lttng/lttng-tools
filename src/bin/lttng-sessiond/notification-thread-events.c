@@ -3189,6 +3189,7 @@ int handle_notification_thread_client_in(
 	size_t offset;
 	bool message_is_complete = false;
 
+	rcu_read_lock();
 	client = get_client_from_socket(socket, state);
 	if (!client) {
 		/* Internal error, abort. */
@@ -3234,12 +3235,13 @@ int handle_notification_thread_client_in(
 		}
 	}
 end:
+	rcu_read_unlock();
 	return ret;
 error_disconnect_client:
 	pthread_mutex_lock(&client->lock);
 	ret = notification_thread_client_disconnect(client, state);
 	pthread_mutex_unlock(&client->lock);
-	return ret;
+	goto end;
 }
 
 /* Client ready to receive outgoing data. */
@@ -3250,6 +3252,7 @@ int handle_notification_thread_client_out(
 	struct notification_client *client;
 	enum client_transmission_status transmission_status;
 
+	rcu_read_lock();
 	client = get_client_from_socket(socket, state);
 	if (!client) {
 		/* Internal error, abort. */
@@ -3266,6 +3269,7 @@ int handle_notification_thread_client_out(
 		goto end;
 	}
 end:
+	rcu_read_unlock();
 	return ret;
 }
 
