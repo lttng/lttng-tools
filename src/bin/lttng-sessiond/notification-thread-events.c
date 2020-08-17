@@ -925,6 +925,7 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 				&evaluation, &object_uid, &object_gid);
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
+		DBG("[notification-thread] Newly subscribed-to condition not bound to object, nothing to evaluate");
 		ret = 0;
 		goto end;
 	case LTTNG_OBJECT_TYPE_UNKNOWN:
