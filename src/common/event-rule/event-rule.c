@@ -11,6 +11,8 @@
 #include <common/macros.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kprobe-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
@@ -291,4 +293,11 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 	default:
 		abort();
 	}
+}
+
+LTTNG_HIDDEN
+unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule)
+{
+	assert(rule->hash);
+	return rule->hash(rule);
 }

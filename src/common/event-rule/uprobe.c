@@ -12,6 +12,8 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/runas.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/uprobe-internal.h>
 #include <lttng/userspace-probe-internal.h>
@@ -167,6 +169,22 @@ lttng_event_rule_uprobe_generate_exclusions(const struct lttng_event_rule *rule)
 	return NULL;
 }
 
+static unsigned long
+lttng_event_rule_uprobe_hash(
+		const struct lttng_event_rule *rule)
+{
+	unsigned long hash;
+	struct lttng_event_rule_uprobe *urule =
+			container_of(rule, typeof(*urule), parent);
+
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_UPROBE,
+			lttng_ht_seed);
+	hash ^= hash_key_str(urule->name, lttng_ht_seed);
+	hash ^= lttng_userspace_probe_location_hash(urule->location);
+
+	return hash;
+}
+
 struct lttng_event_rule *lttng_event_rule_uprobe_create()
 {
 	struct lttng_event_rule *rule = NULL;
@@ -190,6 +208,7 @@ struct lttng_event_rule *lttng_event_rule_uprobe_create()
 			lttng_event_rule_uprobe_get_filter_bytecode;
 	urule->parent.generate_exclusions =
 			lttng_event_rule_uprobe_generate_exclusions;
+	urule->parent.hash = lttng_event_rule_uprobe_hash;
 end:
 	return rule;
 }

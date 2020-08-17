@@ -12,6 +12,8 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/runas.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 
@@ -542,6 +544,48 @@ static void destroy_lttng_exclusions_element(void *ptr)
 	free(ptr);
 }
 
+static unsigned long lttng_event_rule_tracepoint_hash(
+		const struct lttng_event_rule *rule)
+{
+	unsigned long hash;
+	unsigned int i, exclusion_count;
+	enum lttng_event_rule_status status;
+	struct lttng_event_rule_tracepoint *tp_rule =
+			container_of(rule, typeof(*tp_rule), parent);
+
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_TRACEPOINT,
+			lttng_ht_seed);
+	hash ^= hash_key_ulong((void *) tp_rule->domain, lttng_ht_seed);
+	hash ^= hash_key_str(tp_rule->pattern, lttng_ht_seed);
+
+	if (tp_rule->filter_expression) {
+		hash ^= hash_key_str(tp_rule->filter_expression, lttng_ht_seed);
+	}
+
+	hash ^= hash_key_ulong((void *) tp_rule->loglevel.type,
+			       lttng_ht_seed);
+	if (tp_rule->loglevel.type != LTTNG_EVENT_LOGLEVEL_ALL) {
+		hash ^= hash_key_ulong(
+				(void *) (unsigned long) tp_rule->loglevel.value,
+				lttng_ht_seed);
+	}
+
+	status = lttng_event_rule_tracepoint_get_exclusions_count(rule,
+			&exclusion_count);
+	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+
+	for (i = 0; i < exclusion_count; i++) {
+		const char *exclusion;
+
+		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+				rule, i, &exclusion);
+		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		hash ^= hash_key_str(exclusion, lttng_ht_seed);
+	}
+
+	return hash;
+}
+
 struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 		enum lttng_domain_type domain_type)
 {
@@ -571,6 +615,7 @@ struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 			lttng_event_rule_tracepoint_get_internal_filter_bytecode;
 	tp_rule->parent.generate_exclusions =
 			lttng_event_rule_tracepoint_generate_exclusions;
+	tp_rule->parent.hash = lttng_event_rule_tracepoint_hash;
 
 	tp_rule->domain = domain_type;
 	tp_rule->loglevel.type = LTTNG_EVENT_LOGLEVEL_ALL;

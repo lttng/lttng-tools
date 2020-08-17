@@ -11,6 +11,8 @@
 #include <common/macros.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <fcntl.h>
 #include <lttng/constant.h>
 #include <lttng/kernel-probe.h>
@@ -38,6 +40,14 @@ static
 bool lttng_kernel_probe_location_symbol_is_equal(
 		const struct lttng_kernel_probe_location *a,
 		const struct lttng_kernel_probe_location *b);
+
+static
+unsigned long lttng_kernel_probe_location_address_hash(
+		const struct lttng_kernel_probe_location *location);
+
+static
+unsigned long lttng_kernel_probe_location_symbol_hash(
+		const struct lttng_kernel_probe_location *location);
 
 enum lttng_kernel_probe_location_type lttng_kernel_probe_location_get_type(
 		const struct lttng_kernel_probe_location *location)
@@ -109,6 +119,7 @@ lttng_kernel_probe_location_address_create(uint64_t address)
 	ret->type = LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS;
 	ret->equal = lttng_kernel_probe_location_address_is_equal;
 	ret->serialize = lttng_kernel_probe_location_address_serialize;
+	ret->hash = lttng_kernel_probe_location_address_hash;
 
 end:
 	return ret;
@@ -145,6 +156,7 @@ lttng_kernel_probe_location_symbol_create(const char *symbol_name,
 	ret->type = LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET;
 	ret->equal = lttng_kernel_probe_location_symbol_is_equal;
 	ret->serialize = lttng_kernel_probe_location_symbol_serialize;
+	ret->hash = lttng_kernel_probe_location_symbol_hash;
 	goto end;
 
 error:
@@ -490,6 +502,22 @@ end:
 }
 
 static
+unsigned long lttng_kernel_probe_location_address_hash(
+		const struct lttng_kernel_probe_location *location)
+{
+	unsigned long hash = hash_key_ulong(
+			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_ADDRESS,
+			lttng_ht_seed);
+	struct lttng_kernel_probe_location_address *address_location =
+			container_of(location, typeof(*address_location),
+				parent);
+
+	hash ^= hash_key_u64(&address_location->address, lttng_ht_seed);
+
+	return hash;
+}
+
+static
 bool lttng_kernel_probe_location_address_is_equal(
 		const struct lttng_kernel_probe_location *_a,
 		const struct lttng_kernel_probe_location *_b)
@@ -510,6 +538,23 @@ bool lttng_kernel_probe_location_address_is_equal(
 
 end:
 	return is_equal;
+}
+
+static
+unsigned long lttng_kernel_probe_location_symbol_hash(
+		const struct lttng_kernel_probe_location *location)
+{
+	unsigned long hash = hash_key_ulong(
+			(void *) LTTNG_KERNEL_PROBE_LOCATION_TYPE_SYMBOL_OFFSET,
+			lttng_ht_seed);
+	struct lttng_kernel_probe_location_symbol *symbol_location =
+			container_of(location, typeof(*symbol_location),
+				parent);
+
+	hash ^= hash_key_str(symbol_location->symbol_name, lttng_ht_seed);
+	hash ^= hash_key_u64(&symbol_location->offset, lttng_ht_seed);
+
+	return hash;
 }
 
 static
@@ -671,4 +716,11 @@ struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
 	}
 err:
 	return new_location;
+}
+
+LTTNG_HIDDEN
+unsigned long lttng_kernel_probe_location_hash(
+	const struct lttng_kernel_probe_location *location)
+{
+	return location->hash(location);
 }

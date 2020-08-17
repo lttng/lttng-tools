@@ -12,6 +12,8 @@
 #include <common/macros.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <fcntl.h>
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.h>
@@ -199,6 +201,25 @@ end:
 	return is_equal;
 }
 
+static unsigned long lttng_userspace_probe_location_function_hash(
+		const struct lttng_userspace_probe_location *location)
+{
+	unsigned long hash = hash_key_ulong(
+			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION,
+			lttng_ht_seed);
+	struct lttng_userspace_probe_location_function *function_location =
+			container_of(location, typeof(*function_location),
+					parent);
+
+	hash ^= hash_key_str(function_location->function_name, lttng_ht_seed);
+	hash ^= hash_key_str(function_location->binary_path, lttng_ht_seed);
+	/*
+	 * No need to hash on the fd. Worst comes to worse,
+	 * the equal function will discriminate.
+	 */
+	return hash;
+}
+
 static bool lttng_userspace_probe_location_function_is_equal(
 		const struct lttng_userspace_probe_location *_a,
 		const struct lttng_userspace_probe_location *_b)
@@ -290,6 +311,7 @@ lttng_userspace_probe_location_function_create_no_check(const char *binary_path,
 	ret->lookup_method = lookup_method;
 	ret->type = LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION;
 	ret->equal = lttng_userspace_probe_location_function_is_equal;
+	ret->hash = lttng_userspace_probe_location_function_hash;
 	goto end;
 
 error:
@@ -303,6 +325,25 @@ error:
 	fd_handle_put(binary_fd_handle);
 end:
 	return ret;
+}
+
+static unsigned long lttng_userspace_probe_location_tracepoint_hash(
+		const struct lttng_userspace_probe_location *location)
+{
+	unsigned long hash = hash_key_ulong(
+			(void *) LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT,
+			lttng_ht_seed);
+	struct lttng_userspace_probe_location_tracepoint *tp_location =
+			container_of(location, typeof(*tp_location), parent);
+
+	hash ^= hash_key_str(tp_location->probe_name, lttng_ht_seed);
+	hash ^= hash_key_str(tp_location->provider_name, lttng_ht_seed);
+	hash ^= hash_key_str(tp_location->binary_path, lttng_ht_seed);
+	/*
+	 * No need to hash on the fd. Worst comes to worse,
+	 * the equal function will discriminate.
+	 */
+	return hash;
 }
 
 static bool lttng_userspace_probe_location_tracepoint_is_equal(
@@ -406,6 +447,7 @@ lttng_userspace_probe_location_tracepoint_create_no_check(const char *binary_pat
 	ret->lookup_method = lookup_method;
 	ret->type = LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT;
 	ret->equal = lttng_userspace_probe_location_tracepoint_is_equal;
+	ret->hash = lttng_userspace_probe_location_tracepoint_hash;
 	goto end;
 
 error:
@@ -1915,4 +1957,11 @@ bool lttng_userspace_probe_location_is_equal(
 	is_equal = a->equal ? a->equal(a, b) : true;
 end:
 	return is_equal;
+}
+
+LTTNG_HIDDEN
+unsigned long lttng_userspace_probe_location_hash(
+		const struct lttng_userspace_probe_location *location)
+{
+	return location->hash(location);
 }

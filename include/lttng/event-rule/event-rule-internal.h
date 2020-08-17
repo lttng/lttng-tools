@@ -42,6 +42,8 @@ typedef const struct lttng_filter_bytecode *(
 		const struct lttng_event_rule *event_rule);
 typedef struct lttng_event_exclusion *(*event_rule_generate_exclusions_cb)(
 		const struct lttng_event_rule *event_rule);
+typedef unsigned long (*event_rule_hash_cb)(
+		const struct lttng_event_rule *event_rule);
 
 struct lttng_event_rule {
 	struct urcu_ref ref;
@@ -54,6 +56,7 @@ struct lttng_event_rule {
 	event_rule_get_filter_cb get_filter;
 	event_rule_get_filter_bytecode_cb get_filter_bytecode;
 	event_rule_generate_exclusions_cb generate_exclusions;
+	event_rule_hash_cb hash;
 };
 
 struct lttng_event_rule_comm {
@@ -122,5 +125,8 @@ struct lttng_event_exclusion *lttng_event_rule_generate_exclusions(
 
 LTTNG_HIDDEN
 const char *lttng_event_rule_type_str(enum lttng_event_rule_type type);
+
+LTTNG_HIDDEN
+unsigned long lttng_event_rule_hash(const struct lttng_event_rule *rule);
 
 #endif /* LTTNG_EVENT_RULE_INTERNAL_H */

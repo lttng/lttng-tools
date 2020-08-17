@@ -21,6 +21,8 @@ struct lttng_dynamic_buffer;
 typedef bool (*userspace_probe_location_equal_cb)(
 		const struct lttng_userspace_probe_location *a,
 		const struct lttng_userspace_probe_location *b);
+typedef unsigned long (*userspace_probe_location_hash_cb)(
+		const struct lttng_userspace_probe_location *location);
 
 /*
  * No elf-specific comm structure is defined since no elf-specific payload is
@@ -88,6 +90,7 @@ struct lttng_userspace_probe_location {
 	enum lttng_userspace_probe_location_type type;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	userspace_probe_location_equal_cb equal;
+	userspace_probe_location_hash_cb hash;
 };
 
 struct lttng_userspace_probe_location_function {
@@ -149,5 +152,9 @@ LTTNG_HIDDEN
 bool lttng_userspace_probe_location_is_equal(
 		const struct lttng_userspace_probe_location *a,
 		const struct lttng_userspace_probe_location *b);
+
+LTTNG_HIDDEN
+unsigned long lttng_userspace_probe_location_hash(
+		const struct lttng_userspace_probe_location *location);
 
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */

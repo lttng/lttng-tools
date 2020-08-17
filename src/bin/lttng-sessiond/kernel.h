@@ -74,6 +74,7 @@ enum lttng_error_code kernel_clear_session(struct ltt_session *session);
 int init_kernel_workarounds(void);
 int kernel_supports_ring_buffer_snapshot_sample_positions(void);
 int kernel_supports_ring_buffer_packet_sequence_number(void);
+int kernel_supports_event_notifiers(void);
 int init_kernel_tracer(void);
 void cleanup_kernel_tracer(void);
 bool kernel_tracer_is_initialized(void);

@@ -12,6 +12,8 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/runas.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <ctype.h>
 #include <lttng/constant.h>
 #include <lttng/event-rule/event-rule-internal.h>
@@ -175,6 +177,22 @@ lttng_event_rule_kprobe_generate_exclusions(const struct lttng_event_rule *rule)
 	return NULL;
 }
 
+static unsigned long
+lttng_event_rule_kprobe_hash(
+		const struct lttng_event_rule *rule)
+{
+	unsigned long hash;
+	struct lttng_event_rule_kprobe *krule =
+			container_of(rule, typeof(*krule), parent);
+
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KPROBE,
+			lttng_ht_seed);
+	hash ^= hash_key_str(krule->name, lttng_ht_seed);
+	hash ^= lttng_kernel_probe_location_hash(krule->location);
+
+	return hash;
+}
+
 struct lttng_event_rule *lttng_event_rule_kprobe_create()
 {
 	struct lttng_event_rule *rule = NULL;
@@ -198,6 +216,7 @@ struct lttng_event_rule *lttng_event_rule_kprobe_create()
 			lttng_event_rule_kprobe_get_filter_bytecode;
 	krule->parent.generate_exclusions =
 			lttng_event_rule_kprobe_generate_exclusions;
+	krule->parent.hash = lttng_event_rule_kprobe_hash;
 end:
 	return rule;
 }

@@ -12,6 +12,8 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/runas.h>
+#include <common/hashtable/hashtable.h>
+#include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
 
@@ -223,6 +225,25 @@ lttng_event_rule_syscall_generate_exclusions(
 	return NULL;
 }
 
+static unsigned long
+lttng_event_rule_syscall_hash(
+		const struct lttng_event_rule *rule)
+{
+	unsigned long hash;
+	struct lttng_event_rule_syscall *syscall_rule =
+			container_of(rule, typeof(*syscall_rule), parent);
+
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_SYSCALL,
+			lttng_ht_seed);
+	hash ^= hash_key_str(syscall_rule->pattern, lttng_ht_seed);
+	if (syscall_rule->filter_expression) {
+		hash ^= hash_key_str(syscall_rule->filter_expression,
+				lttng_ht_seed);
+	}
+
+	return hash;
+}
+
 struct lttng_event_rule *lttng_event_rule_syscall_create()
 {
 	struct lttng_event_rule *rule = NULL;
@@ -248,6 +269,7 @@ struct lttng_event_rule *lttng_event_rule_syscall_create()
 			lttng_event_rule_syscall_get_internal_filter_bytecode;
 	syscall_rule->parent.generate_exclusions =
 			lttng_event_rule_syscall_generate_exclusions;
+	syscall_rule->parent.hash = lttng_event_rule_syscall_hash;
 end:
 	return rule;
 }

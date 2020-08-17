@@ -31,6 +31,8 @@ typedef bool (*kernel_probe_location_equal_cb)(
 typedef ssize_t (*kernel_probe_location_create_from_payload_cb)(
 		struct lttng_payload_view *view,
 		struct lttng_kernel_probe_location **kernel_probe_location);
+typedef unsigned long (*kernel_probe_location_hash_cb)(
+		const struct lttng_kernel_probe_location *location);
 
 struct lttng_kernel_probe_location_comm {
 	/* enum lttng_kernel_probe_location_type */
@@ -63,6 +65,7 @@ struct lttng_kernel_probe_location {
 	enum lttng_kernel_probe_location_type type;
 	kernel_probe_location_equal_cb equal;
 	kernel_probe_location_serialize_cb serialize;
+	kernel_probe_location_hash_cb hash;
 };
 
 struct lttng_kernel_probe_location_symbol {
@@ -93,6 +96,10 @@ bool lttng_kernel_probe_location_is_equal(
 
 LTTNG_HIDDEN
 struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
+		const struct lttng_kernel_probe_location *location);
+
+LTTNG_HIDDEN
+unsigned long lttng_kernel_probe_location_hash(
 		const struct lttng_kernel_probe_location *location);
 
 #endif /* LTTNG_KERNEL_PROBE_INTERNAL_H */

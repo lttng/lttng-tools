@@ -1641,6 +1641,23 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
 	return kernctl_syscall_mask(chan_fd, syscall_mask, nr_bits);
 }
 
+static
+int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
+{
+	int ret;
+	struct lttng_kernel_tracer_abi_version abi;
+
+	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
+	if (ret < 0) {
+		ERR("Failed to retrieve lttng-modules ABI version");
+		goto error;
+	}
+
+	ret = abi.major > major || (abi.major == major && abi.minor >= minor);
+error:
+	return ret;
+}
+
 /*
  * Check for the support of the RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS via abi
  * version number.
@@ -1650,27 +1667,10 @@ int kernel_syscall_mask(int chan_fd, char **syscall_mask, uint32_t *nr_bits)
  */
 int kernel_supports_ring_buffer_snapshot_sample_positions(void)
 {
-	int ret = 0; // Not supported by default
-	struct lttng_kernel_tracer_abi_version abi;
-
-	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
-	if (ret < 0) {
-		ERR("Failed to retrieve lttng-modules ABI version");
-		goto error;
-	}
-
 	/*
 	 * RING_BUFFER_SNAPSHOT_SAMPLE_POSITIONS was introduced in 2.3
 	 */
-	if (abi.major >= 2 && abi.minor >= 3) {
-		/* Supported */
-		ret = 1;
-	} else {
-		/* Not supported */
-		ret = 0;
-	}
-error:
-	return ret;
+	return kernel_tracer_abi_greater_or_equal(2, 3);
 }
 
 /*
@@ -1681,28 +1681,25 @@ error:
  */
 int kernel_supports_ring_buffer_packet_sequence_number(void)
 {
-	int ret = 0; // Not supported by default
-	struct lttng_kernel_tracer_abi_version abi;
-
-	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
-	if (ret < 0) {
-		ERR("Failed to retrieve lttng-modules ABI version");
-		goto error;
-	}
-
 	/*
 	 * Packet sequence number was introduced in LTTng 2.8,
 	 * lttng-modules ABI 2.1.
 	 */
-	if (abi.major >= 2 && abi.minor >= 1) {
-		/* Supported */
-		ret = 1;
-	} else {
-		/* Not supported */
-		ret = 0;
-	}
-error:
-	return ret;
+	return kernel_tracer_abi_greater_or_equal(2, 1);
+}
+
+/*
+ * Check for the support of event notifiers via abi version number.
+ *
+ * Return 1 on success, 0 when feature is not supported, negative value in case
+ * of errors.
+ */
+int kernel_supports_event_notifiers(void)
+{
+	/*
+	 * Event notifiers were introduced in LTTng 2.13, lttng-modules ABI 2.6.
+	 */
+	return kernel_tracer_abi_greater_or_equal(2, 6);
 }
 
 /*

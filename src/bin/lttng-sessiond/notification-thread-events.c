@@ -26,8 +26,10 @@
 #include <lttng/condition/buffer-usage-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
+#include <lttng/condition/event-rule-internal.h>
 #include <lttng/notification/channel-internal.h>
 #include <lttng/trigger/trigger-internal.h>
+#include <lttng/event-rule/event-rule-internal.h>
 
 #include <time.h>
 #include <unistd.h>
@@ -444,6 +446,24 @@ unsigned long lttng_condition_session_rotation_hash(
 	return hash;
 }
 
+static
+unsigned long lttng_condition_event_rule_hash(
+	const struct lttng_condition *condition)
+{
+	unsigned long hash, condition_type;
+	enum lttng_condition_status condition_status;
+	const struct lttng_event_rule *event_rule;
+
+	condition_type = (unsigned long) condition->type;
+
+	condition_status = lttng_condition_event_rule_get_rule(condition,
+							       &event_rule);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
+	return hash ^ lttng_event_rule_hash(event_rule);
+}
+
 /*
  * The lttng_condition hashing code is kept in this file (rather than
  * condition.c) since it makes use of GPLv2 code (hashtable utils), which we
@@ -461,6 +481,8 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return lttng_condition_session_rotation_hash(condition);
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		return lttng_condition_event_rule_hash(condition);
 	default:
 		ERR("[notification-thread] Unexpected condition type caught");
 		abort();
@@ -509,6 +531,8 @@ enum lttng_object_type get_condition_binding_object(
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return LTTNG_OBJECT_TYPE_SESSION;
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+		return LTTNG_OBJECT_TYPE_NONE;
 	default:
 		return LTTNG_OBJECT_TYPE_UNKNOWN;
 	}
@@ -2040,25 +2064,23 @@ end:
 }
 
 static
-int condition_is_supported(struct lttng_condition *condition)
+bool condition_is_supported(struct lttng_condition *condition)
 {
-	int ret;
+	bool is_supported;
 
 	switch (lttng_condition_get_type(condition)) {
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
 	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
 	{
+		int ret;
 		enum lttng_domain_type domain;
 
 		ret = lttng_condition_buffer_usage_get_domain_type(condition,
 				&domain);
-		if (ret) {
-			ret = -1;
-			goto end;
-		}
+		assert(ret == 0);
 
 		if (domain != LTTNG_DOMAIN_KERNEL) {
-			ret = 1;
+			is_supported = true;
 			goto end;
 		}
 
@@ -2066,15 +2088,43 @@ int condition_is_supported(struct lttng_condition *condition)
 		 * Older kernel tracers don't expose the API to monitor their
 		 * buffers. Therefore, we reject triggers that require that
 		 * mechanism to be available to be evaluated.
+		 *
+		 * Assume unsupported on error.
 		 */
-		ret = kernel_supports_ring_buffer_snapshot_sample_positions();
+		is_supported = kernel_supports_ring_buffer_snapshot_sample_positions() == 1;
+		break;
+	}
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+	{
+		const struct lttng_event_rule *event_rule;
+		enum lttng_domain_type domain;
+		const enum lttng_condition_status status =
+				lttng_condition_event_rule_get_rule(
+						condition, &event_rule);
+
+		assert(status == LTTNG_CONDITION_STATUS_OK);
+
+		domain = lttng_event_rule_get_domain_type(event_rule);
+		if (domain != LTTNG_DOMAIN_KERNEL) {
+			is_supported = true;
+			goto end;
+		}
+
+		/*
+		 * Older kernel tracers can't emit notification. Therefore, we
+		 * reject triggers that require that mechanism to be available
+		 * to be evaluated.
+		 *
+		 * Assume unsupported on error.
+		 */
+		is_supported = kernel_supports_event_notifiers() == 1;
 		break;
 	}
 	default:
-		ret = 1;
+		is_supported = true;
 	}
 end:
-	return ret;
+	return is_supported;
 }
 
 /* Must be called with RCU read lock held. */
@@ -2316,15 +2366,10 @@ int handle_notification_thread_command_register_trigger(
 	condition = lttng_trigger_get_condition(trigger);
 	assert(condition);
 
-	ret = condition_is_supported(condition);
-	if (ret < 0) {
-		goto error;
-	} else if (ret == 0) {
+	/* Some conditions require tracers to implement a minimal ABI version. */
+	if (!condition_is_supported(condition)) {
 		*cmd_result = LTTNG_ERR_NOT_SUPPORTED;
 		goto error;
-	} else {
-		/* Feature is supported, continue. */
-		ret = 0;
 	}
 
 	trigger_ht_element = zmalloc(sizeof(*trigger_ht_element));
