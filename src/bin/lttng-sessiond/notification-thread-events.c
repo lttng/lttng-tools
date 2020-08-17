@@ -2609,17 +2609,19 @@ int handle_notification_thread_command_unregister_trigger(
 		}
 	}
 
-	/*
-	 * Remove and release the client list from
-	 * notification_trigger_clients_ht.
-	 */
-	client_list = get_client_list_from_condition(state, condition);
-	assert(client_list);
+	if (is_trigger_action_notify(trigger)) {
+		/*
+		 * Remove and release the client list from
+		 * notification_trigger_clients_ht.
+		 */
+		client_list = get_client_list_from_condition(state, condition);
+		assert(client_list);
 
-	/* Put new reference and the hashtable's reference. */
-	notification_client_list_put(client_list);
-	notification_client_list_put(client_list);
-	client_list = NULL;
+		/* Put new reference and the hashtable's reference. */
+		notification_client_list_put(client_list);
+		notification_client_list_put(client_list);
+		client_list = NULL;
+	}
 
 	/* Remove trigger from triggers_ht. */
 	trigger_ht_element = caa_container_of(triggers_ht_node,
