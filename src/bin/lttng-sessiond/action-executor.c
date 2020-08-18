@@ -143,8 +143,6 @@ static int client_handle_transmission_status(
 	struct action_executor *executor = user_data;
 	bool update_communication = true;
 
-	ASSERT_LOCKED(client->lock);
-
 	switch (status) {
 	case CLIENT_TRANSMISSION_STATUS_COMPLETE:
 		DBG("Successfully sent full notification to client, client_id = %" PRIu64,
@@ -158,12 +156,10 @@ static int client_handle_transmission_status(
 	case CLIENT_TRANSMISSION_STATUS_FAIL:
 		DBG("Communication error occurred while sending notification to client, client_id = %" PRIu64,
 				client->id);
-		client->communication.active = false;
 		break;
 	default:
 		ERR("Fatal error encoutered while sending notification to client, client_id = %" PRIu64,
 				client->id);
-		client->communication.active = false;
 		ret = -1;
 		goto end;
 	}
@@ -172,6 +168,7 @@ static int client_handle_transmission_status(
 		goto end;
 	}
 
+	/* Safe to read client's id without locking as it is immutable. */
 	ret = notification_thread_client_communication_update(
 			executor->notification_thread_handle, client->id,
 			status);

@@ -111,7 +111,16 @@ struct notification_client_list {
 };
 
 struct notification_client {
-	/* Nests within the notification_client_list lock. */
+	/*
+	 * Nests within the notification_client_list lock.
+	 *
+	 * Protects the outbound communication and the active flag which
+	 * is used by both the notification and action executor threads.
+	 *
+	 * The remaining fields of the object can be used without any
+	 * synchronization as they are either immutable (id, creds, version) or
+	 * only accessed by the notification thread.
+	 */
 	pthread_mutex_t lock;
 	notification_client_id id;
 	int socket;
@@ -205,6 +214,7 @@ bool notification_client_list_get(struct notification_client_list *list);
 LTTNG_HIDDEN
 void notification_client_list_put(struct notification_client_list *list);
 
+/* Only returns a non-zero value if a fatal error occurred. */
 typedef int (*report_client_transmission_result_cb)(
 		struct notification_client *client,
 		enum client_transmission_status status,
