@@ -2579,7 +2579,7 @@ int client_flush_outgoing_queue(struct notification_client *client,
 				client->socket);
 		to_send_count -= max(ret, 0);
 
-		memcpy(client->communication.outbound.buffer.data,
+		memmove(client->communication.outbound.buffer.data,
 				client->communication.outbound.buffer.data +
 				client->communication.outbound.buffer.size - to_send_count,
 				to_send_count);

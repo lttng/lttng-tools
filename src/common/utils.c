@@ -300,7 +300,7 @@ int expand_double_slashes_dot_and_dotdot(char *path)
 		 * Copy the current token which is neither a '.' nor a '..'.
 		 */
 		path[expanded_path_len++] = '/';
-		memcpy(&path[expanded_path_len], curr_char, curr_token_len);
+		memmove(&path[expanded_path_len], curr_char, curr_token_len);
 		expanded_path_len += curr_token_len;
 	}
 
