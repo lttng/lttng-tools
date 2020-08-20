@@ -140,7 +140,7 @@ end:
  */
 int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		unsigned int offset, unsigned int len, uint64_t version,
-		char *data)
+		const char *data)
 {
 	int ret = 0;
 	struct consumer_metadata_cache *cache;
