@@ -2869,7 +2869,7 @@ enum client_transmission_status client_flush_outgoing_queue(
 				client->socket);
 		to_send_count -= max(ret, 0);
 
-		memcpy(client->communication.outbound.payload.buffer.data,
+		memmove(client->communication.outbound.payload.buffer.data,
 				pv.buffer.data +
 				pv.buffer.size - to_send_count,
 				to_send_count);
