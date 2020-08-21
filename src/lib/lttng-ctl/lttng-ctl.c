@@ -2970,7 +2970,11 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
 	/*
 	 * This is needed to populate the trigger object size for the command
@@ -3030,7 +3034,11 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_UNREGISTER_TRIGGER;
 
-	lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+	if (ret) {
+		ret = -LTTNG_ERR_NOMEM;
+		goto end;
+	}
 
 	/*
 	 * This is needed to populate the trigger object size for the command
