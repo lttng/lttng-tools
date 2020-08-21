@@ -563,7 +563,9 @@ static void *action_executor_thread(void *_data)
 		pthread_mutex_lock(&executor->work.lock);
 	}
 
-	pthread_mutex_unlock(&executor->work.lock);
+	if (executor->should_quit) {
+		pthread_mutex_unlock(&executor->work.lock);
+	}
 	DBG("Left work execution loop");
 
 	health_code_update();
