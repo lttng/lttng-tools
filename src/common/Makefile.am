@@ -52,6 +52,7 @@ libcommon_la_SOURCES = \
 	fd-handle.c fd-handle.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
+	kernel-probe.c \
 	location.c \
 	mi-lttng.c mi-lttng.h \
 	notification.c \

@@ -117,7 +117,8 @@ lttnginclude_HEADERS = \
 	lttng/destruction-handle.h \
 	lttng/clear.h \
 	lttng/clear-handle.h \
-	lttng/tracker.h
+	lttng/tracker.h \
+	lttng/kernel-probe.h
 
 lttngactioninclude_HEADERS= \
 	lttng/action/action.h \
@@ -171,5 +172,6 @@ noinst_HEADERS = \
 	lttng/userspace-probe-internal.h \
 	lttng/session-internal.h \
 	lttng/session-descriptor-internal.h \
+	lttng/kernel-probe-internal.h \
 	version.h \
 	version.i

@@ -142,6 +142,7 @@ health_check
 /tests/perf/test_perf_raw
 /tests/unit/test_string_utils
 /tests/unit/test_buffer_view
+/tests/unit/test_kernel_probe
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 /tests/utils/testapp/userspace-probe-elf-binary/userspace-probe-elf-binary
 /tests/utils/testapp/userspace-probe-elf-cxx-binary/userspace-probe-elf-cxx-binary

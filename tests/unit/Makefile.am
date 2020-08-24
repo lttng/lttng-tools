@@ -24,7 +24,8 @@ TESTS = test_kernel_data \
 	test_uuid \
 	test_buffer_view \
 	test_payload \
-	test_unix_socket
+	test_unix_socket \
+	test_kernel_probe
 
 LIBTAP=$(top_builddir)/tests/utils/tap/libtap.la
 
@@ -45,7 +46,8 @@ noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_fd_tracker test_uuid \
                   test_buffer_view \
                   test_payload \
-                  test_unix_socket
+                  test_unix_socket \
+                  test_kernel_probe
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
@@ -214,3 +216,7 @@ test_payload_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON)
 # unix socket test
 test_unix_socket_SOURCES = test_unix_socket.c
 test_unix_socket_LDADD = $(LIBTAP) $(LIBSESSIOND_COMM) $(LIBCOMMON)
+
+# Kernel probe location api test
+test_kernel_probe_SOURCES = test_kernel_probe.c
+test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
