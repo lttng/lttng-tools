@@ -71,6 +71,7 @@ libcommon_la_SOURCES = \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
 	futex.c futex.h \
 	kernel-probe.c \
+	index-allocator.c index-allocator.h \
 	location.c \
 	log-level-rule.c \
 	mi-lttng.c mi-lttng.h \
