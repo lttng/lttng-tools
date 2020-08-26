@@ -101,7 +101,7 @@ int open_directory_handle(void *_args, int *out_fds)
 	if (!lttng_directory_handle_uses_fd(new_handle)) {
 		ret = ENOTSUP;
 	} else {
-#ifdef COMPAT_DIRFD
+#ifdef HAVE_DIRFD
 		*out_fds = new_handle->dirfd;
 #else
 		abort();
@@ -112,7 +112,7 @@ end:
 	return ret;
 }
 
-#ifdef COMPAT_DIRFD
+#ifdef HAVE_DIRFD
 static
 int fd_close(void *unused, int *in_fds)
 {
@@ -182,7 +182,7 @@ struct lttng_directory_handle *fd_tracker_create_directory_handle_from_handle(
 	}
 	new_handle = open_args.ret_handle;
 
-#ifdef COMPAT_DIRFD
+#ifdef HAVE_DIRFD
 	new_handle->destroy_cb = directory_handle_destroy;
 	new_handle->destroy_cb_data = tracker;
 #endif

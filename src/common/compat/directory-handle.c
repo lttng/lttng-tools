@@ -78,7 +78,7 @@ void lttng_directory_handle_invalidate(struct lttng_directory_handle *handle);
 static
 void lttng_directory_handle_release(struct urcu_ref *ref);
 
-#ifdef COMPAT_DIRFD
+#ifdef HAVE_DIRFD
 
 /*
  * Special inode number reserved to represent the "current working directory".
@@ -378,7 +378,7 @@ int _run_as_rmdir_recursive(
 	return run_as_rmdirat_recursive(handle->dirfd, name, uid, gid, flags);
 }
 
-#else /* COMPAT_DIRFD */
+#else /* HAVE_DIRFD */
 
 static
 int get_full_path(const struct lttng_directory_handle *handle,
@@ -891,7 +891,7 @@ end:
 	return ret;
 }
 
-#endif /* COMPAT_DIRFD */
+#endif /* HAVE_DIRFD */
 
 /* Common implementation. */
 

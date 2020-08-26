@@ -632,10 +632,8 @@ AS_IF([test "x$ac_cv_func_dirfd" = "xyes"],
 )
 AX_CONFIG_FEATURE(
 	[dirfd], [Use directory file descriptors],
-	[COMPAT_DIRFD], [This platform supports directory file descriptors.],
-	[enable_dirfd="yes"], [enable_dirfd="no"]
+	[HAVE_DIRFD], [This platform supports directory file descriptors.]
 )
-AM_CONDITIONAL([COMPAT_DIRFD], [ test "$enable_dirfd" = "yes" ])
 
 AM_CONDITIONAL([TEST_JAVA_JUL_AGENT], [test "x$test_java_agent_jul" = "xyes"])
 AM_CONDITIONAL([TEST_JAVA_LOG4J_AGENT], [test "x$test_java_agent_log4j" = "xyes"])

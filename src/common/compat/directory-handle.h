@@ -25,7 +25,7 @@ enum lttng_directory_handle_rmdir_recursive_flags {
  * This wrapper provides a handle that is either a copy of a directory's path
  * or a directory file descriptors, depending on the platform's capabilities.
  */
-#ifdef COMPAT_DIRFD
+#ifdef HAVE_DIRFD
 
 struct lttng_directory_handle;
 
