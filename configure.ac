@@ -621,10 +621,8 @@ AX_HAVE_EPOLL(
 )
 AX_CONFIG_FEATURE(
 	[epoll], [This platform supports epoll(7)],
-	[HAVE_EPOLL], [This platform supports epoll(7).],
-	[enable_epoll="yes"], [enable_epoll="no"]
+	[HAVE_EPOLL], [This platform supports epoll(7).]
 )
-AM_CONDITIONAL([COMPAT_EPOLL], [ test "$enable_epoll" = "yes" ])
 
 AS_IF([test "x$ac_cv_func_dirfd" = "xyes"],
 	[AX_CONFIG_FEATURE_ENABLE(dirfd)],
