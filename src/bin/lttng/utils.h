@@ -9,6 +9,7 @@
 #define _LTTNG_UTILS_H
 
 #include <popt.h>
+#include "common/argpar/argpar.h"
 
 #include <lttng/lttng.h>
 
@@ -23,6 +24,7 @@ char *get_session_name(void);
 char *get_session_name_quiet(void);
 void list_commands(struct cmd_struct *commands, FILE *ofp);
 void list_cmd_options(FILE *ofp, struct poptOption *options);
+void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options);
 
 /*
  * Return the minimum order for which x <= (1UL << order).

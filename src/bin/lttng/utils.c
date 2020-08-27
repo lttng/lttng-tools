@@ -129,6 +129,24 @@ void list_cmd_options(FILE *ofp, struct poptOption *options)
 }
 
 /*
+ * Same as list_cmd_options, but for options specified for argpar.
+ */
+void list_cmd_options_argpar(FILE *ofp, const struct argpar_opt_descr *options)
+{
+	int i;
+
+	for (i = 0; options[i].long_name != NULL; i++) {
+		const struct argpar_opt_descr *option = &options[i];
+
+		fprintf(ofp, "--%s\n", option->long_name);
+
+		if (isprint(option->short_name)) {
+			fprintf(ofp, "-%c\n", option->short_name);
+		}
+	}
+}
+
+/*
  * fls: returns the position of the most significant bit.
  * Returns 0 if no bit is set, else returns the position of the most
  * significant bit (from 1 to 32 on 32-bit, from 1 to 64 on 64-bit).
