@@ -59,4 +59,16 @@ enum lttng_error_code utils_user_id_from_name(
 enum lttng_error_code utils_group_id_from_name(
 		const char *group_name, gid_t *group_id);
 
+/*
+ * Parse `str` as an unsigned long long value.
+ *
+ * Return 0 on success.  Return -1 on failure which can be because:
+ *
+ * - `str` is zero length
+ * - `str` contains invalid
+ */
+LTTNG_HIDDEN
+int utils_parse_unsigned_long_long(const char *str,
+		unsigned long long *value);
+
 #endif /* _COMMON_UTILS_H */
