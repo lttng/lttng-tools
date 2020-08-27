@@ -31,7 +31,8 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/clear.c \
 				loglevel.c loglevel.h \
 				utils.c utils.h \
-				lttng.c
+				lttng.c \
+				uprobe.c uprobe.h
 
 lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
 
