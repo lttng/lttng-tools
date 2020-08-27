@@ -26,7 +26,10 @@
 /* Mi dependancy */
 #include <common/mi-lttng.h>
 
+#include <lttng/event-internal.h>
+
 #include "../command.h"
+#include "../loglevel.h"
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API	"255"
@@ -561,190 +564,6 @@ end:
 	return ret;
 }
 
-/*
- * Maps LOG4j loglevel from string to value
- */
-static int loglevel_log4j_str_to_value(const char *inputstr)
-{
-	int i = 0;
-	char str[LTTNG_SYMBOL_NAME_LEN];
-
-	if (!inputstr || strlen(inputstr) == 0) {
-		return -1;
-	}
-
-	/*
-	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
-	 * added at the end of the loop so a the upper bound we avoid the overflow.
-	 */
-	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
-		str[i] = toupper(inputstr[i]);
-		i++;
-	}
-	str[i] = '\0';
-
-	if (!strcmp(str, "LOG4J_OFF") || !strcmp(str, "OFF")) {
-		return LTTNG_LOGLEVEL_LOG4J_OFF;
-	} else if (!strcmp(str, "LOG4J_FATAL") || !strcmp(str, "FATAL")) {
-		return LTTNG_LOGLEVEL_LOG4J_FATAL;
-	} else if (!strcmp(str, "LOG4J_ERROR") || !strcmp(str, "ERROR")) {
-		return LTTNG_LOGLEVEL_LOG4J_ERROR;
-	} else if (!strcmp(str, "LOG4J_WARN") || !strcmp(str, "WARN")) {
-		return LTTNG_LOGLEVEL_LOG4J_WARN;
-	} else if (!strcmp(str, "LOG4J_INFO") || !strcmp(str, "INFO")) {
-		return LTTNG_LOGLEVEL_LOG4J_INFO;
-	} else if (!strcmp(str, "LOG4J_DEBUG") || !strcmp(str, "DEBUG")) {
-		return LTTNG_LOGLEVEL_LOG4J_DEBUG;
-	} else if (!strcmp(str, "LOG4J_TRACE") || !strcmp(str, "TRACE")) {
-		return LTTNG_LOGLEVEL_LOG4J_TRACE;
-	} else if (!strcmp(str, "LOG4J_ALL") || !strcmp(str, "ALL")) {
-		return LTTNG_LOGLEVEL_LOG4J_ALL;
-	} else {
-		return -1;
-	}
-}
-
-/*
- * Maps JUL loglevel from string to value
- */
-static int loglevel_jul_str_to_value(const char *inputstr)
-{
-	int i = 0;
-	char str[LTTNG_SYMBOL_NAME_LEN];
-
-	if (!inputstr || strlen(inputstr) == 0) {
-		return -1;
-	}
-
-	/*
-	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
-	 * added at the end of the loop so a the upper bound we avoid the overflow.
-	 */
-	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
-		str[i] = toupper(inputstr[i]);
-		i++;
-	}
-	str[i] = '\0';
-
-	if (!strcmp(str, "JUL_OFF") || !strcmp(str, "OFF")) {
-		return LTTNG_LOGLEVEL_JUL_OFF;
-	} else if (!strcmp(str, "JUL_SEVERE") || !strcmp(str, "SEVERE")) {
-		return LTTNG_LOGLEVEL_JUL_SEVERE;
-	} else if (!strcmp(str, "JUL_WARNING") || !strcmp(str, "WARNING")) {
-		return LTTNG_LOGLEVEL_JUL_WARNING;
-	} else if (!strcmp(str, "JUL_INFO") || !strcmp(str, "INFO")) {
-		return LTTNG_LOGLEVEL_JUL_INFO;
-	} else if (!strcmp(str, "JUL_CONFIG") || !strcmp(str, "CONFIG")) {
-		return LTTNG_LOGLEVEL_JUL_CONFIG;
-	} else if (!strcmp(str, "JUL_FINE") || !strcmp(str, "FINE")) {
-		return LTTNG_LOGLEVEL_JUL_FINE;
-	} else if (!strcmp(str, "JUL_FINER") || !strcmp(str, "FINER")) {
-		return LTTNG_LOGLEVEL_JUL_FINER;
-	} else if (!strcmp(str, "JUL_FINEST") || !strcmp(str, "FINEST")) {
-		return LTTNG_LOGLEVEL_JUL_FINEST;
-	} else if (!strcmp(str, "JUL_ALL") || !strcmp(str, "ALL")) {
-		return LTTNG_LOGLEVEL_JUL_ALL;
-	} else {
-		return -1;
-	}
-}
-
-/*
- * Maps Python loglevel from string to value
- */
-static int loglevel_python_str_to_value(const char *inputstr)
-{
-	int i = 0;
-	char str[LTTNG_SYMBOL_NAME_LEN];
-
-	if (!inputstr || strlen(inputstr) == 0) {
-		return -1;
-	}
-
-	/*
-	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
-	 * added at the end of the loop so a the upper bound we avoid the overflow.
-	 */
-	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
-		str[i] = toupper(inputstr[i]);
-		i++;
-	}
-	str[i] = '\0';
-
-	if (!strcmp(str, "PYTHON_CRITICAL") || !strcmp(str, "CRITICAL")) {
-		return LTTNG_LOGLEVEL_PYTHON_CRITICAL;
-	} else if (!strcmp(str, "PYTHON_ERROR") || !strcmp(str, "ERROR")) {
-		return LTTNG_LOGLEVEL_PYTHON_ERROR;
-	} else if (!strcmp(str, "PYTHON_WARNING") || !strcmp(str, "WARNING")) {
-		return LTTNG_LOGLEVEL_PYTHON_WARNING;
-	} else if (!strcmp(str, "PYTHON_INFO") || !strcmp(str, "INFO")) {
-		return LTTNG_LOGLEVEL_PYTHON_INFO;
-	} else if (!strcmp(str, "PYTNON_DEBUG") || !strcmp(str, "DEBUG")) {
-		return LTTNG_LOGLEVEL_PYTHON_DEBUG;
-	} else if (!strcmp(str, "PYTHON_NOTSET") || !strcmp(str, "NOTSET")) {
-		return LTTNG_LOGLEVEL_PYTHON_NOTSET;
-	} else {
-		return -1;
-	}
-}
-
-/*
- * Maps loglevel from string to value
- */
-static
-int loglevel_str_to_value(const char *inputstr)
-{
-	int i = 0;
-	char str[LTTNG_SYMBOL_NAME_LEN];
-
-	if (!inputstr || strlen(inputstr) == 0) {
-		return -1;
-	}
-
-	/*
-	 * Loop up to LTTNG_SYMBOL_NAME_LEN minus one because the NULL bytes is
-	 * added at the end of the loop so a the upper bound we avoid the overflow.
-	 */
-	while (i < (LTTNG_SYMBOL_NAME_LEN - 1) && inputstr[i] != '\0') {
-		str[i] = toupper(inputstr[i]);
-		i++;
-	}
-	str[i] = '\0';
-	if (!strcmp(str, "TRACE_EMERG") || !strcmp(str, "EMERG")) {
-		return LTTNG_LOGLEVEL_EMERG;
-	} else if (!strcmp(str, "TRACE_ALERT") || !strcmp(str, "ALERT")) {
-		return LTTNG_LOGLEVEL_ALERT;
-	} else if (!strcmp(str, "TRACE_CRIT") || !strcmp(str, "CRIT")) {
-		return LTTNG_LOGLEVEL_CRIT;
-	} else if (!strcmp(str, "TRACE_ERR") || !strcmp(str, "ERR")) {
-		return LTTNG_LOGLEVEL_ERR;
-	} else if (!strcmp(str, "TRACE_WARNING") || !strcmp(str, "WARNING")) {
-		return LTTNG_LOGLEVEL_WARNING;
-	} else if (!strcmp(str, "TRACE_NOTICE") || !strcmp(str, "NOTICE")) {
-		return LTTNG_LOGLEVEL_NOTICE;
-	} else if (!strcmp(str, "TRACE_INFO") || !strcmp(str, "INFO")) {
-		return LTTNG_LOGLEVEL_INFO;
-	} else if (!strcmp(str, "TRACE_DEBUG_SYSTEM") || !strcmp(str, "DEBUG_SYSTEM") || !strcmp(str, "SYSTEM")) {
-		return LTTNG_LOGLEVEL_DEBUG_SYSTEM;
-	} else if (!strcmp(str, "TRACE_DEBUG_PROGRAM") || !strcmp(str, "DEBUG_PROGRAM") || !strcmp(str, "PROGRAM")) {
-		return LTTNG_LOGLEVEL_DEBUG_PROGRAM;
-	} else if (!strcmp(str, "TRACE_DEBUG_PROCESS") || !strcmp(str, "DEBUG_PROCESS") || !strcmp(str, "PROCESS")) {
-		return LTTNG_LOGLEVEL_DEBUG_PROCESS;
-	} else if (!strcmp(str, "TRACE_DEBUG_MODULE") || !strcmp(str, "DEBUG_MODULE") || !strcmp(str, "MODULE")) {
-		return LTTNG_LOGLEVEL_DEBUG_MODULE;
-	} else if (!strcmp(str, "TRACE_DEBUG_UNIT") || !strcmp(str, "DEBUG_UNIT") || !strcmp(str, "UNIT")) {
-		return LTTNG_LOGLEVEL_DEBUG_UNIT;
-	} else if (!strcmp(str, "TRACE_DEBUG_FUNCTION") || !strcmp(str, "DEBUG_FUNCTION") || !strcmp(str, "FUNCTION")) {
-		return LTTNG_LOGLEVEL_DEBUG_FUNCTION;
-	} else if (!strcmp(str, "TRACE_DEBUG_LINE") || !strcmp(str, "DEBUG_LINE") || !strcmp(str, "LINE")) {
-		return LTTNG_LOGLEVEL_DEBUG_LINE;
-	} else if (!strcmp(str, "TRACE_DEBUG") || !strcmp(str, "DEBUG")) {
-		return LTTNG_LOGLEVEL_DEBUG;
-	} else {
-		return -1;
-	}
-}
-
 static
 const char *print_channel_name(const char *name)
 {
@@ -1081,17 +900,33 @@ static int enable_events(char *session_name)
 			strcpy(ev->name, "*");
 			ev->loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
+				int name_search_ret;
+
 				assert(opt_userspace || opt_jul || opt_log4j || opt_python);
+
 				if (opt_userspace) {
-					ev->loglevel = loglevel_str_to_value(opt_loglevel);
+					enum lttng_loglevel loglevel;
+
+					name_search_ret = loglevel_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else if (opt_jul) {
-					ev->loglevel = loglevel_jul_str_to_value(opt_loglevel);
+					enum lttng_loglevel_jul loglevel;
+
+					name_search_ret = loglevel_jul_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else if (opt_log4j) {
-					ev->loglevel = loglevel_log4j_str_to_value(opt_loglevel);
+					enum lttng_loglevel_log4j loglevel;
+
+					name_search_ret = loglevel_log4j_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else if (opt_python) {
-					ev->loglevel = loglevel_python_str_to_value(opt_loglevel);
+					enum lttng_loglevel_python loglevel;
+
+					name_search_ret = loglevel_python_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				}
-				if (ev->loglevel == -1) {
+
+				if (name_search_ret == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
@@ -1440,12 +1275,16 @@ static int enable_events(char *session_name)
 
 			ev->loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
-				ev->loglevel = loglevel_str_to_value(opt_loglevel);
-				if (ev->loglevel == -1) {
+				enum lttng_loglevel loglevel;
+				const int name_search_ret = loglevel_name_to_value(opt_loglevel, &loglevel);
+
+				if (name_search_ret == -1) {
 					ERR("Unknown loglevel %s", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;
 				}
+
+				ev->loglevel = (int) loglevel;
 			} else {
 				ev->loglevel = -1;
 			}
@@ -1459,14 +1298,26 @@ static int enable_events(char *session_name)
 
 			ev->loglevel_type = opt_loglevel_type;
 			if (opt_loglevel) {
+				int name_search_ret;
+
 				if (opt_jul) {
-					ev->loglevel = loglevel_jul_str_to_value(opt_loglevel);
+					enum lttng_loglevel_jul loglevel;
+
+					name_search_ret = loglevel_jul_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else if (opt_log4j) {
-					ev->loglevel = loglevel_log4j_str_to_value(opt_loglevel);
+					enum lttng_loglevel_log4j loglevel;
+
+					name_search_ret = loglevel_log4j_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				} else if (opt_python) {
-					ev->loglevel = loglevel_python_str_to_value(opt_loglevel);
+					enum lttng_loglevel_python loglevel;
+
+					name_search_ret = loglevel_python_name_to_value(opt_loglevel, &loglevel);
+					ev->loglevel = (int) loglevel;
 				}
-				if (ev->loglevel == -1) {
+
+				if (name_search_ret) {
 					ERR("Unknown loglevel %s", opt_loglevel);
 					ret = -LTTNG_ERR_INVALID;
 					goto error;

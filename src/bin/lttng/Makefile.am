@@ -29,7 +29,9 @@ lttng_SOURCES = command.h conf.c conf.h commands/start.c \
 				commands/enable_rotation.c \
 				commands/disable_rotation.c \
 				commands/clear.c \
-				utils.c utils.h lttng.c
+				loglevel.c loglevel.h \
+				utils.c utils.h \
+				lttng.c
 
 lttng_CFLAGS = $(AM_CFLAGS) $(POPT_CFLAGS)
 
