@@ -2070,7 +2070,7 @@ int lttng_destroy_session_no_wait(const char *session_name)
 	enum lttng_error_code ret_code;
 
 	ret_code = lttng_destroy_session_ext(session_name, NULL);
-	return ret_code == LTTNG_OK ? ret_code : -ret_code;
+	return ret_code == LTTNG_OK ? 0 : -ret_code;
 }
 
 /*
