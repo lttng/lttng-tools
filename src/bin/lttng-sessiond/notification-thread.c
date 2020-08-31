@@ -27,6 +27,7 @@
 #include "lttng-sessiond.h"
 #include "health-sessiond.h"
 #include "thread.h"
+#include "testpoint.h"
 
 #include "kernel.h"
 #include <common/kernel-ctl/kernel-ctl.h>
@@ -35,6 +36,8 @@
 #include <urcu/list.h>
 #include <urcu/rculfhash.h>
 
+
+int notifier_consumption_paused;
 /*
  * Destroy the thread data previously created by the init function.
  */
@@ -574,6 +577,17 @@ static int handle_event_notification_pipe(int event_source_fd,
 		goto end;
 	}
 
+	if (testpoint(sessiond_handle_notifier_event_pipe)) {
+		ret = 0;
+		goto end;
+	}
+
+	if (caa_unlikely(notifier_consumption_paused)) {
+		DBG("Event notifier notification consumption paused, sleeping...");
+		sleep(1);
+		goto end;
+	}
+
 	ret = handle_notification_thread_event_notification(
 			state, event_source_fd, domain);
 	if (ret) {
@@ -582,6 +596,7 @@ static int handle_event_notification_pipe(int event_source_fd,
 		ret = -1;
 		goto end;
 	}
+
 end:
 	return ret;
 }
@@ -637,6 +652,10 @@ void *thread_notification(void *data)
 
 	ret = init_thread_state(handle, &state);
 	if (ret) {
+		goto end;
+	}
+
+	if (testpoint(sessiond_thread_notification)) {
 		goto end;
 	}
 

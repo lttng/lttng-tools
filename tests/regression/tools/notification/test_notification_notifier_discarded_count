@@ -1,0 +1,264 @@
+#!/bin/bash
+#
+# Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+CURDIR=$(dirname "$0")/
+TESTDIR=$CURDIR/../../../
+
+TMPDIR=$(mktemp -d)
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+
+TESTPOINT_BASE_PATH=$(readlink -f "$TMPDIR/lttng.t_p_n")
+TESTPOINT_PIPE_PATH=$(mktemp -u "${TESTPOINT_BASE_PATH}.XXXXXX")
+TESTPOINT=$(readlink -f "${CURDIR}/.libs/libpause_sessiond.so")
+
+SH_TAP=1
+
+# shellcheck source=../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+# shellcheck source=./util_event_generator.sh
+source "$CURDIR/util_event_generator.sh"
+
+FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
+FULL_LTTNG_SESSIOND_BIN="${TESTDIR}/../src/bin/lttng-sessiond/lttng-sessiond"
+
+UST_NUM_TESTS=16
+KERNEL_NUM_TESTS=15
+NUM_TESTS=$(($UST_NUM_TESTS + $KERNEL_NUM_TESTS))
+
+plan_tests $NUM_TESTS
+
+function test_kernel_notifier_discarded_count
+{
+	local sessiond_pipe=()
+	local trigger_name="my_trigger"
+	local list_triggers_stdout=$(mktemp -t list_triggers_stdout.XXXXXX)
+
+	# Used on sessiond launch.
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
+		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
+		LD_PRELOAD=${TESTPOINT}"
+
+	diag "Kernel event notifer error counter"
+
+	start_lttng_sessiond_notap
+
+	# This is needed since the testpoint creates a pipe with the sessiond
+	# type suffixed.
+	for f in "$TESTPOINT_BASE_PATH"*; do
+		sessiond_pipe+=("$f")
+	done
+
+	lttng_add_trigger_ok "$trigger_name" \
+		--condition on-event --kernel lttng_test_filter_event \
+		--action notify
+
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+
+	# Confirm that the discarded notification line is present.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	ok $? "No discarded tracer notification"
+
+	# Stop consumption of notifier tracer notifications.
+	echo -n 1 > $sessiond_pipe
+
+	# The notifier ring buffer configuration is currently made of 16 4096
+	# bytes subbuffers. Each kernel notification is at least 42 bytes long.
+	# To fill it, we need to generate (16 * 4096)/42 = 1561 notifications.
+	# That number is a bit larger than what we need since some of the space
+	# is lost in subbuffer boundaries.
+	echo -n "200000" > /proc/lttng-test-filter-event
+
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+
+	# Confirm that the discarded notification line is present. To avoid
+	# false positives.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded"
+	ok $? "Tracer notification discarded line printed"
+
+	# Confirm that the number of tracer notifications discarded is not zero.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	isnt $? 0 "Discarded tracer notification number non-zero as expected"
+
+	lttng_remove_trigger_ok "$trigger_name"
+
+	# Confirm that no notifier is enabled.
+	list_triggers_line_count=$("$FULL_LTTNG_BIN" list-triggers | wc -l)
+	is "$list_triggers_line_count" "0" "No \`on-event\` kernel notifier enabled as expected"
+
+	# Enable another notifier and list it to confirm the counter was cleared.
+	lttng_add_trigger_ok "$trigger_name" \
+		--condition on-event --kernel lttng_test_filter_event \
+		--action notify
+
+	# Confirm that the discarded notification line is present.
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	ok $? "No discarded tracer notification"
+
+	lttng_remove_trigger_ok "$trigger_name"
+
+	stop_lttng_sessiond_notap
+
+	unset LTTNG_SESSIOND_ENV_VARS
+
+	rm -f "$list_triggers_stdout"
+}
+
+function test_kernel_notifier_discarded_count_max_bucket
+{
+	start_lttng_sessiond "" "--event-notifier-error-number-of-bucket=3"
+
+	diag "Kernel event notifer error counter bucket limit"
+	for i in $(seq 3); do
+		lttng_add_trigger_ok "$i" \
+			--condition on-event --kernel my_event_that_doesnt_need_to_really_exist_$i \
+			--action notify
+	done
+
+	for i in $(seq 4 5); do
+		lttng_add_trigger_fail "$i" \
+			--condition on-event --kernel my_event_that_doesnt_need_to_really_exist_$i \
+			--action notify
+	done
+
+	stop_lttng_sessiond_notap
+}
+
+function test_ust_notifier_discarded_count
+{
+	local sessiond_pipe=()
+	local trigger_name="my_trigger"
+	local list_triggers_stdout=$(mktemp -t list_triggers_stdout.XXXXXX)
+	local NR_USEC_WAIT=0
+	local PIPE_SIZE
+	local NR_ITER
+
+	diag "UST event notifer error counter"
+
+	PIPE_SIZE=$("$CURDIR"/default_pipe_size_getter)
+	if [ $? -ne 0 ]; then
+		BAIL_OUT "Failed to get system default pipe size"
+	else
+		diag "Default system pipe size: $PIPE_SIZE bytes"
+	fi
+
+	# Find the number of events needed to overflow the event notification
+	# pipe buffer. Each LTTng-UST notification is at least 42 bytes long.
+	# Double that number to ensure enough events are created to overflow
+	# the buffer.
+	NR_ITER=$(( (PIPE_SIZE / 42) * 2 ))
+	diag "Test application will emit $NR_ITER events"
+
+	# Used on sessiond launch.
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
+		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
+		LD_PRELOAD=${TESTPOINT}"
+
+	start_lttng_sessiond_notap
+
+	# This is needed since the testpoint create a pipe with the sessiond
+	# type suffixed.
+	for f in "$TESTPOINT_BASE_PATH"*; do
+		sessiond_pipe+=("$f")
+	done
+
+	lttng_add_trigger_ok "$trigger_name" \
+		--condition on-event --userspace tp:tptest \
+		--action notify
+
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+
+	# Confirm that the discarded notification line is present.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	ok $? "No discarded tracer notification"
+
+	# Stop consumption of notifier tracer notifications.
+	echo -n 1 > $sessiond_pipe
+
+	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
+	ok $? "Generating $NR_ITER tracer notifications"
+
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+
+	# Confirm that the discarded notification line is present. To avoid
+	# false positive.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded"
+	ok $? "Tracer notification discarded line printed"
+
+	# Confirm that the number of tracer notifications discarded is not zero.
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	isnt $? 0 "Discarded tracer notification number non-zero as expected"
+
+	# Remove the notifier.
+	lttng_remove_trigger_ok "$trigger_name"
+
+	# Confirm that no notifier is enabled.
+	list_triggers_line_count=$("$FULL_LTTNG_BIN" list-triggers | wc -l)
+	is "$list_triggers_line_count" "0" "No \`on-event\` userspace notifier enabled as expected"
+
+	# Enable another notifier and list it to confirm the counter was cleared.
+	lttng_add_trigger_ok "$trigger_name" \
+		--condition on-event --userspace tp:tptest \
+		--action notify
+
+	# Confirm that the discarded notification line is present.
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
+	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	ok $? "No discarded tracer notification"
+
+	lttng_remove_trigger_ok "$trigger_name"
+
+	stop_lttng_sessiond_notap
+
+	unset LTTNG_SESSIOND_ENV_VARS
+
+	rm -f "$list_triggers_stdout"
+}
+function test_ust_notifier_discarded_count_max_bucket
+{
+	start_lttng_sessiond "" "--event-notifier-error-number-of-bucket=3"
+
+	diag "UST event notifer error counter bucket limit"
+	for i in $(seq 3); do
+		lttng_add_trigger_ok "$i" \
+			--condition on-event --userspace my_event_that_doesnt_need_to_really_exist_$i \
+			--action notify
+	done
+
+	for i in $(seq 4 5); do
+		lttng_add_trigger_fail "$i" \
+			--condition on-event --userspace my_event_that_doesnt_need_to_really_exist_$i \
+			--action notify
+	done
+
+	stop_lttng_sessiond_notap
+}
+
+test_ust_notifier_discarded_count
+test_ust_notifier_discarded_count_max_bucket
+
+if [ "$(id -u)" == "0" ]; then
+
+	validate_lttng_modules_present
+
+	modprobe lttng-test
+
+	test_kernel_notifier_discarded_count
+
+	test_kernel_notifier_discarded_count_max_bucket
+
+	modprobe --remove lttng-test
+
+	rm -rf "${sessiond_pipe[@]}" 2> /dev/null
+else
+	# Kernel tests are skipped.
+	skip 0 "Root access is needed. Skipping all kernel notification tests." $KERNEL_NUM_TESTS
+fi
+
+rm -rf "$TMPDIR"

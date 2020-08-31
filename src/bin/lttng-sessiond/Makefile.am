@@ -58,6 +58,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        event-notifier-error-accounting.c event-notifier-error-accounting.h \
                        action-executor.c action-executor.h
 
+lttng_sessiond_LDFLAGS = -rdynamic
+
 if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h notify-apps.c \

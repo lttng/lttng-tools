@@ -22,5 +22,7 @@ TESTPOINT_DECL(sessiond_thread_manage_consumer);
 TESTPOINT_DECL(sessiond_thread_ht_cleanup);
 TESTPOINT_DECL(sessiond_thread_app_manage_notify);
 TESTPOINT_DECL(sessiond_thread_app_reg_dispatch);
+TESTPOINT_DECL(sessiond_thread_notification);
+TESTPOINT_DECL(sessiond_handle_notifier_event_pipe);
 
 #endif /* SESSIOND_TESTPOINT_H */
