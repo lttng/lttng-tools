@@ -10,7 +10,7 @@ TEST_DESC="Kernel tracer - System calls"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=183
+NUM_TESTS=214
 
 # `gen-syscall-event` starts and waits for the creation a file passed by
 # arguments to start executing 3 syscalls (open,read,close) and returning.
@@ -329,6 +329,96 @@ function test_syscall_enable_all_disable_all_enable_all()
 	rm -rf $TRACE_PATH
 }
 
+function test_syscall_enable_all_enable_one_disable_all()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_all_enable_one_disable_all"
+
+	diag "Syscall trace all events, enable one and disable all"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+
+	# enable one specific syscall, "openat"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME openat
+
+	# disable all syscalls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+
+	trace_testapp
+
+	# The trace shouldn't contain any syscalls, disable-all should disable
+	# even individually specified syscalls
+	trace_match_only openat 0 "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_syscall_enable_one_enable_all_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_one_enable_all_disable_one"
+
+	diag "Syscall trace all events and enable/disable one"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# enable one specific syscall, "openat"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME openat
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+
+	# disable one specific syscall, "openat"
+	lttng_disable_kernel_syscall_ok $SESSION_NAME openat
+
+	trace_testapp
+
+	# The trace should contain all syscalls, including 'openat' because
+	# enable-all overrides individually disabled syscalls.
+	validate_trace openat "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
+function test_syscall_enable_one_enable_all_disable_all_disable_one()
+{
+	TRACE_PATH=$(mktemp -d)
+	SESSION_NAME="kernel_syscall_enable_one_enable_all_disable_all_disable_one"
+
+	diag "Syscall trace all events and enable/disable one"
+
+	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
+
+	# enable one specific syscall, "openat"
+	lttng_enable_kernel_syscall_ok $SESSION_NAME openat
+
+	# enable all syscalls
+	lttng_enable_kernel_syscall_ok $SESSION_NAME
+
+	# disable all syscalls
+	lttng_disable_kernel_syscall_ok $SESSION_NAME
+
+	# disable one specific syscall, "openat"
+	lttng_disable_kernel_syscall_ok $SESSION_NAME openat
+
+	trace_testapp
+
+	# The trace shouldn't contain any syscalls, disable-all should disable
+	# even individually specified syscalls
+	trace_match_only openat 0 "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf "$TRACE_PATH"
+}
+
 function test_syscall_enable_all_disable_all_twice()
 {
 	TRACE_PATH=$(mktemp -d)
@@ -596,6 +686,9 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	test_syscall_enable_all_disable_all
 	test_syscall_enable_all_disable_all_enable_all
 	test_syscall_enable_all_disable_all_twice
+	test_syscall_enable_all_enable_one_disable_all
+	test_syscall_enable_one_enable_all_disable_one
+	test_syscall_enable_one_enable_all_disable_all_disable_one
 	test_syscall_enable_one_disable_one
 	test_syscall_enable_two_disable_two
 	test_syscall_enable_two_disable_one
