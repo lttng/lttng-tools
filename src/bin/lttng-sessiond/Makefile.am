@@ -16,6 +16,7 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        ust-ctl-internal.h ust-abi-internal.h ust-error-internal.h \
                        ust-registry.h \
+                       condition-internal.c condition-internal.h \
                        context.c context.h \
                        channel.c channel.h \
                        event.c event.h \
