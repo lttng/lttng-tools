@@ -2232,8 +2232,13 @@ int handle_notification_thread_command_register_trigger(
 	uid_t object_uid;
 	gid_t object_gid;
 	enum action_executor_status executor_status;
+	const uint64_t trigger_tracer_token =
+			state->trigger_id.next_tracer_token++;
 
 	rcu_read_lock();
+
+	/* Set the trigger's tracer token. */
+	lttng_trigger_set_tracer_token(trigger, trigger_tracer_token);
 
 	if (lttng_trigger_get_name(trigger, &trigger_name) ==
 			LTTNG_TRIGGER_STATUS_UNSET) {
@@ -2473,6 +2478,8 @@ int handle_notification_thread_command_register_trigger(
 
 end:
 	*cmd_result = LTTNG_OK;
+	DBG("Registered trigger: name = `%s`, tracer token = %" PRIu64,
+			trigger_name, trigger_tracer_token);
 
 error_put_client_list:
 	notification_client_list_put(client_list);

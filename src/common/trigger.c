@@ -396,6 +396,22 @@ end:
 }
 
 LTTNG_HIDDEN
+void lttng_trigger_set_tracer_token(struct lttng_trigger *trigger,
+		uint64_t token)
+{
+	assert(trigger);
+	LTTNG_OPTIONAL_SET(&trigger->tracer_token, token);
+}
+
+LTTNG_HIDDEN
+uint64_t lttng_trigger_get_tracer_token(const struct lttng_trigger *trigger)
+{
+	assert(trigger);
+
+	return LTTNG_OPTIONAL_GET(trigger->tracer_token);
+}
+
+LTTNG_HIDDEN
 int lttng_trigger_generate_name(struct lttng_trigger *trigger,
 		uint64_t unique_id)
 {

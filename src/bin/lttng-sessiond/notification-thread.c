@@ -407,6 +407,7 @@ int init_thread_state(struct notification_thread_handle *handle,
 
 	memset(state, 0, sizeof(*state));
 	state->notification_channel_socket = -1;
+	state->trigger_id.next_tracer_token = 1;
 	lttng_poll_init(&state->events);
 
 	ret = notification_channel_socket_create();
