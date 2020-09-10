@@ -1212,11 +1212,14 @@ int lttng_userspace_probe_location_function_create_from_payload(
 	binary_path_src = function_name_src +
 			location_function_comm->function_name_len;
 
-	if (function_name_src[location_function_comm->function_name_len - 1] != '\0') {
+	if (!lttng_buffer_view_contains_string(&view->buffer, function_name_src,
+			    location_function_comm->function_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
-	if (binary_path_src[location_function_comm->binary_path_len - 1] != '\0') {
+
+	if (!lttng_buffer_view_contains_string(&view->buffer, binary_path_src,
+			    location_function_comm->binary_path_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
@@ -1300,17 +1303,20 @@ int lttng_userspace_probe_location_tracepoint_create_from_payload(
 	binary_path_src = provider_name_src +
 			location_tracepoint_comm->provider_name_len;
 
-	if (probe_name_src[location_tracepoint_comm->probe_name_len - 1] != '\0') {
+	if (!lttng_buffer_view_contains_string(&view->buffer, probe_name_src,
+			    location_tracepoint_comm->probe_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (provider_name_src[location_tracepoint_comm->provider_name_len - 1] != '\0') {
+	if (!lttng_buffer_view_contains_string(&view->buffer, provider_name_src,
+			    location_tracepoint_comm->provider_name_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	if (binary_path_src[location_tracepoint_comm->binary_path_len - 1] != '\0') {
+	if (!lttng_buffer_view_contains_string(&view->buffer, binary_path_src,
+			    location_tracepoint_comm->binary_path_len)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
