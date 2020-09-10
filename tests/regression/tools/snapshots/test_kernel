@@ -138,9 +138,9 @@ function test_kernel_local_snapshot_discard ()
 	rm -rf $TRACE_PATH
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
-		fail "First snapshot event do not match."
+		fail "First snapshot event do not match"
 	else
-		pass "First snapshot event match."
+		pass "First snapshot event match"
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -176,9 +176,9 @@ function test_kernel_local_snapshot_overwrite_small_buffers ()
 	rm -rf $TRACE_PATH
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
-		pass "First snapshot event do not match."
+		pass "First snapshot event do not match"
 	else
-		fail "First snapshot event match."
+		fail "First snapshot event match"
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -222,7 +222,7 @@ else
 	isroot=0
 fi
 
-skip $isroot "Root access is needed. Skipping all kernel snapshot tests." $NUM_TESTS ||
+skip $isroot "Root access is needed. Skipping all kernel snapshot tests" $NUM_TESTS ||
 {
 
 	validate_lttng_modules_present

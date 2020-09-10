@@ -150,7 +150,7 @@ else
 	isroot=0
 fi
 
-skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_TESTS ||
+skip $isroot "Root access is needed. Skipping all kernel streaming tests" $NUM_TESTS ||
 {
 	validate_lttng_modules_present
 

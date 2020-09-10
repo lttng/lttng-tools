@@ -23,12 +23,12 @@ TRACE_PATH=$(mktemp -d)
 source $TESTDIR/utils/utils.sh
 
 if [ ! -x "$TESTAPP_BIN" ]; then
-	BAIL_OUT "No UST events binary detected."
+	BAIL_OUT "No UST events binary detected"
 fi
 
 # Need the number of snapshot to do.
 if [ -z $1 ]; then
-	BAIL_OUT "A number of snapshot is needed."
+	BAIL_OUT "A number of snapshot is needed"
 fi
 NR_SNAPSHOT=$1
 
@@ -237,9 +237,9 @@ function test_ust_local_snapshot_small_discard_buffers ()
 	rm -rf $TRACE_PATH/
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
-		fail "First snapshot event do not match."
+		fail "First snapshot event do not match"
 	else
-		pass "First snapshot event match."
+		pass "First snapshot event match"
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
@@ -282,9 +282,9 @@ function test_ust_local_snapshot_small_overwrite_buffers ()
 	rm -rf $TRACE_PATH/
 
 	if [ x"$FIRST_LINE" != x"$FIRST_LINE_2" ]; then
-		pass "First snapshot event do not match."
+		pass "First snapshot event do not match"
 	else
-		fail "First snapshot event match."
+		fail "First snapshot event match"
 	fi
 
 	stop_lttng_tracing_ok $SESSION_NAME
