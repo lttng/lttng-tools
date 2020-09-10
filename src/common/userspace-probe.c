@@ -430,7 +430,7 @@ lttng_userspace_probe_location_function_create(const char *binary_path,
 	struct lttng_userspace_probe_location *ret = NULL;
 
 	if (!binary_path || !function_name) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -458,7 +458,7 @@ lttng_userspace_probe_location_tracepoint_create(const char *binary_path,
 	struct lttng_userspace_probe_location *ret = NULL;
 
 	if (!binary_path || !probe_name || !provider_name) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -693,7 +693,7 @@ const char *lttng_userspace_probe_location_function_get_binary_path(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -713,7 +713,7 @@ const char *lttng_userspace_probe_location_tracepoint_get_binary_path(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -733,7 +733,7 @@ const char *lttng_userspace_probe_location_function_get_function_name(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -752,7 +752,7 @@ const char *lttng_userspace_probe_location_tracepoint_get_probe_name(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -771,7 +771,7 @@ const char *lttng_userspace_probe_location_tracepoint_get_provider_name(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -790,7 +790,7 @@ int lttng_userspace_probe_location_function_get_binary_fd(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -811,7 +811,7 @@ lttng_userspace_probe_location_function_get_instrumentation_type(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		type = LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_UNKNOWN;
 		goto end;
 	}
@@ -836,7 +836,7 @@ lttng_userspace_probe_location_function_set_instrumentation_type(
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION ||
 			instrumentation_type !=
 			LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		status = LTTNG_USERSPACE_PROBE_LOCATION_STATUS_INVALID;
 		goto end;
 	}
@@ -856,7 +856,7 @@ int lttng_userspace_probe_location_tracepoint_get_binary_fd(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -876,7 +876,7 @@ lttng_userspace_probe_location_function_get_lookup_method(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -893,7 +893,7 @@ lttng_userspace_probe_location_tracepoint_get_lookup_method(
 
 	if (!location || lttng_userspace_probe_location_get_type(location) !=
 			LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		goto end;
 	}
 
@@ -1130,7 +1130,7 @@ int lttng_userspace_probe_location_serialize(
 	struct lttng_userspace_probe_location_comm location_generic_comm;
 
 	if (!location) {
-		ERR("Invalid argument(s)");
+		ERR("Invalid argument(s) passed to '%s'", __FUNCTION__);
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
