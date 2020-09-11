@@ -21,6 +21,7 @@ FILE *lttng_fmemopen(void *buf, size_t size, const char *mode)
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <common/error.h>
 
 /*
  * Fallback for systems which don't have fmemopen. Copy buffer to a
