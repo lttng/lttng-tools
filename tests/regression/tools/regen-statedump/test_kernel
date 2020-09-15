@@ -59,6 +59,6 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 		${fct_test}
 	done
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 	stop_lttng_sessiond
 }

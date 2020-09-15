@@ -1465,7 +1465,7 @@ skip $isroot "Root access is needed. Skipping all kernel valid filter tests." $N
 		i=$(( i + 2 ))
 	done
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 }
 
 stop_lttng_sessiond

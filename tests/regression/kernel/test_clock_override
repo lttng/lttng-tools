@@ -40,7 +40,7 @@ function signal_cleanup()
 {
 	diag "*** Exiting ***"
 	stop_lttng_sessiond
-	modprobe -r lttng-test lttng-clock-plugin-test lttng-clock
+	modprobe --remove lttng-test lttng-clock-plugin-test lttng-clock
 	full_cleanup
 }
 
@@ -82,7 +82,7 @@ function test_clock_override_metadata()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	stop_lttng_sessiond
-	modprobe -r lttng-test lttng-clock-plugin-test lttng-clock
+	modprobe --remove lttng-test lttng-clock-plugin-test lttng-clock
 
 	local TRACE_METADATA_FILE_PATH="$(find "$TRACE_PATH" -name metadata -type f)"
 	local TRACE_METADATA_DIR="$(dirname "$TRACE_METADATA_FILE_PATH")"
@@ -130,7 +130,7 @@ function test_clock_override_timestamp()
 		cut -d, -f1 | uniq | wc -l)
 	test $unique_timestamps_count -gt 1
 	ok $? "Unique event timestamps without clock override: $unique_timestamps_count expect >1"
-	rmmod lttng-test
+	modprobe --remove lttng-test
 	stop_lttng_sessiond
 
 	# Test with clock override plugin.
@@ -148,10 +148,8 @@ function test_clock_override_timestamp()
 	stop_lttng_tracing_ok $SESSION_NAME
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rmmod lttng-test
 	stop_lttng_sessiond
-	rmmod lttng-clock-plugin-test
-	rmmod lttng-clock
+	modprobe --remove lttng-clock-plugin-test lttng-clock lttng-test
 
 	# Use Babeltrace with "-n all" to give a comma separated list for
 	# easy extraction of timestamps.

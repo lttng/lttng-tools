@@ -167,7 +167,7 @@ skip $isroot "Root access is needed. Skipping all kernel wildcard tests." $NUM_K
 	test_event_wildcard kernel 1 'lttng*test*filter*event'
 	test_event_wildcard kernel 1 '*lttng*test*filter*event*'
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 }
 
 stop_lttng_sessiond

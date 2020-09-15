@@ -700,7 +700,7 @@ function stop_lttng_sessiond_opt()
 
 			if [ -n "$modules" ]; then
 				diag "Unloading all LTTng modules"
-				modprobe -r "$modules"
+				modprobe --remove "$modules"
 			fi
 		fi
 	fi

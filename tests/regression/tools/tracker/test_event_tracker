@@ -537,7 +537,7 @@ skip $isroot "Root access is needed. Skipping all kernel tracker tests." $NUM_KE
 	test_event_tracker kernel 1 "${EVENT_NAME}" "--pid --all"
 	test_event_pid_tracker kernel 1 "${EVENT_NAME}"
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 	ok $? "Unloading lttng-test module"
 }
 
