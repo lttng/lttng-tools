@@ -129,7 +129,7 @@ skip $isroot "Root access is needed. Skipping all kernel metadata tests." $NUM_T
 		${fct_test}
 	done
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 
 	stop_lttng_sessiond
 	unset LTTNG_HOME

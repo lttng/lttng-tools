@@ -211,7 +211,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 	modprobe lttng-test
 	test_kernel_local
 	test_kernel_streaming
-	rmmod lttng-test
+	modprobe --remove lttng-test
 
 	test_ust_local
 	test_ust_streaming

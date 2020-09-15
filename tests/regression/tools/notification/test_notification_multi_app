@@ -336,7 +336,7 @@ function test_multi_app_kernel ()
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 }
 
 function test_on_register_evaluation_ust ()
@@ -371,7 +371,7 @@ function test_on_register_evaluation_kernel()
 	wait $generator_pid 2> /dev/null
 	rm -rf ${TESTAPP_STATE_FILE} 2> /dev/null
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 }
 
 function test_on_register_evaluation ()

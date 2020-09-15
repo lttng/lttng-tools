@@ -133,7 +133,7 @@ skip $isroot "Root access is needed for kernel testing, skipping." 9 ||
 {
 	modprobe lttng-test
 	test_kernel_raw
-	rmmod lttng-test
+	modprobe --remove lttng-test
 }
 
 stop_lttng_sessiond
