@@ -90,7 +90,7 @@ function kernel_test
 	wait $APP_PID 2> /dev/null
 
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 
 	rm -rf ${consumerd_pipe[@]} 2> /dev/null
 }

@@ -105,7 +105,7 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 		clean_path $TRACE_PATH
 	done
 
-	rmmod lttng-test
+	modprobe --remove lttng-test
 	stop_lttng_sessiond
 	stop_lttng_relayd
 }

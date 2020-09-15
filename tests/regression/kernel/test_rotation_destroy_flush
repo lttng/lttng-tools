@@ -29,7 +29,7 @@ source $TESTDIR/utils/utils.sh
 function signal_cleanup()
 {
 	diag "*** Exiting ***"
-	modprobe -r lttng-test
+	modprobe --remove lttng-test
 	full_cleanup
 }
 
@@ -96,7 +96,7 @@ function test_rotation_destroy_flush_single()
 
 	rm -rf $TRACE_PATH
 
-	modprobe -r lttng-test
+	modprobe --remove lttng-test
 	stop_lttng_sessiond
 }
 
