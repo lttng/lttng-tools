@@ -8,6 +8,8 @@
 #ifndef LTTNG_TRIGGER_H
 #define LTTNG_TRIGGER_H
 
+#include <sys/types.h>
+
 struct lttng_action;
 struct lttng_condition;
 struct lttng_trigger;
@@ -19,6 +21,16 @@ extern "C" {
 enum lttng_register_trigger_status {
 	LTTNG_REGISTER_TRIGGER_STATUS_OK = 0,
 	LTTNG_REGISTER_TRIGGER_STATUS_INVALID = -1,
+};
+
+enum lttng_trigger_status {
+	LTTNG_TRIGGER_STATUS_OK = 0,
+	LTTNG_TRIGGER_STATUS_ERROR = -1,
+	LTTNG_TRIGGER_STATUS_UNKNOWN = -2,
+	LTTNG_TRIGGER_STATUS_INVALID = -3,
+	LTTNG_TRIGGER_STATUS_UNSET = -4,
+	LTTNG_TRIGGER_STATUS_UNSUPPORTED = -5,
+	LTTNG_TRIGGER_STATUS_PERMISSION_DENIED = -6,
 };
 
 /*
@@ -41,6 +53,28 @@ enum lttng_register_trigger_status {
  */
 extern struct lttng_trigger *lttng_trigger_create(
 		struct lttng_condition *condition, struct lttng_action *action);
+
+/*
+ * Set the user identity (uid) of a trigger.
+ *
+ * Only available for the root user (uid 0).
+ *
+ * Returns LTTNG_TRIGGER_STATUS_OK on success,
+ * LTTNG_TRIGGER_STATUS_EPERM if not authorized,
+ * LTTNG_TRIGGER_STATUS_INVALID if invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_trigger_set_owner_uid(
+		struct lttng_trigger *trigger, uid_t uid);
+
+/*
+ * Get the user identity (uid) of a trigger.
+ *
+ * Returns LTTNG_TRIGGER_STATUS_OK on success,
+ * LTTNG_TRIGGER_STATUS_UNSET if unset,
+ * LTTNG_TRIGGER_STATUS_INVALID if invalid parameters are passed.
+ */
+extern enum lttng_trigger_status lttng_trigger_get_owner_uid(
+		const struct lttng_trigger *trigger, uid_t *uid);
 
 /*
  * Get the condition of a trigger.

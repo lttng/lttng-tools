@@ -25,6 +25,11 @@ bool lttng_trigger_validate(struct lttng_trigger *trigger)
 		goto end;
 	}
 
+	if (!trigger->creds.uid.is_set) {
+		valid = false;
+		goto end;
+	}
+
 	valid = lttng_condition_validate(trigger->condition) &&
 			lttng_action_validate(trigger->action);
 end:
@@ -127,6 +132,10 @@ ssize_t lttng_trigger_create_from_payload(
 	struct lttng_condition *condition = NULL;
 	struct lttng_action *action = NULL;
 	const struct lttng_trigger_comm *trigger_comm;
+	struct lttng_credentials creds = {
+		.uid = LTTNG_OPTIONAL_INIT_UNSET,
+		.gid = LTTNG_OPTIONAL_INIT_UNSET,
+	};
 
 	if (!src_view || !trigger) {
 		ret = -1;
@@ -135,6 +144,16 @@ ssize_t lttng_trigger_create_from_payload(
 
 	/* lttng_trigger_comm header */
 	trigger_comm = (typeof(trigger_comm)) src_view->buffer.data;
+
+	/* Set the trigger's creds. */
+	if (trigger_comm->uid > (uint64_t) ((uid_t) -1)) {
+		/* UID out of range for this platform. */
+		ret = -1;
+		goto end;
+	}
+
+	LTTNG_OPTIONAL_SET(&creds.uid, trigger_comm->uid);
+
 	offset += sizeof(*trigger_comm);
 	{
 		/* struct lttng_condition */
@@ -179,6 +198,8 @@ ssize_t lttng_trigger_create_from_payload(
 		goto error;
 	}
 
+	lttng_trigger_set_credentials(*trigger, &creds);
+
 	/*
 	 * The trigger object owns references to the action and condition
 	 * objects.
@@ -210,6 +231,12 @@ int lttng_trigger_serialize(struct lttng_trigger *trigger,
 	size_t header_offset, size_before_payload;
 	struct lttng_trigger_comm trigger_comm = {};
 	struct lttng_trigger_comm *header;
+	const struct lttng_credentials *creds = NULL;
+
+	creds = lttng_trigger_get_credentials(trigger);
+	assert(creds);
+
+	trigger_comm.uid = LTTNG_OPTIONAL_GET(creds->uid);
 
 	header_offset = payload->buffer.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &trigger_comm,
@@ -256,14 +283,62 @@ LTTNG_HIDDEN
 const struct lttng_credentials *lttng_trigger_get_credentials(
 		const struct lttng_trigger *trigger)
 {
-	return LTTNG_OPTIONAL_GET_PTR(trigger->creds);
+	return &trigger->creds;
 }
 
 LTTNG_HIDDEN
-void lttng_trigger_set_credentials(
-		struct lttng_trigger *trigger,
+void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds)
 {
 	assert(creds);
-	LTTNG_OPTIONAL_SET(&trigger->creds, *creds);
+	trigger->creds = *creds;
+}
+
+enum lttng_trigger_status lttng_trigger_set_owner_uid(
+		struct lttng_trigger *trigger, uid_t uid)
+{
+	enum lttng_trigger_status ret = LTTNG_TRIGGER_STATUS_OK;
+	const struct lttng_credentials creds = {
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(uid),
+		.gid = LTTNG_OPTIONAL_INIT_UNSET,
+	};
+
+	if (!trigger) {
+		ret = LTTNG_TRIGGER_STATUS_INVALID;
+		goto end;
+	}
+
+	/* Client-side validation only to report a clearer error. */
+	if (geteuid() != 0) {
+		ret = LTTNG_TRIGGER_STATUS_PERMISSION_DENIED;
+		goto end;
+	}
+
+	lttng_trigger_set_credentials(trigger, &creds);
+
+end:
+	return ret;
+}
+
+enum lttng_trigger_status lttng_trigger_get_owner_uid(
+		const struct lttng_trigger *trigger, uid_t *uid)
+{
+	enum lttng_trigger_status ret = LTTNG_TRIGGER_STATUS_OK;
+	const struct lttng_credentials *creds = NULL;
+
+	if (!trigger || !uid ) {
+		ret = LTTNG_TRIGGER_STATUS_INVALID;
+		goto end;
+	}
+
+	if (!trigger->creds.uid.is_set ) {
+		ret = LTTNG_TRIGGER_STATUS_UNSET;
+		goto end;
+	}
+
+	creds = lttng_trigger_get_credentials(trigger);
+	*uid = lttng_credentials_get_uid(creds);
+
+end:
+	return ret;
 }

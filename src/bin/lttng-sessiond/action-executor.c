@@ -188,8 +188,7 @@ static int action_executor_notify_handler(struct action_executor *executor,
 			work_item->evaluation,
 			lttng_trigger_get_credentials(work_item->trigger),
 			LTTNG_OPTIONAL_GET_PTR(work_item->object_creds),
-			client_handle_transmission_status,
-			executor);
+			client_handle_transmission_status, executor);
 }
 
 static int action_executor_start_session_handler(struct action_executor *executor,

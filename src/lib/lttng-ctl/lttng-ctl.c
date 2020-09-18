@@ -2956,6 +2956,10 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
+	const struct lttng_credentials user_creds = {
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
+		.gid = LTTNG_OPTIONAL_INIT_UNSET,
+	};
 
 	lttng_payload_init(&message);
 	lttng_payload_init(&reply);
@@ -2963,6 +2967,31 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
+	}
+
+	if (!trigger->creds.uid.is_set) {
+		/* Use the client's credentials as the trigger credentials. */
+		lttng_trigger_set_credentials(trigger, &user_creds);
+	} else {
+		/*
+		 * Validate that either the current trigger credentials and the
+		 * client credentials are identical or that the current user is
+		 * root. The root user can register, unregister triggers for
+		 * himself and other users.
+		 *
+		 * This check is also present on the sessiond side, using the
+		 * credentials passed on the socket. These check are all
+		 * "safety" checks.
+		 */
+		const struct lttng_credentials *trigger_creds =
+				lttng_trigger_get_credentials(trigger);
+
+		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
+			if (lttng_credentials_get_uid(&user_creds) != 0) {
+				ret = -LTTNG_ERR_EPERM;
+				goto end;
+			}
+		}
 	}
 
 	if (!lttng_trigger_validate(trigger)) {
@@ -3017,6 +3046,10 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
 	struct lttng_payload reply;
+	const struct lttng_credentials user_creds = {
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
+		.gid = LTTNG_OPTIONAL_INIT_UNSET,
+	};
 
 	lttng_payload_init(&message);
 	lttng_payload_init(&reply);
@@ -3024,6 +3057,31 @@ int lttng_unregister_trigger(struct lttng_trigger *trigger)
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
+	}
+
+	if (!trigger->creds.uid.is_set) {
+		/* Use the client's credentials as the trigger credentials. */
+		lttng_trigger_set_credentials(trigger, &user_creds);
+	} else {
+		/*
+		 * Validate that either the current trigger credentials and the
+		 * client credentials are identical or that the current user is
+		 * root. The root user can register, unregister triggers for
+		 * himself and other users.
+		 *
+		 * This check is also present on the sessiond side, using the
+		 * credentials passed on the socket. These check are all
+		 * "safety" checks.
+		 */
+		const struct lttng_credentials *trigger_creds =
+				lttng_trigger_get_credentials(trigger);
+
+		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
+			if (lttng_credentials_get_uid(&user_creds) != 0) {
+				ret = -LTTNG_ERR_EPERM;
+				goto end;
+			}
+		}
 	}
 
 	if (!lttng_trigger_validate(trigger)) {

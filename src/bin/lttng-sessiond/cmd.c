@@ -4314,8 +4314,21 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		}
 	}
 
-	/* Set the trigger credential */
-	lttng_trigger_set_credentials(trigger, &cmd_creds);
+
+	/*
+	 * Validate the trigger credentials against the command credentials.
+	 * Only the root user can register a trigger with non-matching
+	 * credentials.
+	 */
+	if (!lttng_credentials_is_equal_uid(
+			lttng_trigger_get_credentials(trigger),
+			&cmd_creds)) {
+		if (lttng_credentials_get_uid(&cmd_creds) != 0) {
+			ERR("Trigger credentials do not match the command credentials");
+			ret = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
+	}
 
 	/* Inform the notification thread */
 	ret = notification_thread_command_register_trigger(notification_thread,
@@ -4385,7 +4398,20 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 		}
 	}
 
-	lttng_trigger_set_credentials(trigger, &cmd_creds);
+	/*
+	 * Validate the trigger credentials against the command credentials.
+	 * Only the root user can unregister a trigger with non-matching
+	 * credentials.
+	 */
+	if (!lttng_credentials_is_equal_uid(
+			lttng_trigger_get_credentials(trigger),
+			&cmd_creds)) {
+		if (lttng_credentials_get_uid(&cmd_creds) != 0) {
+			ERR("Trigger credentials do not match the command credentials");
+			ret = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
+	}
 
 	ret = notification_thread_command_unregister_trigger(notification_thread,
 			trigger);

@@ -26,12 +26,18 @@ struct lttng_trigger {
 
 	struct lttng_condition *condition;
 	struct lttng_action *action;
-	LTTNG_OPTIONAL(struct lttng_credentials) creds;
+	/* For now only the uid portion of the credentials is used. */
+	struct lttng_credentials creds;
 };
 
 struct lttng_trigger_comm {
 	/* length excludes its own length. */
 	uint32_t length;
+	/*
+	 * Credentials, only the uid portion is used for now.
+	 * Used as an override when desired by the root user.
+	 */
+	uint64_t uid;
 	/* A condition and action object follow. */
 	char payload[];
 } LTTNG_PACKED;
@@ -66,8 +72,7 @@ const struct lttng_credentials *lttng_trigger_get_credentials(
 		const struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN
-void lttng_trigger_set_credentials(
-		struct lttng_trigger *trigger,
+void lttng_trigger_set_credentials(struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds);
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */
