@@ -16,6 +16,7 @@
 #include <common/optional.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/group.h>
+#include <lttng/action/notify-internal.h>
 #include <lttng/action/notify.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>
