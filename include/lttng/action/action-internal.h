@@ -62,10 +62,6 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action);
 
 LTTNG_HIDDEN
-enum lttng_action_type lttng_action_get_type_const(
-		const struct lttng_action *action);
-
-LTTNG_HIDDEN
 bool lttng_action_is_equal(const struct lttng_action *a,
 		const struct lttng_action *b);
 

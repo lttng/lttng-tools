@@ -13,7 +13,7 @@
 #include <lttng/action/start-session.h>
 
 #define IS_START_SESSION_ACTION(action) \
-	(lttng_action_get_type_const(action) == LTTNG_ACTION_TYPE_START_SESSION)
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_START_SESSION)
 
 struct lttng_action_start_session {
 	struct lttng_action parent;

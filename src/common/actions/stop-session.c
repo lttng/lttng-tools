@@ -13,7 +13,7 @@
 #include <lttng/action/stop-session.h>
 
 #define IS_STOP_SESSION_ACTION(action) \
-	(lttng_action_get_type_const(action) == LTTNG_ACTION_TYPE_STOP_SESSION)
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_STOP_SESSION)
 
 struct lttng_action_stop_session {
 	struct lttng_action parent;

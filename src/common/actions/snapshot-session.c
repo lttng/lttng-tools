@@ -19,7 +19,7 @@
 #include <inttypes.h>
 
 #define IS_SNAPSHOT_SESSION_ACTION(action) \
-	(lttng_action_get_type_const(action) == LTTNG_ACTION_TYPE_SNAPSHOT_SESSION)
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_SNAPSHOT_SESSION)
 
 struct lttng_action_snapshot_session {
 	struct lttng_action parent;

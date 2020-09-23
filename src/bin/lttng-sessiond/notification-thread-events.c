@@ -2058,7 +2058,7 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 	enum lttng_action_type action_type;
 
 	assert(action);
-	action_type = lttng_action_get_type_const(action);
+	action_type = lttng_action_get_type(action);
 	if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 		is_notify = true;
 		goto end;
@@ -2074,7 +2074,7 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 				lttng_action_group_get_at_index(
 						action, i);
 
-		action_type = lttng_action_get_type_const(inner_action);
+		action_type = lttng_action_get_type(inner_action);
 		if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 			is_notify = true;
 			goto end;

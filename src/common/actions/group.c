@@ -16,7 +16,7 @@
 #include <lttng/action/group.h>
 
 #define IS_GROUP_ACTION(action) \
-	(lttng_action_get_type_const(action) == LTTNG_ACTION_TYPE_GROUP)
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_GROUP)
 
 struct lttng_action_group {
 	struct lttng_action parent;

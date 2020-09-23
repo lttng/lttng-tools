@@ -13,7 +13,7 @@
 #include <lttng/action/rotate-session.h>
 
 #define IS_ROTATE_SESSION_ACTION(action) \
-	(lttng_action_get_type_const(action) == LTTNG_ACTION_TYPE_ROTATE_SESSION)
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_ROTATE_SESSION)
 
 struct lttng_action_rotate_session {
 	struct lttng_action parent;

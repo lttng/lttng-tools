@@ -104,7 +104,7 @@ static const char *action_type_names[] = {
 
 static const char *get_action_name(const struct lttng_action *action)
 {
-	return action_type_names[lttng_action_get_type_const(action)];
+	return action_type_names[lttng_action_get_type(action)];
 }
 
 /* Check if this trigger allowed to interect with a given session. */
@@ -486,7 +486,7 @@ static int action_executor_generic_handler(struct action_executor *executor,
 			work_item->trigger,
 			work_item->id);
 
-	return action_executors[lttng_action_get_type_const(action)](
+	return action_executors[lttng_action_get_type(action)](
 			executor, work_item, action);
 }
 
