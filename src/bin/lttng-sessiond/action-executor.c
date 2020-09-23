@@ -198,7 +198,9 @@ static int action_executor_notify_handler(struct action_executor *executor,
 			lttng_trigger_get_const_condition(work_item->trigger),
 			work_item->evaluation,
 			lttng_trigger_get_credentials(work_item->trigger),
-			LTTNG_OPTIONAL_GET_PTR(work_item->object_creds),
+			work_item->object_creds.is_set ?
+					&(work_item->object_creds.value) :
+					NULL,
 			client_handle_transmission_status, executor);
 }
 
