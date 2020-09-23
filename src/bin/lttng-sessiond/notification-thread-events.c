@@ -4470,6 +4470,7 @@ next_client:
 		pthread_mutex_unlock(&client_list->lock);
 		break;
 	}
+	case ACTION_EXECUTOR_STATUS_INVALID:
 	case ACTION_EXECUTOR_STATUS_ERROR:
 		/* Fatal error, shut down everything. */
 		ERR("Fatal error encoutered while enqueuing action to the action executor");
