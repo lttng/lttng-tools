@@ -22,6 +22,7 @@
 #include <lttng/action/start-session.h>
 #include <lttng/action/stop-session.h>
 #include <lttng/condition/evaluation.h>
+#include <lttng/condition/event-rule-internal.h>
 #include <lttng/lttng-error.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <pthread.h>
