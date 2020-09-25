@@ -17,6 +17,7 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <vendor/msgpack/msgpack.h>
 
 #define IS_EVENT_RULE_CONDITION(condition)      \
 	(lttng_condition_get_type(condition) == \

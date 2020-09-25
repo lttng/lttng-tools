@@ -22,4 +22,5 @@ EXTRA_DIST = extras/lttng-bash_completion \
 	     LICENSES/GPL-2.0 \
 	     LICENSES/LGPL-2.1 \
 	     LICENSES/MIT \
+	     LICENSES/BSL-1.0 \
 	     version
