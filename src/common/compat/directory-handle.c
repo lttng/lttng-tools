@@ -1019,8 +1019,9 @@ int lttng_directory_handle_create_subdirectory_as_user(
 		ret = create_directory_check_exists(handle,
 				subdirectory, mode);
 	} else {
-		ret = _run_as_mkdir(handle, subdirectory,
-				mode, creds->uid, creds->gid);
+		ret = _run_as_mkdir(handle, subdirectory, mode,
+				lttng_credentials_get_uid(creds),
+				lttng_credentials_get_gid(creds));
 	}
 
 	return ret;
@@ -1040,7 +1041,7 @@ int lttng_directory_handle_create_subdirectory_recursive_as_user(
 				subdirectory_path, mode);
 	} else {
 		ret = _run_as_mkdir_recursive(handle, subdirectory_path,
-				mode, creds->uid, creds->gid);
+				mode, lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds));
 	}
 
 	return ret;
@@ -1081,7 +1082,7 @@ int lttng_directory_handle_open_file_as_user(
 				mode);
 	} else {
 		ret = _run_as_open(handle, filename, flags, mode,
-				creds->uid, creds->gid);
+				lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds));
 	}
 	return ret;
 }
@@ -1108,7 +1109,7 @@ int lttng_directory_handle_unlink_file_as_user(
 		/* Run as current user. */
 		ret = lttng_directory_handle_unlink(handle, filename);
 	} else {
-		ret = _run_as_unlink(handle, filename, creds->uid, creds->gid);
+		ret = _run_as_unlink(handle, filename, lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds));
 	}
 	return ret;
 }
@@ -1149,7 +1150,7 @@ int lttng_directory_handle_rename_as_user(
 				old_name, new_handle, new_name);
 	} else {
 		ret = _run_as_rename(old_handle, old_name, new_handle,
-				new_name, creds->uid, creds->gid);
+				new_name, lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds));
 	}
 	return ret;
 }
@@ -1175,7 +1176,7 @@ int lttng_directory_handle_remove_subdirectory_as_user(
 		/* Run as current user. */
 		ret = lttng_directory_handle_rmdir(handle, name);
 	} else {
-		ret = _run_as_rmdir(handle, name, creds->uid, creds->gid);
+		ret = _run_as_rmdir(handle, name, lttng_credentials_get_uid(creds), lttng_credentials_get_gid(creds));
 	}
 	return ret;
 }
@@ -1409,8 +1410,8 @@ int lttng_directory_handle_remove_subdirectory_recursive_as_user(
 		/* Run as current user. */
 		ret = remove_directory_recursive(handle, name, flags);
 	} else {
-		ret = _run_as_rmdir_recursive(handle, name, creds->uid,
-				creds->gid, flags);
+		ret = _run_as_rmdir_recursive(handle, name, lttng_credentials_get_uid(creds),
+				lttng_credentials_get_gid(creds), flags);
 	}
 	return ret;
 }

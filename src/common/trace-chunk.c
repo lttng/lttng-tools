@@ -966,8 +966,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_get_credentials(
 	pthread_mutex_lock(&chunk->lock);
 	if (chunk->credentials.is_set) {
 		if (chunk->credentials.value.use_current_user) {
-			credentials->uid = geteuid();
-			credentials->gid = getegid();
+			LTTNG_OPTIONAL_SET(&credentials->uid, geteuid());
+			LTTNG_OPTIONAL_SET(&credentials->gid, getegid());
 		} else {
 			*credentials = chunk->credentials.value.user;
 		}

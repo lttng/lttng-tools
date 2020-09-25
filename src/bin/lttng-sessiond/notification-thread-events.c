@@ -1807,8 +1807,8 @@ int handle_notification_thread_command_session_rotation(
 	struct lttng_trigger_list_element *trigger_list_element;
 	struct session_info *session_info;
 	const struct lttng_credentials session_creds = {
-		.uid = session_uid,
-		.gid = session_gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(session_uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(session_gid),
 	};
 
 	rcu_read_lock();
@@ -2117,6 +2117,8 @@ int handle_notification_thread_command_register_trigger(
 	bool free_trigger = true;
 	struct lttng_evaluation *evaluation = NULL;
 	struct lttng_credentials object_creds;
+	uid_t object_uid;
+	gid_t object_gid;
 	enum action_executor_status executor_status;
 
 	rcu_read_lock();
@@ -2260,13 +2262,13 @@ int handle_notification_thread_command_register_trigger(
 	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_SESSION:
 		ret = evaluate_session_condition_for_client(condition, state,
-				&evaluation, &object_creds.uid,
-				&object_creds.gid);
+				&evaluation, &object_uid,
+				&object_gid);
 		break;
 	case LTTNG_OBJECT_TYPE_CHANNEL:
 		ret = evaluate_channel_condition_for_client(condition, state,
-				&evaluation, &object_creds.uid,
-				&object_creds.gid);
+				&evaluation, &object_uid,
+				&object_gid);
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
 		ret = 0;
@@ -2281,6 +2283,9 @@ int handle_notification_thread_command_register_trigger(
 		/* Fatal error. */
 		goto error_put_client_list;
 	}
+
+	LTTNG_OPTIONAL_SET(&object_creds.uid, object_uid);
+	LTTNG_OPTIONAL_SET(&object_creds.gid, object_gid);
 
 	DBG("Newly registered trigger's condition evaluated to %s",
 			evaluation ? "true" : "false");
@@ -3582,11 +3587,15 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 		struct notification_thread_state *state,
 		uid_t object_uid, gid_t object_gid)
 {
+	const struct lttng_credentials creds = {
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(object_uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(object_gid),
+	};
+
 	return notification_client_list_send_evaluation(client_list,
 			lttng_trigger_get_const_condition(trigger), evaluation,
 			lttng_trigger_get_credentials(trigger),
-			&(struct lttng_credentials){
-					.uid = object_uid, .gid = object_gid},
+			&creds,
 			client_handle_transmission_status_wrapper, state);
 }
 
@@ -3693,8 +3702,8 @@ int notification_client_list_send_evaluation(
 		}
 
 		if (source_object_creds) {
-			if (client->uid != source_object_creds->uid &&
-					client->gid != source_object_creds->gid &&
+			if (client->uid != lttng_credentials_get_uid(source_object_creds) &&
+					client->gid != lttng_credentials_get_gid(source_object_creds) &&
 					client->uid != 0) {
 				/*
 				 * Client is not allowed to monitor this
@@ -3705,7 +3714,7 @@ int notification_client_list_send_evaluation(
 			}
 		}
 
-		if (client->uid != trigger_creds->uid && client->gid != trigger_creds->gid) {
+		if (client->uid != lttng_credentials_get_uid(trigger_creds) && client->gid != lttng_credentials_get_gid(trigger_creds)) {
 			DBG("[notification-thread] Skipping client at it does not have the permission to receive notification for this trigger");
 			goto skip_client;
 		}
@@ -3894,8 +3903,8 @@ int handle_notification_thread_channel_sample(
 	}
 
 	channel_creds = (typeof(channel_creds)) {
-		.uid = channel_info->session_info->uid,
-		.gid = channel_info->session_info->gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(channel_info->session_info->uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(channel_info->session_info->gid),
 	};
 
 	trigger_list = caa_container_of(node, struct lttng_channel_trigger_list,

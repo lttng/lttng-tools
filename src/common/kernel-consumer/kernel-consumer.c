@@ -1207,8 +1207,8 @@ error_rotate_channel:
 	case LTTNG_CONSUMER_CREATE_TRACE_CHUNK:
 	{
 		const struct lttng_credentials credentials = {
-			.uid = msg.u.create_trace_chunk.credentials.value.uid,
-			.gid = msg.u.create_trace_chunk.credentials.value.gid,
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.create_trace_chunk.credentials.value.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.create_trace_chunk.credentials.value.gid),
 		};
 		const bool is_local_trace =
 				!msg.u.create_trace_chunk.relayd_id.is_set;

@@ -4265,8 +4265,8 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	struct lttng_trigger *trigger = NULL;
 	struct lttng_payload trigger_payload;
 	struct lttng_credentials cmd_creds = {
-		.uid = cmd_ctx->creds.uid,
-		.gid = cmd_ctx->creds.gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
 	};
 
 	lttng_payload_init(&trigger_payload);
@@ -4337,8 +4337,8 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 	struct lttng_trigger *trigger = NULL;
 	struct lttng_payload trigger_payload;
 	struct lttng_credentials cmd_creds = {
-		.uid = cmd_ctx->creds.uid,
-		.gid = cmd_ctx->creds.gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
 	};
 
 	lttng_payload_init(&trigger_payload);

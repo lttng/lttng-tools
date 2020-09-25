@@ -574,8 +574,8 @@ struct lttng_trace_chunk *session_create_new_trace_chunk(
 	const char *base_path;
 	struct lttng_directory_handle *session_output_directory = NULL;
 	const struct lttng_credentials session_credentials = {
-		.uid = session->uid,
-		.gid = session->gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
 	};
 	uint64_t next_chunk_id;
 	const struct consumer_output *output;

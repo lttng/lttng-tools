@@ -951,8 +951,10 @@ void consumer_init_ask_channel_comm_msg(struct lttcomm_consumer_msg *msg,
 		assert(chunk_status == LTTNG_TRACE_CHUNK_STATUS_OK);
 		LTTNG_OPTIONAL_SET(&msg->u.ask_channel.chunk_id, chunk_id);
 	}
-	msg->u.ask_channel.buffer_credentials.uid = buffer_credentials->uid;
-	msg->u.ask_channel.buffer_credentials.gid = buffer_credentials->gid;
+	msg->u.ask_channel.buffer_credentials.uid =
+			lttng_credentials_get_uid(buffer_credentials);
+	msg->u.ask_channel.buffer_credentials.gid =
+			lttng_credentials_get_gid(buffer_credentials);
 
 	msg->cmd_type = LTTNG_CONSUMER_ASK_CHANNEL_CREATION;
 	msg->u.ask_channel.subbuf_size = subbuf_size;
@@ -1930,9 +1932,9 @@ int consumer_create_trace_chunk(struct consumer_socket *socket,
 		assert(domain_dirfd >= 0);
 
 		msg.u.create_trace_chunk.credentials.value.uid =
-				chunk_credentials.uid;
+				lttng_credentials_get_uid(&chunk_credentials);
 		msg.u.create_trace_chunk.credentials.value.gid =
-				chunk_credentials.gid;
+				lttng_credentials_get_gid(&chunk_credentials);
 		msg.u.create_trace_chunk.credentials.is_set = 1;
 	}
 

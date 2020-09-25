@@ -409,7 +409,8 @@ static int open_ust_stream_fd(struct lttng_consumer_channel *channel, int cpu,
 	}
 	return run_as_open(shm_path,
 		O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR,
-		session_credentials->uid, session_credentials->gid);
+		lttng_credentials_get_uid(session_credentials),
+		lttng_credentials_get_gid(session_credentials));
 
 error_shm_path:
 	return -1;
@@ -487,8 +488,10 @@ error_open:
 				ERR("Cannot get stream shm path");
 			}
 			closeret = run_as_unlink(shm_path,
-					channel->buffer_credentials.value.uid,
-					channel->buffer_credentials.value.gid);
+					lttng_credentials_get_uid(LTTNG_OPTIONAL_GET_PTR(
+							channel->buffer_credentials)),
+					lttng_credentials_get_gid(LTTNG_OPTIONAL_GET_PTR(
+							channel->buffer_credentials)));
 			if (closeret) {
 				PERROR("unlink %s", shm_path);
 			}
@@ -497,8 +500,10 @@ error_open:
 	/* Try to rmdir all directories under shm_path root. */
 	if (channel->root_shm_path[0]) {
 		(void) run_as_rmdir_recursive(channel->root_shm_path,
-				channel->buffer_credentials.value.uid,
-				channel->buffer_credentials.value.gid,
+				lttng_credentials_get_uid(LTTNG_OPTIONAL_GET_PTR(
+						channel->buffer_credentials)),
+				lttng_credentials_get_gid(LTTNG_OPTIONAL_GET_PTR(
+						channel->buffer_credentials)),
 				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 	free(stream_fds);
@@ -1461,8 +1466,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		struct ustctl_consumer_channel_attr attr;
 		const uint64_t chunk_id = msg.u.ask_channel.chunk_id.value;
 		const struct lttng_credentials buffer_credentials = {
-			.uid = msg.u.ask_channel.buffer_credentials.uid,
-			.gid = msg.u.ask_channel.buffer_credentials.gid,
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.ask_channel.buffer_credentials.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.ask_channel.buffer_credentials.gid),
 		};
 
 		/* Create a plain object and reserve a channel key. */
@@ -2072,8 +2077,8 @@ end_rotate_channel_nosignal:
 	case LTTNG_CONSUMER_CREATE_TRACE_CHUNK:
 	{
 		const struct lttng_credentials credentials = {
-			.uid = msg.u.create_trace_chunk.credentials.value.uid,
-			.gid = msg.u.create_trace_chunk.credentials.value.gid,
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.create_trace_chunk.credentials.value.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(msg.u.create_trace_chunk.credentials.value.gid),
 		};
 		const bool is_local_trace =
 				!msg.u.create_trace_chunk.relayd_id.is_set;
@@ -2402,8 +2407,10 @@ void lttng_ustconsumer_del_channel(struct lttng_consumer_channel *chan)
 				ERR("Cannot get stream shm path");
 			}
 			ret = run_as_unlink(shm_path,
-					chan->buffer_credentials.value.uid,
-					chan->buffer_credentials.value.gid);
+					lttng_credentials_get_uid(LTTNG_OPTIONAL_GET_PTR(
+							chan->buffer_credentials)),
+					lttng_credentials_get_gid(LTTNG_OPTIONAL_GET_PTR(
+							chan->buffer_credentials)));
 			if (ret) {
 				PERROR("unlink %s", shm_path);
 			}
@@ -2422,8 +2429,10 @@ void lttng_ustconsumer_free_channel(struct lttng_consumer_channel *chan)
 	/* Try to rmdir all directories under shm_path root. */
 	if (chan->root_shm_path[0]) {
 		(void) run_as_rmdir_recursive(chan->root_shm_path,
-				chan->buffer_credentials.value.uid,
-				chan->buffer_credentials.value.gid,
+				lttng_credentials_get_uid(LTTNG_OPTIONAL_GET_PTR(
+						chan->buffer_credentials)),
+				lttng_credentials_get_gid(LTTNG_OPTIONAL_GET_PTR(
+						chan->buffer_credentials)),
 				LTTNG_DIRECTORY_HANDLE_SKIP_NON_EMPTY_FLAG);
 	}
 	free(chan->stream_fds);

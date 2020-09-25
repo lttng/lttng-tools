@@ -113,22 +113,21 @@ static bool is_trigger_allowed_for_session(const struct lttng_trigger *trigger,
 {
 	bool is_allowed = false;
 	const struct lttng_credentials session_creds = {
-		.uid = session->uid,
-		.gid = session->gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
 	};
 	/* Can never be NULL. */
 	const struct lttng_credentials *trigger_creds =
 			lttng_trigger_get_credentials(trigger);
 
-	is_allowed = (trigger_creds->uid == session_creds.uid) ||
-			(trigger_creds->uid == 0);
+	is_allowed = (lttng_credentials_is_equal_uid(trigger_creds, &session_creds)) ||
+			(lttng_credentials_get_uid(trigger_creds) == 0);
 	if (!is_allowed) {
-		WARN("Trigger is not allowed to interact with session `%s`: session uid = %ld, session gid = %ld, trigger uid = %ld, trigger gid = %ld",
+		WARN("Trigger is not allowed to interact with session `%s`: session uid = %ld, session gid = %ld, trigger uid = %ld",
 				session->name,
 				(long int) session->uid,
 				(long int) session->gid,
-				(long int) trigger_creds->uid,
-				(long int) trigger_creds->gid);
+				(long int) lttng_credentials_get_uid(trigger_creds));
 	}
 
 	return is_allowed;

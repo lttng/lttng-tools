@@ -47,8 +47,8 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	enum lttng_notification_channel_status nc_status;
 	struct lttng_action *action;
 	const struct lttng_credentials session_creds = {
-		.uid = session->uid,
-		.gid = session->gid,
+		.uid = LTTNG_OPTIONAL_INIT_VALUE(session->uid),
+		.gid = LTTNG_OPTIONAL_INIT_VALUE(session->gid),
 	};
 
 	session->rotate_condition = lttng_condition_session_consumed_size_create();
