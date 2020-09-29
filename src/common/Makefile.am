@@ -42,6 +42,7 @@ libcommon_la_SOURCES = \
 	credentials.c credentials.h \
 	daemonize.c daemonize.h \
 	defaults.c \
+	domain.c \
 	dynamic-array.c dynamic-array.h \
 	dynamic-buffer.c dynamic-buffer.h \
 	endpoint.c \
