@@ -1,6 +1,6 @@
 dnl SPDX-License-Identifier: GPL-2.0-only
 AC_PREREQ([2.64])
-AC_INIT([lttng-tools],[2.12.0-rc1],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
+AC_INIT([lttng-tools],[2.13.0-pre],[jeremie.galarneau@efficios.com],[],[https://lttng.org])
 
 AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_AUX_DIR([config])
@@ -184,8 +184,8 @@ AC_DEFINE_UNQUOTED([VERSION_MAJOR], $major_version, [LTTng-Tools major version n
 AC_DEFINE_UNQUOTED([VERSION_MINOR], $minor_version, [LTTng-Tools minor version number])
 AC_DEFINE_UNQUOTED([VERSION_PATCHLEVEL], $patchlevel_version, [LTTng-Tools patchlevel version number])
 
-version_name="(Ta) Meilleure"
-version_description="Ta Meilleure is a Northeast IPA beer brewed by Lagabière. Translating to \"Your best one\", this beer gives out strong aromas of passion fruit, lemon, and peaches. Tastewise, expect a lot of fruit, a creamy texture, and a smooth lingering hop bitterness."
+version_name="N-Beer"
+version_description="An alcoholic drink made from yeast-fermented malt flavored with hops."
 version_description_c=$(echo $version_description | $SED 's/"/\\"/g')
 
 AC_DEFINE_UNQUOTED([VERSION_NAME], ["$version_name"], "")
