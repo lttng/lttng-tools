@@ -4399,7 +4399,11 @@ int consumer_clear_buffer(struct lttng_consumer_stream *stream)
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		lttng_ustconsumer_clear_buffer(stream);
+		ret = lttng_ustconsumer_clear_buffer(stream);
+		if (ret < 0) {
+			ERR("Failed to clear ust stream (ret = %d)", ret);
+			goto end;
+		}
 		break;
 	default:
 		ERR("Unknown consumer_data type");
@@ -5248,4 +5252,9 @@ end:
 error_unlock:
 	pthread_mutex_unlock(&stream->lock);
 	goto end_rcu_unlock;
+}
+
+void lttng_consumer_sigbus_handle(void *addr)
+{
+	lttng_ustconsumer_sigbus_handle(addr);
 }

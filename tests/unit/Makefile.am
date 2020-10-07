@@ -149,6 +149,7 @@ test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 test_session_LDADD += $(SESSIOND_OBJS)
 
 if HAVE_LIBLTTNG_UST_CTL
+test_session_SOURCES += ust-sigbus.c
 test_session_LDADD += $(UST_CTL_LIBS)
 endif
 

@@ -83,11 +83,28 @@ enum lttng_consumer_type lttng_consumer_get_type(void)
 /*
  * Signal handler for the daemon
  */
-static void sighandler(int sig)
+static void sighandler(int sig, siginfo_t *siginfo, void *arg)
 {
 	if (sig == SIGINT && sigintcount++ == 0) {
 		DBG("ignoring first SIGINT");
 		return;
+	}
+
+	if (sig == SIGBUS) {
+		int write_ret;
+		const char msg[] = "Received SIGBUS, aborting program.\n";
+
+		lttng_consumer_sigbus_handle(siginfo->si_addr);
+		/*
+		 * If ustctl did not catch this signal (triggering a
+		 * siglongjmp), abort the program. Otherwise, the execution
+		 * will resume from the ust-ctl call which caused this error.
+		 *
+		 * The return value is ignored since the program aborts anyhow.
+		 */
+		write_ret = write(STDERR_FILENO, msg, sizeof(msg));
+		(void) write_ret;
+		abort();
 	}
 
 	if (ctx) {
@@ -97,7 +114,7 @@ static void sighandler(int sig)
 
 /*
  * Setup signal handler for :
- *      SIGINT, SIGTERM, SIGPIPE
+ *      SIGINT, SIGTERM, SIGPIPE, SIGBUS
  */
 static int set_signal_handler(void)
 {
@@ -111,9 +128,9 @@ static int set_signal_handler(void)
 	}
 
 	sa.sa_mask = sigset;
-	sa.sa_flags = 0;
+	sa.sa_flags = SA_SIGINFO;
 
-	sa.sa_handler = sighandler;
+	sa.sa_sigaction = sighandler;
 	if ((ret = sigaction(SIGTERM, &sa, NULL)) < 0) {
 		PERROR("sigaction");
 		return ret;
@@ -124,6 +141,12 @@ static int set_signal_handler(void)
 		return ret;
 	}
 
+	if ((ret = sigaction(SIGBUS, &sa, NULL)) < 0) {
+		PERROR("sigaction");
+		return ret;
+	}
+
+	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
 	if ((ret = sigaction(SIGPIPE, &sa, NULL)) < 0) {
 		PERROR("sigaction");

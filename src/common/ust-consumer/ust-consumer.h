@@ -39,10 +39,10 @@ int lttng_ustconsumer_on_recv_stream(struct lttng_consumer_stream *stream);
 
 void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream);
 
-void lttng_ust_flush_buffer(
-		struct lttng_consumer_stream *stream, int producer_active);
-int lttng_ustconsumer_get_stream_id(
-		struct lttng_consumer_stream *stream, uint64_t *stream_id);
+int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer_active);
+int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
+		uint64_t *stream_id);
 int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream);
 void lttng_ustconsumer_close_all_metadata(struct lttng_ht *ht);
 void lttng_ustconsumer_close_metadata(struct lttng_consumer_channel *metadata);
@@ -55,13 +55,14 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 enum sync_metadata_status lttng_ustconsumer_sync_metadata(
 		struct lttng_consumer_local_data *ctx,
 		struct lttng_consumer_stream *metadata);
-void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
+int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer);
-void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream);
+int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream);
 int lttng_ustconsumer_get_current_timestamp(
 		struct lttng_consumer_stream *stream, uint64_t *ts);
 int lttng_ustconsumer_get_sequence_number(
 		struct lttng_consumer_stream *stream, uint64_t *seq);
+void lttng_ustconsumer_sigbus_handle(void *addr);
 
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
@@ -168,9 +169,10 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 	return -ENOSYS;
 }
 static inline
-void lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
+int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer_active)
 {
+	return -ENOSYS;
 }
 static inline
 void lttng_ustconsumer_close_all_metadata(struct lttng_ht *ht)
@@ -204,13 +206,15 @@ enum sync_metadata_status lttng_ustconsumer_sync_metadata(struct lttng_consumer_
 	return SYNC_METADATA_STATUS_ERROR;
 }
 static inline
-void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
+int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer)
 {
+	return -ENOSYS;
 }
 static inline
-void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
+	return -ENOSYS;
 }
 static inline
 int lttng_ustconsumer_get_current_timestamp(
@@ -229,6 +233,10 @@ int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
 		uint64_t *stream_id)
 {
 	return -ENOSYS;
+}
+static inline
+void lttng_ustconsumer_sigbus_handle(void *addr)
+{
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 

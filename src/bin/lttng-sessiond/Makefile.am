@@ -12,7 +12,7 @@ bin_PROGRAMS = lttng-sessiond
 lttng_sessiond_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
-                       ust-app.h trace-ust.h notify-apps.h \
+                       ust-app.h ust-sigbus.h trace-ust.h notify-apps.h \
                        lttng-ust-ctl.h lttng-ust-abi.h lttng-ust-error.h \
                        ust-ctl-internal.h ust-abi-internal.h ust-error-internal.h \
                        ust-registry.h \
@@ -65,7 +65,8 @@ if HAVE_LIBLTTNG_UST_CTL
 lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h notify-apps.c \
 			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h \
-			ust-field-utils.h ust-field-utils.c
+			ust-field-utils.h ust-field-utils.c \
+			ust-sigbus.c
 endif
 
 # Add main.c at the end for compile order
