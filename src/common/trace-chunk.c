@@ -1834,7 +1834,12 @@ bool lttng_trace_chunk_ids_equal(const struct lttng_trace_chunk *chunk_a,
 {
 	bool equal = false;
 
-	if (!chunk_a || !chunk_b) {
+	if (chunk_a == chunk_b) {
+		equal = true;
+		goto end;
+	}
+
+	if (!!chunk_a ^ !!chunk_b) {
 		goto end;
 	}
 

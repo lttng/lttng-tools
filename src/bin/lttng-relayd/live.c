@@ -284,13 +284,6 @@ static int make_viewer_streams(struct relay_session *relay_session,
 	assert(relay_session);
 	ASSERT_LOCKED(relay_session->lock);
 
-	if (!viewer_session->current_trace_chunk) {
-		ERR("Internal error: viewer session associated with session \"%s\" has a NULL trace chunk",
-				relay_session->session_name);
-		ret = -1;
-		goto error;
-	}
-
 	if (relay_session->connection_closed) {
 		*closed = true;
 	}
@@ -361,7 +354,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 			viewer_stream = viewer_stream_get_by_id(
 					relay_stream->stream_handle);
 			if (!viewer_stream) {
-				struct lttng_trace_chunk *viewer_stream_trace_chunk;
+				struct lttng_trace_chunk *viewer_stream_trace_chunk = NULL;
 
 				/*
 				 * Save that we sent the metadata stream to the
@@ -391,9 +384,26 @@ static int make_viewer_streams(struct relay_session *relay_session,
 						goto error_unlock;
 					}
 				} else {
-					const bool reference_acquired = lttng_trace_chunk_get(
-							viewer_session->current_trace_chunk);
+					bool reference_acquired;
 
+					/*
+					 * Transition the viewer session into the newest trace chunk available.
+					 */
+					if (!lttng_trace_chunk_ids_equal(viewer_session->current_trace_chunk,
+							relay_stream->trace_chunk)) {
+
+						ret = viewer_session_set_trace_chunk_copy(
+								viewer_session,
+								relay_stream->trace_chunk);
+						if (ret) {
+							ret = -1;
+							ctf_trace_put(ctf_trace);
+							goto error_unlock;
+						}
+					}
+
+					reference_acquired = lttng_trace_chunk_get(
+							viewer_session->current_trace_chunk);
 					assert(reference_acquired);
 					viewer_stream_trace_chunk =
 							viewer_session->current_trace_chunk;
@@ -460,7 +470,7 @@ static int make_viewer_streams(struct relay_session *relay_session,
 
 error_unlock:
 	rcu_read_unlock();
-error:
+
 	if (relay_stream) {
 		pthread_mutex_unlock(&relay_stream->lock);
 		stream_put(relay_stream);
@@ -1018,14 +1028,6 @@ int viewer_list_sessions(struct relay_connection *conn)
 			/* Skip closed session */
 			goto next_session;
 		}
-		if (!session->current_trace_chunk) {
-			/*
-			 * Skip un-attachable session. It is either
-			 * being destroyed or has not had a trace
-			 * chunk created against it yet.
-			 */
-			goto next_session;
-		}
 
 		if (count >= buf_count) {
 			struct lttng_viewer_session *newbuf;
@@ -1254,15 +1256,6 @@ int viewer_attach_session(struct relay_connection *conn)
 	DBG("Attach session ID %" PRIu64 " received", session_id);
 
 	pthread_mutex_lock(&session->lock);
-	if (!session->current_trace_chunk) {
-		/*
-		 * Session is either being destroyed or it never had a trace
-		 * chunk created against it.
-		 */
-		DBG("Session requested by live client has no current trace chunk, returning unknown session");
-		response.status = htobe32(LTTNG_VIEWER_ATTACH_UNK);
-		goto send_reply;
-	}
 	if (session->live_timer == 0) {
 		DBG("Not live session");
 		response.status = htobe32(LTTNG_VIEWER_ATTACH_NOT_LIVE);
@@ -1371,10 +1364,12 @@ static int try_open_index(struct relay_viewer_stream *vstream,
 	/*
 	 * First time, we open the index file and at least one index is ready.
 	 */
-	if (rstream->index_received_seqcount == 0) {
+	if (rstream->index_received_seqcount == 0 ||
+			!vstream->stream_file.trace_chunk) {
 		ret = -ENOENT;
 		goto end;
 	}
+
 	chunk_status = lttng_index_file_create_from_trace_chunk_read_only(
 			vstream->stream_file.trace_chunk, rstream->path_name,
 			rstream->channel_name, rstream->tracefile_size,
@@ -1528,6 +1523,24 @@ index_ready:
 	return 1;
 }
 
+static
+void viewer_stream_rotate_to_trace_chunk(struct relay_viewer_stream *vstream,
+		 struct lttng_trace_chunk *new_trace_chunk)
+{
+	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
+
+	if (new_trace_chunk) {
+		const bool acquired_reference = lttng_trace_chunk_get(
+				new_trace_chunk);
+
+		assert(acquired_reference);
+	}
+
+	vstream->stream_file.trace_chunk = new_trace_chunk;
+	viewer_stream_sync_tracefile_array_tail(vstream);
+	viewer_stream_close_files(vstream);
+}
+
 /*
  * Send the next index for a stream.
  *
@@ -1596,7 +1609,10 @@ int viewer_get_next_index(struct relay_connection *conn)
 		goto send_reply;
 	}
 
-	if (rstream->trace_chunk && !lttng_trace_chunk_ids_equal(
+	/*
+	 * Transition the viewer session into the newest trace chunk available.
+	 */
+	if (!lttng_trace_chunk_ids_equal(
 			conn->viewer_session->current_trace_chunk,
 			rstream->trace_chunk)) {
 		DBG("Relay stream and viewer chunk ids differ");
@@ -1609,21 +1625,28 @@ int viewer_get_next_index(struct relay_connection *conn)
 			goto send_reply;
 		}
 	}
-	if (conn->viewer_session->current_trace_chunk !=
-			vstream->stream_file.trace_chunk) {
-		bool acquired_reference;
 
+	/*
+	 * Transition the viewer stream into the latest trace chunk available.
+	 *
+	 * Note that the stream must _not_ rotate in one precise condition:
+	 * the relay stream has rotated to a NULL trace chunk and the viewer
+	 * stream is consuming the trace chunk that was active just before
+	 * that rotation to NULL.
+	 *
+	 * This allows clients to consume all the packets of a trace chunk
+	 * after a session's destruction.
+	 */
+	if (conn->viewer_session->current_trace_chunk != vstream->stream_file.trace_chunk &&
+			!(rstream->completed_rotation_count == vstream->last_seen_rotation_count + 1 && !rstream->trace_chunk)) {
 		DBG("Viewer session and viewer stream chunk differ: "
 				"vsession chunk %p vstream chunk %p",
 				conn->viewer_session->current_trace_chunk,
 				vstream->stream_file.trace_chunk);
-		lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
-		acquired_reference = lttng_trace_chunk_get(conn->viewer_session->current_trace_chunk);
-		assert(acquired_reference);
-		vstream->stream_file.trace_chunk =
-			conn->viewer_session->current_trace_chunk;
-		viewer_stream_sync_tracefile_array_tail(vstream);
-		viewer_stream_close_files(vstream);
+		viewer_stream_rotate_to_trace_chunk(vstream,
+				conn->viewer_session->current_trace_chunk);
+		vstream->last_seen_rotation_count =
+				rstream->completed_rotation_count;
 	}
 
 	ret = check_index_status(vstream, rstream, ctf_trace, &viewer_index);
