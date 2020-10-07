@@ -71,6 +71,7 @@ static void stream_complete_rotation(struct relay_stream *stream)
 	lttng_trace_chunk_put(stream->trace_chunk);
 	stream->trace_chunk = stream->ongoing_rotation.value.next_trace_chunk;
 	stream->ongoing_rotation = (typeof(stream->ongoing_rotation)) {};
+	stream->completed_rotation_count++;
 }
 
 static int stream_create_data_output_file_from_trace_chunk(

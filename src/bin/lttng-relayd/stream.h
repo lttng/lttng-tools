@@ -177,6 +177,7 @@ struct relay_stream {
 	 */
 	struct lttng_trace_chunk *trace_chunk;
 	LTTNG_OPTIONAL(struct relay_stream_rotation) ongoing_rotation;
+	uint64_t completed_rotation_count;
 };
 
 struct relay_stream *stream_create(struct ctf_trace *trace,

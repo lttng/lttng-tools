@@ -45,6 +45,14 @@ struct relay_viewer_stream {
 	} stream_file;
 	/* index file from which to read the index data. */
 	struct lttng_index_file *index_file;
+	/*
+	 * Last seen rotation count in stream.
+	 *
+	 * Sampled on every change to the viewer stream trace chunk,
+	 * this allows the live server to determine if it saw the latest
+	 * rotation that occurred on the receiving end.
+	 */
+	uint64_t last_seen_rotation_count;
 
 	char *path_name;
 	char *channel_name;

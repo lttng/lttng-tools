@@ -21,6 +21,7 @@
 
 static void viewer_stream_destroy(struct relay_viewer_stream *vstream)
 {
+	lttng_trace_chunk_put(vstream->stream_file.trace_chunk);
 	free(vstream->path_name);
 	free(vstream->channel_name);
 	free(vstream);
@@ -40,12 +41,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		enum lttng_viewer_seek seek_t)
 {
 	struct relay_viewer_stream *vstream = NULL;
-	const bool acquired_reference = lttng_trace_chunk_get(trace_chunk);
 
 	ASSERT_LOCKED(stream->lock);
-	if (!acquired_reference) {
-		goto error;
-	}
 
 	vstream = zmalloc(sizeof(*vstream));
 	if (!vstream) {
@@ -53,8 +50,14 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 		goto error;
 	}
 
+	if (trace_chunk) {
+		const bool acquired_reference = lttng_trace_chunk_get(
+				trace_chunk);
+
+		assert(acquired_reference);
+	}
+
 	vstream->stream_file.trace_chunk = trace_chunk;
-	trace_chunk = NULL;
 	vstream->path_name = lttng_strndup(stream->path_name, LTTNG_VIEWER_PATH_MAX);
 	if (vstream->path_name == NULL) {
 		PERROR("relay viewer path_name alloc");
@@ -183,6 +186,8 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 				vstream);
 	}
 
+	vstream->last_seen_rotation_count = stream->completed_rotation_count;
+
 	/* Globally visible after the add unique. */
 	lttng_ht_node_init_u64(&vstream->stream_n, stream->stream_handle);
 	urcu_ref_init(&vstream->ref);
@@ -193,9 +198,6 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 error:
 	if (vstream) {
 		viewer_stream_destroy(vstream);
-	}
-	if (trace_chunk && acquired_reference) {
-		lttng_trace_chunk_put(trace_chunk);
 	}
 	return NULL;
 }
