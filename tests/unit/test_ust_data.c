@@ -21,6 +21,8 @@
 #include <bin/lttng-sessiond/ust-app.h>
 #include <bin/lttng-sessiond/notification-thread.h>
 
+#include <lttng/ust-sigbus.h>
+
 #include <tap/tap.h>
 
 /* This path will NEVER be created in this test */
@@ -30,6 +32,8 @@
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS 16
+
+DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 /* For error.h */
 int lttng_opt_quiet = 1;

@@ -10,6 +10,7 @@
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <lttng/ust-ctl.h>
+#include <lttng/ust-sigbus.h>
 #include <poll.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -46,6 +47,8 @@
 
 extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;
+
+DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 /*
  * Free channel object and all streams associated with it. This MUST be used
@@ -727,7 +730,14 @@ static int flush_channel(uint64_t chan_key)
 		}
 
 		if (!stream->quiescent) {
-			lttng_ust_ctl_flush_buffer(stream->ustream, 0);
+			ret = lttng_ust_ctl_flush_buffer(stream->ustream, 0);
+			if (ret) {
+				ERR("Failed to flush buffer while flushing channel: channel key = %" PRIu64 ", channel name = '%s'",
+						chan_key, channel->name);
+				ret = LTTNG_ERR_BUFFER_FLUSH_FAILED;
+				pthread_mutex_unlock(&stream->lock);
+				goto error;
+			}
 			stream->quiescent = true;
 		}
 next:
@@ -1128,7 +1138,12 @@ static int snapshot_channel(struct lttng_consumer_channel *channel,
 		 * Else, if quiescent, it has already been done by the prior stop.
 		 */
 		if (!stream->quiescent) {
-			lttng_ust_ctl_flush_buffer(stream->ustream, 0);
+			ret = lttng_ust_ctl_flush_buffer(stream->ustream, 0);
+			if (ret < 0) {
+				ERR("Failed to flush buffer during snapshot of channel: channel key = %" PRIu64 ", channel name = '%s'",
+						channel->key, channel->name);
+				goto error_unlock;
+			}
 		}
 
 		ret = lttng_ustconsumer_take_snapshot(stream);
@@ -2314,13 +2329,13 @@ end:
 	return ret_func;
 }
 
-void lttng_ust_flush_buffer(
-		struct lttng_consumer_stream *stream, int producer_active)
+int lttng_ust_flush_buffer(struct lttng_consumer_stream *stream,
+		int producer_active)
 {
 	assert(stream);
 	assert(stream->ustream);
 
-	lttng_ust_ctl_flush_buffer(stream->ustream, producer_active);
+	return lttng_ust_ctl_flush_buffer(stream->ustream, producer_active);
 }
 
 /*
@@ -2380,21 +2395,21 @@ int lttng_ustconsumer_get_consumed_snapshot(
 	return lttng_ust_ctl_snapshot_get_consumed(stream->ustream, pos);
 }
 
-void lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
+int lttng_ustconsumer_flush_buffer(struct lttng_consumer_stream *stream,
 		int producer)
 {
 	assert(stream);
 	assert(stream->ustream);
 
-	lttng_ust_ctl_flush_buffer(stream->ustream, producer);
+	return lttng_ust_ctl_flush_buffer(stream->ustream, producer);
 }
 
-void lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
+int lttng_ustconsumer_clear_buffer(struct lttng_consumer_stream *stream)
 {
 	assert(stream);
 	assert(stream->ustream);
 
-	lttng_ust_ctl_clear_buffer(stream->ustream);
+	return lttng_ust_ctl_clear_buffer(stream->ustream);
 }
 
 int lttng_ustconsumer_get_current_timestamp(
@@ -2427,8 +2442,11 @@ void lttng_ustconsumer_on_stream_hangup(struct lttng_consumer_stream *stream)
 
 	pthread_mutex_lock(&stream->lock);
 	if (!stream->quiescent) {
-		lttng_ust_ctl_flush_buffer(stream->ustream, 0);
-		stream->quiescent = true;
+		if (lttng_ust_ctl_flush_buffer(stream->ustream, 0) < 0) {
+			ERR("Failed to flush buffer on stream hang-up");
+		} else {
+			stream->quiescent = true;
+		}
 	}
 	pthread_mutex_unlock(&stream->lock);
 	stream->hangup_flush_done = 1;
@@ -2589,8 +2607,12 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	 * a metadata packet. Since the subbuffer is fully filled (with padding,
 	 * if needed), the stream is "quiescent" after this commit.
 	 */
-	lttng_ust_ctl_flush_buffer(stream->ustream, 1);
-	stream->quiescent = true;
+	if (lttng_ust_ctl_flush_buffer(stream->ustream, 1)) {
+		ERR("Failed to flush buffer while commiting one metadata packet");
+		ret = -EIO;
+	} else {
+		stream->quiescent = true;
+	}
 end:
 	pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 	return ret;
@@ -3409,4 +3431,9 @@ int lttng_ustconsumer_get_stream_id(struct lttng_consumer_stream *stream,
 	assert(stream_id);
 
 	return lttng_ust_ctl_get_stream_id(stream->ustream, stream_id);
+}
+
+void lttng_ustconsumer_sigbus_handle(void *addr)
+{
+	lttng_ust_ctl_sigbus_handle(addr);
 }

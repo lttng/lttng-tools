@@ -1317,7 +1317,7 @@ int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream,
 		break;
 	case LTTNG_CONSUMER32_UST:
 	case LTTNG_CONSUMER64_UST:
-		lttng_ustconsumer_flush_buffer(stream, (int) producer_active);
+		ret = lttng_ustconsumer_flush_buffer(stream, (int) producer_active);
 		break;
 	default:
 		ERR("Unknown consumer_data type");
