@@ -51,7 +51,6 @@
 #include "event.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
-#include "shm.h"
 #include "lttng-ust-ctl.h"
 #include "ust-consumer.h"
 #include "utils.h"

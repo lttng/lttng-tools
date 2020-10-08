@@ -82,6 +82,7 @@ libcommon_la_SOURCES = \
 	pipe.c pipe.h \
 	readwrite.c readwrite.h \
 	runas.c runas.h \
+	shm.c shm.h \
 	session-descriptor.c \
 	snapshot.c snapshot.h \
 	spawn-viewer.c spawn-viewer.h \

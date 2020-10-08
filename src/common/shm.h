@@ -11,4 +11,6 @@
 
 char *shm_ust_get_mmap(char *shm_path, int global);
 
+int shm_create_anonymous(const char *owner_name);
+
 #endif /* _LTT_SHM_H */

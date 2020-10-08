@@ -37,6 +37,7 @@
 #include <common/utils.h>
 #include <common/index/index.h>
 #include <common/consumer/consumer.h>
+#include <common/shm.h>
 #include <common/optional.h>
 
 #include "ust-consumer.h"
@@ -352,48 +353,6 @@ error_alloc:
 	return ret;
 }
 
-/*
- * create_posix_shm is never called concurrently within a process.
- */
-static
-int create_posix_shm(void)
-{
-	char tmp_name[NAME_MAX];
-	int shmfd, ret;
-
-	ret = snprintf(tmp_name, NAME_MAX, "/ust-shm-consumer-%d", getpid());
-	if (ret < 0) {
-		PERROR("snprintf");
-		return -1;
-	}
-	/*
-	 * Allocate shm, and immediately unlink its shm oject, keeping
-	 * only the file descriptor as a reference to the object.
-	 * We specifically do _not_ use the / at the beginning of the
-	 * pathname so that some OS implementations can keep it local to
-	 * the process (POSIX leaves this implementation-defined).
-	 */
-	shmfd = shm_open(tmp_name, O_CREAT | O_EXCL | O_RDWR, 0700);
-	if (shmfd < 0) {
-		PERROR("shm_open");
-		goto error_shm_open;
-	}
-	ret = shm_unlink(tmp_name);
-	if (ret < 0 && errno != ENOENT) {
-		PERROR("shm_unlink");
-		goto error_shm_release;
-	}
-	return shmfd;
-
-error_shm_release:
-	ret = close(shmfd);
-	if (ret) {
-		PERROR("close");
-	}
-error_shm_open:
-	return -1;
-}
-
 static int open_ust_stream_fd(struct lttng_consumer_channel *channel, int cpu,
 		const struct lttng_credentials *session_credentials)
 {
@@ -401,7 +360,7 @@ static int open_ust_stream_fd(struct lttng_consumer_channel *channel, int cpu,
 	int ret;
 
 	if (!channel->shm_path[0]) {
-		return create_posix_shm();
+		return shm_create_anonymous("ust-consumer");
 	}
 	ret = get_stream_shm_path(shm_path, channel->shm_path, cpu);
 	if (ret) {

@@ -189,3 +189,41 @@ char *shm_ust_get_mmap(char *shm_path, int global)
 error:
 	return NULL;
 }
+
+/*
+ * shm_create_anonymous is never called concurrently within a process.
+ */
+int shm_create_anonymous(const char *owner_name)
+{
+	char tmp_name[NAME_MAX];
+	int shmfd, ret;
+
+	ret = snprintf(tmp_name, NAME_MAX, "/shm-%s-%d", owner_name, getpid());
+	if (ret < 0) {
+		PERROR("snprintf");
+		return -1;
+	}
+	/*
+	 * Allocate shm, and immediately unlink its shm oject, keeping only the
+	 * file descriptor as a reference to the object.
+	 */
+	shmfd = shm_open(tmp_name, O_CREAT | O_EXCL | O_RDWR, 0700);
+	if (shmfd < 0) {
+		PERROR("shm_open");
+		goto error_shm_open;
+	}
+	ret = shm_unlink(tmp_name);
+	if (ret < 0 && errno != ENOENT) {
+		PERROR("shm_unlink");
+		goto error_shm_release;
+	}
+	return shmfd;
+
+error_shm_release:
+	ret = close(shmfd);
+	if (ret) {
+		PERROR("close");
+	}
+error_shm_open:
+	return -1;
+}

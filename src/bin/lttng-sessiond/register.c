@@ -12,6 +12,7 @@
 #include <urcu.h>
 #include <common/futex.h>
 #include <common/macros.h>
+#include <common/shm.h>
 #include <common/utils.h>
 #include <sys/stat.h>
 
@@ -20,7 +21,6 @@
 #include "testpoint.h"
 #include "health-sessiond.h"
 #include "fd-limit.h"
-#include "shm.h"
 #include "utils.h"
 #include "thread.h"
 

@@ -82,7 +82,6 @@ SESSIOND_OBJS = $(top_builddir)/src/bin/lttng-sessiond/buffer-registry.$(OBJEXT)
 	 $(top_builddir)/src/bin/lttng-sessiond/condition-internal.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/save.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/shm.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/kernel.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/ht-cleanup.$(OBJEXT) \
 	 $(top_builddir)/src/bin/lttng-sessiond/notification-thread.$(OBJEXT) \
