@@ -31,7 +31,7 @@ function clean_path ()
 {
 	local trace_path=$1
 	set -u
-	rm -rf $trace_path/*
+	rm -rf $trace_path
 	set +u
 }
 
