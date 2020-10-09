@@ -1854,6 +1854,8 @@ int viewer_get_packet(struct relay_connection *conn)
 	goto send_reply;
 
 error:
+	/* No payload to send on error. */
+	reply_size = sizeof(reply_header);
 	reply_header.status = htobe32(LTTNG_VIEWER_GET_PACKET_ERR);
 
 send_reply:
