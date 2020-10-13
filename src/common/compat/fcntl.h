@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <sys/types.h>
 
-#if (defined(__FreeBSD__) || defined(__CYGWIN__))
+#if (defined(__CYGWIN__))
 typedef long long off64_t;
 #endif
 
@@ -54,15 +54,6 @@ static inline int lttng_sync_file_range(int fd, off64_t offset,
 
 static inline ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
 		size_t len, unsigned int flags)
-{
-	return -ENOSYS;
-}
-#endif
-
-#ifdef __FreeBSD__
-#define POSIX_FADV_DONTNEED 0
-
-static inline int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 {
 	return -ENOSYS;
 }
