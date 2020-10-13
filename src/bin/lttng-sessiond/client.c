@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <stddef.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "client.h"
 #include "lttng-sessiond.h"
@@ -1281,9 +1282,17 @@ error_add_context:
 						.value_type;
 		struct process_attr_value *value;
 		enum lttng_error_code ret_code;
+		long login_name_max;
+
+		login_name_max = sysconf(_SC_LOGIN_NAME_MAX);
+		if (login_name_max < 0) {
+			PERROR("Failed to get _SC_LOGIN_NAME_MAX system configuration");
+			ret = LTTNG_ERR_INVALID;
+			goto error;
+		}
 
 		/* Receive remaining variable length payload if applicable. */
-		if (name_len > LOGIN_NAME_MAX) {
+		if (name_len > login_name_max) {
 			/*
 			 * POSIX mandates user and group names that are at least
 			 * 8 characters long. Note that although shadow-utils
@@ -1291,9 +1300,9 @@ error_add_context:
 			 * limit (from bits/utmp.h, UT_NAMESIZE),
 			 * LOGIN_NAME_MAX is defined to 256.
 			 */
-			ERR("Rejecting process attribute tracker value %s as the provided exceeds the maximal allowed length: argument length = %zu, maximal length = %d",
+			ERR("Rejecting process attribute tracker value %s as the provided exceeds the maximal allowed length: argument length = %zu, maximal length = %ld",
 					add_value ? "addition" : "removal",
-					name_len, LOGIN_NAME_MAX);
+					name_len, login_name_max);
 			ret = LTTNG_ERR_INVALID;
 			goto error;
 		}
