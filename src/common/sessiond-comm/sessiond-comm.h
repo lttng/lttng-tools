@@ -283,7 +283,7 @@ struct lttcomm_session_msg {
 		/* Event data */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event event LTTNG_PACKED;
+			struct lttng_event event;
 			/* Length of following filter expression. */
 			uint32_t expression_len;
 			/* Length of following bytecode for filter. */
@@ -302,7 +302,7 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED enable;
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event event LTTNG_PACKED;
+			struct lttng_event event;
 			/* Length of following filter expression. */
 			uint32_t expression_len;
 			/* Length of following bytecode for filter. */
@@ -316,14 +316,13 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED disable;
 		/* Create channel */
 		struct {
-			struct lttng_channel chan LTTNG_PACKED;
-			/* struct lttng_channel_extended is already packed. */
+			struct lttng_channel chan;
 			struct lttng_channel_extended extended;
 		} LTTNG_PACKED channel;
 		/* Context */
 		struct {
 			char channel_name[LTTNG_SYMBOL_NAME_LEN];
-			struct lttng_event_context ctx LTTNG_PACKED;
+			struct lttng_event_context ctx;
 			uint32_t provider_name_len;
 			uint32_t context_name_len;
 		} LTTNG_PACKED context;
@@ -342,18 +341,18 @@ struct lttcomm_session_msg {
 			uint32_t size;
 		} LTTNG_PACKED uri;
 		struct {
-			struct lttng_snapshot_output output LTTNG_PACKED;
+			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_output;
 		struct {
 			uint32_t wait;
-			struct lttng_snapshot_output output LTTNG_PACKED;
+			struct lttng_snapshot_output output;
 		} LTTNG_PACKED snapshot_record;
 		struct {
 			uint32_t nb_uri;
 			unsigned int timer_interval;	/* usec */
 		} LTTNG_PACKED session_live;
 		struct {
-			struct lttng_save_session_attr attr; /* struct already packed */
+			struct lttng_save_session_attr attr;
 		} LTTNG_PACKED save_session;
 		struct {
 			char shm_path[PATH_MAX];
