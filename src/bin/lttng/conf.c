@@ -13,8 +13,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
+#include <common/compat/errno.h>
 #include <common/common.h>
 #include <common/utils.h>
 

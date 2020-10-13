@@ -13,13 +13,13 @@
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <grp.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <common/common.h>
+#include <common/compat/errno.h>
 #include <common/compat/string.h>
 #include <common/defaults.h>
 #include <common/dynamic-buffer.h>

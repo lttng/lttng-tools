@@ -11,8 +11,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <common/align.h>
+#include <common/compat/errno.h>
 #include <common/compat/string.h>
 
 #include "filter-bytecode.h"

@@ -9,10 +9,10 @@
 #include <urcu/uatomic.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <errno.h>
 #include <stdio.h>
 #include "fd-limit.h"
 #include <common/error.h>
+#include <common/compat/errno.h>
 
 /* total count of fd. */
 static long fd_count;

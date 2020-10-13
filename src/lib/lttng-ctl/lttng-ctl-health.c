@@ -15,7 +15,6 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <limits.h>
-#include <errno.h>
 #include <string.h>
 #include <lttng/health-internal.h>
 
@@ -24,6 +23,7 @@
 #include <bin/lttng-relayd/health-relayd.h>
 #include <common/defaults.h>
 #include <common/utils.h>
+#include <common/compat/errno.h>
 
 #include "lttng-ctl-helper.h"
 

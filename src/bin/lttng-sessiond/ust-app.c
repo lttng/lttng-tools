@@ -7,7 +7,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <errno.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -19,6 +18,7 @@
 #include <urcu/compiler.h>
 #include <signal.h>
 
+#include <common/compat/errno.h>
 #include <common/common.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 

@@ -15,9 +15,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <common/common.h>
+#include <common/compat/errno.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/fd-handle.h>
 

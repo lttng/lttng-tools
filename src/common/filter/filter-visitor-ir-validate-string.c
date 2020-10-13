@@ -14,10 +14,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 
 #include <common/macros.h>
+#include <common/compat/errno.h>
 
 #include "filter-ast.h"
 #include "filter-parser.h"

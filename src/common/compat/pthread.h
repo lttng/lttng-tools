@@ -9,7 +9,7 @@
 #define _COMPAT_PTHREAD_H
 
 #include <pthread.h>
-#include <errno.h>
+#include <common/compat/errno.h>
 
 #if defined(HAVE_PTHREAD_SETNAME_NP_WITH_TID)
 static inline

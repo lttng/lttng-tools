@@ -12,10 +12,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
 
 #include <lttng/constant.h>
 
+#include <common/compat/errno.h>
 #include "error.h"
 #include "macros.h"
 #include "spawn-viewer.h"

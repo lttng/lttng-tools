@@ -14,7 +14,7 @@
 #include <string.h>
 #include <common/align.h>
 #include <common/macros.h>
-#include <errno.h>
+#include <common/compat/errno.h>
 #include <stdarg.h>
 #include <assert.h>
 #include <common/time.h>

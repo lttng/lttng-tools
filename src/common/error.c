@@ -7,7 +7,6 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -15,6 +14,7 @@
 
 #include <common/common.h>
 #include <common/thread.h>
+#include <common/compat/errno.h>
 #include <common/compat/getenv.h>
 #include <lttng/lttng-error.h>
 

@@ -8,7 +8,7 @@
 #ifndef _ERROR_H
 #define _ERROR_H
 
-#include <errno.h>
+#include <common/compat/errno.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>

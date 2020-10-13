@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +16,7 @@
 
 #include <tap/tap.h>
 
+#include <common/compat/errno.h>
 #include <bin/lttng-sessiond/session.h>
 #include <bin/lttng-sessiond/ust-app.h>
 #include <bin/lttng-sessiond/ht-cleanup.h>

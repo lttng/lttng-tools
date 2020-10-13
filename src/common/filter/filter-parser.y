@@ -16,13 +16,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include "filter-ast.h"
 #include "filter-parser.h"
 #include "filter-bytecode.h"
 #include "memstream.h"
 
+#include <common/compat/errno.h>
 #include <common/macros.h>
 
 #define WIDTH_u64_SCANF_IS_A_BROKEN_API	"20"

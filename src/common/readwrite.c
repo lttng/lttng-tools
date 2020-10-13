@@ -7,9 +7,10 @@
 
 #define _LGPL_SOURCE
 #include <assert.h>
-#include <errno.h>
 #include <limits.h>
 #include <unistd.h>
+
+#include <common/compat/errno.h>
 
 #include "readwrite.h"
 

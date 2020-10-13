@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +30,7 @@
 #include <bin/lttng-relayd/lttng-viewer-abi.h>
 #include <common/index/ctf-index.h>
 
+#include <common/compat/errno.h>
 #include <common/compat/endian.h>
 
 #define SESSION1 "test1"

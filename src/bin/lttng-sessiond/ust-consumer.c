@@ -6,13 +6,13 @@
  */
 
 #define _LGPL_SOURCE
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
 
+#include <common/compat/errno.h>
 #include <common/common.h>
 #include <common/consumer/consumer.h>
 #include <common/defaults.h>

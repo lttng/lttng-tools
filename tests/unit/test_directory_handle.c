@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,6 +16,7 @@
 #include <unistd.h>
 
 #include <common/compat/directory-handle.h>
+#include <common/compat/errno.h>
 #include <common/error.h>
 #include <tap/tap.h>
 

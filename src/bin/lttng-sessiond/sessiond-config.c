@@ -11,10 +11,10 @@
 #include "lttng-ust-ctl.h"
 #include <common/defaults.h>
 #include <limits.h>
-#include <errno.h>
 #include <ctype.h>
 #include <common/error.h>
 #include <common/utils.h>
+#include <common/compat/errno.h>
 #include <common/compat/getenv.h>
 
 static

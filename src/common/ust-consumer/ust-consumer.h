@@ -9,8 +9,7 @@
 #ifndef _LTTNG_USTCONSUMER_H
 #define _LTTNG_USTCONSUMER_H
 
-#include <errno.h>
-
+#include <common/compat/errno.h>
 #include <common/consumer/consumer.h>
 #include <stdbool.h>
 

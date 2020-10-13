@@ -8,7 +8,6 @@
  */
 
 #define _LGPL_SOURCE
-#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +25,7 @@
 #include <common/lttng-kernel.h>
 #include <common/common.h>
 #include <common/utils.h>
+#include <common/compat/errno.h>
 #include <common/compat/getenv.h>
 #include <common/compat/string.h>
 #include <common/unix.h>

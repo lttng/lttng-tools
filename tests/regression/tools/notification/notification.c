@@ -21,9 +21,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <errno.h>
 #include <poll.h>
 
+#include <common/compat/errno.h>
 #include <lttng/action/action.h>
 #include <lttng/action/notify.h>
 #include <lttng/condition/buffer-usage.h>

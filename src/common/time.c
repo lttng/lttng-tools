@@ -9,10 +9,10 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <common/error.h>
+#include <common/compat/errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
-#include <errno.h>
 #include <pthread.h>
 #include <locale.h>
 #include <string.h>

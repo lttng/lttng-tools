@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +16,7 @@
 #include <lttng/lttng.h>
 #include <bin/lttng-sessiond/lttng-ust-abi.h>
 #include <common/defaults.h>
+#include <common/compat/errno.h>
 #include <bin/lttng-sessiond/trace-ust.h>
 #include <bin/lttng-sessiond/ust-app.h>
 #include <bin/lttng-sessiond/notification-thread.h>

@@ -28,7 +28,7 @@ ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 #else
 
 #include <signal.h>
-#include <errno.h>
+#include <common/compat/errno.h>
 
 static inline
 ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)

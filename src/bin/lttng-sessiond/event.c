@@ -7,10 +7,10 @@
  */
 
 #define _LGPL_SOURCE
-#include <errno.h>
 #include <urcu/list.h>
 #include <string.h>
 
+#include <common/compat/errno.h>
 #include <lttng/lttng.h>
 #include <common/error.h>
 #include <common/sessiond-comm/sessiond-comm.h>

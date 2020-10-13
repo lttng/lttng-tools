@@ -15,7 +15,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdio.h>
-#include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -24,6 +23,7 @@
 #include <urcu.h>
 
 #include <common/compat/directory-handle.h>
+#include <common/compat/errno.h>
 #include <common/error.h>
 #include <common/fd-tracker/fd-tracker.h>
 

@@ -9,8 +9,9 @@
 #define _COMPAT_FCNTL_H
 
 #include <fcntl.h>
-#include <errno.h>
 #include <sys/types.h>
+
+#include <common/compat/errno.h>
 
 #if (defined(__CYGWIN__))
 typedef long long off64_t;

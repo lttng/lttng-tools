@@ -8,7 +8,6 @@
 #include <assert.h>
 #include <common/compat/time.h>
 #include <common/time.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -18,6 +17,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <common/compat/errno.h>
 
 #include "utils.h"
 

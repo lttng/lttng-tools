@@ -8,9 +8,10 @@
 /* _GNU_SOURCE is defined by config.h */
 #include <dlfcn.h>
 #include <stdio.h>
-#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+#include <common/compat/errno.h>
 
 /*
  * libfoo has a direct dependency on libbar.
