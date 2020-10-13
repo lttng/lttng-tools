@@ -5,10 +5,12 @@
  *
  */
 
+#include <unistd.h>
+
+#include <common/compat/fcntl.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <tap/tap.h>
-#include <sys/eventfd.h>
 
 static const int TEST_COUNT = 5;
 
@@ -27,7 +29,7 @@ static void test_fd_push_pop_order(void)
 
 	diag("Validating fd push/pop order");
 	for (i = 0; i < 3; i++) {
-		int fd = eventfd(0, 0);
+		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 		struct fd_handle *handle;
 
 		assert(fd >= 0);
@@ -76,7 +78,7 @@ static void test_fd_push_pop_imbalance(void)
 	diag("Validating fd pop imbalance");
 	for (i = 0; i < 10; i++) {
 		struct fd_handle *handle;
-		int fd = eventfd(0, 0);
+		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 
 		assert(fd >= 0);
 
@@ -119,13 +121,16 @@ fail:
 static void test_fd_pop_fd_root_views(void)
 {
 	int ret, i;
-	const int fd = eventfd(0, 0);
-	struct fd_handle *handle = fd_handle_create(fd);
+	int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
+	struct fd_handle *handle;
 	struct lttng_payload payload;
 	const char * const test_description = "Same file descriptor returned when popping from different top-level views";
 
-	lttng_payload_init(&payload);
+	assert(fd >= 0);
+	handle = fd_handle_create(fd);
 	assert(handle);
+
+	lttng_payload_init(&payload);
 
 	diag("Validating root view fd pop behaviour");
 	ret = lttng_payload_push_fd_handle(&payload, handle);

@@ -18,7 +18,6 @@
 #include <common/hashtable/utils.h>
 #include <common/kernel-ctl/kernel-ctl.h>
 #include <common/credentials.h>
-#include <sys/eventfd.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <signal.h>

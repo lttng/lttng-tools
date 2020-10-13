@@ -17,7 +17,6 @@
 #include <common/utils.h>
 #include <common/align.h>
 #include <common/time.h>
-#include <sys/eventfd.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <signal.h>

@@ -5,6 +5,7 @@
  *
  */
 
+#include <common/compat/fcntl.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
@@ -12,7 +13,6 @@
 #include <common/utils.h>
 #include <common/defaults.h>
 #include <tap/tap.h>
-#include <sys/eventfd.h>
 #include <stdbool.h>
 #include <common/error.h>
 #include <lttng/constant.h>
@@ -65,17 +65,17 @@ static void test_high_fd_count(unsigned int fd_count)
 
 	for (i = 0; i < fd_count; i++) {
 		struct fd_handle *handle;
-		const int fd = eventfd(0, 0);
+		int fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 
 		if (fd < 0) {
-			PERROR("Failed to create event fd while creating test payload");
+			PERROR("Failed to create fd while creating test payload");
 			goto error;
 		}
 
 		handle = fd_handle_create(fd);
 		if (!handle) {
 			if (close(fd)) {
-				PERROR("Failed to close event fd while preparing test payload");
+				PERROR("Failed to close fd while preparing test payload");
 				goto error;
 			}
 		}
@@ -221,16 +221,16 @@ static void test_one_fd_per_message(unsigned int message_count)
 			goto error;
 		}
 
-		fd = eventfd(0, 0);
+		fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 		if (fd < 0) {
-			PERROR("Failed to create event fd while creating test payload");
+			PERROR("Failed to create fd while creating test payload");
 			goto error;
 		}
 
 		handle = fd_handle_create(fd);
 		if (!handle) {
 			if (close(fd)) {
-				PERROR("Failed to close event fd while preparing test payload");
+				PERROR("Failed to close fd while preparing test payload");
 				goto error;
 			}
 		}
@@ -380,16 +380,16 @@ static void test_receive_in_chunks(
 		goto error;
 	}
 
-	fd = eventfd(0, 0);
+	fd = fcntl(STDOUT_FILENO, F_DUPFD, 0);
 	if (fd < 0) {
-		PERROR("Failed to create event fd while creating test payload");
+		PERROR("Failed to create fd while creating test payload");
 		goto error;
 	}
 
 	handle = fd_handle_create(fd);
 	if (!handle) {
 		if (close(fd)) {
-			PERROR("Failed to close event fd while preparing test payload");
+			PERROR("Failed to close fd while preparing test payload");
 			goto error;
 		}
 	}
