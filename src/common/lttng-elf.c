@@ -133,8 +133,17 @@
 		dst_sym.st_size = src_sym.st_size;	\
 	} while (0)
 
-/* Both 32bit and 64bit use the same 1 byte field for type. (See elf.h) */
-#define ELF_ST_TYPE(val) ELF32_ST_TYPE(val)
+#ifndef ELFCLASSNUM
+#define ELFCLASSNUM 3
+#endif
+
+#ifndef ELFDATANUM
+#define ELFDATANUM 3
+#endif
+
+#ifndef EV_NUM
+#define EV_NUM 2
+#endif
 
 struct lttng_elf_ehdr {
 	uint16_t e_type;
@@ -846,7 +855,8 @@ int lttng_elf_get_symbol_offset(int fd, char *symbol, uint64_t *offset)
 		/*
 		 * If the current symbol is not a function; skip to the next symbol.
 		 */
-		if (ELF_ST_TYPE(curr_sym.st_info) != STT_FUNC) {
+		/* Both 32bit and 64bit use the same 1 byte field for type. (See elf.h) */
+		if (ELF32_ST_TYPE(curr_sym.st_info) != STT_FUNC) {
 			continue;
 		}
 
