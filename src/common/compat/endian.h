@@ -10,6 +10,7 @@
 
 #if defined(__linux__) || defined(__CYGWIN__)
 #include <endian.h>
+#include <byteswap.h>
 
 /*
  * htobe/betoh are not defined for glibc <2.9, so add them
@@ -103,7 +104,11 @@
 #endif /* __USE_BSD */
 
 #elif defined(__FreeBSD__)
-#include <machine/endian.h>
+#include <sys/endian.h>
+
+#define bswap_16(x)	bswap16(x)
+#define bswap_32(x)	bswap32(x)
+#define bswap_64(x)	bswap64(x)
 
 #elif defined(__sun__)
 #include <sys/byteorder.h>
