@@ -121,6 +121,10 @@ struct lttng_sock_cred {
 
 typedef struct lttng_sock_cred lttng_sock_cred;
 
+#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
+#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
+#define LTTNG_SOCK_SET_PID_CRED(c, p)
+
 #define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
 #define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
 #define LTTNG_SOCK_GET_PID_CRED(c) -1
