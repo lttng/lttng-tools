@@ -68,7 +68,7 @@ struct ltt_session {
 	char name[NAME_MAX];
 	bool has_auto_generated_name;
 	bool name_contains_creation_time;
-	char hostname[HOST_NAME_MAX]; /* Local hostname. */
+	char hostname[LTTNG_HOST_NAME_MAX]; /* Local hostname. */
 	/* Path of the last closed chunk. */
 	char last_chunk_path[LTTNG_PATH_MAX];
 	time_t creation_time;

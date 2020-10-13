@@ -51,7 +51,7 @@ static char *build_live_path(char *session_name)
 {
 	int ret;
 	char *path = NULL;
-	char hostname[HOST_NAME_MAX];
+	char hostname[LTTNG_HOST_NAME_MAX];
 
 	ret = gethostname(hostname, sizeof(hostname));
 	if (ret < 0) {
