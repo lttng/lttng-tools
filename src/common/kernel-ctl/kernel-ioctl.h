@@ -160,6 +160,10 @@
 #define LTTNG_KERNEL_ENABLE			_IO(0xF6, 0x82)
 #define LTTNG_KERNEL_DISABLE			_IO(0xF6, 0x83)
 
+/* Event notifier group ioctl */
+#define LTTNG_KERNEL_COUNTER			\
+	_IOW(0xF6, 0x84, struct lttng_kernel_counter_conf)
+
 /* Event and event notifier FD ioctl */
 #define LTTNG_KERNEL_FILTER			_IO(0xF6, 0x90)
 #define LTTNG_KERNEL_ADD_CALLSITE	_IO(0xF6, 0x91)
@@ -178,7 +182,16 @@
 #define LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD	\
 	_IO(0xF6, 0xB1)
 
-/* Trigger file descriptor ioctl */
+/* Event notifier file descriptor ioctl */
 #define LTTNG_KERNEL_CAPTURE			_IO(0xF6, 0xB8)
+
+/* Counter file descriptor ioctl */
+#define LTTNG_KERNEL_COUNTER_READ		\
+	IOWR(0xF6, 0xC0, struct lttng_kernel_counter_read)
+#define LTTNG_KERNEL_COUNTER_AGGREGATE		\
+	_IOWR(0xF6, 0xC1, struct lttng_kernel_counter_aggregate)
+#define LTTNG_KERNEL_COUNTER_CLEAR		\
+	_IOW(0xF6, 0xC2, struct lttng_kernel_counter_clear)
+
 
 #endif /* _LTT_KERNEL_IOCTL_H */

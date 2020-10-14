@@ -241,6 +241,9 @@ static const char *error_string_array[] = {
 	[ ERROR_INDEX(LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY) ] = "Operation does not apply to the process attribute tracker's tracking policy",
 	[ ERROR_INDEX(LTTNG_ERR_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD) ] = "Failed to create an event notifier group notification file descriptor",
 	[ ERROR_INDEX(LTTNG_ERR_INVALID_CAPTURE_EXPRESSION) ] = "Invalid capture expression",
+	[ ERROR_INDEX(LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION) ] = "Failed to create event notifier",
+	[ ERROR_INDEX(LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING) ] = "Failed to initialize event notifier error accounting",
+	[ ERROR_INDEX(LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL) ] = "No index available in event notifier error accounting",
 
 	/* Last element */
 	[ ERROR_INDEX(LTTNG_ERR_NR) ] = "Unknown error code"

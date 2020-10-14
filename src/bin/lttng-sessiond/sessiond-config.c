@@ -24,6 +24,7 @@ struct sessiond_config sessiond_config_build_defaults = {
 	.verbose_consumer = 			0,
 
 	.agent_tcp_port = 			{ .begin = DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN, .end = DEFAULT_AGENT_TCP_PORT_RANGE_END },
+	.event_notifier_error_counter_bucket =	DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE,
 	.app_socket_timeout = 			DEFAULT_APP_SOCKET_RW_TIMEOUT,
 
 	.no_kernel = 				false,

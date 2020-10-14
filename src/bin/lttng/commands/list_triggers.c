@@ -14,6 +14,8 @@
 #include "common/mi-lttng.h"
 /* For lttng_condition_type_str(). */
 #include "lttng/condition/condition-internal.h"
+#include "lttng/condition/on-event.h"
+#include "lttng/condition/on-event-internal.h"
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
 #include "../loglevel.h"
@@ -416,6 +418,7 @@ void print_condition_on_event(const struct lttng_condition *condition)
 	const struct lttng_event_rule *event_rule;
 	enum lttng_condition_status condition_status;
 	unsigned int cap_desc_count, i;
+	uint64_t error_count;
 
 	condition_status =
 		lttng_condition_on_event_get_rule(condition, &event_rule);
@@ -427,6 +430,9 @@ void print_condition_on_event(const struct lttng_condition *condition)
 			lttng_condition_on_event_get_capture_descriptor_count(
 					condition, &cap_desc_count);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	error_count = lttng_condition_on_event_get_error_count(condition);
+	MSG("    tracer notifications discarded: %ld", error_count);
 
 	if (cap_desc_count > 0) {
 		MSG("    captures:");

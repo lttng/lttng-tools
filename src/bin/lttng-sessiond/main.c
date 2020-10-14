@@ -49,6 +49,7 @@
 #include "consumer.h"
 #include "context.h"
 #include "event.h"
+#include "event-notifier-error-accounting.h"
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "lttng-ust-ctl.h"
@@ -81,6 +82,8 @@ static const char *help_msg =
 NULL
 #endif
 ;
+
+#define EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX 65535
 
 const char *progname;
 static int lockfile_fd = -1;
@@ -119,6 +122,7 @@ static const struct option long_options[] = {
 	{ "load", required_argument, 0, 'l' },
 	{ "kmod-probes", required_argument, 0, '\0' },
 	{ "extra-kmod-probes", required_argument, 0, '\0' },
+	{ "event-notifier-error-number-of-bucket", required_argument, 0, '\0' },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -696,6 +700,23 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ret = -ENOMEM;
 			}
 		}
+	} else if (string_match(optname, "event-notifier-error-number-of-bucket")) {
+		unsigned long v;
+
+		errno = 0;
+		v = strtoul(arg, NULL, 0);
+		if (errno != 0 || !isdigit(arg[0])) {
+			ERR("Wrong value in --event-notifier-error-number-of-bucket parameter: %s", arg);
+			return -1;
+		}
+		if (v == 0 || v >= EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX) {
+			ERR("Value out of range for --event-notifier-error-number-of-bucket parameter: %s", arg);
+			return -1;
+		}
+		config.event_notifier_error_counter_bucket = (int) v;
+		DBG3("Number of event notifier error counter set to non default: %i",
+				config.event_notifier_error_counter_bucket);
+		goto end;
 	} else if (string_match(optname, "config") || opt == 'f') {
 		/* This is handled in set_options() thus silent skip. */
 		goto end;
@@ -1588,6 +1609,8 @@ int main(int argc, char **argv)
 		goto stop_threads;
 	}
 
+	event_notifier_error_accounting_init(config.event_notifier_error_counter_bucket);
+
 	/*
 	 * Initialize agent app hash table. We allocate the hash table here
 	 * since cleanup() can get called after this point.
@@ -1825,6 +1848,7 @@ int main(int argc, char **argv)
 	sessiond_wait_for_quit_pipe(-1);
 
 stop_threads:
+
 	/*
 	 * Ensure that the client thread is no longer accepting new commands,
 	 * which could cause new sessions to be created.
@@ -1873,6 +1897,13 @@ stop_threads:
 		lttng_thread_shutdown(notification_thread);
 		lttng_thread_put(notification_thread);
 	}
+
+	/*
+	 * Teardown of error accounting needs be done after the teardown of the
+	 * notification thread as all error buckets must have been released by
+	 * their users (conditions).
+	 */
+	event_notifier_error_accounting_fini();
 
 	/*
 	 * Ensure all prior call_rcu are done. call_rcu callbacks may push

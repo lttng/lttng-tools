@@ -55,6 +55,7 @@ struct ltt_kernel_event {
 /* Kernel event */
 struct ltt_kernel_event_notifier_rule {
 	int fd;
+	uint64_t error_counter_index;
 	int enabled;
 	enum lttng_event_type type;
 	struct lttng_trigger *trigger;
@@ -168,6 +169,7 @@ struct ltt_kernel_context *trace_kernel_create_context(
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
 		struct lttng_trigger *trigger,
 		uint64_t token,
+		uint64_t error_counter_index,
 		struct ltt_kernel_event_notifier_rule **event_notifier_rule);
 struct ltt_kernel_context *trace_kernel_copy_context(
 		struct ltt_kernel_context *ctx);

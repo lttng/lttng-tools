@@ -176,6 +176,9 @@ enum lttng_error_code {
 	LTTNG_ERR_PROCESS_ATTR_TRACKER_INVALID_TRACKING_POLICY = 163, /* Operation does not apply to the process attribute tracker's tracking policy */
 	LTTNG_ERR_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD = 164, /* Error initializing event notifier group notification file descriptor */
 	LTTNG_ERR_INVALID_CAPTURE_EXPRESSION = 165, /* Invalid capture expression. */
+	LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION = 166, /* Error registering event notifier to the tracer. */
+	LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING = 167, /* Error initializing event notifier error accounting. */
+	LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL = 168, /* Error event notifier error accounting full. */
 
 	/* MUST be last element of the manually-assigned section of the enum */
 	LTTNG_ERR_NR,

@@ -56,6 +56,14 @@ struct kern_modules_param kern_modules_control_core[] = {
 		.name = (char *) "lttng-ring-buffer-event_notifier-client",
 		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
 	},
+	{
+		.name = (char *) "lttng-counter-client-percpu-64-modular",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-counter-client-percpu-32-modular",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
 };
 
 /* LTTng kerneltracer probe modules list */

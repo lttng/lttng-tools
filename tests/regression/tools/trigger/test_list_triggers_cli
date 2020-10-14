@@ -72,6 +72,7 @@ test_top_level_options ()
 	  firing policy: once after 123 occurences
 	  condition: event rule hit
 	    rule: test-fire-once-after (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: T1
@@ -79,12 +80,14 @@ test_top_level_options ()
 	  firing policy: after every 124 occurences
 	  condition: event rule hit
 	    rule: test-fire-every (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: hello
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: test-id (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	EOF
@@ -115,36 +118,42 @@ test_on_event_tracepoint ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: B
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: gerboise (type: tracepoint, domain: ust, log level at least INFO)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: C
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: * (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: D
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: hello* (type: tracepoint, domain: ust, exclusions: hello2,hello3,hello4)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: E
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: lemming (type: tracepoint, domain: ust, log level is WARNING)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: F
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: capture-payload-field (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	    captures:
 	      - a
 	  actions:
@@ -153,6 +162,7 @@ test_on_event_tracepoint ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: capture-array (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	    captures:
 	      - a[2]
 	      - \$ctx.tourlou[18]
@@ -162,6 +172,7 @@ test_on_event_tracepoint ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: capture-chan-ctx (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	    captures:
 	      - \$ctx.vpid
 	  actions:
@@ -170,6 +181,7 @@ test_on_event_tracepoint ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: capture-app-ctx (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	    captures:
 	      - \$app.iga:active_clients
 	  actions:
@@ -214,18 +226,21 @@ test_on_event_probe ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: lttng_channel_enable)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: T1
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: ${base_symbol}+${offset_hex})
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: T2
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: 0x${channel_enable_addr})
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	EOF
@@ -247,6 +262,7 @@ test_on_event_userspace_probe ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: ma-probe (type: userspace probe, location: ${uprobe_elf_binary}:test_function)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	EOF
@@ -269,12 +285,14 @@ test_on_event_syscall ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: open (type: syscall)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	- id: T1
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: ptrace (type: syscall, filter: a > 2)
+	    tracer notifications discarded: 0
 	  actions:
 	    notify
 	EOF
@@ -303,48 +321,56 @@ test_snapshot_action ()
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`
 	- id: T1
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path
 	- id: T2
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/other/path
 	- id: T3
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, url: net://1.2.3.4
 	- id: T4
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, url: net://1.2.3.4:1234:1235
 	- id: T5
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, control url: tcp://1.2.3.4:1111, data url: tcp://1.2.3.4:1112
 	- id: T6
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path, max size: 1234
 	- id: T7
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path, name: meh
 	EOF

@@ -41,6 +41,7 @@
 #include <fcntl.h>
 
 #include "condition-internal.h"
+#include "event-notifier-error-accounting.h"
 #include "notification-thread.h"
 #include "notification-thread-events.h"
 #include "notification-thread-commands.h"
@@ -2123,6 +2124,40 @@ end:
 	return ret;
 }
 
+static
+int condition_on_event_update_error_count(struct lttng_trigger *trigger)
+{
+	int ret = 0;
+	uint64_t error_count = 0;
+	struct lttng_condition *condition;
+	enum event_notifier_error_accounting_status status;
+
+	condition = lttng_trigger_get_condition(trigger);
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_ON_EVENT);
+
+	status = event_notifier_error_accounting_get_count(trigger, &error_count);
+	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		uid_t trigger_owner_uid;
+		const char *trigger_name;
+		const enum lttng_trigger_status trigger_status =
+				lttng_trigger_get_owner_uid(
+						trigger, &trigger_owner_uid);
+
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		if (lttng_trigger_get_name(trigger, &trigger_name) != LTTNG_TRIGGER_STATUS_OK) {
+			trigger_name = "(unnamed)";
+		}
+
+		ERR("Failed to get event notifier error count of trigger for update: trigger owner = %d, trigger name = '%s'",
+				trigger_owner_uid, trigger_name);
+		ret = -1;
+	}
+
+	lttng_condition_on_event_set_error_count(condition, error_count);
+	return ret;
+}
+
 int handle_notification_thread_remove_tracer_event_source_no_result(
 		struct notification_thread_state *state,
 		int tracer_event_source_fd)
@@ -2134,6 +2169,94 @@ int handle_notification_thread_remove_tracer_event_source_no_result(
 			state, tracer_event_source_fd, &cmd_result);
 	(void) cmd_result;
 	return ret;
+}
+
+static
+bool action_type_needs_tracer_notifier(enum lttng_action_type action_type)
+{
+	switch (action_type) {
+	case LTTNG_ACTION_TYPE_NOTIFY:
+	case LTTNG_ACTION_TYPE_START_SESSION:
+	case LTTNG_ACTION_TYPE_STOP_SESSION:
+	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
+	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
+		return true;
+	case LTTNG_ACTION_TYPE_GROUP:
+	case LTTNG_ACTION_TYPE_UNKNOWN:
+	default:
+		abort();
+	}
+}
+
+static
+bool action_needs_tracer_notifier(const struct lttng_action *action)
+{
+	bool needs_tracer_notifier = false;
+	unsigned int i, count;
+	enum lttng_action_status action_status;
+	enum lttng_action_type action_type;
+
+	assert(action);
+	/* If there is only one action. Check if it needs a tracer notifier. */
+	action_type = lttng_action_get_type(action);
+	if (action_type != LTTNG_ACTION_TYPE_GROUP) {
+		needs_tracer_notifier = action_type_needs_tracer_notifier(
+				action_type);
+		goto end;
+	}
+
+	/*
+	 * Iterate over all the actions of the action group and check if any of
+	 * them needs a tracer notifier.
+	 */
+	action_status = lttng_action_group_get_count(action, &count);
+	assert(action_status == LTTNG_ACTION_STATUS_OK);
+	for (i = 0; i < count; i++) {
+		const struct lttng_action *inner_action =
+				lttng_action_group_get_at_index(action, i);
+
+		action_type = lttng_action_get_type(inner_action);
+		if (action_type_needs_tracer_notifier(action_type)) {
+			needs_tracer_notifier = true;
+			goto end;
+		}
+	}
+
+end:
+	return needs_tracer_notifier;
+}
+
+/*
+ * A given trigger needs a tracer notifier if
+ *  it has an event-rule condition,
+ *  AND
+ *  it has one or more sessiond-execution action.
+ */
+static
+bool trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
+{
+	bool needs_tracer_notifier = false;
+	const struct lttng_condition *condition =
+			lttng_trigger_get_const_condition(trigger);
+	const struct lttng_action *action =
+			lttng_trigger_get_const_action(trigger);
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_ON_EVENT:
+		needs_tracer_notifier = action_needs_tracer_notifier(action);
+		goto end;
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		goto end;
+	case LTTNG_CONDITION_TYPE_UNKNOWN:
+	default:
+		abort();
+	}
+end:
+	return needs_tracer_notifier;
 }
 
 static int handle_notification_thread_command_list_triggers(
@@ -2168,6 +2291,12 @@ static int handle_notification_thread_command_list_triggers(
 		creds = lttng_trigger_get_credentials(trigger_ht_element->trigger);
 		if (client_uid != lttng_credentials_get_uid(creds) && client_uid != 0) {
 			continue;
+		}
+
+		if (trigger_needs_tracer_notifier(trigger_ht_element->trigger)) {
+			ret = condition_on_event_update_error_count(
+					trigger_ht_element->trigger);
+			assert(!ret);
 		}
 
 		ret = lttng_triggers_add(local_triggers,
@@ -2569,6 +2698,32 @@ int handle_notification_thread_command_register_trigger(
 					&trigger_ht_element->node_by_name_uid);
 			goto error_free_ht_element;
 		}
+
+		if (trigger_needs_tracer_notifier(trigger)) {
+			uint64_t error_counter_index = 0;
+			enum event_notifier_error_accounting_status error_accounting_status;
+
+			error_accounting_status = event_notifier_error_accounting_register_event_notifier(
+					trigger, &error_counter_index);
+			if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+				if (error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE) {
+					DBG("Event notifier group error accounting map is full");
+					*cmd_result = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL;
+				} else {
+					ERR("Failed to register event notifier for error accounting");
+					*cmd_result = LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION;
+				}
+
+				cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
+				cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
+				cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
+				goto error_free_ht_element;
+			}
+
+			lttng_condition_on_event_set_error_counter_index(
+					condition, error_counter_index);
+		}
+
 	}
 
 	/*
@@ -2839,6 +2994,11 @@ int handle_notification_thread_command_unregister_trigger(
 			if (!lttng_trigger_is_equal(trigger,
 					    trigger_tokens_ht_element->trigger)) {
 				continue;
+			}
+
+			if (trigger_needs_tracer_notifier(trigger_tokens_ht_element->trigger)) {
+				event_notifier_error_accounting_unregister_event_notifier(
+						trigger_tokens_ht_element->trigger);
 			}
 
 			DBG("[notification-thread] Removed trigger from tokens_ht");

@@ -279,6 +279,9 @@
 #define DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN  CONFIG_DEFAULT_AGENT_TCP_PORT_RANGE_BEGIN
 #define DEFAULT_AGENT_TCP_PORT_RANGE_END    CONFIG_DEFAULT_AGENT_TCP_PORT_RANGE_END
 
+/* Number of buckets in the event notifier error count map. */
+#define DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE CONFIG_DEFAULT_EVENT_NOTIFIER_ERROR_COUNT_MAP_SIZE
+
 /*
  * If a thread stalls for this amount of time, it will be considered bogus (bad
  * health).

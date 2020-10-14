@@ -430,6 +430,27 @@ int kernctl_create_event_notifier_group_notification_fd(int group_fd)
 			LTTNG_KERNEL_EVENT_NOTIFIER_GROUP_NOTIFICATION_FD);
 }
 
+int kernctl_create_event_notifier_group_error_counter(int group_fd,
+		const struct lttng_kernel_counter_conf *error_counter_conf)
+{
+	return LTTNG_IOCTL_NO_CHECK(group_fd, LTTNG_KERNEL_COUNTER,
+			error_counter_conf);
+}
+
+int kernctl_counter_get_aggregate_value(int counter_fd,
+		struct lttng_kernel_counter_aggregate *value)
+{
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_COUNTER_AGGREGATE,
+			value);
+}
+
+int kernctl_counter_clear(int counter_fd,
+		struct lttng_kernel_counter_clear *clear)
+{
+	return LTTNG_IOCTL_NO_CHECK(counter_fd, LTTNG_KERNEL_COUNTER_CLEAR,
+			clear);
+}
+
 int kernctl_create_event_notifier(int group_fd,
 		const struct lttng_kernel_event_notifier *event_notifier)
 {

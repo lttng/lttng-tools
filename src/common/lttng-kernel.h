@@ -178,10 +178,74 @@ struct lttng_kernel_event {
 	} u;
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_EVENT_NOTIFIER_PADDING	40
+#define LTTNG_KERNEL_EVENT_NOTIFIER_PADDING	32
 struct lttng_kernel_event_notifier {
 	struct lttng_kernel_event event;
+	uint64_t error_counter_idx;
+
 	char padding[LTTNG_KERNEL_EVENT_NOTIFIER_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_COUNTER_DIMENSION_MAX      4
+
+enum lttng_kernel_counter_arithmetic {
+	LTTNG_KERNEL_COUNTER_ARITHMETIC_MODULAR = 0,
+};
+
+enum lttng_kernel_counter_bitness {
+	LTTNG_KERNEL_COUNTER_BITNESS_32 = 0,
+	LTTNG_KERNEL_COUNTER_BITNESS_64 = 1,
+};
+
+struct lttng_kernel_counter_dimension {
+	uint64_t size;
+	uint64_t underflow_index;
+	uint64_t overflow_index;
+	uint8_t has_underflow;
+	uint8_t has_overflow;
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_COUNTER_CONF_PADDING1      67
+struct lttng_kernel_counter_conf {
+	uint32_t arithmetic;	/* enum lttng_kernel_counter_arithmetic */
+	uint32_t bitness;	/* enum lttng_kernel_counter_bitness */
+	uint32_t number_dimensions;
+	int64_t global_sum_step;
+	struct lttng_kernel_counter_dimension dimensions[LTTNG_KERNEL_COUNTER_DIMENSION_MAX];
+	uint8_t coalesce_hits;
+	char padding[LTTNG_KERNEL_COUNTER_CONF_PADDING1];
+} LTTNG_PACKED;
+
+struct lttng_kernel_counter_index {
+	uint32_t number_dimensions;
+	uint64_t dimension_indexes[LTTNG_KERNEL_COUNTER_DIMENSION_MAX];
+} LTTNG_PACKED;
+
+struct lttng_kernel_counter_value {
+	int64_t value;
+	uint8_t underflow;
+	uint8_t overflow;
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_COUNTER_READ_PADDING 32
+struct lttng_kernel_counter_read {
+	struct lttng_kernel_counter_index index;
+	int32_t cpu;	/* -1 for global counter, >= 0 for specific cpu. */
+	struct lttng_kernel_counter_value value;	/* output */
+	char padding[LTTNG_KERNEL_COUNTER_READ_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_COUNTER_AGGREGATE_PADDING 32
+struct lttng_kernel_counter_aggregate {
+	struct lttng_kernel_counter_index index;
+	struct lttng_kernel_counter_value value;	/* output */
+	char padding[LTTNG_KERNEL_COUNTER_AGGREGATE_PADDING];
+} LTTNG_PACKED;
+
+#define LTTNG_KERNEL_COUNTER_CLEAR_PADDING 32
+struct lttng_kernel_counter_clear {
+	struct lttng_kernel_counter_index index;
+	char padding[LTTNG_KERNEL_COUNTER_CLEAR_PADDING];
 } LTTNG_PACKED;
 
 #define LTTNG_KERNEL_EVENT_NOTIFIER_NOTIFICATION_PADDING 32

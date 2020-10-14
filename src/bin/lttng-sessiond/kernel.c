@@ -34,6 +34,7 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/userspace-probe-internal.h>
 
+#include "event-notifier-error-accounting.h"
 #include "lttng-sessiond.h"
 #include "lttng-syscall.h"
 #include "condition-internal.h"
@@ -41,6 +42,7 @@
 #include "kernel.h"
 #include "kernel-consumer.h"
 #include "kern-modules.h"
+#include "sessiond-config.h"
 #include "utils.h"
 #include "rotate.h"
 #include "modprobe.h"
@@ -1989,11 +1991,20 @@ int init_kernel_tracer(void)
 		WARN("Failed to create kernel event notifier group");
 		kernel_tracer_event_notifier_group_fd = -1;
 	} else {
-		const enum lttng_error_code error_code_ret =
+		enum event_notifier_error_accounting_status error_accounting_status;
+		enum lttng_error_code error_code_ret =
 				kernel_create_event_notifier_group_notification_fd(
 						&kernel_tracer_event_notifier_group_notification_fd);
 
 		if (error_code_ret != LTTNG_OK) {
+			goto error_modules;
+		}
+
+		error_accounting_status = event_notifier_error_accounting_register_kernel(
+				kernel_tracer_event_notifier_group_fd);
+		if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+			ERR("Failed to initialize event notifier error accounting for kernel tracer");
+			error_code_ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING;
 			goto error_modules;
 		}
 
@@ -2322,6 +2333,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	assert(event_rule_type != LTTNG_EVENT_RULE_TYPE_UNKNOWN);
 
 	error_code_ret = trace_kernel_create_event_notifier_rule(trigger, token,
+			lttng_condition_on_event_get_error_counter_index(condition),
 			&event_notifier_rule);
 	if (error_code_ret != LTTNG_OK) {
 		goto error;
@@ -2334,6 +2346,8 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	}
 
 	kernel_event_notifier.event.token = event_notifier_rule->token;
+	kernel_event_notifier.error_counter_idx =
+			lttng_condition_on_event_get_error_counter_index(condition);
 
 	fd = kernctl_create_event_notifier(
 			kernel_tracer_event_notifier_group_fd,

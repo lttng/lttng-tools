@@ -29,6 +29,8 @@ struct sessiond_config {
 	int verbose_consumer;
 	/* Agent TCP port range for registration. Used by the agent thread. */
 	struct config_int_range agent_tcp_port;
+
+	int event_notifier_error_counter_bucket;
 	/* Socket timeout for receiving and sending (in seconds). */
 	int app_socket_timeout;
 

@@ -32,8 +32,15 @@ int kernctl_create_event_notifier_group(int fd);
 
 /* Apply on event notifier_group file descriptor. */
 int kernctl_create_event_notifier_group_notification_fd(int fd);
+int kernctl_create_event_notifier_group_error_counter(int fd,
+		const struct lttng_kernel_counter_conf *error_counter_conf);
 int kernctl_create_event_notifier(int fd,
 		const struct lttng_kernel_event_notifier *event_notifier);
+
+int kernctl_counter_get_aggregate_value(int counter_fd,
+		struct lttng_kernel_counter_aggregate *value);
+int kernctl_counter_clear(int counter_fd,
+		struct lttng_kernel_counter_clear *clear);
 
 /* Apply on event file descriptor. */
 int kernctl_filter(int fd, const struct lttng_bytecode *filter);
