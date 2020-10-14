@@ -9,7 +9,10 @@
 #define _EVENT_NOTIFIER_ERROR_ACCOUNTING_H
 
 #include <stdint.h>
+
 #include <lttng/trigger/trigger.h>
+
+#include "ust-app.h"
 
 enum event_notifier_error_accounting_status {
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK,
@@ -17,6 +20,7 @@ enum event_notifier_error_accounting_status {
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOT_FOUND,
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NOMEM,
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE,
+	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD,
 };
 
 enum event_notifier_error_accounting_status
@@ -25,6 +29,28 @@ event_notifier_error_accounting_init(uint64_t nb_bucket);
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_kernel(
 		int kernel_event_notifier_group_fd);
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
+enum event_notifier_error_accounting_status
+event_notifier_error_accounting_register_app(struct ust_app *app);
+
+enum event_notifier_error_accounting_status
+event_notifier_error_accounting_unregister_app(struct ust_app *app);
+#else /* HAVE_LIBLTTNG_UST_CTL */
+static inline
+enum event_notifier_error_accounting_status
+event_notifier_error_accounting_register_app(struct ust_app *app)
+{
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+}
+
+static inline
+enum event_notifier_error_accounting_status
+event_notifier_error_accounting_unregister_app(struct ust_app *app)
+{
+	return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+}
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_event_notifier(

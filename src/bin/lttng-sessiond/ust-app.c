@@ -7,11 +7,14 @@
  */
 
 #define _LGPL_SOURCE
+#include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -32,6 +35,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 
 #include "buffer-registry.h"
+#include "condition-internal.h"
 #include "fd-limit.h"
 #include "health-sessiond.h"
 #include "ust-app.h"
@@ -44,6 +48,8 @@
 #include "notification-thread-commands.h"
 #include "rotate.h"
 #include "event.h"
+#include "event-notifier-error-accounting.h"
+
 
 struct lttng_ht *ust_app_ht;
 struct lttng_ht *ust_app_ht_by_sock;
@@ -999,6 +1005,8 @@ void delete_ust_app(struct ust_app *app)
 	 */
 	if (app->event_notifier_group.object) {
 		enum lttng_error_code ret_code;
+		enum event_notifier_error_accounting_status status;
+
 		const int event_notifier_read_fd = lttng_pipe_get_readfd(
 				app->event_notifier_group.event_pipe);
 
@@ -1007,6 +1015,11 @@ void delete_ust_app(struct ust_app *app)
 				event_notifier_read_fd);
 		if (ret_code != LTTNG_OK) {
 			ERR("Failed to remove application tracer event source from notification thread");
+		}
+
+		status = event_notifier_error_accounting_unregister_app(app);
+		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+			ERR("Error unregistering app from event notifier error accounting");
 		}
 
 		ustctl_release_object(sock, app->event_notifier_group.object);
@@ -2106,6 +2119,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 
 	init_ust_event_notifier_from_event_rule(event_rule, &event_notifier);
 	event_notifier.event.token = ua_event_notifier_rule->token;
+	event_notifier.error_counter_index = ua_event_notifier_rule->error_counter_index;
 
 	/* Create UST event notifier against the tracer. */
 	pthread_mutex_lock(&app->sock_lock);
@@ -3674,12 +3688,12 @@ int create_ust_app_event_notifier_rule(struct lttng_trigger *trigger,
 	DBG2("UST app create token event rule completed: app = '%s' (ppid: %d), token = %" PRIu64,
 			app->name, app->ppid, lttng_trigger_get_tracer_token(trigger));
 
-end:
-	return ret;
+	goto end;
 
 error:
 	/* The RCU read side lock is already being held by the caller. */
 	delete_ust_app_event_notifier_rule(-1, ua_event_notifier_rule, app);
+end:
 	return ret;
 }
 
@@ -3994,6 +4008,7 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 	int event_pipe_write_fd;
 	struct lttng_ust_abi_object_data *event_notifier_group = NULL;
 	enum lttng_error_code lttng_ret;
+	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
 	assert(app);
 
@@ -4042,6 +4057,14 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 
 	/* Assign handle only when the complete setup is valid. */
 	app->event_notifier_group.object = event_notifier_group;
+
+	event_notifier_error_accounting_status = event_notifier_error_accounting_register_app(app);
+	if (event_notifier_error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		ERR("Failed to setup event notifier error accounting for app");
+		ret = -1;
+		goto error;
+	}
+
 	return ret;
 
 error:
@@ -5960,6 +5983,20 @@ void ust_app_global_update_all_event_notifier_rules(void)
 	}
 
 	rcu_read_unlock();
+}
+
+void ust_app_update_event_notifier_error_count(struct lttng_trigger *trigger)
+{
+	uint64_t error_count = 0;
+	enum event_notifier_error_accounting_status status;
+	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
+
+	status = event_notifier_error_accounting_get_count(trigger, &error_count);
+	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		ERR("Error getting trigger error count.");
+	}
+
+	lttng_condition_on_event_set_error_count(condition, error_count);
 }
 
 /*

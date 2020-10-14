@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 
+#include <common/index-allocator.h>
 #include <common/uuid.h>
 
 #include "trace-ust.h"
@@ -114,6 +115,7 @@ struct ust_app_event {
 
 struct ust_app_event_notifier_rule {
 	int enabled;
+	uint64_t error_counter_index;
 	int handle;
 	struct lttng_ust_abi_object_data *obj;
 	/* Holds a strong reference. */
@@ -319,6 +321,9 @@ struct ust_app {
 		 */
 		struct lttng_ust_abi_object_data *object;
 		struct lttng_pipe *event_pipe;
+		struct lttng_ust_abi_object_data *counter;
+		struct lttng_ust_abi_object_data **counter_cpu;
+		int nr_counter_cpu;
 	} event_notifier_group;
 	/*
 	 * Hashtable indexing the application's event notifier rule's
@@ -354,6 +359,8 @@ void ust_app_global_update(struct ltt_ust_session *usess, struct ust_app *app);
 void ust_app_global_update_all(struct ltt_ust_session *usess);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
 void ust_app_global_update_all_event_notifier_rules(void);
+
+void ust_app_update_event_notifier_error_count(struct lttng_trigger *trigger);
 
 void ust_app_clean_list(void);
 int ust_app_ht_alloc(void);
@@ -579,7 +586,12 @@ unsigned int ust_app_get_nb_stream(struct ltt_ust_session *usess)
 {
 	return 0;
 }
-
+static inline
+void ust_app_update_event_notifier_error_count(
+		struct lttng_trigger *lttng_trigger)
+{
+	return;
+}
 static inline
 int ust_app_supported(void)
 {
