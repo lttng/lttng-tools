@@ -74,7 +74,7 @@ version.i:
 	fi; \
 	echo "#define EXTRA_VERSION_NAME \"`$(SED) -n '1p' "$(top_srcdir)/version/extra_version_name" 2> /dev/null`\"" >> version.i.tmp; \
 	echo "#define EXTRA_VERSION_DESCRIPTION \"`$(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.,]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' "$(top_srcdir)/version/extra_version_description" 2> /dev/null`\"" >> version.i.tmp; \
-	echo "#define EXTRA_VERSION_PATCHES \"`ls --ignore='README' -1 "$(top_srcdir)/version/extra_patches" | $(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' 2> /dev/null`\"" >> version.i.tmp; \
+	echo "#define EXTRA_VERSION_PATCHES \"`ls -1 "$(top_srcdir)/version/extra_patches" | $(GREP) -v '^README' | $(SED) -E ':a ; N ; $$!ba ; s/[^a-zA-Z0-9 \n\t\.]/-/g ; s/\r{0,1}\n/\\\n\\\t/g' 2> /dev/null`\"" >> version.i.tmp; \
 	if test ! -f version.i || \
 			test x"`cat version.i.tmp`" != x"`cat version.i`"; then \
 		mv version.i.tmp version.i; \
