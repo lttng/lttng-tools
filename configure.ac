@@ -992,18 +992,26 @@ AS_CASE([$host_cpu],
 
 AC_SUBST(ARCHTYPE)
 
+AS_CASE([$host_os],
+	[linux*], [OSTYPE="linux"],
+	[freebsd*], [OSTYPE="freebsd"],
+	[solaris*], [OSTYPE="solaris"],
+	[cygwin*], [OSTYPE="cygwin"],
+	[mingw*], [OSTYPE="mingw"],
+	[OSTYPE="unknown"]
+)
+AC_SUBST(OSTYPE)
+AM_CONDITIONAL([IS_LINUX], [test $OSTYPE = "linux"])
+
+
+
+# Userspace callstack capture is only supported by the Linux kernel on x86.
 AH_TEMPLATE([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [Define if you have LTTng-modules userspace callstack tracing support])
-AC_MSG_CHECKING([for architecture support of userspace callstack tracing from the kernel])
-AS_IF([test "x$ARCHTYPE" = "xx86"],[
-        # Userspace callstack capture is only supported by the Linux kernel on x86.
-        AC_MSG_RESULT([yes])
+AS_IF([test "x$ARCHTYPE" = "xx86" && test "x$OSTYPE" = "xlinux"],[
         have_modules_userspace_callstack_context=yes
         AC_DEFINE([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [1])
-], [
-        AC_MSG_RESULT([no])
-        have_modules_userspace_callstack_context=no
 ])
-AM_CONDITIONAL([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [test x$have_modules_userspace_callstack_context != xno])
+AM_CONDITIONAL([HAVE_MODULES_USERSPACE_CALLSTACK_CONTEXT], [test x$have_modules_userspace_callstack_context = xyes])
 
 # Export binaries build conditions.
 AM_CONDITIONAL([BUILD_BIN_LTTNG], [test x$enable_bin_lttng != xno])
