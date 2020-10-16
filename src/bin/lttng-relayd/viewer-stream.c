@@ -122,7 +122,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 */
 	if (stream->index_file == NULL) {
 		vstream->index_file = NULL;
-	} else {
+	} else if (vstream->stream_file.trace_chunk) {
 		const uint32_t connection_major = stream->trace->session->major;
 		const uint32_t connection_minor = stream->trace->session->minor;
 		enum lttng_trace_chunk_status chunk_status;
@@ -150,7 +150,7 @@ struct relay_viewer_stream *viewer_stream_create(struct relay_stream *stream,
 	 * If we never received a data file for the current stream, delay the
 	 * opening, otherwise open it right now.
 	 */
-	if (stream->file) {
+	if (stream->file && vstream->stream_file.trace_chunk) {
 		int ret;
 		char file_path[LTTNG_PATH_MAX];
 		enum lttng_trace_chunk_status status;
