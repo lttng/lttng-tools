@@ -307,8 +307,7 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 		bool interruptible)
 {
 	int ret, active_fd_count;
-	int idle_pfd_index = 0;
-	size_t i;
+	size_t pos = 0, consecutive_entries = 0, non_idle_pos;
 
 	if (events == NULL || events->current.events == NULL) {
 		ERR("poll wait arguments error");
@@ -344,34 +343,36 @@ int compat_poll_wait(struct lttng_poll_event *events, int timeout,
 	active_fd_count = ret;
 
 	/*
-	 * Swap all active pollfd structs to the beginning of the
-	 * array to emulate compat-epoll behaviour. This algorithm takes
-	 * advantage of poll's returned value and the burst nature of active
-	 * events on the file descriptors. The while loop guarantees that
-	 * idle_pfd will always point to an idle fd.
+	 * Move all active pollfd structs to the beginning of the
+	 * array to emulate compat-epoll behaviour.
 	 */
 	if (active_fd_count == events->wait.nb_fd) {
 		goto end;
 	}
-	while (idle_pfd_index < active_fd_count &&
-			events->wait.events[idle_pfd_index].revents != 0) {
-		idle_pfd_index++;
-	}
 
-	for (i = idle_pfd_index + 1; idle_pfd_index < active_fd_count;
-			i++) {
-		struct pollfd swap_pfd;
-		struct pollfd *idle_pfd = &events->wait.events[idle_pfd_index];
-		struct pollfd *current_pfd = &events->wait.events[i];
+	while (consecutive_entries != active_fd_count) {
+		struct pollfd *current = &events->wait.events[pos];
+		struct pollfd idle_entry;
 
-		if (idle_pfd->revents != 0) {
-			swap_pfd = *current_pfd;
-			*current_pfd = *idle_pfd;
-			*idle_pfd = swap_pfd;
-			idle_pfd_index++;
+		if (current->revents != 0) {
+			consecutive_entries++;
+			pos++;
+			continue;
 		}
-	}
 
+		non_idle_pos = pos;
+
+		/* Look for next non-idle entry. */
+		while (events->wait.events[++non_idle_pos].revents == 0);
+
+		/* Swap idle and non-idle entries. */
+		idle_entry = *current;
+		*current = events->wait.events[non_idle_pos];
+		events->wait.events[non_idle_pos] = idle_entry;
+
+		consecutive_entries++;
+		pos++;
+	}
 end:
 	return ret;
 
