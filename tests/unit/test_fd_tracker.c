@@ -40,6 +40,13 @@ int lttng_opt_mi;
 #define TMP_DIR_PATTERN "/tmp/fd-tracker-XXXXXX"
 #define TEST_UNLINK_DIRECTORY_NAME "unlinked_files"
 
+#ifdef __linux__
+#define SELF_FD_DIR "/proc/self/fd"
+#else
+/* Most Unices have /dev/fd */
+#define SELF_FD_DIR "/dev/fd"
+#endif
+
 /*
  * Count of fds, beyond stdin, stderr, stdout that were open
  * at the launch of the test. This allows the test to succeed when
@@ -84,9 +91,9 @@ int fd_count(void)
 	struct dirent *entry;
 	int count = 0;
 
-	dir = opendir("/proc/self/fd");
+	dir = opendir(SELF_FD_DIR);
 	if (!dir) {
-		perror("# Failed to enumerate /proc/self/fd/ to count the number of used file descriptors");
+		perror("# Failed to enumerate " SELF_FD_DIR " to count the number of used file descriptors");
 		count = -1;
 		goto end;
 	}
@@ -100,7 +107,7 @@ int fd_count(void)
 	/* Don't account for the file descriptor opened by opendir(). */
 	count--;
 	if (closedir(dir)) {
-		perror("# Failed to close test program's self/fd directory file descriptor");
+		perror("# Failed to close test program's " SELF_FD_DIR " directory file descriptor");
 	}
 end:
 	return count;
