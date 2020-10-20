@@ -43,7 +43,13 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 212
+#ifdef __linux__
+#define UPROBE_NUM_TESTS 9
+#else /* __linux__ */
+#define UPROBE_NUM_TESTS 0
+#endif /* __linux__ */
+
+#define NUM_TESTS (203 + UPROBE_NUM_TESTS)
 
 namespace {
 struct tracepoint_test {
@@ -446,6 +452,7 @@ void test_event_rule_python_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
+#ifdef __linux__
 static void test_event_rule_userspace_probe(void)
 {
 	struct lttng_event_rule *uprobe = NULL;
@@ -523,6 +530,9 @@ end:
 	lttng_userspace_probe_location_destroy(probe_location);
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 }
+#else
+static void test_event_rule_userspace_probe(void) {}
+#endif
 
 static void test_event_rule_kernel_probe_by_location(
 		const struct lttng_kernel_probe_location *location)
