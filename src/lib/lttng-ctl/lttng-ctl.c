@@ -116,7 +116,8 @@ static int send_session_msg(struct lttcomm_session_msg *lsm)
 		goto end;
 	}
 
-	DBG("LSM cmd type : %d", lsm->cmd_type);
+	DBG("LSM cmd type: '%s' (%d)", lttcomm_sessiond_command_str(lsm->cmd_type),
+			lsm->cmd_type);
 
 	ret = lttcomm_send_creds_unix_sock(sessiond_socket, lsm,
 			sizeof(struct lttcomm_session_msg));
