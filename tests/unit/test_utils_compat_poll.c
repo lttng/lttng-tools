@@ -21,6 +21,8 @@
 
 #include <common/compat/poll.h>
 #include <common/readwrite.h>
+#include <common/pipe.h>
+#include <common/dynamic-array.h>
 
 /* Verification without trashing test order in the child process */
 #define childok(e, test, ...) do { \
@@ -43,9 +45,9 @@ int lttng_opt_mi;
 #define MAGIC_VALUE ((char) 0x5A)
 
 #ifdef HAVE_EPOLL
-#define NUM_TESTS 47
+#define NUM_TESTS 48
 #else
-#define NUM_TESTS 46
+#define NUM_TESTS 47
 #endif
 
 #ifdef HAVE_EPOLL
@@ -181,6 +183,121 @@ static void test_mod_wait(void)
 	}
 }
 
+static void destroy_pipe(void *pipe)
+{
+	lttng_pipe_destroy(pipe);
+}
+
+static int run_active_set_combination(unsigned int fd_count,
+		unsigned int active_fds_mask)
+{
+	int ret = 0;
+	unsigned int i;
+	const unsigned int active_fds_count = __builtin_popcount(active_fds_mask);
+	struct lttng_poll_event poll_events;
+	struct lttng_dynamic_pointer_array pipes;
+	struct lttng_pipe *pipe = NULL;
+
+	lttng_poll_init(&poll_events);
+	lttng_dynamic_pointer_array_init(&pipes, destroy_pipe);
+
+	ret = lttng_poll_create(&poll_events, fd_count, 0);
+	if (ret) {
+		diag("Failed to create poll set for %u file descriptors",
+				fd_count);
+		goto end;
+	}
+
+	for (i = 0; i < fd_count; i++) {
+		pipe = lttng_pipe_open(0);
+
+		if (!pipe) {
+			diag("Failed to allocate pipe");
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_poll_add(&poll_events, lttng_pipe_get_readfd(pipe),
+				LPOLLIN);
+		if (ret) {
+			diag("Failed to add file descriptor to poll set");
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_dynamic_pointer_array_add_pointer(&pipes, pipe);
+		if (ret) {
+			diag("Failed to add pipe to pipes array");
+			ret = -1;
+			goto end;
+		}
+
+		/* Ownership transferred to the pointer array. */
+		pipe = NULL;
+	}
+
+	/* Write one byte for all active fds that should be active. */
+	for (i = 0; i < fd_count; i++) {
+		struct lttng_pipe *pipe;
+
+		/* Should this fd be made active? */
+		if (!(active_fds_mask & (1 << i))) {
+			continue;
+		}
+
+		pipe = lttng_dynamic_pointer_array_get_pointer(&pipes, i);
+
+		ret = lttng_pipe_write(pipe, &(char) {'a'}, sizeof(char));
+		if (ret != sizeof(char)) {
+			diag("Failed to write to pipe");
+			ret = -1;
+			goto end;
+		}
+	}
+
+	ret = lttng_poll_wait(&poll_events, 0);
+	if (ret != active_fds_count) {
+		diag("lttng_poll_wait returned %d, expected %u active file descriptors",
+				ret, active_fds_count);
+		ret = -1;
+		goto end;
+	} else {
+		/* Success! */
+		ret = 0;
+	}
+
+end:
+	lttng_dynamic_pointer_array_reset(&pipes);
+	lttng_poll_clean(&poll_events);
+	lttng_pipe_destroy(pipe);
+	return ret;
+}
+
+static void test_active_set_combinations(unsigned int fd_count)
+{
+	unsigned int i, all_active_mask = 0;
+
+	/* Do you really want to test more than 4,294,967,295 combinations? */
+	assert(fd_count <= 32);
+
+	for (i = 0; i < fd_count; i++) {
+		all_active_mask |= (1 << i);
+	}
+
+	for (i = 0; i <= all_active_mask; i++) {
+		const int ret = run_active_set_combination(fd_count, i);
+
+		if (ret) {
+			goto fail;
+		}
+	}
+
+	pass("Test all combinations of active file descriptors for %u file descriptors", fd_count);
+	return;
+fail:
+	fail("Test all combinations of active file descriptors for %u file descriptors", fd_count);
+}
+
 static void test_func_def(void)
 {
 #ifdef LTTNG_POLL_GETFD
@@ -225,5 +342,6 @@ int main(void)
 	test_alloc();
 	test_add_del();
 	test_mod_wait();
+	test_active_set_combinations(8);
 	return exit_status();
 }
