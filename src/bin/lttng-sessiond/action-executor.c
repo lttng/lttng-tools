@@ -104,7 +104,11 @@ static const char *action_type_names[] = {
 
 static const char *get_action_name(const struct lttng_action *action)
 {
-	return action_type_names[lttng_action_get_type(action)];
+	const enum lttng_action_type action_type = lttng_action_get_type(action);
+
+	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
+
+	return action_type_names[action_type];
 }
 
 /* Check if this trigger allowed to interect with a given session. */
@@ -480,12 +484,16 @@ static int action_executor_generic_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
 		const struct lttng_action *action)
 {
+	const enum lttng_action_type action_type = lttng_action_get_type(action);
+
+	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
+
 	DBG("Executing action `%s` of trigger `%p` action work item %" PRIu64,
 			get_action_name(action),
 			work_item->trigger,
 			work_item->id);
 
-	return action_executors[lttng_action_get_type(action)](
+	return action_executors[action_type](
 			executor, work_item, action);
 }
 
