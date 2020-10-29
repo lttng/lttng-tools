@@ -80,6 +80,7 @@ compile_commands.json
 /tests/unit/test_uri
 /tests/unit/test_ust_data
 /tests/unit/test_utils_compat_poll
+/tests/unit/test_utils_compat_pthread
 /tests/unit/test_utils_parse_size_suffix
 /tests/unit/test_utils_parse_time_suffix
 /tests/unit/test_utils_expand_path

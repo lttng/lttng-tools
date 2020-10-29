@@ -63,6 +63,18 @@ AC_LINK_IFELSE(
         [Have function pthread_setname_np(const char*)])],
     [AC_MSG_RESULT(no)])
 
+# FreeBSD
+AC_MSG_CHECKING(for pthread_set_name_np(pthread_t, const char*))
+AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+        [#include <pthread.h>
+        #include <pthread_np.h>],
+        [pthread_set_name_np(pthread_self(), "example")])],
+    [AC_MSG_RESULT(yes)
+     AC_DEFINE(HAVE_PTHREAD_SET_NAME_NP_WITH_TID,1,
+        [Have function pthread_set_name_np(pthread_t, const char*)])],
+    [AC_MSG_RESULT(no)])
+
 LDFLAGS=$lttng_pthread_setname_np_save_LDFLAGS
 LIBS=$lttng_pthread_setname_np_save_LIBS
 

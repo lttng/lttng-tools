@@ -15,6 +15,7 @@ TESTS = test_kernel_data \
 	test_utils_parse_time_suffix \
 	test_utils_expand_path \
 	test_utils_compat_poll \
+	test_utils_compat_pthread \
 	test_string_utils \
 	test_notification \
 	test_event_rule \
@@ -41,7 +42,7 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 # Define test programs
 noinst_PROGRAMS = test_uri test_session test_kernel_data \
                   test_utils_parse_size_suffix test_utils_parse_time_suffix \
-                  test_utils_expand_path test_utils_compat_poll \
+                  test_utils_expand_path test_utils_compat_poll test_utils_compat_pthread \
                   test_string_utils test_notification test_directory_handle \
                   test_relayd_backward_compat_group_by_session \
                   test_fd_tracker test_uuid \
@@ -176,6 +177,11 @@ test_utils_parse_time_suffix_LDADD = $(LIBTAP) $(LIBHASHTABLE) $(LIBCOMMON)
 # compat_poll unit test
 test_utils_compat_poll_SOURCES = test_utils_compat_poll.c
 test_utils_compat_poll_LDADD  = $(LIBTAP) $(LIBHASHTABLE) $(DL_LIBS) \
+		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON)
+
+# compat_pthread unit test
+test_utils_compat_pthread_SOURCES = test_utils_compat_pthread.c
+test_utils_compat_pthread_LDADD  = $(LIBTAP) \
 		      $(top_builddir)/src/common/compat/libcompat.la $(LIBCOMMON)
 
 # expand_path unit test

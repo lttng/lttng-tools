@@ -10,7 +10,6 @@
 #include <common/compat/pthread.h>
 #include "thread.h"
 
-#define LTTNG_PTHREAD_NAMELEN 16
 
 int lttng_thread_setname(const char *name)
 {
