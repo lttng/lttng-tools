@@ -114,7 +114,7 @@ RELAYD_OBJS = $(top_builddir)/src/bin/lttng-relayd/backward-compatibility-group-
 
 test_session_SOURCES = test_session.c
 test_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		     $(LIBHASHTABLE) $(DL_LIBS) -lrt -lurcu-common -lurcu \
+		     $(LIBHASHTABLE) $(DL_LIBS) -lrt $(URCU_LIBS) \
 		     $(KMOD_LIBS) \
 		     $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		     $(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \
@@ -134,7 +134,7 @@ endif
 if HAVE_LIBLTTNG_UST_CTL
 test_ust_data_SOURCES = test_ust_data.c
 test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		      $(LIBHASHTABLE) $(DL_LIBS) -lrt -lurcu-common -lurcu \
+		      $(LIBHASHTABLE) $(DL_LIBS) -lrt $(URCU_LIBS) \
 		      $(UST_CTL_LIBS) \
 		      $(KMOD_LIBS) \
 		      $(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
@@ -205,7 +205,7 @@ test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_s
 
 # fd tracker unit test
 test_fd_tracker_SOURCES = test_fd_tracker.c
-test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) -lurcu $(LIBCOMMON) $(LIBHASHTABLE)
+test_fd_tracker_LDADD = $(LIBTAP) $(LIBFDTRACKER) $(DL_LIBS) $(URCU_LIBS) $(LIBCOMMON) $(LIBHASHTABLE)
 
 # uuid unit test
 test_uuid_SOURCES = test_uuid.c

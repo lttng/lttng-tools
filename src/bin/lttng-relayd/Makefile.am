@@ -28,7 +28,7 @@ lttng_relayd_SOURCES = main.c lttng-relayd.h utils.h utils.c cmd.h \
                        backward-compatibility-group-by.c backward-compatibility-group-by.h
 
 # link on liblttngctl for check if relayd is already alive.
-lttng_relayd_LDADD = -lurcu-common -lurcu \
+lttng_relayd_LDADD = $(URCU_LIBS) \
 		$(top_builddir)/src/common/libcommon.la \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/hashtable/libhashtable.la \
