@@ -64,4 +64,9 @@ enum lttng_error_code
 lttng_condition_event_rule_generate_capture_descriptor_bytecode(
 		struct lttng_condition *condition);
 
+LTTNG_HIDDEN
+const struct lttng_bytecode *
+lttng_condition_event_rule_get_capture_bytecode_at_index(
+		const struct lttng_condition *condition, unsigned int index);
+
 #endif /* LTTNG_CONDITION_EVENT_RULE_INTERNAL_H */

@@ -972,3 +972,42 @@ lttng_condition_event_rule_generate_capture_descriptor_bytecode(
 end:
 	return ret;
 }
+
+LTTNG_HIDDEN
+const struct lttng_bytecode *
+lttng_condition_event_rule_get_capture_bytecode_at_index(
+		const struct lttng_condition *condition, unsigned int index)
+{
+	const struct lttng_condition_event_rule *event_rule_cond =
+			container_of(condition,
+				const struct lttng_condition_event_rule,
+				parent);
+	struct lttng_capture_descriptor *desc = NULL;
+	struct lttng_bytecode *bytecode = NULL;
+	unsigned int count;
+	enum lttng_condition_status status;
+
+	if (!condition || !IS_EVENT_RULE_CONDITION(condition)) {
+		goto end;
+	}
+
+	status = lttng_condition_event_rule_get_capture_descriptor_count(
+			condition, &count);
+	if (status != LTTNG_CONDITION_STATUS_OK) {
+		goto end;
+	}
+
+	if (index >= count) {
+		goto end;
+	}
+
+	desc = lttng_dynamic_pointer_array_get_pointer(
+			&event_rule_cond->capture_descriptors, index);
+	if (desc == NULL) {
+		goto end;
+	}
+
+	bytecode = desc->bytecode;
+end:
+	return bytecode;
+}
