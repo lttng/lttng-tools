@@ -1864,15 +1864,15 @@ static void test_kprobe_event_rule_notification(
 			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_kprobe_create();
+	event_rule = lttng_event_rule_kernel_probe_create();
 	ok(event_rule, "kprobe event rule object creation");
 
-	event_rule_status = lttng_event_rule_kprobe_set_location(
+	event_rule_status = lttng_event_rule_kernel_probe_set_location(
 			event_rule, location);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule location: '%s'", symbol_name);
 
-	event_rule_status = lttng_event_rule_kprobe_set_name(
+	event_rule_status = lttng_event_rule_kernel_probe_set_name(
 			event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: '%s'", trigger_name);

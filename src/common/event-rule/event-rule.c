@@ -41,7 +41,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
 	case LTTNG_EVENT_RULE_TYPE_UPROBE:
 		domain_type = LTTNG_DOMAIN_KERNEL;
@@ -172,8 +172,8 @@ ssize_t lttng_event_rule_create_from_payload(
 		create_from_payload =
 				lttng_event_rule_tracepoint_create_from_payload;
 		break;
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
-		create_from_payload = lttng_event_rule_kprobe_create_from_payload;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+		create_from_payload = lttng_event_rule_kernel_probe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
 		/* TODO */
@@ -315,7 +315,7 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "tracepoint";
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 		return "syscall";
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 		return "probe";
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
 		return "function";

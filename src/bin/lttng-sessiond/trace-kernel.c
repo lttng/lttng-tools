@@ -550,7 +550,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 	int strncpy_ret;
 
 	switch (lttng_event_rule_get_type(rule)) {
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	{
 		uint64_t address = 0, offset = 0;
 		const char *symbol_name = NULL;
@@ -558,7 +558,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		enum lttng_kernel_probe_location_status k_status;
 		enum lttng_event_rule_status status;
 
-		status = lttng_event_rule_kprobe_get_location(rule, &location);
+		status = lttng_event_rule_kernel_probe_get_location(rule, &location);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
@@ -600,7 +600,8 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		}
 
 		kernel_event_notifier->event.u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
-		status = lttng_event_rule_kprobe_get_name(rule, &name);
+
+		status = lttng_event_rule_kernel_probe_get_name(rule, &name);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		ret_code = LTTNG_OK;
 		break;

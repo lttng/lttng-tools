@@ -634,7 +634,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				break;
 			case OPT_PROBE:
 				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_KPROBE)) {
+						LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE)) {
 					goto error;
 				}
 
@@ -817,7 +817,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	/* Validate event rule type against domain. */
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
 	case LTTNG_EVENT_RULE_TYPE_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
@@ -955,12 +955,12 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_KPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	{
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-		res.er = lttng_event_rule_kprobe_create();
+		res.er = lttng_event_rule_kernel_probe_create();
 		if (!res.er) {
 			ERR("Failed to create kprobe event rule.");
 			goto error;
@@ -972,14 +972,14 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_kprobe_set_name(res.er, tracepoint_name);
+		event_rule_status = lttng_event_rule_kernel_probe_set_name(res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's name to '%s'.", tracepoint_name);
 			goto error;
 		}
 
 		assert(kernel_probe_location);
-		event_rule_status = lttng_event_rule_kprobe_set_location(res.er, kernel_probe_location);
+		event_rule_status = lttng_event_rule_kernel_probe_set_location(res.er, kernel_probe_location);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's location.");
 			goto error;

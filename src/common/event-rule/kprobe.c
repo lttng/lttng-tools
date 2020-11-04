@@ -23,34 +23,34 @@
 #include <stdio.h>
 
 #define IS_KPROBE_EVENT_RULE(rule) \
-	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KPROBE)
+	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE)
 
 #if (LTTNG_SYMBOL_NAME_LEN == 256)
 #define LTTNG_SYMBOL_NAME_LEN_SCANF_IS_A_BROKEN_API "255"
 #endif
 
-static void lttng_event_rule_kprobe_destroy(struct lttng_event_rule *rule)
+static void lttng_event_rule_kernel_probe_destroy(struct lttng_event_rule *rule)
 {
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 
 	lttng_kernel_probe_location_destroy(kprobe->location);
 	free(kprobe->name);
 	free(kprobe);
 }
 
-static bool lttng_event_rule_kprobe_validate(
+static bool lttng_event_rule_kernel_probe_validate(
 		const struct lttng_event_rule *rule)
 {
 	bool valid = false;
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 
 	if (!rule) {
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 
 	/* Required field. */
 	if (!kprobe->name) {
@@ -69,15 +69,15 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_kprobe_serialize(
+static int lttng_event_rule_kernel_probe_serialize(
 		const struct lttng_event_rule *rule,
 		struct lttng_payload *payload)
 {
 	int ret;
 	size_t name_len, header_offset, size_before_location;
-	struct lttng_event_rule_kprobe *kprobe;
-	struct lttng_event_rule_kprobe_comm kprobe_comm;
-	struct lttng_event_rule_kprobe_comm *header;
+	struct lttng_event_rule_kernel_probe *kprobe;
+	struct lttng_event_rule_kernel_probe_comm kprobe_comm;
+	struct lttng_event_rule_kernel_probe_comm *header;
 
 	if (!rule || !IS_KPROBE_EVENT_RULE(rule)) {
 		ret = -1;
@@ -87,7 +87,7 @@ static int lttng_event_rule_kprobe_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing kprobe event rule.");
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 
 	name_len = strlen(kprobe->name) + 1;
 	kprobe_comm.name_len = name_len;
@@ -111,7 +111,7 @@ static int lttng_event_rule_kprobe_serialize(
 	}
 
 	/* Update the header regarding the probe size. */
-	header = (struct lttng_event_rule_kprobe_comm*) (
+	header = (struct lttng_event_rule_kernel_probe_comm*) (
 			(char *) payload->buffer.data + header_offset);
 	header->location_len = payload->buffer.size - size_before_location;
 
@@ -121,14 +121,14 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_kprobe_is_equal(const struct lttng_event_rule *_a,
+static bool lttng_event_rule_kernel_probe_is_equal(const struct lttng_event_rule *_a,
 		const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
-	struct lttng_event_rule_kprobe *a, *b;
+	struct lttng_event_rule_kernel_probe *a, *b;
 
-	a = container_of(_a, struct lttng_event_rule_kprobe, parent);
-	b = container_of(_b, struct lttng_event_rule_kprobe, parent);
+	a = container_of(_a, struct lttng_event_rule_kernel_probe, parent);
+	b = container_of(_b, struct lttng_event_rule_kernel_probe, parent);
 
 	/* Quick checks */
 	if (!!a->name != !!b->name) {
@@ -148,7 +148,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code lttng_event_rule_kprobe_generate_filter_bytecode(
+static enum lttng_error_code lttng_event_rule_kernel_probe_generate_filter_bytecode(
 		struct lttng_event_rule *rule,
 		const struct lttng_credentials *creds)
 {
@@ -156,7 +156,7 @@ static enum lttng_error_code lttng_event_rule_kprobe_generate_filter_bytecode(
 	return LTTNG_OK;
 }
 
-static const char *lttng_event_rule_kprobe_get_filter(
+static const char *lttng_event_rule_kernel_probe_get_filter(
 		const struct lttng_event_rule *rule)
 {
 	/* Not supported. */
@@ -164,14 +164,14 @@ static const char *lttng_event_rule_kprobe_get_filter(
 }
 
 static const struct lttng_bytecode *
-lttng_event_rule_kprobe_get_filter_bytecode(const struct lttng_event_rule *rule)
+lttng_event_rule_kernel_probe_get_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	/* Not supported. */
 	return NULL;
 }
 
 static enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_kprobe_generate_exclusions(const struct lttng_event_rule *rule,
+lttng_event_rule_kernel_probe_generate_exclusions(const struct lttng_event_rule *rule,
 		struct lttng_event_exclusion **exclusions)
 {
 	/* Not supported. */
@@ -180,14 +180,14 @@ lttng_event_rule_kprobe_generate_exclusions(const struct lttng_event_rule *rule,
 }
 
 static unsigned long
-lttng_event_rule_kprobe_hash(
+lttng_event_rule_kernel_probe_hash(
 		const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
-	struct lttng_event_rule_kprobe *krule =
+	struct lttng_event_rule_kernel_probe *krule =
 			container_of(rule, typeof(*krule), parent);
 
-	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KPROBE,
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE,
 			lttng_ht_seed);
 	hash ^= hash_key_str(krule->name, lttng_ht_seed);
 	hash ^= lttng_kernel_probe_location_hash(krule->location);
@@ -195,46 +195,46 @@ lttng_event_rule_kprobe_hash(
 	return hash;
 }
 
-struct lttng_event_rule *lttng_event_rule_kprobe_create(void)
+struct lttng_event_rule *lttng_event_rule_kernel_probe_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
-	struct lttng_event_rule_kprobe *krule;
+	struct lttng_event_rule_kernel_probe *krule;
 
-	krule = zmalloc(sizeof(struct lttng_event_rule_kprobe));
+	krule = zmalloc(sizeof(struct lttng_event_rule_kernel_probe));
 	if (!krule) {
 		goto end;
 	}
 
 	rule = &krule->parent;
-	lttng_event_rule_init(&krule->parent, LTTNG_EVENT_RULE_TYPE_KPROBE);
-	krule->parent.validate = lttng_event_rule_kprobe_validate;
-	krule->parent.serialize = lttng_event_rule_kprobe_serialize;
-	krule->parent.equal = lttng_event_rule_kprobe_is_equal;
-	krule->parent.destroy = lttng_event_rule_kprobe_destroy;
+	lttng_event_rule_init(&krule->parent, LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE);
+	krule->parent.validate = lttng_event_rule_kernel_probe_validate;
+	krule->parent.serialize = lttng_event_rule_kernel_probe_serialize;
+	krule->parent.equal = lttng_event_rule_kernel_probe_is_equal;
+	krule->parent.destroy = lttng_event_rule_kernel_probe_destroy;
 	krule->parent.generate_filter_bytecode =
-			lttng_event_rule_kprobe_generate_filter_bytecode;
-	krule->parent.get_filter = lttng_event_rule_kprobe_get_filter;
+			lttng_event_rule_kernel_probe_generate_filter_bytecode;
+	krule->parent.get_filter = lttng_event_rule_kernel_probe_get_filter;
 	krule->parent.get_filter_bytecode =
-			lttng_event_rule_kprobe_get_filter_bytecode;
+			lttng_event_rule_kernel_probe_get_filter_bytecode;
 	krule->parent.generate_exclusions =
-			lttng_event_rule_kprobe_generate_exclusions;
-	krule->parent.hash = lttng_event_rule_kprobe_hash;
+			lttng_event_rule_kernel_probe_generate_exclusions;
+	krule->parent.hash = lttng_event_rule_kernel_probe_hash;
 end:
 	return rule;
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_event_rule_kprobe_create_from_payload(
+ssize_t lttng_event_rule_kernel_probe_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **_event_rule)
 {
 	ssize_t ret, offset = 0;
 	enum lttng_event_rule_status status;
-	const struct lttng_event_rule_kprobe_comm *kprobe_comm;
+	const struct lttng_event_rule_kernel_probe_comm *kprobe_comm;
 	const char *name;
 	struct lttng_buffer_view current_buffer_view;
 	struct lttng_event_rule *rule = NULL;
-	struct lttng_event_rule_kprobe *kprobe = NULL;
+	struct lttng_event_rule_kernel_probe *kprobe = NULL;
 	struct lttng_kernel_probe_location *location;
 
 	if (!_event_rule) {
@@ -252,14 +252,14 @@ ssize_t lttng_event_rule_kprobe_create_from_payload(
 
 	kprobe_comm = (typeof(kprobe_comm)) current_buffer_view.data;
 
-	rule = lttng_event_rule_kprobe_create();
+	rule = lttng_event_rule_kernel_probe_create();
 	if (!rule) {
 		ERR("Failed to create event rule kprobe.");
 		ret = -1;
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 
 	/* Skip to payload */
 	offset += current_buffer_view.size;
@@ -316,7 +316,7 @@ ssize_t lttng_event_rule_kprobe_create_from_payload(
 	/* Skip after the location */
 	offset += kprobe_comm->location_len;
 
-	status = lttng_event_rule_kprobe_set_name(rule, name);
+	status = lttng_event_rule_kernel_probe_set_name(rule, name);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to set event rule kprobe name.");
 		ret = -1;
@@ -331,12 +331,12 @@ end:
 	return ret;
 }
 
-enum lttng_event_rule_status lttng_event_rule_kprobe_set_location(
+enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_location(
 		struct lttng_event_rule *rule,
 		const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_kernel_probe_location *location_copy = NULL;
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_KPROBE_EVENT_RULE(rule) || !location) {
@@ -344,7 +344,7 @@ enum lttng_event_rule_status lttng_event_rule_kprobe_set_location(
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 	location_copy = lttng_kernel_probe_location_copy(location);
 	if (!location_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -362,19 +362,19 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_kprobe_get_location(
+enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_location(
 		const struct lttng_event_rule *rule,
 		const struct lttng_kernel_probe_location **location)
 {
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 
 	if (!rule || !IS_KPROBE_EVENT_RULE(rule) || !location) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 	*location = kprobe->location;
 
 	if (!*location) {
@@ -386,11 +386,11 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_kprobe_set_name(
+enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_name(
 		struct lttng_event_rule *rule, const char *name)
 {
 	char *name_copy = NULL;
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_KPROBE_EVENT_RULE(rule) || !name ||
@@ -399,7 +399,7 @@ enum lttng_event_rule_status lttng_event_rule_kprobe_set_name(
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 	name_copy = strdup(name);
 	if (!name_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -414,10 +414,10 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_kprobe_get_name(
+enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_name(
 		const struct lttng_event_rule *rule, const char **name)
 {
-	struct lttng_event_rule_kprobe *kprobe;
+	struct lttng_event_rule_kernel_probe *kprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_KPROBE_EVENT_RULE(rule) || !name) {
@@ -425,7 +425,7 @@ enum lttng_event_rule_status lttng_event_rule_kprobe_get_name(
 		goto end;
 	}
 
-	kprobe = container_of(rule, struct lttng_event_rule_kprobe, parent);
+	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 	if (!kprobe->name) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;

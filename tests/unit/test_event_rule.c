@@ -306,7 +306,7 @@ end:
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
 }
 
-static void test_event_rule_kprobe_by_location(
+static void test_event_rule_kernel_probe_by_location(
 		const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_event_rule *kprobe = NULL;
@@ -323,21 +323,21 @@ static void test_event_rule_kprobe_by_location(
 
 	lttng_payload_init(&payload);
 
-	kprobe = lttng_event_rule_kprobe_create();
+	kprobe = lttng_event_rule_kernel_probe_create();
 	ok(kprobe, "kprobe event rule object creation.");
 
-	status = lttng_event_rule_kprobe_set_location(kprobe, location);
+	status = lttng_event_rule_kernel_probe_set_location(kprobe, location);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule location.");
-	status = lttng_event_rule_kprobe_get_location(kprobe, &_location);
+	status = lttng_event_rule_kernel_probe_get_location(kprobe, &_location);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Getting kprobe event rule location.");
 	ok(lttng_kernel_probe_location_is_equal(location, _location), "Locations are equal.");
 
-	status = lttng_event_rule_kprobe_set_name(kprobe, probe_name);
+	status = lttng_event_rule_kernel_probe_set_name(kprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_kprobe_get_name(kprobe, &tmp);
+	status = lttng_event_rule_kernel_probe_get_name(kprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting kprobe name.");
 	ok(!strcmp(probe_name, tmp), "kprobe name are equal.");
 
@@ -361,7 +361,7 @@ static void test_event_rule_kprobe_by_location(
 	lttng_event_rule_destroy(kprobe_from_buffer);
 }
 
-static void test_event_rule_kprobe(void)
+static void test_event_rule_kernel_probe(void)
 {
 	struct lttng_kernel_probe_location *address_location = NULL;
 	struct lttng_kernel_probe_location *symbol_location = NULL;
@@ -371,8 +371,8 @@ static void test_event_rule_kprobe(void)
 	assert(address_location);
 	assert(symbol_location);
 
-	test_event_rule_kprobe_by_location(address_location);
-	test_event_rule_kprobe_by_location(symbol_location);
+	test_event_rule_kernel_probe_by_location(address_location);
+	test_event_rule_kernel_probe_by_location(symbol_location);
 
 	lttng_kernel_probe_location_destroy(address_location);
 	lttng_kernel_probe_location_destroy(symbol_location);
@@ -384,6 +384,6 @@ int main(int argc, const char *argv[])
 	test_event_rule_tracepoint();
 	test_event_rule_syscall();
 	test_event_rule_uprobe();
-	test_event_rule_kprobe();
+	test_event_rule_kernel_probe();
 	return exit_status();
 }
