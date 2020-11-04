@@ -18,8 +18,8 @@
 #include <common/payload-view.h>
 #include <common/payload.h>
 #include <lttng/domain.h>
-#include <lttng/event-rule/kprobe-internal.h>
-#include <lttng/event-rule/kprobe.h>
+#include <lttng/event-rule/kernel-probe-internal.h>
+#include <lttng/event-rule/kernel-probe.h>
 #include <lttng/event-rule/syscall-internal.h>
 #include <lttng/event-rule/syscall.h>
 #include <lttng/event-rule/tracepoint-internal.h>

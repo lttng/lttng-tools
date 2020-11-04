@@ -18,8 +18,8 @@
 #include <lttng/userspace-probe-internal.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kprobe.h>
-#include <lttng/event-rule/kprobe-internal.h>
+#include <lttng/event-rule/kernel-probe.h>
+#include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/event-rule/syscall.h>
 #include <lttng/event-rule/syscall-internal.h>
 #include <lttng/event-rule/tracepoint.h>

@@ -17,7 +17,7 @@
 #include <ctype.h>
 #include <lttng/constant.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kprobe-internal.h>
+#include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/kernel-probe-internal.h>
 #include <stdio.h>

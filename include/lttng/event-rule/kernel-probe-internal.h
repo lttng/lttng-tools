@@ -11,7 +11,7 @@
 #include <common/payload-view.h>
 #include <common/macros.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kprobe.h>
+#include <lttng/event-rule/kernel-probe.h>
 
 struct lttng_event_rule_kernel_probe {
 	struct lttng_event_rule parent;
