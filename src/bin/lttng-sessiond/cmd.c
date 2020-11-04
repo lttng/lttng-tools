@@ -6,6 +6,7 @@
  *
  */
 
+#include "bin/lttng-sessiond/session.h"
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <inttypes.h>
@@ -4293,21 +4294,89 @@ end:
 	return ret;
 }
 
-static enum lttng_error_code trigger_modifies_event_notifier(
-		const struct lttng_trigger *trigger, bool *adds_event_notifier)
+static
+enum lttng_error_code synchronize_tracer_notifier_register(
+		struct notification_thread_handle *notification_thread,
+		struct lttng_trigger *trigger, const struct lttng_credentials *cmd_creds)
 {
-	enum lttng_error_code ret_code = LTTNG_OK;
-	const struct lttng_condition *condition = NULL;
+	enum lttng_error_code ret_code;
+	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
+	const char *trigger_name;
+	uid_t trigger_owner;
+	enum lttng_trigger_status trigger_status;
+	const enum lttng_domain_type trigger_domain =
+			lttng_trigger_get_underlying_domain_type_restriction(
+					trigger);
 
-	condition = lttng_trigger_get_const_condition(trigger);
-	if (!condition) {
-		ret_code = LTTNG_ERR_INVALID_TRIGGER;
-		goto end;
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	assert(condition);
+	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
+			trigger_name :
+			"(unnamed)";
+
+	session_lock_list();
+	switch (trigger_domain) {
+	case LTTNG_DOMAIN_KERNEL:
+	{
+		ret_code = kernel_register_event_notifier(trigger, cmd_creds);
+		if (ret_code != LTTNG_OK) {
+			enum lttng_error_code notif_thread_unregister_ret;
+
+			notif_thread_unregister_ret =
+					notification_thread_command_unregister_trigger(
+						notification_thread, trigger);
+
+			if (notif_thread_unregister_ret != LTTNG_OK) {
+				/* Return the original error code. */
+				ERR("Failed to unregister trigger from notification thread during error recovery: trigger name = '%s', trigger owner uid = %d, error code = %d",
+						trigger_name,
+						(int) trigger_owner,
+						ret_code);
+			}
+		}
+		break;
+	}
+	case LTTNG_DOMAIN_UST:
+		ust_app_global_update_all_event_notifier_rules();
+		break;
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
+	{
+		/* Agent domains. */
+		struct agent *agt = agent_find_by_event_notifier_domain(
+				trigger_domain);
+
+		if (!agt) {
+			agt = agent_create(trigger_domain);
+			if (!agt) {
+				ret_code = LTTNG_ERR_NOMEM;
+				goto end_unlock_session_list;
+			}
+
+			agent_add(agt, trigger_agents_ht_by_domain);
+		}
+
+		ret_code = trigger_agent_enable(trigger, agt);
+		if (ret_code != LTTNG_OK) {
+			goto end_unlock_session_list;
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_NONE:
+	default:
+		abort();
 	}
 
-	*adds_event_notifier = lttng_condition_get_type(condition) ==
-			LTTNG_CONDITION_TYPE_ON_EVENT;
-end:
+	ret_code = LTTNG_OK;
+end_unlock_session_list:
+	session_unlock_list();
 	return ret_code;
 }
 
@@ -4317,7 +4386,6 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 		struct lttng_trigger **return_trigger)
 {
 	enum lttng_error_code ret_code;
-	bool must_update_event_notifiers;
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
@@ -4384,72 +4452,17 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
 			trigger_name : "(unnamed)";
 
-	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifiers);
-	if (ret_code != LTTNG_OK) {
-		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
-				trigger_name, (int) trigger_owner, ret_code);
-		goto end;
-	}
-
 	/*
 	 * Synchronize tracers if the trigger adds an event notifier.
 	 */
-	if (must_update_event_notifiers) {
-		const enum lttng_domain_type trigger_domain =
-				lttng_trigger_get_underlying_domain_type_restriction(trigger);
-
-		session_lock_list();
-		switch (trigger_domain) {
-		case LTTNG_DOMAIN_KERNEL:
-		{
-			ret_code = kernel_register_event_notifier(
-					trigger, cmd_creds);
-			if (ret_code != LTTNG_OK) {
-				const enum lttng_error_code notif_thread_unregister_ret =
-						notification_thread_command_unregister_trigger(
-								notification_thread,
-								trigger);
-
-				if (notif_thread_unregister_ret != LTTNG_OK) {
-					/* Return the original error code. */
-					ERR("Failed to unregister trigger from notification thread during error recovery: trigger name = '%s', trigger owner uid = %d, error code = %d",
-							trigger_name,
-							(int) trigger_owner,
-							ret_code);
-				}
-			}
-			break;
+	if (lttng_trigger_needs_tracer_notifier(trigger)) {
+		ret_code = synchronize_tracer_notifier_register(notification_thread,
+				trigger, cmd_creds);
+		if (ret_code != LTTNG_OK) {
+			ERR("Error registering tracer notifier: %s",
+					lttng_strerror(-ret_code));
+			goto end;
 		}
-		case LTTNG_DOMAIN_UST:
-			ust_app_global_update_all_event_notifier_rules();
-			break;
-		case LTTNG_DOMAIN_NONE:
-			abort();
-		default:
-		{
-			/* Agent domains. */
-			struct agent *agt = agent_find_by_event_notifier_domain(
-					trigger_domain);
-
-			if (!agt) {
-				agt = agent_create(trigger_domain);
-				if (!agt) {
-					ret_code = LTTNG_ERR_NOMEM;
-					goto end_unlock_session_list;
-				}
-				agent_add(agt, trigger_agents_ht_by_domain);
-			}
-
-			ret_code = trigger_agent_enable(trigger, agt);
-			if (ret_code != LTTNG_OK) {
-				goto end_unlock_session_list;
-			}
-
-			break;
-		}
-		}
-
-		session_unlock_list();
 	}
 
 	/*
@@ -4467,6 +4480,62 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	}
 end:
 	return ret_code;
+}
+
+static
+enum lttng_error_code synchronize_tracer_notifier_unregister(
+		const struct lttng_trigger *trigger)
+{
+	enum lttng_error_code ret_code;
+	const struct lttng_condition *condition =
+			lttng_trigger_get_const_condition(trigger);
+	const enum lttng_domain_type trigger_domain =
+			lttng_trigger_get_underlying_domain_type_restriction(
+					trigger);
+
+	assert(condition);
+	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+
+	session_lock_list();
+	switch (trigger_domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		ret_code = kernel_unregister_event_notifier(trigger);
+		break;
+	case LTTNG_DOMAIN_UST:
+		ust_app_global_update_all_event_notifier_rules();
+		break;
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
+	{
+		/* Agent domains. */
+		struct agent *agt = agent_find_by_event_notifier_domain(
+				trigger_domain);
+
+		if (!agt) {
+			agt = agent_create(trigger_domain);
+			if (!agt) {
+				ret_code = LTTNG_ERR_NOMEM;
+				goto end_unlock_session_list;
+			}
+
+			agent_add(agt, trigger_agents_ht_by_domain);
+		}
+
+		ret_code = trigger_agent_disable(trigger, agt);
+		if (ret_code != LTTNG_OK) {
+			goto end_unlock_session_list;
+		}
+
+		break;
+	}
+	case LTTNG_DOMAIN_NONE:
+	default:
+		abort();
+	}
+
+	ret_code = LTTNG_OK;
+
 end_unlock_session_list:
 	session_unlock_list();
 	return ret_code;
@@ -4477,15 +4546,13 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		struct notification_thread_handle *notification_thread)
 {
 	enum lttng_error_code ret_code;
-	bool must_update_event_notifiers;
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(unnamed)";
-	trigger_status = lttng_trigger_get_owner_uid(
-		trigger, &trigger_owner);
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	DBG("Running unregister trigger command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
@@ -4509,13 +4576,6 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		}
 	}
 
-	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifiers);
-	if (ret_code != LTTNG_OK) {
-		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
-				trigger_name, (int) trigger_owner, ret_code);
-		goto end;
-	}
-
 	ret_code = notification_thread_command_unregister_trigger(notification_thread,
 								  trigger);
 	if (ret_code != LTTNG_OK) {
@@ -4530,56 +4590,18 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	 * the tracers from producing notifications associated with this
 	 * event notifier.
 	 */
-	if (must_update_event_notifiers) {
-		const enum lttng_domain_type trigger_domain =
-				lttng_trigger_get_underlying_domain_type_restriction(
-						trigger);
-
-		session_lock_list();
-		switch (trigger_domain) {
-		case LTTNG_DOMAIN_KERNEL:
-		{
-			ret_code = kernel_unregister_event_notifier(
-					trigger);
-			break;
-		}
-		case LTTNG_DOMAIN_UST:
-			ust_app_global_update_all_event_notifier_rules();
-			break;
-		case LTTNG_DOMAIN_NONE:
-			abort();
-		default:
-		{
-			/* Agent domains. */
-			struct agent *agt = agent_find_by_event_notifier_domain(
-					trigger_domain);
-
-			if (!agt) {
-				agt = agent_create(trigger_domain);
-				if (!agt) {
-					ret_code = LTTNG_ERR_NOMEM;
-					goto end_unlock_session_list;
-				}
-				agent_add(agt, trigger_agents_ht_by_domain);
-			}
-
-			ret_code = trigger_agent_disable(trigger, agt);
-			if (ret_code != LTTNG_OK) {
-				goto end_unlock_session_list;
-			}
-
-			break;
-		}
+	if (lttng_trigger_needs_tracer_notifier(trigger)) {
+		ret_code = synchronize_tracer_notifier_unregister(trigger);
+		if (ret_code != LTTNG_OK) {
+			ERR("Error unregistering trigger to tracer.");
+			goto end;
 		}
 
-		session_unlock_list();
 	}
 
 end:
 	return ret_code;
-end_unlock_session_list:
-	session_unlock_list();
-	return ret_code;}
+}
 
 int cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread,
