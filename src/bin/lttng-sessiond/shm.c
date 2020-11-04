@@ -106,7 +106,6 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 		exit(EXIT_FAILURE);
 	}
 
-#ifndef __FreeBSD__
 	if (global) {
 		ret = fchown(wait_shm_fd, 0, 0);
 		if (ret < 0) {
@@ -131,9 +130,6 @@ static int get_wait_shm(char *shm_path, size_t mmap_size, int global)
 			exit(EXIT_FAILURE);
 		}
 	}
-#else
-#warning "FreeBSD does not support setting file mode on shm FD."
-#endif
 
 	DBG("Got the wait shm fd %d", wait_shm_fd);
 
