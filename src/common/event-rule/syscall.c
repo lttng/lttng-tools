@@ -249,6 +249,7 @@ struct lttng_event_rule *lttng_event_rule_syscall_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_syscall *syscall_rule;
+	enum lttng_event_rule_status status;
 
 	syscall_rule = zmalloc(sizeof(struct lttng_event_rule_syscall));
 	if (!syscall_rule) {
@@ -271,6 +272,14 @@ struct lttng_event_rule *lttng_event_rule_syscall_create(void)
 	syscall_rule->parent.generate_exclusions =
 			lttng_event_rule_syscall_generate_exclusions;
 	syscall_rule->parent.hash = lttng_event_rule_syscall_hash;
+
+	/* Default pattern is '*'. */
+	status = lttng_event_rule_syscall_set_pattern(rule, "*");
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		lttng_event_rule_destroy(rule);
+		rule = NULL;
+	}
+
 end:
 	return rule;
 }
