@@ -24,7 +24,7 @@
 #include <lttng/event-rule/syscall-internal.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/tracepoint-internal.h>
-#include <lttng/event-rule/uprobe-internal.h>
+#include <lttng/event-rule/userspace-probe-internal.h>
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/trace-chunk.h>

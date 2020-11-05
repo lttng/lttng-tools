@@ -32,7 +32,7 @@
 #include <lttng/condition/event-rule-internal.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/uprobe-internal.h>
+#include <lttng/event-rule/userspace-probe-internal.h>
 
 #include "lttng-sessiond.h"
 #include "lttng-syscall.h"

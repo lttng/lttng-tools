@@ -11,7 +11,7 @@
 #include <common/payload-view.h>
 #include <common/macros.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/uprobe.h>
+#include <lttng/event-rule/userspace-probe.h>
 
 struct lttng_event_rule_userspace_probe {
 	struct lttng_event_rule parent;

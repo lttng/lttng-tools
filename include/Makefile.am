@@ -150,7 +150,7 @@ lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/event-rule.h \
 	lttng/event-rule/kernel-probe.h \
 	lttng/event-rule/syscall.h \
-	lttng/event-rule/uprobe.h \
+	lttng/event-rule/userspace-probe.h \
 	lttng/event-rule/tracepoint.h
 
 noinst_HEADERS = \
@@ -190,7 +190,7 @@ noinst_HEADERS = \
 	lttng/event-rule/event-rule-internal.h \
 	lttng/event-rule/kernel-probe-internal.h \
 	lttng/event-rule/syscall-internal.h \
-	lttng/event-rule/uprobe-internal.h \
+	lttng/event-rule/userspace-probe-internal.h \
 	lttng/event-rule/tracepoint-internal.h \
 	version.h \
 	version.i

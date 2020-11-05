@@ -17,7 +17,7 @@
 #include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
-#include <lttng/event-rule/uprobe-internal.h>
+#include <lttng/event-rule/userspace-probe-internal.h>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(

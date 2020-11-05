@@ -15,7 +15,7 @@
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/uprobe-internal.h>
+#include <lttng/event-rule/userspace-probe-internal.h>
 #include <lttng/userspace-probe-internal.h>
 
 #define IS_UPROBE_EVENT_RULE(rule) \
