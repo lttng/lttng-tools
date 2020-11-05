@@ -45,7 +45,7 @@ libcommon_la_SOURCES = \
 	common.h \
 	conditions/buffer-usage.c \
 	conditions/condition.c \
-	conditions/event-rule.c \
+	conditions/on-event.c \
 	conditions/session-consumed-size.c \
 	conditions/session-rotation.c \
 	context.c context.h \

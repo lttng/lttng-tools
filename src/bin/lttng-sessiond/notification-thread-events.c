@@ -28,7 +28,7 @@
 #include <lttng/condition/buffer-usage-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
-#include <lttng/condition/event-rule-internal.h>
+#include <lttng/condition/on-event-internal.h>
 #include <lttng/domain-internal.h>
 #include <lttng/notification/channel-internal.h>
 #include <lttng/trigger/trigger-internal.h>

@@ -13,9 +13,10 @@
 #include <lttng/condition/buffer-usage-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
-#include <lttng/condition/event-rule-internal.h>
-#include <lttng/condition/event-rule.h>
+#include <lttng/condition/on-event-internal.h>
+#include <lttng/condition/on-event.h>
 #include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/condition/on-event-internal.h>
 #include "condition-internal.h"
 
 static

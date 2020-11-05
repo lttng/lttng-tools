@@ -20,7 +20,7 @@
 #include <lttng/event.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/condition/condition-internal.h>
-#include <lttng/condition/event-rule.h>
+#include <lttng/condition/on-event.h>
 #include <lttng/domain.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>

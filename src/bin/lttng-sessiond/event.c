@@ -13,7 +13,7 @@
 #include <common/compat/errno.h>
 #include <lttng/lttng.h>
 #include <lttng/condition/condition.h>
-#include <lttng/condition/event-rule.h>
+#include <lttng/condition/on-event.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <common/bytecode/bytecode.h>

@@ -28,8 +28,8 @@
 
 #include <lttng/userspace-probe.h>
 #include <lttng/userspace-probe-internal.h>
-#include <lttng/condition/event-rule.h>
-#include <lttng/condition/event-rule-internal.h>
+#include <lttng/condition/on-event.h>
+#include <lttng/condition/on-event-internal.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/userspace-probe-internal.h>
