@@ -19,21 +19,12 @@ struct lttng_kernel_probe_location;
 /*
  * Create a newly allocated kernel probe event rule.
  *
+ * The location is copied internally.
+ *
  * Returns a new event rule on success, NULL on failure. The returned event rule
  * must be destroyed using lttng_event_rule_destroy().
  */
-extern struct lttng_event_rule *lttng_event_rule_kernel_probe_create(void);
-
-/*
- * Set the kernel probe location of a kernel probe event rule.
- *
- * The location is copied internally.
- *
- * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
- * if invalid parameters are passed.
- */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_location(
-		struct lttng_event_rule *rule,
+extern struct lttng_event_rule *lttng_event_rule_kernel_probe_create(
 		const struct lttng_kernel_probe_location *location);
 
 /*

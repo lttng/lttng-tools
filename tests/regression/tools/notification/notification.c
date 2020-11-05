@@ -1864,13 +1864,8 @@ static void test_kprobe_event_rule_notification(
 			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_kernel_probe_create();
+	event_rule = lttng_event_rule_kernel_probe_create(location);
 	ok(event_rule, "kprobe event rule object creation");
-
-	event_rule_status = lttng_event_rule_kernel_probe_set_location(
-			event_rule, location);
-	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting kprobe event rule location: '%s'", symbol_name);
 
 	event_rule_status = lttng_event_rule_kernel_probe_set_event_name(
 			event_rule, trigger_name);
@@ -2600,7 +2595,7 @@ int main(int argc, const char *argv[])
 	}
 	case 4:
 	{
-		plan_tests(13);
+		plan_tests(12);
 		/* Test cases that need the kernel tracer. */
 		assert(domain_type == LTTNG_DOMAIN_KERNEL);
 

@@ -960,11 +960,6 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-		res.er = lttng_event_rule_kernel_probe_create();
-		if (!res.er) {
-			ERR("Failed to create kprobe event rule.");
-			goto error;
-		}
 
 		ret = parse_kernel_probe_opts(source, &kernel_probe_location);
 		if (ret) {
@@ -972,16 +967,16 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_kernel_probe_set_event_name(res.er, tracepoint_name);
-		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set kprobe event rule's name to '%s'.", tracepoint_name);
+		assert(kernel_probe_location);
+		res.er = lttng_event_rule_kernel_probe_create(kernel_probe_location);
+		if (!res.er) {
+			ERR("Failed to create kprobe event rule.");
 			goto error;
 		}
 
-		assert(kernel_probe_location);
-		event_rule_status = lttng_event_rule_kernel_probe_set_location(res.er, kernel_probe_location);
+		event_rule_status = lttng_event_rule_kernel_probe_set_event_name(res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set kprobe event rule's location.");
+			ERR("Failed to set kprobe event rule's name to '%s'.", tracepoint_name);
 			goto error;
 		}
 

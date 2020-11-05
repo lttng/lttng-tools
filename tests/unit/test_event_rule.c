@@ -37,7 +37,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 187
+#define NUM_TESTS 185
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -323,12 +323,9 @@ static void test_event_rule_kernel_probe_by_location(
 
 	lttng_payload_init(&payload);
 
-	kprobe = lttng_event_rule_kernel_probe_create();
+	kprobe = lttng_event_rule_kernel_probe_create(location);
 	ok(kprobe, "kprobe event rule object creation.");
 
-	status = lttng_event_rule_kernel_probe_set_location(kprobe, location);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
-			"Setting kprobe event rule location.");
 	status = lttng_event_rule_kernel_probe_get_location(kprobe, &_location);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Getting kprobe event rule location.");

@@ -16,6 +16,7 @@
 #include <common/hashtable/utils.h>
 #include <ctype.h>
 #include <lttng/constant.h>
+#include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/kernel-probe.h>
@@ -195,7 +196,35 @@ lttng_event_rule_kernel_probe_hash(
 	return hash;
 }
 
-struct lttng_event_rule *lttng_event_rule_kernel_probe_create(void)
+static
+int kernel_probe_set_location(
+		struct lttng_event_rule_kernel_probe *kprobe,
+		const struct lttng_kernel_probe_location *location)
+{
+	int ret;
+	struct lttng_kernel_probe_location *location_copy = NULL;
+
+	if (!kprobe || !location || kprobe->location) {
+		ret = -1;
+		goto end;
+	}
+
+	location_copy = lttng_kernel_probe_location_copy(location);
+	if (!location_copy) {
+		ret = -1;
+		goto end;
+	}
+
+	kprobe->location = location_copy;
+	location_copy = NULL;
+	ret = 0;
+end:
+	lttng_kernel_probe_location_destroy(location_copy);
+	return ret;
+}
+
+struct lttng_event_rule *lttng_event_rule_kernel_probe_create(
+		const struct lttng_kernel_probe_location *location)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_kernel_probe *krule;
@@ -219,6 +248,12 @@ struct lttng_event_rule *lttng_event_rule_kernel_probe_create(void)
 	krule->parent.generate_exclusions =
 			lttng_event_rule_kernel_probe_generate_exclusions;
 	krule->parent.hash = lttng_event_rule_kernel_probe_hash;
+
+	if (kernel_probe_set_location(krule, location)) {
+		lttng_event_rule_destroy(rule);
+		rule = NULL;
+	}
+
 end:
 	return rule;
 }
@@ -234,8 +269,7 @@ ssize_t lttng_event_rule_kernel_probe_create_from_payload(
 	const char *name;
 	struct lttng_buffer_view current_buffer_view;
 	struct lttng_event_rule *rule = NULL;
-	struct lttng_event_rule_kernel_probe *kprobe = NULL;
-	struct lttng_kernel_probe_location *location;
+	struct lttng_kernel_probe_location *location = NULL;
 
 	if (!_event_rule) {
 		ret = -1;
@@ -251,15 +285,6 @@ ssize_t lttng_event_rule_kernel_probe_create_from_payload(
 	}
 
 	kprobe_comm = (typeof(kprobe_comm)) current_buffer_view.data;
-
-	rule = lttng_event_rule_kernel_probe_create();
-	if (!rule) {
-		ERR("Failed to create event rule kprobe.");
-		ret = -1;
-		goto end;
-	}
-
-	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
 
 	/* Skip to payload */
 	offset += current_buffer_view.size;
@@ -311,10 +336,15 @@ ssize_t lttng_event_rule_kernel_probe_create_from_payload(
 		goto end;
 	}
 
-	kprobe->location = location;
-
 	/* Skip after the location */
 	offset += kprobe_comm->location_len;
+
+	rule = lttng_event_rule_kernel_probe_create(location);
+	if (!rule) {
+		ERR("Failed to create event rule kprobe.");
+		ret = -1;
+		goto end;
+	}
 
 	status = lttng_event_rule_kernel_probe_set_event_name(rule, name);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
@@ -327,39 +357,9 @@ ssize_t lttng_event_rule_kernel_probe_create_from_payload(
 	rule = NULL;
 	ret = offset;
 end:
+	lttng_kernel_probe_location_destroy(location);
 	lttng_event_rule_destroy(rule);
 	return ret;
-}
-
-enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_location(
-		struct lttng_event_rule *rule,
-		const struct lttng_kernel_probe_location *location)
-{
-	struct lttng_kernel_probe_location *location_copy = NULL;
-	struct lttng_event_rule_kernel_probe *kprobe;
-	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-
-	if (!rule || !IS_KPROBE_EVENT_RULE(rule) || !location) {
-		status = LTTNG_EVENT_RULE_STATUS_INVALID;
-		goto end;
-	}
-
-	kprobe = container_of(rule, struct lttng_event_rule_kernel_probe, parent);
-	location_copy = lttng_kernel_probe_location_copy(location);
-	if (!location_copy) {
-		status = LTTNG_EVENT_RULE_STATUS_ERROR;
-		goto end;
-	}
-
-	if (kprobe->location) {
-		lttng_kernel_probe_location_destroy(kprobe->location);
-	}
-
-	kprobe->location = location_copy;
-	location_copy = NULL;
-end:
-	lttng_kernel_probe_location_destroy(location_copy);
-	return status;
 }
 
 enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_location(
