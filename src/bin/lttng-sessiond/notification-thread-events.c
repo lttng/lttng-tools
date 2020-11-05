@@ -2171,94 +2171,6 @@ int handle_notification_thread_remove_tracer_event_source_no_result(
 	return ret;
 }
 
-static
-bool action_type_needs_tracer_notifier(enum lttng_action_type action_type)
-{
-	switch (action_type) {
-	case LTTNG_ACTION_TYPE_NOTIFY:
-	case LTTNG_ACTION_TYPE_START_SESSION:
-	case LTTNG_ACTION_TYPE_STOP_SESSION:
-	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
-	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
-		return true;
-	case LTTNG_ACTION_TYPE_GROUP:
-	case LTTNG_ACTION_TYPE_UNKNOWN:
-	default:
-		abort();
-	}
-}
-
-static
-bool action_needs_tracer_notifier(const struct lttng_action *action)
-{
-	bool needs_tracer_notifier = false;
-	unsigned int i, count;
-	enum lttng_action_status action_status;
-	enum lttng_action_type action_type;
-
-	assert(action);
-	/* If there is only one action. Check if it needs a tracer notifier. */
-	action_type = lttng_action_get_type(action);
-	if (action_type != LTTNG_ACTION_TYPE_GROUP) {
-		needs_tracer_notifier = action_type_needs_tracer_notifier(
-				action_type);
-		goto end;
-	}
-
-	/*
-	 * Iterate over all the actions of the action group and check if any of
-	 * them needs a tracer notifier.
-	 */
-	action_status = lttng_action_group_get_count(action, &count);
-	assert(action_status == LTTNG_ACTION_STATUS_OK);
-	for (i = 0; i < count; i++) {
-		const struct lttng_action *inner_action =
-				lttng_action_group_get_at_index(action, i);
-
-		action_type = lttng_action_get_type(inner_action);
-		if (action_type_needs_tracer_notifier(action_type)) {
-			needs_tracer_notifier = true;
-			goto end;
-		}
-	}
-
-end:
-	return needs_tracer_notifier;
-}
-
-/*
- * A given trigger needs a tracer notifier if
- *  it has an event-rule condition,
- *  AND
- *  it has one or more sessiond-execution action.
- */
-static
-bool trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
-{
-	bool needs_tracer_notifier = false;
-	const struct lttng_condition *condition =
-			lttng_trigger_get_const_condition(trigger);
-	const struct lttng_action *action =
-			lttng_trigger_get_const_action(trigger);
-
-	switch (lttng_condition_get_type(condition)) {
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
-		needs_tracer_notifier = action_needs_tracer_notifier(action);
-		goto end;
-	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		goto end;
-	case LTTNG_CONDITION_TYPE_UNKNOWN:
-	default:
-		abort();
-	}
-end:
-	return needs_tracer_notifier;
-}
-
 static int handle_notification_thread_command_list_triggers(
 		struct notification_thread_handle *handle,
 		struct notification_thread_state *state,
@@ -2293,7 +2205,7 @@ static int handle_notification_thread_command_list_triggers(
 			continue;
 		}
 
-		if (trigger_needs_tracer_notifier(trigger_ht_element->trigger)) {
+		if (lttng_trigger_needs_tracer_notifier(trigger_ht_element->trigger)) {
 			ret = condition_on_event_update_error_count(
 					trigger_ht_element->trigger);
 			assert(!ret);
@@ -2570,6 +2482,67 @@ void notif_thread_state_remove_trigger_ht_elem(
 	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
 }
 
+static
+enum lttng_error_code setup_tracer_notifier(
+		struct notification_thread_state *state,
+		struct lttng_trigger *trigger)
+{
+	enum lttng_error_code ret;
+	enum event_notifier_error_accounting_status error_accounting_status;
+	struct cds_lfht_node *node;
+	uint64_t error_counter_index = 0;
+	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
+	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element = NULL;
+
+	trigger_tokens_ht_element = zmalloc(sizeof(*trigger_tokens_ht_element));
+	if (!trigger_tokens_ht_element) {
+		ret = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	/* Add trigger token to the trigger_tokens_ht. */
+	cds_lfht_node_init(&trigger_tokens_ht_element->node);
+	trigger_tokens_ht_element->token = LTTNG_OPTIONAL_GET(trigger->tracer_token);
+	trigger_tokens_ht_element->trigger = trigger;
+
+	node = cds_lfht_add_unique(state->trigger_tokens_ht,
+			hash_key_u64(&trigger_tokens_ht_element->token, lttng_ht_seed),
+			match_trigger_token,
+			&trigger_tokens_ht_element->token,
+			&trigger_tokens_ht_element->node);
+	if (node != &trigger_tokens_ht_element->node) {
+		ret = LTTNG_ERR_TRIGGER_EXISTS;
+		goto error_free_ht_element;
+	}
+
+	error_accounting_status = event_notifier_error_accounting_register_event_notifier(
+			trigger, &error_counter_index);
+	if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		if (error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE) {
+			DBG("Trigger group error accounting counter full.");
+			ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL;
+		} else {
+			ERR("Error registering trigger for error accounting");
+			ret = LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION;
+		}
+
+		goto error_remove_ht_element;
+	}
+
+	lttng_condition_on_event_set_error_counter_index(
+			condition, error_counter_index);
+
+	ret = LTTNG_OK;
+	goto end;
+
+error_remove_ht_element:
+	cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
+error_free_ht_element:
+	free(trigger_tokens_ht_element);
+end:
+	return ret;
+}
+
 /*
  * FIXME A client's credentials are not checked when registering a trigger.
  *
@@ -2597,7 +2570,6 @@ int handle_notification_thread_command_register_trigger(
 	struct notification_client_list *client_list = NULL;
 	struct lttng_trigger_ht_element *trigger_ht_element = NULL;
 	struct notification_client_list_element *client_list_element;
-	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element = NULL;
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	const char* trigger_name;
@@ -2676,70 +2648,32 @@ int handle_notification_thread_command_register_trigger(
 		goto error_free_ht_element;
 	}
 
-	if (lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT) {
-		trigger_tokens_ht_element = zmalloc(sizeof(*trigger_tokens_ht_element));
-		if (!trigger_tokens_ht_element) {
-			/* Fatal error. */
-			ret = -1;
+	/*
+	 * Some triggers might need a tracer notifier depending on its
+	 * condition and actions.
+	 */
+	if (lttng_trigger_needs_tracer_notifier(trigger)) {
+		enum lttng_error_code error_code;
+
+		error_code = setup_tracer_notifier(state, trigger);
+		if (error_code != LTTNG_OK) {
 			notif_thread_state_remove_trigger_ht_elem(state,
 					trigger_ht_element);
-			goto error_free_ht_element;
-		}
-
-		/* Add trigger token to the trigger_tokens_ht. */
-		cds_lfht_node_init(&trigger_tokens_ht_element->node);
-		trigger_tokens_ht_element->token =
-				LTTNG_OPTIONAL_GET(trigger->tracer_token);
-		trigger_tokens_ht_element->trigger = trigger;
-
-		node = cds_lfht_add_unique(state->trigger_tokens_ht,
-				hash_key_u64(&trigger_tokens_ht_element->token,
-						lttng_ht_seed),
-				match_trigger_token,
-				&trigger_tokens_ht_element->token,
-				&trigger_tokens_ht_element->node);
-		if (node != &trigger_tokens_ht_element->node) {
-			/* Internal corruption, fatal error. */
-			ret = -1;
-			*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
-			notif_thread_state_remove_trigger_ht_elem(state,
-					trigger_ht_element);
-			goto error_free_ht_element;
-		}
-
-		if (trigger_needs_tracer_notifier(trigger)) {
-			uint64_t error_counter_index = 0;
-			enum event_notifier_error_accounting_status error_accounting_status;
-
-			error_accounting_status = event_notifier_error_accounting_register_event_notifier(
-					trigger, &error_counter_index);
-			if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-				if (error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE) {
-					DBG("Event notifier group error accounting map is full");
-					*cmd_result = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL;
-				} else {
-					ERR("Failed to register event notifier for error accounting");
-					*cmd_result = LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION;
-				}
-
-				cds_lfht_del(state->trigger_tokens_ht,
-						&trigger_tokens_ht_element->node);
-				notif_thread_state_remove_trigger_ht_elem(state,
-						trigger_ht_element);
-				goto error_free_ht_element;
+			if (error_code == LTTNG_ERR_NOMEM) {
+				ret = -1;
+			} else {
+				*cmd_result = error_code;
+				ret = 0;
 			}
 
-			lttng_condition_on_event_set_error_counter_index(
-					condition, error_counter_index);
+			goto error_free_ht_element;
 		}
-
 	}
 
 	/*
 	 * Ownership of the trigger and of its wrapper was transfered to
 	 * the triggers_ht. Same for token ht element if necessary.
 	 */
-	trigger_tokens_ht_element = NULL;
 	trigger_ht_element = NULL;
 	free_trigger = false;
 
@@ -2921,8 +2855,6 @@ error_free_ht_element:
 		call_rcu(&trigger_ht_element->rcu_node,
 				free_lttng_trigger_ht_element_rcu);
 	}
-
-	free(trigger_tokens_ht_element);
 error:
 	if (free_trigger) {
 		lttng_trigger_destroy(trigger);
@@ -2943,6 +2875,36 @@ void free_notification_trigger_tokens_ht_element_rcu(struct rcu_head *node)
 {
 	free(caa_container_of(node, struct notification_trigger_tokens_ht_element,
 			rcu_node));
+}
+
+static
+void teardown_tracer_notifier(struct notification_thread_state *state,
+		const struct lttng_trigger *trigger)
+{
+	struct cds_lfht_iter iter;
+	struct notification_trigger_tokens_ht_element *trigger_tokens_ht_element;
+
+	cds_lfht_for_each_entry(state->trigger_tokens_ht, &iter,
+			trigger_tokens_ht_element, node) {
+
+		if (!lttng_trigger_is_equal(trigger,
+					trigger_tokens_ht_element->trigger)) {
+			continue;
+		}
+
+		event_notifier_error_accounting_unregister_event_notifier(
+				trigger_tokens_ht_element->trigger);
+
+		/* TODO talk to all app and remove it */
+		DBG("[notification-thread] Removed trigger from tokens_ht");
+		cds_lfht_del(state->trigger_tokens_ht,
+				&trigger_tokens_ht_element->node);
+
+		call_rcu(&trigger_tokens_ht_element->rcu_node,
+				free_notification_trigger_tokens_ht_element_rcu);
+
+		break;
+	}
 }
 
 static
@@ -2993,31 +2955,8 @@ int handle_notification_thread_command_unregister_trigger(
 		}
 	}
 
-	if (lttng_condition_get_type(condition) ==
-			LTTNG_CONDITION_TYPE_ON_EVENT) {
-		struct notification_trigger_tokens_ht_element
-				*trigger_tokens_ht_element;
-
-		cds_lfht_for_each_entry (state->trigger_tokens_ht, &iter,
-				trigger_tokens_ht_element, node) {
-			if (!lttng_trigger_is_equal(trigger,
-					    trigger_tokens_ht_element->trigger)) {
-				continue;
-			}
-
-			if (trigger_needs_tracer_notifier(trigger_tokens_ht_element->trigger)) {
-				event_notifier_error_accounting_unregister_event_notifier(
-						trigger_tokens_ht_element->trigger);
-			}
-
-			DBG("[notification-thread] Removed trigger from tokens_ht");
-			cds_lfht_del(state->trigger_tokens_ht,
-					&trigger_tokens_ht_element->node);
-			call_rcu(&trigger_tokens_ht_element->rcu_node,
-					free_notification_trigger_tokens_ht_element_rcu);
-
-			break;
-		}
+	if (lttng_trigger_needs_tracer_notifier(trigger)) {
+		teardown_tracer_notifier(state, trigger);
 	}
 
 	if (is_trigger_action_notify(trigger)) {
