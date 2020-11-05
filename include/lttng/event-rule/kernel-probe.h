@@ -60,7 +60,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_location(
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_event_name(
 		struct lttng_event_rule *rule, const char *name);
 
 /*
@@ -74,7 +74,7 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_name(
  * success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is passed,
  * or LTTNG_EVENT_RULE_STATUS_UNSET if a name was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_event_name(
 		const struct lttng_event_rule *rule, const char **name);
 
 #ifdef __cplusplus

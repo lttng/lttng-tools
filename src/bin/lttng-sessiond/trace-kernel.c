@@ -601,7 +601,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 
 		kernel_event_notifier->event.u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 
-		status = lttng_event_rule_kernel_probe_get_name(rule, &name);
+		status = lttng_event_rule_kernel_probe_get_event_name(rule, &name);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		ret_code = LTTNG_OK;
 		break;

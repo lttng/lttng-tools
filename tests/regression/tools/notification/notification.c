@@ -1872,7 +1872,7 @@ static void test_kprobe_event_rule_notification(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule location: '%s'", symbol_name);
 
-	event_rule_status = lttng_event_rule_kernel_probe_set_name(
+	event_rule_status = lttng_event_rule_kernel_probe_set_event_name(
 			event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: '%s'", trigger_name);

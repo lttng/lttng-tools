@@ -334,10 +334,10 @@ static void test_event_rule_kernel_probe_by_location(
 			"Getting kprobe event rule location.");
 	ok(lttng_kernel_probe_location_is_equal(location, _location), "Locations are equal.");
 
-	status = lttng_event_rule_kernel_probe_set_name(kprobe, probe_name);
+	status = lttng_event_rule_kernel_probe_set_event_name(kprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_kernel_probe_get_name(kprobe, &tmp);
+	status = lttng_event_rule_kernel_probe_get_event_name(kprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting kprobe name.");
 	ok(!strcmp(probe_name, tmp), "kprobe name are equal.");
 
