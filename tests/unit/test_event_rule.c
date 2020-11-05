@@ -225,7 +225,7 @@ static void test_event_rule_syscall(void)
 	lttng_event_rule_destroy(syscall_from_buffer);
 }
 
-static void test_event_rule_uprobe(void)
+static void test_event_rule_userspace_probe(void)
 {
 	struct lttng_event_rule *uprobe = NULL;
 	struct lttng_event_rule *uprobe_from_buffer = NULL;
@@ -261,14 +261,14 @@ static void test_event_rule_uprobe(void)
 
 	lttng_payload_init(&payload);
 
-	uprobe = lttng_event_rule_uprobe_create();
+	uprobe = lttng_event_rule_userspace_probe_create();
 	ok(uprobe, "uprobe event rule object creation.");
 
-	status = lttng_event_rule_uprobe_set_location(uprobe, probe_location);
+	status = lttng_event_rule_userspace_probe_set_location(uprobe, probe_location);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule location.");
 
-	status = lttng_event_rule_uprobe_get_location(
+	status = lttng_event_rule_userspace_probe_get_location(
 			uprobe, &probe_location_tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Getting uprobe event rule location.");
@@ -276,10 +276,10 @@ static void test_event_rule_uprobe(void)
 			   probe_location, probe_location_tmp),
 			"Location is equal.");
 
-	status = lttng_event_rule_uprobe_set_name(uprobe, probe_name);
+	status = lttng_event_rule_userspace_probe_set_name(uprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_uprobe_get_name(uprobe, &tmp);
+	status = lttng_event_rule_userspace_probe_get_name(uprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting uprobe name.");
 	ok(!strcmp(probe_name, tmp), "Uprobe name are equal.");
 
@@ -383,7 +383,7 @@ int main(int argc, const char *argv[])
 	plan_tests(NUM_TESTS);
 	test_event_rule_tracepoint();
 	test_event_rule_syscall();
-	test_event_rule_uprobe();
+	test_event_rule_userspace_probe();
 	test_event_rule_kernel_probe();
 	return exit_status();
 }

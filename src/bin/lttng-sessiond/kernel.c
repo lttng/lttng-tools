@@ -540,9 +540,9 @@ static int userspace_probe_event_rule_add_callsites(
 	assert(creds);
 
 	event_rule_type = lttng_event_rule_get_type(rule);
-	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_UPROBE);
+	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE);
 
-	status = lttng_event_rule_uprobe_get_location(rule, &location);
+	status = lttng_event_rule_userspace_probe_get_location(rule, &location);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK || !location) {
 		ret = -1;
 		goto end;
@@ -2386,7 +2386,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	}
 
 	if (lttng_event_rule_get_type(event_rule) ==
-			LTTNG_EVENT_RULE_TYPE_UPROBE) {
+			LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE) {
 		ret = userspace_probe_event_rule_add_callsites(
 				event_rule, creds, event_notifier_rule->fd);
 		if (ret) {

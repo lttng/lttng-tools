@@ -1978,15 +1978,15 @@ static void test_uprobe_event_rule_notification(
 			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_uprobe_create();
+	event_rule = lttng_event_rule_userspace_probe_create();
 	ok(event_rule, "kprobe event rule object creation");
 
-	event_rule_status = lttng_event_rule_uprobe_set_location(
+	event_rule_status = lttng_event_rule_userspace_probe_set_location(
 			event_rule, probe_location);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule location");
 
-	event_rule_status = lttng_event_rule_uprobe_set_name(
+	event_rule_status = lttng_event_rule_userspace_probe_set_name(
 			event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: '%s'", trigger_name);
