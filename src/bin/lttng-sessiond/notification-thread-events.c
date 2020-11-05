@@ -2558,6 +2558,18 @@ enum lttng_error_code generate_trigger_name(
 	return ret_code;
 }
 
+static inline
+void notif_thread_state_remove_trigger_ht_elem(
+		struct notification_thread_state *state,
+		struct lttng_trigger_ht_element *trigger_ht_element)
+{
+	assert(state);
+	assert(trigger_ht_element);
+
+	cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
+	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
+}
+
 /*
  * FIXME A client's credentials are not checked when registering a trigger.
  *
@@ -2669,10 +2681,8 @@ int handle_notification_thread_command_register_trigger(
 		if (!trigger_tokens_ht_element) {
 			/* Fatal error. */
 			ret = -1;
-			cds_lfht_del(state->triggers_ht,
-					&trigger_ht_element->node);
-			cds_lfht_del(state->triggers_by_name_uid_ht,
-					&trigger_ht_element->node_by_name_uid);
+			notif_thread_state_remove_trigger_ht_elem(state,
+					trigger_ht_element);
 			goto error_free_ht_element;
 		}
 
@@ -2692,10 +2702,8 @@ int handle_notification_thread_command_register_trigger(
 			/* Internal corruption, fatal error. */
 			ret = -1;
 			*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
-			cds_lfht_del(state->triggers_ht,
-					&trigger_ht_element->node);
-			cds_lfht_del(state->triggers_by_name_uid_ht,
-					&trigger_ht_element->node_by_name_uid);
+			notif_thread_state_remove_trigger_ht_elem(state,
+					trigger_ht_element);
 			goto error_free_ht_element;
 		}
 
@@ -2714,9 +2722,10 @@ int handle_notification_thread_command_register_trigger(
 					*cmd_result = LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION;
 				}
 
-				cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
-				cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
-				cds_lfht_del(state->trigger_tokens_ht, &trigger_tokens_ht_element->node);
+				cds_lfht_del(state->trigger_tokens_ht,
+						&trigger_tokens_ht_element->node);
+				notif_thread_state_remove_trigger_ht_elem(state,
+						trigger_ht_element);
 				goto error_free_ht_element;
 			}
 
@@ -3025,11 +3034,11 @@ int handle_notification_thread_command_unregister_trigger(
 		client_list = NULL;
 	}
 
-	/* Remove trigger from triggers_ht. */
 	trigger_ht_element = caa_container_of(triggers_ht_node,
 			struct lttng_trigger_ht_element, node);
-	cds_lfht_del(state->triggers_by_name_uid_ht, &trigger_ht_element->node_by_name_uid);
-	cds_lfht_del(state->triggers_ht, triggers_ht_node);
+
+	/* Remove trigger from triggers_ht. */
+	notif_thread_state_remove_trigger_ht_elem(state, trigger_ht_element);
 
 	/* Release the ownership of the trigger. */
 	lttng_trigger_destroy(trigger_ht_element->trigger);
