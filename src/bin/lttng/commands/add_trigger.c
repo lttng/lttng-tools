@@ -994,22 +994,14 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		res.er = lttng_event_rule_userspace_probe_create();
+		res.er = lttng_event_rule_userspace_probe_create(userspace_probe_location);
 		if (!res.er) {
 			ERR("Failed to create userspace probe event rule.");
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_userspace_probe_set_location(
-				res.er, userspace_probe_location);
-		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set user space probe event rule's location.");
-			goto error;
-		}
-
-		event_rule_status =
-				lttng_event_rule_userspace_probe_set_event_name(
-						res.er, tracepoint_name);
+		event_rule_status = lttng_event_rule_userspace_probe_set_event_name(
+				res.er, tracepoint_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
 					tracepoint_name);
