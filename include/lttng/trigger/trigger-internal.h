@@ -196,4 +196,13 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 LTTNG_HIDDEN
 struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
 
+/*
+ * A given trigger needs a tracer notifier if
+ *  it has an event-rule condition,
+ *  AND
+ *  it has one or more sessiond-execution action.
+ */
+LTTNG_HIDDEN
+bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger);
+
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

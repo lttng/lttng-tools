@@ -92,7 +92,6 @@ const struct lttng_condition *lttng_trigger_get_const_condition(
 	return trigger ? trigger->condition : NULL;
 }
 
-
 /*
  * Note: the lack of reference counting 'get' on the action object is normal.
  * This API was exposed as such in 2.11. The client is not expected to call
@@ -1012,4 +1011,29 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 end:
 	lttng_payload_reset(&copy_buffer);
 	return copy;
+}
+
+LTTNG_HIDDEN
+bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
+{
+	bool needs_tracer_notifier = false;
+	const struct lttng_condition *condition =
+			lttng_trigger_get_const_condition(trigger);
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_ON_EVENT:
+		needs_tracer_notifier = true;
+		goto end;
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		goto end;
+	case LTTNG_CONDITION_TYPE_UNKNOWN:
+	default:
+		abort();
+	}
+end:
+	return needs_tracer_notifier;
 }
