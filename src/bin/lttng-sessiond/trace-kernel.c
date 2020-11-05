@@ -501,9 +501,9 @@ enum lttng_error_code trace_kernel_create_event_notifier_rule(
 	assert(condition);
 
 	condition_type = lttng_condition_get_type(condition);
-	assert(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+	assert(condition_type == LTTNG_CONDITION_TYPE_ON_EVENT);
 
-	condition_status = lttng_condition_event_rule_get_rule(
+	condition_status = lttng_condition_on_event_get_rule(
 			condition, &event_rule);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 	assert(event_rule);

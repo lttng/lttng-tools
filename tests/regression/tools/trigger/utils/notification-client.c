@@ -69,13 +69,13 @@ static bool is_expected_trigger_name(const char *expected_trigger_name,
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		break;
-	case LTTNG_CONDITION_TYPE_EVENT_RULE_HIT:
+	case LTTNG_CONDITION_TYPE_ON_EVENT:
 	{
 		const char *trigger_name;
 		enum lttng_evaluation_status evaluation_status;
 
 		evaluation_status =
-				lttng_evaluation_event_rule_get_trigger_name(
+				lttng_evaluation_on_event_get_trigger_name(
 						evaluation, &trigger_name);
 		if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
 			fprintf(stderr, "Failed to get trigger name of event rule notification\n");

@@ -4306,7 +4306,7 @@ static enum lttng_error_code trigger_modifies_event_notifier(
 	}
 
 	*adds_event_notifier = lttng_condition_get_type(condition) ==
-			LTTNG_CONDITION_TYPE_EVENT_RULE_HIT;
+			LTTNG_CONDITION_TYPE_ON_EVENT;
 end:
 	return ret_code;
 }

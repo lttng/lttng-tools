@@ -69,10 +69,10 @@ void test_condition_event_rule(void)
 				"Setting exclusion pattern");
 	}
 
-	condition = lttng_condition_event_rule_create(tracepoint);
+	condition = lttng_condition_on_event_create(tracepoint);
 	ok(condition, "Created condition");
 
-	condition_status = lttng_condition_event_rule_get_rule(
+	condition_status = lttng_condition_on_event_get_rule(
 			condition, &tracepoint_tmp);
 	ok(condition_status == LTTNG_CONDITION_STATUS_OK,
 			"Getting event rule from event rule condition");

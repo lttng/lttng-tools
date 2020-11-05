@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_CONDITION_EVENT_RULE_H
-#define LTTNG_CONDITION_EVENT_RULE_H
+#ifndef LTTNG_CONDITION_ON_EVENT_H
+#define LTTNG_CONDITION_ON_EVENT_H
 
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/condition/condition.h>
@@ -20,10 +20,10 @@ struct lttng_event_expr;
 struct lttng_event_field_value;
 
 /**
- * Event rule conditions allows an action to be taken whenever an event matching
- * the event rule is hit by the tracers.
+ * On event conditions allows an action to be taken whenever an event matching
+ * the on event is hit by the tracers.
  *
- * An event rule condition can also specify a payload to be captured at runtime.
+ * An on event condition can also specify a payload to be captured at runtime.
  * This is done via the capture descriptor.
  *
  * Note: the dynamic runtime capture of payload is only available for the
@@ -31,16 +31,16 @@ struct lttng_event_field_value;
  */
 
 /*
- * Create a newly allocated event rule condition.
+ * Create a newly allocated on event condition.
  *
  * Returns a new condition on success, NULL on failure. This condition must be
  * destroyed using lttng_condition_destroy().
  */
-extern struct lttng_condition *lttng_condition_event_rule_create(
+extern struct lttng_condition *lttng_condition_on_event_create(
 		struct lttng_event_rule *rule);
 
 /*
- * Get the rule property of a event rule condition.
+ * Get the rule property of a on event condition.
  *
  * The caller does not assume the ownership of the returned rule. The
  * rule shall only be used for the duration of the condition's
@@ -49,34 +49,34 @@ extern struct lttng_condition *lttng_condition_event_rule_create(
  * Returns LTTNG_CONDITION_STATUS_OK and a pointer to the condition's rule
  * on success, LTTNG_CONDITION_STATUS_INVALID if an invalid
  * parameter is passed. */
-extern enum lttng_condition_status lttng_condition_event_rule_get_rule(
-		 const struct lttng_condition *condition,
+extern enum lttng_condition_status lttng_condition_on_event_get_rule(
+		const struct lttng_condition *condition,
 		const struct lttng_event_rule **rule);
 
 /**
- * lttng_evaluation_event_rule_hit are specialised lttng_evaluations which
+ * lttng_evaluation_on_event_hit are specialised lttng_evaluations which
  * allow users to query a number of properties resulting from the evaluation
  * of a condition which evaluated to true.
  *
- * The evaluation of a event rule hit yields two different results:
+ * The evaluation of a on event hit yields two different results:
  *    TEMPORARY - The name of the triggers associated with the condition.
  *    TODO - The captured event payload if any
  */
 
 /*
- * Get the trigger name property of a event rule hit evaluation.
+ * Get the trigger name property of a on event hit evaluation.
  *
  * Returns LTTNG_EVALUATION_STATUS_OK on success and a trigger name
  * or LTTNG_EVALUATION_STATUS_INVALID if
  * an invalid parameter is passed.
  */
 extern enum lttng_evaluation_status
-lttng_evaluation_event_rule_get_trigger_name(
+lttng_evaluation_on_event_get_trigger_name(
 		const struct lttng_evaluation *evaluation,
 		const char **name);
 
 /*
- * Sets `*field_val` to the array event field value of the event rule
+ * Sets `*field_val` to the array event field value of the on event
  * condition evaluation `evaluation` which contains its captured values.
  *
  * Returns:
@@ -90,18 +90,18 @@ lttng_evaluation_event_rule_get_trigger_name(
  * `LTTNG_EVALUATION_STATUS_INVALID`:
  *     * `evaluation` is `NULL`.
  *     * The type of the condition of `evaluation` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *       `LTTNG_CONDITION_TYPE_ON_EVENT`.
  *     * The condition of `evaluation` has no capture descriptors.
  *     * `field_val` is `NULL`.
  */
 extern enum lttng_evaluation_status
-lttng_evaluation_event_rule_get_captured_values(
+lttng_evaluation_on_event_get_captured_values(
 		const struct lttng_evaluation *evaluation,
 		const struct lttng_event_field_value **field_val);
 
 /*
  * Appends (transfering the ownership) the capture descriptor `expr` to
- * the event rule condition `condition`.
+ * the on event condition `condition`.
  *
  * Returns:
  *
@@ -114,7 +114,7 @@ lttng_evaluation_event_rule_get_captured_values(
  * `LTTNG_CONDITION_STATUS_INVALID`:
  *     * `condition` is `NULL`.
  *     * The type of `condition` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *       `LTTNG_CONDITION_TYPE_ON_EVENT`.
  *     * `expr` is `NULL`.
  *     * `expr` is not a locator expression, that is, its type is not
  *       one of:
@@ -128,12 +128,12 @@ lttng_evaluation_event_rule_get_captured_values(
  *     * The associated event-rule does not support runtime capture.
  */
 extern enum lttng_condition_status
-lttng_condition_event_rule_append_capture_descriptor(
+lttng_condition_on_event_append_capture_descriptor(
 		struct lttng_condition *condition,
 		struct lttng_event_expr *expr);
 
 /*
- * Sets `*count` to the number of capture descriptors in the event rule
+ * Sets `*count` to the number of capture descriptors in the on event
  * condition `condition`.
  *
  * Returns:
@@ -144,30 +144,30 @@ lttng_condition_event_rule_append_capture_descriptor(
  * `LTTNG_CONDITION_STATUS_INVALID`:
  *     * `condition` is `NULL`.
  *     * The type of `condition` is not
- *       `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *       `LTTNG_CONDITION_TYPE_ON_EVENT`.
  *     * `count` is `NULL`.
  */
 extern enum lttng_condition_status
-lttng_condition_event_rule_get_capture_descriptor_count(
+lttng_condition_on_event_get_capture_descriptor_count(
 		const struct lttng_condition *condition, unsigned int *count);
 
 /*
- * Returns the capture descriptor (borrowed) of the event rule condition
+ * Returns the capture descriptor (borrowed) of the on event condition
  * `condition` at the index `index`, or `NULL` if:
  *
  * * `condition` is `NULL`.
  * * The type of `condition` is not
- *   `LTTNG_CONDITION_TYPE_EVENT_RULE_HIT`.
+ *   `LTTNG_CONDITION_TYPE_ON_EVENT`.
  * * `index` is greater than or equal to the number of capture
  *   descriptors in `condition` (as returned by
- *   lttng_condition_event_rule_get_capture_descriptor_count()).
+ *   lttng_condition_on_event_get_capture_descriptor_count()).
  */
 extern const struct lttng_event_expr *
-lttng_condition_event_rule_get_capture_descriptor_at_index(
+lttng_condition_on_event_get_capture_descriptor_at_index(
 		const struct lttng_condition *condition, unsigned int index);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LTTNG_CONDITION_EVENT_RULE_H */
+#endif /* LTTNG_CONDITION_ON_EVENT_H */

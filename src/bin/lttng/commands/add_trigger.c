@@ -1096,7 +1096,7 @@ struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
 		goto error;
 	}
 
-	c = lttng_condition_event_rule_create(res.er);
+	c = lttng_condition_on_event_create(res.er);
 	lttng_event_rule_destroy(res.er);
 	res.er = NULL;
 	if (!c) {
@@ -1112,7 +1112,7 @@ struct lttng_condition *handle_condition_event(int *argc, const char ***argv)
 
 		assert(expr);
 		assert(*expr);
-		status = lttng_condition_event_rule_append_capture_descriptor(
+		status = lttng_condition_on_event_append_capture_descriptor(
 				c, *expr);
 		if (status != LTTNG_CONDITION_STATUS_OK) {
 			if (status == LTTNG_CONDITION_STATUS_UNSUPPORTED) {

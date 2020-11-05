@@ -601,9 +601,9 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 	condition = lttng_trigger_get_const_condition(trigger);
 
 	assert(lttng_condition_get_type(condition) ==
-			LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+			LTTNG_CONDITION_TYPE_ON_EVENT);
 
-	c_status = lttng_condition_event_rule_get_rule(condition, &rule);
+	c_status = lttng_condition_on_event_get_rule(condition, &rule);
 	assert(c_status == LTTNG_CONDITION_STATUS_OK);
 
 	assert(lttng_event_rule_get_type(rule) ==

@@ -2310,10 +2310,10 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	assert(condition);
 
 	condition_type = lttng_condition_get_type(condition);
-	assert(condition_type == LTTNG_CONDITION_TYPE_EVENT_RULE_HIT);
+	assert(condition_type == LTTNG_CONDITION_TYPE_ON_EVENT);
 
 	/* Does not acquire a reference. */
-	condition_status = lttng_condition_event_rule_get_rule(
+	condition_status = lttng_condition_on_event_get_rule(
 			condition, &event_rule);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 	assert(event_rule);
@@ -2395,14 +2395,14 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		}
 	}
 
-	/* Set the capture bytecode, if any. */
-	cond_status = lttng_condition_event_rule_get_capture_descriptor_count(
+	/* Set the capture bytecode if any. */
+	cond_status = lttng_condition_on_event_get_capture_descriptor_count(
 			condition, &capture_bytecode_count);
 	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
 
 	for (i = 0; i < capture_bytecode_count; i++) {
 		const struct lttng_bytecode *capture_bytecode =
-				lttng_condition_event_rule_get_capture_bytecode_at_index(
+				lttng_condition_on_event_get_capture_bytecode_at_index(
 						condition, i);
 
 		if (capture_bytecode == NULL) {
@@ -2479,7 +2479,7 @@ enum lttng_error_code kernel_register_event_notifier(
 	assert(condition);
 
 	/* Does not acquire a reference to the event rule. */
-	status = lttng_condition_event_rule_get_rule(
+	status = lttng_condition_on_event_get_rule(
 			condition, &event_rule);
 	assert(status == LTTNG_CONDITION_STATUS_OK);
 
