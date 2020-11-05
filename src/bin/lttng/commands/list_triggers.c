@@ -201,7 +201,8 @@ void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 
 	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE);
 
-	event_rule_status = lttng_event_rule_userspace_probe_get_name(event_rule, &name);
+	event_rule_status = lttng_event_rule_userspace_probe_get_event_name(
+			event_rule, &name);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to get uprobe event rule's name.");
 		goto end;

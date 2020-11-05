@@ -300,7 +300,7 @@ ssize_t lttng_event_rule_userspace_probe_create_from_payload(
 	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
 	uprobe->location = location;
 
-	status = lttng_event_rule_userspace_probe_set_name(rule, name);
+	status = lttng_event_rule_userspace_probe_set_event_name(rule, name);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -384,7 +384,7 @@ lttng_event_rule_userspace_probe_get_location_mutable(
 	return uprobe->location;
 }
 
-enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_name(
+enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_event_name(
 		struct lttng_event_rule *rule, const char *name)
 {
 	char *name_copy = NULL;
@@ -414,7 +414,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_name(
+enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_event_name(
 		const struct lttng_event_rule *rule, const char **name)
 {
 	struct lttng_event_rule_userspace_probe *uprobe;

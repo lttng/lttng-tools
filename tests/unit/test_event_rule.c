@@ -276,10 +276,10 @@ static void test_event_rule_userspace_probe(void)
 			   probe_location, probe_location_tmp),
 			"Location is equal.");
 
-	status = lttng_event_rule_userspace_probe_set_name(uprobe, probe_name);
+	status = lttng_event_rule_userspace_probe_set_event_name(uprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_userspace_probe_get_name(uprobe, &tmp);
+	status = lttng_event_rule_userspace_probe_get_event_name(uprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting uprobe name.");
 	ok(!strcmp(probe_name, tmp), "Uprobe name are equal.");
 

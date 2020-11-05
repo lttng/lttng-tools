@@ -1981,7 +1981,7 @@ static void test_uprobe_event_rule_notification(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule location");
 
-	event_rule_status = lttng_event_rule_userspace_probe_set_name(
+	event_rule_status = lttng_event_rule_userspace_probe_set_event_name(
 			event_rule, trigger_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: '%s'", trigger_name);
