@@ -19,6 +19,8 @@ extern "C" {
 /*
  * Create a newly allocated tracepoint event rule.
  *
+ * The default pattern is '*'.
+ *
  * Returns a new event rule on success, NULL on failure. This event rule must be
  * destroyed using lttng_event_rule_destroy().
  */

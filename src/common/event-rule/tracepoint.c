@@ -640,6 +640,7 @@ struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_tracepoint *tp_rule;
+	enum lttng_event_rule_status status;
 
 	if (domain_type == LTTNG_DOMAIN_NONE) {
 		goto end;
@@ -673,6 +674,14 @@ struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 
 	lttng_dynamic_pointer_array_init(&tp_rule->exclusions,
 			destroy_lttng_exclusions_element);
+
+	/* Default pattern is '*'. */
+	status = lttng_event_rule_tracepoint_set_pattern(rule, "*");
+	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+		lttng_event_rule_destroy(rule);
+		rule = NULL;
+	}
+
 end:
 	return rule;
 }
