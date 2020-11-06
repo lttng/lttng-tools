@@ -10,6 +10,7 @@
 
 #include <lttng/domain.h>
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/log-level-rule.h>
 #include <lttng/event.h>
 
 #ifdef __cplusplus
@@ -92,58 +93,33 @@ extern enum lttng_event_rule_status lttng_event_rule_tracepoint_get_filter(
 		const struct lttng_event_rule *rule, const char **expression);
 
 /*
- * Set the single log level of a tracepoint event rule.
+ * Set the log level rule of a tracepoint event rule.
  *
- * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
- * if invalid parameters are passed.
- */
-extern enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level(
-		struct lttng_event_rule *rule, int level);
-
-/*
- * Set the log level range lower bound of a tracepoint event rule.
+ * The log level rule is copied internally.
  *
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
 extern enum lttng_event_rule_status
-lttng_event_rule_tracepoint_set_log_level_range_lower_bound(
-		struct lttng_event_rule *rule, int level);
+lttng_event_rule_tracepoint_set_log_level_rule(struct lttng_event_rule *rule,
+		const struct lttng_log_level_rule *log_level_rule);
 
 /*
- * Set the log level to all of a tracepoint event rule.
+ * Get the log level rule of a tracepoint event rule.
  *
- * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
- * if invalid parameters are passed.
- */
-extern enum lttng_event_rule_status
-lttng_event_rule_tracepoint_set_log_level_all(struct lttng_event_rule *rule);
-
-/*
- * Get the log level type of a tracepoint event rule.
+ * The caller does not assume the ownership of the returned log level rule. The
+ * log level rule shall only only be used for the duration of the event rule's
+ * lifetime, or before a different log level rule is set.
  *
- * Returns LTTNG_EVENT_RULE_STATUS_OK and sets the log level type output
+ * Returns LTTNG_EVENT_RULE_STATUS_OK and sets the log level rule output
  * parameter on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter
- * is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a log level was not set prior
+ * is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a log level rule was not set prior
  * to this call.
  */
 extern enum lttng_event_rule_status
-lttng_event_rule_tracepoint_get_log_level_type(
+lttng_event_rule_tracepoint_get_log_level_rule(
 		const struct lttng_event_rule *rule,
-		enum lttng_loglevel_type *type);
-
-/*
- * Get the log level of a tracepoint event rule.
- *
- * For range log level , the lower bound log level is returned.
- *
- * Returns LTTNG_EVENT_RULE_STATUS_OK and sets the log level output parameter
- * on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is
- * passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a log level was not set prior to
- * this call.
- */
-extern enum lttng_event_rule_status lttng_event_rule_tracepoint_get_log_level(
-		const struct lttng_event_rule *rule, int *level);
+		const struct lttng_log_level_rule **log_level_rule);
 
 /*
  * Add an exclusion to the set of exclusion of an event rule.

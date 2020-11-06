@@ -541,6 +541,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	struct parse_event_rule_res res = { 0 };
 	struct lttng_event_expr *event_expr = NULL;
 	struct filter_parser_ctx *parser_ctx = NULL;
+	struct lttng_log_level_rule *log_level_rule = NULL;
 
 	/* Was the -a/--all flag provided? */
 	bool all_events = false;
@@ -938,14 +939,19 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			}
 
 			if (loglevel_only) {
-				event_rule_status = lttng_event_rule_tracepoint_set_log_level(
-						res.er,
-						loglevel);
+				log_level_rule = lttng_log_level_rule_exactly_create(loglevel);
 			} else {
-				event_rule_status = lttng_event_rule_tracepoint_set_log_level_range_lower_bound(
-						res.er,
-						loglevel);
+				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(loglevel);
 			}
+
+			if (log_level_rule == NULL) {
+				ERR("Failed to create log level rule object.");
+				goto error;
+			}
+
+			event_rule_status =
+					lttng_event_rule_tracepoint_set_log_level_rule(
+							res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set log level on event fule.");
@@ -1068,6 +1074,7 @@ end:
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);
 	lttng_userspace_probe_location_destroy(userspace_probe_location);
+	lttng_log_level_rule_destroy(log_level_rule);
 	return res;
 }
 

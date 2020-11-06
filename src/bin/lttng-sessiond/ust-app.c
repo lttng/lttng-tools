@@ -2000,7 +2000,6 @@ static int init_ust_event_notifier_from_event_rule(
 		struct lttng_ust_abi_event_notifier *event_notifier)
 {
 	enum lttng_event_rule_status status;
-	enum lttng_loglevel_type loglevel_type;
 	enum lttng_ust_abi_loglevel_type ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 	int loglevel = -1, ret = 0;
 	const char *pattern;
@@ -2023,39 +2022,40 @@ static int init_ust_event_notifier_from_event_rule(
 		loglevel = 0;
 		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 	} else {
-		status = lttng_event_rule_tracepoint_get_pattern(
-				rule, &pattern);
+		const struct lttng_log_level_rule *log_level_rule;
+
+		status = lttng_event_rule_tracepoint_get_pattern(rule, &pattern);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			/* At this point, this is a fatal error. */
 			abort();
 		}
 
-		status = lttng_event_rule_tracepoint_get_log_level_type(
-				rule, &loglevel_type);
-		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-			/* At this point, this is a fatal error. */
-			abort();
-		}
-
-		switch (loglevel_type) {
-		case LTTNG_EVENT_LOGLEVEL_ALL:
+		status = lttng_event_rule_tracepoint_get_log_level_rule(
+				rule, &log_level_rule);
+		if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
-			break;
-		case LTTNG_EVENT_LOGLEVEL_RANGE:
-			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
-			break;
-		case LTTNG_EVENT_LOGLEVEL_SINGLE:
-			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
-			break;
-		default:
-			/* Unknown log level specification type. */
-			abort();
-		}
+		} else if (status == LTTNG_EVENT_RULE_STATUS_OK) {
+			enum lttng_log_level_rule_status llr_status;
 
-		if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
-			status = lttng_event_rule_tracepoint_get_log_level(
-					rule, &loglevel);
-			assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+			switch (lttng_log_level_rule_get_type(log_level_rule)) {
+			case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+				ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
+				llr_status = lttng_log_level_rule_exactly_get_level(
+						log_level_rule, &loglevel);
+				break;
+			case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+				ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
+				llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+						log_level_rule, &loglevel);
+				break;
+			default:
+				abort();
+			}
+
+			assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+		} else {
+			/* At this point this is a fatal error. */
+			abort();
 		}
 	}
 

@@ -17,6 +17,7 @@ TESTS = \
 	test_fd_tracker \
 	test_kernel_data \
 	test_kernel_probe \
+	test_log_level_rule \
 	test_notification \
 	test_payload \
 	test_relayd_backward_compat_group_by_session \
@@ -51,6 +52,7 @@ noinst_PROGRAMS = \
 	test_fd_tracker \
 	test_kernel_data \
 	test_kernel_probe \
+	test_log_level_rule \
 	test_notification \
 	test_payload \
 	test_relayd_backward_compat_group_by_session \
@@ -254,3 +256,7 @@ test_kernel_probe_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
 # Event expression to bytecode test
 test_event_expr_to_bytecode_SOURCES = test_event_expr_to_bytecode.c
 test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON)
+
+# Log level rule api
+test_log_level_rule_SOURCES = test_log_level_rule.c
+test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)

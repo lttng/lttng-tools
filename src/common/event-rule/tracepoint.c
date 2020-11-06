@@ -9,6 +9,7 @@
 #include <common/credentials.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/optional.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <common/runas.h>
@@ -16,6 +17,7 @@
 #include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
+#include <lttng/log-level-rule.h>
 #include <lttng/event.h>
 
 #define IS_TRACEPOINT_EVENT_RULE(rule) \
@@ -75,17 +77,21 @@ static int lttng_event_rule_tracepoint_serialize(
 		struct lttng_payload *payload)
 {
 	int ret, i;
-	size_t pattern_len, filter_expression_len, exclusions_len;
+	size_t pattern_len, filter_expression_len, exclusions_len, header_offset;
+	size_t size_before_log_level_rule;
 	struct lttng_event_rule_tracepoint *tracepoint;
 	struct lttng_event_rule_tracepoint_comm tracepoint_comm;
 	enum lttng_event_rule_status status;
 	unsigned int exclusion_count;
 	size_t exclusions_appended_len = 0;
+	struct lttng_event_rule_tracepoint_comm *header;
 
 	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule)) {
 		ret = -1;
 		goto end;
 	}
+
+	header_offset = payload->buffer.size;
 
 	DBG("Serializing tracepoint event rule.");
 	tracepoint = container_of(
@@ -118,8 +124,6 @@ static int lttng_event_rule_tracepoint_serialize(
 	}
 
 	tracepoint_comm.domain_type = (int8_t) tracepoint->domain;
-	tracepoint_comm.loglevel_type = (int8_t) tracepoint->loglevel.type;
-	tracepoint_comm.loglevel_value = tracepoint->loglevel.value;
 	tracepoint_comm.pattern_len = pattern_len;
 	tracepoint_comm.filter_expression_len = filter_expression_len;
 	tracepoint_comm.exclusions_count = exclusion_count;
@@ -142,6 +146,17 @@ static int lttng_event_rule_tracepoint_serialize(
 	if (ret) {
 		goto end;
 	}
+
+	size_before_log_level_rule = payload->buffer.size;
+
+	ret = lttng_log_level_rule_serialize(tracepoint->log_level_rule, payload);
+	if (ret < 0) {
+		goto end;
+	}
+
+	header = (typeof(header)) ((char *) payload->buffer.data + header_offset);
+	header->log_level_rule_len =
+			payload->buffer.size - size_before_log_level_rule;
 
 	for (i = 0; i < exclusion_count; i++) {
 		size_t len;
@@ -224,11 +239,8 @@ static bool lttng_event_rule_tracepoint_is_equal(
 		goto end;
 	}
 
-	if (a->loglevel.type != b->loglevel.type) {
-		goto end;
-	}
-
-	if (a->loglevel.value != b->loglevel.value) {
+	if (!lttng_log_level_rule_is_equal(
+				a->log_level_rule, b->log_level_rule)) {
 		goto end;
 	}
 
@@ -266,7 +278,7 @@ static int generate_agent_filter(
 	char *agent_filter = NULL;
 	const char *pattern;
 	const char *filter;
-	enum lttng_loglevel_type loglevel_type;
+	const struct lttng_log_level_rule *log_level_rule = NULL;
 	enum lttng_event_rule_status status;
 
 	assert(rule);
@@ -286,12 +298,6 @@ static int generate_agent_filter(
 		goto end;
 	}
 
-	status = lttng_event_rule_tracepoint_get_log_level_type(
-			rule, &loglevel_type);
-	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-		ret = -1;
-		goto end;
-	}
 
 	/* Don't add filter for the '*' event. */
 	if (strcmp(pattern, "*") != 0) {
@@ -311,21 +317,32 @@ static int generate_agent_filter(
 		}
 	}
 
-	if (loglevel_type != LTTNG_EVENT_LOGLEVEL_ALL) {
+	status = lttng_event_rule_tracepoint_get_log_level_rule(
+			rule, &log_level_rule);
+	if (status == LTTNG_EVENT_RULE_STATUS_OK) {
+		enum lttng_log_level_rule_status llr_status;
 		const char *op;
-		int loglevel_value;
+		int level;
 
-		status = lttng_event_rule_tracepoint_get_log_level(
-				rule, &loglevel_value);
-		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ret = -1;
-			goto end;
+		switch (lttng_log_level_rule_get_type(log_level_rule))
+		{
+		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+			llr_status = lttng_log_level_rule_exactly_get_level(
+					log_level_rule, &level);
+			op = "==";
+			break;
+		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+					log_level_rule, &level);
+			op = ">=";
+			break;
+		default:
+			abort();
 		}
 
-		if (loglevel_type == LTTNG_EVENT_LOGLEVEL_RANGE) {
-			op = ">=";
-		} else {
-			op = "==";
+		if (llr_status != LTTNG_LOG_LEVEL_RULE_STATUS_OK) {
+			ret = -1;
+			goto end;
 		}
 
 		if (filter || agent_filter) {
@@ -334,14 +351,14 @@ static int generate_agent_filter(
 			err = asprintf(&new_filter,
 					"(%s) && (int_loglevel %s %d)",
 					agent_filter ? agent_filter : filter,
-					op, loglevel_value);
+					op, level);
 			if (agent_filter) {
 				free(agent_filter);
 			}
 			agent_filter = new_filter;
 		} else {
 			err = asprintf(&agent_filter, "int_loglevel %s %d", op,
-					loglevel_value);
+					level);
 		}
 
 		if (err < 0) {
@@ -576,12 +593,8 @@ static unsigned long lttng_event_rule_tracepoint_hash(
 		hash ^= hash_key_str(tp_rule->filter_expression, lttng_ht_seed);
 	}
 
-	hash ^= hash_key_ulong((void *) tp_rule->loglevel.type,
-			       lttng_ht_seed);
-	if (tp_rule->loglevel.type != LTTNG_EVENT_LOGLEVEL_ALL) {
-		hash ^= hash_key_ulong(
-				(void *) (unsigned long) tp_rule->loglevel.value,
-				lttng_ht_seed);
+	if (tp_rule->log_level_rule) {
+		hash ^= lttng_log_level_rule_hash(tp_rule->log_level_rule);
 	}
 
 	status = lttng_event_rule_tracepoint_get_exclusions_count(rule,
@@ -607,6 +620,10 @@ static struct lttng_event *lttng_event_rule_tracepoint_generate_lttng_event(
 	const struct lttng_event_rule_tracepoint *tracepoint;
 	struct lttng_event *local_event = NULL;
 	struct lttng_event *event = NULL;
+	enum lttng_loglevel_type loglevel_type;
+	int loglevel_value = 0;
+	enum lttng_event_rule_status status;
+	const struct lttng_log_level_rule *log_level_rule;
 
 	tracepoint = container_of(
 			rule, const struct lttng_event_rule_tracepoint, parent);
@@ -625,8 +642,41 @@ static struct lttng_event *lttng_event_rule_tracepoint_generate_lttng_event(
 		goto error;
 	}
 
-	local_event->loglevel_type = tracepoint->loglevel.type;
-	local_event->loglevel = tracepoint->loglevel.value;
+
+	/* Map the log level rule to an equivalent lttng_loglevel. */
+	status = lttng_event_rule_tracepoint_get_log_level_rule(
+			rule, &log_level_rule);
+	if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
+		loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
+		loglevel_value = 0;
+	} else if (status == LTTNG_EVENT_RULE_STATUS_OK) {
+		enum lttng_log_level_rule_status llr_status;
+
+		switch (lttng_log_level_rule_get_type(log_level_rule)) {
+		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+			llr_status = lttng_log_level_rule_exactly_get_level(
+					log_level_rule, &loglevel_value);
+			loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
+			break;
+		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+					log_level_rule, &loglevel_value);
+			loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
+			break;
+		default:
+			abort();
+			break;
+		}
+
+		if (llr_status != LTTNG_LOG_LEVEL_RULE_STATUS_OK) {
+			goto error;
+		}
+	} else {
+		goto error;
+	}
+
+	local_event->loglevel_type = loglevel_type;
+	local_event->loglevel = loglevel_value;
 
 	event = local_event;
 	local_event = NULL;
@@ -670,7 +720,7 @@ struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 			lttng_event_rule_tracepoint_generate_lttng_event;
 
 	tp_rule->domain = domain_type;
-	tp_rule->loglevel.type = LTTNG_EVENT_LOGLEVEL_ALL;
+	tp_rule->log_level_rule = NULL;
 
 	lttng_dynamic_pointer_array_init(&tp_rule->exclusions,
 			destroy_lttng_exclusions_element);
@@ -695,7 +745,6 @@ ssize_t lttng_event_rule_tracepoint_create_from_payload(
 	int i;
 	enum lttng_event_rule_status status;
 	enum lttng_domain_type domain_type;
-	enum lttng_loglevel_type loglevel_type;
 	const struct lttng_event_rule_tracepoint_comm *tracepoint_comm;
 	const char *pattern;
 	const char *filter_expression = NULL;
@@ -704,6 +753,7 @@ ssize_t lttng_event_rule_tracepoint_create_from_payload(
 	const char *exclusion;
 	struct lttng_buffer_view current_buffer_view;
 	struct lttng_event_rule *rule = NULL;
+	struct lttng_log_level_rule *log_level_rule = NULL;
 
 	if (!_event_rule) {
 		ret = -1;
@@ -735,32 +785,6 @@ ssize_t lttng_event_rule_tracepoint_create_from_payload(
 		ERR("Failed to create event rule tracepoint.");
 		ret = -1;
 		goto end;
-	}
-
-	loglevel_type = (enum lttng_loglevel_type)
-					tracepoint_comm->loglevel_type;
-	switch (loglevel_type) {
-	case LTTNG_EVENT_LOGLEVEL_ALL:
-		status = lttng_event_rule_tracepoint_set_log_level_all(rule);
-		break;
-	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		status = lttng_event_rule_tracepoint_set_log_level_range_lower_bound(rule,
-				(enum lttng_loglevel_type) tracepoint_comm
-						->loglevel_value);
-		break;
-	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		status = lttng_event_rule_tracepoint_set_log_level(rule,
-				(enum lttng_loglevel_type) tracepoint_comm
-						->loglevel_value);
-		break;
-	default:
-		ERR("Failed to set event rule tracepoint loglevel: unknown loglevel type.");
-		ret = -1;
-		goto end;
-	}
-
-	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-		ERR("Failed to set event rule tracepoint loglevel.");
 	}
 
 	/* Skip to payload. */
@@ -809,6 +833,30 @@ ssize_t lttng_event_rule_tracepoint_create_from_payload(
 	offset += tracepoint_comm->filter_expression_len;
 
 skip_filter_expression:
+	if (!tracepoint_comm->log_level_rule_len) {
+		goto skip_log_level_rule;
+	}
+
+	{
+		/* Map the log level rule. */
+		struct lttng_payload_view current_payload_view =
+				lttng_payload_view_from_view(view, offset,
+						tracepoint_comm->log_level_rule_len);
+
+		ret = lttng_log_level_rule_create_from_payload(
+				&current_payload_view, &log_level_rule);
+		if (ret < 0) {
+			ret = -1;
+			goto end;
+		}
+
+		assert(ret == tracepoint_comm->log_level_rule_len);
+	}
+
+	/* Skip after the log level rule. */
+	offset += tracepoint_comm->log_level_rule_len;
+
+skip_log_level_rule:
 	for (i = 0; i < tracepoint_comm->exclusions_count; i++) {
 		current_buffer_view = lttng_buffer_view_from_view(
 				&view->buffer, offset, sizeof(*exclusion_len));
@@ -863,11 +911,22 @@ skip_filter_expression:
 		}
 	}
 
+	if (log_level_rule) {
+		status = lttng_event_rule_tracepoint_set_log_level_rule(
+				rule, log_level_rule);
+		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set event rule tracepoint log level rule.");
+			ret = -1;
+			goto end;
+		}
+	}
+
 	*_event_rule = rule;
 	rule = NULL;
 	ret = offset;
 end:
 	free(exclusions);
+	lttng_log_level_rule_destroy(log_level_rule);
 	lttng_event_rule_destroy(rule);
 	return ret;
 }
@@ -998,13 +1057,31 @@ end:
 	return status;
 }
 
-static bool log_level_value_valid(
-		int level, enum lttng_domain_type domain)
+static bool log_level_rule_valid(const struct lttng_log_level_rule *rule,
+		enum lttng_domain_type domain)
 {
 	bool valid = false;
+	enum lttng_log_level_rule_status status;
+	int level;
+
+	switch (lttng_log_level_rule_get_type(rule)) {
+	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+		status = lttng_log_level_rule_exactly_get_level(rule, &level);
+		break;
+	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+		status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+				rule, &level);
+		break;
+	default:
+		abort();
+	}
+
+	assert(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 	switch (domain) {
 	case LTTNG_DOMAIN_KERNEL:
+		valid = false;
+		break;
 	case LTTNG_DOMAIN_UST:
 		if (level < LTTNG_LOGLEVEL_EMERG) {
 			/* Invalid. */
@@ -1022,15 +1099,15 @@ static bool log_level_value_valid(
 	case LTTNG_DOMAIN_PYTHON:
 		/*
 		 * For both JUL and LOG4J custom log level are possible and can
-		 * spawn the entire int32 range.
+		 * span the entire int32 range.
+		 *
 		 * For python, custom log level are possible, it is not clear if
 		 * negative value are accepted (NOTSET == 0) but the source code
-		 * validate against the int type implying that negative values
+		 * validates against the int type implying that negative values
 		 * are accepted.
 		 */
 		valid = true;
 		goto end;
-
 	case LTTNG_DOMAIN_NONE:
 	default:
 		abort();
@@ -1040,11 +1117,13 @@ end:
 	return valid;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level(
-		struct lttng_event_rule *rule, int level)
+enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level_rule(
+		struct lttng_event_rule *rule,
+		const struct lttng_log_level_rule *log_level_rule)
 {
 	struct lttng_event_rule_tracepoint *tracepoint;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
+	struct lttng_log_level_rule *copy = NULL;
 
 	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
@@ -1054,99 +1133,48 @@ enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level(
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_tracepoint, parent);
 
-	if (!log_level_value_valid(level, tracepoint->domain)) {
+	if (!log_level_rule_valid(log_level_rule, tracepoint->domain)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
 		goto end;
 	}
 
-	tracepoint->loglevel.value = level;
-	tracepoint->loglevel.type = LTTNG_EVENT_LOGLEVEL_SINGLE;
+	copy = lttng_log_level_rule_copy(log_level_rule);
+	if (copy == NULL) {
+		status = LTTNG_EVENT_RULE_STATUS_ERROR;
+		goto end;
+	}
+
+	if (tracepoint->log_level_rule) {
+		lttng_log_level_rule_destroy(tracepoint->log_level_rule);
+	}
+
+	tracepoint->log_level_rule = copy;
+
 end:
 	return status;
 }
 
-enum lttng_event_rule_status
-lttng_event_rule_tracepoint_set_log_level_range_lower_bound(
-		struct lttng_event_rule *rule, int level)
-{
-	struct lttng_event_rule_tracepoint *tracepoint;
-	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-
-	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule)) {
-		status = LTTNG_EVENT_RULE_STATUS_INVALID;
-		goto end;
-	}
-
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_tracepoint, parent);
-
-	if (!log_level_value_valid(level, tracepoint->domain)) {
-		status = LTTNG_EVENT_RULE_STATUS_INVALID;
-		goto end;
-	}
-
-	tracepoint->loglevel.value = level;
-	tracepoint->loglevel.type = LTTNG_EVENT_LOGLEVEL_RANGE;
-end:
-	return status;
-}
-
-enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level_all(
-		struct lttng_event_rule *rule)
-{
-	struct lttng_event_rule_tracepoint *tracepoint;
-	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-
-	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule)) {
-		status = LTTNG_EVENT_RULE_STATUS_INVALID;
-		goto end;
-	}
-
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_tracepoint, parent);
-	tracepoint->loglevel.type = LTTNG_EVENT_LOGLEVEL_ALL;
-end:
-	return status;
-}
-
-enum lttng_event_rule_status lttng_event_rule_tracepoint_get_log_level_type(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_get_log_level_rule(
 		const struct lttng_event_rule *rule,
-		enum lttng_loglevel_type *type)
+		const struct lttng_log_level_rule **log_level_rule
+		)
 {
 	struct lttng_event_rule_tracepoint *tracepoint;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
-	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule) || !type) {
+	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule) || !log_level_rule) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
 		goto end;
 	}
 
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_tracepoint, parent);
-	*type = tracepoint->loglevel.type;
-end:
-	return status;
-}
-
-enum lttng_event_rule_status lttng_event_rule_tracepoint_get_log_level(
-		const struct lttng_event_rule *rule, int *level)
-{
-	struct lttng_event_rule_tracepoint *tracepoint;
-	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
-
-	if (!rule || !IS_TRACEPOINT_EVENT_RULE(rule) || !level) {
-		status = LTTNG_EVENT_RULE_STATUS_INVALID;
-		goto end;
-	}
-
-	tracepoint = container_of(
-			rule, struct lttng_event_rule_tracepoint, parent);
-	if (tracepoint->loglevel.type == LTTNG_EVENT_LOGLEVEL_ALL) {
+	if (tracepoint->log_level_rule == NULL) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
 	}
 
-	*level = tracepoint->loglevel.value;
+	*log_level_rule = tracepoint->log_level_rule;
 end:
 	return status;
 }

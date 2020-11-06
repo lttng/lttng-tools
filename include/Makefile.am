@@ -112,6 +112,7 @@ lttnginclude_HEADERS = \
 	lttng/kernel-probe.h \
 	lttng/load.h \
 	lttng/location.h \
+	lttng/log-level-rule.h \
 	lttng/lttng-error.h \
 	lttng/lttng.h \
 	lttng/rotation.h \
@@ -182,6 +183,7 @@ noinst_HEADERS = \
 	lttng/kernel-probe-internal.h \
 	lttng/load-internal.h \
 	lttng/location-internal.h \
+	lttng/log-level-rule-internal.h \
 	lttng/notification/channel-internal.h \
 	lttng/notification/notification-internal.h \
 	lttng/ref-internal.h \

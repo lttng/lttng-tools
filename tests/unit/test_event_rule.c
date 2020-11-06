@@ -37,7 +37,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 184
+#define NUM_TESTS 144
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -47,23 +47,26 @@ struct tracepoint_test {
 static
 void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 {
-	int ret;
 	unsigned int count;
 	struct lttng_event_rule *tracepoint = NULL;
 	struct lttng_event_rule *tracepoint_from_buffer = NULL;
 	enum lttng_event_rule_status status;
 	enum lttng_domain_type domain_type, type;
-	enum lttng_loglevel_type log_level_type;
 	const char *pattern="my_event_*";
 	const char *filter="msg_id == 23 && size >= 2048";
 	const char *tmp;
 	const char *exclusions[] = {"my_event_test1", "my_event_test2" ,"my_event_test3"};
+	struct lttng_log_level_rule *log_level_rule = NULL;
+	const struct lttng_log_level_rule *log_level_rule_return = NULL;
 	struct lttng_payload payload;
 
 	type = test->type;
 	diag("Testing domain %d.", type);
 
 	lttng_payload_init(&payload);
+
+	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
+	assert(log_level_rule);
 
 	tracepoint = lttng_event_rule_tracepoint_create(type);
 	ok(tracepoint, "tracepoint object.");
@@ -84,28 +87,13 @@ void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 
-	status = lttng_event_rule_tracepoint_set_log_level_all(tracepoint);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting all log level.");
-	status = lttng_event_rule_tracepoint_get_log_level_type(tracepoint, &log_level_type);
-	ok(log_level_type == LTTNG_EVENT_LOGLEVEL_ALL, "getting loglevel type all.");
-	status = lttng_event_rule_tracepoint_get_log_level(tracepoint, &ret);
-	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset loglevel value.");
+	status = lttng_event_rule_tracepoint_get_log_level_rule(tracepoint, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
 
-	status = lttng_event_rule_tracepoint_set_log_level(tracepoint, LTTNG_LOGLEVEL_INFO);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting single loglevel.");
-	status = lttng_event_rule_tracepoint_get_log_level_type(tracepoint, &log_level_type);
-	ok(log_level_type == LTTNG_EVENT_LOGLEVEL_SINGLE, "getting loglevel type single.");
-	status = lttng_event_rule_tracepoint_get_log_level(tracepoint, &ret);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get loglevel value.");
-	ok(ret == LTTNG_LOGLEVEL_INFO, "loglevel value is equal.");
-
-	status = lttng_event_rule_tracepoint_set_log_level_range_lower_bound(tracepoint, LTTNG_LOGLEVEL_WARNING);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting range loglevel.");
-	status = lttng_event_rule_tracepoint_get_log_level_type(tracepoint, &log_level_type);
-	ok(log_level_type == LTTNG_EVENT_LOGLEVEL_RANGE, "getting loglevel type range.");
-	status = lttng_event_rule_tracepoint_get_log_level(tracepoint, &ret);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get loglevel value.");
-	ok(ret == LTTNG_LOGLEVEL_WARNING, "loglevel valuei is equal.");
+	status = lttng_event_rule_tracepoint_set_log_level_rule(tracepoint, log_level_rule);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
+	status = lttng_event_rule_tracepoint_get_log_level_rule(tracepoint, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 
 	if (test->support_exclusion) {
 		int i;
@@ -154,6 +142,7 @@ void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(tracepoint);
 	lttng_event_rule_destroy(tracepoint_from_buffer);
+	lttng_log_level_rule_destroy(log_level_rule);
 }
 
 static

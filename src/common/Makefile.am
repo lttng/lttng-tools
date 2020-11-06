@@ -72,6 +72,7 @@ libcommon_la_SOURCES = \
 	futex.c futex.h \
 	kernel-probe.c \
 	location.c \
+	log-level-rule.c \
 	mi-lttng.c mi-lttng.h \
 	notification.c \
 	optional.h \

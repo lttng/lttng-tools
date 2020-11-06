@@ -26,4 +26,16 @@ LTTNG_HIDDEN
 int loglevel_python_name_to_value(
 		const char *name, enum lttng_loglevel_python *loglevel);
 
+LTTNG_HIDDEN
+const char *loglevel_value_to_name(int loglevel);
+
+LTTNG_HIDDEN
+const char *loglevel_log4j_value_to_name(int loglevel);
+
+LTTNG_HIDDEN
+const char *loglevel_jul_value_to_name(int loglevel);
+
+LTTNG_HIDDEN
+const char *loglevel_python_value_to_name(int loglevel);
+
 #endif /* _LTTNG_LOGLEVEL_UTILS_H */

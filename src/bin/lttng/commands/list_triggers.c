@@ -16,6 +16,7 @@
 #include "lttng/condition/condition-internal.h"
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
+#include "../loglevel.h"
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -35,6 +36,37 @@ struct argpar_opt_descr list_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
+/*
+ * Returns the human-readable log level name associated with a numerical value
+ * if there is one. The Log4j and JUL domains have discontinuous log level
+ * values (a value can fall between two labels). In those cases, NULL is
+ * returned.
+ */
+static const char *get_pretty_loglevel_name(
+		enum lttng_domain_type domain, int loglevel)
+{
+	const char *name = NULL;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_UST:
+		name = loglevel_value_to_name(loglevel);
+		break;
+	case LTTNG_DOMAIN_LOG4J:
+		name = loglevel_log4j_value_to_name(loglevel);
+		break;
+	case LTTNG_DOMAIN_JUL:
+		name = loglevel_jul_value_to_name(loglevel);
+		break;
+	case LTTNG_DOMAIN_PYTHON:
+		name = loglevel_python_value_to_name(loglevel);
+		break;
+	default:
+		break;
+	}
+
+	return name;
+}
+
 static
 void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 {
@@ -43,6 +75,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 	const char *pattern;
 	const char *filter;
 	int log_level;
+	const struct lttng_log_level_rule *log_level_rule = NULL;
 	unsigned int exclusions_count;
 	int i;
 
@@ -65,23 +98,38 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
-	event_rule_status = lttng_event_rule_tracepoint_get_log_level(
-			event_rule, &log_level);
+	event_rule_status = lttng_event_rule_tracepoint_get_log_level_rule(
+			event_rule, &log_level_rule);
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
-		enum lttng_loglevel_type log_level_type;
+		enum lttng_log_level_rule_status llr_status;
 		const char *log_level_op;
+		const char *pretty_loglevel_name;
 
-		event_rule_status = lttng_event_rule_tracepoint_get_log_level_type(
-				event_rule, &log_level_type);
-		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
-		assert(log_level_type == LTTNG_EVENT_LOGLEVEL_RANGE ||
-				log_level_type == LTTNG_EVENT_LOGLEVEL_SINGLE);
+		switch (lttng_log_level_rule_get_type(log_level_rule)) {
+		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+			log_level_op = "is";
+			llr_status = lttng_log_level_rule_exactly_get_level(
+					log_level_rule, &log_level);
+			break;
+		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+			log_level_op = "at least";
+			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+					log_level_rule, &log_level);
+			break;
+		default:
+			abort();
+		}
 
-		log_level_op = (log_level_type == LTTNG_EVENT_LOGLEVEL_RANGE ? "<=" : "==");
+		assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
-		_MSG(", log level %s %s", log_level_op,
-				mi_lttng_loglevel_string(
-						log_level, domain_type));
+		pretty_loglevel_name = get_pretty_loglevel_name(
+				domain_type, log_level);
+		if (pretty_loglevel_name) {
+			_MSG(", log level %s %s", log_level_op,
+					pretty_loglevel_name);
+		} else {
+			_MSG(", log level %s %d", log_level_op, log_level);
+		}
 	} else {
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}

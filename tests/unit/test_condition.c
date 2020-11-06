@@ -22,6 +22,7 @@
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/on-event.h>
 #include <lttng/domain.h>
+#include <lttng/log-level-rule.h>
 #include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
 
@@ -45,9 +46,16 @@ void test_condition_event_rule(void)
 	const char *pattern="my_event_*";
 	const char *filter="msg_id == 23 && size >= 2048";
 	const char *exclusions[] = { "my_event_test1", "my_event_test2", "my_event_test3" };
+	struct lttng_log_level_rule *log_level_rule_at_least_as_severe = NULL;
 	struct lttng_payload buffer;
 
 	lttng_payload_init(&buffer);
+
+	/* Create log level rule. */
+	log_level_rule_at_least_as_severe =
+			lttng_log_level_rule_at_least_as_severe_as_create(
+					LTTNG_LOGLEVEL_WARNING);
+	assert(log_level_rule_at_least_as_severe);
 
 	tracepoint = lttng_event_rule_tracepoint_create(LTTNG_DOMAIN_UST);
 	ok(tracepoint, "tracepoint UST_DOMAIN");
@@ -58,8 +66,8 @@ void test_condition_event_rule(void)
 	status = lttng_event_rule_tracepoint_set_filter(tracepoint, filter);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting filter");
 
-	status = lttng_event_rule_tracepoint_set_log_level_range_lower_bound(
-			tracepoint, LTTNG_LOGLEVEL_WARNING);
+	status = lttng_event_rule_tracepoint_set_log_level_rule(
+			tracepoint, log_level_rule_at_least_as_severe);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting log level range");
 
 	for (i = 0; i < 3; i++) {
@@ -98,6 +106,7 @@ void test_condition_event_rule(void)
 	lttng_event_rule_destroy(tracepoint);
 	lttng_condition_destroy(condition);
 	lttng_condition_destroy(condition_from_buffer);
+	lttng_log_level_rule_destroy(log_level_rule_at_least_as_severe);
 }
 
 int main(int argc, const char *argv[])

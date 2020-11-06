@@ -18,101 +18,101 @@ struct loglevel_name_value {
 
 static
 const struct loglevel_name_value loglevel_values[] = {
-	{ .name = "TRACE_EMERG", .value = LTTNG_LOGLEVEL_EMERG },
 	{ .name = "EMERG", .value = LTTNG_LOGLEVEL_EMERG },
-	{ .name = "TRACE_ALERT", .value = LTTNG_LOGLEVEL_ALERT },
+	{ .name = "TRACE_EMERG", .value = LTTNG_LOGLEVEL_EMERG },
 	{ .name = "ALERT", .value = LTTNG_LOGLEVEL_ALERT },
-	{ .name = "TRACE_CRIT", .value = LTTNG_LOGLEVEL_CRIT },
+	{ .name = "TRACE_ALERT", .value = LTTNG_LOGLEVEL_ALERT },
 	{ .name = "CRIT", .value = LTTNG_LOGLEVEL_CRIT },
-	{ .name = "TRACE_ERR", .value = LTTNG_LOGLEVEL_ERR },
+	{ .name = "TRACE_CRIT", .value = LTTNG_LOGLEVEL_CRIT },
 	{ .name = "ERR", .value = LTTNG_LOGLEVEL_ERR },
-	{ .name = "TRACE_WARNING", .value = LTTNG_LOGLEVEL_WARNING },
+	{ .name = "TRACE_ERR", .value = LTTNG_LOGLEVEL_ERR },
 	{ .name = "WARNING", .value = LTTNG_LOGLEVEL_WARNING },
-	{ .name = "TRACE_NOTICE", .value = LTTNG_LOGLEVEL_NOTICE },
+	{ .name = "TRACE_WARNING", .value = LTTNG_LOGLEVEL_WARNING },
 	{ .name = "NOTICE", .value = LTTNG_LOGLEVEL_NOTICE },
-	{ .name = "TRACE_INFO", .value = LTTNG_LOGLEVEL_INFO },
+	{ .name = "TRACE_NOTICE", .value = LTTNG_LOGLEVEL_NOTICE },
 	{ .name = "INFO", .value = LTTNG_LOGLEVEL_INFO },
-	{ .name = "TRACE_DEBUG_SYSTEM", .value = LTTNG_LOGLEVEL_DEBUG_SYSTEM },
+	{ .name = "TRACE_INFO", .value = LTTNG_LOGLEVEL_INFO },
 	{ .name = "DEBUG_SYSTEM", .value = LTTNG_LOGLEVEL_DEBUG_SYSTEM },
+	{ .name = "TRACE_DEBUG_SYSTEM", .value = LTTNG_LOGLEVEL_DEBUG_SYSTEM },
 	{ .name = "SYSTEM", .value = LTTNG_LOGLEVEL_DEBUG_SYSTEM },
-	{ .name = "TRACE_DEBUG_PROGRAM", .value = LTTNG_LOGLEVEL_DEBUG_PROGRAM },
 	{ .name = "DEBUG_PROGRAM", .value = LTTNG_LOGLEVEL_DEBUG_PROGRAM },
+	{ .name = "TRACE_DEBUG_PROGRAM", .value = LTTNG_LOGLEVEL_DEBUG_PROGRAM },
 	{ .name = "PROGRAM", .value = LTTNG_LOGLEVEL_DEBUG_PROGRAM },
-	{ .name = "TRACE_DEBUG_PROCESS", .value = LTTNG_LOGLEVEL_DEBUG_PROCESS },
 	{ .name = "DEBUG_PROCESS", .value = LTTNG_LOGLEVEL_DEBUG_PROCESS },
+	{ .name = "TRACE_DEBUG_PROCESS", .value = LTTNG_LOGLEVEL_DEBUG_PROCESS },
 	{ .name = "PROCESS", .value = LTTNG_LOGLEVEL_DEBUG_PROCESS },
-	{ .name = "TRACE_DEBUG_MODULE", .value = LTTNG_LOGLEVEL_DEBUG_MODULE },
 	{ .name = "DEBUG_MODULE", .value = LTTNG_LOGLEVEL_DEBUG_MODULE },
+	{ .name = "TRACE_DEBUG_MODULE", .value = LTTNG_LOGLEVEL_DEBUG_MODULE },
 	{ .name = "MODULE", .value = LTTNG_LOGLEVEL_DEBUG_MODULE },
-	{ .name = "TRACE_DEBUG_UNIT", .value = LTTNG_LOGLEVEL_DEBUG_UNIT },
 	{ .name = "DEBUG_UNIT", .value = LTTNG_LOGLEVEL_DEBUG_UNIT },
+	{ .name = "TRACE_DEBUG_UNIT", .value = LTTNG_LOGLEVEL_DEBUG_UNIT },
 	{ .name = "UNIT", .value = LTTNG_LOGLEVEL_DEBUG_UNIT },
-	{ .name = "TRACE_DEBUG_FUNCTION", .value = LTTNG_LOGLEVEL_DEBUG_FUNCTION },
 	{ .name = "DEBUG_FUNCTION", .value = LTTNG_LOGLEVEL_DEBUG_FUNCTION },
+	{ .name = "TRACE_DEBUG_FUNCTION", .value = LTTNG_LOGLEVEL_DEBUG_FUNCTION },
 	{ .name = "FUNCTION", .value = LTTNG_LOGLEVEL_DEBUG_FUNCTION },
-	{ .name = "TRACE_DEBUG_LINE", .value = LTTNG_LOGLEVEL_DEBUG_LINE },
 	{ .name = "DEBUG_LINE", .value = LTTNG_LOGLEVEL_DEBUG_LINE },
+	{ .name = "TRACE_DEBUG_LINE", .value = LTTNG_LOGLEVEL_DEBUG_LINE },
 	{ .name = "LINE", .value = LTTNG_LOGLEVEL_DEBUG_LINE },
-	{ .name = "TRACE_DEBUG", .value = LTTNG_LOGLEVEL_DEBUG },
 	{ .name = "DEBUG", .value = LTTNG_LOGLEVEL_DEBUG },
+	{ .name = "TRACE_DEBUG", .value = LTTNG_LOGLEVEL_DEBUG },
 };
 
 static
 const struct loglevel_name_value loglevel_log4j_values[] = {
-	{ .name = "LOG4J_OFF", .value = LTTNG_LOGLEVEL_LOG4J_OFF },
 	{ .name = "OFF", .value = LTTNG_LOGLEVEL_LOG4J_OFF },
-	{ .name = "LOG4J_FATAL", .value = LTTNG_LOGLEVEL_LOG4J_FATAL },
+	{ .name = "LOG4J_OFF", .value = LTTNG_LOGLEVEL_LOG4J_OFF },
 	{ .name = "FATAL", .value = LTTNG_LOGLEVEL_LOG4J_FATAL },
-	{ .name = "LOG4J_ERROR", .value = LTTNG_LOGLEVEL_LOG4J_ERROR },
+	{ .name = "LOG4J_FATAL", .value = LTTNG_LOGLEVEL_LOG4J_FATAL },
 	{ .name = "ERROR", .value = LTTNG_LOGLEVEL_LOG4J_ERROR },
-	{ .name = "LOG4J_WARN", .value = LTTNG_LOGLEVEL_LOG4J_WARN },
+	{ .name = "LOG4J_ERROR", .value = LTTNG_LOGLEVEL_LOG4J_ERROR },
 	{ .name = "WARN", .value = LTTNG_LOGLEVEL_LOG4J_WARN },
-	{ .name = "LOG4J_INFO", .value = LTTNG_LOGLEVEL_LOG4J_INFO },
+	{ .name = "LOG4J_WARN", .value = LTTNG_LOGLEVEL_LOG4J_WARN },
 	{ .name = "INFO", .value = LTTNG_LOGLEVEL_LOG4J_INFO },
-	{ .name = "LOG4J_DEBUG", .value = LTTNG_LOGLEVEL_LOG4J_DEBUG },
+	{ .name = "LOG4J_INFO", .value = LTTNG_LOGLEVEL_LOG4J_INFO },
 	{ .name = "DEBUG", .value = LTTNG_LOGLEVEL_LOG4J_DEBUG },
-	{ .name = "LOG4J_TRACE", .value = LTTNG_LOGLEVEL_LOG4J_TRACE },
+	{ .name = "LOG4J_DEBUG", .value = LTTNG_LOGLEVEL_LOG4J_DEBUG },
 	{ .name = "TRACE", .value = LTTNG_LOGLEVEL_LOG4J_TRACE },
-	{ .name = "LOG4J_ALL", .value = LTTNG_LOGLEVEL_LOG4J_ALL },
+	{ .name = "LOG4J_TRACE", .value = LTTNG_LOGLEVEL_LOG4J_TRACE },
 	{ .name = "ALL", .value = LTTNG_LOGLEVEL_LOG4J_ALL },
+	{ .name = "LOG4J_ALL", .value = LTTNG_LOGLEVEL_LOG4J_ALL },
 };
 
 static
 const struct loglevel_name_value loglevel_jul_values[] = {
-	{ .name = "JUL_OFF", .value = LTTNG_LOGLEVEL_JUL_OFF },
 	{ .name = "OFF", .value = LTTNG_LOGLEVEL_JUL_OFF },
-	{ .name = "JUL_SEVERE", .value = LTTNG_LOGLEVEL_JUL_SEVERE },
+	{ .name = "JUL_OFF", .value = LTTNG_LOGLEVEL_JUL_OFF },
 	{ .name = "SEVERE", .value = LTTNG_LOGLEVEL_JUL_SEVERE },
-	{ .name = "JUL_WARNING", .value = LTTNG_LOGLEVEL_JUL_WARNING },
+	{ .name = "JUL_SEVERE", .value = LTTNG_LOGLEVEL_JUL_SEVERE },
 	{ .name = "WARNING", .value = LTTNG_LOGLEVEL_JUL_WARNING },
-	{ .name = "JUL_INFO", .value = LTTNG_LOGLEVEL_JUL_INFO },
+	{ .name = "JUL_WARNING", .value = LTTNG_LOGLEVEL_JUL_WARNING },
 	{ .name = "INFO", .value = LTTNG_LOGLEVEL_JUL_INFO },
-	{ .name = "JUL_CONFIG", .value = LTTNG_LOGLEVEL_JUL_CONFIG },
+	{ .name = "JUL_INFO", .value = LTTNG_LOGLEVEL_JUL_INFO },
 	{ .name = "CONFIG", .value = LTTNG_LOGLEVEL_JUL_CONFIG },
-	{ .name = "JUL_FINE", .value = LTTNG_LOGLEVEL_JUL_FINE },
+	{ .name = "JUL_CONFIG", .value = LTTNG_LOGLEVEL_JUL_CONFIG },
 	{ .name = "FINE", .value = LTTNG_LOGLEVEL_JUL_FINE },
-	{ .name = "JUL_FINER", .value = LTTNG_LOGLEVEL_JUL_FINER },
+	{ .name = "JUL_FINE", .value = LTTNG_LOGLEVEL_JUL_FINE },
 	{ .name = "FINER", .value = LTTNG_LOGLEVEL_JUL_FINER },
-	{ .name = "JUL_FINEST", .value = LTTNG_LOGLEVEL_JUL_FINEST },
+	{ .name = "JUL_FINER", .value = LTTNG_LOGLEVEL_JUL_FINER },
 	{ .name = "FINEST", .value = LTTNG_LOGLEVEL_JUL_FINEST },
-	{ .name = "JUL_ALL", .value = LTTNG_LOGLEVEL_JUL_ALL },
+	{ .name = "JUL_FINEST", .value = LTTNG_LOGLEVEL_JUL_FINEST },
 	{ .name = "ALL", .value = LTTNG_LOGLEVEL_JUL_ALL },
+	{ .name = "JUL_ALL", .value = LTTNG_LOGLEVEL_JUL_ALL },
 };
 
 static
 const struct loglevel_name_value loglevel_python_values[] = {
-	{ .name = "PYTHON_CRITICAL", .value = LTTNG_LOGLEVEL_PYTHON_CRITICAL },
 	{ .name = "CRITICAL", .value = LTTNG_LOGLEVEL_PYTHON_CRITICAL },
-	{ .name = "PYTHON_ERROR", .value = LTTNG_LOGLEVEL_PYTHON_ERROR },
+	{ .name = "PYTHON_CRITICAL", .value = LTTNG_LOGLEVEL_PYTHON_CRITICAL },
 	{ .name = "ERROR", .value = LTTNG_LOGLEVEL_PYTHON_ERROR },
-	{ .name = "PYTHON_WARNING", .value = LTTNG_LOGLEVEL_PYTHON_WARNING },
+	{ .name = "PYTHON_ERROR", .value = LTTNG_LOGLEVEL_PYTHON_ERROR },
 	{ .name = "WARNING", .value = LTTNG_LOGLEVEL_PYTHON_WARNING },
-	{ .name = "PYTHON_INFO", .value = LTTNG_LOGLEVEL_PYTHON_INFO },
+	{ .name = "PYTHON_WARNING", .value = LTTNG_LOGLEVEL_PYTHON_WARNING },
 	{ .name = "INFO", .value = LTTNG_LOGLEVEL_PYTHON_INFO },
-	{ .name = "PYTNON_DEBUG", .value = LTTNG_LOGLEVEL_PYTHON_DEBUG },
+	{ .name = "PYTHON_INFO", .value = LTTNG_LOGLEVEL_PYTHON_INFO },
 	{ .name = "DEBUG", .value = LTTNG_LOGLEVEL_PYTHON_DEBUG },
-	{ .name = "PYTHON_NOTSET", .value = LTTNG_LOGLEVEL_PYTHON_NOTSET },
+	{ .name = "PYTNON_DEBUG", .value = LTTNG_LOGLEVEL_PYTHON_DEBUG },
 	{ .name = "NOTSET", .value = LTTNG_LOGLEVEL_PYTHON_NOTSET },
+	{ .name = "PYTHON_NOTSET", .value = LTTNG_LOGLEVEL_PYTHON_NOTSET },
 };
 
 static
@@ -204,4 +204,51 @@ int loglevel_python_name_to_value(
 	}
 
 	return ret;
+}
+
+static
+const char *lookup_name_from_value(const struct loglevel_name_value values[],
+		size_t values_count, int loglevel)
+{
+	size_t i;
+	const char *name = NULL;
+
+	for (i = 0; i < values_count; i++) {
+		if (values[i].value == loglevel) {
+			/* Match found. */
+			name = values[i].name;
+			goto end;
+		}
+	}
+
+end:
+	return name;
+}
+
+LTTNG_HIDDEN
+const char *loglevel_value_to_name(int loglevel)
+{
+	return lookup_name_from_value(
+			loglevel_values, ARRAY_SIZE(loglevel_values), loglevel);
+}
+
+LTTNG_HIDDEN
+const char *loglevel_log4j_value_to_name(int loglevel)
+{
+	return lookup_name_from_value(loglevel_log4j_values,
+			ARRAY_SIZE(loglevel_log4j_values), loglevel);
+}
+
+LTTNG_HIDDEN
+const char *loglevel_jul_value_to_name(int loglevel)
+{
+	return lookup_name_from_value(loglevel_jul_values,
+			ARRAY_SIZE(loglevel_jul_values), loglevel);
+}
+
+LTTNG_HIDDEN
+const char *loglevel_python_value_to_name(int loglevel)
+{
+	return lookup_name_from_value(loglevel_python_values,
+			ARRAY_SIZE(loglevel_python_values), loglevel);
 }
