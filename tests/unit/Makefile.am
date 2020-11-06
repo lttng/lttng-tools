@@ -42,19 +42,28 @@ LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 # Define test programs
-noinst_PROGRAMS = test_uri test_session test_kernel_data \
-                  test_utils_parse_size_suffix test_utils_parse_time_suffix \
-                  test_utils_expand_path test_utils_compat_poll test_utils_compat_pthread \
-                  test_string_utils test_notification test_directory_handle \
-                  test_relayd_backward_compat_group_by_session \
-                  test_fd_tracker test_uuid \
-                  test_buffer_view \
-                  test_payload \
-                  test_unix_socket \
-                  test_kernel_probe \
-                  test_condition \
-		  test_event_expr_to_bytecode \
-                  test_event_rule 
+noinst_PROGRAMS = \
+	test_buffer_view \
+	test_condition \
+	test_directory_handle \
+	test_event_expr_to_bytecode \
+	test_event_rule \
+	test_fd_tracker \
+	test_kernel_data \
+	test_kernel_probe \
+	test_notification \
+	test_payload \
+	test_relayd_backward_compat_group_by_session \
+	test_session \
+	test_string_utils \
+	test_unix_socket \
+	test_uri \
+	test_utils_compat_poll \
+	test_utils_compat_pthread \
+	test_utils_expand_path \
+	test_utils_parse_size_suffix \
+	test_utils_parse_time_suffix \
+	test_uuid
 
 if HAVE_LIBLTTNG_UST_CTL
 noinst_PROGRAMS += test_ust_data
