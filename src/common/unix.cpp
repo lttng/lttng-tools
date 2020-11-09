@@ -379,7 +379,16 @@ int lttcomm_close_unix_sock(int sock)
 	/* Shutdown receptions and transmissions */
 	ret = shutdown(sock, SHUT_RDWR);
 	if (ret < 0) {
-		PERROR("shutdown");
+		/*
+		 * The socket is already disconnected, don't error out.
+		 * This doesn't happen on Linux, but it does on FreeBSD, see:
+		 * https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=227259
+		 */
+		if (errno == ENOTCONN) {
+			ret = 0;
+		} else {
+			PERROR("shutdown");
+		}
 	}
 
 	closeret = close(sock);
