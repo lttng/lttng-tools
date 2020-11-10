@@ -30,7 +30,8 @@ int notify_thread_pipe(int wpipe)
 
 	ret = lttng_write(wpipe, "!", 1);
 	if (ret < 1) {
-		PERROR("write poll pipe");
+		ret = -1;
+		PERROR("Failed to write to thread pipe");
 	}
 
 	return (int) ret;

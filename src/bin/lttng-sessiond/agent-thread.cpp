@@ -355,12 +355,12 @@ void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
  */
 static void *thread_agent_management(void *data)
 {
-	int i, ret, pollfd;
-	uint32_t revents, nb_fd;
+	int i, ret;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_sock *reg_sock;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
 			notifiers->quit_pipe);
 
 	DBG("Manage agent application registration.");
@@ -377,7 +377,7 @@ static void *thread_agent_management(void *data)
 		goto error_poll_create;
 	}
 
-	ret = lttng_poll_add(&events, quit_pipe_read_fd,
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd,
 			LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error_tcp_socket;
@@ -439,11 +439,12 @@ restart:
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			/* Thread quit pipe has been closed. Killing thread. */
-			if (pollfd == quit_pipe_read_fd) {
+			/* Activity on thread quit pipe, exiting. */
+			if (pollfd == thread_quit_pipe_fd) {
+				DBG("Activity on thread quit pipe");
 				goto exit;
 			}
 

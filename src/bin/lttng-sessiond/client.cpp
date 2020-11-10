@@ -2457,9 +2457,9 @@ static void thread_init_cleanup(void *data __attribute__((unused)))
  */
 static void *thread_manage_clients(void *data)
 {
-	int sock = -1, ret, i, pollfd, err = -1;
+	int sock = -1, ret, i, err = -1;
 	int sock_error;
-	uint32_t revents, nb_fd;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	const int client_sock = thread_state.client_sock;
 	struct lttng_pipe *quit_pipe = (lttng_pipe *) data;
@@ -2551,25 +2551,28 @@ static void *thread_manage_clients(void *data)
 		nb_fd = ret;
 
 		for (i = 0; i < nb_fd; i++) {
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			/* Fetch once the poll data. */
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
 
+			/* Activity on thread quit pipe, exiting. */
 			if (pollfd == thread_quit_pipe_fd) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
+			}
+
+			/* Event on the registration socket */
+			if (revents & LPOLLIN) {
+				continue;
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				ERR("Client socket poll error");
+				goto error;
 			} else {
-				/* Event on the registration socket */
-				if (revents & LPOLLIN) {
-					continue;
-				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Client socket poll error");
-					goto error;
-				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-					goto error;
-				}
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 

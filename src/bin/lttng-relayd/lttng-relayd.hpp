@@ -14,6 +14,7 @@
 #include <urcu.h>
 #include <urcu/wfcqueue.h>
 
+#include <common/compat/poll.hpp>
 #include <common/hashtable/hashtable.hpp>
 #include <common/fd-tracker/fd-tracker.hpp>
 
@@ -49,11 +50,17 @@ extern const char *tracing_group_name;
 extern const char * const config_section_name;
 extern enum relay_group_output_by opt_group_output_by;
 
-extern int thread_quit_pipe[2];
-
 extern struct fd_tracker *the_fd_tracker;
 
 void lttng_relay_notify_ready(void);
 int lttng_relay_stop_threads(void);
+
+int relayd_init_thread_quit_pipe(void);
+int relayd_notify_thread_quit_pipe(void);
+void relayd_close_thread_quit_pipe(void);
+bool relayd_is_thread_quit_pipe(const int fd);
+
+int create_named_thread_poll_set(struct lttng_poll_event *events,
+		int size, const char *name);
 
 #endif /* LTTNG_RELAYD_H */

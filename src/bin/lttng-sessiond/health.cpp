@@ -54,14 +54,14 @@ static void cleanup_health_management_thread(void *data)
 static void *thread_manage_health(void *data)
 {
 	const bool is_root = (getuid() == 0);
-	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
-	uint32_t revents, nb_fd;
+	int sock = -1, new_sock = -1, ret, i, err = -1;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
 	/* Thread-specific quit pipe. */
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
 			notifiers->quit_pipe);
 
 	DBG("[thread] Manage health check started");
@@ -70,7 +70,7 @@ static void *thread_manage_health(void *data)
 
 	/*
 	 * Created with a size of two for:
-	 *   - client socket
+	 *   - health client socket
 	 *   - thread quit pipe
 	 */
 	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
@@ -122,12 +122,12 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, quit_pipe_read_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
 
-	/* Add the application registration socket */
+	/* Add the health client socket. */
 	ret = lttng_poll_add(&events, sock, LPOLLIN | LPOLLPRI);
 	if (ret < 0) {
 		goto error;
@@ -154,24 +154,25 @@ restart:
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			/* Event on the registration socket */
-			if (pollfd == sock) {
-				if (revents & LPOLLIN) {
-					continue;
-				} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-					ERR("Health socket poll error");
-					goto error;
-				} else {
-					ERR("Unexpected poll events %u for sock %d", revents, pollfd);
-					goto error;
-				}
-			} else {
-				/* Event on the thread's quit pipe. */
+			/* Activity on thread quit pipe, exiting. */
+			if (pollfd == thread_quit_pipe_fd) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
+			}
+
+			/* Event on the health client socket. */
+			if (revents & LPOLLIN) {
+				continue;
+			} else if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
+				ERR("Health socket poll error");
+				goto error;
+			} else {
+				ERR("Unexpected poll events %u for sock %d", revents, pollfd);
+				goto error;
 			}
 		}
 

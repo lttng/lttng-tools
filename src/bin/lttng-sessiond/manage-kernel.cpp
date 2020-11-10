@@ -165,12 +165,12 @@ error:
  */
 static void *thread_kernel_management(void *data)
 {
-	int ret, i, pollfd, update_poll_flag = 1, err = -1;
-	uint32_t revents, nb_fd;
+	int ret, i, update_poll_flag = 1, err = -1;
+	uint32_t nb_fd;
 	char tmp;
 	struct lttng_poll_event events;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 
 	DBG("[thread] Thread manage kernel started");
 
@@ -212,7 +212,7 @@ static void *thread_kernel_management(void *data)
 			}
 
 			ret = lttng_poll_add(&events,
-					quit_pipe_read_fd,
+					thread_quit_pipe_fd,
 					LPOLLIN);
 			if (ret < 0) {
 				goto error;
@@ -254,12 +254,14 @@ static void *thread_kernel_management(void *data)
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
 
-			if (pollfd == quit_pipe_read_fd) {
+			/* Activity on thread quit pipe, exiting. */
+			if (pollfd == thread_quit_pipe_fd) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
 			}

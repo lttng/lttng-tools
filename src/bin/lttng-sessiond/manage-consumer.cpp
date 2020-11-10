@@ -55,13 +55,13 @@ static void wait_until_thread_is_ready(struct thread_notifiers *notifiers)
  */
 static void *thread_consumer_management(void *data)
 {
-	int sock = -1, i, ret, pollfd, err = -1, should_quit = 0;
-	uint32_t revents, nb_fd;
+	int sock = -1, i, ret, err = -1, should_quit = 0;
+	uint32_t nb_fd;
 	enum lttcomm_return_code code;
 	struct lttng_poll_event events;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
 	struct consumer_data *consumer_data = notifiers->consumer_data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(notifiers->quit_pipe);
 	struct consumer_socket *cmd_socket_wrapper = NULL;
 
 	DBG("[thread] Manage consumer started");
@@ -83,7 +83,7 @@ static void *thread_consumer_management(void *data)
 		goto error_poll;
 	}
 
-	ret = lttng_poll_add(&events, quit_pipe_read_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		mark_thread_intialization_as_failed(notifiers);
 		goto error;
@@ -121,13 +121,14 @@ static void *thread_consumer_management(void *data)
 
 	for (i = 0; i < nb_fd; i++) {
 		/* Fetch once the poll data */
-		revents = LTTNG_POLL_GETEV(&events, i);
-		pollfd = LTTNG_POLL_GETFD(&events, i);
+		const auto revents = LTTNG_POLL_GETEV(&events, i);
+		const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 		health_code_update();
 
-		/* Thread quit pipe has been closed. Killing thread. */
-		if (pollfd == quit_pipe_read_fd) {
+		/* Activity on thread quit pipe, exiting. */
+		if (pollfd == thread_quit_pipe_fd) {
+			DBG("Activity on thread quit pipe");
 			err = 0;
 			mark_thread_intialization_as_failed(notifiers);
 			goto exit;
@@ -290,8 +291,8 @@ static void *thread_consumer_management(void *data)
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
 
@@ -300,7 +301,7 @@ static void *thread_consumer_management(void *data)
 			 * but continue the current loop to handle potential data from
 			 * consumer.
 			 */
-			if (pollfd == quit_pipe_read_fd) {
+			if (pollfd == thread_quit_pipe_fd) {
 				should_quit = 1;
 			} else if (pollfd == sock) {
 				/* Event on the consumerd socket */

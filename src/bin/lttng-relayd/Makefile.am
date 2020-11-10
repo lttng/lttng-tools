@@ -25,7 +25,8 @@ lttng_relayd_SOURCES = main.cpp lttng-relayd.hpp utils.hpp utils.cpp cmd.hpp \
                        tracefile-array.cpp tracefile-array.hpp \
                        tcp_keep_alive.cpp tcp_keep_alive.hpp \
                        sessiond-trace-chunks.cpp sessiond-trace-chunks.hpp \
-                       backward-compatibility-group-by.cpp backward-compatibility-group-by.hpp
+                       backward-compatibility-group-by.cpp backward-compatibility-group-by.hpp \
+                       thread-utils.cpp
 
 # link on liblttngctl for check if relayd is already alive.
 lttng_relayd_LDADD = $(URCU_LIBS) \

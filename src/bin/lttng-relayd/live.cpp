@@ -590,54 +590,6 @@ int relayd_live_stop(void)
 	return 0;
 }
 
-/*
- * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
- */
-static
-int create_named_thread_poll_set(struct lttng_poll_event *events,
-		int size, const char *name)
-{
-	int ret;
-
-	if (events == NULL || size == 0) {
-		ret = -1;
-		goto error;
-	}
-
-	ret = fd_tracker_util_poll_create(the_fd_tracker,
-		        name, events, 1, LTTNG_CLOEXEC);
-	if (ret) {
-		PERROR("Failed to create \"%s\" poll file descriptor", name);
-		goto error;
-	}
-
-	/* Add quit pipe */
-	ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
-	if (ret < 0) {
-		goto error;
-	}
-
-	return 0;
-
-error:
-	return ret;
-}
-
-/*
- * Check if the thread quit pipe was triggered.
- *
- * Return 1 if it was triggered else 0;
- */
-static
-int check_thread_quit_pipe(int fd, uint32_t events)
-{
-	if (fd == thread_quit_pipe[0] && (events & LPOLLIN)) {
-		return 1;
-	}
-
-	return 0;
-}
-
 static
 int create_sock(void *data, int *out_fd)
 {
@@ -768,8 +720,8 @@ error:
 static
 void *thread_listener(void *data __attribute__((unused)))
 {
-	int i, ret, pollfd, err = -1;
-	uint32_t revents, nb_fd;
+	int i, ret, err = -1;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct lttcomm_sock *live_control_sock;
 
@@ -826,15 +778,15 @@ restart:
 
 		DBG("Relay new viewer connection received");
 		for (i = 0; i < nb_fd; i++) {
+			/* Fetch once the poll data */
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
+
 			health_code_update();
 
-			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
-
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
+			/* Activity on thread quit pipe, exiting. */
+			if (relayd_is_thread_quit_pipe(pollfd)) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
 			}
@@ -2729,14 +2681,14 @@ restart:
 		 */
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			uint32_t revents = LTTNG_POLL_GETEV(&events, i);
-			int pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
 
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_thread_quit_pipe(pollfd, revents);
-			if (ret) {
+			/* Activity on thread quit pipe, exiting. */
+			if (relayd_is_thread_quit_pipe(pollfd)) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
 			}

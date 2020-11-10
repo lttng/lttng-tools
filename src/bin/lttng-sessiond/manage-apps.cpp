@@ -43,12 +43,12 @@ static void cleanup_application_management_thread(void *data)
  */
 static void *thread_application_management(void *data)
 {
-	int i, ret, pollfd, err = -1;
+	int i, ret, err = -1;
 	ssize_t size_ret;
-	uint32_t revents, nb_fd;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct thread_notifiers *notifiers = (thread_notifiers *) data;
-	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
+	const auto thread_quit_pipe_fd = lttng_pipe_get_readfd(
 			notifiers->quit_pipe);
 
 	DBG("[thread] Manage application started");
@@ -75,7 +75,7 @@ static void *thread_application_management(void *data)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, quit_pipe_read_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -110,15 +110,19 @@ static void *thread_application_management(void *data)
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
 			health_code_update();
 
-			if (pollfd == quit_pipe_read_fd) {
+			/* Activity on thread quit pipe, exiting. */
+			if (pollfd == thread_quit_pipe_fd) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
-			} else if (pollfd == notifiers->apps_cmd_pipe_read_fd) {
+			}
+
+			if (pollfd == notifiers->apps_cmd_pipe_read_fd) {
 				/* Inspect the apps cmd pipe */
 				if (revents & LPOLLIN) {
 					int sock;

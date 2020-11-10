@@ -48,21 +48,6 @@ char health_unix_sock_path[PATH_MAX];
 int health_quit_pipe[2] = { -1, -1 };
 
 /*
- * Check if the thread quit pipe was triggered.
- *
- * Return 1 if it was triggered else 0;
- */
-static
-int check_health_quit_pipe(int fd, uint32_t events)
-{
-	if (fd == health_quit_pipe[0] && (events & LPOLLIN)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-/*
  * Send data on a unix socket using the liblttsessiondcomm API.
  *
  * Return lttcomm error code.
@@ -261,8 +246,8 @@ end:
  */
 void *thread_manage_health_relayd(void *data __attribute__((unused)))
 {
-	int sock = -1, new_sock = -1, ret, i, pollfd, err = -1;
-	uint32_t revents, nb_fd;
+	int sock = -1, new_sock = -1, ret, i, err = -1;
+	uint32_t nb_fd;
 	struct lttng_poll_event events;
 	struct health_comm_msg msg;
 	struct health_comm_reply reply;
@@ -379,12 +364,12 @@ restart:
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
-			revents = LTTNG_POLL_GETEV(&events, i);
-			pollfd = LTTNG_POLL_GETFD(&events, i);
+			const auto revents = LTTNG_POLL_GETEV(&events, i);
+			const auto pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			/* Thread quit pipe has been closed. Killing thread. */
-			ret = check_health_quit_pipe(pollfd, revents);
-			if (ret) {
+			/* Activity on thread quit pipe, exiting. */
+			if (pollfd == health_quit_pipe[0]) {
+				DBG("Activity on thread quit pipe");
 				err = 0;
 				goto exit;
 			}
