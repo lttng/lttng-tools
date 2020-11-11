@@ -210,7 +210,7 @@ void *thread_manage_health(void *data)
 		goto error;
 	}
 
-	/* Size is set to 1 for the consumer_channel pipe */
+	/* Size is set to 2 for the quit pipe and registration socket. */
 	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);
 	if (ret < 0) {
 		ERR("Poll set creation failed");
