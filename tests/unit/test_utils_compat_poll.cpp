@@ -147,7 +147,7 @@ static void test_mod_wait(void)
 		childok(lttng_poll_create(&cpoll_events, 1, 0) == 0, "Create valid poll set succeeds");
 		childok(lttng_poll_mod(NULL, infd[0], LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
 		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
-		childok(lttng_poll_add(&cpoll_events, infd[0], LPOLLHUP) == 0, "Add valid FD succeeds");
+		childok(lttng_poll_add(&cpoll_events, infd[0], LPOLLIN) == 0, "Add valid FD succeeds");
 		childok(lttng_poll_mod(&cpoll_events, -1, LPOLLIN) == -1, "lttng_poll_mod with invalid input returns an error");
 		childok(lttng_poll_mod(&cpoll_events, hupfd[0], LPOLLIN) == 0, "lttng_poll_mod on unincluded FD goes on");
 		childok(lttng_poll_mod(&cpoll_events, infd[0], LPOLLIN) == 0, "Modify event type succeeds");
@@ -169,7 +169,7 @@ static void test_mod_wait(void)
 
 		ok(lttng_poll_create(&poll_events, 1, 0) == 0, "Create valid poll set succeeds");
 		ok(lttng_poll_wait(&poll_events, -1) == -1, "lttng_poll_wait call with invalid input returns error");
-		ok(lttng_poll_add(&poll_events, hupfd[0], LPOLLHUP) == 0, "Add valid FD succeeds");
+		ok(lttng_poll_add(&poll_events, hupfd[0], LPOLLIN) == 0, "Add valid FD succeeds");
 		ok(lttng_write(infd[1], &tbuf, 1) == 1, "Write to pipe succeeds");
 		ok(lttng_poll_wait(&poll_events, -1) == 1, "Wakes up on one event");
 		ok(lttng_poll_del(&poll_events, hupfd[0]) == 0, "Removing valid FD succeeds");

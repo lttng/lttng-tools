@@ -92,7 +92,7 @@ int create_named_thread_poll_set(struct lttng_poll_event *events,
 	}
 
 	/* Add thread quit pipe to monitored events. */
-	const auto poll_add_ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
+	const auto poll_add_ret = lttng_poll_add(events, thread_quit_pipe[0], LPOLLIN);
 	if (poll_add_ret < 0) {
 		return -1;
 	}

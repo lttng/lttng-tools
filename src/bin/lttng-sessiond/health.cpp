@@ -122,7 +122,7 @@ static void *thread_manage_health(void *data)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}

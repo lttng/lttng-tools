@@ -2428,9 +2428,8 @@ restart:
 							stream->wait_fd);
 
 					/* Add metadata stream to the global poll events list */
-					lttng_poll_add(&events, stream->wait_fd,
-							LPOLLIN | LPOLLPRI | LPOLLHUP);
-				} else if (revents & (LPOLLERR | LPOLLHUP)) {
+					lttng_poll_add(&events, stream->wait_fd, LPOLLIN | LPOLLPRI);
+				}else if (revents & (LPOLLERR | LPOLLHUP)) {
 					DBG("Metadata thread pipe hung up");
 					/*
 					 * Remove the pipe from the poll set and continue the loop
@@ -3020,8 +3019,8 @@ restart:
 								&chan->wait_fd_node);
 						rcu_read_unlock();
 						/* Add channel to the global poll events list */
-						lttng_poll_add(&events, chan->wait_fd,
-								LPOLLERR | LPOLLHUP);
+						// FIXME: Empty flag on a pipe pollset, this might hang on FreeBSD.
+						lttng_poll_add(&events, chan->wait_fd, 0);
 						break;
 					case CONSUMER_CHANNEL_DEL:
 					{

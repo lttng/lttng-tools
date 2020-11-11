@@ -82,7 +82,7 @@ struct lttng_destruction_handle *lttng_destruction_handle_create(
 	}
 
 	ret = lttng_poll_add(&handle->communication.events, sessiond_socket,
-			LPOLLIN | LPOLLHUP | LPOLLRDHUP | LPOLLERR);
+			LPOLLIN | LPOLLRDHUP);
 	if (ret) {
 		goto error;
 	}

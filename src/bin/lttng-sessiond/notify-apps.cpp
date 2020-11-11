@@ -58,13 +58,12 @@ static void *thread_application_notification(void *data)
 
 	/* Add notify pipe to the pollset. */
 	ret = lttng_poll_add(&events, notifiers->apps_cmd_notify_pipe_read_fd,
-			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+			LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd,
-			LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}
@@ -121,8 +120,7 @@ restart:
 					}
 					health_code_update();
 
-					ret = lttng_poll_add(&events, sock,
-							LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+					ret = lttng_poll_add(&events, sock, LPOLLIN | LPOLLRDHUP);
 					if (ret < 0) {
 						/*
 						 * It's possible we've reached the max poll fd allowed.

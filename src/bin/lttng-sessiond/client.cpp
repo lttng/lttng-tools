@@ -2501,7 +2501,7 @@ static void *thread_manage_clients(void *data)
 	}
 
 	/* Add thread quit pipe */
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}

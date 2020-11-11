@@ -83,7 +83,7 @@ static void *thread_consumer_management(void *data)
 		goto error_poll;
 	}
 
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		mark_thread_intialization_as_failed(notifiers);
 		goto error;

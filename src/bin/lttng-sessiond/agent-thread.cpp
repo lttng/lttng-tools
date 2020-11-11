@@ -377,8 +377,7 @@ static void *thread_agent_management(void *data)
 		goto error_poll_create;
 	}
 
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd,
-			LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		goto error_tcp_socket;
 	}
@@ -411,8 +410,7 @@ static void *thread_agent_management(void *data)
 	mark_thread_as_ready(notifiers);
 
 	/* Add TCP socket to the poll set. */
-	ret = lttng_poll_add(&events, reg_sock->fd,
-			LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+	ret = lttng_poll_add(&events, reg_sock->fd, LPOLLIN | LPOLLRDHUP);
 	if (ret < 0) {
 		goto error;
 	}
@@ -484,8 +482,7 @@ restart:
 				 * read), only add poll error event to only
 				 * detect shutdown.
 				 */
-				ret = lttng_poll_add(&events, new_app_socket_fd,
-						LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+				ret = lttng_poll_add(&events, new_app_socket_fd, LPOLLRDHUP);
 				if (ret < 0) {
 					agent_destroy_app(new_app);
 					continue;

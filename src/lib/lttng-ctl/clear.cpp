@@ -77,7 +77,7 @@ struct lttng_clear_handle *lttng_clear_handle_create(int sessiond_socket)
 	}
 
 	ret = lttng_poll_add(&handle->communication.events, sessiond_socket,
-			LPOLLIN | LPOLLHUP | LPOLLRDHUP | LPOLLERR);
+			LPOLLIN | LPOLLRDHUP);
 	if (ret) {
 		goto error;
 	}

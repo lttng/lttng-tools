@@ -257,8 +257,7 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 	}
 
 	ret = lttng_poll_add(poll_set,
-			lttng_pipe_get_readfd(handle->quit_pipe),
-			LPOLLIN | LPOLLERR);
+			lttng_pipe_get_readfd(handle->quit_pipe), LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add quit pipe read fd to poll set");
 		goto error;
@@ -266,7 +265,7 @@ int init_poll_set(struct lttng_poll_event *poll_set,
 
 	ret = lttng_poll_add(poll_set,
 			lttng_pipe_get_readfd(handle->rotation_timer_queue->event_pipe),
-			LPOLLIN | LPOLLERR);
+			LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add rotate_pending fd to poll set");
 		goto error;
@@ -310,7 +309,7 @@ int init_thread_state(struct rotation_thread_handle *handle,
 		goto end;
 	}
 	ret = lttng_poll_add(&state->events, rotate_notification_channel->socket,
-			LPOLLIN | LPOLLERR);
+			LPOLLIN);
 	if (ret < 0) {
 		ERR("Failed to add notification fd to pollset");
 		goto end;

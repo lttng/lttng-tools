@@ -75,7 +75,7 @@ static void *thread_application_management(void *data)
 		goto error;
 	}
 
-	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, thread_quit_pipe_fd, LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}
@@ -142,8 +142,7 @@ static void *thread_application_management(void *data)
 					 * Since this is a command socket (write then read),
 					 * we only monitor the error events of the socket.
 					 */
-					ret = lttng_poll_add(&events, sock,
-							LPOLLERR | LPOLLHUP | LPOLLRDHUP);
+					ret = lttng_poll_add(&events, sock, LPOLLRDHUP);
 					if (ret < 0) {
 						goto error;
 					}

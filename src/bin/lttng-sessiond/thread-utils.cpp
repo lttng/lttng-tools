@@ -65,7 +65,7 @@ int sessiond_wait_for_main_quit_pipe(int timeout_ms)
 		ret = -1;
 		goto end;
 	}
-	ret = lttng_poll_add(&events, main_quit_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, main_quit_pipe[0], LPOLLIN);
 	if (ret < 0) {
 		PERROR("Failed to add file descriptor to poll/epoll set");
 		ret = -1;
@@ -114,7 +114,7 @@ int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
 	}
 
 	/* Add main quit pipe */
-	ret = lttng_poll_add(events, main_quit_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(events, main_quit_pipe[0], LPOLLIN);
 	if (ret < 0) {
 		goto error;
 	}
