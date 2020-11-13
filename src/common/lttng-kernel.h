@@ -159,11 +159,12 @@ struct lttng_kernel_function {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
 } LTTNG_PACKED;
 
-#define LTTNG_KERNEL_EVENT_PADDING1    16
+#define LTTNG_KERNEL_EVENT_PADDING1    8
 #define LTTNG_KERNEL_EVENT_PADDING2    LTTNG_KERNEL_SYM_NAME_LEN + 32
 struct lttng_kernel_event {
 	char name[LTTNG_KERNEL_SYM_NAME_LEN];
 	enum lttng_kernel_instrumentation instrumentation;
+	uint64_t token;
 	char padding[LTTNG_KERNEL_EVENT_PADDING1];
 
 	/* Per instrumentation type configuration */
