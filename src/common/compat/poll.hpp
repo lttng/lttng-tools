@@ -213,16 +213,6 @@ static inline void lttng_poll_clean(struct lttng_poll_event *events)
  * Fallback on poll(2) API
  */
 
-/* Needed for some poll event values */
-#ifndef __USE_XOPEN
-#define __USE_XOPEN
-#endif
-
-/* Needed for some poll event values */
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
-
 #include <poll.h>
 #include <stdint.h>
 
@@ -235,15 +225,13 @@ enum {
 	LPOLLRDBAND = POLLRDBAND,
 	LPOLLWRNORM = POLLWRNORM,
 	LPOLLWRBAND = POLLWRBAND,
-#ifdef __linux__
+#ifdef __USE_GNU
 	LPOLLMSG = POLLMSG,
 	LPOLLRDHUP = POLLRDHUP,
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
+#else
 	LPOLLMSG = 0,
 	LPOLLRDHUP = 0,
-#else
-#error "Please add support for your OS."
-#endif /* __linux__ */
+#endif /* __USE_GNU */
 	LPOLLERR = POLLERR,
 	LPOLLHUP = POLLHUP | POLLNVAL,
 	/* Close on exec feature does not exist for poll(2) */
