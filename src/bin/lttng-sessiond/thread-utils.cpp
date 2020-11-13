@@ -13,30 +13,31 @@
 #include <pthread.h>
 
 /*
- * Quit pipe for all threads. This permits a single cancellation point
- * for all threads when receiving an event on the pipe.
+ * Quit pipe for the main thread. This is used by signal handlers to start the
+ * shutdown sequence of the main thread which will tear down the other threads
+ * in the appropriate order.
  */
-static int thread_quit_pipe[2] = { -1, -1 };
+static int main_quit_pipe[2] = { -1, -1 };
 
 /*
- * Init thread quit pipe.
+ * Init main quit pipe.
  *
  * Return -1 on error or 0 if all pipes are created.
  */
-static int __init_thread_quit_pipe(int *a_pipe)
+int sessiond_init_main_quit_pipe(void)
 {
 	int ret, i;
 
-	ret = pipe(a_pipe);
+	ret = pipe(main_quit_pipe);
 	if (ret < 0) {
-		PERROR("thread quit pipe");
+		PERROR("main quit pipe");
 		goto error;
 	}
 
 	for (i = 0; i < 2; i++) {
-		ret = fcntl(a_pipe[i], F_SETFD, FD_CLOEXEC);
+		ret = fcntl(main_quit_pipe[i], F_SETFD, FD_CLOEXEC);
 		if (ret < 0) {
-			PERROR("fcntl");
+			PERROR("fcntl main_quit_pipe");
 			goto error;
 		}
 	}
@@ -45,25 +46,15 @@ error:
 	return ret;
 }
 
-int sessiond_init_thread_quit_pipe(void)
-{
-	return __init_thread_quit_pipe(thread_quit_pipe);
-}
-
-int sessiond_check_thread_quit_pipe(int fd, uint32_t events)
-{
-	return (fd == thread_quit_pipe[0] && (events & LPOLLIN));
-}
-
 /*
- * Wait for a notification on the quit pipe (with a timeout).
+ * Wait for a notification on the main quit pipe (with a timeout).
  *
  * A timeout value of -1U means no timeout.
  *
  * Returns 1 if the caller should quit, 0 if the timeout was reached, and
  * -1 if an error was encountered.
  */
-int sessiond_wait_for_quit_pipe(int timeout_ms)
+int sessiond_wait_for_main_quit_pipe(int timeout_ms)
 {
 	int ret;
 	struct lttng_poll_event events;
@@ -74,7 +65,7 @@ int sessiond_wait_for_quit_pipe(int timeout_ms)
 		ret = -1;
 		goto end;
 	}
-	ret = lttng_poll_add(&events, thread_quit_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(&events, main_quit_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		PERROR("Failed to add file descriptor to poll/epoll set");
 		ret = -1;
@@ -86,7 +77,7 @@ int sessiond_wait_for_quit_pipe(int timeout_ms)
 		ret = 1;
 	} else if (ret < 0 && errno != EINTR) {
 		/* Unknown error. */
-		PERROR("Failed to epoll()/poll() thread quit pipe");
+		PERROR("Failed to epoll()/poll() main quit pipe");
 		ret = -1;
 	} else {
 		/* Timeout reached. */
@@ -98,19 +89,20 @@ end:
 	return ret;
 }
 
-int sessiond_notify_quit_pipe(void)
+int sessiond_notify_main_quit_pipe(void)
 {
-	return notify_thread_pipe(thread_quit_pipe[1]);
+	return notify_thread_pipe(main_quit_pipe[1]);
 }
 
-void sessiond_close_quit_pipe(void)
+void sessiond_close_main_quit_pipe(void)
 {
-	utils_close_pipe(thread_quit_pipe);
+	utils_close_pipe(main_quit_pipe);
 }
 
-static
-int __sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size,
-		int *a_pipe)
+/*
+ * Create a poll set with O_CLOEXEC and add the main quit pipe to the set.
+ */
+int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
 {
 	int ret;
 
@@ -121,8 +113,8 @@ int __sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size,
 		goto error;
 	}
 
-	/* Add quit pipe */
-	ret = lttng_poll_add(events, a_pipe[0], LPOLLIN | LPOLLERR);
+	/* Add main quit pipe */
+	ret = lttng_poll_add(events, main_quit_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		goto error;
 	}
@@ -131,12 +123,4 @@ int __sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size,
 
 error:
 	return ret;
-}
-
-/*
- * Create a poll set with O_CLOEXEC and add the thread quit pipe to the set.
- */
-int sessiond_set_thread_pollset(struct lttng_poll_event *events, size_t size)
-{
-	return __sessiond_set_thread_pollset(events, size, thread_quit_pipe);
 }
