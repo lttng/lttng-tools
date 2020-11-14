@@ -616,12 +616,12 @@ ssize_t lttng_session_descriptor_create_from_buffer(
 
 	current_view = lttng_buffer_view_from_view(payload, offset,
 			sizeof(*base_header));
-	base_header = (typeof(base_header)) current_view.data;
-	if (!base_header) {
+	if (!lttng_buffer_view_is_valid(&current_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	base_header = (typeof(base_header)) current_view.data;
 	switch (base_header->type) {
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_REGULAR:
 	case LTTNG_SESSION_DESCRIPTOR_TYPE_SNAPSHOT:
@@ -632,12 +632,12 @@ ssize_t lttng_session_descriptor_create_from_buffer(
 
 		current_view = lttng_buffer_view_from_view(payload, offset,
 				sizeof(*live_header));
-		live_header = (typeof(live_header)) current_view.data;
-		if (!live_header) {
+		if (!lttng_buffer_view_is_valid(&current_view)) {
 			ret = -1;
 			goto end;
 		}
 
+		live_header = (typeof(live_header)) current_view.data;
 		live_timer_us = live_header->live_timer_us;
 		break;
 	}
@@ -674,12 +674,12 @@ ssize_t lttng_session_descriptor_create_from_buffer(
 	/* Map the name. */
 	current_view = lttng_buffer_view_from_view(payload, offset,
 			base_header->name_len);
-	name = current_view.data;
-	if (!name) {
+	if (!lttng_buffer_view_is_valid(&current_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	name = current_view.data;
 	if (base_header->name_len == 1 ||
 			name[base_header->name_len - 1] ||
 			strlen(name) != base_header->name_len - 1) {
@@ -705,11 +705,12 @@ skip_name:
 		/* Map a URI. */
 		current_view = lttng_buffer_view_from_view(payload,
 				offset, sizeof(*uri));
-		uri = (typeof(uri)) current_view.data;
-		if (!uri) {
+		if (!lttng_buffer_view_is_valid(&current_view)) {
 			ret = -1;
 			goto end;
 		}
+
+		uri = (typeof(uri)) current_view.data;
 		uris[i] = zmalloc(sizeof(*uri));
 		if (!uris[i]) {
 			ret = -1;

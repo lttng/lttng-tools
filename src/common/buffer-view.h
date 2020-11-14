@@ -36,6 +36,16 @@ struct lttng_buffer_view lttng_buffer_view_init(
 		const char *src, size_t offset, ptrdiff_t len);
 
 /**
+ * Checks if a buffer view is safe to access.
+ *
+ * After calling the buffer view creation functions, callers should verify
+ * if the resquested length (if any is explicitly provided) could be mapped
+ * to a new view.
+ */
+LTTNG_HIDDEN
+bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);
+
+/**
  * Return a buffer view referencing a subset of the memory referenced by another
  * view.
  *

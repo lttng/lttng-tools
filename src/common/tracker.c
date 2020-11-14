@@ -345,9 +345,10 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 
 	header_view = lttng_buffer_view_from_view(
 			buffer_view, 0, sizeof(*header));
-	if (!header_view.data) {
+	if (!lttng_buffer_view_is_valid(&header_view)) {
 		goto error;
 	}
+
 	offset = header_view.size;
 	header = (typeof(header)) header_view.data;
 
@@ -370,7 +371,7 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 
 		value_view = lttng_buffer_view_from_view(
 				buffer_view, offset, sizeof(*value_comm));
-		if (!value_view.data) {
+		if (!lttng_buffer_view_is_valid(&value_view)) {
 			goto error;
 		}
 
@@ -382,8 +383,13 @@ ssize_t lttng_process_attr_values_create_from_buffer(
 			value_name_view = lttng_buffer_view_from_view(
 					buffer_view, offset,
 					value_comm->value.name_len);
+			if (!lttng_buffer_view_is_valid(&value_name_view)) {
+				goto error;
+			}
+
 			offset += value_name_view.size;
 		}
+
 		ret_code = process_attr_value_from_comm(domain, process_attr,
 				type, &value_comm->value.integral,
 				&value_name_view, &value);

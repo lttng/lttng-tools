@@ -211,18 +211,26 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 		struct lttng_action **p_action)
 {
 	ssize_t consumed_len;
-	const struct lttng_action_snapshot_session_comm *comm;
 	const char *variable_data;
 	struct lttng_action *action;
 	enum lttng_action_status status;
 	struct lttng_snapshot_output *snapshot_output = NULL;
+	const struct lttng_action_snapshot_session_comm *comm;
+	const struct lttng_payload_view snapshot_session_comm_view =
+			lttng_payload_view_from_view(
+				view, 0, sizeof(*comm));
 
 	action = lttng_action_snapshot_session_create();
 	if (!action) {
 		goto error;
 	}
 
-	comm = (typeof(comm)) view->buffer.data;
+	if (!lttng_payload_view_is_valid(&snapshot_session_comm_view)) {
+		/* Payload not large enough to contain the header. */
+		goto error;
+	}
+
+	comm = (typeof(comm)) snapshot_session_comm_view.buffer.data;
 	variable_data = (const char *) &comm->data;
 
 	consumed_len = sizeof(struct lttng_action_snapshot_session_comm);
@@ -249,7 +257,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 			lttng_payload_view_from_view(view, consumed_len,
 				comm->snapshot_output_len);
 
-		if (!snapshot_output_buffer_view.buffer.data) {
+		if (!lttng_payload_view_is_valid(&snapshot_output_buffer_view)) {
 			ERR("Failed to create buffer view for snapshot output.");
 			goto error;
 		}

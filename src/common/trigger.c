@@ -140,14 +140,23 @@ ssize_t lttng_trigger_create_from_payload(
 		.uid = LTTNG_OPTIONAL_INIT_UNSET,
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
+	const struct lttng_payload_view trigger_comm_view =
+			lttng_payload_view_from_view(
+					src_view, 0, sizeof(*trigger_comm));
 
 	if (!src_view || !trigger) {
 		ret = -1;
 		goto end;
 	}
 
+	if (!lttng_payload_view_is_valid(&trigger_comm_view)) {
+		/* Payload not large enough to contain the header. */
+		ret = -1;
+		goto end;
+	}
+
 	/* lttng_trigger_comm header */
-	trigger_comm = (typeof(trigger_comm)) src_view->buffer.data;
+	trigger_comm = (typeof(trigger_comm)) trigger_comm_view.buffer.data;
 
 	/* Set the trigger's creds. */
 	if (trigger_comm->uid > (uint64_t) ((uid_t) -1)) {
@@ -164,7 +173,13 @@ ssize_t lttng_trigger_create_from_payload(
 		/* Name. */
 		const struct lttng_payload_view name_view =
 				lttng_payload_view_from_view(
-						src_view, offset, trigger_comm->name_length);
+						src_view, offset,
+						trigger_comm->name_length);
+
+		if (!lttng_payload_view_is_valid(&name_view)) {
+			ret = -1;
+			goto end;
+		}
 
 		name = name_view.buffer.data;
 		if (!lttng_buffer_view_contains_string(&name_view.buffer, name,

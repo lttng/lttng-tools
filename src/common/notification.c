@@ -78,16 +78,25 @@ ssize_t lttng_notification_create_from_payload(
 		struct lttng_notification **notification)
 {
 	ssize_t ret, notification_size = 0, condition_size, evaluation_size;
-	const struct lttng_notification_comm *notification_comm;
 	struct lttng_condition *condition;
 	struct lttng_evaluation *evaluation;
+	const struct lttng_notification_comm *notification_comm;
+	const struct lttng_payload_view notification_comm_view =
+			lttng_payload_view_from_view(
+					src_view, 0, sizeof(*notification_comm));
 
 	if (!src_view || !notification) {
 		ret = -1;
 		goto end;
 	}
 
-	notification_comm = (typeof(notification_comm)) src_view->buffer.data;
+	if (!lttng_payload_view_is_valid(&notification_comm_view)) {
+		/* Payload not large enough to contain the header. */
+		ret = -1;
+		goto end;
+	}
+
+	notification_comm = (typeof(notification_comm)) notification_comm_view.buffer.data;
 	notification_size += sizeof(*notification_comm);
 	{
 		/* struct lttng_condition */

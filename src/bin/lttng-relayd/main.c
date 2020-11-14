@@ -1961,7 +1961,7 @@ static int relay_recv_metadata(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	packet_view = lttng_buffer_view_from_view(payload,
 			sizeof(metadata_payload_header), metadata_payload_size);
-	if (!packet_view.data) {
+	if (!lttng_buffer_view_is_valid(&packet_view)) {
 		ERR("Invalid metadata packet length announced by header");
 		ret = -1;
 		goto end_put;
@@ -2667,7 +2667,6 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	struct lttcomm_relayd_create_trace_chunk *msg;
 	struct lttcomm_relayd_generic_reply reply = {};
 	struct lttng_buffer_view header_view;
-	struct lttng_buffer_view chunk_name_view;
 	struct lttng_trace_chunk *chunk = NULL, *published_chunk = NULL;
 	enum lttng_error_code reply_code = LTTNG_OK;
 	enum lttng_trace_chunk_status chunk_status;
@@ -2686,7 +2685,7 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
-	if (!header_view.data) {
+	if (!lttng_buffer_view_is_valid(&header_view)) {
 		ERR("Failed to receive payload of chunk creation command");
 		ret = -1;
 		goto end_no_reply;
@@ -2731,13 +2730,21 @@ static int relay_create_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 
 	if (msg->override_name_length) {
 		const char *name;
+		const struct lttng_buffer_view chunk_name_view =
+				lttng_buffer_view_from_view(payload,
+						sizeof(*msg),
+						msg->override_name_length);
 
-		chunk_name_view = lttng_buffer_view_from_view(payload,
-				sizeof(*msg),
-				msg->override_name_length);
+		if (!lttng_buffer_view_is_valid(&chunk_name_view)) {
+			ERR("Invalid payload of chunk creation command (protocol error): buffer too short for expected name length");
+			ret = -1;
+			reply_code = LTTNG_ERR_INVALID;
+			goto end;
+		}
+
 		name = chunk_name_view.data;
-		if (!name || name[msg->override_name_length - 1]) {
-			ERR("Failed to receive payload of chunk creation command");
+		if (name[msg->override_name_length - 1]) {
+			ERR("Invalid payload of chunk creation command (protocol error): name is not null-terminated");
 			ret = -1;
 			reply_code = LTTNG_ERR_INVALID;
 			goto end;
@@ -2872,7 +2879,7 @@ static int relay_close_trace_chunk(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
-	if (!header_view.data) {
+	if (!lttng_buffer_view_is_valid(&header_view)) {
 		ERR("Failed to receive payload of chunk close command");
 		ret = -1;
 		goto end_no_reply;
@@ -3117,7 +3124,7 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	}
 
 	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
-	if (!header_view.data) {
+	if (!lttng_buffer_view_is_valid(&header_view)) {
 		ERR("Failed to receive payload of chunk exists command");
 		ret = -1;
 		goto end_no_reply;
@@ -3169,7 +3176,7 @@ static int relay_get_configuration(const struct lttcomm_relayd_hdr *recv_hdr,
 	uint64_t result_flags = 0;
 
 	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
-	if (!header_view.data) {
+	if (!lttng_buffer_view_is_valid(&header_view)) {
 		ERR("Failed to receive payload of chunk close command");
 		ret = -1;
 		goto end_no_reply;

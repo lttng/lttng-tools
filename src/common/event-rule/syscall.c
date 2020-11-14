@@ -276,13 +276,12 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 
 	current_buffer_view = lttng_buffer_view_from_view(
 			&view->buffer, offset, sizeof(*syscall_comm));
-	syscall_comm = (typeof(syscall_comm)) current_buffer_view.data;
-
-	if (!syscall_comm) {
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	syscall_comm = (typeof(syscall_comm)) current_buffer_view.data;
 	rule = lttng_event_rule_syscall_create();
 	if (!rule) {
 		ERR("Failed to create event rule syscall");
@@ -296,12 +295,12 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 	/* Map the pattern. */
 	current_buffer_view = lttng_buffer_view_from_view(
 			&view->buffer, offset, syscall_comm->pattern_len);
-	pattern = current_buffer_view.data;
-	if (!pattern) {
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	pattern = current_buffer_view.data;
 	if (!lttng_buffer_view_contains_string(&current_buffer_view, pattern,
 			syscall_comm->pattern_len)) {
 		ret = -1;
@@ -318,12 +317,12 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 	/* Map the filter_expression. */
 	current_buffer_view = lttng_buffer_view_from_view(&view->buffer, offset,
 			syscall_comm->filter_expression_len);
-	filter_expression = current_buffer_view.data;
-	if (!filter_expression) {
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	filter_expression = current_buffer_view.data;
 	if (!lttng_buffer_view_contains_string(&current_buffer_view,
 				filter_expression,
 				syscall_comm->filter_expression_len)) {

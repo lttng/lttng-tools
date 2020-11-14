@@ -12,15 +12,21 @@
 #include <stddef.h>
 
 LTTNG_HIDDEN
+bool lttng_payload_view_is_valid(const struct lttng_payload_view *view)
+{
+	return view && lttng_buffer_view_is_valid(&view->buffer);
+}
+
+LTTNG_HIDDEN
 struct lttng_payload_view lttng_payload_view_from_payload(
 		const struct lttng_payload *payload, size_t offset,
 		ptrdiff_t len)
 {
-	return (struct lttng_payload_view) {
+	return payload ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_dynamic_buffer(
 			&payload->buffer, offset, len),
 		._fd_handles = payload->_fd_handles,
-	};
+		} : (struct lttng_payload_view) {};
 }
 
 LTTNG_HIDDEN
@@ -28,13 +34,13 @@ struct lttng_payload_view lttng_payload_view_from_view(
 		struct lttng_payload_view *view, size_t offset,
 		ptrdiff_t len)
 {
-	return (struct lttng_payload_view) {
+	return view ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_view(
 				&view->buffer, offset, len),
 		._fd_handles = view->_fd_handles,
 		._iterator.p_fd_handles_position = view->_iterator.p_fd_handles_position ?:
 				&view->_iterator.fd_handles_position,
-	};
+		} : (struct lttng_payload_view) {};
 }
 
 LTTNG_HIDDEN
@@ -42,10 +48,10 @@ struct lttng_payload_view lttng_payload_view_from_dynamic_buffer(
 		const struct lttng_dynamic_buffer *buffer, size_t offset,
 		ptrdiff_t len)
 {
-	return (struct lttng_payload_view) {
+	return buffer ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_dynamic_buffer(
 			buffer, offset, len)
-	};
+		} : (struct lttng_payload_view) {};
 }
 
 LTTNG_HIDDEN
@@ -53,10 +59,10 @@ struct lttng_payload_view lttng_payload_view_from_buffer_view(
 		const struct lttng_buffer_view *view, size_t offset,
 		ptrdiff_t len)
 {
-	return (struct lttng_payload_view) {
+	return view ? (struct lttng_payload_view) {
 		.buffer = lttng_buffer_view_from_view(
 			view, offset, len)
-	};
+		} : (struct lttng_payload_view) {};
 }
 
 LTTNG_HIDDEN

@@ -53,17 +53,24 @@ ssize_t lttng_evaluation_create_from_payload(
 {
 	ssize_t ret, evaluation_size = 0;
 	const struct lttng_evaluation_comm *evaluation_comm;
-	struct lttng_payload_view evaluation_view = src_view ?
+	struct lttng_payload_view evaluation_comm_view =
+			lttng_payload_view_from_view(
+					src_view, 0, sizeof(*evaluation_comm));
+	struct lttng_payload_view evaluation_view =
 			lttng_payload_view_from_view(src_view,
-					sizeof(*evaluation_comm), -1) :
-			(typeof(evaluation_view)) {};
+					sizeof(*evaluation_comm), -1);
 
 	if (!src_view || !evaluation) {
 		ret = -1;
 		goto end;
 	}
 
-	evaluation_comm = (typeof(evaluation_comm)) src_view->buffer.data;
+	if (!lttng_payload_view_is_valid(&evaluation_comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
+	evaluation_comm = (typeof(evaluation_comm)) evaluation_comm_view.buffer.data;
 	evaluation_size += sizeof(*evaluation_comm);
 
 	switch ((enum lttng_condition_type) evaluation_comm->type) {

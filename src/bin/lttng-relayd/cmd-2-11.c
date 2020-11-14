@@ -87,12 +87,29 @@ int cmd_create_session_2_11(const struct lttng_buffer_view *payload,
 	offset = header_len;
 	session_name_view = lttng_buffer_view_from_view(payload, offset,
 			header.session_name_len);
+	if (!lttng_buffer_view_is_valid(&session_name_view)) {
+		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain session name");
+		ret = -1;
+		goto error;
+	}
+
 	offset += header.session_name_len;
 	hostname_view = lttng_buffer_view_from_view(payload,
 			offset, header.hostname_len);
+	if (!lttng_buffer_view_is_valid(&hostname_view)) {
+		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain hostname");
+		ret = -1;
+		goto error;
+	}
+
 	offset += header.hostname_len;
 	base_path_view = lttng_buffer_view_from_view(payload,
 			offset, header.base_path_len);
+	if (header.base_path_len > 0 && !lttng_buffer_view_is_valid(&base_path_view)) {
+		ERR("Invalid payload in \"cmd_create_session_2_11\": buffer too short to contain base path");
+		ret = -1;
+		goto error;
+	}
 
 	/* Validate that names are NULL terminated. */
 	if (session_name_view.data[session_name_view.size - 1] != '\0') {
@@ -190,12 +207,23 @@ int cmd_recv_stream_2_11(const struct lttng_buffer_view *payload,
 
 	/* Validate that names are (NULL terminated. */
 	channel_name_view = lttng_buffer_view_from_view(payload, header_len,
-			    header.channel_name_len);
-	pathname_view = lttng_buffer_view_from_view(payload,
-			header_len + header.channel_name_len, header.pathname_len);
+			header.channel_name_len);
+	if (!lttng_buffer_view_is_valid(&channel_name_view)) {
+		ERR("Invalid payload received in \"cmd_recv_stream_2_11\": buffer too short for channel name");
+		ret = -1;
+		goto error;
+	}
 
 	if (channel_name_view.data[channel_name_view.size - 1] != '\0') {
 		ERR("cmd_recv_stream_2_11 channel_name is invalid (not NULL terminated)");
+		ret = -1;
+		goto error;
+	}
+
+	pathname_view = lttng_buffer_view_from_view(payload,
+			header_len + header.channel_name_len, header.pathname_len);
+	if (!lttng_buffer_view_is_valid(&pathname_view)) {
+		ERR("Invalid payload received in \"cmd_recv_stream_2_11\": buffer too short for path name");
 		ret = -1;
 		goto error;
 	}

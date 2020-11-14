@@ -125,11 +125,12 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 
 	location_comm_view = lttng_buffer_view_from_view(view, 0,
 			sizeof(*location_comm));
-	if (!location_comm_view.data) {
+	if (!lttng_buffer_view_is_valid(&location_comm_view)) {
 		goto error;
 	}
+
 	offset += location_comm_view.size;
-	location_comm = (const struct lttng_trace_archive_location_comm *) view->data;
+	location_comm = (const struct lttng_trace_archive_location_comm *) location_comm_view.data;
 
 	switch ((enum lttng_trace_archive_location_type) location_comm->type) {
 	case LTTNG_TRACE_ARCHIVE_LOCATION_TYPE_LOCAL:
@@ -138,9 +139,10 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 				lttng_buffer_view_from_view(view, offset,
 				location_comm->types.local.absolute_path_len);
 
-		if (!absolute_path_view.data) {
+		if (!lttng_buffer_view_is_valid(&absolute_path_view)) {
 			goto error;
 		}
+
 		if (absolute_path_view.data[absolute_path_view.size - 1] != '\0') {
 			goto error;
 		}
@@ -163,9 +165,12 @@ ssize_t lttng_trace_archive_location_create_from_buffer(
 				offset + hostname_view.size,
 				location_comm->types.relay.relative_path_len);
 
-		if (!hostname_view.data || !relative_path_view.data) {
+		if (!lttng_buffer_view_is_valid(&hostname_view) ||
+				!lttng_buffer_view_is_valid(
+						&relative_path_view)) {
 			goto error;
 		}
+
 		if (hostname_view.data[hostname_view.size - 1] != '\0') {
 			goto error;
 		}

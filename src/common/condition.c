@@ -132,16 +132,25 @@ ssize_t lttng_condition_create_from_payload(
 		struct lttng_condition **condition)
 {
 	ssize_t ret, condition_size = 0;
-	const struct lttng_condition_comm *condition_comm;
 	condition_create_from_payload_cb create_from_payload = NULL;
+	const struct lttng_condition_comm *condition_comm;
+	const struct lttng_payload_view condition_comm_view =
+			lttng_payload_view_from_view(
+					view, 0, sizeof(*condition_comm));
 
 	if (!view || !condition) {
 		ret = -1;
 		goto end;
 	}
 
+	if (!lttng_payload_view_is_valid(&condition_comm_view)) {
+		/* Payload not large enough to contain the header. */
+		ret = -1;
+		goto end;
+	}
+
 	DBG("Deserializing condition from buffer");
-	condition_comm = (typeof(condition_comm)) view->buffer.data;
+	condition_comm = (typeof(condition_comm)) condition_comm_view.buffer.data;
 	condition_size += sizeof(*condition_comm);
 
 	switch ((enum lttng_condition_type) condition_comm->condition_type) {

@@ -145,16 +145,24 @@ ssize_t lttng_event_rule_create_from_payload(
 		struct lttng_event_rule **event_rule)
 {
 	ssize_t ret, consumed = 0;
-	const struct lttng_event_rule_comm *event_rule_comm;
 	event_rule_create_from_payload_cb create_from_payload = NULL;
+	const struct lttng_event_rule_comm *event_rule_comm;
+	const struct lttng_payload_view event_rule_comm_view =
+			lttng_payload_view_from_view(
+					view, 0, sizeof(*event_rule_comm));
 
 	if (!view || !event_rule) {
 		ret = -1;
 		goto end;
 	}
 
+	if (!lttng_payload_view_is_valid(&event_rule_comm_view)) {
+		ret = -1;
+		goto end;
+	}
+
 	DBG("Deserializing event_rule from payload.");
-	event_rule_comm = (const struct lttng_event_rule_comm *) view->buffer.data;
+	event_rule_comm = (const struct lttng_event_rule_comm *) event_rule_comm_view.buffer.data;
 	consumed += sizeof(*event_rule_comm);
 
 	switch ((enum lttng_event_rule_type) event_rule_comm->event_rule_type) {

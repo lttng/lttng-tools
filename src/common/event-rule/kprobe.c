@@ -219,19 +219,15 @@ ssize_t lttng_event_rule_kprobe_create_from_payload(
 		goto end;
 	}
 
-	if (view->buffer.size < sizeof(*kprobe_comm)) {
+	current_buffer_view = lttng_buffer_view_from_view(
+			&view->buffer, offset, sizeof(*kprobe_comm));
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ERR("Failed to initialize from malformed event rule kprobe: buffer too short to contain header.");
 		ret = -1;
 		goto end;
 	}
 
-	current_buffer_view = lttng_buffer_view_from_view(
-			&view->buffer, offset, sizeof(*kprobe_comm));
 	kprobe_comm = (typeof(kprobe_comm)) current_buffer_view.data;
-	if (!kprobe_comm) {
-		ret = -1;
-		goto end;
-	}
 
 	rule = lttng_event_rule_kprobe_create();
 	if (!rule) {
@@ -251,12 +247,12 @@ ssize_t lttng_event_rule_kprobe_create_from_payload(
 				lttng_payload_view_from_view(view, offset,
 						kprobe_comm->name_len);
 
-		name = current_payload_view.buffer.data;
-		if (!name) {
+		if (!lttng_payload_view_is_valid(&current_payload_view)) {
 			ret = -1;
 			goto end;
 		}
 
+		name = current_payload_view.buffer.data;
 		if (!lttng_buffer_view_contains_string(
 				&current_payload_view.buffer, name,
 				kprobe_comm->name_len)) {
@@ -273,6 +269,11 @@ ssize_t lttng_event_rule_kprobe_create_from_payload(
 		struct lttng_payload_view current_payload_view =
 				lttng_payload_view_from_view(view, offset,
 						kprobe_comm->location_len);
+
+		if (!lttng_payload_view_is_valid(&current_payload_view)) {
+			ret = -1;
+			goto end;
+		}
 
 		ret = lttng_kernel_probe_location_create_from_payload(
 				&current_payload_view, &location);

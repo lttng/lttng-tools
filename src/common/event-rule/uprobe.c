@@ -211,24 +211,19 @@ ssize_t lttng_event_rule_uprobe_create_from_payload(
 		goto end;
 	}
 
-	if (view->buffer.size < sizeof(*uprobe_comm)) {
-		ERR("Failed to initialize from malformed event rule uprobe: buffer too short to contain header.");
-		ret = -1;
-		goto end;
-	}
-
 	current_buffer_view = lttng_buffer_view_from_view(
 			&view->buffer, offset, sizeof(*uprobe_comm));
-	uprobe_comm = (typeof(uprobe_comm)) current_buffer_view.data;
-
-	if (!uprobe_comm) {
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
+		ERR("Failed to initialize from malformed event rule uprobe: buffer too short to contain header");
 		ret = -1;
 		goto end;
 	}
+
+	uprobe_comm = (typeof(uprobe_comm)) current_buffer_view.data;
 
 	rule = lttng_event_rule_uprobe_create();
 	if (!rule) {
-		ERR("Failed to create event rule uprobe.");
+		ERR("Failed to create event rule uprobe");
 		ret = -1;
 		goto end;
 	}
@@ -239,12 +234,12 @@ ssize_t lttng_event_rule_uprobe_create_from_payload(
 	/* Map the name. */
 	current_buffer_view = lttng_buffer_view_from_view(
 			&view->buffer, offset, uprobe_comm->name_len);
-	name = current_buffer_view.data;
-	if (!name) {
+	if (!lttng_buffer_view_is_valid(&current_buffer_view)) {
 		ret = -1;
 		goto end;
 	}
 
+	name = current_buffer_view.data;
 	if (!lttng_buffer_view_contains_string(&current_buffer_view, name,
 			uprobe_comm->name_len)) {
 		ret = -1;
@@ -255,14 +250,23 @@ ssize_t lttng_event_rule_uprobe_create_from_payload(
 	offset += uprobe_comm->name_len;
 
 	/* Map the location. */
-	struct lttng_payload_view current_payload_view =
-			lttng_payload_view_from_view(view, offset,
-					uprobe_comm->location_len);
-	ret = lttng_userspace_probe_location_create_from_payload(
-			&current_payload_view, &location);
-	if (ret < 0) {
-		ret = -1;
-		goto end;
+	{
+		struct lttng_payload_view current_payload_view =
+				lttng_payload_view_from_view(view, offset,
+						uprobe_comm->location_len);
+
+		if (!lttng_payload_view_is_valid(&current_payload_view)) {
+			ERR("Failed to initialize from malformed event rule uprobe: buffer too short to contain location");
+			ret = -1;
+			goto end;
+		}
+
+		ret = lttng_userspace_probe_location_create_from_payload(
+				&current_payload_view, &location);
+		if (ret < 0) {
+			ret = -1;
+			goto end;
+		}
 	}
 
 	assert(ret == uprobe_comm->location_len);

@@ -19,6 +19,12 @@ struct lttng_buffer_view lttng_buffer_view_init(
 }
 
 LTTNG_HIDDEN
+bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view)
+{
+	return view && view->data && view->size > 0;
+}
+
+LTTNG_HIDDEN
 struct lttng_buffer_view lttng_buffer_view_from_view(
 		const struct lttng_buffer_view *src, size_t offset,
 		ptrdiff_t len)

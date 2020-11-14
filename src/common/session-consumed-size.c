@@ -161,19 +161,21 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
-	const struct lttng_condition_session_consumed_size_comm *condition_comm;
 	const char *session_name;
-	struct lttng_buffer_view names_view;
+	struct lttng_buffer_view session_name_view;
+	const struct lttng_condition_session_consumed_size_comm *condition_comm;
+	struct lttng_payload_view condition_comm_view = lttng_payload_view_from_view(
+			src_view, 0, sizeof(*condition_comm));
 
-	if (src_view->buffer.size < sizeof(*condition_comm)) {
+	if (!lttng_payload_view_is_valid(&condition_comm_view)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain header");
 		ret = -1;
 		goto end;
 	}
 
-	condition_comm = (typeof(condition_comm)) src_view->buffer.data;
-	names_view = lttng_buffer_view_from_view(&src_view->buffer,
-			sizeof(*condition_comm), -1);
+	condition_comm = (typeof(condition_comm)) condition_comm_view.buffer.data;
+	session_name_view = lttng_buffer_view_from_view(&src_view->buffer,
+			sizeof(*condition_comm), condition_comm->session_name_len);
 
 	if (condition_comm->session_name_len > LTTNG_NAME_MAX) {
 		ERR("Failed to initialize from malformed condition buffer: name exceeds LTTNG_MAX_NAME");
@@ -181,7 +183,7 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 		goto end;
 	}
 
-	if (names_view.size < condition_comm->session_name_len) {
+	if (!lttng_buffer_view_is_valid(&session_name_view)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain element names");
 		ret = -1;
 		goto end;
@@ -195,7 +197,7 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 		goto end;
 	}
 
-	session_name = names_view.data;
+	session_name = session_name_view.data;
 	if (*(session_name + condition_comm->session_name_len - 1) != '\0') {
 		ERR("Malformed session name encountered in condition buffer");
 		ret = -1;

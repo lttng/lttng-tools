@@ -140,15 +140,24 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_action **action)
 {
 	ssize_t consumed_len, specific_action_consumed_len;
-	const struct lttng_action_comm *action_comm;
 	action_create_from_payload_cb create_from_payload_cb;
+	const struct lttng_action_comm *action_comm;
+	const struct lttng_payload_view action_comm_view =
+			lttng_payload_view_from_view(
+					view, 0, sizeof(*action_comm));
 
 	if (!view || !action) {
 		consumed_len = -1;
 		goto end;
 	}
 
-	action_comm = (const struct lttng_action_comm *) view->buffer.data;
+	if (!lttng_payload_view_is_valid(&action_comm_view)) {
+		/* Payload not large enough to contain the header. */
+		consumed_len = -1;
+		goto end;
+	}
+
+	action_comm = (const struct lttng_action_comm *) action_comm_view.buffer.data;
 
 	DBG("Create action from payload: action-type=%s",
 			lttng_action_type_string(action_comm->action_type));

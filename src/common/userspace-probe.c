@@ -1417,22 +1417,25 @@ int lttng_userspace_probe_location_create_from_payload(
 		struct lttng_userspace_probe_location **location)
 {
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
-	struct lttng_userspace_probe_location_comm *probe_location_comm;
 	enum lttng_userspace_probe_location_type type;
 	int consumed = 0;
 	int ret;
+	struct lttng_userspace_probe_location_comm *probe_location_comm;
+	struct lttng_payload_view probe_location_comm_view =
+			lttng_payload_view_from_view(
+					view, 0, sizeof(*probe_location_comm));
 
 	assert(view);
 	assert(location);
 
 	lookup_method = NULL;
 
-	if (view->buffer.size <= sizeof(*probe_location_comm)) {
+	if (!lttng_payload_view_is_valid(&probe_location_comm_view)) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
 	}
 
-	probe_location_comm = (typeof(probe_location_comm)) view->buffer.data;
+	probe_location_comm = (typeof(probe_location_comm)) probe_location_comm_view.buffer.data;
 	type = (enum lttng_userspace_probe_location_type) probe_location_comm->type;
 	consumed += sizeof(*probe_location_comm);
 

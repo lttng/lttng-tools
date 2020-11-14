@@ -217,6 +217,11 @@ ssize_t lttng_action_group_create_from_payload(
 				lttng_payload_view_from_view(view, consumed_len,
 						view->buffer.size - consumed_len);
 
+		if (!lttng_payload_view_is_valid(&child_view)) {
+			consumed_len = -1;
+			goto end;
+		}
+
 		consumed_len_child = lttng_action_create_from_payload(
 				&child_view, &child_action);
 		if (consumed_len_child < 0) {

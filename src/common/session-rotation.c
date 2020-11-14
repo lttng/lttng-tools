@@ -207,11 +207,14 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 {
 	ssize_t ret, condition_size;
 	enum lttng_condition_status status;
-	const struct lttng_condition_session_rotation_comm *condition_comm;
 	const char *session_name;
 	struct lttng_buffer_view name_view;
+	const struct lttng_condition_session_rotation_comm *condition_comm;
+	struct lttng_payload_view condition_comm_view =
+			lttng_payload_view_from_view(
+					src_view, 0, sizeof(*condition_comm));
 
-	if (src_view->buffer.size < sizeof(*condition_comm)) {
+	if (!lttng_payload_view_is_valid(&condition_comm_view)) {
 		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain header");
 		ret = -1;
 		goto end;
@@ -219,16 +222,16 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 
 	condition_comm = (typeof(condition_comm)) src_view->buffer.data;
 	name_view = lttng_buffer_view_from_view(&src_view->buffer,
-			sizeof(*condition_comm), -1);
+						sizeof(*condition_comm), condition_comm->session_name_len);
 
-	if (condition_comm->session_name_len > LTTNG_NAME_MAX) {
-		ERR("Failed to initialize from malformed condition buffer: name exceeds LTTNG_MAX_NAME");
+	if (!lttng_buffer_view_is_valid(&name_view)) {
+		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain session name");
 		ret = -1;
 		goto end;
 	}
 
-	if (name_view.size < condition_comm->session_name_len) {
-		ERR("Failed to initialize from malformed condition buffer: buffer too short to contain session name");
+	if (condition_comm->session_name_len > LTTNG_NAME_MAX) {
+		ERR("Failed to initialize from malformed condition buffer: name exceeds LTTNG_MAX_NAME");
 		ret = -1;
 		goto end;
 	}
@@ -347,19 +350,22 @@ ssize_t create_evaluation_from_payload(
 	ssize_t ret, size;
 	struct lttng_evaluation *evaluation = NULL;
 	struct lttng_trace_archive_location *location = NULL;
-	const struct lttng_evaluation_session_rotation_comm *comm =
-			(typeof(comm)) view->buffer.data;
-	struct lttng_buffer_view location_view;
+	const struct lttng_evaluation_session_rotation_comm *comm;
+	struct lttng_payload_view comm_view = lttng_payload_view_from_view(
+			view, 0, sizeof(*comm));
 
-	if (view->buffer.size < sizeof(*comm)) {
+	if (!lttng_payload_view_is_valid(&comm_view)) {
 		goto error;
 	}
 
+	comm = (typeof(comm)) comm_view.buffer.data;
 	size = sizeof(*comm);
 	if (comm->has_location) {
-		location_view = lttng_buffer_view_from_view(
-				&view->buffer, sizeof(*comm), -1);
-		if (!location_view.data) {
+		const struct lttng_buffer_view location_view =
+				lttng_buffer_view_from_view(
+						&view->buffer, sizeof(*comm), -1);
+
+		if (!lttng_buffer_view_is_valid(&location_view)) {
 			goto error;
 		}
 

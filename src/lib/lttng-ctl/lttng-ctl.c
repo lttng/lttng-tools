@@ -2243,7 +2243,7 @@ int lttng_list_events(struct lttng_handle *handle,
 
 	cmd_header_view = lttng_buffer_view_from_dynamic_buffer(
 		&payload.buffer, 0, sizeof(*cmd_header));
-	if (!cmd_header_view.data) {
+	if (!lttng_buffer_view_is_valid(&cmd_header_view)) {
 		ret = -LTTNG_ERR_INVALID_PROTOCOL;
 		goto end;
 	}
@@ -2309,6 +2309,11 @@ int lttng_list_events(struct lttng_handle *handle,
 						(const char *) comm_ext_at -
 								payload_view.buffer.data,
 						ext_comm->userspace_probe_location_len);
+
+				if (!lttng_payload_view_is_valid(&probe_location_view)) {
+					ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+					goto end;
+				}
 
 				/*
 				 * Create a temporary userspace probe location
@@ -2448,6 +2453,11 @@ int lttng_list_events(struct lttng_handle *handle,
 						(const char *) comm_ext_at -
 								payload_copy_view.buffer.data,
 						ext_comm->userspace_probe_location_len);
+
+				if (!lttng_payload_view_is_valid(&probe_location_view)) {
+					ret = -LTTNG_ERR_PROBE_LOCATION_INVAL;
+					goto free_dynamic_buffer;
+				}
 
 				ret = lttng_userspace_probe_location_create_from_payload(
 						&probe_location_view,

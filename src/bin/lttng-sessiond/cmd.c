@@ -3107,10 +3107,22 @@ enum lttng_error_code cmd_create_session(struct command_ctx *cmd_ctx, int sock,
 			&payload,
 			0,
 			cmd_ctx->lsm.u.create_session.home_dir_size);
+	if (cmd_ctx->lsm.u.create_session.home_dir_size > 0 &&
+			!lttng_buffer_view_is_valid(&home_dir_view)) {
+		ERR("Invalid payload in \"create session\" command: buffer too short to contain home directory");
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto error;
+	}
+
 	session_descriptor_view = lttng_buffer_view_from_dynamic_buffer(
 			&payload,
 			cmd_ctx->lsm.u.create_session.home_dir_size,
 			cmd_ctx->lsm.u.create_session.session_descriptor_size);
+	if (!lttng_buffer_view_is_valid(&session_descriptor_view)) {
+		ERR("Invalid payload in \"create session\" command: buffer too short to contain session descriptor");
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto error;
+	}
 
 	ret = lttng_session_descriptor_create_from_buffer(
 			&session_descriptor_view, &session_descriptor);

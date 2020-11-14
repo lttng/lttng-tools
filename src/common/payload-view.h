@@ -54,6 +54,16 @@ struct lttng_payload_view {
 };
 
 /**
+ * Checks if a payload view's buffer is safe to access.
+ *
+ * After calling the payload view creation functions, callers should verify
+ * if the resquested length (if any is explicitly provided) could be mapped
+ * to a new view.
+ */
+LTTNG_HIDDEN
+bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
+
+/**
  * Return a payload view referencing a subset of a payload.
  *
  * @payload	Source payload to reference

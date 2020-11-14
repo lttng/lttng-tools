@@ -1334,6 +1334,11 @@ error_add_context:
 
 		payload_view = lttng_buffer_view_from_dynamic_buffer(
 				&payload, 0, name_len);
+		if (name_len > 0 && !lttng_buffer_view_is_valid(&payload_view)) {
+			ret = LTTNG_ERR_INVALID_PROTOCOL;
+			goto error_add_remove_tracker_value;
+		}
+
 		/*
 		 * Validate the value type and domains are legal for the process
 		 * attribute tracker that is specified and convert the value to
