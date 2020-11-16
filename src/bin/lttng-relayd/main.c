@@ -3105,20 +3105,20 @@ static int relay_trace_chunk_exists(const struct lttcomm_relayd_hdr *recv_hdr,
 	bool chunk_exists;
 
 	if (!session || !conn->version_check_done) {
-		ERR("Trying to close a trace chunk before version check");
+		ERR("Trying to check for the existance of a trace chunk before version check");
 		ret = -1;
 		goto end_no_reply;
 	}
 
 	if (session->major == 2 && session->minor < 11) {
-		ERR("Chunk close command is unsupported before 2.11");
+		ERR("Chunk exists command is unsupported before 2.11");
 		ret = -1;
 		goto end_no_reply;
 	}
 
 	header_view = lttng_buffer_view_from_view(payload, 0, sizeof(*msg));
 	if (!header_view.data) {
-		ERR("Failed to receive payload of chunk close command");
+		ERR("Failed to receive payload of chunk exists command");
 		ret = -1;
 		goto end_no_reply;
 	}
