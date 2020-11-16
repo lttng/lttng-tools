@@ -211,6 +211,8 @@ static int recv_data_sessiond(void *buf, size_t len)
 {
 	int ret;
 
+	assert(len > 0);
+
 	if (!connected) {
 		ret = -LTTNG_ERR_NO_SESSIOND;
 		goto end;
@@ -219,6 +221,8 @@ static int recv_data_sessiond(void *buf, size_t len)
 	ret = lttcomm_recv_unix_sock(sessiond_socket, buf, len);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_FATAL;
+	} else if (ret == 0) {
+		ret = -LTTNG_ERR_NO_SESSIOND;
 	}
 
 end:
