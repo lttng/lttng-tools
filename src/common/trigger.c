@@ -260,8 +260,8 @@ ssize_t lttng_trigger_create_from_payload(
 	ret = offset;
 
 error:
-	lttng_condition_destroy(condition);
-	lttng_action_destroy(action);
+	lttng_condition_put(condition);
+	lttng_action_put(action);
 end:
 	return ret;
 }
