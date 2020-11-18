@@ -129,7 +129,7 @@ void lttng_trigger_destroy(struct lttng_trigger *trigger)
 LTTNG_HIDDEN
 ssize_t lttng_trigger_create_from_payload(
 		struct lttng_payload_view *src_view,
-		struct lttng_trigger **trigger)
+		struct lttng_trigger **_trigger)
 {
 	ssize_t ret, offset = 0, condition_size, action_size, name_size = 0;
 	struct lttng_condition *condition = NULL;
@@ -140,11 +140,12 @@ ssize_t lttng_trigger_create_from_payload(
 		.uid = LTTNG_OPTIONAL_INIT_UNSET,
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
+	struct lttng_trigger *trigger = NULL;
 	const struct lttng_payload_view trigger_comm_view =
 			lttng_payload_view_from_view(
 					src_view, 0, sizeof(*trigger_comm));
 
-	if (!src_view || !trigger) {
+	if (!src_view || !_trigger) {
 		ret = -1;
 		goto end;
 	}
@@ -229,13 +230,13 @@ ssize_t lttng_trigger_create_from_payload(
 		goto error;
 	}
 
-	*trigger = lttng_trigger_create(condition, action);
-	if (!*trigger) {
+	trigger = lttng_trigger_create(condition, action);
+	if (!trigger) {
 		ret = -1;
 		goto error;
 	}
 
-	lttng_trigger_set_credentials(*trigger, &creds);
+	lttng_trigger_set_credentials(trigger, &creds);
 
 	/*
 	 * The trigger object owns references to the action and condition
@@ -249,7 +250,7 @@ ssize_t lttng_trigger_create_from_payload(
 
 	if (name) {
 		const enum lttng_trigger_status status =
-				lttng_trigger_set_name(*trigger, name);
+				lttng_trigger_set_name(trigger, name);
 
 		if (status != LTTNG_TRIGGER_STATUS_OK) {
 			ret = -1;
@@ -263,6 +264,12 @@ error:
 	lttng_condition_put(condition);
 	lttng_action_put(action);
 end:
+	if (ret == 0) {
+		*_trigger = trigger;
+	} else {
+		lttng_trigger_put(trigger);
+	}
+
 	return ret;
 }
 
