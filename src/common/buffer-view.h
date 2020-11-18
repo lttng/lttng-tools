@@ -41,6 +41,8 @@ struct lttng_buffer_view lttng_buffer_view_init(
  * After calling the buffer view creation functions, callers should verify
  * if the resquested length (if any is explicitly provided) could be mapped
  * to a new view.
+ *
+ * @view	Buffer view to validate
  */
 LTTNG_HIDDEN
 bool lttng_buffer_view_is_valid(const struct lttng_buffer_view *view);

@@ -59,6 +59,8 @@ struct lttng_payload_view {
  * After calling the payload view creation functions, callers should verify
  * if the resquested length (if any is explicitly provided) could be mapped
  * to a new view.
+ *
+ * @view	Payload to validate
  */
 LTTNG_HIDDEN
 bool lttng_payload_view_is_valid(const struct lttng_payload_view *view);
