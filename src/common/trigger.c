@@ -264,7 +264,7 @@ error:
 	lttng_condition_put(condition);
 	lttng_action_put(action);
 end:
-	if (ret == 0) {
+	if (ret >= 0) {
 		*_trigger = trigger;
 	} else {
 		lttng_trigger_put(trigger);
