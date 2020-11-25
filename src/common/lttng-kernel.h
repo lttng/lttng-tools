@@ -129,6 +129,31 @@ struct lttng_kernel_event_callsite {
 	} u;
 } LTTNG_PACKED;
 
+enum lttng_kernel_syscall_entryexit {
+	LTTNG_KERNEL_SYSCALL_ENTRYEXIT	= 0,
+	LTTNG_KERNEL_SYSCALL_ENTRY	= 1,
+	LTTNG_KERNEL_SYSCALL_EXIT	= 2,
+};
+
+enum lttng_kernel_syscall_abi {
+	LTTNG_KERNEL_SYSCALL_ABI_ALL	= 0,
+	LTTNG_KERNEL_SYSCALL_ABI_NATIVE = 1,
+	LTTNG_KERNEL_SYSCALL_ABI_COMPAT = 2,
+};
+
+enum lttng_kernel_syscall_match {
+	LTTNG_KERNEL_SYSCALL_MATCH_NAME = 0,
+	LTTNG_KERNEL_SYSCALL_MATCH_NR	= 1,
+};
+
+struct lttng_kernel_syscall {
+	uint8_t entryexit;	/* enum lttng_kernel_syscall_entryexit */
+	uint8_t abi;		/* enum lttng_kernel_syscall_abi */
+	uint8_t match;		/* enum lttng_kernel_syscall_match */
+	uint8_t padding;
+	uint32_t nr;		/* For LTTNG_SYSCALL_MATCH_NR */
+} LTTNG_PACKED;
+
 /* Function tracer */
 struct lttng_kernel_function {
 	char symbol_name[LTTNG_KERNEL_SYM_NAME_LEN];
@@ -145,8 +170,9 @@ struct lttng_kernel_event {
 	union {
 		struct lttng_kernel_kretprobe kretprobe;
 		struct lttng_kernel_kprobe kprobe;
-		struct lttng_kernel_uprobe uprobe;
 		struct lttng_kernel_function ftrace;
+		struct lttng_kernel_uprobe uprobe;
+		struct lttng_kernel_syscall syscall;
 		char padding[LTTNG_KERNEL_EVENT_PADDING2];
 	} u;
 } LTTNG_PACKED;

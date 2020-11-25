@@ -434,6 +434,9 @@ enum lttng_error_code trace_kernel_create_event(
 		break;
 	case LTTNG_EVENT_SYSCALL:
 		attr->instrumentation = LTTNG_KERNEL_SYSCALL;
+		attr->u.syscall.abi = LTTNG_KERNEL_SYSCALL_ABI_ALL;
+		attr->u.syscall.entryexit = LTTNG_KERNEL_SYSCALL_ENTRYEXIT;
+		attr->u.syscall.match = LTTNG_KERNEL_SYSCALL_MATCH_NAME;
 		break;
 	case LTTNG_EVENT_ALL:
 		attr->instrumentation = LTTNG_KERNEL_ALL;
