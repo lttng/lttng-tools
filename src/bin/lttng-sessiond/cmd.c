@@ -4295,8 +4295,7 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 			sock, trigger_payload.buffer.data, trigger_len);
 	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
 		ERR("Failed to receive \"register trigger\" command payload");
-		/* TODO: should this be a new error enum ? */
-		ret = LTTNG_ERR_INVALID_TRIGGER;
+		ret = LTTNG_ERR_INVALID_PROTOCOL;
 		goto end;
 	}
 
