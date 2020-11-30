@@ -100,7 +100,7 @@ function lttng_pgrep ()
 
 	while IFS= read -r pid ; do
 		# /proc/pid/cmdline is null separated.
-		if full_command_no_argument=$(cut -d '' -f 1 < /proc/"$pid"/cmdline); then
+		if full_command_no_argument=$(cut -d '' -f 1 2>/dev/null < /proc/"$pid"/cmdline); then
 			command_basename=$(basename "$full_command_no_argument")
 			if grep -q "$pattern" <<< "$command_basename"; then
 				echo "$pid"
