@@ -601,8 +601,10 @@ static bool shutdown_action_executor_thread(void *_data)
 {
 	struct action_executor *executor = _data;
 
+	pthread_mutex_lock(&executor->work.lock);
 	executor->should_quit = true;
 	pthread_cond_signal(&executor->work.cond);
+	pthread_mutex_unlock(&executor->work.lock);
 	return true;
 }
 
@@ -726,10 +728,10 @@ enum action_executor_status action_executor_enqueue(
 	signal = true;
 
 error_unlock:
-	pthread_mutex_unlock(&executor->work.lock);
 	if (signal) {
 		pthread_cond_signal(&executor->work.cond);
 	}
+	pthread_mutex_unlock(&executor->work.lock);
 
 	lttng_evaluation_destroy(evaluation);
 	return executor_status;

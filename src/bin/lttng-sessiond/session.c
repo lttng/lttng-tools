@@ -989,6 +989,7 @@ void session_release(struct urcu_ref *ref)
 		 * Broadcast after free-ing to ensure the memory is
 		 * reclaimed before the main thread exits.
 		 */
+		ASSERT_LOCKED(ltt_session_list.lock);
 		pthread_cond_broadcast(&ltt_session_list.removal_cond);
 	}
 }

@@ -2966,6 +2966,7 @@ static int put_next_subbuffer(struct lttng_consumer_stream *stream,
 static int signal_metadata(struct lttng_consumer_stream *stream,
 		struct lttng_consumer_local_data *ctx)
 {
+	ASSERT_LOCKED(stream->metadata_rdv_lock);
 	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
 }
 
