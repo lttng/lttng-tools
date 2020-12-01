@@ -17,7 +17,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
-NUM_TESTS=66
+NUM_TESTS=74
 
 source $TESTDIR/utils/utils.sh
 
@@ -115,6 +115,7 @@ function test_tracefile_size_limit ()
 
 	# Validate tracing data, we should at least have some events
 
+	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-events"
 	validate_trace $event_name $trace_path
 
 	rm -rf $trace_path
@@ -153,6 +154,7 @@ function test_tracefile_size_limit_pagesize ()
 
 	# Validate tracing data, we should at least have some events
 
+	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-events"
 	validate_trace $event_name $trace_path
 
 	rm -rf $trace_path

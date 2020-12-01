@@ -4690,6 +4690,11 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 				consumer_copy_output(snapshot_output->consumer);
 		strcpy(snapshot_kernel_consumer_output->chunk_path,
 			snapshot_chunk_name);
+
+		/* Copy the original domain subdir. */
+		strcpy(snapshot_kernel_consumer_output->domain_subdir,
+				original_kernel_consumer_output->domain_subdir);
+
 		ret = consumer_copy_sockets(snapshot_kernel_consumer_output,
 				original_kernel_consumer_output);
 		if (ret < 0) {
@@ -4712,6 +4717,11 @@ enum lttng_error_code snapshot_record(struct ltt_session *session,
 				consumer_copy_output(snapshot_output->consumer);
 		strcpy(snapshot_ust_consumer_output->chunk_path,
 			snapshot_chunk_name);
+
+		/* Copy the original domain subdir. */
+		strcpy(snapshot_ust_consumer_output->domain_subdir,
+				original_ust_consumer_output->domain_subdir);
+
 		ret = consumer_copy_sockets(snapshot_ust_consumer_output,
 				original_ust_consumer_output);
 		if (ret < 0) {

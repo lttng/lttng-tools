@@ -14,7 +14,7 @@ CHANNEL_NAME="snapchan"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=2060
+NUM_TESTS=2061
 
 source $TESTDIR/utils/utils.sh
 
@@ -31,12 +31,11 @@ function test_kernel_local_snapshot ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_kernel_snapshot "$TRACE_PATH" "" "snapshot-1" 0 ""
 	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
 		rm -rf $TRACE_PATH
-	else
-		break
 	fi
 }
 

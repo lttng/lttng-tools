@@ -15,7 +15,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=37
+NUM_TESTS=42
 
 source "$TESTDIR/utils/utils.sh"
 
@@ -40,6 +40,7 @@ function ust_app_stream_base_path ()
 	destroy_lttng_session_ok $session_name
 
 	# validate test
+	validate_trace_path_ust_uid_network "$TRACE_PATH" "" "$base_path"
 	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
 		# only delete if successful
 		rm -rf "$TRACE_PATH"
@@ -67,6 +68,7 @@ function ust_app_snapshot_create_base_path ()
 	destroy_lttng_session_ok $session_name
 
 	# validate test
+	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "" "snapshot-1" 0 "$base_path"
 	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
 		# only delete if successful
 		rm -rf "$TRACE_PATH"
@@ -93,6 +95,7 @@ function ust_app_snapshot_base_path ()
 	destroy_lttng_session_ok $session_name
 
 	# validate test
+	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "" "snapshot-0" 0 "$base_path"
 	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
 		# only delete if successful
 		rm -rf "$TRACE_PATH"
@@ -120,6 +123,7 @@ function ust_app_snapshot_add_output_base_path ()
 	destroy_lttng_session_ok $session_name
 
 	# validate test
+	validate_trace_path_ust_uid_snapshot_network "$TRACE_PATH" "" "snapshot-1" 0 "$base_path"
 	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
 		# only delete if successful
 		rm -rf "$TRACE_PATH"
@@ -141,6 +145,7 @@ function ust_app_stream_base_path_via_load ()
 	destroy_lttng_session_ok $session_name
 
 	# validate test
+	validate_trace_path_ust_uid_network "$TRACE_PATH" "" "$base_path"
 	if validate_trace $EVENT_NAME "$TRACE_PATH/$HOSTNAME/$base_path"; then
 		# only delete if successful
 		rm -rf "$TRACE_PATH"

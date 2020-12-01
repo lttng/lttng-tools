@@ -16,7 +16,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 APPS_PID=
 
-NUM_TESTS=100
+NUM_TESTS=105
 
 TRACE_PATH=$(mktemp -d)
 
@@ -32,7 +32,7 @@ if [ -z $1 ]; then
 fi
 NR_SNAPSHOT=$1
 
-NUM_TESTS=$(($NUM_TESTS + ($NR_SNAPSHOT * 2)))
+NUM_TESTS=$(($NUM_TESTS + ($NR_SNAPSHOT * 3)))
 
 function start_test_app()
 {
@@ -193,6 +193,7 @@ function test_ust_local_snapshot ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
 	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
@@ -335,6 +336,7 @@ function test_ust_local_snapshot_max_size ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
 	validate_trace $EVENT_NAME $TRACE_PATH/
 
 	if [ $? -eq 0 ]; then
@@ -365,6 +367,7 @@ function test_ust_local_snapshot_large_metadata ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
 	validate_trace $LM_EVENT $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
@@ -400,6 +403,7 @@ function test_ust_per_uid_local_snapshot ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
 	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
@@ -430,6 +434,7 @@ function test_ust_per_uid_local_snapshot_post_mortem ()
 	destroy_lttng_session_ok $SESSION_NAME
 
 	# Validate test
+	validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" 0
 	validate_trace $EVENT_NAME $TRACE_PATH/
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
@@ -457,6 +462,7 @@ function test_ust_local_snapshots ()
 		rm -rf $TRACE_PATH/snapshot/* 2>/dev/null
 		lttng_snapshot_record $SESSION_NAME
 		# Validate test
+		validate_trace_path_ust_uid_snapshot "$TRACE_PATH" "" "snapshot-1" $((i - 1))
 		validate_trace $EVENT_NAME $TRACE_PATH/
 		if [ $? -eq 0 ]; then
 			# Only delete if successful
