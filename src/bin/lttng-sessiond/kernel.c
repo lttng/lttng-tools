@@ -1699,7 +1699,7 @@ enum lttng_error_code kernel_snapshot_record(
 	}
 
 	trace_path = setup_channel_trace_path(ksess->consumer,
-			DEFAULT_KERNEL_TRACE_DIR, &consumer_path_offset);
+			"", &consumer_path_offset);
 	if (!trace_path) {
 		status = LTTNG_ERR_INVALID;
 		goto error;

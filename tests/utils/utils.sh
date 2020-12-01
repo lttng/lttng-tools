@@ -16,6 +16,11 @@ BABELTRACE_BIN="babeltrace"
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
 
+# To match 20201127-175802
+date_time_pattern="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
+# The size of a long on this system
+system_long_bit_size=$(getconf LONG_BIT)
+
 # Minimal kernel version supported for session daemon tests
 KERNEL_MAJOR_VERSION=2
 KERNEL_MINOR_VERSION=6
@@ -2240,4 +2245,224 @@ function lttng_add_trigger_fail()
 function lttng_remove_trigger_ok()
 {
 	lttng_remove_trigger 0 "$@"
+}
+
+function validate_path_pattern ()
+{
+	local message=$1
+	local pattern=$2
+	# Base path is only used in error case and is used to list the content
+	# of the base path.
+	local base_path=$3
+
+
+	[ -f $pattern ]
+	ret=$?
+	ok $ret "$message"
+
+	if [ "$ret" -ne "0" ]; then
+		diag "Path pattern expected: $pattern"
+		# List the tracepath for more info. We use find as a recursive
+		# directory lister.
+		diag "The base path content:"
+		find "$base_path" -print
+	fi
+}
+
+function validate_trace_path_ust_uid ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local uid=$UID
+	local pattern="$trace_path/$session_name-$date_time_pattern/ust/uid/$uid/${system_long_bit_size}-bit/metadata"
+
+	validate_path_pattern "UST per-uid trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_ust_uid_network ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local base_path=$3
+	local uid=$UID
+	local hostname=$HOSTNAME
+	local pattern
+	local ret
+
+	# If the session was given a network base path (e.g
+	# 127.0.0.1/my/custom/path on creation, there is no session name
+	# component to the path on the relayd side. Caller can simply not pass a
+	# session name for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+		if [ -n "$base_path" ]; then
+			fail "Session name and base path are mutually exclusive"
+			return
+		fi
+	fi
+
+	pattern="$trace_path/$hostname/$base_path/$session_name/ust/uid/$uid/${system_long_bit_size}-bit/metadata"
+
+	validate_path_pattern "UST per-uid network trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_ust_uid_snapshot_network ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local snapshot_name=$3
+	local snapshot_number=$4
+	local base_path=$5
+	local hostname=$HOSTNAME
+	local uid=$UID
+	local pattern
+	local ret
+
+	# If the session/output was given a network base path (e.g
+	# 127.0.0.1/my/custom/path on creation, there is no session name
+	# component to the path on the relayd side. Caller can simply not pass a
+	# session name for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+		if [ -n "$base_path" ]; then
+			fail "Session name and base path are mutually exclusive"
+			return
+		fi
+	fi
+
+	pattern="$trace_path/$hostname/$base_path/$session_name/$snapshot_name-$date_time_pattern-$snapshot_number/ust/uid/$uid/${system_long_bit_size}-bit/metadata"
+
+	validate_path_pattern "UST per-uid network snapshot trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_ust_uid_snapshot ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local snapshot_name=$3
+	local snapshot_number=$4
+	local base_path=$5
+	local uid=$UID
+	local pattern
+	local ret
+
+	# If the session/output was given a network base path (e.g
+	# 127.0.0.1/my/custom/path) on creation, there is no session name
+	# component to the path on the relayd side. Caller can simply not pass a
+	# session name for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+		if [ -n "$base_path" ]; then
+			fail "Session name and base path are mutually exclusive"
+			return
+		fi
+	fi
+
+	pattern="$trace_path/$base_path/$session_name/$snapshot_name-$date_time_pattern-$snapshot_number/ust/uid/$uid/${system_long_bit_size}-bit/metadata"
+
+	validate_path_pattern "UST per-uid snapshot trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_ust_pid ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local app_string=$3
+	local pid=$4
+	local pattern
+	local ret
+
+	# If the session was given a trace path on creation, there is no session
+	# name component to the path. Caller can simply not pass a session name
+	# for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+	fi
+
+	pattern="$trace_path/$session_name/ust/pid/$pid/$app_string-*-$date_time_pattern/metadata"
+
+	validate_path_pattern "UST per-pid trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_kernel ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local pattern
+
+	# If the session was given a trace path on creation, there is no session
+	# name component to the path. Caller can simply not pass a session name
+	# for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+	fi
+
+	pattern="$trace_path/$session_name/kernel/metadata"
+
+	validate_path_pattern "Kernel trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_kernel_network ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local hostname=$HOSTNAME
+	local pattern="$trace_path/$hostname/$session_name-$date_time_pattern/kernel/metadata"
+
+	validate_path_pattern "Kernel network trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_kernel_snapshot ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local snapshot_name=$3
+	local snapshot_number=$4
+	local base_path=$5
+	local pattern
+	local ret
+
+	# If the session/output was given a network base path (e.g
+	# 127.0.0.1/my/custom/path on creation, there is no session name
+	# component to the path on the relayd side. Caller can simply not pass a
+	# session name for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+		if [ -n "$base_path" ]; then
+			fail "Session name and base path are mutually exclusive"
+			return
+		fi
+	fi
+
+	pattern="$trace_path/$base_path/$session_name/$snapshot_name-$date_time_pattern-$snapshot_number/kernel/metadata"
+
+	validate_path_pattern "Kernel snapshot trace path is valid" "$pattern" "$trace_path"
+}
+
+function validate_trace_path_kernel_snapshot_network ()
+{
+	local trace_path=$1
+	local session_name=$2
+	local snapshot_name=$3
+	local snapshot_number=$4
+	local base_path=$5
+	local hostname=$HOSTNAME
+	local pattern
+	local ret
+
+	# If the session/output was given a network base path (e.g
+	# 127.0.0.1/my/custom/path on creation, there is no session name
+	# component to the path on the relayd side. Caller can simply not pass a
+	# session name for this scenario.
+	if [ -n "$session_name" ]; then
+		session_name="$session_name-$date_time_pattern"
+		if [ -n "$base_path" ]; then
+			fail "Session name and base path are mutually exclusive"
+			return
+		fi
+	fi
+
+	pattern="$trace_path/$hostname/$base_path/$session_name/$snapshot_name-$date_time_pattern-$snapshot_number/kernel/metadata"
+
+	validate_path_pattern "Kernel network snapshot trace path is valid" "$pattern" "$trace_path"
 }

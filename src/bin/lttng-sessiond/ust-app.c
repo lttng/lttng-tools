@@ -6742,7 +6742,7 @@ enum lttng_error_code ust_app_snapshot_record(
 
 			memset(pathname, 0, sizeof(pathname));
 			ret = snprintf(pathname, sizeof(pathname),
-					DEFAULT_UST_TRACE_DIR "/" DEFAULT_UST_TRACE_UID_PATH,
+					DEFAULT_UST_TRACE_UID_PATH,
 					reg->uid, reg->bits_per_long);
 			if (ret < 0) {
 				PERROR("snprintf snapshot path");
@@ -6806,7 +6806,7 @@ enum lttng_error_code ust_app_snapshot_record(
 
 			/* Add the UST default trace dir to path. */
 			memset(pathname, 0, sizeof(pathname));
-			ret = snprintf(pathname, sizeof(pathname), DEFAULT_UST_TRACE_DIR "/%s",
+			ret = snprintf(pathname, sizeof(pathname), "%s",
 					ua_sess->path);
 			if (ret < 0) {
 				status = LTTNG_ERR_INVALID;

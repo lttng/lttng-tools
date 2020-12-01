@@ -9,7 +9,7 @@ TEST_DESC="Kernel tracer - Basic event"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../..
-NUM_TESTS=20
+NUM_TESTS=21
 
 TESTCMD="/bin/true"
 
@@ -33,6 +33,7 @@ function test_event_basic()
 	eval ${TESTCMD}
 	stop_lttng_tracing_ok
 
+	validate_trace_path_kernel "$TRACE_PATH" ""
 	validate_trace "sched_switch" $TRACE_PATH
 	validate_trace "sched_process_exit" $TRACE_PATH
 	validate_trace "sched_process_fork" $TRACE_PATH
