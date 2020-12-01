@@ -13,7 +13,7 @@ SESSION_NAME=""
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=10
+NUM_TESTS=11
 
 source $TESTDIR/utils/utils.sh
 
@@ -68,6 +68,7 @@ skip $isroot "Root access is needed. Skipping all kernel streaming tests." $NUM_
 		${fct_test}
 
 		# Validate test
+		validate_trace_path_kernel_network "$TRACE_PATH" "$SESSION_NAME"
 		validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 		if [ $? -eq 0 ]; then
 			# Only delete if successful

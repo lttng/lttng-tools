@@ -18,7 +18,7 @@ TRACE_PATH=$(mktemp -d)
 
 DIR=$(readlink -f $TESTDIR)
 
-NUM_TESTS=10
+NUM_TESTS=11
 
 source $TESTDIR/utils/utils.sh
 
@@ -64,6 +64,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	clean_live_tracing
 
+	validate_trace_path_kernel_network "$TRACE_PATH" "$SESSION_NAME"
 	validate_trace $EVENT_NAME $TRACE_PATH
 	rm -rf $TRACE_PATH
 

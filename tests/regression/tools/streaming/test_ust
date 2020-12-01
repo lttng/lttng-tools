@@ -18,7 +18,7 @@ EVENT_NAME="tp:tptest"
 
 TRACE_PATH=$(mktemp -d)
 
-NUM_TESTS=16
+NUM_TESTS=18
 
 source $TESTDIR/utils/utils.sh
 
@@ -91,6 +91,7 @@ do
 	${fct_test}
 
 	# Validate test
+	validate_trace_path_ust_uid_network "$TRACE_PATH" "$SESSION_NAME"
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 	if [ $? -eq 0 ]; then
 		# Only delete if successful
