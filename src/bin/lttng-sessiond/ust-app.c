@@ -4359,15 +4359,6 @@ int ust_app_start_trace(struct ltt_ust_session *usess, struct ust_app *app)
 		goto skip_setup;
 	}
 
-	/*
-	 * Create the metadata for the application. This returns gracefully if a
-	 * metadata was already set for the session.
-	 */
-	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
-	if (ret < 0) {
-		goto error_unlock;
-	}
-
 	health_code_update();
 
 skip_setup:
@@ -5035,6 +5026,7 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 	}
 
 	rcu_read_lock();
+
 	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &uchan_iter,
 			uchan, node.node) {
 		struct ust_app_channel *ua_chan;
@@ -5078,6 +5070,21 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 			}
 		}
 	}
+
+	/*
+	 * Create the metadata for the application. This returns gracefully if a
+	 * metadata was already set for the session.
+	 *
+	 * The metadata channel must be created after the data channels as the
+	 * consumer daemon assumes this ordering. When interacting with a relay
+	 * daemon, the consumer will use this assumption to send the
+	 * "STREAMS_SENT" message to the relay daemon.
+	 */
+	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
+	if (ret < 0) {
+		goto error_unlock;
+	}
+
 	rcu_read_unlock();
 
 end:
