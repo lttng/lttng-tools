@@ -1,5 +1,5 @@
 noinst_SCRIPTS = test_ust
-EXTRA_DIST = test_ust
+EXTRA_DIST = test_ust load-stream-extra-path.lttng
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

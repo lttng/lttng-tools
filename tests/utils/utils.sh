@@ -1420,7 +1420,7 @@ function lttng_snapshot_record ()
 	local sess_name=$1
 	local trace_path=$2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s $sess_name $trace_path 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN snapshot record -s "$sess_name" "$trace_path" 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ok $? "Snapshot recorded"
 }
 
