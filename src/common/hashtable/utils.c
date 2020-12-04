@@ -264,7 +264,9 @@ static void __attribute__((unused)) hashword2(const uint32_t *k, size_t length,
  * Use for hash table lookup, or anything where one collision in 2^^32 is
  * acceptable.  Do NOT use for cryptographic purposes.
  */
-static uint32_t __attribute__((unused)) hashlittle(const void *key,
+LTTNG_NO_SANITIZE_ADDRESS
+__attribute__((unused))
+static uint32_t hashlittle(const void *key,
 		size_t length, uint32_t initval)
 {
 	uint32_t a,b,c;
