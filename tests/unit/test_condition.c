@@ -21,6 +21,7 @@
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/on-event.h>
+#include <lttng/condition/on-event-internal.h>
 #include <lttng/domain.h>
 #include <lttng/log-level-rule.h>
 #include <common/dynamic-buffer.h>
@@ -31,7 +32,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 13
+#define NUM_TESTS 14
 
 static
 void test_condition_event_rule(void)
@@ -46,6 +47,7 @@ void test_condition_event_rule(void)
 	const char *pattern="my_event_*";
 	const char *filter="msg_id == 23 && size >= 2048";
 	const char *exclusions[] = { "my_event_test1", "my_event_test2", "my_event_test3" };
+	uint64_t _error_count = 420, error_count;
 	struct lttng_log_level_rule *log_level_rule_at_least_as_severe = NULL;
 	struct lttng_payload buffer;
 
@@ -80,6 +82,9 @@ void test_condition_event_rule(void)
 	condition = lttng_condition_on_event_create(tracepoint);
 	ok(condition, "Created condition");
 
+	/* Set the error count information. */
+	lttng_condition_on_event_set_error_count(condition, _error_count);
+
 	condition_status = lttng_condition_on_event_get_rule(
 			condition, &tracepoint_tmp);
 	ok(condition_status == LTTNG_CONDITION_STATUS_OK,
@@ -101,6 +106,12 @@ void test_condition_event_rule(void)
 
 	ok(lttng_condition_is_equal(condition, condition_from_buffer),
 			"Serialized and de-serialized conditions are equal");
+
+	/*
+	 * Error count info is not considered in is_equal; test it separately.
+	 */
+	error_count = lttng_condition_on_event_get_error_count(condition_from_buffer);
+	ok(error_count == _error_count, "Error count is the same. Got %" PRIu64 " Expected %" PRIu64, error_count, _error_count);
 
 	lttng_payload_reset(&buffer);
 	lttng_event_rule_destroy(tracepoint);

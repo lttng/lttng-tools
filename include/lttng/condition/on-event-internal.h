@@ -11,6 +11,7 @@
 #include <lttng/condition/condition-internal.h>
 #include <common/buffer-view.h>
 #include <common/macros.h>
+#include <common/optional.h>
 #include <lttng/condition/evaluation-internal.h>
 #include <common/dynamic-array.h>
 #include <lttng/event-field-value.h>
@@ -23,6 +24,13 @@ struct lttng_capture_descriptor {
 struct lttng_condition_on_event {
 	struct lttng_condition parent;
 	struct lttng_event_rule *rule;
+
+	LTTNG_OPTIONAL(uint64_t) error_count;
+	/*
+	 * Internal use only.
+	 * Error accounting counter index.
+	 */
+	LTTNG_OPTIONAL(uint64_t) error_counter_index;
 
 	/* Array of `struct lttng_capture_descriptor *`. */
 	struct lttng_dynamic_pointer_array capture_descriptors;
@@ -62,6 +70,22 @@ enum lttng_condition_status
 lttng_condition_on_event_borrow_rule_mutable(
 		const struct lttng_condition *condition,
 		struct lttng_event_rule **rule);
+
+LTTNG_HIDDEN
+void lttng_condition_on_event_set_error_counter_index(
+		struct lttng_condition *condition, uint64_t error_counter_index);
+
+LTTNG_HIDDEN
+uint64_t lttng_condition_on_event_get_error_counter_index(
+		const struct lttng_condition *condition);
+
+LTTNG_HIDDEN
+uint64_t lttng_condition_on_event_get_error_count(
+		const struct lttng_condition *condition);
+
+LTTNG_HIDDEN
+void lttng_condition_on_event_set_error_count(struct lttng_condition *condition,
+		uint64_t error_count);
 
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_on_event_create(
