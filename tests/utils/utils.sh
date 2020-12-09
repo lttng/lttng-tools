@@ -646,7 +646,9 @@ function stop_lttng_sessiond_opt()
 
 	if [ -z "$pids" ]; then
 		if [ "$withtap" -eq "1" ]; then
-			pass "No session daemon to kill"
+			fail "No session daemon to kill"
+		else
+			BAIL_OUT "No session daemon to kill"
 		fi
 		return 0
 	fi
