@@ -716,7 +716,7 @@ int handle_notification_channel(int fd,
 	status = lttng_notification_channel_has_pending_notification(
 			rotate_notification_channel, &notification_pending);
 	if (status != LTTNG_NOTIFICATION_CHANNEL_STATUS_OK) {
-		ERR("[rotation-thread ]Error occurred while checking for pending notification");
+		ERR("[rotation-thread] Error occurred while checking for pending notification");
 		ret = -1;
 		goto end;
 	}
