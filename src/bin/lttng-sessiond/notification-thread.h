@@ -285,6 +285,31 @@ struct notification_thread_state {
 	struct cds_list_head tracer_event_sources_list;
 	notification_client_id next_notification_client_id;
 	struct action_executor *executor;
+
+	/*
+	 * Indicates the thread to break for the poll event processing loop and
+	 * call _poll_wait() again.
+	 *
+	 * This is necessary because some events on one fd might trigger the
+	 * consumption of another fd.
+	 * For example, a single _poll_wait() call can return notification
+	 * thread commands and events from the tracer event source (event
+	 * notifier).
+	 * Picture a scenario where we receive two events:
+	 *  the first one is a _REMOVE_TRACER_EVENT_SOURCE command, and
+	 *  the second is an POLLIN on the tracer event source fd.
+	 *
+	 * The _REMOVE_TRACER_EVENT_SOURCE will read all the data of the
+	 * removed tracer event source.
+	 *
+	 * The second event is now invalid has we consumed all the data for
+	 * which we received the POLLIN.
+	 *
+	 * For this reason, we need to break for the event processing loop and
+	 * call _poll_wait() again to get a clean view of the activity on the
+	 * fds.
+	 */
+	bool restart_poll;
 };
 
 /* notification_thread_data takes ownership of the channel monitor pipes. */

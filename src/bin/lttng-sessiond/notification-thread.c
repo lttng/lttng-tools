@@ -510,6 +510,9 @@ int init_thread_state(struct notification_thread_handle *handle,
 	if (!state->executor) {
 		goto error;
 	}
+
+	state->restart_poll = false;
+
 	mark_thread_as_ready(handle);
 end:
 	return 0;
@@ -656,6 +659,12 @@ void *thread_notification(void *data)
 			goto error;
 		}
 
+		/*
+		 * Reset restart_poll flag so that calls below might turn it
+		 * on.
+		 */
+		state.restart_poll = false;
+
 		fd_count = ret;
 		for (i = 0; i < fd_count; i++) {
 			int fd = LTTNG_POLL_GETFD(&state.events, i);
@@ -732,6 +741,15 @@ void *thread_notification(void *data)
 						}
 					}
 				}
+			}
+
+			/*
+			 * Calls above might have changed the state of the
+			 * FDs in `state.events`. Call _poll_wait() again to
+			 * ensure we have a consistent state.
+			 */
+			if (state.restart_poll) {
+				break;
 			}
 		}
 	}
