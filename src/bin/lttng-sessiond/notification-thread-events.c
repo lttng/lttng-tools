@@ -1921,7 +1921,6 @@ int handle_notification_thread_command_add_tracer_event_source(
 		goto end;
 	}
 
-	CDS_INIT_LIST_HEAD(&element->node);
 	element->fd = tracer_event_source_fd;
 	element->domain = domain_type;
 
