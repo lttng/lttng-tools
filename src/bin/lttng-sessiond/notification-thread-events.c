@@ -331,6 +331,38 @@ int match_session(struct cds_lfht_node *node, const void *key)
 	return !strcmp(session_info->name, name);
 }
 
+static
+const char *notification_command_type_str(
+		enum notification_thread_command_type type)
+{
+	switch (type) {
+	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
+		return "REGISTER_TRIGGER";
+	case NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER:
+		return "UNREGISTER_TRIGGER";
+	case NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL:
+		return "ADD_CHANNEL";
+	case NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL:
+		return "REMOVE_CHANNEL";
+	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING:
+		return "SESSION_ROTATION_ONGOING";
+	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED:
+		return "SESSION_ROTATION_COMPLETED";
+	case NOTIFICATION_COMMAND_TYPE_ADD_TRACER_EVENT_SOURCE:
+		return "ADD_TRACER_EVENT_SOURCE";
+	case NOTIFICATION_COMMAND_TYPE_REMOVE_TRACER_EVENT_SOURCE:
+		return "REMOVE_TRACER_EVENT_SOURCE";
+	case NOTIFICATION_COMMAND_TYPE_LIST_TRIGGERS:
+		return "LIST_TRIGGERS";
+	case NOTIFICATION_COMMAND_TYPE_QUIT:
+		return "QUIT";
+	case NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE:
+		return "CLIENT_COMMUNICATION_UPDATE";
+	default:
+		abort();
+	}
+}
+
 /*
  * Match trigger based on name and credentials only.
  * Name duplication is NOT allowed for the same uid.
@@ -2802,22 +2834,22 @@ int handle_notification_thread_command(
 			struct notification_thread_command, cmd_list_node);
 	cds_list_del(&cmd->cmd_list_node);
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
+
+	DBG("[notification-thread] Received `%s` command",
+			notification_command_type_str(cmd->type));
 	switch (cmd->type) {
 	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
-		DBG("[notification-thread] Received register trigger command");
 		ret = handle_notification_thread_command_register_trigger(state,
 				cmd->parameters.register_trigger.trigger,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER:
-		DBG("[notification-thread] Received unregister trigger command");
 		ret = handle_notification_thread_command_unregister_trigger(
 				state,
 				cmd->parameters.unregister_trigger.trigger,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL:
-		DBG("[notification-thread] Received add channel command");
 		ret = handle_notification_thread_command_add_channel(
 				state,
 				cmd->parameters.add_channel.session.name,
@@ -2830,7 +2862,6 @@ int handle_notification_thread_command(
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_REMOVE_CHANNEL:
-		DBG("[notification-thread] Received remove channel command");
 		ret = handle_notification_thread_command_remove_channel(
 				state, cmd->parameters.remove_channel.key,
 				cmd->parameters.remove_channel.domain,
@@ -2838,9 +2869,6 @@ int handle_notification_thread_command(
 		break;
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING:
 	case NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_COMPLETED:
-		DBG("[notification-thread] Received session rotation %s command",
-				cmd->type == NOTIFICATION_COMMAND_TYPE_SESSION_ROTATION_ONGOING ?
-				"ongoing" : "completed");
 		ret = handle_notification_thread_command_session_rotation(
 				state,
 				cmd->type,
@@ -2879,7 +2907,6 @@ int handle_notification_thread_command(
 		break;
 	}
 	case NOTIFICATION_COMMAND_TYPE_QUIT:
-		DBG("[notification-thread] Received quit command");
 		cmd->reply_code = LTTNG_OK;
 		ret = 1;
 		goto end;
