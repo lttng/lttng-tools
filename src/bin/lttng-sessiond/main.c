@@ -1779,6 +1779,13 @@ stop_threads:
 	rcu_thread_online();
 	sessiond_cleanup();
 
+	/*
+	 * Wait for all pending call_rcu work to complete tearing shutting down
+	 * the notification thread. This call_rcu work includes shutting down
+	 * UST apps and event notifier pipes.
+	 */
+	rcu_barrier();
+
 	if (notification_thread) {
 		lttng_thread_shutdown(notification_thread);
 		lttng_thread_put(notification_thread);
