@@ -565,6 +565,9 @@ function start_lttng_sessiond_opt()
 	local withtap=$1
 	local load_path=$2
 
+	# The rest of the arguments will be passed directly to lttng-sessiond.
+	shift 2
+
 	local env_vars=""
 	local consumerd=""
 
@@ -609,10 +612,10 @@ function start_lttng_sessiond_opt()
 		# Have a load path ?
 		if [ -n "$load_path" ]; then
 			# shellcheck disable=SC2086
-			env $env_vars --load "$load_path" --background "$consumerd"
+			env $env_vars --load "$load_path" --background "$consumerd" "$@"
 		else
 			# shellcheck disable=SC2086
-			env $env_vars --background "$consumerd"
+			env $env_vars --background "$consumerd" "$@"
 		fi
 		#$DIR/../src/bin/lttng-sessiond/$SESSIOND_BIN --background --consumerd32-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --consumerd64-path="$DIR/../src/bin/lttng-consumerd/lttng-consumerd" --verbose-consumer >>/tmp/sessiond.log 2>&1
 		status=$?
