@@ -237,8 +237,9 @@ AC_CHECK_FUNCS([ \
 	sched_getcpu sysconf sync_file_range
 ])
 
-# Check for pthread_setname_np and its signature
+# Check for pthread_setname_np and pthread_getname_np
 LTTNG_PTHREAD_SETNAME_NP
+LTTNG_PTHREAD_GETNAME_NP
 
 # Check if clock_gettime, timer_create, timer_settime, and timer_delete are available in lib rt, and if so,
 # add -lrt to LIBS

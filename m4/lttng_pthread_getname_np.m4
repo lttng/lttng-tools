@@ -1,6 +1,6 @@
 # SYNOPSIS
 #
-#   LTTNG_PTHREAD_SETNAME_NP
+#   LTTNG_PTHREAD_GETNAME_NP
 #
 # LICENSE
 #
@@ -32,59 +32,64 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-AC_DEFUN([LTTNG_PTHREAD_SETNAME_NP], [
+AC_DEFUN([LTTNG_PTHREAD_GETNAME_NP], [
 AC_REQUIRE([AX_PTHREAD])
 AC_LANG_PUSH([C])
 
-lttng_pthread_setname_np_save_LDFLAGS="$LDFLAGS"
-lttng_pthread_setname_np_save_LIBS="$LIBS"
+lttng_pthread_getname_np_save_LDFLAGS="$LDFLAGS"
+lttng_pthread_getname_np_save_LIBS="$LIBS"
 LDFLAGS="$LDFLAGS $PTHREAD_CFLAGS"
 LIBS="$LIBS $PTHREAD_LIBS"
 
-# GLIBC >= 2.12, Solaris >= 11.3, FreeBSD >= 12.2
-AC_MSG_CHECKING(for pthread_setname_np(pthread_t, const char*))
+# GLIBC >= 2.12, Solaris >= 11.3, FreeBSD >= 12.2, MacOS X >= 10.6, iOS >= 3.2
+AC_MSG_CHECKING(for pthread_getname_np(pthread_t, char*, size_t))
 AC_LINK_IFELSE(
     [AC_LANG_PROGRAM(
         [[#include <pthread.h>
          #ifdef __FreeBSD__
          #include <pthread_np.h>
-         #endif]],
-        [pthread_setname_np(pthread_self(), "example")])],
+         #endif
+         #define LTTNG_PTHREAD_NAMELEN 16
+         char lttng_pthread_name[LTTNG_PTHREAD_NAMELEN];]],
+        [pthread_getname_np(pthread_self(), lttng_pthread_name, LTTNG_PTHREAD_NAMELEN)])],
     [AC_MSG_RESULT(yes)
-     AC_DEFINE(HAVE_PTHREAD_SETNAME_NP_WITH_TID,1,
-        [Have function pthread_setname_np(pthread_t, const char*)])],
+     AC_DEFINE(HAVE_PTHREAD_GETNAME_NP_WITH_TID,1,
+        [Have function pthread_getname_np(pthread_t, char*, size_t)])],
     [AC_MSG_RESULT(no)])
 
-# MacOS X >= 10.6, iOS >= 3.2
-AC_MSG_CHECKING(for pthread_setname_np(const char*))
+AC_MSG_CHECKING(for pthread_getname_np(char*, size_t))
 AC_LINK_IFELSE(
     [AC_LANG_PROGRAM(
         [[#include <pthread.h>
          #ifdef __FreeBSD__
          #include <pthread_np.h>
-         #endif]],
-        [pthread_setname_np("example")])],
+         #endif
+         #define LTTNG_PTHREAD_NAMELEN 16
+         char lttng_pthread_name[LTTNG_PTHREAD_NAMELEN];]],
+        [pthread_getname_np(lttng_pthread_name, LTTNG_PTHREAD_NAMELEN)])],
     [AC_MSG_RESULT(yes)
-     AC_DEFINE(HAVE_PTHREAD_SETNAME_NP_WITHOUT_TID,1,
-        [Have function pthread_setname_np(const char*)])],
+     AC_DEFINE(HAVE_PTHREAD_GETNAME_NP_WITHOUT_TID,1,
+        [Have function pthread_getname_np(char*, size_t)])],
     [AC_MSG_RESULT(no)])
 
 # FreeBSD
-AC_MSG_CHECKING(for pthread_set_name_np(pthread_t, const char*))
+AC_MSG_CHECKING(for pthread_get_name_np(pthread_t, char*, size_t))
 AC_LINK_IFELSE(
     [AC_LANG_PROGRAM(
         [[#include <pthread.h>
          #ifdef __FreeBSD__
          #include <pthread_np.h>
-         #endif]],
-        [pthread_set_name_np(pthread_self(), "example")])],
+         #endif
+         #define LTTNG_PTHREAD_NAMELEN 16
+         char lttng_pthread_name[LTTNG_PTHREAD_NAMELEN];]],
+        [pthread_get_name_np(pthread_self(), lttng_pthread_name, LTTNG_PTHREAD_NAMELEN)])],
     [AC_MSG_RESULT(yes)
-     AC_DEFINE(HAVE_PTHREAD_SET_NAME_NP_WITH_TID,1,
-        [Have function pthread_set_name_np(pthread_t, const char*)])],
+     AC_DEFINE(HAVE_PTHREAD_GET_NAME_NP_WITH_TID,1,
+        [Have function pthread_get_name_np(pthread_t, char*, size_t)])],
     [AC_MSG_RESULT(no)])
 
-LDFLAGS=$lttng_pthread_setname_np_save_LDFLAGS
-LIBS=$lttng_pthread_setname_np_save_LIBS
+LDFLAGS=$lttng_pthread_getname_np_save_LDFLAGS
+LIBS=$lttng_pthread_getname_np_save_LIBS
 
 AC_LANG_POP
-])dnl LTTNG_PTHREAD_SETNAME_NP
+])dnl LTTNG_PTHREAD_GETNAME_NP

@@ -12,6 +12,10 @@
 #include <common/compat/errno.h>
 #include <string.h>
 
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
+
 #define LTTNG_PTHREAD_NAMELEN 16
 
 #if defined(HAVE_PTHREAD_SETNAME_NP_WITH_TID)
@@ -28,27 +32,14 @@ int lttng_pthread_setname_np(const char *name)
 
 	return pthread_setname_np(pthread_self(), name);
 }
-
-static inline
-int lttng_pthread_getname_np(char *name, size_t len)
-{
-	return pthread_getname_np(pthread_self(), name, len);
-}
 #elif defined(HAVE_PTHREAD_SETNAME_NP_WITHOUT_TID)
 static inline
 int lttng_pthread_setname_np(const char *name)
 {
 	return pthread_setname_np(name);
 }
-
-static inline
-int lttng_pthread_getname_np(char *name, size_t len)
-{
-	return pthread_getname_np(name, len);
-}
 #elif defined(HAVE_PTHREAD_SET_NAME_NP_WITH_TID)
 
-#include <pthread_np.h>
 static inline
 int lttng_pthread_setname_np(const char *name)
 {
@@ -58,13 +49,6 @@ int lttng_pthread_setname_np(const char *name)
 	}
 
 	pthread_set_name_np(pthread_self(), name);
-	return 0;
-}
-
-static inline
-int lttng_pthread_getname_np(char *name, size_t len)
-{
-	pthread_get_name_np(pthread_self(), name, len);
 	return 0;
 }
 #elif defined(__linux__)
@@ -81,6 +65,41 @@ int lttng_pthread_setname_np(const char *name)
 	}
 	return prctl(PR_SET_NAME, name, 0, 0, 0);
 }
+#else
+/*
+ * For platforms without thread name support, do nothing.
+ */
+static inline
+int lttng_pthread_setname_np(const char *name)
+{
+	return -ENOSYS;
+}
+#endif
+
+
+#if defined(HAVE_PTHREAD_GETNAME_NP_WITH_TID)
+static inline
+int lttng_pthread_getname_np(char *name, size_t len)
+{
+	return pthread_getname_np(pthread_self(), name, len);
+}
+#elif defined(HAVE_PTHREAD_GETNAME_NP_WITHOUT_TID)
+static inline
+int lttng_pthread_getname_np(char *name, size_t len)
+{
+	return pthread_getname_np(name, len);
+}
+#elif defined(HAVE_PTHREAD_GET_NAME_NP_WITH_TID)
+static inline
+int lttng_pthread_getname_np(char *name, size_t len)
+{
+	pthread_get_name_np(pthread_self(), name, len);
+	return 0;
+}
+#elif defined(__linux__)
+
+/* Fallback on prtctl on Linux */
+#include <sys/prctl.h>
 
 static inline
 int lttng_pthread_getname_np(char *name, size_t len)
@@ -91,12 +110,6 @@ int lttng_pthread_getname_np(char *name, size_t len)
 /*
  * For platforms without thread name support, do nothing.
  */
-static inline
-int lttng_pthread_setname_np(const char *name)
-{
-	return -ENOSYS;
-}
-
 static inline
 int lttng_pthread_getname_np(char *name, size_t len)
 {
