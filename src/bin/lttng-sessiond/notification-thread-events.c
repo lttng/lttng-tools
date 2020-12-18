@@ -1994,6 +1994,8 @@ int handle_notification_thread_command_remove_tracer_event_source(
 		goto end;
 	}
 
+	source_element->is_fd_in_poll_set = false;
+
 end:
 	free(source_element);
 	*_cmd_result = cmd_result;
