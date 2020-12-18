@@ -287,6 +287,7 @@ struct lttng_ust_event_exclusion {
 #define LTTNG_UST_WAIT_QUIESCENT		_UST_CMD(0x43)
 #define LTTNG_UST_REGISTER_DONE			_UST_CMD(0x44)
 #define LTTNG_UST_TRACEPOINT_FIELD_LIST		_UST_CMD(0x45)
+#define LTTNG_UST_EVENT_NOTIFIER_GROUP_CREATE	_UST_CMD(0x46)
 
 /* Session FD commands */
 #define LTTNG_UST_CHANNEL			\
@@ -318,8 +319,9 @@ struct lttng_ust_event_exclusion {
 #define LTTNG_UST_FILTER			_UST_CMD(0xA0)
 #define LTTNG_UST_EXCLUSION			_UST_CMD(0xA1)
 
-#define LTTNG_UST_EVENT_NOTIFIER_SEND_FD	_UST_CMD(0xB0)
-#define LTTNG_UST_EVENT_NOTIFIER_CREATE		_UST_CMDW(0xB1, struct lttng_ust_event_notifier)
+/* Event notifier group commands */
+#define LTTNG_UST_EVENT_NOTIFIER_CREATE		\
+	_UST_CMDW(0xB0, struct lttng_ust_event_notifier)
 
 #define LTTNG_UST_ROOT_HANDLE	0
 
