@@ -20,7 +20,8 @@ AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 AC_PROG_CC
-AC_PROG_CC_STDC
+# AC_PROG_CC_STDC was merged in AC_PROG_CC in autoconf 2.70
+m4_version_prereq([2.70], [], [AC_PROG_CC_STDC])
 AC_PROG_CXX
 RW_PROG_CXX_WORKS
 AM_CONDITIONAL([CXX_WORKS], [test "x$rw_cv_prog_cxx_works" = "xyes"])
@@ -71,7 +72,9 @@ detection.
 AM_CONDITIONAL([HAVE_BISON], [test "x$have_bison" = "xyes"])
 
 # check for flex
-AC_PROG_LEX
+# Prior to autoconf 2.70, AC_PROG_FLEX did not take an argument. This is not a
+# problem since the argument is silently ignored by older versions.
+AC_PROG_LEX([noyywrap])
 FLEX=$LEX
 AX_PROG_FLEX_VERSION([2.5.35], [have_flex=yes])
 
@@ -590,7 +593,7 @@ AM_CONDITIONAL([LTTNG_TOOLS_BUILD_WITH_LIBPFM], [test "x$have_libpfm" = "xyes"])
 swig_version=2.0.0
 
 AC_ARG_ENABLE([python-bindings],
-              [AC_HELP_STRING([--enable-python-bindings],
+              [AS_HELP_STRING([--enable-python-bindings],
                               [compile Python bindings])],
               [enable_python_binding=$enableval], [enable_python_binding=no])
 
