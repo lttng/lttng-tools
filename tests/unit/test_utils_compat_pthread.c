@@ -13,7 +13,7 @@
 
 #define TEST_NAME_PROPER_LEN 16
 
-int main()
+int main(int argc, char **argv)
 {
 	int ret;
 	char name1[TEST_NAME_PROPER_LEN];

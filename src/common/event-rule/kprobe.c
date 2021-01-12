@@ -193,7 +193,7 @@ lttng_event_rule_kprobe_hash(
 	return hash;
 }
 
-struct lttng_event_rule *lttng_event_rule_kprobe_create()
+struct lttng_event_rule *lttng_event_rule_kprobe_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_kprobe *krule;

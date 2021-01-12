@@ -185,7 +185,7 @@ lttng_event_rule_uprobe_hash(
 	return hash;
 }
 
-struct lttng_event_rule *lttng_event_rule_uprobe_create()
+struct lttng_event_rule *lttng_event_rule_uprobe_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_uprobe *urule;

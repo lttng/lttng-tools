@@ -12,7 +12,7 @@
 #define TRACEPOINT_CREATE_PROBES
 #include "ust_tests_fork.h"
 
-int main()
+int main(int argc, char **argv)
 {
 	printf("IN FORK2\n");
 

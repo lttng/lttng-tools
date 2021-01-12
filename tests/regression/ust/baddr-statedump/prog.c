@@ -10,7 +10,7 @@
 #define TRACEPOINT_DEFINE
 #include "tp.h"
 
-int main()
+int main(int argc, char **argv)
 {
 	sleep(1);
 	return 0;

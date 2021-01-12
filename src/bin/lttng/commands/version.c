@@ -56,7 +56,7 @@ static void create_version(struct mi_lttng_version *version)
 /*
  * Print the machine interface output of this command.
  */
-static int print_mi()
+static int print_mi(void)
 {
 	int ret = CMD_SUCCESS;
 	struct mi_writer *writer = NULL;

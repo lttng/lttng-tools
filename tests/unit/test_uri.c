@@ -188,7 +188,7 @@ static void test_uri_parsing(void)
 	assert(!uri);
 }
 
-static void test_uri_cmp()
+static void test_uri_cmp(void)
 {
 	struct lttng_uri *uri1, *uri2;
 	const char *s_uri1 = "net://localhost";

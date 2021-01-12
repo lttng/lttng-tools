@@ -244,7 +244,7 @@ lttng_event_rule_syscall_hash(
 	return hash;
 }
 
-struct lttng_event_rule *lttng_event_rule_syscall_create()
+struct lttng_event_rule *lttng_event_rule_syscall_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_syscall *syscall_rule;

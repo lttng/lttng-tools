@@ -712,7 +712,7 @@ void fini_session_config_validation_ctx(
 }
 
 static
-char *get_session_config_xsd_path()
+char *get_session_config_xsd_path(void)
 {
 	char *xsd_path;
 	const char *base_path = lttng_secure_getenv(DEFAULT_SESSION_CONFIG_XSD_PATH_ENV);

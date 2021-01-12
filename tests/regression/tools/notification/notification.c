@@ -171,7 +171,7 @@ error:
 }
 
 static
-int resume_application()
+int resume_application(void)
 {
 	int ret;
 	struct stat buf;
