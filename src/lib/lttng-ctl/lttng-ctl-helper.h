@@ -30,7 +30,6 @@
  */
 
 /* Copy helper functions. */
-void lttng_ctl_copy_string(char *dst, const char *src, size_t len);
 void lttng_ctl_copy_lttng_domain(struct lttng_domain *dst,
 		struct lttng_domain *src);
 

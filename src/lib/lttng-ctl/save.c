@@ -144,8 +144,12 @@ int lttng_save_session_attr_set_output_url(
 	}
 
 	/* Copy string plus the NULL terminated byte. */
-	lttng_ctl_copy_string(attr->configuration_url, uris[0].dst.path,
-			sizeof(attr->configuration_url));
+	ret = lttng_strncpy(attr->configuration_url, uris[0].dst.path,
+			    sizeof(attr->configuration_url));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 end:
 error:

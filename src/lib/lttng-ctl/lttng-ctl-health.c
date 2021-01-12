@@ -103,7 +103,7 @@ const char **thread_name[NR_HEALTH_COMPONENT] = {
 /*
  * Set health socket path.
  *
- * Returns 0 on success or -ENOMEM.
+ * Returns 0 on success or a negative errno.
  */
 static
 int set_health_socket_path(struct lttng_health *lh,
@@ -152,10 +152,10 @@ int set_health_socket_path(struct lttng_health *lh,
 	uid = getuid();
 
 	if (uid == 0 || tracing_group) {
-		lttng_ctl_copy_string(lh->health_sock_path,
+		ret = lttng_strncpy(lh->health_sock_path,
 				global_str,
 				sizeof(lh->health_sock_path));
-		return 0;
+		return ret == 0 ? 0 : -EINVAL;
 	}
 
 	/*
@@ -227,20 +227,30 @@ struct lttng_health *
 
 struct lttng_health *lttng_health_create_relayd(const char *path)
 {
-	struct lttng_health *lh;
+	int ret;
+	struct lttng_health *lh = NULL;
 
 	if (!path) {
-		return NULL;
+		goto error;
 	}
 
 	lh = lttng_health_create(HEALTH_COMPONENT_RELAYD,
 			NR_HEALTH_RELAYD_TYPES);
 	if (!lh) {
-		return NULL;
+		goto error;
 	}
-	lttng_ctl_copy_string(lh->health_sock_path, path,
-		sizeof(lh->health_sock_path));
+
+	ret = lttng_strncpy(lh->health_sock_path, path ?: "",
+			    sizeof(lh->health_sock_path));
+	if (ret) {
+		goto error;
+	}
+
 	return lh;
+
+error:
+	free(lh);
+	return NULL;
 }
 
 void lttng_health_destroy(struct lttng_health *lh)
