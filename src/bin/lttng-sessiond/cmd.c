@@ -488,8 +488,14 @@ static int list_lttng_agent_events(struct agent *agt,
 			.loglevel_type = agent_event->loglevel_type,
 		};
 
-		strncpy(event.name, agent_event->name, sizeof(event.name));
-		event.name[sizeof(event.name) - 1] = '\0';
+		ret = lttng_strncpy(event.name, agent_event->name, sizeof(event.name));
+		if (ret) {
+			/* Internal error, invalid name. */
+			ERR("Invalid event name while listing agent events: '%s' exceeds the maximal allowed length of %zu bytes",
+					agent_event->name, sizeof(event.name));
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
 
 		ret = lttng_dynamic_buffer_append(
 				&payload->buffer, &event, sizeof(event));
@@ -556,8 +562,14 @@ static int list_lttng_ust_global_events(char *channel_name,
 			continue;
 		}
 
-		strncpy(event.name, uevent->attr.name, sizeof(event.name));
-		event.name[sizeof(event.name) - 1] = '\0';
+		ret = lttng_strncpy(event.name, uevent->attr.name, sizeof(event.name));
+		if (ret) {
+			/* Internal error, invalid name. */
+			ERR("Invalid event name while listing user space tracer events: '%s' exceeds the maximal allowed length of %zu bytes",
+					uevent->attr.name, sizeof(event.name));
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
 
 		event.enabled = uevent->enabled;
 
@@ -647,8 +659,16 @@ static int list_lttng_kernel_events(char *channel_name,
 	cds_list_for_each_entry(kevent, &kchan->events_list.head , list) {
 		struct lttng_event event = {};
 
-		strncpy(event.name, kevent->event->name, sizeof(event.name));
-		event.name[sizeof(event.name) - 1] = '\0';
+		ret = lttng_strncpy(event.name, kevent->event->name, sizeof(event.name));
+		if (ret) {
+			/* Internal error, invalid name. */
+			ERR("Invalid event name while listing kernel events: '%s' exceeds the maximal allowed length of %zu bytes",
+					kevent->event->name,
+					sizeof(event.name));
+			ret = -LTTNG_ERR_UNK;
+			goto end;
+		}
+
 		event.enabled = kevent->enabled;
 		event.filter = (unsigned char) !!kevent->filter_expression;
 
