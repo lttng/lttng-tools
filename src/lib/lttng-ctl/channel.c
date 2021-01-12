@@ -151,9 +151,14 @@ struct lttng_notification_channel *lttng_notification_channel_create(
 	}
 
 	if (is_root || is_in_tracing_group) {
-		lttng_ctl_copy_string(sock_path,
+		ret = lttng_strncpy(sock_path,
 				DEFAULT_GLOBAL_NOTIFICATION_CHANNEL_UNIX_SOCK,
 				LTTNG_PATH_MAX);
+		if (ret) {
+			ret = -LTTNG_ERR_INVALID;
+			goto error;
+		}
+
 		ret = lttcomm_connect_unix_sock(sock_path);
 		if (ret >= 0) {
 			fd = ret;

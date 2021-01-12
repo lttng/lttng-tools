@@ -96,7 +96,7 @@ lttng_process_attr_tracker_handle_get_tracking_policy(
 		enum lttng_tracking_policy *policy)
 {
 	void *reply = NULL;
-	int reply_ret;
+	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
@@ -108,8 +108,13 @@ lttng_process_attr_tracker_handle_get_tracking_policy(
 		goto end;
 	}
 
-	lttng_ctl_copy_string(lsm.session.name, tracker->session_name,
+	copy_ret = lttng_strncpy(lsm.session.name, tracker->session_name,
 			sizeof(lsm.session.name));
+	if (copy_ret) {
+		status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
 	lsm.domain.type = tracker->domain;
 	lsm.u.process_attr_tracker_get_tracking_policy.process_attr =
 			(int32_t) tracker->process_attr;
@@ -138,7 +143,7 @@ lttng_process_attr_tracker_handle_set_tracking_policy(
 		const struct lttng_process_attr_tracker_handle *tracker,
 		enum lttng_tracking_policy policy)
 {
-	int reply_ret;
+	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
@@ -150,8 +155,13 @@ lttng_process_attr_tracker_handle_set_tracking_policy(
 		goto end;
 	}
 
-	lttng_ctl_copy_string(lsm.session.name, tracker->session_name,
-			sizeof(lsm.session.name));
+	copy_ret = lttng_strncpy(lsm.session.name, tracker->session_name,
+				 sizeof(lsm.session.name));
+	if (copy_ret) {
+		status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
 	lsm.domain.type = tracker->domain;
 	lsm.u.process_attr_tracker_set_tracking_policy.process_attr =
 			(int32_t) tracker->process_attr;
@@ -192,8 +202,13 @@ end:
 			goto end;                                                                                    \
 		}                                                                                                    \
                                                                                                                      \
-		lttng_ctl_copy_string(lsm.session.name, tracker->session_name,                                       \
+		ret = lttng_strncpy(lsm.session.name, tracker->session_name,                                         \
 				sizeof(lsm.session.name));                                                           \
+		if (ret) {                                                                                           \
+			status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID;                                   \
+			goto end;                                                                                    \
+		}                                                                                                    \
+                                                                                                                     \
 		lsm.domain.type = tracker->domain;                                                                   \
 		lsm.u.process_attr_tracker_add_remove_include_value                                                  \
 				.process_attr =                                                                      \
@@ -251,8 +266,13 @@ end:
 			goto end;                                                                                    \
 		}                                                                                                    \
                                                                                                                      \
-		lttng_ctl_copy_string(lsm.session.name, tracker->session_name,                                       \
+		ret = lttng_strncpy(lsm.session.name, tracker->session_name,                                         \
 				sizeof(lsm.session.name));                                                           \
+		if (ret) {                                                                                           \
+			status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID;                                   \
+			goto end;                                                                                    \
+		}                                                                                                    \
+                                                                                                                     \
 		lsm.domain.type = tracker->domain;                                                                   \
 		lsm.u.process_attr_tracker_add_remove_include_value                                                  \
 				.process_attr =                                                                      \
@@ -348,7 +368,7 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
 		const struct lttng_process_attr_values **values)
 {
 	void *reply = NULL;
-	int reply_ret;
+	int reply_ret, copy_ret;
 	enum lttng_process_attr_tracker_handle_status status =
 			LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_OK;
 	struct lttcomm_session_msg lsm = {
@@ -365,8 +385,13 @@ lttng_process_attr_tracker_handle_get_inclusion_set(
 	lttng_process_attr_values_destroy(tracker->inclusion_set);
 	tracker->inclusion_set = NULL;
 
-	lttng_ctl_copy_string(lsm.session.name, tracker->session_name,
+	copy_ret = lttng_strncpy(lsm.session.name, tracker->session_name,
 			sizeof(lsm.session.name));
+	if (copy_ret) {
+		status = LTTNG_PROCESS_ATTR_TRACKER_HANDLE_STATUS_INVALID;
+		goto end;
+	}
+
 	lsm.domain.type = tracker->domain;
 	lsm.u.process_attr_tracker_get_tracking_policy.process_attr =
 			(int32_t) tracker->process_attr;
