@@ -29,26 +29,33 @@ int lttng_snapshot_add_output(const char *session_name,
 	struct lttcomm_lttng_output_id *reply;
 
 	if (!session_name || !output) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_SNAPSHOT_ADD_OUTPUT;
 
-	lttng_ctl_copy_string(lsm.session.name, session_name,
+	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	memcpy(&lsm.u.snapshot_output.output, output,
 			sizeof(lsm.u.snapshot_output.output));
 
 	ret = lttng_ctl_ask_sessiond(&lsm, (void **) &reply);
 	if (ret < 0) {
-		return ret;
+		goto end;
 	}
 
 	output->id = reply->id;
 	free(reply);
-
-	return 0;
+	ret = 0;
+end:
+	return ret;
 }
 
 /*
@@ -59,21 +66,30 @@ int lttng_snapshot_add_output(const char *session_name,
 int lttng_snapshot_del_output(const char *session_name,
 		struct lttng_snapshot_output *output)
 {
+	int ret;
 	struct lttcomm_session_msg lsm;
 
 	if (!session_name || !output) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_SNAPSHOT_DEL_OUTPUT;
 
-	lttng_ctl_copy_string(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name,
+			    sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
 	memcpy(&lsm.u.snapshot_output.output, output,
 			sizeof(lsm.u.snapshot_output.output));
 
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+end:
+	return ret;
 }
 
 /*
@@ -98,8 +114,12 @@ int lttng_snapshot_list_output(const char *session_name,
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_SNAPSHOT_LIST_OUTPUT;
 
-	lttng_ctl_copy_string(lsm.session.name, session_name,
-			sizeof(lsm.session.name));
+	ret = lttng_strncpy(lsm.session.name, session_name,
+			    sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 	new_list = zmalloc(sizeof(*new_list));
 	if (!new_list) {
@@ -179,17 +199,23 @@ void lttng_snapshot_output_list_destroy(struct lttng_snapshot_output_list *list)
 int lttng_snapshot_record(const char *session_name,
 		struct lttng_snapshot_output *output, int wait)
 {
+	int ret;
 	struct lttcomm_session_msg lsm;
 
 	if (!session_name) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
 	memset(&lsm, 0, sizeof(lsm));
 	lsm.cmd_type = LTTNG_SNAPSHOT_RECORD;
 
-	lttng_ctl_copy_string(lsm.session.name, session_name,
+	ret = lttng_strncpy(lsm.session.name, session_name,
 			sizeof(lsm.session.name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
 
 	/*
 	 * Not having an output object will use the default one of the session that
@@ -202,8 +228,9 @@ int lttng_snapshot_record(const char *session_name,
 	}
 
 	/* The wait param is ignored. */
-
-	return lttng_ctl_ask_sessiond(&lsm, NULL);
+	ret = lttng_ctl_ask_sessiond(&lsm, NULL);
+end:
+	return ret;
 }
 
 /*
@@ -294,34 +321,61 @@ int lttng_snapshot_output_set_size(uint64_t size,
 int lttng_snapshot_output_set_name(const char *name,
 		struct lttng_snapshot_output *output)
 {
+	int ret;
+
 	if (!output || !name) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	lttng_ctl_copy_string(output->name, name, sizeof(output->name));
-	return 0;
+	ret = lttng_strncpy(output->name, name, sizeof(output->name));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	return ret;
 }
 
 int lttng_snapshot_output_set_ctrl_url(const char *url,
 		struct lttng_snapshot_output *output)
 {
+	int ret;
+
 	if (!output || !url) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	lttng_ctl_copy_string(output->ctrl_url, url, sizeof(output->ctrl_url));
-	return 0;
+	ret = lttng_strncpy(output->ctrl_url, url, sizeof(output->ctrl_url));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	return ret;
 }
 
 int lttng_snapshot_output_set_data_url(const char *url,
 		struct lttng_snapshot_output *output)
 {
+	int ret;
+
 	if (!output || !url) {
-		return -LTTNG_ERR_INVALID;
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
 	}
 
-	lttng_ctl_copy_string(output->data_url, url, sizeof(output->data_url));
-	return 0;
+	ret = lttng_strncpy(output->data_url, url, sizeof(output->data_url));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+end:
+	return ret;
 }
 
 int lttng_snapshot_output_set_local_path(const char *path,

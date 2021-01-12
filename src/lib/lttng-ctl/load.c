@@ -230,8 +230,12 @@ int lttng_load_session_attr_set_input_url(
 	}
 
 	/* Copy string plus the NULL terminated byte. */
-	lttng_ctl_copy_string(attr->input_url, uris[0].dst.path,
+	ret = lttng_strncpy(attr->input_url, uris[0].dst.path,
 			sizeof(attr->input_url));
+	if (ret) {
+		ret = -LTTNG_ERR_INVALID;
+		goto error;
+	}
 
 end:
 error:
