@@ -2629,8 +2629,7 @@ static void *thread_manage_clients(void *data)
 			struct lttcomm_lttng_msg *llm = (typeof(
 					llm)) cmd_ctx.reply_payload.buffer.data;
 
-			assert(cmd_ctx.reply_payload.buffer.size >=
-			       sizeof(llm));
+			assert(cmd_ctx.reply_payload.buffer.size >= sizeof(*llm));
 			assert(cmd_ctx.lttng_msg_size == cmd_ctx.reply_payload.buffer.size);
 
 			llm->fd_count = lttng_payload_view_get_fd_handle_count(&view);
