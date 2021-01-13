@@ -499,7 +499,6 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 	int ret;
 	struct lttcomm_relayd_status_stream reply;
 	char pathname[RELAYD_COMM_LTTNG_PATH_MAX];
-	const char *separator;
 
 	/* Code flow error. Safety net. */
 	assert(rsock);
@@ -510,31 +509,35 @@ int relayd_add_stream(struct lttcomm_relayd_sock *rsock, const char *channel_nam
 
 	DBG("Relayd adding stream for channel name %s", channel_name);
 
-	if (_pathname[0] == '\0') {
-		separator = "";
-	} else {
-		separator = "/";
-	}
-	ret = snprintf(pathname, RELAYD_COMM_LTTNG_PATH_MAX, "%s%s%s",
-			domain_name, separator, _pathname);
-	if (ret <= 0 || ret >= RELAYD_COMM_LTTNG_PATH_MAX) {
-		ERR("stream path too long.");
-		ret = -1;
-		goto error;
-	}
-
 	/* Compat with relayd 2.1 */
 	if (rsock->minor == 1) {
 		/* For 2.1 */
-		ret = relayd_add_stream_2_1(rsock, channel_name, pathname);
+		ret = relayd_add_stream_2_1(rsock, channel_name, _pathname);
 	
 	} else if (rsock->minor > 1 && rsock->minor < 11) {
 		/* From 2.2 to 2.10 */
-		ret = relayd_add_stream_2_2(rsock, channel_name, pathname,
+		ret = relayd_add_stream_2_2(rsock, channel_name, _pathname,
 				tracefile_size, tracefile_count);
 	} else {
+		const char *separator;
 		enum lttng_trace_chunk_status chunk_status;
 		uint64_t chunk_id;
+
+		if (_pathname[0] == '\0') {
+			separator = "";
+		} else {
+			separator = "/";
+		}
+
+		ret = snprintf(pathname, RELAYD_COMM_LTTNG_PATH_MAX, "%s%s%s",
+				domain_name, separator, _pathname);
+		if (ret <= 0 || ret >= RELAYD_COMM_LTTNG_PATH_MAX) {
+			ERR("Failed to format stream path: %s",
+					ret <= 0 ? "formatting error" :
+							"path exceeds maximal allowed length");
+			ret = -1;
+			goto error;
+		}
 
 		chunk_status = lttng_trace_chunk_get_id(trace_chunk,
 				&chunk_id);
