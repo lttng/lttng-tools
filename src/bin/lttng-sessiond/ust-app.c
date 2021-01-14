@@ -5735,6 +5735,69 @@ end:
 }
 
 /*
+ * RCU read lock must be held by the caller.
+ */
+static
+void ust_app_synchronize_all_channels(struct ltt_ust_session *usess,
+		struct ust_app_session *ua_sess,
+		struct ust_app *app)
+{
+	int ret = 0;
+	struct cds_lfht_iter uchan_iter;
+	struct ltt_ust_channel *uchan;
+
+	assert(usess);
+	assert(ua_sess);
+	assert(app);
+
+	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &uchan_iter,
+			uchan, node.node) {
+		struct ust_app_channel *ua_chan;
+		struct cds_lfht_iter uevent_iter;
+		struct ltt_ust_event *uevent;
+
+		/*
+		 * Search for a matching ust_app_channel. If none is found,
+		 * create it. Creating the channel will cause the ua_chan
+		 * structure to be allocated, the channel buffers to be
+		 * allocated (if necessary) and sent to the application, and
+		 * all enabled contexts will be added to the channel.
+		 */
+		ret = find_or_create_ust_app_channel(usess, ua_sess,
+			app, uchan, &ua_chan);
+		if (ret) {
+			/* Tracer is probably gone or ENOMEM. */
+			goto end;
+		}
+
+		if (!ua_chan) {
+			/* ua_chan will be NULL for the metadata channel */
+			continue;
+		}
+
+		cds_lfht_for_each_entry(uchan->events->ht, &uevent_iter, uevent,
+				node.node) {
+			ret = ust_app_channel_synchronize_event(ua_chan,
+				uevent, ua_sess, app);
+			if (ret) {
+				goto end;
+			}
+		}
+
+		if (ua_chan->enabled != uchan->enabled) {
+			ret = uchan->enabled ?
+				enable_ust_app_channel(ua_sess, uchan, app) :
+				disable_ust_app_channel(ua_sess, ua_chan, app);
+			if (ret) {
+				goto end;
+			}
+		}
+	}
+end:
+	return;
+}
+
+/*
  * The caller must ensure that the application is compatible and is tracked
  * by the process attribute trackers.
  */
@@ -5743,8 +5806,6 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 		struct ust_app *app)
 {
 	int ret = 0;
-	struct cds_lfht_iter uchan_iter;
-	struct ltt_ust_channel *uchan;
 	struct ust_app_session *ua_sess = NULL;
 
 	/*
@@ -5768,49 +5829,7 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(usess->domain_global.channels->ht, &uchan_iter,
-			uchan, node.node) {
-		struct ust_app_channel *ua_chan;
-		struct cds_lfht_iter uevent_iter;
-		struct ltt_ust_event *uevent;
-
-		/*
-		 * Search for a matching ust_app_channel. If none is found,
-		 * create it. Creating the channel will cause the ua_chan
-		 * structure to be allocated, the channel buffers to be
-		 * allocated (if necessary) and sent to the application, and
-		 * all enabled contexts will be added to the channel.
-		 */
-		ret = find_or_create_ust_app_channel(usess, ua_sess,
-			app, uchan, &ua_chan);
-		if (ret) {
-			/* Tracer is probably gone or ENOMEM. */
-			goto error_unlock;
-		}
-
-		if (!ua_chan) {
-			/* ua_chan will be NULL for the metadata channel */
-			continue;
-		}
-
-		cds_lfht_for_each_entry(uchan->events->ht, &uevent_iter, uevent,
-				node.node) {
-			ret = ust_app_channel_synchronize_event(ua_chan,
-				uevent, ua_sess, app);
-			if (ret) {
-				goto error_unlock;
-			}
-		}
-
-		if (ua_chan->enabled != uchan->enabled) {
-			ret = uchan->enabled ?
-				enable_ust_app_channel(ua_sess, uchan, app) :
-				disable_ust_app_channel(ua_sess, ua_chan, app);
-			if (ret) {
-				goto error_unlock;
-			}
-		}
-	}
+	ust_app_synchronize_all_channels(usess, ua_sess, app);
 
 	/*
 	 * Create the metadata for the application. This returns gracefully if a
