@@ -26,63 +26,204 @@
 #include "kern-modules.h"
 #include "lttng-sessiond.h"
 
-#define LTTNG_MOD_REQUIRED	1
-#define LTTNG_MOD_OPTIONAL	0
-
 /* LTTng kernel tracer mandatory core modules list */
 struct kern_modules_param kern_modules_control_core[] = {
-	{ (char *) "lttng-ring-buffer-client-discard" },
-	{ (char *) "lttng-ring-buffer-client-overwrite" },
-	{ (char *) "lttng-ring-buffer-metadata-client" },
-	{ (char *) "lttng-ring-buffer-client-mmap-discard" },
-	{ (char *) "lttng-ring-buffer-client-mmap-overwrite" },
-	{ (char *) "lttng-ring-buffer-metadata-mmap-client" },
+	{
+		.name = (char *) "lttng-ring-buffer-client-discard",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
+	{
+		.name = (char *) "lttng-ring-buffer-client-overwrite",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
+	{
+		.name = (char *) "lttng-ring-buffer-metadata-client",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
+	{
+		.name = (char *) "lttng-ring-buffer-client-mmap-discard",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
+	{
+		.name = (char *) "lttng-ring-buffer-client-mmap-overwrite",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
+	{
+		.name = (char *) "lttng-ring-buffer-metadata-mmap-client",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED,
+	},
 };
 
-/* LTTng kernel tracer probe modules list */
+/* LTTng kerneltracer probe modules list */
 struct kern_modules_param kern_modules_probes_default[] = {
-	{ (char *) "lttng-probe-asoc" },
-	{ (char *) "lttng-probe-block" },
-	{ (char *) "lttng-probe-btrfs" },
-	{ (char *) "lttng-probe-compaction" },
-	{ (char *) "lttng-probe-ext3" },
-	{ (char *) "lttng-probe-ext4" },
-	{ (char *) "lttng-probe-gpio" },
-	{ (char *) "lttng-probe-i2c" },
-	{ (char *) "lttng-probe-irq" },
-	{ (char *) "lttng-probe-jbd" },
-	{ (char *) "lttng-probe-jbd2" },
-	{ (char *) "lttng-probe-kmem" },
-	{ (char *) "lttng-probe-kvm" },
-	{ (char *) "lttng-probe-kvm-x86" },
-	{ (char *) "lttng-probe-kvm-x86-mmu" },
-	{ (char *) "lttng-probe-lock" },
-	{ (char *) "lttng-probe-module" },
-	{ (char *) "lttng-probe-napi" },
-	{ (char *) "lttng-probe-net" },
-	{ (char *) "lttng-probe-power" },
-	{ (char *) "lttng-probe-preemptirq" },
-	{ (char *) "lttng-probe-printk" },
-	{ (char *) "lttng-probe-random" },
-	{ (char *) "lttng-probe-rcu" },
-	{ (char *) "lttng-probe-regmap" },
-	{ (char *) "lttng-probe-regulator" },
-	{ (char *) "lttng-probe-rpm" },
-	{ (char *) "lttng-probe-sched" },
-	{ (char *) "lttng-probe-scsi" },
-	{ (char *) "lttng-probe-signal" },
-	{ (char *) "lttng-probe-skb" },
-	{ (char *) "lttng-probe-sock" },
-	{ (char *) "lttng-probe-statedump" },
-	{ (char *) "lttng-probe-sunrpc" },
-	{ (char *) "lttng-probe-timer" },
-	{ (char *) "lttng-probe-udp" },
-	{ (char *) "lttng-probe-vmscan" },
-	{ (char *) "lttng-probe-v4l2" },
-	{ (char *) "lttng-probe-workqueue" },
-	{ (char *) "lttng-probe-writeback" },
-	{ (char *) "lttng-probe-x86-irq-vectors" },
-	{ (char *) "lttng-probe-x86-exceptions" },
+	{
+		.name = (char *) "lttng-probe-asoc",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-block",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-btrfs",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-compaction",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-ext3",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-ext4",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-gpio",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-i2c",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-irq",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-jbd",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-jbd2",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-kmem",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-kvm",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-kvm-x86",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-kvm-x86-mmu",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-lock",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-module",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-napi",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-net",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-power",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-preemptirq",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-printk",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-random",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-rcu",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-regmap",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-regulator",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-rpm",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-sched",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-scsi",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-signal",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-skb",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-sock",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-statedump",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-sunrpc",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-timer",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-udp",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-vmscan",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-v4l2",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-workqueue",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-writeback",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-x86-irq-vectors",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
+	{
+		.name = (char *) "lttng-probe-x86-exceptions",
+		.load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL,
+	},
 };
 
 /* dynamic probe modules list */
@@ -145,7 +286,6 @@ error:
  *
  * @param modules	List of modules to load
  * @param entries	Number of modules in the list
- * @param required	Are the modules required or optionnal
  *
  * If the modules are required, we will return with error after the
  * first failed module load, otherwise we continue loading.
@@ -154,7 +294,7 @@ error:
  * 			\c < 0 on error
  */
 static int modprobe_lttng(struct kern_modules_param *modules,
-		int entries, int required)
+		int entries)
 {
 	int ret = 0, i;
 	struct kmod_ctx *ctx;
@@ -179,7 +319,7 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 			DBG("Module %s is already loaded", modules[i].name);
 			ret = 0;
 		} else if (ret < 0) {
-			if (required) {
+			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to load required module %s",
 						modules[i].name);
 				goto error;
@@ -248,11 +388,10 @@ static int rmmod_recurse(struct kmod_module *mod) {
  *
  * @param modules	List of modules to unload
  * @param entries	Number of modules in the list
- * @param required	Are the modules required or optionnal
  *
  */
 static void modprobe_remove_lttng(const struct kern_modules_param *modules,
-		int entries, int required)
+		int entries)
 {
 	int ret = 0, i;
 	struct kmod_ctx *ctx;
@@ -278,7 +417,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		ret = rmmod_recurse(mod);
 		if (ret == -EEXIST) {
 			DBG("Module %s is not in kernel.", modules[i].name);
-		} else if (required && ret < 0) {
+		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED && ret < 0) {
 			ERR("Unable to remove module %s", modules[i].name);
 		} else {
 			DBG("Modprobe removal successful %s",
@@ -297,7 +436,7 @@ error:
 #else /* HAVE_KMOD */
 
 static int modprobe_lttng(struct kern_modules_param *modules,
-		int entries, int required)
+		int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -305,7 +444,7 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 	for (i = 0; i < entries; i++) {
 		ret = snprintf(modprobe, sizeof(modprobe),
 				"/sbin/modprobe %s%s",
-				required ? "" : "-q ",
+				modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED ? "" : "-q ",
 				modules[i].name);
 		if (ret < 0) {
 			PERROR("snprintf modprobe");
@@ -314,7 +453,7 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
 		if (ret == -1) {
-			if (required) {
+			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to launch modprobe for required module %s",
 						modules[i].name);
 				goto error;
@@ -324,7 +463,7 @@ static int modprobe_lttng(struct kern_modules_param *modules,
 				ret = 0;
 			}
 		} else if (WEXITSTATUS(ret) != 0) {
-			if (required) {
+			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
 				ERR("Unable to load required module %s",
 						modules[i].name);
 				goto error;
@@ -344,7 +483,7 @@ error:
 }
 
 static void modprobe_remove_lttng(const struct kern_modules_param *modules,
-		int entries, int required)
+		int entries)
 {
 	int ret = 0, i;
 	char modprobe[256];
@@ -365,7 +504,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		if (ret == -1) {
 			ERR("Unable to launch modprobe -r for module %s",
 					modules[i].name);
-		} else if (required && WEXITSTATUS(ret) != 0) {
+		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED && WEXITSTATUS(ret) != 0) {
 			ERR("Unable to remove module %s",
 					modules[i].name);
 		} else {
@@ -383,8 +522,7 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 void modprobe_remove_lttng_control(void)
 {
 	modprobe_remove_lttng(kern_modules_control_core,
-			      ARRAY_SIZE(kern_modules_control_core),
-			      LTTNG_MOD_REQUIRED);
+			ARRAY_SIZE(kern_modules_control_core));
 }
 
 static void free_probes(void)
@@ -410,7 +548,8 @@ void modprobe_remove_lttng_data(void)
 	if (!probes) {
 		return;
 	}
-	modprobe_remove_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+
+	modprobe_remove_lttng(probes, nr_probes);
 	free_probes();
 }
 
@@ -428,12 +567,8 @@ void modprobe_remove_lttng_all(void)
  */
 int modprobe_lttng_control(void)
 {
-	int ret;
-
-	ret = modprobe_lttng(kern_modules_control_core,
-			     ARRAY_SIZE(kern_modules_control_core),
-			     LTTNG_MOD_REQUIRED);
-	return ret;
+	return modprobe_lttng(kern_modules_control_core,
+			ARRAY_SIZE(kern_modules_control_core));
 }
 
 /**
@@ -467,8 +602,8 @@ static int grow_probes(void)
 	}
 
 	for (i = 0; i < nr_probes; ++i) {
-		/* Move name pointer. */
-		tmp_probes[i].name = probes[i].name;
+		/* Ownership of 'name' field is transferred. */
+		tmp_probes[i] = probes[i];
 	}
 
 	/* Replace probes with larger copy. */
@@ -536,6 +671,8 @@ static int append_list_to_probes(const char *list)
 			goto error;
 		}
 
+		cur_mod->load_policy = KERNEL_MODULE_PROPERTY_LOAD_POLICY_OPTIONAL;
+
 		nr_probes++;
 	}
 
@@ -589,6 +726,7 @@ int modprobe_lttng_data(void)
 			}
 
 			probes[i].name = name;
+			probes[i].load_policy = kern_modules_probes_default[i].load_policy;
 		}
 	}
 
@@ -606,7 +744,7 @@ int modprobe_lttng_data(void)
 	/*
 	 * Load probes modules now.
 	 */
-	ret = modprobe_lttng(probes, nr_probes, LTTNG_MOD_OPTIONAL);
+	ret = modprobe_lttng(probes, nr_probes);
 	if (ret) {
 		goto error;
 	}
