@@ -76,6 +76,24 @@ static int match_two_u64(struct cds_lfht_node *node, const void *key)
 	return hash_match_key_two_u64((void *) &match_node->key, (void *) key);
 }
 
+static inline
+const char *lttng_ht_type_str(enum lttng_ht_type type)
+{
+	switch (type) {
+	case LTTNG_HT_TYPE_STRING:
+		return "STRING";
+	case LTTNG_HT_TYPE_ULONG:
+		return "ULONG";
+	case LTTNG_HT_TYPE_U64:
+		return "U64";
+	case LTTNG_HT_TYPE_TWO_U64:
+		return "TWO_U64";
+	default:
+		ERR("Unknown lttng hashtable type %d", type);
+		abort();
+	}
+}
+
 /*
  * Return an allocated lttng hashtable.
  */
@@ -132,7 +150,8 @@ struct lttng_ht *lttng_ht_new(unsigned long size, int type)
 		goto error;
 	}
 
-	DBG3("Created hashtable size %lu at %p of type %d", size, ht->ht, type);
+	DBG3("Created hashtable size %lu at %p of type %s", size, ht->ht,
+			lttng_ht_type_str(type));
 
 	return ht;
 
