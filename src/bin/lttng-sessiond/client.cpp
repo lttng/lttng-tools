@@ -416,8 +416,6 @@ error:
  * Copy consumer output from the tracing session to the domain session. The
  * function also applies the right modification on a per domain basis for the
  * trace files destination directory.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 static int copy_session_consumer(int domain, struct ltt_session *session)
 {
@@ -481,8 +479,6 @@ error:
 
 /*
  * Create an UST session and add it to the session ust list.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 static int create_ust_session(struct ltt_session *session,
 		const struct lttng_domain *domain)
@@ -919,8 +915,6 @@ end:
  * "sock" is only used for special-case var. len data.
  * A command may assume the ownership of the socket, in which case its value
  * should be set to -1.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		int *sock_error)

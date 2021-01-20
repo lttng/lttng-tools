@@ -1004,8 +1004,6 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 /*
  * Delete a traceable application structure from the global list. Never call
  * this function outside of a call_rcu call.
- *
- * RCU read side lock should _NOT_ be held when calling this function.
  */
 static
 void delete_ust_app(struct ust_app *app)
@@ -4618,8 +4616,6 @@ error:
 
 /*
  * Free and clean all traceable apps of the global list.
- *
- * Should _NOT_ be called with RCU read-side lock held.
  */
 void ust_app_clean_list(void)
 {

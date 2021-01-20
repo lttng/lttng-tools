@@ -574,8 +574,6 @@ void buffer_reg_channel_destroy(struct buffer_reg_channel *regp,
 
 /*
  * Destroy a buffer registry session with the given domain.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 static void buffer_reg_session_destroy(struct buffer_reg_session *regp,
 		enum lttng_domain_type domain)
@@ -735,8 +733,6 @@ void buffer_reg_pid_destroy(struct buffer_reg_pid *regp)
 
 /*
  * Destroy per PID and UID registry hash table.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 void buffer_reg_destroy_registries(void)
 {

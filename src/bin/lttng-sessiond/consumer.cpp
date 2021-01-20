@@ -554,8 +554,6 @@ void consumer_destroy_output_sockets(struct consumer_output *obj)
 
 /*
  * Delete the consumer_output object from the list and free the ptr.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 static void consumer_release_output(struct urcu_ref *ref)
 {
@@ -582,8 +580,6 @@ void consumer_output_get(struct consumer_output *obj)
 
 /*
  * Put the consumer_output object.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 void consumer_output_put(struct consumer_output *obj)
 {
@@ -595,8 +591,6 @@ void consumer_output_put(struct consumer_output *obj)
 
 /*
  * Copy consumer output and returned the newly allocated copy.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 struct consumer_output *consumer_copy_output(struct consumer_output *src)
 {

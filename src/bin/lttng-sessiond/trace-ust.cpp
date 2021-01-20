@@ -1387,8 +1387,6 @@ static void destroy_domain_global(struct ltt_ust_domain_global *dom)
 /*
  * Cleanup ust session structure, keeping data required by
  * destroy notifier.
- *
- * Should *NOT* be called with RCU read-side lock held.
  */
 void trace_ust_destroy_session(struct ltt_ust_session *session)
 {
