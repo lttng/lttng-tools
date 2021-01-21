@@ -3885,6 +3885,13 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 		goto error;
 	}
 
+	ret = lttng_pipe_write_close(app->event_notifier_group.event_pipe);
+	if (ret) {
+		ERR("Failed to close write end of the application's event source pipe: app = '%s' (ppid = %d)",
+				app->name, app->ppid);
+		goto error;
+	}
+
 	lttng_ret = notification_thread_command_add_tracer_event_source(
 			notification_thread_handle,
 			lttng_pipe_get_readfd(app->event_notifier_group.event_pipe),
