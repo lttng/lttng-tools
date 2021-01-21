@@ -3013,7 +3013,7 @@ static int duplicate_stream_object(struct buffer_reg_stream *reg_stream,
 	assert(reg_stream);
 	assert(stream);
 
-	/* Reserve the amount of file descriptor we need. */
+	/* Duplicating a stream requires 2 new fds. Reserve them. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
 	if (ret < 0) {
 		ERR("Exhausted number of available FD upon duplicate stream");
@@ -3049,7 +3049,7 @@ static int duplicate_channel_object(struct buffer_reg_channel *buf_reg_chan,
 	assert(buf_reg_chan);
 	assert(ua_chan);
 
-	/* Need two fds for the channel. */
+	/* Duplicating a channel requires 1 new fd. Reserve it. */
 	ret = lttng_fd_get(LTTNG_FD_APPS, 1);
 	if (ret < 0) {
 		ERR("Exhausted number of available FD upon duplicate channel");
