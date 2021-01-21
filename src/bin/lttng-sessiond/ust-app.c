@@ -952,6 +952,7 @@ void delete_ust_app(struct ust_app *app)
 	struct ust_app_session *ua_sess, *tmp_ua_sess;
 	struct lttng_ht_iter iter;
 	struct ust_app_event_notifier_rule *event_notifier_rule;
+	bool event_notifier_write_fd_is_open;
 
 	/*
 	 * The session list lock must be held during this function to guarantee
@@ -1009,7 +1010,16 @@ void delete_ust_app(struct ust_app *app)
 		free(app->event_notifier_group.object);
 	}
 
+	event_notifier_write_fd_is_open = lttng_pipe_is_write_open(
+			app->event_notifier_group.event_pipe);
 	lttng_pipe_destroy(app->event_notifier_group.event_pipe);
+	/*
+	 * Release the file descriptors reserved for the event notifier pipe.
+	 * The app could be destroyed before the write end of the pipe could be
+	 * passed to the application (and closed). In that case, both file
+	 * descriptors must be released.
+	 */
+	lttng_fd_put(LTTNG_FD_APPS, event_notifier_write_fd_is_open ? 2 : 1);
 
 	/*
 	 * Wait until we have deleted the application from the sock hash table
@@ -3708,6 +3718,7 @@ error:
  */
 struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 {
+	int ret;
 	struct ust_app *lta = NULL;
 	struct lttng_pipe *event_notifier_event_source_pipe = NULL;
 
@@ -3723,6 +3734,18 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 				"%d-bit long, but no consumerd for this size is available.\n",
 				msg->name, msg->pid, msg->bits_per_long);
+		goto error;
+	}
+
+	/*
+	 * Reserve the two file descriptors of the event source pipe. The write
+	 * end will be closed once it is passed to the application, at which
+	 * point a single 'put' will be performed.
+	 */
+	ret = lttng_fd_get(LTTNG_FD_APPS, 2);
+	if (ret) {
+		ERR("Failed to reserve two file descriptors for the event source pipe while creating a new application instance: app = '%s' (ppid: %d)",
+				msg->name, (int) msg->ppid);
 		goto error;
 	}
 
@@ -3783,6 +3806,7 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 
 error_free_pipe:
 	lttng_pipe_destroy(event_notifier_event_source_pipe);
+	lttng_fd_put(LTTNG_FD_APPS, 2);
 error:
 	return NULL;
 }
@@ -3891,6 +3915,12 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 				app->name, app->ppid);
 		goto error;
 	}
+
+	/*
+	 * Release the file descriptor that was reserved for the write-end of
+	 * the pipe.
+	 */
+	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	lttng_ret = notification_thread_command_add_tracer_event_source(
 			notification_thread_handle,
