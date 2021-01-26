@@ -694,6 +694,77 @@ error:
 	return ret;
 }
 
+static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
+		int sock,
+		int *sock_error,
+		struct lttng_trigger **_trigger)
+{
+	int ret;
+	size_t trigger_len;
+	ssize_t sock_recv_len;
+	enum lttng_error_code ret_code;
+	struct lttng_payload trigger_payload;
+	struct lttng_trigger *trigger;
+
+	lttng_payload_init(&trigger_payload);
+	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
+	ret = lttng_dynamic_buffer_set_size(
+			&trigger_payload.buffer, trigger_len);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, trigger_payload.buffer.data, trigger_len);
+	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
+		ERR("Failed to receive trigger in command payload");
+		*sock_error = 1;
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto end;
+	}
+
+	/* Receive fds, if any. */
+	if (cmd_ctx->lsm.fd_count > 0) {
+		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
+				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
+		if (sock_recv_len > 0 &&
+				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			ERR("Failed to receive all file descriptors for trigger in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			*sock_error = 1;
+			goto end;
+		} else if (sock_recv_len <= 0) {
+			ERR("Failed to receive file descriptors for trigger in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_FATAL;
+			*sock_error = 1;
+			goto end;
+		}
+	}
+
+	/* Deserialize trigger. */
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&trigger_payload, 0, -1);
+
+		if (lttng_trigger_create_from_payload(&view, &trigger) !=
+				trigger_len) {
+			ERR("Invalid trigger received as part of command payload");
+			ret_code = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
+	}
+
+	*_trigger = trigger;
+	ret_code = LTTNG_OK;
+
+end:
+	return ret_code;
+}
+
 /*
  * Version of setup_lttng_msg() without command header.
  */
@@ -2055,9 +2126,14 @@ error_add_context:
 	}
 	case LTTNG_REGISTER_TRIGGER:
 	{
+		struct lttng_trigger *payload_trigger;
 		struct lttng_trigger *return_trigger;
-		size_t original_payload_size;
-		size_t payload_size;
+		size_t original_reply_payload_size;
+		size_t reply_payload_size;
+		const struct lttng_credentials cmd_creds = {
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
+		};
 
 		ret = setup_empty_lttng_msg(cmd_ctx);
 		if (ret) {
@@ -2065,37 +2141,55 @@ error_add_context:
 			goto setup_error;
 		}
 
-		original_payload_size = cmd_ctx->reply_payload.buffer.size;
-
-		ret = cmd_register_trigger(cmd_ctx, *sock,
-				notification_thread_handle, &return_trigger);
+		ret = receive_lttng_trigger(
+				cmd_ctx, *sock, sock_error, &payload_trigger);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
 
-		ret = lttng_trigger_serialize(return_trigger, &cmd_ctx->reply_payload);
-		if (ret) {
-			ERR("Failed to serialize trigger in reply to \"register trigger\" command");
-			ret = LTTNG_ERR_NOMEM;
-			lttng_trigger_destroy(return_trigger);
+		original_reply_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		ret = cmd_register_trigger(&cmd_creds, payload_trigger,
+				notification_thread_handle, &return_trigger);
+		if (ret != LTTNG_OK) {
+			lttng_trigger_put(payload_trigger);
 			goto error;
 		}
 
-		lttng_trigger_destroy(return_trigger);
-		return_trigger = NULL;
+		ret = lttng_trigger_serialize(return_trigger, &cmd_ctx->reply_payload);
+		lttng_trigger_put(payload_trigger);
+		lttng_trigger_put(return_trigger);
+		if (ret) {
+			ERR("Failed to serialize trigger in reply to \"register trigger\" command");
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
 
-		payload_size = cmd_ctx->reply_payload.buffer.size -
-			original_payload_size;
+		reply_payload_size = cmd_ctx->reply_payload.buffer.size -
+			original_reply_payload_size;
 
-		update_lttng_msg(cmd_ctx, 0, payload_size);
+		update_lttng_msg(cmd_ctx, 0, reply_payload_size);
 
 		ret = LTTNG_OK;
 		break;
 	}
 	case LTTNG_UNREGISTER_TRIGGER:
 	{
-		ret = cmd_unregister_trigger(cmd_ctx, *sock,
+		struct lttng_trigger *payload_trigger;
+		const struct lttng_credentials cmd_creds = {
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
+		};
+
+		ret = receive_lttng_trigger(
+				cmd_ctx, *sock, sock_error, &payload_trigger);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		ret = cmd_unregister_trigger(&cmd_creds, payload_trigger,
 				notification_thread_handle);
+		lttng_trigger_put(payload_trigger);
 		break;
 	}
 	case LTTNG_ROTATE_SESSION:

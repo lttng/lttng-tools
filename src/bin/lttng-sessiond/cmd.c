@@ -4288,63 +4288,12 @@ end:
 	return ret;
 }
 
-int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
+int cmd_register_trigger(const struct lttng_credentials *cmd_creds,
+		struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread,
 		struct lttng_trigger **return_trigger)
 {
 	int ret;
-	size_t trigger_len;
-	ssize_t sock_recv_len;
-	struct lttng_trigger *trigger = NULL;
-	struct lttng_payload trigger_payload;
-	struct lttng_credentials cmd_creds = {
-		.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
-		.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
-	};
-
-	lttng_payload_init(&trigger_payload);
-	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
-	ret = lttng_dynamic_buffer_set_size(
-			&trigger_payload.buffer, trigger_len);
-	if (ret) {
-		ret = LTTNG_ERR_NOMEM;
-		goto end;
-	}
-
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, trigger_payload.buffer.data, trigger_len);
-	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
-		ERR("Failed to receive \"register trigger\" command payload");
-		ret = LTTNG_ERR_INVALID_PROTOCOL;
-		goto end;
-	}
-
-	/* Receive fds, if any. */
-	if (cmd_ctx->lsm.fd_count > 0) {
-		ret = lttcomm_recv_payload_fds_unix_sock(
-				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
-		if (ret > 0 && ret != cmd_ctx->lsm.fd_count * sizeof(int)) {
-			ret = LTTNG_ERR_INVALID_PROTOCOL;
-			goto end;
-		} else if (ret <= 0) {
-			ret = LTTNG_ERR_FATAL;
-			goto end;
-		}
-	}
-
-	/* Deserialize trigger. */
-	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&trigger_payload, 0, -1);
-
-		if (lttng_trigger_create_from_payload(&view, &trigger) !=
-				trigger_len) {
-			ERR("Invalid trigger payload received in \"register trigger\" command");
-			ret = LTTNG_ERR_INVALID_TRIGGER;
-			goto end;
-		}
-	}
 
 	/*
 	 * Validate the trigger credentials against the command credentials.
@@ -4353,8 +4302,8 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	 */
 	if (!lttng_credentials_is_equal_uid(
 			lttng_trigger_get_credentials(trigger),
-			&cmd_creds)) {
-		if (lttng_credentials_get_uid(&cmd_creds) != 0) {
+			cmd_creds)) {
+		if (lttng_credentials_get_uid(cmd_creds) != 0) {
 			ERR("Trigger credentials do not match the command credentials");
 			ret = LTTNG_ERR_INVALID_TRIGGER;
 			goto end;
@@ -4365,7 +4314,7 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 	 * The bytecode generation also serves as a validation step for the
 	 * bytecode expressions.
 	 */
-	ret = lttng_trigger_generate_bytecode(trigger, &cmd_creds);
+	ret = lttng_trigger_generate_bytecode(trigger, cmd_creds);
 	if (ret != LTTNG_OK) {
 		goto end;
 	}
@@ -4386,74 +4335,28 @@ int cmd_register_trigger(struct command_ctx *cmd_ctx, int sock,
 		goto end_notification_thread;
 	}
 
-	/* Return an updated trigger to the client. */
+	/*
+	 * Return an updated trigger to the client.
+	 *
+	 * Since a modified version of the same trigger is returned, acquire a
+	 * reference to the trigger so the caller doesn't have to care if those
+	 * are distinct instances or not.
+	 */
+	lttng_trigger_get(trigger);
 	*return_trigger = trigger;
 
 end_notification_thread:
 	/* Ownership of trigger was transferred. */
 	trigger = NULL;
 end:
-	lttng_trigger_destroy(trigger);
-	lttng_payload_reset(&trigger_payload);
 	return ret;
 }
 
-int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
+int cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
+		const struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread)
 {
 	int ret;
-	size_t trigger_len;
-	ssize_t sock_recv_len;
-	struct lttng_trigger *trigger = NULL;
-	struct lttng_payload trigger_payload;
-	struct lttng_credentials cmd_creds = {
-		.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
-		.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
-	};
-
-	lttng_payload_init(&trigger_payload);
-	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
-	ret = lttng_dynamic_buffer_set_size(
-			&trigger_payload.buffer, trigger_len);
-	if (ret) {
-		ret = LTTNG_ERR_NOMEM;
-		goto end;
-	}
-
-	sock_recv_len = lttcomm_recv_unix_sock(
-			sock, trigger_payload.buffer.data, trigger_len);
-	if (sock_recv_len < 0 || sock_recv_len != trigger_len) {
-		ERR("Failed to receive \"unregister trigger\" command payload");
-		/* TODO: should this be a new error enum ? */
-		ret = LTTNG_ERR_INVALID_TRIGGER;
-		goto end;
-	}
-
-	/* Receive fds, if any. */
-	if (cmd_ctx->lsm.fd_count > 0) {
-		ret = lttcomm_recv_payload_fds_unix_sock(
-				sock, cmd_ctx->lsm.fd_count, &trigger_payload);
-		if (ret > 0 && ret != cmd_ctx->lsm.fd_count * sizeof(int)) {
-			ret = LTTNG_ERR_INVALID_PROTOCOL;
-			goto end;
-		} else if (ret <= 0) {
-			ret = LTTNG_ERR_FATAL;
-			goto end;
-		}
-	}
-
-	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&trigger_payload, 0, -1);
-
-		if (lttng_trigger_create_from_payload(&view, &trigger) !=
-				trigger_len) {
-			ERR("Invalid trigger payload received in \"unregister trigger\" command");
-			ret = LTTNG_ERR_INVALID_TRIGGER;
-			goto end;
-		}
-	}
 
 	/*
 	 * Validate the trigger credentials against the command credentials.
@@ -4462,8 +4365,8 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 	 */
 	if (!lttng_credentials_is_equal_uid(
 			lttng_trigger_get_credentials(trigger),
-			&cmd_creds)) {
-		if (lttng_credentials_get_uid(&cmd_creds) != 0) {
+			cmd_creds)) {
+		if (lttng_credentials_get_uid(cmd_creds) != 0) {
 			ERR("Trigger credentials do not match the command credentials");
 			ret = LTTNG_ERR_INVALID_TRIGGER;
 			goto end;
@@ -4473,8 +4376,6 @@ int cmd_unregister_trigger(struct command_ctx *cmd_ctx, int sock,
 	ret = notification_thread_command_unregister_trigger(notification_thread,
 			trigger);
 end:
-	lttng_trigger_destroy(trigger);
-	lttng_payload_reset(&trigger_payload);
 	return ret;
 }
 
