@@ -1254,6 +1254,63 @@ static void destroy_all_sessions_and_wait(void)
 	DBG("Destruction of all sessions completed");
 }
 
+static void unregister_all_triggers(void)
+{
+	enum lttng_error_code ret_code;
+	enum lttng_trigger_status trigger_status;
+	struct lttng_triggers *triggers = NULL;
+	unsigned int trigger_count, i;
+	const struct lttng_credentials creds = {
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(0),
+	};
+
+	DBG("Unregistering all triggers");
+
+	/*
+	 * List all triggers as "root" since we wish to unregister all triggers.
+	 */
+	ret_code = notification_thread_command_list_triggers(
+			notification_thread_handle, creds.uid.value, &triggers);
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to list triggers while unregistering all triggers");
+		goto end;
+	}
+
+	trigger_status = lttng_triggers_get_count(triggers, &trigger_count);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	for (i = 0; i < trigger_count; i++) {
+		enum lttng_error_code ret_code;
+		uid_t trigger_owner;
+		const char *trigger_name;
+		const struct lttng_trigger *trigger =
+				lttng_triggers_get_at_index(triggers, i);
+
+		assert(trigger);
+
+		trigger_status = lttng_trigger_get_owner_uid(
+				trigger, &trigger_owner);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		DBG("Unregistering trigger: trigger owner uid = %d, trigger name = '%s'",
+				(int) trigger_owner, trigger_name);
+
+		ret_code = cmd_unregister_trigger(
+				&creds, trigger, notification_thread_handle);
+		if (ret_code != LTTNG_OK) {
+			ERR("Failed to unregister trigger: trigger owner uid = %d, trigger name = '%s', error: '%s'",
+					(int) trigger_owner, trigger_name,
+					lttng_strerror(-ret_code));
+			/* Continue to unregister the remaining triggers. */
+		}
+	}
+end:
+	lttng_triggers_destroy(triggers);
+}
+
 static int run_as_worker_post_fork_cleanup(void *data)
 {
 	struct sessiond_config *sessiond_config = data;
@@ -1771,6 +1828,13 @@ stop_threads:
 	}
 
 	destroy_all_sessions_and_wait();
+
+	/*
+	 * At this point no new trigger can be registered (no sessions are
+	 * running/rotating) and clients can't connect to the session daemon
+	 * anymore. Unregister all triggers.
+	 */
+	unregister_all_triggers();
 
 	if (register_apps_thread) {
 		lttng_thread_shutdown(register_apps_thread);

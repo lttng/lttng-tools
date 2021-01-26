@@ -4314,16 +4314,12 @@ void ust_app_clean_list(void)
 	if (ust_app_ht_by_notify_sock) {
 		cds_lfht_for_each_entry(ust_app_ht_by_notify_sock->ht, &iter.iter, app,
 				notify_sock_n.node) {
-			struct cds_lfht_node *node;
-			struct ust_app *app;
+			/*
+			 * Assert that all notifiers are gone as all triggers
+			 * are unregistered prior to this clean-up.
+			 */
+			assert(lttng_ht_get_count(app->token_to_event_notifier_rule_ht) == 0);
 
-			node = cds_lfht_iter_get_node(&iter.iter);
-			if (!node) {
-				continue;
-			}
-
-			app = container_of(node, struct ust_app,
-					notify_sock_n.node);
 			ust_app_notify_sock_unregister(app->notify_sock);
 		}
 	}

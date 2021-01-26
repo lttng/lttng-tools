@@ -2065,20 +2065,9 @@ error:
 LTTNG_HIDDEN
 void cleanup_kernel_tracer(void)
 {
-	int ret;
-	struct cds_lfht_iter iter;
-	struct ltt_kernel_event_notifier_rule *rule = NULL;
-
-	rcu_read_lock();
-	cds_lfht_for_each_entry(kernel_token_to_event_notifier_rule_ht, &iter, rule, ht_node) {
-		kernel_disable_event_notifier_rule(rule);
-		trace_kernel_destroy_event_notifier_rule(rule);
-	}
-	rcu_read_unlock();
-
 	DBG2("Closing kernel event notifier group notification file descriptor");
 	if (kernel_tracer_event_notifier_group_notification_fd >= 0) {
-		ret = notification_thread_command_remove_tracer_event_source(
+		int ret = notification_thread_command_remove_tracer_event_source(
 				notification_thread_handle,
 				kernel_tracer_event_notifier_group_notification_fd);
 		if (ret != LTTNG_OK) {
@@ -2095,13 +2084,15 @@ void cleanup_kernel_tracer(void)
 	}
 
 	if (kernel_token_to_event_notifier_rule_ht) {
-		ret = cds_lfht_destroy(kernel_token_to_event_notifier_rule_ht, NULL);
+		const int ret = cds_lfht_destroy(
+				kernel_token_to_event_notifier_rule_ht, NULL);
 		assert(ret == 0);
 	}
 
 	DBG2("Closing kernel event notifier group file descriptor");
 	if (kernel_tracer_event_notifier_group_fd >= 0) {
-		ret = close(kernel_tracer_event_notifier_group_fd);
+		const int ret = close(kernel_tracer_event_notifier_group_fd);
+
 		if (ret) {
 			PERROR("Failed to close kernel event notifier group file descriptor: fd = %d",
 					kernel_tracer_event_notifier_group_fd);
@@ -2112,7 +2103,8 @@ void cleanup_kernel_tracer(void)
 
 	DBG2("Closing kernel fd");
 	if (kernel_tracer_fd >= 0) {
-		ret = close(kernel_tracer_fd);
+		const int ret = close(kernel_tracer_fd);
+
 		if (ret) {
 			PERROR("Failed to close kernel tracer file descriptor: fd = %d",
 					kernel_tracer_fd);
