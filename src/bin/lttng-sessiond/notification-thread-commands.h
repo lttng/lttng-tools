@@ -39,8 +39,14 @@ struct notification_thread_command {
 
 	enum notification_thread_command_type type;
 	union {
-		/* Register/Unregister trigger. */
-		struct lttng_trigger *trigger;
+		/* Register trigger. */
+		struct {
+			struct lttng_trigger *trigger;
+		} register_trigger;
+		/* Unregister trigger. */
+		struct {
+			const struct lttng_trigger *trigger;
+		} unregister_trigger;
 		/* Add channel. */
 		struct {
 			struct {
@@ -102,7 +108,7 @@ enum lttng_error_code notification_thread_command_register_trigger(
 
 enum lttng_error_code notification_thread_command_unregister_trigger(
 		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger);
+		const struct lttng_trigger *trigger);
 
 enum lttng_error_code notification_thread_command_add_channel(
 		struct notification_thread_handle *handle,

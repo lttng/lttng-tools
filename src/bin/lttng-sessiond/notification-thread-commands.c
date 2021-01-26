@@ -122,7 +122,7 @@ enum lttng_error_code notification_thread_command_register_trigger(
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER;
 	lttng_trigger_get(trigger);
-	cmd.parameters.trigger = trigger;
+	cmd.parameters.register_trigger.trigger = trigger;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {
@@ -136,7 +136,7 @@ end:
 
 enum lttng_error_code notification_thread_command_unregister_trigger(
 		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger)
+		const struct lttng_trigger *trigger)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -145,7 +145,7 @@ enum lttng_error_code notification_thread_command_unregister_trigger(
 	init_notification_thread_command(&cmd);
 
 	cmd.type = NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER;
-	cmd.parameters.trigger = trigger;
+	cmd.parameters.unregister_trigger.trigger = trigger;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {

@@ -2670,7 +2670,7 @@ void free_notification_trigger_tokens_ht_element_rcu(struct rcu_head *node)
 static
 int handle_notification_thread_command_unregister_trigger(
 		struct notification_thread_state *state,
-		struct lttng_trigger *trigger,
+		const struct lttng_trigger *trigger,
 		enum lttng_error_code *_cmd_reply)
 {
 	struct cds_lfht_iter iter;
@@ -2678,7 +2678,7 @@ int handle_notification_thread_command_unregister_trigger(
 	struct lttng_channel_trigger_list *trigger_list;
 	struct notification_client_list *client_list;
 	struct lttng_trigger_ht_element *trigger_ht_element = NULL;
-	struct lttng_condition *condition = lttng_trigger_get_condition(
+	const struct lttng_condition *condition = lttng_trigger_get_const_condition(
 			trigger);
 	enum lttng_error_code cmd_reply;
 
@@ -2792,14 +2792,15 @@ int handle_notification_thread_command(
 	switch (cmd->type) {
 	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
 		DBG("[notification-thread] Received register trigger command");
-		ret = handle_notification_thread_command_register_trigger(
-				state, cmd->parameters.trigger,
+		ret = handle_notification_thread_command_register_trigger(state,
+				cmd->parameters.register_trigger.trigger,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER:
 		DBG("[notification-thread] Received unregister trigger command");
 		ret = handle_notification_thread_command_unregister_trigger(
-				state, cmd->parameters.trigger,
+				state,
+				cmd->parameters.unregister_trigger.trigger,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_ADD_CHANNEL:
