@@ -1955,6 +1955,7 @@ int handle_notification_thread_command_remove_tracer_event_source(
 		enum lttng_error_code *_cmd_result)
 {
 	int ret = 0;
+	bool found = false;
 	enum lttng_error_code cmd_result = LTTNG_OK;
 	struct notification_event_tracer_event_source_element *source_element = NULL, *tmp;
 
@@ -1968,11 +1969,19 @@ int handle_notification_thread_command_remove_tracer_event_source(
 				tracer_event_source_fd,
 				lttng_domain_type_str(source_element->domain));
 		cds_list_del(&source_element->node);
+		found = true;
 		break;
 	}
 
-	/* It should always be found. */
-	assert(source_element);
+	if (!found) {
+		/*
+		 * This is temporarily allowed since the poll activity set is
+		 * not properly cleaned-up for the moment. This is adressed in
+		 * an upcoming fix.
+		 */
+		source_element = NULL;
+		goto end;
+	}
 
 	if (!source_element->is_fd_in_poll_set) {
 		/* Skip the poll set removal. */
