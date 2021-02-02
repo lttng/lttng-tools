@@ -42,7 +42,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	uint64_t key, chan_reg_key;
 	char *pathname = NULL;
 	struct lttcomm_consumer_msg msg;
-	struct ust_registry_channel *chan_reg;
+	struct ust_registry_channel *ust_reg_chan;
 	char shm_path[PATH_MAX] = "";
 	char root_shm_path[PATH_MAX] = "";
 	bool is_local_trace;
@@ -105,9 +105,9 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		 * those buffer files.
 		 */
 	} else {
-		chan_reg = ust_registry_channel_find(registry, chan_reg_key);
-		assert(chan_reg);
-		chan_id = chan_reg->chan_id;
+		ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
+		assert(ust_reg_chan);
+		chan_id = ust_reg_chan->chan_id;
 		if (ua_sess->shm_path[0]) {
 			strncpy(shm_path, ua_sess->shm_path, sizeof(shm_path));
 			shm_path[sizeof(shm_path) - 1] = '\0';

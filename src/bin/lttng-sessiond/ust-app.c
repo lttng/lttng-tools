@@ -3013,12 +3013,12 @@ error:
  *
  * Return 0 on success or else a negative value.
  */
-static int duplicate_channel_object(struct buffer_reg_channel *reg_chan,
+static int duplicate_channel_object(struct buffer_reg_channel *buf_reg_chan,
 		struct ust_app_channel *ua_chan)
 {
 	int ret;
 
-	assert(reg_chan);
+	assert(buf_reg_chan);
 	assert(ua_chan);
 
 	/* Need two fds for the channel. */
@@ -3029,10 +3029,10 @@ static int duplicate_channel_object(struct buffer_reg_channel *reg_chan,
 	}
 
 	/* Duplicate object for stream once the original is in the registry. */
-	ret = ustctl_duplicate_ust_object_data(&ua_chan->obj, reg_chan->obj.ust);
+	ret = ustctl_duplicate_ust_object_data(&ua_chan->obj, buf_reg_chan->obj.ust);
 	if (ret < 0) {
 		ERR("Duplicate channel obj from %p to %p failed with ret: %d",
-				reg_chan->obj.ust, ua_chan->obj, ret);
+				buf_reg_chan->obj.ust, ua_chan->obj, ret);
 		goto error;
 	}
 	ua_chan->handle = ua_chan->obj->handle;
@@ -3051,14 +3051,14 @@ error_fd_get:
  *
  * Return 0 on success or else a negative value.
  */
-static int setup_buffer_reg_streams(struct buffer_reg_channel *reg_chan,
+static int setup_buffer_reg_streams(struct buffer_reg_channel *buf_reg_chan,
 		struct ust_app_channel *ua_chan,
 		struct ust_app *app)
 {
 	int ret = 0;
 	struct ust_app_stream *stream, *stmp;
 
-	assert(reg_chan);
+	assert(buf_reg_chan);
 	assert(ua_chan);
 
 	DBG2("UST app setup buffer registry stream");
@@ -3078,7 +3078,7 @@ static int setup_buffer_reg_streams(struct buffer_reg_channel *reg_chan,
 		 */
 		reg_stream->obj.ust = stream->obj;
 		stream->obj = NULL;
-		buffer_reg_stream_add(reg_stream, reg_chan);
+		buffer_reg_stream_add(reg_stream, buf_reg_chan);
 
 		/* We don't need the streams anymore. */
 		cds_list_del(&stream->list);
@@ -3101,7 +3101,7 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 		struct ust_app_channel *ua_chan, struct buffer_reg_channel **regp)
 {
 	int ret;
-	struct buffer_reg_channel *reg_chan = NULL;
+	struct buffer_reg_channel *buf_reg_chan = NULL;
 
 	assert(reg_sess);
 	assert(ua_chan);
@@ -3109,14 +3109,14 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	DBG2("UST app creating buffer registry channel for %s", ua_chan->name);
 
 	/* Create buffer registry channel. */
-	ret = buffer_reg_channel_create(ua_chan->tracing_channel_id, &reg_chan);
+	ret = buffer_reg_channel_create(ua_chan->tracing_channel_id, &buf_reg_chan);
 	if (ret < 0) {
 		goto error_create;
 	}
-	assert(reg_chan);
-	reg_chan->consumer_key = ua_chan->key;
-	reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
-	reg_chan->num_subbuf = ua_chan->attr.num_subbuf;
+	assert(buf_reg_chan);
+	buf_reg_chan->consumer_key = ua_chan->key;
+	buf_reg_chan->subbuf_size = ua_chan->attr.subbuf_size;
+	buf_reg_chan->num_subbuf = ua_chan->attr.num_subbuf;
 
 	/* Create and add a channel registry to session. */
 	ret = ust_registry_channel_add(reg_sess->reg.ust,
@@ -3124,17 +3124,17 @@ static int create_buffer_reg_channel(struct buffer_reg_session *reg_sess,
 	if (ret < 0) {
 		goto error;
 	}
-	buffer_reg_channel_add(reg_sess, reg_chan);
+	buffer_reg_channel_add(reg_sess, buf_reg_chan);
 
 	if (regp) {
-		*regp = reg_chan;
+		*regp = buf_reg_chan;
 	}
 
 	return 0;
 
 error:
 	/* Safe because the registry channel object was not added to any HT. */
-	buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
+	buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
 error_create:
 	return ret;
 }
@@ -3146,32 +3146,32 @@ error_create:
  * Return 0 on success else a negative value.
  */
 static int setup_buffer_reg_channel(struct buffer_reg_session *reg_sess,
-		struct ust_app_channel *ua_chan, struct buffer_reg_channel *reg_chan,
+		struct ust_app_channel *ua_chan, struct buffer_reg_channel *buf_reg_chan,
 		struct ust_app *app)
 {
 	int ret;
 
 	assert(reg_sess);
-	assert(reg_chan);
+	assert(buf_reg_chan);
 	assert(ua_chan);
 	assert(ua_chan->obj);
 
 	DBG2("UST app setup buffer registry channel for %s", ua_chan->name);
 
 	/* Setup all streams for the registry. */
-	ret = setup_buffer_reg_streams(reg_chan, ua_chan, app);
+	ret = setup_buffer_reg_streams(buf_reg_chan, ua_chan, app);
 	if (ret < 0) {
 		goto error;
 	}
 
-	reg_chan->obj.ust = ua_chan->obj;
+	buf_reg_chan->obj.ust = ua_chan->obj;
 	ua_chan->obj = NULL;
 
 	return 0;
 
 error:
-	buffer_reg_channel_remove(reg_sess, reg_chan);
-	buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
+	buffer_reg_channel_remove(reg_sess, buf_reg_chan);
+	buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
 	return ret;
 }
 
@@ -3180,21 +3180,21 @@ error:
  *
  * Return 0 on success else a negative value.
  */
-static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
+static int send_channel_uid_to_ust(struct buffer_reg_channel *buf_reg_chan,
 		struct ust_app *app, struct ust_app_session *ua_sess,
 		struct ust_app_channel *ua_chan)
 {
 	int ret;
 	struct buffer_reg_stream *reg_stream;
 
-	assert(reg_chan);
+	assert(buf_reg_chan);
 	assert(app);
 	assert(ua_sess);
 	assert(ua_chan);
 
 	DBG("UST app sending buffer registry channel to ust sock %d", app->sock);
 
-	ret = duplicate_channel_object(reg_chan, ua_chan);
+	ret = duplicate_channel_object(buf_reg_chan, ua_chan);
 	if (ret < 0) {
 		goto error;
 	}
@@ -3211,8 +3211,8 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 	health_code_update();
 
 	/* Send all streams to application. */
-	pthread_mutex_lock(&reg_chan->stream_list_lock);
-	cds_list_for_each_entry(reg_stream, &reg_chan->streams, lnode) {
+	pthread_mutex_lock(&buf_reg_chan->stream_list_lock);
+	cds_list_for_each_entry(reg_stream, &buf_reg_chan->streams, lnode) {
 		struct ust_app_stream stream;
 
 		ret = duplicate_stream_object(reg_stream, &stream);
@@ -3238,7 +3238,7 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 	ua_chan->is_sent = 1;
 
 error_stream_unlock:
-	pthread_mutex_unlock(&reg_chan->stream_list_lock);
+	pthread_mutex_unlock(&buf_reg_chan->stream_list_lock);
 error:
 	return ret;
 }
@@ -3257,10 +3257,10 @@ static int create_channel_per_uid(struct ust_app *app,
 {
 	int ret;
 	struct buffer_reg_uid *reg_uid;
-	struct buffer_reg_channel *reg_chan;
+	struct buffer_reg_channel *buf_reg_chan;
 	struct ltt_session *session = NULL;
 	enum lttng_error_code notification_ret;
-	struct ust_registry_channel *chan_reg;
+	struct ust_registry_channel *ust_reg_chan;
 
 	assert(app);
 	assert(usess);
@@ -3277,14 +3277,14 @@ static int create_channel_per_uid(struct ust_app *app,
 	 */
 	assert(reg_uid);
 
-	reg_chan = buffer_reg_channel_find(ua_chan->tracing_channel_id,
+	buf_reg_chan = buffer_reg_channel_find(ua_chan->tracing_channel_id,
 			reg_uid);
-	if (reg_chan) {
+	if (buf_reg_chan) {
 		goto send_channel;
 	}
 
 	/* Create the buffer registry channel object. */
-	ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &reg_chan);
+	ret = create_buffer_reg_channel(reg_uid->registry, ua_chan, &buf_reg_chan);
 	if (ret < 0) {
 		ERR("Error creating the UST channel \"%s\" registry instance",
 				ua_chan->name);
@@ -3313,8 +3313,8 @@ static int create_channel_per_uid(struct ust_app *app,
 		 */
 		ust_registry_channel_del_free(reg_uid->registry->reg.ust,
 				ua_chan->tracing_channel_id, false);
-		buffer_reg_channel_remove(reg_uid->registry, reg_chan);
-		buffer_reg_channel_destroy(reg_chan, LTTNG_DOMAIN_UST);
+		buffer_reg_channel_remove(reg_uid->registry, buf_reg_chan);
+		buffer_reg_channel_destroy(buf_reg_chan, LTTNG_DOMAIN_UST);
 		goto error;
 	}
 
@@ -3322,7 +3322,7 @@ static int create_channel_per_uid(struct ust_app *app,
 	 * Setup the streams and add it to the session registry.
 	 */
 	ret = setup_buffer_reg_channel(reg_uid->registry,
-			ua_chan, reg_chan, app);
+			ua_chan, buf_reg_chan, app);
 	if (ret < 0) {
 		ERR("Error setting up UST channel \"%s\"", ua_chan->name);
 		goto error;
@@ -3330,11 +3330,11 @@ static int create_channel_per_uid(struct ust_app *app,
 
 	/* Notify the notification subsystem of the channel's creation. */
 	pthread_mutex_lock(&reg_uid->registry->reg.ust->lock);
-	chan_reg = ust_registry_channel_find(reg_uid->registry->reg.ust,
+	ust_reg_chan = ust_registry_channel_find(reg_uid->registry->reg.ust,
 			ua_chan->tracing_channel_id);
-	assert(chan_reg);
-	chan_reg->consumer_key = ua_chan->key;
-	chan_reg = NULL;
+	assert(ust_reg_chan);
+	ust_reg_chan->consumer_key = ua_chan->key;
+	ust_reg_chan = NULL;
 	pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
 
 	notification_ret = notification_thread_command_add_channel(
@@ -3352,7 +3352,7 @@ static int create_channel_per_uid(struct ust_app *app,
 
 send_channel:
 	/* Send buffers to the application. */
-	ret = send_channel_uid_to_ust(reg_chan, app, ua_sess, ua_chan);
+	ret = send_channel_uid_to_ust(buf_reg_chan, app, ua_sess, ua_chan);
 	if (ret < 0) {
 		if (ret != -ENOTCONN) {
 			ERR("Error sending channel to application");
@@ -3384,7 +3384,7 @@ static int create_channel_per_pid(struct ust_app *app,
 	enum lttng_error_code cmd_ret;
 	struct ltt_session *session = NULL;
 	uint64_t chan_reg_key;
-	struct ust_registry_channel *chan_reg;
+	struct ust_registry_channel *ust_reg_chan;
 
 	assert(app);
 	assert(usess);
@@ -3433,9 +3433,9 @@ static int create_channel_per_pid(struct ust_app *app,
 
 	chan_reg_key = ua_chan->key;
 	pthread_mutex_lock(&registry->lock);
-	chan_reg = ust_registry_channel_find(registry, chan_reg_key);
-	assert(chan_reg);
-	chan_reg->consumer_key = ua_chan->key;
+	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
+	assert(ust_reg_chan);
+	ust_reg_chan->consumer_key = ua_chan->key;
 	pthread_mutex_unlock(&registry->lock);
 
 	cmd_ret = notification_thread_command_add_channel(
@@ -5192,7 +5192,7 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 		/* Flush all per UID buffers associated to that session. */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
 			struct ust_registry_session *ust_session_reg;
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
 			/* Get consumer socket to use to push the metadata.*/
@@ -5204,13 +5204,13 @@ int ust_app_flush_session(struct ltt_ust_session *usess)
 			}
 
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
-					reg_chan, node.node) {
+					buf_reg_chan, node.node) {
 				/*
 				 * The following call will print error values so the return
 				 * code is of little importance because whatever happens, we
 				 * have to try them all.
 				 */
-				(void) consumer_flush_channel(socket, reg_chan->consumer_key);
+				(void) consumer_flush_channel(socket, buf_reg_chan->consumer_key);
 			}
 
 			ust_session_reg = reg->registry->reg.ust;
@@ -5339,7 +5339,7 @@ int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 		 */
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
 			struct consumer_socket *socket;
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 
 			/* Get associated consumer socket.*/
 			socket = consumer_find_socket_by_bitness(
@@ -5353,7 +5353,7 @@ int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 			}
 
 			cds_lfht_for_each_entry(reg->registry->channels->ht,
-					&iter.iter, reg_chan, node.node) {
+					&iter.iter, buf_reg_chan, node.node) {
 				/*
 				 * The following call will print error values so
 				 * the return code is of little importance
@@ -5361,7 +5361,7 @@ int ust_app_clear_quiescent_session(struct ltt_ust_session *usess)
 				 * all.
 				 */
 				(void) consumer_clear_quiescent_channel(socket,
-						reg_chan->consumer_key);
+						buf_reg_chan->consumer_key);
 			}
 		}
 		break;
@@ -6121,7 +6121,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	struct ust_app_channel *ua_chan;
 	struct ust_app_session *ua_sess;
 	struct ust_registry_session *registry;
-	struct ust_registry_channel *chan_reg;
+	struct ust_registry_channel *ust_reg_chan;
 
 	rcu_read_lock();
 
@@ -6162,30 +6162,30 @@ static int reply_ust_register_channel(int sock, int cobjd,
 
 	pthread_mutex_lock(&registry->lock);
 
-	chan_reg = ust_registry_channel_find(registry, chan_reg_key);
-	assert(chan_reg);
+	ust_reg_chan = ust_registry_channel_find(registry, chan_reg_key);
+	assert(ust_reg_chan);
 
-	if (!chan_reg->register_done) {
+	if (!ust_reg_chan->register_done) {
 		/*
 		 * TODO: eventually use the registry event count for
 		 * this channel to better guess header type for per-pid
 		 * buffers.
 		 */
 		type = USTCTL_CHANNEL_HEADER_LARGE;
-		chan_reg->nr_ctx_fields = nr_fields;
-		chan_reg->ctx_fields = fields;
+		ust_reg_chan->nr_ctx_fields = nr_fields;
+		ust_reg_chan->ctx_fields = fields;
 		fields = NULL;
-		chan_reg->header_type = type;
+		ust_reg_chan->header_type = type;
 	} else {
 		/* Get current already assigned values. */
-		type = chan_reg->header_type;
+		type = ust_reg_chan->header_type;
 	}
 	/* Channel id is set during the object creation. */
-	chan_id = chan_reg->chan_id;
+	chan_id = ust_reg_chan->chan_id;
 
 	/* Append to metadata */
-	if (!chan_reg->metadata_dumped) {
-		ret_code = ust_metadata_channel_statedump(registry, chan_reg);
+	if (!ust_reg_chan->metadata_dumped) {
+		ret_code = ust_metadata_channel_statedump(registry, ust_reg_chan);
 		if (ret_code) {
 			ERR("Error appending channel metadata (errno = %d)", ret_code);
 			goto reply;
@@ -6208,7 +6208,7 @@ reply:
 	}
 
 	/* This channel registry registration is completed. */
-	chan_reg->register_done = 1;
+	ust_reg_chan->register_done = 1;
 
 error:
 	pthread_mutex_unlock(&registry->lock);
@@ -6650,7 +6650,7 @@ enum lttng_error_code ust_app_snapshot_record(
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 			char pathname[PATH_MAX];
 			size_t consumer_path_offset = 0;
@@ -6687,9 +6687,9 @@ enum lttng_error_code ust_app_snapshot_record(
 			}
 			/* Add the UST default trace dir to path. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
-					reg_chan, node.node) {
+					buf_reg_chan, node.node) {
 				status = consumer_snapshot_channel(socket,
-						reg_chan->consumer_key,
+						buf_reg_chan->consumer_key,
 						output, 0, usess->uid,
 						usess->gid, &trace_path[consumer_path_offset], wait,
 						nb_packets_per_stream);
@@ -6817,19 +6817,19 @@ uint64_t ust_app_get_size_one_more_packet_per_stream(
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 
 			rcu_read_lock();
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
-					reg_chan, node.node) {
-				if (cur_nr_packets >= reg_chan->num_subbuf) {
+					buf_reg_chan, node.node) {
+				if (cur_nr_packets >= buf_reg_chan->num_subbuf) {
 					/*
 					 * Don't take channel into account if we
 					 * already grab all its packets.
 					 */
 					continue;
 				}
-				tot_size += reg_chan->subbuf_size * reg_chan->stream_count;
+				tot_size += buf_reg_chan->subbuf_size * buf_reg_chan->stream_count;
 			}
 			rcu_read_unlock();
 		}
@@ -7053,7 +7053,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
 			if (!reg->registry->reg.ust->metadata_key) {
@@ -7071,9 +7071,9 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 
 			/* Rotate the data channels. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
-					reg_chan, node.node) {
+					buf_reg_chan, node.node) {
 				ret = consumer_rotate_channel(socket,
-						reg_chan->consumer_key,
+						buf_reg_chan->consumer_key,
 						usess->uid, usess->gid,
 						usess->consumer,
 						/* is_metadata_channel */ false);
@@ -7310,7 +7310,7 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 		struct buffer_reg_uid *reg;
 
 		cds_list_for_each_entry(reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
 			/* Get consumer socket to use to push the metadata.*/
@@ -7323,9 +7323,9 @@ enum lttng_error_code ust_app_clear_session(struct ltt_session *session)
 
 			/* Clear the data channels. */
 			cds_lfht_for_each_entry(reg->registry->channels->ht, &iter.iter,
-					reg_chan, node.node) {
+					buf_reg_chan, node.node) {
 				ret = consumer_clear_channel(socket,
-						reg_chan->consumer_key);
+						buf_reg_chan->consumer_key);
 				if (ret < 0) {
 					goto error;
 				}
@@ -7462,7 +7462,7 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 
 		cds_list_for_each_entry (
 				reg, &usess->buffer_reg_uid_list, lnode) {
-			struct buffer_reg_channel *reg_chan;
+			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
 			socket = consumer_find_socket_by_bitness(
@@ -7473,11 +7473,11 @@ enum lttng_error_code ust_app_open_packets(struct ltt_session *session)
 			}
 
 			cds_lfht_for_each_entry(reg->registry->channels->ht,
-					&iter.iter, reg_chan, node.node) {
+					&iter.iter, buf_reg_chan, node.node) {
 				const int open_ret =
 						consumer_open_channel_packets(
 							socket,
-							reg_chan->consumer_key);
+							buf_reg_chan->consumer_key);
 
 				if (open_ret < 0) {
 					ret = LTTNG_ERR_UNK;
