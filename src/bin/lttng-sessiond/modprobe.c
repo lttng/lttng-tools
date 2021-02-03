@@ -496,7 +496,7 @@ static int append_list_to_probes(const char *list)
 {
 	char *next;
 	int ret;
-	char *tmp_list, *cur_list;
+	char *tmp_list, *cur_list, *saveptr;
 
 	assert(list);
 
@@ -510,7 +510,7 @@ static int append_list_to_probes(const char *list)
 		size_t name_len;
 		struct kern_modules_param *cur_mod;
 
-		next = strtok(cur_list, ",");
+		next = strtok_r(cur_list, ",", &saveptr);
 		if (!next) {
 			break;
 		}
