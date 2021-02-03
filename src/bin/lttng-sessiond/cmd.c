@@ -4323,7 +4323,9 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	enum lttng_trigger_status trigger_status;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
+			trigger_name : "(unnamed)";
+
 	trigger_status = lttng_trigger_get_owner_uid(
 		trigger, &trigger_owner);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
@@ -4373,10 +4375,14 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	ret_code = notification_thread_command_register_trigger(notification_thread,
 			trigger);
 	if (ret_code != LTTNG_OK) {
-		ERR("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
+		DBG("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
 		goto end_notification_thread;
 	}
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
+			trigger_name : "(unnamed)";
 
 	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifier);
 	if (ret_code != LTTNG_OK) {
@@ -4443,7 +4449,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	enum lttng_trigger_status trigger_status;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(unnamed)";
 	trigger_status = lttng_trigger_get_owner_uid(
 		trigger, &trigger_owner);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
@@ -4479,7 +4485,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	ret_code = notification_thread_command_unregister_trigger(notification_thread,
 								  trigger);
 	if (ret_code != LTTNG_OK) {
-		ERR("Failed to unregister trigger from notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
+		DBG("Failed to unregister trigger from notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
 	}
 
