@@ -69,7 +69,7 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 {
 	int i = 0, ignore_space = 0;
 	unsigned int num_opts = 1;
-	char **argv, *token = opts;
+	char **argv, *token = opts, *saveptr;
 
 	/* Count number of arguments. */
 	do {
@@ -91,13 +91,13 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 		goto error;
 	}
 
-	token = strtok(opts, " ");
+	token = strtok_r(opts, " ", &saveptr);
 	while (token != NULL) {
 		argv[i] = strdup(token);
 		if (argv[i] == NULL) {
 			goto error;
 		}
-		token = strtok(NULL, " ");
+		token = strtok_r(NULL, " ", &saveptr);
 		i++;
 	}
 
