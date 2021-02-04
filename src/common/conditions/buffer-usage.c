@@ -62,8 +62,8 @@ bool lttng_condition_buffer_usage_validate(
 		ERR("Invalid buffer condition: a target channel name must be set.");
 		goto end;
 	}
-	if (!usage->threshold_ratio.set && !usage->threshold_bytes.set) {
-		ERR("Invalid buffer condition: a threshold must be set.");
+	if (usage->threshold_ratio.set == usage->threshold_bytes.set) {
+		ERR("Invalid buffer condition: a threshold must be set or both type cannot be used simultaneously.");
 		goto end;
 	}
 	if (!usage->domain.set) {
