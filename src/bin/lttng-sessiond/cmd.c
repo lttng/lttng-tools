@@ -4317,7 +4317,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 		struct lttng_trigger **return_trigger)
 {
 	enum lttng_error_code ret_code;
-	bool must_update_event_notifier;
+	bool must_update_event_notifiers;
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
@@ -4384,7 +4384,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
 			trigger_name : "(unnamed)";
 
-	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifier);
+	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifiers);
 	if (ret_code != LTTNG_OK) {
 		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
@@ -4394,10 +4394,11 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	/*
 	 * Synchronize tracers if the trigger adds an event notifier.
 	 */
-	if (must_update_event_notifier) {
+	if (must_update_event_notifiers) {
 		const enum lttng_domain_type trigger_domain =
 				lttng_trigger_get_underlying_domain_type_restriction(trigger);
 
+		session_lock_list();
 		switch (trigger_domain) {
 		case LTTNG_DOMAIN_KERNEL:
 		{
@@ -4434,19 +4435,21 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 				agt = agent_create(trigger_domain);
 				if (!agt) {
 					ret_code = LTTNG_ERR_NOMEM;
-					goto end;
+					goto end_unlock_session_list;
 				}
 				agent_add(agt, trigger_agents_ht_by_domain);
 			}
 
 			ret_code = trigger_agent_enable(trigger, agt);
 			if (ret_code != LTTNG_OK) {
-				goto end;
+				goto end_unlock_session_list;
 			}
 
 			break;
 		}
 		}
+
+		session_unlock_list();
 	}
 
 	/*
@@ -4462,6 +4465,9 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	trigger = NULL;
 end:
 	return ret_code;
+end_unlock_session_list:
+	session_unlock_list();
+	return ret_code;
 }
 
 enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd_creds,
@@ -4469,7 +4475,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		struct notification_thread_handle *notification_thread)
 {
 	enum lttng_error_code ret_code;
-	bool must_update_event_notifier;
+	bool must_update_event_notifiers;
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
@@ -4501,7 +4507,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		}
 	}
 
-	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifier);
+	ret_code = trigger_modifies_event_notifier(trigger, &must_update_event_notifiers);
 	if (ret_code != LTTNG_OK) {
 		ERR("Failed to determine if event modifies event notifiers: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
@@ -4521,11 +4527,12 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	 * the tracers from producing notifications associated with this
 	 * event notifier.
 	 */
-	if (must_update_event_notifier) {
+	if (must_update_event_notifiers) {
 		const enum lttng_domain_type trigger_domain =
 				lttng_trigger_get_underlying_domain_type_restriction(
 						trigger);
 
+		session_lock_list();
 		switch (trigger_domain) {
 		case LTTNG_DOMAIN_KERNEL:
 		{
@@ -4548,24 +4555,28 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 				agt = agent_create(trigger_domain);
 				if (!agt) {
 					ret_code = LTTNG_ERR_NOMEM;
-					goto end;
+					goto end_unlock_session_list;
 				}
 				agent_add(agt, trigger_agents_ht_by_domain);
 			}
 
 			ret_code = trigger_agent_disable(trigger, agt);
 			if (ret_code != LTTNG_OK) {
-				goto end;
+				goto end_unlock_session_list;
 			}
 
 			break;
 		}
 		}
+
+		session_unlock_list();
 	}
 
 end:
 	return ret_code;
-}
+end_unlock_session_list:
+	session_unlock_list();
+	return ret_code;}
 
 int cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread,

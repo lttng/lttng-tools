@@ -206,7 +206,7 @@ void session_unlock(struct ltt_session *session);
  * also used as a multi-session lock when synchronizing newly-registered
  * 'user space tracer' and 'agent' applications.
  *
- * In other words, it prevents session configurations from changing while they
+ * In other words, it prevents tracer configurations from changing while they
  * are being transmitted to the various applications.
  */
 void session_lock_list(void);
