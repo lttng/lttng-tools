@@ -201,6 +201,23 @@ int config_writer_write_element_string(struct config_writer *writer,
 		const char *element_name, const char *value);
 
 /*
+ * Write an element of type double.
+ *
+ * writer An instance of a configuration writer.
+ *
+ * element_name Element name.
+ *
+ * value Double value of the element
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+LTTNG_HIDDEN
+int config_writer_write_element_double(struct config_writer *writer,
+		const char *element_name,
+		double value);
+
+/*
  * Load session configurations from a file.
  *
  * path Path to an LTTng session configuration file. All *.lttng files

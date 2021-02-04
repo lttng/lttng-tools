@@ -722,6 +722,15 @@ int mi_lttng_writer_write_element_string(struct mi_writer *writer,
 }
 
 LTTNG_HIDDEN
+int mi_lttng_writer_write_element_double(struct mi_writer *writer,
+		const char *element_name,
+		double value)
+{
+	return config_writer_write_element_double(
+			writer->writer, element_name, value);
+}
+
+LTTNG_HIDDEN
 int mi_lttng_version(struct mi_writer *writer, struct mi_lttng_version *version,
 	const char *lttng_description, const char *lttng_license)
 {

@@ -354,6 +354,20 @@ int mi_lttng_writer_write_element_string(struct mi_writer *writer,
 		const char *element_name, const char *value);
 
 /*
+ * Write an element of type double.
+ *
+ * writer An instance of a machine interface writer.
+ * element_name Element name.
+ * value Double value of the element.
+ *
+ * Returns zero if the element's value could be written.
+ * Negative values indicate an error.
+ */
+int mi_lttng_writer_write_element_double(struct mi_writer *writer,
+		const char *element_name,
+		double value);
+
+/*
  * Machine interface of struct version.
  *
  * writer An instance of a machine interface writer.

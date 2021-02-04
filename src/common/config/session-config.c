@@ -640,6 +640,32 @@ int config_writer_write_element_bool(struct config_writer *writer,
 }
 
 LTTNG_HIDDEN
+int config_writer_write_element_double(struct config_writer *writer,
+		const char *element_name,
+		double value)
+{
+	int ret;
+	xmlChar *encoded_element_name;
+
+	if (!writer || !writer->writer || !element_name || !element_name[0]) {
+		ret = -1;
+		goto end;
+	}
+
+	encoded_element_name = encode_string(element_name);
+	if (!encoded_element_name) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = xmlTextWriterWriteFormatElement(
+			writer->writer, encoded_element_name, "%f", value);
+	xmlFree(encoded_element_name);
+end:
+	return ret >= 0 ? 0 : ret;
+}
+
+LTTNG_HIDDEN
 int config_writer_write_element_string(struct config_writer *writer,
 		const char *element_name, const char *value)
 {
