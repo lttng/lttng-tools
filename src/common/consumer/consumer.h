@@ -1052,5 +1052,6 @@ enum lttcomm_return_code lttng_consumer_init_command(
 int lttng_consumer_clear_channel(struct lttng_consumer_channel *channel);
 enum lttcomm_return_code lttng_consumer_open_channel_packets(
 		struct lttng_consumer_channel *channel);
+int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel);
 
 #endif /* LIB_CONSUMER_H */

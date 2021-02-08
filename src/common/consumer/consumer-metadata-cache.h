@@ -11,6 +11,27 @@
 
 #include <common/consumer/consumer.h>
 
+enum consumer_metadata_cache_write_status {
+	CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR = -1,
+	/*
+	 * New metadata content was appended to the cache successfully.
+	 * Previously available content remains valid.
+	 */
+	CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT = 0,
+	/*
+	 * The new content pushed to the cache invalidated the content that
+	 * was already present. The contents of the cache should be re-read.
+	 */
+	CONSUMER_METADATA_CACHE_WRITE_STATUS_INVALIDATED,
+	/*
+	 * A metadata cache write can simply overwrite an already existing
+	 * section of the cache (and it should be a write-through with identical
+	 * data). From the caller's standpoint, there is no change to the state
+	 * of the cache.
+	 */
+	CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE,
+};
+
 struct consumer_metadata_cache {
 	char *data;
 	uint64_t cache_alloc_size;
@@ -35,13 +56,13 @@ struct consumer_metadata_cache {
 	pthread_mutex_t lock;
 };
 
-int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
+enum consumer_metadata_cache_write_status
+consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		unsigned int offset, unsigned int len, uint64_t version,
 		const char *data);
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);
 void consumer_metadata_cache_destroy(struct lttng_consumer_channel *channel);
 int consumer_metadata_cache_flushed(struct lttng_consumer_channel *channel,
 		uint64_t offset, int timer);
-int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel);
 
 #endif /* CONSUMER_METADATA_CACHE_H */

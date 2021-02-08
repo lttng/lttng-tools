@@ -878,6 +878,43 @@ error:
 }
 
 /*
+ * Write a character on the metadata poll pipe to wake the metadata thread.
+ * Returns 0 on success, -1 on error.
+ */
+int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel)
+{
+	int ret = 0;
+
+	DBG("Waking up metadata poll thread (writing to pipe): channel name = '%s'",
+			channel->name);
+	if (channel->monitor && channel->metadata_stream) {
+		const char dummy = 'c';
+		const ssize_t write_ret = lttng_write(
+				channel->metadata_stream->ust_metadata_poll_pipe[1],
+				&dummy, 1);
+
+		if (write_ret < 1) {
+			if (errno == EWOULDBLOCK) {
+				/*
+				 * This is fine, the metadata poll thread
+				 * is having a hard time keeping-up, but
+				 * it will eventually wake-up and consume
+				 * the available data.
+				 */
+				ret = 0;
+			} else {
+				PERROR("Failed to write to UST metadata pipe while attempting to wake-up the metadata poll thread");
+				ret = -1;
+				goto end;
+			}
+		}
+	}
+
+end:
+	return ret;
+}
+
+/*
  * Trigger a dump of the metadata content. Following/during the succesful
  * completion of this call, the metadata poll thread will start receiving
  * metadata packets to consume.
