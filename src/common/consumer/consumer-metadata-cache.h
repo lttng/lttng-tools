@@ -57,7 +57,7 @@ struct consumer_metadata_cache {
 };
 
 enum consumer_metadata_cache_write_status
-consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
+consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 		unsigned int offset, unsigned int len, uint64_t version,
 		const char *data);
 int consumer_metadata_cache_allocate(struct lttng_consumer_channel *channel);

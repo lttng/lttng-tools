@@ -36,30 +36,32 @@ extern struct lttng_consumer_global_data consumer_data;
  *
  * Return 0 on success, a negative value on error.
  */
-static int extend_metadata_cache(struct lttng_consumer_channel *channel,
+static int extend_metadata_cache(struct consumer_metadata_cache *cache,
 		unsigned int size)
 {
 	int ret = 0;
 	char *tmp_data_ptr;
 	unsigned int new_size, old_size;
 
-	assert(channel);
-	assert(channel->metadata_cache);
+	assert(cache);
 
-	old_size = channel->metadata_cache->cache_alloc_size;
+	old_size = cache->cache_alloc_size;
 	new_size = max_t(unsigned int, old_size + size, old_size << 1);
-	DBG("Extending metadata cache to %u", new_size);
-	tmp_data_ptr = realloc(channel->metadata_cache->data, new_size);
+	DBG("Extending metadata cache: old size = %u, new size = %u", old_size,
+			new_size);
+
+	tmp_data_ptr = realloc(cache->data, new_size);
 	if (!tmp_data_ptr) {
-		ERR("Reallocating metadata cache");
-		free(channel->metadata_cache->data);
+		ERR("Failed to re-allocate metadata cache");
+		free(cache->data);
 		ret = -1;
 		goto end;
 	}
-	/* Zero newly allocated memory */
+
+	/* Zero newly allocated memory. */
 	memset(tmp_data_ptr + old_size, 0, new_size - old_size);
-	channel->metadata_cache->data = tmp_data_ptr;
-	channel->metadata_cache->cache_alloc_size = new_size;
+	cache->data = tmp_data_ptr;
+	cache->cache_alloc_size = new_size;
 
 end:
 	return ret;
@@ -108,20 +110,16 @@ end:
  * various returned status codes.
  */
 enum consumer_metadata_cache_write_status
-consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
+consumer_metadata_cache_write(struct consumer_metadata_cache *cache,
 		unsigned int offset, unsigned int len, uint64_t version,
 		const char *data)
 {
 	int ret = 0;
-	struct consumer_metadata_cache *cache;
 	enum consumer_metadata_cache_write_status status;
 	bool cache_is_invalidated = false;
 	uint64_t original_max_offset;
 
-	assert(channel);
-	assert(channel->metadata_cache);
-
-	cache = channel->metadata_cache;
+	assert(cache);
 	ASSERT_LOCKED(cache->lock);
 	original_max_offset = cache->max_offset;
 
@@ -134,7 +132,7 @@ consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 	DBG("Writing %u bytes from offset %u in metadata cache", len, offset);
 
 	if (offset + len > cache->cache_alloc_size) {
-		ret = extend_metadata_cache(channel,
+		ret = extend_metadata_cache(cache,
 				len - cache->cache_alloc_size + offset);
 		if (ret < 0) {
 			ERR("Extending metadata cache");

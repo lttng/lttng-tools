@@ -1333,7 +1333,8 @@ int lttng_ustconsumer_recv_metadata(int sock, uint64_t key, uint64_t offset,
 
 	pthread_mutex_lock(&channel->metadata_cache->lock);
 	cache_write_status = consumer_metadata_cache_write(
-			channel, offset, len, version, metadata_str);
+			channel->metadata_cache, offset, len, version,
+			metadata_str);
 	pthread_mutex_unlock(&channel->metadata_cache->lock);
 	switch (cache_write_status) {
 	case CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE:
