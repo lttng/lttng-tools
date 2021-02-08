@@ -3054,7 +3054,9 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 		uint64_t contiguous, pushed;
 
 		/* Ease our life a bit. */
+		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
 		contiguous = stream->chan->metadata_cache->max_offset;
+		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 		pushed = stream->ust_metadata_pushed;
 
 		/*
