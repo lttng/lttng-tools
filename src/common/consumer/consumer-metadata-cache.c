@@ -23,6 +23,11 @@
 
 #include "consumer-metadata-cache.h"
 
+enum metadata_cache_update_version_status {
+	METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED,
+	METADATA_CACHE_UPDATE_STATUS_VERSION_NOT_UPDATED,
+};
+
 extern struct lttng_consumer_global_data consumer_data;
 
 /*
@@ -74,60 +79,23 @@ void metadata_cache_reset(struct consumer_metadata_cache *cache)
  * Check if the metadata cache version changed.
  * If it did, reset the metadata cache.
  * The metadata cache lock MUST be held.
- *
- * Returns 0 on success, a negative value on error.
  */
-static
-int metadata_cache_check_version(struct consumer_metadata_cache *cache,
-		uint64_t version)
+static enum metadata_cache_update_version_status metadata_cache_update_version(
+		struct consumer_metadata_cache *cache, uint64_t version)
 {
-	int ret = 0;
+	enum metadata_cache_update_version_status status;
 
 	if (cache->version == version) {
+		status = METADATA_CACHE_UPDATE_STATUS_VERSION_NOT_UPDATED;
 		goto end;
 	}
 
 	DBG("Metadata cache version update to %" PRIu64, version);
-	metadata_cache_reset(cache);
 	cache->version = version;
+	status = METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED;
 
 end:
-	return ret;
-}
-
-/*
- * Write a character on the metadata poll pipe to wake the metadata thread.
- * Returns 0 on success, -1 on error.
- */
-int consumer_metadata_wakeup_pipe(const struct lttng_consumer_channel *channel)
-{
-	int ret = 0;
-	const char dummy = 'c';
-
-	if (channel->monitor && channel->metadata_stream) {
-		ssize_t write_ret;
-
-		write_ret = lttng_write(channel->metadata_stream->ust_metadata_poll_pipe[1],
-				&dummy, 1);
-		if (write_ret < 1) {
-			if (errno == EWOULDBLOCK) {
-				/*
-				 * This is fine, the metadata poll thread
-				 * is having a hard time keeping-up, but
-				 * it will eventually wake-up and consume
-				 * the available data.
-				 */
-				ret = 0;
-                        } else {
-				PERROR("Wake-up UST metadata pipe");
-				ret = -1;
-				goto end;
-                        }
-                }
-	}
-
-end:
-	return ret;
+	return status;
 }
 
 /*
@@ -136,23 +104,31 @@ end:
  * contiguous metadata in cache to the ring buffer. The metadata cache
  * lock MUST be acquired to write in the cache.
  *
- * Return 0 on success, a negative value on error.
+ * See `enum consumer_metadata_cache_write_status` for the meaning of the
+ * various returned status codes.
  */
-int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
+enum consumer_metadata_cache_write_status
+consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 		unsigned int offset, unsigned int len, uint64_t version,
 		char *data)
 {
 	int ret = 0;
 	struct consumer_metadata_cache *cache;
+	enum consumer_metadata_cache_write_status status;
+	bool cache_is_invalidated = false;
+	uint64_t original_max_offset;
 
 	assert(channel);
 	assert(channel->metadata_cache);
 
 	cache = channel->metadata_cache;
+	ASSERT_LOCKED(cache->lock);
+	original_max_offset = cache->max_offset;
 
-	ret = metadata_cache_check_version(cache, version);
-	if (ret < 0) {
-		goto end;
+	if (metadata_cache_update_version(cache, version) ==
+			METADATA_CACHE_UPDATE_STATUS_VERSION_UPDATED) {
+		metadata_cache_reset(cache);
+		cache_is_invalidated = true;
 	}
 
 	DBG("Writing %u bytes from offset %u in metadata cache", len, offset);
@@ -162,18 +138,25 @@ int consumer_metadata_cache_write(struct lttng_consumer_channel *channel,
 				len - cache->cache_alloc_size + offset);
 		if (ret < 0) {
 			ERR("Extending metadata cache");
+			status = CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR;
 			goto end;
 		}
 	}
 
 	memcpy(cache->data + offset, data, len);
-	if (offset + len > cache->max_offset) {
-		cache->max_offset = offset + len;
-		ret = consumer_metadata_wakeup_pipe(channel);
+	cache->max_offset = max(cache->max_offset, offset + len);
+
+	if (cache_is_invalidated) {
+		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_INVALIDATED;
+	} else if (cache->max_offset > original_max_offset) {
+		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_APPENDED_CONTENT;
+	} else {
+		status = CONSUMER_METADATA_CACHE_WRITE_STATUS_NO_CHANGE;
+		assert(cache->max_offset == original_max_offset);
 	}
 
 end:
-	return ret;
+	return status;
 }
 
 /*
