@@ -4459,10 +4459,12 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 * reference to the trigger so the caller doesn't have to care if those
 	 * are distinct instances or not.
 	 */
-	lttng_trigger_get(trigger);
-	*return_trigger = trigger;
-	/* Ownership of trigger was transferred to caller. */
-	trigger = NULL;
+	if (ret_code == LTTNG_OK) {
+		lttng_trigger_get(trigger);
+		*return_trigger = trigger;
+		/* Ownership of trigger was transferred to caller. */
+		trigger = NULL;
+	}
 end:
 	return ret_code;
 end_unlock_session_list:
