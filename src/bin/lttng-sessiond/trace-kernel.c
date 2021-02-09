@@ -545,8 +545,9 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		const struct lttng_event_rule *rule,
 		struct lttng_kernel_event_notifier *kernel_event_notifier)
 {
-	enum lttng_error_code ret;
+	enum lttng_error_code ret_code;
 	const char *name;
+	int strncpy_ret;
 
 	switch (lttng_event_rule_get_type(rule)) {
 	case LTTNG_EVENT_RULE_TYPE_KPROBE:
@@ -559,7 +560,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 
 		status = lttng_event_rule_kprobe_get_location(rule, &location);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 
@@ -588,12 +589,12 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		kernel_event_notifier->event.u.kprobe.addr = address;
 		kernel_event_notifier->event.u.kprobe.offset = offset;
 		if (symbol_name) {
-			const int copy_ret = lttng_strncpy(
+			strncpy_ret = lttng_strncpy(
 					kernel_event_notifier->event.u.kprobe.symbol_name,
 					symbol_name, LTTNG_KERNEL_SYM_NAME_LEN);
 
-			if (copy_ret) {
-				ret = LTTNG_ERR_INVALID;
+			if (strncpy_ret) {
+				ret_code = LTTNG_ERR_INVALID;
 				goto error;
 			}
 		}
@@ -601,7 +602,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		kernel_event_notifier->event.u.kprobe.symbol_name[LTTNG_KERNEL_SYM_NAME_LEN - 1] = '\0';
 		status = lttng_event_rule_kprobe_get_name(rule, &name);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		ret = LTTNG_OK;
+		ret_code = LTTNG_OK;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_UPROBE:
@@ -612,7 +613,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 
 		status = lttng_event_rule_uprobe_get_location(rule, &location);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 
@@ -621,7 +622,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		lookup = lttng_userspace_probe_location_get_lookup_method(
 				location);
 		if (!lookup) {
-			ret = LTTNG_ERR_PROBE_LOCATION_INVAL;
+			ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
 		}
 
@@ -647,7 +648,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 
 		status = lttng_event_rule_uprobe_get_name(rule, &name);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		ret = LTTNG_OK;
+		ret_code = LTTNG_OK;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
@@ -663,7 +664,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		kernel_event_notifier->event.instrumentation =
 				LTTNG_KERNEL_TRACEPOINT;
 
-		ret = LTTNG_OK;
+		ret_code = LTTNG_OK;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
@@ -682,7 +683,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 				LTTNG_KERNEL_SYSCALL_ENTRY;
 		kernel_event_notifier->event.u.syscall.match =
 				LTTNG_KERNEL_SYSCALL_MATCH_NAME;
-		ret = LTTNG_OK;
+		ret_code = LTTNG_OK;
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
@@ -691,15 +692,15 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		break;
 	}
 
-	ret = lttng_strncpy(kernel_event_notifier->event.name, name,
+	strncpy_ret = lttng_strncpy(kernel_event_notifier->event.name, name,
 			LTTNG_KERNEL_SYM_NAME_LEN);
-	if (ret) {
-		ret = LTTNG_ERR_INVALID;
+	if (strncpy_ret) {
+		ret_code = LTTNG_ERR_INVALID;
 		goto error;
 	}
 
 error:
-	return ret;
+	return ret_code;
 }
 /*
  * Allocate and initialize a kernel metadata.
