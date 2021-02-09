@@ -653,7 +653,12 @@ int lttng_ctl_ask_sessiond_payload(struct lttng_payload_view *message,
 
 	/* Check error code if OK */
 	if (llm.ret_code != LTTNG_OK) {
-		ret = -llm.ret_code;
+		if (llm.ret_code < LTTNG_OK || llm.ret_code >= LTTNG_ERR_NR) {
+			/* Invalid error code received. */
+			ret = -LTTNG_ERR_UNK;
+		} else {
+			ret = -llm.ret_code;
+		}
 		goto end;
 	}
 
