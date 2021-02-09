@@ -2522,8 +2522,8 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	int ret;
 
 	pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-	if (stream->chan->metadata_cache->max_offset ==
-	    stream->ust_metadata_pushed) {
+	if (stream->chan->metadata_cache->contents.size ==
+			stream->ust_metadata_pushed) {
 		/*
 		 * In the context of a user space metadata channel, a
 		 * change in version can be detected in two ways:
@@ -2560,9 +2560,9 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	}
 
 	write_len = ustctl_write_one_packet_to_channel(stream->chan->uchan,
-			&stream->chan->metadata_cache->data[stream->ust_metadata_pushed],
-			stream->chan->metadata_cache->max_offset
-			- stream->ust_metadata_pushed);
+			&stream->chan->metadata_cache->contents.data[stream->ust_metadata_pushed],
+			stream->chan->metadata_cache->contents.size -
+					stream->ust_metadata_pushed);
 	assert(write_len != 0);
 	if (write_len < 0) {
 		ERR("Writing one metadata packet");
@@ -2571,7 +2571,7 @@ int commit_one_metadata_packet(struct lttng_consumer_stream *stream)
 	}
 	stream->ust_metadata_pushed += write_len;
 
-	assert(stream->chan->metadata_cache->max_offset >=
+	assert(stream->chan->metadata_cache->contents.size >=
 			stream->ust_metadata_pushed);
 	ret = write_len;
 
@@ -2939,8 +2939,8 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 			}
 		} else {
 			pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-			cache_empty = stream->chan->metadata_cache->max_offset ==
-				      stream->ust_metadata_pushed;
+			cache_empty = stream->chan->metadata_cache->contents.size ==
+					stream->ust_metadata_pushed;
 			pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 		}
 	} while (!got_subbuffer);
@@ -3101,7 +3101,7 @@ int lttng_ustconsumer_data_pending(struct lttng_consumer_stream *stream)
 
 		/* Ease our life a bit. */
 		pthread_mutex_lock(&stream->chan->metadata_cache->lock);
-		contiguous = stream->chan->metadata_cache->max_offset;
+		contiguous = stream->chan->metadata_cache->contents.size;
 		pthread_mutex_unlock(&stream->chan->metadata_cache->lock);
 		pushed = stream->ust_metadata_pushed;
 

@@ -10,6 +10,7 @@
 #define CONSUMER_METADATA_CACHE_H
 
 #include <common/consumer/consumer.h>
+#include <common/dynamic-buffer.h>
 
 enum consumer_metadata_cache_write_status {
 	CONSUMER_METADATA_CACHE_WRITE_STATUS_ERROR = -1,
@@ -33,20 +34,13 @@ enum consumer_metadata_cache_write_status {
 };
 
 struct consumer_metadata_cache {
-	char *data;
-	uint64_t cache_alloc_size;
-	/*
-	 * Current version of the metadata cache.
-	 */
+	/* Current version of the metadata cache. */
 	uint64_t version;
 	/*
-	 * The upper-limit of data written inside the buffer.
-	 *
-	 * With the total_bytes_written it allows us to keep track of when the
-	 * cache contains contiguous metadata ready to be sent to the RB.
+	 * Size is the upper-limit of data written inside the buffer.
 	 * All cached data is contiguous.
 	 */
-	uint64_t max_offset;
+	struct lttng_dynamic_buffer contents;
 	/*
 	 * Lock to update the metadata cache and push into the ring_buffer
 	 * (ustctl_write_metadata_to_channel).
