@@ -2461,7 +2461,7 @@ enum lttng_error_code kernel_register_event_notifier(
 
 	ret = kernel_create_event_notifier_rule(trigger, cmd_creds, token);
 	if (ret != LTTNG_OK) {
-		ERR("Failed to create kernel trigger");
+		ERR("Failed to create kernel event notifier rule");
 	}
 
 	return ret;
