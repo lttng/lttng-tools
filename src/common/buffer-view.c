@@ -34,12 +34,14 @@ struct lttng_buffer_view lttng_buffer_view_from_view(
 	assert(src);
 
 	if (offset > src->size) {
-		ERR("Attempt to create buffer view with invalid offset");
+		ERR("Attempt to create buffer view from another view with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",
+				src->size, offset, len);
 		goto end;
 	}
 
 	if (len != -1 && len > (src->size - offset)) {
-		ERR("Attempt to create buffer view with invalid length");
+		ERR("Attempt to create buffer view from another view with invalid length (length > space left after offset in source): source size = %zu, offset in source = %zu, length = %zd",
+				src->size, offset, len);
 		goto end;
 	}
 
@@ -59,12 +61,14 @@ struct lttng_buffer_view lttng_buffer_view_from_dynamic_buffer(
 	assert(src);
 
 	if (offset > src->size) {
-		ERR("Attempt to create buffer view with invalid offset");
+		ERR("Attempt to create buffer view from a dynamic buffer with invalid offset (offset > source size): source size = %zu, offset in source = %zu, length = %zd",
+				src->size, offset, len);
 		goto end;
 	}
 
 	if (len != -1 && len > (src->size - offset)) {
-		ERR("Attempt to create buffer view with invalid length");
+		ERR("Attempt to create buffer view from a dynamic buffer with invalid length (length > space left after offset in source): source size = %zu, offset in source = %zu, length = %zd",
+				src->size, offset, len);
 		goto end;
 	}
 
