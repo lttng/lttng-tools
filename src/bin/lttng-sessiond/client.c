@@ -2616,6 +2616,11 @@ static void *thread_manage_clients(void *data)
 			continue;
 		}
 
+		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
+			WARN("Command returned an invalid status code, returning unknown error: command type = %d, ret = %d", cmd_ctx.lsm.cmd_type, ret);
+			ret = LTTNG_ERR_UNK;
+		}
+
 		cmd_completion_handler = cmd_pop_completion_handler();
 		if (cmd_completion_handler) {
 			enum lttng_error_code completion_code;
