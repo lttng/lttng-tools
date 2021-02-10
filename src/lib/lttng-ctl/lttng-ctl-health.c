@@ -231,8 +231,8 @@ struct lttng_health *lttng_health_create_relayd(const char *path)
 		goto error;
 	}
 
-	ret = lttng_strncpy(lh->health_sock_path, path ?: "",
-			    sizeof(lh->health_sock_path));
+	ret = lttng_strncpy(lh->health_sock_path, path,
+			sizeof(lh->health_sock_path));
 	if (ret) {
 		goto error;
 	}
