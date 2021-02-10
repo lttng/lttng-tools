@@ -2328,7 +2328,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	error_code_ret = trace_kernel_init_event_notifier_from_event_rule(
 			event_rule, &kernel_event_notifier);
 	if (error_code_ret != LTTNG_OK) {
-		goto error;
+		goto free_event;
 	}
 
 	kernel_event_notifier.event.token = event_notifier_rule->token;
