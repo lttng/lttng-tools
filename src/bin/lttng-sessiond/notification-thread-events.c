@@ -2611,10 +2611,14 @@ int handle_notification_thread_command_register_trigger(
 				&evaluation, &object_uid,
 				&object_gid);
 		break;
+		LTTNG_OPTIONAL_SET(&object_creds.uid, object_uid);
+		LTTNG_OPTIONAL_SET(&object_creds.gid, object_gid);
 	case LTTNG_OBJECT_TYPE_CHANNEL:
 		ret = evaluate_channel_condition_for_client(condition, state,
 				&evaluation, &object_uid,
 				&object_gid);
+		LTTNG_OPTIONAL_SET(&object_creds.uid, object_uid);
+		LTTNG_OPTIONAL_SET(&object_creds.gid, object_gid);
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
 		ret = 0;
@@ -2629,9 +2633,6 @@ int handle_notification_thread_command_register_trigger(
 		/* Fatal error. */
 		goto error_put_client_list;
 	}
-
-	LTTNG_OPTIONAL_SET(&object_creds.uid, object_uid);
-	LTTNG_OPTIONAL_SET(&object_creds.gid, object_gid);
 
 	DBG("Newly registered trigger's condition evaluated to %s",
 			evaluation ? "true" : "false");
