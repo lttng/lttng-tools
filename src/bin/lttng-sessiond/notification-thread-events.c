@@ -2610,9 +2610,9 @@ int handle_notification_thread_command_register_trigger(
 		ret = evaluate_session_condition_for_client(condition, state,
 				&evaluation, &object_uid,
 				&object_gid);
-		break;
 		LTTNG_OPTIONAL_SET(&object_creds.uid, object_uid);
 		LTTNG_OPTIONAL_SET(&object_creds.gid, object_gid);
+		break;
 	case LTTNG_OBJECT_TYPE_CHANNEL:
 		ret = evaluate_channel_condition_for_client(condition, state,
 				&evaluation, &object_uid,
