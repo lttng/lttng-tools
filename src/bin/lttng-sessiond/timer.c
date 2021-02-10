@@ -144,7 +144,7 @@ int timer_start(timer_t *timer_id, struct ltt_session *session,
 		unsigned int timer_interval_us, int signal, bool one_shot)
 {
 	int ret = 0, delete_ret;
-	struct sigevent sev;
+	struct sigevent sev = {};
 	struct itimerspec its;
 
 	sev.sigev_notify = SIGEV_SIGNAL;
