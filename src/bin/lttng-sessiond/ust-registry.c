@@ -739,13 +739,16 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 		}
 	}
 
-	rcu_read_lock();
-	/* Destroy all event associated with this registry. */
-	cds_lfht_for_each_entry(chan->ht->ht, &iter.iter, event, node.node) {
-		/* Delete the node from the ht and free it. */
-		ust_registry_destroy_event(chan, event);
+	if (chan->ht) {
+		rcu_read_lock();
+		/* Destroy all event associated with this registry. */
+		cds_lfht_for_each_entry(
+				chan->ht->ht, &iter.iter, event, node.node) {
+			/* Delete the node from the ht and free it. */
+			ust_registry_destroy_event(chan, event);
+		}
+		rcu_read_unlock();
 	}
-	rcu_read_unlock();
 	call_rcu(&chan->rcu_head, destroy_channel_rcu);
 }
 
