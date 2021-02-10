@@ -705,7 +705,7 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 	ssize_t sock_recv_len;
 	enum lttng_error_code ret_code;
 	struct lttng_payload trigger_payload;
-	struct lttng_trigger *trigger;
+	struct lttng_trigger *trigger = NULL;
 
 	lttng_payload_init(&trigger_payload);
 	trigger_len = (size_t) cmd_ctx->lsm.u.trigger.length;
@@ -755,6 +755,7 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 				trigger_len) {
 			ERR("Invalid trigger received as part of command payload");
 			ret_code = LTTNG_ERR_INVALID_TRIGGER;
+			lttng_trigger_put(trigger);
 			goto end;
 		}
 	}
