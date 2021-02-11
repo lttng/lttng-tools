@@ -9,7 +9,10 @@
 #define LTTNG_EVENT_EXPR_INTERNAL_H
 
 #include <assert.h>
+#include <common/macros.h>
 #include <lttng/event-expr.h>
+
+struct lttng_bytecode;
 
 struct lttng_event_expr {
 	enum lttng_event_expr_type type;
@@ -53,5 +56,9 @@ bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
 			expr->type == LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD ||
 			expr->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT;
 }
+
+LTTNG_HIDDEN
+int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
+		struct lttng_bytecode **bytecode_out);
 
 #endif /* LTTNG_EVENT_EXPR_INTERNAL_H */

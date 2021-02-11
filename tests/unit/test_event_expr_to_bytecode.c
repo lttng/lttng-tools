@@ -5,9 +5,9 @@
  *
  */
 
-#include <lttng/event-expr.h>
-#include <common/event-expr-to-bytecode.h>
 #include <common/bytecode/bytecode.h>
+#include <lttng/event-expr-internal.h>
+#include <lttng/event-expr.h>
 #include <tap/tap.h>
 
 #define NR_TESTS 4
