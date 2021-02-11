@@ -501,7 +501,7 @@ static int action_executor_generic_handler(struct action_executor *executor,
 
 	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
 
-	DBG("Executing action `%s` of trigger `%p` action work item %" PRIu64,
+	DBG("Executing action `%s` of trigger `%s` action work item %" PRIu64,
 			get_action_name(action),
 			get_trigger_name(work_item->trigger),
 			work_item->id);
@@ -692,7 +692,7 @@ enum action_executor_status action_executor_enqueue(
 
 	work_item = zmalloc(sizeof(*work_item));
 	if (!work_item) {
-		PERROR("Failed to allocate action executor work item on behalf of trigger `%p`",
+		PERROR("Failed to allocate action executor work item on behalf of trigger `%s`",
 				get_trigger_name(trigger));
 		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
 		goto error_unlock;
@@ -723,7 +723,7 @@ enum action_executor_status action_executor_enqueue(
 	evaluation = NULL;
 	cds_list_add_tail(&work_item->list_node, &executor->work.list);
 	executor->work.pending_count++;
-	DBG("Enqueued action for trigger `%p` as work item %" PRIu64,
+	DBG("Enqueued action for trigger `%s` as work item #%" PRIu64,
 			get_trigger_name(trigger), work_item_id);
 	signal = true;
 
