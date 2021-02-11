@@ -368,7 +368,7 @@ int consumer_channel_timer_start(timer_t *timer_id,
 		unsigned int timer_interval_us, int signal)
 {
 	int ret = 0, delete_ret;
-	struct sigevent sev;
+	struct sigevent sev = {};
 	struct itimerspec its;
 
 	assert(channel);
