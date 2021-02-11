@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include <common/error.h>
-#include <common/event-expr-to-bytecode.h>
 #include <common/macros.h>
 #include <inttypes.h>
 #include <limits.h>
