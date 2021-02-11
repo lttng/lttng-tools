@@ -66,6 +66,7 @@ libcommon_la_SOURCES = \
 	error-query.c \
 	evaluation.c \
 	event.c \
+	event-expr/event-expr.c \
 	event-expr-to-bytecode.c event-expr-to-bytecode.h \
 	event-field-value.c \
 	event-rule/event-rule.c \
