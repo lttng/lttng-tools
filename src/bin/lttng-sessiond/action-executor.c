@@ -425,9 +425,9 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 	session_lock_list();
 	session = session_find_by_name(session_name);
 	if (!session) {
-		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%p`",
+		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
-		    work_item->trigger);
+				get_trigger_name(work_item->trigger));
 		goto error_unlock_list;
 	}
 
