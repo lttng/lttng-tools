@@ -27,6 +27,16 @@ struct action_executor *action_executor_create(
 
 void action_executor_destroy(struct action_executor *executor);
 
+/*
+ * Enqueue a job on an action executor's work queue to perform the actions
+ * associated with a trigger.
+ *
+ * A reference to `trigger` is acquired.
+ * A reference to `list` is acquired.
+ *
+ * This function assumes the ownership of the `evaluation` both on success and
+ * failure: the caller should no longer access it once the function returns.
+ */
 enum action_executor_status action_executor_enqueue(
 		struct action_executor *executor,
 		struct lttng_trigger *trigger,
