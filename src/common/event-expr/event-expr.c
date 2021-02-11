@@ -1,8 +1,6 @@
 /*
  * event-expr.c
  *
- * Linux Trace Toolkit Control Library
- *
  * Copyright (C) 2020 Philippe Proulx <pproulx@efficios.com>
  *
  * SPDX-License-Identifier: LGPL-2.1-only

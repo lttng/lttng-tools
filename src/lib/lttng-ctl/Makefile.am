@@ -9,7 +9,6 @@ lib_LTLIBRARIES = liblttng-ctl.la
 liblttng_ctl_la_SOURCES = lttng-ctl.c snapshot.c lttng-ctl-helper.h \
 		lttng-ctl-health.c save.c load.c deprecated-symbols.c \
 		channel.c rotate.c event.c destruction-handle.c clear.c \
-		event-expr.c \
 		tracker.c
 
 liblttng_ctl_la_LDFLAGS = \
