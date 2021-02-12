@@ -919,7 +919,8 @@ static int enable_events(char *session_name)
 
 					name_search_ret = loglevel_log4j_name_to_value(opt_loglevel, &loglevel);
 					ev->loglevel = (int) loglevel;
-				} else if (opt_python) {
+				} else {
+					/* python domain. */
 					enum lttng_loglevel_python loglevel;
 
 					name_search_ret = loglevel_python_name_to_value(opt_loglevel, &loglevel);
@@ -1310,7 +1311,8 @@ static int enable_events(char *session_name)
 
 					name_search_ret = loglevel_log4j_name_to_value(opt_loglevel, &loglevel);
 					ev->loglevel = (int) loglevel;
-				} else if (opt_python) {
+				} else {
+					/* python domain. */
 					enum lttng_loglevel_python loglevel;
 
 					name_search_ret = loglevel_python_name_to_value(opt_loglevel, &loglevel);
