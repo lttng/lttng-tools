@@ -11,8 +11,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-#define LOGLEVEL_NAME_VALUE_ARRAY_COUNT(name) (sizeof(name) / sizeof(struct loglevel_name_value))
-
 struct loglevel_name_value {
 	const char *name;
 	int value;
@@ -150,7 +148,7 @@ LTTNG_HIDDEN
 int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel)
 {
 	int ret = lookup_value_from_name(loglevel_values,
-			LOGLEVEL_NAME_VALUE_ARRAY_COUNT(loglevel_values), name);
+			ARRAY_SIZE(loglevel_values), name);
 
 	if (ret >= 0) {
 		*loglevel = (typeof(*loglevel)) ret;
@@ -165,7 +163,7 @@ int loglevel_log4j_name_to_value(
 		const char *name, enum lttng_loglevel_log4j *loglevel)
 {
 	int ret = lookup_value_from_name(loglevel_log4j_values,
-			LOGLEVEL_NAME_VALUE_ARRAY_COUNT(loglevel_log4j_values),
+			ARRAY_SIZE(loglevel_log4j_values),
 			name);
 
 	if (ret >= 0) {
@@ -181,7 +179,7 @@ int loglevel_jul_name_to_value(
 		const char *name, enum lttng_loglevel_jul *loglevel)
 {
 	int ret = lookup_value_from_name(loglevel_jul_values,
-			LOGLEVEL_NAME_VALUE_ARRAY_COUNT(loglevel_jul_values),
+			ARRAY_SIZE(loglevel_jul_values),
 			name);
 
 	if (ret >= 0) {
@@ -197,7 +195,7 @@ int loglevel_python_name_to_value(
 		const char *name, enum lttng_loglevel_python *loglevel)
 {
 	int ret = lookup_value_from_name(loglevel_python_values,
-			LOGLEVEL_NAME_VALUE_ARRAY_COUNT(loglevel_python_values),
+			ARRAY_SIZE(loglevel_python_values),
 			name);
 
 	if (ret >= 0) {
