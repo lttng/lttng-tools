@@ -40,23 +40,58 @@ if [ -z ${LTTNG_TEST_TEARDOWN_TIMEOUT+x} ]; then
 	LTTNG_TEST_TEARDOWN_TIMEOUT=60
 fi
 
-function full_cleanup ()
+# Enable job monitor mode.
+# Here we are mostly interested in the following from the monitor mode:
+#    All processes run in a separate process group.
+# This allows us to ensure that all subprocesses from all background tasks are
+# cleaned up correctly using signal to process group id.
+set -m
+
+kill_background_jobs ()
+{
+	local pids
+	pids=$(jobs -p)
+
+	if [ -z "$pids" ]; then
+		# Empty
+		return 0
+	fi
+
+	while read -r pid;
+	do
+		# Use negative number to send the signal to the process group.
+		# This ensure that any subprocesses receive the signal.
+		# /dev/null is used since there is an acceptable race between
+		# the moments the pids are listed and the moment we send a
+		# signal.
+		kill -SIGTERM -- "-$pid" 2>/dev/null
+	done <<< "$pids"
+}
+
+function cleanup ()
 {
 	# Try to kill daemons gracefully
-	stop_lttng_relayd_notap SIGTERM $LTTNG_TEST_TEARDOWN_TIMEOUT
-	stop_lttng_sessiond_notap SIGTERM $LTTNG_TEST_TEARDOWN_TIMEOUT
+	stop_lttng_relayd_cleanup SIGTERM $LTTNG_TEST_TEARDOWN_TIMEOUT
+	stop_lttng_sessiond_cleanup SIGTERM $LTTNG_TEST_TEARDOWN_TIMEOUT
 
 	# If daemons are still present, forcibly kill them
-	stop_lttng_relayd_notap SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
-	stop_lttng_sessiond_notap SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
-	stop_lttng_consumerd_notap SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
+	stop_lttng_relayd_cleanup SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
+	stop_lttng_sessiond_cleanup SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
+	stop_lttng_consumerd_cleanup SIGKILL $LTTNG_TEST_TEARDOWN_TIMEOUT
 
-	# Disable trap for SIGTERM since the following kill to the
-	# pidgroup will be SIGTERM. Otherwise it loops.
-	# The '-' before the pid number ($$) indicates 'kill' to signal the
-	# whole process group.
-	trap - SIGTERM && kill -- -$$
+	kill_background_jobs
+}
+
+function full_cleanup ()
+{
+	cleanup
 	exit 1
+}
+
+function LTTNG_BAIL_OUT ()
+{
+	cleanup
+	BAIL_OUT "$@"
 }
 
 function null_pipes ()
@@ -187,7 +222,7 @@ function validate_lttng_modules_present ()
 		return 0
 	fi
 
-	BAIL_OUT "LTTng modules not detected."
+	LTTNG_BAIL_OUT "LTTng modules not detected."
 }
 
 function enable_kernel_lttng_event
@@ -491,27 +526,32 @@ function start_lttng_relayd_notap()
 function stop_lttng_relayd_opt()
 {
 	local withtap=$1
-	local signal=$2
+	local is_cleanup=$2
+	local signal=$3
+	local timeout_s=$4
+	local dtimeleft_s=
+	local retval=0
+	local pids
 
 	if [ -z "$signal" ]; then
 		signal="SIGTERM"
 	fi
 
-	local timeout_s=$3
-	local dtimeleft_s=
 
 	# Multiply time by 2 to simplify integer arithmetic
 	if [ -n "$timeout_s" ]; then
 		dtimeleft_s=$((timeout_s * 2))
 	fi
 
-	local retval=0
-	local pids=
 
 	pids=$(lttng_pgrep "$RELAYD_MATCH")
 	if [ -z "$pids" ]; then
-		if [ "$withtap" -eq "1" ]; then
-			pass "No relay daemon to kill"
+		if [ "$is_cleanup" -eq 1 ]; then
+			:
+		elif [ "$withtap" -eq "1" ]; then
+			fail "No relay daemon to kill"
+		else
+			LTTNG_BAIL_OUT "No relay daemon to kill"
 		fi
 		return 0
 	fi
@@ -550,12 +590,17 @@ function stop_lttng_relayd_opt()
 
 function stop_lttng_relayd()
 {
-	stop_lttng_relayd_opt 1 "$@"
+	stop_lttng_relayd_opt 1 0 "$@"
 }
 
 function stop_lttng_relayd_notap()
 {
-	stop_lttng_relayd_opt 0 "$@"
+	stop_lttng_relayd_opt 0 0 "$@"
+}
+
+function stop_lttng_relayd_cleanup()
+{
+	stop_lttng_relayd_opt 0 1 "$@"
 }
 
 #First arg: show tap output
@@ -602,7 +647,7 @@ function start_lttng_sessiond_opt()
 
 	if ! validate_kernel_version; then
 	    fail "Start session daemon"
-	    BAIL_OUT "*** Kernel too old for session daemon tests ***"
+	    LTTNG_BAIL_OUT "*** Kernel too old for session daemon tests ***"
 	fi
 
 	: "${LTTNG_SESSION_CONFIG_XSD_PATH="${DIR}/../src/common/config/"}"
@@ -638,14 +683,17 @@ function start_lttng_sessiond_notap()
 function stop_lttng_sessiond_opt()
 {
 	local withtap=$1
-	local signal=$2
+	local is_cleanup=$2
+	local signal=$3
+	local timeout_s=$4
+	local dtimeleft_s=
+	local retval=0
+	local runas_pids
+	local pids
 
 	if [ -z "$signal" ]; then
 		signal=SIGTERM
 	fi
-
-	local timeout_s=$3
-	local dtimeleft_s=
 
 	# Multiply time by 2 to simplify integer arithmetic
 	if [ -n "$timeout_s" ]; then
@@ -657,12 +705,7 @@ function stop_lttng_sessiond_opt()
 		return 0
 	fi
 
-	local retval=0
-
-	local runas_pids=
 	runas_pids=$(lttng_pgrep "$RUNAS_MATCH")
-
-	local pids=
 	pids=$(lttng_pgrep "$SESSIOND_MATCH")
 
 	if [ -n "$runas_pids" ]; then
@@ -670,10 +713,12 @@ function stop_lttng_sessiond_opt()
 	fi
 
 	if [ -z "$pids" ]; then
-		if [ "$withtap" -eq "1" ]; then
+		if [ "$is_cleanup" -eq 1 ]; then 
+			:
+		elif [ "$withtap" -eq "1" ]; then
 			fail "No session daemon to kill"
 		else
-			BAIL_OUT "No session daemon to kill"
+			LTTNG_BAIL_OUT "No session daemon to kill"
 		fi
 		return 0
 	fi
@@ -737,44 +782,50 @@ function stop_lttng_sessiond_opt()
 
 function stop_lttng_sessiond()
 {
-	stop_lttng_sessiond_opt 1 "$@"
+	stop_lttng_sessiond_opt 1 0 "$@"
 }
 
 function stop_lttng_sessiond_notap()
 {
-	stop_lttng_sessiond_opt 0 "$@"
+	stop_lttng_sessiond_opt 0 0 "$@"
+}
+
+function stop_lttng_sessiond_cleanup()
+{
+	stop_lttng_sessiond_opt 0 1 "$@"
 }
 
 function sigstop_lttng_sessiond_opt()
 {
 	local withtap=$1
 	local signal=SIGSTOP
+	local pids
 
 	if [ -n "$TEST_NO_SESSIOND" ] && [ "$TEST_NO_SESSIOND" == "1" ]; then
 		# Env variable requested no session daemon
 		return
 	fi
 
-	PID_SESSIOND="$(lttng_pgrep "${SESSIOND_MATCH}") $(lttng_pgrep "$RUNAS_MATCH")"
+	pids="$(lttng_pgrep "${SESSIOND_MATCH}") $(lttng_pgrep "$RUNAS_MATCH")"
 
 	if [ "$withtap" -eq "1" ]; then
-		diag "Sending SIGSTOP to lt-$SESSIOND_BIN and $SESSIOND_BIN pids: $(echo "$PID_SESSIOND" | tr '\n' ' ')"
+		diag "Sending SIGSTOP to lt-$SESSIOND_BIN and $SESSIOND_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 	fi
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $PID_SESSIOND 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
 		if [ "$withtap" -eq "1" ]; then
 			fail "Sending SIGSTOP to session daemon"
 		fi
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(lttng_pgrep "$SESSIOND_MATCH")"
+			pids="$(lttng_pgrep "$SESSIOND_MATCH")"
 
 			# Wait until state becomes stopped for session
 			# daemon(s).
 			out=0
-			for sessiond_pid in $pid; do
+			for sessiond_pid in $pids; do
 				state="$(ps -p "$sessiond_pid" -o state= )"
 				if [[ -n "$state" && "$state" != "T" ]]; then
 					out=1
@@ -801,35 +852,39 @@ function sigstop_lttng_sessiond_notap()
 function stop_lttng_consumerd_opt()
 {
 	local withtap=$1
-	local signal=$2
+	local is_cleanup=$2
+	local signal=$3
+	local timeout_s=$4
+	local dtimeleft_s=
+	local retval=0
+	local pids
 
 	if [ -z "$signal" ]; then
 		signal=SIGTERM
 	fi
-
-	local timeout_s=$3
-	local dtimeleft_s=
 
 	# Multiply time by 2 to simplify integer arithmetic
 	if [ -n "$timeout_s" ]; then
 		dtimeleft_s=$((timeout_s * 2))
 	fi
 
-	local retval=0
+	pids="$(lttng_pgrep "$CONSUMERD_MATCH")"
 
-	PID_CONSUMERD="$(lttng_pgrep "$CONSUMERD_MATCH")"
-
-	if [ -z "$PID_CONSUMERD" ]; then
-		if [ "$withtap" -eq "1" ]; then
-			pass "No consumer daemon to kill"
+	if [ -z "$pids" ]; then
+		if [ "$is_cleanup" -eq 1 ]; then
+			:
+		elif [ "$withtap" -eq "1" ]; then
+			fail "No consumerd daemon to kill"
+		else
+			LTTNG_BAIL_OUT "No consumerd daemon to kill"
 		fi
 		return 0
 	fi
 
-	diag "Killing (signal $signal) $CONSUMERD_BIN pids: $(echo "$PID_CONSUMERD" | tr '\n' ' ')"
+	diag "Killing (signal $signal) $CONSUMERD_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 
 	# shellcheck disable=SC2086
-	if ! kill -s $signal $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
+	if ! kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST; then
 		retval=1
 		if [ "$withtap" -eq "1" ]; then
 			fail "Kill consumer daemon"
@@ -837,12 +892,12 @@ function stop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(lttng_pgrep "$CONSUMERD_MATCH")"
+			pids="$(lttng_pgrep "$CONSUMERD_MATCH")"
 
 			# If consumerds are still present check their status.
 			# A zombie status qualifies the consumerd as *killed*
 			out=0
-			for consumer_pid in $pid; do
+			for consumer_pid in $pids; do
 				state="$(ps -p "$consumer_pid" -o state= )"
 				if [[ -n "$state" && "$state" != "Z" ]]; then
 					out=1
@@ -871,25 +926,31 @@ function stop_lttng_consumerd_opt()
 
 function stop_lttng_consumerd()
 {
-	stop_lttng_consumerd_opt 1 "$@"
+	stop_lttng_consumerd_opt 1 0 "$@"
 }
 
 function stop_lttng_consumerd_notap()
 {
-	stop_lttng_consumerd_opt 0 "$@"
+	stop_lttng_consumerd_opt 0 0 "$@"
+}
+
+function stop_lttng_consumerd_cleanup()
+{
+	stop_lttng_consumerd_opt 0 1 "$@"
 }
 
 function sigstop_lttng_consumerd_opt()
 {
 	local withtap=$1
 	local signal=SIGSTOP
+	local pids
 
-	PID_CONSUMERD="$(lttng_pgrep "$CONSUMERD_MATCH")"
+	pids="$(lttng_pgrep "$CONSUMERD_MATCH")"
 
-	diag "Sending SIGSTOP to $CONSUMERD_BIN pids: $(echo "$PID_CONSUMERD" | tr '\n' ' ')"
+	diag "Sending SIGSTOP to $CONSUMERD_BIN pids: $(echo "$pids" | tr '\n' ' ')"
 
 	# shellcheck disable=SC2086
-	kill -s $signal $PID_CONSUMERD 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
+	kill -s $signal $pids 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	retval=$?
 
 	if [ $retval -eq 1 ]; then
@@ -900,12 +961,12 @@ function sigstop_lttng_consumerd_opt()
 	else
 		out=1
 		while [ $out -ne 0 ]; do
-			pid="$(lttng_pgrep "$CONSUMERD_MATCH")"
+			pids="$(lttng_pgrep "$CONSUMERD_MATCH")"
 
 			# Wait until state becomes stopped for all
 			# consumers.
 			out=0
-			for consumer_pid in $pid; do
+			for consumer_pid in $pids; do
 				state="$(ps -p "$consumer_pid" -o state= )"
 				if [[ -n "$state" && "$state" != "T" ]]; then
 					out=1
