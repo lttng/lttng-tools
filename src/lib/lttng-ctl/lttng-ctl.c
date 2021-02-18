@@ -3147,17 +3147,17 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	/*
-	 * This is needed to populate the trigger object size for the command
-	 * header.
-	*/
-	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
-
 	ret = lttng_trigger_serialize(trigger, &message);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
 		goto end;
 	}
+
+	/*
+	 * This is needed to populate the trigger object size for the command
+	 * header.
+	 */
+	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
 
 	message_lsm->u.trigger.length = (uint32_t) message.buffer.size - sizeof(lsm);
 
