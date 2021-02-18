@@ -7,6 +7,7 @@
 
 #include "loglevel.h"
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 #include <assert.h>
 
@@ -119,25 +120,7 @@ const struct loglevel_name_value loglevel_python_values[] = {
 static
 bool string_equal_insensitive(const char *a, const char *b)
 {
-	bool result;
-
-	assert(a && b);
-
-	while (*a && *b) {
-		if (toupper(*a) != toupper(*b)) {
-			result = false;
-			goto end;
-		}
-
-		a++;
-		b++;
-	}
-
-	/* If a and b don't have the same length, consider them unequal. */
-	result = *a == *b;
-
-end:
-	return result;
+	return strcasecmp(a, b) == 0;
 }
 
 static
