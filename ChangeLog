@@ -1,3 +1,20 @@
+2021-02-22 lttng-tools 2.12.3 (National Margarita Day)
+	* Fix: ust-consumer: metadata thread not woken-up after version change
+	* Clean-up: ust-consumer: simplify metadata cache unlock on error path
+	* Fix: sessiond: timer: unitiliazed sigevent fields
+	* Fix: sessiond: ust-registry: dereference of NULL pointer on allocation failure
+	* Fix: ust-consumer: metadata cache lock not taken when sampling max offset
+	* Fix: use MT-safe strtok_r in multithreaded context
+	* Fix: liblttng-ctl: unreported truncations when copying strings
+	* Fix: configure: support Autoconf 2.70
+	* Fix: sessiond: metadata not created on app unregistration during start
+	* Cleanup: use `modprobe --remove` rather than `rmmod`
+	* Tests: Fix: 99% fill ratio for high buffer usage is too high for larger events
+	* Fix: common: poll: compat_poll_wait never finishes
+	* Build fix: implicit declaration of function 'PERROR' on Solaris
+	* Fix: PERROR spam when `tracing` group does not exist
+	* Fix: memcpy used on potentially overlapping regions
+
 2020-08-03 lttng-tools 2.12.2 (National Watermelon Day)
 	* Tests: rework tracefile_count test to meet the tracefile count limit
 	* Fix: extraneous empty/inactive flush on rotation out of a trace chunk
