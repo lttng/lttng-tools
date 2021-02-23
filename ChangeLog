@@ -1,3 +1,15 @@
+2021-02-22 lttng-tools 2.11.6 (National Margarita Day)
+	* Fix: use MT-safe strtok_r in multithreaded context
+	* Fix: liblttng-ctl: unreported truncations when copying strings
+	* Fix: configure: support Autoconf 2.70
+	* Fix: sessiond: metadata not created on app unregistration during start
+	* Cleanup: use `modprobe --remove` rather than `rmmod`
+	* Tests: Fix: 99% fill ratio for high buffer usage is too high for larger events
+	* Fix: common: poll: compat_poll_wait never finishes
+	* Build fix: implicit declaration of function 'PERROR' on Solaris
+	* Fix: PERROR spam when `tracing` group does not exist
+	* Fix: memcpy used on potentially overlapping regions
+
 2020-08-03 lttng-tools 2.11.5 (National Watermelon Day)
 	* Fix: lttng: leak of userspace probe path on listing
 	* Fix: uprobe: missing error code on allocation failure
