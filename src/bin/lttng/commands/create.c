@@ -29,8 +29,7 @@
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/uri.h>
 #include <common/utils.h>
-#include <lttng/snapshot.h>
-#include <lttng/session-descriptor.h>
+#include <lttng/lttng.h>
 
 static char *opt_output_path;
 static char *opt_session_name;

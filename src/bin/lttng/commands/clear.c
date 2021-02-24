@@ -14,8 +14,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <lttng/clear.h>
-#include <lttng/clear-handle.h>
+#include <lttng/lttng.h>
 
 #include "../command.h"
 

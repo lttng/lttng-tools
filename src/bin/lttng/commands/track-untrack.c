@@ -7,11 +7,6 @@
  *
  */
 
-#include "common/dynamic-buffer.h"
-#include "common/tracker.h"
-#include "lttng/domain.h"
-#include "lttng/lttng-error.h"
-#include "lttng/tracker.h"
 #define _LGPL_SOURCE
 #include <ctype.h>
 #include <popt.h>
@@ -29,6 +24,10 @@
 #include <common/dynamic-array.h>
 #include <common/mi-lttng.h>
 #include <common/optional.h>
+#include <common/dynamic-buffer.h>
+#include <common/tracker.h>
+
+#include <lttng/lttng.h>
 
 #include "../command.h"
 

@@ -16,7 +16,7 @@
 #include <common/mi-lttng.h>
 
 #include "../command.h"
-#include <lttng/save.h>
+#include <lttng/lttng.h>
 
 static char *opt_output_path;
 static bool opt_force;

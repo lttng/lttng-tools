@@ -21,8 +21,7 @@
 #include <common/mi-lttng.h>
 
 #include "../command.h"
-#include <lttng/rotation.h>
-#include <lttng/location.h>
+#include <lttng/lttng.h>
 
 static char *opt_session_name;
 static int opt_no_wait;

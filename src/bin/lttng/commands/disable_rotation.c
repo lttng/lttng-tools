@@ -20,7 +20,7 @@
 #include <common/mi-lttng.h>
 
 #include "../command.h"
-#include <lttng/rotation.h>
+#include <lttng/lttng.h>
 
 static char *opt_session_name;
 static struct mi_writer *writer;

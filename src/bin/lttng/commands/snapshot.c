@@ -19,7 +19,7 @@
 
 #include <common/utils.h>
 #include <common/mi-lttng.h>
-#include <lttng/snapshot.h>
+#include <lttng/lttng.h>
 
 #include "../command.h"
 

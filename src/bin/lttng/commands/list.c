@@ -18,8 +18,7 @@
 #include <common/mi-lttng.h>
 #include <common/time.h>
 #include <common/tracker.h>
-#include <lttng/constant.h>
-#include <lttng/tracker.h>
+#include <lttng/lttng.h>
 
 #include "../command.h"
 

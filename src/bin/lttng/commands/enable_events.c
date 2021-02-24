@@ -22,7 +22,6 @@
 #include <common/string-utils/string-utils.h>
 #include <common/utils.h>
 
-#include <lttng/constant.h>
 /* Mi dependancy */
 #include <common/mi-lttng.h>
 

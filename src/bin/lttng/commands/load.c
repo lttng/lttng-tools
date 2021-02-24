@@ -15,7 +15,7 @@
 
 #include <common/mi-lttng.h>
 #include <common/config/session-config.h>
-#include <lttng/load.h>
+#include <lttng/lttng.h>
 
 #include "../command.h"
 
