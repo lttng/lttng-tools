@@ -7,6 +7,7 @@ LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
 	$(top_srcdir)/config/tap-driver.sh
 
 TESTS = tools/base-path/test_ust \
+	tools/channel/test_channel \
 	tools/filtering/test_invalid_filter \
 	tools/filtering/test_unsupported_op \
 	tools/filtering/test_valid_filter \
