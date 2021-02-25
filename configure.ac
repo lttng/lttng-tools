@@ -1151,6 +1151,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/save-load/configuration/Makefile
 	tests/regression/tools/mi/Makefile
 	tests/regression/tools/wildcard/Makefile
+	tests/regression/tools/channel/Makefile
 	tests/regression/tools/crash/Makefile
 	tests/regression/tools/regen-metadata/Makefile
 	tests/regression/tools/regen-statedump/Makefile

@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Copyright (C) 2021 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+TEST_DESC="LTTng - Channel tests"
+
+CURDIR=$(dirname $0)/
+TESTDIR=$CURDIR/../../..
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+TESTAPP_NAME="gen-ust-events"
+TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
+NR_ITER=100
+NR_USEC_WAIT=1
+NUM_TESTS=14
+
+source $TESTDIR/utils/utils.sh
+
+function test_channel_disable_stopped_session()
+{
+	local TRACE_PATH=$(mktemp -d)
+	local SESSION_NAME="test_channel"
+	local CHAN_NAME="channel0"
+	local EVENT_NAME="tp:tptest"
+
+	diag "Test channel disable on stop session"
+
+	create_lttng_session_ok "$SESSION_NAME" "$TRACE_PATH"
+
+	enable_ust_lttng_channel_ok "$SESSION_NAME" "$CHAN_NAME"
+
+	enable_ust_lttng_event_ok "$SESSION_NAME" "$EVENT_NAME" "$CHAN_NAME"
+
+	start_lttng_tracing_ok "$SESSION_NAME"
+
+	"$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+
+	trace_match_only "$EVENT_NAME" "$NR_ITER" "$TRACE_PATH"
+
+	lttng_clear_session_ok "$SESSION_NAME"
+
+	disable_ust_lttng_channel "$SESSION_NAME" "$CHAN_NAME"
+
+	start_lttng_tracing_ok "$SESSION_NAME"
+
+	# The channel is disabled so no events should be emited by this app.
+	"$TESTAPP_BIN" -i "$NR_ITER" -w "$NR_USEC_WAIT"
+
+	stop_lttng_tracing_ok "$SESSION_NAME"
+
+	trace_match_only "$EVENT_NAME" 0 "$TRACE_PATH"
+
+	destroy_lttng_session_ok $SESSION_NAME
+
+	rm -rf $TRACE_PATH
+}
+
+
+# MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond
+
+if [ ! -x "$TESTAPP_BIN" ]; then
+	BAIL_OUT "No UST nevents binary detected."
+fi
+
+test_channel_disable_stopped_session
+
+stop_lttng_sessiond
