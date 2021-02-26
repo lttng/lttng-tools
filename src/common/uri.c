@@ -577,6 +577,9 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 			goto parse_error;
 		}
 
+		/* 1 and 2 are the only expected values on success. */
+		assert(size_ctrl == 1 || size_ctrl == 2);
+
 		/* At this point, we know there is at least one URI in the array */
 		set_default_uri_attr(&ctrl_uris[0], LTTNG_STREAM_CONTROL);
 
@@ -614,6 +617,9 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		} else if (size_data == 2) {
 			ERR("Data URL can not be set with the net[4|6]:// protocol");
 			goto error;
+		} else {
+			/* 1 and 2 are the only expected values on success. */
+			assert(size_data == 1);
 		}
 
 		set_default_uri_attr(&data_uris[0], LTTNG_STREAM_DATA);
