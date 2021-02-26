@@ -1114,6 +1114,7 @@ error:
 	lttng_action_destroy(action);
 	action = NULL;
 	free(error);
+	argpar_item_destroy(item);
 end:
 	return action;
 }
@@ -1440,6 +1441,7 @@ end:
 	free(data_url_arg);
 	free(snapshot_output);
 	argpar_state_destroy(state);
+	argpar_item_destroy(item);
 	return action;
 }
 
