@@ -1117,6 +1117,7 @@ error:
 	argpar_item_destroy(item);
 end:
 	free(error);
+	argpar_state_destroy(state);
 	return action;
 }
 
