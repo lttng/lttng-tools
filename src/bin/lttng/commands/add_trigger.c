@@ -1114,9 +1114,9 @@ struct lttng_action *handle_action_simple_session(
 error:
 	lttng_action_destroy(action);
 	action = NULL;
-	free(error);
 	argpar_item_destroy(item);
 end:
+	free(error);
 	return action;
 }
 
