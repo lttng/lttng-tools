@@ -1441,6 +1441,7 @@ end:
 	free(ctrl_url_arg);
 	free(data_url_arg);
 	free(snapshot_output);
+	free(max_size_arg);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
 	return action;
