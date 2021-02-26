@@ -789,6 +789,7 @@ end:
 	free(filter);
 	free(exclude);
 	free(loglevel_str);
+	free(source);
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);
 	lttng_userspace_probe_location_destroy(userspace_probe_location);

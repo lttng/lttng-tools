@@ -514,6 +514,7 @@ end:
 	free(addr_f);
 
 	*uris = tmp_uris;
+	assert(size == 1 || size == 2);
 	return size;
 
 free_error:
