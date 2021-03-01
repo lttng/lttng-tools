@@ -49,8 +49,11 @@ enum lttng_trigger_firing_policy {
  * in the emission of a notification to clients listening through
  * notification channels.
  *
- * The caller retains the ownership of both the condition and action
- * and both must be kept alive for the lifetime of the trigger object.
+ * Prior to 2.13, the caller had to retain the ownership of both the condition
+ * and action. Both objects had to be kept alive for the lifetime of the trigger
+ * object. This is no longer the case as the condition and action objects are
+ * internally reference counted. It is safe to destroy a condition and an action
+ * after using them to create a trigger. However, they should no longer be used.
  *
  * If the action is a notification action with capture descriptors,
  * the condition must be an event rule condition.
