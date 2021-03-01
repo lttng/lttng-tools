@@ -24,26 +24,7 @@
 #include <poll.h>
 
 #include <common/compat/errno.h>
-#include <lttng/action/action.h>
-#include <lttng/action/notify.h>
-#include <lttng/condition/buffer-usage.h>
-#include <lttng/condition/condition.h>
-#include <lttng/condition/evaluation.h>
-#include <lttng/condition/event-rule.h>
-#include <lttng/domain.h>
-#include <lttng/endpoint.h>
-#include <lttng/event-rule/kprobe.h>
-#include <lttng/event-rule/syscall.h>
-#include <lttng/event-rule/tracepoint.h>
-#include <lttng/event-rule/uprobe.h>
-#include <lttng/kernel-probe.h>
-#include <lttng/lttng-error.h>
 #include <lttng/lttng.h>
-#include <lttng/notification/channel.h>
-#include <lttng/notification/notification.h>
-#include <lttng/condition/evaluation.h>
-#include <lttng/trigger/trigger.h>
-#include <lttng/userspace-probe.h>
 
 #include <tap/tap.h>
 
