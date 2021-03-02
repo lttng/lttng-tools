@@ -4521,6 +4521,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	if (ret_code != LTTNG_OK) {
 		DBG("Failed to unregister trigger from notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
+		goto end;
 	}
 
 	/*
