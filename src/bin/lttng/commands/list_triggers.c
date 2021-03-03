@@ -19,7 +19,7 @@
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
-#include <lttng-list-trigger.1.h>
+#include <lttng-list-triggers.1.h>
 ;
 #endif
 
