@@ -1,6 +1,6 @@
 lttng-list-triggers(1)
 ======================
-:revdate: 20 January 2020
+:revdate: 3 March 2021
 
 
 NAME
@@ -10,22 +10,21 @@ lttng-list-triggers - List LTTng triggers
 
 SYNOPSIS
 --------
-
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list-triggers*
 
 
 DESCRIPTION
 -----------
+The `lttng list-triggers` command lists the available LTTng triggers
+of your Unix user and their properties.
 
-The `lttng list-triggers` command list the existing triggers.
+See man:lttng-add-trigger(1) to learn more about triggers.
 
 
 OPTIONS
 -------
-
 include::common-cmd-help-options.txt[]
-
 
 include::common-cmd-footer.txt[]
 

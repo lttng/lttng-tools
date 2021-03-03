@@ -1,6 +1,6 @@
 lttng-disable-channel(1)
 ========================
-:revdate: 28 November 2016
+:revdate: 21 April 2021
 
 NAME
 ----
@@ -17,36 +17,40 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng disable-channel` command disables one or more channels
-previously enabled by the man:lttng-enable-channel(1) command.
+previously enabled with the man:lttng-enable-channel(1) command.
 
-A channel is always contained in a tracing session
-(see man:lttng-create(1) for creating a tracing session). The
-session in which a channel is disabled using `lttng disable-channel` can
-be specified using the option:--session option. If the option:--session
-option is omitted, the current tracing session is targeted.
+A channel always belongs to a tracing session (see man:lttng-create(1)
+to create a tracing session). Without the option:--session option, the
+`disable-channel` command disables one or more channels of the current
+tracing session (see man:lttng-create(1) and man:lttng-set-session(1) to
+learn more about the current tracing session).
 
-Note that re-enabling a disabled channel once its tracing session
-has been active at least once is currently not supported.
+The `disable-channel` command disables one channel per 'CHANNEL'
+argument.
+
+As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
+channel once its tracing session has ben started (see
+man:lttng-start(1)) at least once.
 
 
 include::common-cmd-options-head.txt[]
 
 
-Domain
-~~~~~~
+Tracing domain
+~~~~~~~~~~~~~~
 One of:
 
 option:-k, option:--kernel::
-    Disable channel in the Linux kernel domain.
+    Disable one or more Linux kernel channels.
 
 option:-u, option:--userspace::
-    Disable channel in the user space domain.
+    Disable one or more user space channels.
 
 
 Target
 ~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Disable channels in the tracing session named 'SESSION'
+    Disable one or more channels of the tracing session named 'SESSION'
     instead of the current tracing session.
 
 
@@ -58,5 +62,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-disable-channel(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-enable-channel(1)

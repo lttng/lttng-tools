@@ -26,7 +26,7 @@ List tracing session's domains:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
-List tracing session's channels and event rules:
+List tracing session's channels and recording event rules:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
@@ -52,10 +52,10 @@ listed event sources.
 Providing a tracing session name 'SESSION' targets a specific tracing
 session. If the option:--domain option is used, domains containing at
 least one channel in the selected tracing session are listed. Otherwise,
-all the domains, channels, and event rules of the selected tracing
-session are listed along with its details (trace path, for example),
-except when the option:--channel option is used to isolate a specific
-channel by name.
+all the domains, channels, and recording event rules of the selected
+tracing session are listed along with its details (trace path, for
+example), except when the option:--channel option is used to isolate a
+specific channel by name.
 
 
 include::common-cmd-options-head.txt[]

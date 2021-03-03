@@ -1,0 +1,808 @@
+lttng-event-rule(7)
+===================
+:revdate: 19 April 2021
+
+
+NAME
+----
+lttng-event-rule - Common LTTng event rule specification
+
+
+SYNOPSIS
+--------
+Specify an event rule to match Linux kernel tracepoint or system call
+events:
+
+[verse]
+option:--domain=kernel option:--type=(tracepoint | syscall[:entry|:exit|:entry+exit])]
+pass:[[]option:--name='NAME'] [option:--filter='EXPR']
+
+Specify an event rule to match Linux kernel kprobe or user space
+probe events:
+
+[verse]
+option:--domain=kernel option:--type=(kprobe | uprobe) option:--location='LOC'
+pass:[[]option:--event-name='EVENTNAME'] [option:--filter='EXPR']
+
+Specify an event rule to match user space tracepoint events:
+
+[verse]
+option:--domain=user [option:--type=tracepoint] [option:--name='NAME'] [option:--exclude-name='XNAME']...
+pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='EXPR']
+
+Specify an event rule to match Java/Python logging events:
+
+[verse]
+option:--domain=(jul | log4j | python) [option:--type=logging] [option:--name='NAME']
+pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='EXPR']
+
+
+DESCRIPTION
+-----------
+This manual page shows how to specify an LTTng event rule on the command
+line.
+
+As of LTTng{nbsp}{lttng_version}, the command-line options documented
+here only apply to the `event-rule-matches` trigger condition specifier
+(see man:lttng-add-trigger(1)).
+
+[NOTE]
+====
+This manual page only describes the common event rule options. The
+man:lttng(1) commands which require an event rule specification may
+accept or require other options and arguments, depending on the context.
+
+For example, the man:lttng-add-trigger(1) command also accepts
+nloption:--capture options with the `event-rule-matches` trigger
+condition.
+====
+
+
+Core concepts
+~~~~~~~~~~~~~
+An _instrumentation point_ is a point, within a piece of software,
+which, when executed, creates an LTTng _event_.
+
+LTTng offers various types of instrumentation; see the
+<<inst-point-type-cond,Instrumentation point type condition>> section
+below to learn about them.
+
+An _event rule_ is a set of conditions to match a set of events.
+
+When LTTng creates an event{nbsp}__E__, a event rule{nbsp}__ER__ is said
+to __match__{nbsp}__E__ when{nbsp}__E__ satisfies *all* the conditions
+of{nbsp}__ER__. This concept is similar to a regular expression which
+matches a set of strings.
+
+When an event rule matches an event, LTTng _emits_ the event,
+therefore attempting to execute one or more actions.
+
+[NOTE]
+====
+The event creation and emission processes are documentation concepts to
+help understand the journey from an instrumentation point to the
+execution of actions.
+
+The actual creation of an event can be costly because LTTng needs to
+evalute the arguments of the instrumentation point.
+
+In practice, LTTng implements various optimizations for the Linux kernel
+and user space tracing domains (option:--domain=++kernel++ and
+option:--domain=++user++ options) to avoid actually creating an event
+when the tracer knows, thanks to properties which are independent from
+the event payload and current context, that it would never emit such an
+event. Those properties are:
+
+* The instrumentation point type (see the
+  <<inst-point-type-cond,Instrumentation point type>> section below).
+* The instrumentation point name (or event name)
+  (see the <<event-name-cond,Event name condition>> section below).
+* The instrumentation point log level (see the
+  <<inst-point-log-level-cond,Instrumentation point log level condition>>
+  section below).
+
+In other words: if, for a given instrumentation point{nbsp}__IP__, the
+LTTng tracer knows that it would never emit an event,
+executing{nbsp}__IP__ represents a simple boolean variable check.
+====
+
+
+Event rule overview
+~~~~~~~~~~~~~~~~~~~
+For LTTng to emit an event{nbsp}__E__,{nbsp}__E__ must satisfy *all* the
+conditions of an event rule, that is:
+
+* The instrumentation point from which LTTng creates{nbsp}__E__ has a
+  specific type.
++
+See the <<inst-point-type-cond,Instrumentation point type condition>>
+section below.
+
+* A pattern matches the name of{nbsp}__E__ while another pattern
+  doesn't.
++
+See the <<event-name-cond,Event name condition>> section below.
+
+* The log level of the instrumentation point from which LTTng
+  creates{nbsp}__E__ is at least as severe as some value, or is exactly
+  some value.
++
+See the <<inst-point-log-level-cond,Instrumentation point log level
+condition>> section below.
+
+* The fields of the payload of{nbsp}__E__ and the current context fields
+  satisfy a filter expression.
++
+See the <<filter-cond,Event payload and context filter condition>>
+section below.
+
+The dedicated command-line options of most conditions are optional: if
+you don't specify the option, the associated condition is always
+satisfied.
+
+
+[[inst-point-type-cond]]
+Instrumentation point type condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An event{nbsp}__E__ satisfies the instrumentation point type condition
+of an event rule if the instrumentation point from which LTTng
+creates{nbsp}__E__ is:
+
+For the Linux kernel tracing domain (option:--domain=++kernel++ option)::
+    With the option:--type=++tracepoint++ option or without any option:--type option:::
+        An LTTng kernel tracepoint, that is, a statically defined point
+        in the source code of the kernel image or of a kernel module
+        with LTTng kernel tracer macros.
++
+As of LTTng{nbsp}{lttng_version}, this is the default instrumentation
+point type of the Linux kernel tracing domain, but this may change in
+the future.
++
+List the available Linux kernel tracepoints with `lttng list --kernel`.
+See man:lttng-list(1) to learn more.
+
+    With the option:--type=++syscall++, option:--type=++syscall:entry++, option:--type=++syscall:exit++, or option:--type=++syscall:entry+exit++ option:::
+        The entry, exit, or entry and exit of a Linux kernel system
+        call.
++
+List the available Linux kernel system call instrumentation points with
+`lttng list --kernel --syscall`. See man:lttng-list(1) to learn more.
+
+    With the option:--type=++kprobe++ option:::
+        A Linux kprobe, that is, a single probe dynamically placed in
+        the compiled kernel code.
++
+You must specify the kprobe location with the option:--location option.
++
+The payload of a Linux kprobe event is empty.
+
+    With the option:--type=++uprobe++ option:::
+        A Linux user space probe, that is, a single probe dynamically
+        placed at the entry of a compiled user space application/library
+        function through the kernel.
++
+LTTng{nbsp}{lttng_version} supports the ELF and SystemTap User-level
+Statically Defined Tracing (USDT; a DTrace-style marker) probing
+methods. LTTng only supports USDT probes which are :not:
+reference-counted.
++
+You must specify the user space probe location with the
+option:--location option.
++
+The payload of a Linux user space probe event is empty.
+
+For the user space tracing domain (option:--domain=++user++ option)::
+    With or without the option:--type=++tracepoint++ option:::
+        An LTTng user space tracepoint, that is, a statically defined point
+        in the source code of a C/$$C++$$ application/library
+        with LTTng user space tracer macros.
++
+As of LTTng{nbsp}{lttng_version}, this is the default and sole
+instrumentation point type of the user space tracing domain, but this
+may change in the future.
++
+List the available user space tracepoints with `lttng list --userspace`.
+See man:lttng-list(1) to learn more.
+
+For the `java.util.logging` (option:--domain=++jul++ option), Apache log4j (option:--domain=++log4j++ option), and Python (option:--domain=++python++ option) tracing domains::
+    With or without the option:--type=++logging++ option:::
+        A logging statement.
++
+As of LTTng{nbsp}{lttng_version}, this is the default and sole
+instrumentation point type of the `java.util.logging`, Apache log4j, and
+Python tracing domains, but this may change in the future.
++
+List the available Java and Python loggers with `lttng list --jul`,
+`lttng list --log4j`, and `lttng list --python`. See man:lttng-list(1)
+to learn more.
+
+
+[[event-name-cond]]
+Event name condition
+~~~~~~~~~~~~~~~~~~~~
+An event{nbsp}__E__ satisfies the event name condition of an event
+rule{nbsp}__ER__ if the two following statements are true:
+
+* You don't specify the option:--name='NAME' option or, depending on the
+  instrumentation type condition (see the
+  <<inst-point-type-cond,Instrumentation point type condition>> section
+  above) of{nbsp}__ER__, 'NAME' matches:
++
+--
+LTTng tracepoint::
+    The full name of the tracepoint from which LTTng creates{nbsp}__E__.
++
+Note that the full name of a user space tracepoint is
+__PROVIDER__++:++__NAME__, where __PROVIDER__ is the tracepoint provider
+name and __NAME__ is the tracepoint name.
+
+Logging statement::
+    The name of the Java or Python logger from which LTTng
+    creates{nbsp}__E__.
+
+Linux system call::
+    The name of the system call, without any `sys_` prefix, from which
+    LTTng creates{nbsp}__E__.
+--
+
+* You don't specify any option:--exclude-name='XNAME' option or
+  none of the 'XNAME' arguments matches the full name of the user space
+  tracepoint from which LTTng creates{nbsp}__E__.
++
+The option:--exclude-name option is only available with the
+option:--domain=++user++ option.
+
+This condition is only meaningful for the LTTng tracepoint, logging
+statement, and Linux system call instrumentation point types: it's
+always satisfied for the other types.
+
+In all cases, 'NAME' and 'XNAME' are globbing patterns: the `*`
+character means ``match anything''. To match a literal `*` character,
+use :escwc:.
+
+IMPORTANT: Make sure to **single-quote** 'NAME' and 'XNAME' when they
+contain the `*` character and when you run an man:lttng(1) command from
+a shell.
+
+As of LTTng{nbsp}{lttng_version}, not specifying the option:--name
+option is equivalent to specifying option:--name=++\'*\'++, but this
+default may change in the future.
+
+
+[[inst-point-log-level-cond]]
+Instrumentation point log level condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An event{nbsp}__E__ satisfies the instrumentation point log level
+condition of an event rule if either:
+
+* You specify the option:--log-level=++..++ option or you don't specify
+  the option:--log-level option.
++
+Defaulting to option:--log-level=++..++ when you don't specify the
+option:--log-level option is specific to LTTng{nbsp}{lttng_version} and
+may change in the future.
+
+* The log level of the LTTng user space tracepoint or logging statement
+  from which LTTng creates{nbsp}__E__ is:
+      With the option:--log-level=__LOGLEVEL__++..++ option::
+          At least as severe as 'LOGLEVEL'.
+
+      With the option:--log-level=__LOGLEVEL__ option::
+          Exactly 'LOGLEVEL'.
+
+As of LTTng{nbsp}{lttng_version}, the ++..++__LOGLEVEL__ and
+__LOGLEVEL__++..++__LOGLEVEL__ formats are :not: supported.
+
+This condition is only meaningful for the LTTng user space tracepoint
+and logging statement instrumentation point types: it's always satisfied
+for other types.
+
+The available values of 'LOGLEVEL' are, depending on the tracing domain,
+from the most to the least severe:
+
+User space (option:--domain=++user++ option)::
+    Shortcuts such as `system` are allowed.
++
+* `TRACE_EMERG` (0)
+* `TRACE_ALERT` (1)
+* `TRACE_CRIT` (2)
+* `TRACE_ERR` (3)
+* `TRACE_WARNING` (4)
+* `TRACE_NOTICE` (5)
+* `TRACE_INFO` (6)
+* `TRACE_DEBUG_SYSTEM` (7)
+* `TRACE_DEBUG_PROGRAM` (8)
+* `TRACE_DEBUG_PROCESS` (9)
+* `TRACE_DEBUG_MODULE` (10)
+* `TRACE_DEBUG_UNIT` (11)
+* `TRACE_DEBUG_FUNCTION` (12)
+* `TRACE_DEBUG_LINE` (13)
+* `TRACE_DEBUG` (14)
+
+`java.util.logging` (option:--domain=++jul++ option)::
+    Shortcuts such as `severe` are allowed.
++
+* `JUL_OFF` (`INT32_MAX`)
+* `JUL_SEVERE` (1000)
+* `JUL_WARNING` (900)
+* `JUL_INFO` (800)
+* `JUL_CONFIG` (700)
+* `JUL_FINE` (500)
+* `JUL_FINER` (400)
+* `JUL_FINEST` (300)
+* `JUL_ALL` (`INT32_MIN`)
+
+Apache log4j (option:--domain=++log4j++ option)::
+    Shortcuts such as `severe` are allowed.
++
+* `LOG4J_OFF` (`INT32_MAX`)
+* `LOG4J_FATAL` (50000)
+* `LOG4J_ERROR` (40000)
+* `LOG4J_WARN` (30000)
+* `LOG4J_INFO` (20000)
+* `LOG4J_DEBUG` (10000)
+* `LOG4J_TRACE` (5000)
+* `LOG4J_ALL` (`INT32_MIN`)
+
+Python (option:--domain=++python++ option)::
+    Shortcuts such as `critical` are allowed.
++
+* `PYTHON_CRITICAL` (50)
+* `PYTHON_ERROR` (40)
+* `PYTHON_WARNING` (30)
+* `PYTHON_INFO` (20)
+* `PYTHON_DEBUG` (10)
+* `PYTHON_NOTSET` (0)
+
+
+[[filter-cond]]
+Event payload and context filter condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+An event{nbsp}__E__ satisfies the event payload and context filter
+condition of an event rule if the option:--filter='EXPR' option is
+missing or if 'EXPR' is _true_.
+
+'EXPR' can contain references to the payload fields of{nbsp}__E__ and
+to the current context fields.
+
+IMPORTANT: Make sure to **single-quote** 'EXPR' when you run an
+man:lttng(1) command from a shell, as filter expressions typically
+include characters having a special meaning for most shells.
+
+The expected syntax of 'EXPR' is similar to the syntax of a
+C{nbsp}language conditional expression (an expression which an `if`
+statement can evaluate), but there are a few differences:
+
+* A _NAME_ expression identifies an event payload field named
+  _NAME_ (a C{nbsp}identifier).
++
+Use the C{nbsp}language dot and square bracket notations to access
+nested structure and array/sequence fields. You can only use a constant,
+positive integer number within square brackets. If the index is out of
+bounds, 'EXPR' is _false_.
++
+The value of an enumeration field is an integer.
++
+When a field expression doesn't exist, 'EXPR' is _false_.
++
+Examples: `my_field`, `target_cpu`, `seq[7]`, `msg.user[1].data[2][17]`.
+
+* A ++$ctx.++__TYPE__ expression identifies the statically-known context
+  field having the type _TYPE_ (a C{nbsp}identifier).
++
+List the available statically-known context field names with the
+man:lttng-add-context(1) command.
++
+When a field expression doesn't exist, 'EXPR' is _false_.
++
+Examples: `$ctx.prio`, `$ctx.preemptible`,
+`$ctx.perf:cpu:stalled-cycles-frontend`.
+
+* A ++$app.++__PROVIDER__++:++__TYPE__ expression identifies the
+  application-specific context field having the type _TYPE_ (a
+  C{nbsp}identifier) from the provider _PROVIDER_ (a C{nbsp}identifier).
++
+When a field expression doesn't exist, 'EXPR' is _false_.
++
+Example: `$app.server:cur_user`.
+
+* Compare strings, either string fields or string literals
+  (double-quoted), with the `==` and `!=` operators.
++
+When comparing to a string literal, the `*` character means ``match
+anything''. To match a literal `*` character, use :escwc:.
++
+Examples: `my_field == "user34"`, `my_field == my_other_field`,
+`my_field == "192.168.*"`.
+
+* The precedence table of the operators which are supported in 'EXPR'
+  is as follows. In this table, the highest precedence is{nbsp}1:
++
+[options="header"]
+|===
+|Precedence |Operator |Description |Associativity
+|1 |`-` |Unary minus |Right-to-left
+|1 |`+` |Unary plus |Right-to-left
+|1 |`!` |Logical NOT |Right-to-left
+|1 |`~` |Bitwise NOT |Right-to-left
+|2 |`<<` |Bitwise left shift |Left-to-right
+|2 |`>>` |Bitwise right shift |Left-to-right
+|3 |`&` |Bitwise AND |Left-to-right
+|4 |`^` |Bitwise XOR |Left-to-right
+|5 |`\|` |Bitwise OR |Left-to-right
+|6 |`<` |Less than |Left-to-right
+|6 |`<=` |Less than or equal to |Left-to-right
+|6 |`>` |Greater than |Left-to-right
+|6 |`>=` |Greater than or equal to |Left-to-right
+|7 |`==` |Equal to |Left-to-right
+|7 |`!=` |Not equal to |Left-to-right
+|8 |`&&` |Logical AND |Left-to-right
+|9 |`\|\|` |Logical OR |Left-to-right
+|===
++
+Parentheses are supported to bypass the default order.
++
+IMPORTANT: Unlike the C{nbsp}language, the bitwise AND and OR operators
+(`&` and `|`) in 'EXPR' take precedence over relational operators (`<`,
+`<=`, `>`, `>=`, `==`, and `!=`). This means the expression `2 & 2 == 2`
+is _true_ while the equivalent C{nbsp}expression is _false_.
++
+The arithmetic operators are :not: supported.
++
+LTTng first casts all integer constants and fields to signed 64-bit
+integers. The representation of negative integers is two's complement.
+This means that, for example, the signed 8-bit integer field 0xff (-1)
+becomes 0xffffffffffffffff (still -1) once casted.
++
+Before a bitwise operator is applied, LTTng casts all its operands to
+unsigned 64-bit integers, and then casts the result back to a signed
+64-bit integer. For the bitwise NOT operator, it's the equivalent of
+this C{nbsp}expression:
++
+[source,c]
+----
+(int64_t) ~((uint64_t) val)
+----
++
+For the binary bitwise operators, it's the equivalent of those
+C{nbsp}expressions:
++
+[source,c]
+----
+(int64_t) ((uint64_t) lhs >> (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs << (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs & (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs ^ (uint64_t) rhs)
+(int64_t) ((uint64_t) lhs | (uint64_t) rhs)
+----
++
+If the right-hand side of a bitwise shift operator (`<<` and `>>`) is
+not in the [0,{nbsp}63] range, then 'EXPR' is _false_.
+
+'EXPR' examples:
+
+----------------------------
+msg_id == 23 && size >= 2048
+----------------------------
+
+-------------------------------------------------
+$ctx.procname == "lttng*" && (!flag || poel < 34)
+-------------------------------------------------
+
+---------------------------------------------------------
+$app.my_provider:my_context == 17.34e9 || some_enum >= 14
+---------------------------------------------------------
+
+---------------------------------------
+$ctx.cpu_id == 2 && filename != "*.log"
+---------------------------------------
+
+------------------------------------------------
+eax_reg & 0xff7 == 0x240 && x[4] >> 12 <= 0x1234
+------------------------------------------------
+
+
+Migration from a recording event rule specification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Since LTTng{nbsp}2.13, what this manual page documents is the standard,
+common way to specify an LTTng event rule.
+
+With the man:lttng-enable-event(1) command, you also specify an event
+rule, but with deprecated options and arguments.
+
+The following table shows how to translate from the
+man:lttng-enable-event(1) options and arguments to the common event
+rule specification options:
+
+[options="header"]
+|===
+|Recording event rule option(s)/argument(s) |Common event rule option(s)
+
+|nloption:--kernel |option:--domain=++kernel++
+|nloption:--userspace |option:--domain=++user++
+|nloption:--jul |option:--domain=++jul++
+|nloption:--log4j |option:--domain=++log4j++
+|nloption:--python |option:--domain=++python++
+|nloption:--tracepoint (with nloption:--kernel/nloption:--userspace) |option:--type=++tracepoint++ or no option:--type option
+|nloption:--tracepoint (with nloption:--jul/nloption:--log4j/nloption:--python) |option:--type=++logging++ or no option:--type option
+|nloption:--syscall |option:--type=++syscall++ or option:--type=++syscall:entry+exit++
+|nloption:--probe='LOC' and 'RECORDNAME' (non-option) |option:--type=++kprobe++, option:--location='LOC', and option:--event-name='RECORDNAME'
+|nloption:--userspace-probe='LOC' and 'RECORDNAME' (non-option) |option:--type=++uprobe++, option:--location='LOC', and option:--event-name='RECORDNAME'
+|nloption:--function='LOC' and 'RECORDNAME' (non-option) |Not available as of LTTng{nbsp}{lttng_version}
+|'NAME' (non-option) |option:--name='NAME'
+|nloption:--all |option:--name=++\'*\'++ or no option:--name option
+|nloption:--exclude=__XNAME__[++,++__XNAME__]... |option:--exclude-name='XNAME' for each 'XNAME'
+|nloption:--loglevel='LOGLEVEL' |option:--log-level=__LOGLEVEL__++..++
+|nloption:--loglevel-only='LOGLEVEL' |option:--log-level=__LOGLEVEL__
+|nloption:--filter='EXPR' |option:--filter='EXPR'
+|===
+
+
+OPTIONS
+-------
+Tracing domain
+~~~~~~~~~~~~~~
+option:-d 'DOMAIN', option:--domain='DOMAIN'::
+    Only match events which LTTng creates in the tracing domain
+    'DOMAIN'.
++
+'DOMAIN' is one of:
++
+--
+`kernel`:::
+    Linux kernel
+`user`:::
+`userspace`:::
+    User space tracing
+`jul`:::
+    `java.util.logging`
+`log4j`:::
+    Apache log4j
+`python`:::
+    Python
+--
++
+This option is mandatory.
+
+
+Instrumentation point type condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+See the <<inst-point-type-cond,Instrumentation point type condition>>
+section above.
+
+option:-E 'NAME', option:--event-name='NAME'::
+    With the option:--type=++kprobe++ or option:--type=++uprobe++
+    option, set the name of the emitted events to 'NAME' instead of the
+    'LOC' argument of the option:--location='LOC' option.
++
+Defaulting to 'LOC' is specific to LTTng{nbsp}{lttng_version} and may
+change in the future.
+
+option:-L 'LOC', option:--location='LOC'::
+    With the option:--type=++kprobe++ option:::
+        Set the location of the Linux kprobe to insert to 'LOC'.
++
+'LOC' is one of:
++
+* An address (`0x` hexadecimal prefix supported).
+* A symbol name.
+* A symbol name and an offset (__SYMBOL__++pass:[+]++__OFFSET__ format).
+
+    With the option:--type=++uprobe++ option:::
+        Set the location of the user space probe to insert to 'LOC'.
++
+'LOC' is one of:
++
+\[++elf:++]__PATH__++:++__SYMBOL__::::
+    An available symbol within a user space application or library.
++
+--
+'PATH'::
+    Application or library path.
++
+One of:
++
+* An absolute path.
+* A relative path.
+* The name of an application as found in the directories listed in the
+  `PATH` environment variable.
+
+'SYMBOL'::
+    Symbol name of the function of which to instrument the entry.
++
+'SYMBOL' can be any defined code symbol in the output of the man:nm(1)
+command, including with its nloption:--dynamic option, which lists
+dynamic symbols.
+--
++
+As of LTTng{nbsp}{lttng_version}, not specifying `elf:` is equivalent to
+specifying it, but this default may change in the future.
++
+Examples:
++
+* `/usr/lib/libc.so.6:malloc`
+* `./myapp:createUser`
+* `elf:httpd:ap_run_open_htaccess`
+
+++sdt:++__PATH__++:++__PROVIDER__++:++__NAME__::::
+    A SystemTap User-level Statically Defined Tracing (USDT) probe
+    within a user space application or library.
++
+--
+'PATH'::
+    Application or library path.
++
+This can be:
++
+* An absolute path.
+* A relative path.
+* The name of an application as found in the directories listed in the
+  `PATH` environment variable.
+
+'PROVIDER'::
+'NAME'::
+    USDT provider and probe names.
++
+For example, with the following USDT probe:
++
+[source,c]
+----
+DTRACE_PROBE2("server", "accept_request",
+              request_id, ip_addr);
+----
++
+The provider/probe name pair is `server:accept_request`.
+--
++
+Example: `sdt:./build/server:server:accept_request`
+
+option:-t 'TYPE', option:--type='TYPE'::
+    Only match events which LTTng creates from an instrumentation point
+    having the type 'TYPE'.
++
+'TYPE' is one of:
++
+--
+`tracepoint`::
+    LTTng tracepoint.
++
+Only available with the option:--domain=++kernel++ and
+option:--domain=++user++ options.
++
+As of LTTng{nbsp}{lttng_version}, this is the default instrumentation
+point type of the Linux kernel and user space tracing domains, but this
+may change in the future.
+
+`logging`::
+    Logging statement.
++
+Only available with the option:--domain=++jul++,
+option:--domain=++log4j++, and option:--domain=++python++ options.
++
+As of LTTng{nbsp}{lttng_version}, this is the default instrumentation
+point type of the `java.util.logging`, Apache log4j, and Python tracing
+domains, but this may change in the future.
+
+`syscall`::
+    As of LTTng{nbsp}{lttng_version}, equivalent to
+    `syscall:entry+exit`, but this default may change in the future.
++
+Only available with the option:--domain=++kernel++ option.
+
+`syscall:entry`::
+    Linux system call entry.
++
+Only available with the option:--domain=++kernel++ option.
+
+`syscall:exit`::
+    Linux system call exit.
++
+Only available with the option:--domain=++kernel++ option.
+
+`syscall:entry+exit`::
+    Linux system call entry and exit (two distinct instrumentation
+    points).
++
+Only available with the option:--domain=++kernel++ option.
+
+`kprobe`::
+    Linux kprobe.
++
+Only available with the option:--domain=++kernel++ option.
++
+You must specify the location of the kprobe to insert with the
+option:--location option.
++
+You may specify the name of the emitted events with the
+option:--event-name option.
+
+`uprobe` or `userspace-probe`::
+    Linux user space probe.
++
+Only available with the option:--domain=++kernel++ option.
++
+You must specify the location of the user space probe to insert with the
+option:--location option.
++
+You may specify the name of the emitted events with the
+option:--event-name option.
+--
+
+
+Event name condition
+~~~~~~~~~~~~~~~~~~~~
+See the <<event-name-cond,Event name condition>> section above.
+
+option:-n 'NAME', option:--name='NAME'::
+    Only match events of which 'NAME' matches:
++
+--
+With the option:--domain=++kernel++ or option:--domain=++user++ option, with the option:--type=++tracepoint++ option or without the option:--type option:::
+    The full name of the LTTng tracepoint.
+
+With the option:--domain=++jul++, option:--domain=++log4j++, or option:--domain=++python++ option:::
+    The Java or Python logger name.
+
+With the option:--domain=++kernel++ option and one of the option:--type=++syscall++, option:--type=++syscall:entry++, option:--type=++syscall:exit++, and option:--type=++syscall:entry+exit++ options:::
+    The name of the system call, without any `sys_` prefix.
+--
++
+This option is :not: available with the option:--type=++kprobe++ and
+option:--type=++uprobe++ options.
++
+As of LTTng{nbsp}{lttng_version}, not specifying this option is
+equivalent to specifying option:--name=++\'*\'++ (when it applies), but
+this default may change in the future.
+
+option:-x 'XNAME', option:--exclude='XNAME'::
+    Only match events of which 'XNAME' does :not: match the full name of
+    the LTTng user space tracepoint.
++
+Only available with the option:--domain=++user++ option.
+
+'NAME' and 'XNAME' are globbing patterns: the `*` character means
+``match anything''. To match a literal `*` character, use :escwc:.
+
+
+Instrumentation point log level condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+See the <<inst-point-log-level-cond,Instrumentation point log level
+condition>> section above.
+
+option:-l 'LOGLEVELSPEC', option:--log-level='LOGLEVELSPEC'::
+    Only match events of which the log level of the LTTng tracepoint or
+    logging statement is, depending on the format of 'LOGLEVELSPEC':
++
+--
+__LOGLEVEL__++..++::
+    At least as severe as 'LOGLEVEL'.
+
+'LOGLEVEL'::
+    Exactly 'LOGLEVEL'.
+
+++..++::
+    Anything.
+--
++
+This option is :not: available with the option:--domain=++kernel++
+option.
++
+As of LTTng{nbsp}{lttng_version}, not specifying this option is
+equivalent to specifying option:--log-level=++..++ (when it applies),
+but this default may change in the future.
+
+
+Event payload and context filter condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+See the <<filter-cond,Event payload and context filter condition>>
+section above.
+
+option:-f 'EXPR', option:--filter='EXPR'::
+    Only match events of which 'EXPR', which can contain references to
+    event payload and current context fields, is _true_.
+
+
+SEE ALSO
+--------
+man:lttng(1),
+man:lttng-add-trigger(1)

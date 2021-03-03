@@ -1,6 +1,6 @@
 lttng-version(1)
 ================
-:revdate: 1 May 2018
+:revdate: 21 April 2021
 
 
 NAME
@@ -16,15 +16,17 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng version` command outputs the version of LTTng-tools.
+The `lttng version` command shows the version of LTTng-tools, the LTTng
+project which provides the man:lttng(1) command and other tracing
+control programs and libraries.
 
-The output of `lttng version` is broken down into the following parts:
+The output of the `version` command shows:
 
-* Major, minor, and patch numbers
-* Git commit information, if available
-* Release name with its description
-* LTTng project's website URL
-* License information
+* The major, minor, and patch version numbers.
+* The Git commit information, if available.
+* The release name and its description.
+* The URL of the LTTng project website.
+* The license information.
 
 
 include::common-cmd-options-head.txt[]

@@ -1,11 +1,11 @@
 lttng-sessiond(8)
 =================
-:revdate: 17 September 2018
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-sessiond - LTTng 2 tracing session daemon
+lttng-sessiond - LTTng session daemon
 
 
 SYNOPSIS
@@ -25,134 +25,197 @@ SYNOPSIS
                [option:--ustconsumerd64-cmd-sock='PATH']
                [option:--consumerd32-path='PATH'] [option:--consumerd32-libdir='PATH']
                [option:--consumerd64-path='PATH'] [option:--consumerd64-libdir='PATH']
-               [option:--event-notifier-error-buffer-size-kernel='SIZE']
-               [option:--event-notifier-error-buffer-size-userspace='SIZE']
-               [option:--quiet | [option:-v | option:-vv | option:-vvv] [option:--verbose-consumer]]
+               [option:--event-notifier-error-buffer-size-kernel='SLOTS']
+               [option:--event-notifier-error-buffer-size-userspace='SLOTS']
+               [option:--quiet | [option:--verbose]... [option:--verbose-consumer]]
 
 
 DESCRIPTION
 -----------
-The https://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
-source software package used for correlated tracing of the Linux kernel,
-user applications, and user libraries.
+include::common-intro.txt[]
 
-LTTng consists of Linux kernel modules (for Linux kernel tracing) and
-dynamically loaded libraries (for user application and library tracing).
+An LTTng session daemon, `lttng-sessiond`, is a program which:
 
-The _LTTng session daemon_ is a tracing registry which allows the user
-to interact with multiple tracers (kernel and user space) within the
-same container, a _tracing session_. Traces can be gathered from the
-Linux kernel and/or from instrumented applications (see
-man:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using man:babeltrace2(1).
+* Manages tracing sessions (see man:lttng-create(1) to learn more about
+  tracing sessions).
 
-To trace the Linux kernel, the session daemon needs to be running as
-`root`. LTTng uses a _tracing group_ to allow specific users to interact
-with the root session daemon. The default tracing group name is
-`tracing`. You can use the option:--group option to set the tracing
-group name to use.
+* Controls the various components (like tracers and consumer daemons) of
+  LTTng.
 
-Session daemons can coexist. You can have a session daemon running as
-user Alice that can be used to trace her applications alongside a root
-session daemon or a session daemon running as user Bob.
+* Sends asynchronous notifications to user applications.
 
-The LTTng session daemon manages trace data consumer daemons by spawning
-them when necessary. You do not need to manage the consumer daemons
-manually.
+A session daemon receives commands from the man:lttng(1) command-line
+tool, as well as from any user application linked with the LTTng control
+library (`liblttng-ctl`).
 
-NOTE: It is highly recommended to start the session daemon at boot time
-for stable and long-term tracing.
+Each Unix user may have its own independent running session daemon.
+However, the man:lttng(1) tool must connect to the session daemon of the
+`root` user (the root session daemon) to control Linux kernel tracing.
 
+When you start `lttng-sessiond` as the `root` Unix user, a non-root Unix
+user can connect to it if it's part of the Unix tracing group. By
+default, the name of the tracing group is `tracing`. Override the
+tracing group name with the option:--group option.
 
-Automatic loading of tracing session configurations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When the session daemon starts, it automatically loads session
-configuration files.
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
 
-The following directories are searched, non-recursively, in this order
-for configuration files to load on launch:
+A session daemon manages trace data consumer daemons, spawning them when
+necessary. You do :not: need to manage the consumer daemons yourself.
 
-. `$LTTNG_HOME/.lttng/sessions/auto` (`$LTTNG_HOME` defaults to `$HOME`)
-. +{system_sessions_auto_dir}+
+By default, `lttng-sessiond` doesn't start as a daemon. Make it a daemon
+with the option:--daemonize or option:--background option. With those
+options, `lttng-sessiond` ensures the daemon is ready to receive client
+commands before it exits.
 
-Note that both the directory containing the tracing session
-configurations _and_ the session daemon binary _must_ share the same UID
-for the configurations to be automatically loaded.
-
-The option:--load option overrides the default directories _and_ the UID
-check. The session daemon simply checks if the path is accessible and
-tries to load every tracing session configuration in it. When this
-option is specified, the default directories are :not: searched for
-configuration files. When the option is not specified, _both_ default
-directories are searched for configuration files.
-
-If the option:--load option's argument is a directory, then all the
-tracing session configurations found in all the files in this directory
-are loaded. If the argument is a file, then all the tracing session
-configurations found in this file are loaded.
+NOTE: The LTTng project recommends that you start the session daemon at
+boot time for stable and long-term tracing.
 
 
+[[cfg]]
+Daemon configuration
+~~~~~~~~~~~~~~~~~~~~
+When you run `lttng-sessiond`, it configures itself from, in this order:
+
+. The INI configuration file +{system_lttng_conf}+, if any.
+
+. The INI configuration file `$LTTNG_HOME/.lttng/lttng.conf`, if any.
++
+`$LTTNG_HOME` defaults to `$HOME`.
+
+. With the option:--config='PATH' option: the INI configuration file
+  'PATH'.
+
+. The command-line options.
+
+Each step can override a previous configuration property.
+
+In INI configuration files, the session daemon only reads the properties
+under the `sessiond` INI section. Each INI property is:
+
+Key::
+    The long name of a command-line option to set (see the
+    <<options,OPTIONS>> section below).
+
+Value::
+    The selected command-line option accepts an argument:::
+        Option argument (string).
+
+    The selected command-line option is a switch:::
+        `true`::::
+        `yes`::::
+        `on`::::
+            Enable the option.
+
+        `false`::::
+        `no`::::
+        `off`::::
+            Disable the option.
+
+INI configuration file example:
+
+[source,ini]
+----
+[sessiond]
+daemonize=yes
+extra-kmod-probes=my-driver,other-module
+----
+
+
+[[load]]
+Tracing session configuration loading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When the session daemon starts, it loads tracing session configurations
+from:
+
+Without the option:--load option::
+    In this order:
++
+--
+. All the files in `$LTTNG_HOME/.lttng/sessions/auto`.
++
+`$LTTNG_HOME` defaults to `$HOME`.
+
+. All the files in +{system_sessions_auto_dir}+.
+--
++
+`lttng-sessiond` only loads tracing configuration files from the
+directories above if its UID and their UID are the same.
+
+With the option:--load='PATH' option::
+    'PATH' is a directory:::
+        All the files in 'PATH'.
+
+    'PATH' is a file:::
+        The file 'PATH'.
+
+
+[[options]]
 OPTIONS
 -------
 Daemon configuration
 ~~~~~~~~~~~~~~~~~~~~
 option:-b, option:--background::
-    Start as Unix daemon, but keep file descriptors (console) open.
-    Use the option:--daemonize option instead to close the file
-    descriptors.
+    Start as a Unix daemon, but keep file descriptors (console) open.
++
+With this option, `lttng-sessiond` ensures the daemon is ready to
+receive client commands before it exits.
++
+Use the option:--daemonize option instead to close the file descriptors.
 
 option:-f 'PATH', option:--config='PATH'::
-    Load session daemon configuration from path 'PATH'.
+    Configure the daemon using the INI configuration file 'PATH' in
+    addition to the default configuration files and the command-line
+    options.
++
+See the <<cfg,Daemon configuration>> section above.
 
 option:-d, option:--daemonize::
-    Start as Unix daemon, and close file descriptors (console). Use the
-    option:--background option instead to keep the file descriptors
-    open.
+    Start as a Unix daemon and close file descriptors (console).
++
+With this option, `lttng-sessiond` ensures the daemon is ready to
+receive client commands before it exits.
++
+Use the option:--background option instead to keep the file descriptors
+open.
 
 option:-g 'GROUP', option:--group='GROUP'::
-    Use 'GROUP' as Unix tracing group (default: `tracing`).
+    Set the Unix tracing group to 'GROUP' instead of `tracing`.
++
+This option is only meaningful when the `root` Unix user starts
+`lttng-sessiond`.
++
+Members of the Unix tracing group may connect to the root session daemon
+and, therefore, control LTTng kernel tracing.
 
 option:-l 'PATH', option:--load='PATH'::
-    Automatically load tracing session configurations from 'PATH',
-    either a directory or a file, instead of loading them from the
-    default search directories.
+    Load tracing session configurations from 'PATH', either a directory
+    or a file, instead of loading them from the default search
+    directories.
++
+See the <<load,Tracing session configuration loading>> section above.
 
 option:-S, option:--sig-parent::
-    Send `SIGUSR1` to parent process to notify readiness.
+    Send the `USR1` signal to the parent process to notify readiness.
 +
-NOTE: This is used by man:lttng(1) to get notified when the
-session daemon is ready to accept commands. When building a third party
-tool on liblttng-ctl, this option can be very handy to synchronize the
-control tool and the session daemon.
-
-option:--event-notifier-error-buffer-size-kernel='SIZE'::
-    Set the size of the kernel event notifier error counter buffers to 'SIZE.
-
-option:--event-notifier-error-buffer-size-userspace='SIZE'::
-    Set the size of the userspace event notifier error counter buffers to
-    'SIZE.
+You can also use the option:--daemonize or option:--background option,
+in which case `lttng-sessiond` ensures the daemon is ready to receive
+client commands before it exits.
 
 
 Linux kernel tracing
 ~~~~~~~~~~~~~~~~~~~~
+At most one of:
+
 option:--extra-kmod-probes='PROBE'[,'PROBE']...::
-    Load specific LTTng Linux kernel modules when kernel tracing
-    is enabled (option:--no-kernel option is :not: specified), in
-    addition to loading the default list of LTTng kernel modules.
-+
-Only the name of the probe needs to be specified, without the
-`lttng-probe-` prefix and without the kernel module extension suffix.
-For example, specify `sched` to load the `lttng-probe-sched.ko` kernel
-module.
+    For each 'PROBE' argument, load the LTTng kernel probe module
+    named ++lttng-probe-++__PROBE__++.ko++, in addition to loading the
+    default LTTng kernel probe modules.
 
 option:--kmod-probes='PROBE'[,'PROBE']...::
-    Only load specific LTTng Linux kernel modules when kernel tracing
-    is enabled (option:--no-kernel option is :not: specified).
-+
-Only the name of the probe needs to be specified, without the
-`lttng-probe-` prefix and without the kernel module extension suffix.
-For example, specify `sched` to load the `lttng-probe-sched.ko` kernel
-module.
+    Only load, for each 'PROBE' argument, the LTTng kernel probe
+    module named ++lttng-probe-++__PROBE__++.ko++, instead of loading
+    the default LTTng kernel probe modules.
 
 option:--no-kernel::
     Disable Linux kernel tracing.
@@ -161,88 +224,112 @@ option:--no-kernel::
 Paths and ports
 ~~~~~~~~~~~~~~~
 option:--agent-tcp-port='PORT'::
-    Listen on TCP port 'PORT' for agent application registrations
-    (default: a port within the range
+    Listen on TCP port 'PORT' for agent application registration
+    instead of a port within the range
     [{default_agent_tcp_port_range_begin},{nbsp}{default_agent_tcp_port_range_end}]).
 
 option:-a 'PATH', option:--apps-sock='PATH'::
-    Set application Unix socket path to 'PATH'.
+    Set the application Unix socket path to 'PATH'.
 
 option:-c 'PATH', option:--client-sock='PATH'::
-    Set client Unix socket path to 'PATH'.
+    Set the client Unix socket path to 'PATH'.
 
 option:--consumerd32-libdir='PATH'::
-    Set 32-bit consumer daemon library directory to 'PATH'.
+    Set the 32-bit consumer daemon library directory to 'PATH'.
 
 option:--consumerd32-path='PATH'::
-    Set 32-bit consumer daemon binary path to 'PATH'.
+    Set the 32-bit consumer daemon binary path to 'PATH'.
 
 option:--consumerd64-libdir='PATH'::
-    Set 64-bit consumer daemon library directory to 'PATH'.
+    Set the 64-bit consumer daemon library directory to 'PATH'.
 
 option:--consumerd64-path='PATH'::
-    Set 64-bit consumer daemon binary path to 'PATH'.
+    Set the 64-bit consumer daemon binary path to 'PATH'.
 
 option:--kconsumerd-cmd-sock='PATH'::
-    Set Linux kernel consumer daemon's command Unix socket path
+    Set the command Unix socket path of the Linux kernel consumer daemon
     to 'PATH'.
 
 option:--kconsumerd-err-sock='PATH'::
-    Set Linux kernel consumer daemon's error Unix socket path
+    Set the error Unix socket path of the Linux kernel consumer daemon
     to 'PATH'.
 
 option:--ustconsumerd32-cmd-sock='PATH'::
-    Set 32-bit consumer daemon's command Unix socket path to 'PATH'.
+    Set the Unix socket path of the 32-bit consumer daemon command to
+    'PATH'.
 
 option:--ustconsumerd64-cmd-sock='PATH'::
-    Set 64-bit consumer daemon's command Unix socket path to 'PATH'.
+    Set the Unix socket path of the 64-bit consumer daemon command to
+    'PATH'.
 
 option:--ustconsumerd32-err-sock='PATH'::
-    Set 32-bit consumer daemon's error Unix socket path to 'PATH'.
+    Set the Unix socket path of the 32-bit consumer daemon error to
+    'PATH'.
 
 option:--ustconsumerd64-err-sock='PATH'::
-    Set 64-bit consumer daemon's error Unix socket path to 'PATH'.
+    Set the Unix socket path of the 64-bit consumer daemon error to
+    'PATH'.
+
+
+Buffer size of event notifier error counters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+option:--event-notifier-error-buffer-size-kernel='SLOTS'::
+    Set the size of the kernel event notifier error counter buffers to
+    'SLOTS'{nbsp}slots.
+
+option:--event-notifier-error-buffer-size-userspace='SLOTS'::
+    Set the size of the user space event notifier error counter buffers
+    to 'SLOTS'{nbsp}slots.
+
+As of LTTng{nbsp}{lttng_version}, a _slot_ is a 32-bit counter, but this
+may change in the future.
 
 
 Verbosity
 ~~~~~~~~~
 option:-q, option:--quiet::
     Suppress all messages, including warnings and errors.
++
+You may :not: use this option with the option:--verbose and
+option:--verbose-consumer options.
 
 option:-v, option:--verbose::
     Increase verbosity.
 +
-Three levels of verbosity are available, which are triggered by
-appending additional `v` letters to the option
-(that is, `-vv` and `-vvv`).
+Specify this option up to three times to get more levels of verbosity.
++
+You may :not: use this option with the option:--quiet option.
 
 option:--verbose-consumer::
-    Increase verbosity of consumer daemons spawned by this session
-    daemon.
+    Increase the verbosity of the consumer daemons which this session
+    daemon spawns.
++
+You may :not: use this option with the option:--quiet option.
 
 
 Program information
 ~~~~~~~~~~~~~~~~~~~
-option:-h, option:--help::
-    Show help.
+include::common-help-option.txt[]
 
 option:-V, option:--version::
-    Show version.
+    Show version and quit.
 
 
 ENVIRONMENT VARIABLES
 ---------------------
-Note that command-line options override their equivalent environment
-variable.
-
 `LTTNG_ABORT_ON_ERROR`::
-    Set to 1 to abort the process after the first error is encountered.
+    Set to `1` to abort the process after the first error is
+    encountered.
 
 `LTTNG_APP_SOCKET_TIMEOUT`::
-    Application socket's timeout (seconds) when sending/receiving
-    commands. After this period of time, the application is unregistered
-    by the session daemon. A value of 0 or -1 means an infinite timeout.
-    Default value: {default_app_socket_rw_timeout}.
+    Timeout (in seconds) of the application socket when
+    sending/receiving commands.
++
+After this period of time, `lttng-sessiond` unregisters the application.
++
+Set to `0` or `-1` to set an infinite timeout.
++
+Default: +{default_app_socket_rw_timeout}+.
 
 `LTTNG_CONSUMERD32_BIN`::
     32-bit consumer daemon binary path.
@@ -250,7 +337,7 @@ variable.
 The option:--consumerd32-path option overrides this variable.
 
 `LTTNG_CONSUMERD32_LIBDIR`::
-    32-bit consumer daemon library path.
+    32-bit consumer daemon library directory path.
 +
 The option:--consumerd32-libdir option overrides this variable.
 
@@ -260,31 +347,32 @@ The option:--consumerd32-libdir option overrides this variable.
 The option:--consumerd64-path option overrides this variable.
 
 `LTTNG_CONSUMERD64_LIBDIR`::
-    64-bit consumer daemon library path.
+    64-bit consumer daemon library directory path.
 +
 The option:--consumerd64-libdir option overrides this variable.
 
 `LTTNG_DEBUG_NOCLONE`::
-    Set to 1 to disable the use of `clone()`/`fork()`. Setting this
-    variable is considered insecure, but it is required to allow
-    debuggers to work with the session daemon on some operating systems.
+    Set to `1` to disable the use of man:clone(2)/man:fork(2).
++
+Setting this variable is considered insecure, but it's required to allow
+debuggers to work with `lttng-sessiond` on some operating systems.
 
 `LTTNG_EXTRA_KMOD_PROBES`::
-    Load specific LTTng Linux kernel modules when kernel tracing
-    is enabled (option:--no-kernel option is :not: specified), in
-    addition to loading the default list of LTTng kernel modules.
+    Extra LTTng kernel probe modules to load.
 +
-The option:--extra-kmod-probes option overrides this variable.
+See the option:--extra-kmod-probes option which overrides this
+environment variable.
 
 `LTTNG_KMOD_PROBES`::
-    Only load specific LTTng Linux kernel modules when kernel tracing
-    is enabled (option:--no-kernel option is :not: specified).
+    Exclusive LTTng kernel probe modules to load.
 +
-The option:--kmod-probes option overrides this variable.
+See the option:--kmod-probes option which overrides this environment
+variable.
 
 `LTTNG_NETWORK_SOCKET_TIMEOUT`::
-    Socket connection, receive and send timeout (milliseconds). A value
-    of 0 or -1 uses the timeout of the operating system (default).
+    Socket connection, receive, and send timeout (milliseconds).
++
+Set to `0` or `-1` to use the timeout of the operating system (default).
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
     Tracing session configuration XML schema definition (XSD) path.
@@ -293,34 +381,40 @@ The option:--kmod-probes option overrides this variable.
 FILES
 -----
 `$LTTNG_HOME/.lttng`::
-    User LTTng runtime and configuration directory.
+    Unix user's LTTng runtime and configuration directory.
 
 `$LTTNG_HOME/lttng-traces`::
-    Default output directory of LTTng traces. This can be overridden
-    with the nloption:--output option of the man:lttng-create(1)
-    command.
+    Default output directory of LTTng traces in local and snapshot
+    modes.
++
+Override this path with the nloption:--output option of the
+man:lttng-create(1) command.
 
 `$LTTNG_HOME/.lttng/sessions/auto`::
-    Directory from which user tracing configuration files are
-    automatically loaded when the session daemon starts (see
-    man:lttng-save(1) and man:lttng-load(1) for saving
-    and loading tracing sessions).
+    Directory from which `lttng-sessiond` loads Unix user tracing
+    session configurations when starting.
++
+See the <<load,Tracing session configuration loading>> section above to
+learn more.
 
 +{system_sessions_auto_dir}+::
-    Directory from which system-wide tracing configuration files are
-    automatically loaded when the session daemon starts (see
-    man:lttng-save(1) and man:lttng-load(1) for saving
-    and loading tracing sessions).
+    Directory from which `lttng-sessiond` loads system-wide tracing
+    session configurations when starting.
++
+See the <<load,Tracing session configuration loading>> section above to
+learn more.
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
-    Default location of the session daemon configuration file (see the
-    option:--config option).
+    Unix user's LTTng daemon INI configuration file.
++
+See the <<cfg,Daemon configuration>> section above to learn more.
 
 +{system_lttng_conf}+::
-    System-wide location of the session daemon configuration file (see
-    the option:--config option).
+    System-wide LTTng daemon INI configuration file.
++
+See the <<cfg,Daemon configuration>> section above to learn more.
 
-NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
+NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 
 
 EXIT STATUS
@@ -337,14 +431,13 @@ EXIT STATUS
 
 LIMITATIONS
 -----------
-For an unprivileged user running `lttng-sessiond`, the maximum number of
-file descriptors per process is usually 1024. This limits the number of
-traceable applications, since for each instrumented application, there
-is two file descriptors per CPU and one more socket for bidirectional
-communication.
+For an unprivileged Unix user running `lttng-sessiond`, the maximum
+number of file descriptors per process is usually 1024. This limits the
+number of traceable applications, since, for each instrumented
+application, there are two file descriptors per CPU as well as one
+socket for bidirectional communication.
 
-For the root user, the limit is bumped to 65535. A future version will
-deal with this limitation.
+For the `root` user, the limit is usually 65,535.
 
 
 include::common-footer.txt[]
@@ -352,8 +445,4 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng(1),
-man:lttng-relayd(8),
-man:lttng-crash(1),
-man:lttng-ust(3),
-man:babeltrace2(1)
+man:lttng(1)

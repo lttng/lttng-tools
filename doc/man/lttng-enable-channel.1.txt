@@ -44,8 +44,8 @@ DESCRIPTION
 The `lttng enable-channel` command can create a new channel, or enable
 one or more existing and disabled ones.
 
-A channel is the owner of sub-buffers holding recorded events. Event,
-rules, when created using man:lttng-enable-event(1), are always
+A channel is the owner of sub-buffers holding recorded events. Recording
+event rules, when created using man:lttng-enable-event(1), are always
 assigned to a channel. When creating a new channel, many parameters
 related to those sub-buffers can be fine-tuned. They are described in
 the subsections below.

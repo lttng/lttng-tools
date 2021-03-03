@@ -64,7 +64,7 @@ Consider the following variables:
     Base output directory: `$LTTNG_HOME/lttng-traces` or the
     argument of the option:--output option.
 +
-NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
+NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 
 'HOSTNAME'::
     Peer's hostname.
@@ -331,7 +331,7 @@ FILES
     Default base output directory of LTTng traces. This can be
     overridden with the option:--output option.
 
-NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
+NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 
 
 EXIT STATUS

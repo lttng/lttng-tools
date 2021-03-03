@@ -1,11 +1,11 @@
 lttng-help(1)
 =============
-:revdate: 14 March 2017
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-help - Display help information about an LTTng command
+lttng-help - Show the help of an LTTng command
 
 
 SYNOPSIS
@@ -16,23 +16,22 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng help` command displays help information about an LTTng
-command.
+The `lttng help` command shows the help of:
 
-This command is the equivalent of:
+With the 'COMMAND' argument::
+    The ++lttng{nbsp}++__COMMAND__ command.
 
-[role="term"]
-----
-$ lttng COMMAND --help
-----
+Without the 'COMMAND' argument::
+    The man:lttng(1) command itself.
 
-where `COMMAND` is the name of the command about which to get help. If
-'COMMAND' is omitted, `lttng help` shows general help about the
-man:lttng(1) command.
+The `help` command is equivalent to:
 
-The `lttng help` command attempts to launch `/usr/bin/man` to view
-the command's man page. The path to the man pager can be overridden
-by the `LTTNG_MAN_BIN_PATH` environment variable.
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] ['COMMAND'] --help
+
+The `help` command attempts to launch `/usr/bin/man` to view this the
+manual page of the command. Override the manual pager path with the
+`LTTNG_MAN_BIN_PATH` environment variable.
 
 
 include::common-cmd-options-head.txt[]

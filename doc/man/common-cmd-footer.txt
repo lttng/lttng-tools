@@ -1,60 +1,67 @@
 ENVIRONMENT VARIABLES
 ---------------------
 `LTTNG_ABORT_ON_ERROR`::
-    Set to 1 to abort the process after the first error is encountered.
+    Set to `1` to abort the process after the first error is
+    encountered.
 
 `LTTNG_HOME`::
-    Overrides the `$HOME` environment variable. Useful when the user
-    running the commands has a non-writable home directory.
+    Path to the LTTng home directory.
++
+Defaults to `$HOME`.
++
+Useful when the Unix user running the commands has a non-writable home
+directory.
 
 `LTTNG_MAN_BIN_PATH`::
-    Absolute path to the man pager to use for viewing help information
-    about LTTng commands (using man:lttng-help(1) or
-    `lttng COMMAND --help`).
+    Absolute path to the manual pager to use to read the LTTng
+    command-line help (with man:lttng-help(1) or with the
+    nloption:--help option) instead of `/usr/bin/man`.
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
-    Path in which the `session.xsd` session configuration XML
-    schema may be found.
+    Path to the directory containing the `session.xsd` tracing session
+    configuration XML schema.
 
 `LTTNG_SESSIOND_PATH`::
-    Full session daemon binary path.
+    Absolute path to the LTTng session daemon (see
+    man:lttng-sessiond(8)) binary.
 +
-The genoption:--sessiond-path option has precedence over this
-environment variable.
-
-Note that the man:lttng-create(1) command can spawn an LTTng
-session daemon automatically if none is running. See
-man:lttng-sessiond(8) for the environment variables influencing
-the execution of the session daemon.
+The genoption:--sessiond-path general option overrides this environment
+variable.
++
+NOTE: The man:lttng-create(1) command can spawn an LTTng session daemon
+automatically if none is running. See man:lttng-sessiond(8) for the
+environment variables affecting the execution of the session daemon.
 
 
 FILES
 -----
 `$LTTNG_HOME/.lttngrc`::
-    User LTTng runtime configuration.
+    Unix user's LTTng runtime configuration.
 +
-This is where the per-user current tracing session is stored between
-executions of man:lttng(1). The current tracing session can be set
-with man:lttng-set-session(1). See man:lttng-create(1) for
-more information about tracing sessions.
+This is where LTTng stores the name of the Unix user's current tracing
+session between executions of man:lttng(1). man:lttng-create(1) and
+man:lttng-set-session(1) set the current tracing session.
 
 `$LTTNG_HOME/lttng-traces`::
-    Default output directory of LTTng traces. This can be overridden
-    with the nloption:--output option of the man:lttng-create(1)
-    command.
+    Default output directory of LTTng traces in local and snapshot
+    modes.
++
+Override this path with the nloption:--output option of the
+man:lttng-create(1) command.
 
 `$LTTNG_HOME/.lttng`::
-    User LTTng runtime and configuration directory.
+    Unix user's LTTng runtime and configuration directory.
 
 `$LTTNG_HOME/.lttng/sessions`::
-    Default location of saved user tracing sessions (see
-    man:lttng-save(1) and man:lttng-load(1)).
+    Default directory containing the Unix user's saved tracing session
+    configurations (see man:lttng-save(1) and man:lttng-load(1)).
 
 +{system_sessions_dir}+::
-    System-wide location of saved tracing sessions
-    (see man:lttng-save(1) and man:lttng-load(1)).
+    Directory containing the system-wide saved tracing session
+    configurations (see man:lttng-save(1) and man:lttng-load(1)).
 
-NOTE: `$LTTNG_HOME` defaults to `$HOME` when not explicitly set.
+NOTE: `$LTTNG_HOME` defaults to the value of the `HOME` environment
+variable.
 
 
 EXIT STATUS

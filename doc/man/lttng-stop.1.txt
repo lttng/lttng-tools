@@ -1,11 +1,11 @@
 lttng-stop(1)
 =============
-:revdate: 18 January 2018
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-stop - Stop LTTng tracers
+lttng-stop - Stop an LTTng tracing session
 
 
 SYNOPSIS
@@ -16,45 +16,52 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng stop` command stops the various LTTng tracers for a given
-active tracing session.
+The `lttng stop` command stops a tracing session, that is, it
+deactivates the LTTng tracers for:
 
-Stopping the LTTng tracers has the effect that all enabled event rules
-within enabled channels cannot make event sources _emit_ trace events
-anymore.
+With the 'SESSION' argument::
+    The tracing session named 'SESSION'.
 
-A tracing session with no running tracers is said to be _inactive_.
-Inactive tracing sessions can be set active using the
-man:lttng-start(1) command.
+Without the 'SESSION' argument::
+    The current tracing session (see man:lttng-create(1) and
+    man:lttng-set-session(1) to learn more about the current tracing
+    session).
 
-If 'SESSION' is omitted, the LTTng tracers are stopped for the current
-tracing session (see man:lttng-create(1) for more information
-about the current tracing session). Otherwise, they are stopped for the
-existing tracing session named 'SESSION'. `lttng list`
-outputs all the existing tracing sessions (see man:lttng-list(1)).
+The selected tracing session must be active (started; see
+man:lttng-start(1)). A tracing session is inactive on creation (see
+man:lttng-create(1)).
 
-By default, the `lttng stop` command ensures that the tracing session's
-trace data is valid before returning to the prompt. With the
-option:--no-wait option, the command finishes immediately, hence a local
-trace might not be valid when the command is done. In this case, there
-is no way to know when the trace becomes valid.
+An active tracing session is an implicit recording event rule condition
+(see man:lttng-enable-event(1)). In other words, a recording event rule
+cannot match an event when its tracing session is inactive.
 
-If at least one rotation occurred during the chosen tracing session's
-lifetime (see man:lttng-rotate(1) and man:lttng-enable-rotation(1)), the
-`lttng stop` command renames the current trace chunk subdirectory and
-prints the renamed path. Although it is safe to read the content of this
-renamed subdirectory while the tracing session remains inactive (until
-the next man:lttng-start(1)), it is :not: a trace chunk archive: you
-need to destroy the tracing session with man:lttng-destroy(1) or make
-a rotation with man:lttng-rotate(1) to archive it.
+A `stop-session` trigger action can also stop a tracing session (see
+man:lttng-add-trigger(1)).
+
+Start an inactive tracing session with the man:lttng-start(1) command.
+
+By default, the `stop` command ensures that the trace data of the
+selected tracing session is valid before it exits. Make the command exit
+immediately with the option:--no-wait option. In this case, however, the
+traces(s) might not be valid when the command exits, and there's no way
+to know when it/they becomes valid.
+
+If LTTng archived the current trace chunk (see man:lttng-rotate(1) and
+man:lttng-enable-rotation(1)) of the selected tracing session at least
+once during its lifetime, the `stop` command renames the current trace
+chunk subdirectory and prints the renamed path. Although it's safe to
+read the content of this renamed subdirectory while the tracing session
+remains inactive, it's :not: a trace chunk archive: you need to destroy
+the tracing session with man:lttng-destroy(1) or perform a rotation with
+man:lttng-rotate(1) to archive it.
 
 
 include::common-cmd-options-head.txt[]
 
 
 option:-n, option:--no-wait::
-    Do not ensure that the chosen tracing session's trace data is valid
-    before returning to the prompt.
+    Do :not: ensure that the trace data of the selected tracing session
+    is valid before exiting.
 
 
 include::common-cmd-help-options.txt[]
@@ -65,5 +72,9 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-start(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-add-trigger(1),
+man:lttng-create(1),
+man:lttng-enable-event(1),
+man:lttng-rotate(1),
+man:lttng-start(1)

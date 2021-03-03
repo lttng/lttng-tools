@@ -1,11 +1,11 @@
 lttng-start(1)
 ==============
-:revdate: 7 April 2016
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-start - Start LTTng tracers
+lttng-start - Start an LTTng tracing session
 
 
 SYNOPSIS
@@ -16,25 +16,28 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng start` command starts the various LTTng tracers for a
-given inactive tracing session.
+The `lttng start` command starts a tracing session, that is, it
+activates the LTTng tracers for:
 
-Starting the LTTng tracers has the effect that all enabled event rules
-within enabled channels can make their target event sources _emit_ trace
-events. Whether they are recorded to the local file system, sent over
-the network, or not recorded at all depends on the specific
-configuration of the tracing session in which tracing is started. See
-man:lttng-create(1) for different session modes.
+With the 'SESSION' argument::
+    The tracing session named 'SESSION'.
 
-A tracing session with running tracers is said to be _active_. Active
-tracing sessions can return to the inactive state using the
-man:lttng-stop(1) command.
+Without the 'SESSION' argument::
+    The current tracing session (see man:lttng-create(1) and
+    man:lttng-set-session(1) to learn more about the current tracing
+    session).
 
-If 'SESSION' is omitted, the LTTng tracers are started for the current
-tracing session (see man:lttng-create(1) for more information
-about the current tracing session). Otherwise, they are started for the
-existing tracing session named 'SESSION'. `lttng list`
-outputs all the existing tracing sessions (see man:lttng-list(1)).
+The selected tracing session must be inactive (stopped). A tracing
+session is inactive on creation (see man:lttng-create(1)).
+
+An active tracing session is an implicit recording event rule condition
+(see man:lttng-enable-event(1)). In other words, a recording event rule
+cannot match an event when its tracing session is inactive.
+
+A `start-session` trigger action can also start a tracing session
+(see man:lttng-add-trigger(1)).
+
+Stop an active tracing session with the man:lttng-stop(1) command.
 
 
 include::common-cmd-options-head.txt[]
@@ -48,5 +51,8 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-stop(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-add-trigger(1),
+man:lttng-create(1),
+man:lttng-enable-event(1),
+man:lttng-stop(1)

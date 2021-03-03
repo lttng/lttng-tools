@@ -1,16 +1,17 @@
 lttng-add-context(1)
 ====================
-:revdate: 5 Februrary 2018
+:revdate: 8 April 2021
 
 
 NAME
 ----
-lttng-add-context - Add context fields to an LTTng channel
+lttng-add-context - Add context fields to be recorded by LTTng
 
 
 SYNOPSIS
 --------
-Add context fields to a channel:
+Add context fields to be recorded to the LTTng event records of
+one or more channels:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context*
@@ -18,7 +19,7 @@ Add context fields to a channel:
       [option:--session='SESSION'] [option:--channel='CHANNEL']
       option:--type='TYPE' [option:--type='TYPE']...
 
-List the available context fields:
+List the available context field types:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context* option:--list
@@ -26,46 +27,60 @@ List the available context fields:
 
 DESCRIPTION
 -----------
-The `lttng add-context` command adds one or more context fields to a
-channel.
+The `lttng add-context` command adds one or more context fields to be
+recorded to the event records of a given channel, or of all the channels
+of a selected tracing session, by LTTng.
 
-Channels are created with the man:lttng-enable-channel(1) command.
+See man:lttng-enable-channel(1) to learn more about LTTng channels.
 
-When context fields are added to a channel, all the events emitted
-within this channel contain the dynamic values of those context fields.
+When you use the `add-context` command to add context fields for a given
+channel, all the event records which LTTng writes to a sub-buffer of
+that channel contain the dynamic values of those context fields.
 
-If the option:--session option is omitted, the current tracing session
-is used. If the option:--channel option is omitted, the context fields
-are added to all the selected tracing session's channels.
+Without the option:--session option, the `add-context` command selects
+the current tracing session (see man:lttng-create(1) and
+man:lttng-set-session(1) to learn more about the current tracing
+session).
 
-Many context fields can be added to a channel at once by repeating the
-option:--type option.
+Without the option:--channel option, LTTng adds context fields to be
+recorded to the event records of *all* the channels of the selected
+tracing session.
 
-perf counters are available as per-CPU (`perf:cpu:` prefix) as well as
-per-thread (`perf:thread:` prefix) counters. Currently, per-CPU counters
-can only be used in the Linux kernel tracing domain, while per-thread
-counters can only be used in the user space tracing domain.
+Repeat the option:--type option to add more than one context field to be
+recorded.
 
-It is also possible to enable PMU counters by raw ID using the
-`perf:cpu:raw:rN:NAME` (Linux kernel tracing domain) or
-`perf:thread:raw:rN:NAME` (user space tracing domain), with:
+perf counter context fields are available:
 
-`N`::
-    A hexadecimal event descriptor which is the same format as used
-    by man:perf-record(1): a concatenation of the event number and umask
-    value provided by the processor's manufacturer. The possible values
-    for this field are processor-specific.
+Per-CPU::
+    Prefix: `perf:cpu:`.
++
+Only available for Linux kernel (option:--kernel option) channels.
 
-`NAME`::
+Per-thread::
+    Prefix: `perf:thread:`.
++
+Only available for user application/library (option:--userspace,
+option:--jul, and option:--log4j options) channels.
+
+Add PMU counter context fields by raw ID with the
+++perf:cpu:raw:r++__N__++:++__NAME__ (Linux kernel tracing domain) or
+++perf:thread:raw:r++__N__++:++__NAME__ (user space tracing domain)
+types, with:
+
+'N'::
+    A hexadecimal event descriptor which follows the man:perf-record(1)
+    format: a concatenation of the event number and umask value which
+    the manufacturer of the processor provides.
++
+The possible values for this field are processor-specific.
+
+'NAME'::
     Custom name to easily recognize the counter.
 
-Application-specific context fields can be added to a channel using the
-following syntax:
+Add an application-specific context field with the following syntax:
 
 [verse]
 $app.'PROVIDER':__TYPE__
-
-with:
 
 'PROVIDER'::
     Provider name.
@@ -73,69 +88,77 @@ with:
 'TYPE'::
     Context type name.
 
-NOTE: Make sure to **single-quote** the type when running the command
-from a shell, as `$` is a special character for variable substitution in
-most shells.
+NOTE: Make sure to **single-quote** the argument of the option:--type
+option when you run the `add-context` command from a shell, as `$` is a
+special character for variable substitution in most shells.
 
-Use the option:--list option without other arguments to list the
-available context field names.
+List the available context field types with the option:--list option and
+without other arguments.
 
-See the <<limitations,LIMITATIONS>> section below for a list of
-limitations to consider.
+NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context
+fields to be recorded to the event records of a given channel once its
+tracing session has been started (see man:lttng-start(1)) at least once.
+
 
 include::common-cmd-options-head.txt[]
 
 
-Domain
-~~~~~~
+Tracing domain
+~~~~~~~~~~~~~~
 One of:
 
 option:-j, option:--jul::
-    Add context to channel in the `java.util.logging` (JUL) domain.
+    Add context fields to be recorded to the event records of one or
+    more channels of the `java.util.logging` (JUL) tracing domain.
 
 option:-k, option:--kernel::
-    Add context to channel in the Linux kernel domain.
+    Add context fields to be recorded to the event records of one or
+    more channels of the Linux kernel tracing domain.
 
 option:-l, option:--log4j::
-    Add context to channel in the Apache log4j domain.
+    Add context fields to be recorded to the event records of one or
+    more channels of the Apache log4j tracing domain.
 
 option:-u, option:--userspace::
-    Add context to channel in the user space domain.
+    Add context fields to be recorded to the event records of one or
+    more channels of the user space tracing domain.
 
 
-Target
-~~~~~~
+Recording target
+~~~~~~~~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Add context fields to a channel named 'CHANNEL' instead of adding
-    them to all the channels.
+    Add context fields to be recorded to the event records of a channel
+    named 'CHANNEL' instead of all the channels of the selected
+    tracing session.
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Add context fields to a channel in the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Add context fields to be recorded to the event records of one or
+    more channels of the tracing session named 'SESSION' instead of the
+    current tracing session.
 
 
-Context
-~~~~~~~
+Context field type
+~~~~~~~~~~~~~~~~~~
 option:--list::
-    List the available context fields. Use this option alone.
+    List the available context field types.
++
+You may :not: use this option with the option:--channel,
+option:--session, or option:--type options.
 
 option:-t 'TYPE', option:--type='TYPE'::
-    Add context field named 'TYPE'. This option can be repeated as
-    many times as needed on the command-line.
+    Add a context field having the type 'TYPE' to be recorded.
++
+Repeat this option to add more than one context field.
 
 
 include::common-cmd-help-options.txt[]
 
-[[limitations]]
-LIMITATIONS
------------
-As of this version of LTTng, it is not possible to add context fields to
-a channel once its tracing session has been started (see man:lttng-start(1))
-at least once.
 
 include::common-cmd-footer.txt[]
 
 
 SEE ALSO
 --------
-man:lttng(1)
+man:lttng(1),
+man:lttng-enable-channel(1),
+man:lttng-set-session(1)

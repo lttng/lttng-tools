@@ -43,9 +43,9 @@ DESCRIPTION
 The `lttng track` commands adds one or more values to a
 process attribute tracker.
 
-A process attribute tracker is an _inclusion set_ of process
-attributes. Tracked processes are allowed to emit events, provided
-those events are targeted by enabled event rules (see
+A process attribute tracker is an _inclusion set_ of process attributes.
+Tracked processes are allowed to emit events, provided those events are
+targeted by enabled recording event rules (see
 man:lttng-enable-event(1)).
 
 Tracker values can be removed from an inclusion set with

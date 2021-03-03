@@ -22,9 +22,9 @@ tracing sessions to files.
 The `lttng save` command is used in conjunction with the
 man:lttng-load(1) command to save and restore the complete
 configurations of tracing sessions. This includes the enabled channels
-and event rules, the context added to channels, the tracing activity,
-and more. `lttng save` does not save tracing data, only the tracing
-session parameters.
+and recording event rules, the context added to channels, the tracing
+activity, and more. `lttng save` does not save tracing data, only the
+tracing session parameters.
 
 If 'SESSION' is omitted, all the existing tracing session configurations
 are saved (equivalent to using the option:--all option). Otherwise,

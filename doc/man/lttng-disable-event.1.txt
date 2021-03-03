@@ -1,109 +1,144 @@
 lttng-disable-event(1)
 ======================
-:revdate: 28 November 2016
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-disable-event - Disable LTTng event rules
+lttng-disable-event - Disable LTTng recording event rules
 
 
 SYNOPSIS
 --------
+Disable one or more recording event rules matching Linux kernel
+events:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-event* option:--kernel
+      [option:--tracepoint | option:--syscall | option:--probe | option:--function]
+      (option:--all-events | 'NAME'[,'NAME']...)
+      [option:--session='SESSION'] [option:--channel='CHANNEL']
+
+Disable one or more recording event rules matching user space
+tracepoint or Java/Python logging events:
+
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *disable-event*
-      (option:--kernel [option:--probe | option:--function | option:--syscall] |
-       option:--userspace | option:--jul | option:--log4j | option:--python)
+      (option:--userspace | option:--jul | option:--log4j | option:--python) [option:--tracepoint]
+      (option:--all-events | 'NAME'[,'NAME']...)
       [option:--session='SESSION'] [option:--channel='CHANNEL']
-      (option:--all-events | 'EVENT'[,'EVENT']...)
+
 
 DESCRIPTION
 -----------
-The `lttng disable-event` command disables one or more event rules
-previously enabled by the man:lttng-enable-event(1) command.
+The `lttng disable-event` command disables one or more enabled recording
+event rules previously created with the man:lttng-enable-event(1)
+command.
 
-Event rules are always assigned to a channel when they are created. If
-the option:--channel option is omitted, the default channel named
-`channel0` is used.
+As of LTTng{nbsp}{lttng_version}, the `disable-event` command can only
+find recording event rules to disable by their instrumentation point
+type and event name conditions. Therefore, you cannot disable recording
+event rules having a specific instrumentation point log level condition,
+for example.
 
-If the option:--session option is omitted, the chosen channel is picked
-from the current tracing session.
+List the existing recording event rules of a given tracing session
+and/or channel with the man:lttng-list(1) command.
 
-If the option:--all-events option is used, all the existing event rules
-of the chosen domain are disabled. Otherwise, at least one event rule
-to disable named 'EVENT' must be specified.
+Without the option:--all-events option, the `disable-event` command
+disables one recording event rule per 'NAME' argument. 'NAME' is the
+exact event name condition pattern of the recording event rule to
+disable, as listed in the output of `lttng list` (see
+man:lttng-list(1)).
 
-With the option:--kernel option, the event source type can be specified
-using one of the option:--tracepoint, option:--probe,
-option:--function, or option:--syscall options. See
-man:lttng-enable-event(1) for more details about event source
-types.
+Without the option:--channel option, the `disable-event` command selects
+the channel named `channel0`.
 
-Events can be disabled while tracing is active
-(use man:lttng-start(1) to make a tracing session active).
+Without the option:--session option, the `disable-event` command selects
+the current tracing session (see man:lttng-create(1) and
+man:lttng-set-session(1) to learn more about the current tracing
+session).
+
+You may disable an enabled recording event rule regardless of the
+activity (started or stopped) of its tracing session (see
+man:lttng-start(1) and man:lttng-stop(1)).
 
 
 include::common-cmd-options-head.txt[]
 
 
-Domain
-~~~~~~
+Tracing domain
+~~~~~~~~~~~~~~
 One of:
 
 option:-j, option:--jul::
-    Disable event rules in the `java.util.logging` (JUL) domain.
+    Disable recording event rules in the `java.util.logging` (JUL)
+    domain.
 
 option:-k, option:--kernel::
-    Disable event rules in the Linux kernel domain.
+    Disable recording event rules in the Linux kernel domain.
 
 option:-l, option:--log4j::
-    Disable event rules in the Apache log4j domain.
+    Disable recording event rules in the Apache log4j domain.
 
 option:-p, option:--python::
-    Disable event rules in the Python domain.
+    Disable recording event rules in the Python domain.
 
 option:-u, option:--userspace::
-    Disable event rules in the user space domain.
+    Disable recording event rules in the user space tracing domain.
 
 
-Target
-~~~~~~
+Recording target
+~~~~~~~~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Disable event rules in the channel named 'CHANNEL' instead
-    of the default channel name `channel0`.
+    Disable recording event rules attached to the channel named
+    'CHANNEL' instead of `channel0`.
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Disable event rules in the tracing session named 'SESSION'
+    Disable recording event rules in the tracing session named 'SESSION'
     instead of the current tracing session.
 
 
-Event source type
-~~~~~~~~~~~~~~~~~
-One of:
+Instrumentation point type condition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+At most one of:
 
 option:--function::
-    Linux kernel kretprobe. Only available with the option:--kernel
-    domain option.
+    Only disable recording event rules which match Linux kretprobe
+    events.
++
+Only available with the option:--kernel option.
 
 option:--probe::
-    Linux kernel kprobe. Only available with the option:--kernel
-    domain option.
+    Only disable recording event rules which match Linux kprobe events.
++
+Only available with the option:--kernel option.
 
 option:--syscall::
-    Linux kernel system call. Only available with the option:--kernel
-    domain option.
+    Only disable recording event rules which match Linux system call
+    events.
++
+Only available with the option:--kernel option.
 
 option:--tracepoint::
-    Linux kernel or application tracepoint. Only available
-    with the option:--kernel domain option (default Linux kernel
-    domain event source type).
+    Only disable recording event rules which match:
++
+--
+With the option:--kernel or option:--userspace option:::
+    LTTng tracepoint events.
+With the option:--jul, option:--log4j, or option:--python option:::
+    Logging events.
+--
++
+As of LTTng{nbsp}{lttng_version}, this is the default instrumentation
+point type condition option, but this may change in the future.
 
 
-Disabling
-~~~~~~~~~
+Event name condition
+~~~~~~~~~~~~~~~~~~~~
 option:-a, option:--all-events::
-    Disable all enabled event rules in the chosen tracing session,
-    tracing domain, and channel.
+    Disable recording event rules regardless of their event name
+    condition is.
+
 
 include::common-cmd-help-options.txt[]
 
@@ -113,5 +148,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
+man:lttng(1),
 man:lttng-enable-event(1),
-man:lttng(1)
+man:lttng-list(1)

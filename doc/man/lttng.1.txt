@@ -11,133 +11,140 @@ lttng - LTTng 2 tracer control command-line tool
 SYNOPSIS
 --------
 [verse]
-*lttng* [option:--group='GROUP'] [option:--mi='TYPE'] [option:--no-sessiond | option:--sessiond-path='PATH']
-      [option:--quiet | option:-v | option:-vv | option:-vvv] '<<commands,COMMAND>>' ['COMMAND OPTIONS']
+*lttng* [option:--group='GROUP'] [option:--mi=xml] [option:--no-sessiond | option:--sessiond-path='PATH']
+      [option:--quiet | option:-verbose...] '<<commands,COMMAND>>' ['COMMAND OPTIONS']
 
 
 DESCRIPTION
 -----------
-The https://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
-source software package used for correlated tracing of the Linux kernel,
-user applications, and user libraries.
+include::common-intro.txt[]
 
-LTTng consists of Linux kernel modules (for Linux kernel tracing) and
-dynamically loaded libraries (for user application and library tracing).
+The `lttng` command-line tool, as well as any user application linked
+with the LTTng control library (`liblttng-ctl`), sends commands to a
+listening LTTng session daemon (man:lttng-sessiond(8)). A session
+daemon:
 
-An LTTng _session daemon_, man:lttng-sessiond(8), receives
-commands from the command-line interface `lttng` to control the LTTng
-tracers. All interactions with the LTTng tracers happen through the
-`lttng` tool or through the liblttng-ctl library shipped with the
-LTTng-tools package.
+* Manages tracing sessions (see man:lttng-create(1) to learn more
+  about tracing sessions).
 
-A _tracing domain_ is a tracer category. There are five available
-domains. For some commands, the domain needs to be specified with a
-command-line option. The domain options are:
+* Controls the various components (like tracers and consumer daemons) of
+  LTTng.
 
-nloption:-j, nloption:--jul::
-    Apply command to the `java.util.logging` (JUL) domain.
-
-nloption:-k, nloption:--kernel::
-    Apply command to the Linux kernel domain.
-
-nloption:-l, nloption:--log4j::
-    Apply command to the https://logging.apache.org/log4j/1.2/[Apache log4j 1.2]
-    (Java) domain.
-
-nloption:-p, nloption:--python::
-    Apply command to the https://www.python.org/[Python] domain.
-
-nloption:-u, nloption:--userspace::
-    Apply command to the user space domain (application using
-    liblttng-ust directly; see man:lttng-ust(3)).
-
-The LTTng session daemon is a tracing registry which allows the user to
-interact with multiple tracers (kernel and user space) within the same
-container, a _tracing session_. Traces can be gathered from the Linux
-kernel and/or from instrumented applications (see
-man:lttng-ust(3)). You can aggregate and read the events of LTTng
-traces using man:babeltrace2(1).
-
-To trace the Linux kernel, the session daemon needs to be running as
-`root`. LTTng uses a _tracing group_ to allow specific users to interact
-with the root session daemon. The default tracing group name is
-`tracing`. You can use the option:--group option to set the tracing
-group name to use.
-
-Session daemons can coexist. You can have a session daemon running as
-user Alice that can be used to trace her applications alongside a root
-session daemon or a session daemon running as user Bob.
-
-NOTE: It is highly recommended to start the session daemon at boot time
-for stable and long-term tracing.
-
-User applications instrumented with LTTng automatically register to the
-root session daemon and to user session daemons. This allows any session
-daemon to list the available traceable applications and event sources
-(see man:lttng-list(1)).
+* Sends asynchronous notifications to user applications.
 
 By default, the man:lttng-create(1) command automatically spawns a
-user session daemon if none is currently running. The
-option:--no-sessiond general option can be set to avoid this.
+session daemon for your Unix user if none is currently running. Override
+the path of the session daemon binary to spawn with the
+option:--sessiond-path option. Avoid automatically spawning a session
+daemon with the option:--no-sessiond option.
+
+NOTE: The LTTng project recommends that you start the session daemon at
+boot time for stable and long-term tracing.
+
+
+Session daemon connection
+~~~~~~~~~~~~~~~~~~~~~~~~~
+For most of its commands, the `lttng` tool needs to connect to a
+listening LTTng session daemon (man:lttng-sessiond(8)) to control LTTng
+tracing.
+
+Each Unix user may have its own independent running session daemon.
+However, the `lttng` tool must connect to the session daemon of the
+`root` user (the root session daemon) to control Linux kernel tracing.
+
+How the `lttng` tool chooses which session daemon to connect to
+is as follows:
+
+If your Unix user is `root`::
+    Connect to the root session daemon.
+
+If your Unix user is not `root`::
+    If your Unix user is part of the Unix tracing group:::
+        Try to connect to the root session daemon.
++
+If the root session daemon isn't running, connect to the session daemon
+of your Unix user.
+
+    If your Unix user is not part of the tracing group:::
+        Connect to the session daemon of your Unix user.
+
+The name of the Unix tracing group is one of:
+
+With the nloption:--group='GROUP' option of the root session daemon (man:lttng-sessiond(8))::
+    'GROUP'
++
+In that case, you must use the option:--group='GROUP' option, with
+the same 'GROUP' argument, of the `lttng` tool.
+
+Without the nloption:--group option of the root session daemon::
+    `tracing`
+
+LTTng-instrumented user applications automatically register to both the
+root session daemon and the user session daemon. This makes it possible
+for both session daemons to list the available traceable applications
+and known instrumentation points (see man:lttng-list(1)).
 
 
 OPTIONS
 -------
 option:-g 'GROUP', option:--group='GROUP'::
-    Use 'GROUP' as Unix tracing group (default: `tracing`).
+    Set the name of the Unix tracing group to 'GROUP' instead of
+    `tracing`.
++
+You must use this option to be able to connect to a root session daemon
+(man:lttng-sessiond(8)) which was started with its own
+nloption:--group='GROUP' option.
 
-option:-m 'TYPE', option:--mi='TYPE'::
-    Print the command's result using the machine interface type 'TYPE'
-    instead of a human-readable output.
+option:-m `xml`, option:--mi=++xml++::
+    Print the command's result using a stable XML machine interface (MI)
+    output instead of the default, unstable human-readable output.
 +
-Supported types: `xml`.
+With this mode, `lttng` prints the resulting XML document to the
+standard output, while it prints any error/warning to the standard error
+with an unstable, human-readable format.
 +
-The machine interface (MI) mode converts the traditional pretty-printing
-to a machine output syntax. The MI mode provides a change-resistant way
-to access information generated by the `lttng` command-line program.
+If any error occurs during the execution of `lttng`, the command
+exits with a status different than{nbsp}0, and `lttng` does
+:not: guarantee the syntax and data validity of its MI output.
 +
-When using the MI mode, the data is printed to the standard output.
-Errors and warnings are printed on the standard error with the
-pretty-print default format.
-+
-If any error occurs during the execution of a command, the return value
-of the command will be different than 0. In this case, `lttng` does
-:not: guarantee the syntax and data validity of the generated MI output.
-+
-For the `xml` MI type, an XML schema definition (XSD) file used for
-validation is available: see the `src/common/mi_lttng.xsd` file in
-the LTTng-tools source tree.
+An XML schema definition (XSD) file used for validation of the MI output
+is available: see the `src/common/mi_lttng.xsd` file in the LTTng-tools
+source tree.
 
 option:-n, option:--no-sessiond::
-    Do not automatically spawn a session daemon.
+    Do not automatically spawn a session daemon for your Unix user when
+    running the man:lttng-create(1) command.
++
+You may :not: use this option with the option:--sessiond-path option.
 
 option:-q, option:--quiet::
     Suppress all messages, including warnings and errors.
++
+You may :not: use this option with the option:--verbose option.
 
 option:--sessiond-path='PATH'::
-    Set the session daemon binary's absolute path to 'PATH'.
+    Set the absolute path of the session daemon binary to spawn from the
+    man:lttng-create(1) command to 'PATH'.
++
+You may :not: use this option with the option:--no-sessiond option.
 
 option:-v, option:--verbose::
     Increase verbosity.
 +
-Three levels of verbosity are available, which are triggered by
-appending additional `v` letters to the option
-(that is, `-vv` and `-vvv`).
+Specify this option up to three times to get more levels of verbosity.
++
+You may :not: use this option with the option:--quiet option.
 
 
 Program information
 ~~~~~~~~~~~~~~~~~~~
-option:-h, option:--help::
-    Show help.
+include::common-help-option.txt[]
 
 option:--list-commands::
-    List available commands.
-
-option:--list-options::
-    List available general options.
+    List available commands and quit.
 
 option:-V, option:--version::
-    Show version.
+    Show version and quit.
 
 
 [[commands]]
@@ -146,101 +153,90 @@ COMMANDS
 The following commands also have their own nloption:--help option.
 
 
-Tracing sessions
-~~~~~~~~~~~~~~~~
-man:lttng-create(1)::
-    {cmd_descr_create}.
+Tracing session
+~~~~~~~~~~~~~~~
+[options="header"]
+|===
+|Command |Description
 
-man:lttng-destroy(1)::
-    {cmd_descr_destroy}.
-
-man:lttng-load(1)::
-    {cmd_descr_load}.
-
-man:lttng-regenerate(1)::
-    {cmd_descr_regenerate}.
-
-man:lttng-save(1)::
-    {cmd_descr_save}.
-
-man:lttng-set-session(1)::
-    {cmd_descr_set_session}.
-
-
-Channels
-~~~~~~~~
-man:lttng-add-context(1)::
-    {cmd_descr_add_context}.
-
-man:lttng-disable-channel(1)::
-    {cmd_descr_disable_channel}.
-
-man:lttng-enable-channel(1)::
-    {cmd_descr_enable_channel}.
+|man:lttng-create(1) |{cmd_descr_create}.
+|man:lttng-destroy(1) |{cmd_descr_destroy}.
+|man:lttng-disable-rotation(1) |{cmd_descr_disable_rotation}.
+|man:lttng-enable-rotation(1) |{cmd_descr_enable_rotation}.
+|man:lttng-load(1) |{cmd_descr_load}.
+|man:lttng-regenerate(1) |{cmd_descr_regenerate}.
+|man:lttng-rotate(1) |{cmd_descr_rotate}.
+|man:lttng-save(1) |{cmd_descr_save}.
+|man:lttng-set-session(1) |{cmd_descr_set_session}.
+|man:lttng-snapshot(1) |{cmd_descr_snapshot}.
+|man:lttng-start(1) |{cmd_descr_start}.
+|man:lttng-status(1) |{cmd_descr_status}.
+|man:lttng-stop(1) |{cmd_descr_stop}.
+|===
 
 
-Event rules
-~~~~~~~~~~~
-man:lttng-disable-event(1)::
-    {cmd_descr_disable_event}.
-
-man:lttng-enable-event(1)::
-    {cmd_descr_enable_event}.
-
-
-Status
-~~~~~~
-man:lttng-list(1)::
-    {cmd_descr_list}.
-
-man:lttng-status(1)::
-    {cmd_descr_status}.
-
-
-Control
+Channel
 ~~~~~~~
-man:lttng-snapshot(1)::
-    {cmd_descr_snapshot}.
+[options="header"]
+|===
+|Command |Description
 
-man:lttng-start(1)::
-    {cmd_descr_start}.
-
-man:lttng-stop(1)::
-    {cmd_descr_stop}.
-
-
-Tracing session rotation
-~~~~~~~~~~~~~~~~~~~~~~~~
-man:lttng-disable-rotation(1)::
-    {cmd_descr_disable_rotation}.
-
-man:lttng-enable-rotation(1)::
-    {cmd_descr_enable_rotation}.
-
-man:lttng-rotate(1)::
-    {cmd_descr_rotate}.
+|man:lttng-add-context(1) |{cmd_descr_add_context}.
+|man:lttng-disable-channel(1) |{cmd_descr_disable_channel}.
+|man:lttng-enable-channel(1) |{cmd_descr_enable_channel}.
+|===
 
 
+Recording event rule
+~~~~~~~~~~~~~~~~~~~~
+[options="header"]
+|===
+|Command |Description
+
+|man:lttng-disable-event(1) |{cmd_descr_disable_event}.
+|man:lttng-enable-event(1) |{cmd_descr_enable_event}.
+|===
+
+Information
+~~~~~~~~~~~
+[options="header"]
+|===
+|Command |Description
+
+|man:lttng-list(1) |{cmd_descr_list}.
+|===
 
 Resource tracking
 ~~~~~~~~~~~~~~~~~
-man:lttng-track(1)::
-    {cmd_descr_track}.
+[options="header"]
+|===
+|Command |Description
 
-man:lttng-untrack(1)::
-    {cmd_descr_untrack}.
+|man:lttng-track(1) |{cmd_descr_track}.
+|man:lttng-untrack(1) |{cmd_descr_untrack}.
+|===
 
+Trigger
+~~~~~~~
+[options="header"]
+|===
+|Command |Description
+
+|man:lttng-add-trigger(1) |{cmd_descr_add_trigger}.
+|man:lttng-list-triggers(1) |{cmd_descr_list_triggers}.
+|man:lttng-remove-trigger(1) |{cmd_descr_remove_trigger}.
+|===
 
 Miscellaneous
 ~~~~~~~~~~~~~
-man:lttng-help(1)::
-    {cmd_descr_help}.
+[options="header"]
+|===
+|Command |Description
 
-man:lttng-version(1)::
-    {cmd_descr_version}.
-
-man:lttng-view(1)::
-    {cmd_descr_view}.
+|man:lttng-help(1) |{cmd_descr_help}.
+|man:lttng-version(1) |{cmd_descr_version}.
+|man:lttng-view(1) |{cmd_descr_view}.
+|===
 
 
 include::common-cmd-footer.txt[]
@@ -248,8 +244,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-sessiond(8),
+man:babeltrace2(1),
 man:lttng-relayd(8),
-man:lttng-crash(1),
-man:lttng-ust(3),
-man:babeltrace2(1)
+man:lttng-sessiond(8)

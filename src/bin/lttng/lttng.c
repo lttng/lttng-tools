@@ -286,7 +286,7 @@ static void show_basic_help(void)
 	puts("  disable-channel   " CONFIG_CMD_DESCR_DISABLE_CHANNEL);
 	puts("  enable-channel    " CONFIG_CMD_DESCR_ENABLE_CHANNEL);
 	puts("");
-	puts("Event rules:");
+	puts("Recording event rules:");
 	puts("  disable-event     " CONFIG_CMD_DESCR_DISABLE_EVENT);
 	puts("  enable-event      " CONFIG_CMD_DESCR_ENABLE_EVENT);
 	puts("");
@@ -307,6 +307,11 @@ static void show_basic_help(void)
 	puts("Resource tracking:");
 	puts("  track             " CONFIG_CMD_DESCR_TRACK);
 	puts("  untrack           " CONFIG_CMD_DESCR_UNTRACK);
+	puts("");
+	puts("Triggers:");
+	puts("  add-trigger       " CONFIG_CMD_DESCR_ADD_TRIGGER);
+	puts("  remove-trigger    " CONFIG_CMD_DESCR_REMOVE_TRIGGER);
+	puts("  list-triggers     " CONFIG_CMD_DESCR_LIST_TRIGGERS);
 	puts("");
 	puts("Miscellaneous:");
 	puts("  help              " CONFIG_CMD_DESCR_HELP);

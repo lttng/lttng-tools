@@ -23,8 +23,8 @@ tracing sessions from files.
 The `lttng load` command is used in conjunction with the
 man:lttng-save(1) command to save and restore the complete
 configurations of tracing sessions. This includes the enabled channels
-and event rules, the context added to channels, the tracing activity,
-and more.
+and recording event rules, the context added to channels, the tracing
+activity, and more.
 
 Once one or more tracing session configurations are loaded, they appear
 exactly as they were saved from the user's point of view.

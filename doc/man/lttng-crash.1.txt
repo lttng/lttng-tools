@@ -1,30 +1,25 @@
 lttng-crash(1)
 ==============
-:revdate: 2 April 2020
+:revdate: 8 April 2021
 
 
 NAME
 ----
-lttng-crash - Recover and view LTTng 2 trace buffers in the event of a crash
+lttng-crash - Recover and read LTTng trace buffers in the event of a crash
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng-crash* [option:--extract='PATH' | option:--viewer='VIEWER'] [option:-v | option:-vv | option:-vvv] 'SHMDIR'
+*lttng-crash* [option:--extract='DIR' | option:--viewer='READER'] [option:-verbose]... 'SHMDIR'
 
 
 DESCRIPTION
 -----------
-The https://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
-source software package used for correlated tracing of the Linux kernel,
-user applications, and user libraries.
+include::common-intro.txt[]
 
-LTTng consists of Linux kernel modules (for Linux kernel tracing) and
-dynamically loaded libraries (for user application and library tracing).
-
-The `lttng-crash` command-line tool is used to recover and view
-LTTng trace buffers in the event of a system crash.
+The `lttng-crash` command-line tool recovers LTTng trace buffers in the
+event of a system crash.
 
 `lttng-crash` reads files within the directory 'SHMDIR' and does one
 of:
@@ -33,8 +28,9 @@ Without the option:--extract option::
     Launches a trace reader (see the option:--viewer option) to view the
     recovered traces.
 
-With the option:--extract option::
-    Extracts them as uncorrupted LTTng traces on the file system.
+With the option:--extract='DIR' option::
+    Extracts the files as uncorrupted LTTng traces to the 'DIR'
+    directory.
 
 'SHMDIR' is the directory specified as the argument of the
 nloption:--shm-path option of the man:lttng-create(1) command used to
@@ -43,22 +39,21 @@ create the tracing session for which to recover the traces.
 
 OPTIONS
 -------
-option:-x 'PATH', option:--extract='PATH'::
-    Extract recovered traces to path 'PATH'; do not execute the trace
-    viewer.
+option:-x 'DIR', option:--extract='DIR'::
+    Extract recovered traces to the directory 'DIR'; do :not: execute
+    any trace reader.
 
 option:-v, option:--verbose::
     Increase verbosity.
 +
-Three levels of verbosity are available, which are triggered by
-appending additional `v` letters to the option
-(that is, `-vv` and `-vvv`).
+Specify this option up to three times to get more levels of verbosity.
 
-option:-e 'VIEWER', option:--viewer='VIEWER'::
-    Use trace viewer 'VIEWER' to view the trace buffers. 'VIEWER' is the
-    absolute path to the viewer command to use, and it can contain
-    command arguments as well. The trace directory paths are passed to
-    the 'VIEWER' command as its last arguments.
+option:-e 'READER', option:--viewer='READER'::
+    Use the trace reader 'READER' to read the trace buffers.
++
+'READER' is the absolute path to the reader command to use, and it can
+contain command arguments as well. `lttng-crash` passes the trace
+directory paths to the 'READER' command as its last arguments.
 +
 Without this option, `lttng crash` uses man:babeltrace2(1) if it's
 available. Otherwise, it tries to use man:babeltrace(1).
@@ -66,11 +61,10 @@ available. Otherwise, it tries to use man:babeltrace(1).
 
 Program information
 ~~~~~~~~~~~~~~~~~~~
-option:-h, option:--help::
-    Show help.
+include::common-help-option.txt[]
 
 option:-V, option:--version::
-    Show version.
+    Show version and quit.
 
 
 EXIT STATUS
@@ -90,8 +84,9 @@ include::common-footer.txt[]
 
 SEE ALSO
 --------
+man:babeltrace2(1),
 man:lttng(1),
-man:lttng-sessiond(8),
+man:lttng-create(1),
 man:lttng-relayd(8),
-man:lttng-ust(3),
-man:babeltrace2(1)
+man:lttng-sessiond(8),
+man:lttng-ust(3)

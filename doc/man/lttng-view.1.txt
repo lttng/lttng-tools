@@ -1,50 +1,61 @@
 lttng-view(1)
 =============
-:revdate: 28 November 2016
+:revdate: 21 April 2021
 
 
 NAME
 ----
-lttng-view - View the traces of an LTTng tracing session
+lttng-view - Launch an LTTng trace reader
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *view* [option:--viewer='CMD'] [option:--trace-path='PATH' | 'SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *view* [option:--viewer='READER']
+      ['SESSION' | option:--trace-path='DIR']
 
 
 DESCRIPTION
 -----------
-The `lttng view` command launches an external trace viewer to view the
-current trace of a tracing session.
+The `lttng view` command launches an external trace reader to read the
+current traces of:
 
-If 'SESSION' is omitted, the viewer is launched for the current tracing
-session (see man:lttng-create(1) for more information
-about the current tracing session). Otherwise, it is launched for the
-existing tracing session named 'SESSION'. `lttng list`
-outputs all the existing tracing sessions (see man:lttng-list(1)).
+With the option:--session='SESSION' option::
+    The tracing session named 'SESSION'.
 
-By default, the man:babeltrace2(1) trace viewer is launched. If it is
-not found on the system, the man:babeltrace(1) trace viewer is
-used.
-Another trace viewer command can be specified using the
-option:--viewer option.
+With the option:--trace-path='DIR' option::
+    The local file system directory 'DIR'.
 
-By default, the trace path of the chosen tracing session is given
-as the first positional argument to the trace viewer. This path can
-be overridden using the option:--trace-path option.
+Otherwise::
+    The current tracing session (see man:lttng-create(1) and
+    man:lttng-set-session(1) to learn more about the current tracing
+    session).
+
+With the option:--session option or without the option:--trace-path
+option, the mode of the selected tracing session may :not: be network
+streaming or live.
+
+By default, the `view` command attempts to launch man:babeltrace2(1) or,
+if it's not available, man:babeltrace(1). Override which trace reader to
+launch with the option:--viewer option.
 
 
 include::common-cmd-options-head.txt[]
 
 
-option:-t 'PATH', option:--trace-path='PATH'::
-    View trace at path 'PATH' instead of using the chosen tracing
-    session's trace path.
+option:-t 'DIR', option:--trace-path='DIR'::
+    Pass 'DIR' as the last argument of the trace reader command instead
+    of the output directory of the selected tracing session.
 
-option:-e 'CMD', option:--viewer='CMD'::
-    Use 'CMD' as the trace viewer.
+option:-e 'READER', option:--viewer='READER'::
+    Use the trace reader 'READER' to read the traces.
++
+'READER' is the absolute path to the reader command to use, and it can
+contain command arguments as well. The `view` command passes the trace
+directory path to read to the 'READER' command as its last argument.
++
+Without this option, the `view` command uses man:babeltrace2(1) if it's
+available. Otherwise, it tries to use man:babeltrace(1).
 
 
 include::common-cmd-help-options.txt[]
@@ -55,4 +66,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
+man:babeltrace2(1),
 man:lttng(1)
