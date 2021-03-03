@@ -4335,7 +4335,7 @@ int notification_client_list_send_evaluation(
 			}
 		}
 
-		if (client->uid != lttng_credentials_get_uid(trigger_creds) && client->gid != lttng_credentials_get_gid(trigger_creds)) {
+		if (client->uid != lttng_credentials_get_uid(trigger_creds)) {
 			DBG("[notification-thread] Skipping client at it does not have the permission to receive notification for this trigger");
 			goto skip_client;
 		}
