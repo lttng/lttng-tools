@@ -19,7 +19,7 @@ TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
 SESSION_NAME="my_session"
 CHANNEL_NAME="my_channel"
 
-NUM_TESTS=104
+NUM_TESTS=99
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
