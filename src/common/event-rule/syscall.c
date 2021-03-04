@@ -14,6 +14,7 @@
 #include <common/runas.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
+#include <common/string-utils/string-utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/syscall-internal.h>
 
@@ -414,9 +415,9 @@ enum lttng_event_rule_status lttng_event_rule_syscall_set_pattern(
 		goto end;
 	}
 
-	if (syscall->pattern) {
-		free(syscall->pattern);
-	}
+	strutils_normalize_star_glob_pattern(pattern_copy);
+
+	free(syscall->pattern);
 
 	syscall->pattern = pattern_copy;
 	pattern_copy = NULL;

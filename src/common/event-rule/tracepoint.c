@@ -15,6 +15,7 @@
 #include <common/runas.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
+#include <common/string-utils/string-utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/log-level-rule.h>
@@ -951,6 +952,9 @@ enum lttng_event_rule_status lttng_event_rule_tracepoint_set_pattern(
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
 		goto end;
 	}
+
+	/* Normalize the pattern. */
+	strutils_normalize_star_glob_pattern(pattern_copy);
 
 	free(tracepoint->pattern);
 
