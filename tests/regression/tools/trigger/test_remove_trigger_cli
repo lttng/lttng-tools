@@ -34,12 +34,6 @@ tmp_expected_stdout=$(mktemp -t test_list_triggers_cli_expected_stdout.XXXXXX)
 uid=$(id --user)
 gid=$(id --group)
 
-function add_trigger ()
-{
-	"${FULL_LTTNG_BIN}" add-trigger "$@"
-	ok $? "add trigger \`$*\`: exit code is 0"
-}
-
 function list_triggers ()
 {
 	local test_name="$1"
@@ -74,8 +68,8 @@ function remove_trigger ()
 start_lttng_sessiond_notap
 
 # Add a few triggers
-add_trigger --condition on-event -u -a --action notify
-add_trigger --id ABC --condition on-event aaa -u --filter 'p == 2' --action notify
+lttng_add_trigger_ok "ABC" --condition on-event aaa -u --filter 'p == 2' --action notify
+lttng_add_trigger_ok "DEF" --condition on-event -u -a --action notify
 
 cat > "${tmp_expected_stdout}" <<- EOF
 - id: ABC
@@ -84,7 +78,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
     rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
   actions:
     notify
-- id: T0
+- id: DEF
   user id: ${uid}
   condition: event rule hit
     rule: * (type: tracepoint, domain: ust)
@@ -96,7 +90,7 @@ list_triggers "two triggers left" "${tmp_expected_stdout}"
 remove_trigger "ABC"
 
 cat > "${tmp_expected_stdout}" <<- EOF
-- id: T0
+- id: DEF
   user id: ${uid}
   condition: event rule hit
     rule: * (type: tracepoint, domain: ust)
@@ -105,7 +99,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
 EOF
 list_triggers "one trigger left" "${tmp_expected_stdout}"
 
-remove_trigger "T0"
+remove_trigger "DEF"
 
 list_triggers "no triggers left" "/dev/null"
 

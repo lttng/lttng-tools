@@ -2126,3 +2126,44 @@ function lttng_clear_all ()
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN clear --all 1> $OUTPUT_DEST 2> $ERROR_OUTPUT_DEST
 	ok $? "Clear all lttng sessions"
 }
+
+function lttng_add_trigger()
+{
+	local expected_to_fail="$1"
+	local trigger_name="$2"
+	shift 2
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --id "$trigger_name" "$@" 1> /dev/null 2> /dev/null
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Add trigger $trigger_name failed as expected"
+	else
+		ok $ret "Add trigger $trigger_name"
+	fi
+}
+
+function lttng_remove_trigger()
+{
+	local expected_to_fail="$1"
+	local trigger_name="$2"
+
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger "$trigger_name" 1> /dev/null 2> /dev/null
+	ret=$?
+	if [[ $expected_to_fail -eq "1" ]]; then
+		test "$ret" -ne "0"
+		ok $? "Remove trigger $trigger_name failed as expected"
+	else
+		ok $ret "Remove trigger $trigger_name"
+	fi
+}
+
+function lttng_add_trigger_ok()
+{
+	lttng_add_trigger 0 "$@"
+}
+
+function lttng_remove_trigger_ok()
+{
+	lttng_remove_trigger 0 "$@"
+}
