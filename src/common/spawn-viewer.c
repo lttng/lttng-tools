@@ -69,7 +69,7 @@ static char **alloc_argv_from_user_opts(char *opts, const char *trace_path)
 {
 	int i = 0, ignore_space = 0;
 	unsigned int num_opts = 1;
-	char **argv, *token = opts, *saveptr;
+	char **argv, *token = opts, *saveptr = NULL;
 
 	/* Count number of arguments. */
 	do {
