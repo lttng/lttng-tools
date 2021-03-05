@@ -1489,6 +1489,7 @@ end:
 	lttng_unregister_trigger(trigger);
 	lttng_trigger_destroy(trigger);
 	lttng_action_destroy(action);
+	lttng_userspace_probe_location_destroy(probe_location);
 	lttng_event_rule_destroy(event_rule);
 	lttng_condition_destroy(condition);
 	return;
