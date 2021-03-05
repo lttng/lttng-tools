@@ -23,6 +23,5 @@ regression/tools/filtering/test_valid_filter
 regression/tools/wildcard/test_event_wildcard
 regression/tools/regen-metadata/test_kernel
 regression/tools/regen-statedump/test_kernel
-regression/tools/notification/test_notification_kernel
 regression/tools/notification/test_notification_multi_app
 regression/ust/test_event_perf
