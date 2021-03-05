@@ -535,7 +535,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 	unsigned int equal = 1, idx = 0;
 	/* Add the "file://" size to the URL maximum size */
 	char url[PATH_MAX + 7];
-	ssize_t size_ctrl = 0, size_data = 0, size;
+	ssize_t ctrl_uri_count = 0, data_uri_count = 0, uri_count;
 	struct lttng_uri *ctrl_uris = NULL, *data_uris = NULL;
 	struct lttng_uri *tmp_uris = NULL;
 
@@ -572,14 +572,14 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 
 	/* Parse the control URL if there is one */
 	if (ctrl_url && *ctrl_url != '\0') {
-		size_ctrl = uri_parse(ctrl_url, &ctrl_uris);
-		if (size_ctrl < 1) {
+		ctrl_uri_count = uri_parse(ctrl_url, &ctrl_uris);
+		if (ctrl_uri_count < 1) {
 			ERR("Unable to parse the URL %s", ctrl_url);
 			goto parse_error;
 		}
 
 		/* 1 and 2 are the only expected values on success. */
-		assert(size_ctrl == 1 || size_ctrl == 2);
+		assert(ctrl_uri_count == 1 || ctrl_uri_count == 2);
 
 		/* At this point, we know there is at least one URI in the array */
 		set_default_uri_attr(&ctrl_uris[0], LTTNG_STREAM_CONTROL);
@@ -591,7 +591,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		}
 
 		/* URL are not equal but the control URL uses a net:// protocol */
-		if (size_ctrl == 2) {
+		if (ctrl_uri_count == 2) {
 			if (!equal) {
 				ERR("Control URL uses the net:// protocol and the data URL is "
 						"different. Not allowed.");
@@ -611,16 +611,16 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		int ret;
 
 		/* We have to parse the data URL in this case */
-		size_data = uri_parse(data_url, &data_uris);
-		if (size_data < 1) {
+		data_uri_count = uri_parse(data_url, &data_uris);
+		if (data_uri_count < 1) {
 			ERR("Unable to parse the URL %s", data_url);
 			goto error;
-		} else if (size_data == 2) {
+		} else if (data_uri_count == 2) {
 			ERR("Data URL can not be set with the net[4|6]:// protocol");
 			goto error;
 		} else {
 			/* 1 and 2 are the only expected values on success. */
-			assert(size_data == 1);
+			assert(data_uri_count == 1);
 		}
 
 		set_default_uri_attr(&data_uris[0], LTTNG_STREAM_DATA);
@@ -634,10 +634,13 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 		}
 	}
 
-	/* Compute total size */
-	size = size_ctrl + size_data;
+	/* Compute total size. */
+	uri_count = ctrl_uri_count + data_uri_count;
+	if (uri_count <= 0) {
+		goto error;
+	}
 
-	tmp_uris = zmalloc(sizeof(struct lttng_uri) * size);
+	tmp_uris = zmalloc(sizeof(struct lttng_uri) * uri_count);
 	if (tmp_uris == NULL) {
 		PERROR("zmalloc uris");
 		goto error;
@@ -645,7 +648,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 
 	if (ctrl_uris) {
 		/* It's possible the control URIs array contains more than one URI */
-		memcpy(tmp_uris, ctrl_uris, sizeof(struct lttng_uri) * size_ctrl);
+		memcpy(tmp_uris, ctrl_uris, sizeof(struct lttng_uri) * ctrl_uri_count);
 		++idx;
 		free(ctrl_uris);
 	}
@@ -657,7 +660,7 @@ ssize_t uri_parse_str_urls(const char *ctrl_url, const char *data_url,
 
 	*uris = tmp_uris;
 
-	return size;
+	return uri_count;
 
 error:
 	free(ctrl_uris);
