@@ -82,6 +82,8 @@ struct channel_info {
 struct lttng_event_notifier_notification {
 	uint64_t tracer_token;
 	enum lttng_domain_type type;
+	size_t capture_buf_size;
+	char *capture_buffer;
 };
 
 struct notification_client_list_element {
@@ -248,10 +250,15 @@ int notification_thread_client_communication_update(
 		notification_client_id id,
 		enum client_transmission_status transmission_status);
 
+/*
+ * Takes ownership of the payload if present.
+ */
 LTTNG_HIDDEN
 struct lttng_event_notifier_notification *lttng_event_notifier_notification_create(
 		uint64_t tracer_token,
-		enum lttng_domain_type domain);
+		enum lttng_domain_type domain,
+		char *payload,
+		size_t payload_size);
 
 LTTNG_HIDDEN
 void lttng_event_notifier_notification_destroy(

@@ -48,6 +48,9 @@
 #define CLIENT_POLL_MASK_IN (LPOLLIN | LPOLLERR | LPOLLHUP | LPOLLRDHUP)
 #define CLIENT_POLL_MASK_IN_OUT (CLIENT_POLL_MASK_IN | LPOLLOUT)
 
+/* The tracers currently limit the capture size to PIPE_BUF (4kb on linux). */
+#define MAX_CAPTURE_SIZE (PIPE_BUF)
+
 enum lttng_object_type {
 	LTTNG_OBJECT_TYPE_UNKNOWN,
 	LTTNG_OBJECT_TYPE_NONE,
@@ -4244,6 +4247,8 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 	int ret;
 	uint64_t token;
 	struct lttng_event_notifier_notification *notification = NULL;
+	char *capture_buffer = NULL;
+	size_t capture_buffer_size;
 	void *reception_buffer;
 	size_t reception_size;
 
@@ -4280,17 +4285,55 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 	switch(domain) {
 	case LTTNG_DOMAIN_UST:
 		token = ust_notification.token;
+		capture_buffer_size = ust_notification.capture_buf_size;
 		break;
 	case LTTNG_DOMAIN_KERNEL:
 		token = kernel_notification.token;
+		capture_buffer_size = 0;
 		break;
 	default:
 		abort();
 	}
 
-	notification = lttng_event_notifier_notification_create(
-			token, domain);
+	if (capture_buffer_size == 0) {
+		capture_buffer = NULL;
+		goto skip_capture;
+	}
+
+	if (capture_buffer_size > MAX_CAPTURE_SIZE) {
+		ERR("[notification-thread] Event notifier has a capture payload size which exceeds the maximum allowed size: capture_payload_size = %zu bytes, max allowed size = %d bytes",
+				capture_buffer_size, MAX_CAPTURE_SIZE);
+		goto end;
+	}
+
+	capture_buffer = zmalloc(capture_buffer_size);
+	if (!capture_buffer) {
+		ERR("[notification-thread] Failed to allocate capture buffer");
+		goto end;
+	}
+
+	/* Fetch additional payload (capture). */
+	ret = lttng_read(notification_pipe_read_fd, capture_buffer, capture_buffer_size);
+	if (ret != capture_buffer_size) {
+		ERR("[notification-thread] Failed to read from event source pipe (fd = %i)",
+				notification_pipe_read_fd);
+		goto end;
+	}
+
+skip_capture:
+	notification = lttng_event_notifier_notification_create(token, domain,
+			capture_buffer, capture_buffer_size);
+	if (notification == NULL) {
+		goto end;
+	}
+
+	/*
+	 * Ownership transfered to the lttng_event_notifier_notification object.
+	 */
+	capture_buffer = NULL;
+
 end:
+	free(capture_buffer);
 	return notification;
 }
 
@@ -4425,14 +4468,14 @@ int handle_one_event_notifier_notification(
 		struct notification_thread_state *state,
 		int pipe, enum lttng_domain_type domain)
 {
-	int ret;
+	int ret = 0;
 	struct lttng_event_notifier_notification *notification = NULL;
 
 	notification = recv_one_event_notifier_notification(pipe, domain);
 	if (notification == NULL) {
+		/* Reception failed, don't consider it fatal. */
 		ERR("[notification-thread] Error receiving an event notifier notification from tracer: fd = %i, domain = %s",
 				pipe, lttng_domain_type_str(domain));
-		ret = -1;
 		goto end;
 	}
 
