@@ -13,7 +13,8 @@
 
 #define INIT_ALLOC_SIZE 4
 
-static inline int get_count_order(unsigned int count)
+static inline
+int get_count_order(unsigned int count)
 {
 	int order;
 
