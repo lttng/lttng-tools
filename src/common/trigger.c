@@ -393,9 +393,10 @@ bool lttng_trigger_is_equal(
 		return false;
 	}
 
-	/*
-	 * Name is not taken into account since it is cosmetic only.
-	 */
+	if (strcmp(a->name, b->name) != 0) {
+		return false;
+	}
+
 	if (!lttng_condition_is_equal(a->condition, b->condition)) {
 		return false;
 	}
