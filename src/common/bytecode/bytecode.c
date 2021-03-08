@@ -38,7 +38,7 @@ int bytecode_init(struct lttng_bytecode_alloc **fb)
 	}
 }
 
-LTTNG_HIDDEN
+static
 int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb, uint32_t align, uint32_t len)
 {
 	int32_t ret;

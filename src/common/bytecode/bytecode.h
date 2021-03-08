@@ -235,8 +235,6 @@ struct lttng_bytecode_alloc {
 };
 
 LTTNG_HIDDEN int bytecode_init(struct lttng_bytecode_alloc **fb);
-LTTNG_HIDDEN int32_t bytecode_reserve(struct lttng_bytecode_alloc **fb,
-		uint32_t align, uint32_t len);
 LTTNG_HIDDEN int bytecode_push(struct lttng_bytecode_alloc **fb,
 		const void *data, uint32_t align, uint32_t len);
 LTTNG_HIDDEN int bytecode_push_logical(struct lttng_bytecode_alloc **fb,
