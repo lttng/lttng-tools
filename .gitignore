@@ -110,6 +110,7 @@ health_check
 /tests/regression/tools/notification/notification
 /tests/regression/tools/rotation/schedule_api
 /tests/regression/tools/notification/rotation
+/tests/regression/tools/trigger/utils/notification-client
 /tests/regression/ust/overlap/demo/demo
 /tests/regression/ust/linking/demo_builtin
 /tests/regression/ust/linking/demo_static
@@ -146,6 +147,7 @@ health_check
 /tests/unit/test_string_utils
 /tests/unit/test_buffer_view
 /tests/unit/test_kernel_probe
+/tests/unit/test_event_expr_to_bytecode
 /tests/utils/testapp/gen-ust-nevents-str/gen-ust-nevents-str
 /tests/utils/testapp/userspace-probe-elf-binary/userspace-probe-elf-binary
 /tests/utils/testapp/userspace-probe-elf-cxx-binary/userspace-probe-elf-cxx-binary
