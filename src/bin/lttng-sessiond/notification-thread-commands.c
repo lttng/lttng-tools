@@ -382,6 +382,32 @@ int notification_thread_client_communication_update(
 	return run_command_no_wait(handle, &cmd);
 }
 
+enum lttng_error_code notification_thread_command_get_trigger(
+		struct notification_thread_handle *handle,
+		const struct lttng_trigger *trigger,
+		struct lttng_trigger **real_trigger)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct notification_thread_command cmd = {};
+
+	init_notification_thread_command(&cmd);
+
+	cmd.type = NOTIFICATION_COMMAND_TYPE_GET_TRIGGER;
+	cmd.parameters.get_trigger.trigger = trigger;
+	ret = run_command_wait(handle, &cmd);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	ret_code = cmd.reply_code;
+	*real_trigger = cmd.reply.get_trigger.trigger;
+
+end:
+	return ret_code;
+}
+
 /*
  * Takes ownership of the payload if present.
  */

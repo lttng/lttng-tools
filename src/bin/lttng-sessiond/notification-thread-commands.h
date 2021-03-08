@@ -32,6 +32,7 @@ enum notification_thread_command_type {
 	NOTIFICATION_COMMAND_TYPE_LIST_TRIGGERS,
 	NOTIFICATION_COMMAND_TYPE_QUIT,
 	NOTIFICATION_COMMAND_TYPE_CLIENT_COMMUNICATION_UPDATE,
+	NOTIFICATION_COMMAND_TYPE_GET_TRIGGER,
 };
 
 struct notification_thread_command {
@@ -89,12 +90,19 @@ struct notification_thread_command {
 			enum client_transmission_status status;
 		} client_communication_update;
 
+		struct {
+			const struct lttng_trigger *trigger;
+		} get_trigger;
+
 	} parameters;
 
 	union {
 		struct {
 			struct lttng_triggers *triggers;
 		} list_triggers;
+		struct {
+			struct lttng_trigger *trigger;
+		} get_trigger;
 	} reply;
 	/* lttng_waiter on which to wait for command reply (optional). */
 	struct lttng_waiter reply_waiter;
@@ -165,5 +173,10 @@ enum lttng_error_code notification_thread_command_remove_tracer_event_source(
 
 void notification_thread_command_quit(
 		struct notification_thread_handle *handle);
+
+enum lttng_error_code notification_thread_command_get_trigger(
+		struct notification_thread_handle *handle,
+		const struct lttng_trigger *trigger,
+		struct lttng_trigger **real_trigger);
 
 #endif /* NOTIFICATION_THREAD_COMMANDS_H */
