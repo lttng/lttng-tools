@@ -50,7 +50,7 @@ static int template_execute(
 
 static inline msgpack_object template_callback_root(unpack_user* u)
 {
-    msgpack_object o;
+    msgpack_object o = {};
     MSGPACK_UNUSED(u);
     o.type = MSGPACK_OBJECT_NIL;
     return o;
