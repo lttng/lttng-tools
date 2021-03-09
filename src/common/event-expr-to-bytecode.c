@@ -114,7 +114,8 @@ int event_expr_to_bytecode_recursive(const struct lttng_event_expr *expr,
 				bytecode, bytecode_reloc, name);
 		free(name);
 		if (status) {
-			ERR("Failed to push 'get symbol %s' in bytecode", name);
+			ERR("Failed to push 'get symbol %s:%s' in bytecode",
+					provider_name, type_name);
 			goto end;
 		}
 
