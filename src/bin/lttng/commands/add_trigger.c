@@ -237,7 +237,7 @@ static int parse_kernel_probe_opts(const char *source,
 
 		*location = lttng_kernel_probe_location_symbol_create(
 				symbol_name, offset);
-		if (!location) {
+		if (!*location) {
 			ERR("Failed to create symbol kernel probe location.");
 			goto error;
 		}
