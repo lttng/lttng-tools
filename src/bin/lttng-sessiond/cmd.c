@@ -4203,7 +4203,7 @@ end:
  * then regenerate the metadata. Live and per-pid sessions are not
  * supported and return an error.
  *
- * Return 0 on success or else a LTTNG_ERR code.
+ * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_regenerate_metadata(struct ltt_session *session)
 {
@@ -4244,7 +4244,7 @@ end:
  *
  * Ask the tracer to regenerate a new statedump.
  *
- * Return 0 on success or else a LTTNG_ERR code.
+ * Return LTTNG_OK on success or else a LTTNG_ERR code.
  */
 int cmd_regenerate_statedump(struct ltt_session *session)
 {
@@ -5477,7 +5477,7 @@ end:
  * 'activate' to false means deactivate the rotation schedule and validate that
  * 'new_value' has the same value as the currently active value.
  *
- * Return 0 on success or else a positive LTTNG_ERR code.
+ * Return LTTNG_OK on success or else a positive LTTNG_ERR code.
  */
 int cmd_rotation_set_schedule(struct ltt_session *session,
 		bool activate, enum lttng_rotation_schedule_type schedule_type,
