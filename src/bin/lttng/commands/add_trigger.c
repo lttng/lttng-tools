@@ -301,13 +301,16 @@ end:
 
 static
 struct lttng_event_expr *ir_op_load_expr_to_event_expr(
-		const struct ir_load_expression *load_exp, const char *capture_str)
+		const struct ir_load_expression *load_expr,
+		const char *capture_str)
 {
 	char *provider_name = NULL;
 	struct lttng_event_expr *event_expr = NULL;
-	const struct ir_load_expression_op *load_expr_op = load_exp->child;
+	const struct ir_load_expression_op *load_expr_op = load_expr->child;
+	const enum ir_load_expression_type load_expr_child_type =
+			load_expr_op->type;
 
-	switch (load_expr_op->type) {
+	switch (load_expr_child_type) {
 	case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
 	case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
 	{
@@ -319,12 +322,12 @@ struct lttng_event_expr *ir_op_load_expr_to_event_expr(
 		field_name = load_expr_op->u.symbol;
 		assert(field_name);
 
-		event_expr = load_expr_op->type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
+		event_expr = load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
 				lttng_event_expr_event_payload_field_create(field_name) :
 				lttng_event_expr_channel_context_field_create(field_name);
 		if (!event_expr) {
 			ERR("Failed to create %s event expression: field name = `%s`.",
-					load_expr_op->type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
+					load_expr_child_type == IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT ?
 							"payload field" : "channel context",
 							field_name);
 			goto error;
