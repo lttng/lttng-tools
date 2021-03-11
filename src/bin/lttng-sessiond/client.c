@@ -2618,7 +2618,10 @@ static void *thread_manage_clients(void *data)
 		}
 
 		if (ret < LTTNG_OK || ret >= LTTNG_ERR_NR) {
-			WARN("Command returned an invalid status code, returning unknown error: command type = %d, ret = %d", cmd_ctx.lsm.cmd_type, ret);
+			WARN("Command returned an invalid status code, returning unknown error: "
+					"command type = %s (%d), ret = %d",
+					lttcomm_sessiond_command_str(cmd_ctx.lsm.cmd_type),
+					cmd_ctx.lsm.cmd_type, ret);
 			ret = LTTNG_ERR_UNK;
 		}
 

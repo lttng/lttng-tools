@@ -5124,7 +5124,7 @@ int cmd_set_session_shm_path(struct ltt_session *session,
 		sizeof(session->shm_path));
 	session->shm_path[sizeof(session->shm_path) - 1] = '\0';
 
-	return 0;
+	return LTTNG_OK;
 }
 
 /*
