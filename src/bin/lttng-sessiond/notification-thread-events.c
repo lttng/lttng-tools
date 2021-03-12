@@ -2017,7 +2017,7 @@ int drain_event_notifier_notification_pipe(
 		 * the pipe is closed but empty.
 		 */
 		ret = lttng_poll_wait_interruptible(&events, 0);
-		if (ret == 0 || (LTTNG_POLL_GETEV(&events, 1) & LPOLLIN) == 0) {
+		if (ret == 0 || (LTTNG_POLL_GETEV(&events, 0) & LPOLLIN) == 0) {
 			/* No more notification to be read on this pipe. */
 			ret = 0;
 			goto end;
