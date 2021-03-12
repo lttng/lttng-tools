@@ -149,7 +149,7 @@ static int ht_match_enum(struct cds_lfht_node *node, const void *_key)
 	assert(_enum);
 	key = _key;
 
-	if (strncmp(_enum->name, key->name, LTTNG_UST_SYM_NAME_LEN)) {
+	if (strncmp(_enum->name, key->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
 		goto no_match;
 	}
 	if (compare_enums(_enum, key)) {
@@ -584,8 +584,8 @@ struct ust_registry_enum *
 	struct ust_registry_enum reg_enum_lookup;
 
 	memset(&reg_enum_lookup, 0, sizeof(reg_enum_lookup));
-	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_SYM_NAME_LEN);
-	reg_enum_lookup.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	strncpy(reg_enum_lookup.name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
+	reg_enum_lookup.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 	reg_enum_lookup.id = enum_id;
 	cds_lfht_lookup(session->enums->ht,
 			ht_hash_enum((void *) &reg_enum_lookup, lttng_ht_seed),
@@ -639,8 +639,8 @@ int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 		ret = -ENOMEM;
 		goto end;
 	}
-	strncpy(reg_enum->name, enum_name, LTTNG_UST_SYM_NAME_LEN);
-	reg_enum->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	strncpy(reg_enum->name, enum_name, LTTNG_UST_ABI_SYM_NAME_LEN);
+	reg_enum->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 	/* entries will be owned by reg_enum. */
 	reg_enum->entries = entries;
 	reg_enum->nr_entries = nr_entries;

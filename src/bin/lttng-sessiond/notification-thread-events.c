@@ -4247,7 +4247,7 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 	void *reception_buffer;
 	size_t reception_size;
 
-	struct lttng_ust_event_notifier_notification ust_notification;
+	struct lttng_ust_abi_event_notifier_notification ust_notification;
 	struct lttng_kernel_event_notifier_notification kernel_notification;
 
 	/* Init lttng_event_notifier_notification */

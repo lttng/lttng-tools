@@ -134,7 +134,7 @@ end:
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static
 int save_ust_channel_attributes(struct config_writer *writer,
-	struct lttng_ust_channel_attr *attr)
+	struct lttng_ust_abi_channel_attr *attr)
 {
 	int ret;
 	struct ltt_ust_channel *channel = NULL;
@@ -181,7 +181,7 @@ int save_ust_channel_attributes(struct config_writer *writer,
 
 	ret = config_writer_write_element_string(writer,
 		config_element_output_type,
-		attr->output == LTTNG_UST_MMAP ?
+		attr->output == LTTNG_UST_ABI_MMAP ?
 		config_output_type_mmap : config_output_type_splice);
 	if (ret) {
 		ret = LTTNG_ERR_SAVE_IO_FAIL;
@@ -376,72 +376,72 @@ const char *get_kernel_context_type_string(
 
 static
 const char *get_ust_context_type_string(
-	enum lttng_ust_context_type context_type)
+	enum lttng_ust_abi_context_type context_type)
 {
 	const char *context_type_string;
 
 	switch (context_type) {
-	case LTTNG_UST_CONTEXT_PROCNAME:
+	case LTTNG_UST_ABI_CONTEXT_PROCNAME:
 		context_type_string = config_event_context_procname;
 		break;
-	case LTTNG_UST_CONTEXT_VPID:
+	case LTTNG_UST_ABI_CONTEXT_VPID:
 		context_type_string = config_event_context_vpid;
 		break;
-	case LTTNG_UST_CONTEXT_VTID:
+	case LTTNG_UST_ABI_CONTEXT_VTID:
 		context_type_string = config_event_context_vtid;
 		break;
-	case LTTNG_UST_CONTEXT_IP:
+	case LTTNG_UST_ABI_CONTEXT_IP:
 		context_type_string = config_event_context_ip;
 		break;
-	case LTTNG_UST_CONTEXT_PTHREAD_ID:
+	case LTTNG_UST_ABI_CONTEXT_PTHREAD_ID:
 		context_type_string = config_event_context_pthread_id;
 		break;
-	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 		context_type_string = config_event_context_app;
 		break;
-	case LTTNG_UST_CONTEXT_CGROUP_NS:
+	case LTTNG_UST_ABI_CONTEXT_CGROUP_NS:
 		context_type_string = config_event_context_cgroup_ns;
 		break;
-	case LTTNG_UST_CONTEXT_IPC_NS:
+	case LTTNG_UST_ABI_CONTEXT_IPC_NS:
 		context_type_string = config_event_context_ipc_ns;
 		break;
-	case LTTNG_UST_CONTEXT_MNT_NS:
+	case LTTNG_UST_ABI_CONTEXT_MNT_NS:
 		context_type_string = config_event_context_mnt_ns;
 		break;
-	case LTTNG_UST_CONTEXT_NET_NS:
+	case LTTNG_UST_ABI_CONTEXT_NET_NS:
 		context_type_string = config_event_context_net_ns;
 		break;
-	case LTTNG_UST_CONTEXT_TIME_NS:
+	case LTTNG_UST_ABI_CONTEXT_TIME_NS:
 		context_type_string = config_event_context_time_ns;
 		break;
-	case LTTNG_UST_CONTEXT_PID_NS:
+	case LTTNG_UST_ABI_CONTEXT_PID_NS:
 		context_type_string = config_event_context_pid_ns;
 		break;
-	case LTTNG_UST_CONTEXT_USER_NS:
+	case LTTNG_UST_ABI_CONTEXT_USER_NS:
 		context_type_string = config_event_context_user_ns;
 		break;
-	case LTTNG_UST_CONTEXT_UTS_NS:
+	case LTTNG_UST_ABI_CONTEXT_UTS_NS:
 		context_type_string = config_event_context_uts_ns;
 		break;
-	case LTTNG_UST_CONTEXT_VUID:
+	case LTTNG_UST_ABI_CONTEXT_VUID:
 		context_type_string = config_event_context_vuid;
 		break;
-	case LTTNG_UST_CONTEXT_VEUID:
+	case LTTNG_UST_ABI_CONTEXT_VEUID:
 		context_type_string = config_event_context_veuid;
 		break;
-	case LTTNG_UST_CONTEXT_VSUID:
+	case LTTNG_UST_ABI_CONTEXT_VSUID:
 		context_type_string = config_event_context_vsuid;
 		break;
-	case LTTNG_UST_CONTEXT_VGID:
+	case LTTNG_UST_ABI_CONTEXT_VGID:
 		context_type_string = config_event_context_vgid;
 		break;
-	case LTTNG_UST_CONTEXT_VEGID:
+	case LTTNG_UST_ABI_CONTEXT_VEGID:
 		context_type_string = config_event_context_vegid;
 		break;
-	case LTTNG_UST_CONTEXT_VSGID:
+	case LTTNG_UST_ABI_CONTEXT_VSGID:
 		context_type_string = config_event_context_vsgid;
 		break;
-	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		/*
 		 * Error, should not be stored in the XML, perf contexts
 		 * are stored as a node of type event_perf_context_type.
@@ -479,18 +479,18 @@ const char *get_buffer_type_string(
 
 static
 const char *get_loglevel_type_string(
-	enum lttng_ust_loglevel_type loglevel_type)
+	enum lttng_ust_abi_loglevel_type loglevel_type)
 {
 	const char *loglevel_type_string;
 
 	switch (loglevel_type) {
-	case LTTNG_UST_LOGLEVEL_ALL:
+	case LTTNG_UST_ABI_LOGLEVEL_ALL:
 		loglevel_type_string = config_loglevel_type_all;
 		break;
-	case LTTNG_UST_LOGLEVEL_RANGE:
+	case LTTNG_UST_ABI_LOGLEVEL_RANGE:
 		loglevel_type_string = config_loglevel_type_range;
 		break;
-	case LTTNG_UST_LOGLEVEL_SINGLE:
+	case LTTNG_UST_ABI_LOGLEVEL_SINGLE:
 		loglevel_type_string = config_loglevel_type_single;
 		break;
 	default:
@@ -1051,7 +1051,7 @@ int save_ust_event(struct config_writer *writer,
 		goto end;
 	}
 
-	if (event->attr.instrumentation != LTTNG_UST_TRACEPOINT) {
+	if (event->attr.instrumentation != LTTNG_UST_ABI_TRACEPOINT) {
 		ERR("Unsupported UST instrumentation type.");
 		ret = LTTNG_ERR_INVALID;
 		goto end;
@@ -1079,7 +1079,7 @@ int save_ust_event(struct config_writer *writer,
 	}
 
 	/* The log level is irrelevant if no "filtering" is enabled */
-	if (event->attr.loglevel_type != LTTNG_UST_LOGLEVEL_ALL) {
+	if (event->attr.loglevel_type != LTTNG_UST_ABI_LOGLEVEL_ALL) {
 		ret = config_writer_write_element_signed_int(writer,
 				config_element_loglevel, event->attr.loglevel);
 		if (ret) {
@@ -1188,10 +1188,10 @@ int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 		struct agent_event *agent_event)
 {
 	int ret;
-	enum lttng_ust_loglevel_type ust_loglevel_type;
+	enum lttng_ust_abi_loglevel_type ust_loglevel_type;
 
 	ust_event->enabled = AGENT_EVENT_IS_ENABLED(agent_event);
-	ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
+	ust_event->attr.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
 	if (lttng_strncpy(ust_event->attr.name, agent_event->name,
 			LTTNG_SYMBOL_NAME_LEN)) {
 		ret = LTTNG_ERR_INVALID;
@@ -1199,13 +1199,13 @@ int init_ust_event_from_agent_event(struct ltt_ust_event *ust_event,
 	}
 	switch (agent_event->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
 		break;
 	default:
 		ERR("Invalid agent_event loglevel_type.");
@@ -1551,10 +1551,10 @@ int save_ust_context(struct config_writer *writer,
 		}
 
 		switch (ctx->ctx.ctx) {
-		case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+		case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 			ret = save_ust_context_perf_thread_counter(writer, ctx);
 			break;
-		case LTTNG_UST_CONTEXT_APP_CONTEXT:
+		case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 			ret = save_ust_context_app_ctx(writer, ctx);
 			break;
 		default:

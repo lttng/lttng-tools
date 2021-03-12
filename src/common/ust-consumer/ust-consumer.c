@@ -1560,15 +1560,15 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		switch (msg.u.ask_channel.output) {
 		case LTTNG_EVENT_MMAP:
 		default:
-			attr.output = LTTNG_UST_MMAP;
+			attr.output = LTTNG_UST_ABI_MMAP;
 			break;
 		}
 
 		/* Translate and save channel type. */
 		switch (msg.u.ask_channel.type) {
-		case LTTNG_UST_CHAN_PER_CPU:
+		case LTTNG_UST_ABI_CHAN_PER_CPU:
 			channel->type = CONSUMER_CHANNEL_TYPE_DATA;
-			attr.type = LTTNG_UST_CHAN_PER_CPU;
+			attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 			/*
 			 * Set refcount to 1 for owner. Below, we will
 			 * pass ownership to the
@@ -1576,9 +1576,9 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			 */
 			channel->refcount = 1;
 			break;
-		case LTTNG_UST_CHAN_METADATA:
+		case LTTNG_UST_ABI_CHAN_METADATA:
 			channel->type = CONSUMER_CHANNEL_TYPE_METADATA;
-			attr.type = LTTNG_UST_CHAN_METADATA;
+			attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 			break;
 		default:
 			assert(0);
@@ -1592,7 +1592,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto end_channel_error;
 		}
 
-		if (msg.u.ask_channel.type == LTTNG_UST_CHAN_METADATA) {
+		if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_METADATA) {
 			ret = consumer_metadata_cache_allocate(channel);
 			if (ret < 0) {
 				ERR("Allocating metadata cache");
@@ -1625,7 +1625,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 */
 		ret = add_channel(channel, ctx);
 		if (ret < 0) {
-			if (msg.u.ask_channel.type == LTTNG_UST_CHAN_METADATA) {
+			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_METADATA) {
 				if (channel->switch_timer_enabled == 1) {
 					consumer_timer_switch_stop(channel);
 				}

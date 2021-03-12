@@ -97,7 +97,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 		chan_reg_key = ua_chan->key;
 	}
 
-	if (ua_chan->attr.type == LTTNG_UST_CHAN_METADATA) {
+	if (ua_chan->attr.type == LTTNG_UST_ABI_CHAN_METADATA) {
 		chan_id = -1U;
 		/*
 		 * Metadata channels shm_path (buffers) are handled within
@@ -123,7 +123,7 @@ static int ask_channel_creation(struct ust_app_session *ua_sess,
 	}
 
 	switch (ua_chan->attr.output) {
-	case LTTNG_UST_MMAP:
+	case LTTNG_UST_ABI_MMAP:
 	default:
 		output = LTTNG_EVENT_MMAP;
 		break;

@@ -40,7 +40,7 @@ struct ust_app_notify_sock_obj {
 struct ust_app_ht_key {
 	const char *name;
 	const struct lttng_bytecode *filter;
-	enum lttng_ust_loglevel_type loglevel_type;
+	enum lttng_ust_abi_loglevel_type loglevel_type;
 	const struct lttng_event_exclusion *exclusion;
 };
 
@@ -96,7 +96,7 @@ struct ust_app_stream_list {
 struct ust_app_ctx {
 	int handle;
 	struct lttng_ust_context_attr ctx;
-	struct lttng_ust_object_data *obj;
+	struct lttng_ust_abi_object_data *obj;
 	struct lttng_ht_node_ulong node;
 	struct cds_list_head list;
 };
@@ -104,9 +104,9 @@ struct ust_app_ctx {
 struct ust_app_event {
 	int enabled;
 	int handle;
-	struct lttng_ust_object_data *obj;
-	struct lttng_ust_event attr;
-	char name[LTTNG_UST_SYM_NAME_LEN];
+	struct lttng_ust_abi_object_data *obj;
+	struct lttng_ust_abi_event attr;
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 	struct lttng_ht_node_str node;
 	struct lttng_bytecode *filter;
 	struct lttng_event_exclusion *exclusion;
@@ -115,7 +115,7 @@ struct ust_app_event {
 struct ust_app_event_notifier_rule {
 	int enabled;
 	int handle;
-	struct lttng_ust_object_data *obj;
+	struct lttng_ust_abi_object_data *obj;
 	/* Holds a strong reference. */
 	struct lttng_trigger *trigger;
 	/* Unique ID returned by the tracer to identify this event notifier. */
@@ -134,7 +134,7 @@ struct ust_app_stream {
 	char pathname[PATH_MAX];
 	/* Format is %s_%d respectively channel name and CPU number. */
 	char name[DEFAULT_STREAM_NAME_LEN];
-	struct lttng_ust_object_data *obj;
+	struct lttng_ust_abi_object_data *obj;
 	/* Using a list of streams to keep order. */
 	struct cds_list_head list;
 };
@@ -154,8 +154,8 @@ struct ust_app_channel {
 	uint64_t tracing_channel_id;
 	/* Number of stream that this channel is expected to receive. */
 	unsigned int expected_stream_count;
-	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ust_object_data *obj;
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
+	struct lttng_ust_abi_object_data *obj;
 	struct ustctl_consumer_channel_attr attr;
 	struct ust_app_stream_list streams;
 	/* Session pointer that owns this object. */
@@ -267,7 +267,7 @@ struct ust_app {
 	int compatible; /* If the lttng-ust tracer version does not match the
 					   supported version of the session daemon, this flag is
 					   set to 0 (NOT compatible) else 1. */
-	struct lttng_ust_tracer_version version;
+	struct lttng_ust_abi_tracer_version version;
 	uint32_t v_major;    /* Version major number */
 	uint32_t v_minor;    /* Version minor number */
 	/* Extra for the NULL byte. */
@@ -317,7 +317,7 @@ struct ust_app {
 		 * Handle to the lttng_ust object representing the event
 		 * notifier group.
 		 */
-		struct lttng_ust_object_data *object;
+		struct lttng_ust_abi_object_data *object;
 		struct lttng_pipe *event_pipe;
 	} event_notifier_group;
 	/*
@@ -387,7 +387,7 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session);
 enum lttng_error_code ust_app_create_channel_subdirectories(
 		const struct ltt_ust_session *session);
 int ust_app_release_object(struct ust_app *app,
-		struct lttng_ust_object_data *data);
+		struct lttng_ust_abi_object_data *data);
 enum lttng_error_code ust_app_clear_session(struct ltt_session *session);
 enum lttng_error_code ust_app_open_packets(struct ltt_session *session);
 
@@ -638,7 +638,7 @@ enum lttng_error_code ust_app_create_channel_subdirectories(
 }
 
 static inline
-int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data)
 {
 	return 0;
 }

@@ -83,7 +83,7 @@ int trace_ust_ht_match_event(struct cds_lfht_node *node, const void *_key)
 	/* Event loglevel value and type. */
 	ll_match = loglevels_match(event->attr.loglevel_type,
 		ev_loglevel_value, key->loglevel_type,
-		key->loglevel_value, LTTNG_UST_LOGLEVEL_ALL);
+		key->loglevel_value, LTTNG_UST_ABI_LOGLEVEL_ALL);
 
 	if (!ll_match) {
 		goto no_match;
@@ -195,7 +195,7 @@ error:
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_bytecode *filter,
-		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
+		enum lttng_ust_abi_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion)
 {
 	struct lttng_ht_node_str *node;
@@ -285,7 +285,7 @@ struct ltt_ust_session *trace_ust_create_session(uint64_t session_id)
 	lus->metadata_attr.num_subbuf = DEFAULT_METADATA_SUBBUF_NUM;
 	lus->metadata_attr.switch_timer_interval = DEFAULT_METADATA_SWITCH_TIMER;
 	lus->metadata_attr.read_timer_interval = DEFAULT_METADATA_READ_TIMER;
-	lus->metadata_attr.output = LTTNG_UST_MMAP;
+	lus->metadata_attr.output = LTTNG_UST_ABI_MMAP;
 
 	/*
 	 * Default buffer type. This can be changed through an enable channel
@@ -362,7 +362,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	luc->attr.num_subbuf = chan->attr.num_subbuf;
 	luc->attr.switch_timer_interval = chan->attr.switch_timer_interval;
 	luc->attr.read_timer_interval = chan->attr.read_timer_interval;
-	luc->attr.output = (enum lttng_ust_output) chan->attr.output;
+	luc->attr.output = (enum lttng_ust_abi_output) chan->attr.output;
 	luc->monitor_timer_interval = ((struct lttng_channel_extended *)
 			chan->attr.extended.ptr)->monitor_timer_interval;
 	luc->attr.u.s.blocking_timeout = ((struct lttng_channel_extended *)
@@ -371,7 +371,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 	/* Translate to UST output enum */
 	switch (luc->attr.output) {
 	default:
-		luc->attr.output = LTTNG_UST_MMAP;
+		luc->attr.output = LTTNG_UST_ABI_MMAP;
 		break;
 	}
 
@@ -385,7 +385,7 @@ struct ltt_ust_channel *trace_ust_create_channel(struct lttng_channel *chan,
 		/* Copy channel name */
 		strncpy(luc->name, chan->name, sizeof(luc->name));
 	}
-	luc->name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	luc->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 
 	/* Init node */
 	lttng_ht_node_init_str(&luc->node, luc->name);
@@ -472,16 +472,16 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 
 	switch (ev->type) {
 	case LTTNG_EVENT_PROBE:
-		local_ust_event->attr.instrumentation = LTTNG_UST_PROBE;
+		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_PROBE;
 		break;
 	case LTTNG_EVENT_FUNCTION:
-		local_ust_event->attr.instrumentation = LTTNG_UST_FUNCTION;
+		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_FUNCTION;
 		break;
 	case LTTNG_EVENT_FUNCTION_ENTRY:
-		local_ust_event->attr.instrumentation = LTTNG_UST_FUNCTION;
+		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_FUNCTION;
 		break;
 	case LTTNG_EVENT_TRACEPOINT:
-		local_ust_event->attr.instrumentation = LTTNG_UST_TRACEPOINT;
+		local_ust_event->attr.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
 		break;
 	default:
 		ERR("Unknown ust instrumentation type (%d)", ev->type);
@@ -490,20 +490,20 @@ enum lttng_error_code trace_ust_create_event(struct lttng_event *ev,
 	}
 
 	/* Copy event name */
-	strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_SYM_NAME_LEN);
-	local_ust_event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+	strncpy(local_ust_event->attr.name, ev->name, LTTNG_UST_ABI_SYM_NAME_LEN);
+	local_ust_event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 
 	switch (ev->loglevel_type) {
 	case LTTNG_EVENT_LOGLEVEL_ALL:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 		local_ust_event->attr.loglevel = -1;	/* Force to -1 */
 		break;
 	case LTTNG_EVENT_LOGLEVEL_RANGE:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
 		local_ust_event->attr.loglevel = ev->loglevel;
 		break;
 	case LTTNG_EVENT_LOGLEVEL_SINGLE:
-		local_ust_event->attr.loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+		local_ust_event->attr.loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
 		local_ust_event->attr.loglevel = ev->loglevel;
 		break;
 	default:
@@ -545,72 +545,72 @@ int trace_ust_context_type_event_to_ust(
 
 	switch (type) {
 	case LTTNG_EVENT_CONTEXT_VTID:
-		utype = LTTNG_UST_CONTEXT_VTID;
+		utype = LTTNG_UST_ABI_CONTEXT_VTID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VPID:
-		utype = LTTNG_UST_CONTEXT_VPID;
+		utype = LTTNG_UST_ABI_CONTEXT_VPID;
 		break;
 	case LTTNG_EVENT_CONTEXT_PTHREAD_ID:
-		utype = LTTNG_UST_CONTEXT_PTHREAD_ID;
+		utype = LTTNG_UST_ABI_CONTEXT_PTHREAD_ID;
 		break;
 	case LTTNG_EVENT_CONTEXT_PROCNAME:
-		utype = LTTNG_UST_CONTEXT_PROCNAME;
+		utype = LTTNG_UST_ABI_CONTEXT_PROCNAME;
 		break;
 	case LTTNG_EVENT_CONTEXT_IP:
-		utype = LTTNG_UST_CONTEXT_IP;
+		utype = LTTNG_UST_ABI_CONTEXT_IP;
 		break;
 	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
 		if (!ustctl_has_perf_counters()) {
 			utype = -1;
 			WARN("Perf counters not implemented in UST");
 		} else {
-			utype = LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER;
+			utype = LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER;
 		}
 		break;
 	case LTTNG_EVENT_CONTEXT_APP_CONTEXT:
-		utype = LTTNG_UST_CONTEXT_APP_CONTEXT;
+		utype = LTTNG_UST_ABI_CONTEXT_APP_CONTEXT;
 		break;
 	case LTTNG_EVENT_CONTEXT_CGROUP_NS:
-		utype = LTTNG_UST_CONTEXT_CGROUP_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_CGROUP_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_IPC_NS:
-		utype = LTTNG_UST_CONTEXT_IPC_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_IPC_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_MNT_NS:
-		utype = LTTNG_UST_CONTEXT_MNT_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_MNT_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_NET_NS:
-		utype = LTTNG_UST_CONTEXT_NET_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_NET_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_PID_NS:
-		utype = LTTNG_UST_CONTEXT_PID_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_PID_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_TIME_NS:
-		utype = LTTNG_UST_CONTEXT_TIME_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_TIME_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_USER_NS:
-		utype = LTTNG_UST_CONTEXT_USER_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_USER_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_UTS_NS:
-		utype = LTTNG_UST_CONTEXT_UTS_NS;
+		utype = LTTNG_UST_ABI_CONTEXT_UTS_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_VUID:
-		utype = LTTNG_UST_CONTEXT_VUID;
+		utype = LTTNG_UST_ABI_CONTEXT_VUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VEUID:
-		utype = LTTNG_UST_CONTEXT_VEUID;
+		utype = LTTNG_UST_ABI_CONTEXT_VEUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VSUID:
-		utype = LTTNG_UST_CONTEXT_VSUID;
+		utype = LTTNG_UST_ABI_CONTEXT_VSUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VGID:
-		utype = LTTNG_UST_CONTEXT_VGID;
+		utype = LTTNG_UST_ABI_CONTEXT_VGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VEGID:
-		utype = LTTNG_UST_CONTEXT_VEGID;
+		utype = LTTNG_UST_ABI_CONTEXT_VEGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VSGID:
-		utype = LTTNG_UST_CONTEXT_VSGID;
+		utype = LTTNG_UST_ABI_CONTEXT_VSGID;
 		break;
 	default:
 		utype = -1;
@@ -635,7 +635,7 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 		return 0;
 	}
 	switch (utype) {
-	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		if (uctx->ctx.u.perf_counter.type
 				!= ctx->u.perf_counter.type) {
 			return 0;
@@ -646,11 +646,11 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 		}
 		if (strncmp(uctx->ctx.u.perf_counter.name,
 				ctx->u.perf_counter.name,
-				LTTNG_UST_SYM_NAME_LEN)) {
+				LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			return 0;
 		}
 		break;
-	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 		assert(uctx->ctx.u.app_ctx.provider_name);
 		assert(uctx->ctx.u.app_ctx.ctx_name);
 		if (strcmp(uctx->ctx.u.app_ctx.provider_name,
@@ -691,16 +691,16 @@ struct ltt_ust_context *trace_ust_create_context(
 		goto end;
 	}
 
-	uctx->ctx.ctx = (enum lttng_ust_context_type) utype;
+	uctx->ctx.ctx = (enum lttng_ust_abi_context_type) utype;
 	switch (utype) {
-	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		uctx->ctx.u.perf_counter.type = ctx->u.perf_counter.type;
 		uctx->ctx.u.perf_counter.config = ctx->u.perf_counter.config;
 		strncpy(uctx->ctx.u.perf_counter.name, ctx->u.perf_counter.name,
-				LTTNG_UST_SYM_NAME_LEN);
-		uctx->ctx.u.perf_counter.name[LTTNG_UST_SYM_NAME_LEN - 1] = '\0';
+				LTTNG_UST_ABI_SYM_NAME_LEN);
+		uctx->ctx.u.perf_counter.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] = '\0';
 		break;
-	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 	{
 		char *provider_name = NULL, *ctx_name = NULL;
 
@@ -1255,7 +1255,7 @@ void trace_ust_destroy_context(struct ltt_ust_context *ctx)
 {
 	assert(ctx);
 
-	if (ctx->ctx.ctx == LTTNG_UST_CONTEXT_APP_CONTEXT) {
+	if (ctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
 		free(ctx->ctx.u.app_ctx.provider_name);
 		free(ctx->ctx.u.app_ctx.ctx_name);
 	}

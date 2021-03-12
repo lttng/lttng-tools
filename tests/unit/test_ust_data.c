@@ -103,7 +103,7 @@ static void test_create_ust_channel(void)
 
 	ok(uchan->enabled == 0 &&
 	   strncmp(uchan->name, "channel0", 8) == 0 &&
-	   uchan->name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0' &&
+	   uchan->name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0' &&
 	   uchan->ctx != NULL &&
 	   uchan->events != NULL &&
 	   uchan->attr.overwrite  == attr.attr.overwrite,
@@ -135,9 +135,9 @@ static void test_create_ust_event(void)
 	}
 
 	ok(event->enabled == 0 &&
-	   event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
+	   event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
 	   strcmp(event->attr.name, ev.name) == 0 &&
-	   event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
+	   event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0',
 	   "Validate UST event");
 
 	trace_ust_destroy_event(event);
@@ -229,13 +229,13 @@ static void test_create_ust_event_exclusion(void)
 	}
 
 	ok(event->enabled == 0 &&
-		event->attr.instrumentation == LTTNG_UST_TRACEPOINT &&
+		event->attr.instrumentation == LTTNG_UST_ABI_TRACEPOINT &&
 		strcmp(event->attr.name, ev.name) == 0 &&
 		event->exclusion != NULL &&
 		event->exclusion->count == exclusion_count &&
 		!memcmp(event->exclusion->names, exclusion_copy->names,
 			LTTNG_SYMBOL_NAME_LEN * exclusion_count) &&
-		event->attr.name[LTTNG_UST_SYM_NAME_LEN - 1] == '\0',
+		event->attr.name[LTTNG_UST_ABI_SYM_NAME_LEN - 1] == '\0',
 		"Validate UST event and exclusion");
 
 	trace_ust_destroy_event(event);
@@ -257,7 +257,7 @@ static void test_create_ust_context(void)
 	ok(uctx != NULL, "Create UST context");
 
 	if (uctx) {
-		ok((int) uctx->ctx.ctx == LTTNG_UST_CONTEXT_VTID,
+		ok((int) uctx->ctx.ctx == LTTNG_UST_ABI_CONTEXT_VTID,
 		   "Validate UST context");
 	} else {
 		skip(1, "Skipping UST context validation as creation failed");

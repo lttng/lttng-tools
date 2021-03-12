@@ -25,7 +25,7 @@ struct agent;
 struct ltt_ust_ht_key {
 	const char *name;
 	const struct lttng_bytecode *filter;
-	enum lttng_ust_loglevel_type loglevel_type;
+	enum lttng_ust_abi_loglevel_type loglevel_type;
 	int loglevel_value;
 	const struct lttng_event_exclusion *exclusion;
 };
@@ -40,7 +40,7 @@ struct ltt_ust_context {
 /* UST event */
 struct ltt_ust_event {
 	unsigned int enabled;
-	struct lttng_ust_event attr;
+	struct lttng_ust_abi_event attr;
 	struct lttng_ht_node_str node;
 	char *filter_expression;
 	struct lttng_bytecode *filter;
@@ -63,8 +63,8 @@ struct ltt_ust_channel {
 	 * Log4j, Python.
 	 */
 	enum lttng_domain_type domain;
-	char name[LTTNG_UST_SYM_NAME_LEN];
-	struct lttng_ust_channel_attr attr;
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
+	struct lttng_ust_abi_channel_attr attr;
 	struct lttng_ht *ctx;
 	struct cds_list_head ctx_list;
 	struct lttng_ht *events;
@@ -121,7 +121,7 @@ struct ltt_ust_session {
 	unsigned int live_timer_interval;	/* usec */
 
 	/* Metadata channel attributes. */
-	struct lttng_ust_channel_attr metadata_attr;
+	struct lttng_ust_abi_channel_attr metadata_attr;
 
 	/*
 	 * Path where to keep the shared memory files.
@@ -183,7 +183,7 @@ int trace_ust_ht_match_event_by_name(struct cds_lfht_node *node,
  */
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_bytecode *filter,
-		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
+		enum lttng_ust_abi_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion);
 struct ltt_ust_channel *trace_ust_find_channel_by_name(struct lttng_ht *ht,
 		const char *name);
@@ -311,7 +311,7 @@ int trace_ust_match_context(const struct ltt_ust_context *uctx,
 static inline
 struct ltt_ust_event *trace_ust_find_event(struct lttng_ht *ht,
 		char *name, struct lttng_bytecode *filter,
-		enum lttng_ust_loglevel_type loglevel_type, int loglevel_value,
+		enum lttng_ust_abi_loglevel_type loglevel_type, int loglevel_value,
 		struct lttng_event_exclusion *exclusion)
 {
 	return NULL;

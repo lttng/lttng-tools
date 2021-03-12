@@ -169,7 +169,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	rcu_read_lock();
 
 	uevent = trace_ust_find_event(uchan->events, event->name, filter,
-			(enum lttng_ust_loglevel_type) event->loglevel_type,
+			(enum lttng_ust_abi_loglevel_type) event->loglevel_type,
 			event->loglevel, exclusion);
 	if (!uevent) {
 		ret = trace_ust_create_event(event, filter_expression,
@@ -780,7 +780,7 @@ static int event_agent_disable_one(struct ltt_ust_session *usess,
 	 * ignored since the type is LTTNG_UST_LOGLEVEL_ALL.
 	 */
 	uevent = trace_ust_find_event(uchan->events, (char *) ust_event_name,
-			aevent->filter, LTTNG_UST_LOGLEVEL_ALL, -1, NULL);
+			aevent->filter, LTTNG_UST_ABI_LOGLEVEL_ALL, -1, NULL);
 	/* If the agent event exists, it must be available on the UST side. */
 	assert(uevent);
 

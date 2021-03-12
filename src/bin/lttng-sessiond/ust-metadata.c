@@ -163,7 +163,7 @@ void sanitize_ctf_identifier(char *out, const char *in)
 {
 	size_t i;
 
-	for (i = 0; i < LTTNG_UST_SYM_NAME_LEN; i++) {
+	for (i = 0; i < LTTNG_UST_ABI_SYM_NAME_LEN; i++) {
 		switch (in[i]) {
 		case '.':
 		case '$':
@@ -226,7 +226,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 	size_t nr_entries;
 	int ret = 0;
 	size_t i;
-	char identifier[LTTNG_UST_SYM_NAME_LEN];
+	char identifier[LTTNG_UST_ABI_SYM_NAME_LEN];
 
 	rcu_read_lock();
 	reg_enum = ust_registry_lookup_enum_by_id(session, enum_name, enum_id);
@@ -367,7 +367,7 @@ int _lttng_variant_statedump(struct ust_registry_session *session,
 	const struct ustctl_field *variant = &fields[*iter_field];
 	uint32_t i;
 	int ret;
-	char identifier[LTTNG_UST_SYM_NAME_LEN];
+	char identifier[LTTNG_UST_ABI_SYM_NAME_LEN];
 
 	if (variant->type.atype != ustctl_atype_variant) {
 		ret = -EINVAL;

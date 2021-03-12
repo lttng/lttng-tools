@@ -88,7 +88,7 @@ static uint64_t get_next_session_id(void)
 
 static void copy_channel_attr_to_ustctl(
 		struct ustctl_consumer_channel_attr *attr,
-		struct lttng_ust_channel_attr *uattr)
+		struct lttng_ust_abi_channel_attr *uattr)
 {
 	/* Copy event attributes since the layout is different. */
 	attr->subbuf_size = uattr->subbuf_size;
@@ -128,7 +128,7 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 
 	/* Event loglevel. */
 	if (ev_loglevel_value != key->loglevel_type) {
-		if (event->attr.loglevel_type == LTTNG_UST_LOGLEVEL_ALL
+		if (event->attr.loglevel_type == LTTNG_UST_ABI_LOGLEVEL_ALL
 				&& key->loglevel_type == 0 &&
 				ev_loglevel_value == -1) {
 			/*
@@ -165,7 +165,7 @@ static int ht_match_ust_app_event(struct cds_lfht_node *node, const void *_key)
 		/* Both exclusions exists, check count followed by the names. */
 		if (event->exclusion->count != key->exclusion->count ||
 				memcmp(event->exclusion->names, key->exclusion->names,
-					event->exclusion->count * LTTNG_UST_SYM_NAME_LEN) != 0) {
+					event->exclusion->count * LTTNG_UST_ABI_SYM_NAME_LEN) != 0) {
 			goto no_match;
 		}
 	}
@@ -440,7 +440,7 @@ void save_per_pid_lost_discarded_counters(struct ust_app_channel *ua_chan)
 	struct ltt_session *session;
 	struct ltt_ust_channel *uchan;
 
-	if (ua_chan->attr.type != LTTNG_UST_CHAN_PER_CPU) {
+	if (ua_chan->attr.type != LTTNG_UST_ABI_CHAN_PER_CPU) {
 		return;
 	}
 
@@ -580,7 +580,7 @@ int ust_app_register_done(struct ust_app *app)
 	return ret;
 }
 
-int ust_app_release_object(struct ust_app *app, struct lttng_ust_object_data *data)
+int ust_app_release_object(struct ust_app *app, struct lttng_ust_abi_object_data *data)
 {
 	int ret, sock;
 
@@ -1109,7 +1109,7 @@ struct ust_app_session *alloc_ust_app_session(void)
 
 	ua_sess->handle = -1;
 	ua_sess->channels = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
-	ua_sess->metadata_attr.type = LTTNG_UST_CHAN_METADATA;
+	ua_sess->metadata_attr.type = LTTNG_UST_ABI_CHAN_METADATA;
 	pthread_mutex_init(&ua_sess->lock, NULL);
 
 	return ua_sess;
@@ -1124,7 +1124,7 @@ error_free:
 static
 struct ust_app_channel *alloc_ust_app_channel(const char *name,
 		struct ust_app_session *ua_sess,
-		struct lttng_ust_channel_attr *attr)
+		struct lttng_ust_abi_channel_attr *attr)
 {
 	struct ust_app_channel *ua_chan;
 
@@ -1162,7 +1162,7 @@ struct ust_app_channel *alloc_ust_app_channel(const char *name,
 		ua_chan->attr.blocking_timeout = attr->u.s.blocking_timeout;
 	}
 	/* By default, the channel is a per cpu channel. */
-	ua_chan->attr.type = LTTNG_UST_CHAN_PER_CPU;
+	ua_chan->attr.type = LTTNG_UST_ABI_CHAN_PER_CPU;
 
 	DBG3("UST app channel %s allocated", ua_chan->name);
 
@@ -1199,7 +1199,7 @@ error:
  */
 static
 struct ust_app_event *alloc_ust_app_event(char *name,
-		struct lttng_ust_event *attr)
+		struct lttng_ust_abi_event *attr)
 {
 	struct ust_app_event *ua_event;
 
@@ -1304,7 +1304,7 @@ struct ust_app_ctx *alloc_ust_app_ctx(struct lttng_ust_context_attr *uctx)
 
 	if (uctx) {
 		memcpy(&ua_ctx->ctx, uctx, sizeof(ua_ctx->ctx));
-		if (uctx->ctx == LTTNG_UST_CONTEXT_APP_CONTEXT) {
+		if (uctx->ctx == LTTNG_UST_ABI_CONTEXT_APP_CONTEXT) {
 			char *provider_name = NULL, *ctx_name = NULL;
 
 			provider_name = strdup(uctx->u.app_ctx.provider_name);
@@ -1332,10 +1332,10 @@ error:
  *
  * Return allocated filter or NULL on error.
  */
-static struct lttng_ust_filter_bytecode *
-create_ust_filter_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
+static struct lttng_ust_abi_filter_bytecode *create_ust_filter_bytecode_from_bytecode(
+		const struct lttng_bytecode *orig_f)
 {
-	struct lttng_ust_filter_bytecode *filter = NULL;
+	struct lttng_ust_abi_filter_bytecode *filter = NULL;
 
 	/* Copy filter bytecode. */
 	filter = zmalloc(sizeof(*filter) + orig_f->len);
@@ -1345,7 +1345,7 @@ create_ust_filter_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 	}
 
 	assert(sizeof(struct lttng_bytecode) ==
-			sizeof(struct lttng_ust_filter_bytecode));
+			sizeof(struct lttng_ust_abi_filter_bytecode));
 	memcpy(filter, orig_f, sizeof(*filter) + orig_f->len);
 error:
 	return filter;
@@ -1356,20 +1356,20 @@ error:
  *
  * Return allocated filter or NULL on error.
  */
-static struct lttng_ust_capture_bytecode *
+static struct lttng_ust_abi_capture_bytecode *
 create_ust_capture_bytecode_from_bytecode(const struct lttng_bytecode *orig_f)
 {
-	struct lttng_ust_capture_bytecode *capture = NULL;
+	struct lttng_ust_abi_capture_bytecode *capture = NULL;
 
 	/* Copy capture bytecode. */
 	capture = zmalloc(sizeof(*capture) + orig_f->len);
 	if (!capture) {
-		PERROR("Failed to allocate lttng_ust_capture_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
+		PERROR("Failed to allocate lttng_ust_abi_capture_bytecode: bytecode len = %" PRIu32 " bytes", orig_f->len);
 		goto error;
 	}
 
 	assert(sizeof(struct lttng_bytecode) ==
-			sizeof(struct lttng_ust_capture_bytecode));
+			sizeof(struct lttng_ust_abi_capture_bytecode));
 	memcpy(capture, orig_f, sizeof(*capture) + orig_f->len);
 error:
 	return capture;
@@ -1537,10 +1537,10 @@ error:
  */
 static int set_ust_object_filter(struct ust_app *app,
 		const struct lttng_bytecode *bytecode,
-		struct lttng_ust_object_data *ust_object)
+		struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_filter_bytecode *ust_bytecode = NULL;
+	struct lttng_ust_abi_filter_bytecode *ust_bytecode = NULL;
 
 	health_code_update();
 
@@ -1588,7 +1588,7 @@ static int set_ust_capture(struct ust_app *app,
 		struct lttng_ust_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_capture_bytecode *ust_bytecode = NULL;
+	struct lttng_ust_abi_capture_bytecode *ust_bytecode = NULL;
 
 	health_code_update();
 
@@ -1633,12 +1633,12 @@ error:
 }
 
 static
-struct lttng_ust_event_exclusion *create_ust_exclusion_from_exclusion(
+struct lttng_ust_abi_event_exclusion *create_ust_exclusion_from_exclusion(
 		const struct lttng_event_exclusion *exclusion)
 {
-	struct lttng_ust_event_exclusion *ust_exclusion = NULL;
-	size_t exclusion_alloc_size = sizeof(struct lttng_ust_event_exclusion) +
-		LTTNG_UST_SYM_NAME_LEN * exclusion->count;
+	struct lttng_ust_abi_event_exclusion *ust_exclusion = NULL;
+	size_t exclusion_alloc_size = sizeof(struct lttng_ust_abi_event_exclusion) +
+		LTTNG_UST_ABI_SYM_NAME_LEN * exclusion->count;
 
 	ust_exclusion = zmalloc(exclusion_alloc_size);
 	if (!ust_exclusion) {
@@ -1647,7 +1647,7 @@ struct lttng_ust_event_exclusion *create_ust_exclusion_from_exclusion(
 	}
 
 	assert(sizeof(struct lttng_event_exclusion) ==
-			sizeof(struct lttng_ust_event_exclusion));
+			sizeof(struct lttng_ust_abi_event_exclusion));
 	memcpy(ust_exclusion, exclusion, exclusion_alloc_size);
 end:
 	return ust_exclusion;
@@ -1658,10 +1658,10 @@ end:
  */
 static int set_ust_object_exclusions(struct ust_app *app,
 		const struct lttng_event_exclusion *exclusions,
-		struct lttng_ust_object_data *ust_object)
+		struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
-	struct lttng_ust_event_exclusion *ust_exclusions = NULL;
+	struct lttng_ust_abi_event_exclusion *ust_exclusions = NULL;
 
 	assert(exclusions && exclusions->count > 0);
 
@@ -1704,7 +1704,7 @@ error:
  * Disable the specified event on to UST tracer for the UST session.
  */
 static int disable_ust_object(struct ust_app *app,
-		struct lttng_ust_object_data *object)
+		struct lttng_ust_abi_object_data *object)
 {
 	int ret;
 
@@ -1819,7 +1819,7 @@ error:
  * Enable the specified event on to UST tracer for the UST session.
  */
 static int enable_ust_object(
-		struct ust_app *app, struct lttng_ust_object_data *ust_object)
+		struct ust_app *app, struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
 
@@ -1997,11 +1997,11 @@ error:
 
 static int init_ust_event_notifier_from_event_rule(
 		const struct lttng_event_rule *rule,
-		struct lttng_ust_event_notifier *event_notifier)
+		struct lttng_ust_abi_event_notifier *event_notifier)
 {
 	enum lttng_event_rule_status status;
 	enum lttng_loglevel_type loglevel_type;
-	enum lttng_ust_loglevel_type ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+	enum lttng_ust_abi_loglevel_type ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 	int loglevel = -1, ret = 0;
 	const char *pattern;
 
@@ -2021,7 +2021,7 @@ static int init_ust_event_notifier_from_event_rule(
 		pattern = event_get_default_agent_ust_name(
 				lttng_event_rule_get_domain_type(rule));
 		loglevel = 0;
-		ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+		ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 	} else {
 		status = lttng_event_rule_tracepoint_get_pattern(
 				rule, &pattern);
@@ -2039,13 +2039,13 @@ static int init_ust_event_notifier_from_event_rule(
 
 		switch (loglevel_type) {
 		case LTTNG_EVENT_LOGLEVEL_ALL:
-			ust_loglevel_type = LTTNG_UST_LOGLEVEL_ALL;
+			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
 			break;
 		case LTTNG_EVENT_LOGLEVEL_RANGE:
-			ust_loglevel_type = LTTNG_UST_LOGLEVEL_RANGE;
+			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_RANGE;
 			break;
 		case LTTNG_EVENT_LOGLEVEL_SINGLE:
-			ust_loglevel_type = LTTNG_UST_LOGLEVEL_SINGLE;
+			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_SINGLE;
 			break;
 		default:
 			/* Unknown log level specification type. */
@@ -2059,9 +2059,9 @@ static int init_ust_event_notifier_from_event_rule(
 		}
 	}
 
-	event_notifier->event.instrumentation = LTTNG_UST_TRACEPOINT;
+	event_notifier->event.instrumentation = LTTNG_UST_ABI_TRACEPOINT;
 	ret = lttng_strncpy(event_notifier->event.name, pattern,
-			LTTNG_UST_SYM_NAME_LEN - 1);
+			LTTNG_UST_ABI_SYM_NAME_LEN - 1);
 	if (ret) {
 		ERR("Failed to copy event rule pattern to notifier: pattern = '%s' ",
 				pattern);
@@ -2084,7 +2084,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 	int ret = 0;
 	enum lttng_condition_status condition_status;
 	const struct lttng_condition *condition = NULL;
-	struct lttng_ust_event_notifier event_notifier;
+	struct lttng_ust_abi_event_notifier event_notifier;
 	const struct lttng_event_rule *event_rule = NULL;
 	unsigned int capture_bytecode_count = 0, i;
 	enum lttng_condition_status cond_status;
@@ -2232,7 +2232,7 @@ static void shadow_copy_event(struct ust_app_event *ua_event,
 	/* Copy exclusion data */
 	if (uevent->exclusion) {
 		exclusion_alloc_size = sizeof(struct lttng_event_exclusion) +
-				LTTNG_UST_SYM_NAME_LEN * uevent->exclusion->count;
+				LTTNG_UST_ABI_SYM_NAME_LEN * uevent->exclusion->count;
 		ua_event->exclusion = zmalloc(exclusion_alloc_size);
 		if (ua_event->exclusion == NULL) {
 			PERROR("malloc");
@@ -2682,14 +2682,14 @@ static int ht_match_ust_app_ctx(struct cds_lfht_node *node, const void *_key)
 	}
 
 	switch(key->ctx) {
-	case LTTNG_UST_CONTEXT_PERF_THREAD_COUNTER:
+	case LTTNG_UST_ABI_CONTEXT_PERF_THREAD_COUNTER:
 		if (strncmp(key->u.perf_counter.name,
 				ctx->ctx.u.perf_counter.name,
 				sizeof(key->u.perf_counter.name))) {
 			goto no_match;
 		}
 		break;
-	case LTTNG_UST_CONTEXT_APP_CONTEXT:
+	case LTTNG_UST_ABI_CONTEXT_APP_CONTEXT:
 		if (strcmp(key->u.app_ctx.provider_name,
 				ctx->ctx.u.app_ctx.provider_name) ||
 				strcmp(key->u.app_ctx.ctx_name,
@@ -3532,7 +3532,7 @@ error:
  */
 static int ust_app_channel_allocate(struct ust_app_session *ua_sess,
 		struct ltt_ust_channel *uchan,
-		enum lttng_ust_chan_type type, struct ltt_ust_session *usess,
+		enum lttng_ust_abi_chan_type type, struct ltt_ust_session *usess,
 		struct ust_app_channel **ua_chanp)
 {
 	int ret = 0;
@@ -3990,7 +3990,7 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 {
 	int ret;
 	int event_pipe_write_fd;
-	struct lttng_ust_object_data *event_notifier_group = NULL;
+	struct lttng_ust_abi_object_data *event_notifier_group = NULL;
 	enum lttng_error_code lttng_ret;
 
 	assert(app);
@@ -4190,7 +4190,7 @@ int ust_app_list_events(struct lttng_event **events)
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		struct lttng_ust_tracepoint_iter uiter;
+		struct lttng_ust_abi_tracepoint_iter uiter;
 
 		health_code_update();
 
@@ -4273,9 +4273,9 @@ int ust_app_list_events(struct lttng_event **events)
 				nbmem = new_nbmem;
 				tmp_event = new_tmp_event;
 			}
-			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_SYM_NAME_LEN);
+			memcpy(tmp_event[count].name, uiter.name, LTTNG_UST_ABI_SYM_NAME_LEN);
 			tmp_event[count].loglevel = uiter.loglevel;
-			tmp_event[count].type = (enum lttng_event_type) LTTNG_UST_TRACEPOINT;
+			tmp_event[count].type = (enum lttng_event_type) LTTNG_UST_ABI_TRACEPOINT;
 			tmp_event[count].pid = app->pid;
 			tmp_event[count].enabled = -1;
 			count++;
@@ -4321,7 +4321,7 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 	rcu_read_lock();
 
 	cds_lfht_for_each_entry(ust_app_ht->ht, &iter.iter, app, pid_n.node) {
-		struct lttng_ust_field_iter uiter;
+		struct lttng_ust_abi_field_iter uiter;
 
 		health_code_update();
 
@@ -4405,12 +4405,12 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 				tmp_event = new_tmp_event;
 			}
 
-			memcpy(tmp_event[count].field_name, uiter.field_name, LTTNG_UST_SYM_NAME_LEN);
+			memcpy(tmp_event[count].field_name, uiter.field_name, LTTNG_UST_ABI_SYM_NAME_LEN);
 			/* Mapping between these enums matches 1 to 1. */
 			tmp_event[count].type = (enum lttng_event_field_type) uiter.type;
 			tmp_event[count].nowrite = uiter.nowrite;
 
-			memcpy(tmp_event[count].event.name, uiter.event_name, LTTNG_UST_SYM_NAME_LEN);
+			memcpy(tmp_event[count].event.name, uiter.event_name, LTTNG_UST_ABI_SYM_NAME_LEN);
 			tmp_event[count].event.loglevel = uiter.loglevel;
 			tmp_event[count].event.type = LTTNG_EVENT_TRACEPOINT;
 			tmp_event[count].event.pid = app->pid;
@@ -4709,7 +4709,7 @@ int ust_app_channel_create(struct ltt_ust_session *usess,
 		 * configuration.
 		 */
 		ret = ust_app_channel_allocate(ua_sess, uchan,
-			LTTNG_UST_CHAN_PER_CPU, usess,
+			LTTNG_UST_ABI_CHAN_PER_CPU, usess,
 			&ua_chan);
 		if (ret < 0) {
 			goto error;
@@ -6429,7 +6429,7 @@ int ust_app_recv_notify(int sock)
 	case USTCTL_NOTIFY_CMD_EVENT:
 	{
 		int sobjd, cobjd, loglevel_value;
-		char name[LTTNG_UST_SYM_NAME_LEN], *sig, *model_emf_uri;
+		char name[LTTNG_UST_ABI_SYM_NAME_LEN], *sig, *model_emf_uri;
 		size_t nr_fields;
 		struct ustctl_field *fields;
 
@@ -6496,7 +6496,7 @@ int ust_app_recv_notify(int sock)
 	case USTCTL_NOTIFY_CMD_ENUM:
 	{
 		int sobjd;
-		char name[LTTNG_UST_SYM_NAME_LEN];
+		char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 		size_t nr_entries;
 		struct ustctl_enum_entry *entries;
 

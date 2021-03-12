@@ -172,7 +172,7 @@ struct ust_registry_event {
 	int session_objd;
 	int channel_objd;
 	/* Name of the event returned by the tracer. */
-	char name[LTTNG_UST_SYM_NAME_LEN];
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 	char *signature;
 	int loglevel_value;
 	size_t nr_fields;
@@ -191,7 +191,7 @@ struct ust_registry_event {
 };
 
 struct ust_registry_enum {
-	char name[LTTNG_UST_SYM_NAME_LEN];
+	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 	struct ustctl_enum_entry *entries;
 	size_t nr_entries;
 	uint64_t id;	/* enum id in session */

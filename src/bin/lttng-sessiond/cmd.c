@@ -359,7 +359,7 @@ static ssize_t list_lttng_channels(enum lttng_domain_type domain,
 			 * Map enum lttng_ust_output to enum lttng_event_output.
 			 */
 			switch (uchan->attr.output) {
-			case LTTNG_UST_MMAP:
+			case LTTNG_UST_ABI_MMAP:
 				channels[i].attr.output = LTTNG_EVENT_MMAP;
 				break;
 			default:
@@ -579,26 +579,26 @@ static int list_lttng_ust_global_events(char *channel_name,
 		event.enabled = uevent->enabled;
 
 		switch (uevent->attr.instrumentation) {
-		case LTTNG_UST_TRACEPOINT:
+		case LTTNG_UST_ABI_TRACEPOINT:
 			event.type = LTTNG_EVENT_TRACEPOINT;
 			break;
-		case LTTNG_UST_PROBE:
+		case LTTNG_UST_ABI_PROBE:
 			event.type = LTTNG_EVENT_PROBE;
 			break;
-		case LTTNG_UST_FUNCTION:
+		case LTTNG_UST_ABI_FUNCTION:
 			event.type = LTTNG_EVENT_FUNCTION;
 			break;
 		}
 
 		event.loglevel = uevent->attr.loglevel;
 		switch (uevent->attr.loglevel_type) {
-		case LTTNG_UST_LOGLEVEL_ALL:
+		case LTTNG_UST_ABI_LOGLEVEL_ALL:
 			event.loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 			break;
-		case LTTNG_UST_LOGLEVEL_RANGE:
+		case LTTNG_UST_ABI_LOGLEVEL_RANGE:
 			event.loglevel_type = LTTNG_EVENT_LOGLEVEL_RANGE;
 			break;
-		case LTTNG_UST_LOGLEVEL_SINGLE:
+		case LTTNG_UST_ABI_LOGLEVEL_SINGLE:
 			event.loglevel_type = LTTNG_EVENT_LOGLEVEL_SINGLE;
 			break;
 		}

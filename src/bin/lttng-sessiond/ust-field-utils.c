@@ -87,7 +87,7 @@ static bool match_ustctl_field_enum_from_raw_basic_type(
 	 * during enum registration.
 	 */
 	if (strncmp(first->enumeration.name, second->enumeration.name,
-				LTTNG_UST_SYM_NAME_LEN)) {
+				LTTNG_UST_ABI_SYM_NAME_LEN)) {
 		goto no_match;
 	}
 	if (!match_ustctl_field_integer(&first->enumeration.container_type,
@@ -203,7 +203,7 @@ int match_ustctl_field(const struct ustctl_field *first,
 		const struct ustctl_field *second)
 {
 	/* Check the name of the field is identical. */
-	if (strncmp(first->name, second->name, LTTNG_UST_SYM_NAME_LEN)) {
+	if (strncmp(first->name, second->name, LTTNG_UST_ABI_SYM_NAME_LEN)) {
 		goto no_match;
 	}
 
@@ -259,7 +259,7 @@ int match_ustctl_field(const struct ustctl_field *first,
 		/* Compare tag name of the variants. */
 		if (strncmp(first->type.u.legacy.variant.tag_name,
 					second->type.u.legacy.variant.tag_name,
-					LTTNG_UST_SYM_NAME_LEN)) {
+					LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		break;
@@ -276,7 +276,7 @@ int match_ustctl_field(const struct ustctl_field *first,
 		/* Compare length_name of the sequences. */
 		if (strncmp(first->type.u.sequence_nestable.length_name,
 					second->type.u.sequence_nestable.length_name,
-					LTTNG_UST_SYM_NAME_LEN)) {
+					LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		/* Comparison will be done when marshalling following items. */
@@ -298,7 +298,7 @@ int match_ustctl_field(const struct ustctl_field *first,
 		/* Compare name of the enums. */
 		if (strncmp(first->type.u.enum_nestable.name,
 					second->type.u.enum_nestable.name,
-					LTTNG_UST_SYM_NAME_LEN)) {
+					LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		/* Comparison of element type will be done when marshalling following item. */
@@ -325,7 +325,7 @@ int match_ustctl_field(const struct ustctl_field *first,
 		/* Compare tag name of the variants. */
 		if (strncmp(first->type.u.variant_nestable.tag_name,
 					second->type.u.variant_nestable.tag_name,
-					LTTNG_UST_SYM_NAME_LEN)) {
+					LTTNG_UST_ABI_SYM_NAME_LEN)) {
 			goto no_match;
 		}
 		break;

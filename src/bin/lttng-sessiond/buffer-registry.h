@@ -22,7 +22,7 @@ struct buffer_reg_stream {
 	struct cds_list_head lnode;
 	union {
 		/* Original object data that MUST be copied over. */
-		struct lttng_ust_object_data *ust;
+		struct lttng_ust_abi_object_data *ust;
 	} obj;
 };
 
@@ -45,7 +45,7 @@ struct buffer_reg_channel {
 	size_t num_subbuf;
 	union {
 		/* Original object data that MUST be copied over. */
-		struct lttng_ust_object_data *ust;
+		struct lttng_ust_abi_object_data *ust;
 	} obj;
 };
 
