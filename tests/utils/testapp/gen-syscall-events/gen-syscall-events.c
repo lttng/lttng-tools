@@ -93,7 +93,6 @@ int main(int argc, char **argv)
 	if (argc != 4) {
 		fprintf(stderr, "Error: Missing argument\n");
 		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE PATH1_TO_OPEN PATH2_TO_OPEN\n", argv[0]);
-		fprintf(stderr, "USAGE: %s PATH_WAIT_FILE\n", argv[0]);
 		ret = -1;
 		goto error;
 	}
