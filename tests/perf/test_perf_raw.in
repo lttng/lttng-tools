@@ -40,14 +40,29 @@ function have_libpfm()
 
 function test_ust_raw()
 {
-	TRACE_PATH=$(mktemp -d)
-	SESSION_NAME="ust_perf"
-	CHAN_NAME="mychan"
-	EVENT_NAME="tp:tptest"
-	PMU="UNHALTED_REFERENCE_CYCLES"
-	PERFID=$($CURDIR/find_event $PMU)
-	test $? -eq "0"
-	ok $? "Find PMU $PMU"
+	local TRACE_PATH=$(mktemp -d)
+	local SESSION_NAME="ust_perf"
+	local CHAN_NAME="mychan"
+	local EVENT_NAME="tp:tptest"
+	local PMU="UNHALTED_REFERENCE_CYCLES"
+	local tests_to_skip=9
+	local ret
+
+	# Find the raw perf id of the event.
+	PERFID=$("$CURDIR/find_event" "$PMU")
+	ret=$?
+	if [ "$ret" -eq "0" ]; then
+		pass "Find PMU $PMU"
+	elif [ "$ret" -eq "1" ]; then
+		skip 0 "PMU event not found." $tests_to_skip
+		return
+	elif [ "$ret" -eq "2" ]; then
+		skip 0 "PMU event not actionable." $tests_to_skip
+		return
+	else
+		fail "find_event returned $ret."
+		return
+	fi
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -72,14 +87,30 @@ function test_ust_raw()
 
 function test_kernel_raw()
 {
-	TRACE_PATH=$(mktemp -d)
-	SESSION_NAME="kernel_perf"
-	CHAN_NAME="mychan"
-	EVENT_NAME="lttng_test_filter_event"
-	PMU="UNHALTED_REFERENCE_CYCLES"
-	PERFID=$($CURDIR/find_event $PMU)
-	test $? -eq "0"
-	ok $? "Find PMU $PMU"
+	local TRACE_PATH=$(mktemp -d)
+	local SESSION_NAME="kernel_perf"
+	local CHAN_NAME="mychan"
+	local EVENT_NAME="lttng_test_filter_event"
+	local PMU="UNHALTED_REFERENCE_CYCLES"
+	local PERFID=""
+	local tests_to_skip=9
+	local ret
+
+	# Find the raw perf id of the event.
+	PERFID=$("$CURDIR/find_event" "$PMU")
+	ret=$?
+	if [ "$ret" -eq "0" ]; then
+		pass "Find PMU $PMU"
+	elif [ "$ret" -eq "1" ]; then
+		skip 0 "PMU event not found." $tests_to_skip
+		return
+	elif [ "$ret" -eq "2" ]; then
+		skip 0 "PMU event not actionable." $tests_to_skip
+		return
+	else
+		fail "find_event returned $ret."
+		return
+	fi
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
