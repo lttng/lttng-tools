@@ -2954,7 +2954,7 @@ static int do_consumer_create_channel(struct ltt_ust_session *usess,
 	health_code_update();
 
 	/*
-	 * Now get the channel from the consumer. This call wil populate the stream
+	 * Now get the channel from the consumer. This call will populate the stream
 	 * list of that channel and set the ust objects.
 	 */
 	if (usess->consumer->enabled) {
@@ -7118,11 +7118,6 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 			struct buffer_reg_channel *buf_reg_chan;
 			struct consumer_socket *socket;
 
-			if (!reg->registry->reg.ust->metadata_key) {
-				/* Skip since no metadata is present */
-				continue;
-			}
-
 			/* Get consumer socket to use to push the metadata.*/
 			socket = consumer_find_socket_by_bitness(reg->bits_per_long,
 					usess->consumer);
@@ -7143,6 +7138,19 @@ enum lttng_error_code ust_app_rotate_session(struct ltt_session *session)
 					cmd_ret = LTTNG_ERR_ROTATION_FAIL_CONSUMER;
 					goto error;
 				}
+			}
+
+			/*
+			 * The metadata channel might not be present.
+			 *
+			 * Consumer stream allocation can be done
+			 * asynchronously and can fail on intermediary
+			 * operations (i.e add context) and lead to data
+			 * channels created with no metadata channel.
+			 */
+			if (!reg->registry->reg.ust->metadata_key) {
+				/* Skip since no metadata is present. */
+				continue;
 			}
 
 			(void) push_metadata(reg->registry->reg.ust, usess->consumer);
