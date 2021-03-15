@@ -1585,7 +1585,7 @@ error:
 static int set_ust_capture(struct ust_app *app,
 		const struct lttng_bytecode *bytecode,
 		unsigned int capture_seqnum,
-		struct lttng_ust_object_data *ust_object)
+		struct lttng_ust_abi_object_data *ust_object)
 {
 	int ret;
 	struct lttng_ust_abi_capture_bytecode *ust_bytecode = NULL;
