@@ -688,7 +688,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		ret_code = LTTNG_OK;
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	default:
 		abort();
 		break;

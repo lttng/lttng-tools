@@ -42,7 +42,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 	}
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
-	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
 		domain_type = LTTNG_DOMAIN_KERNEL;
 		break;
@@ -175,7 +175,7 @@ ssize_t lttng_event_rule_create_from_payload(
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 		create_from_payload = lttng_event_rule_kernel_probe_create_from_payload;
 		break;
-	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		/* TODO */
 		break;
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
@@ -317,7 +317,7 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "syscall";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 		return "probe";
-	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		return "function";
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
 		return "userspace-probe";

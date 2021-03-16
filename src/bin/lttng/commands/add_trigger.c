@@ -628,7 +628,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			/* Event rule types */
 			case OPT_FUNCTION:
 				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_KRETPROBE)) {
+						LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION)) {
 					goto error;
 				}
 
@@ -819,7 +819,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	/* Validate event rule type against domain. */
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
-	case LTTNG_EVENT_RULE_TYPE_KRETPROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 		if (domain_type != LTTNG_DOMAIN_KERNEL) {
