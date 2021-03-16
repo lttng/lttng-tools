@@ -1,11 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-EXTRA_DIST = test_event_basic test_all_events test_syscall \
-		test_clock_override test_rotation_destroy_flush \
-		test_select_poll_epoll test_lttng_logger \
-		test_userspace_probe test_callstack \
-		test_syscall validate_select_poll_epoll.py \
-		test_ns_contexts test_ns_contexts_change
+EXTRA_DIST = test_all_events test_syscall \
+						 test_callstack \
+						 test_clock_override \
+						 test_event_basic \
+						 test_kernel_function \
+						 test_lttng_logger \
+						 test_ns_contexts \
+						 test_ns_contexts_change
+						 test_rotation_destroy_flush \
+						 test_select_poll_epoll \
+						 test_syscall \
+						 test_userspace_probe \
+						 validate_select_poll_epoll.py
 
 noinst_PROGRAMS = select_poll_epoll
 select_poll_epoll_SOURCES = select_poll_epoll.c
