@@ -2306,7 +2306,7 @@ static int validator_notification_trigger_capture(
 {
 	int ret;
 	unsigned int capture_count, i;
-	enum lttng_evaluation_status evaluation_status;
+	enum lttng_evaluation_on_event_status on_event_evaluation_status;
 	enum lttng_event_field_value_status event_field_value_status;
 	const struct lttng_evaluation *evaluation;
 	const struct lttng_event_field_value *captured_fields;
@@ -2319,11 +2319,12 @@ static int validator_notification_trigger_capture(
 		goto end;
 	}
 
-	evaluation_status = lttng_evaluation_on_event_get_captured_values(
-			evaluation, &captured_fields);
-	if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
+	on_event_evaluation_status =
+			lttng_evaluation_on_event_get_captured_values(
+					evaluation, &captured_fields);
+	if (on_event_evaluation_status != LTTNG_EVALUATION_ON_EVENT_STATUS_OK) {
 		diag("Failed to get event rule evaluation captured values: status = %d",
-				(int) evaluation_status);
+				(int) on_event_evaluation_status);
 		ret = 1;
 		goto end;
 	}

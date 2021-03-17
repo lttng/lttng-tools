@@ -19,6 +19,12 @@ extern "C" {
 struct lttng_event_expr;
 struct lttng_event_field_value;
 
+enum lttng_evaluation_on_event_status {
+	LTTNG_EVALUATION_ON_EVENT_STATUS_NONE = 1,
+	LTTNG_EVALUATION_ON_EVENT_STATUS_OK = 0,
+	LTTNG_EVALUATION_ON_EVENT_STATUS_INVALID = -1,
+};
+
 /**
  * On event conditions allows an action to be taken whenever an event matching
  * the on event is hit by the tracers.
@@ -81,20 +87,22 @@ lttng_evaluation_on_event_get_trigger_name(
  *
  * Returns:
  *
- * `LTTNG_EVALUATION_STATUS_OK`:
+ * `LTTNG_EVALUATION_ON_EVENT_STATUS_OK`:
  *     Success.
  *
  *     `*field_val` is an array event field value with a length of at
  *     least one.
  *
- * `LTTNG_EVALUATION_STATUS_INVALID`:
+ * `LTTNG_EVALUATION_ON_EVENT_STATUS_INVALID`:
  *     * `evaluation` is `NULL`.
  *     * The type of the condition of `evaluation` is not
  *       `LTTNG_CONDITION_TYPE_ON_EVENT`.
- *     * The condition of `evaluation` has no capture descriptors.
  *     * `field_val` is `NULL`.
+ *
+ * `LTTNG_EVALUATION_ON_EVENT_STATUS_NONE`:
+ *     * The condition of `evaluation` has no capture descriptors.
  */
-extern enum lttng_evaluation_status
+extern enum lttng_evaluation_on_event_status
 lttng_evaluation_on_event_get_captured_values(
 		const struct lttng_evaluation *evaluation,
 		const struct lttng_event_field_value **field_val);

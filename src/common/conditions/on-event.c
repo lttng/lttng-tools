@@ -1380,23 +1380,25 @@ error:
 	return evaluation;
 }
 
-enum lttng_evaluation_status lttng_evaluation_on_event_get_captured_values(
+enum lttng_evaluation_on_event_status
+lttng_evaluation_on_event_get_captured_values(
 		const struct lttng_evaluation *evaluation,
 		const struct lttng_event_field_value **field_val)
 {
 	struct lttng_evaluation_on_event *hit;
-	enum lttng_evaluation_status status = LTTNG_EVALUATION_STATUS_OK;
+	enum lttng_evaluation_on_event_status status =
+			LTTNG_EVALUATION_ON_EVENT_STATUS_OK;
 
 	if (!evaluation || !is_on_event_evaluation(evaluation) ||
 			!field_val) {
-		status = LTTNG_EVALUATION_STATUS_INVALID;
+		status = LTTNG_EVALUATION_ON_EVENT_STATUS_INVALID;
 		goto end;
 	}
 
 	hit = container_of(evaluation, struct lttng_evaluation_on_event,
 			parent);
 	if (!hit->captured_values) {
-		status = LTTNG_EVALUATION_STATUS_INVALID;
+		status = LTTNG_EVALUATION_ON_EVENT_STATUS_NONE;
 		goto end;
 	}
 
