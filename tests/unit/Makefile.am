@@ -215,10 +215,11 @@ test_string_utils_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBSTRINGUTILS) $(DL_LIBS)
 # Notification api
 test_notification_SOURCES = test_notification.c
 test_notification_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(DL_LIBS)
-#
+
 # Event rule api
 test_event_rule_SOURCES = test_event_rule.c
-test_event_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
+test_event_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS) \
+		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT)
 
 # Condition api
 test_condition_SOURCES = test_condition.c
