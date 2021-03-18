@@ -1117,6 +1117,27 @@ end:
 	return valid;
 }
 
+static bool domain_supports_log_levels(enum lttng_domain_type domain)
+{
+	bool supported;
+
+	switch (domain) {
+	case LTTNG_DOMAIN_KERNEL:
+		supported = false;
+		break;
+	case LTTNG_DOMAIN_UST:
+	case LTTNG_DOMAIN_JUL:
+	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_DOMAIN_PYTHON:
+		supported = true;
+		break;
+	default:
+		abort();
+	}
+
+	return supported;
+}
+
 enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level_rule(
 		struct lttng_event_rule *rule,
 		const struct lttng_log_level_rule *log_level_rule)
@@ -1132,6 +1153,11 @@ enum lttng_event_rule_status lttng_event_rule_tracepoint_set_log_level_rule(
 
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_tracepoint, parent);
+
+	if (!domain_supports_log_levels(tracepoint->domain)) {
+		status = LTTNG_EVENT_RULE_STATUS_UNSUPPORTED;
+		goto end;
+	}
 
 	if (!log_level_rule_valid(log_level_rule, tracepoint->domain)) {
 		status = LTTNG_EVENT_RULE_STATUS_INVALID;
