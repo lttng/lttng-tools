@@ -126,7 +126,7 @@ test_on_event_tracepoint ()
 	- id: BCD
 	  user id: ${uid}
 	  condition: event rule hit
-	    rule: gerboise (type: tracepoint, domain: ust, log level <= TRACE_INFO)
+	    rule: gerboise (type: tracepoint, domain: ust, log level at least INFO)
 	  actions:
 	    notify
 	- id: T0
@@ -144,7 +144,7 @@ test_on_event_tracepoint ()
 	- id: T2
 	  user id: ${uid}
 	  condition: event rule hit
-	    rule: lemming (type: tracepoint, domain: ust, log level == TRACE_WARNING)
+	    rule: lemming (type: tracepoint, domain: ust, log level is WARNING)
 	  actions:
 	    notify
 	- id: T3
