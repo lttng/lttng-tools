@@ -95,22 +95,13 @@ static const action_executor_handler action_executors[] = {
 	[LTTNG_ACTION_TYPE_GROUP] = action_executor_group_handler,
 };
 
-static const char *action_type_names[] = {
-	[LTTNG_ACTION_TYPE_NOTIFY] = "Notify",
-	[LTTNG_ACTION_TYPE_START_SESSION] = "Start session",
-	[LTTNG_ACTION_TYPE_STOP_SESSION] = "Stop session",
-	[LTTNG_ACTION_TYPE_ROTATE_SESSION] = "Rotate session",
-	[LTTNG_ACTION_TYPE_SNAPSHOT_SESSION] = "Snapshot session",
-	[LTTNG_ACTION_TYPE_GROUP] = "Group",
-};
-
 static const char *get_action_name(const struct lttng_action *action)
 {
 	const enum lttng_action_type action_type = lttng_action_get_type(action);
 
 	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
 
-	return action_type_names[action_type];
+	return lttng_action_type_string(action_type);
 }
 
 /* Check if this trigger allowed to interect with a given session. */
