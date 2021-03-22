@@ -13,8 +13,8 @@ STATS_BIN="$TESTDIR/utils/babelstats.pl"
 SESSION_NAME="valid_filter"
 NR_ITER=100
 NUM_GLOBAL_TESTS=2
-NUM_UST_TESTS=1110
-NUM_KERNEL_TESTS=1044
+NUM_UST_TESTS=1122
+NUM_KERNEL_TESTS=1056
 NUM_TESTS=$(($NUM_UST_TESTS+$NUM_KERNEL_TESTS+$NUM_GLOBAL_TESTS))
 
 source $TESTDIR/utils/utils.sh
@@ -984,6 +984,16 @@ UST_STR_FILTERS=(
 	str_has_events
 	'"salut vous*" == "salut*"'
 
+	# check that bytecode linker refuses to link against a
+	# non-string array.
+	str_has_no_event
+	'arrfield1 != "dontmatch"'
+
+	# check that bytecode linker refuses to link against a
+	# non-string sequence.
+	str_has_no_event
+	'seqfield1 != "dontmatch"'
+
 	${KIRK_KRAUSS_TESTS[@]}
 
 	END
@@ -1425,6 +1435,16 @@ KERNEL_FILTERS=(
 
 	has_no_event
 	'stringfield == "test\*"'
+
+	# check that bytecode linker refuses to link against a
+	# non-string array.
+	has_no_event
+	'arrfield1 != "dontmatch"'
+
+	# check that bytecode linker refuses to link against a
+	# non-string sequence.
+	has_no_event
+	'seqfield1 != "dontmatch"'
 
 	${KIRK_KRAUSS_TESTS[@]}
 
