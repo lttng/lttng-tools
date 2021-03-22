@@ -2408,7 +2408,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 		if (capture_bytecode == NULL) {
 			ERR("Unexpected NULL capture bytecode on condition");
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			goto error;
+			goto capture_error;
 		}
 
 		ret = kernctl_capture(event_notifier_rule->fd, capture_bytecode);
@@ -2416,7 +2416,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 			ERR("Failed to set capture bytecode on event notifier rule fd: fd = %d",
 					event_notifier_rule->fd);
 			error_code_ret = LTTNG_ERR_KERN_ENABLE_FAIL;
-			goto error;
+			goto capture_error;
 		}
 	}
 
@@ -2446,6 +2446,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 
 	return LTTNG_OK;
 
+capture_error:
 add_callsite_error:
 enable_error:
 set_cloexec_error:
