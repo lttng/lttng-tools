@@ -153,6 +153,7 @@ static void test_log_level_rule_exactly(void)
 
 	test_log_level_rule_is_equal_exactly();
 	test_log_level_rule_serialize_deserialize(exactly);
+	lttng_log_level_rule_destroy(exactly);
 }
 
 static void test_log_level_rule_at_least_as_severe_as(void)
@@ -175,6 +176,7 @@ static void test_log_level_rule_at_least_as_severe_as(void)
 
 	test_log_level_rule_is_equal_at_least_as_severe_as();
 	test_log_level_rule_serialize_deserialize(at_least_as_severe_as);
+	lttng_log_level_rule_destroy(at_least_as_severe_as);
 }
 
 int main(int argc, const char *argv[])
