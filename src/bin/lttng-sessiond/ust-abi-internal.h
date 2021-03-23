@@ -110,8 +110,8 @@ struct lttng_ust_abi_counter_dimension {
 
 #define LTTNG_UST_ABI_COUNTER_CONF_PADDING1 67
 struct lttng_ust_abi_counter_conf {
-	uint32_t arithmetic;	/* enum lttng_ust_counter_arithmetic */
-	uint32_t bitness;	/* enum lttng_ust_counter_bitness */
+	uint32_t arithmetic;	/* enum lttng_ust_abi_counter_arithmetic */
+	uint32_t bitness;	/* enum lttng_ust_abi_counter_bitness */
 	uint32_t number_dimensions;
 	int64_t global_sum_step;
 	struct lttng_ust_abi_counter_dimension dimensions[LTTNG_UST_ABI_COUNTER_DIMENSION_MAX];
@@ -315,14 +315,14 @@ struct lttng_ust_abi_object_data {
 	} u;
 } LTTNG_PACKED;
 
-enum lttng_ust_calibrate_type {
+enum lttng_ust_abi_calibrate_type {
 	LTTNG_UST_ABI_CALIBRATE_TRACEPOINT,
 };
 
 #define LTTNG_UST_ABI_CALIBRATE_PADDING1	16
 #define LTTNG_UST_ABI_CALIBRATE_PADDING2	(LTTNG_UST_ABI_SYM_NAME_LEN + 32)
 struct lttng_ust_abi_calibrate {
-	enum lttng_ust_calibrate_type type;	/* type (input) */
+	enum lttng_ust_abi_calibrate_type type;		/* type (input) */
 	char padding[LTTNG_UST_ABI_CALIBRATE_PADDING1];
 
 	union {
