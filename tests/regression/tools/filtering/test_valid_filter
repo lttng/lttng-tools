@@ -833,6 +833,16 @@ UST_FILTERS=(
 	has_no_event
 	"0 == \$ctx.vtid.blah"
 
+	# check that bytecode linker refuses to link against a
+	# non-string array.
+	has_no_event
+	'arrfield1 != "dontmatch"'
+
+	# check that bytecode linker refuses to link against a
+	# non-string sequence.
+	has_no_event
+	'seqfield1 != "dontmatch"'
+
 	END
 )
 
@@ -983,16 +993,6 @@ UST_STR_FILTERS=(
 
 	str_has_events
 	'"salut vous*" == "salut*"'
-
-	# check that bytecode linker refuses to link against a
-	# non-string array.
-	str_has_no_event
-	'arrfield1 != "dontmatch"'
-
-	# check that bytecode linker refuses to link against a
-	# non-string sequence.
-	str_has_no_event
-	'seqfield1 != "dontmatch"'
 
 	${KIRK_KRAUSS_TESTS[@]}
 
