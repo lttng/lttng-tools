@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include <lttng/action/action.h>
+#include <lttng/action/group.h>
 #include <lttng/action/notify.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition.h>
@@ -35,6 +36,7 @@ static const char *channel_name = NULL;
 static double threshold_ratio = 0.0;
 static uint64_t threshold_bytes = 0;
 static bool is_threshold_ratio = false;
+static bool use_action_group = false;
 static enum lttng_condition_type buffer_usage_type = LTTNG_CONDITION_TYPE_UNKNOWN;
 static enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
@@ -50,6 +52,7 @@ int parse_arguments(char **argv)
 	const char *buffer_usage_threshold_type = NULL;
 	const char *buffer_usage_threshold_value = NULL;
 	const char *nr_expected_notifications_string = NULL;
+	const char *use_action_group_value = NULL;
 
 	session_name = argv[1];
 	channel_name = argv[2];
@@ -58,6 +61,7 @@ int parse_arguments(char **argv)
 	buffer_usage_threshold_type = argv[5];
 	buffer_usage_threshold_value = argv[6];
 	nr_expected_notifications_string = argv[7];
+	use_action_group_value = argv[8];
 
 	/* Parse arguments */
 	/* Domain type */
@@ -98,6 +102,11 @@ int parse_arguments(char **argv)
 	/* Number of notification to expect */
 	sscanf(nr_expected_notifications_string, "%d", &nr_expected_notifications);
 
+	/* Put notify action in a group. */
+	if (!strcasecmp("1", use_action_group_value)) {
+		use_action_group = true;
+	}
+
 	return 0;
 error:
 	return 1;
@@ -107,6 +116,7 @@ int main(int argc, char **argv)
 {
 	int ret = 0;
 	enum lttng_condition_status condition_status;
+	enum lttng_action_status action_status;
 	enum lttng_notification_channel_status nc_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_condition *condition = NULL;
@@ -120,7 +130,7 @@ int main(int argc, char **argv)
 	 */
 	setbuf(stdout, NULL);
 
-	if (argc < 8) {
+	if (argc < 9) {
 		printf("error: Missing arguments for tests\n");
 		ret = 1;
 		goto end;
@@ -196,11 +206,41 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	action = lttng_action_notify_create();
-	if (!action) {
-		printf("error: Could not create action notify\n");
-		ret = 1;
-		goto end;
+	if (use_action_group) {
+		struct lttng_action *notify, *group;
+
+		group = lttng_action_group_create();
+		if (!group) {
+			printf("error: Could not create action group\n");
+			ret = 1;
+			goto end;
+		}
+
+		notify = lttng_action_notify_create();
+		if (!notify) {
+			lttng_action_destroy(group);
+			printf("error: Could not create action notify\n");
+			ret = 1;
+			goto end;
+		}
+
+		action_status = lttng_action_group_add_action(group, notify);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			printf("error: Could not add action notify to action group\n");
+			lttng_action_destroy(group);
+			lttng_action_destroy(notify);
+			ret = 1;
+			goto end;
+		}
+
+		action = group;
+	} else {
+		action = lttng_action_notify_create();
+		if (!action) {
+			printf("error: Could not create action notify\n");
+			ret = 1;
+			goto end;
+		}
 	}
 
 	trigger = lttng_trigger_create(condition, action);
@@ -265,7 +305,7 @@ int main(int argc, char **argv)
 			goto end;
 		default:
 			/* Unhandled conditions / errors. */
-			printf("error: Unknown notification channel status\n");
+			printf("error: Unknown notification channel status (%d) \n", status);
 			ret = 1;
 			goto end;
 		}

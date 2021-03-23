@@ -54,8 +54,9 @@ function start_client {
 	local buffer_usage_threshold_type=$6
 	local buffer_usage_threshold_value=$7
 	local nr_expected_notification=$8
+	local use_action_group=$9
 
-	${CURDIR}/base_client ${session_name} ${channel_name} ${domain_type} ${buffer_usage_type} ${buffer_usage_threshold_type} ${buffer_usage_threshold_value} ${nr_expected_notification} > ${output_file} &
+	${CURDIR}/base_client ${session_name} ${channel_name} ${domain_type} ${buffer_usage_type} ${buffer_usage_threshold_type} ${buffer_usage_threshold_value} ${nr_expected_notification} ${use_action_group} > ${output_file} &
 	pid=$!
 
 	app_pids+=("$pid")
@@ -177,8 +178,8 @@ function test_multi_app ()
 	for (( i = 0; i < $nr_client_app; i++ )); do
 		low_app_output_file=$output_dir/${low_output_file_pattern}${i}
 		high_app_output_file=$output_dir/${high_output_file_pattern}${i}
-		start_client $low_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string LOW RATIO 0.0 $nr_notification_expected
-		start_client $high_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 $nr_notification_expected
+		start_client $low_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string LOW RATIO 0.0 $nr_notification_expected $(( $i % 2))
+		start_client $high_app_output_file $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 $nr_notification_expected $(( $i % 2))
 	done
 
 	wait_for_message $output_dir "${low_output_file_pattern}" "sync: ready"
@@ -362,7 +363,7 @@ function test_on_register_evaluation ()
 
 	high_app_output_file=${high_output_file_pattern}.first_receiver
 	high_app_output_path=$output_dir/${high_app_output_file}
-	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
+	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1 0
 
 	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
 
@@ -379,7 +380,7 @@ function test_on_register_evaluation ()
 	# notification on subscription
 	high_app_output_file=${high_output_file_pattern}.second_receiver
 	high_app_output_path=$output_dir/${high_app_output_file}
-	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1
+	start_client $high_app_output_path $SESSION_NAME $CHANNEL_NAME $domain_string HIGH RATIO 0.420 1 0
 	wait_for_message $output_dir "${high_app_output_file}" "sync: ready"
 	wait_for_message $output_dir "${high_app_output_file}" "notification: high 0"
 

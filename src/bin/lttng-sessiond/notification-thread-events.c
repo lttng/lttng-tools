@@ -122,6 +122,7 @@ struct lttng_trigger_ht_element {
 	struct lttng_trigger *trigger;
 	struct cds_lfht_node node;
 	struct cds_lfht_node node_by_name_uid;
+	struct cds_list_head client_list_trigger_node;
 	/* call_rcu delayed reclaim. */
 	struct rcu_head rcu_node;
 };
@@ -314,7 +315,7 @@ int match_client_list_condition(struct cds_lfht_node *node, const void *key)
 
 	client_list = caa_container_of(node, struct notification_client_list,
 			notification_trigger_clients_ht_node);
-	condition = lttng_trigger_get_const_condition(client_list->trigger);
+	condition = client_list->condition;
 
 	return !!lttng_condition_is_equal(condition_key, condition);
 }
@@ -661,62 +662,121 @@ void notification_client_list_release(struct urcu_ref *list_ref)
 			container_of(list_ref, typeof(*list), ref);
 	struct notification_client_list_element *client_list_element, *tmp;
 
+	lttng_condition_put(list->condition);
+
 	if (list->notification_trigger_clients_ht) {
 		rcu_read_lock();
+
 		cds_lfht_del(list->notification_trigger_clients_ht,
 				&list->notification_trigger_clients_ht_node);
 		rcu_read_unlock();
 		list->notification_trigger_clients_ht = NULL;
 	}
 	cds_list_for_each_entry_safe(client_list_element, tmp,
-				     &list->list, node) {
+				     &list->clients_list, node) {
 		free(client_list_element);
 	}
+
+	assert(cds_list_empty(&list->triggers_list));
+
 	pthread_mutex_destroy(&list->lock);
 	call_rcu(&list->rcu_node, free_notification_client_list_rcu);
 }
 
 static
-struct notification_client_list *notification_client_list_create(
-		const struct lttng_trigger *trigger)
+bool condition_applies_to_client(const struct lttng_condition *condition,
+		struct notification_client *client)
 {
-	struct notification_client_list *client_list =
-			zmalloc(sizeof(*client_list));
+	bool applies = false;
+	struct lttng_condition_list_element *condition_list_element;
 
-	if (!client_list) {
-		goto error;
+	cds_list_for_each_entry(condition_list_element, &client->condition_list,
+			node) {
+		applies = lttng_condition_is_equal(
+				condition_list_element->condition,
+				condition);
+		if (applies) {
+			break;
+		}
 	}
-	pthread_mutex_init(&client_list->lock, NULL);
-	urcu_ref_init(&client_list->ref);
-	cds_lfht_node_init(&client_list->notification_trigger_clients_ht_node);
-	CDS_INIT_LIST_HEAD(&client_list->list);
-	client_list->trigger = trigger;
-error:
-	return client_list;
+
+	return applies;
 }
 
 static
-void publish_notification_client_list(
+struct notification_client_list *notification_client_list_create(
 		struct notification_thread_state *state,
-		struct notification_client_list *list)
+		const struct lttng_condition *condition)
 {
-	const struct lttng_condition *condition =
-			lttng_trigger_get_const_condition(list->trigger);
+	struct notification_client *client;
+	struct cds_lfht_iter iter;
+	struct notification_client_list *client_list;
 
-	assert(!list->notification_trigger_clients_ht);
-	notification_client_list_get(list);
+	client_list = zmalloc(sizeof(*client_list));
+	if (!client_list) {
+		PERROR("Failed to allocate notification client list");
+		goto end;
+	}
 
-	list->notification_trigger_clients_ht =
+	pthread_mutex_init(&client_list->lock, NULL);
+	/*
+	 * The trigger that owns the condition has the first reference to this
+	 * client list.
+	 */
+	urcu_ref_init(&client_list->ref);
+	cds_lfht_node_init(&client_list->notification_trigger_clients_ht_node);
+	CDS_INIT_LIST_HEAD(&client_list->clients_list);
+	CDS_INIT_LIST_HEAD(&client_list->triggers_list);
+
+	/*
+	 * Create a copy of the condition so that it's independent of any
+	 * trigger. The client list may outlive the trigger object (which owns
+	 * the condition) that is used to create it.
+	 */
+	client_list->condition = lttng_condition_copy(condition);
+
+	/* Build a list of clients to which this new condition applies. */
+	cds_lfht_for_each_entry (state->client_socket_ht, &iter, client,
+			client_socket_ht_node) {
+		struct notification_client_list_element *client_list_element;
+
+		if (!condition_applies_to_client(condition, client)) {
+			continue;
+		}
+
+		client_list_element = zmalloc(sizeof(*client_list_element));
+		if (!client_list_element) {
+			goto error_put_client_list;
+		}
+
+		CDS_INIT_LIST_HEAD(&client_list_element->node);
+		client_list_element->client = client;
+		cds_list_add(&client_list_element->node, &client_list->clients_list);
+	}
+
+	client_list->notification_trigger_clients_ht =
 			state->notification_trigger_clients_ht;
 
 	rcu_read_lock();
-	cds_lfht_add(state->notification_trigger_clients_ht,
-			lttng_condition_hash(condition),
-			&list->notification_trigger_clients_ht_node);
+	/*
+	 * Add the client list to the global list of client list.
+	 */
+	cds_lfht_add_unique(state->notification_trigger_clients_ht,
+			lttng_condition_hash(client_list->condition),
+			match_client_list_condition,
+			client_list->condition,
+			&client_list->notification_trigger_clients_ht_node);
 	rcu_read_unlock();
+	goto end;
+
+error_put_client_list:
+	notification_client_list_put(client_list);
+	client_list = NULL;
+
+end:
+	return client_list;
 }
 
-LTTNG_HIDDEN
 void notification_client_list_put(struct notification_client_list *list)
 {
 	if (!list) {
@@ -1004,12 +1064,11 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 	 * subscribing.
 	 */
 	cds_lfht_node_init(&client_list.notification_trigger_clients_ht_node);
-	CDS_INIT_LIST_HEAD(&client_list.list);
-	client_list.trigger = trigger;
+	CDS_INIT_LIST_HEAD(&client_list.clients_list);
 
 	CDS_INIT_LIST_HEAD(&client_list_element.node);
 	client_list_element.client = client;
-	cds_list_add(&client_list_element.node, &client_list.list);
+	cds_list_add(&client_list_element.node, &client_list.clients_list);
 
 	/* Send evaluation result to the newly-subscribed client. */
 	DBG("[notification-thread] Newly subscribed-to condition evaluated to true, notifying client");
@@ -1083,13 +1142,19 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	 * This is correct since the list doesn't own the trigger and the
 	 * object is immutable.
 	 */
-	if (evaluate_condition_for_client(client_list->trigger, condition,
-			client, state)) {
-		WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
-		ret = -1;
-		free(client_list_element);
-		goto end;
+	struct lttng_trigger_ht_element *trigger_ht_element;
+	pthread_mutex_lock(&client_list->lock);
+	cds_list_for_each_entry(trigger_ht_element,
+			&client_list->triggers_list, client_list_trigger_node) {
+		if (evaluate_condition_for_client(trigger_ht_element->trigger, condition,
+				client, state)) {
+			WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
+			ret = -1;
+			free(client_list_element);
+			goto end;
+		}
 	}
+	pthread_mutex_unlock(&client_list->lock);
 
 	/*
 	 * Add the client to the list of clients interested in a given trigger
@@ -1100,7 +1165,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	CDS_INIT_LIST_HEAD(&client_list_element->node);
 
 	pthread_mutex_lock(&client_list->lock);
-	cds_list_add(&client_list_element->node, &client_list->list);
+	cds_list_add(&client_list_element->node, &client_list->clients_list);
 	pthread_mutex_unlock(&client_list->lock);
 end:
 	if (_status) {
@@ -1171,7 +1236,7 @@ int notification_thread_client_unsubscribe(
 
 	pthread_mutex_lock(&client_list->lock);
 	cds_list_for_each_entry_safe(client_list_element, client_tmp,
-			&client_list->list, node) {
+			&client_list->clients_list, node) {
 		if (client_list_element->client->id != client->id) {
 			continue;
 		}
@@ -1362,25 +1427,6 @@ bool trigger_applies_to_channel(const struct lttng_trigger *trigger,
 	return trigger_applies;
 fail:
 	return false;
-}
-
-static
-bool trigger_applies_to_client(struct lttng_trigger *trigger,
-		struct notification_client *client)
-{
-	bool applies = false;
-	struct lttng_condition_list_element *condition_list_element;
-
-	cds_list_for_each_entry(condition_list_element, &client->condition_list,
-			node) {
-		applies = lttng_condition_is_equal(
-				condition_list_element->condition,
-				lttng_trigger_get_condition(trigger));
-		if (applies) {
-			break;
-		}
-	}
-	return applies;
 }
 
 /* Must be called with RCU read lock held. */
@@ -2566,12 +2612,9 @@ int handle_notification_thread_command_register_trigger(
 {
 	int ret = 0;
 	struct lttng_condition *condition;
-	struct notification_client *client;
 	struct notification_client_list *client_list = NULL;
 	struct lttng_trigger_ht_element *trigger_ht_element = NULL;
-	struct notification_client_list_element *client_list_element;
 	struct cds_lfht_node *node;
-	struct cds_lfht_iter iter;
 	const char* trigger_name;
 	bool free_trigger = true;
 	struct lttng_evaluation *evaluation = NULL;
@@ -2671,57 +2714,49 @@ int handle_notification_thread_command_register_trigger(
 	}
 
 	/*
+	 * The rest only applies to triggers that have a "notify" action.
+	 * It is not skipped as this is the only action type currently
+	 * supported.
+	 */
+	if (is_trigger_action_notify(trigger)) {
+		/*
+		 * Find or create the client list of this condition. It may
+		 * already be present if another trigger is already registered
+		 * with the same condition.
+		 */
+		client_list = get_client_list_from_condition(state, condition);
+		if (!client_list) {
+			/*
+			 * No client list for this condition yet. We create new
+			 * one and build it up.
+			 */
+			client_list = notification_client_list_create(state, condition);
+			if (!client_list) {
+				ERR("Error creating notification client list for trigger %s", trigger->name);
+				goto error_free_ht_element;
+			}
+		}
+
+		CDS_INIT_LIST_HEAD(&trigger_ht_element->client_list_trigger_node);
+
+		pthread_mutex_lock(&client_list->lock);
+		cds_list_add(&trigger_ht_element->client_list_trigger_node, &client_list->triggers_list);
+		pthread_mutex_unlock(&client_list->lock);
+	}
+
+	/*
 	 * Ownership of the trigger and of its wrapper was transfered to
 	 * the triggers_ht. Same for token ht element if necessary.
 	 */
 	trigger_ht_element = NULL;
 	free_trigger = false;
 
-	/*
-	 * The rest only applies to triggers that have a "notify" action.
-	 * It is not skipped as this is the only action type currently
-	 * supported.
-	 */
-	if (is_trigger_action_notify(trigger)) {
-		client_list = notification_client_list_create(trigger);
-		if (!client_list) {
-			ret = -1;
-			goto error_free_ht_element;
-		}
-
-		/* Build a list of clients to which this new trigger applies. */
-		cds_lfht_for_each_entry (state->client_socket_ht, &iter, client,
-				client_socket_ht_node) {
-			if (!trigger_applies_to_client(trigger, client)) {
-				continue;
-			}
-
-			client_list_element =
-					zmalloc(sizeof(*client_list_element));
-			if (!client_list_element) {
-				ret = -1;
-				goto error_put_client_list;
-			}
-
-			CDS_INIT_LIST_HEAD(&client_list_element->node);
-			client_list_element->client = client;
-			cds_list_add(&client_list_element->node,
-					&client_list->list);
-		}
-
-		/*
-		 * Client list ownership transferred to the
-		 * notification_trigger_clients_ht.
-		 */
-		publish_notification_client_list(state, client_list);
-	}
-
 	switch (get_condition_binding_object(condition)) {
 	case LTTNG_OBJECT_TYPE_SESSION:
 		/* Add the trigger to the list if it matches a known session. */
 		ret = bind_trigger_to_matching_session(trigger, state);
 		if (ret) {
-			goto error_put_client_list;
+			goto error_free_ht_element;
 		}
 		break;
 	case LTTNG_OBJECT_TYPE_CHANNEL:
@@ -2731,7 +2766,7 @@ int handle_notification_thread_command_register_trigger(
 		 */
 		ret = bind_trigger_to_matching_channels(trigger, state);
 		if (ret) {
-			goto error_put_client_list;
+			goto error_free_ht_element;
 		}
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
@@ -2739,7 +2774,7 @@ int handle_notification_thread_command_register_trigger(
 	default:
 		ERR("Unknown object type on which to bind a newly registered trigger was encountered");
 		ret = -1;
-		goto error_put_client_list;
+		goto error_free_ht_element;
 	}
 
 	/*
@@ -2797,7 +2832,7 @@ int handle_notification_thread_command_register_trigger(
 
 	if (ret) {
 		/* Fatal error. */
-		goto error_put_client_list;
+		goto error_free_ht_element;
 	}
 
 	DBG("Newly registered trigger's condition evaluated to %s",
@@ -2805,7 +2840,7 @@ int handle_notification_thread_command_register_trigger(
 	if (!evaluation) {
 		/* Evaluation yielded nothing. Normal exit. */
 		ret = 0;
-		goto end;
+		goto success;
 	}
 
 	/*
@@ -2826,7 +2861,7 @@ int handle_notification_thread_command_register_trigger(
 		 */
 		ERR("Fatal error occurred while enqueuing action associated to newly registered trigger");
 		ret = -1;
-		goto error_put_client_list;
+		goto error_free_ht_element;
 	case ACTION_EXECUTOR_STATUS_OVERFLOW:
 		/*
 		 * TODO Add trigger identification (name/id) when
@@ -2836,18 +2871,16 @@ int handle_notification_thread_command_register_trigger(
 		 */
 		WARN("No space left when enqueuing action associated to newly registered trigger");
 		ret = 0;
-		goto end;
+		goto success;
 	default:
 		abort();
 	}
 
-end:
+success:
 	*cmd_result = LTTNG_OK;
 	DBG("Registered trigger: name = `%s`, tracer token = %" PRIu64,
 			trigger_name, trigger_tracer_token);
-
-error_put_client_list:
-	notification_client_list_put(client_list);
+	goto end;
 
 error_free_ht_element:
 	if (trigger_ht_element) {
@@ -2859,6 +2892,7 @@ error:
 	if (free_trigger) {
 		lttng_trigger_destroy(trigger);
 	}
+end:
 	rcu_read_unlock();
 	return ret;
 }
@@ -2959,6 +2993,9 @@ int handle_notification_thread_command_unregister_trigger(
 		teardown_tracer_notifier(state, trigger);
 	}
 
+	trigger_ht_element = caa_container_of(triggers_ht_node,
+			struct lttng_trigger_ht_element, node);
+
 	if (is_trigger_action_notify(trigger)) {
 		/*
 		 * Remove and release the client list from
@@ -2967,14 +3004,15 @@ int handle_notification_thread_command_unregister_trigger(
 		client_list = get_client_list_from_condition(state, condition);
 		assert(client_list);
 
+		pthread_mutex_lock(&client_list->lock);
+		cds_list_del(&trigger_ht_element->client_list_trigger_node);
+		pthread_mutex_unlock(&client_list->lock);
+
 		/* Put new reference and the hashtable's reference. */
 		notification_client_list_put(client_list);
 		notification_client_list_put(client_list);
 		client_list = NULL;
 	}
-
-	trigger_ht_element = caa_container_of(triggers_ht_node,
-			struct lttng_trigger_ht_element, node);
 
 	/* Remove trigger from triggers_ht. */
 	notif_thread_state_remove_trigger_ht_elem(state, trigger_ht_element);
@@ -4266,7 +4304,7 @@ int notification_client_list_send_evaluation(
 
 	pthread_mutex_lock(&client_list->lock);
 	cds_list_for_each_entry_safe(client_list_element, tmp,
-			&client_list->list, node) {
+			&client_list->clients_list, node) {
 		enum client_transmission_status transmission_status;
 		struct notification_client *client =
 				client_list_element->client;
@@ -4548,7 +4586,7 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 		/* Warn clients that a notification (or more) was dropped. */
 		pthread_mutex_lock(&client_list->lock);
 		cds_list_for_each_entry_safe(client_list_element, tmp,
-				&client_list->list, node) {
+				&client_list->clients_list, node) {
 			enum client_transmission_status transmission_status;
 			struct notification_client *client =
 					client_list_element->client;

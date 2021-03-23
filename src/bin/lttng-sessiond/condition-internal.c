@@ -135,3 +135,35 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 		abort();
 	}
 }
+
+LTTNG_HIDDEN
+struct lttng_condition *lttng_condition_copy(const struct lttng_condition *condition)
+{
+	int ret;
+	struct lttng_payload copy_buffer;
+	struct lttng_condition *copy = NULL;
+
+	lttng_payload_init(&copy_buffer);
+
+	ret = lttng_condition_serialize(condition, &copy_buffer);
+	if (ret < 0) {
+		goto end;
+	}
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&copy_buffer, 0, -1);
+
+		ret = lttng_condition_create_from_payload(
+				&view, &copy);
+		if (ret < 0) {
+			copy = NULL;
+			goto end;
+		}
+	}
+
+end:
+	lttng_payload_reset(&copy_buffer);
+	return copy;
+}

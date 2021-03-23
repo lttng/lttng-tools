@@ -113,8 +113,9 @@ struct notification_client_list_element {
 struct notification_client_list {
 	pthread_mutex_t lock;
 	struct urcu_ref ref;
-	const struct lttng_trigger *trigger;
-	struct cds_list_head list;
+	struct lttng_condition *condition;
+	struct cds_list_head triggers_list;
+	struct cds_list_head clients_list;
 	/* Weak reference to container. */
 	struct cds_lfht *notification_trigger_clients_ht;
 	struct cds_lfht_node notification_trigger_clients_ht_node;
