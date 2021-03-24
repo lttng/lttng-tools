@@ -4513,16 +4513,11 @@ enum lttng_error_code synchronize_tracer_notifier_unregister(
 		struct agent *agt = agent_find_by_event_notifier_domain(
 				trigger_domain);
 
-		if (!agt) {
-			agt = agent_create(trigger_domain);
-			if (!agt) {
-				ret_code = LTTNG_ERR_NOMEM;
-				goto end_unlock_session_list;
-			}
-
-			agent_add(agt, trigger_agents_ht_by_domain);
-		}
-
+		/*
+		 * This trigger was never registered in the first place. Calling
+		 * this function under those circumstances is an internal error.
+		 */
+		assert(agt);
 		ret_code = trigger_agent_disable(trigger, agt);
 		if (ret_code != LTTNG_OK) {
 			goto end_unlock_session_list;
