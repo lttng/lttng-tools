@@ -4300,7 +4300,8 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 		struct lttng_trigger *trigger, const struct lttng_credentials *cmd_creds)
 {
 	enum lttng_error_code ret_code;
-	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
+	const struct lttng_condition *condition =
+			lttng_trigger_get_const_condition(trigger);
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;

@@ -164,6 +164,7 @@ struct ltt_kernel_stream *trace_kernel_create_stream(const char *name,
 		unsigned int count);
 struct ltt_kernel_context *trace_kernel_create_context(
 		struct lttng_kernel_context *ctx);
+/* Trigger is only non-const to acquire a reference. */
 enum lttng_error_code trace_kernel_create_event_notifier_rule(
 		struct lttng_trigger *trigger,
 		uint64_t token,

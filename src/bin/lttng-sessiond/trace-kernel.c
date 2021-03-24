@@ -497,7 +497,7 @@ enum lttng_error_code trace_kernel_create_event_notifier_rule(
 
 	assert(event_notifier_rule);
 
-	condition = lttng_trigger_get_condition(trigger);
+	condition = lttng_trigger_get_const_condition(trigger);
 	assert(condition);
 
 	condition_type = lttng_condition_get_type(condition);
