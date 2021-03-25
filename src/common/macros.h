@@ -85,7 +85,7 @@ void *zmalloc(size_t len)
 #endif
 #endif
 
-#define is_signed(type) (((type) (-1)) < 0)
+#define is_signed(type) (((type) -1) < (type) 1)
 
 /*
  * Align value to the next multiple of align. Returns val if it already is a
