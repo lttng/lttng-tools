@@ -20,6 +20,7 @@ struct lttng_index_allocator {
 	struct cds_list_head unused_list;
 	uint64_t size;
 	uint64_t position;
+	uint64_t nb_allocated_indexes;
 };
 
 struct lttng_index {
@@ -40,6 +41,7 @@ struct lttng_index_allocator *lttng_index_allocator_create(
 
 	allocator->size = index_count;
 	allocator->position = 0;
+	allocator->nb_allocated_indexes = 0;
 
 	CDS_INIT_LIST_HEAD(&allocator->unused_list);
 
@@ -49,7 +51,7 @@ end:
 
 uint64_t lttng_index_allocator_get_index_count(struct lttng_index_allocator *allocator)
 {
-	return allocator->size;
+	return allocator->nb_allocated_indexes;
 }
 
 enum lttng_index_allocator_status lttng_index_allocator_alloc(
@@ -77,6 +79,7 @@ enum lttng_index_allocator_status lttng_index_allocator_alloc(
 		free(index);
 	}
 
+	allocator->nb_allocated_indexes++;
 end:
 	return status;
 }
@@ -99,6 +102,7 @@ enum lttng_index_allocator_status lttng_index_allocator_release(
 
 	index->index = idx;
 	cds_list_add_tail(&index->head, &allocator->unused_list);
+	allocator->nb_allocated_indexes--;
 
 end:
 	return status;
