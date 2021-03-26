@@ -514,14 +514,23 @@ static void modprobe_remove_lttng(const struct kern_modules_param *modules,
 		modprobe[sizeof(modprobe) - 1] = '\0';
 		ret = system(modprobe);
 		if (ret == -1) {
-			ERR("Unable to launch modprobe -r for module %s",
-					modules[i].name);
-		} else if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED && WEXITSTATUS(ret) != 0) {
-			ERR("Unable to remove module %s",
-					modules[i].name);
+			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
+				ERR("Unable to launch modprobe -r for required module %s",
+						modules[i].name);
+			} else {
+				DBG("Unable to launch modprobe -r for optional module %s",
+						modules[i].name);
+			}
+		} else if (WEXITSTATUS(ret) != 0) {
+			if (modules[i].load_policy == KERNEL_MODULE_PROPERTY_LOAD_POLICY_REQUIRED) {
+				ERR("Unable to remove required module %s",
+						modules[i].name);
+			} else {
+				DBG("Unable to remove optional module %s",
+						modules[i].name);
+			}
 		} else {
-			DBG("Modprobe removal successful %s",
-					modules[i].name);
+			DBG("Modprobe removal successful %s", modules[i].name);
 		}
 	}
 }

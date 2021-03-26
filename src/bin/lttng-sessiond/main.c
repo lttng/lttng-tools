@@ -74,6 +74,7 @@
 #include "register.h"
 #include "manage-apps.h"
 #include "manage-kernel.h"
+#include "modprobe.h"
 
 static const char *help_msg =
 #ifdef LTTNG_EMBED_HELP
@@ -1887,7 +1888,7 @@ stop_threads:
 	sessiond_cleanup();
 
 	/*
-	 * Wait for all pending call_rcu work to complete tearing shutting down
+	 * Wait for all pending call_rcu work to complete before shutting down
 	 * the notification thread. This call_rcu work includes shutting down
 	 * UST apps and event notifier pipes.
 	 */
@@ -1899,11 +1900,25 @@ stop_threads:
 	}
 
 	/*
-	 * Teardown of error accounting needs be done after the teardown of the
-	 * notification thread as all error buckets must have been released by
-	 * their users (conditions).
+	 * Error accounting teardown has to be done after the teardown of all
+	 * event notifier pipes to ensure that no tracer may try to use the
+	 * error accounting facilities.
 	 */
 	event_notifier_error_accounting_fini();
+
+	/*
+	 * Unloading the kernel modules needs to be done after all kernel
+	 * ressources have been released. In our case, this includes the
+	 * notification fd, the event notifier group fd, error accounting fd,
+	 * all event and event notifier fds, etc.
+	 *
+	 * In short, at this point, we need to have called close() on all fds
+	 * received from the kernel tracer.
+	 */
+	if (is_root && !config.no_kernel) {
+		DBG("Unloading kernel modules");
+     		modprobe_remove_lttng_all();
+	}
 
 	/*
 	 * Ensure all prior call_rcu are done. call_rcu callbacks may push

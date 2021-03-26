@@ -2124,8 +2124,6 @@ void cleanup_kernel_tracer(void)
 		kernel_tracer_fd = -1;
 	}
 
-	DBG("Unloading kernel modules");
-	modprobe_remove_lttng_all();
 	free(syscall_table);
 }
 
