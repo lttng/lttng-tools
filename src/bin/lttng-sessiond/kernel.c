@@ -2036,6 +2036,7 @@ error_version:
 		PERROR("Failed to close kernel tracer file descriptor: fd = %d",
 				kernel_tracer_fd);
 	}
+
 	kernel_tracer_fd = -1;
 	return LTTNG_ERR_KERN_VERSION;
 
@@ -2047,6 +2048,8 @@ error_token_ht:
 				kernel_tracer_event_notifier_group_notification_fd);
 	}
 
+	kernel_tracer_event_notifier_group_notification_fd = -1;
+
 error_modules:
 	ret = close(kernel_tracer_event_notifier_group_fd);
 	if (ret) {
@@ -2054,11 +2057,15 @@ error_modules:
 				kernel_tracer_event_notifier_group_fd);
 	}
 
+	kernel_tracer_event_notifier_group_fd = -1;
+
 	ret = close(kernel_tracer_fd);
 	if (ret) {
 		PERROR("Failed to close kernel tracer file descriptor: fd = %d",
 				kernel_tracer_fd);
 	}
+
+	kernel_tracer_fd = -1;
 
 error_open:
 	modprobe_remove_lttng_control();
