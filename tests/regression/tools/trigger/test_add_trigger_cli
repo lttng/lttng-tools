@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 222
+plan_tests 231
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -46,7 +46,9 @@ function test_success ()
 	shift
 
 	diag "${FULL_LTTNG_BIN} add-trigger $*"
+	set -x
 	"${FULL_LTTNG_BIN}" add-trigger "$@" > "${tmp_stdout}" 2> "${tmp_stderr}"
+	set +x
 	ok $? "${test_name}: exit code is 0"
 
 	diff -u "${tmp_stdout}" <(echo "Trigger registered successfully.")
@@ -89,15 +91,40 @@ test_success "--condition on-event -a -u" \
 	--condition on-event -a -u \
 	--action notify
 
-test_success "--fire-once-after" \
+test_success "notify action polices" \
 	--condition on-event -u test-fire-once-after \
+	--action notify \
+	--fire-every=55 \
 	--action notify \
 	--fire-once-after=55
 
-test_success "--fire-every" \
-	--condition on-event -u test-fire-every \
-	--action notify \
-	--fire-every=55
+test_success "start session action polices" \
+	--condition on-event -u test-fire-once-after \
+	--action start-session my_session \
+	--fire-every=55 \
+	--action start-session my_session \
+	--fire-once-after=55
+
+test_success "stop session action polices" \
+	--condition on-event -u test-fire-once-after \
+	--action stop-session my_session \
+	--fire-every=55 \
+	--action stop-session my_session \
+	--fire-once-after=55
+
+test_success "snapshot session action polices" \
+	--condition on-event -u test-fire-once-after \
+	--action snapshot-session my_session \
+	--fire-every=55 \
+	--action snapshot-session my_session \
+	--fire-once-after=55
+
+test_success "rotate session action polices" \
+	--condition on-event -u test-fire-once-after \
+	--action rotate-session my_session \
+	--fire-every=55 \
+	--action rotate-session my_session \
+	--fire-once-after=55
 
 skip $ist_root "non-root user: skipping kprobe tests" 9 || {
 	test_success "--condition on-event probe by symbol" \

@@ -454,6 +454,7 @@ void print_one_action(const struct lttng_action *action)
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
+	const struct lttng_firing_policy *policy = NULL;
 	const char *value;
 
 	action_type = lttng_action_get_type(action);
@@ -461,25 +462,53 @@ void print_one_action(const struct lttng_action *action)
 
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
-		MSG("notify");
+		_MSG("notify");
+
+		action_status = lttng_action_notify_get_firing_policy(
+				action, &policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to retrieve firing policy.");
+			goto end;
+		}
 		break;
 	case LTTNG_ACTION_TYPE_START_SESSION:
 		action_status = lttng_action_start_session_get_session_name(
 				action, &value);
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
-		MSG("start session `%s`", value);
+		_MSG("start session `%s`", value);
+
+		action_status = lttng_action_start_session_get_firing_policy(
+				action, &policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to retrieve firing policy.");
+			goto end;
+		}
 		break;
 	case LTTNG_ACTION_TYPE_STOP_SESSION:
 		action_status = lttng_action_stop_session_get_session_name(
 				action, &value);
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
-		MSG("stop session `%s`", value);
+		_MSG("stop session `%s`", value);
+
+		action_status = lttng_action_stop_session_get_firing_policy(
+				action, &policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to retrieve firing policy.");
+			goto end;
+		}
 		break;
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
 		action_status = lttng_action_rotate_session_get_session_name(
 				action, &value);
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
-		MSG("rotate session `%s`", value);
+		_MSG("rotate session `%s`", value);
+
+		action_status = lttng_action_rotate_session_get_firing_policy(
+				action, &policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to retrieve firing policy.");
+			goto end;
+		}
 		break;
 	case LTTNG_ACTION_TYPE_SNAPSHOT_SESSION:
 	{
@@ -534,13 +563,61 @@ void print_one_action(const struct lttng_action *action)
 			}
 		}
 
-		MSG("");
+		action_status = lttng_action_snapshot_session_get_firing_policy(
+				action, &policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to retrieve firing policy.");
+			goto end;
+		}
 		break;
 	}
-
 	default:
 		abort();
 	}
+
+	if (policy) {
+		enum lttng_firing_policy_type policy_type;
+		enum lttng_firing_policy_status policy_status;
+		uint64_t policy_value = 0;
+
+		policy_type = lttng_firing_policy_get_type(policy);
+
+		switch (policy_type) {
+		case LTTNG_FIRING_POLICY_TYPE_EVERY_N:
+			policy_status = lttng_firing_policy_every_n_get_interval(
+					policy, &policy_value);
+			if (policy_status != LTTNG_FIRING_POLICY_STATUS_OK) {
+				ERR("Failed to get action firing policy interval");
+				goto end;
+			}
+			if (policy_value > 1) {
+				/* The default is 1 so print only when it is a
+				 * special case.
+				 */
+				_MSG(", firing policy: after every %" PRIu64
+				     " occurrences",
+						policy_value);
+			}
+			break;
+		case LTTNG_FIRING_POLICY_TYPE_ONCE_AFTER_N:
+			policy_status = lttng_firing_policy_once_after_n_get_threshold(
+					policy, &policy_value);
+			if (policy_status != LTTNG_FIRING_POLICY_STATUS_OK) {
+				ERR("Failed to get action firing policy interval");
+				goto end;
+			}
+			_MSG(", firing policy: once after %" PRIu64
+			     " occurrences",
+					policy_value);
+			break;
+		default:
+			abort();
+		}
+	}
+
+	MSG("");
+end:
+	return;
 }
 
 static
@@ -552,8 +629,6 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 	enum lttng_action_type action_type;
 	enum lttng_trigger_status trigger_status;
 	const char *name;
-	enum lttng_trigger_firing_policy firing_policy_type;
-	uint64_t threshold;
 	uid_t trigger_uid;
 
 	trigger_status = lttng_trigger_get_name(trigger, &name);
@@ -564,26 +639,6 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 
 	MSG("- id: %s", name);
 	MSG("  user id: %d", trigger_uid);
-
-	trigger_status = lttng_trigger_get_firing_policy(
-			trigger, &firing_policy_type, &threshold);
-	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
-		ERR("Failed to get trigger's policy.");
-		goto end;
-	}
-
-	switch (firing_policy_type) {
-	case LTTNG_TRIGGER_FIRING_POLICY_EVERY_N:
-		if (threshold > 1) {
-			MSG("  firing policy: after every %" PRIu64 " occurences", threshold);
-		}
-		break;
-	case LTTNG_TRIGGER_FIRING_POLICY_ONCE_AFTER_N:
-		MSG("  firing policy: once after %" PRIu64 " occurences", threshold);
-		break;
-	default:
-		abort();
-	}
 
 	condition = lttng_trigger_get_const_condition(trigger);
 	condition_type = lttng_condition_get_type(condition);
@@ -621,8 +676,6 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 		print_one_action(action);
 	}
 
-end:
-	return;
 }
 
 static

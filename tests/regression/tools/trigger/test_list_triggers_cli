@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 44
+plan_tests 49
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -63,26 +63,8 @@ test_top_level_options ()
 
 
 	lttng_add_trigger_ok "hello" --condition on-event -u test-id --action notify
-	lttng_add_trigger_ok "T0" --fire-once-after 123 --condition on-event -u test-fire-once-after --action notify
-	lttng_add_trigger_ok "T1" --fire-every 124 --condition on-event -u test-fire-every --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
-	- id: T0
-	  user id: ${uid}
-	  firing policy: once after 123 occurences
-	  condition: event rule hit
-	    rule: test-fire-once-after (type: tracepoint, domain: ust)
-	    tracer notifications discarded: 0
-	  actions:
-	    notify
-	- id: T1
-	  user id: ${uid}
-	  firing policy: after every 124 occurences
-	  condition: event rule hit
-	    rule: test-fire-every (type: tracepoint, domain: ust)
-	    tracer notifications discarded: 0
-	  actions:
-	    notify
 	- id: hello
 	  user id: ${uid}
 	  condition: event rule hit
@@ -314,6 +296,8 @@ test_snapshot_action ()
 	lttng_add_trigger_ok "T5" --condition on-event -u some-event --action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1111 --data-url=tcp://1.2.3.4:1112
 	lttng_add_trigger_ok "T6" --condition on-event -u some-event --action snapshot-session ze-session --path /some/path --max-size=1234
 	lttng_add_trigger_ok "T7" --condition on-event -u some-event --action snapshot-session ze-session --path /some/path --name=meh
+	lttng_add_trigger_ok "T8" --condition on-event -u some-event --action snapshot-session ze-session --fire-every 10
+	lttng_add_trigger_ok "T9" --condition on-event -u some-event --action snapshot-session ze-session --fire-once-after 10
 
 
 	cat > "${tmp_expected_stdout}" <<- EOF
@@ -373,6 +357,50 @@ test_snapshot_action ()
 	    tracer notifications discarded: 0
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path, name: meh
+	- id: T8
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
+	  actions:
+	    snapshot session \`ze-session\`, firing policy: after every 10 occurrences
+	- id: T9
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
+	  actions:
+	    snapshot session \`ze-session\`, firing policy: once after 10 occurrences
+	EOF
+
+	list_triggers "snapshot action" "${tmp_expected_stdout}"
+
+	stop_lttng_sessiond_notap
+}
+
+test_notify_action ()
+{
+	start_lttng_sessiond_notap
+
+	lttng_add_trigger_ok "T0" --condition on-event -u some-event --action notify --fire-once-after 5
+	lttng_add_trigger_ok "T1" --condition on-event -u some-event --action notify --fire-every 10
+
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- id: T0
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
+	  actions:
+	    notify, firing policy: once after 5 occurrences
+	- id: T1
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: some-event (type: tracepoint, domain: ust)
+	    tracer notifications discarded: 0
+	  actions:
+	    notify, firing policy: after every 10 occurrences
 	EOF
 
 	list_triggers "snapshot action" "${tmp_expected_stdout}"
@@ -386,6 +414,7 @@ skip $ist_root "non-root user: skipping kprobe tests" 6 || test_on_event_probe
 skip $ist_root "non-root user: skipping uprobe tests" 4 || test_on_event_userspace_probe
 skip $ist_root "non-root user: skipping syscall tests" 5 || test_on_event_syscall
 test_snapshot_action
+test_notify_action
 
 # Cleanup
 rm -f "${tmp_stdout}"

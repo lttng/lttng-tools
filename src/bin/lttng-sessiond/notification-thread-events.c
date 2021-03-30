@@ -4523,13 +4523,6 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 			struct notification_trigger_tokens_ht_element,
 			node);
 
-	if (!lttng_trigger_should_fire(element->trigger)) {
-		ret = 0;
-		goto end_unlock;
-	}
-
-	lttng_trigger_fire(element->trigger);
-
 	trigger_status = lttng_trigger_get_name(element->trigger, &trigger_name);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
@@ -4840,12 +4833,6 @@ int handle_notification_thread_channel_sample(
 		if (caa_likely(!evaluation)) {
 			goto put_list;
 		}
-
-		if (!lttng_trigger_should_fire(trigger)) {
-			goto put_list;
-		}
-
-		lttng_trigger_fire(trigger);
 
 		/*
 		 * Ownership of `evaluation` transferred to the action executor

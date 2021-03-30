@@ -1335,38 +1335,25 @@ error:
 end:
 	return cond;
 }
+static const struct argpar_opt_descr notify_action_opt_descrs[] = {
+	{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
+	{ OPT_FIRE_EVERY, '\0', "fire-every", true },
+	ARGPAR_OPT_DESCR_SENTINEL
+};
 
 
 static
 struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 {
-	return lttng_action_notify_create();
-}
-
-static const struct argpar_opt_descr no_opt_descrs[] = {
-	ARGPAR_OPT_DESCR_SENTINEL
-};
-
-/*
- * Generic handler for a kind of action that takes a session name as its sole
- * argument.
- */
-
-static
-struct lttng_action *handle_action_simple_session(
-		int *argc, const char ***argv,
-		struct lttng_action *(*create_action_cb)(void),
-		enum lttng_action_status (*set_session_name_cb)(struct lttng_action *, const char *),
-		const char *action_name)
-{
 	struct lttng_action *action = NULL;
 	struct argpar_state *state = NULL;
 	struct argpar_item *item = NULL;
-	const char *session_name_arg = NULL;
 	char *error = NULL;
-	enum lttng_action_status action_status;
+	char *fire_once_after_str = NULL;
+	char *fire_every_str = NULL;
+	struct lttng_firing_policy *policy = NULL;
 
-	state = argpar_state_create(*argc, *argv, no_opt_descrs);
+	state = argpar_state_create(*argc, *argv, notify_action_opt_descrs);
 	if (!state) {
 		ERR("Failed to allocate an argpar state.");
 		goto error;
@@ -1374,7 +1361,6 @@ struct lttng_action *handle_action_simple_session(
 
 	while (true) {
 		enum argpar_state_parse_next_status status;
-		const struct argpar_item_non_opt *item_non_opt;
 
 		ARGPAR_ITEM_DESTROY_AND_RESET(item);
 		status = argpar_state_parse_next(state, &item, &error);
@@ -1389,17 +1375,233 @@ struct lttng_action *handle_action_simple_session(
 		}
 
 		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
-		assert(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
 
-		item_non_opt = (const struct argpar_item_non_opt *) item;
+		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_item_opt *item_opt =
+					(const struct argpar_item_opt *) item;
 
-		switch (item_non_opt->non_opt_index) {
-		case 0:
-			session_name_arg = item_non_opt->arg;
-			break;
-		default:
-			ERR("Unexpected argument `%s`.", item_non_opt->arg);
+			switch (item_opt->descr->id) {
+			case OPT_FIRE_ONCE_AFTER:
+			{
+				if (!assign_string(&fire_once_after_str,
+						    item_opt->arg,
+						    "--fire-once-after")) {
+					goto error;
+				}
+
+				break;
+			}
+			case OPT_FIRE_EVERY:
+			{
+				if (!assign_string(&fire_every_str,
+						    item_opt->arg,
+						    "--fire-every")) {
+					goto error;
+				}
+
+				break;
+			}
+
+			default:
+				abort();
+			}
+		} else {
+			const struct argpar_item_non_opt *item_non_opt;
+
+			assert(item->type == ARGPAR_ITEM_TYPE_NON_OPT);
+
+			item_non_opt = (const struct argpar_item_non_opt *) item;
+
+			switch (item_non_opt->non_opt_index) {
+			default:
+				ERR("Unexpected argument `%s`.",
+						item_non_opt->arg);
+				goto error;
+			}
+		}
+	}
+
+	*argc -= argpar_state_get_ingested_orig_args(state);
+	*argv += argpar_state_get_ingested_orig_args(state);
+
+	if (fire_once_after_str && fire_every_str) {
+		ERR("--fire-once and --fire-every are mutually exclusive.");
+		goto error;
+	}
+
+	if (fire_once_after_str) {
+		unsigned long long threshold;
+
+		if (utils_parse_unsigned_long_long(
+				    fire_once_after_str, &threshold) != 0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_once_after_str);
 			goto error;
+		}
+
+		if (threshold == 0) {
+			ERR("Once after N policy threshold cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_once_after_n_create(threshold);
+		if (!policy) {
+			ERR("Failed to create policy once after `%s`.",
+					fire_once_after_str);
+			goto error;
+		}
+	}
+
+	if (fire_every_str) {
+		unsigned long long interval;
+		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
+				0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_every_str);
+			goto error;
+		}
+		if (interval == 0) {
+			ERR("Every N policy interval cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_every_n_create(interval);
+		if (!policy) {
+			ERR("Failed to create policy every `%s`.",
+					fire_every_str);
+			goto error;
+		}
+	}
+
+	action = lttng_action_notify_create();
+	if (!action) {
+		ERR("Failed to create notify action");
+		goto error;
+	}
+
+	if (policy) {
+		enum lttng_action_status status;
+		status = lttng_action_notify_set_firing_policy(action, policy);
+		if (status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to set firing policy");
+			goto error;
+		}
+	}
+
+	goto end;
+
+error:
+	lttng_action_destroy(action);
+	action = NULL;
+	free(error);
+end:
+	free(fire_once_after_str);
+	free(fire_every_str);
+	lttng_firing_policy_destroy(policy);
+	argpar_state_destroy(state);
+	argpar_item_destroy(item);
+	return action;
+}
+
+/*
+ * Generic handler for a kind of action that takes a session name and an
+ * optional firing policy.
+ */
+
+static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
+		const char ***argv,
+		struct lttng_action *(*create_action_cb)(void),
+		enum lttng_action_status (*set_session_name_cb)(
+				struct lttng_action *, const char *),
+		enum lttng_action_status (*set_firing_policy_cb)(
+				struct lttng_action *,
+				const struct lttng_firing_policy *),
+		const char *action_name)
+{
+	struct lttng_action *action = NULL;
+	struct argpar_state *state = NULL;
+	struct argpar_item *item = NULL;
+	const char *session_name_arg = NULL;
+	char *fire_once_after_str = NULL;
+	char *fire_every_str = NULL;
+	char *error = NULL;
+	enum lttng_action_status action_status;
+	struct lttng_firing_policy *policy = NULL;
+
+	assert(set_session_name_cb);
+	assert(set_firing_policy_cb);
+
+	const struct argpar_opt_descr firing_policy_opt_descrs[] = {
+		{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
+		{ OPT_FIRE_EVERY, '\0', "fire-every", true },
+		ARGPAR_OPT_DESCR_SENTINEL
+	};
+	
+	state = argpar_state_create(*argc, *argv, firing_policy_opt_descrs);
+	if (!state) {
+		ERR("Failed to allocate an argpar state.");
+		goto error;
+	}
+
+	while (true) {
+		enum argpar_state_parse_next_status status;
+
+		ARGPAR_ITEM_DESTROY_AND_RESET(item);
+		status = argpar_state_parse_next(state, &item, &error);
+		if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR) {
+			ERR("%s", error);
+			goto error;
+		} else if (status ==
+				ARGPAR_STATE_PARSE_NEXT_STATUS_ERROR_UNKNOWN_OPT) {
+			/* Just stop parsing here. */
+			break;
+		} else if (status == ARGPAR_STATE_PARSE_NEXT_STATUS_END) {
+			break;
+		}
+
+		assert(status == ARGPAR_STATE_PARSE_NEXT_STATUS_OK);
+		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_item_opt *item_opt =
+					(const struct argpar_item_opt *) item;
+
+			switch (item_opt->descr->id) {
+			case OPT_FIRE_ONCE_AFTER:
+			{
+				if (!assign_string(&fire_once_after_str,
+						    item_opt->arg,
+						    "--fire-once-after")) {
+					goto error;
+				}
+
+				break;
+			}
+			case OPT_FIRE_EVERY:
+			{
+				if (!assign_string(&fire_every_str,
+						    item_opt->arg,
+						    "--fire-every")) {
+					goto error;
+				}
+
+				break;
+			}
+
+			default:
+				abort();
+			}
+		} else {
+			const struct argpar_item_non_opt *item_non_opt;
+			item_non_opt = (const struct argpar_item_non_opt *) item;
+
+			switch (item_non_opt->non_opt_index) {
+			case 0:
+				session_name_arg = item_non_opt->arg;
+				break;
+			default:
+				ERR("Unexpected argument `%s`.",
+						item_non_opt->arg);
+				goto error;
+			}
 		}
 	}
 
@@ -1409,6 +1611,55 @@ struct lttng_action *handle_action_simple_session(
 	if (!session_name_arg) {
 		ERR("Missing session name.");
 		goto error;
+	}
+
+	if (fire_once_after_str && fire_every_str) {
+		ERR("--fire-once and --fire-every are mutually exclusive.");
+		goto error;
+	}
+
+	if (fire_once_after_str) {
+		unsigned long long threshold;
+
+		if (utils_parse_unsigned_long_long(
+				    fire_once_after_str, &threshold) != 0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_once_after_str);
+			goto error;
+		}
+
+		if (threshold == 0) {
+			ERR("Once after N policy threshold cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_once_after_n_create(threshold);
+		if (!policy) {
+			ERR("Failed to create policy once after `%s`.",
+					fire_once_after_str);
+			goto error;
+		}
+	}
+
+	if (fire_every_str) {
+		unsigned long long interval;
+		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
+				0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_every_str);
+			goto error;
+		}
+		if (interval == 0) {
+			ERR("Every N policy interval cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_every_n_create(interval);
+		if (!policy) {
+			ERR("Failed to create policy every `%s`.",
+					fire_every_str);
+			goto error;
+		}
 	}
 
 	action = create_action_cb();
@@ -1424,6 +1675,14 @@ struct lttng_action *handle_action_simple_session(
 		goto error;
 	}
 
+	if (policy) {
+		action_status = set_firing_policy_cb(action, policy);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to set firing policy");
+			goto error;
+		}
+	}
+
 	goto end;
 
 error:
@@ -1431,6 +1690,7 @@ error:
 	action = NULL;
 	argpar_item_destroy(item);
 end:
+	lttng_firing_policy_destroy(policy);
 	free(error);
 	argpar_state_destroy(state);
 	return action;
@@ -1440,29 +1700,30 @@ static
 struct lttng_action *handle_action_start_session(int *argc,
 		const char ***argv)
 {
-	return handle_action_simple_session(argc, argv,
-		lttng_action_start_session_create,
-		lttng_action_start_session_set_session_name,
-		"start");
+	return handle_action_simple_session_with_policy(argc, argv,
+			lttng_action_start_session_create,
+			lttng_action_start_session_set_session_name,
+			lttng_action_start_session_set_firing_policy, "start");
 }
 
 static
 struct lttng_action *handle_action_stop_session(int *argc,
 		const char ***argv)
 {
-	return handle_action_simple_session(argc, argv,
-		lttng_action_stop_session_create,
-		lttng_action_stop_session_set_session_name,
-		"stop");
+	return handle_action_simple_session_with_policy(argc, argv,
+			lttng_action_stop_session_create,
+			lttng_action_stop_session_set_session_name,
+			lttng_action_stop_session_set_firing_policy, "stop");
 }
 
 static
 struct lttng_action *handle_action_rotate_session(int *argc,
 		const char ***argv)
 {
-	return handle_action_simple_session(argc, argv,
+	return handle_action_simple_session_with_policy(argc, argv,
 		lttng_action_rotate_session_create,
 		lttng_action_rotate_session_set_session_name,
+		lttng_action_rotate_session_set_firing_policy,
 		"rotate");
 }
 
@@ -1473,6 +1734,8 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 	{ OPT_DATA_URL, '\0', "data-url", true },
 	{ OPT_URL, '\0', "url", true },
 	{ OPT_PATH, '\0', "path", true },
+	{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
+	{ OPT_FIRE_EVERY, '\0', "fire-every", true },
 	ARGPAR_OPT_DESCR_SENTINEL
 };
 
@@ -1491,8 +1754,11 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	char *url_arg = NULL;
 	char *path_arg = NULL;
 	char *error = NULL;
+	char *fire_once_after_str = NULL;
+	char *fire_every_str = NULL;
 	enum lttng_action_status action_status;
 	struct lttng_snapshot_output *snapshot_output = NULL;
+	struct lttng_firing_policy *policy = NULL;
 	int ret;
 	unsigned int locations_specified = 0;
 
@@ -1560,6 +1826,27 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 				}
 
 				break;
+			case OPT_FIRE_ONCE_AFTER:
+			{
+				if (!assign_string(&fire_once_after_str,
+						    item_opt->arg,
+						    "--fire-once-after")) {
+					goto error;
+				}
+
+				break;
+			}
+			case OPT_FIRE_EVERY:
+			{
+				if (!assign_string(&fire_every_str,
+						    item_opt->arg,
+						    "--fire-every")) {
+					goto error;
+				}
+
+				break;
+			}
+
 			default:
 				abort();
 			}
@@ -1619,6 +1906,56 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		snapshot_output = lttng_snapshot_output_create();
 		if (!snapshot_output) {
 			ERR("Failed to allocate a snapshot output.");
+			goto error;
+		}
+	}
+
+	/* Any firing policy ? */
+	if (fire_once_after_str && fire_every_str) {
+		ERR("--fire-once and --fire-every are mutually exclusive.");
+		goto error;
+	}
+
+	if (fire_once_after_str) {
+		unsigned long long threshold;
+
+		if (utils_parse_unsigned_long_long(
+				    fire_once_after_str, &threshold) != 0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_once_after_str);
+			goto error;
+		}
+
+		if (threshold == 0) {
+			ERR("Once after N policy threshold cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_once_after_n_create(threshold);
+		if (!policy) {
+			ERR("Failed to create policy once after `%s`.",
+					fire_once_after_str);
+			goto error;
+		}
+	}
+
+	if (fire_every_str) {
+		unsigned long long interval;
+		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
+				0) {
+			ERR("Failed to parse `%s` as an integer.",
+					fire_every_str);
+			goto error;
+		}
+		if (interval == 0) {
+			ERR("Every N policy interval cannot be `0`.");
+			goto error;
+		}
+
+		policy = lttng_firing_policy_every_n_create(interval);
+		if (!policy) {
+			ERR("Failed to create policy every `%s`.",
+					fire_every_str);
 			goto error;
 		}
 	}
@@ -1744,6 +2081,16 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		snapshot_output = NULL;
 	}
 
+	if (policy) {
+		enum lttng_action_status status;
+		status = lttng_action_snapshot_session_set_firing_policy(
+				action, policy);
+		if (status != LTTNG_ACTION_STATUS_OK) {
+			ERR("Failed to set firing policy");
+			goto error;
+		}
+	}
+
 	goto end;
 
 error:
@@ -1758,6 +2105,7 @@ end:
 	free(data_url_arg);
 	free(snapshot_output);
 	free(max_size_arg);
+	lttng_firing_policy_destroy(policy);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
 	return action;
@@ -1827,8 +2175,6 @@ struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_CONDITION, '\0', "condition", false },
 	{ OPT_ACTION, '\0', "action", false },
 	{ OPT_ID, '\0', "id", true },
-	{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
-	{ OPT_FIRE_EVERY, '\0', "fire-every", true },
 	{ OPT_USER_ID, '\0', "user-id", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
@@ -1856,8 +2202,6 @@ int cmd_add_trigger(int argc, const char **argv)
 	char *error = NULL;
 	char *id = NULL;
 	int i;
-	char *fire_once_after_str = NULL;
-	char *fire_every_str = NULL;
 	char *user_id = NULL;
 
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
@@ -1964,24 +2308,6 @@ int cmd_add_trigger(int argc, const char **argv)
 
 			break;
 		}
-		case OPT_FIRE_ONCE_AFTER:
-		{
-			if (!assign_string(&fire_once_after_str, item_opt->arg,
-					"--fire-once-after")) {
-				goto error;
-			}
-
-			break;
-		}
-		case OPT_FIRE_EVERY:
-		{
-			if (!assign_string(&fire_every_str, item_opt->arg,
-					"--fire-every")) {
-				goto error;
-			}
-
-			break;
-		}
 		case OPT_USER_ID:
 		{
 			if (!assign_string(&user_id, item_opt->arg,
@@ -2003,11 +2329,6 @@ int cmd_add_trigger(int argc, const char **argv)
 
 	if (lttng_dynamic_pointer_array_get_count(&actions) == 0) {
 		ERR("Need at least one --action.");
-		goto error;
-	}
-
-	if (fire_every_str && fire_once_after_str) {
-		ERR("Can't specify both --fire-once-after and --fire-every.");
 		goto error;
 	}
 
@@ -2045,41 +2366,6 @@ int cmd_add_trigger(int argc, const char **argv)
 
 		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
 			ERR("Failed to set trigger id.");
-			goto error;
-		}
-	}
-
-	if (fire_once_after_str) {
-		unsigned long long threshold;
-		enum lttng_trigger_status trigger_status;
-
-		if (utils_parse_unsigned_long_long(fire_once_after_str, &threshold) != 0) {
-			ERR("Failed to parse `%s` as an integer.", fire_once_after_str);
-			goto error;
-		}
-
-		trigger_status = lttng_trigger_set_firing_policy(trigger,
-				LTTNG_TRIGGER_FIRING_POLICY_ONCE_AFTER_N,
-				threshold);
-		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
-			ERR("Failed to set trigger's policy to `fire once after N`.");
-			goto error;
-		}
-	}
-
-	if (fire_every_str) {
-		unsigned long long threshold;
-		enum lttng_trigger_status trigger_status;
-
-		if (utils_parse_unsigned_long_long(fire_every_str, &threshold) != 0) {
-			ERR("Failed to parse `%s` as an integer.", fire_every_str);
-			goto error;
-		}
-
-		trigger_status = lttng_trigger_set_firing_policy(trigger,
-				LTTNG_TRIGGER_FIRING_POLICY_EVERY_N, threshold);
-		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
-			ERR("Failed to set trigger's policy to `fire every N`.");
 			goto error;
 		}
 	}
@@ -2125,8 +2411,6 @@ end:
 	lttng_trigger_destroy(trigger);
 	free(error);
 	free(id);
-	free(fire_once_after_str);
-	free(fire_every_str);
 	free(user_id);
 	return ret;
 }
