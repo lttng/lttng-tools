@@ -43,7 +43,7 @@ function test_start_session_action()
 	local SESSION_NAME="my_triggered_session"
 	local TRIGGER_NAME="trigger1"
 	local TRACE_PATH=$(mktemp -d test-start-action-trace.XXXXXX)
-	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp test-notif-register.XXXXXX)
+	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
 
 	diag "Start session action"
 
@@ -64,7 +64,7 @@ function test_start_session_action()
 	# Launch notification listener.
 	$NOTIFICATION_CLIENT_BIN \
 		--trigger $TRIGGER_NAME \
-		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" &
 	notif_client_pid=$!
 
 	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
@@ -96,7 +96,7 @@ function test_stop_session_action()
 	local SESSION_NAME="my_triggered_session"
 	local TRIGGER_NAME="trigger1"
 	local TRACE_PATH=$(mktemp -d test-stop-action-trace.XXXXXX)
-	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp test-notif-register.XXXXXX)
+	local SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
 
 	diag "Stop session action"
 	create_lttng_session_ok $SESSION_NAME "$TRACE_PATH"
@@ -118,7 +118,7 @@ function test_stop_session_action()
 	# Launch notification listener.
 	$NOTIFICATION_CLIENT_BIN \
 		--trigger $TRIGGER_NAME \
-		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" &
 	notif_client_pid=$!
 
 	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do

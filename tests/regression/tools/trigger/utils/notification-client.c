@@ -22,7 +22,7 @@
 static struct option long_options[] =
 {
 	/* These options set a flag. */
-	{"trigger", required_argument, 0, 'i'},
+	{"trigger", required_argument, 0, 't'},
 	{"sync-after-notif-register", required_argument, 0, 'a'},
 	{0, 0, 0, 0}
 };
@@ -53,7 +53,7 @@ static bool action_group_contains_notify(
 	return false;
 }
 
-static bool is_expected_trigger_name(const char *expected_trigger_name,
+static bool is_trigger_name(const char *expected_trigger_name,
 		struct lttng_notification *notification)
 {
 	const char *trigger_name = NULL;
@@ -76,6 +76,10 @@ static bool is_expected_trigger_name(const char *expected_trigger_name,
 	}
 
 	names_match = strcmp(expected_trigger_name, trigger_name) == 0;
+	if (!names_match) {
+		fprintf(stderr, "Got an unexpected trigger name: name = '%s', expected name = '%s'\n",
+				trigger_name, expected_trigger_name);
+	}
 end:
 	return names_match;
 }
@@ -126,6 +130,7 @@ int main(int argc, char **argv)
 	ret = lttng_list_triggers(&triggers);
 	if (ret != LTTNG_OK) {
 		fprintf(stderr, "Failed to list triggers\n");
+		ret = -1;
 		goto end;
 	}
 
@@ -136,6 +141,7 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
+	/* Look for the trigger we want to subscribe to. */
 	for (i = 0; i < count; i++) {
 		const struct lttng_trigger *trigger =
 				lttng_triggers_get_at_index(triggers, i);
@@ -199,14 +205,16 @@ int main(int argc, char **argv)
 		switch (channel_status) {
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_NOTIFICATIONS_DROPPED:
 			printf("Dropped notification\n");
-			break;
+			ret = -1;
+			goto end;
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_INTERRUPTED:
-			ret = 0;
+			ret = -1;
 			goto end;
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_OK:
 			break;
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_CLOSED:
 			printf("Notification channel was closed by peer.\n");
+			ret = -1;
 			break;
 		default:
 			fprintf(stderr, "A communication error occurred on the notification channel.\n");
@@ -214,10 +222,12 @@ int main(int argc, char **argv)
 			goto end;
 		}
 
-		ret = is_expected_trigger_name(expected_trigger_name,
-				notification);
+		ret = is_trigger_name(expected_trigger_name, notification);
 		lttng_notification_destroy(notification);
-		if (ret) {
+		if (!ret) {
+			ret = -1;
+			goto end;
+		} else {
 			ret = 0;
 			goto end;
 		}
