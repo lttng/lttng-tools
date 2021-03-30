@@ -60,6 +60,12 @@ TRACEPOINT_EVENT(tp, tptest,
 	)
 )
 
+TRACEPOINT_EVENT(tp, end,
+	TP_ARGS(),
+	TP_FIELDS(
+	)
+)
+
 #endif /* _TRACEPOINT_TP_H */
 
 #undef TRACEPOINT_INCLUDE

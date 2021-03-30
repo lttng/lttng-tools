@@ -1,0 +1,226 @@
+#!/bin/bash
+#
+# Copyright (C) 2020 Francis Deslauriers <francis.deslauriers@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+TEST_DESC="Triggers - Start and stop actions"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=${CURDIR}/../../../..
+
+# shellcheck source=../../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+TESTAPP_PATH="$TESTDIR/utils/testapp"
+GEN_UST_EVENTS_TESTAPP_NAME="gen-ust-events"
+GEN_UST_EVENTS_TESTAPP_BIN="$TESTAPP_PATH/$GEN_UST_EVENTS_TESTAPP_NAME/$GEN_UST_EVENTS_TESTAPP_NAME"
+NOTIFICATION_CLIENT_BIN="$CURDIR/../utils/notification-client"
+NUM_TESTS=19
+
+NR_ITER=10
+NR_USEC_WAIT=5
+
+function test_firing_policy_every_n()
+{
+	local SESSION_NAME="my_triggered_session"
+	local TRIGGER_NAME="trigger1"
+	local END_TRIGGER_NAME="end-trigger1"
+	local SYNC_AFTER_NOTIF_REGISTER_PATH
+
+	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
+
+	diag "Every N firing policy"
+
+	# Add a trigger with a notify action with a policy to fire it every 5
+	# time the condition is met.
+	lttng_add_trigger_ok \
+		$TRIGGER_NAME \
+		--condition on-event -u "tp:tptest" \
+		--action notify \
+	        --fire-every 5
+
+	# Add a trigger with a notify action for the tp:end event of the test
+	# application. This allow us to "delimit" the reception loop for the
+	# notification client ensuring that all events were hit and passed into
+	# the notification subsystem. 
+	lttng_add_trigger_ok \
+		$END_TRIGGER_NAME \
+		--condition on-event -u "tp:end" \
+		--action notify
+
+	for i in $(seq 1 4); do
+		diag "Iteration $i of 4"
+		## Phase 1
+		# Hit the trigger condition 4 time and validate that no (0)
+		# notification for that condition was received.
+		$NOTIFICATION_CLIENT_BIN \
+			--trigger $TRIGGER_NAME \
+			--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" \
+			--count 0 \
+			--end-trigger "$END_TRIGGER_NAME" &
+		notif_client_pid=$!
+		while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+			sleep 0.5
+		done
+
+		$GEN_UST_EVENTS_TESTAPP_BIN -i 4 -w $NR_USEC_WAIT --emit-end-event > /dev/null 2>&1
+
+		# notification-client will exit once it receives the end-trigger notification.
+		# Validation of the number of received notification is done by the
+		# notification client. Here it validate that it received 0 notifications.
+		wait $notif_client_pid
+		test "$?" -eq "0"
+		ok $? "notification client exited successfully"
+
+		## Phase 2 
+		# Hit the condition 1 time and validate that a notification is
+		# received.
+		rm -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}"
+		$NOTIFICATION_CLIENT_BIN \
+			--trigger $TRIGGER_NAME \
+			--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" \
+			--count 1 \
+			--end-trigger "$END_TRIGGER_NAME" &
+		notif_client_pid=$!
+		while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+			sleep 0.5
+		done
+
+		# Artificially produce the desired event-rule condition.
+		$GEN_UST_EVENTS_TESTAPP_BIN -i 1 -w $NR_USEC_WAIT --emit-end-event > /dev/null 2>&1
+
+		# notification-client will exit once it receives the end-trigger notification.
+		# Validation of the number of received notification is done by the
+		# notification client. Here it validate that it received 1 notifications.
+		wait $notif_client_pid
+		test "$?" -eq "0"
+		ok $? "notification client exited successfully"
+
+		rm -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}"
+	done
+
+	# Tearing down.
+	lttng_remove_trigger_ok $TRIGGER_NAME
+	lttng_remove_trigger_ok $END_TRIGGER_NAME
+
+	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+}
+
+function test_firing_policy_once_after_n()
+{
+	local SESSION_NAME="my_triggered_session"
+	local TRIGGER_NAME="trigger1"
+	local END_TRIGGER_NAME="end-trigger1"
+	local SYNC_AFTER_NOTIF_REGISTER_PATH
+
+	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
+
+	diag "Once after N firing policy"
+
+	# Add a trigger with a notify action with a policy to fire it every 5
+	# time the condition is met.
+	lttng_add_trigger_ok \
+		$TRIGGER_NAME \
+		--condition on-event -u "tp:tptest" \
+		--action notify \
+	        --fire-once-after 5
+
+	# Add a trigger with a notify action for the tp:end event of the test
+	# application. This allow us to "delimit" the reception loop for the
+	# notification client ensuring that all events were hit and passed into
+	# the notification subsystem. 
+	lttng_add_trigger_ok \
+		$END_TRIGGER_NAME \
+		--condition on-event -u "tp:end" \
+		--action notify
+
+	## Phase 1
+	# Hit the trigger condition 4 time and validate that no (0)
+	# notification for that condition was received.
+	$NOTIFICATION_CLIENT_BIN \
+		--trigger $TRIGGER_NAME \
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" \
+		--count 0 \
+		--end-trigger "$END_TRIGGER_NAME" &
+	notif_client_pid=$!
+	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+		sleep 0.5
+	done
+
+	# Artificially produce the desired event-rule condition.
+	$GEN_UST_EVENTS_TESTAPP_BIN -i 4 -w $NR_USEC_WAIT --emit-end-event > /dev/null 2>&1
+
+	# notification-client will exit once it receives the end-trigger notification.
+	# Validation of the number of received notification is done by the
+	# notification client. Here it validate that it received 0 notifications.
+	wait $notif_client_pid
+	test "$?" -eq "0"
+	ok $? "notification client exited successfully"
+
+	## Phase 2 
+	# Hit the condition 1 time and validate that a notification is
+	# received.
+	rm -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}"
+	$NOTIFICATION_CLIENT_BIN \
+		--trigger $TRIGGER_NAME \
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" \
+		--count 1 \
+		--end-trigger "$END_TRIGGER_NAME" &
+	notif_client_pid=$!
+	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+		sleep 0.5
+	done
+
+	# Artificially produce the desired event-rule condition.
+	$GEN_UST_EVENTS_TESTAPP_BIN -i 1 -w $NR_USEC_WAIT --emit-end-event > /dev/null 2>&1
+
+	# notification-client will exit once it receives the end-trigger notification.
+	# Validation of the number of received notification is done by the
+	# notification client. Here it validate that it received 1 notifications.
+	wait $notif_client_pid
+	test "$?" -eq "0"
+	ok $? "notification client exited successfully"
+
+	## Phase 3
+	# Hit the condition N time and validate that no (0) notification is
+	# received.
+	rm -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}"
+	$NOTIFICATION_CLIENT_BIN \
+		--trigger $TRIGGER_NAME \
+		--sync-after-notif-register "$SYNC_AFTER_NOTIF_REGISTER_PATH" \
+		--count 0 \
+		--end-trigger "$END_TRIGGER_NAME" &
+	notif_client_pid=$!
+	while [ ! -f "${SYNC_AFTER_NOTIF_REGISTER_PATH}" ]; do
+		sleep 0.5
+	done
+
+	# Artificially produce the desired event-rule condition.
+	$GEN_UST_EVENTS_TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --emit-end-event > /dev/null 2>&1
+
+	# notification-client will exit once it receives the end-trigger notification.
+	# Validation of the number of received notification is done by the
+	# notification client. Here it validate that it received 0 notifications.
+	wait $notif_client_pid
+	test "$?" -eq "0"
+	ok $? "notification client exited successfully"
+
+	# Tearing down.
+	lttng_remove_trigger_ok $TRIGGER_NAME
+	lttng_remove_trigger_ok $END_TRIGGER_NAME
+
+	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
+}
+
+ # MUST set TESTDIR before calling those functions
+plan_tests $NUM_TESTS
+
+print_test_banner "$TEST_DESC"
+
+start_lttng_sessiond_notap
+
+test_firing_policy_every_n
+test_firing_policy_once_after_n
+
+stop_lttng_sessiond_notap

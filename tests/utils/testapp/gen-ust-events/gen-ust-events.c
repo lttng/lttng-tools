@@ -38,6 +38,7 @@ static struct option long_options[] =
 	{"sync-before-last-event-touch", required_argument, 0, 'c'},
 	{"sync-before-exit", required_argument, 0, 'd'},
 	{"sync-before-exit-touch", required_argument, 0, 'e'},
+	{"emit-end-event", no_argument, 0, 'f'},
 	{0, 0, 0, 0}
 };
 
@@ -65,13 +66,15 @@ int main(int argc, char **argv)
 	char *before_exit_file_path_touch = NULL;
 	/* Wait on file before exiting */
 	char *before_exit_file_path = NULL;
+	/* Emit an end event */
+	bool emit_end_event = false;
 
 	for (i = 0; i < 3; i++) {
 		net_values[i] = htonl(net_values[i]);
 	}
 
-	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:",
-			long_options, &option_index)) != -1) {
+	while ((option = getopt_long(argc, argv, "i:w:a:b:c:d:e:f",
+				long_options, &option_index)) != -1) {
 		switch (option) {
 		case 'a':
 			after_first_event_file_path = strdup(optarg);
@@ -87,6 +90,9 @@ int main(int argc, char **argv)
 			break;
 		case 'e':
 			before_exit_file_path_touch = strdup(optarg);
+			break;
+		case 'f':
+			emit_end_event = true;
 			break;
 		case 'i':
 			nr_iter = atoi(optarg);
@@ -172,6 +178,10 @@ int main(int argc, char **argv)
 		if (should_quit) {
 			break;
 		}
+	}
+
+	if (emit_end_event) {
+		tracepoint(tp, end);
 	}
 
 	if (before_exit_file_path_touch) {

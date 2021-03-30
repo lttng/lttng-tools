@@ -73,7 +73,8 @@ TESTS += ust/before-after/test_before_after \
 	ust/multi-lib/test_multi_lib \
 	ust/rotation-destroy-flush/test_rotation_destroy_flush \
 	tools/metadata/test_ust \
-	tools/relayd-grouping/test_ust
+	tools/relayd-grouping/test_ust \
+	tools/trigger/firing-policy/test_ust_firing_policy
 
 if IS_LINUX
 TESTS += \
