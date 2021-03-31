@@ -60,11 +60,6 @@ extern lttng_uuid the_sessiond_uuid;
 extern enum consumerd_state the_ust_consumerd_state;
 extern enum consumerd_state the_kernel_consumerd_state;
 
-extern const char default_home_dir[],
-	default_tracing_group[],
-	default_ust_sock_dir[],
-	default_global_apps_pipe[];
-
 /* Set in main.c at boot time of the daemon */
 extern struct lttng_kernel_tracer_version the_kernel_tracer_version;
 extern struct lttng_kernel_tracer_abi_version the_kernel_tracer_abi_version;
