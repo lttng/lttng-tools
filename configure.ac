@@ -45,6 +45,7 @@ AX_APPEND_COMPILE_FLAGS([ dnl
 		-Wmissing-parameter-type dnl
 		-Wold-style-definition dnl
 		-Wstrict-prototypes dnl
+		-Wshadow dnl
 	],
 	[WARN_CFLAGS],
 	[-Werror])
