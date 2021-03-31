@@ -22,16 +22,18 @@
 #include "kernel-ctl.h"
 #include "kernel-ioctl.h"
 
-#define LTTNG_IOCTL_CHECK(fildes, request, ...) ({	\
-	int ret = ioctl(fildes, request, ##__VA_ARGS__);\
-	assert(ret <= 0);				\
-	!ret ? 0 : -errno;				\
-})
+#define LTTNG_IOCTL_CHECK(fildes, request, ...)                         \
+	({                                                              \
+		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
+		assert(_ioctl_ret <= 0);                                \
+		!_ioctl_ret ? 0 : -errno;                               \
+	})
 
-#define LTTNG_IOCTL_NO_CHECK(fildes, request, ...) ({	\
-	int ret = ioctl(fildes, request, ##__VA_ARGS__);\
-	ret >= 0 ? ret : -errno;			\
-})
+#define LTTNG_IOCTL_NO_CHECK(fildes, request, ...)                      \
+	({                                                              \
+		int _ioctl_ret = ioctl(fildes, request, ##__VA_ARGS__); \
+		_ioctl_ret >= 0 ? _ioctl_ret : -errno;                  \
+	})
 
 /*
  * This flag indicates which version of the kernel ABI to use. The old
