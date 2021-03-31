@@ -494,8 +494,6 @@ int check_session_rotation_pending(struct ltt_session *session,
 	ret = 0;
 check_ongoing_rotation:
 	if (session->rotation_state == LTTNG_ROTATION_STATE_ONGOING) {
-		uint64_t chunk_being_archived_id;
-
 		chunk_status = lttng_trace_chunk_get_id(
 				session->chunk_being_archived,
 				&chunk_being_archived_id);
