@@ -227,7 +227,6 @@ enum lttng_destruction_handle_status
 lttng_destruction_handle_wait_for_completion(
 		struct lttng_destruction_handle *handle, int timeout_ms)
 {
-	int ret;
 	enum lttng_destruction_handle_status status;
 	unsigned long time_left_ms = 0;
 	const bool has_timeout = timeout_ms > 0;
@@ -246,7 +245,7 @@ lttng_destruction_handle_wait_for_completion(
 		goto end;
 	}
 	if (has_timeout) {
-		ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
+		int ret = lttng_clock_gettime(CLOCK_MONOTONIC, &initial_time);
 		if (ret) {
 			status = LTTNG_DESTRUCTION_HANDLE_STATUS_ERROR;
 			goto end;
