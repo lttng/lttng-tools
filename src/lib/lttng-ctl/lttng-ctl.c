@@ -1270,15 +1270,15 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 
 		assert(fd_count == 0 || fd_count == 1);
 		if (fd_count == 1) {
-			struct fd_handle *handle =
+			struct fd_handle *h =
 					lttng_payload_view_pop_fd_handle(&view);
 
-			if (!handle) {
+			if (!h) {
 				goto mem_error;
 			}
 
-			fd_to_send = fd_handle_get_fd(handle);
-			fd_handle_put(handle);
+			fd_to_send = fd_handle_get_fd(h);
+			fd_handle_put(h);
 		}
 
 		ret = lttng_ctl_ask_sessiond_fds_varlen(&lsm,
