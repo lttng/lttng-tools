@@ -1363,26 +1363,31 @@ end:
 int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
-	ssize_t ret;
+	int ret_func;
 	enum lttcomm_return_code ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 	struct lttcomm_consumer_msg msg;
 	struct lttng_consumer_channel *channel = NULL;
 
 	health_code_update();
 
-	ret = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
-	if (ret != sizeof(msg)) {
-		DBG("Consumer received unexpected message size %zd (expects %zu)",
-			ret, sizeof(msg));
-		/*
-		 * The ret value might 0 meaning an orderly shutdown but this is ok
-		 * since the caller handles this.
-		 */
-		if (ret > 0) {
-			lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
-			ret = -1;
+	{
+		ssize_t ret_recv;
+
+		ret_recv = lttcomm_recv_unix_sock(sock, &msg, sizeof(msg));
+		if (ret_recv != sizeof(msg)) {
+			DBG("Consumer received unexpected message size %zd (expects %zu)",
+					ret_recv, sizeof(msg));
+			/*
+			 * The ret value might 0 meaning an orderly shutdown but this is ok
+			 * since the caller handles this.
+			 */
+			if (ret_recv > 0) {
+				lttng_consumer_send_error(ctx,
+						LTTCOMM_CONSUMERD_ERROR_RECV_CMD);
+				ret_recv = -1;
+			}
+			return ret_recv;
 		}
-		return ret;
 	}
 
 	health_code_update();
@@ -1442,7 +1447,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_DATA_PENDING:
 	{
-		int ret, is_data_pending;
+		int is_data_pending;
+		ssize_t ret_send;
 		uint64_t id = msg.u.data_pending.session_id;
 
 		DBG("UST consumer data pending command for id %" PRIu64, id);
@@ -1450,10 +1456,11 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		is_data_pending = consumer_data_pending(id);
 
 		/* Send back returned value to session daemon */
-		ret = lttcomm_send_unix_sock(sock, &is_data_pending,
+		ret_send = lttcomm_send_unix_sock(sock, &is_data_pending,
 				sizeof(is_data_pending));
-		if (ret < 0) {
-			DBG("Error when sending the data pending ret code: %d", ret);
+		if (ret_send < 0) {
+			DBG("Error when sending the data pending ret code: %zd",
+					ret_send);
 			goto error_fatal;
 		}
 
@@ -1465,7 +1472,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	}
 	case LTTNG_CONSUMER_ASK_CHANNEL_CREATION:
 	{
-		int ret;
+		int ret_ask_channel, ret_add_channel, ret_send;
 		struct ustctl_consumer_channel_attr attr;
 		const uint64_t chunk_id = msg.u.ask_channel.chunk_id.value;
 		const struct lttng_credentials buffer_credentials = {
@@ -1546,14 +1553,17 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 
 		health_code_update();
 
-		ret = ask_channel(ctx, channel, &attr);
-		if (ret < 0) {
+		ret_ask_channel = ask_channel(ctx, channel, &attr);
+		if (ret_ask_channel < 0) {
 			goto end_channel_error;
 		}
 
 		if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_METADATA) {
-			ret = consumer_metadata_cache_allocate(channel);
-			if (ret < 0) {
+			int ret_allocate;
+
+			ret_allocate = consumer_metadata_cache_allocate(
+					channel);
+			if (ret_allocate < 0) {
 				ERR("Allocating metadata cache");
 				goto end_channel_error;
 			}
@@ -1582,8 +1592,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * If add_channel succeeds, ownership of the channel is
 		 * passed to consumer_thread_channel_poll().
 		 */
-		ret = add_channel(channel, ctx);
-		if (ret < 0) {
+		ret_add_channel = add_channel(channel, ctx);
+		if (ret_add_channel < 0) {
 			if (msg.u.ask_channel.type == LTTNG_UST_ABI_CHAN_METADATA) {
 				if (channel->switch_timer_enabled == 1) {
 					consumer_timer_switch_stop(channel);
@@ -1606,8 +1616,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * everything went well and should wait to receive the channel and
 		 * streams with ustctl API.
 		 */
-		ret = consumer_send_status_channel(sock, channel);
-		if (ret < 0) {
+		ret_send = consumer_send_status_channel(sock, channel);
+		if (ret_send < 0) {
 			/*
 			 * There is probably a problem on the socket.
 			 */
@@ -1620,10 +1630,10 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	{
 		int ret, relayd_err = 0;
 		uint64_t key = msg.u.get_channel.key;
-		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_channel *found_channel;
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
+		found_channel = consumer_find_channel(key);
+		if (!found_channel) {
 			ERR("UST consumer get channel key %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 			goto end_get_channel;
@@ -1632,8 +1642,8 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		health_code_update();
 
 		/* Send the channel to sessiond (and relayd, if applicable). */
-		ret = send_channel_to_sessiond_and_relayd(sock, channel, ctx,
-				&relayd_err);
+		ret = send_channel_to_sessiond_and_relayd(
+				sock, found_channel, ctx, &relayd_err);
 		if (ret < 0) {
 			if (relayd_err) {
 				/*
@@ -1657,11 +1667,11 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		 * In no monitor mode, the streams ownership is kept inside the channel
 		 * so don't send them to the data thread.
 		 */
-		if (!channel->monitor) {
+		if (!found_channel->monitor) {
 			goto end_get_channel;
 		}
 
-		ret = send_streams_to_thread(channel, ctx);
+		ret = send_streams_to_thread(found_channel, ctx);
 		if (ret < 0) {
 			/*
 			 * If we are unable to send the stream to the thread, there is
@@ -1670,7 +1680,7 @@ int lttng_ustconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 			goto error_get_channel_fatal;
 		}
 		/* List MUST be empty after or else it could be reused. */
-		assert(cds_list_empty(&channel->streams.head));
+		assert(cds_list_empty(&found_channel->streams.head));
 end_get_channel:
 		goto end_msg_sessiond;
 error_get_channel_fatal:
@@ -1731,13 +1741,13 @@ end_get_channel_nosignal:
 		uint64_t key = msg.u.push_metadata.key;
 		uint64_t offset = msg.u.push_metadata.target_offset;
 		uint64_t version = msg.u.push_metadata.version;
-		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_channel *found_channel;
 
 		DBG("UST consumer push metadata key %" PRIu64 " of len %" PRIu64, key,
 				len);
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
+		found_channel = consumer_find_channel(key);
+		if (!found_channel) {
 			/*
 			 * This is possible if the metadata creation on the consumer side
 			 * is in flight vis-a-vis a concurrent push metadata from the
@@ -1780,8 +1790,8 @@ end_get_channel_nosignal:
 
 		health_code_update();
 
-		ret = lttng_ustconsumer_recv_metadata(sock, key, offset,
-				len, version, channel, 0, 1);
+		ret = lttng_ustconsumer_recv_metadata(sock, key, offset, len,
+				version, found_channel, 0, 1);
 		if (ret < 0) {
 			/* error receiving from sessiond */
 			goto error_push_metadata_fatal;
@@ -1806,38 +1816,46 @@ error_push_metadata_fatal:
 	}
 	case LTTNG_CONSUMER_SNAPSHOT_CHANNEL:
 	{
-		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_channel *found_channel;
 		uint64_t key = msg.u.snapshot_channel.key;
+		int ret_send;
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
+		found_channel = consumer_find_channel(key);
+		if (!found_channel) {
 			DBG("UST snapshot channel not found for key %" PRIu64, key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
 			if (msg.u.snapshot_channel.metadata) {
-				ret = snapshot_metadata(channel, key,
+				int ret_snapshot;
+
+				ret_snapshot = snapshot_metadata(found_channel,
+						key,
 						msg.u.snapshot_channel.pathname,
 						msg.u.snapshot_channel.relayd_id,
 						ctx);
-				if (ret < 0) {
+				if (ret_snapshot < 0) {
 					ERR("Snapshot metadata failed");
 					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
 				}
 			} else {
-				ret = snapshot_channel(channel, key,
+				int ret_snapshot;
+
+				ret_snapshot = snapshot_channel(found_channel,
+						key,
 						msg.u.snapshot_channel.pathname,
 						msg.u.snapshot_channel.relayd_id,
-						msg.u.snapshot_channel.nb_packets_per_stream,
+						msg.u.snapshot_channel
+								.nb_packets_per_stream,
 						ctx);
-				if (ret < 0) {
+				if (ret_snapshot < 0) {
 					ERR("Snapshot channel failed");
 					ret_code = LTTCOMM_CONSUMERD_SNAPSHOT_FAILED;
 				}
 			}
 		}
 		health_code_update();
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+		ret_send = consumer_send_status_msg(sock, ret_code);
+		if (ret_send < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
@@ -1948,40 +1966,44 @@ error_push_metadata_fatal:
 	}
 	case LTTNG_CONSUMER_SET_CHANNEL_MONITOR_PIPE:
 	{
-		int channel_monitor_pipe;
+		int channel_monitor_pipe, ret_send,
+				ret_set_channel_monitor_pipe;
+		ssize_t ret_recv;
 
 		ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 		/* Successfully received the command's type. */
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+		ret_send = consumer_send_status_msg(sock, ret_code);
+		if (ret_send < 0) {
 			goto error_fatal;
 		}
 
-		ret = lttcomm_recv_fds_unix_sock(sock, &channel_monitor_pipe,
-				1);
-		if (ret != sizeof(channel_monitor_pipe)) {
+		ret_recv = lttcomm_recv_fds_unix_sock(
+				sock, &channel_monitor_pipe, 1);
+		if (ret_recv != sizeof(channel_monitor_pipe)) {
 			ERR("Failed to receive channel monitor pipe");
 			goto error_fatal;
 		}
 
 		DBG("Received channel monitor pipe (%d)", channel_monitor_pipe);
-		ret = consumer_timer_thread_set_channel_monitor_pipe(
-				channel_monitor_pipe);
-		if (!ret) {
+		ret_set_channel_monitor_pipe =
+				consumer_timer_thread_set_channel_monitor_pipe(
+						channel_monitor_pipe);
+		if (!ret_set_channel_monitor_pipe) {
 			int flags;
+			int ret_fcntl;
 
 			ret_code = LTTCOMM_CONSUMERD_SUCCESS;
 			/* Set the pipe as non-blocking. */
-			ret = fcntl(channel_monitor_pipe, F_GETFL, 0);
-			if (ret == -1) {
+			ret_fcntl = fcntl(channel_monitor_pipe, F_GETFL, 0);
+			if (ret_fcntl == -1) {
 				PERROR("fcntl get flags of the channel monitoring pipe");
 				goto error_fatal;
 			}
-			flags = ret;
+			flags = ret_fcntl;
 
-			ret = fcntl(channel_monitor_pipe, F_SETFL,
+			ret_fcntl = fcntl(channel_monitor_pipe, F_SETFL,
 					flags | O_NONBLOCK);
-			if (ret == -1) {
+			if (ret_fcntl == -1) {
 				PERROR("fcntl set O_NONBLOCK flag of the channel monitoring pipe");
 				goto error_fatal;
 			}
@@ -1993,31 +2015,35 @@ error_push_metadata_fatal:
 	}
 	case LTTNG_CONSUMER_ROTATE_CHANNEL:
 	{
-		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_channel *found_channel;
 		uint64_t key = msg.u.rotate_channel.key;
+		int ret_send_status;
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
+		found_channel = consumer_find_channel(key);
+		if (!found_channel) {
 			DBG("Channel %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
+			int rotate_channel;
+
 			/*
 			 * Sample the rotate position of all the streams in
 			 * this channel.
 			 */
-			ret = lttng_consumer_rotate_channel(channel, key,
+			rotate_channel = lttng_consumer_rotate_channel(
+					found_channel, key,
 					msg.u.rotate_channel.relayd_id,
-					msg.u.rotate_channel.metadata,
-					ctx);
-			if (ret < 0) {
+					msg.u.rotate_channel.metadata, ctx);
+			if (rotate_channel < 0) {
 				ERR("Rotate channel failed");
 				ret_code = LTTCOMM_CONSUMERD_ROTATION_FAIL;
 			}
 
 			health_code_update();
 		}
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+
+		ret_send_status = consumer_send_status_msg(sock, ret_code);
+		if (ret_send_status < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_rotate_channel_nosignal;
 		}
@@ -2029,10 +2055,14 @@ error_push_metadata_fatal:
 		 * handle this, but it needs to be after the
 		 * consumer_send_status_msg() call.
 		 */
-		if (channel) {
-			ret = lttng_consumer_rotate_ready_streams(
-					channel, key, ctx);
-			if (ret < 0) {
+		if (found_channel) {
+			int ret_rotate_read_streams;
+
+			ret_rotate_read_streams =
+					lttng_consumer_rotate_ready_streams(
+							found_channel, key,
+							ctx);
+			if (ret_rotate_read_streams < 0) {
 				ERR("Rotate channel failed");
 			}
 		}
@@ -2042,24 +2072,28 @@ end_rotate_channel_nosignal:
 	}
 	case LTTNG_CONSUMER_CLEAR_CHANNEL:
 	{
-		struct lttng_consumer_channel *channel;
+		struct lttng_consumer_channel *found_channel;
 		uint64_t key = msg.u.clear_channel.key;
+		int ret_send_status;
 
-		channel = consumer_find_channel(key);
-		if (!channel) {
+		found_channel = consumer_find_channel(key);
+		if (!found_channel) {
 			DBG("Channel %" PRIu64 " not found", key);
 			ret_code = LTTCOMM_CONSUMERD_CHAN_NOT_FOUND;
 		} else {
-			ret = lttng_consumer_clear_channel(channel);
-			if (ret) {
+			int ret_clear_channel;
+
+			ret_clear_channel = lttng_consumer_clear_channel(
+					found_channel);
+			if (ret_clear_channel) {
 				ERR("Clear channel failed key %" PRIu64, key);
-				ret_code = ret;
+				ret_code = ret_clear_channel;
 			}
 
 			health_code_update();
 		}
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+		ret_send_status = consumer_send_status_msg(sock, ret_code);
+		if (ret_send_status < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
@@ -2067,11 +2101,13 @@ end_rotate_channel_nosignal:
 	}
 	case LTTNG_CONSUMER_INIT:
 	{
+		int ret_send_status;
+
 		ret_code = lttng_consumer_init_command(ctx,
 				msg.u.init.sessiond_uuid);
 		health_code_update();
-		ret = consumer_send_status_msg(sock, ret_code);
-		if (ret < 0) {
+		ret_send_status = consumer_send_status_msg(sock, ret_code);
+		if (ret_send_status < 0) {
 			/* Somehow, the session daemon is not responding anymore. */
 			goto end_nosignal;
 		}
@@ -2099,11 +2135,13 @@ end_rotate_channel_nosignal:
 		 */
 		if (is_local_trace) {
 			int chunk_dirfd;
+			int ret_send_status;
+			ssize_t ret_recv;
 
 			/* Acnowledge the reception of the command. */
-			ret = consumer_send_status_msg(sock,
-					LTTCOMM_CONSUMERD_SUCCESS);
-			if (ret < 0) {
+			ret_send_status = consumer_send_status_msg(
+					sock, LTTCOMM_CONSUMERD_SUCCESS);
+			if (ret_send_status < 0) {
 				/* Somehow, the session daemon is not responding anymore. */
 				goto end_nosignal;
 			}
@@ -2111,8 +2149,9 @@ end_rotate_channel_nosignal:
 			/*
 			 * Receive trace chunk domain dirfd.
 			 */
-			ret = lttcomm_recv_fds_unix_sock(sock, &chunk_dirfd, 1);
-			if (ret != sizeof(chunk_dirfd)) {
+			ret_recv = lttcomm_recv_fds_unix_sock(
+					sock, &chunk_dirfd, 1);
+			if (ret_recv != sizeof(chunk_dirfd)) {
 				ERR("Failed to receive trace chunk domain directory file descriptor");
 				goto error_fatal;
 			}
@@ -2192,13 +2231,14 @@ end_rotate_channel_nosignal:
 	case LTTNG_CONSUMER_OPEN_CHANNEL_PACKETS:
 	{
 		const uint64_t key = msg.u.open_channel_packets.key;
-		struct lttng_consumer_channel *channel =
+		struct lttng_consumer_channel *found_channel =
 				consumer_find_channel(key);
 
-		if (channel) {
-			pthread_mutex_lock(&channel->lock);
-			ret_code = lttng_consumer_open_channel_packets(channel);
-			pthread_mutex_unlock(&channel->lock);
+		if (found_channel) {
+			pthread_mutex_lock(&found_channel->lock);
+			ret_code = lttng_consumer_open_channel_packets(
+					found_channel);
+			pthread_mutex_unlock(&found_channel->lock);
 		} else {
 			/*
 			 * The channel could have disappeared in per-pid
@@ -2220,7 +2260,7 @@ end_nosignal:
 	 * Return 1 to indicate success since the 0 value can be a socket
 	 * shutdown during the recv() or send() call.
 	 */
-	ret = 1;
+	ret_func = 1;
 	goto end;
 
 end_msg_sessiond:
@@ -2229,11 +2269,16 @@ end_msg_sessiond:
 	 * the caller because the session daemon socket management is done
 	 * elsewhere. Returning a negative code or 0 will shutdown the consumer.
 	 */
-	ret = consumer_send_status_msg(sock, ret_code);
-	if (ret < 0) {
-		goto error_fatal;
+	{
+		int ret_send_status;
+
+		ret_send_status = consumer_send_status_msg(sock, ret_code);
+		if (ret_send_status < 0) {
+			goto error_fatal;
+		}
 	}
-	ret = 1;
+
+	ret_func = 1;
 	goto end;
 
 end_channel_error:
@@ -2245,23 +2290,28 @@ end_channel_error:
 		destroy_channel(channel);
 	}
 	/* We have to send a status channel message indicating an error. */
-	ret = consumer_send_status_channel(sock, NULL);
-	if (ret < 0) {
-		/* Stop everything if session daemon can not be notified. */
-		goto error_fatal;
+	{
+		int ret_send_status;
+
+		ret_send_status = consumer_send_status_channel(sock, NULL);
+		if (ret_send_status < 0) {
+			/* Stop everything if session daemon can not be notified. */
+			goto error_fatal;
+		}
 	}
-	ret = 1;
+
+	ret_func = 1;
 	goto end;
 
 error_fatal:
 	/* This will issue a consumer stop. */
-	ret = -1;
+	ret_func = -1;
 	goto end;
 
 end:
 	rcu_read_unlock();
 	health_code_update();
-	return ret;
+	return ret_func;
 }
 
 void lttng_ustctl_flush_buffer(struct lttng_consumer_stream *stream,
