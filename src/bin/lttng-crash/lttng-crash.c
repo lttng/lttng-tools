@@ -183,7 +183,7 @@ static const char *progname;
 static char *opt_viewer_path = NULL;
 static char *opt_output_path = NULL;
 
-static char *input_path;
+static char *the_input_path;
 
 int lttng_opt_quiet, lttng_opt_verbose, lttng_opt_mi;
 
@@ -300,7 +300,7 @@ static int parse_args(int argc, char **argv)
 		goto error;
 	}
 
-	input_path = argv[optind];
+	the_input_path = argv[optind];
 end:
 	return ret;
 
@@ -1244,7 +1244,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = extract_trace_recursive(output_path, input_path);
+	ret = extract_trace_recursive(output_path, the_input_path);
 	if (ret < 0) {
 		has_warning = true;
 		goto end;
