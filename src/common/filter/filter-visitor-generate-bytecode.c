@@ -240,7 +240,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		switch (op->type) {
 		case IR_LOAD_EXPRESSION_GET_CONTEXT_ROOT:
 		{
-			const int ret = bytecode_push_get_context_root(&ctx->bytecode);
+			ret = bytecode_push_get_context_root(&ctx->bytecode);
 
 			if (ret) {
 				return ret;
@@ -250,7 +250,8 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_APP_CONTEXT_ROOT:
 		{
-			const int ret = bytecode_push_get_app_context_root(&ctx->bytecode);
+			ret = bytecode_push_get_app_context_root(
+					&ctx->bytecode);
 
 			if (ret) {
 				return ret;
@@ -260,7 +261,7 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_PAYLOAD_ROOT:
 		{
-			const int ret = bytecode_push_get_payload_root(&ctx->bytecode);
+			ret = bytecode_push_get_payload_root(&ctx->bytecode);
 
 			if (ret) {
 				return ret;
@@ -270,10 +271,8 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_SYMBOL:
 		{
-			const int ret = bytecode_push_get_symbol(
-					&ctx->bytecode,
-					&ctx->bytecode_reloc,
-					op->u.symbol);
+			ret = bytecode_push_get_symbol(&ctx->bytecode,
+					&ctx->bytecode_reloc, op->u.symbol);
 
 			if (ret) {
 				return ret;
@@ -283,7 +282,8 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		}
 		case IR_LOAD_EXPRESSION_GET_INDEX:
 		{
-			const int ret = bytecode_push_get_index_u64(&ctx->bytecode, op->u.index);
+			ret = bytecode_push_get_index_u64(
+					&ctx->bytecode, op->u.index);
 
 			if (ret) {
 				return ret;
@@ -295,7 +295,6 @@ int visit_node_load_expression(struct filter_parser_ctx *ctx,
 		{
 			struct load_op *insn;
 			uint32_t insn_len = sizeof(struct load_op);
-			int ret;
 
 			insn = calloc(insn_len, 1);
 			if (!insn)
