@@ -4094,7 +4094,6 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 					 */
 					flush_active = produced_pos != consumed_pos;
 					if (!flush_active) {
-						enum lttng_trace_chunk_status chunk_status;
 						const char *trace_chunk_name;
 						uint64_t trace_chunk_id;
 
