@@ -1109,7 +1109,6 @@ int save_agent_events(struct config_writer *writer,
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry(agent->events->ht, &iter.iter, node, node) {
-		int ret;
 		struct agent_event *agent_event;
 		struct ltt_ust_event fake_event;
 
