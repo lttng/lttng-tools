@@ -4360,7 +4360,7 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 				goto end_unlock_session_list;
 			}
 
-			agent_add(agt, trigger_agents_ht_by_domain);
+			agent_add(agt, the_trigger_agents_ht_by_domain);
 		}
 
 		ret_code = trigger_agent_enable(trigger, agt);
@@ -5320,8 +5320,8 @@ int cmd_rotate_session(struct ltt_session *session,
 	chunk_being_archived = NULL;
 	if (!quiet_rotation) {
 		ret = notification_thread_command_session_rotation_ongoing(
-				notification_thread_handle,
-				session->name, session->uid, session->gid,
+				the_notification_thread_handle, session->name,
+				session->uid, session->gid,
 				ongoing_rotation_chunk_id);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to notify notification thread that a session rotation is ongoing for session %s",

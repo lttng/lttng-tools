@@ -77,7 +77,7 @@ static void *thread_manage_health(void *data)
 	}
 
 	/* Create unix socket */
-	sock = lttcomm_create_unix_sock(config.health_unix_sock_path.value);
+	sock = lttcomm_create_unix_sock(the_config.health_unix_sock_path.value);
 	if (sock < 0) {
 		ERR("Unable to create health check Unix socket");
 		goto error;
@@ -87,23 +87,23 @@ static void *thread_manage_health(void *data)
 		/* lttng health client socket path permissions */
 		gid_t gid;
 
-		ret = utils_get_group_id(config.tracing_group_name.value, true, &gid);
+		ret = utils_get_group_id(the_config.tracing_group_name.value, true, &gid);
 		if (ret) {
 			/* Default to root group. */
 			gid = 0;
 		}
 
-		ret = chown(config.health_unix_sock_path.value, 0, gid);
+		ret = chown(the_config.health_unix_sock_path.value, 0, gid);
 		if (ret < 0) {
-			ERR("Unable to set group on %s", config.health_unix_sock_path.value);
+			ERR("Unable to set group on %s", the_config.health_unix_sock_path.value);
 			PERROR("chown");
 			goto error;
 		}
 
-		ret = chmod(config.health_unix_sock_path.value,
+		ret = chmod(the_config.health_unix_sock_path.value,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (ret < 0) {
-			ERR("Unable to set permissions on %s", config.health_unix_sock_path.value);
+			ERR("Unable to set permissions on %s", the_config.health_unix_sock_path.value);
 			PERROR("chmod");
 			goto error;
 		}
@@ -203,7 +203,7 @@ restart:
 			 * health_check_state returns 0 if health is
 			 * bad.
 			 */
-			if (!health_check_state(health_sessiond, i)) {
+			if (!health_check_state(the_health_sessiond, i)) {
 				reply.ret_code |= 1ULL << i;
 			}
 		}
@@ -229,7 +229,7 @@ error:
 		ERR("Health error occurred in %s", __func__);
 	}
 	DBG("Health check thread dying");
-	unlink(config.health_unix_sock_path.value);
+	unlink(the_config.health_unix_sock_path.value);
 	if (sock >= 0) {
 		ret = close(sock);
 		if (ret) {

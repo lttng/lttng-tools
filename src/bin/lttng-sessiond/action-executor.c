@@ -539,7 +539,8 @@ static void *action_executor_thread(void *_data)
 
 	assert(executor);
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR);
+	health_register(the_health_sessiond,
+			HEALTH_SESSIOND_TYPE_ACTION_EXECUTOR);
 
 	rcu_register_thread();
 	rcu_thread_online();
@@ -592,7 +593,7 @@ static void *action_executor_thread(void *_data)
 
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 
 	return NULL;
 }

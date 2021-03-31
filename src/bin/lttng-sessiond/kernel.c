@@ -1946,8 +1946,8 @@ int init_kernel_tracer(void)
 	}
 
 	/* Validate kernel version */
-	ret = kernel_validate_version(&kernel_tracer_version,
-			&kernel_tracer_abi_version);
+	ret = kernel_validate_version(&the_kernel_tracer_version,
+			&the_kernel_tracer_abi_version);
 	if (ret < 0) {
 		goto error_version;
 	}
@@ -2073,7 +2073,7 @@ void cleanup_kernel_tracer(void)
 	DBG2("Closing kernel event notifier group notification file descriptor");
 	if (kernel_tracer_event_notifier_group_notification_fd >= 0) {
 		int ret = notification_thread_command_remove_tracer_event_source(
-				notification_thread_handle,
+				the_notification_thread_handle,
 				kernel_tracer_event_notifier_group_notification_fd);
 		if (ret != LTTNG_OK) {
 			ERR("Failed to remove kernel event notifier notification from notification thread");

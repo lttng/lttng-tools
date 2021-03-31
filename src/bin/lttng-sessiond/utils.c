@@ -16,7 +16,7 @@
 #include "snapshot.h"
 #include "lttng-sessiond.h"
 
-int ht_cleanup_pipe[2] = { -1, -1 };
+int the_ht_cleanup_pipe[2] = {-1, -1};
 
 /*
  * Write to writable pipe used to notify a thread.
@@ -41,7 +41,7 @@ int notify_thread_pipe(int wpipe)
 void ht_cleanup_push(struct lttng_ht *ht)
 {
 	ssize_t ret;
-	int fd = ht_cleanup_pipe[1];
+	int fd = the_ht_cleanup_pipe[1];
 
 	if (!ht) {
 		return;

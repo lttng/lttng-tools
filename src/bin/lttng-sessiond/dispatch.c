@@ -39,7 +39,7 @@ static void update_ust_app(int app_sock)
 	struct ust_app *app;
 
 	/* Consumer is in an ERROR state. Stop any application update. */
-	if (uatomic_read(&ust_consumerd_state) == CONSUMER_ERROR) {
+	if (uatomic_read(&the_ust_consumerd_state) == CONSUMER_ERROR) {
 		/* Stop the update process since the consumer is dead. */
 		return;
 	}
@@ -235,7 +235,8 @@ static void *thread_dispatch_ust_registration(void *data)
 
 	rcu_register_thread();
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
+	health_register(the_health_sessiond,
+			HEALTH_SESSIOND_TYPE_APP_REG_DISPATCH);
 
 	if (testpoint(sessiond_thread_app_reg_dispatch)) {
 		goto error_testpoint;
@@ -486,7 +487,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	rcu_unregister_thread();
 	return NULL;
 }

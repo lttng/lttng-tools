@@ -70,7 +70,7 @@ static int set_pollset(struct lttng_poll_event *events, size_t size)
 		goto error;
 	}
 
-	ret = lttng_poll_add(events, ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
+	ret = lttng_poll_add(events, the_ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
 		DBG("[ht-thread] lttng_poll_add error %d.", ret);
 		goto error;
@@ -85,7 +85,7 @@ error:
 static void cleanup_ht_cleanup_thread(void *data)
 {
 	utils_close_pipe(ht_cleanup_quit_pipe);
-	utils_close_pipe(ht_cleanup_pipe);
+	utils_close_pipe(the_ht_cleanup_pipe);
 }
 
 static void *thread_ht_cleanup(void *data)
@@ -100,7 +100,7 @@ static void *thread_ht_cleanup(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
 
 	if (testpoint(sessiond_thread_ht_cleanup)) {
 		DBG("[ht-thread] testpoint.");
@@ -145,14 +145,14 @@ static void *thread_ht_cleanup(void *data)
 			revents = LTTNG_POLL_GETEV(&events, i);
 			pollfd = LTTNG_POLL_GETFD(&events, i);
 
-			if (pollfd != ht_cleanup_pipe[0]) {
+			if (pollfd != the_ht_cleanup_pipe[0]) {
 				continue;
 			}
 
 			if (revents & LPOLLIN) {
 				/* Get socket from dispatch thread. */
-				size_ret = lttng_read(ht_cleanup_pipe[0], &ht,
-						sizeof(ht));
+				size_ret = lttng_read(the_ht_cleanup_pipe[0],
+						&ht, sizeof(ht));
 				if (size_ret < sizeof(ht)) {
 					PERROR("ht cleanup notify pipe");
 					goto error;
@@ -195,7 +195,7 @@ static void *thread_ht_cleanup(void *data)
 				continue;
 			}
 
-			if (pollfd == ht_cleanup_pipe[0]) {
+			if (pollfd == the_ht_cleanup_pipe[0]) {
 				continue;
 			}
 
@@ -219,7 +219,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;
@@ -243,7 +243,7 @@ struct lttng_thread *launch_ht_cleanup_thread(void)
 	int ret;
 	struct lttng_thread *thread;
 
-	ret = init_pipe(ht_cleanup_pipe);
+	ret = init_pipe(the_ht_cleanup_pipe);
 	if (ret) {
 		goto error;
 	}

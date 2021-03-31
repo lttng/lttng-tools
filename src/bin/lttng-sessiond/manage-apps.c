@@ -54,7 +54,7 @@ static void *thread_application_management(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_APP_MANAGE);
 
 	if (testpoint(sessiond_thread_manage_apps)) {
 		goto error_testpoint;
@@ -190,7 +190,7 @@ error_testpoint:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	DBG("Application communication apps thread cleanup complete");
 	rcu_thread_offline();
 	rcu_unregister_thread();

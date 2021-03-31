@@ -10,31 +10,31 @@
 #include "lttng-sessiond.h"
 #include <common/uuid.h>
 
-lttng_uuid sessiond_uuid;
+lttng_uuid the_sessiond_uuid;
 
-int ust_consumerd64_fd = -1;
-int ust_consumerd32_fd = -1;
+int the_ust_consumerd64_fd = -1;
+int the_ust_consumerd32_fd = -1;
 
-long page_size;
+long the_page_size;
 
-struct health_app *health_sessiond;
+struct health_app *the_health_sessiond;
 
-struct notification_thread_handle *notification_thread_handle;
+struct notification_thread_handle *the_notification_thread_handle;
 
-struct lttng_ht *agent_apps_ht_by_sock = NULL;
-struct lttng_ht *trigger_agents_ht_by_domain = NULL;
+struct lttng_ht *the_agent_apps_ht_by_sock = NULL;
+struct lttng_ht *the_trigger_agents_ht_by_domain = NULL;
 
-struct lttng_kernel_tracer_version kernel_tracer_version;
-struct lttng_kernel_tracer_abi_version kernel_tracer_abi_version;
+struct lttng_kernel_tracer_version the_kernel_tracer_version;
+struct lttng_kernel_tracer_abi_version the_kernel_tracer_abi_version;
 
-int kernel_poll_pipe[2] = { -1, -1 };
+int the_kernel_poll_pipe[2] = {-1, -1};
 
-pid_t ppid;
-pid_t child_ppid;
+pid_t the_ppid;
+pid_t the_child_ppid;
 
-struct sessiond_config config;
+struct sessiond_config the_config;
 
-struct consumer_data kconsumer_data = {
+struct consumer_data the_kconsumer_data = {
 	.type = LTTNG_CONSUMER_KERNEL,
 	.err_sock = -1,
 	.cmd_sock = -1,
@@ -43,7 +43,7 @@ struct consumer_data kconsumer_data = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-struct consumer_data ustconsumer64_data = {
+struct consumer_data the_ustconsumer64_data = {
 	.type = LTTNG_CONSUMER64_UST,
 	.err_sock = -1,
 	.cmd_sock = -1,
@@ -52,7 +52,7 @@ struct consumer_data ustconsumer64_data = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-struct consumer_data ustconsumer32_data = {
+struct consumer_data the_ustconsumer32_data = {
 	.type = LTTNG_CONSUMER32_UST,
 	.err_sock = -1,
 	.cmd_sock = -1,
@@ -61,12 +61,12 @@ struct consumer_data ustconsumer32_data = {
 	.lock = PTHREAD_MUTEX_INITIALIZER,
 };
 
-enum consumerd_state ust_consumerd_state;
-enum consumerd_state kernel_consumerd_state;
+enum consumerd_state the_ust_consumerd_state;
+enum consumerd_state the_kernel_consumerd_state;
 
 static void __attribute__((constructor)) init_sessiond_uuid(void)
 {
-	if (lttng_uuid_generate(sessiond_uuid)) {
+	if (lttng_uuid_generate(the_sessiond_uuid)) {
 		ERR("Failed to generate a session daemon UUID");
 		abort();
 	}

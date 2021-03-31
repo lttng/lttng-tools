@@ -370,10 +370,10 @@ struct consumer_socket *consumer_find_socket_by_bitness(int bits,
 
 	switch (bits) {
 	case 64:
-		consumer_fd = uatomic_read(&ust_consumerd64_fd);
+		consumer_fd = uatomic_read(&the_ust_consumerd64_fd);
 		break;
 	case 32:
-		consumer_fd = uatomic_read(&ust_consumerd32_fd);
+		consumer_fd = uatomic_read(&the_ust_consumerd32_fd);
 		break;
 	default:
 		assert(0);
@@ -1153,12 +1153,10 @@ int consumer_send_relayd_socket(struct consumer_socket *consumer_sock,
 		char output_path[LTTNG_PATH_MAX] = {};
 		uint64_t relayd_session_id;
 
-		ret = relayd_create_session(rsock,
-				&relayd_session_id,
+		ret = relayd_create_session(rsock, &relayd_session_id,
 				session_name, hostname, base_path,
-				session_live_timer,
-				consumer->snapshot, session_id,
-				sessiond_uuid, current_chunk_id,
+				session_live_timer, consumer->snapshot,
+				session_id, the_sessiond_uuid, current_chunk_id,
 				session_creation_time,
 				session_name_contains_creation_time,
 				output_path);

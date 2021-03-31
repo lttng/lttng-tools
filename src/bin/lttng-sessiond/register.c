@@ -42,9 +42,11 @@ static int create_application_socket(void)
 	const mode_t old_umask = umask(0);
 
 	/* Create the application unix socket */
-	apps_sock = lttcomm_create_unix_sock(config.apps_unix_sock_path.value);
+	apps_sock = lttcomm_create_unix_sock(
+			the_config.apps_unix_sock_path.value);
 	if (apps_sock < 0) {
-		ERR("Create unix sock failed: %s", config.apps_unix_sock_path.value);
+		ERR("Create unix sock failed: %s",
+				the_config.apps_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -58,11 +60,12 @@ static int create_application_socket(void)
 	}
 
 	/* File permission MUST be 666 */
-	ret = chmod(config.apps_unix_sock_path.value,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	ret = chmod(the_config.apps_unix_sock_path.value,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH |
+					S_IWOTH);
 	if (ret < 0) {
 		PERROR("Set file permissions failed on %s",
-				config.apps_unix_sock_path.value);
+				the_config.apps_unix_sock_path.value);
 		goto error_close_socket;
 	}
 
@@ -90,7 +93,8 @@ static int notify_ust_apps(int active, bool is_root)
 	DBG("Notifying applications of session daemon state: %d", active);
 
 	/* See shm.c for this call implying mmap, shm and futex calls */
-	wait_shm_mmap = shm_ust_get_mmap(config.wait_shm_path.value, is_root);
+	wait_shm_mmap = shm_ust_get_mmap(
+			the_config.wait_shm_path.value, is_root);
 	if (wait_shm_mmap == NULL) {
 		goto error;
 	}
@@ -166,7 +170,7 @@ static void *thread_application_registration(void *data)
 	DBG("[thread] Manage application registration started");
 
 	pthread_cleanup_push(thread_init_cleanup, thread_state);
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_APP_REG);
 
 	ret = lttcomm_listen_unix_sock(application_socket);
 	if (ret < 0) {
@@ -247,11 +251,11 @@ static void *thread_application_registration(void *data)
 					 * lttcomm_setsockopt_snd_timeout expect msec as
 					 * parameter.
 					 */
-					if (config.app_socket_timeout >= 0) {
+					if (the_config.app_socket_timeout >= 0) {
 						(void) lttcomm_setsockopt_rcv_timeout(sock,
-								config.app_socket_timeout * 1000);
+								the_config.app_socket_timeout * 1000);
 						(void) lttcomm_setsockopt_snd_timeout(sock,
-								config.app_socket_timeout * 1000);
+								the_config.app_socket_timeout * 1000);
 					}
 
 					/*
@@ -353,7 +357,7 @@ error:
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 	}
-	unlink(config.apps_unix_sock_path.value);
+	unlink(the_config.apps_unix_sock_path.value);
 
 error_poll_add:
 	lttng_poll_clean(&events);
@@ -364,7 +368,7 @@ error_create_poll:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	return NULL;
 }
 

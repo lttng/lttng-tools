@@ -954,7 +954,7 @@ void session_release(struct urcu_ref *ref)
 	 * Must notify the kernel thread here to update it's poll set in order to
 	 * remove the channel(s)' fd just destroyed.
 	 */
-	ret = notify_thread_pipe(kernel_poll_pipe[1]);
+	ret = notify_thread_pipe(the_kernel_poll_pipe[1]);
 	if (ret < 0) {
 		PERROR("write kernel poll pipe");
 	}

@@ -208,7 +208,7 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 		/*
 		 * Exec consumerd.
 		 */
-		if (config.verbose_consumer) {
+		if (the_config.verbose_consumer) {
 			verbosity = "--verbose";
 		} else if (lttng_opt_quiet) {
 			verbosity = "--quiet";
@@ -224,35 +224,37 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 			 * fallback on the 32-bit one,
 			 */
 			DBG3("Looking for a kernel consumer at these locations:");
-			DBG3("	1) %s", config.consumerd64_bin_path.value ? : "NULL");
+			DBG3("	1) %s", the_config.consumerd64_bin_path.value ? : "NULL");
 			DBG3("	2) %s/%s", INSTALL_BIN_PATH, DEFAULT_CONSUMERD_FILE);
-			DBG3("	3) %s", config.consumerd32_bin_path.value ? : "NULL");
-			if (stat(config.consumerd64_bin_path.value, &st) == 0) {
+			DBG3("	3) %s", the_config.consumerd32_bin_path.value ? : "NULL");
+			if (stat(the_config.consumerd64_bin_path.value, &st) == 0) {
 				DBG3("Found location #1");
-				consumer_to_use = config.consumerd64_bin_path.value;
+				consumer_to_use = the_config.consumerd64_bin_path.value;
 			} else if (stat(INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE, &st) == 0) {
 				DBG3("Found location #2");
 				consumer_to_use = INSTALL_BIN_PATH "/" DEFAULT_CONSUMERD_FILE;
-			} else if (config.consumerd32_bin_path.value &&
-					stat(config.consumerd32_bin_path.value, &st) == 0) {
+			} else if (the_config.consumerd32_bin_path.value &&
+					stat(the_config.consumerd32_bin_path.value, &st) == 0) {
 				DBG3("Found location #3");
-				consumer_to_use = config.consumerd32_bin_path.value;
+				consumer_to_use = the_config.consumerd32_bin_path.value;
 			} else {
 				DBG("Could not find any valid consumerd executable");
 				ret = -EINVAL;
 				goto error;
 			}
 			DBG("Using kernel consumer at: %s",  consumer_to_use);
-			(void) execl(consumer_to_use,
-				"lttng-consumerd", verbosity, "-k",
-				"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-				"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-				"--group", config.tracing_group_name.value,
-				NULL);
+			(void) execl(consumer_to_use, "lttng-consumerd",
+					verbosity, "-k", "--consumerd-cmd-sock",
+					consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock",
+					consumer_data->err_unix_sock_path,
+					"--group",
+					the_config.tracing_group_name.value,
+					NULL);
 			break;
 		case LTTNG_CONSUMER64_UST:
 		{
-			if (config.consumerd64_lib_dir.value) {
+			if (the_config.consumerd64_lib_dir.value) {
 				const char *tmp;
 				size_t tmplen;
 				char *tmpnew;
@@ -261,13 +263,13 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen(config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(the_config.consumerd64_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
-				strcat(tmpnew, config.consumerd64_lib_dir.value);
+				strcat(tmpnew, the_config.consumerd64_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
@@ -279,17 +281,22 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 64-bit UST consumer at: %s",  config.consumerd64_bin_path.value);
-			(void) execl(config.consumerd64_bin_path.value, "lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					"--group", config.tracing_group_name.value,
+			DBG("Using 64-bit UST consumer at: %s",
+					the_config.consumerd64_bin_path.value);
+			(void) execl(the_config.consumerd64_bin_path.value,
+					"lttng-consumerd", verbosity, "-u",
+					"--consumerd-cmd-sock",
+					consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock",
+					consumer_data->err_unix_sock_path,
+					"--group",
+					the_config.tracing_group_name.value,
 					NULL);
 			break;
 		}
 		case LTTNG_CONSUMER32_UST:
 		{
-			if (config.consumerd32_lib_dir.value) {
+			if (the_config.consumerd32_lib_dir.value) {
 				const char *tmp;
 				size_t tmplen;
 				char *tmpnew;
@@ -298,13 +305,13 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 				if (!tmp) {
 					tmp = "";
 				}
-				tmplen = strlen(config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
+				tmplen = strlen(the_config.consumerd32_lib_dir.value) + 1 /* : */ + strlen(tmp);
 				tmpnew = zmalloc(tmplen + 1 /* \0 */);
 				if (!tmpnew) {
 					ret = -ENOMEM;
 					goto error;
 				}
-				strcat(tmpnew, config.consumerd32_lib_dir.value);
+				strcat(tmpnew, the_config.consumerd32_lib_dir.value);
 				if (tmp[0] != '\0') {
 					strcat(tmpnew, ":");
 					strcat(tmpnew, tmp);
@@ -316,11 +323,16 @@ static pid_t spawn_consumerd(struct consumer_data *consumer_data)
 					goto error;
 				}
 			}
-			DBG("Using 32-bit UST consumer at: %s",  config.consumerd32_bin_path.value);
-			(void) execl(config.consumerd32_bin_path.value, "lttng-consumerd", verbosity, "-u",
-					"--consumerd-cmd-sock", consumer_data->cmd_unix_sock_path,
-					"--consumerd-err-sock", consumer_data->err_unix_sock_path,
-					"--group", config.tracing_group_name.value,
+			DBG("Using 32-bit UST consumer at: %s",
+					the_config.consumerd32_bin_path.value);
+			(void) execl(the_config.consumerd32_bin_path.value,
+					"lttng-consumerd", verbosity, "-u",
+					"--consumerd-cmd-sock",
+					consumer_data->cmd_unix_sock_path,
+					"--consumerd-err-sock",
+					consumer_data->err_unix_sock_path,
+					"--group",
+					the_config.tracing_group_name.value,
 					NULL);
 			break;
 		}
@@ -784,7 +796,8 @@ static int check_rotate_compatible(void)
 {
 	int ret = 1;
 
-	if (kernel_tracer_version.major != 2 || kernel_tracer_version.minor < 11) {
+	if (the_kernel_tracer_version.major != 2 ||
+			the_kernel_tracer_version.minor < 11) {
 		DBG("Kernel tracer version is not compatible with the rotation feature");
 		ret = 0;
 	}
@@ -893,8 +906,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		break;
 	}
 
-	if (config.no_kernel && need_domain
-			&& cmd_ctx->lsm.domain.type == LTTNG_DOMAIN_KERNEL) {
+	if (the_config.no_kernel && need_domain &&
+			cmd_ctx->lsm.domain.type == LTTNG_DOMAIN_KERNEL) {
 		if (!is_root) {
 			ret = LTTNG_ERR_NEED_ROOT_SESSIOND;
 		} else {
@@ -905,13 +918,13 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 
 	/* Deny register consumer if we already have a spawned consumer. */
 	if (cmd_ctx->lsm.cmd_type == LTTNG_REGISTER_CONSUMER) {
-		pthread_mutex_lock(&kconsumer_data.pid_mutex);
-		if (kconsumer_data.pid > 0) {
+		pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
+		if (the_kconsumer_data.pid > 0) {
 			ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
-			pthread_mutex_unlock(&kconsumer_data.pid_mutex);
+			pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 			goto error;
 		}
-		pthread_mutex_unlock(&kconsumer_data.pid_mutex);
+		pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 	}
 
 	/*
@@ -1034,8 +1047,8 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */
-		if (need_consumerd && uatomic_read(&kernel_consumerd_state) ==
-						      CONSUMER_ERROR) {
+		if (need_consumerd && uatomic_read(&the_kernel_consumerd_state) ==
+						CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_KERNCONSUMERD;
 			goto error;
 		}
@@ -1051,25 +1064,25 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 			}
 
 			/* Start the kernel consumer daemon */
-			pthread_mutex_lock(&kconsumer_data.pid_mutex);
-			if (kconsumer_data.pid == 0 &&
+			pthread_mutex_lock(&the_kconsumer_data.pid_mutex);
+			if (the_kconsumer_data.pid == 0 &&
 					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
-				ret = start_consumerd(&kconsumer_data);
+				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
+				ret = start_consumerd(&the_kconsumer_data);
 				if (ret < 0) {
 					ret = LTTNG_ERR_KERN_CONSUMER_FAIL;
 					goto error;
 				}
-				uatomic_set(&kernel_consumerd_state, CONSUMER_STARTED);
+				uatomic_set(&the_kernel_consumerd_state, CONSUMER_STARTED);
 			} else {
-				pthread_mutex_unlock(&kconsumer_data.pid_mutex);
+				pthread_mutex_unlock(&the_kconsumer_data.pid_mutex);
 			}
 
 			/*
 			 * The consumer was just spawned so we need to add the socket to
 			 * the consumer output of the session if exist.
 			 */
-			ret = consumer_create_socket(&kconsumer_data,
+			ret = consumer_create_socket(&the_kconsumer_data,
 					cmd_ctx->session->kernel_session->consumer);
 			if (ret < 0) {
 				goto error;
@@ -1093,8 +1106,9 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 		}
 
 		/* Consumer is in an ERROR state. Report back to client */
-		if (need_consumerd && uatomic_read(&ust_consumerd_state) ==
-						      CONSUMER_ERROR) {
+		if (need_consumerd &&
+				uatomic_read(&the_ust_consumerd_state) ==
+						CONSUMER_ERROR) {
 			ret = LTTNG_ERR_NO_USTCONSUMERD;
 			goto error;
 		}
@@ -1111,58 +1125,58 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 
 			/* Start the UST consumer daemons */
 			/* 64-bit */
-			pthread_mutex_lock(&ustconsumer64_data.pid_mutex);
-			if (config.consumerd64_bin_path.value &&
-					ustconsumer64_data.pid == 0 &&
+			pthread_mutex_lock(&the_ustconsumer64_data.pid_mutex);
+			if (the_config.consumerd64_bin_path.value &&
+					the_ustconsumer64_data.pid == 0 &&
 					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
-				ret = start_consumerd(&ustconsumer64_data);
+				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
+				ret = start_consumerd(&the_ustconsumer64_data);
 				if (ret < 0) {
 					ret = LTTNG_ERR_UST_CONSUMER64_FAIL;
-					uatomic_set(&ust_consumerd64_fd, -EINVAL);
+					uatomic_set(&the_ust_consumerd64_fd, -EINVAL);
 					goto error;
 				}
 
-				uatomic_set(&ust_consumerd64_fd, ustconsumer64_data.cmd_sock);
-				uatomic_set(&ust_consumerd_state, CONSUMER_STARTED);
+				uatomic_set(&the_ust_consumerd64_fd, the_ustconsumer64_data.cmd_sock);
+				uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
 			} else {
-				pthread_mutex_unlock(&ustconsumer64_data.pid_mutex);
+				pthread_mutex_unlock(&the_ustconsumer64_data.pid_mutex);
 			}
 
 			/*
 			 * Setup socket for consumer 64 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			ret = consumer_create_socket(&ustconsumer64_data,
+			ret = consumer_create_socket(&the_ustconsumer64_data,
 					cmd_ctx->session->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
 			}
 
 			/* 32-bit */
-			pthread_mutex_lock(&ustconsumer32_data.pid_mutex);
-			if (config.consumerd32_bin_path.value &&
-					ustconsumer32_data.pid == 0 &&
+			pthread_mutex_lock(&the_ustconsumer32_data.pid_mutex);
+			if (the_config.consumerd32_bin_path.value &&
+					the_ustconsumer32_data.pid == 0 &&
 					cmd_ctx->lsm.cmd_type != LTTNG_REGISTER_CONSUMER) {
-				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
-				ret = start_consumerd(&ustconsumer32_data);
+				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
+				ret = start_consumerd(&the_ustconsumer32_data);
 				if (ret < 0) {
 					ret = LTTNG_ERR_UST_CONSUMER32_FAIL;
-					uatomic_set(&ust_consumerd32_fd, -EINVAL);
+					uatomic_set(&the_ust_consumerd32_fd, -EINVAL);
 					goto error;
 				}
 
-				uatomic_set(&ust_consumerd32_fd, ustconsumer32_data.cmd_sock);
-				uatomic_set(&ust_consumerd_state, CONSUMER_STARTED);
+				uatomic_set(&the_ust_consumerd32_fd, the_ustconsumer32_data.cmd_sock);
+				uatomic_set(&the_ust_consumerd_state, CONSUMER_STARTED);
 			} else {
-				pthread_mutex_unlock(&ustconsumer32_data.pid_mutex);
+				pthread_mutex_unlock(&the_ustconsumer32_data.pid_mutex);
 			}
 
 			/*
 			 * Setup socket for consumer 32 bit. No need for atomic access
 			 * since it was set above and can ONLY be set in this thread.
 			 */
-			ret = consumer_create_socket(&ustconsumer32_data,
+			ret = consumer_create_socket(&the_ustconsumer32_data,
 					cmd_ctx->session->ust_session->consumer);
 			if (ret < 0) {
 				goto error;
@@ -1185,13 +1199,13 @@ skip_domain:
 		case LTTNG_DOMAIN_LOG4J:
 		case LTTNG_DOMAIN_PYTHON:
 		case LTTNG_DOMAIN_UST:
-			if (uatomic_read(&ust_consumerd_state) != CONSUMER_STARTED) {
+			if (uatomic_read(&the_ust_consumerd_state) != CONSUMER_STARTED) {
 				ret = LTTNG_ERR_NO_USTCONSUMERD;
 				goto error;
 			}
 			break;
 		case LTTNG_DOMAIN_KERNEL:
-			if (uatomic_read(&kernel_consumerd_state) != CONSUMER_STARTED) {
+			if (uatomic_read(&the_kernel_consumerd_state) != CONSUMER_STARTED) {
 				ret = LTTNG_ERR_NO_KERNCONSUMERD;
 				goto error;
 			}
@@ -1292,7 +1306,7 @@ skip_domain:
 				cmd_ctx->lsm.domain.type,
 				cmd_ctx->lsm.u.context.channel_name,
 				ALIGNED_CONST_PTR(cmd_ctx->lsm.u.context.ctx),
-				kernel_poll_pipe[1]);
+				the_kernel_poll_pipe[1]);
 
 		cmd_ctx->lsm.u.context.ctx.u.app_ctx.provider_name = NULL;
 		cmd_ctx->lsm.u.context.ctx.u.app_ctx.ctx_name = NULL;
@@ -1351,7 +1365,7 @@ error_add_context:
 		ret = cmd_enable_channel(cmd_ctx->session,
 				ALIGNED_CONST_PTR(cmd_ctx->lsm.domain),
 				ALIGNED_CONST_PTR(cmd_ctx->lsm.u.channel.chan),
-				kernel_poll_pipe[1]);
+				the_kernel_poll_pipe[1]);
 		break;
 	}
 	case LTTNG_PROCESS_ATTR_TRACKER_ADD_INCLUDE_VALUE:
@@ -1685,7 +1699,7 @@ error_add_context:
 				cmd_ctx->lsm.u.enable.channel_name,
 				ev,
 				filter_expression, bytecode, exclusion,
-				kernel_poll_pipe[1]);
+				the_kernel_poll_pipe[1]);
 		lttng_event_destroy(ev);
 		break;
 	}
@@ -1841,8 +1855,7 @@ error_add_context:
 	case LTTNG_DESTROY_SESSION:
 	{
 		ret = cmd_destroy_session(cmd_ctx->session,
-				notification_thread_handle,
-				sock);
+				the_notification_thread_handle, sock);
 		break;
 	}
 	case LTTNG_LIST_DOMAINS:
@@ -1968,7 +1981,7 @@ error_add_context:
 
 		switch (cmd_ctx->lsm.domain.type) {
 		case LTTNG_DOMAIN_KERNEL:
-			cdata = &kconsumer_data;
+			cdata = &the_kconsumer_data;
 			break;
 		default:
 			ret = LTTNG_ERR_UND;
@@ -2159,7 +2172,8 @@ error_add_context:
 		original_reply_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		ret = cmd_register_trigger(&cmd_creds, payload_trigger,
-				notification_thread_handle, &return_trigger);
+				the_notification_thread_handle,
+				&return_trigger);
 		if (ret != LTTNG_OK) {
 			lttng_trigger_put(payload_trigger);
 			goto error;
@@ -2197,7 +2211,7 @@ error_add_context:
 		}
 
 		ret = cmd_unregister_trigger(&cmd_creds, payload_trigger,
-				notification_thread_handle);
+				the_notification_thread_handle);
 		lttng_trigger_put(payload_trigger);
 		break;
 	}
@@ -2270,11 +2284,9 @@ error_add_context:
 		schedule_type = (enum lttng_rotation_schedule_type) cmd_ctx->lsm.u.rotation_set_schedule.type;
 		value = cmd_ctx->lsm.u.rotation_set_schedule.value;
 
-		ret = cmd_rotation_set_schedule(cmd_ctx->session,
-				set_schedule,
-				schedule_type,
-				value,
-				notification_thread_handle);
+		ret = cmd_rotation_set_schedule(cmd_ctx->session, set_schedule,
+				schedule_type, value,
+				the_notification_thread_handle);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2319,8 +2331,8 @@ error_add_context:
 
 		original_payload_size = cmd_ctx->reply_payload.buffer.size;
 
-		ret = cmd_list_triggers(cmd_ctx,
-				notification_thread_handle, &return_triggers);
+		ret = cmd_list_triggers(cmd_ctx, the_notification_thread_handle,
+				&return_triggers);
 		if (ret != LTTNG_OK) {
 			goto error;
 		}
@@ -2377,9 +2389,11 @@ static int create_client_sock(void)
 	const mode_t old_umask = umask(0);
 
 	/* Create client tool unix socket */
-	client_sock = lttcomm_create_unix_sock(config.client_unix_sock_path.value);
+	client_sock = lttcomm_create_unix_sock(
+			the_config.client_unix_sock_path.value);
 	if (client_sock < 0) {
-		ERR("Create unix sock failed: %s", config.client_unix_sock_path.value);
+		ERR("Create unix sock failed: %s",
+				the_config.client_unix_sock_path.value);
 		ret = -1;
 		goto end;
 	}
@@ -2393,10 +2407,11 @@ static int create_client_sock(void)
 	}
 
 	/* File permission MUST be 660 */
-	ret = chmod(config.client_unix_sock_path.value, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+	ret = chmod(the_config.client_unix_sock_path.value,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 	if (ret < 0) {
 		ERR("Set file permissions failed: %s",
-				config.client_unix_sock_path.value);
+				the_config.client_unix_sock_path.value);
 		PERROR("chmod");
 		(void) lttcomm_close_unix_sock(client_sock);
 		ret = -1;
@@ -2446,7 +2461,7 @@ static void *thread_manage_clients(void *data)
 
 	rcu_register_thread();
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_CMD);
 
 	health_code_update();
 
@@ -2684,7 +2699,7 @@ error:
 
 error_listen:
 error_create_poll:
-	unlink(config.client_unix_sock_path.value);
+	unlink(the_config.client_unix_sock_path.value);
 	ret = close(client_sock);
 	if (ret) {
 		PERROR("close");
@@ -2695,7 +2710,7 @@ error_create_poll:
 		ERR("Health error occurred in %s", __func__);
 	}
 
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 
 	DBG("Client thread dying");
 	lttng_payload_reset(&cmd_ctx.reply_payload);

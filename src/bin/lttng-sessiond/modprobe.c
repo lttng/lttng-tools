@@ -718,7 +718,7 @@ int modprobe_lttng_data(void)
 	 * Base probes: either from command line option, environment
 	 * variable or default list.
 	 */
-	list = config.kmod_probes_list.value;
+	list = the_config.kmod_probes_list.value;
 	if (list) {
 		/* User-specified probes. */
 		ret = append_list_to_probes(list);
@@ -754,7 +754,7 @@ int modprobe_lttng_data(void)
 	/*
 	 * Extra modules? Append them to current probes list.
 	 */
-	list = config.kmod_extra_probes_list.value;
+	list = the_config.kmod_extra_probes_list.value;
 	if (list) {
 		ret = append_list_to_probes(list);
 		if (ret) {

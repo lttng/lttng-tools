@@ -335,7 +335,7 @@ int main(int argc, char **argv)
 
 	plan_tests(NUM_TESTS);
 
-	health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
+	the_health_sessiond = health_app_create(NR_HEALTH_SESSIOND_TYPES);
 	ht_cleanup_thread = launch_ht_cleanup_thread();
 	assert(ht_cleanup_thread);
 	lttng_thread_put(ht_cleanup_thread);

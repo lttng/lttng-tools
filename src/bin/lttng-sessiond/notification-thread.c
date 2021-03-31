@@ -238,8 +238,8 @@ int notification_channel_socket_create(void)
 	if (getuid() == 0) {
 		gid_t gid;
 
-		ret =  utils_get_group_id(config.tracing_group_name.value, true,
-				&gid);
+		ret = utils_get_group_id(the_config.tracing_group_name.value,
+				true, &gid);
 		if (ret) {
 			/* Default to root group. */
 			gid = 0;
@@ -639,7 +639,7 @@ void *thread_notification(void *data)
 
 	DBG("[notification-thread] Started notification thread");
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_NOTIFICATION);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_NOTIFICATION);
 	rcu_register_thread();
 	rcu_thread_online();
 
@@ -778,7 +778,7 @@ error:
 end:
 	rcu_thread_offline();
 	rcu_unregister_thread();
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	return NULL;
 }
 

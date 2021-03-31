@@ -22,11 +22,11 @@
  * Hash table that contains the agent app created upon registration indexed by
  * socket. Global to the session daemon.
  */
-extern struct lttng_ht *agent_apps_ht_by_sock;
+extern struct lttng_ht *the_agent_apps_ht_by_sock;
 
 /*
  * Hash table that contains the trigger agents by domain */
-extern struct lttng_ht *trigger_agents_ht_by_domain;
+extern struct lttng_ht *the_trigger_agents_ht_by_domain;
 
 struct agent_ht_key {
 	const char *name;

@@ -172,7 +172,7 @@ static void *thread_kernel_management(void *data)
 
 	DBG("[thread] Thread manage kernel started");
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_KERNEL);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_KERNEL);
 
 	/*
 	 * This first step of the while is to clean this structure which could free
@@ -305,7 +305,7 @@ error_testpoint:
 		WARN("Kernel thread died unexpectedly. "
 				"Kernel tracing can continue but CPU hotplug is disabled.");
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	DBG("Kernel thread dying");
 	return NULL;
 }

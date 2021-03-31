@@ -732,8 +732,8 @@ static void destroy_channel(struct ust_registry_channel *chan, bool notif)
 
 	if (notif) {
 		cmd_ret = notification_thread_command_remove_channel(
-				notification_thread_handle, chan->consumer_key,
-				LTTNG_DOMAIN_UST);
+				the_notification_thread_handle,
+				chan->consumer_key, LTTNG_DOMAIN_UST);
 		if (cmd_ret != LTTNG_OK) {
 			ERR("Failed to remove channel from notification thread");
 		}

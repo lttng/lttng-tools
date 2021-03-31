@@ -771,7 +771,7 @@ void *thread_rotation(void *data)
 	DBG("[rotation-thread] Started rotation thread");
 	rcu_register_thread();
 	rcu_thread_online();
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_ROTATION);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_ROTATION);
 	health_code_update();
 
 	if (!handle) {
@@ -863,7 +863,7 @@ error:
 	DBG("[rotation-thread] Exit");
 	fini_thread_state(&thread);
 end:
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;

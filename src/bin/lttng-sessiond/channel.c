@@ -397,7 +397,7 @@ int channel_ust_create(struct ltt_ust_session *usess,
 	/*
 	 * Invalid subbuffer size if it's lower then the page size.
 	 */
-	if (attr->attr.subbuf_size < page_size) {
+	if (attr->attr.subbuf_size < the_page_size) {
 		ret = LTTNG_ERR_INVALID;
 		goto error;
 	}

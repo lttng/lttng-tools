@@ -677,7 +677,7 @@ int agent_enable_event(struct agent_event *event,
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(the_agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		if (app->domain != domain) {
 			continue;
@@ -752,7 +752,7 @@ int agent_enable_context(const struct lttng_event_context *ctx,
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(the_agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		struct agent_app_ctx *agent_ctx;
 
@@ -812,7 +812,7 @@ int agent_disable_event(struct agent_event *event,
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(the_agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		if (app->domain != domain) {
 			continue;
@@ -852,7 +852,7 @@ static int disable_context(struct agent_app_ctx *ctx,
 	rcu_read_lock();
 	DBG2("Disabling agent application context %s:%s",
 			ctx->provider_name, ctx->ctx_name);
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(the_agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		if (app->domain != domain) {
 			continue;
@@ -896,7 +896,7 @@ int agent_list_events(struct lttng_event **events,
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, app,
+	cds_lfht_for_each_entry(the_agent_apps_ht_by_sock->ht, &iter.iter, app,
 			node.node) {
 		ssize_t nb_ev;
 		struct lttng_event *agent_events;
@@ -994,7 +994,8 @@ struct agent_app *agent_find_app_by_sock(int sock)
 
 	assert(sock >= 0);
 
-	lttng_ht_lookup(agent_apps_ht_by_sock, (void *)((unsigned long) sock), &iter);
+	lttng_ht_lookup(the_agent_apps_ht_by_sock,
+			(void *) ((unsigned long) sock), &iter);
 	node = lttng_ht_iter_get_node_ulong(&iter);
 	if (node == NULL) {
 		goto error;
@@ -1017,7 +1018,7 @@ void agent_add_app(struct agent_app *app)
 	assert(app);
 
 	DBG3("Agent adding app sock: %d and pid: %d to ht", app->sock->fd, app->pid);
-	lttng_ht_add_unique_ulong(agent_apps_ht_by_sock, &app->node);
+	lttng_ht_add_unique_ulong(the_agent_apps_ht_by_sock, &app->node);
 }
 
 /*
@@ -1035,7 +1036,7 @@ void agent_delete_app(struct agent_app *app)
 	DBG3("Agent deleting app pid: %d and sock: %d", app->pid, app->sock->fd);
 
 	iter.iter.node = &app->node.node;
-	ret = lttng_ht_del(agent_apps_ht_by_sock, &iter);
+	ret = lttng_ht_del(the_agent_apps_ht_by_sock, &iter);
 	assert(!ret);
 }
 
@@ -1423,8 +1424,8 @@ void agent_destroy(struct agent *agt)
  */
 int agent_app_ht_alloc(void)
 {
-	agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
-	return agent_apps_ht_by_sock ? 0 : -1;
+	the_agent_apps_ht_by_sock = lttng_ht_new(0, LTTNG_HT_TYPE_ULONG);
+	return the_agent_apps_ht_by_sock ? 0 : -1;
 }
 
 /*
@@ -1461,11 +1462,12 @@ void agent_app_ht_clean(void)
 	struct lttng_ht_node_ulong *node;
 	struct lttng_ht_iter iter;
 
-	if (!agent_apps_ht_by_sock) {
+	if (!the_agent_apps_ht_by_sock) {
 		return;
 	}
 	rcu_read_lock();
-	cds_lfht_for_each_entry(agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
+	cds_lfht_for_each_entry(
+			the_agent_apps_ht_by_sock->ht, &iter.iter, node, node) {
 		struct agent_app *app;
 
 		app = caa_container_of(node, struct agent_app, node);
@@ -1473,7 +1475,7 @@ void agent_app_ht_clean(void)
 	}
 	rcu_read_unlock();
 
-	lttng_ht_destroy(agent_apps_ht_by_sock);
+	lttng_ht_destroy(the_agent_apps_ht_by_sock);
 }
 
 /*
@@ -1534,8 +1536,8 @@ void agent_update(const struct agent *agt, const struct agent_app *app)
  */
 int agent_by_event_notifier_domain_ht_create(void)
 {
-	trigger_agents_ht_by_domain = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	return trigger_agents_ht_by_domain ? 0 : -1;
+	the_trigger_agents_ht_by_domain = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	return the_trigger_agents_ht_by_domain ? 0 : -1;
 }
 
 /*
@@ -1546,24 +1548,24 @@ void agent_by_event_notifier_domain_ht_destroy(void)
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 
-	if (!trigger_agents_ht_by_domain) {
+	if (!the_trigger_agents_ht_by_domain) {
 		return;
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry (trigger_agents_ht_by_domain->ht, &iter.iter,
-			node, node) {
+	cds_lfht_for_each_entry(the_trigger_agents_ht_by_domain->ht,
+			&iter.iter, node, node) {
 		struct agent *agent =
 				caa_container_of(node, struct agent, node);
 		const int ret = lttng_ht_del(
-				trigger_agents_ht_by_domain, &iter);
+				the_trigger_agents_ht_by_domain, &iter);
 
 		assert(ret == 0);
 		agent_destroy(agent);
 	}
 
 	rcu_read_unlock();
-	lttng_ht_destroy(trigger_agents_ht_by_domain);
+	lttng_ht_destroy(the_trigger_agents_ht_by_domain);
 }
 
 struct agent *agent_find_by_event_notifier_domain(
@@ -1574,12 +1576,12 @@ struct agent *agent_find_by_event_notifier_domain(
 	struct lttng_ht_iter iter;
 	const uint64_t key = (uint64_t) domain_type;
 
-	assert(trigger_agents_ht_by_domain);
+	assert(the_trigger_agents_ht_by_domain);
 
 	DBG3("Per-event notifier domain agent lookup for domain '%s'",
 			lttng_domain_type_str(domain_type));
 
-	lttng_ht_lookup(trigger_agents_ht_by_domain, &key, &iter);
+	lttng_ht_lookup(the_trigger_agents_ht_by_domain, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (!node) {
 		goto end;

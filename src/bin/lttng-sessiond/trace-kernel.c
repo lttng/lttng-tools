@@ -946,11 +946,11 @@ void trace_kernel_destroy_channel(struct ltt_kernel_channel *channel)
 	/* Remove from channel list */
 	cds_list_del(&channel->list);
 
-	if (notification_thread_handle
-			&& channel->published_to_notification_thread) {
+	if (the_notification_thread_handle &&
+			channel->published_to_notification_thread) {
 		status = notification_thread_command_remove_channel(
-				notification_thread_handle,
-				channel->key, LTTNG_DOMAIN_KERNEL);
+				the_notification_thread_handle, channel->key,
+				LTTNG_DOMAIN_KERNEL);
 		assert(status == LTTNG_OK);
 	}
 	free(channel->channel->attr.extended.ptr);

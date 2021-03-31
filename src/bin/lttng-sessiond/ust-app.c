@@ -1011,7 +1011,7 @@ void delete_ust_app(struct ust_app *app)
 				app->event_notifier_group.event_pipe);
 
 		ret_code = notification_thread_command_remove_tracer_event_source(
-				notification_thread_handle,
+				the_notification_thread_handle,
 				event_notifier_read_fd);
 		if (ret_code != LTTNG_OK) {
 			ERR("Failed to remove application tracer event source from notification thread");
@@ -3352,11 +3352,12 @@ static int create_channel_per_uid(struct ust_app *app,
 	pthread_mutex_unlock(&reg_uid->registry->reg.ust->lock);
 
 	notification_ret = notification_thread_command_add_channel(
-			notification_thread_handle, session->name,
-			lttng_credentials_get_uid(&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(&ua_sess->effective_credentials),
-			ua_chan->name,
-			ua_chan->key, LTTNG_DOMAIN_UST,
+			the_notification_thread_handle, session->name,
+			lttng_credentials_get_uid(
+					&ua_sess->effective_credentials),
+			lttng_credentials_get_gid(
+					&ua_sess->effective_credentials),
+			ua_chan->name, ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (notification_ret != LTTNG_OK) {
 		ret = - (int) notification_ret;
@@ -3453,11 +3454,12 @@ static int create_channel_per_pid(struct ust_app *app,
 	pthread_mutex_unlock(&registry->lock);
 
 	cmd_ret = notification_thread_command_add_channel(
-			notification_thread_handle, session->name,
-			lttng_credentials_get_uid(&ua_sess->effective_credentials),
-			lttng_credentials_get_gid(&ua_sess->effective_credentials),
-			ua_chan->name,
-			ua_chan->key, LTTNG_DOMAIN_UST,
+			the_notification_thread_handle, session->name,
+			lttng_credentials_get_uid(
+					&ua_sess->effective_credentials),
+			lttng_credentials_get_gid(
+					&ua_sess->effective_credentials),
+			ua_chan->name, ua_chan->key, LTTNG_DOMAIN_UST,
 			ua_chan->attr.subbuf_size * ua_chan->attr.num_subbuf);
 	if (cmd_ret != LTTNG_OK) {
 		ret = - (int) cmd_ret;
@@ -3850,9 +3852,11 @@ struct ust_app *ust_app_create(struct ust_register_msg *msg, int sock)
 	DBG3("UST app creating application for socket %d", sock);
 
 	if ((msg->bits_per_long == 64 &&
-				(uatomic_read(&ust_consumerd64_fd) == -EINVAL))
-			|| (msg->bits_per_long == 32 &&
-				(uatomic_read(&ust_consumerd32_fd) == -EINVAL))) {
+			    (uatomic_read(&the_ust_consumerd64_fd) ==
+					    -EINVAL)) ||
+			(msg->bits_per_long == 32 &&
+					(uatomic_read(&the_ust_consumerd32_fd) ==
+							-EINVAL))) {
 		ERR("Registration failed: application \"%s\" (pid: %d) has "
 				"%d-bit long, but no consumerd for this size is available.\n",
 				msg->name, msg->pid, msg->bits_per_long);
@@ -4046,8 +4050,9 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 	lttng_fd_put(LTTNG_FD_APPS, 1);
 
 	lttng_ret = notification_thread_command_add_tracer_event_source(
-			notification_thread_handle,
-			lttng_pipe_get_readfd(app->event_notifier_group.event_pipe),
+			the_notification_thread_handle,
+			lttng_pipe_get_readfd(
+					app->event_notifier_group.event_pipe),
 			LTTNG_DOMAIN_UST);
 	if (lttng_ret != LTTNG_OK) {
 		ERR("Failed to add tracer event source to notification thread");
@@ -5646,7 +5651,7 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 
 	/* Get all triggers using uid 0 (root) */
 	ret_code = notification_thread_command_list_triggers(
-			notification_thread_handle, 0, &triggers);
+			the_notification_thread_handle, 0, &triggers);
 	if (ret_code != LTTNG_OK) {
 		ret = -1;
 		goto end;

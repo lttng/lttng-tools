@@ -90,8 +90,8 @@ static void update_agent_app(const struct agent_app *app)
 	 * We are protected against the addition of new events by the session
 	 * list lock being held.
 	 */
-	cds_lfht_for_each_entry (trigger_agents_ht_by_domain->ht, &iter.iter,
-			trigger_agent, node.node) {
+	cds_lfht_for_each_entry(the_trigger_agents_ht_by_domain->ht,
+			&iter.iter, trigger_agent, node.node) {
 		agent_update(trigger_agent, app);
 	}
 	rcu_read_unlock();
@@ -114,8 +114,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	 */
 	ret = uri_parse(default_reg_uri, &uri);
 	assert(ret);
-	assert(config.agent_tcp_port.begin > 0);
-	uri->port = config.agent_tcp_port.begin;
+	assert(the_config.agent_tcp_port.begin > 0);
+	uri->port = the_config.agent_tcp_port.begin;
 
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
@@ -129,8 +129,8 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	for (port = config.agent_tcp_port.begin;
-			port <= config.agent_tcp_port.end; port++) {
+	for (port = the_config.agent_tcp_port.begin;
+			port <= the_config.agent_tcp_port.end; port++) {
 		ret = lttcomm_sock_set_port(sock, (uint16_t) port);
 		if (ret) {
 			ERR("[agent-thread] Failed to set port %u on socket",
@@ -154,16 +154,17 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	}
 
 	if (!bind_succeeded) {
-		if (config.agent_tcp_port.begin == config.agent_tcp_port.end) {
+		if (the_config.agent_tcp_port.begin ==
+				the_config.agent_tcp_port.end) {
 			WARN("Another process is already using the agent port %i. "
-					"Agent support will be deactivated.",
-					config.agent_tcp_port.begin);
+			     "Agent support will be deactivated.",
+					the_config.agent_tcp_port.begin);
 			goto error;
 		} else {
 			WARN("All ports in the range [%i, %i] are already in use. "
-					"Agent support will be deactivated.",
-					config.agent_tcp_port.begin,
-					config.agent_tcp_port.end);
+			     "Agent support will be deactivated.",
+					the_config.agent_tcp_port.begin,
+					the_config.agent_tcp_port.end);
 			goto error;
 		}
 	}
@@ -330,8 +331,8 @@ bool agent_tracing_is_enabled(void)
  */
 static int write_agent_port(uint16_t port)
 {
-	return utils_create_pid_file((pid_t) port,
-			config.agent_port_file_path.value);
+	return utils_create_pid_file(
+			(pid_t) port, the_config.agent_port_file_path.value);
 }
 
 static
@@ -368,7 +369,7 @@ static void *thread_agent_management(void *data)
 	rcu_thread_online();
 
 	/* Agent initialization call MUST be called before starting the thread. */
-	assert(agent_apps_ht_by_sock);
+	assert(the_agent_apps_ht_by_sock);
 
 	/* Create pollset with size 2, quit pipe and registration socket. */
 	ret = lttng_poll_create(&events, 2, LTTNG_CLOEXEC);

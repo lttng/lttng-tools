@@ -175,11 +175,11 @@ int kernel_consumer_add_channel(struct consumer_socket *sock,
 	assert(session_trylock_list());
 
 	status = notification_thread_command_add_channel(
-			notification_thread_handle, session->name,
-			ksession->uid, ksession->gid,
-			channel->channel->name, channel->key,
-			LTTNG_DOMAIN_KERNEL,
-			channel->channel->attr.subbuf_size * channel->channel->attr.num_subbuf);
+			the_notification_thread_handle, session->name,
+			ksession->uid, ksession->gid, channel->channel->name,
+			channel->key, LTTNG_DOMAIN_KERNEL,
+			channel->channel->attr.subbuf_size *
+					channel->channel->attr.num_subbuf);
 	rcu_read_unlock();
 	if (status != LTTNG_OK) {
 		ret = -1;

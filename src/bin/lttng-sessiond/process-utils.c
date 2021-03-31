@@ -18,15 +18,15 @@ void sessiond_signal_parents(void)
 	 * for client side.  This ppid is the one from the
 	 * external process that spawned us.
 	 */
-	if (config.sig_parent) {
-		kill(ppid, SIGUSR1);
+	if (the_config.sig_parent) {
+		kill(the_ppid, SIGUSR1);
 	}
 
 	/*
 	 * Notify the parent of the fork() process that we are
 	 * ready.
 	 */
-	if (config.daemonize || config.background) {
-		kill(child_ppid, SIGUSR1);
+	if (the_config.daemonize || the_config.background) {
+		kill(the_child_ppid, SIGUSR1);
 	}
 }

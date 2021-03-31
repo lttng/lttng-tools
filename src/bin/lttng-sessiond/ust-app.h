@@ -26,7 +26,7 @@
 struct lttng_bytecode;
 struct lttng_ust_filter_bytecode;
 
-extern int ust_consumerd64_fd, ust_consumerd32_fd;
+extern int the_ust_consumerd64_fd, the_ust_consumerd32_fd;
 
 /*
  * Object used to close the notify socket in a call_rcu(). Since the

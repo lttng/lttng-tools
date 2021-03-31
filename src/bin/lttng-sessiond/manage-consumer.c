@@ -67,7 +67,7 @@ static void *thread_consumer_management(void *data)
 	rcu_register_thread();
 	rcu_thread_online();
 
-	health_register(health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
+	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_CONSUMER);
 
 	health_code_update();
 
@@ -243,7 +243,7 @@ static void *thread_consumer_management(void *data)
 	cmd_socket_wrapper->lock = &consumer_data->lock;
 
 	pthread_mutex_lock(cmd_socket_wrapper->lock);
-	ret = consumer_init(cmd_socket_wrapper, sessiond_uuid);
+	ret = consumer_init(cmd_socket_wrapper, the_sessiond_uuid);
 	if (ret) {
 		ERR("Failed to send sessiond uuid to consumer daemon");
 		mark_thread_intialization_as_failed(notifiers);
@@ -350,10 +350,10 @@ error:
 
 	/* Immediately set the consumerd state to stopped */
 	if (consumer_data->type == LTTNG_CONSUMER_KERNEL) {
-		uatomic_set(&kernel_consumerd_state, CONSUMER_ERROR);
+		uatomic_set(&the_kernel_consumerd_state, CONSUMER_ERROR);
 	} else if (consumer_data->type == LTTNG_CONSUMER64_UST ||
 			consumer_data->type == LTTNG_CONSUMER32_UST) {
-		uatomic_set(&ust_consumerd_state, CONSUMER_ERROR);
+		uatomic_set(&the_ust_consumerd_state, CONSUMER_ERROR);
 	} else {
 		/* Code flow error... */
 		assert(0);
@@ -406,7 +406,7 @@ error_poll:
 		health_error();
 		ERR("Health error occurred in %s", __func__);
 	}
-	health_unregister(health_sessiond);
+	health_unregister(the_health_sessiond);
 	DBG("consumer thread cleanup completed");
 
 	rcu_thread_offline();
