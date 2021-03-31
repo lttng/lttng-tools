@@ -1077,9 +1077,8 @@ enum lttng_trace_chunk_status lttng_trace_chunk_set_as_owner(
 		 * A nameless chunk does not need its own output directory.
 		 * The session's output directory will be used.
 		 */
-		const bool reference_acquired =
-				lttng_directory_handle_get(
-					session_output_directory);
+		reference_acquired = lttng_directory_handle_get(
+				session_output_directory);
 
 		assert(reference_acquired);
 		chunk_directory_handle = session_output_directory;
