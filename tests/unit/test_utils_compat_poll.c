@@ -238,16 +238,18 @@ static int run_active_set_combination(unsigned int fd_count,
 
 	/* Write one byte for all active fds that should be active. */
 	for (i = 0; i < fd_count; i++) {
-		struct lttng_pipe *pipe;
+		struct lttng_pipe *borrowed_pipe;
 
 		/* Should this fd be made active? */
 		if (!(active_fds_mask & (1 << i))) {
 			continue;
 		}
 
-		pipe = lttng_dynamic_pointer_array_get_pointer(&pipes, i);
+		borrowed_pipe = lttng_dynamic_pointer_array_get_pointer(
+				&pipes, i);
 
-		ret = lttng_pipe_write(pipe, &(char) {'a'}, sizeof(char));
+		ret = lttng_pipe_write(
+				borrowed_pipe, &(char){'a'}, sizeof(char));
 		if (ret != sizeof(char)) {
 			diag("Failed to write to pipe");
 			ret = -1;
