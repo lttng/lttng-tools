@@ -5043,8 +5043,6 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 	bool chunk_exists_local, chunk_exists_remote;
 
 	if (relayd_id) {
-		int ret;
-
 		/* Only used for logging purposes. */
 		ret = snprintf(relayd_id_buffer, sizeof(relayd_id_buffer),
 				"%" PRIu64, *relayd_id);
