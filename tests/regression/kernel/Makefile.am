@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-EXTRA_DIST = test_all_events test_syscall \
+
+EXTRA_DIST = test_all_events \
 						 test_callstack \
+						 test_channel \
 						 test_clock_override \
 						 test_event_basic \
 						 test_kernel_function \
