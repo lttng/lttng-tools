@@ -387,13 +387,19 @@ lttng_event_field_value_unsigned_int_get_value(
 				parent)->val;
 		break;
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_UNSIGNED_ENUM:
-		*val = container_of(
-				container_of(field_val,
-					const struct lttng_event_field_value_enum,
-					parent),
-				const struct lttng_event_field_value_enum_uint,
-				parent)->val;
+	{
+		const struct lttng_event_field_value_enum *field_val_enum = container_of(
+				field_val,
+				const struct lttng_event_field_value_enum,
+				parent);
+		const struct lttng_event_field_value_enum_uint
+				*field_val_enum_uint = container_of(
+						field_val_enum,
+						const struct lttng_event_field_value_enum_uint,
+						parent);
+		*val = field_val_enum_uint->val;
 		break;
+	}
 	default:
 		status = LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
 		goto end;
@@ -423,13 +429,19 @@ lttng_event_field_value_signed_int_get_value(
 				parent)->val;
 		break;
 	case LTTNG_EVENT_FIELD_VALUE_TYPE_SIGNED_ENUM:
-		*val = container_of(
-				container_of(field_val,
-					const struct lttng_event_field_value_enum,
-					parent),
-				const struct lttng_event_field_value_enum_int,
-				parent)->val;
+	{
+		const struct lttng_event_field_value_enum *field_val_enum = container_of(
+				field_val,
+				const struct lttng_event_field_value_enum,
+				parent);
+		const struct lttng_event_field_value_enum_int
+				*field_val_enum_uint = container_of(
+						field_val_enum,
+						const struct lttng_event_field_value_enum_int,
+						parent);
+		*val = field_val_enum_uint->val;
 		break;
+	}
 	default:
 		status = LTTNG_EVENT_FIELD_VALUE_STATUS_INVALID;
 		goto end;
