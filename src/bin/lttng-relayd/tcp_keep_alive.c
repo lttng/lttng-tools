@@ -105,21 +105,17 @@ struct tcp_keep_alive_config {
 	int abort_threshold;
 };
 
-static struct tcp_keep_alive_config config = {
-	.enabled = false,
-	.idle_time = -1,
-	.probe_interval = -1,
-	.max_probe_count = -1,
-	.abort_threshold = -1
-};
+static struct tcp_keep_alive_config the_config = {.enabled = false,
+		.idle_time = -1,
+		.probe_interval = -1,
+		.max_probe_count = -1,
+		.abort_threshold = -1};
 
-static struct tcp_keep_alive_support support = {
-	.supported = false,
-	.idle_time_supported = false,
-	.probe_interval_supported = false,
-	.max_probe_count_supported = false,
-	.abort_threshold_supported = false
-};
+static struct tcp_keep_alive_support the_support = {.supported = false,
+		.idle_time_supported = false,
+		.probe_interval_supported = false,
+		.max_probe_count_supported = false,
+		.abort_threshold_supported = false};
 
 /*
  * Common parser for string to positive int conversion where the value must be
@@ -515,8 +511,8 @@ error:
 __attribute__((constructor)) static
 void tcp_keep_alive_init(void)
 {
-	tcp_keep_alive_init_support(&support);
-	(void) tcp_keep_alive_init_config(&support, &config);
+	tcp_keep_alive_init_support(&the_support);
+	(void) tcp_keep_alive_init_config(&the_support, &the_config);
 }
 
 /*
@@ -529,7 +525,7 @@ int socket_apply_keep_alive_config(int socket_fd)
 	int val = 1;
 
 	/* TCP keep-alive */
-	if (!support.supported || !config.enabled ) {
+	if (!the_support.supported || !the_config.enabled) {
 		ret = 0;
 		goto end;
 	}
@@ -543,20 +539,26 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	/* TCP keep-alive idle time */
-	if (support.idle_time_supported && config.idle_time > 0) {
-		DBG("TCP keep-alive keep idle: %d enabled for socket %d", config.idle_time, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPIDLE, &config.idle_time,
-				sizeof(config.idle_time));
+	if (the_support.idle_time_supported && the_config.idle_time > 0) {
+		DBG("TCP keep-alive keep idle: %d enabled for socket %d",
+				the_config.idle_time, socket_fd);
+		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
+				COMPAT_TCP_KEEPIDLE, &the_config.idle_time,
+				sizeof(the_config.idle_time));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPIDLE");
 			goto end;
 		}
 	}
 	/* TCP keep-alive probe interval */
-	if (support.probe_interval_supported && config.probe_interval > 0) {
-		DBG("TCP keep-alive probe_interval: %d enabled for socket %d", config.probe_interval, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPINTVL, &config.probe_interval,
-				sizeof(config.probe_interval));
+	if (the_support.probe_interval_supported &&
+			the_config.probe_interval > 0) {
+		DBG("TCP keep-alive probe_interval: %d enabled for socket %d",
+				the_config.probe_interval, socket_fd);
+		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
+				COMPAT_TCP_KEEPINTVL,
+				&the_config.probe_interval,
+				sizeof(the_config.probe_interval));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPINTVL");
 			goto end;
@@ -564,10 +566,13 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	/* TCP keep-alive max probe count */
-	if (support.max_probe_count_supported && config.max_probe_count > 0) {
-		DBG("TCP keep-alive max_probe: %d enabled for socket %d", config.max_probe_count, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_KEEPCNT, &config.max_probe_count,
-				sizeof(config.max_probe_count));
+	if (the_support.max_probe_count_supported &&
+			the_config.max_probe_count > 0) {
+		DBG("TCP keep-alive max_probe: %d enabled for socket %d",
+				the_config.max_probe_count, socket_fd);
+		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
+				COMPAT_TCP_KEEPCNT, &the_config.max_probe_count,
+				sizeof(the_config.max_probe_count));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPCNT");
 			goto end;
@@ -575,10 +580,14 @@ int socket_apply_keep_alive_config(int socket_fd)
 	}
 
 	/* TCP keep-alive abort threshold */
-	if (support.abort_threshold_supported && config.abort_threshold > 0) {
-		DBG("TCP keep-alive abort threshold: %d enabled for socket %d", config.abort_threshold, socket_fd);
-		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL, COMPAT_TCP_ABORT_THRESHOLD, &config.abort_threshold,
-				sizeof(config.max_probe_count));
+	if (the_support.abort_threshold_supported &&
+			the_config.abort_threshold > 0) {
+		DBG("TCP keep-alive abort threshold: %d enabled for socket %d",
+				the_config.abort_threshold, socket_fd);
+		ret = setsockopt(socket_fd, COMPAT_TCP_LEVEL,
+				COMPAT_TCP_ABORT_THRESHOLD,
+				&the_config.abort_threshold,
+				sizeof(the_config.max_probe_count));
 		if (ret < 0) {
 			PERROR("setsockopt TCP_KEEPALIVE_ABORT_THRESHOLD");
 			goto end;
