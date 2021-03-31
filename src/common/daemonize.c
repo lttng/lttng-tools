@@ -22,7 +22,6 @@ LTTNG_HIDDEN
 int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 		int close_fds)
 {
-	int ret;
 	pid_t pid;
 
 	/* Get parent pid of this process. */
@@ -35,6 +34,7 @@ int lttng_daemonize(pid_t *child_ppid, int *completion_flag,
 	} else if (pid == 0) {
 		int fd;
 		pid_t sid;
+		int ret;
 
 		/* Child */
 
