@@ -4017,16 +4017,17 @@ int config_load_session(const char *path, const char *session_name,
 		/* Try home path */
 		home_path = utils_get_home_dir();
 		if (home_path) {
-			char path[PATH_MAX];
+			char path_buf[PATH_MAX];
 
 			/*
 			 * Try user session configuration path. Ignore error here so we can
 			 * continue loading the system wide sessions.
 			 */
 			if (autoload) {
-				ret = snprintf(path, sizeof(path),
-						DEFAULT_SESSION_HOME_CONFIGPATH "/"
-						DEFAULT_SESSION_CONFIG_AUTOLOAD, home_path);
+				ret = snprintf(path_buf, sizeof(path_buf),
+						DEFAULT_SESSION_HOME_CONFIGPATH
+						"/" DEFAULT_SESSION_CONFIG_AUTOLOAD,
+						home_path);
 				if (ret < 0) {
 					PERROR("snprintf session autoload home config path");
 					ret = -LTTNG_ERR_INVALID;
@@ -4038,19 +4039,20 @@ int config_load_session(const char *path, const char *session_name,
 				 * avoid any user session daemon to try to load kernel sessions
 				 * automatically and failing all the times.
 				 */
-				ret = validate_path_creds(path);
+				ret = validate_path_creds(path_buf);
 				if (ret) {
-					path_ptr = path;
+					path_ptr = path_buf;
 				}
 			} else {
-				ret = snprintf(path, sizeof(path),
-						DEFAULT_SESSION_HOME_CONFIGPATH, home_path);
+				ret = snprintf(path_buf, sizeof(path_buf),
+						DEFAULT_SESSION_HOME_CONFIGPATH,
+						home_path);
 				if (ret < 0) {
 					PERROR("snprintf session home config path");
 					ret = -LTTNG_ERR_INVALID;
 					goto end;
 				}
-				path_ptr = path;
+				path_ptr = path_buf;
 			}
 			if (path_ptr) {
 				ret = load_session_from_path(path_ptr, session_name,
