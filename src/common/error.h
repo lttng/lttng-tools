@@ -232,23 +232,24 @@ static inline void __lttng_print_check_abort(enum lttng_error_level type)
 /*
  * Version using XSI strerror_r.
  */
-#define PERROR(call, args...) \
-	do { \
-		char buf[200]; \
-		strerror_r(errno, buf, sizeof(buf)); \
-		_PERROR(call ": %s", ## args, buf); \
-	} while(0);
+#define PERROR(call, args...)                                        \
+	do {                                                         \
+		char _perror_buf[200];                               \
+		strerror_r(errno, _perror_buf, sizeof(_perror_buf)); \
+		_PERROR(call ": %s", ##args, _perror_buf);           \
+	} while (0);
 #else
 /*
  * Version using GNU strerror_r, for linux with appropriate defines.
  */
-#define PERROR(call, args...) \
-	do { \
-		char *buf; \
-		char tmp[200]; \
-		buf = strerror_r(errno, tmp, sizeof(tmp)); \
-		_PERROR(call ": %s", ## args, buf); \
-	} while(0);
+#define PERROR(call, args...)                                             \
+	do {                                                              \
+		char *_perror_buf;                                        \
+		char _perror_tmp[200];                                    \
+		_perror_buf = strerror_r(                                 \
+				errno, _perror_tmp, sizeof(_perror_tmp)); \
+		_PERROR(call ": %s", ##args, _perror_buf);                \
+	} while (0);
 #endif
 
 const char *error_get_str(int32_t code);
