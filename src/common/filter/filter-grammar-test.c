@@ -27,18 +27,18 @@ int main(int argc, char **argv)
 	int ret;
 	int print_xml = 0, generate_ir = 0, generate_bytecode = 0,
 		print_bytecode = 0;
-	int i;
+	int argidx;
 
-	for (i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-p") == 0)
+	for (argidx = 1; argidx < argc; argidx++) {
+		if (strcmp(argv[argidx], "-p") == 0)
 			print_xml = 1;
-		else if (strcmp(argv[i], "-i") == 0)
+		else if (strcmp(argv[argidx], "-i") == 0)
 			generate_ir = 1;
-		else if (strcmp(argv[i], "-b") == 0)
+		else if (strcmp(argv[argidx], "-b") == 0)
 			generate_bytecode = 1;
-		else if (strcmp(argv[i], "-d") == 0)
+		else if (strcmp(argv[argidx], "-d") == 0)
 			filter_parser_debug = 1;
-		else if (strcmp(argv[i], "-B") == 0)
+		else if (strcmp(argv[argidx], "-B") == 0)
 			print_bytecode = 1;
 	}
 
