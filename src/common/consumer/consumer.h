@@ -96,7 +96,7 @@ enum sync_metadata_status {
 	SYNC_METADATA_STATUS_ERROR,
 };
 
-extern struct lttng_consumer_global_data consumer_data;
+extern struct lttng_consumer_global_data the_consumer_data;
 
 struct stream_list {
 	struct cds_list_head head;

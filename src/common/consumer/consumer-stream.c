@@ -369,7 +369,7 @@ int consumer_stream_sync_metadata(struct lttng_consumer_local_data *ctx,
 	assert(ctx);
 
 	/* Ease our life a bit. */
-	ht = consumer_data.stream_list_ht;
+	ht = the_consumer_data.stream_list_ht;
 
 	rcu_read_lock();
 
@@ -817,7 +817,7 @@ void consumer_stream_close(struct lttng_consumer_stream *stream)
 
 	assert(stream);
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		if (stream->mmap_base != NULL) {
 			ret = munmap(stream->mmap_base, stream->mmap_len);
@@ -925,19 +925,19 @@ void consumer_stream_delete(struct lttng_consumer_stream *stream,
 	 * that did not add the stream to a (all) hash table. Same goes for the
 	 * next call ht del call.
 	 */
-	(void) lttng_ht_del(consumer_data.stream_per_chan_id_ht, &iter);
+	(void) lttng_ht_del(the_consumer_data.stream_per_chan_id_ht, &iter);
 
 	/* Delete from the global stream list. */
 	iter.iter.node = &stream->node_session_id.node;
 	/* See the previous ht del on why we ignore the returned value. */
-	(void) lttng_ht_del(consumer_data.stream_list_ht, &iter);
+	(void) lttng_ht_del(the_consumer_data.stream_list_ht, &iter);
 
 	rcu_read_unlock();
 
 	if (!stream->metadata_flag) {
 		/* Decrement the stream count of the global consumer data. */
-		assert(consumer_data.stream_count > 0);
-		consumer_data.stream_count--;
+		assert(the_consumer_data.stream_count > 0);
+		the_consumer_data.stream_count--;
 	}
 }
 
@@ -959,7 +959,7 @@ void consumer_stream_destroy_buffers(struct lttng_consumer_stream *stream)
 {
 	assert(stream);
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER32_UST:
@@ -1031,7 +1031,7 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 		 * stream thus being globally visible.
 		 */
 		if (stream->globally_visible) {
-			pthread_mutex_lock(&consumer_data.lock);
+			pthread_mutex_lock(&the_consumer_data.lock);
 			pthread_mutex_lock(&stream->chan->lock);
 			pthread_mutex_lock(&stream->lock);
 			/* Remove every reference of the stream in the consumer. */
@@ -1043,11 +1043,11 @@ void consumer_stream_destroy(struct lttng_consumer_stream *stream,
 			free_chan = unref_channel(stream);
 
 			/* Indicates that the consumer data state MUST be updated after this. */
-			consumer_data.need_update = 1;
+			the_consumer_data.need_update = 1;
 
 			pthread_mutex_unlock(&stream->lock);
 			pthread_mutex_unlock(&stream->chan->lock);
-			pthread_mutex_unlock(&consumer_data.lock);
+			pthread_mutex_unlock(&the_consumer_data.lock);
 		} else {
 			/*
 			 * If the stream is not visible globally, this needs to be done
@@ -1289,7 +1289,7 @@ int consumer_stream_flush_buffer(struct lttng_consumer_stream *stream,
 {
 	int ret = 0;
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		if (producer_active) {
 			ret = kernctl_buffer_flush(stream->wait_fd);

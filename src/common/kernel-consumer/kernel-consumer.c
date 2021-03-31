@@ -41,7 +41,7 @@
 
 #include "kernel-consumer.h"
 
-extern struct lttng_consumer_global_data consumer_data;
+extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;
 
 /*

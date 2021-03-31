@@ -45,10 +45,10 @@
 #include <common/string-utils/format.h>
 #include <common/dynamic-array.h>
 
-struct lttng_consumer_global_data consumer_data = {
-	.stream_count = 0,
-	.need_update = 1,
-	.type = LTTNG_CONSUMER_UNKNOWN,
+struct lttng_consumer_global_data the_consumer_data = {
+		.stream_count = 0,
+		.need_update = 1,
+		.type = LTTNG_CONSUMER_UNKNOWN,
 };
 
 enum consumer_channel_action {
@@ -84,7 +84,7 @@ static struct lttng_ht *data_ht;
 
 static const char *get_consumer_domain(void)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return DEFAULT_KERNEL_TRACE_DIR;
 	case LTTNG_CONSUMER64_UST:
@@ -256,7 +256,7 @@ struct lttng_consumer_channel *consumer_find_channel(uint64_t key)
 		return NULL;
 	}
 
-	lttng_ht_lookup(consumer_data.channel_ht, &key, &iter);
+	lttng_ht_lookup(the_consumer_data.channel_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
 		channel = caa_container_of(node, struct lttng_consumer_channel, node);
@@ -298,7 +298,7 @@ static void free_channel_rcu(struct rcu_head *head)
 	struct lttng_consumer_channel *channel =
 		caa_container_of(node, struct lttng_consumer_channel, node);
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER32_UST:
@@ -352,7 +352,7 @@ void consumer_destroy_relayd(struct consumer_relayd_sock_pair *relayd)
 	DBG("Consumer destroy and close relayd socket pair");
 
 	iter.iter.node = &relayd->node.node;
-	ret = lttng_ht_del(consumer_data.relayd_ht, &iter);
+	ret = lttng_ht_del(the_consumer_data.relayd_ht, &iter);
 	if (ret != 0) {
 		/* We assume the relayd is being or is destroyed */
 		return;
@@ -372,7 +372,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 	DBG("Consumer delete channel key %" PRIu64, channel->key);
 
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 
 	/* Destroy streams that might have been left in the stream list. */
@@ -385,7 +385,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 		consumer_timer_monitor_stop(channel);
 	}
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER32_UST:
@@ -406,11 +406,11 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 
 		rcu_read_lock();
 		iter.iter.node = &channel->node.node;
-		ret = lttng_ht_del(consumer_data.channel_ht, &iter);
+		ret = lttng_ht_del(the_consumer_data.channel_ht, &iter);
 		assert(!ret);
 
 		iter.iter.node = &channel->channels_by_session_id_ht_node.node;
-		ret = lttng_ht_del(consumer_data.channels_by_session_id_ht,
+		ret = lttng_ht_del(the_consumer_data.channels_by_session_id_ht,
 				&iter);
 		assert(!ret);
 		rcu_read_unlock();
@@ -420,7 +420,7 @@ void consumer_del_channel(struct lttng_consumer_channel *channel)
 	call_rcu(&channel->node.head, free_channel_rcu);
 end:
 	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 }
 
 /*
@@ -434,14 +434,14 @@ static void cleanup_relayd_ht(void)
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(consumer_data.relayd_ht->ht, &iter.iter, relayd,
-			node.node) {
+	cds_lfht_for_each_entry(the_consumer_data.relayd_ht->ht, &iter.iter,
+			relayd, node.node) {
 		consumer_destroy_relayd(relayd);
 	}
 
 	rcu_read_unlock();
 
-	lttng_ht_destroy(consumer_data.relayd_ht);
+	lttng_ht_destroy(the_consumer_data.relayd_ht);
 }
 
 /*
@@ -581,7 +581,7 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 
 	DBG3("Adding consumer stream %" PRIu64, stream->key);
 
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->chan->timer_lock);
 	pthread_mutex_lock(&stream->lock);
@@ -592,7 +592,7 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 
 	lttng_ht_add_unique_u64(ht, &stream->node);
 
-	lttng_ht_add_u64(consumer_data.stream_per_chan_id_ht,
+	lttng_ht_add_u64(the_consumer_data.stream_per_chan_id_ht,
 			&stream->node_channel_id);
 
 	/*
@@ -600,7 +600,8 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 	 * the key since the HT does not use it and we allow to add redundant keys
 	 * into this table.
 	 */
-	lttng_ht_add_u64(consumer_data.stream_list_ht, &stream->node_session_id);
+	lttng_ht_add_u64(the_consumer_data.stream_list_ht,
+			&stream->node_session_id);
 
 	/*
 	 * When nb_init_stream_left reaches 0, we don't need to trigger any action
@@ -616,14 +617,14 @@ void consumer_add_data_stream(struct lttng_consumer_stream *stream)
 	}
 
 	/* Update consumer data once the node is inserted. */
-	consumer_data.stream_count++;
-	consumer_data.need_update = 1;
+	the_consumer_data.stream_count++;
+	the_consumer_data.need_update = 1;
 
 	rcu_read_unlock();
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&stream->chan->timer_lock);
 	pthread_mutex_unlock(&stream->chan->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 }
 
 /*
@@ -638,13 +639,13 @@ static int add_relayd(struct consumer_relayd_sock_pair *relayd)
 
 	assert(relayd);
 
-	lttng_ht_lookup(consumer_data.relayd_ht,
-			&relayd->net_seq_idx, &iter);
+	lttng_ht_lookup(the_consumer_data.relayd_ht, &relayd->net_seq_idx,
+			&iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
 		goto end;
 	}
-	lttng_ht_add_unique_u64(consumer_data.relayd_ht, &relayd->node);
+	lttng_ht_add_unique_u64(the_consumer_data.relayd_ht, &relayd->node);
 
 end:
 	return ret;
@@ -699,8 +700,7 @@ struct consumer_relayd_sock_pair *consumer_find_relayd(uint64_t key)
 		goto error;
 	}
 
-	lttng_ht_lookup(consumer_data.relayd_ht, &key,
-			&iter);
+	lttng_ht_lookup(the_consumer_data.relayd_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node != NULL) {
 		relayd = caa_container_of(node, struct consumer_relayd_sock_pair, node);
@@ -931,7 +931,7 @@ int consumer_metadata_stream_dump(struct lttng_consumer_stream *stream)
 	assert(stream->metadata_flag);
 	assert(stream->chan->trace_chunk);
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		/*
 		 * Reset the position of what has been read from the
@@ -1021,7 +1021,7 @@ struct lttng_consumer_channel *consumer_allocate_channel(uint64_t key,
 
 	if (chunk_id) {
 		trace_chunk = lttng_trace_chunk_registry_find_chunk(
-				consumer_data.chunk_registry, session_id,
+				the_consumer_data.chunk_registry, session_id,
 				*chunk_id);
 		if (!trace_chunk) {
 			ERR("Failed to find trace chunk reference during creation of channel");
@@ -1124,7 +1124,7 @@ error:
 int consumer_add_channel(struct lttng_consumer_channel *channel,
 		struct lttng_consumer_local_data *ctx)
 {
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 	pthread_mutex_lock(&channel->timer_lock);
 
@@ -1136,15 +1136,15 @@ int consumer_add_channel(struct lttng_consumer_channel *channel,
 	steal_channel_key(channel->key);
 
 	rcu_read_lock();
-	lttng_ht_add_unique_u64(consumer_data.channel_ht, &channel->node);
-	lttng_ht_add_u64(consumer_data.channels_by_session_id_ht,
+	lttng_ht_add_unique_u64(the_consumer_data.channel_ht, &channel->node);
+	lttng_ht_add_u64(the_consumer_data.channels_by_session_id_ht,
 			&channel->channels_by_session_id_ht_node);
 	rcu_read_unlock();
 	channel->is_published = true;
 
 	pthread_mutex_unlock(&channel->timer_lock);
 	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 
 	if (channel->wait_fd != -1 && channel->type == CONSUMER_CHANNEL_TYPE_DATA) {
 		notify_channel_pipe(ctx, channel, -1, CONSUMER_CHANNEL_ADD);
@@ -1288,26 +1288,26 @@ void lttng_consumer_cleanup(void)
 
 	rcu_read_lock();
 
-	cds_lfht_for_each_entry(consumer_data.channel_ht->ht, &iter.iter, channel,
-			node.node) {
+	cds_lfht_for_each_entry(the_consumer_data.channel_ht->ht, &iter.iter,
+			channel, node.node) {
 		consumer_del_channel(channel);
 	}
 
 	rcu_read_unlock();
 
-	lttng_ht_destroy(consumer_data.channel_ht);
-	lttng_ht_destroy(consumer_data.channels_by_session_id_ht);
+	lttng_ht_destroy(the_consumer_data.channel_ht);
+	lttng_ht_destroy(the_consumer_data.channels_by_session_id_ht);
 
 	cleanup_relayd_ht();
 
-	lttng_ht_destroy(consumer_data.stream_per_chan_id_ht);
+	lttng_ht_destroy(the_consumer_data.stream_per_chan_id_ht);
 
 	/*
 	 * This HT contains streams that are freed by either the metadata thread or
 	 * the data thread so we do *nothing* on the hash table and simply destroy
 	 * it.
 	 */
-	lttng_ht_destroy(consumer_data.stream_list_ht);
+	lttng_ht_destroy(the_consumer_data.stream_list_ht);
 
 	/*
 	 * Trace chunks in the registry may still exist if the session
@@ -1322,7 +1322,7 @@ void lttng_consumer_cleanup(void)
 	 * to hit.
 	 */
 	trace_chunks_left = lttng_trace_chunk_registry_put_each_chunk(
-			consumer_data.chunk_registry);
+			the_consumer_data.chunk_registry);
 	if (trace_chunks_left) {
 		ERR("%u trace chunks are leaked by lttng-consumerd. "
 				"This can be caused by an internal error of the session daemon.",
@@ -1330,7 +1330,7 @@ void lttng_consumer_cleanup(void)
 	}
 	/* Run all callbacks freeing each chunk. */
 	rcu_barrier();
-	lttng_trace_chunk_registry_destroy(consumer_data.chunk_registry);
+	lttng_trace_chunk_registry_destroy(the_consumer_data.chunk_registry);
 }
 
 /*
@@ -1421,9 +1421,9 @@ struct lttng_consumer_local_data *lttng_consumer_create(
 	int ret;
 	struct lttng_consumer_local_data *ctx;
 
-	assert(consumer_data.type == LTTNG_CONSUMER_UNKNOWN ||
-		consumer_data.type == type);
-	consumer_data.type = type;
+	assert(the_consumer_data.type == LTTNG_CONSUMER_UNKNOWN ||
+			the_consumer_data.type == type);
+	the_consumer_data.type = type;
 
 	ctx = zmalloc(sizeof(struct lttng_consumer_local_data));
 	if (ctx == NULL) {
@@ -1802,7 +1802,7 @@ ssize_t lttng_consumer_on_read_subbuffer_splice(
 	int *splice_pipe;
 	unsigned int relayd_hang_up = 0;
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		break;
 	case LTTNG_CONSUMER32_UST:
@@ -2006,7 +2006,7 @@ end:
  */
 int lttng_consumer_sample_snapshot_positions(struct lttng_consumer_stream *stream)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_sample_snapshot_positions(stream);
 	case LTTNG_CONSUMER32_UST:
@@ -2025,7 +2025,7 @@ int lttng_consumer_sample_snapshot_positions(struct lttng_consumer_stream *strea
  */
 int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_take_snapshot(stream);
 	case LTTNG_CONSUMER32_UST:
@@ -2046,7 +2046,7 @@ int lttng_consumer_take_snapshot(struct lttng_consumer_stream *stream)
 int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_get_produced_snapshot(stream, pos);
 	case LTTNG_CONSUMER32_UST:
@@ -2067,7 +2067,7 @@ int lttng_consumer_get_produced_snapshot(struct lttng_consumer_stream *stream,
 int lttng_consumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 		unsigned long *pos)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_get_consumed_snapshot(stream, pos);
 	case LTTNG_CONSUMER32_UST:
@@ -2083,7 +2083,7 @@ int lttng_consumer_get_consumed_snapshot(struct lttng_consumer_stream *stream,
 int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 		int sock, struct pollfd *consumer_sockpoll)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_recv_cmd(ctx, sock, consumer_sockpoll);
 	case LTTNG_CONSUMER32_UST:
@@ -2099,7 +2099,7 @@ int lttng_consumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 static
 void lttng_consumer_close_all_metadata(void)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		/*
 		 * The Kernel consumer has a different metadata scheme so we don't
@@ -2141,7 +2141,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 
 	DBG3("Consumer delete metadata stream %d", stream->wait_fd);
 
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	/*
 	 * Note that this assumes that a stream's channel is never changed and
 	 * that the stream's lock doesn't need to be taken to sample its
@@ -2183,7 +2183,7 @@ void consumer_del_metadata_stream(struct lttng_consumer_stream *stream,
 	}
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 
 	if (free_channel) {
 		consumer_del_channel(channel);
@@ -2209,7 +2209,7 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 
 	DBG3("Adding metadata stream %" PRIu64 " to hash table", stream->key);
 
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&stream->chan->lock);
 	pthread_mutex_lock(&stream->chan->timer_lock);
 	pthread_mutex_lock(&stream->lock);
@@ -2244,22 +2244,23 @@ void consumer_add_metadata_stream(struct lttng_consumer_stream *stream)
 
 	lttng_ht_add_unique_u64(ht, &stream->node);
 
-	lttng_ht_add_u64(consumer_data.stream_per_chan_id_ht,
-		&stream->node_channel_id);
+	lttng_ht_add_u64(the_consumer_data.stream_per_chan_id_ht,
+			&stream->node_channel_id);
 
 	/*
 	 * Add stream to the stream_list_ht of the consumer data. No need to steal
 	 * the key since the HT does not use it and we allow to add redundant keys
 	 * into this table.
 	 */
-	lttng_ht_add_u64(consumer_data.stream_list_ht, &stream->node_session_id);
+	lttng_ht_add_u64(the_consumer_data.stream_list_ht,
+			&stream->node_session_id);
 
 	rcu_read_unlock();
 
 	pthread_mutex_unlock(&stream->lock);
 	pthread_mutex_unlock(&stream->chan->lock);
 	pthread_mutex_unlock(&stream->chan->timer_lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 }
 
 /*
@@ -2477,9 +2478,10 @@ restart:
 				}
 			} else if (revents & (LPOLLERR | LPOLLHUP)) {
 				DBG("Metadata fd %d is hup|err.", pollfd);
-				if (!stream->hangup_flush_done
-						&& (consumer_data.type == LTTNG_CONSUMER32_UST
-							|| consumer_data.type == LTTNG_CONSUMER64_UST)) {
+				if (!stream->hangup_flush_done &&
+						(the_consumer_data.type == LTTNG_CONSUMER32_UST ||
+								the_consumer_data.type ==
+										LTTNG_CONSUMER64_UST)) {
 					DBG("Attempting to flush and consume the UST buffers");
 					lttng_ustconsumer_on_stream_hangup(stream);
 
@@ -2575,8 +2577,8 @@ void *consumer_thread_data_poll(void *data)
 		 * the fds set has been updated, we need to update our
 		 * local array as well
 		 */
-		pthread_mutex_lock(&consumer_data.lock);
-		if (consumer_data.need_update) {
+		pthread_mutex_lock(&the_consumer_data.lock);
+		if (the_consumer_data.need_update) {
 			free(pollfd);
 			pollfd = NULL;
 
@@ -2584,18 +2586,21 @@ void *consumer_thread_data_poll(void *data)
 			local_stream = NULL;
 
 			/* Allocate for all fds */
-			pollfd = zmalloc((consumer_data.stream_count + nb_pipes_fd) * sizeof(struct pollfd));
+			pollfd = zmalloc((the_consumer_data.stream_count +
+							 nb_pipes_fd) *
+					sizeof(struct pollfd));
 			if (pollfd == NULL) {
 				PERROR("pollfd malloc");
-				pthread_mutex_unlock(&consumer_data.lock);
+				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 
-			local_stream = zmalloc((consumer_data.stream_count + nb_pipes_fd) *
+			local_stream = zmalloc((the_consumer_data.stream_count +
+							       nb_pipes_fd) *
 					sizeof(struct lttng_consumer_stream *));
 			if (local_stream == NULL) {
 				PERROR("local_stream malloc");
-				pthread_mutex_unlock(&consumer_data.lock);
+				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 			ret = update_poll_array(ctx, &pollfd, local_stream,
@@ -2603,13 +2608,13 @@ void *consumer_thread_data_poll(void *data)
 			if (ret < 0) {
 				ERR("Error in allocating pollfd or local_outfds");
 				lttng_consumer_send_error(ctx, LTTCOMM_CONSUMERD_POLL_ERROR);
-				pthread_mutex_unlock(&consumer_data.lock);
+				pthread_mutex_unlock(&the_consumer_data.lock);
 				goto end;
 			}
 			nb_fd = ret;
-			consumer_data.need_update = 0;
+			the_consumer_data.need_update = 0;
 		}
-		pthread_mutex_unlock(&consumer_data.lock);
+		pthread_mutex_unlock(&the_consumer_data.lock);
 
 		/* No FDs and consumer_quit, consumer_cleanup the thread */
 		if (nb_fd == 0 && nb_inactive_fd == 0 &&
@@ -2755,8 +2760,8 @@ void *consumer_thread_data_poll(void *data)
 			}
 			if (!local_stream[i]->hangup_flush_done
 					&& (pollfd[i].revents & (POLLHUP | POLLERR | POLLNVAL))
-					&& (consumer_data.type == LTTNG_CONSUMER32_UST
-						|| consumer_data.type == LTTNG_CONSUMER64_UST)) {
+					&& (the_consumer_data.type == LTTNG_CONSUMER32_UST
+						|| the_consumer_data.type == LTTNG_CONSUMER64_UST)) {
 				DBG("fd %d is hup|err|nval. Attempting flush and read.",
 						pollfd[i].fd);
 				lttng_ustconsumer_on_stream_hangup(local_stream[i]);
@@ -2835,7 +2840,7 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
 
-	ht = consumer_data.stream_per_chan_id_ht;
+	ht = the_consumer_data.stream_per_chan_id_ht;
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry_duplicate(ht->ht,
@@ -2849,7 +2854,7 @@ void consumer_close_channel_streams(struct lttng_consumer_channel *channel)
 		if (cds_lfht_is_node_deleted(&stream->node.node)) {
 			goto next;
 		}
-		switch (consumer_data.type) {
+		switch (the_consumer_data.type) {
 		case LTTNG_CONSUMER_KERNEL:
 			break;
 		case LTTNG_CONSUMER32_UST:
@@ -3029,7 +3034,7 @@ restart:
 						ret = lttng_ht_del(channel_ht, &iter);
 						assert(ret == 0);
 
-						switch (consumer_data.type) {
+						switch (the_consumer_data.type) {
 						case LTTNG_CONSUMER_KERNEL:
 							break;
 						case LTTNG_CONSUMER32_UST:
@@ -3477,7 +3482,7 @@ error_put_subbuf:
 
 int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
 {
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		return lttng_kconsumer_on_recv_stream(stream);
 	case LTTNG_CONSUMER32_UST:
@@ -3495,29 +3500,30 @@ int lttng_consumer_on_recv_stream(struct lttng_consumer_stream *stream)
  */
 int lttng_consumer_init(void)
 {
-	consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!consumer_data.channel_ht) {
+	the_consumer_data.channel_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!the_consumer_data.channel_ht) {
 		goto error;
 	}
 
-	consumer_data.channels_by_session_id_ht =
+	the_consumer_data.channels_by_session_id_ht =
 			lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!consumer_data.channels_by_session_id_ht) {
+	if (!the_consumer_data.channels_by_session_id_ht) {
 		goto error;
 	}
 
-	consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!consumer_data.relayd_ht) {
+	the_consumer_data.relayd_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!the_consumer_data.relayd_ht) {
 		goto error;
 	}
 
-	consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!consumer_data.stream_list_ht) {
+	the_consumer_data.stream_list_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!the_consumer_data.stream_list_ht) {
 		goto error;
 	}
 
-	consumer_data.stream_per_chan_id_ht = lttng_ht_new(0, LTTNG_HT_TYPE_U64);
-	if (!consumer_data.stream_per_chan_id_ht) {
+	the_consumer_data.stream_per_chan_id_ht =
+			lttng_ht_new(0, LTTNG_HT_TYPE_U64);
+	if (!the_consumer_data.stream_per_chan_id_ht) {
 		goto error;
 	}
 
@@ -3531,8 +3537,8 @@ int lttng_consumer_init(void)
 		goto error;
 	}
 
-	consumer_data.chunk_registry = lttng_trace_chunk_registry_create();
-	if (!consumer_data.chunk_registry) {
+	the_consumer_data.chunk_registry = lttng_trace_chunk_registry_create();
+	if (!the_consumer_data.chunk_registry) {
 		goto error;
 	}
 
@@ -3740,8 +3746,8 @@ static struct consumer_relayd_sock_pair *find_relayd_by_session_id(uint64_t id)
 	struct consumer_relayd_sock_pair *relayd = NULL;
 
 	/* Iterate over all relayd since they are indexed by net_seq_idx. */
-	cds_lfht_for_each_entry(consumer_data.relayd_ht->ht, &iter.iter, relayd,
-			node.node) {
+	cds_lfht_for_each_entry(the_consumer_data.relayd_ht->ht, &iter.iter,
+			relayd, node.node) {
 		/*
 		 * Check by sessiond id which is unique here where the relayd session
 		 * id might not be when having multiple relayd.
@@ -3776,9 +3782,9 @@ int consumer_data_pending(uint64_t id)
 	DBG("Consumer data pending command on session id %" PRIu64, id);
 
 	rcu_read_lock();
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		data_pending = lttng_kconsumer_data_pending;
 		break;
@@ -3792,7 +3798,7 @@ int consumer_data_pending(uint64_t id)
 	}
 
 	/* Ease our life a bit */
-	ht = consumer_data.stream_list_ht;
+	ht = the_consumer_data.stream_list_ht;
 
 	cds_lfht_for_each_entry_duplicate(ht->ht,
 			ht->hash_fct(&id, lttng_ht_seed),
@@ -3879,13 +3885,13 @@ int consumer_data_pending(uint64_t id)
 
 data_not_pending:
 	/* Data is available to be read by a viewer. */
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 	rcu_read_unlock();
 	return 0;
 
 data_pending:
 	/* Data is still being extracted from buffers. */
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 	rcu_read_unlock();
 	return 1;
 }
@@ -3992,7 +3998,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 	int ret;
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
-	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
+	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 	struct lttng_dynamic_array stream_rotation_positions;
 	uint64_t next_chunk_id, stream_count = 0;
 	enum lttng_trace_chunk_status chunk_status;
@@ -4376,7 +4382,7 @@ int consumer_clear_buffer(struct lttng_consumer_stream *stream)
 		goto end;
 	}
 
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER_KERNEL:
 		ret = kernctl_buffer_clear(stream->wait_fd);
 		if (ret < 0) {
@@ -4656,7 +4662,7 @@ int lttng_consumer_rotate_ready_streams(struct lttng_consumer_channel *channel,
 	int ret;
 	struct lttng_consumer_stream *stream;
 	struct lttng_ht_iter iter;
-	struct lttng_ht *ht = consumer_data.stream_per_chan_id_ht;
+	struct lttng_ht *ht = the_consumer_data.stream_per_chan_id_ht;
 
 	rcu_read_lock();
 
@@ -4814,7 +4820,7 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	}
 
 	published_chunk = lttng_trace_chunk_registry_publish_chunk(
-			consumer_data.chunk_registry, session_id,
+			the_consumer_data.chunk_registry, session_id,
 			created_chunk);
 	lttng_trace_chunk_put(created_chunk);
 	created_chunk = NULL;
@@ -4825,10 +4831,11 @@ enum lttcomm_return_code lttng_consumer_create_trace_chunk(
 	}
 
 	rcu_read_lock();
-	cds_lfht_for_each_entry_duplicate(consumer_data.channels_by_session_id_ht->ht,
-			consumer_data.channels_by_session_id_ht->hash_fct(
+	cds_lfht_for_each_entry_duplicate(
+			the_consumer_data.channels_by_session_id_ht->ht,
+			the_consumer_data.channels_by_session_id_ht->hash_fct(
 					&session_id, lttng_ht_seed),
-			consumer_data.channels_by_session_id_ht->match_fct,
+			the_consumer_data.channels_by_session_id_ht->match_fct,
 			&session_id, &iter.iter, channel,
 			channels_by_session_id_ht_node.node) {
 		ret = lttng_consumer_channel_set_trace_chunk(channel,
@@ -4941,7 +4948,7 @@ enum lttcomm_return_code lttng_consumer_close_trace_chunk(
 			close_command_name);
 
 	chunk = lttng_trace_chunk_registry_find_chunk(
-			consumer_data.chunk_registry, session_id, chunk_id);
+			the_consumer_data.chunk_registry, session_id, chunk_id);
 	if (!chunk) {
 		ERR("Failed to find chunk: session_id = %" PRIu64
 				", chunk_id = %" PRIu64,
@@ -4972,7 +4979,7 @@ enum lttcomm_return_code lttng_consumer_close_trace_chunk(
 	 * current chunk found in the session's channels.
 	 */
 	rcu_read_lock();
-	cds_lfht_for_each_entry(consumer_data.channel_ht->ht, &iter.iter,
+	cds_lfht_for_each_entry(the_consumer_data.channel_ht->ht, &iter.iter,
 			channel, node.node) {
 		int ret;
 
@@ -5057,8 +5064,8 @@ enum lttcomm_return_code lttng_consumer_trace_chunk_exists(
 			", chunk_id = %" PRIu64, relayd_id_str,
 			chunk_id);
 	ret = lttng_trace_chunk_registry_chunk_exists(
-			consumer_data.chunk_registry, session_id,
-			chunk_id, &chunk_exists_local);
+			the_consumer_data.chunk_registry, session_id, chunk_id,
+			&chunk_exists_local);
 	if (ret) {
 		/* Internal error. */
 		ERR("Failed to query the existence of a trace chunk");
@@ -5113,7 +5120,7 @@ int consumer_clear_monitored_channel(struct lttng_consumer_channel *channel)
 	struct lttng_ht_iter iter;
 	int ret;
 
-	ht = consumer_data.stream_per_chan_id_ht;
+	ht = the_consumer_data.stream_per_chan_id_ht;
 
 	rcu_read_lock();
 	cds_lfht_for_each_entry_duplicate(ht->ht,

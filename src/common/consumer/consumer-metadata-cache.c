@@ -28,7 +28,7 @@ enum metadata_cache_update_version_status {
 	METADATA_CACHE_UPDATE_STATUS_VERSION_NOT_UPDATED,
 };
 
-extern struct lttng_consumer_global_data consumer_data;
+extern struct lttng_consumer_global_data the_consumer_data;
 
 /*
  * Reset the metadata cache.

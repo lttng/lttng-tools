@@ -44,7 +44,7 @@
 
 #define INT_MAX_STR_LEN 12	/* includes \0 */
 
-extern struct lttng_consumer_global_data consumer_data;
+extern struct lttng_consumer_global_data the_consumer_data;
 extern int consumer_poll_timeout;
 
 /*
@@ -708,7 +708,7 @@ static int flush_channel(uint64_t chan_key)
 		goto error;
 	}
 
-	ht = consumer_data.stream_per_chan_id_ht;
+	ht = the_consumer_data.stream_per_chan_id_ht;
 
 	/* For each stream of the channel id, flush it. */
 	cds_lfht_for_each_entry_duplicate(ht->ht,
@@ -762,7 +762,7 @@ static int clear_quiescent_channel(uint64_t chan_key)
 		goto error;
 	}
 
-	ht = consumer_data.stream_per_chan_id_ht;
+	ht = the_consumer_data.stream_per_chan_id_ht;
 
 	/* For each stream of the channel id, clear quiescent state. */
 	cds_lfht_for_each_entry_duplicate(ht->ht,
@@ -806,7 +806,7 @@ static int close_metadata(uint64_t chan_key)
 		goto error;
 	}
 
-	pthread_mutex_lock(&consumer_data.lock);
+	pthread_mutex_lock(&the_consumer_data.lock);
 	pthread_mutex_lock(&channel->lock);
 	channel_monitor = channel->monitor;
 	if (cds_lfht_is_node_deleted(&channel->node.node)) {
@@ -815,7 +815,7 @@ static int close_metadata(uint64_t chan_key)
 
 	lttng_ustconsumer_close_metadata(channel);
 	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 
 	/*
 	 * The ownership of a metadata channel depends on the type of
@@ -852,7 +852,7 @@ static int close_metadata(uint64_t chan_key)
 	return ret;
 error_unlock:
 	pthread_mutex_unlock(&channel->lock);
-	pthread_mutex_unlock(&consumer_data.lock);
+	pthread_mutex_unlock(&the_consumer_data.lock);
 error:
 	return ret;
 }
@@ -1875,9 +1875,9 @@ error_push_metadata_fatal:
 		DBG("UST consumer discarded events command for session id %"
 				PRIu64, id);
 		rcu_read_lock();
-		pthread_mutex_lock(&consumer_data.lock);
+		pthread_mutex_lock(&the_consumer_data.lock);
 
-		ht = consumer_data.stream_list_ht;
+		ht = the_consumer_data.stream_list_ht;
 
 		/*
 		 * We only need a reference to the channel, but they are not
@@ -1896,7 +1896,7 @@ error_push_metadata_fatal:
 				break;
 			}
 		}
-		pthread_mutex_unlock(&consumer_data.lock);
+		pthread_mutex_unlock(&the_consumer_data.lock);
 		rcu_read_unlock();
 
 		DBG("UST consumer discarded events command for session id %"
@@ -1926,9 +1926,9 @@ error_push_metadata_fatal:
 		DBG("UST consumer lost packets command for session id %"
 				PRIu64, id);
 		rcu_read_lock();
-		pthread_mutex_lock(&consumer_data.lock);
+		pthread_mutex_lock(&the_consumer_data.lock);
 
-		ht = consumer_data.stream_list_ht;
+		ht = the_consumer_data.stream_list_ht;
 
 		/*
 		 * We only need a reference to the channel, but they are not
@@ -1946,7 +1946,7 @@ error_push_metadata_fatal:
 				break;
 			}
 		}
-		pthread_mutex_unlock(&consumer_data.lock);
+		pthread_mutex_unlock(&the_consumer_data.lock);
 		rcu_read_unlock();
 
 		DBG("UST consumer lost packets command for session id %"
@@ -3260,7 +3260,7 @@ int lttng_ustconsumer_request_metadata(struct lttng_consumer_local_data *ctx,
 	memset(&request, 0, sizeof(request));
 
 	/* send the metadata request to sessiond */
-	switch (consumer_data.type) {
+	switch (the_consumer_data.type) {
 	case LTTNG_CONSUMER64_UST:
 		request.bits_per_long = 64;
 		break;
