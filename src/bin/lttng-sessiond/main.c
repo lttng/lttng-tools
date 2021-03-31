@@ -1322,7 +1322,6 @@ static void unregister_all_triggers(void)
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	for (i = 0; i < trigger_count; i++) {
-		enum lttng_error_code ret_code;
 		uid_t trigger_owner;
 		const char *trigger_name;
 		const struct lttng_trigger *trigger =
