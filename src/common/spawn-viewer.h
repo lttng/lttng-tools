@@ -16,6 +16,9 @@
  * On success, this function doesn't return.
  * Returns -1 if the `opt_viewer` string or the default trace viewer can't be
  * `exec()`.
+ *
+ * This symbol was mistakenly made public before the 2.12 release. It can't
+ * be removed (but it can be stubbed-out if necessary).
  */
 int spawn_viewer(const char *trace_path, char *opt_viewer, bool opt_live_mode);
 
