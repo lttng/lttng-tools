@@ -862,6 +862,8 @@ AC_ARG_ENABLE([bin-lttng-sessiond], AS_HELP_STRING([--disable-bin-lttng-sessiond
 	      [Disable the build of lttng-sessiond binaries]))
 AC_ARG_ENABLE([extras], AS_HELP_STRING([--disable-extras],
 	      [Disable the build of the extra components]))
+AC_ARG_ENABLE([tests], AS_HELP_STRING([--disable-tests],
+	      [Disable the build of the test components]))
 
 
 # Always build libconfig since it a dependency of libcommon
@@ -1027,6 +1029,7 @@ AM_CONDITIONAL([BUILD_BIN_LTTNG_SESSIOND], [test x$enable_bin_lttng_sessiond != 
 
 # Export the tests and extras build conditions.
 AS_IF([\
+test "x$enable_tests" != "xno" && \
 test "x$enable_bin_lttng" != "xno" && \
 test "x$enable_bin_lttng_consumerd" != "xno" && \
 test "x$enable_bin_lttng_crash" != "xno" && \
