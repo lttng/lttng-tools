@@ -4070,6 +4070,7 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 error:
 	ustctl_release_object(app->sock, app->event_notifier_group.object);
 	free(app->event_notifier_group.object);
+	app->event_notifier_group.object = NULL;
 	return ret;
 }
 
