@@ -130,7 +130,8 @@ lttngactioninclude_HEADERS= \
 	lttng/action/rotate-session.h \
 	lttng/action/snapshot-session.h \
 	lttng/action/start-session.h \
-	lttng/action/stop-session.h
+	lttng/action/stop-session.h \
+	lttng/action/firing-policy.h
 
 lttngconditioninclude_HEADERS= \
 	lttng/condition/condition.h \
@@ -162,6 +163,7 @@ noinst_HEADERS = \
 	lttng/action/snapshot-session-internal.h \
 	lttng/action/start-session-internal.h \
 	lttng/action/stop-session-internal.h \
+	lttng/action/firing-policy-internal.h \
 	lttng/channel-internal.h \
 	lttng/condition/buffer-usage-internal.h \
 	lttng/condition/condition-internal.h \

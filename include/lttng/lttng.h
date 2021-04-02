@@ -17,6 +17,7 @@
 
 /* Include every LTTng ABI/API available. */
 #include <lttng/action/action.h>
+#include <lttng/action/firing-policy.h>
 #include <lttng/action/group.h>
 #include <lttng/action/notify.h>
 #include <lttng/action/rotate-session.h>
@@ -24,8 +25,8 @@
 #include <lttng/action/start-session.h>
 #include <lttng/action/stop-session.h>
 #include <lttng/channel.h>
-#include <lttng/clear.h>
 #include <lttng/clear-handle.h>
+#include <lttng/clear.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
@@ -36,7 +37,6 @@
 #include <lttng/destruction-handle.h>
 #include <lttng/domain.h>
 #include <lttng/endpoint.h>
-#include <lttng/event.h>
 #include <lttng/event-expr.h>
 #include <lttng/event-field-value.h>
 #include <lttng/event-rule/event-rule.h>
@@ -44,13 +44,14 @@
 #include <lttng/event-rule/syscall.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/userspace-probe.h>
+#include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
 #include <lttng/kernel-probe.h>
 #include <lttng/load.h>
 #include <lttng/location.h>
-#include <lttng/lttng-error.h>
 #include <lttng/log-level-rule.h>
+#include <lttng/lttng-error.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/rotation.h>

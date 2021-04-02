@@ -41,6 +41,7 @@ libcommon_la_SOURCES = \
 	actions/snapshot-session.c \
 	actions/start-session.c \
 	actions/stop-session.c \
+	actions/firing-policy.c \
 	buffer-view.h buffer-view.c \
 	common.h \
 	conditions/buffer-usage.c \
