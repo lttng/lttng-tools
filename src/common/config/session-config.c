@@ -848,7 +848,7 @@ int parse_bool(xmlChar *str, int *val)
 	} else if (!strcmp((const char *) str, config_xml_false)) {
 		*val = 0;
 	} else {
-		WARN("Invalid boolean value encoutered (%s).",
+		WARN("Invalid boolean value encountered (%s).",
 			(const char *) str);
 		ret = -1;
 	}
