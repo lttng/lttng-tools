@@ -843,9 +843,11 @@ int parse_bool(xmlChar *str, int *val)
 		goto end;
 	}
 
-	if (!strcmp((const char *) str, config_xml_true)) {
+	if (!strcmp((const char *) str, config_xml_true) ||
+			!strcmp((const char *) str, "1")) {
 		*val = 1;
-	} else if (!strcmp((const char *) str, config_xml_false)) {
+	} else if (!strcmp((const char *) str, config_xml_false) ||
+			!strcmp((const char *) str, "0")) {
 		*val = 0;
 	} else {
 		WARN("Invalid boolean value encountered (%s).",
