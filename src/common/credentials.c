@@ -9,16 +9,19 @@
 #include <stdbool.h>
 #include "credentials.h"
 
+LTTNG_HIDDEN
 uid_t lttng_credentials_get_uid(const struct lttng_credentials *creds)
 {
 	return LTTNG_OPTIONAL_GET(creds->uid);
 }
 
+LTTNG_HIDDEN
 gid_t lttng_credentials_get_gid(const struct lttng_credentials *creds)
 {
 	return LTTNG_OPTIONAL_GET(creds->gid);
 }
 
+LTTNG_HIDDEN
 bool lttng_credentials_is_equal_uid(const struct lttng_credentials *a,
 		const struct lttng_credentials *b)
 {
@@ -38,6 +41,7 @@ bool lttng_credentials_is_equal_uid(const struct lttng_credentials *a,
 	return a->uid.value == b->uid.value;
 }
 
+LTTNG_HIDDEN
 bool lttng_credentials_is_equal_gid(const struct lttng_credentials *a,
 		const struct lttng_credentials *b)
 {
@@ -57,6 +61,7 @@ bool lttng_credentials_is_equal_gid(const struct lttng_credentials *a,
 	return a->gid.value == b->gid.value;
 }
 
+LTTNG_HIDDEN
 bool lttng_credentials_is_equal(const struct lttng_credentials *a,
 		const struct lttng_credentials *b)
 {
