@@ -37,8 +37,8 @@ TRACEPOINT_LOGLEVEL(ust_tests_demo2, loop, TRACE_WARNING)
 
 #endif /* _TRACEPOINT_UST_TESTS_DEMO2_H */
 
-#undef TRACEPOINT_INCLUDE_FILE
-#define TRACEPOINT_INCLUDE_FILE ./ust_tests_demo2.h
+#undef TRACEPOINT_INCLUDE
+#define TRACEPOINT_INCLUDE "./ust_tests_demo2.h"
 
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>

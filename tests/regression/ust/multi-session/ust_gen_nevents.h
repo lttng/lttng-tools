@@ -47,8 +47,8 @@ TRACEPOINT_EVENT(ust_gen_nevents, tptest3,
 
 #endif /* _TRACEPOINT_UST_GEN_NEVENTS_H */
 
-#undef TRACEPOINT_INCLUDE_FILE
-#define TRACEPOINT_INCLUDE_FILE ./ust_gen_nevents.h
+#undef TRACEPOINT_INCLUDE
+#define TRACEPOINT_INCLUDE "./ust_gen_nevents.h"
 
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>

@@ -41,8 +41,8 @@ TRACEPOINT_MODEL_EMF_URI(ust_tests_demo, done,
 
 #endif /* _TRACEPOINT_UST_TESTS_DEMO_H */
 
-#undef TRACEPOINT_INCLUDE_FILE
-#define TRACEPOINT_INCLUDE_FILE ./ust_tests_demo.h
+#undef TRACEPOINT_INCLUDE
+#define TRACEPOINT_INCLUDE "./ust_tests_demo.h"
 
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>

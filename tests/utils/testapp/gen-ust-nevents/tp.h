@@ -111,8 +111,8 @@ TRACEPOINT_EVENT(tp, tptest5,
 
 #endif /* _TRACEPOINT_TP_H */
 
-#undef TRACEPOINT_INCLUDE_FILE
-#define TRACEPOINT_INCLUDE_FILE ./tp.h
+#undef TRACEPOINT_INCLUDE
+#define TRACEPOINT_INCLUDE "./tp.h"
 
 /* This part must be outside ifdef protection */
 #include <lttng/tracepoint-event.h>
