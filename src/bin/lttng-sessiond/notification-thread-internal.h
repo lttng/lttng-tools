@@ -114,6 +114,7 @@ struct notification_client_list {
 	pthread_mutex_t lock;
 	struct urcu_ref ref;
 	struct lttng_condition *condition;
+	/* List of triggers that have an identical condition than `condition`. */
 	struct cds_list_head triggers_list;
 	struct cds_list_head clients_list;
 	/* Weak reference to container. */

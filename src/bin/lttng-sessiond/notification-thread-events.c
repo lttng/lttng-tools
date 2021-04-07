@@ -1139,9 +1139,10 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	 * at this point so that conditions that are already TRUE result
 	 * in a notification being sent out.
 	 *
-	 * The client_list's trigger is used without locking the list itself.
-	 * This is correct since the list doesn't own the trigger and the
-	 * object is immutable.
+	 * Note the iteration on all triggers which share an identical
+	 * `condition` than the one to which the client is registering. This is
+	 * done to ensure that the client receives a distinct notification for
+	 * all triggers that have a `notify` action that have this condition.
 	 */
 	pthread_mutex_lock(&client_list->lock);
 	cds_list_for_each_entry(trigger_ht_element,
