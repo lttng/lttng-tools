@@ -1003,6 +1003,7 @@ void event_notifier_error_accounting_unregister_event_notifier(
 	lttng_ht_lookup(error_counter_indexes_ht, &tracer_token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
+		int del_ret;
 		struct index_ht_entry *index_entry = caa_container_of(
 				node, typeof(*index_entry), node);
 		enum lttng_index_allocator_status index_alloc_status;
@@ -1023,7 +1024,8 @@ void event_notifier_error_accounting_unregister_event_notifier(
 			/* Don't exit, perform the rest of the clean-up. */
 		}
 
-		lttng_ht_del(error_counter_indexes_ht, &iter);
+		del_ret = lttng_ht_del(error_counter_indexes_ht, &iter);
+		assert(!del_ret);
 		call_rcu(&index_entry->rcu_head, free_index_ht_entry);
 	}
 
