@@ -45,6 +45,7 @@ int handle_condition(
 static
 int parse_arguments(char **argv)
 {
+	int sscanf_ret;
 	const char *domain_type_string = NULL;
 	const char *buffer_usage_type_string = NULL;
 	const char *buffer_usage_threshold_type = NULL;
@@ -96,7 +97,13 @@ int parse_arguments(char **argv)
 	}
 
 	/* Number of notification to expect */
-	sscanf(nr_expected_notifications_string, "%d", &nr_expected_notifications);
+	sscanf_ret = sscanf(nr_expected_notifications_string, "%d",
+			&nr_expected_notifications);
+	if (sscanf_ret != 1) {
+		printf("error: Invalid nr_expected_notifications, sscanf returned %d\n",
+				sscanf_ret);
+		goto error;
+	}
 
 	return 0;
 error:
