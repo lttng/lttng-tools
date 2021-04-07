@@ -10,18 +10,19 @@
 #include <lttng/condition/evaluation-internal.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/evaluation.h>
+#include <lttng/trigger/trigger-internal.h>
 #include <common/payload.h>
 #include <common/payload-view.h>
 #include <assert.h>
 
 LTTNG_HIDDEN
 struct lttng_notification *lttng_notification_create(
-		struct lttng_condition *condition,
+		struct lttng_trigger *trigger,
 		struct lttng_evaluation *evaluation)
 {
 	struct lttng_notification *notification = NULL;
 
-	if (!condition || !evaluation) {
+	if (!trigger || !evaluation) {
 		goto end;
 	}
 
@@ -30,7 +31,7 @@ struct lttng_notification *lttng_notification_create(
 		goto end;
 	}
 
-	notification->condition = condition;
+	notification->trigger = trigger;
 	notification->evaluation = evaluation;
 end:
 	return notification;
@@ -53,7 +54,7 @@ int lttng_notification_serialize(const struct lttng_notification *notification,
 	}
 
 	size_before_payload = payload->buffer.size;
-	ret = lttng_condition_serialize(notification->condition,
+	ret = lttng_trigger_serialize(notification->trigger,
 			payload);
 	if (ret) {
 		goto end;
@@ -78,7 +79,7 @@ ssize_t lttng_notification_create_from_payload(
 		struct lttng_notification **notification)
 {
 	ssize_t ret, notification_size = 0, condition_size, evaluation_size;
-	struct lttng_condition *condition;
+	struct lttng_trigger *trigger;
 	struct lttng_evaluation *evaluation;
 	const struct lttng_notification_comm *notification_comm;
 	const struct lttng_payload_view notification_comm_view =
@@ -104,8 +105,8 @@ ssize_t lttng_notification_create_from_payload(
 				lttng_payload_view_from_view(src_view,
 						notification_size, -1);
 
-		condition_size = lttng_condition_create_from_payload(
-				&condition_view, &condition);
+		condition_size = lttng_trigger_create_from_payload(
+				&condition_view, &trigger);
 	}
 
 	if (condition_size < 0) {
@@ -122,7 +123,8 @@ ssize_t lttng_notification_create_from_payload(
 						notification_size, -1);
 
 		evaluation_size = lttng_evaluation_create_from_payload(
-				condition, &evaluation_view, &evaluation);
+				lttng_trigger_get_const_condition(trigger),
+				&evaluation_view, &evaluation);
 	}
 
 	if (evaluation_size < 0) {
@@ -139,7 +141,7 @@ ssize_t lttng_notification_create_from_payload(
 		goto error;
 	}
 
-	*notification = lttng_notification_create(condition, evaluation);
+	*notification = lttng_notification_create(trigger, evaluation);
 	if (!*notification) {
 		ret = -1;
 		goto error;
@@ -148,7 +150,7 @@ ssize_t lttng_notification_create_from_payload(
 end:
 	return ret;
 error:
-	lttng_condition_destroy(condition);
+	lttng_trigger_destroy(trigger);
 	lttng_evaluation_destroy(evaluation);
 	return ret;
 }
@@ -159,7 +161,7 @@ void lttng_notification_destroy(struct lttng_notification *notification)
 		return;
 	}
 
-	lttng_condition_destroy(notification->condition);
+	lttng_trigger_destroy(notification->trigger);
 	lttng_evaluation_destroy(notification->evaluation);
 	free(notification);
 }
@@ -167,7 +169,7 @@ void lttng_notification_destroy(struct lttng_notification *notification)
 const struct lttng_condition *lttng_notification_get_condition(
 		struct lttng_notification *notification)
 {
-	return notification ? notification->condition : NULL;
+	return notification ? lttng_trigger_get_const_condition(notification->trigger) : NULL;
 }
 
 const struct lttng_evaluation *lttng_notification_get_evaluation(

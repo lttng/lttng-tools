@@ -238,9 +238,8 @@ typedef int (*report_client_transmission_result_cb)(
 LTTNG_HIDDEN
 int notification_client_list_send_evaluation(
 		struct notification_client_list *list,
-		const struct lttng_condition *condition,
+		const struct lttng_trigger *trigger,
 		const struct lttng_evaluation *evaluation,
-		const struct lttng_credentials *trigger_creds,
 		const struct lttng_credentials *source_object_creds,
 		report_client_transmission_result_cb client_report,
 		void *user_data);

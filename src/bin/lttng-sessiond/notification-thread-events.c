@@ -4212,8 +4212,7 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 	};
 
 	return notification_client_list_send_evaluation(client_list,
-			lttng_trigger_get_const_condition(trigger), evaluation,
-			lttng_trigger_get_credentials(trigger),
+			trigger, evaluation,
 			&creds,
 			client_handle_transmission_status_wrapper, state);
 }
@@ -4254,9 +4253,8 @@ int send_evaluation_to_clients(const struct lttng_trigger *trigger,
 LTTNG_HIDDEN
 int notification_client_list_send_evaluation(
 		struct notification_client_list *client_list,
-		const struct lttng_condition *condition,
+		const struct lttng_trigger *trigger,
 		const struct lttng_evaluation *evaluation,
-		const struct lttng_credentials *trigger_creds,
 		const struct lttng_credentials *source_object_creds,
 		report_client_transmission_result_cb client_report,
 		void *user_data)
@@ -4265,12 +4263,14 @@ int notification_client_list_send_evaluation(
 	struct lttng_payload msg_payload;
 	struct notification_client_list_element *client_list_element, *tmp;
 	const struct lttng_notification notification = {
-		.condition = (struct lttng_condition *) condition,
+		.trigger = (struct lttng_trigger *) trigger,
 		.evaluation = (struct lttng_evaluation *) evaluation,
 	};
 	struct lttng_notification_channel_message msg_header = {
 		.type = (int8_t) LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_NOTIFICATION,
 	};
+	const struct lttng_credentials *trigger_creds =
+			lttng_trigger_get_credentials(trigger);
 
 	lttng_payload_init(&msg_payload);
 

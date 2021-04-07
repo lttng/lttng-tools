@@ -197,9 +197,8 @@ static int action_executor_notify_handler(struct action_executor *executor,
 		const struct lttng_action *action)
 {
 	return notification_client_list_send_evaluation(work_item->client_list,
-			lttng_trigger_get_const_condition(work_item->trigger),
+			work_item->trigger,
 			work_item->evaluation,
-			lttng_trigger_get_credentials(work_item->trigger),
 			work_item->object_creds.is_set ?
 					&(work_item->object_creds.value) :
 					NULL,
