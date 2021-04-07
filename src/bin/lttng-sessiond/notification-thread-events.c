@@ -4550,7 +4550,6 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 						     element->trigger),
 					struct lttng_condition_on_event,
 					parent),
-			trigger_name,
 			notification->capture_buffer,
 			notification->capture_buf_size, false);
 

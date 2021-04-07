@@ -579,33 +579,24 @@ struct capture_base_field_tuple test_capture_base_fields[] = {
 static const char *get_notification_trigger_name(
 		struct lttng_notification *notification)
 {
-	const char *name = NULL;
-	enum lttng_evaluation_status status;
-	const struct lttng_evaluation *evaluation;
-	evaluation = lttng_notification_get_evaluation(notification);
-	if (evaluation == NULL) {
-		fail("lttng_notification_get_evaluation");
+	const char *trigger_name = NULL;
+	enum lttng_trigger_status trigger_status;
+	const struct lttng_trigger *trigger;
+
+	trigger = lttng_notification_get_trigger(notification);
+	if (!trigger) {
+		fail("Failed to get trigger from notification");
 		goto end;
 	}
 
-	switch (lttng_evaluation_get_type(evaluation)) {
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
-	{
-		status = lttng_evaluation_on_event_get_trigger_name(
-				evaluation, &name);
-		if (status != LTTNG_EVALUATION_STATUS_OK) {
-			fail("lttng_evaluation_on_event_get_trigger_name");
-			name = NULL;
-			goto end;
-		}
-		break;
-	}
-	default:
-		fail("Wrong notification evaluation type \n");
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+		fail("Failed to get name from notification's trigger");
 		goto end;
 	}
+
 end:
-	return name;
+	return trigger_name;
 }
 
 static int validator_notification_trigger_name(

@@ -56,41 +56,28 @@ static bool action_group_contains_notify(
 static bool is_expected_trigger_name(const char *expected_trigger_name,
 		struct lttng_notification *notification)
 {
-	int ret = false;
-	const struct lttng_evaluation *evaluation =
-			lttng_notification_get_evaluation(notification);
-	const enum lttng_condition_type type =
-			lttng_evaluation_get_type(evaluation);
+	const char *trigger_name = NULL;
+	enum lttng_trigger_status trigger_status;
+	const struct lttng_trigger *trigger;
+	bool names_match;
 
-	switch (type) {
-	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
-	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
-	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
-		break;
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
-	{
-		const char *trigger_name;
-		enum lttng_evaluation_status evaluation_status;
-
-		evaluation_status =
-				lttng_evaluation_on_event_get_trigger_name(
-						evaluation, &trigger_name);
-		if (evaluation_status != LTTNG_EVALUATION_STATUS_OK) {
-			fprintf(stderr, "Failed to get trigger name of event rule notification\n");
-			ret = -1;
-			break;
-		}
-
-		ret = true;
-		break;
-	}
-	default:
-		fprintf(stderr, "Unknown notification type (%d)\n", type);
+	trigger = lttng_notification_get_trigger(notification);
+	if (!trigger) {
+		fprintf(stderr, "Failed to get trigger from notification\n");
+		names_match = false;
+		goto end;
 	}
 
-	return ret;
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+		fprintf(stderr, "Failed to get name from notification's trigger\n");
+		names_match = false;
+		goto end;
+	}
+
+	names_match = strcmp(expected_trigger_name, trigger_name) == 0;
+end:
+	return names_match;
 }
 
 int main(int argc, char **argv)

@@ -64,22 +64,9 @@ extern enum lttng_condition_status lttng_condition_on_event_get_rule(
  * allow users to query a number of properties resulting from the evaluation
  * of a condition which evaluated to true.
  *
- * The evaluation of a on event hit yields two different results:
- *    TEMPORARY - The name of the triggers associated with the condition.
- *    TODO - The captured event payload if any
+ * The evaluation of an on event condition contains the captured event
+ * payload fields that were specified by the condition.
  */
-
-/*
- * Get the trigger name property of a on event hit evaluation.
- *
- * Returns LTTNG_EVALUATION_STATUS_OK on success and a trigger name
- * or LTTNG_EVALUATION_STATUS_INVALID if
- * an invalid parameter is passed.
- */
-extern enum lttng_evaluation_status
-lttng_evaluation_on_event_get_trigger_name(
-		const struct lttng_evaluation *evaluation,
-		const char **name);
 
 /*
  * Sets `*field_val` to the array event field value of the on event

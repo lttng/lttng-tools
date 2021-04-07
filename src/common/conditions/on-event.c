@@ -1045,12 +1045,7 @@ ssize_t lttng_evaluation_on_event_create_from_payload(
 		struct lttng_evaluation **_evaluation)
 {
 	ssize_t ret, offset = 0;
-	const char *trigger_name;
 	struct lttng_evaluation *evaluation = NULL;
-	const struct lttng_evaluation_on_event_comm *header;
-	const struct lttng_payload_view header_view =
-			lttng_payload_view_from_view(
-					view, 0, sizeof(*header));
 	uint32_t capture_payload_size;
 	const char *capture_payload = NULL;
 
@@ -1059,37 +1054,6 @@ ssize_t lttng_evaluation_on_event_create_from_payload(
 		goto error;
 	}
 
-	if (!lttng_payload_view_is_valid(&header_view)) {
-		ERR("Failed to initialize from malformed event rule evaluation: buffer too short to contain header");
-		ret = -1;
-		goto error;
-	}
-
-	header = (typeof(header)) header_view.buffer.data;
-
-	/* Map the originating trigger's name. */
-	offset += sizeof(*header);
-	{
-		const struct lttng_payload_view current_view =
-				lttng_payload_view_from_view(view, offset,
-						header->trigger_name_length);
-
-		if (!lttng_payload_view_is_valid(&current_view)) {
-			ERR("Failed to initialize from malformed event rule evaluation: buffer too short to contain trigger name");
-			ret = -1;
-			goto error;
-		}
-
-		trigger_name = current_view.buffer.data;
-		if (!lttng_buffer_view_contains_string(&current_view.buffer,
-				    trigger_name, header->trigger_name_length)) {
-			ERR("Failed to initialize from malformed event rule evaluation: invalid trigger name");
-			ret = -1;
-			goto error;
-		}
-	}
-
-	offset += header->trigger_name_length;
 	{
 		const struct lttng_payload_view current_view =
 				lttng_payload_view_from_view(view, offset, -1);
@@ -1116,7 +1080,7 @@ ssize_t lttng_evaluation_on_event_create_from_payload(
 		capture_payload = current_view.buffer.data;
 	}
 
-	evaluation = lttng_evaluation_on_event_create(condition, trigger_name,
+	evaluation = lttng_evaluation_on_event_create(condition,
 			capture_payload, capture_payload_size, true);
 	if (!evaluation) {
 		ret = -1;
@@ -1139,26 +1103,10 @@ static int lttng_evaluation_on_event_serialize(
 {
 	int ret = 0;
 	struct lttng_evaluation_on_event *hit;
-	struct lttng_evaluation_on_event_comm comm;
 	uint32_t capture_payload_size;
 
 	hit = container_of(
 			evaluation, struct lttng_evaluation_on_event, parent);
-
-	assert(hit->name);
-	comm.trigger_name_length = strlen(hit->name) + 1;
-
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &comm, sizeof(comm));
-	if (ret) {
-		goto end;
-	}
-
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, hit->name, comm.trigger_name_length);
-	if (ret) {
-		goto end;
-	}
 
 	capture_payload_size = (uint32_t) hit->capture_payload.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &capture_payload_size,
@@ -1229,7 +1177,6 @@ static void lttng_evaluation_on_event_destroy(
 
 	hit = container_of(
 			evaluation, struct lttng_evaluation_on_event, parent);
-	free(hit->name);
 	lttng_dynamic_buffer_reset(&hit->capture_payload);
 	lttng_event_field_value_destroy(hit->captured_values);
 	free(hit);
@@ -1517,7 +1464,6 @@ end:
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_on_event_create(
 		const struct lttng_condition_on_event *condition,
-		const char *trigger_name,
 		const char *capture_payload, size_t capture_payload_size,
 		bool decode_capture_payload)
 {
@@ -1526,11 +1472,6 @@ struct lttng_evaluation *lttng_evaluation_on_event_create(
 
 	hit = zmalloc(sizeof(struct lttng_evaluation_on_event));
 	if (!hit) {
-		goto error;
-	}
-
-	hit->name = strdup(trigger_name);
-	if (!hit->name) {
 		goto error;
 	}
 
@@ -1598,24 +1539,6 @@ lttng_evaluation_on_event_get_captured_values(
 
 	*field_val = hit->captured_values;
 
-end:
-	return status;
-}
-
-enum lttng_evaluation_status lttng_evaluation_on_event_get_trigger_name(
-		const struct lttng_evaluation *evaluation, const char **name)
-{
-	struct lttng_evaluation_on_event *hit;
-	enum lttng_evaluation_status status = LTTNG_EVALUATION_STATUS_OK;
-
-	if (!evaluation || !is_on_event_evaluation(evaluation) || !name) {
-		status = LTTNG_EVALUATION_STATUS_INVALID;
-		goto end;
-	}
-
-	hit = container_of(
-			evaluation, struct lttng_evaluation_on_event, parent);
-	*name = hit->name;
 end:
 	return status;
 }

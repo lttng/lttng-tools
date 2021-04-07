@@ -38,7 +38,6 @@ struct lttng_condition_on_event {
 
 struct lttng_evaluation_on_event {
 	struct lttng_evaluation parent;
-	char *name;
 
 	/* MessagePack-encoded captured event field values. */
 	struct lttng_dynamic_buffer capture_payload;
@@ -52,13 +51,6 @@ struct lttng_evaluation_on_event {
 	 */
 	struct lttng_event_field_value *captured_values;
 };
-
-struct lttng_evaluation_on_event_comm {
-	/* Includes the null terminator. */
-	uint32_t trigger_name_length;
-	/* Trigger name. */
-	char payload[];
-} LTTNG_PACKED;
 
 LTTNG_HIDDEN
 ssize_t lttng_condition_on_event_create_from_payload(
@@ -90,7 +82,6 @@ void lttng_condition_on_event_set_error_count(struct lttng_condition *condition,
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_on_event_create(
 		const struct lttng_condition_on_event *condition,
-		const char* trigger_name,
 		const char *capture_payload, size_t capture_payload_size,
 		bool decode_capture_payload);
 
