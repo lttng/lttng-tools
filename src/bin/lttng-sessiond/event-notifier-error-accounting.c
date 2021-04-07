@@ -497,6 +497,8 @@ error_duplicate_cpu_counter:
 		free(cpu_counters[i]);
 	}
 
+	free(cpu_counters);
+
 error_allocate_cpu_counters:
 error_send_counter_data:
 	ustctl_release_object(-1, new_counter);
