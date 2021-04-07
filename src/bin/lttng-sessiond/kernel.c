@@ -769,14 +769,8 @@ int kernel_disable_event(struct ltt_kernel_event *event)
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
-		switch (-ret) {
-		case EEXIST:
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-			break;
-		default:
-			PERROR("disable kernel event");
-			break;
-		}
+		PERROR("Failed to disable kernel event: name = '%s', fd = %d",
+				event->event->name, event->fd);
 		goto error;
 	}
 
@@ -805,15 +799,8 @@ int kernel_disable_event_notifier_rule(struct ltt_kernel_event_notifier_rule *ev
 
 	ret = kernctl_disable(event->fd);
 	if (ret < 0) {
-		switch (-ret) {
-		case EEXIST:
-			ret = LTTNG_ERR_KERN_EVENT_EXIST;
-			break;
-		default:
-			PERROR("Failed to disable kernel event notifier: fd = %d, token = %" PRIu64,
-					event->fd, event->token);
-			break;
-		}
+		PERROR("Failed to disable kernel event notifier: fd = %d, token = %" PRIu64,
+				event->fd, event->token);
 		goto error;
 	}
 
