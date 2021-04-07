@@ -438,7 +438,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 		goto error_send_counter_data;
 	}
 
-	cpu_counters = zmalloc(entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data));
+	cpu_counters = zmalloc(entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
