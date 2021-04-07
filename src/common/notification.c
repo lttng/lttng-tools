@@ -177,3 +177,9 @@ const struct lttng_evaluation *lttng_notification_get_evaluation(
 {
 	return notification ? notification->evaluation : NULL;
 }
+
+const struct lttng_trigger *lttng_notification_get_trigger(
+		struct lttng_notification *notification)
+{
+	return notification ? notification->trigger : NULL;
+}

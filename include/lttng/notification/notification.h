@@ -47,6 +47,18 @@ extern const struct lttng_evaluation *lttng_notification_get_evaluation(
 		struct lttng_notification *notification);
 
 /*
+ * Get a notification's origin trigger.
+ *
+ * The notification retains the ownership of the trigger object. Hence, it is
+ * not valid to access that object after the destruction of its associated
+ * notification.
+ *
+ * Returns an lttng_trigger object on success, NULL on error.
+ */
+const struct lttng_trigger *lttng_notification_get_trigger(
+		struct lttng_notification *notification);
+
+/*
  * Destroys (frees) a notification. The notification's condition and evaluation
  * are destroyed as a side-effect.
  */
