@@ -223,11 +223,11 @@ struct error_account_entry *create_uid_accounting_entry(
 		cpu_counter_fds[i] = -1;
 	}
 
-	cpu_counters = zmalloc(entry->nr_counter_cpu_fds * sizeof(**cpu_counters));
+	cpu_counters = zmalloc(entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
 	if (!cpu_counters) {
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
-				entry->nr_counter_cpu_fds * sizeof(**cpu_counters));
+				entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
 		ret = -1;
 		goto error_counter_cpus_alloc;
 	}
