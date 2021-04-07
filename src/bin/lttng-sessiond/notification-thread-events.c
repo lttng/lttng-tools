@@ -1089,6 +1089,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	struct notification_client_list *client_list = NULL;
 	struct lttng_condition_list_element *condition_list_element = NULL;
 	struct notification_client_list_element *client_list_element = NULL;
+	struct lttng_trigger_ht_element *trigger_ht_element;
 	enum lttng_notification_channel_status status =
 			LTTNG_NOTIFICATION_CHANNEL_STATUS_OK;
 
@@ -1142,7 +1143,6 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	 * This is correct since the list doesn't own the trigger and the
 	 * object is immutable.
 	 */
-	struct lttng_trigger_ht_element *trigger_ht_element;
 	pthread_mutex_lock(&client_list->lock);
 	cds_list_for_each_entry(trigger_ht_element,
 			&client_list->triggers_list, client_list_trigger_node) {
