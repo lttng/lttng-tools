@@ -4501,6 +4501,10 @@ enum lttng_error_code synchronize_tracer_notifier_unregister(
 	switch (trigger_domain) {
 	case LTTNG_DOMAIN_KERNEL:
 		ret_code = kernel_unregister_event_notifier(trigger);
+		if (ret_code != LTTNG_OK) {
+			goto end_unlock_session_list;
+		}
+
 		break;
 	case LTTNG_DOMAIN_UST:
 		ust_app_global_update_all_event_notifier_rules();
