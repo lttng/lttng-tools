@@ -481,7 +481,6 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	cpu_counters = NULL;
 	goto end;
 
-error_allocate_cpu_counters:
 error_send_cpu_counter_data:
 error_duplicate_cpu_counter:
 	/* Teardown any duplicated cpu counters. */
@@ -498,6 +497,7 @@ error_duplicate_cpu_counter:
 		free(cpu_counters[i]);
 	}
 
+error_allocate_cpu_counters:
 error_send_counter_data:
 	ustctl_release_object(-1, new_counter);
 	free(new_counter);
