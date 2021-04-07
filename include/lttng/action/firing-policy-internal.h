@@ -33,4 +33,8 @@ LTTNG_HIDDEN
 struct lttng_firing_policy *lttng_firing_policy_copy(
 		const struct lttng_firing_policy *source);
 
+LTTNG_HIDDEN
+bool lttng_firing_policy_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter);
+
 #endif /* LTTNG_FIRING_POLICY */

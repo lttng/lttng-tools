@@ -38,6 +38,10 @@ struct lttng_action_start_session_comm {
 	char data[];
 } LTTNG_PACKED;
 
+static const struct lttng_firing_policy *
+lttng_action_start_session_internal_get_firing_policy(
+		const struct lttng_action *action);
+
 static struct lttng_action_start_session *action_start_session_from_action(
 		struct lttng_action *action)
 {
@@ -250,7 +254,8 @@ struct lttng_action *lttng_action_start_session_create(void)
 			lttng_action_start_session_validate,
 			lttng_action_start_session_serialize,
 			lttng_action_start_session_is_equal,
-			lttng_action_start_session_destroy);
+			lttng_action_start_session_destroy,
+			lttng_action_start_session_internal_get_firing_policy);
 
 	status = lttng_action_start_session_set_firing_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
@@ -363,4 +368,14 @@ enum lttng_action_status lttng_action_start_session_get_firing_policy(
 	status = LTTNG_ACTION_STATUS_OK;
 end:
 	return status;
+}
+
+static const struct lttng_firing_policy *
+lttng_action_start_session_internal_get_firing_policy(
+		const struct lttng_action *action)
+{
+	const struct lttng_action_start_session *_action;
+	_action = action_start_session_from_action_const(action);
+
+	return _action->policy;
 }

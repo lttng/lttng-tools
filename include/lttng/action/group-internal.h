@@ -26,4 +26,8 @@ extern ssize_t lttng_action_group_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_action **group);
 
+LTTNG_HIDDEN
+extern struct lttng_action *lttng_action_group_borrow_mutable_at_index(
+		const struct lttng_action *group, unsigned int index);
+
 #endif /* LTTNG_ACTION_GROUP_INTERNAL_H */

@@ -15,6 +15,7 @@
 #include <common/macros.h>
 #include <common/optional.h>
 #include <lttng/action/action-internal.h>
+#include <lttng/action/group-internal.h>
 #include <lttng/action/group.h>
 #include <lttng/action/notify-internal.h>
 #include <lttng/action/notify.h>
@@ -62,29 +63,33 @@ struct action_executor {
  */
 typedef int (*action_executor_handler)(struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *action);
+		struct lttng_action *action);
 
 static int action_executor_notify_handler(struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
-static int action_executor_start_session_handler(struct action_executor *executor,
+		struct lttng_action *);
+static int action_executor_start_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
-static int action_executor_stop_session_handler(struct action_executor *executor,
+		struct lttng_action *);
+static int action_executor_stop_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
-static int action_executor_rotate_session_handler(struct action_executor *executor,
+		struct lttng_action *);
+static int action_executor_rotate_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
-static int action_executor_snapshot_session_handler(struct action_executor *executor,
+		struct lttng_action *);
+static int action_executor_snapshot_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
+		struct lttng_action *);
 static int action_executor_group_handler(struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
+		struct lttng_action *);
 static int action_executor_generic_handler(struct action_executor *executor,
 		const struct action_work_item *,
-		const struct lttng_action *);
+		struct lttng_action *);
 
 static const action_executor_handler action_executors[] = {
 	[LTTNG_ACTION_TYPE_NOTIFY] = action_executor_notify_handler,
@@ -185,7 +190,7 @@ end:
 
 static int action_executor_notify_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
 	return notification_client_list_send_evaluation(work_item->client_list,
 			work_item->trigger,
@@ -196,9 +201,10 @@ static int action_executor_notify_handler(struct action_executor *executor,
 			client_handle_transmission_status, executor);
 }
 
-static int action_executor_start_session_handler(struct action_executor *executor,
+static int action_executor_start_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
 	int ret = 0;
 	const char *session_name;
@@ -243,6 +249,7 @@ static int action_executor_start_session_handler(struct action_executor *executo
 		WARN("Failed to start session `%s` on behalf of trigger `%s`: %s",
 				session_name, get_trigger_name(work_item->trigger),
 				lttng_strerror(-cmd_ret));
+		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
 
@@ -255,9 +262,10 @@ end:
 	return ret;
 }
 
-static int action_executor_stop_session_handler(struct action_executor *executor,
+static int action_executor_stop_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
 	int ret = 0;
 	const char *session_name;
@@ -280,6 +288,7 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
@@ -302,6 +311,7 @@ static int action_executor_stop_session_handler(struct action_executor *executor
 		WARN("Failed to stop session `%s` on behalf of trigger `%s`: %s",
 				session_name, get_trigger_name(work_item->trigger),
 				lttng_strerror(-cmd_ret));
+		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
 
@@ -314,9 +324,10 @@ end:
 	return ret;
 }
 
-static int action_executor_rotate_session_handler(struct action_executor *executor,
+static int action_executor_rotate_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
 	int ret = 0;
 	const char *session_name;
@@ -339,6 +350,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
@@ -357,6 +369,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 	case LTTNG_ERR_ROTATION_PENDING:
 		DBG("Attempted to start a rotation of session `%s` on behalf of trigger `%s` but a rotation is already ongoing",
 				session_name, get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
 		break;
 	case LTTNG_ERR_ROTATION_MULTIPLE_AFTER_STOP:
 	case LTTNG_ERR_ROTATION_AFTER_STOP_CLEAR:
@@ -367,6 +380,7 @@ static int action_executor_rotate_session_handler(struct action_executor *execut
 		WARN("Failed to start a rotation of session `%s` on behalf of trigger `%s`: %s",
 				session_name, get_trigger_name(work_item->trigger),
 				lttng_strerror(-cmd_ret));
+		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
 
@@ -379,9 +393,10 @@ end:
 	return ret;
 }
 
-static int action_executor_snapshot_session_handler(struct action_executor *executor,
+static int action_executor_snapshot_session_handler(
+		struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
 	int ret = 0;
 	const char *session_name;
@@ -419,6 +434,7 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 		DBG("Failed to find session `%s` by name while executing `%s` action of trigger `%s`",
 				session_name, get_action_name(action),
 				get_trigger_name(work_item->trigger));
+		lttng_action_increase_execution_failure_count(action);
 		goto error_unlock_list;
 	}
 
@@ -438,6 +454,7 @@ static int action_executor_snapshot_session_handler(struct action_executor *exec
 		WARN("Failed to record snapshot of session `%s` on behalf of trigger `%s`: %s",
 				session_name, get_trigger_name(work_item->trigger),
 				lttng_strerror(-cmd_ret));
+		lttng_action_increase_execution_failure_count(action);
 		break;
 	}
 
@@ -452,7 +469,7 @@ end:
 
 static int action_executor_group_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action_group)
+		struct lttng_action *action_group)
 {
 	int ret = 0;
 	unsigned int i, count;
@@ -468,8 +485,8 @@ static int action_executor_group_handler(struct action_executor *executor,
 
 	DBG("Action group has %u action%s", count, count != 1 ? "s" : "");
 	for (i = 0; i < count; i++) {
-		const struct lttng_action *action =
-				lttng_action_group_get_at_index(
+		struct lttng_action *action =
+				lttng_action_group_borrow_mutable_at_index(
 						action_group, i);
 
 		ret = action_executor_generic_handler(
@@ -486,27 +503,39 @@ end:
 
 static int action_executor_generic_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
-		const struct lttng_action *action)
+		struct lttng_action *action)
 {
+	int ret;
 	const enum lttng_action_type action_type = lttng_action_get_type(action);
 
 	assert(action_type != LTTNG_ACTION_TYPE_UNKNOWN);
 
+	lttng_action_increase_execution_request_count(action);
+	if (!lttng_action_should_execute(action)) {
+		DBG("Policy prevented execution of action `%s` of trigger `%s` action work item %" PRIu64,
+				get_action_name(action),
+				get_trigger_name(work_item->trigger),
+				work_item->id);
+		ret = 0;
+		goto end;
+	}
+
+	lttng_action_increase_execution_count(action);
 	DBG("Executing action `%s` of trigger `%s` action work item %" PRIu64,
 			get_action_name(action),
 			get_trigger_name(work_item->trigger),
 			work_item->id);
-
-	return action_executors[action_type](
-			executor, work_item, action);
+	ret = action_executors[action_type](executor, work_item, action);
+end:
+	return ret;
 }
 
 static int action_work_item_execute(struct action_executor *executor,
 		struct action_work_item *work_item)
 {
 	int ret;
-	const struct lttng_action *action =
-			lttng_trigger_get_const_action(work_item->trigger);
+	struct lttng_action *action =
+			lttng_trigger_get_action(work_item->trigger);
 
 	DBG("Starting execution of action work item %" PRIu64 " of trigger `%s`",
 			work_item->id, get_trigger_name(work_item->trigger));

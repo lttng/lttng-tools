@@ -266,8 +266,8 @@ struct lttng_action *lttng_action_group_create(void)
 	lttng_action_init(action, LTTNG_ACTION_TYPE_GROUP,
 			lttng_action_group_validate,
 			lttng_action_group_serialize,
-			lttng_action_group_is_equal,
-			lttng_action_group_destroy);
+			lttng_action_group_is_equal, lttng_action_group_destroy,
+			NULL);
 
 	lttng_dynamic_pointer_array_init(&action_group->actions,
 			destroy_lttng_action_group_element);
@@ -334,9 +334,16 @@ end:
 const struct lttng_action *lttng_action_group_get_at_index(
 		const struct lttng_action *group, unsigned int index)
 {
+	return lttng_action_group_borrow_mutable_at_index(group, index);
+}
+
+LTTNG_HIDDEN
+struct lttng_action *lttng_action_group_borrow_mutable_at_index(
+		const struct lttng_action *group, unsigned int index)
+{
 	unsigned int count;
 	const struct lttng_action_group *action_group;
-	const struct lttng_action * action = NULL;
+	struct lttng_action *action = NULL;
 
 	if (lttng_action_group_get_count(group, &count) !=
 			LTTNG_ACTION_STATUS_OK) {

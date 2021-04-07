@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <common/error.h>
 #include <lttng/action/action-internal.h>
+#include <lttng/action/firing-policy-internal.h>
 #include <lttng/action/group-internal.h>
 #include <lttng/action/notify-internal.h>
 #include <lttng/action/rotate-session-internal.h>
@@ -44,13 +45,13 @@ enum lttng_action_type lttng_action_get_type(const struct lttng_action *action)
 }
 
 LTTNG_HIDDEN
-void lttng_action_init(
-		struct lttng_action *action,
+void lttng_action_init(struct lttng_action *action,
 		enum lttng_action_type type,
 		action_validate_cb validate,
 		action_serialize_cb serialize,
 		action_equal_cb equal,
-		action_destroy_cb destroy)
+		action_destroy_cb destroy,
+		action_get_firing_policy_cb get_firing_policy)
 {
 	urcu_ref_init(&action->ref);
 	action->type = type;
@@ -58,6 +59,11 @@ void lttng_action_init(
 	action->serialize = serialize;
 	action->equal = equal;
 	action->destroy = destroy;
+	action->get_firing_policy = get_firing_policy;
+
+	action->execution_request_counter = 0;
+	action->execution_counter = 0;
+	action->execution_failure_counter = 0;
 }
 
 static
@@ -242,4 +248,45 @@ bool lttng_action_is_equal(const struct lttng_action *a,
 	is_equal = a->equal(a, b);
 end:
 	return is_equal;
+}
+
+LTTNG_HIDDEN
+void lttng_action_increase_execution_request_count(struct lttng_action *action)
+{
+	action->execution_request_counter++;
+}
+
+LTTNG_HIDDEN
+void lttng_action_increase_execution_count(struct lttng_action *action)
+{
+	action->execution_counter++;
+}
+
+LTTNG_HIDDEN
+void lttng_action_increase_execution_failure_count(struct lttng_action *action)
+{
+	action->execution_failure_counter++;
+}
+
+LTTNG_HIDDEN
+bool lttng_action_should_execute(const struct lttng_action *action)
+{
+	const struct lttng_firing_policy *policy = NULL;
+	bool execute = false;
+
+	if (action->get_firing_policy == NULL) {
+		execute = true;
+		goto end;
+	}
+
+	policy = action->get_firing_policy(action);
+	if (policy == NULL) {
+		execute = true;
+		goto end;
+	}
+
+	execute = lttng_firing_policy_should_execute(
+			policy, action->execution_request_counter);
+end:
+	return execute;
 }

@@ -78,6 +78,14 @@ static void lttng_firing_policy_init(struct lttng_firing_policy *firing_policy,
 		firing_policy_destroy_cb destroy,
 		firing_policy_copy_cb copy);
 
+/* Forward declaration. Every n */
+static bool lttng_firing_policy_every_n_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter);
+
+/* Forward declaration. Once after N */
+static bool lttng_firing_policy_once_after_n_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter);
+
 LTTNG_HIDDEN
 const char *lttng_firing_policy_type_string(
 		enum lttng_firing_policy_type firing_policy_type)
@@ -319,6 +327,23 @@ end:
 	return is_equal;
 }
 
+LTTNG_HIDDEN
+bool lttng_firing_policy_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter)
+{
+	switch (policy->type) {
+	case LTTNG_FIRING_POLICY_TYPE_EVERY_N:
+		return lttng_firing_policy_every_n_should_execute(
+				policy, counter);
+	case LTTNG_FIRING_POLICY_TYPE_ONCE_AFTER_N:
+		return lttng_firing_policy_once_after_n_should_execute(
+				policy, counter);
+	default:
+		abort();
+		break;
+	}
+}
+
 /* Every N */
 static const struct lttng_firing_policy_every_n *
 firing_policy_every_n_from_firing_policy_const(
@@ -400,6 +425,13 @@ struct lttng_firing_policy *lttng_firing_policy_every_n_create(
 {
 	struct lttng_firing_policy_every_n *policy = NULL;
 
+	if (interval == 0) {
+		/*
+		 * An interval of 0 is invalid since it would never be fired.
+		 */
+		goto end;
+	}
+
 	policy = zmalloc(sizeof(struct lttng_firing_policy_every_n));
 	if (!policy) {
 		goto end;
@@ -436,6 +468,29 @@ enum lttng_firing_policy_status lttng_firing_policy_every_n_get_interval(
 end:
 
 	return status;
+}
+
+static bool lttng_firing_policy_every_n_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter)
+{
+	const struct lttng_firing_policy_every_n *every_n_policy;
+	assert(policy);
+	bool execute = false;
+
+	every_n_policy = firing_policy_every_n_from_firing_policy_const(policy);
+
+	if (every_n_policy->interval == 0) {
+		abort();
+	}
+
+	execute = (counter % every_n_policy->interval) == 0;
+
+	DBG("Policy every N = %" PRIu64
+			": execution %s. Execution count: %" PRIu64,
+			every_n_policy->interval,
+			execute ? "accepted" : "denied", counter);
+
+	return execute;
 }
 
 /* Once after N */
@@ -524,6 +579,11 @@ struct lttng_firing_policy *lttng_firing_policy_once_after_n_create(
 {
 	struct lttng_firing_policy_once_after_n *policy = NULL;
 
+	if (threshold == 0) {
+		/* threshold is expected to be > 0 */
+		goto end;
+	}
+
 	policy = zmalloc(sizeof(struct lttng_firing_policy_once_after_n));
 	if (!policy) {
 		goto end;
@@ -570,4 +630,25 @@ struct lttng_firing_policy *lttng_firing_policy_copy(
 {
 	assert(source->copy);
 	return source->copy(source);
+}
+
+static bool lttng_firing_policy_once_after_n_should_execute(
+		const struct lttng_firing_policy *policy, uint64_t counter)
+{
+	const struct lttng_firing_policy_once_after_n *once_after_n_policy;
+	bool execute = false;
+	assert(policy);
+
+	once_after_n_policy =
+			firing_policy_once_after_n_from_firing_policy_const(
+					policy);
+
+	execute = counter == once_after_n_policy->threshold;
+
+	DBG("Policy once after N = %" PRIu64
+	    ": execution %s. Execution count: %" PRIu64,
+			once_after_n_policy->threshold,
+			execute ? "accepted" : "denied", counter);
+
+	return counter == once_after_n_policy->threshold;
 }

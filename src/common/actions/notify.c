@@ -73,6 +73,16 @@ bool lttng_action_notify_is_equal(const struct lttng_action *a,
 	return lttng_firing_policy_is_equal(_a->policy, _b->policy);
 }
 
+static const struct lttng_firing_policy *
+lttng_action_notify_internal_get_firing_policy(
+		const struct lttng_action *action)
+{
+	const struct lttng_action_notify *_action;
+	_action = action_notify_from_action_const(action);
+
+	return _action->policy;
+}
+
 struct lttng_action *lttng_action_notify_create(void)
 {
 	struct lttng_firing_policy *policy = NULL;
@@ -93,7 +103,8 @@ struct lttng_action *lttng_action_notify_create(void)
 	lttng_action_init(&notify->parent, LTTNG_ACTION_TYPE_NOTIFY, NULL,
 			lttng_action_notify_serialize,
 			lttng_action_notify_is_equal,
-			lttng_action_notify_destroy);
+			lttng_action_notify_destroy,
+			lttng_action_notify_internal_get_firing_policy);
 
 	notify->policy = policy;
 	policy = NULL;
