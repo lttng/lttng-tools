@@ -8,15 +8,17 @@
 #include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
-#include <common/snapshot.h>
-#include <common/payload.h>
 #include <common/payload-view.h>
+#include <common/payload.h>
+#include <common/snapshot.h>
+#include <inttypes.h>
 #include <lttng/action/action-internal.h>
+#include <lttng/action/firing-policy-internal.h>
+#include <lttng/action/firing-policy.h>
 #include <lttng/action/snapshot-session-internal.h>
 #include <lttng/action/snapshot-session.h>
-#include <lttng/snapshot.h>
 #include <lttng/snapshot-internal.h>
-#include <inttypes.h>
+#include <lttng/snapshot.h>
 
 #define IS_SNAPSHOT_SESSION_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_SNAPSHOT_SESSION)
@@ -34,19 +36,21 @@ struct lttng_action_snapshot_session {
 	 * Owned by this.
 	 */
 	struct lttng_snapshot_output *output;
+	struct lttng_firing_policy *policy;
 };
 
 struct lttng_action_snapshot_session_comm {
 	/* All string lengths include the trailing \0. */
 	uint32_t session_name_len;
 	uint32_t snapshot_output_len;
+	uint32_t firing_policy_len;
 
 	/*
 	 * Variable data (all strings are null-terminated):
 	 *
 	 *  - session name string
 	 *  - snapshot output object
-	 *
+	 *  - policy object
 	 */
 	char data[];
 } LTTNG_PACKED;
@@ -119,7 +123,7 @@ static bool lttng_action_snapshot_session_is_equal(
 		goto end;
 	}
 
-	is_equal = true;
+	is_equal = lttng_firing_policy_is_equal(a->policy, b->policy);
 end:
 	return is_equal;
 }
@@ -177,10 +181,29 @@ static int lttng_action_snapshot_session_serialize(
 			goto end;
 		}
 
-		/* Adjust action length in header. */
 		comm_in_payload = (typeof(comm_in_payload))(
 				payload->buffer.data + size_before_comm);
+		/* Adjust action length in header. */
 		comm_in_payload->snapshot_output_len =
+				payload->buffer.size - size_before_output;
+	}
+
+	/* Serialize the firing policy. */
+	{
+		const size_t size_before_output = payload->buffer.size;
+		struct lttng_action_snapshot_session_comm *comm_in_payload;
+
+		ret = lttng_firing_policy_serialize(
+				action_snapshot_session->policy, payload);
+		if (ret) {
+			ret = -1;
+			goto end;
+		}
+
+		comm_in_payload = (typeof(comm_in_payload))(
+				payload->buffer.data + size_before_comm);
+		/* Adjust firing policy length in header. */
+		comm_in_payload->firing_policy_len =
 				payload->buffer.size - size_before_output;
 	}
 
@@ -200,6 +223,7 @@ static void lttng_action_snapshot_session_destroy(struct lttng_action *action)
 
 	free(action_snapshot_session->session_name);
 	lttng_snapshot_output_destroy(action_snapshot_session->output);
+	lttng_firing_policy_destroy(action_snapshot_session->policy);
 	free(action_snapshot_session);
 
 end:
@@ -215,6 +239,7 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 	struct lttng_action *action;
 	enum lttng_action_status status;
 	struct lttng_snapshot_output *snapshot_output = NULL;
+	struct lttng_firing_policy *policy = NULL;
 	const struct lttng_action_snapshot_session_comm *comm;
 	const struct lttng_payload_view snapshot_session_comm_view =
 			lttng_payload_view_from_view(
@@ -286,6 +311,48 @@ ssize_t lttng_action_snapshot_session_create_from_payload(
 
 	variable_data += comm->snapshot_output_len;
 	consumed_len += comm->snapshot_output_len;
+
+	/* Firing policy. */
+	if (comm->firing_policy_len <= 0) {
+		ERR("Firing policy should be present.");
+		goto error;
+	}
+	{
+		ssize_t firing_policy_consumed_len;
+		struct lttng_payload_view policy_view =
+				lttng_payload_view_from_view(view, consumed_len,
+						comm->firing_policy_len);
+
+		if (!lttng_payload_view_is_valid(&policy_view)) {
+			ERR("Failed to create buffer view for firing policy.");
+			goto error;
+		}
+
+		firing_policy_consumed_len =
+				lttng_firing_policy_create_from_payload(
+						&policy_view, &policy);
+		if (firing_policy_consumed_len < 0) {
+			goto error;
+		}
+
+		if (firing_policy_consumed_len != comm->firing_policy_len) {
+			ERR("Failed to deserialize firing policy object: "
+			    "consumed-len: %zd, expected-len: %" PRIu32,
+					firing_policy_consumed_len,
+					comm->firing_policy_len);
+			goto error;
+		}
+
+		status = lttng_action_snapshot_session_set_firing_policy(
+				action, policy);
+		if (status != LTTNG_ACTION_STATUS_OK) {
+			goto error;
+		}
+	}
+
+	variable_data += comm->firing_policy_len;
+	consumed_len += comm->firing_policy_len;
+
 	*p_action = action;
 	action = NULL;
 
@@ -295,6 +362,7 @@ error:
 	consumed_len = -1;
 
 end:
+	lttng_firing_policy_destroy(policy);
 	lttng_action_snapshot_session_destroy(action);
 	lttng_snapshot_output_destroy(snapshot_output);
 
@@ -303,7 +371,15 @@ end:
 
 struct lttng_action *lttng_action_snapshot_session_create(void)
 {
-	struct lttng_action *action;
+	struct lttng_action *action = NULL;
+	struct lttng_firing_policy *policy = NULL;
+	enum lttng_action_status status;
+
+	/* Create a every N = 1 firing policy. */
+	policy = lttng_firing_policy_every_n_create(1);
+	if (!policy) {
+		goto end;
+	}
 
 	action = zmalloc(sizeof(struct lttng_action_snapshot_session));
 	if (!action) {
@@ -316,7 +392,16 @@ struct lttng_action *lttng_action_snapshot_session_create(void)
 			lttng_action_snapshot_session_is_equal,
 			lttng_action_snapshot_session_destroy);
 
+	status = lttng_action_snapshot_session_set_firing_policy(
+			action, policy);
+	if (status != LTTNG_ACTION_STATUS_OK) {
+		free(action);
+		action = NULL;
+		goto end;
+	}
+
 end:
+	lttng_firing_policy_destroy(policy);
 	return action;
 }
 
@@ -416,6 +501,61 @@ enum lttng_action_status lttng_action_snapshot_session_get_output(
 		status = LTTNG_ACTION_STATUS_UNSET;
 	}
 
+end:
+	return status;
+}
+
+enum lttng_action_status lttng_action_snapshot_session_set_firing_policy(
+		struct lttng_action *action,
+		const struct lttng_firing_policy *policy)
+{
+	enum lttng_action_status status;
+	struct lttng_action_snapshot_session *snapshot_session_action;
+	struct lttng_firing_policy *copy = NULL;
+
+	if (!action || !policy || !IS_SNAPSHOT_SESSION_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	copy = lttng_firing_policy_copy(policy);
+	if (!copy) {
+		status = LTTNG_ACTION_STATUS_ERROR;
+		goto end;
+	}
+
+	snapshot_session_action = action_snapshot_session_from_action(action);
+
+	/* Free the previous firing policy .*/
+	lttng_firing_policy_destroy(snapshot_session_action->policy);
+
+	/* Assign the policy. */
+	snapshot_session_action->policy = copy;
+	status = LTTNG_ACTION_STATUS_OK;
+	copy = NULL;
+
+end:
+	lttng_firing_policy_destroy(copy);
+	return status;
+}
+
+enum lttng_action_status lttng_action_snapshot_session_get_firing_policy(
+		const struct lttng_action *action,
+		const struct lttng_firing_policy **policy)
+{
+	enum lttng_action_status status;
+	const struct lttng_action_snapshot_session *snapshot_session_action;
+
+	if (!action || !policy || !IS_SNAPSHOT_SESSION_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	snapshot_session_action =
+			action_snapshot_session_from_action_const(action);
+
+	*policy = snapshot_session_action->policy;
+	status = LTTNG_ACTION_STATUS_OK;
 end:
 	return status;
 }
