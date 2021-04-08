@@ -9,6 +9,7 @@
 #define LTTNG_ACTION_STOP_SESSION_H
 
 struct lttng_action;
+struct lttng_firing_policy;
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,27 @@ extern enum lttng_action_status lttng_action_stop_session_set_session_name(
  */
 extern enum lttng_action_status lttng_action_stop_session_get_session_name(
 		const struct lttng_action *action, const char **session_name);
+
+/*
+ * Set the firing policy of a stop session action.
+ *
+ * Returns LTTNG_ACTION_STATUS_OK on success,
+ * LTTNG_ACTION_STATUS_ERROR on internal error,
+ * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
+ */
+extern enum lttng_action_status lttng_action_stop_session_set_firing_policy(
+		struct lttng_action *action,
+		const struct lttng_firing_policy *policy);
+
+/*
+ * Get the firing policy of a stop session action.
+ *
+ * Returns LTTNG_ACTION_STATUS_OK on success,
+ * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
+ */
+extern enum lttng_action_status lttng_action_stop_session_get_firing_policy(
+		const struct lttng_action *action,
+		const struct lttng_firing_policy **policy);
 
 #ifdef __cplusplus
 }

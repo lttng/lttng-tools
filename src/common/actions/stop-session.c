@@ -9,6 +9,8 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <lttng/action/action-internal.h>
+#include <lttng/action/firing-policy-internal.h>
+#include <lttng/action/firing-policy.h>
 #include <lttng/action/stop-session-internal.h>
 #include <lttng/action/stop-session.h>
 
@@ -20,6 +22,7 @@ struct lttng_action_stop_session {
 
 	/* Owned by this. */
 	char *session_name;
+	struct lttng_firing_policy *policy;
 };
 
 struct lttng_action_stop_session_comm {
@@ -30,6 +33,7 @@ struct lttng_action_stop_session_comm {
 	 * Variable data:
 	 *
 	 *  - session name (null terminated)
+	 *  - policy
 	 */
 	char data[];
 } LTTNG_PACKED;
@@ -90,7 +94,7 @@ static bool lttng_action_stop_session_is_equal(
 		goto end;
 	}
 
-	is_equal = true;
+	is_equal = lttng_firing_policy_is_equal(a->policy, b->policy);
 end:
 	return is_equal;
 }
@@ -130,6 +134,13 @@ static int lttng_action_stop_session_serialize(
 		goto end;
 	}
 
+	ret = lttng_firing_policy_serialize(
+			action_stop_session->policy, payload);
+	if (ret) {
+		ret = -1;
+		goto end;
+	}
+
 	ret = 0;
 end:
 	return ret;
@@ -145,6 +156,7 @@ static void lttng_action_stop_session_destroy(struct lttng_action *action)
 
 	action_stop_session = action_stop_session_from_action(action);
 
+	lttng_firing_policy_destroy(action_stop_session->policy);
 	free(action_stop_session->session_name);
 	free(action_stop_session);
 
@@ -156,23 +168,40 @@ ssize_t lttng_action_stop_session_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_action **p_action)
 {
-	ssize_t consumed_len;
+	ssize_t consumed_len, ret;
 	const struct lttng_action_stop_session_comm *comm;
 	const char *session_name;
-	struct lttng_action *action;
+	struct lttng_action *action = NULL;
 	enum lttng_action_status status;
-
-	action = lttng_action_stop_session_create();
-	if (!action) {
-		consumed_len = -1;
-		goto end;
-	}
+	struct lttng_firing_policy *policy = NULL;
 
 	comm = (typeof(comm)) view->buffer.data;
 	session_name = (const char *) &comm->data;
 
+	/* Session name. */
 	if (!lttng_buffer_view_contains_string(
 			&view->buffer, session_name, comm->session_name_len)) {
+		consumed_len = -1;
+		goto end;
+	}
+	consumed_len = sizeof(*comm) + comm->session_name_len;
+
+	/* Firing policy. */
+	{
+		struct lttng_payload_view policy_view =
+				lttng_payload_view_from_view(
+						view, consumed_len, -1);
+		ret = lttng_firing_policy_create_from_payload(
+				&policy_view, &policy);
+		if (ret < 0) {
+			consumed_len = -1;
+			goto end;
+		}
+		consumed_len += ret;
+	}
+
+	action = lttng_action_stop_session_create();
+	if (!action) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -184,11 +213,18 @@ ssize_t lttng_action_stop_session_create_from_payload(
 		goto end;
 	}
 
-	consumed_len = sizeof(*comm) + comm->session_name_len;
+	assert(policy);
+	status = lttng_action_stop_session_set_firing_policy(action, policy);
+	if (status != LTTNG_ACTION_STATUS_OK) {
+		consumed_len = -1;
+		goto end;
+	}
+
 	*p_action = action;
 	action = NULL;
 
 end:
+	lttng_firing_policy_destroy(policy);
 	lttng_action_stop_session_destroy(action);
 
 	return consumed_len;
@@ -196,7 +232,15 @@ end:
 
 struct lttng_action *lttng_action_stop_session_create(void)
 {
-	struct lttng_action *action;
+	struct lttng_action *action = NULL;
+	struct lttng_firing_policy *policy = NULL;
+	enum lttng_action_status status;
+
+	/* Create a every N = 1 firing policy. */
+	policy = lttng_firing_policy_every_n_create(1);
+	if (!policy) {
+		goto end;
+	}
 
 	action = zmalloc(sizeof(struct lttng_action_stop_session));
 	if (!action) {
@@ -209,7 +253,15 @@ struct lttng_action *lttng_action_stop_session_create(void)
 			lttng_action_stop_session_is_equal,
 			lttng_action_stop_session_destroy);
 
+	status = lttng_action_stop_session_set_firing_policy(action, policy);
+	if (status != LTTNG_ACTION_STATUS_OK) {
+		free(action);
+		action = NULL;
+		goto end;
+	}
+
 end:
+	lttng_firing_policy_destroy(policy);
 	return action;
 }
 
@@ -255,6 +307,58 @@ enum lttng_action_status lttng_action_stop_session_get_session_name(
 
 	*session_name = action_stop_session->session_name;
 
+	status = LTTNG_ACTION_STATUS_OK;
+end:
+	return status;
+}
+
+enum lttng_action_status lttng_action_stop_session_set_firing_policy(
+		struct lttng_action *action,
+		const struct lttng_firing_policy *policy)
+{
+	enum lttng_action_status status;
+	struct lttng_action_stop_session *stop_session_action;
+	struct lttng_firing_policy *copy = NULL;
+
+	if (!action || !policy || !IS_STOP_SESSION_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	copy = lttng_firing_policy_copy(policy);
+	if (!copy) {
+		status = LTTNG_ACTION_STATUS_ERROR;
+		goto end;
+	}
+	stop_session_action = action_stop_session_from_action(action);
+
+	/* Free the previous firing policy .*/
+	lttng_firing_policy_destroy(stop_session_action->policy);
+
+	stop_session_action->policy = copy;
+	status = LTTNG_ACTION_STATUS_OK;
+	copy = NULL;
+
+end:
+	lttng_firing_policy_destroy(copy);
+	return status;
+}
+
+enum lttng_action_status lttng_action_stop_session_get_firing_policy(
+		const struct lttng_action *action,
+		const struct lttng_firing_policy **policy)
+{
+	enum lttng_action_status status;
+	const struct lttng_action_stop_session *stop_session_action;
+
+	if (!action || !policy || !IS_STOP_SESSION_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	stop_session_action = action_stop_session_from_action_const(action);
+
+	*policy = stop_session_action->policy;
 	status = LTTNG_ACTION_STATUS_OK;
 end:
 	return status;
