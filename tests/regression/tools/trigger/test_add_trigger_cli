@@ -77,8 +77,8 @@ function test_failure ()
 }
 
 # top-level options
-test_success "explicit id" \
-	--id hohoho \
+test_success "explicit name" \
+	--name hohoho \
 	--condition on-event some-event-id -u \
 	--action notify
 
@@ -262,9 +262,9 @@ test_failure "two --condition" \
 	--condition on-event bbb -u \
 	--action notify
 
-test_failure "missing argument to --id" \
-	"Error: While parsing argument #1 (\`--id\`): Missing required argument for option \`--id\`" \
-	--id
+test_failure "missing argument to --name" \
+	"Error: While parsing argument #1 (\`--name\`): Missing required argument for option \`--name\`" \
+	--name
 
 for cmd in rate-policy=once-after rate-policy=every; do
 	test_failure "missing argument to --${cmd}" \

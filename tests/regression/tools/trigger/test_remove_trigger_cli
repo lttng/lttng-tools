@@ -51,13 +51,13 @@ function list_triggers ()
 
 function remove_trigger ()
 {
-	local id="$1"
-	local test_name="remove trigger ${id}"
+	local name="$1"
+	local test_name="remove trigger ${name}"
 
-	"${FULL_LTTNG_BIN}" remove-trigger "${id}" > "${tmp_stdout}" 2> "${tmp_stderr}"
+	"${FULL_LTTNG_BIN}" remove-trigger "${name}" > "${tmp_stdout}" 2> "${tmp_stderr}"
 	ok $? "${test_name}: exit code is 0"
 
-	diff -u <(echo "Removed trigger \`${id}\`.") "${tmp_stdout}"
+	diff -u <(echo "Removed trigger \`${name}\`.") "${tmp_stdout}"
 	ok $? "${test_name}: expected stdout"
 
 	diff -u /dev/null "${tmp_stderr}"
@@ -72,7 +72,7 @@ lttng_add_trigger_ok "ABC" --condition on-event aaa -u --filter 'p == 2' --actio
 lttng_add_trigger_ok "DEF" --condition on-event -u -a --action notify
 
 cat > "${tmp_expected_stdout}" <<- EOF
-- id: ABC
+- name: ABC
   user id: ${uid}
   condition: event rule hit
     rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
@@ -80,7 +80,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
     notify
       errors: none
   errors: none
-- id: DEF
+- name: DEF
   user id: ${uid}
   condition: event rule hit
     rule: * (type: tracepoint, domain: ust)
@@ -94,7 +94,7 @@ list_triggers "two triggers left" "${tmp_expected_stdout}"
 remove_trigger "ABC"
 
 cat > "${tmp_expected_stdout}" <<- EOF
-- id: DEF
+- name: DEF
   user id: ${uid}
   condition: event rule hit
     rule: * (type: tracepoint, domain: ust)

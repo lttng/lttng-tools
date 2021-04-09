@@ -2026,7 +2026,7 @@ struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_LIST_OPTIONS, '\0', "list-options", false },
 	{ OPT_CONDITION, '\0', "condition", true },
 	{ OPT_ACTION, '\0', "action", true },
-	{ OPT_ID, '\0', "id", true },
+	{ OPT_NAME, '\0', "name", true },
 	{ OPT_USER_ID, '\0', "user-id", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
@@ -2052,7 +2052,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
 	char *error = NULL;
-	char *id = NULL;
+	char *name = NULL;
 	int i;
 	char *user_id = NULL;
 
@@ -2152,9 +2152,9 @@ int cmd_add_trigger(int argc, const char **argv)
 
 			break;
 		}
-		case OPT_ID:
+		case OPT_NAME:
 		{
-			if (!assign_string(&id, item_opt->arg, "--id")) {
+			if (!assign_string(&name, item_opt->arg, "--name")) {
 				goto error;
 			}
 
@@ -2212,12 +2212,12 @@ int cmd_add_trigger(int argc, const char **argv)
 		goto error;
 	}
 
-	if (id) {
+	if (name) {
 		enum lttng_trigger_status trigger_status =
-				lttng_trigger_set_name(trigger, id);
+				lttng_trigger_set_name(trigger, name);
 
 		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
-			ERR("Failed to set trigger id.");
+			ERR("Failed to set trigger name.");
 			goto error;
 		}
 	}
@@ -2262,7 +2262,7 @@ end:
 	lttng_action_destroy(action);
 	lttng_trigger_destroy(trigger);
 	free(error);
-	free(id);
+	free(name);
 	free(user_id);
 	return ret;
 }
