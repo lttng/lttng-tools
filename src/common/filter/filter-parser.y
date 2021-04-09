@@ -296,11 +296,16 @@ void filter_parser_ctx_free(struct filter_parser_ctx *parser_ctx)
 {
 	int ret;
 
-	free_strings(&parser_ctx->allocated_strings);
-	filter_ast_free(parser_ctx->ast);
 	ret = yylex_destroy(parser_ctx->scanner);
 	if (ret)
 		fprintf(stderr, "yylex_destroy error\n");
+
+	filter_ast_free(parser_ctx->ast);
+	free_strings(&parser_ctx->allocated_strings);
+	filter_ir_free(parser_ctx);
+	free(parser_ctx->bytecode);
+	free(parser_ctx->bytecode_reloc);
+
 	free(parser_ctx);
 }
 
