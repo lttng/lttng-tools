@@ -30,17 +30,80 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 2
+#define NUM_TESTS 8
 
 static void test_action_notify(void)
 {
-	struct lttng_action *notify_action = NULL;
+	int ret;
+	enum lttng_action_status status;
+	struct lttng_action *notify_action = NULL,
+			    *notify_action_from_buffer = NULL;
+	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_payload payload;
+
+	lttng_payload_init(&payload);
+
+	/* To set. */
+	policy = lttng_firing_policy_every_n_create(100);
+	/* For comparison. */
+	default_policy = lttng_firing_policy_every_n_create(1);
+
+	assert(policy && default_policy);
 
 	notify_action = lttng_action_notify_create();
 	ok(notify_action, "Create notify action");
 	ok(lttng_action_get_type(notify_action) == LTTNG_ACTION_TYPE_NOTIFY,
 			"Action has type LTTNG_ACTION_TYPE_NOTIFY");
+
+	/* Validate the default policy for a notify action. */
+	{
+		const struct lttng_firing_policy *cur_policy = NULL;
+		status = lttng_action_notify_get_firing_policy(
+				notify_action, &cur_policy);
+		ok(status == LTTNG_ACTION_STATUS_OK &&
+						lttng_firing_policy_is_equal(
+								default_policy,
+								cur_policy),
+				"Default policy is every n=1");
+	}
+
+	/* Set a custom policy. */
+	status = lttng_action_notify_set_firing_policy(notify_action, policy);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+
+	/* Validate the custom policy for a notify action. */
+	{
+		const struct lttng_firing_policy *cur_policy = NULL;
+		status = lttng_action_notify_get_firing_policy(
+				notify_action, &cur_policy);
+		ok(status == LTTNG_ACTION_STATUS_OK &&
+						lttng_firing_policy_is_equal(
+								policy,
+								cur_policy),
+				"Notify action policy get");
+	}
+
+	ret = lttng_action_serialize(notify_action, &payload);
+	ok(ret == 0, "Action notify serialized");
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&payload, 0, -1);
+		(void) lttng_action_create_from_payload(
+				&view, &notify_action_from_buffer);
+	}
+	ok(notify_action_from_buffer,
+			"Notify action created from payload is non-null");
+
+	ok(lttng_action_is_equal(notify_action, notify_action_from_buffer),
+			"Serialized and de-serialized notify action are equal");
+
+	lttng_firing_policy_destroy(default_policy);
+	lttng_firing_policy_destroy(policy);
 	lttng_action_destroy(notify_action);
+	lttng_action_destroy(notify_action_from_buffer);
+	lttng_payload_reset(&payload);
 }
 
 int main(int argc, const char *argv[])
