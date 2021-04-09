@@ -290,7 +290,7 @@ test_failure "invalid argument to --rate-policy: unknown policy type" \
 
 # `--condition` failures
 test_failure "missing args after --condition" \
-	"Error: Missing condition name." \
+	"Error: While parsing argument #1 (\`--condition\`): Missing required argument for option \`--condition\`" \
 	--condition
 test_failure "unknown --condition" \
 	"Error: Unknown condition name 'zoofest'" \
@@ -380,7 +380,7 @@ test_failure "--condition on-event --capture: missing colon in app-specific cont
 
 # `--action` failures
 test_failure "missing args after --action" \
-	"Error: Missing action name." \
+	"Error: While parsing argument #1 (\`--action\`): Missing required argument for option \`--action\`" \
 	--condition on-event -u -a \
 	--action
 

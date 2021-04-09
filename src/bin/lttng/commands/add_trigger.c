@@ -1293,22 +1293,12 @@ struct condition_descr condition_descrs[] = {
 };
 
 static
-struct lttng_condition *parse_condition(int *argc, const char ***argv)
+struct lttng_condition *parse_condition(const char *condition_name, int *argc,
+		const char ***argv)
 {
 	int i;
 	struct lttng_condition *cond;
-	const char *condition_name;
 	const struct condition_descr *descr = NULL;
-
-	if (*argc == 0) {
-		ERR("Missing condition name.");
-		goto error;
-	}
-
-	condition_name = (*argv)[0];
-
-	(*argc)--;
-	(*argv)++;
 
 	for (i = 0; i < ARRAY_SIZE(condition_descrs); i++) {
 		if (strcmp(condition_name, condition_descrs[i].name) == 0) {
@@ -1999,22 +1989,11 @@ struct action_descr action_descrs[] = {
 };
 
 static
-struct lttng_action *parse_action(int *argc, const char ***argv)
+struct lttng_action *parse_action(const char *action_name, int *argc, const char ***argv)
 {
 	int i;
 	struct lttng_action *action;
-	const char *action_name;
 	const struct action_descr *descr = NULL;
-
-	if (*argc == 0) {
-		ERR("Missing action name.");
-		goto error;
-	}
-
-	action_name = (*argv)[0];
-
-	(*argc)--;
-	(*argv)++;
 
 	for (i = 0; i < ARRAY_SIZE(action_descrs); i++) {
 		if (strcmp(action_name, action_descrs[i].name) == 0) {
@@ -2045,8 +2024,8 @@ static const
 struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_HELP, 'h', "help", false },
 	{ OPT_LIST_OPTIONS, '\0', "list-options", false },
-	{ OPT_CONDITION, '\0', "condition", false },
-	{ OPT_ACTION, '\0', "action", false },
+	{ OPT_CONDITION, '\0', "condition", true },
+	{ OPT_ACTION, '\0', "action", true },
 	{ OPT_ID, '\0', "id", true },
 	{ OPT_USER_ID, '\0', "user-id", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
@@ -2139,7 +2118,7 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			condition = parse_condition(&my_argc, &my_argv);
+			condition = parse_condition(item_opt->arg, &my_argc, &my_argv);
 			if (!condition) {
 				/*
 				 * An error message was already printed by
@@ -2152,7 +2131,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 		case OPT_ACTION:
 		{
-			action = parse_action(&my_argc, &my_argv);
+			action = parse_action(item_opt->arg, &my_argc, &my_argv);
 			if (!action) {
 				/*
 				 * An error message was already printed by
