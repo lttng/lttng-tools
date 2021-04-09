@@ -776,6 +776,7 @@ static enum lttng_error_code receive_lttng_trigger(struct command_ctx *cmd_ctx,
 	ret_code = LTTNG_OK;
 
 end:
+	lttng_payload_reset(&trigger_payload);
 	return ret_code;
 }
 
