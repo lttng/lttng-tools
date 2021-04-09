@@ -477,6 +477,15 @@ enum parse_orig_arg_opt_ret parse_long_opt(const char * const long_opt_arg,
 			opt_arg = next_orig_arg;
 			used_next_orig_arg = true;
 		}
+	} else if (eq_pos) {
+		/*
+		 * Unexpected `--opt=arg` style for a long option which
+		 * doesn't accept an argument.
+		 */
+		argpar_string_append_printf(error,
+			"Unexpected argument for option `--%s`",
+			long_opt_name);
+		goto error;
 	}
 
 	/* Create and append option argument */
