@@ -432,7 +432,7 @@ void print_condition_on_event(const struct lttng_condition *condition)
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	error_count = lttng_condition_on_event_get_error_count(condition);
-	MSG("    tracer notifications discarded: %ld", error_count);
+	MSG("    tracer notifications discarded: %" PRIu64, error_count);
 
 	if (cap_desc_count > 0) {
 		MSG("    captures:");
