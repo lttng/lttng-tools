@@ -5,38 +5,88 @@
  *
  */
 
-#include <lttng/action/action-internal.h>
-#include <lttng/action/notify-internal.h>
-#include <common/macros.h>
 #include <assert.h>
+#include <common/error.h>
+#include <common/macros.h>
+#include <lttng/action/action-internal.h>
+#include <lttng/action/firing-policy-internal.h>
+#include <lttng/action/notify-internal.h>
+
+#define IS_NOTIFY_ACTION(action) \
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_NOTIFY)
+
+static struct lttng_action_notify *action_notify_from_action(
+		struct lttng_action *action)
+{
+	assert(action);
+
+	return container_of(action, struct lttng_action_notify, parent);
+}
+
+static const struct lttng_action_notify *action_notify_from_action_const(
+		const struct lttng_action *action)
+{
+	assert(action);
+
+	return container_of(action, struct lttng_action_notify, parent);
+}
 
 static
 void lttng_action_notify_destroy(struct lttng_action *action)
 {
-	free(action);
+	struct lttng_action_notify *notify_action;
+	notify_action = action_notify_from_action(action);
+	lttng_firing_policy_destroy(notify_action->policy);
+	free(notify_action);
 }
 
 static
 int lttng_action_notify_serialize(struct lttng_action *action,
 		struct lttng_payload *payload)
 {
-	return 0;
+	int ret;
+	struct lttng_action_notify *notify_action;
+
+	if (!action || !IS_NOTIFY_ACTION(action) || !payload) {
+		ret = -1;
+		goto end;
+	}
+
+	DBG("Serializing notify action");
+
+	notify_action = action_notify_from_action(action);
+	DBG("Serializing notify action firing policy");
+	ret = lttng_firing_policy_serialize(notify_action->policy, payload);
+
+end:
+	return ret;
 }
 
 static
 bool lttng_action_notify_is_equal(const struct lttng_action *a,
 		const struct lttng_action *b)
 {
-	/* There is no discriminant between notify actions. */
-	return true;
+	const struct lttng_action_notify *_a, *_b;
+
+	_a = action_notify_from_action_const(a);
+	_b = action_notify_from_action_const(b);
+	return lttng_firing_policy_is_equal(_a->policy, _b->policy);
 }
 
 struct lttng_action *lttng_action_notify_create(void)
 {
-	struct lttng_action_notify *notify;
+	struct lttng_firing_policy *policy = NULL;
+	struct lttng_action_notify *notify = NULL;
+	struct lttng_action *action = NULL;
 
 	notify = zmalloc(sizeof(struct lttng_action_notify));
 	if (!notify) {
+		goto end;
+	}
+
+	/* Default policy. */
+	policy = lttng_firing_policy_every_n_create(1);
+	if (!policy) {
 		goto end;
 	}
 
@@ -44,23 +94,106 @@ struct lttng_action *lttng_action_notify_create(void)
 			lttng_action_notify_serialize,
 			lttng_action_notify_is_equal,
 			lttng_action_notify_destroy);
+
+	notify->policy = policy;
+	policy = NULL;
+
+	action = &notify->parent;
+	notify = NULL;
+
 end:
-	return &notify->parent;
+	free(notify);
+	lttng_firing_policy_destroy(policy);
+	return action;
 }
 
 ssize_t lttng_action_notify_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_action **action)
 {
+	enum lttng_action_status status;
 	ssize_t consumed_length;
+	struct lttng_firing_policy *firing_policy = NULL;
+	struct lttng_action *_action = NULL;
 
-	*action = lttng_action_notify_create();
-	if (!*action) {
+	consumed_length = lttng_firing_policy_create_from_payload(
+			view, &firing_policy);
+	if (!firing_policy) {
 		consumed_length = -1;
 		goto end;
 	}
 
-	consumed_length = 0;
+	_action = lttng_action_notify_create();
+	if (!_action) {
+		consumed_length = -1;
+		goto end;
+	}
+
+	status = lttng_action_notify_set_firing_policy(_action, firing_policy);
+	if (status != LTTNG_ACTION_STATUS_OK) {
+		consumed_length = -1;
+		goto end;
+	}
+
+	*action = _action;
+	_action = NULL;
+
 end:
+	lttng_firing_policy_destroy(firing_policy);
+	lttng_action_destroy(_action);
 	return consumed_length;
+}
+
+enum lttng_action_status lttng_action_notify_set_firing_policy(
+		struct lttng_action *action,
+		const struct lttng_firing_policy *policy)
+{
+	enum lttng_action_status status;
+	struct lttng_action_notify *notify_action;
+	struct lttng_firing_policy *copy = NULL;
+
+	if (!action || !policy || !IS_NOTIFY_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	copy = lttng_firing_policy_copy(policy);
+	if (!copy) {
+		status = LTTNG_ACTION_STATUS_ERROR;
+		goto end;
+	}
+
+	notify_action = action_notify_from_action(action);
+
+	/* Free the previous firing policy .*/
+	lttng_firing_policy_destroy(notify_action->policy);
+
+	/* Assign the policy. */
+	notify_action->policy = copy;
+	status = LTTNG_ACTION_STATUS_OK;
+	copy = NULL;
+
+end:
+	lttng_firing_policy_destroy(copy);
+	return status;
+}
+
+enum lttng_action_status lttng_action_notify_get_firing_policy(
+		const struct lttng_action *action,
+		const struct lttng_firing_policy **policy)
+{
+	enum lttng_action_status status;
+	const struct lttng_action_notify *notify_action;
+
+	if (!action || !policy || !IS_NOTIFY_ACTION(action)) {
+		status = LTTNG_ACTION_STATUS_INVALID;
+		goto end;
+	}
+
+	notify_action = action_notify_from_action_const(action);
+
+	*policy = notify_action->policy;
+	status = LTTNG_ACTION_STATUS_OK;
+end:
+	return status;
 }
