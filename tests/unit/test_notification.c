@@ -30,7 +30,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 182
+#define NUM_TESTS 180
 
 static void test_condition_buffer_usage(
 		struct lttng_condition *buffer_usage_condition)
@@ -277,16 +277,6 @@ static void test_condition_buffer_usage_high(void)
 	lttng_condition_destroy(buffer_usage_high);
 }
 
-static void test_action(void)
-{
-	struct lttng_action *notify_action = NULL;
-
-	notify_action = lttng_action_notify_create();
-	ok(notify_action, "Create notify action");
-	ok(lttng_action_get_type(notify_action) == LTTNG_ACTION_TYPE_NOTIFY, "Action has type LTTNG_ACTION_TYPE_NOTIFY");
-	lttng_action_destroy(notify_action);
-}
-
 static void test_trigger(void)
 {
 	struct lttng_action *notify_action = NULL;
@@ -317,7 +307,6 @@ int main(int argc, const char *argv[])
 	plan_tests(NUM_TESTS);
 	test_condition_buffer_usage_low();
 	test_condition_buffer_usage_high();
-	test_action();
 	test_trigger();
 	return exit_status();
 }

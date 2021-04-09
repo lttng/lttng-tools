@@ -92,6 +92,7 @@ compile_commands.json
 /tests/unit/test_payload
 /tests/unit/test_event_rule
 /tests/unit/test_condition
+/tests/unit/test_action
 /tests/unit/test_unix_socket
 /tests/regression/ust/multi-session/gen-nevents
 /tests/regression/ust/low-throughput/gen-events

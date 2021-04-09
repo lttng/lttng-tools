@@ -10,6 +10,7 @@ LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
 
 TESTS = \
 	ini_config/test_ini_config \
+	test_action \
 	test_buffer_view \
 	test_directory_handle \
 	test_event_expr_to_bytecode \
@@ -45,6 +46,7 @@ LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
 
 # Define test programs
 noinst_PROGRAMS = \
+	test_action \
 	test_buffer_view \
 	test_condition \
 	test_directory_handle \
@@ -268,3 +270,7 @@ test_event_expr_to_bytecode_LDADD = $(LIBTAP) $(LIBLTTNG_CTL) $(LIBCOMMON)
 # Log level rule api
 test_log_level_rule_SOURCES = test_log_level_rule.c
 test_log_level_rule_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
+
+# Action api
+test_action_SOURCES = test_action.c
+test_action_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS)
