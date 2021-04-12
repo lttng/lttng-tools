@@ -4549,6 +4549,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	const char *trigger_name;
 	uid_t trigger_owner;
 	enum lttng_trigger_status trigger_status;
+	struct lttng_trigger *sessiond_trigger = NULL;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(unnamed)";
@@ -4576,6 +4577,28 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 		}
 	}
 
+	/* Fetch the sessiond side trigger object. */
+	ret_code = notification_thread_command_get_trigger(
+			notification_thread, trigger, &sessiond_trigger);
+	if (ret_code != LTTNG_OK) {
+		DBG("Failed to get trigger from notification thread during unregister: trigger name = '%s', trigger owner uid = %d, error code = %d",
+				trigger_name, (int) trigger_owner, ret_code);
+		goto end;
+	}
+
+	assert(sessiond_trigger);
+
+	/*
+	 * From this point on, no matter what, consider the trigger
+	 * unregistered.
+	 *
+	 * We set the unregistered state of the sessiond side trigger object in
+	 * the client thread since we want to minimize the possibility of the
+	 * notification thread being stalled due to a long execution of an
+	 * action that required the trigger lock.
+	 */
+	lttng_trigger_set_as_unregistered(sessiond_trigger);
+
 	ret_code = notification_thread_command_unregister_trigger(notification_thread,
 								  trigger);
 	if (ret_code != LTTNG_OK) {
@@ -4600,6 +4623,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	}
 
 end:
+	lttng_trigger_put(sessiond_trigger);
 	return ret_code;
 }
 

@@ -3049,9 +3049,6 @@ int handle_notification_thread_command_unregister_trigger(
 	trigger_ht_element = caa_container_of(triggers_ht_node,
 			struct lttng_trigger_ht_element, node);
 
-	/* From this point, consider the trigger unregistered no matter what. */
-	lttng_trigger_set_as_unregistered(trigger_ht_element->trigger);
-
 	/* Remove trigger from channel_triggers_ht. */
 	cds_lfht_for_each_entry(state->channel_triggers_ht, &iter, trigger_list,
 			channel_triggers_ht_node) {
