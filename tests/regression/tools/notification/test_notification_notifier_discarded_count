@@ -78,7 +78,7 @@ function test_kernel_notifier_discarded_count
 	done
 
 	lttng_add_trigger_ok "$trigger_name" \
-		--condition event-rule-matches --kernel lttng_test_filter_event \
+		--condition event-rule-matches --kernel --name=lttng_test_filter_event \
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
@@ -107,7 +107,7 @@ function test_kernel_notifier_discarded_count
 
 	# Enable another notifier and list it to confirm the counter was cleared.
 	lttng_add_trigger_ok "$trigger_name" \
-		--condition event-rule-matches --kernel lttng_test_filter_event \
+		--condition event-rule-matches --kernel --name=lttng_test_filter_event \
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
@@ -129,13 +129,13 @@ function test_kernel_notifier_discarded_count_max_bucket
 	diag "Kernel event notifer error counter bucket limit"
 	for i in $(seq 3); do
 		lttng_add_trigger_ok "$i" \
-			--condition event-rule-matches --kernel my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --kernel --name=my_event_that_doesnt_need_to_really_exist_$i \
 			--action notify
 	done
 
 	for i in $(seq 4 5); do
 		lttng_add_trigger_fail "$i" \
-			--condition event-rule-matches --kernel my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --kernel --name=my_event_that_doesnt_need_to_really_exist_$i \
 			--action notify
 	done
 
@@ -180,7 +180,7 @@ function test_ust_notifier_discarded_count
 	done
 
 	lttng_add_trigger_ok "$trigger_name" \
-		--condition event-rule-matches --userspace tp:tptest \
+		--condition event-rule-matches --userspace --name=tp:tptest \
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
@@ -206,7 +206,7 @@ function test_ust_notifier_discarded_count
 
 	# Enable another notifier and list it to confirm the counter was cleared.
 	lttng_add_trigger_ok "$trigger_name" \
-		--condition event-rule-matches --userspace tp:tptest \
+		--condition event-rule-matches --userspace --name=tp:tptest \
 		--action notify
 
 	trigger_discarded_nb=$(trigger_get_discarded_notif_number "$trigger_name")
@@ -226,13 +226,13 @@ function test_ust_notifier_discarded_count_max_bucket
 	diag "UST event notifer error counter bucket limit"
 	for i in $(seq 3); do
 		lttng_add_trigger_ok "$i" \
-			--condition event-rule-matches --userspace my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --userspace --name=my_event_that_doesnt_need_to_really_exist_$i \
 			--action notify
 	done
 
 	for i in $(seq 4 5); do
 		lttng_add_trigger_fail "$i" \
-			--condition event-rule-matches --userspace my_event_that_doesnt_need_to_really_exist_$i \
+			--condition event-rule-matches --userspace --name=my_event_that_doesnt_need_to_really_exist_$i \
 			--action notify
 	done
 

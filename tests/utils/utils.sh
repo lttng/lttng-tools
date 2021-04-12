@@ -2197,8 +2197,10 @@ function lttng_add_trigger()
 	local expected_to_fail="$1"
 	local trigger_name="$2"
 	shift 2
+	local args=("$@")
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --name "$trigger_name" "$@" 1> /dev/null 2> /dev/null
+	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --name $trigger_name ${args[*]}"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN add-trigger --name "$trigger_name" "${args[@]}" 1> /dev/null 2> /dev/null
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
@@ -2214,7 +2216,8 @@ function lttng_remove_trigger()
 	local trigger_name="$2"
 	shift 2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger "$trigger_name" "$@" 1> /dev/null 2> /dev/null
+	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger $trigger_name"
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger "$trigger_name" 1> /dev/null 2> /dev/null
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"

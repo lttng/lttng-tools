@@ -43,9 +43,10 @@ enum {
 	OPT_USER_ID,
 	OPT_RATE_POLICY,
 
-	OPT_ALL,
+	OPT_NAME,
 	OPT_FILTER,
-	OPT_EXCLUDE,
+	OPT_EXCLUDE_NAMES,
+	OPT_EVENT_NAME,
 	OPT_LOGLEVEL,
 	OPT_LOGLEVEL_ONLY,
 
@@ -61,7 +62,6 @@ enum {
 	OPT_SYSCALL,
 	OPT_TRACEPOINT,
 
-	OPT_NAME,
 	OPT_MAX_SIZE,
 	OPT_DATA_URL,
 	OPT_CTRL_URL,
@@ -72,11 +72,12 @@ enum {
 };
 
 static const struct argpar_opt_descr event_rule_opt_descrs[] = {
-	{ OPT_ALL, 'a', "all", false },
 	{ OPT_FILTER, 'f', "filter", true },
-	{ OPT_EXCLUDE, 'x', "exclude", true },
+	{ OPT_NAME, 'n', "name", true },
+	{ OPT_EXCLUDE_NAMES, 'x', "exclude-names", true },
 	{ OPT_LOGLEVEL, '\0', "loglevel", true },
 	{ OPT_LOGLEVEL_ONLY, '\0', "loglevel-only", true },
+	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
 	/* Domains */
 	{ OPT_USERSPACE, 'u', "userspace", false },
@@ -542,21 +543,17 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	struct filter_parser_ctx *parser_ctx = NULL;
 	struct lttng_log_level_rule *log_level_rule = NULL;
 
-	/* Was the -a/--all flag provided? */
-	bool all_events = false;
-
-	/* Tracepoint name (non-option argument). */
-	const char *tracepoint_name = NULL;
+	/* Tracepoint and syscall options. */
+	char *name = NULL;
+	char *exclude_names = NULL;
+	char **exclusion_list = NULL;
 
 	/* Holds the argument of --probe / --userspace-probe. */
-	char *source = NULL;
+	char *probe_source = NULL;
+	char *probe_event_name = NULL;
 
 	/* Filter. */
 	char *filter = NULL;
-
-	/* Exclude. */
-	char *exclude = NULL;
-	char **exclusion_list = NULL;
 
 	/* Log level. */
 	char *loglevel_str = NULL;
@@ -638,7 +635,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 					goto error;
 				}
 
-				if (!assign_string(&source, item_opt->arg, "source")) {
+				if (!assign_string(&probe_source, item_opt->arg,
+						    "--probe")) {
 					goto error;
 				}
 
@@ -649,8 +647,17 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 					goto error;
 				}
 
-				if (!assign_string(&source, item_opt->arg, "source")) {
-						goto error;
+				if (!assign_string(&probe_source, item_opt->arg,
+						    "--userspace-probe")) {
+					goto error;
+				}
+
+				break;
+			case OPT_EVENT_NAME:
+				if (!assign_string(&probe_event_name,
+						    item_opt->arg,
+						    "--event-name/-E")) {
+					goto error;
 				}
 
 				break;
@@ -668,9 +675,6 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				}
 
 				break;
-			case OPT_ALL:
-				all_events = true;
-				break;
 			case OPT_FILTER:
 				if (!assign_string(&filter, item_opt->arg,
 						    "--filter/-f")) {
@@ -678,9 +682,17 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				}
 
 				break;
-			case OPT_EXCLUDE:
-				if (!assign_string(&exclude, item_opt->arg,
-						    "--exclude/-x")) {
+			case OPT_NAME:
+				if (!assign_string(&name, item_opt->arg,
+						    "--name/-n")) {
+					goto error;
+				}
+
+				break;
+			case OPT_EXCLUDE_NAMES:
+				if (!assign_string(&exclude_names,
+						    item_opt->arg,
+						    "--exclude-names/-x")) {
 					goto error;
 				}
 
@@ -742,17 +754,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 					(const struct argpar_item_non_opt *)
 							item;
 
-			/*
-			 * Don't accept two non-option arguments/tracepoint
-			 * names.
-			 */
-			if (tracepoint_name) {
-				ERR("Unexpected argument '%s'",
-						item_non_opt->arg);
-				goto error;
-			}
-
-			tracepoint_name = item_non_opt->arg;
+			/* Don't accept non-option arguments. */
+			ERR("Unexpected argument '%s'", item_non_opt->arg);
+			goto error;
 		}
 	}
 
@@ -761,44 +765,54 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	/*
-	 * Option -a is applicable to event rules of type tracepoint and
-	 * syscall, and it is equivalent to using "*" as the tracepoint name.
+	 * Option --name is applicable to event rules of type tracepoint
+	 * and syscall.  For tracepoint and syscall rules, if --name is
+	 * omitted, it is implicitly "*".
 	 */
-	if (all_events) {
-		switch (event_rule_type) {
-		case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		case LTTNG_EVENT_RULE_TYPE_SYSCALL:
-			break;
-		default:
-			ERR("Can't use -a/--all with %s event rules.",
-					lttng_event_rule_type_str(event_rule_type));
+	switch (event_rule_type) {
+	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+		if (!name) {
+			name = strdup("*");
+		}
+		break;
+
+	default:
+		if (name) {
+			ERR("Can't use --name with %s event rules.",
+					lttng_event_rule_type_str(
+							event_rule_type));
 			goto error;
 		}
 
-		if (tracepoint_name) {
-			ERR("Can't provide a tracepoint name with -a/--all.");
+		if (exclude_names) {
+			ERR("Can't use --exclude-names/-x with %s event rules.",
+					lttng_event_rule_type_str(
+							event_rule_type));
 			goto error;
 		}
-
-		/* In which case, it's equivalent to tracepoint name "*". */
-		tracepoint_name = "*";
 	}
 
 	/*
-	 * A tracepoint name (or -a, for the event rule types that accept it)
-	 * is required.
+	 * Option --event-name is only applicable to event rules of type probe.
+	 * If omitted, it defaults to the probe location.
 	 */
-	if (!tracepoint_name) {
-		ERR("Need to provide either a tracepoint name or -a/--all.");
-		goto error;
-	}
+	switch (event_rule_type) {
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+		if (!probe_event_name) {
+			probe_event_name = strdup(probe_source);
+		}
 
-	/*
-	 * We don't support multiple tracepoint names for now.
-	 */
-	if (strchr(tracepoint_name, ',')) {
-		ERR("Comma separated tracepoint names are not supported.");
-		goto error;
+		break;
+
+	default:
+		if (probe_event_name) {
+			ERR("Can't use --event-name with %s event rules.",
+					lttng_event_rule_type_str(
+							event_rule_type));
+			goto error;
+		}
 	}
 
 	/*
@@ -852,16 +866,15 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	/* If --exclude/-x was passed, split it into an exclusion list. */
-	if (exclude) {
+	if (exclude_names) {
 		if (domain_type != LTTNG_DOMAIN_UST) {
 			ERR("Event name exclusions are not yet implemented for %s event rules.",
 					get_domain_str(domain_type));
 			goto error;
 		}
 
-
-		if (create_exclusion_list_and_validate(tracepoint_name, exclude,
-				&exclusion_list) != 0) {
+		if (create_exclusion_list_and_validate(name,
+				    exclude_names, &exclusion_list) != 0) {
 			ERR("Failed to create exclusion list.");
 			goto error;
 		}
@@ -886,10 +899,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		/* Set pattern. */
 		event_rule_status = lttng_event_rule_tracepoint_set_pattern(
-				res.er, tracepoint_name);
+				res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set tracepoint event rule's pattern to '%s'.",
-					tracepoint_name);
+					name);
 			goto error;
 		}
 
@@ -965,8 +978,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
 
-
-		ret = parse_kernel_probe_opts(source, &kernel_probe_location);
+		ret = parse_kernel_probe_opts(
+				probe_source, &kernel_probe_location);
 		if (ret) {
 			ERR("Failed to parse kernel probe location.");
 			goto error;
@@ -979,9 +992,12 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_kernel_probe_set_event_name(res.er, tracepoint_name);
+		event_rule_status =
+				lttng_event_rule_kernel_probe_set_event_name(
+						res.er, probe_event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set kprobe event rule's name to '%s'.", tracepoint_name);
+			ERR("Failed to set kprobe event rule's name to '%s'.",
+					probe_event_name);
 			goto error;
 		}
 
@@ -993,7 +1009,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		enum lttng_event_rule_status event_rule_status;
 
 		ret = parse_userspace_probe_opts(
-				source, &userspace_probe_location);
+				probe_source, &userspace_probe_location);
 		if (ret) {
 			ERR("Failed to parse user space probe location.");
 			goto error;
@@ -1005,11 +1021,12 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_userspace_probe_set_event_name(
-				res.er, tracepoint_name);
+		event_rule_status =
+				lttng_event_rule_userspace_probe_set_event_name(
+						res.er, probe_event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
-					tracepoint_name);
+					probe_event_name);
 			goto error;
 		}
 
@@ -1026,10 +1043,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 
 		event_rule_status = lttng_event_rule_syscall_set_pattern(
-				res.er, tracepoint_name);
+				res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set syscall event rule's pattern to '%s'.",
-					tracepoint_name);
+					name);
 			goto error;
 		}
 
@@ -1067,9 +1084,12 @@ end:
 	free(error);
 	argpar_state_destroy(state);
 	free(filter);
-	free(exclude);
+	free(name);
+	free(exclude_names);
 	free(loglevel_str);
-	free(source);
+	free(probe_source);
+	free(probe_event_name);
+
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);
 	lttng_userspace_probe_location_destroy(userspace_probe_location);
