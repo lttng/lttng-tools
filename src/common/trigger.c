@@ -5,24 +5,24 @@
  *
  */
 
-#include <lttng/trigger/trigger-internal.h>
+#include <assert.h>
+#include <common/credentials.h>
+#include <common/dynamic-array.h>
+#include <common/error.h>
+#include <common/optional.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
+#include <inttypes.h>
+#include <lttng/action/action-internal.h>
+#include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/on-event-internal.h>
 #include <lttng/condition/on-event.h>
-#include <lttng/condition/on-event-internal.h>
-#include <lttng/condition/buffer-usage.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-expr-internal.h>
-#include <lttng/action/action-internal.h>
-#include <common/credentials.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
 #include <lttng/domain.h>
-#include <common/error.h>
-#include <common/dynamic-array.h>
-#include <common/optional.h>
-#include <assert.h>
-#include <inttypes.h>
+#include <lttng/event-expr-internal.h>
+#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/trigger/trigger-internal.h>
+#include <pthread.h>
 
 LTTNG_HIDDEN
 bool lttng_trigger_validate(const struct lttng_trigger *trigger)
@@ -67,6 +67,9 @@ struct lttng_trigger *lttng_trigger_create(
 
 	lttng_action_get(action);
 	trigger->action = action;
+
+	pthread_mutex_init(&trigger->lock, NULL);
+	trigger->registered = false;
 
 end:
 	return trigger;
@@ -120,6 +123,8 @@ static void trigger_destroy_ref(struct urcu_ref *ref)
 	/* Release ownership. */
 	lttng_action_put(action);
 	lttng_condition_put(condition);
+
+	pthread_mutex_destroy(&trigger->lock);
 
 	free(trigger->name);
 	free(trigger);
@@ -894,4 +899,46 @@ bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
 	}
 end:
 	return needs_tracer_notifier;
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_set_as_registered(struct lttng_trigger *trigger)
+{
+	pthread_mutex_lock(&trigger->lock);
+	trigger->registered = true;
+	pthread_mutex_unlock(&trigger->lock);
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger)
+{
+	pthread_mutex_lock(&trigger->lock);
+	trigger->registered = false;
+	pthread_mutex_unlock(&trigger->lock);
+}
+
+/*
+ * The trigger must be locked before calling lttng_trigger_registered.
+ * The lock is necessary since a trigger can be unregistered at anytime.
+ * Manipulations requiring that the trigger be registered must always acquire
+ * the trigger lock for the duration of the manipulation using
+ * `lttng_trigger_lock` and `lttng_trigger_unlock`.
+ */
+LTTNG_HIDDEN
+bool lttng_trigger_is_registered(struct lttng_trigger *trigger)
+{
+	ASSERT_LOCKED(trigger->lock);
+	return trigger->registered;
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_lock(struct lttng_trigger *trigger)
+{
+	pthread_mutex_lock(&trigger->lock);
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_unlock(struct lttng_trigger *trigger)
+{
+	pthread_mutex_unlock(&trigger->lock);
 }

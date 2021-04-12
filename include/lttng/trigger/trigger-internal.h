@@ -8,13 +8,14 @@
 #ifndef LTTNG_TRIGGER_INTERNAL_H
 #define LTTNG_TRIGGER_INTERNAL_H
 
-#include <lttng/trigger/trigger.h>
 #include <common/credentials.h>
 #include <common/dynamic-array.h>
 #include <common/macros.h>
 #include <common/optional.h>
-#include <stdint.h>
+#include <lttng/trigger/trigger.h>
+#include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <urcu/ref.h>
 
@@ -36,6 +37,25 @@ struct lttng_trigger {
 	 * notification.
 	 */
 	LTTNG_OPTIONAL(uint64_t) tracer_token;
+
+	/*
+	 * Is the trigger registered?
+	 *
+	 * This is necessary since a reference holder might be interested in the
+	 * overall state of the trigger from the point of view of its owner.
+	 *
+	 * The main user is the action executor since we want to prevent the
+	 * execution of actions related to a trigger that is unregistered.
+	 *
+	 * Not considered for `is_equal`.
+	 */
+	bool registered;
+
+	/*
+	 * The lock is used to protect against concurrent trigger execution and
+	 * trigger removal.
+	 */
+	pthread_mutex_t lock;
 };
 
 struct lttng_triggers {
@@ -181,5 +201,29 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
  */
 LTTNG_HIDDEN
 bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_set_as_registered(struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_set_as_unregistered(struct lttng_trigger *trigger);
+
+/*
+ * The trigger must be locked before calling lttng_trigger_is_registered.
+ *
+ * The lock is necessary since a trigger can be unregistered at any time.
+ *
+ * Manipulations requiring that the trigger be registered must always acquire
+ * the trigger lock for the duration of the manipulation using
+ * `lttng_trigger_lock` and `lttng_trigger_unlock`.
+ */
+LTTNG_HIDDEN
+bool lttng_trigger_is_registered(struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_lock(struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_unlock(struct lttng_trigger *trigger);
 
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

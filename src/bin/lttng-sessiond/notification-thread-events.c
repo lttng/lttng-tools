@@ -2693,6 +2693,9 @@ int handle_notification_thread_command_register_trigger(
 		goto error_free_ht_element;
 	}
 
+	/* From this point consider the trigger registered. */
+	lttng_trigger_set_as_registered(trigger);
+
 	/*
 	 * Some triggers might need a tracer notifier depending on its
 	 * condition and actions.
@@ -2892,6 +2895,11 @@ error_free_ht_element:
 	}
 error:
 	if (free_trigger) {
+		/*
+		 * Other objects might have a reference to the trigger, mark it
+		 * as unregistered.
+		 */
+		lttng_trigger_set_as_unregistered(trigger);
 		lttng_trigger_destroy(trigger);
 	}
 end:
@@ -2973,6 +2981,12 @@ int handle_notification_thread_command_unregister_trigger(
 		cmd_reply = LTTNG_OK;
 	}
 
+	trigger_ht_element = caa_container_of(triggers_ht_node,
+			struct lttng_trigger_ht_element, node);
+
+	/* From this point, consider the trigger unregistered no matter what. */
+	lttng_trigger_set_as_unregistered(trigger_ht_element->trigger);
+
 	/* Remove trigger from channel_triggers_ht. */
 	cds_lfht_for_each_entry(state->channel_triggers_ht, &iter, trigger_list,
 			channel_triggers_ht_node) {
@@ -2994,9 +3008,6 @@ int handle_notification_thread_command_unregister_trigger(
 	if (lttng_trigger_needs_tracer_notifier(trigger)) {
 		teardown_tracer_notifier(state, trigger);
 	}
-
-	trigger_ht_element = caa_container_of(triggers_ht_node,
-			struct lttng_trigger_ht_element, node);
 
 	if (is_trigger_action_notify(trigger)) {
 		/*
