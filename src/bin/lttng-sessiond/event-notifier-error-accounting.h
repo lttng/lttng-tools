@@ -23,17 +23,36 @@ enum event_notifier_error_accounting_status {
 	EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD,
 };
 
+/*
+ * Initialize the event notifier error accounting system.
+ * `buffer_size_kernel` and `buffer_size_ust` represent the number of buckets
+ * to be allocated for each domain.
+ */
 enum event_notifier_error_accounting_status
-event_notifier_error_accounting_init(uint64_t nb_bucket);
+event_notifier_error_accounting_init(uint64_t buffer_size_kernel,
+		uint64_t buffer_size_ust);
 
+/*
+ * Register the kernel event notifier group.
+ * This allocates the counter object on the kernel side.
+ */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_kernel(
 		int kernel_event_notifier_group_fd);
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
+
+/*
+ * Register a UST application.
+ *
+ * This reuses (or creates) the counter object of the app UID.
+ */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_app(struct ust_app *app);
 
+/*
+ * Unregister a UST application.
+ */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_unregister_app(struct ust_app *app);
 #else /* HAVE_LIBLTTNG_UST_CTL */
@@ -52,6 +71,9 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 }
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 
+/*
+ * Allocates, reserves and returns the error counter index for that trigger.
+ */
 enum event_notifier_error_accounting_status
 event_notifier_error_accounting_register_event_notifier(
 		const struct lttng_trigger *trigger,

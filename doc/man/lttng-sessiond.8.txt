@@ -25,6 +25,8 @@ SYNOPSIS
                [option:--ustconsumerd64-cmd-sock='PATH']
                [option:--consumerd32-path='PATH'] [option:--consumerd32-libdir='PATH']
                [option:--consumerd64-path='PATH'] [option:--consumerd64-libdir='PATH']
+               [option:--event-notifier-error-buffer-size-kernel='SIZE']
+               [option:--event-notifier-error-buffer-size-userspace='SIZE']
                [option:--quiet | [option:-v | option:-vv | option:-vvv] [option:--verbose-consumer]]
 
 
@@ -122,6 +124,13 @@ NOTE: This is used by man:lttng(1) to get notified when the
 session daemon is ready to accept commands. When building a third party
 tool on liblttng-ctl, this option can be very handy to synchronize the
 control tool and the session daemon.
+
+option:--event-notifier-error-buffer-size-kernel='SIZE'::
+    Set the size of the kernel event notifier error counter buffers to 'SIZE.
+
+option:--event-notifier-error-buffer-size-userspace='SIZE'::
+    Set the size of the userspace event notifier error counter buffers to
+    'SIZE.
 
 
 Linux kernel tracing

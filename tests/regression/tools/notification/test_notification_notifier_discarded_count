@@ -120,7 +120,7 @@ function test_kernel_notifier_discarded_count
 
 function test_kernel_notifier_discarded_count_max_bucket
 {
-	start_lttng_sessiond "" "--event-notifier-error-number-of-bucket=3"
+	start_lttng_sessiond "" "--event-notifier-error-buffer-size-kernel=3"
 
 	diag "Kernel event notifer error counter bucket limit"
 	for i in $(seq 3); do
@@ -239,7 +239,7 @@ function test_ust_notifier_discarded_count
 }
 function test_ust_notifier_discarded_count_max_bucket
 {
-	start_lttng_sessiond "" "--event-notifier-error-number-of-bucket=3"
+	start_lttng_sessiond "" "--event-notifier-error-buffer-size-userspace=3"
 
 	diag "UST event notifer error counter bucket limit"
 	for i in $(seq 3); do

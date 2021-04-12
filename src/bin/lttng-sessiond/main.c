@@ -85,6 +85,13 @@ NULL
 ;
 
 #define EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX 65535
+#define EVENT_NOTIFIER_ERROR_BUFFER_SIZE_BASE_OPTION_STR \
+		"event-notifier-error-buffer-size"
+#define EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR \
+		EVENT_NOTIFIER_ERROR_BUFFER_SIZE_BASE_OPTION_STR "-kernel"
+#define EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR \
+		EVENT_NOTIFIER_ERROR_BUFFER_SIZE_BASE_OPTION_STR "-userspace"
+
 
 const char *progname;
 static int lockfile_fd = -1;
@@ -123,7 +130,8 @@ static const struct option long_options[] = {
 	{ "load", required_argument, 0, 'l' },
 	{ "kmod-probes", required_argument, 0, '\0' },
 	{ "extra-kmod-probes", required_argument, 0, '\0' },
-	{ "event-notifier-error-number-of-bucket", required_argument, 0, '\0' },
+	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, required_argument, 0, '\0' },
+	{ EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, required_argument, 0, '\0' },
 	{ NULL, 0, 0, 0 }
 };
 
@@ -713,22 +721,43 @@ static int set_option(int opt, const char *arg, const char *optname)
 				ret = -ENOMEM;
 			}
 		}
-	} else if (string_match(optname, "event-notifier-error-number-of-bucket")) {
+	} else if (string_match(optname, EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR)) {
 		unsigned long v;
 
 		errno = 0;
 		v = strtoul(arg, NULL, 0);
 		if (errno != 0 || !isdigit(arg[0])) {
-			ERR("Wrong value in --event-notifier-error-number-of-bucket parameter: %s", arg);
+			ERR("Wrong value in --%s parameter: %s",
+					EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, arg);
 			return -1;
 		}
 		if (v == 0 || v >= EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX) {
-			ERR("Value out of range for --event-notifier-error-number-of-bucket parameter: %s", arg);
+			ERR("Value out of range for --%s parameter: %s",
+					EVENT_NOTIFIER_ERROR_BUFFER_SIZE_KERNEL_OPTION_STR, arg);
 			return -1;
 		}
-		the_config.event_notifier_error_counter_bucket = (int) v;
-		DBG3("Number of event notifier error counter set to non default: %i",
-				the_config.event_notifier_error_counter_bucket);
+		the_config.event_notifier_buffer_size_kernel = (int) v;
+		DBG3("Number of event notifier error buffer kernel size to non default: %i",
+				the_config.event_notifier_buffer_size_kernel);
+		goto end;
+	} else if (string_match(optname, EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR)) {
+		unsigned long v;
+
+		errno = 0;
+		v = strtoul(arg, NULL, 0);
+		if (errno != 0 || !isdigit(arg[0])) {
+			ERR("Wrong value in --%s parameter: %s",
+					EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, arg);
+			return -1;
+		}
+		if (v == 0 || v >= EVENT_NOTIFIER_ERROR_COUNTER_NUMBER_OF_BUCKET_MAX) {
+			ERR("Value out of range for --%s parameter: %s",
+					EVENT_NOTIFIER_ERROR_BUFFER_SIZE_USERSPACE_OPTION_STR, arg);
+			return -1;
+		}
+		the_config.event_notifier_buffer_size_userspace = (int) v;
+		DBG3("Number of event notifier error buffer userspace size to non default: %i",
+				the_config.event_notifier_buffer_size_userspace);
 		goto end;
 	} else if (string_match(optname, "config") || opt == 'f') {
 		/* This is handled in set_options() thus silent skip. */
@@ -1399,6 +1428,7 @@ int main(int argc, char **argv)
 	struct lttng_thread *client_thread = NULL;
 	struct lttng_thread *notification_thread = NULL;
 	struct lttng_thread *register_apps_thread = NULL;
+	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
 	logger_set_thread_name("Main", false);
 	init_kernel_workarounds();
@@ -1627,7 +1657,14 @@ int main(int argc, char **argv)
 		goto stop_threads;
 	}
 
-	event_notifier_error_accounting_init(the_config.event_notifier_error_counter_bucket);
+	event_notifier_error_accounting_status = event_notifier_error_accounting_init(
+			the_config.event_notifier_buffer_size_kernel,
+			the_config.event_notifier_buffer_size_userspace);
+	if (event_notifier_error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		ERR("Failed to initialize event notifier error accounting system");
+		retval = -1;
+		goto stop_threads;
+	}
 
 	/*
 	 * Initialize agent app hash table. We allocate the hash table here
