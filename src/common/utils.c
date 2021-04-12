@@ -65,7 +65,7 @@
  * to specify the size of the resolved_path argument if given, or the size to
  * allocate.
  */
-LTTNG_HIDDEN
+static
 char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 {
 	char *cut_path = NULL, *try_path = NULL, *try_path_prev = NULL;
