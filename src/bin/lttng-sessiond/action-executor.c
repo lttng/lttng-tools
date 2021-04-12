@@ -593,7 +593,41 @@ static void *action_executor_thread(void *_data)
 		 * allowing new items to be queued.
 		 */
 		pthread_mutex_unlock(&executor->work.lock);
+
+		/* Execute item only if a trigger is registered. */
+		lttng_trigger_lock(work_item->trigger);
+		if (!lttng_trigger_is_registered(work_item->trigger)) {
+			const char *trigger_name = NULL;
+			uid_t trigger_owner_uid;
+			enum lttng_trigger_status trigger_status;
+
+			trigger_status = lttng_trigger_get_name(
+					work_item->trigger, &trigger_name);
+			switch (trigger_status) {
+			case LTTNG_TRIGGER_STATUS_OK:
+				break;
+			case LTTNG_TRIGGER_STATUS_UNSET:
+				trigger_name = "(unset)";
+				break;
+			default:
+				abort();
+			}
+
+			trigger_status = lttng_trigger_get_owner_uid(
+					work_item->trigger, &trigger_owner_uid);
+			assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+			DBG("Work item skipped since the associated trigger is no longer registered: work item id = %" PRIu64 ", trigger name = '%s', trigger owner uid = %d",
+					work_item->id, trigger_name,
+					(int) trigger_owner_uid);
+			ret = 0;
+			goto skip_execute;
+		}
+
 		ret = action_work_item_execute(executor, work_item);
+
+	skip_execute:
+		lttng_trigger_unlock(work_item->trigger);
 		action_work_item_destroy(work_item);
 		if (ret) {
 			/* Fatal error. */
