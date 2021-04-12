@@ -66,16 +66,15 @@
  * but the /tmp/test1 does, the real path for /tmp/test1 is concatened with
  * /test2/test3 then returned. In normal time, realpath(3) fails if the end
  * point directory does not exist.
- * In case resolved_path is NULL, the string returned was allocated in the
- * function and thus need to be freed by the caller. The size argument allows
- * to specify the size of the resolved_path argument if given, or the size to
- * allocate.
+ *
+ * Return a newly-allocated string.
  */
 static
-char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
+char *utils_partial_realpath(const char *path)
 {
 	char *cut_path = NULL, *try_path = NULL, *try_path_prev = NULL;
 	const char *next, *prev, *end;
+	char *resolved_path = NULL;
 
 	/* Safety net */
 	if (path == NULL) {
@@ -156,13 +155,11 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		cut_path = NULL;
 	}
 
-	/* Allocate memory for the resolved path if necessary */
+	/* Allocate memory for the resolved path. */
+	resolved_path = zmalloc(LTTNG_PATH_MAX);
 	if (resolved_path == NULL) {
-		resolved_path = zmalloc(size);
-		if (resolved_path == NULL) {
-			PERROR("zmalloc resolved path");
-			goto error;
-		}
+		PERROR("zmalloc resolved path");
+		goto error;
 	}
 
 	/*
@@ -186,7 +183,8 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 		}
 
 		/* Concatenate the strings */
-		snprintf(resolved_path, size, "%s%s", try_path_prev, cut_path);
+		snprintf(resolved_path, LTTNG_PATH_MAX, "%s%s",
+				try_path_prev, cut_path);
 
 		/* Free the allocated memory */
 		free(cut_path);
@@ -198,7 +196,7 @@ char *utils_partial_realpath(const char *path, char *resolved_path, size_t size)
 	 * return it as is
 	 */
 	} else {
-		strncpy(resolved_path, path, size);
+		strncpy(resolved_path, path, LTTNG_PATH_MAX);
 	}
 
 	/* Then we return the 'partially' resolved path */
@@ -377,11 +375,13 @@ char *_utils_expand_path(const char *path, bool keep_symlink)
 
 	if (keep_symlink) {
 		/* Resolve partially our path */
-		absolute_path = utils_partial_realpath(absolute_path,
-				absolute_path, LTTNG_PATH_MAX);
-		if (!absolute_path) {
+		char *new_absolute_path = utils_partial_realpath(absolute_path);
+		if (!new_absolute_path) {
 			goto error;
 		}
+
+		free(absolute_path);
+		absolute_path = new_absolute_path;
 	}
 
 	ret = expand_double_slashes_dot_and_dotdot(absolute_path);
