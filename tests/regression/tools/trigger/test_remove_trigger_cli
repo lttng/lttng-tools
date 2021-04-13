@@ -68,8 +68,8 @@ function remove_trigger ()
 start_lttng_sessiond_notap
 
 # Add a few triggers
-lttng_add_trigger_ok "ABC" --condition event-rule-matches --name=aaa -u --filter 'p == 2' --action notify
-lttng_add_trigger_ok "DEF" --condition event-rule-matches -u --action notify
+lttng_add_trigger_ok "ABC" --condition event-rule-matches --name=aaa --domain=user --filter 'p == 2' --action notify
+lttng_add_trigger_ok "DEF" --condition event-rule-matches --domain=user --action notify
 
 cat > "${tmp_expected_stdout}" <<- EOF
 - name: ABC

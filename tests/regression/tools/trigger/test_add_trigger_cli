@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 222
+plan_tests 228
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -79,48 +79,48 @@ function test_failure ()
 # top-level options
 test_success "explicit name" \
 	--name hohoho \
-	--condition event-rule-matches --name=some-event-id -u \
+	--condition event-rule-matches --name=some-event-id --domain=user \
 	--action notify
 
 # `--condition event-rule-matches` successes
-test_success "--condition event-rule-matches some-event -u" \
-	--condition event-rule-matches --name=some-event -u \
+test_success "--condition event-rule-matches some-event --domain=user" \
+	--condition event-rule-matches --name=some-event --domain=user \
 	--action notify
 
-test_success "--condition event-rule-matches -u" \
-	--condition event-rule-matches -u \
+test_success "--condition event-rule-matches --domain=user" \
+	--condition event-rule-matches --domain=user \
 	--action notify
 
 test_success "notify action polices" \
-	--condition event-rule-matches -u --name=test-rate-policy \
+	--condition event-rule-matches --domain=user --name=test-rate-policy \
 	--action notify \
 	--rate-policy=every:55 \
 	--action notify \
 	--rate-policy=once-after:55
 
 test_success "start session action polices" \
-	--condition event-rule-matches -u --name=test-rate-policy \
+	--condition event-rule-matches --domain=user --name=test-rate-policy \
 	--action start-session my_session \
 	--rate-policy=every:55 \
 	--action start-session my_session \
 	--rate-policy=once-after:55
 
 test_success "stop session action polices" \
-	--condition event-rule-matches -u --name=test-rate-policy \
+	--condition event-rule-matches --domain=user --name=test-rate-policy \
 	--action stop-session my_session \
 	--rate-policy=every:55 \
 	--action stop-session my_session \
 	--rate-policy=once-after:55
 
 test_success "snapshot session action polices" \
-	--condition event-rule-matches -u --name=test-rate-policy \
+	--condition event-rule-matches --domain=user --name=test-rate-policy \
 	--action snapshot-session my_session \
 	--rate-policy=every:55 \
 	--action snapshot-session my_session \
 	--rate-policy=once-after:55
 
 test_success "rotate session action polices" \
-	--condition event-rule-matches -u --name=test-rate-policy \
+	--condition event-rule-matches --domain=user --name=test-rate-policy \
 	--action rotate-session my_session \
 	--rate-policy=every:55 \
 	--action rotate-session my_session \
@@ -128,7 +128,7 @@ test_success "rotate session action polices" \
 
 skip $ist_root "non-root user: skipping kprobe tests" 9 || {
 	test_success "--condition event-rule-matches probe by symbol" \
-		--condition event-rule-matches -k --probe=lttng_channel_enable --event-name=my_channel_enable \
+		--condition event-rule-matches --domain=kernel --probe=lttng_channel_enable --event-name=my_channel_enable \
 		--action notify
 
 	channel_enable_addr=$(grep ' t lttng_channel_enable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
@@ -148,101 +148,101 @@ skip $ist_root "non-root user: skipping kprobe tests" 9 || {
 	offset_hex="0x$(printf '%x' $offset)"
 
 	test_success "--condition event-rule-matches probe by symbol with offset" \
-		--condition event-rule-matches -k --probe="${base_symbol}+${offset_hex}" --event-name=my_$base_symbol \
+		--condition event-rule-matches --domain=kernel --probe="${base_symbol}+${offset_hex}" --event-name=my_$base_symbol \
 		--action notify
 
 	test_success "--condition event-rule-matches probe by address" \
-		--condition event-rule-matches -k "--probe=0x${channel_enable_addr}" --event-name=my_channel_enable \
+		--condition event-rule-matches --domain=kernel "--probe=0x${channel_enable_addr}" --event-name=my_channel_enable \
 		--action notify
 }
 
 skip $ist_root "non-root user: skipping uprobe tests" 6 || {
 	test_success "--condition event-rule-matches uprobe" \
-		--condition event-rule-matches -k --userspace-probe=${uprobe_elf_binary}:test_function --event-name=ma-probe \
+		--condition event-rule-matches --domain=kernel --userspace-probe=${uprobe_elf_binary}:test_function --event-name=ma-probe \
 		--action notify
 
 	test_success "--condition event-rule-matches uprobe with elf prefix" \
-		--condition event-rule-matches -k --userspace-probe=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
+		--condition event-rule-matches --domain=kernel --userspace-probe=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
 		--action notify
 }
 
 skip $ist_root "non-root user: skipping syscall tests" 9 || {
 	test_success "--condition event-rule-matches one syscall" \
-		--condition event-rule-matches -k --syscall --name=open \
+		--condition event-rule-matches --domain=kernel --syscall --name=open \
 		--action notify
 
 	test_success "--condition event-rule-matches all syscalls" \
-		--condition event-rule-matches -k --syscall \
+		--condition event-rule-matches --domain=kernel --syscall \
 		--action notify
 
 	test_success "--condition event-rule-matches one syscall with filter" \
-		--condition event-rule-matches -k --syscall --filter 'a > 2' --name=open \
+		--condition event-rule-matches --domain=kernel --syscall --filter 'a > 2' --name=open \
 		--action notify
 }
 
 # `--action notify` successes
 test_success "--action notify" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action notify
 
 test_success "--action notify --capture foo" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture foo --action notify
 
 test_success "--action notify --capture foo[2]" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture 'foo[2]' --action notify
 
 test_success '--action notify --capture $ctx.foo' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$ctx.foo' --action notify
 
 test_success '--action notify --capture $ctx.foo[2]' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$ctx.foo[2]' --action notify
 
 test_success '--action notify --capture $app.prov:type' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$app.prov:type' --action notify
 
 test_success '--action notify --capture $app.prov:type[2]' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$app.prov:type[2]' --action notify
 
 test_success '--action notify multiple captures' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture foo --capture '$app.hello:world' --action notify
 
 # `--action start-session` successes
 test_success "--action start-session" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action start-session ze-session
 
 # `--action stop-session` successes
 test_success "--action stop-session foo" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action stop-session ze-session
 
 # `--action rotate-session` successes
 test_success "--action rotate-session foo" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action rotate-session ze-session
 
 # `--action snapshot-session` successes
 test_success "--action snapshot-session foo" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session
 
 test_success "--action snapshot-session with file URI" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --path /hello
 
 test_success "--action snapshot-session with net URI" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --url net://1.2.3.4
 
 test_success "--action snapshot-session with ctrl/data URIs" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1234 --data-url=tcp://1.2.3.4:1235
 
 # top-level failures
@@ -254,12 +254,12 @@ test_failure "unknown option" \
 
 test_failure "missing --action" \
 	"Error: Need at least one --action." \
-	--condition event-rule-matches -u
+	--condition event-rule-matches --domain=user
 
 test_failure "two --condition" \
 	"Error: A --condition was already given." \
-	--condition event-rule-matches --name=aaa -u \
-	--condition event-rule-matches --name=bbb -u \
+	--condition event-rule-matches --name=aaa --domain=user \
+	--condition event-rule-matches --name=bbb --domain=user \
 	--action notify
 
 test_failure "missing argument to --name" \
@@ -269,23 +269,23 @@ test_failure "missing argument to --name" \
 for cmd in rate-policy=once-after rate-policy=every; do
 	test_failure "missing argument to --${cmd}" \
 		"Error: Rate policy format is invalid." \
-		--condition event-rule-matches -u --action notify \
+		--condition event-rule-matches --domain=user --action notify \
 		--${cmd}
 
 	test_failure "invalid argument to --${cmd}: non-digit character" \
 		"Error: Failed to parse rate policy value \`123bob\` as an integer." \
-		--condition event-rule-matches -u --action notify \
+		--condition event-rule-matches --domain=user --action notify \
 		--${cmd}:123bob
 
 	test_failure "invalid argument to --${cmd}: empty string" \
 		"Error: Failed to parse rate policy value \`\` as an integer." \
-		--condition event-rule-matches -u --action notify \
+		--condition event-rule-matches --domain=user --action notify \
 		--${cmd}":"
 done
 
 test_failure "invalid argument to --rate-policy: unknown policy type" \
 	"Error: Rate policy type \`bob\` unknown." \
-	--condition event-rule-matches -u --action notify \
+	--condition event-rule-matches --domain=user --action notify \
 	--rate-policy=bob:123
 
 # `--condition` failures
@@ -298,12 +298,20 @@ test_failure "unknown --condition" \
 
 # `--condition event-rule-matches` failures
 test_failure "missing args after --condition event-rule-matches" \
-	"Error: Please specify a domain (--kernel/--userspace/--jul/--log4j/--python)." \
+	"Error: Please specify a domain (--domain=(kernel,user,jul,log4j,python))." \
 	--condition event-rule-matches
 
 test_failure "extra args after --condition event-rule-matches" \
 	"Error: Unexpected argument 'bozo'" \
-	--condition event-rule-matches -u bozo
+	--condition event-rule-matches --domain=user bozo
+
+test_failure "two same --domain" \
+	"Error: More than one \`--domain\` was specified." \
+	--condition event-rule-matches --domain=user --domain=user
+
+test_failure "two different --domain" \
+	"Error: More than one \`--domain\` was specified." \
+	--condition event-rule-matches --domain=user --domain=kernel
 
 test_failure "--condition event-rule-matches: --name with --probe" \
 	"Error: Can't use --name with probe event rules." \
@@ -311,127 +319,127 @@ test_failure "--condition event-rule-matches: --name with --probe" \
 
 test_failure "--condition event-rule-matches: --event-name with tracepoint" \
 	"Error: Can't use --event-name with tracepoint event rules." \
-	--condition event-rule-matches -u --event-name='hello'
+	--condition event-rule-matches --domain=user --event-name='hello'
 
 test_failure "--condition event-rule-matches: extra argument with --userspace-probe" \
 	"Error: Unexpected argument 'hello'" \
-	--condition event-rule-matches -k --userspace-probe=${uprobe_elf_binary}:test_failure hello
+	--condition event-rule-matches --domain=kernel --userspace-probe=${uprobe_elf_binary}:test_failure hello
 
 test_failure "--condition event-rule-matches: extra argument with --syscall" \
 	"Error: Unexpected argument 'open'" \
-	--condition event-rule-matches -k --syscall open
+	--condition event-rule-matches --domain=kernel --syscall open
 
 test_failure "--condition event-rule-matches --capture: missing argument (end of arg list)" \
 	'Error: While parsing argument #2 (`--capture`): Missing required argument for option `--capture`' \
 	--action notify \
-	--condition event-rule-matches -u --capture
+	--condition event-rule-matches --domain=user --capture
 
 test_failure "--condition event-rule-matches --capture: missing argument (before another option)" \
 	'Error: While parsing expression `--action`: Unary operators are not allowed in capture expressions.' \
-	--condition event-rule-matches -u --capture \
+	--condition event-rule-matches --domain=user --capture \
 	--action notify \
 
 test_failure "--condition event-rule-matches --capture: binary operator" \
 	'Error: While parsing expression `foo == 2`: Binary operators are not allowed in capture expressions.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture 'foo == 2' --action notify
 
 test_failure "--condition event-rule-matches --capture: unary operator" \
 	'Error: While parsing expression `!foo`: Unary operators are not allowed in capture expressions.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '!foo' --action notify
 
 test_failure "--condition event-rule-matches --capture: logical operator" \
 	'Error: While parsing expression `foo || bar`: Logical operators are not allowed in capture expressions.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture 'foo || bar' --action notify
 
 test_failure "--condition event-rule-matches --capture: accessing a sub-field" \
 	'Error: While parsing expression `foo.bar`: Capturing subfields is not supported.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture 'foo.bar' --action notify
 
 test_failure "--condition event-rule-matches --capture: accessing the sub-field of an array element" \
 	'Error: While parsing expression `foo[3].bar`: Capturing subfields is not supported.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture 'foo[3].bar' --action notify
 
 test_failure "--condition event-rule-matches --capture: missing colon in app-specific context field" \
 	'Error: Invalid app-specific context field name: missing colon in `foo`.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$app.foo' --action notify
 
 test_failure "--condition event-rule-matches --capture: missing colon in app-specific context field" \
 	'Error: Invalid app-specific context field name: missing type name after colon in `foo:`.' \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--capture '$app.foo:' --action notify
 
 # `--action` failures
 test_failure "missing args after --action" \
 	"Error: While parsing argument #1 (\`--action\`): Missing required argument for option \`--action\`" \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action
 
 # `--action notify` failures
 test_failure "extra arg after --action notify" \
 	"Error: Unexpected argument \`bob\`." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action notify bob
 
 # `--action start-session` failures
 test_failure "missing arg after --action start-session" \
 	"Error: Missing session name." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action start-session
 test_failure "extra arg after --action start-session" \
 	"Error: Unexpected argument \`bob\`." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action start-session ze-session bob
 
 # `--action stop-session` failures
 test_failure "missing arg after --action stop-session" \
 	"Error: Missing session name." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action stop-session
 test_failure "extra arg after --action stop-session" \
 	"Error: Unexpected argument \`bob\`." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action stop-session ze-session bob
 
 # `--action rotate-session` failures
 test_failure "missing arg after --action rotate-session" \
 	"Error: Missing session name." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action rotate-session
 test_failure "extra arg after --action rotate-session" \
 	"Error: Unexpected argument \`bob\`." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action rotate-session ze-session bob
 
 # `--action snapshot-session` failures
 test_failure "missing arg after --action snapshot-session" \
 	"Error: Missing session name." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session
 test_failure "extra arg after --action snapshot-session" \
 	"Error: Unexpected argument \`bob\`." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session bob
 test_failure "snapshot-session action, --max-size without destination" \
 	"Error: Can't provide a snapshot output max size without a snapshot output destination." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --max-size 10M
 test_failure "snapshot-session action, --name without destination" \
 	"Error: Can't provide a snapshot output name without a snapshot output destination." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --name hallo
 test_failure "snapshot-session action, --name with-local-path-instead-of-url" \
 	"Error: Failed to parse '/something/that/looks/like/a/path' as an URL." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --name hallo --url /something/that/looks/like/a/path
 test_failure "snapshot-session action, --name with-net-url-instead-of-path" \
 	"Error: Failed to parse 'net://8.8.8.8/' as a local path." \
-	--condition event-rule-matches -u \
+	--condition event-rule-matches --domain=user \
 	--action snapshot-session ze-session --name hallo --path net://8.8.8.8/
 
 # Cleanup

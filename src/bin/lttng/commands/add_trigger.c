@@ -50,11 +50,7 @@ enum {
 	OPT_LOGLEVEL,
 	OPT_LOGLEVEL_ONLY,
 
-	OPT_USERSPACE,
-	OPT_KERNEL,
-	OPT_LOG4J,
-	OPT_JUL,
-	OPT_PYTHON,
+	OPT_DOMAIN,
 
 	OPT_FUNCTION,
 	OPT_PROBE,
@@ -79,12 +75,7 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_LOGLEVEL_ONLY, '\0', "loglevel-only", true },
 	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
-	/* Domains */
-	{ OPT_USERSPACE, 'u', "userspace", false },
-	{ OPT_KERNEL, 'k', "kernel", false },
-	{ OPT_LOG4J, 'l', "log4j", false },
-	{ OPT_JUL, 'j', "jul", false },
-	{ OPT_PYTHON, 'p', "python", false },
+	{ OPT_DOMAIN, 'd', "domain", true },
 
 	/* Event rule types */
 	{ OPT_FUNCTION, '\0', "function", true },
@@ -100,19 +91,37 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 };
 
 static
-bool assign_domain_type(enum lttng_domain_type *dest,
-		enum lttng_domain_type src)
+bool assign_domain_type(enum lttng_domain_type *dest, const char *arg)
 {
 	bool ret;
 
-	if (*dest == LTTNG_DOMAIN_NONE || *dest == src) {
-		*dest = src;
-		ret = true;
-	} else {
-		ERR("Multiple domains specified.");
-		ret = false;
+	if (*dest != LTTNG_DOMAIN_NONE) {
+		ERR("More than one `--domain` was specified.");
+		goto error;
 	}
 
+	if (strcmp(arg, "kernel") == 0) {
+		*dest = LTTNG_DOMAIN_KERNEL;
+	} else if (strcmp(arg, "user") == 0 || strcmp(arg, "userspace") == 0) {
+		*dest = LTTNG_DOMAIN_UST;
+	} else if (strcmp(arg, "jul") == 0) {
+		*dest = LTTNG_DOMAIN_JUL;
+	} else if (strcmp(arg, "log4j") == 0) {
+		*dest = LTTNG_DOMAIN_LOG4J;
+	} else if (strcmp(arg, "python") == 0) {
+		*dest = LTTNG_DOMAIN_PYTHON;
+	} else {
+		ERR("Invalid `--domain` value: %s", arg);
+		goto error;
+	}
+
+	ret = true;
+	goto end;
+
+error:
+	ret = false;
+
+end:
 	return ret;
 }
 
@@ -590,32 +599,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 			switch (item_opt->descr->id) {
 			/* Domains. */
-			case OPT_USERSPACE:
-				if (!assign_domain_type(&domain_type, LTTNG_DOMAIN_UST)) {
-					goto error;
-				}
-
-				break;
-			case OPT_KERNEL:
-				if (!assign_domain_type(&domain_type, LTTNG_DOMAIN_KERNEL)) {
-					goto error;
-				}
-
-				break;
-			case OPT_LOG4J:
-				if (!assign_domain_type(&domain_type, LTTNG_DOMAIN_LOG4J)) {
-					goto error;
-				}
-
-				break;
-			case OPT_JUL:
-				if (!assign_domain_type(&domain_type, LTTNG_DOMAIN_JUL)) {
-					goto error;
-				}
-
-				break;
-			case OPT_PYTHON:
-				if (!assign_domain_type(&domain_type, LTTNG_DOMAIN_PYTHON)) {
+			case OPT_DOMAIN:
+				if (!assign_domain_type(&domain_type, item_opt->arg)) {
 					goto error;
 				}
 
@@ -825,7 +810,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	/* Need to specify a domain. */
 	if (domain_type == LTTNG_DOMAIN_NONE) {
-		ERR("Please specify a domain (--kernel/--userspace/--jul/--log4j/--python).");
+		ERR("Please specify a domain (--domain=(kernel,user,jul,log4j,python)).");
 		goto error;
 	}
 
