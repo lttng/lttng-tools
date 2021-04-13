@@ -1953,9 +1953,9 @@ int handle_notification_thread_command_session_rotation(
 		 * Ownership of `evaluation` transferred to the action executor
 		 * no matter the result.
 		 */
-		executor_status = action_executor_enqueue(state->executor,
-				trigger, evaluation, &session_creds,
-				client_list);
+		executor_status = action_executor_enqueue_trigger(
+				state->executor, trigger, evaluation,
+				&session_creds, client_list);
 		evaluation = NULL;
 		switch (executor_status) {
 		case ACTION_EXECUTOR_STATUS_OK:
@@ -2917,8 +2917,8 @@ int handle_notification_thread_command_register_trigger(
 	 * Ownership of `evaluation` transferred to the action executor
 	 * no matter the result.
 	 */
-	executor_status = action_executor_enqueue(state->executor, trigger,
-			evaluation, &object_creds, client_list);
+	executor_status = action_executor_enqueue_trigger(state->executor,
+			trigger, evaluation, &object_creds, client_list);
 	evaluation = NULL;
 	switch (executor_status) {
 	case ACTION_EXECUTOR_STATUS_OK:
@@ -4638,7 +4638,7 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	}
 	client_list = get_client_list_from_condition(state,
 			lttng_trigger_get_const_condition(element->trigger));
-	executor_status = action_executor_enqueue(state->executor,
+	executor_status = action_executor_enqueue_trigger(state->executor,
 			element->trigger, evaluation, NULL, client_list);
 	switch (executor_status) {
 	case ACTION_EXECUTOR_STATUS_OK:
@@ -4921,9 +4921,9 @@ int handle_notification_thread_channel_sample(
 		 * Ownership of `evaluation` transferred to the action executor
 		 * no matter the result.
 		 */
-		executor_status = action_executor_enqueue(state->executor,
-				trigger, evaluation, &channel_creds,
-				client_list);
+		executor_status = action_executor_enqueue_trigger(
+				state->executor, trigger, evaluation,
+				&channel_creds, client_list);
 		evaluation = NULL;
 		switch (executor_status) {
 		case ACTION_EXECUTOR_STATUS_OK:

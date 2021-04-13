@@ -37,7 +37,7 @@ void action_executor_destroy(struct action_executor *executor);
  * This function assumes the ownership of the `evaluation` both on success and
  * failure: the caller should no longer access it once the function returns.
  */
-enum action_executor_status action_executor_enqueue(
+enum action_executor_status action_executor_enqueue_trigger(
 		struct action_executor *executor,
 		struct lttng_trigger *trigger,
 		struct lttng_evaluation *evaluation,
