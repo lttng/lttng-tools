@@ -2212,8 +2212,9 @@ function lttng_remove_trigger()
 {
 	local expected_to_fail="$1"
 	local trigger_name="$2"
+	shift 2
 
-	$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger "$trigger_name" 1> /dev/null 2> /dev/null
+	$TESTDIR/../src/bin/lttng/$LTTNG_BIN remove-trigger "$trigger_name" "$@" 1> /dev/null 2> /dev/null
 	ret=$?
 	if [[ $expected_to_fail -eq "1" ]]; then
 		test "$ret" -ne "0"
