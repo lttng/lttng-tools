@@ -24,7 +24,7 @@ TESTDIR="$CURDIR/../../.."
 source "$TESTDIR/utils/utils.sh"
 
 
-NUM_TESTS=67
+NUM_TESTS=72
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -32,14 +32,22 @@ tmp_stdout=$(mktemp -t test_list_triggers_cli_stdout.XXXXXX)
 tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
 tmp_expected_stdout=$(mktemp -t test_list_triggers_cli_expected_stdout.XXXXXX)
 uprobe_elf_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-elf-binary/.libs/userspace-probe-elf-binary")
+uprobe_sdt_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-sdt-binary/.libs/userspace-probe-sdt-binary")
 
 uid=$(id --user)
 gid=$(id --group)
 
 if [ "$uid" == "0" ]; then
 	ist_root=1
+	ls "$uprobe_sdt_binary" >/dev/null 2>&1
+	if test $? == 0; then
+		hast_sdt_binary=1
+	else
+		hast_sdt_binary=0
+	fi
 else
 	ist_root=0
+	hast_sdt_binary=0
 fi
 
 
@@ -253,7 +261,7 @@ test_on_event_probe ()
 	lttng_remove_trigger_ok "T2"
 }
 
-test_on_event_userspace_probe ()
+test_on_event_userspace_probe_elf ()
 {
 	local elf_function_name="test_function"
 
@@ -265,7 +273,7 @@ test_on_event_userspace_probe ()
 	- id: T0
 	  user id: ${uid}
 	  condition: event rule hit
-	    rule: ma-probe-elf (type: userspace probe, location: ${uprobe_elf_binary}:${elf_function_name})
+	    rule: ma-probe-elf (type: userspace probe, location type: ELF, location: ${uprobe_elf_binary}:${elf_function_name})
 	  actions:
 	    notify
 	      errors: none
@@ -273,6 +281,32 @@ test_on_event_userspace_probe ()
 	EOF
 
 	list_triggers_matches_ok "on-event, userspace-probe event rule ELF" "${tmp_expected_stdout}"
+
+	lttng_remove_trigger_ok "T0"
+}
+
+test_on_event_userspace_probe_sdt ()
+{
+
+	local sdt_provider_name="foobar"
+	local sdt_probe_name="tp1"
+
+	diag "on-event userspace-probe sdt"
+
+	lttng_add_trigger_ok "T0" --condition on-event -k --userspace-probe=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} ma-probe-sdt --action notify
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- id: T0
+	  user id: 0
+	  condition: event rule hit
+	    rule: ma-probe-sdt (type: userspace probe, location type: SDT, location: ${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name})
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	EOF
+
+	list_triggers_matches_ok "on-event, userspace-probe event rule SDT" "${tmp_expected_stdout}"
 
 	lttng_remove_trigger_ok "T0"
 }
@@ -454,7 +488,8 @@ start_lttng_sessiond_notap
 test_top_level_options
 test_on_event_tracepoint
 skip $ist_root "non-root user: skipping kprobe tests" 9 || test_on_event_probe
-skip $ist_root "non-root user: skipping userspace probe elf tests" 5 || test_on_event_userspace_probe
+skip $ist_root "non-root user: skipping userspace probe elf tests" 5 || test_on_event_userspace_probe_elf
+skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 5 || test_on_event_userspace_probe_sdt
 skip $ist_root "non-root user: skipping syscall tests" 7 || test_on_event_syscall
 test_snapshot_action
 test_notify_action

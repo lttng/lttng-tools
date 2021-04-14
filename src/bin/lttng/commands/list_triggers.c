@@ -266,7 +266,7 @@ void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 		goto end;
 	}
 
-	_MSG("    rule: %s (type: userspace probe, location: ", name);
+	_MSG("    rule: %s (type: userspace probe, ", name);
 
 	userspace_probe_location_type =
 			lttng_userspace_probe_location_get_type(location);
@@ -281,12 +281,22 @@ void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 		function_name = lttng_userspace_probe_location_function_get_function_name(
 				location);
 
-		_MSG("%s:%s", binary_path, function_name);
+		_MSG("location type: ELF, location: %s:%s", binary_path, function_name);
 		break;
 	}
 	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
-		_MSG("SDT not implemented yet");
+	{
+		const char *binary_path, *provider_name, *probe_name;
+
+		binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(
+				location);
+		provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
+				location);
+		probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
+				location);
+		_MSG("location type: SDT, location: %s:%s:%s", binary_path, provider_name, probe_name);
 		break;
+	}
 	default:
 		abort();
 	}
