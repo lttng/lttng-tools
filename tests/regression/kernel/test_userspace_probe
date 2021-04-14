@@ -166,10 +166,10 @@ function test_userspace_probe_enable_implicit_probe_type ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -188,10 +188,10 @@ function test_userspace_probe_enable_elf_symbol_exists ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -214,10 +214,10 @@ function test_userspace_probe_enable_in_path ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	# Reset the previously saved PATH.
 	export PATH="$OLDPATH"
@@ -238,10 +238,10 @@ function test_userspace_probe_enable_full_path ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -265,10 +265,10 @@ function test_userspace_probe_enable_colon_in_path ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -289,7 +289,7 @@ function test_userspace_probe_elf ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$ELF_TEST_BIN"  > /dev/null
+	eval "$ELF_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -313,7 +313,7 @@ function test_userspace_probe_elf_dynamic_symbol ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$ELF_TEST_BIN"  > /dev/null
+	eval "$ELF_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -339,7 +339,7 @@ function test_userspace_probe_elf_cxx_function ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$ELF_CXX_TEST_BIN"  > /dev/null
+	eval "$ELF_CXX_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -365,7 +365,7 @@ function test_userspace_probe_elf_cxx_method ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$ELF_CXX_TEST_BIN"  > /dev/null
+	eval "$ELF_CXX_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -390,7 +390,7 @@ function test_userspace_probe_elf_disable ()
 	disable_kernel_lttng_userspace_probe_event_ok $SESSION_NAME $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$ELF_TEST_BIN"  > /dev/null
+	eval "$ELF_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	# Verify that the trace contains zero event.
@@ -413,11 +413,11 @@ function test_userspace_probe_elf_list ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $PROBE_EVENT_NAME
-	validate_list  $SESSION_NAME $ELF_SYMBOL
-	validate_list  $SESSION_NAME $ELF_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "ELF"
-	validate_list  $SESSION_NAME "Function"
+	validate_list $SESSION_NAME $PROBE_EVENT_NAME
+	validate_list $SESSION_NAME $ELF_SYMBOL
+	validate_list $SESSION_NAME $ELF_TEST_BIN_NAME
+	validate_list $SESSION_NAME "ELF"
+	validate_list $SESSION_NAME "Function"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -553,7 +553,7 @@ function test_userspace_probe_sdt ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -577,12 +577,12 @@ function test_userspace_probe_sdt_list ()
 
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
-	validate_list  $SESSION_NAME $PROBE_EVENT_NAME
-	validate_list  $SESSION_NAME $PROVIDER
-	validate_list  $SESSION_NAME $PROBE
-	validate_list  $SESSION_NAME $SDT_TEST_BIN_NAME
-	validate_list  $SESSION_NAME "SDT"
-	validate_list  $SESSION_NAME "Tracepoint"
+	validate_list $SESSION_NAME $PROBE_EVENT_NAME
+	validate_list $SESSION_NAME $PROVIDER
+	validate_list $SESSION_NAME $PROBE
+	validate_list $SESSION_NAME $SDT_TEST_BIN_NAME
+	validate_list $SESSION_NAME "SDT"
+	validate_list $SESSION_NAME "Tracepoint"
 
 	destroy_lttng_session_ok $SESSION_NAME
 
@@ -661,7 +661,7 @@ function test_userspace_probe_sdt_one_probe ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -686,7 +686,7 @@ function test_userspace_probe_sdt_two_probes ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -711,7 +711,7 @@ function test_userspace_probe_sdt_in_shared_object ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -736,7 +736,7 @@ function test_userspace_probe_sdt_in_shared_object_dlopen ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -761,7 +761,7 @@ function test_userspace_probe_sdt_in_shared_object_ldpreload ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	LD_PRELOAD="$SDT_TEST_BIN_DIR/libzzz.so" eval "$SDT_TEST_BIN"  > /dev/null
+	LD_PRELOAD="$SDT_TEST_BIN_DIR/libzzz.so" eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
@@ -786,7 +786,7 @@ function test_userspace_probe_sdt_with_arg ()
 	lttng_enable_kernel_userspace_probe_event_ok $SESSION_NAME "$ENABLE_EXPR" $PROBE_EVENT_NAME
 
 	start_lttng_tracing_ok $SESSION_NAME
-	eval "$SDT_TEST_BIN"  > /dev/null
+	eval "$SDT_TEST_BIN" > /dev/null
 	stop_lttng_tracing_ok $SESSION_NAME
 
 	validate_trace $PROBE_EVENT_NAME "$TRACE_PATH"
