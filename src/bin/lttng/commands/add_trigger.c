@@ -51,12 +51,8 @@ enum {
 	OPT_LOGLEVEL_ONLY,
 
 	OPT_DOMAIN,
-
-	OPT_FUNCTION,
-	OPT_PROBE,
-	OPT_USERSPACE_PROBE,
-	OPT_SYSCALL,
-	OPT_TRACEPOINT,
+	OPT_TYPE,
+	OPT_LOCATION,
 
 	OPT_MAX_SIZE,
 	OPT_DATA_URL,
@@ -76,13 +72,8 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
 	{ OPT_DOMAIN, 'd', "domain", true },
-
-	/* Event rule types */
-	{ OPT_FUNCTION, '\0', "function", true },
-	{ OPT_PROBE, '\0', "probe", true },
-	{ OPT_USERSPACE_PROBE, '\0', "userspace-probe", true },
-	{ OPT_SYSCALL, '\0', "syscall" },
-	{ OPT_TRACEPOINT, '\0', "tracepoint" },
+	{ OPT_TYPE, 't', "type", true },
+	{ OPT_LOCATION, 'L', "location", true },
 
 	/* Capture descriptor */
 	{ OPT_CAPTURE, '\0', "capture", true },
@@ -126,19 +117,37 @@ end:
 }
 
 static
-bool assign_event_rule_type(enum lttng_event_rule_type *dest,
-		enum lttng_event_rule_type src)
+bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 {
 	bool ret;
 
-	if (*dest == LTTNG_EVENT_RULE_TYPE_UNKNOWN || *dest == src) {
-		*dest = src;
-		ret = true;
-	} else {
-		ERR("Multiple event types specified.");
-		ret = false;
+	if (*dest != LTTNG_EVENT_RULE_TYPE_UNKNOWN) {
+		ERR("More than one `--type` was specified.");
+		goto error;
 	}
 
+	if (strcmp(arg, "tracepoint") == 0 || strcmp(arg, "logging") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_TRACEPOINT;
+	} else if (strcmp (arg, "kprobe") == 0 || strcmp(arg, "kernel-probe") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE;
+	} else if (strcmp (arg, "uprobe") == 0 || strcmp(arg, "userspace-probe") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE;
+	} else if (strcmp (arg, "function") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION;
+	} else if (strcmp (arg, "syscall") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_SYSCALL;
+	} else {
+		ERR("Invalid `--type` value: %s", arg);
+		goto error;
+	}
+
+	ret = true;
+	goto end;
+
+error:
+	ret = false;
+
+end:
 	return ret;
 }
 
@@ -557,9 +566,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	char *exclude_names = NULL;
 	char **exclusion_list = NULL;
 
-	/* Holds the argument of --probe / --userspace-probe. */
-	char *probe_source = NULL;
-	char *probe_event_name = NULL;
+	/* For userspace / kernel probe and function. */
+	char *location = NULL;
+	char *event_name = NULL;
 
 	/* Filter. */
 	char *filter = NULL;
@@ -600,62 +609,31 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			switch (item_opt->descr->id) {
 			/* Domains. */
 			case OPT_DOMAIN:
-				if (!assign_domain_type(&domain_type, item_opt->arg)) {
+				if (!assign_domain_type(&domain_type,
+						item_opt->arg)) {
 					goto error;
 				}
 
 				break;
-
-			/* Event rule types */
-			case OPT_FUNCTION:
+			case OPT_TYPE:
 				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION)) {
+						item_opt->arg)) {
 					goto error;
 				}
 
 				break;
-			case OPT_PROBE:
-				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE)) {
-					goto error;
-				}
-
-				if (!assign_string(&probe_source, item_opt->arg,
-						    "--probe")) {
-					goto error;
-				}
-
-				break;
-			case OPT_USERSPACE_PROBE:
-				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE)) {
-					goto error;
-				}
-
-				if (!assign_string(&probe_source, item_opt->arg,
-						    "--userspace-probe")) {
+			case OPT_LOCATION:
+				if (!assign_string(&location,
+						item_opt->arg,
+						"--location/-L")) {
 					goto error;
 				}
 
 				break;
 			case OPT_EVENT_NAME:
-				if (!assign_string(&probe_event_name,
+				if (!assign_string(&event_name,
 						    item_opt->arg,
 						    "--event-name/-E")) {
-					goto error;
-				}
-
-				break;
-			case OPT_SYSCALL:
-				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_SYSCALL)) {
-					goto error;
-				}
-
-				break;
-			case OPT_TRACEPOINT:
-				if (!assign_event_rule_type(&event_rule_type,
-						LTTNG_EVENT_RULE_TYPE_TRACEPOINT)) {
 					goto error;
 				}
 
@@ -779,20 +757,36 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	/*
+	 * Option --location is only applicable to (and mandatory for) event
+	 * rules of type {k,u}probe and function.
+	 *
 	 * Option --event-name is only applicable to event rules of type probe.
-	 * If omitted, it defaults to the probe location.
+	 * If omitted, it defaults to the location.
 	 */
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
-		if (!probe_event_name) {
-			probe_event_name = strdup(probe_source);
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
+		if (!location) {
+			ERR("Event rule of type %s requires a --location.",
+			lttng_event_rule_type_str(event_rule_type));
+			goto error;
+		}
+
+		if (!event_name) {
+			event_name = strdup(location);
 		}
 
 		break;
 
 	default:
-		if (probe_event_name) {
+		if (location) {
+			ERR("Can't use --location with %s event rules.",
+			lttng_event_rule_type_str(event_rule_type));
+			goto error;
+		}
+
+		if (event_name) {
 			ERR("Can't use --event-name with %s event rules.",
 					lttng_event_rule_type_str(
 							event_rule_type));
@@ -964,7 +958,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		enum lttng_event_rule_status event_rule_status;
 
 		ret = parse_kernel_probe_opts(
-				probe_source, &kernel_probe_location);
+				location, &kernel_probe_location);
 		if (ret) {
 			ERR("Failed to parse kernel probe location.");
 			goto error;
@@ -979,10 +973,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		event_rule_status =
 				lttng_event_rule_kernel_probe_set_event_name(
-						res.er, probe_event_name);
+						res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's name to '%s'.",
-					probe_event_name);
+					event_name);
 			goto error;
 		}
 
@@ -994,7 +988,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		enum lttng_event_rule_status event_rule_status;
 
 		ret = parse_userspace_probe_opts(
-				probe_source, &userspace_probe_location);
+				location, &userspace_probe_location);
 		if (ret) {
 			ERR("Failed to parse user space probe location.");
 			goto error;
@@ -1008,10 +1002,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		event_rule_status =
 				lttng_event_rule_userspace_probe_set_event_name(
-						res.er, probe_event_name);
+						res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
-					probe_event_name);
+					event_name);
 			goto error;
 		}
 
@@ -1072,8 +1066,8 @@ end:
 	free(name);
 	free(exclude_names);
 	free(loglevel_str);
-	free(probe_source);
-	free(probe_event_name);
+	free(location);
+	free(event_name);
 
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);

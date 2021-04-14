@@ -222,9 +222,9 @@ test_on_event_probe ()
 
 	offset_hex="0x$(printf '%x' $offset)"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --probe=lttng_channel_enable --event-name=my_channel_enable --action notify
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --probe="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
-	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=kernel --probe="0x${channel_enable_addr}" --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=kprobe --location=lttng_channel_enable --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=kprobe --location="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=kernel --type=kprobe --location="0x${channel_enable_addr}" --event-name=my_channel_enable --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -266,7 +266,7 @@ test_on_event_userspace_probe_elf ()
 
 	diag "Listing on-event userspace-probe elf"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --userspace-probe=${uprobe_elf_binary}:test_function --event-name=ma-probe-elf --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe-elf --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -313,8 +313,8 @@ test_on_event_syscall ()
 {
 	diag "Listing on-event syscall"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --syscall --name=open --action notify
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --syscall --name=ptrace --filter 'a > 2' --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=syscall --name=open --action notify
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=syscall --name=ptrace --filter 'a > 2' --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0

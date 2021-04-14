@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 228
+plan_tests 252
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -126,57 +126,61 @@ test_success "rotate session action polices" \
 	--action rotate-session my_session \
 	--rate-policy=once-after:55
 
-skip $ist_root "non-root user: skipping kprobe tests" 9 || {
-	test_success "--condition event-rule-matches probe by symbol" \
-		--condition event-rule-matches --domain=kernel --probe=lttng_channel_enable --event-name=my_channel_enable \
-		--action notify
+skip $ist_root "non-root user: skipping kprobe tests" 18 || {
+	for type in kprobe kernel-probe; do
+		test_success "--condition event-rule-matches probe by symbol" \
+			--condition event-rule-matches --domain=kernel --type=$type --location=lttng_channel_enable --event-name=my_channel_enable \
+			--action notify
 
-	channel_enable_addr=$(grep ' t lttng_channel_enable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
-	channel_disable_addr=$(grep ' t lttng_channel_disable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
+		channel_enable_addr=$(grep ' t lttng_channel_enable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
+		channel_disable_addr=$(grep ' t lttng_channel_disable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
 
-	# We need to find a valid offset.
-	base_symbol=""
-	offset=0
-	if [[ 0x$channel_enable_addr -lt 0x$channel_disable_addr ]]; then
-		base_symbol="lttng_channel_enable"
-		offset=$(( 0x$channel_disable_addr - 0x$channel_enable_addr ))
-	else
-		base_symbol="lttng_channel_disable"
-		offset=$(( 0x$channel_enable_addr - 0x$channel_disable_addr ))
-	fi
+		# We need to find a valid offset.
+		base_symbol=""
+		offset=0
+		if [[ 0x$channel_enable_addr -lt 0x$channel_disable_addr ]]; then
+			base_symbol="lttng_channel_enable"
+			offset=$(( 0x$channel_disable_addr - 0x$channel_enable_addr ))
+		else
+			base_symbol="lttng_channel_disable"
+			offset=$(( 0x$channel_enable_addr - 0x$channel_disable_addr ))
+		fi
 
-	offset_hex="0x$(printf '%x' $offset)"
+		offset_hex="0x$(printf '%x' $offset)"
 
-	test_success "--condition event-rule-matches probe by symbol with offset" \
-		--condition event-rule-matches --domain=kernel --probe="${base_symbol}+${offset_hex}" --event-name=my_$base_symbol \
-		--action notify
+		test_success "--condition event-rule-matches probe by symbol with offset" \
+			--condition event-rule-matches --domain=kernel --type=$type --location="${base_symbol}+${offset_hex}" --event-name=my_$base_symbol \
+			--action notify
 
-	test_success "--condition event-rule-matches probe by address" \
-		--condition event-rule-matches --domain=kernel "--probe=0x${channel_enable_addr}" --event-name=my_channel_enable \
-		--action notify
+		test_success "--condition event-rule-matches probe by address" \
+			--condition event-rule-matches --domain=kernel --type=$type --location="0x${channel_enable_addr}" --event-name=my_channel_enable \
+			--action notify
+	done
 }
 
-skip $ist_root "non-root user: skipping uprobe tests" 6 || {
-	test_success "--condition event-rule-matches uprobe" \
-		--condition event-rule-matches --domain=kernel --userspace-probe=${uprobe_elf_binary}:test_function --event-name=ma-probe \
-		--action notify
+skip $ist_root "non-root user: skipping uprobe tests" 12 || {
+	for type in uprobe userspace-probe; do
+		test_success "--condition event-rule-matches uprobe" \
+			--condition event-rule-matches --domain=kernel --type=$type --location=${uprobe_elf_binary}:test_function --event-name=ma-probe \
+			--action notify
 
-	test_success "--condition event-rule-matches uprobe with elf prefix" \
-		--condition event-rule-matches --domain=kernel --userspace-probe=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
-		--action notify
+		test_success "--condition event-rule-matches uprobe with elf prefix" \
+			--condition event-rule-matches --domain=kernel --type=$type --location=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
+			--action notify
+	done
 }
 
 skip $ist_root "non-root user: skipping syscall tests" 9 || {
 	test_success "--condition event-rule-matches one syscall" \
-		--condition event-rule-matches --domain=kernel --syscall --name=open \
+		--condition event-rule-matches --domain=kernel --type=syscall --name=open \
 		--action notify
 
 	test_success "--condition event-rule-matches all syscalls" \
-		--condition event-rule-matches --domain=kernel --syscall \
+		--condition event-rule-matches --domain=kernel --type=syscall \
 		--action notify
 
 	test_success "--condition event-rule-matches one syscall with filter" \
-		--condition event-rule-matches --domain=kernel --syscall --filter 'a > 2' --name=open \
+		--condition event-rule-matches --domain=kernel --type=syscall --filter 'a > 2' --name=open \
 		--action notify
 }
 
@@ -313,21 +317,29 @@ test_failure "two different --domain" \
 	"Error: More than one \`--domain\` was specified." \
 	--condition event-rule-matches --domain=user --domain=kernel
 
-test_failure "--condition event-rule-matches: --name with --probe" \
-	"Error: Can't use --name with probe event rules." \
-	--condition event-rule-matches --probe=do_sys_open --name='hello'
+for type in kprobe kernel-probe; do
+	test_failure "--condition event-rule-matches: --name with --type=$type" \
+		"Error: Can't use --name with probe event rules." \
+		--condition event-rule-matches --type=$type --location=do_sys_open --name='hello'
+done
 
-test_failure "--condition event-rule-matches: --event-name with tracepoint" \
+test_failure "--condition event-rule-matches: --location with tracepoint event rule" \
+	"Error: Can't use --location with tracepoint event rules." \
+	--condition event-rule-matches --domain=user --location='hello'
+
+test_failure "--condition event-rule-matches: --event-name with tracepoint event rule" \
 	"Error: Can't use --event-name with tracepoint event rules." \
 	--condition event-rule-matches --domain=user --event-name='hello'
 
-test_failure "--condition event-rule-matches: extra argument with --userspace-probe" \
-	"Error: Unexpected argument 'hello'" \
-	--condition event-rule-matches --domain=kernel --userspace-probe=${uprobe_elf_binary}:test_failure hello
+for type in uprobe userspace-probe; do
+	test_failure "--condition event-rule-matches: extra argument with --type=$type" \
+		"Error: Unexpected argument 'hello'" \
+		--condition event-rule-matches --domain=kernel --type=$type --location=${uprobe_elf_binary}:test_failure hello
+done
 
-test_failure "--condition event-rule-matches: extra argument with --syscall" \
+test_failure "--condition event-rule-matches: extra argument with --type=syscall" \
 	"Error: Unexpected argument 'open'" \
-	--condition event-rule-matches --domain=kernel --syscall open
+	--condition event-rule-matches --domain=kernel --type=syscall open
 
 test_failure "--condition event-rule-matches --capture: missing argument (end of arg list)" \
 	'Error: While parsing argument #2 (`--capture`): Missing required argument for option `--capture`' \
