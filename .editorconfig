@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+indent_style = tab
+indent_size = 8
+tab_width = 8
+charset = utf-8
+
+[*.py]
+indent_style = space
+indent_size = 4
