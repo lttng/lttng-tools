@@ -3,6 +3,13 @@
 lttng.i: lttng.i.in
 	$(SED) "s/LTTNG_VERSION_STR/LTTng $(PACKAGE_VERSION)/g" < $(srcdir)/lttng.i.in >lttng.i
 
+# Some versions of SWIG (like 3.0.12) generate code where a parameter called
+# `swig_this` shadows a global of the same name.  Later versions (like 4.0.1)
+# have renamed this global to `Swig_This_global`.
+#
+# Disable -Wshadow for that file.
+AM_CFLAGS += -Wno-shadow
+
 AM_CPPFLAGS += $(PYTHON_INCLUDE)
 
 EXTRA_DIST = lttng.i.in
