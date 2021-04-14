@@ -1271,6 +1271,8 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 	assert(LTTNG_CONDITION_STATUS_OK == lttng_condition_on_event_get_rule(condition, &event_rule));
 	assert(event_rule);
 
+	ua_event_notifier_rule->error_counter_index =
+			lttng_condition_on_event_get_error_counter_index(condition);
 	/* Acquire the event notifier's reference to the trigger. */
 	lttng_trigger_get(trigger);
 
