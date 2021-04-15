@@ -252,7 +252,8 @@ struct lttng_action *lttng_action_rotate_session_create(void)
 			lttng_action_rotate_session_serialize,
 			lttng_action_rotate_session_is_equal,
 			lttng_action_rotate_session_destroy,
-			lttng_action_rotate_session_internal_get_rate_policy);
+			lttng_action_rotate_session_internal_get_rate_policy,
+			lttng_action_generic_add_error_query_results);
 
 	status = lttng_action_rotate_session_set_rate_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {

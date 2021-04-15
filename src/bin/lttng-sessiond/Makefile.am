@@ -56,7 +56,8 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        clear.c clear.h \
                        tracker.c tracker.h \
                        event-notifier-error-accounting.c event-notifier-error-accounting.h \
-                       action-executor.c action-executor.h
+                       action-executor.c action-executor.h\
+                       trigger-error-query.c
 
 lttng_sessiond_LDFLAGS = -rdynamic
 

@@ -351,6 +351,7 @@ lttng_error_query_result_counter_create(
 		goto error;
 	}
 
+	counter->value = value;
 	goto end;
 error:
 	lttng_error_query_result_destroy(&counter->parent);
@@ -659,15 +660,15 @@ const struct lttng_trigger *lttng_error_query_action_borrow_trigger_target(
 }
 
 LTTNG_HIDDEN
-const struct lttng_action *lttng_error_query_action_borrow_action_target(
+struct lttng_action *lttng_error_query_action_borrow_action_target(
 	const struct lttng_error_query *query,
-	const struct lttng_trigger *trigger)
+	struct lttng_trigger *trigger)
 {
-	const struct lttng_action *target_action = NULL;
+	struct lttng_action *target_action = NULL;
 	const struct lttng_error_query_action *query_action =
 			container_of(query, typeof(*query_action), parent);
-	const struct lttng_action *trigger_action =
-			lttng_trigger_get_const_action(trigger);
+	struct lttng_action *trigger_action =
+			lttng_trigger_get_action(trigger);
 
 	if (!query_action->action_index.is_set) {
 		target_action = trigger_action;
@@ -678,7 +679,8 @@ const struct lttng_action *lttng_error_query_action_borrow_action_target(
 			goto end;
 		}
 
-		target_action = lttng_action_group_get_at_index(trigger_action,
+		target_action = lttng_action_group_borrow_mutable_at_index(
+				trigger_action,
 				LTTNG_OPTIONAL_GET(query_action->action_index));
 	}
 

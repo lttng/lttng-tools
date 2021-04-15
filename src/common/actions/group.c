@@ -250,6 +250,34 @@ end:
 	return consumed_len;
 }
 
+static enum lttng_action_status lttng_action_group_add_error_query_results(
+		const struct lttng_action *action,
+		struct lttng_error_query_results *results)
+{
+	unsigned int i, count;
+	enum lttng_action_status action_status;
+	const struct lttng_action_group *group =
+			container_of(action, typeof(*group), parent);
+
+	action_status = lttng_action_group_get_count(action, &count);
+	if (action_status != LTTNG_ACTION_STATUS_OK) {
+		goto end;
+	}
+
+	for (i = 0; i < count; i++) {
+		struct lttng_action *inner_action =
+				lttng_action_group_borrow_mutable_at_index(action, i);
+
+		action_status = lttng_action_add_error_query_results(
+				inner_action, results);
+		if (action_status != LTTNG_ACTION_STATUS_OK) {
+			goto end;
+		}
+	}
+end:
+	return action_status;
+}
+
 struct lttng_action *lttng_action_group_create(void)
 {
 	struct lttng_action_group *action_group;
@@ -267,7 +295,8 @@ struct lttng_action *lttng_action_group_create(void)
 			lttng_action_group_validate,
 			lttng_action_group_serialize,
 			lttng_action_group_is_equal, lttng_action_group_destroy,
-			NULL);
+			NULL,
+			lttng_action_group_add_error_query_results);
 
 	lttng_dynamic_pointer_array_init(&action_group->actions,
 			destroy_lttng_action_group_element);

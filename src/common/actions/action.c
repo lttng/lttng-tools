@@ -15,6 +15,7 @@
 #include <lttng/action/snapshot-session-internal.h>
 #include <lttng/action/start-session-internal.h>
 #include <lttng/action/stop-session-internal.h>
+#include <lttng/error-query-internal.h>
 
 LTTNG_HIDDEN
 const char *lttng_action_type_string(enum lttng_action_type action_type)
@@ -51,7 +52,8 @@ void lttng_action_init(struct lttng_action *action,
 		action_serialize_cb serialize,
 		action_equal_cb equal,
 		action_destroy_cb destroy,
-		action_get_rate_policy_cb get_rate_policy)
+		action_get_rate_policy_cb get_rate_policy,
+		action_add_error_query_results_cb add_error_query_results)
 {
 	urcu_ref_init(&action->ref);
 	action->type = type;
@@ -60,6 +62,7 @@ void lttng_action_init(struct lttng_action *action,
 	action->equal = equal;
 	action->destroy = destroy;
 	action->get_rate_policy = get_rate_policy;
+	action->add_error_query_results = add_error_query_results;
 
 	action->execution_request_counter = 0;
 	action->execution_counter = 0;
@@ -265,7 +268,7 @@ void lttng_action_increase_execution_count(struct lttng_action *action)
 LTTNG_HIDDEN
 void lttng_action_increase_execution_failure_count(struct lttng_action *action)
 {
-	action->execution_failure_counter++;
+	uatomic_inc(&action->execution_failure_counter);
 }
 
 LTTNG_HIDDEN
@@ -289,4 +292,45 @@ bool lttng_action_should_execute(const struct lttng_action *action)
 			policy, action->execution_request_counter);
 end:
 	return execute;
+}
+
+LTTNG_HIDDEN
+enum lttng_action_status lttng_action_add_error_query_results(
+		const struct lttng_action *action,
+		struct lttng_error_query_results *results)
+{
+	return action->add_error_query_results(action, results);
+}
+
+LTTNG_HIDDEN
+enum lttng_action_status lttng_action_generic_add_error_query_results(
+		const struct lttng_action *action,
+		struct lttng_error_query_results *results)
+{
+	enum lttng_action_status action_status;
+	struct lttng_error_query_result *error_counter = NULL;
+	const uint64_t execution_failure_counter =
+			uatomic_read(&action->execution_failure_counter);
+
+	error_counter = lttng_error_query_result_counter_create(
+			"total execution failures",
+			"Aggregated count of errors encountered when executing the action",
+			execution_failure_counter);
+	if (!error_counter) {
+		action_status = LTTNG_ACTION_STATUS_ERROR;
+		goto end;
+	}
+
+	if (lttng_error_query_results_add_result(
+			    results, error_counter)) {
+		action_status = LTTNG_ACTION_STATUS_ERROR;
+		goto end;
+	}
+
+	/* Ownership transferred to the results. */
+	error_counter = NULL;
+	action_status = LTTNG_ACTION_STATUS_OK;
+end:
+	lttng_error_query_result_destroy(error_counter);
+	return action_status;
 }

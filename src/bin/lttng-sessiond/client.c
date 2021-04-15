@@ -9,20 +9,19 @@
 
 #include "common/buffer-view.h"
 #include "common/compat/socket.h"
-#include "common/dynamic-buffer.h"
 #include "common/dynamic-array.h"
-#include "common/payload.h"
-#include "common/payload-view.h"
+#include "common/dynamic-buffer.h"
 #include "common/fd-handle.h"
-#include "common/sessiond-comm/sessiond-comm.h"
-#include "common/payload.h"
 #include "common/payload-view.h"
+#include "common/payload.h"
+#include "common/sessiond-comm/sessiond-comm.h"
 #include "lttng/lttng-error.h"
 #include "lttng/tracker.h"
 #include <common/compat/getenv.h>
 #include <common/tracker.h>
 #include <common/unix.h>
 #include <common/utils.h>
+#include <lttng/error-query-internal.h>
 #include <lttng/event-internal.h>
 #include <lttng/session-descriptor-internal.h>
 #include <lttng/session-internal.h>
@@ -33,17 +32,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "agent-thread.h"
+#include "clear.h"
 #include "client.h"
-#include "lttng-sessiond.h"
 #include "cmd.h"
-#include "kernel.h"
-#include "save.h"
 #include "health-sessiond.h"
+#include "kernel.h"
+#include "lttng-sessiond.h"
+#include "manage-consumer.h"
+#include "save.h"
 #include "testpoint.h"
 #include "utils.h"
-#include "manage-consumer.h"
-#include "clear.h"
-#include "agent-thread.h"
 
 static bool is_root;
 
@@ -780,6 +779,77 @@ end:
 	return ret_code;
 }
 
+static enum lttng_error_code receive_lttng_error_query(struct command_ctx *cmd_ctx,
+		int sock,
+		int *sock_error,
+		struct lttng_error_query **_query)
+{
+	int ret;
+	size_t query_len;
+	ssize_t sock_recv_len;
+	enum lttng_error_code ret_code;
+	struct lttng_payload query_payload;
+	struct lttng_error_query *query = NULL;
+
+	lttng_payload_init(&query_payload);
+	query_len = (size_t) cmd_ctx->lsm.u.error_query.length;
+	ret = lttng_dynamic_buffer_set_size(&query_payload.buffer, query_len);
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	sock_recv_len = lttcomm_recv_unix_sock(
+			sock, query_payload.buffer.data, query_len);
+	if (sock_recv_len < 0 || sock_recv_len != query_len) {
+		ERR("Failed to receive error query in command payload");
+		*sock_error = 1;
+		ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+		goto end;
+	}
+
+	/* Receive fds, if any. */
+	if (cmd_ctx->lsm.fd_count > 0) {
+		sock_recv_len = lttcomm_recv_payload_fds_unix_sock(
+				sock, cmd_ctx->lsm.fd_count, &query_payload);
+		if (sock_recv_len > 0 &&
+				sock_recv_len != cmd_ctx->lsm.fd_count * sizeof(int)) {
+			ERR("Failed to receive all file descriptors for error query in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			*sock_error = 1;
+			goto end;
+		} else if (sock_recv_len <= 0) {
+			ERR("Failed to receive file descriptors for error query in command payload: expected fd count = %u, ret = %d",
+					cmd_ctx->lsm.fd_count, (int) ret);
+			ret_code = LTTNG_ERR_FATAL;
+			*sock_error = 1;
+			goto end;
+		}
+	}
+
+	/* Deserialize error query. */
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&query_payload, 0, -1);
+
+		if (lttng_error_query_create_from_payload(&view, &query) !=
+				query_len) {
+			ERR("Invalid error query received as part of command payload");
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+	}
+
+	*_query = query;
+	ret_code = LTTNG_OK;
+
+end:
+	lttng_payload_reset(&query_payload);
+	return ret_code;
+}
+
 /*
  * Version of setup_lttng_msg() without command header.
  */
@@ -890,6 +960,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_SESSION_LIST_ROTATION_SCHEDULES:
 	case LTTNG_CLEAR_SESSION:
 	case LTTNG_LIST_TRIGGERS:
+	case LTTNG_EXECUTE_ERROR_QUERY:
 		need_domain = false;
 		break;
 	default:
@@ -900,6 +971,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	switch (cmd_ctx->lsm.cmd_type) {
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
+	case LTTNG_EXECUTE_ERROR_QUERY:
 		need_consumerd = false;
 		break;
 	default:
@@ -949,6 +1021,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_ROTATION_GET_INFO:
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_LIST_TRIGGERS:
+	case LTTNG_EXECUTE_ERROR_QUERY:
 		break;
 	default:
 		/* Setup lttng message with no payload */
@@ -970,6 +1043,7 @@ static int process_client_msg(struct command_ctx *cmd_ctx, int *sock,
 	case LTTNG_REGISTER_TRIGGER:
 	case LTTNG_UNREGISTER_TRIGGER:
 	case LTTNG_LIST_TRIGGERS:
+	case LTTNG_EXECUTE_ERROR_QUERY:
 		need_tracing_session = false;
 		break;
 	default:
@@ -2354,6 +2428,57 @@ error_add_context:
 		update_lttng_msg(cmd_ctx, 0, payload_size);
 
 		ret = LTTNG_OK;
+		break;
+	}
+	case LTTNG_EXECUTE_ERROR_QUERY:
+	{
+		struct lttng_error_query *query;
+		const struct lttng_credentials cmd_creds = {
+			.uid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.uid),
+			.gid = LTTNG_OPTIONAL_INIT_VALUE(cmd_ctx->creds.gid),
+		};
+		struct lttng_error_query_results *results = NULL;
+		size_t original_payload_size;
+		size_t payload_size;
+
+		ret = setup_empty_lttng_msg(cmd_ctx);
+		if (ret) {
+			ret = LTTNG_ERR_NOMEM;
+			goto setup_error;
+		}
+
+		original_payload_size = cmd_ctx->reply_payload.buffer.size;
+
+		ret = receive_lttng_error_query(
+				cmd_ctx, *sock, sock_error, &query);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		ret = cmd_execute_error_query(&cmd_creds, query, &results,
+				the_notification_thread_handle);
+		lttng_error_query_destroy(query);
+		if (ret != LTTNG_OK) {
+			goto error;
+		}
+
+		assert(results);
+		ret = lttng_error_query_results_serialize(
+				results, &cmd_ctx->reply_payload);
+		lttng_error_query_results_destroy(results);
+		if (ret) {
+			ERR("Failed to serialize error query result set in reply to `execute error query` command");
+			ret = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+
+		payload_size = cmd_ctx->reply_payload.buffer.size -
+			original_payload_size;
+
+		update_lttng_msg(cmd_ctx, 0, payload_size);
+
+		ret = LTTNG_OK;
+
 		break;
 	}
 	default:

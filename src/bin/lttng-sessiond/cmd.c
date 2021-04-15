@@ -6,67 +6,69 @@
  *
  */
 
-#include "bin/lttng-sessiond/session.h"
+
 #define _LGPL_SOURCE
 #include <assert.h>
 #include <inttypes.h>
+#include <stdio.h>
+#include <sys/stat.h>
 #include <urcu/list.h>
 #include <urcu/uatomic.h>
-#include <sys/stat.h>
-#include <stdio.h>
 
-#include <common/defaults.h>
-#include <common/common.h>
-#include <common/sessiond-comm/sessiond-comm.h>
-#include <common/relayd/relayd.h>
-#include <common/utils.h>
-#include <common/compat/string.h>
-#include <common/kernel-ctl/kernel-ctl.h>
-#include <common/dynamic-buffer.h>
 #include <common/buffer-view.h>
-#include <common/payload.h>
+#include <common/common.h>
+#include <common/compat/string.h>
+#include <common/defaults.h>
+#include <common/dynamic-buffer.h>
+#include <common/kernel-ctl/kernel-ctl.h>
 #include <common/payload-view.h>
-#include <common/trace-chunk.h>
-#include <lttng/location-internal.h>
-#include <lttng/trigger/trigger-internal.h>
-#include <lttng/condition/condition.h>
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/on-event.h>
-#include <lttng/condition/on-event-internal.h>
-#include <lttng/event-rule/event-rule.h>
-#include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/action/action.h>
-#include <lttng/channel.h>
-#include <lttng/channel-internal.h>
-#include <lttng/rotate-internal.h>
-#include <lttng/location-internal.h>
-#include <lttng/session-internal.h>
-#include <lttng/userspace-probe-internal.h>
-#include <lttng/session-descriptor-internal.h>
-#include <lttng/lttng-error.h>
-#include <lttng/tracker.h>
+#include <common/payload.h>
+#include <common/relayd/relayd.h>
+#include <common/sessiond-comm/sessiond-comm.h>
 #include <common/string-utils/string-utils.h>
+#include <common/trace-chunk.h>
+#include <common/utils.h>
+#include <lttng/action/action-internal.h>
+#include <lttng/action/action.h>
+#include <lttng/channel-internal.h>
+#include <lttng/channel.h>
+#include <lttng/condition/condition-internal.h>
+#include <lttng/condition/condition.h>
+#include <lttng/condition/on-event-internal.h>
+#include <lttng/condition/on-event.h>
+#include <lttng/error-query-internal.h>
+#include <lttng/event-rule/event-rule-internal.h>
+#include <lttng/event-rule/event-rule.h>
+#include <lttng/location-internal.h>
+#include <lttng/lttng-error.h>
+#include <lttng/rotate-internal.h>
+#include <lttng/session-descriptor-internal.h>
+#include <lttng/session-internal.h>
+#include <lttng/tracker.h>
+#include <lttng/trigger/trigger-internal.h>
+#include <lttng/userspace-probe-internal.h>
 
-#include "channel.h"
-#include "consumer.h"
-#include "event.h"
-#include "health-sessiond.h"
-#include "kernel.h"
-#include "kernel-consumer.h"
-#include "lttng-sessiond.h"
-#include "utils.h"
-#include "lttng-syscall.h"
+#include "agent-thread.h"
 #include "agent.h"
 #include "buffer-registry.h"
-#include "notification-thread.h"
+#include "channel.h"
+#include "cmd.h"
+#include "consumer.h"
+#include "event-notifier-error-accounting.h"
+#include "event.h"
+#include "health-sessiond.h"
+#include "kernel-consumer.h"
+#include "kernel.h"
+#include "lttng-sessiond.h"
+#include "lttng-syscall.h"
 #include "notification-thread-commands.h"
+#include "notification-thread.h"
 #include "rotate.h"
 #include "rotation-thread.h"
+#include "session.h"
 #include "timer.h"
-#include "agent-thread.h"
 #include "tracker.h"
-
-#include "cmd.h"
+#include "utils.h"
 
 /* Sleep for 100ms between each check for the shm path's deletion. */
 #define SESSION_DESTROY_SHM_PATH_CHECK_DELAY_US 100000
@@ -4650,6 +4652,129 @@ end:
 	lttng_triggers_destroy(triggers);
 	return ret;
 }
+
+enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
+		const struct lttng_error_query *query,
+		struct lttng_error_query_results **_results,
+		struct notification_thread_handle *notification_thread)
+{
+	enum lttng_error_code ret_code;
+	const struct lttng_trigger *query_target_trigger;
+	struct lttng_action *query_target_action;
+	struct lttng_trigger *matching_trigger = NULL;
+	const char *trigger_name;
+	uid_t trigger_owner;
+	enum lttng_trigger_status trigger_status;
+	struct lttng_error_query_results *results = NULL;
+
+	switch (lttng_error_query_get_target_type(query)) {
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
+		query_target_trigger = lttng_error_query_trigger_borrow_target(query);
+		break;
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
+		query_target_trigger = lttng_error_query_action_borrow_trigger_target(
+				query);
+		break;
+	default:
+		abort();
+	}
+
+	assert(query_target_trigger);
+
+	ret_code = notification_thread_command_get_trigger(notification_thread,
+			query_target_trigger, &matching_trigger);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* No longer needed. */
+	query_target_trigger = NULL;
+
+	if (lttng_error_query_get_target_type(query) ==
+			LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION) {
+		/* Get the sessiond-side version of the target action. */
+		query_target_action =
+				lttng_error_query_action_borrow_action_target(
+						query, matching_trigger);
+	}
+
+	trigger_status = lttng_trigger_get_name(matching_trigger, &trigger_name);
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
+			trigger_name : "(unnamed)";
+	trigger_status = lttng_trigger_get_owner_uid(matching_trigger,
+			&trigger_owner);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	results = lttng_error_query_results_create();
+	if (!results) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	DBG("Running \"execute error query\" command: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+			trigger_name, (int) trigger_owner,
+			(int) lttng_credentials_get_uid(cmd_creds));
+
+	/*
+	 * Validate the trigger credentials against the command credentials.
+	 * Only the root user can target a trigger with non-matching
+	 * credentials.
+	 */
+	if (!lttng_credentials_is_equal_uid(
+			lttng_trigger_get_credentials(matching_trigger),
+			cmd_creds)) {
+		if (lttng_credentials_get_uid(cmd_creds) != 0) {
+			ERR("Trigger credentials do not match the command credentials: trigger name = '%s', trigger owner uid = %d, command creds uid = %d",
+					trigger_name, (int) trigger_owner,
+					(int) lttng_credentials_get_uid(cmd_creds));
+			ret_code = LTTNG_ERR_INVALID_TRIGGER;
+			goto end;
+		}
+	}
+
+	switch (lttng_error_query_get_target_type(query)) {
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
+		trigger_status = lttng_trigger_add_error_results(
+				matching_trigger, results);
+
+		switch (trigger_status) {
+		case LTTNG_TRIGGER_STATUS_OK:
+			break;
+		default:
+			ret_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		break;
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
+	{
+		const enum lttng_action_status action_status =
+				lttng_action_add_error_query_results(
+						query_target_action, results);
+
+		switch (action_status) {
+		case LTTNG_ACTION_STATUS_OK:
+			break;
+		default:
+			ret_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		break;
+	}
+	default:
+		break;
+	}
+
+	*_results = results;
+	results = NULL;
+	ret_code = LTTNG_OK;
+end:
+	lttng_trigger_put(matching_trigger);
+	lttng_error_query_results_destroy(results);
+	return ret_code;
+}
+
 /*
  * Send relayd sockets from snapshot output to consumer. Ignore request if the
  * snapshot output is *not* set with a remote destination.

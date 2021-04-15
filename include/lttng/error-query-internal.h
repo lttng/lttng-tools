@@ -33,9 +33,9 @@ const struct lttng_trigger *lttng_error_query_action_borrow_trigger_target(
 		const struct lttng_error_query *query);
 
 LTTNG_HIDDEN
-const struct lttng_action *lttng_error_query_action_borrow_action_target(
+struct lttng_action *lttng_error_query_action_borrow_action_target(
 		const struct lttng_error_query *query,
-		const struct lttng_trigger *trigger);
+		struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN
 int lttng_error_query_serialize(const struct lttng_error_query *query,

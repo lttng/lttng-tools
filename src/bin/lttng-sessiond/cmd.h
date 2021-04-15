@@ -154,6 +154,10 @@ enum lttng_error_code cmd_unregister_trigger(
 int cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread_handle,
 		struct lttng_triggers **return_triggers);
+enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
+		const struct lttng_error_query *query,
+		struct lttng_error_query_results **_results,
+		struct notification_thread_handle *notification_thread);
 
 int cmd_rotate_session(struct ltt_session *session,
 		struct lttng_rotate_session_return *rotate_return,

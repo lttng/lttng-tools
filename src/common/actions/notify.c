@@ -103,7 +103,8 @@ struct lttng_action *lttng_action_notify_create(void)
 			lttng_action_notify_serialize,
 			lttng_action_notify_is_equal,
 			lttng_action_notify_destroy,
-			lttng_action_notify_internal_get_rate_policy);
+			lttng_action_notify_internal_get_rate_policy,
+			lttng_action_generic_add_error_query_results);
 
 	notify->policy = policy;
 	policy = NULL;
