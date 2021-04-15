@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-NUM_TESTS=84
+NUM_TESTS=100
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -32,6 +32,7 @@ tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
 tmp_expected_stdout=$(mktemp -t test_list_triggers_cli_expected_stdout.XXXXXX)
 uprobe_elf_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-elf-binary/.libs/userspace-probe-elf-binary")
 uprobe_sdt_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-sdt-binary/.libs/userspace-probe-sdt-binary")
+register_some_triggers_bin=$(realpath "${CURDIR}/utils/register-some-triggers")
 
 uid=$(id --user)
 gid=$(id --group)
@@ -350,6 +351,115 @@ test_on_event_syscall ()
 	lttng_remove_trigger_ok "T1"
 }
 
+test_session_consumed_size_condition ()
+{
+	${register_some_triggers_bin} test_session_consumed_size_condition
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- name: trigger-with-session-consumed-size-condition
+	  owner uid: ${uid}
+	  condition: session consumed size
+	    session name: the-session-name
+	    threshold: 1234 bytes
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	EOF
+
+	list_triggers_matches_ok "session consumed size condition" "${tmp_expected_stdout}"
+
+	lttng_remove_trigger_ok "trigger-with-session-consumed-size-condition"
+}
+
+test_buffer_usage_conditions ()
+{
+	${register_some_triggers_bin} test_buffer_usage_conditions
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- name: trigger-with-buffer-usage-high-bytes-condition
+	  owner uid: ${uid}
+	  condition: buffer usage high
+	    session name: the-session-name
+	    channel name: the-channel-name
+	    domain: ust
+	    threshold (bytes): 1234
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	- name: trigger-with-buffer-usage-high-ratio-condition
+	  owner uid: ${uid}
+	  condition: buffer usage high
+	    session name: the-session-name
+	    channel name: the-channel-name
+	    domain: ust
+	    threshold (ratio): 0.25
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	- name: trigger-with-buffer-usage-low-bytes-condition
+	  owner uid: ${uid}
+	  condition: buffer usage low
+	    session name: the-session-name
+	    channel name: the-channel-name
+	    domain: ust
+	    threshold (bytes): 2345
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	- name: trigger-with-buffer-usage-low-ratio-condition
+	  owner uid: ${uid}
+	  condition: buffer usage low
+	    session name: the-session-name
+	    channel name: the-channel-name
+	    domain: ust
+	    threshold (ratio): 0.40
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	EOF
+
+	list_triggers_matches_ok "buffer usage condition" "${tmp_expected_stdout}"
+
+	lttng_remove_trigger_ok "trigger-with-buffer-usage-high-bytes-condition"
+	lttng_remove_trigger_ok "trigger-with-buffer-usage-high-ratio-condition"
+	lttng_remove_trigger_ok "trigger-with-buffer-usage-low-bytes-condition"
+	lttng_remove_trigger_ok "trigger-with-buffer-usage-low-ratio-condition"
+}
+
+test_session_rotation_conditions ()
+{
+	${register_some_triggers_bin} test_session_rotation_conditions
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- name: trigger-with-session-rotation-completed-condition
+	  owner uid: ${uid}
+	  condition: session rotation completed
+	    session name: the-session-name
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	- name: trigger-with-session-rotation-ongoing-condition
+	  owner uid: ${uid}
+	  condition: session rotation ongoing
+	    session name: the-session-name
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	EOF
+
+	list_triggers_matches_ok "session rotation conditions" "${tmp_expected_stdout}"
+
+	lttng_remove_trigger_ok "trigger-with-session-rotation-completed-condition"
+	lttng_remove_trigger_ok "trigger-with-session-rotation-ongoing-condition"
+}
+
 test_snapshot_action ()
 {
 	diag "Listing snapshot actions"
@@ -486,7 +596,7 @@ test_notify_action ()
 	  errors: none
 	EOF
 
-	list_triggers_matches_ok "snapshot action" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "notify action" "${tmp_expected_stdout}"
 
 	lttng_remove_trigger_ok "T0"
 	lttng_remove_trigger_ok "T1"
@@ -500,9 +610,12 @@ start_lttng_sessiond_notap
 test_top_level_options
 test_on_event_tracepoint
 skip $ist_root "non-root user: skipping kprobe tests" 9 || test_on_event_probe
-skip $ist_root "non-root user: skipping userspace probe elf tests" 5 || test_on_event_userspace_probe_elf
+skip $ist_root "non-root user: skipping uprobe tests" 5 || test_on_event_userspace_probe_elf
 skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 5 || test_on_event_userspace_probe_sdt
 skip $ist_root "non-root user: skipping syscall tests" 7 || test_on_event_syscall
+test_session_consumed_size_condition
+test_buffer_usage_conditions
+test_session_rotation_conditions
 test_snapshot_action
 test_notify_action
 

@@ -39,6 +39,81 @@ struct argpar_opt_descr list_trigger_options[] = {
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
+static void print_condition_session_consumed_size(
+		const struct lttng_condition *condition)
+{
+	enum lttng_condition_status condition_status;
+	const char *session_name;
+	uint64_t threshold;
+
+	condition_status =
+			lttng_condition_session_consumed_size_get_session_name(
+					condition, &session_name);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	lttng_condition_session_consumed_size_get_threshold(
+			condition, &threshold);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	MSG("    session name: %s", session_name);
+	MSG("    threshold: %" PRIu64 " bytes", threshold);
+}
+
+static void print_condition_buffer_usage(
+		const struct lttng_condition *condition)
+{
+	enum lttng_condition_status condition_status;
+	const char *session_name, *channel_name;
+	enum lttng_domain_type domain_type;
+	uint64_t threshold;
+
+	condition_status = lttng_condition_buffer_usage_get_session_name(
+			condition, &session_name);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	condition_status = lttng_condition_buffer_usage_get_channel_name(
+			condition, &channel_name);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	condition_status = lttng_condition_buffer_usage_get_domain_type(
+			condition, &domain_type);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	MSG("    session name: %s", session_name);
+	MSG("    channel name: %s", channel_name);
+	MSG("    domain: %s", lttng_domain_type_str(domain_type));
+
+	condition_status = lttng_condition_buffer_usage_get_threshold(
+			condition, &threshold);
+	if (condition_status == LTTNG_CONDITION_STATUS_OK) {
+		MSG("    threshold (bytes): %" PRIu64, threshold);
+	} else {
+		double threshold_ratio;
+
+		assert(condition_status == LTTNG_CONDITION_STATUS_UNSET);
+
+		condition_status =
+				lttng_condition_buffer_usage_get_threshold_ratio(
+						condition, &threshold_ratio);
+		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+		MSG("    threshold (ratio): %.2f", threshold_ratio);
+	}
+}
+
+static void print_condition_session_rotation(
+		const struct lttng_condition *condition)
+{
+	enum lttng_condition_status condition_status;
+	const char *session_name;
+
+	condition_status = lttng_condition_session_rotation_get_session_name(
+			condition, &session_name);
+	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
+
+	MSG("    session name: %s", session_name);
+}
+
 /*
  * Returns the human-readable log level name associated with a numerical value
  * if there is one. The Log4j and JUL domains have discontinuous log level
@@ -823,12 +898,22 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 	condition_type = lttng_condition_get_type(condition);
 	MSG("  condition: %s", lttng_condition_type_str(condition_type));
 	switch (condition_type) {
+	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:
+		print_condition_session_consumed_size(condition);
+		break;
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+		print_condition_buffer_usage(condition);
+		break;
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
+	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
+		print_condition_session_rotation(condition);
+		break;
 	case LTTNG_CONDITION_TYPE_ON_EVENT:
 		print_condition_on_event(condition);
 		break;
 	default:
-		MSG("  (condition type not handled in %s)", __func__);
-		break;
+		abort();
 	}
 
 	action = lttng_trigger_get_const_action(trigger);
