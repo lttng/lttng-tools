@@ -1162,7 +1162,7 @@ AC_CONFIG_FILES([
 	tests/regression/tools/relayd-grouping/Makefile
 	tests/regression/tools/clear/Makefile
 	tests/regression/tools/trigger/Makefile
-	tests/regression/tools/trigger/firing-policy/Makefile
+	tests/regression/tools/trigger/rate-policy/Makefile
 	tests/regression/tools/trigger/start-stop/Makefile
 	tests/regression/tools/trigger/utils/Makefile
 	tests/regression/ust/Makefile

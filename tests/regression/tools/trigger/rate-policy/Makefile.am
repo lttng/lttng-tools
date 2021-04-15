@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-noinst_SCRIPTS = test_ust_firing_policy
+noinst_SCRIPTS = test_ust_rate_policy
 
-EXTRA_DIST = test_ust_firing_policy
+EXTRA_DIST = test_ust_rate_policy
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

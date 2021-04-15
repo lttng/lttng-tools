@@ -16,7 +16,7 @@ TESTS = \
 	test_event_expr_to_bytecode \
 	test_event_rule \
 	test_fd_tracker \
-	test_firing_policy \
+	test_rate_policy \
 	test_kernel_data \
 	test_kernel_probe \
 	test_log_level_rule \
@@ -53,7 +53,7 @@ noinst_PROGRAMS = \
 	test_event_expr_to_bytecode \
 	test_event_rule \
 	test_fd_tracker \
-	test_firing_policy \
+	test_rate_policy \
 	test_kernel_data \
 	test_kernel_probe \
 	test_log_level_rule \
@@ -234,9 +234,9 @@ test_relayd_backward_compat_group_by_session_SOURCES = test_relayd_backward_comp
 test_relayd_backward_compat_group_by_session_LDADD = $(LIBTAP) $(LIBCOMMON) $(RELAYD_OBJS)
 test_relayd_backward_compat_group_by_session_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/bin/lttng-relayd
 
-# firing policy object unit test
-test_firing_policy_SOURCES = test_firing_policy.c
-test_firing_policy_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS) \
+# rate policy object unit test
+test_rate_policy_SOURCES = test_rate_policy.c
+test_rate_policy_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBLTTNG_CTL) $(DL_LIBS) \
 		      $(top_builddir)/src/bin/lttng/lttng-loglevel.$(OBJEXT)
 
 # fd tracker unit test

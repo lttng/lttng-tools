@@ -21,9 +21,9 @@
 #include <common/payload.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/action.h>
-#include <lttng/action/firing-policy-internal.h>
-#include <lttng/action/firing-policy.h>
 #include <lttng/action/notify.h>
+#include <lttng/action/rate-policy-internal.h>
+#include <lttng/action/rate-policy.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>
 #include <lttng/action/start-session.h>
@@ -42,15 +42,15 @@ static void test_action_notify(void)
 	enum lttng_action_status status;
 	struct lttng_action *notify_action = NULL,
 			    *notify_action_from_buffer = NULL;
-	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_rate_policy *policy = NULL, *default_policy;
 	struct lttng_payload payload;
 
 	lttng_payload_init(&payload);
 
 	/* To set. */
-	policy = lttng_firing_policy_every_n_create(100);
+	policy = lttng_rate_policy_every_n_create(100);
 	/* For comparison. */
-	default_policy = lttng_firing_policy_every_n_create(1);
+	default_policy = lttng_rate_policy_every_n_create(1);
 
 	assert(policy && default_policy);
 
@@ -61,27 +61,27 @@ static void test_action_notify(void)
 
 	/* Validate the default policy for a notify action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_notify_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_notify_get_rate_policy(
 				notify_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								default_policy,
 								cur_policy),
 				"Default policy is every n=1");
 	}
 
 	/* Set a custom policy. */
-	status = lttng_action_notify_set_firing_policy(notify_action, policy);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+	status = lttng_action_notify_set_rate_policy(notify_action, policy);
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set rate policy");
 
 	/* Validate the custom policy for a notify action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_notify_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_notify_get_rate_policy(
 				notify_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								policy,
 								cur_policy),
 				"Notify action policy get");
@@ -103,8 +103,8 @@ static void test_action_notify(void)
 	ok(lttng_action_is_equal(notify_action, notify_action_from_buffer),
 			"Serialized and de-serialized notify action are equal");
 
-	lttng_firing_policy_destroy(default_policy);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(default_policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_destroy(notify_action);
 	lttng_action_destroy(notify_action_from_buffer);
 	lttng_payload_reset(&payload);
@@ -116,7 +116,7 @@ static void test_action_rotate_session(void)
 	enum lttng_action_status status;
 	struct lttng_action *rotate_session_action = NULL,
 			    *rotate_session_action_from_buffer = NULL;
-	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_rate_policy *policy = NULL, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -124,9 +124,9 @@ static void test_action_rotate_session(void)
 	lttng_payload_init(&payload);
 
 	/* To set. */
-	policy = lttng_firing_policy_every_n_create(100);
+	policy = lttng_rate_policy_every_n_create(100);
 	/* For comparison. */
-	default_policy = lttng_firing_policy_every_n_create(1);
+	default_policy = lttng_rate_policy_every_n_create(1);
 
 	assert(policy && default_policy);
 
@@ -163,28 +163,28 @@ static void test_action_rotate_session(void)
 
 	/* Validate the default policy for a rotate_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_rotate_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_rotate_session_get_rate_policy(
 				rotate_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								default_policy,
 								cur_policy),
 				"Default policy is every n=1");
 	}
 
 	/* Set a custom policy. */
-	status = lttng_action_rotate_session_set_firing_policy(
+	status = lttng_action_rotate_session_set_rate_policy(
 			rotate_session_action, policy);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set rate policy");
 
 	/* Validate the custom policy for a rotate_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_rotate_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_rotate_session_get_rate_policy(
 				rotate_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								policy,
 								cur_policy),
 				"rotate_session action policy get");
@@ -208,8 +208,8 @@ static void test_action_rotate_session(void)
 			   rotate_session_action_from_buffer),
 			"Serialized and de-serialized rotate_session action are equal");
 
-	lttng_firing_policy_destroy(default_policy);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(default_policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_destroy(rotate_session_action);
 	lttng_action_destroy(rotate_session_action_from_buffer);
 	lttng_payload_reset(&payload);
@@ -221,7 +221,7 @@ static void test_action_start_session(void)
 	enum lttng_action_status status;
 	struct lttng_action *start_session_action = NULL,
 			    *start_session_action_from_buffer = NULL;
-	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_rate_policy *policy = NULL, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -229,9 +229,9 @@ static void test_action_start_session(void)
 	lttng_payload_init(&payload);
 
 	/* To set. */
-	policy = lttng_firing_policy_every_n_create(100);
+	policy = lttng_rate_policy_every_n_create(100);
 	/* For comparison. */
-	default_policy = lttng_firing_policy_every_n_create(1);
+	default_policy = lttng_rate_policy_every_n_create(1);
 
 	assert(policy && default_policy);
 
@@ -268,28 +268,28 @@ static void test_action_start_session(void)
 
 	/* Validate the default policy for a start_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_start_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_start_session_get_rate_policy(
 				start_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								default_policy,
 								cur_policy),
 				"Default policy is every n=1");
 	}
 
 	/* Set a custom policy. */
-	status = lttng_action_start_session_set_firing_policy(
+	status = lttng_action_start_session_set_rate_policy(
 			start_session_action, policy);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set rate policy");
 
 	/* Validate the custom policy for a start_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_start_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_start_session_get_rate_policy(
 				start_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								policy,
 								cur_policy),
 				"start_session action policy get");
@@ -313,8 +313,8 @@ static void test_action_start_session(void)
 			   start_session_action_from_buffer),
 			"Serialized and de-serialized start_session action are equal");
 
-	lttng_firing_policy_destroy(default_policy);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(default_policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_destroy(start_session_action);
 	lttng_action_destroy(start_session_action_from_buffer);
 	lttng_payload_reset(&payload);
@@ -326,7 +326,7 @@ static void test_action_stop_session(void)
 	enum lttng_action_status status;
 	struct lttng_action *stop_session_action = NULL,
 			    *stop_session_action_from_buffer = NULL;
-	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_rate_policy *policy = NULL, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -334,9 +334,9 @@ static void test_action_stop_session(void)
 	lttng_payload_init(&payload);
 
 	/* To set. */
-	policy = lttng_firing_policy_every_n_create(100);
+	policy = lttng_rate_policy_every_n_create(100);
 	/* For comparison. */
-	default_policy = lttng_firing_policy_every_n_create(1);
+	default_policy = lttng_rate_policy_every_n_create(1);
 
 	assert(policy && default_policy);
 
@@ -372,28 +372,28 @@ static void test_action_stop_session(void)
 
 	/* Validate the default policy for a stop_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_stop_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_stop_session_get_rate_policy(
 				stop_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								default_policy,
 								cur_policy),
 				"Default policy is every n=1");
 	}
 
 	/* Set a custom policy. */
-	status = lttng_action_stop_session_set_firing_policy(
+	status = lttng_action_stop_session_set_rate_policy(
 			stop_session_action, policy);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set rate policy");
 
 	/* Validate the custom policy for a stop_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_stop_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_stop_session_get_rate_policy(
 				stop_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								policy,
 								cur_policy),
 				"stop_session action policy get");
@@ -417,8 +417,8 @@ static void test_action_stop_session(void)
 			   stop_session_action_from_buffer),
 			"Serialized and de-serialized stop_session action are equal");
 
-	lttng_firing_policy_destroy(default_policy);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(default_policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_destroy(stop_session_action);
 	lttng_action_destroy(stop_session_action_from_buffer);
 	lttng_payload_reset(&payload);
@@ -430,7 +430,7 @@ static void test_action_snapshot_session(void)
 	enum lttng_action_status status;
 	struct lttng_action *snapshot_session_action = NULL,
 			    *snapshot_session_action_from_buffer = NULL;
-	struct lttng_firing_policy *policy = NULL, *default_policy;
+	struct lttng_rate_policy *policy = NULL, *default_policy;
 	struct lttng_payload payload;
 	const char *session_name = "my_session_name";
 	const char *get_session_name;
@@ -438,9 +438,9 @@ static void test_action_snapshot_session(void)
 	lttng_payload_init(&payload);
 
 	/* To set. */
-	policy = lttng_firing_policy_every_n_create(100);
+	policy = lttng_rate_policy_every_n_create(100);
 	/* For comparison. */
-	default_policy = lttng_firing_policy_every_n_create(1);
+	default_policy = lttng_rate_policy_every_n_create(1);
 
 	assert(policy && default_policy);
 
@@ -477,28 +477,28 @@ static void test_action_snapshot_session(void)
 
 	/* Validate the default policy for a snapshot_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_snapshot_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_snapshot_session_get_rate_policy(
 				snapshot_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								default_policy,
 								cur_policy),
 				"Default policy is every n=1");
 	}
 
 	/* Set a custom policy. */
-	status = lttng_action_snapshot_session_set_firing_policy(
+	status = lttng_action_snapshot_session_set_rate_policy(
 			snapshot_session_action, policy);
-	ok(status == LTTNG_ACTION_STATUS_OK, "Set firing policy");
+	ok(status == LTTNG_ACTION_STATUS_OK, "Set rate policy");
 
 	/* Validate the custom policy for a snapshot_session action. */
 	{
-		const struct lttng_firing_policy *cur_policy = NULL;
-		status = lttng_action_snapshot_session_get_firing_policy(
+		const struct lttng_rate_policy *cur_policy = NULL;
+		status = lttng_action_snapshot_session_get_rate_policy(
 				snapshot_session_action, &cur_policy);
 		ok(status == LTTNG_ACTION_STATUS_OK &&
-						lttng_firing_policy_is_equal(
+						lttng_rate_policy_is_equal(
 								policy,
 								cur_policy),
 				"snapshot_session action policy get");
@@ -522,8 +522,8 @@ static void test_action_snapshot_session(void)
 			   snapshot_session_action_from_buffer),
 			"Serialized and de-serialized snapshot_session action are equal");
 
-	lttng_firing_policy_destroy(default_policy);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(default_policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_destroy(snapshot_session_action);
 	lttng_action_destroy(snapshot_session_action_from_buffer);
 	lttng_payload_reset(&payload);

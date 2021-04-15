@@ -9,8 +9,8 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/firing-policy-internal.h>
 #include <lttng/action/notify-internal.h>
+#include <lttng/action/rate-policy-internal.h>
 
 #define IS_NOTIFY_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_NOTIFY)
@@ -36,7 +36,7 @@ void lttng_action_notify_destroy(struct lttng_action *action)
 {
 	struct lttng_action_notify *notify_action;
 	notify_action = action_notify_from_action(action);
-	lttng_firing_policy_destroy(notify_action->policy);
+	lttng_rate_policy_destroy(notify_action->policy);
 	free(notify_action);
 }
 
@@ -55,8 +55,8 @@ int lttng_action_notify_serialize(struct lttng_action *action,
 	DBG("Serializing notify action");
 
 	notify_action = action_notify_from_action(action);
-	DBG("Serializing notify action firing policy");
-	ret = lttng_firing_policy_serialize(notify_action->policy, payload);
+	DBG("Serializing notify action rate policy");
+	ret = lttng_rate_policy_serialize(notify_action->policy, payload);
 
 end:
 	return ret;
@@ -70,12 +70,11 @@ bool lttng_action_notify_is_equal(const struct lttng_action *a,
 
 	_a = action_notify_from_action_const(a);
 	_b = action_notify_from_action_const(b);
-	return lttng_firing_policy_is_equal(_a->policy, _b->policy);
+	return lttng_rate_policy_is_equal(_a->policy, _b->policy);
 }
 
-static const struct lttng_firing_policy *
-lttng_action_notify_internal_get_firing_policy(
-		const struct lttng_action *action)
+static const struct lttng_rate_policy *
+lttng_action_notify_internal_get_rate_policy(const struct lttng_action *action)
 {
 	const struct lttng_action_notify *_action;
 	_action = action_notify_from_action_const(action);
@@ -85,7 +84,7 @@ lttng_action_notify_internal_get_firing_policy(
 
 struct lttng_action *lttng_action_notify_create(void)
 {
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 	struct lttng_action_notify *notify = NULL;
 	struct lttng_action *action = NULL;
 
@@ -95,7 +94,7 @@ struct lttng_action *lttng_action_notify_create(void)
 	}
 
 	/* Default policy. */
-	policy = lttng_firing_policy_every_n_create(1);
+	policy = lttng_rate_policy_every_n_create(1);
 	if (!policy) {
 		goto end;
 	}
@@ -104,7 +103,7 @@ struct lttng_action *lttng_action_notify_create(void)
 			lttng_action_notify_serialize,
 			lttng_action_notify_is_equal,
 			lttng_action_notify_destroy,
-			lttng_action_notify_internal_get_firing_policy);
+			lttng_action_notify_internal_get_rate_policy);
 
 	notify->policy = policy;
 	policy = NULL;
@@ -114,7 +113,7 @@ struct lttng_action *lttng_action_notify_create(void)
 
 end:
 	free(notify);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	return action;
 }
 
@@ -124,12 +123,12 @@ ssize_t lttng_action_notify_create_from_payload(
 {
 	enum lttng_action_status status;
 	ssize_t consumed_length;
-	struct lttng_firing_policy *firing_policy = NULL;
+	struct lttng_rate_policy *rate_policy = NULL;
 	struct lttng_action *_action = NULL;
 
-	consumed_length = lttng_firing_policy_create_from_payload(
-			view, &firing_policy);
-	if (!firing_policy) {
+	consumed_length = lttng_rate_policy_create_from_payload(
+			view, &rate_policy);
+	if (!rate_policy) {
 		consumed_length = -1;
 		goto end;
 	}
@@ -140,7 +139,7 @@ ssize_t lttng_action_notify_create_from_payload(
 		goto end;
 	}
 
-	status = lttng_action_notify_set_firing_policy(_action, firing_policy);
+	status = lttng_action_notify_set_rate_policy(_action, rate_policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		consumed_length = -1;
 		goto end;
@@ -150,25 +149,25 @@ ssize_t lttng_action_notify_create_from_payload(
 	_action = NULL;
 
 end:
-	lttng_firing_policy_destroy(firing_policy);
+	lttng_rate_policy_destroy(rate_policy);
 	lttng_action_destroy(_action);
 	return consumed_length;
 }
 
-enum lttng_action_status lttng_action_notify_set_firing_policy(
+enum lttng_action_status lttng_action_notify_set_rate_policy(
 		struct lttng_action *action,
-		const struct lttng_firing_policy *policy)
+		const struct lttng_rate_policy *policy)
 {
 	enum lttng_action_status status;
 	struct lttng_action_notify *notify_action;
-	struct lttng_firing_policy *copy = NULL;
+	struct lttng_rate_policy *copy = NULL;
 
 	if (!action || !policy || !IS_NOTIFY_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
 
-	copy = lttng_firing_policy_copy(policy);
+	copy = lttng_rate_policy_copy(policy);
 	if (!copy) {
 		status = LTTNG_ACTION_STATUS_ERROR;
 		goto end;
@@ -176,8 +175,8 @@ enum lttng_action_status lttng_action_notify_set_firing_policy(
 
 	notify_action = action_notify_from_action(action);
 
-	/* Free the previous firing policy .*/
-	lttng_firing_policy_destroy(notify_action->policy);
+	/* Free the previous rate policy .*/
+	lttng_rate_policy_destroy(notify_action->policy);
 
 	/* Assign the policy. */
 	notify_action->policy = copy;
@@ -185,13 +184,13 @@ enum lttng_action_status lttng_action_notify_set_firing_policy(
 	copy = NULL;
 
 end:
-	lttng_firing_policy_destroy(copy);
+	lttng_rate_policy_destroy(copy);
 	return status;
 }
 
-enum lttng_action_status lttng_action_notify_get_firing_policy(
+enum lttng_action_status lttng_action_notify_get_rate_policy(
 		const struct lttng_action *action,
-		const struct lttng_firing_policy **policy)
+		const struct lttng_rate_policy **policy)
 {
 	enum lttng_action_status status;
 	const struct lttng_action_notify *notify_action;

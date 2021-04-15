@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #include <urcu/ref.h>
 
-struct lttng_firing_policy;
+struct lttng_rate_policy;
 
 typedef bool (*action_validate_cb)(struct lttng_action *action);
 typedef void (*action_destroy_cb)(struct lttng_action *action);
@@ -29,7 +29,7 @@ typedef bool (*action_equal_cb)(const struct lttng_action *a,
 typedef ssize_t (*action_create_from_payload_cb)(
 		struct lttng_payload_view *view,
 		struct lttng_action **action);
-typedef const struct lttng_firing_policy *(*action_get_firing_policy_cb)(
+typedef const struct lttng_rate_policy *(*action_get_rate_policy_cb)(
 		const struct lttng_action *action);
 
 struct lttng_action {
@@ -39,7 +39,7 @@ struct lttng_action {
 	action_serialize_cb serialize;
 	action_equal_cb equal;
 	action_destroy_cb destroy;
-	action_get_firing_policy_cb get_firing_policy;
+	action_get_rate_policy_cb get_rate_policy;
 
 	/* Internal use only. */
 
@@ -47,7 +47,7 @@ struct lttng_action {
 	uint64_t execution_request_counter;
 	/*
 	 * The number of time the action was actually executed.
-	 * Action firing policy can impact on this number.
+	 * Action rate policy can impact on this number.
 	 * */
 	uint64_t execution_counter;
 	/*
@@ -68,7 +68,7 @@ void lttng_action_init(struct lttng_action *action,
 		action_serialize_cb serialize,
 		action_equal_cb equal,
 		action_destroy_cb destroy,
-		action_get_firing_policy_cb get_firing_policy);
+		action_get_rate_policy_cb get_rate_policy);
 
 LTTNG_HIDDEN
 bool lttng_action_validate(struct lttng_action *action);

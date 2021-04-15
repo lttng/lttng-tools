@@ -454,7 +454,7 @@ void print_one_action(const struct lttng_action *action)
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
-	const struct lttng_firing_policy *policy = NULL;
+	const struct lttng_rate_policy *policy = NULL;
 	const char *value;
 
 	action_type = lttng_action_get_type(action);
@@ -464,10 +464,10 @@ void print_one_action(const struct lttng_action *action)
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		_MSG("notify");
 
-		action_status = lttng_action_notify_get_firing_policy(
+		action_status = lttng_action_notify_get_rate_policy(
 				action, &policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to retrieve firing policy.");
+			ERR("Failed to retrieve rate policy.");
 			goto end;
 		}
 		break;
@@ -477,10 +477,10 @@ void print_one_action(const struct lttng_action *action)
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("start session `%s`", value);
 
-		action_status = lttng_action_start_session_get_firing_policy(
+		action_status = lttng_action_start_session_get_rate_policy(
 				action, &policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to retrieve firing policy.");
+			ERR("Failed to retrieve rate policy.");
 			goto end;
 		}
 		break;
@@ -490,10 +490,10 @@ void print_one_action(const struct lttng_action *action)
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("stop session `%s`", value);
 
-		action_status = lttng_action_stop_session_get_firing_policy(
+		action_status = lttng_action_stop_session_get_rate_policy(
 				action, &policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to retrieve firing policy.");
+			ERR("Failed to retrieve rate policy.");
 			goto end;
 		}
 		break;
@@ -503,10 +503,10 @@ void print_one_action(const struct lttng_action *action)
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
 		_MSG("rotate session `%s`", value);
 
-		action_status = lttng_action_rotate_session_get_firing_policy(
+		action_status = lttng_action_rotate_session_get_rate_policy(
 				action, &policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to retrieve firing policy.");
+			ERR("Failed to retrieve rate policy.");
 			goto end;
 		}
 		break;
@@ -563,10 +563,10 @@ void print_one_action(const struct lttng_action *action)
 			}
 		}
 
-		action_status = lttng_action_snapshot_session_get_firing_policy(
+		action_status = lttng_action_snapshot_session_get_rate_policy(
 				action, &policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to retrieve firing policy.");
+			ERR("Failed to retrieve rate policy.");
 			goto end;
 		}
 		break;
@@ -576,37 +576,37 @@ void print_one_action(const struct lttng_action *action)
 	}
 
 	if (policy) {
-		enum lttng_firing_policy_type policy_type;
-		enum lttng_firing_policy_status policy_status;
+		enum lttng_rate_policy_type policy_type;
+		enum lttng_rate_policy_status policy_status;
 		uint64_t policy_value = 0;
 
-		policy_type = lttng_firing_policy_get_type(policy);
+		policy_type = lttng_rate_policy_get_type(policy);
 
 		switch (policy_type) {
-		case LTTNG_FIRING_POLICY_TYPE_EVERY_N:
-			policy_status = lttng_firing_policy_every_n_get_interval(
+		case LTTNG_RATE_POLICY_TYPE_EVERY_N:
+			policy_status = lttng_rate_policy_every_n_get_interval(
 					policy, &policy_value);
-			if (policy_status != LTTNG_FIRING_POLICY_STATUS_OK) {
-				ERR("Failed to get action firing policy interval");
+			if (policy_status != LTTNG_RATE_POLICY_STATUS_OK) {
+				ERR("Failed to get action rate policy interval");
 				goto end;
 			}
 			if (policy_value > 1) {
 				/* The default is 1 so print only when it is a
 				 * special case.
 				 */
-				_MSG(", firing policy: after every %" PRIu64
+				_MSG(", rate policy: after every %" PRIu64
 				     " occurrences",
 						policy_value);
 			}
 			break;
-		case LTTNG_FIRING_POLICY_TYPE_ONCE_AFTER_N:
-			policy_status = lttng_firing_policy_once_after_n_get_threshold(
+		case LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N:
+			policy_status = lttng_rate_policy_once_after_n_get_threshold(
 					policy, &policy_value);
-			if (policy_status != LTTNG_FIRING_POLICY_STATUS_OK) {
-				ERR("Failed to get action firing policy interval");
+			if (policy_status != LTTNG_RATE_POLICY_STATUS_OK) {
+				ERR("Failed to get action rate policy interval");
 				goto end;
 			}
-			_MSG(", firing policy: once after %" PRIu64
+			_MSG(", rate policy: once after %" PRIu64
 			     " occurrences",
 					policy_value);
 			break;

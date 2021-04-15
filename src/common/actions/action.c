@@ -8,9 +8,9 @@
 #include <assert.h>
 #include <common/error.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/firing-policy-internal.h>
 #include <lttng/action/group-internal.h>
 #include <lttng/action/notify-internal.h>
+#include <lttng/action/rate-policy-internal.h>
 #include <lttng/action/rotate-session-internal.h>
 #include <lttng/action/snapshot-session-internal.h>
 #include <lttng/action/start-session-internal.h>
@@ -51,7 +51,7 @@ void lttng_action_init(struct lttng_action *action,
 		action_serialize_cb serialize,
 		action_equal_cb equal,
 		action_destroy_cb destroy,
-		action_get_firing_policy_cb get_firing_policy)
+		action_get_rate_policy_cb get_rate_policy)
 {
 	urcu_ref_init(&action->ref);
 	action->type = type;
@@ -59,7 +59,7 @@ void lttng_action_init(struct lttng_action *action,
 	action->serialize = serialize;
 	action->equal = equal;
 	action->destroy = destroy;
-	action->get_firing_policy = get_firing_policy;
+	action->get_rate_policy = get_rate_policy;
 
 	action->execution_request_counter = 0;
 	action->execution_counter = 0;
@@ -271,21 +271,21 @@ void lttng_action_increase_execution_failure_count(struct lttng_action *action)
 LTTNG_HIDDEN
 bool lttng_action_should_execute(const struct lttng_action *action)
 {
-	const struct lttng_firing_policy *policy = NULL;
+	const struct lttng_rate_policy *policy = NULL;
 	bool execute = false;
 
-	if (action->get_firing_policy == NULL) {
+	if (action->get_rate_policy == NULL) {
 		execute = true;
 		goto end;
 	}
 
-	policy = action->get_firing_policy(action);
+	policy = action->get_rate_policy(action);
 	if (policy == NULL) {
 		execute = true;
 		goto end;
 	}
 
-	execute = lttng_firing_policy_should_execute(
+	execute = lttng_rate_policy_should_execute(
 			policy, action->execution_request_counter);
 end:
 	return execute;

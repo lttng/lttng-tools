@@ -363,14 +363,14 @@ test_snapshot_action ()
 	    rule: some-event (type: tracepoint, domain: ust)
 	    tracer notifications discarded: 0
 	  actions:
-	    snapshot session \`ze-session\`, firing policy: after every 10 occurrences
+	    snapshot session \`ze-session\`, rate policy: after every 10 occurrences
 	- id: T9
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	    tracer notifications discarded: 0
 	  actions:
-	    snapshot session \`ze-session\`, firing policy: once after 10 occurrences
+	    snapshot session \`ze-session\`, rate policy: once after 10 occurrences
 	EOF
 
 	list_triggers "snapshot action" "${tmp_expected_stdout}"
@@ -393,14 +393,14 @@ test_notify_action ()
 	    rule: some-event (type: tracepoint, domain: ust)
 	    tracer notifications discarded: 0
 	  actions:
-	    notify, firing policy: once after 5 occurrences
+	    notify, rate policy: once after 5 occurrences
 	- id: T1
 	  user id: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	    tracer notifications discarded: 0
 	  actions:
-	    notify, firing policy: after every 10 occurrences
+	    notify, rate policy: after every 10 occurrences
 	EOF
 
 	list_triggers "snapshot action" "${tmp_expected_stdout}"

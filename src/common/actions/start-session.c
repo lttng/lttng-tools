@@ -9,8 +9,8 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/firing-policy-internal.h>
-#include <lttng/action/firing-policy.h>
+#include <lttng/action/rate-policy-internal.h>
+#include <lttng/action/rate-policy.h>
 #include <lttng/action/start-session-internal.h>
 #include <lttng/action/start-session.h>
 
@@ -22,7 +22,7 @@ struct lttng_action_start_session {
 
 	/* Owned by this. */
 	char *session_name;
-	struct lttng_firing_policy *policy;
+	struct lttng_rate_policy *policy;
 };
 
 struct lttng_action_start_session_comm {
@@ -38,8 +38,8 @@ struct lttng_action_start_session_comm {
 	char data[];
 } LTTNG_PACKED;
 
-static const struct lttng_firing_policy *
-lttng_action_start_session_internal_get_firing_policy(
+static const struct lttng_rate_policy *
+lttng_action_start_session_internal_get_rate_policy(
 		const struct lttng_action *action);
 
 static struct lttng_action_start_session *action_start_session_from_action(
@@ -98,7 +98,7 @@ static bool lttng_action_start_session_is_equal(
 		goto end;
 	}
 
-	is_equal = lttng_firing_policy_is_equal(a->policy, b->policy);
+	is_equal = lttng_rate_policy_is_equal(a->policy, b->policy);
 end:
 	return is_equal;
 }
@@ -137,7 +137,7 @@ static int lttng_action_start_session_serialize(
 		goto end;
 	}
 
-	ret = lttng_firing_policy_serialize(
+	ret = lttng_rate_policy_serialize(
 			action_start_session->policy, payload);
 	if (ret) {
 		ret = -1;
@@ -159,7 +159,7 @@ static void lttng_action_start_session_destroy(struct lttng_action *action)
 
 	action_start_session = action_start_session_from_action(action);
 
-	lttng_firing_policy_destroy(action_start_session->policy);
+	lttng_rate_policy_destroy(action_start_session->policy);
 	free(action_start_session->session_name);
 	free(action_start_session);
 
@@ -176,7 +176,7 @@ ssize_t lttng_action_start_session_create_from_payload(
 	const char *session_name;
 	struct lttng_action *action = NULL;
 	enum lttng_action_status status;
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 
 	comm = (typeof(comm)) view->buffer.data;
 	session_name = (const char *) &comm->data;
@@ -189,12 +189,12 @@ ssize_t lttng_action_start_session_create_from_payload(
 	}
 	consumed_len = sizeof(*comm) + comm->session_name_len;
 
-	/* Firing policy. */
+	/* Rate policy. */
 	{
 		struct lttng_payload_view policy_view =
 				lttng_payload_view_from_view(
 						view, consumed_len, -1);
-		ret = lttng_firing_policy_create_from_payload(
+		ret = lttng_rate_policy_create_from_payload(
 				&policy_view, &policy);
 		if (ret < 0) {
 			consumed_len = -1;
@@ -217,7 +217,7 @@ ssize_t lttng_action_start_session_create_from_payload(
 	}
 
 	assert(policy);
-	status = lttng_action_start_session_set_firing_policy(action, policy);
+	status = lttng_action_start_session_set_rate_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		consumed_len = -1;
 		goto end;
@@ -227,7 +227,7 @@ ssize_t lttng_action_start_session_create_from_payload(
 	action = NULL;
 
 end:
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	lttng_action_start_session_destroy(action);
 
 	return consumed_len;
@@ -236,11 +236,11 @@ end:
 struct lttng_action *lttng_action_start_session_create(void)
 {
 	struct lttng_action *action = NULL;
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 	enum lttng_action_status status;
 
-	/* Create a every N = 1 firing policy. */
-	policy = lttng_firing_policy_every_n_create(1);
+	/* Create a every N = 1 rate policy. */
+	policy = lttng_rate_policy_every_n_create(1);
 	if (!policy) {
 		goto end;
 	}
@@ -255,9 +255,9 @@ struct lttng_action *lttng_action_start_session_create(void)
 			lttng_action_start_session_serialize,
 			lttng_action_start_session_is_equal,
 			lttng_action_start_session_destroy,
-			lttng_action_start_session_internal_get_firing_policy);
+			lttng_action_start_session_internal_get_rate_policy);
 
-	status = lttng_action_start_session_set_firing_policy(action, policy);
+	status = lttng_action_start_session_set_rate_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {
 		free(action);
 		action = NULL;
@@ -265,7 +265,7 @@ struct lttng_action *lttng_action_start_session_create(void)
 	}
 
 end:
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	return action;
 }
 
@@ -316,20 +316,20 @@ end:
 	return status;
 }
 
-enum lttng_action_status lttng_action_start_session_set_firing_policy(
+enum lttng_action_status lttng_action_start_session_set_rate_policy(
 		struct lttng_action *action,
-		const struct lttng_firing_policy *policy)
+		const struct lttng_rate_policy *policy)
 {
 	enum lttng_action_status status;
 	struct lttng_action_start_session *start_session_action;
-	struct lttng_firing_policy *copy = NULL;
+	struct lttng_rate_policy *copy = NULL;
 
 	if (!action || !policy || !IS_START_SESSION_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
 
-	copy = lttng_firing_policy_copy(policy);
+	copy = lttng_rate_policy_copy(policy);
 	if (!copy) {
 		status = LTTNG_ACTION_STATUS_ERROR;
 		goto end;
@@ -337,8 +337,8 @@ enum lttng_action_status lttng_action_start_session_set_firing_policy(
 
 	start_session_action = action_start_session_from_action(action);
 
-	/* Release the previous firing policy .*/
-	lttng_firing_policy_destroy(start_session_action->policy);
+	/* Release the previous rate policy .*/
+	lttng_rate_policy_destroy(start_session_action->policy);
 
 	/* Assign the policy. */
 	start_session_action->policy = copy;
@@ -346,13 +346,13 @@ enum lttng_action_status lttng_action_start_session_set_firing_policy(
 	copy = NULL;
 
 end:
-	lttng_firing_policy_destroy(copy);
+	lttng_rate_policy_destroy(copy);
 	return status;
 }
 
-enum lttng_action_status lttng_action_start_session_get_firing_policy(
+enum lttng_action_status lttng_action_start_session_get_rate_policy(
 		const struct lttng_action *action,
-		const struct lttng_firing_policy **policy)
+		const struct lttng_rate_policy **policy)
 {
 	enum lttng_action_status status;
 	const struct lttng_action_start_session *start_session_action;
@@ -370,8 +370,8 @@ end:
 	return status;
 }
 
-static const struct lttng_firing_policy *
-lttng_action_start_session_internal_get_firing_policy(
+static const struct lttng_rate_policy *
+lttng_action_start_session_internal_get_rate_policy(
 		const struct lttng_action *action)
 {
 	const struct lttng_action_start_session *_action;

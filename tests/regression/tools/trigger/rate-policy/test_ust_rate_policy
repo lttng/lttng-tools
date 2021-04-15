@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: LGPL-2.1-only
 
-TEST_DESC="Triggers - Start and stop actions"
+TEST_DESC="Triggers - rate policy notify"
 
 CURDIR=$(dirname "$0")/
 TESTDIR=${CURDIR}/../../../..
@@ -21,7 +21,7 @@ NUM_TESTS=19
 NR_ITER=10
 NR_USEC_WAIT=5
 
-function test_firing_policy_every_n()
+function test_rate_policy_every_n()
 {
 	local SESSION_NAME="my_triggered_session"
 	local TRIGGER_NAME="trigger1"
@@ -30,7 +30,7 @@ function test_firing_policy_every_n()
 
 	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
 
-	diag "Every N firing policy"
+	diag "Every N rate policy"
 
 	# Add a trigger with a notify action with a policy to fire it every 5
 	# time the condition is met.
@@ -107,7 +107,7 @@ function test_firing_policy_every_n()
 	rm -f "$SYNC_AFTER_NOTIF_REGISTER_PATH"
 }
 
-function test_firing_policy_once_after_n()
+function test_rate_policy_once_after_n()
 {
 	local SESSION_NAME="my_triggered_session"
 	local TRIGGER_NAME="trigger1"
@@ -116,7 +116,7 @@ function test_firing_policy_once_after_n()
 
 	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u test-notif-register.XXXXXX)
 
-	diag "Once after N firing policy"
+	diag "Once after N rate policy"
 
 	# Add a trigger with a notify action with a policy to fire it every 5
 	# time the condition is met.
@@ -220,7 +220,7 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond_notap
 
-test_firing_policy_every_n
-test_firing_policy_once_after_n
+test_rate_policy_every_n
+test_rate_policy_once_after_n
 
 stop_lttng_sessiond_notap

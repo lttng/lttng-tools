@@ -13,7 +13,7 @@
 
 struct lttng_action_notify {
 	struct lttng_action parent;
-	struct lttng_firing_policy *policy;
+	struct lttng_rate_policy *policy;
 };
 
 LTTNG_HIDDEN

@@ -14,7 +14,7 @@ extern "C" {
 
 struct lttng_action;
 struct lttng_snapshot_output;
-struct lttng_firing_policy;
+struct lttng_rate_policy;
 
 /*
  * Create a newly allocated snapshot-session action object.
@@ -62,25 +62,25 @@ extern enum lttng_action_status lttng_action_snapshot_session_get_output(
 		const struct lttng_snapshot_output **output);
 
 /*
- * Set the firing policy of a snapshot session action.
+ * Set the rate policy of a snapshot session action.
  *
  * Returns LTTNG_ACTION_STATUS_OK on success,
  * LTTNG_ACTION_STATUS_ERROR on internal error,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-extern enum lttng_action_status lttng_action_snapshot_session_set_firing_policy(
+extern enum lttng_action_status lttng_action_snapshot_session_set_rate_policy(
 		struct lttng_action *action,
-		const struct lttng_firing_policy *policy);
+		const struct lttng_rate_policy *policy);
 
 /*
- * Get the firing policy of a snapshot session action.
+ * Get the rate policy of a snapshot session action.
  *
  * Returns LTTNG_ACTION_STATUS_OK on success,
  * LTTNG_ACTION_STATUS_INVALID if invalid parameters are passed.
  */
-extern enum lttng_action_status lttng_action_snapshot_session_get_firing_policy(
+extern enum lttng_action_status lttng_action_snapshot_session_get_rate_policy(
 		const struct lttng_action *action,
-		const struct lttng_firing_policy **policy);
+		const struct lttng_rate_policy **policy);
 
 #ifdef __cplusplus
 }

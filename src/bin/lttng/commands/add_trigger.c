@@ -1351,7 +1351,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 	char *error = NULL;
 	char *fire_once_after_str = NULL;
 	char *fire_every_str = NULL;
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 
 	state = argpar_state_create(*argc, *argv, notify_action_opt_descrs);
 	if (!state) {
@@ -1444,7 +1444,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 			goto error;
 		}
 
-		policy = lttng_firing_policy_once_after_n_create(threshold);
+		policy = lttng_rate_policy_once_after_n_create(threshold);
 		if (!policy) {
 			ERR("Failed to create policy once after `%s`.",
 					fire_once_after_str);
@@ -1465,7 +1465,7 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 			goto error;
 		}
 
-		policy = lttng_firing_policy_every_n_create(interval);
+		policy = lttng_rate_policy_every_n_create(interval);
 		if (!policy) {
 			ERR("Failed to create policy every `%s`.",
 					fire_every_str);
@@ -1481,9 +1481,9 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 
 	if (policy) {
 		enum lttng_action_status status;
-		status = lttng_action_notify_set_firing_policy(action, policy);
+		status = lttng_action_notify_set_rate_policy(action, policy);
 		if (status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to set firing policy");
+			ERR("Failed to set rate policy");
 			goto error;
 		}
 	}
@@ -1497,7 +1497,7 @@ error:
 end:
 	free(fire_once_after_str);
 	free(fire_every_str);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
 	return action;
@@ -1505,7 +1505,7 @@ end:
 
 /*
  * Generic handler for a kind of action that takes a session name and an
- * optional firing policy.
+ * optional rate policy.
  */
 
 static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
@@ -1513,9 +1513,9 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		struct lttng_action *(*create_action_cb)(void),
 		enum lttng_action_status (*set_session_name_cb)(
 				struct lttng_action *, const char *),
-		enum lttng_action_status (*set_firing_policy_cb)(
+		enum lttng_action_status (*set_rate_policy_cb)(
 				struct lttng_action *,
-				const struct lttng_firing_policy *),
+				const struct lttng_rate_policy *),
 		const char *action_name)
 {
 	struct lttng_action *action = NULL;
@@ -1526,18 +1526,18 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	char *fire_every_str = NULL;
 	char *error = NULL;
 	enum lttng_action_status action_status;
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 
 	assert(set_session_name_cb);
-	assert(set_firing_policy_cb);
+	assert(set_rate_policy_cb);
 
-	const struct argpar_opt_descr firing_policy_opt_descrs[] = {
+	const struct argpar_opt_descr rate_policy_opt_descrs[] = {
 		{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
 		{ OPT_FIRE_EVERY, '\0', "fire-every", true },
 		ARGPAR_OPT_DESCR_SENTINEL
 	};
 	
-	state = argpar_state_create(*argc, *argv, firing_policy_opt_descrs);
+	state = argpar_state_create(*argc, *argv, rate_policy_opt_descrs);
 	if (!state) {
 		ERR("Failed to allocate an argpar state.");
 		goto error;
@@ -1633,7 +1633,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 			goto error;
 		}
 
-		policy = lttng_firing_policy_once_after_n_create(threshold);
+		policy = lttng_rate_policy_once_after_n_create(threshold);
 		if (!policy) {
 			ERR("Failed to create policy once after `%s`.",
 					fire_once_after_str);
@@ -1654,7 +1654,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 			goto error;
 		}
 
-		policy = lttng_firing_policy_every_n_create(interval);
+		policy = lttng_rate_policy_every_n_create(interval);
 		if (!policy) {
 			ERR("Failed to create policy every `%s`.",
 					fire_every_str);
@@ -1676,9 +1676,9 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	}
 
 	if (policy) {
-		action_status = set_firing_policy_cb(action, policy);
+		action_status = set_rate_policy_cb(action, policy);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to set firing policy");
+			ERR("Failed to set rate policy");
 			goto error;
 		}
 	}
@@ -1690,7 +1690,7 @@ error:
 	action = NULL;
 	argpar_item_destroy(item);
 end:
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	free(error);
 	argpar_state_destroy(state);
 	return action;
@@ -1703,7 +1703,7 @@ struct lttng_action *handle_action_start_session(int *argc,
 	return handle_action_simple_session_with_policy(argc, argv,
 			lttng_action_start_session_create,
 			lttng_action_start_session_set_session_name,
-			lttng_action_start_session_set_firing_policy, "start");
+			lttng_action_start_session_set_rate_policy, "start");
 }
 
 static
@@ -1713,7 +1713,7 @@ struct lttng_action *handle_action_stop_session(int *argc,
 	return handle_action_simple_session_with_policy(argc, argv,
 			lttng_action_stop_session_create,
 			lttng_action_stop_session_set_session_name,
-			lttng_action_stop_session_set_firing_policy, "stop");
+			lttng_action_stop_session_set_rate_policy, "stop");
 }
 
 static
@@ -1723,7 +1723,7 @@ struct lttng_action *handle_action_rotate_session(int *argc,
 	return handle_action_simple_session_with_policy(argc, argv,
 		lttng_action_rotate_session_create,
 		lttng_action_rotate_session_set_session_name,
-		lttng_action_rotate_session_set_firing_policy,
+		lttng_action_rotate_session_set_rate_policy,
 		"rotate");
 }
 
@@ -1758,7 +1758,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	char *fire_every_str = NULL;
 	enum lttng_action_status action_status;
 	struct lttng_snapshot_output *snapshot_output = NULL;
-	struct lttng_firing_policy *policy = NULL;
+	struct lttng_rate_policy *policy = NULL;
 	int ret;
 	unsigned int locations_specified = 0;
 
@@ -1910,7 +1910,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		}
 	}
 
-	/* Any firing policy ? */
+	/* Any rate policy ? */
 	if (fire_once_after_str && fire_every_str) {
 		ERR("--fire-once and --fire-every are mutually exclusive.");
 		goto error;
@@ -1931,7 +1931,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 			goto error;
 		}
 
-		policy = lttng_firing_policy_once_after_n_create(threshold);
+		policy = lttng_rate_policy_once_after_n_create(threshold);
 		if (!policy) {
 			ERR("Failed to create policy once after `%s`.",
 					fire_once_after_str);
@@ -1952,7 +1952,7 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 			goto error;
 		}
 
-		policy = lttng_firing_policy_every_n_create(interval);
+		policy = lttng_rate_policy_every_n_create(interval);
 		if (!policy) {
 			ERR("Failed to create policy every `%s`.",
 					fire_every_str);
@@ -2083,10 +2083,10 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 
 	if (policy) {
 		enum lttng_action_status status;
-		status = lttng_action_snapshot_session_set_firing_policy(
+		status = lttng_action_snapshot_session_set_rate_policy(
 				action, policy);
 		if (status != LTTNG_ACTION_STATUS_OK) {
-			ERR("Failed to set firing policy");
+			ERR("Failed to set rate policy");
 			goto error;
 		}
 	}
@@ -2105,7 +2105,7 @@ end:
 	free(data_url_arg);
 	free(snapshot_output);
 	free(max_size_arg);
-	lttng_firing_policy_destroy(policy);
+	lttng_rate_policy_destroy(policy);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
 	return action;
