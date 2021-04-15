@@ -40,7 +40,7 @@ enum {
 	OPT_CONDITION,
 	OPT_ACTION,
 	OPT_ID,
-	OPT_USER_ID,
+	OPT_OWNER_UID,
 	OPT_RATE_POLICY,
 
 	OPT_NAME,
@@ -2089,7 +2089,7 @@ struct argpar_opt_descr add_trigger_options[] = {
 	{ OPT_CONDITION, '\0', "condition", true },
 	{ OPT_ACTION, '\0', "action", true },
 	{ OPT_NAME, '\0', "name", true },
-	{ OPT_USER_ID, '\0', "user-id", true },
+	{ OPT_OWNER_UID, '\0', "owner-uid", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
@@ -2116,7 +2116,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	char *error = NULL;
 	char *name = NULL;
 	int i;
-	char *user_id = NULL;
+	char *owner_uid = NULL;
 
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
 
@@ -2222,10 +2222,10 @@ int cmd_add_trigger(int argc, const char **argv)
 
 			break;
 		}
-		case OPT_USER_ID:
+		case OPT_OWNER_UID:
 		{
-			if (!assign_string(&user_id, item_opt->arg,
-					"--user-id")) {
+			if (!assign_string(&owner_uid, item_opt->arg,
+					"--owner-uid")) {
 				goto error;
 			}
 
@@ -2284,15 +2284,15 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 	}
 
-	if (user_id) {
+	if (owner_uid) {
 		enum lttng_trigger_status trigger_status;
 		char *end;
 		long long uid;
 
 		errno = 0;
-		uid = strtol(user_id, &end, 10);
-		if (end == user_id || *end != '\0' || errno != 0) {
-			ERR("Failed to parse `%s` as a user id.", user_id);
+		uid = strtol(owner_uid, &end, 10);
+		if (end == owner_uid || *end != '\0' || errno != 0) {
+			ERR("Failed to parse `%s` as a user id.", owner_uid);
 		}
 
 		trigger_status = lttng_trigger_set_owner_uid(trigger, uid);
@@ -2325,6 +2325,6 @@ end:
 	lttng_trigger_destroy(trigger);
 	free(error);
 	free(name);
-	free(user_id);
+	free(owner_uid);
 	return ret;
 }

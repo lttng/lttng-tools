@@ -73,7 +73,7 @@ test_top_level_options ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: hello
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: test-name (type: tracepoint, domain: ust)
 	  actions:
@@ -104,7 +104,7 @@ test_on_event_tracepoint ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: A
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
 	  actions:
@@ -112,7 +112,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: B
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: gerboise (type: tracepoint, domain: ust, log level at least INFO)
 	  actions:
@@ -120,7 +120,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: C
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: * (type: tracepoint, domain: ust)
 	  actions:
@@ -128,7 +128,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: D
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: hello* (type: tracepoint, domain: ust, exclusions: hello2,hello3,hello4)
 	  actions:
@@ -136,7 +136,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: E
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: lemming (type: tracepoint, domain: ust, log level is WARNING)
 	  actions:
@@ -144,7 +144,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: F
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: capture-payload-field (type: tracepoint, domain: ust)
 	    captures:
@@ -154,7 +154,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: G
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: capture-array (type: tracepoint, domain: ust)
 	    captures:
@@ -165,7 +165,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: H
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: capture-chan-ctx (type: tracepoint, domain: ust)
 	    captures:
@@ -175,7 +175,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: I
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: capture-app-ctx (type: tracepoint, domain: ust)
 	    captures:
@@ -185,7 +185,7 @@ test_on_event_tracepoint ()
 	      errors: none
 	  errors: none
 	- name: J
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: lemming (type: tracepoint, domain: ust)
 	  actions:
@@ -237,7 +237,7 @@ test_on_event_probe ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: lttng_channel_enable)
 	  actions:
@@ -245,7 +245,7 @@ test_on_event_probe ()
 	      errors: none
 	  errors: none
 	- name: T1
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: ${base_symbol}+${offset_hex})
 	  actions:
@@ -253,7 +253,7 @@ test_on_event_probe ()
 	      errors: none
 	  errors: none
 	- name: T2
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: my_channel_enable (type: probe, location: 0x${channel_enable_addr})
 	  actions:
@@ -279,7 +279,7 @@ test_on_event_userspace_probe_elf ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: ma-probe-elf (type: userspace probe, location type: ELF, location: ${uprobe_elf_binary}:${elf_function_name})
 	  actions:
@@ -327,7 +327,7 @@ test_on_event_syscall ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: open (type: syscall)
 	  actions:
@@ -335,7 +335,7 @@ test_on_event_syscall ()
 	      errors: none
 	  errors: none
 	- name: T1
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: ptrace (type: syscall, filter: a > 2)
 	  actions:
@@ -367,7 +367,7 @@ test_snapshot_action ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -375,7 +375,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T1
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -383,7 +383,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T2
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -391,7 +391,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T3
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -399,7 +399,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T4
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -407,7 +407,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T5
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -415,7 +415,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T6
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -423,7 +423,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T7
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -431,7 +431,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T8
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -439,7 +439,7 @@ test_snapshot_action ()
 	      errors: none
 	  errors: none
 	- name: T9
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -469,7 +469,7 @@ test_notify_action ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
@@ -477,7 +477,7 @@ test_notify_action ()
 	      errors: none
 	  errors: none
 	- name: T1
-	  user id: ${uid}
+	  owner uid: ${uid}
 	  condition: event rule hit
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:

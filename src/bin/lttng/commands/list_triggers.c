@@ -817,7 +817,7 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	MSG("- name: %s", name);
-	MSG("  user id: %d", trigger_uid);
+	MSG("  owner uid: %d", trigger_uid);
 
 	condition = lttng_trigger_get_const_condition(trigger);
 	condition_type = lttng_condition_get_type(condition);

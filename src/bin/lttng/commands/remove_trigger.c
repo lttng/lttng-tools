@@ -19,14 +19,14 @@ static const char help_msg[] =
 enum {
 	OPT_HELP,
 	OPT_LIST_OPTIONS,
-	OPT_USER_ID,
+	OPT_OWNER_UID,
 };
 
 static const
 struct argpar_opt_descr remove_trigger_options[] = {
 	{ OPT_HELP, 'h', "help", false },
 	{ OPT_LIST_OPTIONS, '\0', "list-options", false },
-	{ OPT_USER_ID, '\0', "user-id", true },
+	{ OPT_OWNER_UID, '\0', "owner-uid", true },
 	ARGPAR_OPT_DESCR_SENTINEL,
 };
 
@@ -66,7 +66,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 	unsigned int triggers_count;
 	enum lttng_trigger_status trigger_status;
 	const struct lttng_trigger *trigger_to_remove = NULL;
-	char *user_id = NULL;
+	char *owner_uid = NULL;
 	long long uid;
 
 	argpar_parse_ret = argpar_parse(argc - 1, argv + 1,
@@ -94,10 +94,10 @@ int cmd_remove_trigger(int argc, const char **argv)
 					remove_trigger_options);
 				ret = 0;
 				goto end;
-			case OPT_USER_ID:
+			case OPT_OWNER_UID:
 			{
-				if (!assign_string(&user_id, item_opt->arg,
-						"--user-id")) {
+				if (!assign_string(&owner_uid, item_opt->arg,
+						"--owner-uid")) {
 					goto error;
 				}
 				break;
@@ -123,13 +123,13 @@ int cmd_remove_trigger(int argc, const char **argv)
 		goto error;
 	}
 
-	if (user_id) {
+	if (owner_uid) {
 		char *end;
 
 		errno = 0;
-		uid = strtol(user_id, &end, 10);
-		if (end == user_id || *end != '\0' || errno != 0) {
-			ERR("Failed to parse `%s` as an integer.", user_id);
+		uid = strtol(owner_uid, &end, 10);
+		if (end == owner_uid || *end != '\0' || errno != 0) {
+			ERR("Failed to parse `%s` as an integer.", owner_uid);
 		}
 	} else {
 		uid = geteuid();
@@ -185,7 +185,7 @@ error:
 end:
 	argpar_parse_ret_fini(&argpar_parse_ret);
 	lttng_triggers_destroy(triggers);
-	free(user_id);
+	free(owner_uid);
 
 	return ret;
 }
