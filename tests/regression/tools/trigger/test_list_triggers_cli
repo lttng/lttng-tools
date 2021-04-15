@@ -23,7 +23,8 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 49
+
+NUM_TESTS=67
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -41,7 +42,8 @@ else
 	ist_root=0
 fi
 
-function list_triggers ()
+
+function list_triggers_matches_ok ()
 {
 	local test_name="$1"
 	local expected_stdout_file="$2"
@@ -58,9 +60,7 @@ function list_triggers ()
 
 test_top_level_options ()
 {
-	# shellcheck disable=SC2119
-	start_lttng_sessiond_notap
-
+	diag "Listing top level options"
 
 	lttng_add_trigger_ok "hello" --condition on-event -u test-id --action notify
 
@@ -75,15 +75,14 @@ test_top_level_options ()
 	  errors: none
 	EOF
 
-	list_triggers "top level options" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "top level options" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "hello"
 }
 
 test_on_event_tracepoint ()
 {
-	# shellcheck disable=SC2119
-	start_lttng_sessiond_notap
+	diag "Listing on-event tracepoint"
 
 	lttng_add_trigger_ok "C" --condition on-event -u -a --action notify
 	lttng_add_trigger_ok "A" --condition on-event aaa -u --filter 'p == 2' --action notify
@@ -180,9 +179,17 @@ test_on_event_tracepoint ()
 	  errors: none
 	EOF
 
-	list_triggers "on-event, tracepoint event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "on-event, tracepoint event rule" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "A"
+	lttng_remove_trigger_ok "B"
+	lttng_remove_trigger_ok "C"
+	lttng_remove_trigger_ok "D"
+	lttng_remove_trigger_ok "E"
+	lttng_remove_trigger_ok "F"
+	lttng_remove_trigger_ok "G"
+	lttng_remove_trigger_ok "H"
+	lttng_remove_trigger_ok "I"
 }
 
 test_on_event_probe ()
@@ -190,8 +197,7 @@ test_on_event_probe ()
 	local channel_enable_addr
 	local channel_disable_addr
 
-	# shellcheck disable=SC2119
-	start_lttng_sessiond_notap
+	diag "Listing on-event kernel probe"
 
 	channel_enable_addr=$(grep ' t lttng_channel_enable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
 	channel_disable_addr=$(grep ' t lttng_channel_disable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
@@ -240,38 +246,40 @@ test_on_event_probe ()
 	  errors: none
 	EOF
 
-	list_triggers "on-event, probe event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "on-event, probe event rule" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "T0"
+	lttng_remove_trigger_ok "T1"
+	lttng_remove_trigger_ok "T2"
 }
 
 test_on_event_userspace_probe ()
 {
-	# shellcheck disable=SC2119
-	start_lttng_sessiond_notap
+	local elf_function_name="test_function"
 
-	lttng_add_trigger_ok "T0" --condition on-event -k --userspace-probe=${uprobe_elf_binary}:test_function ma-probe --action notify
+	diag "Listing on-event userspace-probe elf"
+
+	lttng_add_trigger_ok "T0" --condition on-event -k --userspace-probe=${uprobe_elf_binary}:${elf_function_name} ma-probe-elf --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- id: T0
 	  user id: ${uid}
 	  condition: event rule hit
-	    rule: ma-probe (type: userspace probe, location: ${uprobe_elf_binary}:test_function)
+	    rule: ma-probe-elf (type: userspace probe, location: ${uprobe_elf_binary}:${elf_function_name})
 	  actions:
 	    notify
 	      errors: none
 	  errors: none
 	EOF
 
-	list_triggers "on-event, userspace-probe event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "on-event, userspace-probe event rule ELF" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "T0"
 }
 
 test_on_event_syscall ()
 {
-	# shellcheck disable=SC2119
-	start_lttng_sessiond_notap
+	diag "Listing on-event syscall"
 
 	lttng_add_trigger_ok "T0" --condition on-event -k --syscall open --action notify
 	lttng_add_trigger_ok "T1" --condition on-event -k --syscall ptrace --filter 'a > 2' --action notify
@@ -295,14 +303,15 @@ test_on_event_syscall ()
 	  errors: none
 	EOF
 
-	list_triggers "on-event, syscall event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "on-event, syscall event rule" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "T0"
+	lttng_remove_trigger_ok "T1"
 }
 
 test_snapshot_action ()
 {
-	start_lttng_sessiond_notap
+	diag "Listing snapshot actions"
 
 	lttng_add_trigger_ok "T0" --condition on-event -u some-event --action snapshot-session ze-session
 	lttng_add_trigger_ok "T1" --condition on-event -u some-event --action snapshot-session ze-session --path /some/path
@@ -399,7 +408,7 @@ test_snapshot_action ()
 	  errors: none
 	EOF
 
-	list_triggers "snapshot action" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "snapshot action" "${tmp_expected_stdout}"
 
 	stop_lttng_sessiond_notap
 }
@@ -431,18 +440,26 @@ test_notify_action ()
 	  errors: none
 	EOF
 
-	list_triggers "snapshot action" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "snapshot action" "${tmp_expected_stdout}"
 
-	stop_lttng_sessiond_notap
+	lttng_remove_trigger_ok "T0"
+	lttng_remove_trigger_ok "T1"
 }
+
+plan_tests $NUM_TESTS
+
+# shellcheck disable=SC2119
+start_lttng_sessiond_notap
 
 test_top_level_options
 test_on_event_tracepoint
-skip $ist_root "non-root user: skipping kprobe tests" 6 || test_on_event_probe
-skip $ist_root "non-root user: skipping uprobe tests" 4 || test_on_event_userspace_probe
-skip $ist_root "non-root user: skipping syscall tests" 5 || test_on_event_syscall
+skip $ist_root "non-root user: skipping kprobe tests" 9 || test_on_event_probe
+skip $ist_root "non-root user: skipping userspace probe elf tests" 5 || test_on_event_userspace_probe
+skip $ist_root "non-root user: skipping syscall tests" 7 || test_on_event_syscall
 test_snapshot_action
 test_notify_action
+
+stop_lttng_sessiond_notap
 
 # Cleanup
 rm -f "${tmp_stdout}"
