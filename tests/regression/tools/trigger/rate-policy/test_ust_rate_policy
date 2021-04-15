@@ -38,7 +38,7 @@ function test_rate_policy_every_n()
 		$TRIGGER_NAME \
 		--condition on-event -u "tp:tptest" \
 		--action notify \
-	        --fire-every 5
+	        --rate-policy=every:5
 
 	# Add a trigger with a notify action for the tp:end event of the test
 	# application. This allow us to "delimit" the reception loop for the
@@ -124,7 +124,7 @@ function test_rate_policy_once_after_n()
 		$TRIGGER_NAME \
 		--condition on-event -u "tp:tptest" \
 		--action notify \
-	        --fire-once-after 5
+	        --rate-policy=once-after:5
 
 	# Add a trigger with a notify action for the tp:end event of the test
 	# application. This allow us to "delimit" the reception loop for the

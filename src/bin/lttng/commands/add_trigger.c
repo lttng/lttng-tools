@@ -40,9 +40,8 @@ enum {
 	OPT_CONDITION,
 	OPT_ACTION,
 	OPT_ID,
-	OPT_FIRE_ONCE_AFTER,
-	OPT_FIRE_EVERY,
 	OPT_USER_ID,
+	OPT_RATE_POLICY,
 
 	OPT_ALL,
 	OPT_FILTER,
@@ -1335,12 +1334,83 @@ error:
 end:
 	return cond;
 }
+
+static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
+{
+	int num_token;
+	char **tokens = NULL;
+	struct lttng_rate_policy *policy = NULL;
+	enum lttng_rate_policy_type policy_type;
+	unsigned long long value;
+	char *policy_type_str;
+	char *policy_value_str;
+
+	assert(policy_str);
+
+	/*
+	 * rate policy fields are separated by ':'.
+	 */
+	tokens = strutils_split(policy_str, ':', 1);
+	num_token = strutils_array_of_strings_len(tokens);
+
+	/*
+	 * Early sanity check that the number of parameter is exactly 2.
+	 * i.e : type:value
+	 */
+	if (num_token != 2) {
+		ERR("Rate policy format is invalid.");
+		goto end;
+	}
+
+	policy_type_str = tokens[0];
+	policy_value_str = tokens[1];
+
+	/* Parse the type. */
+	if (strcmp(policy_type_str, "once-after") == 0) {
+		policy_type = LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N;
+	} else if (strcmp(policy_type_str, "every") == 0) {
+		policy_type = LTTNG_RATE_POLICY_TYPE_EVERY_N;
+	} else {
+		ERR("Rate policy type `%s` unknown.", policy_type_str);
+		goto end;
+	}
+
+	/* Parse the value. */
+	if (utils_parse_unsigned_long_long(policy_value_str, &value) != 0) {
+		ERR("Failed to parse rate policy value `%s` as an integer.",
+				policy_value_str);
+		goto end;
+	}
+
+	if (value == 0) {
+		ERR("Rate policy value `%s` must be > 0.", policy_value_str);
+		goto end;
+	}
+
+	switch (policy_type) {
+	case LTTNG_RATE_POLICY_TYPE_EVERY_N:
+		policy = lttng_rate_policy_every_n_create(value);
+		break;
+	case LTTNG_RATE_POLICY_TYPE_ONCE_AFTER_N:
+		policy = lttng_rate_policy_once_after_n_create(value);
+		break;
+	default:
+		abort();
+	}
+
+	if (policy == NULL) {
+		ERR("Failed to create rate policy `%s`.", policy_str);
+	}
+
+end:
+	strutils_free_null_terminated_array_of_strings(tokens);
+	return policy;
+}
+
 static const struct argpar_opt_descr notify_action_opt_descrs[] = {
-	{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
-	{ OPT_FIRE_EVERY, '\0', "fire-every", true },
+	{ OPT_RATE_POLICY, '\0', "rate-policy", true },
 	ARGPAR_OPT_DESCR_SENTINEL
 };
-
 
 static
 struct lttng_action *handle_action_notify(int *argc, const char ***argv)
@@ -1349,8 +1419,6 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 	struct argpar_state *state = NULL;
 	struct argpar_item *item = NULL;
 	char *error = NULL;
-	char *fire_once_after_str = NULL;
-	char *fire_every_str = NULL;
 	struct lttng_rate_policy *policy = NULL;
 
 	state = argpar_state_create(*argc, *argv, notify_action_opt_descrs);
@@ -1381,27 +1449,14 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 					(const struct argpar_item_opt *) item;
 
 			switch (item_opt->descr->id) {
-			case OPT_FIRE_ONCE_AFTER:
+			case OPT_RATE_POLICY:
 			{
-				if (!assign_string(&fire_once_after_str,
-						    item_opt->arg,
-						    "--fire-once-after")) {
+				policy = parse_rate_policy(item_opt->arg);
+				if (!policy) {
 					goto error;
 				}
-
 				break;
 			}
-			case OPT_FIRE_EVERY:
-			{
-				if (!assign_string(&fire_every_str,
-						    item_opt->arg,
-						    "--fire-every")) {
-					goto error;
-				}
-
-				break;
-			}
-
 			default:
 				abort();
 			}
@@ -1423,55 +1478,6 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 
 	*argc -= argpar_state_get_ingested_orig_args(state);
 	*argv += argpar_state_get_ingested_orig_args(state);
-
-	if (fire_once_after_str && fire_every_str) {
-		ERR("--fire-once and --fire-every are mutually exclusive.");
-		goto error;
-	}
-
-	if (fire_once_after_str) {
-		unsigned long long threshold;
-
-		if (utils_parse_unsigned_long_long(
-				    fire_once_after_str, &threshold) != 0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_once_after_str);
-			goto error;
-		}
-
-		if (threshold == 0) {
-			ERR("Once after N policy threshold cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_once_after_n_create(threshold);
-		if (!policy) {
-			ERR("Failed to create policy once after `%s`.",
-					fire_once_after_str);
-			goto error;
-		}
-	}
-
-	if (fire_every_str) {
-		unsigned long long interval;
-		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
-				0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_every_str);
-			goto error;
-		}
-		if (interval == 0) {
-			ERR("Every N policy interval cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_every_n_create(interval);
-		if (!policy) {
-			ERR("Failed to create policy every `%s`.",
-					fire_every_str);
-			goto error;
-		}
-	}
 
 	action = lttng_action_notify_create();
 	if (!action) {
@@ -1495,8 +1501,6 @@ error:
 	action = NULL;
 	free(error);
 end:
-	free(fire_once_after_str);
-	free(fire_every_str);
 	lttng_rate_policy_destroy(policy);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
@@ -1522,8 +1526,6 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	struct argpar_state *state = NULL;
 	struct argpar_item *item = NULL;
 	const char *session_name_arg = NULL;
-	char *fire_once_after_str = NULL;
-	char *fire_every_str = NULL;
 	char *error = NULL;
 	enum lttng_action_status action_status;
 	struct lttng_rate_policy *policy = NULL;
@@ -1532,8 +1534,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	assert(set_rate_policy_cb);
 
 	const struct argpar_opt_descr rate_policy_opt_descrs[] = {
-		{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
-		{ OPT_FIRE_EVERY, '\0', "fire-every", true },
+		{ OPT_RATE_POLICY, '\0', "rate-policy", true },
 		ARGPAR_OPT_DESCR_SENTINEL
 	};
 	
@@ -1565,27 +1566,14 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 					(const struct argpar_item_opt *) item;
 
 			switch (item_opt->descr->id) {
-			case OPT_FIRE_ONCE_AFTER:
+			case OPT_RATE_POLICY:
 			{
-				if (!assign_string(&fire_once_after_str,
-						    item_opt->arg,
-						    "--fire-once-after")) {
+				policy = parse_rate_policy(item_opt->arg);
+				if (!policy) {
 					goto error;
 				}
-
 				break;
 			}
-			case OPT_FIRE_EVERY:
-			{
-				if (!assign_string(&fire_every_str,
-						    item_opt->arg,
-						    "--fire-every")) {
-					goto error;
-				}
-
-				break;
-			}
-
 			default:
 				abort();
 			}
@@ -1611,55 +1599,6 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 	if (!session_name_arg) {
 		ERR("Missing session name.");
 		goto error;
-	}
-
-	if (fire_once_after_str && fire_every_str) {
-		ERR("--fire-once and --fire-every are mutually exclusive.");
-		goto error;
-	}
-
-	if (fire_once_after_str) {
-		unsigned long long threshold;
-
-		if (utils_parse_unsigned_long_long(
-				    fire_once_after_str, &threshold) != 0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_once_after_str);
-			goto error;
-		}
-
-		if (threshold == 0) {
-			ERR("Once after N policy threshold cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_once_after_n_create(threshold);
-		if (!policy) {
-			ERR("Failed to create policy once after `%s`.",
-					fire_once_after_str);
-			goto error;
-		}
-	}
-
-	if (fire_every_str) {
-		unsigned long long interval;
-		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
-				0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_every_str);
-			goto error;
-		}
-		if (interval == 0) {
-			ERR("Every N policy interval cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_every_n_create(interval);
-		if (!policy) {
-			ERR("Failed to create policy every `%s`.",
-					fire_every_str);
-			goto error;
-		}
 	}
 
 	action = create_action_cb();
@@ -1734,8 +1673,7 @@ static const struct argpar_opt_descr snapshot_action_opt_descrs[] = {
 	{ OPT_DATA_URL, '\0', "data-url", true },
 	{ OPT_URL, '\0', "url", true },
 	{ OPT_PATH, '\0', "path", true },
-	{ OPT_FIRE_ONCE_AFTER, '\0', "fire-once-after", true },
-	{ OPT_FIRE_EVERY, '\0', "fire-every", true },
+	{ OPT_RATE_POLICY, '\0', "rate-policy", true },
 	ARGPAR_OPT_DESCR_SENTINEL
 };
 
@@ -1754,8 +1692,6 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 	char *url_arg = NULL;
 	char *path_arg = NULL;
 	char *error = NULL;
-	char *fire_once_after_str = NULL;
-	char *fire_every_str = NULL;
 	enum lttng_action_status action_status;
 	struct lttng_snapshot_output *snapshot_output = NULL;
 	struct lttng_rate_policy *policy = NULL;
@@ -1826,27 +1762,14 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 				}
 
 				break;
-			case OPT_FIRE_ONCE_AFTER:
+			case OPT_RATE_POLICY:
 			{
-				if (!assign_string(&fire_once_after_str,
-						    item_opt->arg,
-						    "--fire-once-after")) {
+				policy = parse_rate_policy(item_opt->arg);
+				if (!policy) {
 					goto error;
 				}
-
 				break;
 			}
-			case OPT_FIRE_EVERY:
-			{
-				if (!assign_string(&fire_every_str,
-						    item_opt->arg,
-						    "--fire-every")) {
-					goto error;
-				}
-
-				break;
-			}
-
 			default:
 				abort();
 			}
@@ -1906,56 +1829,6 @@ struct lttng_action *handle_action_snapshot_session(int *argc,
 		snapshot_output = lttng_snapshot_output_create();
 		if (!snapshot_output) {
 			ERR("Failed to allocate a snapshot output.");
-			goto error;
-		}
-	}
-
-	/* Any rate policy ? */
-	if (fire_once_after_str && fire_every_str) {
-		ERR("--fire-once and --fire-every are mutually exclusive.");
-		goto error;
-	}
-
-	if (fire_once_after_str) {
-		unsigned long long threshold;
-
-		if (utils_parse_unsigned_long_long(
-				    fire_once_after_str, &threshold) != 0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_once_after_str);
-			goto error;
-		}
-
-		if (threshold == 0) {
-			ERR("Once after N policy threshold cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_once_after_n_create(threshold);
-		if (!policy) {
-			ERR("Failed to create policy once after `%s`.",
-					fire_once_after_str);
-			goto error;
-		}
-	}
-
-	if (fire_every_str) {
-		unsigned long long interval;
-		if (utils_parse_unsigned_long_long(fire_every_str, &interval) !=
-				0) {
-			ERR("Failed to parse `%s` as an integer.",
-					fire_every_str);
-			goto error;
-		}
-		if (interval == 0) {
-			ERR("Every N policy interval cannot be `0`.");
-			goto error;
-		}
-
-		policy = lttng_rate_policy_every_n_create(interval);
-		if (!policy) {
-			ERR("Failed to create policy every `%s`.",
-					fire_every_str);
 			goto error;
 		}
 	}

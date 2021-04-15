@@ -13,7 +13,6 @@ SYNOPSIS
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-trigger* [--id ID]
-      [--fire-every N] [--fire-once-after N]
       --condition CONDITION-NAME CONDITION-ARGS
       --action ACTION-NAME ACTION-ARGS
       [--action ACTION-NAME ACTION-ARGS]...
@@ -28,10 +27,6 @@ trigger is an association between a *condition* and one or more
 actions associated to that trigger are executed.  The tracing does not
 have to be active for the conditions to be met, and triggers are
 independent from tracing sessions.
-
-By default, a trigger fires every time its condition is met.  The
-'--fire-every' and '--fire-once-after' options can be used to change
-this mode.
 
 The syntax by which conditions and actions are specified is described
 below.

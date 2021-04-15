@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 231
+plan_tests 234
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -92,39 +92,39 @@ test_success "--condition on-event -a -u" \
 	--action notify
 
 test_success "notify action polices" \
-	--condition on-event -u test-fire-once-after \
+	--condition on-event -u test-rate-policy=once-after \
 	--action notify \
-	--fire-every=55 \
+	--rate-policy=every:55 \
 	--action notify \
-	--fire-once-after=55
+	--rate-policy=once-after:55
 
 test_success "start session action polices" \
-	--condition on-event -u test-fire-once-after \
+	--condition on-event -u test-rate-policy=once-after \
 	--action start-session my_session \
-	--fire-every=55 \
+	--rate-policy=every:55 \
 	--action start-session my_session \
-	--fire-once-after=55
+	--rate-policy=once-after:55
 
 test_success "stop session action polices" \
-	--condition on-event -u test-fire-once-after \
+	--condition on-event -u test-rate-policy=once-after \
 	--action stop-session my_session \
-	--fire-every=55 \
+	--rate-policy=every:55 \
 	--action stop-session my_session \
-	--fire-once-after=55
+	--rate-policy=once-after:55
 
 test_success "snapshot session action polices" \
-	--condition on-event -u test-fire-once-after \
+	--condition on-event -u test-rate-policy=once-after \
 	--action snapshot-session my_session \
-	--fire-every=55 \
+	--rate-policy=every:55 \
 	--action snapshot-session my_session \
-	--fire-once-after=55
+	--rate-policy=once-after:55
 
 test_success "rotate session action polices" \
-	--condition on-event -u test-fire-once-after \
+	--condition on-event -u test-rate-policy=once-after \
 	--action rotate-session my_session \
-	--fire-every=55 \
+	--rate-policy=every:55 \
 	--action rotate-session my_session \
-	--fire-once-after=55
+	--rate-policy=once-after:55
 
 skip $ist_root "non-root user: skipping kprobe tests" 9 || {
 	test_success "--condition on-event probe by symbol" \
@@ -266,22 +266,27 @@ test_failure "missing argument to --id" \
 	"Error: While parsing argument #1 (\`--id\`): Missing required argument for option \`--id\`" \
 	--id
 
-for cmd in fire-once-after fire-every; do
+for cmd in rate-policy=once-after rate-policy=every; do
 	test_failure "missing argument to --${cmd}" \
-		"Error: While parsing argument #1 (\`--${cmd}\`): Missing required argument for option \`--${cmd}\`" \
+		"Error: Rate policy format is invalid." \
 		--condition on-event -u -a --action notify \
 		--${cmd}
 
 	test_failure "invalid argument to --${cmd}: non-digit character" \
-		"Error: Failed to parse \`123bob\` as an integer." \
+		"Error: Failed to parse rate policy value \`123bob\` as an integer." \
 		--condition on-event -u -a --action notify \
-		--${cmd} 123bob
+		--${cmd}:123bob
 
 	test_failure "invalid argument to --${cmd}: empty string" \
-		"Error: Failed to parse \`\` as an integer." \
+		"Error: Failed to parse rate policy value \`\` as an integer." \
 		--condition on-event -u -a --action notify \
-		--${cmd} ""
+		--${cmd}":"
 done
+
+test_failure "invalid argument to --rate-policy: unknown policy type" \
+	"Error: Rate policy type \`bob\` unknown." \
+	--condition on-event -u -a --action notify \
+	--rate-policy=bob:123
 
 # `--condition` failures
 test_failure "missing args after --condition" \

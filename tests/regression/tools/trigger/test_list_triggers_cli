@@ -296,8 +296,8 @@ test_snapshot_action ()
 	lttng_add_trigger_ok "T5" --condition on-event -u some-event --action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1111 --data-url=tcp://1.2.3.4:1112
 	lttng_add_trigger_ok "T6" --condition on-event -u some-event --action snapshot-session ze-session --path /some/path --max-size=1234
 	lttng_add_trigger_ok "T7" --condition on-event -u some-event --action snapshot-session ze-session --path /some/path --name=meh
-	lttng_add_trigger_ok "T8" --condition on-event -u some-event --action snapshot-session ze-session --fire-every 10
-	lttng_add_trigger_ok "T9" --condition on-event -u some-event --action snapshot-session ze-session --fire-once-after 10
+	lttng_add_trigger_ok "T8" --condition on-event -u some-event --action snapshot-session ze-session --rate-policy=every:10
+	lttng_add_trigger_ok "T9" --condition on-event -u some-event --action snapshot-session ze-session --rate-policy=once-after:10
 
 
 	cat > "${tmp_expected_stdout}" <<- EOF
@@ -382,8 +382,8 @@ test_notify_action ()
 {
 	start_lttng_sessiond_notap
 
-	lttng_add_trigger_ok "T0" --condition on-event -u some-event --action notify --fire-once-after 5
-	lttng_add_trigger_ok "T1" --condition on-event -u some-event --action notify --fire-every 10
+	lttng_add_trigger_ok "T0" --condition on-event -u some-event --action notify --rate-policy=once-after:5
+	lttng_add_trigger_ok "T1" --condition on-event -u some-event --action notify --rate-policy=every:10
 
 
 	cat > "${tmp_expected_stdout}" <<- EOF
