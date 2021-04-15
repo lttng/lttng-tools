@@ -704,6 +704,7 @@ enum lttng_trigger_status lttng_trigger_set_owner_uid(
 		struct lttng_trigger *trigger, uid_t uid)
 {
 	enum lttng_trigger_status ret = LTTNG_TRIGGER_STATUS_OK;
+	const uid_t euid = geteuid();
 	const struct lttng_credentials creds = {
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(uid),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
@@ -715,7 +716,7 @@ enum lttng_trigger_status lttng_trigger_set_owner_uid(
 	}
 
 	/* Client-side validation only to report a clearer error. */
-	if (geteuid() != 0) {
+	if (euid != 0 && euid != uid) {
 		ret = LTTNG_TRIGGER_STATUS_PERMISSION_DENIED;
 		goto end;
 	}
