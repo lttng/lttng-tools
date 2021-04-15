@@ -58,6 +58,7 @@ libcommon_la_SOURCES = \
 	dynamic-buffer.c dynamic-buffer.h \
 	endpoint.c \
 	error.c error.h \
+	error-query.c \
 	evaluation.c \
 	event.c \
 	event-expr-to-bytecode.c event-expr-to-bytecode.h \

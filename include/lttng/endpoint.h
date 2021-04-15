@@ -12,8 +12,33 @@
 extern "C" {
 #endif
 
-/* Default LTTng session daemon endpoint singleton. */
+/*
+ * Default LTTng session daemon notification endpoint singleton.
+ *
+ * For use during the creation of a notification channel. This endpoint
+ * implements the following policy to connect to a session daemon's
+ * notification delivery channel:
+ *   - If the caller is root or part of the tracing group:
+ *     - Attempt to connect to the "root" (global) session daemon,
+ *     - Fallback to the session daemon running as the caller's user.
+ *   - Otherwise (caller is an unpriviliged user):
+ *     - Attempt to connect to the session daemon running as the caller's user.
+ */
 extern struct lttng_endpoint *lttng_session_daemon_notification_endpoint;
+
+/*
+ * Default LTTng session daemon command endpoint singleton.
+ *
+ * For use as part of the invocation of a command. This endpoint
+ * implements the following policy to connect to a session daemon's
+ * command channel:
+ *   - If the caller is root or part of the tracing group:
+ *     - Attempt to connect to the "root" (global) session daemon,
+ *     - Fallback to the session daemon running as the caller's user.
+ *   - Otherwise (caller is an unpriviliged user):
+ *     - Attempt to connect to the session daemon running as the caller's user.
+ */
+extern struct lttng_endpoint *lttng_session_daemon_command_endpoint;
 
 #ifdef __cplusplus
 }

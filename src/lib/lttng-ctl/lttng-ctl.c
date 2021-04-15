@@ -23,10 +23,10 @@
 #include <common/compat/errno.h>
 #include <common/compat/string.h>
 #include <common/defaults.h>
-#include <common/dynamic-buffer.h>
 #include <common/dynamic-array.h>
-#include <common/payload.h>
+#include <common/dynamic-buffer.h>
 #include <common/payload-view.h>
+#include <common/payload.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <common/tracker.h>
 #include <common/unix.h>
@@ -35,19 +35,20 @@
 #include <lttng/channel-internal.h>
 #include <lttng/destruction-handle.h>
 #include <lttng/endpoint.h>
+#include <lttng/error-query-internal.h>
 #include <lttng/event-internal.h>
 #include <lttng/health-internal.h>
+#include <lttng/lttng-error.h>
 #include <lttng/lttng.h>
 #include <lttng/session-descriptor-internal.h>
 #include <lttng/session-internal.h>
 #include <lttng/trigger/trigger-internal.h>
 #include <lttng/userspace-probe-internal.h>
-#include <lttng/lttng-error.h>
 
+#include "lttng-ctl-helper.h"
 #include <common/filter/filter-ast.h>
 #include <common/filter/filter-parser.h>
 #include <common/filter/memstream.h>
-#include "lttng-ctl-helper.h"
 
 #define COPY_DOMAIN_PACKED(dst, src)				\
 do {								\
@@ -3097,7 +3098,6 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
 
-
 	lttng_payload_init(&message);
 	lttng_payload_init(&reply);
 
@@ -3199,6 +3199,84 @@ end:
 	lttng_payload_reset(&reply);
 	lttng_trigger_destroy(reply_trigger);
 	return ret;
+}
+
+enum lttng_error_code lttng_error_query_execute(
+		const struct lttng_error_query *query,
+		const struct lttng_endpoint *endpoint,
+		struct lttng_error_query_results **results)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct lttcomm_session_msg lsm = {
+		.cmd_type = LTTNG_EXECUTE_ERROR_QUERY,
+	};
+	struct lttng_payload message;
+	struct lttng_payload reply;
+	struct lttcomm_session_msg *message_lsm;
+
+	lttng_payload_init(&message);
+	lttng_payload_init(&reply);
+
+	if (!query || !results) {
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (endpoint != lttng_session_daemon_command_endpoint) {
+		ret_code = LTTNG_ERR_INVALID_ERROR_QUERY_TARGET;
+		goto end;
+	}
+
+	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
+	if (ret) {
+		ret_code = LTTNG_ERR_NOMEM;
+		goto end;
+	}
+
+	ret = lttng_error_query_serialize(query, &message);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
+		goto end;
+	}
+
+	message_lsm = (struct lttcomm_session_msg *) message.buffer.data;
+	message_lsm->u.error_query.length =
+			(uint32_t) message.buffer.size - sizeof(lsm);
+
+	{
+		struct lttng_payload_view message_view =
+				lttng_payload_view_from_payload(
+						&message, 0, -1);
+
+		message_lsm->fd_count = lttng_payload_view_get_fd_handle_count(
+				&message_view);
+		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
+		if (ret < 0) {
+			ret_code = -ret;
+			goto end;
+		}
+	}
+
+	{
+		ssize_t reply_create_ret;
+		struct lttng_payload_view reply_view =
+				lttng_payload_view_from_payload(
+						&reply, 0, reply.buffer.size);
+
+		reply_create_ret = lttng_error_query_results_create_from_payload(
+				&reply_view, results);
+		if (reply_create_ret < 0) {
+			ret_code = LTTNG_ERR_INVALID_PROTOCOL;
+			goto end;
+		}
+	}
+
+	ret_code = LTTNG_OK;
+end:
+	lttng_payload_reset(&message);
+	lttng_payload_reset(&reply);
+	return ret_code;
 }
 
 int lttng_unregister_trigger(const struct lttng_trigger *trigger)

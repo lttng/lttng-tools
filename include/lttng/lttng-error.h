@@ -179,6 +179,7 @@ enum lttng_error_code {
 	LTTNG_ERR_EVENT_NOTIFIER_REGISTRATION = 166, /* Error registering event notifier to the tracer. */
 	LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING = 167, /* Error initializing event notifier error accounting. */
 	LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL = 168, /* Error event notifier error accounting full. */
+	LTTNG_ERR_INVALID_ERROR_QUERY_TARGET = 169, /* Invalid error query target. */
 
 	/* MUST be last element of the manually-assigned section of the enum */
 	LTTNG_ERR_NR,

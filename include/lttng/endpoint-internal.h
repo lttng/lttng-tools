@@ -13,6 +13,7 @@
 
 enum lttng_endpoint_type {
 	LTTNG_ENDPOINT_TYPE_DEFAULT_SESSIOND_NOTIFICATION = 0,
+	LTTNG_ENDPOINT_TYPE_DEFAULT_SESSIOND_COMMAND = 1,
 };
 
 struct lttng_endpoint {

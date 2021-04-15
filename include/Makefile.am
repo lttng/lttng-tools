@@ -104,6 +104,7 @@ lttnginclude_HEADERS = \
 	lttng/destruction-handle.h \
 	lttng/domain.h \
 	lttng/endpoint.h \
+	lttng/error-query.h \
 	lttng/event-expr.h \
 	lttng/event-field-value.h \
 	lttng/event.h \
@@ -173,6 +174,7 @@ noinst_HEADERS = \
 	lttng/condition/session-rotation-internal.h \
 	lttng/domain-internal.h \
 	lttng/endpoint-internal.h \
+	lttng/error-query-internal.h \
 	lttng/event-expr-internal.h \
 	lttng/event-field-value-internal.h \
 	lttng/event-internal.h \

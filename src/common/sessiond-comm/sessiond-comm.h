@@ -107,6 +107,7 @@ enum lttcomm_sessiond_command {
 	LTTNG_CREATE_SESSION_EXT                        = 49,
 	LTTNG_CLEAR_SESSION                             = 50,
 	LTTNG_LIST_TRIGGERS                             = 51,
+	LTTNG_EXECUTE_ERROR_QUERY                       = 52,
 };
 
 static inline
@@ -197,6 +198,8 @@ const char *lttcomm_sessiond_command_str(enum lttcomm_sessiond_command cmd)
 		return "LTTNG_CLEAR_SESSION";
 	case LTTNG_LIST_TRIGGERS:
 		return "LTTNG_LIST_TRIGGERS";
+	case LTTNG_EXECUTE_ERROR_QUERY:
+		return "LTTNG_EXECUTE_ERROR_QUERY";
 	default:
 		abort();
 	}
@@ -484,6 +487,9 @@ struct lttcomm_session_msg {
 		struct {
 			uint32_t length;
 		} LTTNG_PACKED trigger;
+		struct {
+			uint32_t length;
+		} LTTNG_PACKED error_query;
 		struct {
 			uint64_t rotation_id;
 		} LTTNG_PACKED get_rotation_info;

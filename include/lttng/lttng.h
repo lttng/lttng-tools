@@ -37,6 +37,7 @@
 #include <lttng/destruction-handle.h>
 #include <lttng/domain.h>
 #include <lttng/endpoint.h>
+#include <lttng/error-query.h>
 #include <lttng/event-expr.h>
 #include <lttng/event-field-value.h>
 #include <lttng/event-rule/event-rule.h>
