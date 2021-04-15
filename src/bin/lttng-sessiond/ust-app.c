@@ -5991,20 +5991,6 @@ void ust_app_global_update_all_event_notifier_rules(void)
 	rcu_read_unlock();
 }
 
-void ust_app_update_event_notifier_error_count(struct lttng_trigger *trigger)
-{
-	uint64_t error_count = 0;
-	enum event_notifier_error_accounting_status status;
-	struct lttng_condition *condition = lttng_trigger_get_condition(trigger);
-
-	status = event_notifier_error_accounting_get_count(trigger, &error_count);
-	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-		ERR("Error getting trigger error count.");
-	}
-
-	lttng_condition_on_event_set_error_count(condition, error_count);
-}
-
 /*
  * Add context to a specific channel for global UST domain.
  */

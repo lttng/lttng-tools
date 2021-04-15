@@ -360,8 +360,6 @@ void ust_app_global_update_all(struct ltt_ust_session *usess);
 void ust_app_global_update_event_notifier_rules(struct ust_app *app);
 void ust_app_global_update_all_event_notifier_rules(void);
 
-void ust_app_update_event_notifier_error_count(struct lttng_trigger *trigger);
-
 void ust_app_clean_list(void);
 int ust_app_ht_alloc(void);
 struct ust_app *ust_app_find_by_pid(pid_t pid);

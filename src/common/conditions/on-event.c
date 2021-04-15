@@ -27,8 +27,6 @@
 	(lttng_condition_get_type(condition) == \
 			LTTNG_CONDITION_TYPE_ON_EVENT)
 
-typedef LTTNG_OPTIONAL(uint64_t) optional_uint64;
-
 static bool is_on_event_evaluation(const struct lttng_evaluation *evaluation)
 {
 	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
@@ -286,7 +284,6 @@ static int lttng_condition_on_event_serialize(
 	enum lttng_condition_status status;
 	/* Used for iteration and communication (size matters). */
 	uint32_t i, capture_descr_count;
-	LTTNG_OPTIONAL_COMM(typeof(on_event_condition->error_count.value)) error_count_comm;
 
 	if (!condition || !IS_ON_EVENT_CONDITION(condition)) {
 		ret = -1;
@@ -299,30 +296,6 @@ static int lttng_condition_on_event_serialize(
 
 	DBG("Serializing on event condition's event rule");
 	ret = lttng_event_rule_serialize(on_event_condition->rule, payload);
-	if (ret) {
-		goto end;
-	}
-
-	error_count_comm = (typeof(error_count_comm)) {
-		.is_set = on_event_condition->error_count.is_set,
-		.value = on_event_condition->error_count.value,
-	};
-
-	{
-		char error_count_value_str[MAX_INT_DEC_LEN(on_event_condition->error_count.value)];
-		const int fmt_ret = snprintf(error_count_value_str,
-				sizeof(error_count_value_str), "%" PRIu64,
-				on_event_condition->error_count.value);
-
-		assert(fmt_ret > 0);
-		DBG("Serializing event rule condition's error count: value = %s",
-				on_event_condition->error_count.is_set ?
-						error_count_value_str :
-						"(unset)");
-	}
-
-	ret = lttng_dynamic_buffer_append(&payload->buffer, &error_count_comm,
-			sizeof(error_count_comm));
 	if (ret) {
 		goto end;
 	}
@@ -534,112 +507,6 @@ end:
 }
 
 static
-int optional_uint_from_buffer(
-		const struct lttng_buffer_view *view,
-		size_t inner_value_size,
-		size_t *offset,
-		optional_uint64 *value)
-{
-	int ret;
-
-	/*
-	 * Those cases are identical except for the optional's inner type width.
-	 */
-	switch (inner_value_size) {
-	case sizeof(uint8_t):
-	{
-		LTTNG_OPTIONAL_COMM(uint8_t) *value_comm;
-		const struct lttng_buffer_view optional_uint_view =
-				lttng_buffer_view_from_view(view, *offset,
-							    sizeof(*value_comm));
-
-		if (!lttng_buffer_view_is_valid(&optional_uint_view)) {
-			ret = -1;
-			goto end;
-		}
-
-		value_comm = (typeof(value_comm)) optional_uint_view.data;
-		*value = (typeof(*value)) {
-			.is_set = value_comm->is_set,
-			.value = (uint64_t) value_comm->value,
-		};
-
-		*offset += sizeof(*value_comm);
-		break;
-	}
-	case sizeof(uint16_t):
-	{
-		LTTNG_OPTIONAL_COMM(uint16_t) *value_comm;
-		const struct lttng_buffer_view optional_uint_view =
-				lttng_buffer_view_from_view(view, *offset,
-						sizeof(*value_comm));
-
-		if (!lttng_buffer_view_is_valid(&optional_uint_view)) {
-			ret = -1;
-			goto end;
-		}
-
-		value_comm = (typeof(value_comm)) optional_uint_view.data;
-		*value = (typeof(*value)) {
-			.is_set = value_comm->is_set,
-			.value = (uint64_t) value_comm->value,
-		};
-
-		*offset += sizeof(*value_comm);
-		break;
-	}
-	case sizeof(uint32_t):
-	{
-		LTTNG_OPTIONAL_COMM(uint32_t) *value_comm;
-		const struct lttng_buffer_view optional_uint_view =
-				lttng_buffer_view_from_view(view, *offset,
-						sizeof(*value_comm));
-
-		if (!lttng_buffer_view_is_valid(&optional_uint_view)) {
-			ret = -1;
-			goto end;
-		}
-
-		value_comm = (typeof(value_comm)) optional_uint_view.data;
-		*value = (typeof(*value)) {
-			.is_set = value_comm->is_set,
-			.value = (uint64_t) value_comm->value,
-		};
-
-		*offset += sizeof(*value_comm);
-		break;
-	}
-	case sizeof(uint64_t):
-	{
-		LTTNG_OPTIONAL_COMM(uint64_t) *value_comm;
-		const struct lttng_buffer_view optional_uint_view =
-				lttng_buffer_view_from_view(view, *offset,
-						sizeof(*value_comm));
-
-		if (!lttng_buffer_view_is_valid(&optional_uint_view)) {
-			ret = -1;
-			goto end;
-		}
-
-		value_comm = (typeof(value_comm)) optional_uint_view.data;
-		*value = (typeof(*value)) {
-			.is_set = value_comm->is_set,
-			.value = (uint64_t) value_comm->value,
-		};
-
-		*offset += sizeof(*value_comm);
-		break;
-	}
-	default:
-		abort();
-	}
-
-	ret = 0;
-end:
-	return ret;
-}
-
-static
 const char *str_from_buffer(const struct lttng_buffer_view *view,
 		size_t *offset)
 {
@@ -763,12 +630,10 @@ ssize_t lttng_condition_on_event_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
 {
-	int optional_ret;
 	ssize_t consumed_length;
 	size_t offset = 0;
 	ssize_t event_rule_length;
 	uint32_t i, capture_descr_count;
-	optional_uint64 error_count;
 	struct lttng_condition *condition = NULL;
 	struct lttng_event_rule *event_rule = NULL;
 
@@ -791,23 +656,10 @@ ssize_t lttng_condition_on_event_create_from_payload(
 
 	offset += event_rule_length;
 
-	/* Error count. */
-	optional_ret = optional_uint_from_buffer(&view->buffer,
-			sizeof(error_count.value), &offset,
-			&error_count);
-	if (optional_ret) {
-		goto error;
-	}
-
 	/* Create condition (no capture descriptors yet) at this point */
 	condition = lttng_condition_on_event_create(event_rule);
 	if (!condition) {
 		goto error;
-	}
-
-	if (error_count.is_set) {
-		lttng_condition_on_event_set_error_count(
-				condition, error_count.value);
 	}
 
 	/* Capture descriptor count. */
@@ -909,27 +761,6 @@ uint64_t lttng_condition_on_event_get_error_counter_index(
 				const struct lttng_condition_on_event, parent);
 
 	return LTTNG_OPTIONAL_GET(on_event_cond->error_counter_index);
-}
-
-LTTNG_HIDDEN
-void lttng_condition_on_event_set_error_count(struct lttng_condition *condition,
-		uint64_t error_count)
-{
-	struct lttng_condition_on_event *on_event_cond =
-			container_of(condition,
-				struct lttng_condition_on_event, parent);
-
-	LTTNG_OPTIONAL_SET(&on_event_cond->error_count, error_count);
-}
-
-uint64_t lttng_condition_on_event_get_error_count(
-		const struct lttng_condition *condition)
-{
-	const struct lttng_condition_on_event *on_event_cond =
-			container_of(condition,
-				const struct lttng_condition_on_event, parent);
-
-	return LTTNG_OPTIONAL_GET(on_event_cond->error_count);
 }
 
 enum lttng_condition_status

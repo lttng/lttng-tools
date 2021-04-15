@@ -2174,40 +2174,6 @@ end:
 	return ret;
 }
 
-static
-int condition_on_event_update_error_count(struct lttng_trigger *trigger)
-{
-	int ret = 0;
-	uint64_t error_count = 0;
-	struct lttng_condition *condition;
-	enum event_notifier_error_accounting_status status;
-
-	condition = lttng_trigger_get_condition(trigger);
-	assert(lttng_condition_get_type(condition) ==
-			LTTNG_CONDITION_TYPE_ON_EVENT);
-
-	status = event_notifier_error_accounting_get_count(trigger, &error_count);
-	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-		uid_t trigger_owner_uid;
-		const char *trigger_name;
-		const enum lttng_trigger_status trigger_status =
-				lttng_trigger_get_owner_uid(
-						trigger, &trigger_owner_uid);
-
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
-		if (lttng_trigger_get_name(trigger, &trigger_name) != LTTNG_TRIGGER_STATUS_OK) {
-			trigger_name = "(unnamed)";
-		}
-
-		ERR("Failed to get event notifier error count of trigger for update: trigger owner = %d, trigger name = '%s'",
-				trigger_owner_uid, trigger_name);
-		ret = -1;
-	}
-
-	lttng_condition_on_event_set_error_count(condition, error_count);
-	return ret;
-}
-
 int handle_notification_thread_remove_tracer_event_source_no_result(
 		struct notification_thread_state *state,
 		int tracer_event_source_fd)
@@ -2253,12 +2219,6 @@ static int handle_notification_thread_command_list_triggers(
 		creds = lttng_trigger_get_credentials(trigger_ht_element->trigger);
 		if (client_uid != lttng_credentials_get_uid(creds) && client_uid != 0) {
 			continue;
-		}
-
-		if (lttng_trigger_needs_tracer_notifier(trigger_ht_element->trigger)) {
-			ret = condition_on_event_update_error_count(
-					trigger_ht_element->trigger);
-			assert(!ret);
 		}
 
 		ret = lttng_triggers_add(local_triggers,

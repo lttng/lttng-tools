@@ -25,7 +25,6 @@ struct lttng_condition_on_event {
 	struct lttng_condition parent;
 	struct lttng_event_rule *rule;
 
-	LTTNG_OPTIONAL(uint64_t) error_count;
 	/*
 	 * Internal use only.
 	 * Error accounting counter index.
@@ -70,14 +69,6 @@ void lttng_condition_on_event_set_error_counter_index(
 LTTNG_HIDDEN
 uint64_t lttng_condition_on_event_get_error_counter_index(
 		const struct lttng_condition *condition);
-
-LTTNG_HIDDEN
-uint64_t lttng_condition_on_event_get_error_count(
-		const struct lttng_condition *condition);
-
-LTTNG_HIDDEN
-void lttng_condition_on_event_set_error_count(struct lttng_condition *condition,
-		uint64_t error_count);
 
 LTTNG_HIDDEN
 struct lttng_evaluation *lttng_evaluation_on_event_create(
