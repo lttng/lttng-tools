@@ -42,9 +42,9 @@ specific condition.  There must be exactly one condition given in the
 
 The available conditions are:
 
-Event rule: `on-event [event rule arguments]`::
+Event rule: `event-rule-matches [event rule arguments]`::
     This type of condition is met when the tracer encounters an event
-    matching the given even rule.  The arguments describing the event
+    matching the given event rule.  The arguments describing the event
     rule are the same as those describing the event rules of the
     man:lttng-enable-event(1) command, with these exceptions:
 
@@ -102,9 +102,9 @@ Capture expression
 ~~~~~~~~~~~~~~~~~~
 
 A capture expression can be specified with the option:--capture option when
-creating a new on-event condition. If the capture expression corresponds with an
-event's field when tracing, the runtime dynamic value corresponding to the
-capture expression is captured.
+creating a new event-rule-matches condition. If the capture expression
+corresponds with an event's field when tracing, the runtime dynamic value
+corresponding to the capture expression is captured.
 
 NOTE: Make sure to **single-quote** the capture expression when running
 the command from a shell, as capture expressions typically include

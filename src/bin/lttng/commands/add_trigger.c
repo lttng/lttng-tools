@@ -1284,7 +1284,7 @@ struct condition_descr {
 
 static const
 struct condition_descr condition_descrs[] = {
-	{ "on-event", handle_condition_event },
+	{ "event-rule-matches", handle_condition_event },
 	{ "on-session-consumed-size", handle_condition_session_consumed_size },
 	{ "on-buffer-usage-high", handle_condition_buffer_usage_high },
 	{ "on-buffer-usage-low", handle_condition_buffer_usage_low },

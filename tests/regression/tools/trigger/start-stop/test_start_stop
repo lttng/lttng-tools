@@ -57,7 +57,7 @@ function test_start_session_action()
 	# a `notify` action.
 	lttng_add_trigger_ok \
 		$TRIGGER_NAME \
-		--condition on-event -u "tp:tptest" \
+		--condition event-rule-matches -u "tp:tptest" \
 		--action start-session $SESSION_NAME \
 		--action notify
 
@@ -111,7 +111,7 @@ function test_stop_session_action()
 	# a `notify` action.
 	lttng_add_trigger_ok \
 		$TRIGGER_NAME \
-		--condition on-event -u "tp:tptest" \
+		--condition event-rule-matches -u "tp:tptest" \
 		--action stop-session $SESSION_NAME \
 		--action notify
 

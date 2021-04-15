@@ -36,7 +36,7 @@ function test_rate_policy_every_n()
 	# time the condition is met.
 	lttng_add_trigger_ok \
 		$TRIGGER_NAME \
-		--condition on-event -u "tp:tptest" \
+		--condition event-rule-matches -u "tp:tptest" \
 		--action notify \
 	        --rate-policy=every:5
 
@@ -46,7 +46,7 @@ function test_rate_policy_every_n()
 	# the notification subsystem. 
 	lttng_add_trigger_ok \
 		$END_TRIGGER_NAME \
-		--condition on-event -u "tp:end" \
+		--condition event-rule-matches -u "tp:end" \
 		--action notify
 
 	for i in $(seq 1 4); do
@@ -122,7 +122,7 @@ function test_rate_policy_once_after_n()
 	# time the condition is met.
 	lttng_add_trigger_ok \
 		$TRIGGER_NAME \
-		--condition on-event -u "tp:tptest" \
+		--condition event-rule-matches -u "tp:tptest" \
 		--action notify \
 	        --rate-policy=once-after:5
 
@@ -132,7 +132,7 @@ function test_rate_policy_once_after_n()
 	# the notification subsystem. 
 	lttng_add_trigger_ok \
 		$END_TRIGGER_NAME \
-		--condition on-event -u "tp:end" \
+		--condition event-rule-matches -u "tp:end" \
 		--action notify
 
 	## Phase 1
