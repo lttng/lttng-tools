@@ -27,8 +27,8 @@ source "$CURDIR/util_event_generator.sh"
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 FULL_LTTNG_SESSIOND_BIN="${TESTDIR}/../src/bin/lttng-sessiond/lttng-sessiond"
 
-UST_NUM_TESTS=16
-KERNEL_NUM_TESTS=15
+UST_NUM_TESTS=18
+KERNEL_NUM_TESTS=17
 NUM_TESTS=$(($UST_NUM_TESTS + $KERNEL_NUM_TESTS))
 
 plan_tests $NUM_TESTS
@@ -60,11 +60,15 @@ function test_kernel_notifier_discarded_count
 
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
-	# Confirm that the discarded notification line is present.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
-	ok $? "No discarded tracer notification"
+	# Confirm that the discarded notification line is not present.
+	cat "$list_triggers_stdout" | grep -v --quiet "discarded tracer messages"
+	ok $? "No discarded tracer notification message"
+
+	tail -n 1 "$list_triggers_stdout" | grep --quiet "errors: none"
+	ok $? "Trigger 'errors: none' notification message"
 
 	# Stop consumption of notifier tracer notifications.
+	diag "Pause consumption of tracer messages"
 	echo -n 1 > $sessiond_pipe
 
 	# The notifier ring buffer configuration is currently made of 16 4096
@@ -78,11 +82,11 @@ function test_kernel_notifier_discarded_count
 
 	# Confirm that the discarded notification line is present. To avoid
 	# false positives.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded"
+	cat "$list_triggers_stdout" | grep --quiet "dicarded tracer messages"
 	ok $? "Tracer notification discarded line printed"
 
-	# Confirm that the number of tracer notifications discarded is not zero.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	# Confirm that the number of dicarded tracer messages is not zero.
+	cat "$list_triggers_stdout" | grep --quiet "dicarded tracer messages: 0"
 	isnt $? 0 "Discarded tracer notification number non-zero as expected"
 
 	lttng_remove_trigger_ok "$trigger_name"
@@ -96,10 +100,12 @@ function test_kernel_notifier_discarded_count
 		--condition on-event --kernel lttng_test_filter_event \
 		--action notify
 
-	# Confirm that the discarded notification line is present.
-	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
-	ok $? "No discarded tracer notification"
+	# Confirm that the discarded notification line is not present.
+	cat "$list_triggers_stdout" | grep -v --quiet "discarded tracer messages"
+	ok $? "No discarded tracer notification message"
+
+	tail -n 1 "$list_triggers_stdout" | grep --quiet "errors: none"
+	ok $? "Trigger 'errors: none' notification message"
 
 	lttng_remove_trigger_ok "$trigger_name"
 
@@ -174,11 +180,15 @@ function test_ust_notifier_discarded_count
 
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
-	# Confirm that the discarded notification line is present.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
-	ok $? "No discarded tracer notification"
+	# Confirm that the discarded notification line is not present.
+	cat "$list_triggers_stdout" | grep -v --quiet "discarded tracer messages"
+	ok $? "No discarded tracer notification message"
+
+	tail -n 1 "$list_triggers_stdout" | grep --quiet "errors: none"
+	ok $? "Trigger 'errors: none' notification message"
 
 	# Stop consumption of notifier tracer notifications.
+	diag "Pause consumption of tracer messages"
 	echo -n 1 > $sessiond_pipe
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT
@@ -188,11 +198,11 @@ function test_ust_notifier_discarded_count
 
 	# Confirm that the discarded notification line is present. To avoid
 	# false positive.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded"
+	cat "$list_triggers_stdout" | grep --quiet "discarded tracer messages"
 	ok $? "Tracer notification discarded line printed"
 
-	# Confirm that the number of tracer notifications discarded is not zero.
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
+	# Confirm that the number of discarded tracer messages is not zero.
+	cat "$list_triggers_stdout" | grep --quiet "discarded tracer messages: 0"
 	isnt $? 0 "Discarded tracer notification number non-zero as expected"
 
 	# Remove the notifier.
@@ -207,10 +217,15 @@ function test_ust_notifier_discarded_count
 		--condition on-event --userspace tp:tptest \
 		--action notify
 
-	# Confirm that the discarded notification line is present.
+	# Confirm that the discarded notification line is not present.
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
-	cat "$list_triggers_stdout" | grep --quiet "tracer notifications discarded: 0"
-	ok $? "No discarded tracer notification"
+
+	# Confirm that the discarded notification line is not present.
+	cat "$list_triggers_stdout" | grep -v --quiet "discarded tracer messages"
+	ok $? "No discarded tracer notification message"
+
+	tail -n 1 "$list_triggers_stdout" | grep --quiet "errors: none"
+	ok $? "Trigger 'errors: none' notification message"
 
 	lttng_remove_trigger_ok "$trigger_name"
 

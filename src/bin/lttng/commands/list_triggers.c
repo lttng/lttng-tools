@@ -19,6 +19,7 @@
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
 #include "../loglevel.h"
+#include <lttng/lttng.h>
 
 #ifdef LTTNG_EMBED_HELP
 static const char help_msg[] =
@@ -418,7 +419,6 @@ void print_condition_on_event(const struct lttng_condition *condition)
 	const struct lttng_event_rule *event_rule;
 	enum lttng_condition_status condition_status;
 	unsigned int cap_desc_count, i;
-	uint64_t error_count;
 
 	condition_status =
 		lttng_condition_on_event_get_rule(condition, &event_rule);
@@ -430,9 +430,6 @@ void print_condition_on_event(const struct lttng_condition *condition)
 			lttng_condition_on_event_get_capture_descriptor_count(
 					condition, &cap_desc_count);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
-
-	error_count = lttng_condition_on_event_get_error_count(condition);
-	MSG("    tracer notifications discarded: %" PRIu64, error_count);
 
 	if (cap_desc_count > 0) {
 		MSG("    captures:");
@@ -450,7 +447,93 @@ void print_condition_on_event(const struct lttng_condition *condition)
 }
 
 static
-void print_one_action(const struct lttng_action *action)
+void print_action_errors(const struct lttng_trigger *trigger,
+		const struct lttng_action *action)
+{
+	unsigned int i, count, printed_errors_count = 0;
+	enum lttng_error_code error_query_ret;
+	enum lttng_error_query_results_status results_status;
+	struct lttng_error_query_results *results = NULL;
+	const char *trigger_name;
+	uid_t trigger_uid;
+	enum lttng_trigger_status trigger_status;
+	struct lttng_error_query *query =
+			lttng_error_query_action_create(trigger, action);
+
+	assert(query);
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	error_query_ret = lttng_error_query_execute(
+			query, lttng_session_daemon_command_endpoint, &results);
+	if (error_query_ret != LTTNG_OK) {
+		ERR("Failed to query errors of trigger '%s' (owner uid: %d): %s",
+				trigger_name, (int) trigger_uid,
+				lttng_strerror(-error_query_ret));
+		goto end;
+	}
+
+	results_status = lttng_error_query_results_get_count(results, &count);
+	assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+	_MSG("      errors:");
+
+	for (i = 0; i < count; i++) {
+		const struct lttng_error_query_result *result;
+		enum lttng_error_query_result_status result_status;
+		const char *result_name;
+		const char *result_description;
+		uint64_t result_value;
+
+		results_status = lttng_error_query_results_get_result(
+				results, &result, i);
+		assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+		result_status = lttng_error_query_result_get_name(
+				result, &result_name);
+		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+		result_status = lttng_error_query_result_get_description(
+				result, &result_description);
+		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+
+		if (lttng_error_query_result_get_type(result) ==
+				LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER) {
+			result_status = lttng_error_query_result_counter_get_value(
+					result, &result_value);
+			assert(result_status ==
+					LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+			if (result_value == 0) {
+				continue;
+			}
+
+			MSG("");
+			_MSG("        %s: %" PRIu64, result_name,
+					result_value);
+			printed_errors_count++;
+		} else {
+			_MSG("        Unknown error query result type for result '%s' (%s)",
+					result_name, result_description);
+			continue;
+		}
+	}
+
+	if (printed_errors_count == 0) {
+		_MSG(" none");
+	}
+
+end:
+	MSG("");
+	lttng_error_query_destroy(query);
+	lttng_error_query_results_destroy(results);
+}
+
+static
+void print_one_action(const struct lttng_trigger *trigger,
+		const struct lttng_action *action)
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
@@ -616,8 +699,94 @@ void print_one_action(const struct lttng_action *action)
 	}
 
 	MSG("");
+	print_action_errors(trigger, action);
+
 end:
 	return;
+}
+
+static
+void print_trigger_errors(const struct lttng_trigger *trigger)
+{
+	unsigned int i, count, printed_errors_count = 0;
+	enum lttng_error_code error_query_ret;
+	enum lttng_error_query_results_status results_status;
+	struct lttng_error_query_results *results = NULL;
+	enum lttng_trigger_status trigger_status;
+	const char *trigger_name;
+	uid_t trigger_uid;
+	struct lttng_error_query *query =
+			lttng_error_query_trigger_create(trigger);
+
+	assert(query);
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	error_query_ret = lttng_error_query_execute(
+			query, lttng_session_daemon_command_endpoint, &results);
+	if (error_query_ret != LTTNG_OK) {
+		ERR("Failed to query errors of trigger '%s' (owner uid: %d): %s",
+				trigger_name, (int) trigger_uid,
+				lttng_strerror(-error_query_ret));
+		goto end;
+	}
+
+	results_status = lttng_error_query_results_get_count(results, &count);
+	assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+	_MSG("  errors:");
+
+	for (i = 0; i < count; i++) {
+		const struct lttng_error_query_result *result;
+		enum lttng_error_query_result_status result_status;
+		const char *result_name;
+		const char *result_description;
+		uint64_t result_value;
+
+		results_status = lttng_error_query_results_get_result(
+				results, &result, i);
+		assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+		result_status = lttng_error_query_result_get_name(
+				result, &result_name);
+		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+		result_status = lttng_error_query_result_get_description(
+				result, &result_description);
+		assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+
+		if (lttng_error_query_result_get_type(result) ==
+				LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER) {
+			result_status = lttng_error_query_result_counter_get_value(
+					result, &result_value);
+			assert(result_status ==
+					LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+			if (result_value == 0) {
+				continue;
+			}
+
+			MSG("");
+			_MSG("    %s: %" PRIu64, result_name,
+					result_value);
+			printed_errors_count++;
+		} else {
+			_MSG("    Unknown error query result type for result '%s' (%s)",
+					result_name, result_description);
+			continue;
+		}
+	}
+
+	if (printed_errors_count == 0) {
+		_MSG(" none");
+	}
+
+end:
+	MSG("");
+	lttng_error_query_destroy(query);
+	lttng_error_query_results_destroy(results);
 }
 
 static
@@ -669,13 +838,14 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 							action, i);
 
 			_MSG("    ");
-			print_one_action(subaction);
+			print_one_action(trigger, subaction);
 		}
 	} else {
 		_MSG(" action:");
-		print_one_action(action);
+		print_one_action(trigger, action);
 	}
 
+	print_trigger_errors(trigger);
 }
 
 static
