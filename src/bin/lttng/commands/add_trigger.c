@@ -47,8 +47,7 @@ enum {
 	OPT_FILTER,
 	OPT_EXCLUDE_NAMES,
 	OPT_EVENT_NAME,
-	OPT_LOGLEVEL,
-	OPT_LOGLEVEL_ONLY,
+	OPT_LOG_LEVEL,
 
 	OPT_DOMAIN,
 	OPT_TYPE,
@@ -67,8 +66,7 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_FILTER, 'f', "filter", true },
 	{ OPT_NAME, 'n', "name", true },
 	{ OPT_EXCLUDE_NAMES, 'x', "exclude-names", true },
-	{ OPT_LOGLEVEL, '\0', "loglevel", true },
-	{ OPT_LOGLEVEL_ONLY, '\0', "loglevel-only", true },
+	{ OPT_LOG_LEVEL, 'l', "log-level", true },
 	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
 	{ OPT_DOMAIN, 'd', "domain", true },
@@ -184,45 +182,108 @@ int create_exclusion_list_and_validate(const char *event_name,
 		char ***exclusion_list);
 
 /*
- * Parse `str` as a log level in domain `domain_type`. Return -1 if the string
- * is not recognized as a valid log level.
+ * Parse `str` as a log level in domain `domain_type`.
+ *
+ * Return the log level in `*log_level`.  Return true in `*log_level_only` if
+ * the string specifies exactly this log level, false if it specifies at least
+ * this log level.
+ *
+ * Return true if the string was successfully parsed as a log level string.
  */
-static
-int parse_loglevel_string(const char *str, enum lttng_domain_type domain_type)
+static bool parse_log_level_string(const char *str,
+		enum lttng_domain_type domain_type,
+		int *log_level,
+		bool *log_level_only)
 {
+	bool ret;
+
 	switch (domain_type) {
 	case LTTNG_DOMAIN_UST:
 	{
-		enum lttng_loglevel loglevel;
-		const int ret = loglevel_name_to_value(str, &loglevel);
+		enum lttng_loglevel log_level_min, log_level_max;
+		if (!loglevel_parse_range_string(
+				    str, &log_level_min, &log_level_max)) {
+			goto error;
+		}
 
-		return ret == -1 ? ret : (int) loglevel;
+		/* Only support VAL and VAL.. for now. */
+		if (log_level_min != log_level_max &&
+				log_level_max != LTTNG_LOGLEVEL_EMERG) {
+			goto error;
+		}
+
+		*log_level = (int) log_level_min;
+		*log_level_only = log_level_min == log_level_max;
+		break;
 	}
 	case LTTNG_DOMAIN_LOG4J:
 	{
-		enum lttng_loglevel_log4j loglevel;
-		const int ret = loglevel_log4j_name_to_value(str, &loglevel);
+		enum lttng_loglevel_log4j log_level_min, log_level_max;
+		if (!loglevel_log4j_parse_range_string(
+				    str, &log_level_min, &log_level_max)) {
+			goto error;
+		}
 
-		return ret == -1 ? ret : (int) loglevel;
+		/* Only support VAL and VAL.. for now. */
+		if (log_level_min != log_level_max &&
+				log_level_max != LTTNG_LOGLEVEL_LOG4J_FATAL) {
+			goto error;
+		}
+
+		*log_level = (int) log_level_min;
+		*log_level_only = log_level_min == log_level_max;
+		break;
 	}
 	case LTTNG_DOMAIN_JUL:
 	{
-		enum lttng_loglevel_jul loglevel;
-		const int ret = loglevel_jul_name_to_value(str, &loglevel);
+		enum lttng_loglevel_jul log_level_min, log_level_max;
+		if (!loglevel_jul_parse_range_string(
+				    str, &log_level_min, &log_level_max)) {
+			goto error;
+		}
 
-		return ret == -1 ? ret : (int) loglevel;
+		/* Only support VAL and VAL.. for now. */
+		if (log_level_min != log_level_max &&
+				log_level_max != LTTNG_LOGLEVEL_JUL_SEVERE) {
+			goto error;
+		}
+
+		*log_level = (int) log_level_min;
+		*log_level_only = log_level_min == log_level_max;
+		break;
 	}
 	case LTTNG_DOMAIN_PYTHON:
 	{
-		enum lttng_loglevel_python loglevel;
-		const int ret = loglevel_python_name_to_value(str, &loglevel);
+		enum lttng_loglevel_python log_level_min, log_level_max;
+		if (!loglevel_python_parse_range_string(
+				    str, &log_level_min, &log_level_max)) {
+			goto error;
+		}
 
-		return ret == -1 ? ret : (int) loglevel;
+		/* Only support VAL and VAL.. for now. */
+		if (log_level_min != log_level_max &&
+				log_level_max !=
+						LTTNG_LOGLEVEL_PYTHON_CRITICAL) {
+			goto error;
+		}
+
+		*log_level = (int) log_level_min;
+		*log_level_only = log_level_min == log_level_max;
+		break;
 	}
 	default:
 		/* Invalid domain type. */
 		abort();
 	}
+
+	ret = true;
+	goto end;
+
+error:
+	ret = false;
+
+end:
+	return ret;
 }
 
 static int parse_kernel_probe_opts(const char *source,
@@ -574,8 +635,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	char *filter = NULL;
 
 	/* Log level. */
-	char *loglevel_str = NULL;
-	bool loglevel_only = false;
+	char *log_level_str = NULL;
 
 	lttng_dynamic_pointer_array_init(&res.capture_descriptors,
 				destroy_event_expr);
@@ -660,15 +720,12 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				}
 
 				break;
-			case OPT_LOGLEVEL:
-			case OPT_LOGLEVEL_ONLY:
-				if (!assign_string(&loglevel_str, item_opt->arg,
-						    "--loglevel/--loglevel-only")) {
+			case OPT_LOG_LEVEL:
+				if (!assign_string(&log_level_str,
+						    item_opt->arg, "--log-level/-l")) {
 					goto error;
 				}
 
-				loglevel_only = item_opt->descr->id ==
-						OPT_LOGLEVEL_ONLY;
 				break;
 			case OPT_CAPTURE:
 			{
@@ -859,9 +916,16 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 	}
 
-	if (loglevel_str && event_rule_type != LTTNG_EVENT_RULE_TYPE_TRACEPOINT) {
-		ERR("Log levels are only applicable to tracepoint event rules.");
-		goto error;
+	if (log_level_str) {
+		if (event_rule_type != LTTNG_EVENT_RULE_TYPE_TRACEPOINT) {
+			ERR("Log levels are only applicable to tracepoint event rules.");
+			goto error;
+		}
+
+		if (domain_type == LTTNG_DOMAIN_KERNEL) {
+			ERR("Log levels are not supported by the kernel tracer.");
+			goto error;
+		}
 	}
 
 	/* Finally, create the event rule object. */
@@ -913,26 +977,25 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			}
 		}
 
-		if (loglevel_str) {
-			int loglevel;
+		/*
+		 * ".." is the same as passing no log level option and
+		 * correspond the the "ANY" case.
+		 */
+		if (log_level_str && strcmp(log_level_str, "..") != 0) {
+			int log_level;
+			bool log_level_only;
 
-			if (domain_type == LTTNG_DOMAIN_KERNEL) {
-				ERR("Log levels are not supported by the kernel tracer.");
+			if (!parse_log_level_string(log_level_str, domain_type,
+					    &log_level, &log_level_only)) {
+				ERR("Failed to parse log level string `%s`.",
+						log_level_str);
 				goto error;
 			}
 
-			loglevel = parse_loglevel_string(
-					loglevel_str, domain_type);
-			if (loglevel < 0) {
-				ERR("Failed to parse `%s` as a log level.",
-						loglevel_str);
-				goto error;
-			}
-
-			if (loglevel_only) {
-				log_level_rule = lttng_log_level_rule_exactly_create(loglevel);
+			if (log_level_only) {
+				log_level_rule = lttng_log_level_rule_exactly_create(log_level);
 			} else {
-				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(loglevel);
+				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(log_level);
 			}
 
 			if (log_level_rule == NULL) {
@@ -1065,7 +1128,7 @@ end:
 	free(filter);
 	free(name);
 	free(exclude_names);
-	free(loglevel_str);
+	free(log_level_str);
 	free(location);
 	free(event_name);
 

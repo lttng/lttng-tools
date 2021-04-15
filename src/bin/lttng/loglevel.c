@@ -144,6 +144,73 @@ end:
 	return ret;
 }
 
+static bool loglevel_parse_range_string_common(const char *str,
+		const struct loglevel_name_value *nvs,
+		size_t nvs_count,
+		int *min,
+		int *max)
+{
+	bool ret;
+	int i;
+	const struct loglevel_name_value *nv;
+
+	for (i = 0; i < nvs_count; i++) {
+		nv = &nvs[i];
+
+		if (strncmp(str, nv->name, strlen(nv->name)) == 0) {
+			break;
+		}
+	}
+
+	if (i == nvs_count) {
+		goto error;
+	}
+
+	*min = nv->value;
+	str += strlen(nv->name);
+
+	if (*str == '\0') {
+		*max = nv->value;
+		ret = true;
+		goto end;
+	}
+
+	if (strncmp(str, "..", strlen("..")) != 0) {
+		goto error;
+	}
+
+	str += strlen("..");
+
+	if (*str == '\0') {
+		*max = LTTNG_LOGLEVEL_EMERG;
+		ret = true;
+		goto end;
+	}
+
+	for (i = 0; i < nvs_count; i++) {
+		nv = &nvs[i];
+
+		if (strcmp(str, nv->name) == 0) {
+			break;
+		}
+	}
+
+	if (i == nvs_count) {
+		goto error;
+	}
+
+	*max = nv->value;
+
+	ret = true;
+	goto end;
+
+error:
+	ret = false;
+
+end:
+	return ret;
+}
+
 LTTNG_HIDDEN
 int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel)
 {
@@ -154,6 +221,21 @@ int loglevel_name_to_value(const char *name, enum lttng_loglevel *loglevel)
 		*loglevel = (typeof(*loglevel)) ret;
 		ret = 0;
 	}
+
+	return ret;
+}
+
+LTTNG_HIDDEN
+bool loglevel_parse_range_string(const char *str,
+		enum lttng_loglevel *min,
+		enum lttng_loglevel *max)
+{
+	int min_int, max_int;
+	bool ret = loglevel_parse_range_string_common(str, loglevel_values,
+			ARRAY_SIZE(loglevel_values), &min_int, &max_int);
+
+	*min = min_int;
+	*max = max_int;
 
 	return ret;
 }
@@ -175,6 +257,22 @@ int loglevel_log4j_name_to_value(
 }
 
 LTTNG_HIDDEN
+bool loglevel_log4j_parse_range_string(const char *str,
+		enum lttng_loglevel_log4j *min,
+		enum lttng_loglevel_log4j *max)
+{
+	int min_int, max_int;
+	bool ret = loglevel_parse_range_string_common(str,
+			loglevel_log4j_values,
+			ARRAY_SIZE(loglevel_log4j_values), &min_int, &max_int);
+
+	*min = min_int;
+	*max = max_int;
+
+	return ret;
+}
+
+LTTNG_HIDDEN
 int loglevel_jul_name_to_value(
 		const char *name, enum lttng_loglevel_jul *loglevel)
 {
@@ -191,6 +289,21 @@ int loglevel_jul_name_to_value(
 }
 
 LTTNG_HIDDEN
+bool loglevel_jul_parse_range_string(const char *str,
+		enum lttng_loglevel_jul *min,
+		enum lttng_loglevel_jul *max)
+{
+	int min_int, max_int;
+	bool ret = loglevel_parse_range_string_common(str, loglevel_jul_values,
+			ARRAY_SIZE(loglevel_jul_values), &min_int, &max_int);
+
+	*min = min_int;
+	*max = max_int;
+
+	return ret;
+}
+
+LTTNG_HIDDEN
 int loglevel_python_name_to_value(
 		const char *name, enum lttng_loglevel_python *loglevel)
 {
@@ -202,6 +315,22 @@ int loglevel_python_name_to_value(
 		*loglevel = (typeof(*loglevel)) ret;
 		ret = 0;
 	}
+
+	return ret;
+}
+
+LTTNG_HIDDEN
+bool loglevel_python_parse_range_string(const char *str,
+		enum lttng_loglevel_python *min,
+		enum lttng_loglevel_python *max)
+{
+	int min_int, max_int;
+	bool ret = loglevel_parse_range_string_common(str,
+			loglevel_python_values,
+			ARRAY_SIZE(loglevel_python_values), &min_int, &max_int);
+
+	*min = min_int;
+	*max = max_int;
 
 	return ret;
 }

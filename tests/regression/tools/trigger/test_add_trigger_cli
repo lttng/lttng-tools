@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 252
+plan_tests 264
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -125,6 +125,18 @@ test_success "rotate session action polices" \
 	--rate-policy=every:55 \
 	--action rotate-session my_session \
 	--rate-policy=once-after:55
+
+test_success "--log-level single level" \
+	--condition event-rule-matches --domain=user --log-level=INFO \
+	--action notify
+
+test_success "--log-level range open max" \
+	--condition event-rule-matches --domain=user --log-level=INFO.. \
+	--action notify
+
+test_success "--log-level range any" \
+	--condition event-rule-matches --domain=user --log-level=.. \
+	--action notify
 
 skip $ist_root "non-root user: skipping kprobe tests" 18 || {
 	for type in kprobe kernel-probe; do
@@ -308,6 +320,10 @@ test_failure "missing args after --condition event-rule-matches" \
 test_failure "extra args after --condition event-rule-matches" \
 	"Error: Unexpected argument 'bozo'" \
 	--condition event-rule-matches --domain=user bozo
+
+test_failure "--log-level unknown level" \
+	"Error: Failed to parse log level string \`FOO\`." \
+	--condition event-rule-matches --domain=user --log-level=FOO
 
 test_failure "two same --domain" \
 	"Error: More than one \`--domain\` was specified." \

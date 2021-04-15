@@ -23,8 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-
-NUM_TESTS=82
+NUM_TESTS=84
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -95,8 +94,9 @@ test_on_event_tracepoint ()
 	lttng_add_trigger_ok "C" --condition event-rule-matches --domain=user --action notify
 	lttng_add_trigger_ok "A" --condition event-rule-matches --name=aaa --domain=user --filter 'p == 2' --action notify
 	lttng_add_trigger_ok "D" --condition event-rule-matches --name='hello*' --domain=user -x 'hello2,hello3,hello4' --action notify
-	lttng_add_trigger_ok "B" --condition event-rule-matches --domain=user --name=gerboise --loglevel INFO --action notify
-	lttng_add_trigger_ok "E" --condition event-rule-matches --domain=user --name=lemming --loglevel-only WARNING --action notify
+	lttng_add_trigger_ok "B" --condition event-rule-matches --domain=user --name=gerboise --log-level INFO.. --action notify
+	lttng_add_trigger_ok "E" --condition event-rule-matches --domain=user --name=lemming --log-level WARNING --action notify
+	lttng_add_trigger_ok "J" --condition event-rule-matches --domain=user --name=lemming --log-level .. --action notify
 	lttng_add_trigger_ok "F" --condition event-rule-matches --domain=user --name=capture-payload-field --capture a --action notify
 	lttng_add_trigger_ok "G" --condition event-rule-matches --domain=user --name=capture-array --capture 'a[2]' --capture '$ctx.tourlou[18]' --action notify
 	lttng_add_trigger_ok "H" --condition event-rule-matches --domain=user --name=capture-chan-ctx --capture '$ctx.vpid' --action notify
@@ -184,6 +184,14 @@ test_on_event_tracepoint ()
 	    notify
 	      errors: none
 	  errors: none
+	- name: J
+	  user id: ${uid}
+	  condition: event rule hit
+	    rule: lemming (type: tracepoint, domain: ust)
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
 	EOF
 
 	list_triggers_matches_ok "event-rule-matches, tracepoint event rule" "${tmp_expected_stdout}"
@@ -197,6 +205,7 @@ test_on_event_tracepoint ()
 	lttng_remove_trigger_ok "G"
 	lttng_remove_trigger_ok "H"
 	lttng_remove_trigger_ok "I"
+	lttng_remove_trigger_ok "J"
 }
 
 test_on_event_probe ()
