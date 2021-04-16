@@ -28,7 +28,7 @@ FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 FULL_LTTNG_SESSIOND_BIN="${TESTDIR}/../src/bin/lttng-sessiond/lttng-sessiond"
 
 UST_NUM_TESTS=15
-DESTRUCTIVE_TESTS_NUM=8
+DESTRUCTIVE_TESTS_NUM=12
 KERNEL_NUM_TESTS=$((14 + $DESTRUCTIVE_TESTS_NUM))
 NUM_TESTS=$(($UST_NUM_TESTS + $KERNEL_NUM_TESTS))
 
@@ -200,7 +200,7 @@ function test_ust_notifier_discarded_count
 	# Remove the notifier.
 	lttng_remove_trigger_ok "$trigger_name"
 
-	# Confirm that no notifier is enabled.
+	# Confirm that no trigger is enabled.
 	list_triggers_line_count=$("$FULL_LTTNG_BIN" list-triggers | wc -l)
 	is "$list_triggers_line_count" "0" "No \`event-rule-matches\` userspace notifier enabled as expected"
 
@@ -304,12 +304,81 @@ function test_ust_notifier_discarded_count_multi_uid
 	user_trigger_discarded_nb=$(trigger_get_discarded_notif_number "$user_trigger_name")
 
 	isnt $root_trigger_discarded_nb 0 \
-		"Root trigger discard notifications number ($root_trigger_discarded_nb) is non-zero"
+		"Root trigger discarded notifications number ($root_trigger_discarded_nb) is non-zero"
 	isnt $user_trigger_discarded_nb 0 \
-		"User trigger discard notifications number ($user_trigger_discarded_nb) is non-zero"
+		"User trigger discarded notifications number ($user_trigger_discarded_nb) is non-zero"
 
 	lttng_remove_trigger_ok "$root_trigger_name"
 	lttng_remove_trigger_ok "$user_trigger_name" --user-id "$new_uid"
+
+	stop_lttng_sessiond_notap
+
+	unset LTTNG_SESSIOND_ENV_VARS
+
+	userdel "$new_user"
+	rm -f "$list_triggers_stdout"
+}
+
+function test_ust_notifier_discarded_regardless_trigger_owner
+{
+	local sessiond_pipe=()
+	local root_trigger_name="root_trigger"
+	local user_trigger_name="user_trigger"
+	local list_triggers_stdout=$(mktemp -t list_triggers_stdout.XXXXXX)
+	local NR_USEC_WAIT=0
+	local PIPE_SIZE
+	local NR_ITER
+	local new_user="dummy_lttng_test_user"
+
+	PIPE_SIZE=$("$CURDIR"/default_pipe_size_getter)
+	if [ $? -ne 0 ]; then
+		BAIL_OUT "Failed to get system default pipe size"
+	else
+		diag "Default system pipe size: $PIPE_SIZE bytes"
+	fi
+
+	# Find the number of events needed to overflow the event notification
+	# pipe buffer. Each LTTng-UST notification is at least 42 bytes long.
+	# Double that number to ensure enough events are created to overflow
+	# the buffer.
+	NR_ITER=$(( (PIPE_SIZE / 42) * 2 ))
+	diag "Test applications will emit $NR_ITER events"
+
+	diag "UST event notifer error counter persists when a root trigger is present"
+
+	# Create a dummy user to run test apps as.
+	useradd --no-create-home "$new_user"
+	new_uid=$(id -u "$new_user")
+
+	# Used on sessiond launch.
+	LTTNG_SESSIOND_ENV_VARS="LTTNG_TESTPOINT_ENABLE=1 \
+		NOTIFIER_PAUSE_PIPE_PATH=${TESTPOINT_PIPE_PATH} \
+		LD_PRELOAD=${TESTPOINT}"
+
+	start_lttng_sessiond_notap
+
+	# This is needed since the testpoint create a pipe with the sessiond
+	# type suffixed.
+	for f in "$TESTPOINT_BASE_PATH"*; do
+		sessiond_pipe+=("$f")
+	done
+
+	lttng_add_trigger_ok "$root_trigger_name" \
+		--condition on-event --userspace tp:tptest \
+		--action notify
+
+	# Stop consumption of notifier tracer notifications.
+	echo -n 1 > $sessiond_pipe
+
+	su "$new_user" -c "$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT"
+	ok $? "Generating $NR_ITER tracer notifications as UID: $new_uid"
+
+	root_trigger_discarded_nb=$(trigger_get_discarded_notif_number "$root_trigger_name")
+
+	isnt $root_trigger_discarded_nb 0 \
+		"Root trigger discarded notifications number ($root_trigger_discarded_nb) is non-zero"
+
+	lttng_remove_trigger_ok "$root_trigger_name"
 
 	stop_lttng_sessiond_notap
 
@@ -332,10 +401,11 @@ if [ "$(id -u)" == "0" ]; then
 	test_kernel_notifier_discarded_count_max_bucket
 
 	if destructive_tests_enabled ; then
-		# This test adds a new user on the system. Since it's a quite
+		# Those tests add a new user on the system. Since it's a quite
 		# intrusive change to the system, we decide to only run it when
 		# the user knows what they are doing.
 		test_ust_notifier_discarded_count_multi_uid
+		test_ust_notifier_discarded_regardless_trigger_owner
 	else
 		skip 0 "You need to set the LTTNG_ENABLE_DESTRUCTIVE_TESTS environment variable to \"will-break-my-system\" to run this test" $DESTRUCTIVE_TESTS_NUM
 	fi

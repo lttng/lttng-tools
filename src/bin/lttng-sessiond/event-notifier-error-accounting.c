@@ -33,12 +33,13 @@ struct index_ht_entry {
 
 struct ust_error_accounting_entry {
 	uid_t uid;
+	struct urcu_ref ref;
 	struct lttng_ht_node_u64 node;
 	struct rcu_head rcu_head;
 	struct ustctl_daemon_counter *daemon_counter;
 	/*
-	 * Those `lttng_ust_abi_object_data` are anonymous handles to the counters
-	 * objects.
+	 * Those `lttng_ust_abi_object_data` are anonymous handles to the
+	 * counters objects.
 	 * They are only used to be duplicated for each new applications of the
 	 * user. To destroy them, call with the `sock` parameter set to -1.
 	 * e.g. `ustctl_release_object(-1, data)`;
@@ -49,10 +50,10 @@ struct ust_error_accounting_entry {
 };
 
 struct kernel_error_accounting_entry {
-	int kernel_event_notifier_error_counter_fd;
+	int error_counter_fd;
 };
 
-static struct kernel_error_accounting_entry kernel_error_accountant;
+static struct kernel_error_accounting_entry kernel_error_accounting_entry;
 
 /* Hashtable mapping uid to error_account_entry. */
 static struct lttng_ht *error_counter_uid_ht;
@@ -110,6 +111,106 @@ const char *error_accounting_status_str(
 		abort();
 	}
 }
+
+#ifdef HAVE_LIBLTTNG_UST_CTL
+struct event_notifier_counter {
+	pthread_mutex_t lock;
+	long count;
+};
+
+static struct event_notifier_counter the_event_notifier_counter;
+
+static void free_ust_error_accounting_entry(struct rcu_head *head)
+{
+	int i;
+	struct ust_error_accounting_entry *entry =
+			caa_container_of(head, typeof(*entry), rcu_head);
+
+	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
+		ustctl_release_object(-1, entry->cpu_counters[i]);
+		free(entry->cpu_counters[i]);
+	}
+
+	free(entry->cpu_counters);
+
+	ustctl_release_object(-1, entry->counter);
+	free(entry->counter);
+
+	ustctl_destroy_counter(entry->daemon_counter);
+
+	free(entry);
+}
+
+static
+bool ust_error_accounting_entry_get(struct ust_error_accounting_entry *entry)
+{
+	return urcu_ref_get_unless_zero(&entry->ref);
+}
+
+static
+void ust_error_accounting_entry_release(struct urcu_ref *entry_ref)
+{
+	struct ust_error_accounting_entry *entry =
+			container_of(entry_ref, typeof(*entry), ref);
+
+	rcu_read_lock();
+	cds_lfht_del(error_counter_uid_ht->ht, &entry->node.node);
+	call_rcu(&entry->rcu_head, free_ust_error_accounting_entry);
+	rcu_read_unlock();
+}
+
+
+static
+void ust_error_accounting_entry_put(struct ust_error_accounting_entry *entry)
+{
+	if (!entry) {
+		return;
+	}
+
+	urcu_ref_put(&entry->ref, ust_error_accounting_entry_release);
+}
+
+/*
+ * Put one reference to every UID entries.
+ */
+static
+void put_ref_all_ust_error_accounting_entry(void)
+{
+	struct lttng_ht_iter iter;
+	struct ust_error_accounting_entry *uid_entry;
+
+	ASSERT_LOCKED(the_event_notifier_counter.lock);
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(error_counter_uid_ht->ht, &iter.iter,
+        		uid_entry, node.node) {
+        	ust_error_accounting_entry_put(uid_entry);
+	}
+
+	rcu_read_unlock();
+}
+
+/*
+ * Get one reference to every UID entries.
+ */
+static
+void get_ref_all_ust_error_accounting_entry(void)
+{
+	struct lttng_ht_iter iter;
+	struct ust_error_accounting_entry *uid_entry;
+
+	ASSERT_LOCKED(the_event_notifier_counter.lock);
+
+	rcu_read_lock();
+	cds_lfht_for_each_entry(error_counter_uid_ht->ht, &iter.iter,
+        		uid_entry, node.node) {
+        	ust_error_accounting_entry_get(uid_entry);
+	}
+
+	rcu_read_unlock();
+}
+
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 
 static
 enum event_notifier_error_accounting_status
@@ -199,6 +300,10 @@ end:
 	return status;
 }
 
+/*
+ * Return the error counteur index associated to this event notifier tracer
+ * token. Returns _STATUS_OK if found and _STATUS_NOT_FOUND otherwise.
+ */
 static
 enum event_notifier_error_accounting_status get_error_counter_index_for_token(
 		struct error_accounting_state *state, uint64_t tracer_token,
@@ -226,33 +331,49 @@ enum event_notifier_error_accounting_status get_error_counter_index_for_token(
 }
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
+/*
+ * Find the entry for this app's UID, the caller acquires a reference if the
+ * entry is found.
+ */
 static
-struct ust_error_accounting_entry *get_uid_accounting_entry(const struct ust_app *app)
+struct ust_error_accounting_entry *ust_error_accounting_entry_find(
+		struct lttng_ht *uid_ht, const struct ust_app *app)
 {
 	struct ust_error_accounting_entry *entry;
 	struct lttng_ht_node_u64 *node;
 	struct lttng_ht_iter iter;
 	uint64_t key = app->uid;
 
-	lttng_ht_lookup(error_counter_uid_ht, &key, &iter);
+	lttng_ht_lookup(uid_ht, &key, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if(node == NULL) {
 		entry = NULL;
 	} else {
-		entry = caa_container_of(node, struct ust_error_accounting_entry, node);
+		bool got_ref;
+
+		entry = caa_container_of(node,
+				struct ust_error_accounting_entry, node);
+
+		got_ref = ust_error_accounting_entry_get(entry);
+		if (!got_ref) {
+			entry = NULL;
+		}
 	}
 
 	return entry;
 }
 
+/*
+ * Create the entry for this app's UID, the caller acquires a reference to the
+ * entry,
+ */
 static
-struct ust_error_accounting_entry *create_uid_accounting_entry(
-		const struct ust_app *app)
+struct ust_error_accounting_entry *ust_error_accounting_entry_create(
+		struct lttng_ht *uid_ht, const struct ust_app *app)
 {
-	int i, ret;
+	int i, ret, *cpu_counter_fds = NULL;
 	struct ustctl_daemon_counter *daemon_counter;
 	struct lttng_ust_abi_object_data *counter, **cpu_counters;
-	int *cpu_counter_fds = NULL;
 	struct ust_error_accounting_entry *entry = NULL;
 	const struct ustctl_counter_dimension dimension = {
 		.size = ust_state.number_indices,
@@ -266,6 +387,7 @@ struct ust_error_accounting_entry *create_uid_accounting_entry(
 		goto error;
 	}
 
+	urcu_ref_init(&entry->ref);
 	entry->uid = app->uid;
 	entry->nr_counter_cpu_fds = ustctl_get_nr_cpu_per_counter();
 
@@ -274,7 +396,6 @@ struct ust_error_accounting_entry *create_uid_accounting_entry(
 		PERROR("Failed to allocate event notifier error counter file descriptors array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
 				entry->nr_counter_cpu_fds * sizeof(*cpu_counter_fds));
-		ret = -1;
 		goto error_counter_cpu_fds_alloc;
 	}
 
@@ -288,7 +409,6 @@ struct ust_error_accounting_entry *create_uid_accounting_entry(
 		PERROR("Failed to allocate event notifier error counter lttng_ust_abi_object_data array: application uid = %d, application name = '%s', pid = %d, allocation size = %zu",
 				(int) app->uid, app->name, (int) app->pid,
 				entry->nr_counter_cpu_fds * sizeof(struct lttng_ust_abi_object_data *));
-		ret = -1;
 		goto error_counter_cpus_alloc;
 	}
 
@@ -336,7 +456,7 @@ struct ust_error_accounting_entry *create_uid_accounting_entry(
 	entry->counter = counter;
 	entry->cpu_counters = cpu_counters;
 
-	lttng_ht_node_init_u64(&entry->node, app->uid);
+	lttng_ht_node_init_u64(&entry->node, entry->uid);
 	lttng_ht_add_unique_u64(error_counter_uid_ht, &entry->node);
 
 	goto end;
@@ -375,7 +495,8 @@ error_shm_alloc:
 
 			ret = close(cpu_counter_fds[i]);
 			if (ret) {
-				PERROR("Failed to close error counter per-CPU shm file descriptor: fd = %d", cpu_counter_fds[i]);
+				PERROR("Failed to close error counter per-CPU shm file descriptor: fd = %d",
+						cpu_counter_fds[i]);
 			}
 		}
 	}
@@ -470,13 +591,33 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	 * app. If not, create one.
 	 */
 	rcu_read_lock();
-	entry = get_uid_accounting_entry(app);
+	entry = ust_error_accounting_entry_find(error_counter_uid_ht, app);
 	if (entry == NULL) {
-		entry = create_uid_accounting_entry(app);
+		/*
+		 * Take the event notifier counter lock before creating the new
+		 * entry to ensure that no event notifier is registered between
+		 * the the entry creation and event notifier count check.
+		 */
+		pthread_mutex_lock(&the_event_notifier_counter.lock);
+
+		entry = ust_error_accounting_entry_create(error_counter_uid_ht,
+				app);
 		if (!entry) {
 			status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-			goto end;
+			pthread_mutex_unlock(&the_event_notifier_counter.lock);
+			goto error_creating_entry;
 		}
+
+		/*
+		 * We just created a new UID entry, If there are event
+		 * notifiers already registered, take one reference on their
+		 * behalf.
+		 */
+		if (the_event_notifier_counter.count > 0) {
+			ust_error_accounting_entry_get(entry);
+		}
+
+		pthread_mutex_unlock(&the_event_notifier_counter.lock);
 	}
 
 	/* Duplicate counter object data. */
@@ -486,7 +627,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 		ERR("Failed to duplicate event notifier error accounting counter for application user: application uid = %d, pid = %d, application name = '%s'",
 				(int) app->uid, (int) app->pid, app->name);
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
-		goto end;
+		goto error_duplicate_counter;
 	}
 
 	status = send_counter_data_to_ust(app, new_counter);
@@ -571,6 +712,10 @@ error_allocate_cpu_counters:
 error_send_counter_data:
 	ustctl_release_object(-1, new_counter);
 	free(new_counter);
+error_duplicate_counter:
+	ust_error_accounting_entry_put(entry);
+error_creating_entry:
+	app->event_notifier_group.counter = NULL;
 end:
 	rcu_read_unlock();
 	return status;
@@ -584,12 +729,26 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 	int i;
 
 	rcu_read_lock();
-	entry = get_uid_accounting_entry(app);
+
+	/* If an error occurred during app registration no entry was created. */
+	if (!app->event_notifier_group.counter) {
+		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
+		goto end;
+	}
+
+	entry = ust_error_accounting_entry_find(error_counter_uid_ht, app);
 	if (entry == NULL) {
 		ERR("Failed to find event notitifier error accounting entry on application teardown: pid = %d, application name = '%s'",
 				app->pid, app->name);
 		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_ERR;
 		goto end;
+	} else {
+		/*
+		 * Put the entry twice as we acquired a reference from the
+		 * `ust_error_accounting_entry_find()` above.
+		 */
+		ust_error_accounting_entry_put(entry);
+		ust_error_accounting_entry_put(entry);
 	}
 
 	for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
@@ -628,15 +787,7 @@ event_notifier_error_accounting_ust_get_count(
 
 	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
 
-	/*
-	 * At the moment, the error counter index is domain wide. This means
-	 * that if UID 1000 registers a event notifier and is allocated index 0
-	 * in it's error counter, index zero will be unused in error counter of
-	 * all other users.
-	 */
-	status = get_error_counter_index_for_token(
-			&ust_state,
-			tracer_token,
+	status = get_error_counter_index_for_token(&ust_state, tracer_token,
 			&error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 
@@ -706,16 +857,8 @@ enum event_notifier_error_accounting_status event_notifier_error_accounting_ust_
 	size_t dimension_index;
 	const uint64_t tracer_token = lttng_trigger_get_tracer_token(trigger);
 
-	/*
-	 * Go over all error counters (ignoring uid) as a trigger (and trigger
-	 * errors) can be generated from any applications that this session
-	 * daemon is managing.
-	 */
-
 	rcu_read_lock();
-	status = get_error_counter_index_for_token(
-			&ust_state,
-			tracer_token,
+	status = get_error_counter_index_for_token(&ust_state, tracer_token,
 			&error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		uid_t trigger_owner_uid;
@@ -733,6 +876,11 @@ enum event_notifier_error_accounting_status event_notifier_error_accounting_ust_
 
 	dimension_index = error_counter_index;
 
+	/*
+	 * Go over all error counters (ignoring uid) as a trigger (and trigger
+	 * errors) can be generated from any applications that this session
+	 * daemon is managing.
+	 */
 	cds_lfht_for_each_entry(error_counter_uid_ht->ht, &iter.iter,
 			uid_entry, node.node) {
 		const int ret = ustctl_counter_clear(uid_entry->daemon_counter,
@@ -769,8 +917,7 @@ event_notifier_error_accounting_kernel_clear(
 	enum event_notifier_error_accounting_status status;
 	struct lttng_kernel_counter_clear counter_clear = {};
 
-	status = get_error_counter_index_for_token(
-			&kernel_state,
+	status = get_error_counter_index_for_token(&kernel_state,
 			lttng_trigger_get_tracer_token(trigger),
 			&error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
@@ -790,7 +937,7 @@ event_notifier_error_accounting_kernel_clear(
 	counter_clear.index.dimension_indexes[0] = error_counter_index;
 
 	ret = kernctl_counter_clear(
-			kernel_error_accountant.kernel_event_notifier_error_counter_fd,
+			kernel_error_accounting_entry.error_counter_fd,
 			&counter_clear);
 	if (ret) {
 		uid_t trigger_owner_uid;
@@ -851,7 +998,7 @@ event_notifier_error_accounting_register_kernel(
 	DBG("Created kernel event notifier group error counter: fd = %d",
 			error_counter_fd);
 
-	kernel_error_accountant.kernel_event_notifier_error_counter_fd =
+	kernel_error_accounting_entry.error_counter_fd =
 			error_counter_fd;
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 
@@ -967,6 +1114,28 @@ event_notifier_error_accounting_register_event_notifier(
 		break;
 	}
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
+	switch (lttng_trigger_get_underlying_domain_type_restriction(trigger)) {
+	case LTTNG_DOMAIN_UST:
+		pthread_mutex_lock(&the_event_notifier_counter.lock);
+		the_event_notifier_counter.count++;
+		if (the_event_notifier_counter.count == 1) {
+			/*
+			 * On the first event notifier, we get a reference to
+			 * every existing UID entries. This ensures that the
+			 * entries are kept around if there are still
+			 * registered event notifiers but no apps.
+			 */
+			get_ref_all_ust_error_accounting_entry();
+		}
+		pthread_mutex_unlock(&the_event_notifier_counter.lock);
+		break;
+	default:
+		break;
+	}
+#endif /* HAVE_LIBLTTNG_UST_CTL */
+
+
 end:
 	return status;
 }
@@ -981,8 +1150,7 @@ event_notifier_error_accounting_kernel_get_count(
 	uint64_t error_counter_index;
 	int ret;
 
-	status = get_error_counter_index_for_token(
-			&kernel_state,
+	status = get_error_counter_index_for_token(&kernel_state,
 			lttng_trigger_get_tracer_token(trigger),
 			&error_counter_index);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
@@ -994,10 +1162,10 @@ event_notifier_error_accounting_kernel_get_count(
 	counter_aggregate.index.number_dimensions = 1;
 	counter_aggregate.index.dimension_indexes[0] = error_counter_index;
 
-	assert(kernel_error_accountant.kernel_event_notifier_error_counter_fd);
+	assert(kernel_error_accounting_entry.error_counter_fd);
 
 	ret = kernctl_counter_get_aggregate_value(
-			kernel_error_accountant.kernel_event_notifier_error_counter_fd,
+			kernel_error_accounting_entry.error_counter_fd,
 			&counter_aggregate);
 	if (ret || counter_aggregate.value.value < 0) {
 		uid_t trigger_owner_uid;
@@ -1090,20 +1258,39 @@ void event_notifier_error_accounting_unregister_event_notifier(
 		/* Trigger details already logged by callee on error. */
 		ERR("Failed to clear event notifier error counter during unregistration of event notifier: status = '%s'",
 				error_accounting_status_str(status));
+		goto end;
 	}
+
+	rcu_read_lock();
 
 	switch (lttng_trigger_get_underlying_domain_type_restriction(trigger)) {
 	case LTTNG_DOMAIN_KERNEL:
 		state = &kernel_state;
 		break;
+#ifdef HAVE_LIBLTTNG_UST_CTL
 	case LTTNG_DOMAIN_UST:
 		state = &ust_state;
+
+		pthread_mutex_lock(&the_event_notifier_counter.lock);
+		the_event_notifier_counter.count--;
+		if (the_event_notifier_counter.count == 0) {
+
+			/*
+			 * When unregistering the last event notifier, put one
+			 * reference to every uid entries on the behalf of all
+			 * event notifiers.
+			 */
+			put_ref_all_ust_error_accounting_entry();
+		}
+
+		pthread_mutex_unlock(&the_event_notifier_counter.lock);
+
 		break;
+#endif /* HAVE_LIBLTTNG_UST_CTL */
 	default:
 		abort();
 	}
 
-	rcu_read_lock();
 	lttng_ht_lookup(state->indices_ht, &tracer_token, &iter);
 	node = lttng_ht_iter_get_node_u64(&iter);
 	if (node) {
@@ -1133,60 +1320,19 @@ void event_notifier_error_accounting_unregister_event_notifier(
 		call_rcu(&index_entry->rcu_head, free_index_ht_entry);
 	}
 
+end:
 	rcu_read_unlock();
 }
 
-#ifdef HAVE_LIBLTTNG_UST_CTL
-static void free_error_account_entry(struct rcu_head *head)
-{
-	int i;
-	struct ust_error_accounting_entry *entry =
-			caa_container_of(head, typeof(*entry), rcu_head);
-
-	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
-		ustctl_release_object(-1, entry->cpu_counters[i]);
-		free(entry->cpu_counters[i]);
-	}
-
-	free(entry->cpu_counters);
-
-	ustctl_release_object(-1, entry->counter);
-	free(entry->counter);
-
-	ustctl_destroy_counter(entry->daemon_counter);
-
-	free(entry);
-}
-#else
-/* Not called without UST support. */
-static void free_error_account_entry(struct rcu_head *head) {}
-#endif /* HAVE_LIBLTTNG_UST_CTL */
-
 void event_notifier_error_accounting_fini(void)
 {
-	struct lttng_ht_iter iter;
-	struct ust_error_accounting_entry *uid_entry;
-
-	if (kernel_error_accountant.kernel_event_notifier_error_counter_fd) {
-		const int ret = close(kernel_error_accountant.kernel_event_notifier_error_counter_fd);
+	if (kernel_error_accounting_entry.error_counter_fd) {
+		const int ret = close(kernel_error_accounting_entry.error_counter_fd);
 
 		if (ret) {
 			PERROR("Failed to close kernel event notifier error counter");
 		}
 	}
-
-	/*
-	 * FIXME error account entries are not reference-counted and torn
-	 * down on last use. They exist from the moment of their first use
-	 * up until the teardown of the session daemon.
-	 */
-	rcu_read_lock();
-	cds_lfht_for_each_entry(error_counter_uid_ht->ht, &iter.iter,
-			uid_entry, node.node) {
-		cds_lfht_del(error_counter_uid_ht->ht, &uid_entry->node.node);
-		call_rcu(&uid_entry->rcu_head, free_error_account_entry);
-	}
-	rcu_read_unlock();
 
 	lttng_ht_destroy(error_counter_uid_ht);
 

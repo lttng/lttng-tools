@@ -4069,7 +4069,8 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 	/* Assign handle only when the complete setup is valid. */
 	app->event_notifier_group.object = event_notifier_group;
 
-	event_notifier_error_accounting_status = event_notifier_error_accounting_register_app(app);
+	event_notifier_error_accounting_status =
+			event_notifier_error_accounting_register_app(app);
 	if (event_notifier_error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		if (event_notifier_error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
 			DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d",
