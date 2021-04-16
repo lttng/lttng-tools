@@ -18,6 +18,8 @@
 #include "lttng/condition/on-event-internal.h"
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
+/* For lttng_event_rule_syscall_emission_site_str() */
+#include "lttng/event-rule/syscall-internal.h"
 #include "../loglevel.h"
 #include <lttng/lttng.h>
 
@@ -387,14 +389,20 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 {
 	const char *pattern, *filter;
 	enum lttng_event_rule_status event_rule_status;
+	enum lttng_event_rule_syscall_emission_site_type emission_site_type;
 
 	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_SYSCALL);
+
+	emission_site_type =
+		lttng_event_rule_syscall_get_emission_site_type(event_rule);
 
 	event_rule_status = lttng_event_rule_syscall_get_pattern(
 			event_rule, &pattern);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
-	_MSG("    rule: %s (type: syscall", pattern);
+	_MSG("    rule: %s (type: syscall:%s", pattern,
+			lttng_event_rule_syscall_emission_site_str(
+					emission_site_type));
 
 	event_rule_status = lttng_event_rule_syscall_get_filter(
 			event_rule, &filter);

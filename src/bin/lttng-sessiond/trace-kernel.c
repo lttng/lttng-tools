@@ -676,15 +676,35 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		const enum lttng_event_rule_status status =
 				lttng_event_rule_syscall_get_pattern(
 						rule, &name);
+		const enum lttng_event_rule_syscall_emission_site_type
+			emission_site_type =
+			lttng_event_rule_syscall_get_emission_site_type(rule);
+		enum lttng_kernel_syscall_entryexit entryexit;
 
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+		assert(emission_site_type != LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_UNKNOWN);
+
+		switch(emission_site_type) {
+		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY:
+			entryexit = LTTNG_KERNEL_SYSCALL_ENTRY;
+			break;
+		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT:
+			entryexit = LTTNG_KERNEL_SYSCALL_EXIT;
+			break;
+		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
+			entryexit = LTTNG_KERNEL_SYSCALL_ENTRYEXIT;
+			break;
+		default:
+			abort();
+			break;
+		}
 
 		kernel_event_notifier->event.instrumentation =
 				LTTNG_KERNEL_SYSCALL;
 		kernel_event_notifier->event.u.syscall.abi =
 				LTTNG_KERNEL_SYSCALL_ABI_ALL;
 		kernel_event_notifier->event.u.syscall.entryexit =
-				LTTNG_KERNEL_SYSCALL_ENTRY;
+				entryexit;
 		kernel_event_notifier->event.u.syscall.match =
 				LTTNG_KERNEL_SYSCALL_MATCH_NAME;
 		ret_code = LTTNG_OK;

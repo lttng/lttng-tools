@@ -7,6 +7,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../command.h"
 #include "../loglevel.h"
@@ -126,13 +127,25 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 
 	if (strcmp(arg, "tracepoint") == 0 || strcmp(arg, "logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_TRACEPOINT;
-	} else if (strcmp (arg, "kprobe") == 0 || strcmp(arg, "kernel-probe") == 0) {
+	} else if (strcmp(arg, "kprobe") == 0 ||
+			strcmp(arg, "kernel-probe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE;
-	} else if (strcmp (arg, "uprobe") == 0 || strcmp(arg, "userspace-probe") == 0) {
+	} else if (strcmp(arg, "uprobe") == 0 ||
+			strcmp(arg, "userspace-probe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE;
-	} else if (strcmp (arg, "function") == 0) {
+	} else if (strcmp(arg, "function") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION;
-	} else if (strcmp (arg, "syscall") == 0) {
+	} else if (strncmp(arg, "syscall", strlen("syscall")) == 0) {
+		/*
+		 * Matches the following:
+		 *   - syscall
+		 *   - syscall:entry
+		 *   - syscall:exit
+		 *   - syscall:entry+exit
+		 *   - syscall:*
+		 *
+		 * Validation for the right side is left to further usage sites.
+		 */
 		*dest = LTTNG_EVENT_RULE_TYPE_SYSCALL;
 	} else {
 		ERR("Invalid `--type` value: %s", arg);
@@ -172,6 +185,27 @@ error:
 	ret = false;
 
 end:
+	return ret;
+}
+
+static bool parse_syscall_emission_site_from_type(const char *str,
+		enum lttng_event_rule_syscall_emission_site_type *type)
+{
+	bool ret = false;
+	if (strcmp(str, "syscall") == 0 ||
+			strcmp(str, "syscall:entry+exit") == 0) {
+		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT;
+	} else if (strcmp(str, "syscall:entry") == 0) {
+		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY;
+	} else if (strcmp(str, "syscall:exit") == 0) {
+		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT;
+	} else {
+		goto error;
+	}
+
+	ret = true;
+
+error:
 	return ret;
 }
 
@@ -622,6 +656,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	struct filter_parser_ctx *parser_ctx = NULL;
 	struct lttng_log_level_rule *log_level_rule = NULL;
 
+	/* Event rule type option */
+	char *event_rule_type_str = NULL;
+
 	/* Tracepoint and syscall options. */
 	char *name = NULL;
 	char *exclude_names = NULL;
@@ -678,6 +715,13 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			case OPT_TYPE:
 				if (!assign_event_rule_type(&event_rule_type,
 						item_opt->arg)) {
+					goto error;
+				}
+
+				/* Save the string for later use. */
+				if (!assign_string(&event_rule_type_str,
+						    item_opt->arg,
+						    "--type/-t")) {
 					goto error;
 				}
 
@@ -1077,8 +1121,15 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 	{
 		enum lttng_event_rule_status event_rule_status;
+		enum lttng_event_rule_syscall_emission_site_type emission_site_type;
 
-		res.er = lttng_event_rule_syscall_create();
+		if (!parse_syscall_emission_site_from_type(
+				    event_rule_type_str, &emission_site_type)) {
+			ERR("Failed to parse syscall type '%s'.", event_rule_type_str);
+			goto error;
+		}
+
+		res.er = lttng_event_rule_syscall_create(emission_site_type);
 		if (!res.er) {
 			ERR("Failed to create syscall event rule.");
 			goto error;
@@ -1131,6 +1182,7 @@ end:
 	free(log_level_str);
 	free(location);
 	free(event_name);
+	free(event_rule_type_str);
 
 	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);

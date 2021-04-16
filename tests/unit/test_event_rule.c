@@ -184,7 +184,7 @@ static void test_event_rule_syscall(void)
 
 	lttng_payload_init(&payload);
 
-	syscall = lttng_event_rule_syscall_create();
+	syscall = lttng_event_rule_syscall_create(LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(syscall, "syscall object.");
 
 	status = lttng_event_rule_syscall_set_pattern(syscall, pattern);

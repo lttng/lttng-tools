@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 264
+plan_tests 276
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -182,7 +182,7 @@ skip $ist_root "non-root user: skipping uprobe tests" 12 || {
 	done
 }
 
-skip $ist_root "non-root user: skipping syscall tests" 9 || {
+skip $ist_root "non-root user: skipping syscall tests" 18 || {
 	test_success "--condition event-rule-matches one syscall" \
 		--condition event-rule-matches --domain=kernel --type=syscall --name=open \
 		--action notify
@@ -193,6 +193,15 @@ skip $ist_root "non-root user: skipping syscall tests" 9 || {
 
 	test_success "--condition event-rule-matches one syscall with filter" \
 		--condition event-rule-matches --domain=kernel --type=syscall --filter 'a > 2' --name=open \
+		--action notify
+	test_success "--condition event-rule-matches one syscall:entry" \
+		--condition event-rule-matches --domain=kernel --type=syscall:entry --name=open \
+		--action notify
+	test_success "--condition event-rule-matches one syscall:exit" \
+		--condition event-rule-matches --domain=kernel --type=syscall:exit --name=open \
+		--action notify
+	test_success "--condition event-rule-matches one syscall:entry-exit" \
+		--condition event-rule-matches --domain=kernel --type=syscall:entry+exit --name=open \
 		--action notify
 }
 
@@ -356,6 +365,11 @@ done
 test_failure "--condition event-rule-matches: extra argument with --type=syscall" \
 	"Error: Unexpected argument 'open'" \
 	--condition event-rule-matches --domain=kernel --type=syscall open
+
+test_failure "--condition event-rule-matches: --type=syscall:nope" \
+	"Error: Failed to parse syscall type 'syscall:nope'." \
+	--condition event-rule-matches --domain=kernel --type=syscall:nope \
+	--name=open
 
 test_failure "--condition event-rule-matches --capture: missing argument (end of arg list)" \
 	'Error: While parsing argument #2 (`--capture`): Missing required argument for option `--capture`' \
