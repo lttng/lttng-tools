@@ -98,8 +98,8 @@ int main(int argc, char **argv)
 	int ret;
 	int option;
 	int option_index;
-	const char *expected_trigger_name = NULL;
-	const char *end_trigger_name = NULL;
+	char *expected_trigger_name = NULL;
+	char *end_trigger_name = NULL;
 	struct lttng_triggers *triggers = NULL;
 	unsigned int count, i, subcription_count = 0;
 	enum lttng_trigger_status trigger_status;
@@ -295,5 +295,8 @@ evaluate_success:
 end:
 	lttng_triggers_destroy(triggers);
 	lttng_notification_channel_destroy(notification_channel);
+	free(after_notif_register_file_path);
+	free(end_trigger_name);
+	free(expected_trigger_name);
 	return !!ret;
 }
