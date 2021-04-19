@@ -4763,6 +4763,7 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 		break;
 	}
 	default:
+		abort();
 		break;
 	}
 
