@@ -1042,6 +1042,7 @@ event_notifier_error_accounting_get_count(
 		return event_notifier_error_accounting_ust_get_count(trigger,
 				count);
 #else
+		*count = 0;
 		return EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
 #endif /* HAVE_LIBLTTNG_UST_CTL */
 	default:

@@ -29,6 +29,12 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 			&trigger_owner);
 	assert(status == LTTNG_TRIGGER_STATUS_OK);
 
+	/* Only add discarded tracer messages count for applicable triggers. */
+	if (!lttng_trigger_needs_tracer_notifier(trigger)) {
+		status = LTTNG_TRIGGER_STATUS_OK;
+		goto end;
+	}
+
 	error_accounting_status = event_notifier_error_accounting_get_count(
 			trigger, &discarded_tracer_messages_count);
 	if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
