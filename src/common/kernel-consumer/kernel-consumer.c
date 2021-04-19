@@ -494,7 +494,7 @@ int lttng_kconsumer_recv_cmd(struct lttng_consumer_local_data *ctx,
 	case LTTNG_CONSUMER_ADD_CHANNEL:
 	{
 		struct lttng_consumer_channel *new_channel;
-		int ret_send_status, ret_add_channel;
+		int ret_send_status, ret_add_channel = 0;
 		const uint64_t chunk_id = msg.u.channel.chunk_id.value;
 
 		health_code_update();
