@@ -1978,7 +1978,7 @@ function rotate_session_fail ()
 
 function destructive_tests_enabled ()
 {
-	if [ ${LTTNG_ENABLE_DESTRUCTIVE_TESTS} = "will-break-my-system" ]; then
+	if [ "$LTTNG_ENABLE_DESTRUCTIVE_TESTS" = "will-break-my-system" ]; then
 		return 0
 	else
 		return 1
