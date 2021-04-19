@@ -110,6 +110,7 @@ compile_commands.json
 /tests/regression/tools/notification/rotation
 /tests/regression/tools/notification/default_pipe_size_getter
 /tests/regression/tools/trigger/utils/notification-client
+/tests/regression/tools/trigger/name/trigger_name
 /tests/regression/ust/overlap/demo/demo
 /tests/regression/ust/linking/demo_builtin
 /tests/regression/ust/linking/demo_static

@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# Copyright (C) 2021 Jérémie Galarneau <jeremie.galarneau@efficios.com>
+#
+# SPDX-License-Identifier: LGPL-2.1-only
+
+TEST_DESC="Triggers - Backwards compatibility nameless triggers"
+
+CURDIR=$(dirname "$0")/
+TESTDIR=${CURDIR}/../../../..
+
+# shellcheck source=../../../../utils/utils.sh
+source "$TESTDIR/utils/utils.sh"
+
+TRIGGER_NAME_BIN="$CURDIR/trigger_name"
+
+ # MUST set TESTDIR before calling those functions
+
+start_lttng_sessiond_notap
+
+$TRIGGER_NAME_BIN
+
+stop_lttng_sessiond_notap
