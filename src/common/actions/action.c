@@ -8,7 +8,7 @@
 #include <assert.h>
 #include <common/error.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/group-internal.h>
+#include <lttng/action/list-internal.h>
 #include <lttng/action/notify-internal.h>
 #include <lttng/action/rate-policy-internal.h>
 #include <lttng/action/rotate-session-internal.h>

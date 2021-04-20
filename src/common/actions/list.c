@@ -12,8 +12,8 @@
 #include <common/error.h>
 #include <common/macros.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/group-internal.h>
-#include <lttng/action/group.h>
+#include <lttng/action/list-internal.h>
+#include <lttng/action/list.h>
 
 #define IS_GROUP_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_GROUP)

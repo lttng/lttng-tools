@@ -12,7 +12,7 @@
 #include <common/macros.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/action/action-internal.h>
-#include <lttng/action/group-internal.h>
+#include <lttng/action/list-internal.h>
 #include <lttng/error-query-internal.h>
 #include <lttng/error-query.h>
 #include <lttng/trigger/trigger-internal.h>

@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include <lttng/action/action.h>
-#include <lttng/action/group.h>
+#include <lttng/action/list.h>
 #include <lttng/action/notify.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition.h>
