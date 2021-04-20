@@ -851,11 +851,16 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 {
 	int ret;
 	struct lttng_payload copy_buffer;
+	struct lttng_condition *condition_copy = NULL;
+	struct lttng_action *action_copy = NULL;
 	struct lttng_trigger *copy = NULL;
+	enum lttng_trigger_status trigger_status;
+	const char *trigger_name;
+	uid_t trigger_owner_uid;
 
 	lttng_payload_init(&copy_buffer);
 
-	ret = lttng_trigger_serialize(trigger, &copy_buffer);
+	ret = lttng_condition_serialize(trigger->condition, &copy_buffer);
 	if (ret < 0) {
 		goto end;
 	}
@@ -864,15 +869,78 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 		struct lttng_payload_view view =
 				lttng_payload_view_from_payload(
 						&copy_buffer, 0, -1);
-		ret = lttng_trigger_create_from_payload(
-				&view, &copy);
+
+		ret = lttng_condition_create_from_payload(
+				&view, &condition_copy);
 		if (ret < 0) {
-			copy = NULL;
 			goto end;
 		}
 	}
 
+	lttng_payload_clear(&copy_buffer);
+
+	ret = lttng_action_serialize(trigger->action, &copy_buffer);
+	if (ret < 0) {
+		goto end;
+	}
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&copy_buffer, 0, -1);
+
+		ret = lttng_action_create_from_payload(
+				&view, &action_copy);
+		if (ret < 0) {
+			goto end;
+		}
+	}
+
+	copy = lttng_trigger_create(condition_copy, action_copy);
+	if (!copy) {
+		ERR("Failed to allocate trigger during trigger copy");
+		goto end;
+	}
+
+	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	switch (trigger_status) {
+	case LTTNG_TRIGGER_STATUS_OK:
+		trigger_status = lttng_trigger_set_name(copy, trigger_name);
+		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+			ERR("Failed to set name of new trigger during copy");
+			goto error_cleanup_trigger;
+		}
+		break;
+	case LTTNG_TRIGGER_STATUS_UNSET:
+		break;
+	default:
+		ERR("Failed to get name of original trigger during copy");
+		goto error_cleanup_trigger;
+	}
+
+	trigger_status = lttng_trigger_get_owner_uid(
+			trigger, &trigger_owner_uid);
+	switch (trigger_status) {
+	case LTTNG_TRIGGER_STATUS_OK:
+		LTTNG_OPTIONAL_SET(&copy->creds.uid, trigger_owner_uid);
+		break;
+	case LTTNG_TRIGGER_STATUS_UNSET:
+		break;
+	default:
+		ERR("Failed to get owner uid of original trigger during copy");
+		goto error_cleanup_trigger;
+	}
+
+	copy->tracer_token = trigger->tracer_token;
+	copy->registered = trigger->registered;
+	goto end;
+
+error_cleanup_trigger:
+	lttng_trigger_destroy(copy);
+	copy = NULL;
 end:
+	lttng_condition_put(condition_copy);
+	lttng_action_put(action_copy);
 	lttng_payload_reset(&copy_buffer);
 	return copy;
 }

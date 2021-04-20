@@ -190,6 +190,12 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 		struct lttng_trigger *trigger,
 		const struct lttng_credentials *creds);
 
+/*
+ * Note that the trigger object is not locked by "copy" as it is const and
+ * used with a number of 'const' triggers. If the trigger could be shared at
+ * the moment of the copy, it is the caller's responsability to lock it for
+ * the duration of the copy.
+ */
 LTTNG_HIDDEN
 struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger);
 
