@@ -82,11 +82,11 @@ function test_kernel_notifier_discarded_count
 
 	# Confirm that the discarded notification line is present. To avoid
 	# false positives.
-	cat "$list_triggers_stdout" | grep --quiet "dicarded tracer messages"
+	cat "$list_triggers_stdout" | grep --quiet "discarded tracer messages"
 	ok $? "Tracer notification discarded line printed"
 
 	# Confirm that the number of dicarded tracer messages is not zero.
-	cat "$list_triggers_stdout" | grep --quiet "dicarded tracer messages: 0"
+	cat "$list_triggers_stdout" | grep --quiet "discarded tracer messages: 0"
 	isnt $? 0 "Discarded tracer notification number non-zero as expected"
 
 	lttng_remove_trigger_ok "$trigger_name"
