@@ -371,22 +371,24 @@ bool lttng_trigger_is_equal(
 	return true;
 }
 
+LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_set_name(struct lttng_trigger *trigger,
 		const char* name)
 {
 	char *name_copy = NULL;
 	enum lttng_trigger_status status = LTTNG_TRIGGER_STATUS_OK;
 
-	if (!trigger || !name ||
-			strlen(name) == 0) {
+	if (!trigger) {
 		status = LTTNG_TRIGGER_STATUS_INVALID;
 		goto end;
 	}
 
-	name_copy = strdup(name);
-	if (!name_copy) {
-		status = LTTNG_TRIGGER_STATUS_ERROR;
-		goto end;
+	if (name) {
+		name_copy = strdup(name);
+		if (!name_copy) {
+			status = LTTNG_TRIGGER_STATUS_ERROR;
+			goto end;
+		}
 	}
 
 	free(trigger->name);

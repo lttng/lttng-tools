@@ -14,17 +14,8 @@
 #include <assert.h>
 #include <tap/tap.h>
 #include <stdint.h>
-#include <lttng/rotation.h>
-#include <lttng/notification/channel.h>
-#include <lttng/notification/notification.h>
-#include <lttng/condition/evaluation.h>
-#include <lttng/condition/condition.h>
-#include <lttng/endpoint.h>
-#include <lttng/action/notify.h>
-#include <lttng/action/action.h>
-#include <lttng/trigger/trigger.h>
-#include <lttng/condition/session-rotation.h>
 #include <string.h>
+#include <lttng/lttng.h>
 
 #define TEST_COUNT 36
 
@@ -79,6 +70,7 @@ int setup_rotation_trigger(const struct session *session,
 	struct lttng_trigger *rotation_completed_trigger = NULL;
 	enum lttng_condition_status condition_status;
 	enum lttng_notification_channel_status notification_channel_status;
+	enum lttng_error_code ret_code;
 
 	notify = lttng_action_notify_create();
 	if (!notify) {
@@ -162,17 +154,23 @@ int setup_rotation_trigger(const struct session *session,
 	}
 
 	/* Register rotation ongoing and completed triggers. */
-	ret = lttng_register_trigger(rotation_ongoing_trigger);
-	ok(ret == 0, "Registered session rotation ongoing trigger");
-	if (ret) {
+	ret_code = lttng_register_trigger_with_automatic_name(
+			rotation_ongoing_trigger);
+	ok(ret_code == LTTNG_OK, "Registered session rotation ongoing trigger");
+	if (ret_code != LTTNG_OK) {
+		ret = -ret_code;
 		goto end;
 	}
 
-	ret = lttng_register_trigger(rotation_completed_trigger);
-	ok(ret == 0, "Registered session rotation completed trigger");
-	if (ret) {
+	ret_code = lttng_register_trigger_with_automatic_name(
+			rotation_completed_trigger);
+	ok(ret_code == LTTNG_OK,
+			"Registered session rotation completed trigger");
+	if (ret_code != LTTNG_OK) {
+		ret = -ret_code;
 		goto end;
 	}
+
 end:
 	lttng_trigger_destroy(rotation_ongoing_trigger);
 	lttng_trigger_destroy(rotation_completed_trigger);

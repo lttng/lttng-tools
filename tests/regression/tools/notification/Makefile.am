@@ -55,6 +55,8 @@ base_client_SOURCES = base_client.c
 base_client_LDADD = $(LIB_LTTNG_CTL)
 
 notification_SOURCES = notification.c
+# Tests the deprecated lttng_register_trigger() interface
+notification_CFLAGS = -Wno-deprecated-declarations $(AM_CFLAGS)
 notification_LDADD = $(LIB_LTTNG_CTL) $(LIBTAP) -lm
 
 rotation_SOURCES = rotation.c

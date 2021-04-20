@@ -3082,11 +3082,14 @@ end:
 	return ret;
 }
 
-int lttng_register_trigger(struct lttng_trigger *trigger)
+static
+int _lttng_register_trigger(struct lttng_trigger *trigger, const char *name,
+		bool generate_name)
 {
 	int ret;
 	struct lttcomm_session_msg lsm = {
 		.cmd_type = LTTNG_REGISTER_TRIGGER,
+		.u.trigger.is_trigger_anonymous = !name && !generate_name,
 	};
 	struct lttcomm_session_msg *message_lsm;
 	struct lttng_payload message;
@@ -3097,6 +3100,8 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		.uid = LTTNG_OPTIONAL_INIT_VALUE(geteuid()),
 		.gid = LTTNG_OPTIONAL_INIT_UNSET,
 	};
+	const char *unused_trigger_name = NULL;
+	enum lttng_trigger_status trigger_status;
 
 	lttng_payload_init(&message);
 	lttng_payload_init(&reply);
@@ -3104,6 +3109,21 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	if (!trigger) {
 		ret = -LTTNG_ERR_INVALID;
 		goto end;
+	}
+
+	trigger_status = lttng_trigger_get_name(trigger, &unused_trigger_name);
+	if (trigger_status != LTTNG_TRIGGER_STATUS_UNSET) {
+		/* Re-using already registered trigger. */
+		ret = -LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (name) {
+		trigger_status = lttng_trigger_set_name(trigger, name);
+		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 	}
 
 	if (!trigger->creds.uid.is_set) {
@@ -3126,14 +3146,14 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		if (!lttng_credentials_is_equal_uid(trigger_creds, &user_creds)) {
 			if (lttng_credentials_get_uid(&user_creds) != 0) {
 				ret = -LTTNG_ERR_EPERM;
-				goto end;
+				goto end_unset_name;
 			}
 		}
 	}
 
 	if (!lttng_trigger_validate(trigger)) {
 		ret = -LTTNG_ERR_INVALID_TRIGGER;
-		goto end;
+		goto end_unset_name;
 	}
 
 	domain_type = lttng_trigger_get_underlying_domain_type_restriction(
@@ -3144,13 +3164,13 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 	ret = lttng_dynamic_buffer_append(&message.buffer, &lsm, sizeof(lsm));
 	if (ret) {
 		ret = -LTTNG_ERR_NOMEM;
-		goto end;
+		goto end_unset_name;
 	}
 
 	ret = lttng_trigger_serialize(trigger, &message);
 	if (ret < 0) {
 		ret = -LTTNG_ERR_UNK;
-		goto end;
+		goto end_unset_name;
 	}
 
 	/*
@@ -3170,7 +3190,7 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 				&message_view);
 		ret = lttng_ctl_ask_sessiond_payload(&message_view, &reply);
 		if (ret < 0) {
-			goto end;
+			goto end_unset_name;
 		}
 	}
 
@@ -3182,23 +3202,54 @@ int lttng_register_trigger(struct lttng_trigger *trigger)
 		ret = lttng_trigger_create_from_payload(
 				&reply_view, &reply_trigger);
 		if (ret < 0) {
-			ret = -LTTNG_ERR_FATAL;
+			ret = -LTTNG_ERR_INVALID_PROTOCOL;
+			goto end_unset_name;
+		}
+	}
+
+	if (name || generate_name) {
+		ret = lttng_trigger_assign_name(trigger, reply_trigger);
+		if (ret < 0) {
+			ret = -LTTNG_ERR_NOMEM;
 			goto end;
 		}
 	}
 
-	ret = lttng_trigger_assign_name(trigger, reply_trigger);
-	if (ret < 0) {
-		ret = -LTTNG_ERR_FATAL;
-		goto end;
-	}
-
 	ret = 0;
+	goto end;
+
+end_unset_name:
+	trigger_status = lttng_trigger_set_name(trigger, NULL);
+	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+		ret = -LTTNG_ERR_UNK;
+	}
 end:
 	lttng_payload_reset(&message);
 	lttng_payload_reset(&reply);
 	lttng_trigger_destroy(reply_trigger);
 	return ret;
+}
+
+int lttng_register_trigger(struct lttng_trigger *trigger)
+{
+	/* Register an anonymous trigger. */
+	return _lttng_register_trigger(trigger, NULL, false);
+}
+
+enum lttng_error_code lttng_register_trigger_with_name(
+		struct lttng_trigger *trigger, const char *name)
+{
+	const int ret = _lttng_register_trigger(trigger, name, false);
+
+	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) -ret;
+}
+
+enum lttng_error_code lttng_register_trigger_with_automatic_name(
+		struct lttng_trigger *trigger)
+{
+	const int ret =  _lttng_register_trigger(trigger, false, true);
+
+	return ret == 0 ? LTTNG_OK : (enum lttng_error_code) -ret;
 }
 
 enum lttng_error_code lttng_error_query_execute(

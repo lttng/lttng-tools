@@ -242,4 +242,19 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 		struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results);
 
+/*
+ * Set the trigger name.
+ *
+ * A name is optional.
+ * A name will be assigned on trigger registration if no name is set.
+ *
+ * The name is copied.
+ *
+ * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
+ * if invalid parameters are passed.
+ */
+LTTNG_HIDDEN
+enum lttng_trigger_status lttng_trigger_set_name(
+		struct lttng_trigger *trigger, const char *name);
+
 #endif /* LTTNG_TRIGGER_INTERNAL_H */

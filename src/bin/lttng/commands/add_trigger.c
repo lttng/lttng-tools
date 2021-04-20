@@ -2019,6 +2019,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	char *name = NULL;
 	int i;
 	char *owner_uid = NULL;
+	enum lttng_error_code ret_code;
 
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
 
@@ -2176,16 +2177,6 @@ int cmd_add_trigger(int argc, const char **argv)
 		goto error;
 	}
 
-	if (name) {
-		enum lttng_trigger_status trigger_status =
-				lttng_trigger_set_name(trigger, name);
-
-		if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
-			ERR("Failed to set trigger name.");
-			goto error;
-		}
-	}
-
 	if (owner_uid) {
 		enum lttng_trigger_status trigger_status;
 		char *end;
@@ -2204,13 +2195,20 @@ int cmd_add_trigger(int argc, const char **argv)
 		}
 	}
 
-	ret = lttng_register_trigger(trigger);
-	if (ret) {
-		ERR("Failed to register trigger: %s.", lttng_strerror(ret));
+	if (name) {
+		ret_code = lttng_register_trigger_with_name(trigger, name);
+	} else {
+		ret_code = lttng_register_trigger_with_automatic_name(trigger);
+	}
+
+	if (ret_code != LTTNG_OK) {
+		ERR("Failed to register trigger: %s.",
+				lttng_strerror(-ret_code));
 		goto error;
 	}
 
 	MSG("Trigger registered successfully.");
+	ret = 0;
 
 	goto end;
 

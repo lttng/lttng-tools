@@ -20,14 +20,11 @@ static void register_trigger(const char *trigger_name,
 		struct lttng_action *action)
 {
 	struct lttng_trigger *trigger;
-	enum lttng_trigger_status trigger_status;
-	int ret;
+	enum lttng_error_code ret;
 
 	trigger = lttng_trigger_create(condition, action);
-	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
-	ret = lttng_register_trigger(trigger);
-	assert(ret == 0);
+	ret = lttng_register_trigger_with_name(trigger, trigger_name);
+	assert(ret == LTTNG_OK);
 }
 
 /*

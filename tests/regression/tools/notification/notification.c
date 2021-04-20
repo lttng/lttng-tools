@@ -1449,13 +1449,12 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		struct lttng_trigger **trigger)
 {
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_trigger_status trigger_status;
-
 	struct lttng_action *tmp_action = NULL;
 	struct lttng_event_rule *event_rule = NULL;
 	struct lttng_condition *tmp_condition = NULL;
 	struct lttng_trigger *tmp_trigger = NULL;
 	int ret;
+	enum lttng_error_code ret_code;
 
 	assert(event_pattern);
 	assert(trigger_name);
@@ -1518,12 +1517,8 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 	tmp_trigger = lttng_trigger_create(tmp_condition, tmp_action);
 	ok(tmp_trigger, "Trigger object creation %s", trigger_name);
 
-	trigger_status = lttng_trigger_set_name(tmp_trigger, trigger_name);
-	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
-			"Setting name to trigger %s", trigger_name);
-
-	ret = lttng_register_trigger(tmp_trigger);
-	ok(ret == 0, "Trigger registration %s", trigger_name);
+	ret_code = lttng_register_trigger_with_name(tmp_trigger, trigger_name);
+	ok(ret_code == LTTNG_OK, "Trigger registration %s", trigger_name);
 
 	lttng_event_rule_destroy(event_rule);
 
@@ -1832,10 +1827,10 @@ static void test_kprobe_event_rule_notification(
 		enum lttng_domain_type domain_type)
 {
 	int i, ret;
+	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_trigger_status trigger_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_condition *condition = NULL;
 	struct lttng_kernel_probe_location *location = NULL;
@@ -1879,12 +1874,8 @@ static void test_kprobe_event_rule_notification(
 		goto end;
 	}
 
-	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
-	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
-			"Setting trigger name to '%s'", trigger_name);
-
-	ret = lttng_register_trigger(trigger);
-	if (ret) {
+	ret_code = lttng_register_trigger_with_name(trigger, trigger_name);
+	if (ret_code != LTTNG_OK) {
 		fail("Failed to register trigger with kernel probe event rule condition and notify action");
 		goto end;
 	}
@@ -1933,10 +1924,10 @@ static void test_uprobe_event_rule_notification(
 		const char *test_symbol_name)
 {
 	int i, ret;
+	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_trigger_status trigger_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_userspace_probe_location *probe_location = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method =
@@ -1988,12 +1979,8 @@ static void test_uprobe_event_rule_notification(
 		goto end;
 	}
 
-	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
-	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
-			"Setting name to trigger '%s'", trigger_name);
-
-	ret = lttng_register_trigger(trigger);
-	if (ret) {
+	ret_code = lttng_register_trigger_with_name(trigger, trigger_name);
+	if (ret_code != LTTNG_OK) {
 		fail("Failed to register trigger with userspace probe event rule condition and notify action");
 		goto end;
 	}
@@ -2040,10 +2027,10 @@ static void test_syscall_event_rule_notification(
 		enum lttng_domain_type domain_type)
 {
 	int i, ret;
+	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_trigger_status trigger_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_condition *condition = NULL;
 	struct lttng_event_rule *event_rule = NULL;
@@ -2080,12 +2067,8 @@ static void test_syscall_event_rule_notification(
 		goto end;
 	}
 
-	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
-	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
-			"Setting name to trigger '%s'", trigger_name);
-
-	ret = lttng_register_trigger(trigger);
-	if (ret) {
+	ret_code = lttng_register_trigger_with_name(trigger, trigger_name);
+	if (ret_code != LTTNG_OK) {
 		fail("Failed to register trigger with syscall event rule condition and notify action");
 		goto end;
 	}
@@ -2129,10 +2112,10 @@ static void test_syscall_event_rule_notification_filter(
 		enum lttng_domain_type domain_type)
 {
 	int i, ret;
+	enum lttng_error_code ret_code;
 	const int notification_count = 3;
 	enum lttng_notification_channel_status nc_status;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_trigger_status trigger_status;
 	struct lttng_notification_channel *notification_channel = NULL;
 	struct lttng_condition *condition = NULL;
 	struct lttng_event_rule *event_rule = NULL;
@@ -2175,12 +2158,8 @@ static void test_syscall_event_rule_notification_filter(
 		goto end;
 	}
 
-	trigger_status = lttng_trigger_set_name(trigger, trigger_name);
-	ok(trigger_status == LTTNG_TRIGGER_STATUS_OK,
-			"Setting name to trigger '%s'", trigger_name);
-
-	ret = lttng_register_trigger(trigger);
-	if (ret) {
+	ret_code = lttng_register_trigger_with_name(trigger, trigger_name);
+	if (ret_code != LTTNG_OK) {
 		fail("Failed to register trigger with syscall filtering event rule condition and notify action");
 		goto end;
 	}
@@ -2509,7 +2488,7 @@ int main(int argc, const char *argv[])
 	switch (test_scenario) {
 	case 1:
 	{
-		plan_tests(44);
+		plan_tests(41);
 
 		/* Test cases that need gen-ust-event testapp. */
 		diag("Test basic notification error paths for %s domain",
@@ -2575,7 +2554,7 @@ int main(int argc, const char *argv[])
 		 * Test cases that need a test app with more than one event
 		 * type.
 		 */
-		plan_tests(25);
+		plan_tests(23);
 
 		/*
 		 * At the moment, the only test case of this scenario is
@@ -2647,7 +2626,7 @@ int main(int argc, const char *argv[])
 	{
 		switch(domain_type) {
 		case LTTNG_DOMAIN_UST:
-			plan_tests(222);
+			plan_tests(221);
 			break;
 		case LTTNG_DOMAIN_KERNEL:
 			plan_tests(216);

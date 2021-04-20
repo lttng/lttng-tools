@@ -129,6 +129,7 @@ int main(int argc, char **argv)
 	struct lttng_condition *condition = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
+	enum lttng_error_code ret_code;
 
 	/*
 	 * Disable buffering on stdout.
@@ -257,14 +258,14 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	ret = lttng_register_trigger(trigger);
+	ret_code = lttng_register_trigger_with_automatic_name(trigger);
 
 	/*
 	 * An equivalent trigger might already be registered if an other app
 	 * registered an equivalent trigger.
 	 */
-	if (ret < 0 && ret != -LTTNG_ERR_TRIGGER_EXISTS) {
-		printf("error: %s\n", lttng_strerror(ret));
+	if (ret_code != LTTNG_OK && ret_code != LTTNG_ERR_TRIGGER_EXISTS) {
+		printf("error: %s\n", lttng_strerror(-ret_code));
 		ret = 1;
 		goto end;
 	}

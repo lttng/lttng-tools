@@ -9,6 +9,7 @@
 #define LTTNG_TRIGGER_H
 
 #include <sys/types.h>
+#include <lttng/constant.h>
 #include <inttypes.h>
 
 struct lttng_action;
@@ -120,24 +121,10 @@ const struct lttng_action *lttng_trigger_get_const_action(
  *
  * Returns LTTNG_TRIGGER_STATUS_OK and a pointer to the trigger's name on
  * success, LTTNG_TRIGGER_STATUS_INVALID if an invalid parameter is passed,
- * or LTTNG_TRIGGER_STATUS_UNSET if a name was not set prior to this call.
+ * or LTTNG_TRIGGER_STATUS_UNSET if the trigger is unnamed.
  */
 extern enum lttng_trigger_status lttng_trigger_get_name(
 		const struct lttng_trigger *trigger, const char **name);
-
-/*
- * Set the trigger name.
- *
- * A name is optional.
- * A name will be assigned on trigger registration if no name is set.
- *
- * The name is copied.
- *
- * Return LTTNG_TRIGGER_STATUS_OK on success, LTTNG_TRIGGER_STATUS_INVALID
- * if invalid parameters are passed.
- */
-extern enum lttng_trigger_status lttng_trigger_set_name(
-		struct lttng_trigger *trigger, const char *name);
 
 /*
  * Destroy (frees) a trigger object.
@@ -145,13 +132,29 @@ extern enum lttng_trigger_status lttng_trigger_set_name(
 extern void lttng_trigger_destroy(struct lttng_trigger *trigger);
 
 /*
- * Register a trigger to the session daemon.
+ * Register a trigger to the session daemon with a given name.
+ *
+ * The trigger object can be destroyed after this call.
+ * On success, this function will set the trigger's name to `name`.
+ *
+ * Returns an LTTng status code.
+ */
+extern enum lttng_error_code lttng_register_trigger_with_name(
+		struct lttng_trigger *trigger,
+		const char *name);
+
+/*
+ * Register a trigger to the session daemon, generating a unique name for its
+ * owner.
  *
  * The trigger can be destroyed after this call.
+ * On success, this function will set the trigger's name to the generated
+ * name.
  *
- * Return 0 on success, a negative LTTng error code on error.
+ * Returns an LTTng status code.
  */
-extern int lttng_register_trigger(struct lttng_trigger *trigger);
+extern enum lttng_error_code lttng_register_trigger_with_automatic_name(
+		struct lttng_trigger *trigger);
 
 /*
  * Unregister a trigger from the session daemon.
@@ -201,6 +204,18 @@ extern enum lttng_trigger_status lttng_triggers_get_count(
  */
 extern void lttng_triggers_destroy(struct lttng_triggers *triggers);
 
+/*
+ * Deprecated: invocations should be replaced by
+ * lttng_register_trigger_with_automatic_name().
+ *
+ * Register a trigger to the session daemon.
+ *
+ * The trigger can be destroyed after this call.
+ *
+ * Return 0 on success, a negative LTTng error code on error.
+ */
+LTTNG_DEPRECATED("Use lttng_register_trigger_with_automatic_name")
+extern int lttng_register_trigger(struct lttng_trigger *trigger);
 
 #ifdef __cplusplus
 }
