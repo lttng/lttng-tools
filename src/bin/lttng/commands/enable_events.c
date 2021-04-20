@@ -327,29 +327,19 @@ end:
  * FIXME: find a good place to declare this since add trigger also uses it
  */
 LTTNG_HIDDEN
-int create_exclusion_list_and_validate(const char *event_name,
-		const char *exclusions_arg,
-		char ***exclusion_list);
-
+int validate_exclusion_list(
+		const char *event_name, const char *const *exclusions);
 
 LTTNG_HIDDEN
-int create_exclusion_list_and_validate(const char *event_name,
-		const char *exclusions_arg,
-		char ***exclusion_list)
+int validate_exclusion_list(
+		const char *event_name, const char *const *exclusions)
 {
-	int ret = 0;
-	char **exclusions = NULL;
+	int ret;
 
 	/* Event name must be a valid globbing pattern to allow exclusions. */
 	if (!strutils_is_star_glob_pattern(event_name)) {
 		ERR("Event %s: Exclusions can only be used with a globbing pattern",
 			event_name);
-		goto error;
-	}
-
-	/* Split exclusions. */
-	exclusions = strutils_split(exclusions_arg, ',', true);
-	if (!exclusions) {
 		goto error;
 	}
 
@@ -359,7 +349,7 @@ int create_exclusion_list_and_validate(const char *event_name,
 	 * all exclusions are passed to the session daemon.
 	 */
 	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
-		char * const *exclusion;
+		const char *const *exclusion;
 
 		for (exclusion = exclusions; *exclusion; exclusion++) {
 			if (!strutils_is_star_glob_pattern(*exclusion) ||
@@ -370,6 +360,34 @@ int create_exclusion_list_and_validate(const char *event_name,
 				}
 			}
 		}
+	}
+
+	ret = 0;
+	goto end;
+
+error:
+	ret = -1;
+
+end:
+	return ret;
+}
+
+static int create_exclusion_list_and_validate(const char *event_name,
+		const char *exclusions_arg,
+		char ***exclusion_list)
+{
+	int ret = 0;
+	char **exclusions = NULL;
+
+	/* Split exclusions. */
+	exclusions = strutils_split(exclusions_arg, ',', true);
+	if (!exclusions) {
+		goto error;
+	}
+
+	if (validate_exclusion_list(event_name, (const char **) exclusions) !=
+			0) {
+		goto error;
 	}
 
 	*exclusion_list = exclusions;

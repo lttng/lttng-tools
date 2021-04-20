@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 276
+plan_tests 285
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -136,6 +136,14 @@ test_success "--log-level range open max" \
 
 test_success "--log-level range any" \
 	--condition event-rule-matches --domain=user --log-level=.. \
+	--action notify
+
+test_success "--exclude-name one" \
+	--condition event-rule-matches --domain=user --name='bernard*' --exclude-name=bernard-lermite \
+	--action notify
+
+test_success "--exclude-name two" \
+	--condition event-rule-matches --domain=user --name='jean-*' --exclude-name jean-chretien -x jean-charest \
 	--action notify
 
 skip $ist_root "non-root user: skipping kprobe tests" 18 || {
@@ -370,6 +378,11 @@ test_failure "--condition event-rule-matches: --type=syscall:nope" \
 	"Error: Failed to parse syscall type 'syscall:nope'." \
 	--condition event-rule-matches --domain=kernel --type=syscall:nope \
 	--name=open
+
+test_failure "--exclude-name with non-glob name" \
+	"Error: Event jean: Exclusions can only be used with a globbing pattern" \
+	--condition event-rule-matches --domain=user --name='jean' --exclude-name jean-chretien \
+	--action notify
 
 test_failure "--condition event-rule-matches --capture: missing argument (end of arg list)" \
 	'Error: While parsing argument #2 (`--capture`): Missing required argument for option `--capture`' \

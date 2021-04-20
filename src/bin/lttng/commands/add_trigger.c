@@ -46,7 +46,7 @@ enum {
 
 	OPT_NAME,
 	OPT_FILTER,
-	OPT_EXCLUDE_NAMES,
+	OPT_EXCLUDE_NAME,
 	OPT_EVENT_NAME,
 	OPT_LOG_LEVEL,
 
@@ -66,7 +66,7 @@ enum {
 static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_FILTER, 'f', "filter", true },
 	{ OPT_NAME, 'n', "name", true },
-	{ OPT_EXCLUDE_NAMES, 'x', "exclude-names", true },
+	{ OPT_EXCLUDE_NAME, 'x', "exclude-name", true },
 	{ OPT_LOG_LEVEL, 'l', "log-level", true },
 	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
@@ -211,9 +211,8 @@ error:
 
 /* This is defined in enable_events.c. */
 LTTNG_HIDDEN
-int create_exclusion_list_and_validate(const char *event_name,
-		const char *exclusions_arg,
-		char ***exclusion_list);
+int validate_exclusion_list(
+		const char *event_name, const char *const *exclusions);
 
 /*
  * Parse `str` as a log level in domain `domain_type`.
@@ -661,8 +660,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	/* Tracepoint and syscall options. */
 	char *name = NULL;
-	char *exclude_names = NULL;
-	char **exclusion_list = NULL;
+	/* Array of strings. */
+	struct lttng_dynamic_pointer_array exclude_names;
 
 	/* For userspace / kernel probe and function. */
 	char *location = NULL;
@@ -676,6 +675,9 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	lttng_dynamic_pointer_array_init(&res.capture_descriptors,
 				destroy_event_expr);
+
+	lttng_dynamic_pointer_array_init(&exclude_names, free);
+
 	state = argpar_state_create(*argc, *argv, event_rule_opt_descrs);
 	if (!state) {
 		ERR("Failed to allocate an argpar state.");
@@ -756,14 +758,20 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 				}
 
 				break;
-			case OPT_EXCLUDE_NAMES:
-				if (!assign_string(&exclude_names,
-						    item_opt->arg,
-						    "--exclude-names/-x")) {
+			case OPT_EXCLUDE_NAME:
+			{
+				int ret;
+
+				ret = lttng_dynamic_pointer_array_add_pointer(
+						&exclude_names,
+						strdup(item_opt->arg));
+				if (ret != 0) {
+					ERR("Failed to add pointer to dynamic pointer array.");
 					goto error;
 				}
 
 				break;
+			}
 			case OPT_LOG_LEVEL:
 				if (!assign_string(&log_level_str,
 						    item_opt->arg, "--log-level/-l")) {
@@ -849,8 +857,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		if (exclude_names) {
-			ERR("Can't use --exclude-names/-x with %s event rules.",
+		if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
+			ERR("Can't use --exclude-name/-x with %s event rules.",
 					lttng_event_rule_type_str(
 							event_rule_type));
 			goto error;
@@ -945,17 +953,23 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 	}
 
-	/* If --exclude/-x was passed, split it into an exclusion list. */
-	if (exclude_names) {
+	/* If --exclude-name/-x was passed, split it into an exclusion list. */
+	if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 		if (domain_type != LTTNG_DOMAIN_UST) {
 			ERR("Event name exclusions are not yet implemented for %s event rules.",
 					get_domain_str(domain_type));
 			goto error;
 		}
 
-		if (create_exclusion_list_and_validate(name,
-				    exclude_names, &exclusion_list) != 0) {
-			ERR("Failed to create exclusion list.");
+		if (validate_exclusion_list(name,
+				    (const char **) exclude_names.array.buffer
+						    .data
+
+				    ) != 0) {
+			/*
+			 * Assume validate_exclusion_list already prints an
+			 * error message.
+			 */
 			goto error;
 		}
 	}
@@ -1005,17 +1019,25 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 
 		/* Set exclusion list. */
-		if (exclusion_list) {
+		if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
 			int n;
+			int count = lttng_dynamic_pointer_array_get_count(
+					&exclude_names);
 
-			for (n = 0; exclusion_list[n]; n++) {
-				event_rule_status = lttng_event_rule_tracepoint_add_exclusion(
-						res.er,
-						exclusion_list[n]);
+			for (n = 0; n < count; n++) {
+				const char *exclude_name =
+						lttng_dynamic_pointer_array_get_pointer(
+								&exclude_names,
+								n);
+
+				event_rule_status =
+						lttng_event_rule_tracepoint_add_exclusion(
+								res.er,
+								exclude_name);
 				if (event_rule_status !=
 						LTTNG_EVENT_RULE_STATUS_OK) {
 					ERR("Failed to set tracepoint exclusion list element '%s'",
-							exclusion_list[n]);
+							exclude_name);
 					goto error;
 				}
 			}
@@ -1178,13 +1200,12 @@ end:
 	argpar_state_destroy(state);
 	free(filter);
 	free(name);
-	free(exclude_names);
+	lttng_dynamic_pointer_array_reset(&exclude_names);
 	free(log_level_str);
 	free(location);
 	free(event_name);
 	free(event_rule_type_str);
 
-	strutils_free_null_terminated_array_of_strings(exclusion_list);
 	lttng_kernel_probe_location_destroy(kernel_probe_location);
 	lttng_userspace_probe_location_destroy(userspace_probe_location);
 	lttng_log_level_rule_destroy(log_level_rule);
@@ -1491,7 +1512,7 @@ static struct lttng_action *handle_action_simple_session_with_policy(int *argc,
 		{ OPT_RATE_POLICY, '\0', "rate-policy", true },
 		ARGPAR_OPT_DESCR_SENTINEL
 	};
-	
+
 	state = argpar_state_create(*argc, *argv, rate_policy_opt_descrs);
 	if (!state) {
 		ERR("Failed to allocate an argpar state.");

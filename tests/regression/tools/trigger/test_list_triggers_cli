@@ -94,7 +94,7 @@ test_event_rule_matches_tracepoint ()
 
 	lttng_add_trigger_ok "C" --condition event-rule-matches --domain=user --action notify
 	lttng_add_trigger_ok "A" --condition event-rule-matches --name=aaa --domain=user --filter 'p == 2' --action notify
-	lttng_add_trigger_ok "D" --condition event-rule-matches --name='hello*' --domain=user -x 'hello2,hello3,hello4' --action notify
+	lttng_add_trigger_ok "D" --condition event-rule-matches --name='hello*' --domain=user -x hello2 --exclude-name  hello3 -x hello4 --action notify
 	lttng_add_trigger_ok "B" --condition event-rule-matches --domain=user --name=gerboise --log-level INFO.. --action notify
 	lttng_add_trigger_ok "E" --condition event-rule-matches --domain=user --name=lemming --log-level WARNING --action notify
 	lttng_add_trigger_ok "J" --condition event-rule-matches --domain=user --name=lemming --log-level .. --action notify
