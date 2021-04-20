@@ -31,23 +31,23 @@ static void register_trigger(const char *trigger_name,
 }
 
 /*
- * Register a trigger with the given condition and an action group containing a
+ * Register a trigger with the given condition and an action list containing a
  * single notify action.
  */
-static void register_trigger_action_group_notify(
+static void register_trigger_action_list_notify(
 		const char *trigger_name, struct lttng_condition *condition)
 {
 	struct lttng_action *action_notify;
-	struct lttng_action *action_group;
+	struct lttng_action *action_list;
 	enum lttng_action_status action_status;
 
-	action_group = lttng_action_group_create();
+	action_list = lttng_action_list_create();
 	action_notify = lttng_action_notify_create();
-	action_status = lttng_action_group_add_action(
-			action_group, action_notify);
+	action_status = lttng_action_list_add_action(
+			action_list, action_notify);
 	assert(action_status == LTTNG_ACTION_STATUS_OK);
 
-	register_trigger(trigger_name, condition, action_group);
+	register_trigger(trigger_name, condition, action_list);
 }
 
 static struct lttng_condition *create_session_consumed_size_condition(
@@ -70,7 +70,7 @@ static struct lttng_condition *create_session_consumed_size_condition(
 
 static void test_session_consumed_size_condition(void)
 {
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-session-consumed-size-condition",
 			create_session_consumed_size_condition(
 					"the-session-name", 1234));
@@ -186,25 +186,25 @@ static struct lttng_condition *create_buffer_usage_low_ratio_condition(
 
 static void test_buffer_usage_conditions(void)
 {
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-buffer-usage-high-bytes-condition",
 			create_buffer_usage_high_bytes_condition(
 					"the-session-name", "the-channel-name",
 					LTTNG_DOMAIN_UST, 1234));
 
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-buffer-usage-low-bytes-condition",
 			create_buffer_usage_low_bytes_condition(
 					"the-session-name", "the-channel-name",
 					LTTNG_DOMAIN_UST, 2345));
 
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-buffer-usage-high-ratio-condition",
 			create_buffer_usage_high_ratio_condition(
 					"the-session-name", "the-channel-name",
 					LTTNG_DOMAIN_UST, 0.25));
 
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-buffer-usage-low-ratio-condition",
 			create_buffer_usage_low_ratio_condition(
 					"the-session-name", "the-channel-name",
@@ -247,12 +247,12 @@ static struct lttng_condition *create_session_rotation_completed_condition(
 
 static void test_session_rotation_conditions(void)
 {
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-session-rotation-ongoing-condition",
 			create_session_rotation_ongoing_condition(
 					"the-session-name"));
 
-	register_trigger_action_group_notify(
+	register_trigger_action_list_notify(
 			"trigger-with-session-rotation-completed-condition",
 			create_session_rotation_completed_condition(
 					"the-session-name"));

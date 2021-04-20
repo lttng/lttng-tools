@@ -192,7 +192,7 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 				lttng_action_stop_session_create_from_payload;
 		break;
 	case LTTNG_ACTION_TYPE_GROUP:
-		create_from_payload_cb = lttng_action_group_create_from_payload;
+		create_from_payload_cb = lttng_action_list_create_from_payload;
 		break;
 	default:
 		ERR("Failed to create action from payload, unhandled action type: action-type=%u (%s)",

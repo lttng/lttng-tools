@@ -932,12 +932,12 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 
 		MSG("  actions:");
 
-		action_status = lttng_action_group_get_count(action, &count);
+		action_status = lttng_action_list_get_count(action, &count);
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
 			const struct lttng_action *subaction =
-					lttng_action_group_get_at_index(
+					lttng_action_list_get_at_index(
 							action, i);
 
 			_MSG("    ");

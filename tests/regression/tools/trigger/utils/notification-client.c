@@ -36,22 +36,22 @@ static struct option long_options[] =
 	{0, 0, 0, 0}
 };
 
-static bool action_group_contains_notify(
-		const struct lttng_action *action_group)
+static bool action_list_contains_notify(
+		const struct lttng_action *action_list)
 {
 	unsigned int i, count;
 	enum lttng_action_status status =
-			lttng_action_group_get_count(action_group, &count);
+			lttng_action_list_get_count(action_list, &count);
 
 	if (status != LTTNG_ACTION_STATUS_OK) {
-		printf("Failed to get action count from action group\n");
+		printf("Failed to get action count from action list\n");
 		exit(1);
 	}
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_action *action =
-				lttng_action_group_get_at_index(
-						action_group, i);
+				lttng_action_list_get_at_index(
+						action_list, i);
 		const enum lttng_action_type action_type =
 				lttng_action_get_type(action);
 
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 			}
 		}
 		if (!((action_type == LTTNG_ACTION_TYPE_GROUP &&
-				      action_group_contains_notify(action)) ||
+				      action_list_contains_notify(action)) ||
 				    action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
 			/* "The action of trigger is not notify, skipping. */
 			continue;

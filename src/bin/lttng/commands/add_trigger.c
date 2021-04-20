@@ -2012,7 +2012,7 @@ int cmd_add_trigger(int argc, const char **argv)
 	struct lttng_dynamic_pointer_array actions;
 	struct argpar_state *argpar_state = NULL;
 	struct argpar_item *argpar_item = NULL;
-	struct lttng_action *action_group = NULL;
+	struct lttng_action *action_list = NULL;
 	struct lttng_action *action = NULL;
 	struct lttng_trigger *trigger = NULL;
 	char *error = NULL;
@@ -2148,8 +2148,8 @@ int cmd_add_trigger(int argc, const char **argv)
 		goto error;
 	}
 
-	action_group = lttng_action_group_create();
-	if (!action_group) {
+	action_list = lttng_action_list_create();
+	if (!action_list) {
 		goto error;
 	}
 
@@ -2158,20 +2158,20 @@ int cmd_add_trigger(int argc, const char **argv)
 
 		action = lttng_dynamic_pointer_array_steal_pointer(&actions, i);
 
-		status = lttng_action_group_add_action(action_group, action);
+		status = lttng_action_list_add_action(action_list, action);
 		if (status != LTTNG_ACTION_STATUS_OK) {
 			goto error;
 		}
 
 		/*
-		 * The `lttng_action_group_add_action()` takes a reference to
+		 * The `lttng_action_list_add_action()` takes a reference to
 		 * the action. We can destroy ours.
 		 */
 		lttng_action_destroy(action);
 		action = NULL;
 	}
 
-	trigger = lttng_trigger_create(condition, action_group);
+	trigger = lttng_trigger_create(condition, action_list);
 	if (!trigger) {
 		goto error;
 	}
@@ -2222,7 +2222,7 @@ end:
 	argpar_item_destroy(argpar_item);
 	lttng_dynamic_pointer_array_reset(&actions);
 	lttng_condition_destroy(condition);
-	lttng_action_destroy(action_group);
+	lttng_action_destroy(action_list);
 	lttng_action_destroy(action);
 	lttng_trigger_destroy(trigger);
 	free(error);

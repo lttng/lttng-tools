@@ -145,24 +145,24 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 	 * action list.
 	 *
 	 * Note that action comparisons are performed by pointer since multiple
-	 * otherwise identical actions can be found in an action group (two
+	 * otherwise identical actions can be found in an action list (two
 	 * notify actions, for example).
 	 */
 	if (action != trigger->action &&
 			lttng_action_get_type(trigger->action) ==
 					LTTNG_ACTION_TYPE_GROUP) {
-		unsigned int i, action_group_count;
+		unsigned int i, action_list_count;
 		enum lttng_action_status action_status;
 
-		action_status = lttng_action_group_get_count(
-				trigger->action, &action_group_count);
+		action_status = lttng_action_list_get_count(
+				trigger->action, &action_list_count);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
 			goto error;
 		}
 
-		for (i = 0; i < action_group_count; i++) {
+		for (i = 0; i < action_list_count; i++) {
 			const struct lttng_action *candidate_action =
-					lttng_action_group_get_at_index(
+					lttng_action_list_get_at_index(
 							trigger->action, i);
 
 			assert(candidate_action);
@@ -686,7 +686,7 @@ struct lttng_action *lttng_error_query_action_borrow_action_target(
 			goto end;
 		}
 
-		target_action = lttng_action_group_borrow_mutable_at_index(
+		target_action = lttng_action_list_borrow_mutable_at_index(
 				trigger_action,
 				LTTNG_OPTIONAL_GET(query_action->action_index));
 	}
@@ -832,7 +832,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 				goto end;
 			}
 
-			target_action = lttng_action_group_get_at_index(
+			target_action = lttng_action_list_get_at_index(
 					trigger->action,
 					action_header->action_index.value);
 		}

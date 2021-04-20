@@ -54,9 +54,9 @@ function start_client {
 	local buffer_usage_threshold_type=$6
 	local buffer_usage_threshold_value=$7
 	local nr_expected_notification=$8
-	local use_action_group=$9
+	local use_action_list=$9
 
-	${CURDIR}/base_client ${session_name} ${channel_name} ${domain_type} ${buffer_usage_type} ${buffer_usage_threshold_type} ${buffer_usage_threshold_value} ${nr_expected_notification} ${use_action_group} > ${output_file} &
+	${CURDIR}/base_client ${session_name} ${channel_name} ${domain_type} ${buffer_usage_type} ${buffer_usage_threshold_type} ${buffer_usage_threshold_value} ${nr_expected_notification} ${use_action_list} > ${output_file} &
 	pid=$!
 
 	app_pids+=("$pid")

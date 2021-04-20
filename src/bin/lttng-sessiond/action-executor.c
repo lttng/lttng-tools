@@ -1014,13 +1014,13 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	if (type == LTTNG_ACTION_TYPE_GROUP) {
 		unsigned int count, i;
 
-		status = lttng_action_group_get_count(action, &count);
+		status = lttng_action_list_get_count(action, &count);
 		assert(status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
 			struct lttng_action *inner_action = NULL;
 
-			inner_action = lttng_action_group_borrow_mutable_at_index(
+			inner_action = lttng_action_list_borrow_mutable_at_index(
 					action, i);
 			assert(inner_action);
 			ret = add_action_to_subitem_array(

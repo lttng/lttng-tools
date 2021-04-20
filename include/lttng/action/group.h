@@ -5,52 +5,52 @@
  *
  */
 
-#ifndef LTTNG_ACTION_GROUP_H
-#define LTTNG_ACTION_GROUP_H
+#ifndef LTTNG_ACTION_LIST_H
+#define LTTNG_ACTION_LIST_H
 
 struct lttng_action;
-struct lttng_action_group;
+struct lttng_action_list;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /*
- * Create a newly allocated action group object.
+ * Create a newly allocated action list object.
  *
- * Returns a new action group on success, NULL on failure. This action group
- * must be destroyed using lttng_action_group_destroy().
+ * Returns a new action list on success, NULL on failure. This action list
+ * must be destroyed using lttng_action_list_destroy().
  */
-extern struct lttng_action *lttng_action_group_create(void);
+extern struct lttng_action *lttng_action_list_create(void);
 
 /*
- * Add an action to an lttng_action object of type LTTNG_ACTION_GROUP.
+ * Add an action to an lttng_action object of type LTTNG_ACTION_LIST.
  *
- * The action group acquires a reference to the action. The action can be
+ * The action list acquires a reference to the action. The action can be
  * safely destroyed after calling this function. An action must not be
  * modified after adding it to a group.
  *
- * Adding an action group to an action group is not supported.
+ * Adding an action list to an action list is not supported.
  */
-extern enum lttng_action_status lttng_action_group_add_action(
+extern enum lttng_action_status lttng_action_list_add_action(
 		struct lttng_action *group, struct lttng_action *action);
 
 /*
- * Get the number of actions in an action group.
+ * Get the number of actions in an action list.
  */
-extern enum lttng_action_status lttng_action_group_get_count(
+extern enum lttng_action_status lttng_action_list_get_count(
 		const struct lttng_action *group, unsigned int *count);
 
 /*
- * Get an action from the action group at a given index.
+ * Get an action from the action list at a given index.
  *
  * Note that the group maintains the ownership of the returned action.
  * It must not be destroyed by the user, nor should it be held beyond
- * the lifetime of the action group.
+ * the lifetime of the action list.
  *
  * Returns an action, or NULL on error.
  */
-extern const struct lttng_action *lttng_action_group_get_at_index(
+extern const struct lttng_action *lttng_action_list_get_at_index(
 		const struct lttng_action *group,
 		unsigned int index);
 
@@ -58,4 +58,4 @@ extern const struct lttng_action *lttng_action_group_get_at_index(
 }
 #endif
 
-#endif /* LTTNG_ACTION_GROUP_H */
+#endif /* LTTNG_ACTION_LIST_H */

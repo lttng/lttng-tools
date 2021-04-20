@@ -2480,12 +2480,12 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 		goto end;
 	}
 
-	action_status = lttng_action_group_get_count(action, &count);
+	action_status = lttng_action_list_get_count(action, &count);
 	assert(action_status == LTTNG_ACTION_STATUS_OK);
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_action *inner_action =
-				lttng_action_group_get_at_index(
+				lttng_action_list_get_at_index(
 						action, i);
 
 		action_type = lttng_action_get_type(inner_action);

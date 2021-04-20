@@ -36,7 +36,7 @@ static const char *channel_name = NULL;
 static double threshold_ratio = 0.0;
 static uint64_t threshold_bytes = 0;
 static bool is_threshold_ratio = false;
-static bool use_action_group = false;
+static bool use_action_list = false;
 static enum lttng_condition_type buffer_usage_type = LTTNG_CONDITION_TYPE_UNKNOWN;
 static enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
@@ -53,7 +53,7 @@ int parse_arguments(char **argv)
 	const char *buffer_usage_threshold_type = NULL;
 	const char *buffer_usage_threshold_value = NULL;
 	const char *nr_expected_notifications_string = NULL;
-	const char *use_action_group_value = NULL;
+	const char *use_action_list_value = NULL;
 
 	session_name = argv[1];
 	channel_name = argv[2];
@@ -62,7 +62,7 @@ int parse_arguments(char **argv)
 	buffer_usage_threshold_type = argv[5];
 	buffer_usage_threshold_value = argv[6];
 	nr_expected_notifications_string = argv[7];
-	use_action_group_value = argv[8];
+	use_action_list_value = argv[8];
 
 	/* Parse arguments */
 	/* Domain type */
@@ -110,8 +110,8 @@ int parse_arguments(char **argv)
 	}
 
 	/* Put notify action in a group. */
-	if (!strcasecmp("1", use_action_group_value)) {
-		use_action_group = true;
+	if (!strcasecmp("1", use_action_list_value)) {
+		use_action_list = true;
 	}
 
 	return 0;
@@ -213,12 +213,12 @@ int main(int argc, char **argv)
 		goto end;
 	}
 
-	if (use_action_group) {
+	if (use_action_list) {
 		struct lttng_action *notify, *group;
 
-		group = lttng_action_group_create();
+		group = lttng_action_list_create();
 		if (!group) {
-			printf("error: Could not create action group\n");
+			printf("error: Could not create action list\n");
 			ret = 1;
 			goto end;
 		}
@@ -231,9 +231,9 @@ int main(int argc, char **argv)
 			goto end;
 		}
 
-		action_status = lttng_action_group_add_action(group, notify);
+		action_status = lttng_action_list_add_action(group, notify);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			printf("error: Could not add action notify to action group\n");
+			printf("error: Could not add action notify to action list\n");
 			lttng_action_destroy(group);
 			lttng_action_destroy(notify);
 			ret = 1;
