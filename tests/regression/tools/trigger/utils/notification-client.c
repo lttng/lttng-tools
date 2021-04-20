@@ -62,6 +62,7 @@ static bool action_list_contains_notify(
 	return false;
 }
 
+/* Only expects named triggers. */
 static bool is_trigger_name(const char *expected_trigger_name,
 		struct lttng_notification *notification)
 {

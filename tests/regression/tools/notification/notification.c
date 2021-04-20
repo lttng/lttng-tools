@@ -590,7 +590,13 @@ static const char *get_notification_trigger_name(
 	}
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+	switch (trigger_status) {
+	case LTTNG_TRIGGER_STATUS_OK:
+		break;
+	case LTTNG_TRIGGER_STATUS_UNSET:
+		trigger_name = "(anonymous)";
+		break;
+	default:
 		fail("Failed to get name from notification's trigger");
 		goto end;
 	}

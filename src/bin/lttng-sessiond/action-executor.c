@@ -206,7 +206,16 @@ static const char *get_trigger_name(const struct lttng_trigger *trigger)
 	enum lttng_trigger_status trigger_status;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+	switch (trigger_status) {
+	case LTTNG_TRIGGER_STATUS_OK:
+		break;
+	case LTTNG_TRIGGER_STATUS_UNSET:
+		trigger_name = "(anonymous)";
+		break;
+	default:
+		trigger_name = "(failed to get name)";
+		break;
+	}
 
 	return trigger_name;
 }
@@ -772,17 +781,7 @@ static void *action_executor_thread(void *_data)
 			uid_t trigger_owner_uid;
 			enum lttng_trigger_status trigger_status;
 
-			trigger_status = lttng_trigger_get_name(
-					work_item->trigger, &trigger_name);
-			switch (trigger_status) {
-			case LTTNG_TRIGGER_STATUS_OK:
-				break;
-			case LTTNG_TRIGGER_STATUS_UNSET:
-				trigger_name = "(unset)";
-				break;
-			default:
-				abort();
-			}
+			trigger_name = get_trigger_name(work_item->trigger);
 
 			trigger_status = lttng_trigger_get_owner_uid(
 					work_item->trigger, &trigger_owner_uid);

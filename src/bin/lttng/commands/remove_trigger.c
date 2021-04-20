@@ -151,7 +151,15 @@ int cmd_remove_trigger(int argc, const char **argv)
 
 		trigger = lttng_triggers_get_at_index(triggers, i);
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		switch (trigger_status) {
+		case LTTNG_TRIGGER_STATUS_OK:
+			break;
+		case LTTNG_TRIGGER_STATUS_UNSET:
+			/* Don't compare against anonymous triggers. */
+			continue;
+		default:
+			abort();
+		}
 
 		trigger_status = lttng_trigger_get_owner_uid(
 				trigger, &trigger_uid);

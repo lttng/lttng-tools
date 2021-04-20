@@ -111,7 +111,8 @@ error:
 
 enum lttng_error_code notification_thread_command_register_trigger(
 		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger)
+		struct lttng_trigger *trigger,
+		bool is_trigger_anonymous)
 {
 	int ret;
 	enum lttng_error_code ret_code;
@@ -123,6 +124,8 @@ enum lttng_error_code notification_thread_command_register_trigger(
 	cmd.type = NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER;
 	lttng_trigger_get(trigger);
 	cmd.parameters.register_trigger.trigger = trigger;
+	cmd.parameters.register_trigger.is_trigger_anonymous =
+			is_trigger_anonymous;
 
 	ret = run_command_wait(handle, &cmd);
 	if (ret) {

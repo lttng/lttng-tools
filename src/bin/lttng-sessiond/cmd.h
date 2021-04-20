@@ -144,6 +144,7 @@ int cmd_regenerate_statedump(struct ltt_session *session);
 enum lttng_error_code cmd_register_trigger(
 		const struct lttng_credentials *cmd_creds,
 		struct lttng_trigger *trigger,
+		bool is_anonymous_trigger,
 		struct notification_thread_handle *notification_thread_handle,
 		struct lttng_trigger **return_trigger);
 enum lttng_error_code cmd_unregister_trigger(

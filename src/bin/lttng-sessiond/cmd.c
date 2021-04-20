@@ -4320,8 +4320,7 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name :
-			"(unnamed)";
+			trigger_name : "(anonymous)";
 
 	session_lock_list();
 	switch (trigger_domain) {
@@ -4386,6 +4385,7 @@ end_unlock_session_list:
 
 enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_creds,
 		struct lttng_trigger *trigger,
+		bool is_trigger_anonymous,
 		struct notification_thread_handle *notification_thread,
 		struct lttng_trigger **return_trigger)
 {
@@ -4396,7 +4396,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(unnamed)";
+			trigger_name : "(anonymous)";
 
 	trigger_status = lttng_trigger_get_owner_uid(
 		trigger, &trigger_owner);
@@ -4444,8 +4444,8 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 	 * it is safe to use without any locking as its properties are
 	 * immutable.
 	 */
-	ret_code = notification_thread_command_register_trigger(notification_thread,
-			trigger);
+	ret_code = notification_thread_command_register_trigger(
+			notification_thread, trigger, is_trigger_anonymous);
 	if (ret_code != LTTNG_OK) {
 		DBG("Failed to register trigger to notification thread: trigger name = '%s', trigger owner uid = %d, error code = %d",
 				trigger_name, (int) trigger_owner, ret_code);
@@ -4454,7 +4454,7 @@ enum lttng_error_code cmd_register_trigger(const struct lttng_credentials *cmd_c
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(unnamed)";
+			trigger_name : "(anonymous)";
 
 	/*
 	 * Synchronize tracers if the trigger adds an event notifier.
@@ -4556,7 +4556,7 @@ enum lttng_error_code cmd_unregister_trigger(const struct lttng_credentials *cmd
 	struct lttng_trigger *sessiond_trigger = NULL;
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(unnamed)";
+	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ? trigger_name : "(anonymous)";
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
@@ -4702,7 +4702,7 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 
 	trigger_status = lttng_trigger_get_name(matching_trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(unnamed)";
+			trigger_name : "(anonymous)";
 	trigger_status = lttng_trigger_get_owner_uid(matching_trigger,
 			&trigger_owner);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);

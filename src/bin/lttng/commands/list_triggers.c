@@ -556,6 +556,9 @@ void print_action_errors(const struct lttng_trigger *trigger,
 	assert(query);
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+	/*
+	 * Anonymous triggers are not listed; this would be an internal error.
+	 */
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
@@ -812,7 +815,9 @@ void print_trigger_errors(const struct lttng_trigger *trigger)
 			lttng_error_query_trigger_create(trigger);
 
 	assert(query);
-
+	/*
+	 * Anonymous triggers are not listed; this would be an internal error.
+	 */
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
@@ -893,7 +898,15 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 	const char *name;
 	uid_t trigger_uid;
 
+	/*
+	 * Anonymous triggers are not listed since they can't be specified nor
+	 * referenced through the CLI.
+	 */
 	trigger_status = lttng_trigger_get_name(trigger, &name);
+	if (trigger_status == LTTNG_TRIGGER_STATUS_UNSET) {
+		goto end;
+	}
+
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	trigger_status = lttng_trigger_get_owner_uid(trigger, &trigger_uid);
@@ -949,6 +962,8 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 	}
 
 	print_trigger_errors(trigger);
+end:
+	return;
 }
 
 static
@@ -959,6 +974,7 @@ int compare_triggers_by_name(const void *a, const void *b)
 	const char *name_a, *name_b;
 	enum lttng_trigger_status trigger_status;
 
+	/* Anonymous triggers are not reachable here. */
 	trigger_status = lttng_trigger_get_name(trigger_a, &name_a);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
@@ -1032,9 +1048,24 @@ int cmd_list_triggers(int argc, const char **argv)
 	}
 
 	for (i = 0; i < num_triggers; i++) {
-		const int add_ret = lttng_dynamic_pointer_array_add_pointer(
-				&sorted_triggers,
-				(void *) lttng_triggers_get_at_index(triggers, i));
+		int add_ret;
+		const char *unused_name;
+		const struct lttng_trigger *trigger =
+				lttng_triggers_get_at_index(triggers, i);
+
+		trigger_status = lttng_trigger_get_name(trigger, &unused_name);
+		switch (trigger_status) {
+		case LTTNG_TRIGGER_STATUS_OK:
+			break;
+		case LTTNG_TRIGGER_STATUS_UNSET:
+			/* Don't list anonymous triggers. */
+			continue;
+		default:
+			abort();
+		}
+
+		add_ret = lttng_dynamic_pointer_array_add_pointer(
+				&sorted_triggers, (void *) trigger);
 
 		if (add_ret) {
 			ERR("Failed to allocate array of struct lttng_trigger *.");

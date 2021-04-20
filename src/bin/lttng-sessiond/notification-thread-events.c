@@ -373,7 +373,7 @@ int match_trigger_by_name_uid(struct cds_lfht_node *node,
 		const void *key)
 {
 	bool match = false;
-	const char *name;
+	const char *element_trigger_name;
 	const char *key_name;
 	enum lttng_trigger_status status;
 	const struct lttng_credentials *key_creds;
@@ -385,14 +385,25 @@ int match_trigger_by_name_uid(struct cds_lfht_node *node,
 				struct lttng_trigger_ht_element,
 				node_by_name_uid);
 
-	status = lttng_trigger_get_name(trigger_ht_element->trigger, &name);
-	assert(status == LTTNG_TRIGGER_STATUS_OK);
+	status = lttng_trigger_get_name(trigger_ht_element->trigger,
+			&element_trigger_name);
+	element_trigger_name = status == LTTNG_TRIGGER_STATUS_OK ?
+			element_trigger_name : NULL;
 
 	status = lttng_trigger_get_name(trigger_key, &key_name);
-	assert(status == LTTNG_TRIGGER_STATUS_OK);
+	key_name = status == LTTNG_TRIGGER_STATUS_OK ? key_name : NULL;
 
-	/* Compare the names. */
-	if (strcmp(name, key_name) != 0) {
+	/*
+	 * Compare the names.
+	 * Consider null names as not equal. This is to maintain backwards
+	 * compatibility with pre-2.13 anonymous triggers. Multiples anonymous
+	 * triggers are allowed for a given user.
+	 */
+	if (!element_trigger_name || !key_name) {
+		goto end;
+	}
+
+	if (strcmp(element_trigger_name, key_name) != 0) {
 		goto end;
 	}
 
@@ -2253,7 +2264,7 @@ static inline void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 	case LTTNG_TRIGGER_STATUS_OK:
 		break;
 	case LTTNG_TRIGGER_STATUS_UNSET:
-		*trigger_name = "(unset)";
+		*trigger_name = "(anonymous)";
 		break;
 	default:
 		abort();
@@ -2635,6 +2646,7 @@ static
 int handle_notification_thread_command_register_trigger(
 		struct notification_thread_state *state,
 		struct lttng_trigger *trigger,
+		bool is_trigger_anonymous,
 		enum lttng_error_code *cmd_result)
 {
 	int ret = 0;
@@ -2657,22 +2669,27 @@ int handle_notification_thread_command_register_trigger(
 	/* Set the trigger's tracer token. */
 	lttng_trigger_set_tracer_token(trigger, trigger_tracer_token);
 
-	if (lttng_trigger_get_name(trigger, &trigger_name) ==
-			LTTNG_TRIGGER_STATUS_UNSET) {
-		const enum lttng_error_code ret_code = generate_trigger_name(
-				state, trigger, &trigger_name);
+	if (!is_trigger_anonymous) {
+		if (lttng_trigger_get_name(trigger, &trigger_name) ==
+				LTTNG_TRIGGER_STATUS_UNSET) {
+			const enum lttng_error_code ret_code =
+					generate_trigger_name(state, trigger,
+							&trigger_name);
 
-		if (ret_code != LTTNG_OK) {
-			/* Fatal error. */
-			ret = -1;
-			*cmd_result = ret_code;
+			if (ret_code != LTTNG_OK) {
+				/* Fatal error. */
+				ret = -1;
+				*cmd_result = ret_code;
+				goto error;
+			}
+		} else if (trigger_name_taken(state, trigger)) {
+			/* Not a fatal error. */
+			*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
+			ret = 0;
 			goto error;
 		}
-	} else if (trigger_name_taken(state, trigger)) {
-		/* Not a fatal error. */
-		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
-		ret = 0;
-		goto error;
+	} else {
+		trigger_name = "(anonymous)";
 	}
 
 	condition = lttng_trigger_get_condition(trigger);
@@ -3091,6 +3108,7 @@ int handle_notification_thread_command(
 	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
 		ret = handle_notification_thread_command_register_trigger(state,
 				cmd->parameters.register_trigger.trigger,
+				cmd->parameters.register_trigger.is_trigger_anonymous,
 				&cmd->reply_code);
 		break;
 	case NOTIFICATION_COMMAND_TYPE_UNREGISTER_TRIGGER:
@@ -4537,11 +4555,9 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	struct cds_lfht_node *node;
 	struct cds_lfht_iter iter;
 	struct notification_trigger_tokens_ht_element *element;
-	enum lttng_trigger_status trigger_status;
 	struct lttng_evaluation *evaluation = NULL;
 	enum action_executor_status executor_status;
 	struct notification_client_list *client_list = NULL;
-	const char *trigger_name;
 	int ret;
 	unsigned int capture_count = 0;
 
@@ -4565,9 +4581,6 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	element = caa_container_of(node,
 			struct notification_trigger_tokens_ht_element,
 			node);
-
-	trigger_status = lttng_trigger_get_name(element->trigger, &trigger_name);
-	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	if (lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			    lttng_trigger_get_const_condition(element->trigger),

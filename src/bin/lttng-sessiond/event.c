@@ -592,7 +592,7 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 
 	t_status = lttng_trigger_get_name(trigger, &trigger_name);
 	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
-		trigger_name = "(unnamed)";
+		trigger_name = "(anonymous)";
 	}
 
 	t_status = lttng_trigger_get_owner_uid(trigger, &trigger_owner_uid);

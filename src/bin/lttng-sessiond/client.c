@@ -2247,6 +2247,7 @@ error_add_context:
 		original_reply_payload_size = cmd_ctx->reply_payload.buffer.size;
 
 		ret = cmd_register_trigger(&cmd_creds, payload_trigger,
+				cmd_ctx->lsm.u.trigger.is_trigger_anonymous,
 				the_notification_thread_handle,
 				&return_trigger);
 		if (ret != LTTNG_OK) {

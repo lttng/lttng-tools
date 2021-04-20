@@ -43,6 +43,7 @@ struct notification_thread_command {
 		/* Register trigger. */
 		struct {
 			struct lttng_trigger *trigger;
+			bool is_trigger_anonymous;
 		} register_trigger;
 		/* Unregister trigger. */
 		struct {
@@ -112,7 +113,8 @@ struct notification_thread_command {
 
 enum lttng_error_code notification_thread_command_register_trigger(
 		struct notification_thread_handle *handle,
-		struct lttng_trigger *trigger);
+		struct lttng_trigger *trigger,
+		bool is_anonymous_trigger);
 
 enum lttng_error_code notification_thread_command_unregister_trigger(
 		struct notification_thread_handle *handle,

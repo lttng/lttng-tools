@@ -346,7 +346,12 @@ LTTNG_HIDDEN
 bool lttng_trigger_is_equal(
 		const struct lttng_trigger *a, const struct lttng_trigger *b)
 {
-	if (strcmp(a->name, b->name) != 0) {
+	if (!!a->name != !!b->name) {
+		/* Both must be either anonymous or named. */
+		return false;
+	}
+
+	if (a->name && strcmp(a->name, b->name) != 0) {
 		return false;
 	}
 

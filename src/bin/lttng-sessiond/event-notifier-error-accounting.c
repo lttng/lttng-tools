@@ -78,7 +78,7 @@ static inline void get_trigger_info_for_log(const struct lttng_trigger *trigger,
 	case LTTNG_TRIGGER_STATUS_OK:
 		break;
 	case LTTNG_TRIGGER_STATUS_UNSET:
-		*trigger_name = "(unset)";
+		*trigger_name = "(anonymous)";
 		break;
 	default:
 		abort();

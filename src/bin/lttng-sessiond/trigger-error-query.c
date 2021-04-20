@@ -24,7 +24,7 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 
 	status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(unnamed)";
+			trigger_name : "(anonymous)";
 	status = lttng_trigger_get_owner_uid(trigger,
 			&trigger_owner);
 	assert(status == LTTNG_TRIGGER_STATUS_OK);
@@ -80,7 +80,7 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 
 	status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = status == LTTNG_TRIGGER_STATUS_OK ?
-			trigger_name : "(unnamed)";
+			trigger_name : "(anonymous)";
 	status = lttng_trigger_get_owner_uid(trigger,
 			&trigger_owner);
 	assert(status == LTTNG_TRIGGER_STATUS_OK);

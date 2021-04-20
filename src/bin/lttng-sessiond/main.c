@@ -1363,7 +1363,8 @@ static void unregister_all_triggers(void)
 		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
-		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+		trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
+				trigger_name : "(anonymous)";
 
 		DBG("Unregistering trigger: trigger owner uid = %d, trigger name = '%s'",
 				(int) trigger_owner, trigger_name);

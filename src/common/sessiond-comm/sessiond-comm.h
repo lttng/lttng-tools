@@ -486,6 +486,7 @@ struct lttcomm_session_msg {
 		} LTTNG_PACKED process_attr_tracker_set_tracking_policy;
 		struct {
 			uint32_t length;
+			uint8_t is_trigger_anonymous;
 		} LTTNG_PACKED trigger;
 		struct {
 			uint32_t length;

@@ -104,7 +104,8 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 	}
 
 	ret = notification_thread_command_register_trigger(
-			notification_thread_handle, session->rotate_trigger);
+			notification_thread_handle, session->rotate_trigger,
+			true);
 	if (ret < 0 && ret != -LTTNG_ERR_TRIGGER_EXISTS) {
 		ERR("Register trigger, %s", lttng_strerror(ret));
 		ret = -1;
