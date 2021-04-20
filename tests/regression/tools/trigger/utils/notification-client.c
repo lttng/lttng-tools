@@ -14,7 +14,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <lttng/condition/on-event.h>
+#include <lttng/condition/event-rule-matches.h>
 #include <lttng/lttng.h>
 
 #include "utils.h"

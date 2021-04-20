@@ -137,7 +137,7 @@ lttngactioninclude_HEADERS= \
 lttngconditioninclude_HEADERS= \
 	lttng/condition/condition.h \
 	lttng/condition/buffer-usage.h \
-	lttng/condition/on-event.h \
+	lttng/condition/event-rule-matches.h \
 	lttng/condition/session-consumed-size.h \
 	lttng/condition/session-rotation.h \
 	lttng/condition/evaluation.h
@@ -169,7 +169,7 @@ noinst_HEADERS = \
 	lttng/condition/buffer-usage-internal.h \
 	lttng/condition/condition-internal.h \
 	lttng/condition/evaluation-internal.h \
-	lttng/condition/on-event-internal.h \
+	lttng/condition/event-rule-matches-internal.h \
 	lttng/condition/session-consumed-size-internal.h \
 	lttng/condition/session-rotation-internal.h \
 	lttng/domain-internal.h \

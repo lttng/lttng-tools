@@ -20,8 +20,8 @@
 #include <lttng/event.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/condition/condition-internal.h>
-#include <lttng/condition/on-event.h>
-#include <lttng/condition/on-event-internal.h>
+#include <lttng/condition/event-rule-matches.h>
+#include <lttng/condition/event-rule-matches-internal.h>
 #include <lttng/domain.h>
 #include <lttng/log-level-rule.h>
 #include <common/dynamic-buffer.h>

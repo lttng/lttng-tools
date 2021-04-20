@@ -12,8 +12,8 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <lttng/condition/condition-internal.h>
-#include <lttng/condition/on-event-internal.h>
-#include <lttng/condition/on-event.h>
+#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-expr.h>
 #include <lttng/event-field-value-internal.h>

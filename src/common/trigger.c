@@ -16,8 +16,8 @@
 #include <lttng/action/action-internal.h>
 #include <lttng/condition/buffer-usage.h>
 #include <lttng/condition/condition-internal.h>
-#include <lttng/condition/on-event-internal.h>
-#include <lttng/condition/on-event.h>
+#include <lttng/condition/event-rule-matches-internal.h>
+#include <lttng/condition/event-rule-matches.h>
 #include <lttng/domain.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-rule/event-rule-internal.h>

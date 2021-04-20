@@ -14,8 +14,8 @@
 #include "common/mi-lttng.h"
 /* For lttng_condition_type_str(). */
 #include "lttng/condition/condition-internal.h"
-#include "lttng/condition/on-event.h"
-#include "lttng/condition/on-event-internal.h"
+#include "lttng/condition/event-rule-matches.h"
+#include "lttng/condition/event-rule-matches-internal.h"
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
 /* For lttng_event_rule_syscall_emission_site_str() */
