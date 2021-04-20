@@ -1266,13 +1266,16 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 
 	condition = lttng_trigger_get_condition(trigger);
 	assert(condition);
-	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
-	assert(LTTNG_CONDITION_STATUS_OK == lttng_condition_on_event_get_rule(condition, &event_rule));
+	assert(LTTNG_CONDITION_STATUS_OK ==
+			lttng_condition_event_rule_matches_get_rule(
+					condition, &event_rule));
 	assert(event_rule);
 
 	ua_event_notifier_rule->error_counter_index =
-			lttng_condition_on_event_get_error_counter_index(condition);
+			lttng_condition_event_rule_matches_get_error_counter_index(condition);
 	/* Acquire the event notifier's reference to the trigger. */
 	lttng_trigger_get(trigger);
 
@@ -2110,9 +2113,10 @@ static int create_ust_event_notifier(struct ust_app *app,
 	condition = lttng_trigger_get_const_condition(
 			ua_event_notifier_rule->trigger);
 	assert(condition);
-	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
-	condition_status = lttng_condition_on_event_get_rule(
+	condition_status = lttng_condition_event_rule_matches_get_rule(
 			condition, &event_rule);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
@@ -2176,13 +2180,13 @@ static int create_ust_event_notifier(struct ust_app *app,
 	}
 
 	/* Set the capture bytecodes. */
-	cond_status = lttng_condition_on_event_get_capture_descriptor_count(
+	cond_status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_bytecode_count);
 	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
 
 	for (i = 0; i < capture_bytecode_count; i++) {
 		const struct lttng_bytecode *capture_bytecode =
-				lttng_condition_on_event_get_capture_bytecode_at_index(
+				lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
 						condition, i);
 
 		ret = set_ust_capture(app, capture_bytecode, i,
@@ -5697,12 +5701,15 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 		token = lttng_trigger_get_tracer_token(trigger);
 		condition = lttng_trigger_get_condition(trigger);
 
-		if (lttng_condition_get_type(condition) != LTTNG_CONDITION_TYPE_ON_EVENT) {
+		if (lttng_condition_get_type(condition) !=
+				LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES) {
 			/* Does not apply */
 			continue;
 		}
 
-		condition_status = lttng_condition_on_event_borrow_rule_mutable(condition, &event_rule);
+		condition_status =
+				lttng_condition_event_rule_matches_borrow_rule_mutable(
+						condition, &event_rule);
 		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 		if (lttng_event_rule_get_domain_type(event_rule) == LTTNG_DOMAIN_KERNEL) {

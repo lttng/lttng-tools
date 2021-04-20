@@ -471,7 +471,7 @@ enum lttng_object_type get_condition_binding_object(
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return LTTNG_OBJECT_TYPE_SESSION;
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		return LTTNG_OBJECT_TYPE_NONE;
 	default:
 		return LTTNG_OBJECT_TYPE_UNKNOWN;
@@ -2336,12 +2336,12 @@ bool condition_is_supported(struct lttng_condition *condition)
 		is_supported = kernel_supports_ring_buffer_snapshot_sample_positions() == 1;
 		break;
 	}
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 	{
 		const struct lttng_event_rule *event_rule;
 		enum lttng_domain_type domain;
 		const enum lttng_condition_status status =
-				lttng_condition_on_event_get_rule(
+				lttng_condition_event_rule_matches_get_rule(
 						condition, &event_rule);
 
 		assert(status == LTTNG_CONDITION_STATUS_OK);
@@ -2602,7 +2602,7 @@ enum lttng_error_code setup_tracer_notifier(
 		goto error_remove_ht_element;
 	}
 
-	lttng_condition_on_event_set_error_counter_index(
+	lttng_condition_event_rule_matches_set_error_counter_index(
 			condition, error_counter_index);
 
 	ret = LTTNG_OK;
@@ -4569,7 +4569,7 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 	trigger_status = lttng_trigger_get_name(element->trigger, &trigger_name);
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
-	if (lttng_condition_on_event_get_capture_descriptor_count(
+	if (lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			    lttng_trigger_get_const_condition(element->trigger),
 			    &capture_count) != LTTNG_CONDITION_STATUS_OK) {
 		ERR("Failed to get capture count");
@@ -4583,10 +4583,10 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 		goto end;
 	}
 
-	evaluation = lttng_evaluation_on_event_create(
+	evaluation = lttng_evaluation_event_rule_matches_create(
 			container_of(lttng_trigger_get_const_condition(
 						     element->trigger),
-					struct lttng_condition_on_event,
+					struct lttng_condition_event_rule_matches,
 					parent),
 			notification->capture_buffer,
 			notification->capture_buf_size, false);

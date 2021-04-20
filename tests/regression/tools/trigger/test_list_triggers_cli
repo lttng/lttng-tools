@@ -88,7 +88,7 @@ test_top_level_options ()
 	lttng_remove_trigger_ok "hello"
 }
 
-test_on_event_tracepoint ()
+test_event_rule_matches_tracepoint ()
 {
 	diag "Listing on-event tracepoint"
 
@@ -209,7 +209,7 @@ test_on_event_tracepoint ()
 	lttng_remove_trigger_ok "J"
 }
 
-test_on_event_probe ()
+test_event_rule_matches_probe ()
 {
 	local channel_enable_addr
 	local channel_disable_addr
@@ -270,7 +270,7 @@ test_on_event_probe ()
 	lttng_remove_trigger_ok "T2"
 }
 
-test_on_event_userspace_probe_elf ()
+test_event_rule_matches_userspace_probe_elf ()
 {
 	local elf_function_name="test_function"
 
@@ -294,7 +294,7 @@ test_on_event_userspace_probe_elf ()
 	lttng_remove_trigger_ok "T0"
 }
 
-test_on_event_userspace_probe_sdt ()
+test_event_rule_matches_userspace_probe_sdt ()
 {
 	local sdt_provider_name="foobar"
 	local sdt_probe_name="tp1"
@@ -319,7 +319,7 @@ test_on_event_userspace_probe_sdt ()
 	lttng_remove_trigger_ok "T0"
 }
 
-test_on_event_syscall ()
+test_event_rule_matches_syscall ()
 {
 	diag "Listing on-event syscall"
 
@@ -638,11 +638,11 @@ plan_tests $NUM_TESTS
 start_lttng_sessiond_notap
 
 test_top_level_options
-test_on_event_tracepoint
-skip $ist_root "non-root user: skipping kprobe tests" 9 || test_on_event_probe
-skip $ist_root "non-root user: skipping uprobe tests" 5 || test_on_event_userspace_probe_elf
-skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 5 || test_on_event_userspace_probe_sdt
-skip $ist_root "non-root user: skipping syscall tests" 13 || test_on_event_syscall
+test_event_rule_matches_tracepoint
+skip $ist_root "non-root user: skipping kprobe tests" 9 || test_event_rule_matches_probe
+skip $ist_root "non-root user: skipping uprobe tests" 5 || test_event_rule_matches_userspace_probe_elf
+skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 5 || test_event_rule_matches_userspace_probe_sdt
+skip $ist_root "non-root user: skipping syscall tests" 13 || test_event_rule_matches_syscall
 test_session_consumed_size_condition
 test_buffer_usage_conditions
 test_session_rotation_conditions

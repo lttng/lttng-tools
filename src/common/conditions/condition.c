@@ -170,8 +170,9 @@ ssize_t lttng_condition_create_from_payload(
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		create_from_payload = lttng_condition_session_rotation_completed_create_from_payload;
 		break;
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
-		create_from_payload = lttng_condition_on_event_create_from_payload;
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
+		create_from_payload =
+				lttng_condition_event_rule_matches_create_from_payload;
 		break;
 	default:
 		ERR("Attempted to create condition of unknown type (%i)",
@@ -230,7 +231,7 @@ const char *lttng_condition_type_str(enum lttng_condition_type type)
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return "session rotation completed";
 
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		return "event rule hit";
 
 	default:

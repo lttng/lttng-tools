@@ -4315,7 +4315,8 @@ enum lttng_error_code synchronize_tracer_notifier_register(
 	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
 	assert(condition);
-	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
 	trigger_name = trigger_status == LTTNG_TRIGGER_STATUS_OK ?
@@ -4497,7 +4498,8 @@ enum lttng_error_code synchronize_tracer_notifier_unregister(
 					trigger);
 
 	assert(condition);
-	assert(lttng_condition_get_type(condition) == LTTNG_CONDITION_TYPE_ON_EVENT);
+	assert(lttng_condition_get_type(condition) ==
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
 	session_lock_list();
 	switch (trigger_domain) {

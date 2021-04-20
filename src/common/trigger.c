@@ -772,9 +772,9 @@ enum lttng_domain_type lttng_trigger_get_underlying_domain_type_restriction(
 		/* Apply to any domain. */
 		type = LTTNG_DOMAIN_NONE;
 		break;
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		/* Return the domain of the event rule. */
-		c_status = lttng_condition_on_event_get_rule(
+		c_status = lttng_condition_event_rule_matches_get_rule(
 				trigger->condition, &event_rule);
 		assert(c_status == LTTNG_CONDITION_STATUS_OK);
 		type = lttng_event_rule_get_domain_type(event_rule);
@@ -812,12 +812,12 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 	}
 
 	switch (lttng_condition_get_type(condition)) {
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 	{
 		struct lttng_event_rule *event_rule;
 		const enum lttng_condition_status condition_status =
-				lttng_condition_on_event_borrow_rule_mutable(
-					condition, &event_rule);
+				lttng_condition_event_rule_matches_borrow_rule_mutable(
+						condition, &event_rule);
 
 		assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
@@ -829,7 +829,7 @@ enum lttng_error_code lttng_trigger_generate_bytecode(
 		}
 
 		/* Generate the capture bytecode. */
-		ret = lttng_condition_on_event_generate_capture_descriptor_bytecode(
+		ret = lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
 				condition);
 		if (ret != LTTNG_OK) {
 			goto end;
@@ -885,7 +885,7 @@ bool lttng_trigger_needs_tracer_notifier(const struct lttng_trigger *trigger)
 			lttng_trigger_get_const_condition(trigger);
 
 	switch (lttng_condition_get_type(condition)) {
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		needs_tracer_notifier = true;
 		goto end;
 	case LTTNG_CONDITION_TYPE_SESSION_CONSUMED_SIZE:

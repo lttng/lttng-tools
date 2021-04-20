@@ -23,40 +23,41 @@
 #include <stdint.h>
 #include <vendor/msgpack/msgpack.h>
 
-#define IS_ON_EVENT_CONDITION(condition)      \
-	(lttng_condition_get_type(condition) == \
-			LTTNG_CONDITION_TYPE_ON_EVENT)
+#define IS_EVENT_RULE_MATCHES_CONDITION(condition) \
+	(lttng_condition_get_type(condition) ==    \
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES)
 
-static bool is_on_event_evaluation(const struct lttng_evaluation *evaluation)
+static bool is_event_rule_matches_evaluation(
+		const struct lttng_evaluation *evaluation)
 {
 	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
 
-	return type == LTTNG_CONDITION_TYPE_ON_EVENT;
+	return type == LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES;
 }
 
-static bool lttng_condition_on_event_validate(
+static bool lttng_condition_event_rule_matches_validate(
 		const struct lttng_condition *condition);
-static int lttng_condition_on_event_serialize(
+static int lttng_condition_event_rule_matches_serialize(
 		const struct lttng_condition *condition,
 		struct lttng_payload *payload);
-static bool lttng_condition_on_event_is_equal(
+static bool lttng_condition_event_rule_matches_is_equal(
 		const struct lttng_condition *_a,
 		const struct lttng_condition *_b);
-static void lttng_condition_on_event_destroy(
+static void lttng_condition_event_rule_matches_destroy(
 		struct lttng_condition *condition);
 
-static bool lttng_condition_on_event_validate(
+static bool lttng_condition_event_rule_matches_validate(
 		const struct lttng_condition *condition)
 {
 	bool valid = false;
-	struct lttng_condition_on_event *event_rule;
+	struct lttng_condition_event_rule_matches *event_rule;
 
 	if (!condition) {
 		goto end;
 	}
 
-	event_rule = container_of(
-			condition, struct lttng_condition_on_event, parent);
+	event_rule = container_of(condition,
+			struct lttng_condition_event_rule_matches, parent);
 	if (!event_rule->rule) {
 		ERR("Invalid on event condition: a rule must be set");
 		goto end;
@@ -242,24 +243,23 @@ end:
 	return ret;
 }
 
-static
-struct lttng_capture_descriptor *
-lttng_condition_on_event_get_internal_capture_descriptor_at_index(
+static struct lttng_capture_descriptor *
+lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
-	const struct lttng_condition_on_event *on_event_cond =
-			container_of(condition,
-				const struct lttng_condition_on_event,
-				parent);
+	const struct lttng_condition_event_rule_matches
+			*event_rule_matches_cond = container_of(condition,
+					const struct lttng_condition_event_rule_matches,
+					parent);
 	struct lttng_capture_descriptor *desc = NULL;
 	unsigned int count;
 	enum lttng_condition_status status;
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition)) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition)) {
 		goto end;
 	}
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &count);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto end;
@@ -270,37 +270,38 @@ lttng_condition_on_event_get_internal_capture_descriptor_at_index(
 	}
 
 	desc = lttng_dynamic_pointer_array_get_pointer(
-			&on_event_cond->capture_descriptors, index);
+			&event_rule_matches_cond->capture_descriptors, index);
 end:
 	return desc;
 }
 
-static int lttng_condition_on_event_serialize(
+static int lttng_condition_event_rule_matches_serialize(
 		const struct lttng_condition *condition,
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_condition_on_event *on_event_condition;
+	struct lttng_condition_event_rule_matches *event_rule_matches_condition;
 	enum lttng_condition_status status;
 	/* Used for iteration and communication (size matters). */
 	uint32_t i, capture_descr_count;
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition)) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition)) {
 		ret = -1;
 		goto end;
 	}
 
 	DBG("Serializing on event condition");
-	on_event_condition = container_of(
-			condition, struct lttng_condition_on_event, parent);
+	event_rule_matches_condition = container_of(condition,
+			struct lttng_condition_event_rule_matches, parent);
 
 	DBG("Serializing on event condition's event rule");
-	ret = lttng_event_rule_serialize(on_event_condition->rule, payload);
+	ret = lttng_event_rule_serialize(
+			event_rule_matches_condition->rule, payload);
 	if (ret) {
 		goto end;
 	}
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_descr_count);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		ret = -1;
@@ -317,7 +318,7 @@ static int lttng_condition_on_event_serialize(
 
 	for (i = 0; i < capture_descr_count; i++) {
 		const struct lttng_capture_descriptor *desc =
-				lttng_condition_on_event_get_internal_capture_descriptor_at_index(
+				lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 						condition, i);
 
 		DBG("Serializing on event condition's capture descriptor %" PRIu32,
@@ -343,13 +344,13 @@ bool capture_descriptors_are_equal(
 	size_t i;
 	enum lttng_condition_status status;
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition_a, &capture_descr_count_a);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto not_equal;
 	}
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition_b, &capture_descr_count_b);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto not_equal;
@@ -361,13 +362,11 @@ bool capture_descriptors_are_equal(
 
 	for (i = 0; i < capture_descr_count_a; i++) {
 		const struct lttng_event_expr *expr_a =
-				lttng_condition_on_event_get_capture_descriptor_at_index(
-					condition_a,
-					i);
+				lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
+						condition_a, i);
 		const struct lttng_event_expr *expr_b =
-				lttng_condition_on_event_get_capture_descriptor_at_index(
-					condition_b,
-					i);
+				lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
+						condition_b, i);
 
 		if (!lttng_event_expr_is_equal(expr_a, expr_b)) {
 			goto not_equal;
@@ -383,15 +382,15 @@ end:
 	return is_equal;
 }
 
-static bool lttng_condition_on_event_is_equal(
+static bool lttng_condition_event_rule_matches_is_equal(
 		const struct lttng_condition *_a,
 		const struct lttng_condition *_b)
 {
 	bool is_equal = false;
-	struct lttng_condition_on_event *a, *b;
+	struct lttng_condition_event_rule_matches *a, *b;
 
-	a = container_of(_a, struct lttng_condition_on_event, parent);
-	b = container_of(_b, struct lttng_condition_on_event, parent);
+	a = container_of(_a, struct lttng_condition_event_rule_matches, parent);
+	b = container_of(_b, struct lttng_condition_event_rule_matches, parent);
 
 	/* Both event rules must be set or both must be unset. */
 	if ((a->rule && !b->rule) || (!a->rule && b->rule)) {
@@ -410,17 +409,18 @@ end:
 	return is_equal;
 }
 
-static void lttng_condition_on_event_destroy(
+static void lttng_condition_event_rule_matches_destroy(
 		struct lttng_condition *condition)
 {
-	struct lttng_condition_on_event *on_event_condition;
+	struct lttng_condition_event_rule_matches *event_rule_matches_condition;
 
-	on_event_condition = container_of(
-			condition, struct lttng_condition_on_event, parent);
+	event_rule_matches_condition = container_of(condition,
+			struct lttng_condition_event_rule_matches, parent);
 
-	lttng_event_rule_put(on_event_condition->rule);
-	lttng_dynamic_pointer_array_reset(&on_event_condition->capture_descriptors);
-	free(on_event_condition);
+	lttng_event_rule_put(event_rule_matches_condition->rule);
+	lttng_dynamic_pointer_array_reset(
+			&event_rule_matches_condition->capture_descriptors);
+	free(event_rule_matches_condition);
 }
 
 static
@@ -434,27 +434,29 @@ void destroy_capture_descriptor(void *ptr)
 	free(desc);
 }
 
-struct lttng_condition *lttng_condition_on_event_create(
+struct lttng_condition *lttng_condition_event_rule_matches_create(
 		struct lttng_event_rule *rule)
 {
 	struct lttng_condition *parent = NULL;
-	struct lttng_condition_on_event *condition = NULL;
+	struct lttng_condition_event_rule_matches *condition = NULL;
 
 	if (!rule) {
 		goto end;
 	}
 
-	condition = zmalloc(sizeof(struct lttng_condition_on_event));
+	condition = zmalloc(sizeof(struct lttng_condition_event_rule_matches));
 	if (!condition) {
 		return NULL;
 	}
 
 	lttng_condition_init(&condition->parent,
-			LTTNG_CONDITION_TYPE_ON_EVENT);
-	condition->parent.validate = lttng_condition_on_event_validate,
-	condition->parent.serialize = lttng_condition_on_event_serialize,
-	condition->parent.equal = lttng_condition_on_event_is_equal,
-	condition->parent.destroy = lttng_condition_on_event_destroy,
+			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+	condition->parent.validate =
+			lttng_condition_event_rule_matches_validate,
+	condition->parent.serialize =
+			lttng_condition_event_rule_matches_serialize,
+	condition->parent.equal = lttng_condition_event_rule_matches_is_equal,
+	condition->parent.destroy = lttng_condition_event_rule_matches_destroy,
 
 	lttng_event_rule_get(rule);
 	condition->rule = rule;
@@ -626,7 +628,7 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_condition_on_event_create_from_payload(
+ssize_t lttng_condition_event_rule_matches_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_condition **_condition)
 {
@@ -657,7 +659,7 @@ ssize_t lttng_condition_on_event_create_from_payload(
 	offset += event_rule_length;
 
 	/* Create condition (no capture descriptors yet) at this point */
-	condition = lttng_condition_on_event_create(event_rule);
+	condition = lttng_condition_event_rule_matches_create(event_rule);
 	if (!condition) {
 		goto error;
 	}
@@ -680,7 +682,7 @@ ssize_t lttng_condition_on_event_create_from_payload(
 		}
 
 		/* Move ownership of `expr` to `condition`. */
-		status = lttng_condition_on_event_append_capture_descriptor(
+		status = lttng_condition_event_rule_matches_append_capture_descriptor(
 				condition, expr);
 		if (status != LTTNG_CONDITION_STATUS_OK) {
 			/* `expr` not moved: destroy it. */
@@ -704,20 +706,22 @@ end:
 }
 
 LTTNG_HIDDEN
-enum lttng_condition_status lttng_condition_on_event_borrow_rule_mutable(
+enum lttng_condition_status
+lttng_condition_event_rule_matches_borrow_rule_mutable(
 		const struct lttng_condition *condition,
 		struct lttng_event_rule **rule)
 {
-	struct lttng_condition_on_event *event_rule;
+	struct lttng_condition_event_rule_matches *event_rule;
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition) || !rule) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition) ||
+			!rule) {
 		status = LTTNG_CONDITION_STATUS_INVALID;
 		goto end;
 	}
 
-	event_rule = container_of(
-			condition, struct lttng_condition_on_event, parent);
+	event_rule = container_of(condition,
+			struct lttng_condition_event_rule_matches, parent);
 	if (!event_rule->rule) {
 		status = LTTNG_CONDITION_STATUS_UNSET;
 		goto end;
@@ -728,62 +732,66 @@ end:
 	return status;
 }
 
-enum lttng_condition_status lttng_condition_on_event_get_rule(
+enum lttng_condition_status lttng_condition_event_rule_matches_get_rule(
 		const struct lttng_condition *condition,
 		const struct lttng_event_rule **rule)
 {
 	struct lttng_event_rule *mutable_rule = NULL;
 	const enum lttng_condition_status status =
-			lttng_condition_on_event_borrow_rule_mutable(
-				condition, &mutable_rule);
+			lttng_condition_event_rule_matches_borrow_rule_mutable(
+					condition, &mutable_rule);
 
 	*rule = mutable_rule;
 	return status;
 }
 
 LTTNG_HIDDEN
-void lttng_condition_on_event_set_error_counter_index(
+void lttng_condition_event_rule_matches_set_error_counter_index(
 		struct lttng_condition *condition, uint64_t error_counter_index)
 {
-	struct lttng_condition_on_event *on_event_cond =
+	struct lttng_condition_event_rule_matches *event_rule_matches_cond =
 			container_of(condition,
-				struct lttng_condition_on_event, parent);
+					struct lttng_condition_event_rule_matches,
+					parent);
 
-	LTTNG_OPTIONAL_SET(&on_event_cond->error_counter_index, error_counter_index);
+	LTTNG_OPTIONAL_SET(&event_rule_matches_cond->error_counter_index,
+			error_counter_index);
 }
 
 LTTNG_HIDDEN
-uint64_t lttng_condition_on_event_get_error_counter_index(
+uint64_t lttng_condition_event_rule_matches_get_error_counter_index(
 		const struct lttng_condition *condition)
 {
-	const struct lttng_condition_on_event *on_event_cond =
-			container_of(condition,
-				const struct lttng_condition_on_event, parent);
+	const struct lttng_condition_event_rule_matches
+			*event_rule_matches_cond = container_of(condition,
+					const struct lttng_condition_event_rule_matches,
+					parent);
 
-	return LTTNG_OPTIONAL_GET(on_event_cond->error_counter_index);
+	return LTTNG_OPTIONAL_GET(event_rule_matches_cond->error_counter_index);
 }
 
 enum lttng_condition_status
-lttng_condition_on_event_append_capture_descriptor(
+lttng_condition_event_rule_matches_append_capture_descriptor(
 		struct lttng_condition *condition,
 		struct lttng_event_expr *expr)
 {
 	int ret;
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
-	struct lttng_condition_on_event *on_event_cond =
+	struct lttng_condition_event_rule_matches *event_rule_matches_cond =
 			container_of(condition,
-				struct lttng_condition_on_event, parent);
+					struct lttng_condition_event_rule_matches,
+					parent);
 	struct lttng_capture_descriptor *descriptor = NULL;
 	const struct lttng_event_rule *rule = NULL;
 
 	/* Only accept l-values. */
-	if (!condition || !IS_ON_EVENT_CONDITION(condition) || !expr ||
-			!lttng_event_expr_is_lvalue(expr)) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition) ||
+			!expr || !lttng_event_expr_is_lvalue(expr)) {
 		status = LTTNG_CONDITION_STATUS_INVALID;
 		goto end;
 	}
 
-	status = lttng_condition_on_event_get_rule(condition, &rule);
+	status = lttng_condition_event_rule_matches_get_rule(condition, &rule);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto end;
 	}
@@ -816,7 +824,8 @@ lttng_condition_on_event_append_capture_descriptor(
 	descriptor->bytecode = NULL;
 
 	ret = lttng_dynamic_pointer_array_add_pointer(
-			&on_event_cond->capture_descriptors, descriptor);
+			&event_rule_matches_cond->capture_descriptors,
+			descriptor);
 	if (ret) {
 		status = LTTNG_CONDITION_STATUS_ERROR;
 		goto end;
@@ -830,35 +839,36 @@ end:
 }
 
 enum lttng_condition_status
-lttng_condition_on_event_get_capture_descriptor_count(
+lttng_condition_event_rule_matches_get_capture_descriptor_count(
 		const struct lttng_condition *condition, unsigned int *count)
 {
 	enum lttng_condition_status status = LTTNG_CONDITION_STATUS_OK;
-	const struct lttng_condition_on_event *on_event_condition =
-			container_of(condition,
-				const struct lttng_condition_on_event,
-				parent);
+	const struct lttng_condition_event_rule_matches
+			*event_rule_matches_condition = container_of(condition,
+					const struct lttng_condition_event_rule_matches,
+					parent);
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition) || !count) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition) ||
+			!count) {
 		status = LTTNG_CONDITION_STATUS_INVALID;
 		goto end;
 	}
 
 	*count = lttng_dynamic_pointer_array_get_count(
-			&on_event_condition->capture_descriptors);
+			&event_rule_matches_condition->capture_descriptors);
 
 end:
 	return status;
 }
 
 const struct lttng_event_expr *
-lttng_condition_on_event_get_capture_descriptor_at_index(
+lttng_condition_event_rule_matches_get_capture_descriptor_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
 	const struct lttng_event_expr *expr = NULL;
 	const struct lttng_capture_descriptor *desc = NULL;
 
-	desc = lttng_condition_on_event_get_internal_capture_descriptor_at_index(
+	desc = lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 			condition, index);
 	if (desc == NULL) {
 		goto end;
@@ -870,8 +880,8 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_evaluation_on_event_create_from_payload(
-		const struct lttng_condition_on_event *condition,
+ssize_t lttng_evaluation_event_rule_matches_create_from_payload(
+		const struct lttng_condition_event_rule_matches *condition,
 		struct lttng_payload_view *view,
 		struct lttng_evaluation **_evaluation)
 {
@@ -911,8 +921,8 @@ ssize_t lttng_evaluation_on_event_create_from_payload(
 		capture_payload = current_view.buffer.data;
 	}
 
-	evaluation = lttng_evaluation_on_event_create(condition,
-			capture_payload, capture_payload_size, true);
+	evaluation = lttng_evaluation_event_rule_matches_create(
+			condition, capture_payload, capture_payload_size, true);
 	if (!evaluation) {
 		ret = -1;
 		goto error;
@@ -928,16 +938,16 @@ error:
 	return ret;
 }
 
-static int lttng_evaluation_on_event_serialize(
+static int lttng_evaluation_event_rule_matches_serialize(
 		const struct lttng_evaluation *evaluation,
 		struct lttng_payload *payload)
 {
 	int ret = 0;
-	struct lttng_evaluation_on_event *hit;
+	struct lttng_evaluation_event_rule_matches *hit;
 	uint32_t capture_payload_size;
 
-	hit = container_of(
-			evaluation, struct lttng_evaluation_on_event, parent);
+	hit = container_of(evaluation,
+			struct lttng_evaluation_event_rule_matches, parent);
 
 	capture_payload_size = (uint32_t) hit->capture_payload.size;
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &capture_payload_size,
@@ -1001,13 +1011,13 @@ end:
 	return ret;
 }
 
-static void lttng_evaluation_on_event_destroy(
+static void lttng_evaluation_event_rule_matches_destroy(
 		struct lttng_evaluation *evaluation)
 {
-	struct lttng_evaluation_on_event *hit;
+	struct lttng_evaluation_event_rule_matches *hit;
 
-	hit = container_of(
-			evaluation, struct lttng_evaluation_on_event, parent);
+	hit = container_of(evaluation,
+			struct lttng_evaluation_event_rule_matches, parent);
 	lttng_dynamic_buffer_reset(&hit->capture_payload);
 	lttng_event_field_value_destroy(hit->captured_values);
 	free(hit);
@@ -1189,10 +1199,10 @@ end:
 	return ret;
 }
 
-static
-struct lttng_event_field_value *event_field_value_from_capture_payload(
-		const struct lttng_condition_on_event *condition,
-		const char *capture_payload, size_t capture_payload_size)
+static struct lttng_event_field_value *event_field_value_from_capture_payload(
+		const struct lttng_condition_event_rule_matches *condition,
+		const char *capture_payload,
+		size_t capture_payload_size)
 {
 	struct lttng_event_field_value *ret = NULL;
 	msgpack_unpacked unpacked;
@@ -1252,7 +1262,7 @@ struct lttng_event_field_value *event_field_value_from_capture_payload(
 
 	for (i = 0; i < count; i++) {
 		const struct lttng_capture_descriptor *capture_descriptor =
-				lttng_condition_on_event_get_internal_capture_descriptor_at_index(
+				lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 						&condition->parent, i);
 		const msgpack_object *elem_obj;
 		struct lttng_event_field_value *elem_field_val;
@@ -1293,15 +1303,16 @@ end:
 }
 
 LTTNG_HIDDEN
-struct lttng_evaluation *lttng_evaluation_on_event_create(
-		const struct lttng_condition_on_event *condition,
-		const char *capture_payload, size_t capture_payload_size,
+struct lttng_evaluation *lttng_evaluation_event_rule_matches_create(
+		const struct lttng_condition_event_rule_matches *condition,
+		const char *capture_payload,
+		size_t capture_payload_size,
 		bool decode_capture_payload)
 {
-	struct lttng_evaluation_on_event *hit;
+	struct lttng_evaluation_event_rule_matches *hit;
 	struct lttng_evaluation *evaluation = NULL;
 
-	hit = zmalloc(sizeof(struct lttng_evaluation_on_event));
+	hit = zmalloc(sizeof(struct lttng_evaluation_event_rule_matches));
 	if (!hit) {
 		goto error;
 	}
@@ -1331,40 +1342,40 @@ struct lttng_evaluation *lttng_evaluation_on_event_create(
 		}
 	}
 
-	hit->parent.type = LTTNG_CONDITION_TYPE_ON_EVENT;
-	hit->parent.serialize = lttng_evaluation_on_event_serialize;
-	hit->parent.destroy = lttng_evaluation_on_event_destroy;
+	hit->parent.type = LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES;
+	hit->parent.serialize = lttng_evaluation_event_rule_matches_serialize;
+	hit->parent.destroy = lttng_evaluation_event_rule_matches_destroy;
 
 	evaluation = &hit->parent;
 	hit = NULL;
 
 error:
 	if (hit) {
-		lttng_evaluation_on_event_destroy(&hit->parent);
+		lttng_evaluation_event_rule_matches_destroy(&hit->parent);
 	}
 
 	return evaluation;
 }
 
-enum lttng_evaluation_on_event_status
-lttng_evaluation_on_event_get_captured_values(
+enum lttng_evaluation_event_rule_matches_status
+lttng_evaluation_event_rule_matches_get_captured_values(
 		const struct lttng_evaluation *evaluation,
 		const struct lttng_event_field_value **field_val)
 {
-	struct lttng_evaluation_on_event *hit;
-	enum lttng_evaluation_on_event_status status =
-			LTTNG_EVALUATION_ON_EVENT_STATUS_OK;
+	struct lttng_evaluation_event_rule_matches *hit;
+	enum lttng_evaluation_event_rule_matches_status status =
+			LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK;
 
-	if (!evaluation || !is_on_event_evaluation(evaluation) ||
+	if (!evaluation || !is_event_rule_matches_evaluation(evaluation) ||
 			!field_val) {
-		status = LTTNG_EVALUATION_ON_EVENT_STATUS_INVALID;
+		status = LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_INVALID;
 		goto end;
 	}
 
-	hit = container_of(evaluation, struct lttng_evaluation_on_event,
-			parent);
+	hit = container_of(evaluation,
+			struct lttng_evaluation_event_rule_matches, parent);
 	if (!hit->captured_values) {
-		status = LTTNG_EVALUATION_ON_EVENT_STATUS_NONE;
+		status = LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_NONE;
 		goto end;
 	}
 
@@ -1376,19 +1387,19 @@ end:
 
 LTTNG_HIDDEN
 enum lttng_error_code
-lttng_condition_on_event_generate_capture_descriptor_bytecode(
+lttng_condition_event_rule_matches_generate_capture_descriptor_bytecode(
 		struct lttng_condition *condition)
 {
 	enum lttng_error_code ret;
 	enum lttng_condition_status status;
 	unsigned int capture_count, i;
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition)) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition)) {
 		ret = LTTNG_ERR_FATAL;
 		goto end;
 	}
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &capture_count);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		ret = LTTNG_ERR_FATAL;
@@ -1397,7 +1408,7 @@ lttng_condition_on_event_generate_capture_descriptor_bytecode(
 
 	for (i = 0; i < capture_count; i++) {
 		struct lttng_capture_descriptor *local_capture_desc =
-				lttng_condition_on_event_get_internal_capture_descriptor_at_index(
+				lttng_condition_event_rule_matches_get_internal_capture_descriptor_at_index(
 						condition, i);
 
 		if (local_capture_desc == NULL) {
@@ -1424,23 +1435,23 @@ end:
 
 LTTNG_HIDDEN
 const struct lttng_bytecode *
-lttng_condition_on_event_get_capture_bytecode_at_index(
+lttng_condition_event_rule_matches_get_capture_bytecode_at_index(
 		const struct lttng_condition *condition, unsigned int index)
 {
-	const struct lttng_condition_on_event *on_event_cond =
-			container_of(condition,
-				const struct lttng_condition_on_event,
-				parent);
+	const struct lttng_condition_event_rule_matches
+			*event_rule_matches_cond = container_of(condition,
+					const struct lttng_condition_event_rule_matches,
+					parent);
 	struct lttng_capture_descriptor *desc = NULL;
 	struct lttng_bytecode *bytecode = NULL;
 	unsigned int count;
 	enum lttng_condition_status status;
 
-	if (!condition || !IS_ON_EVENT_CONDITION(condition)) {
+	if (!condition || !IS_EVENT_RULE_MATCHES_CONDITION(condition)) {
 		goto end;
 	}
 
-	status = lttng_condition_on_event_get_capture_descriptor_count(
+	status = lttng_condition_event_rule_matches_get_capture_descriptor_count(
 			condition, &count);
 	if (status != LTTNG_CONDITION_STATUS_OK) {
 		goto end;
@@ -1451,7 +1462,7 @@ lttng_condition_on_event_get_capture_bytecode_at_index(
 	}
 
 	desc = lttng_dynamic_pointer_array_get_pointer(
-			&on_event_cond->capture_descriptors, index);
+			&event_rule_matches_cond->capture_descriptors, index);
 	if (desc == NULL) {
 		goto end;
 	}

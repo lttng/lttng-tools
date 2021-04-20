@@ -117,12 +117,13 @@ ssize_t lttng_evaluation_create_from_payload(
 		}
 		evaluation_size += ret;
 		break;
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		assert(condition);
-		assert(condition->type == LTTNG_CONDITION_TYPE_ON_EVENT);
-		ret = lttng_evaluation_on_event_create_from_payload(
+		assert(condition->type ==
+				LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
+		ret = lttng_evaluation_event_rule_matches_create_from_payload(
 				container_of(condition,
-						const struct lttng_condition_on_event,
+						const struct lttng_condition_event_rule_matches,
 						parent),
 				&evaluation_view, evaluation);
 		if (ret < 0) {

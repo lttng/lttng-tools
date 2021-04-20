@@ -95,17 +95,16 @@ unsigned long lttng_condition_session_rotation_hash(
 	return hash;
 }
 
-static
-unsigned long lttng_condition_on_event_hash(
-	const struct lttng_condition *condition)
+static unsigned long lttng_condition_event_rule_matches_hash(
+		const struct lttng_condition *condition)
 {
 	unsigned long hash, condition_type;
 	enum lttng_condition_status condition_status;
 	const struct lttng_event_rule *event_rule;
 
 	condition_type = (unsigned long) condition->type;
-	condition_status = lttng_condition_on_event_get_rule(condition,
-			&event_rule);
+	condition_status = lttng_condition_event_rule_matches_get_rule(
+			condition, &event_rule);
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	hash = hash_key_ulong((void *) condition_type, lttng_ht_seed);
@@ -128,8 +127,8 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_ONGOING:
 	case LTTNG_CONDITION_TYPE_SESSION_ROTATION_COMPLETED:
 		return lttng_condition_session_rotation_hash(condition);
-	case LTTNG_CONDITION_TYPE_ON_EVENT:
-		return lttng_condition_on_event_hash(condition);
+	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
+		return lttng_condition_event_rule_matches_hash(condition);
 	default:
 		//ERR("[notification-thread] Unexpected condition type caught");
 		abort();

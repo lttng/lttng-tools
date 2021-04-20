@@ -1495,7 +1495,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		ok(success, "Setting tracepoint event rule exclusions");
 	}
 
-	tmp_condition = lttng_condition_on_event_create(event_rule);
+	tmp_condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(tmp_condition, "Condition event rule object creation");
 
 	if (capture_desc_cb) {
@@ -1863,7 +1863,7 @@ static void test_kprobe_event_rule_notification(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: '%s'", trigger_name);
 
-	condition = lttng_condition_on_event_create(event_rule);
+	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
 
 	/* Register the trigger for condition. */
@@ -1972,7 +1972,7 @@ static void test_uprobe_event_rule_notification(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: '%s'", trigger_name);
 
-	condition = lttng_condition_on_event_create(event_rule);
+	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
 
 	/* Register the trigger for condition. */
@@ -2064,7 +2064,7 @@ static void test_syscall_event_rule_notification(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting syscall event rule pattern: '%s'", syscall_name);
 
-	condition = lttng_condition_on_event_create(event_rule);
+	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition syscall event rule object creation");
 
 	/* Register the trigger for condition. */
@@ -2159,7 +2159,7 @@ static void test_syscall_event_rule_notification_filter(
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting filter: '%s'", filter_pattern);
 
-	condition = lttng_condition_on_event_create(event_rule);
+	condition = lttng_condition_event_rule_matches_create(event_rule);
 	ok(condition, "Condition event rule object creation");
 
 	/* Register the triggers for condition */
@@ -2274,7 +2274,7 @@ static int generate_capture_descr(struct lttng_condition *condition)
 			goto end;
 		}
 
-		cond_status = lttng_condition_on_event_append_capture_descriptor(
+		cond_status = lttng_condition_event_rule_matches_append_capture_descriptor(
 				condition, expr);
 		if (cond_status != LTTNG_CONDITION_STATUS_OK) {
 			fail("Failed to append capture descriptor");
@@ -2297,7 +2297,8 @@ static int validator_notification_trigger_capture(
 {
 	int ret;
 	unsigned int capture_count, i;
-	enum lttng_evaluation_on_event_status on_event_evaluation_status;
+	enum lttng_evaluation_event_rule_matches_status
+			event_rule_matches_evaluation_status;
 	enum lttng_event_field_value_status event_field_value_status;
 	const struct lttng_evaluation *evaluation;
 	const struct lttng_event_field_value *captured_fields;
@@ -2310,12 +2311,13 @@ static int validator_notification_trigger_capture(
 		goto end;
 	}
 
-	on_event_evaluation_status =
-			lttng_evaluation_on_event_get_captured_values(
+	event_rule_matches_evaluation_status =
+			lttng_evaluation_event_rule_matches_get_captured_values(
 					evaluation, &captured_fields);
-	if (on_event_evaluation_status != LTTNG_EVALUATION_ON_EVENT_STATUS_OK) {
+	if (event_rule_matches_evaluation_status !=
+			LTTNG_EVALUATION_EVENT_RULE_MATCHES_STATUS_OK) {
 		diag("Failed to get event rule evaluation captured values: status = %d",
-				(int) on_event_evaluation_status);
+				(int) event_rule_matches_evaluation_status);
 		ret = 1;
 		goto end;
 	}
