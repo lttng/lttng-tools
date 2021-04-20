@@ -76,7 +76,7 @@ function test_kernel_notifier_discarded_count
 	# To fill it, we need to generate (16 * 4096)/42 = 1561 notifications.
 	# That number is a bit larger than what we need since some of the space
 	# is lost in subbuffer boundaries.
-	echo -n "200000" > /proc/lttng-test-filter-event
+	echo -n "2000" > /proc/lttng-test-filter-event
 
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
@@ -99,6 +99,8 @@ function test_kernel_notifier_discarded_count
 	lttng_add_trigger_ok "$trigger_name" \
 		--condition on-event --kernel lttng_test_filter_event \
 		--action notify
+
+	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
 	# Confirm that the discarded notification line is not present.
 	cat "$list_triggers_stdout" | grep -v --quiet "discarded tracer messages"
