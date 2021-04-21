@@ -491,6 +491,10 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 
 	status = send_counter_data_to_ust(app, new_counter);
 	if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		if (status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
+			goto error_send_counter_data;
+		}
+
 		ERR("Failed to send counter data to application tracer: status = %s, application uid = %d, pid = %d, application name = '%s'",
 				error_accounting_status_str(status),
 				(int) app->uid, (int) app->pid, app->name);
@@ -525,6 +529,10 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 		status = send_counter_cpu_data_to_ust(app, new_counter,
 				new_counter_cpu);
 		if (status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+			if (status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
+				goto error_send_cpu_counter_data;
+			}
+
 			ERR("Failed to send counter cpu data to application tracer: status = %s, application uid = %d, pid = %d, application name = '%s'",
 					error_accounting_status_str(status),
 					(int) app->uid, (int) app->pid,

@@ -4067,12 +4067,28 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 
 	event_notifier_error_accounting_status = event_notifier_error_accounting_register_app(app);
 	if (event_notifier_error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
+		if (event_notifier_error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
+			DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d",
+					app->sock);
+			ret = 0;
+			goto error_accounting;
+		}
+
 		ERR("Failed to setup event notifier error accounting for app");
 		ret = -1;
-		goto error;
+		goto error_accounting;
 	}
 
 	return ret;
+
+error_accounting:
+	lttng_ret = notification_thread_command_remove_tracer_event_source(
+			the_notification_thread_handle,
+			lttng_pipe_get_readfd(
+					app->event_notifier_group.event_pipe));
+	if (lttng_ret != LTTNG_OK) {
+		ERR("Failed to remove application tracer event source from notification thread");
+	}
 
 error:
 	ustctl_release_object(app->sock, app->event_notifier_group.object);
