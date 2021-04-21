@@ -1499,8 +1499,8 @@ struct lttng_action *handle_action_notify(int *argc, const char ***argv)
 error:
 	lttng_action_destroy(action);
 	action = NULL;
-	free(error);
 end:
+	free(error);
 	lttng_rate_policy_destroy(policy);
 	argpar_state_destroy(state);
 	argpar_item_destroy(item);
