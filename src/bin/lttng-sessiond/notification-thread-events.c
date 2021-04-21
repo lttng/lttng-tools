@@ -2305,7 +2305,7 @@ static int handle_notification_thread_command_get_trigger(
 
 	/* Not a fatal error if the trigger is not found. */
 	get_trigger_info_for_log(trigger, &trigger_name, &trigger_owner_uid);
-	ERR("Failed to retrieve registered version of trigger: trigger name = '%s', trigger owner uid = %d",
+	DBG("Failed to retrieve registered version of trigger: trigger name = '%s', trigger owner uid = %d",
 			trigger_name, (int) trigger_owner_uid);
 
 	ret = 0;
