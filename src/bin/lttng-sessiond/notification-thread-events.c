@@ -2729,9 +2729,8 @@ int handle_notification_thread_command_register_trigger(
 			trigger,
 			&trigger_ht_element->node_by_name_uid);
 	if (node != &trigger_ht_element->node_by_name_uid) {
-		/* Not a fatal error, simply report it to the client. */
-		cds_lfht_del(state->triggers_ht, &trigger_ht_element->node);
-		*cmd_result = LTTNG_ERR_TRIGGER_EXISTS;
+		/* Internal error: add to triggers_ht should have failed. */
+		ret = -1;
 		goto error_free_ht_element;
 	}
 
