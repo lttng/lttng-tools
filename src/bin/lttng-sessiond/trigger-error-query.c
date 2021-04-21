@@ -83,8 +83,7 @@ enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 			lttng_trigger_get_action(trigger), results);
 	switch (action_status) {
 	case LTTNG_ACTION_STATUS_OK:
-		status = LTTNG_TRIGGER_STATUS_OK;
-		goto end;
+		break;
 	default:
 		status = LTTNG_TRIGGER_STATUS_ERROR;
 		goto end;
