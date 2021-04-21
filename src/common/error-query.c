@@ -95,25 +95,29 @@ struct lttng_error_query *lttng_error_query_trigger_create(
 		const struct lttng_trigger *trigger)
 {
 	struct lttng_error_query_trigger *query = NULL;
-	struct lttng_trigger *trigger_copy;
+	struct lttng_trigger *trigger_copy = NULL;
+
+	if (!trigger) {
+		goto end;
+	}
 
 	trigger_copy = lttng_trigger_copy(trigger);
 	if (!trigger_copy) {
 		goto end;
 	}
 
-	if (!trigger) {
-		goto end;
-	}
-
 	query = zmalloc(sizeof(*query));
 	if (!query) {
 		PERROR("Failed to allocate trigger error query");
-		goto end;
+		goto error;
 	}
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER;
 	query->trigger = trigger_copy;
+	trigger_copy = NULL;
+
+error:
+	lttng_trigger_put(trigger_copy);
 end:
 	return query ? &query->parent : NULL;
 }
@@ -124,7 +128,7 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 {
 	struct lttng_error_query_action *query = NULL;
 	typeof(query->action_index) action_index;
-	struct lttng_trigger *trigger_copy;
+	struct lttng_trigger *trigger_copy = NULL;
 
 	if (!trigger || !action) {
 		goto end;
@@ -153,7 +157,7 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 		action_status = lttng_action_group_get_count(
 				trigger->action, &action_group_count);
 		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			goto end;
+			goto error;
 		}
 
 		for (i = 0; i < action_group_count; i++) {
@@ -170,25 +174,28 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 
 		if (!action_index.is_set) {
 			/* Not found; invalid action. */
-			goto end;
+			goto error;
 		}
 	} else {
 		/*
 		 * Trigger action is not a group and not equal to the target
 		 * action; invalid action provided.
 		 */
-		goto end;
+		goto error;
 	}
 
 	query = zmalloc(sizeof(*query));
 	if (!query) {
 		PERROR("Failed to allocate action error query");
-		goto end;
+		goto error;
 	}
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION;
 	query->trigger = trigger_copy;
+	trigger_copy = NULL;
 	query->action_index = action_index;
+error:
+	lttng_trigger_put(trigger_copy);
 end:
 	return query ? &query->parent : NULL;
 }
