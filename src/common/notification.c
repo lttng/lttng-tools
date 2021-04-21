@@ -78,9 +78,9 @@ ssize_t lttng_notification_create_from_payload(
 		struct lttng_payload_view *src_view,
 		struct lttng_notification **notification)
 {
-	ssize_t ret, notification_size = 0, condition_size, evaluation_size;
-	struct lttng_trigger *trigger;
-	struct lttng_evaluation *evaluation;
+	ssize_t ret, notification_size = 0, trigger_size, evaluation_size;
+	struct lttng_trigger *trigger = NULL;
+	struct lttng_evaluation *evaluation = NULL;
 	const struct lttng_notification_comm *notification_comm;
 	const struct lttng_payload_view notification_comm_view =
 			lttng_payload_view_from_view(
@@ -88,13 +88,13 @@ ssize_t lttng_notification_create_from_payload(
 
 	if (!src_view || !notification) {
 		ret = -1;
-		goto end;
+		goto error;
 	}
 
 	if (!lttng_payload_view_is_valid(&notification_comm_view)) {
 		/* Payload not large enough to contain the header. */
 		ret = -1;
-		goto end;
+		goto error;
 	}
 
 	notification_comm = (typeof(notification_comm)) notification_comm_view.buffer.data;
@@ -105,16 +105,16 @@ ssize_t lttng_notification_create_from_payload(
 				lttng_payload_view_from_view(src_view,
 						notification_size, -1);
 
-		condition_size = lttng_trigger_create_from_payload(
+		trigger_size = lttng_trigger_create_from_payload(
 				&condition_view, &trigger);
 	}
 
-	if (condition_size < 0) {
-		ret = condition_size;
-		goto end;
+	if (trigger_size < 0) {
+		ret = trigger_size;
+		goto error;
 	}
 
-	notification_size += condition_size;
+	notification_size += trigger_size;
 
 	{
 		/* struct lttng_evaluation */
@@ -129,14 +129,14 @@ ssize_t lttng_notification_create_from_payload(
 
 	if (evaluation_size < 0) {
 		ret = evaluation_size;
-		goto end;
+		goto error;
 	}
 
 	notification_size += evaluation_size;
 
 	/* Unexpected size of inner-elements; the buffer is corrupted. */
 	if ((ssize_t) notification_comm->length !=
-			condition_size + evaluation_size) {
+			trigger_size + evaluation_size) {
 		ret = -1;
 		goto error;
 	}
@@ -146,9 +146,10 @@ ssize_t lttng_notification_create_from_payload(
 		ret = -1;
 		goto error;
 	}
+
 	ret = notification_size;
-end:
 	return ret;
+
 error:
 	lttng_trigger_destroy(trigger);
 	lttng_evaluation_destroy(evaluation);
