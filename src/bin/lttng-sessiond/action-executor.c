@@ -570,8 +570,8 @@ static int action_executor_snapshot_session_handler(
 	 * existed. If not, skip the action altogether.
 	 */
 	if (!item->context.session_id.is_set) {
-		DBG("Session `%s` was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
-				session_name, get_action_name(action),
+		DBG("Session was not present at the moment the work item was enqueued for %s` action of trigger `%s`",
+				get_action_name(action),
 				get_trigger_name(work_item->trigger));
 		lttng_action_increase_execution_failure_count(action);
 		ret = 0;
