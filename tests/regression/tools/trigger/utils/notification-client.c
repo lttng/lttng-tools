@@ -240,7 +240,6 @@ int main(int argc, char **argv)
 			break;
 		case LTTNG_NOTIFICATION_CHANNEL_STATUS_CLOSED:
 			printf("Notification channel was closed by peer.\n");
-			ret = -1;
 			break;
 		default:
 			fprintf(stderr, "A communication error occurred on the notification channel.\n");
