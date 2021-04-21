@@ -739,6 +739,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 {
 	ssize_t used_size = 0;
 	struct lttng_error_query_comm *header;
+	struct lttng_trigger *trigger = NULL;
 	struct lttng_payload_view header_view =
 			lttng_payload_view_from_view(view, 0, sizeof(*header));
 
@@ -754,7 +755,6 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	switch ((enum lttng_error_query_target_type) header->target_type) {
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
 	{
-		struct lttng_trigger *trigger;
 		ssize_t trigger_used_size;
 		struct lttng_payload_view trigger_view =
 				lttng_payload_view_from_view(
@@ -775,7 +775,6 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 		used_size += trigger_used_size;
 
 		*query = lttng_error_query_trigger_create(trigger);
-		lttng_trigger_put(trigger);
 		if (!*query) {
 			used_size = -1;
 			goto end;
@@ -785,7 +784,6 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 	{
-		struct lttng_trigger *trigger;
 		const struct lttng_action *target_action;
 		ssize_t trigger_used_size;
 		struct lttng_error_query_action_comm *action_header;
@@ -841,7 +839,6 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 
 		*query = lttng_error_query_action_create(
 				trigger, target_action);
-		lttng_trigger_put(trigger);
 		if (!*query) {
 			used_size = -1;
 			goto end;
@@ -855,6 +852,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	}
 
 end:
+	lttng_trigger_put(trigger);
 	return used_size;
 }
 
