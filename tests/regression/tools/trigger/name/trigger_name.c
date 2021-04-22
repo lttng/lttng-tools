@@ -152,7 +152,7 @@ end:
  * important for the purposes of this test.
  */
 static
-struct lttng_trigger *create_trigger(size_t threshold)
+struct lttng_trigger *create_trigger(uint64_t threshold)
 {
 	struct lttng_condition *condition = NULL;
 	struct lttng_action *action = NULL;
