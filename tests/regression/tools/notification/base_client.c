@@ -92,12 +92,24 @@ int parse_arguments(char **argv)
 	/* Ratio or bytes ? */
 	if (!strcasecmp("bytes", buffer_usage_threshold_type)) {
 		is_threshold_ratio = false;
-		sscanf(buffer_usage_threshold_value, "%" SCNu64, &threshold_bytes);
+		sscanf_ret = sscanf(buffer_usage_threshold_value, "%" SCNu64,
+				&threshold_bytes);
+		if (sscanf_ret != 1) {
+			printf("error: Invalid buffer usage threshold value bytes (integer), sscanf returned %d\n",
+					sscanf_ret);
+			goto error;
+		}
 	}
 
 	if (!strcasecmp("ratio", buffer_usage_threshold_type)) {
 		is_threshold_ratio = true;
-		sscanf(buffer_usage_threshold_value, "%lf", &threshold_ratio);
+		sscanf_ret = sscanf(buffer_usage_threshold_value, "%lf",
+				&threshold_ratio);
+		if (sscanf_ret != 1) {
+			printf("error: Invalid buffer usage threshold value ratio (float), sscanf returned %d\n",
+					sscanf_ret);
+			goto error;
+		}
 	}
 
 	/* Number of notification to expect */
