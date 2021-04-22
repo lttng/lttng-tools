@@ -127,7 +127,7 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 		const struct lttng_action *action)
 {
 	struct lttng_error_query_action *query = NULL;
-	typeof(query->action_index) action_index;
+	typeof(query->action_index) action_index = {};
 	struct lttng_trigger *trigger_copy = NULL;
 
 	if (!trigger || !action) {
