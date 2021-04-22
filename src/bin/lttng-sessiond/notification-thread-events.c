@@ -1134,9 +1134,11 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	 */
 	CDS_INIT_LIST_HEAD(&condition_list_element->node);
 	condition_list_element->condition = condition;
+	condition = NULL;
 	cds_list_add(&condition_list_element->node, &client->condition_list);
 
-	client_list = get_client_list_from_condition(state, condition);
+	client_list = get_client_list_from_condition(
+			state, condition_list_element->condition);
 	if (!client_list) {
 		/*
 		 * No notification-emiting trigger registered with this
@@ -1160,7 +1162,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 	pthread_mutex_lock(&client_list->lock);
 	cds_list_for_each_entry(trigger_ht_element,
 			&client_list->triggers_list, client_list_trigger_node) {
-		if (evaluate_condition_for_client(trigger_ht_element->trigger, condition,
+		if (evaluate_condition_for_client(trigger_ht_element->trigger, condition_list_element->condition,
 				client, state)) {
 			WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
 			ret = -1;
@@ -1189,10 +1191,12 @@ end:
 	if (client_list) {
 		notification_client_list_put(client_list);
 	}
+	lttng_condition_destroy(condition);
 	return ret;
 error:
 	free(condition_list_element);
 	free(client_list_element);
+	lttng_condition_destroy(condition);
 	return ret;
 }
 
@@ -3862,6 +3866,7 @@ int client_handle_message_subscription(
 		goto end;
 	}
 
+	/* Ownership of condition is always transferred. */
 	if (msg_type == LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_SUBSCRIBE) {
 		ret = notification_thread_client_subscribe(
 				client, condition, state, &status);
