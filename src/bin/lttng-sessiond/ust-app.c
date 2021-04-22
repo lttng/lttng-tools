@@ -5676,7 +5676,6 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 	ret_code = notification_thread_command_list_triggers(
 			the_notification_thread_handle, 0, &triggers);
 	if (ret_code != LTTNG_OK) {
-		ret = -1;
 		goto end;
 	}
 
@@ -5684,7 +5683,6 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 
 	t_status = lttng_triggers_get_count(triggers, &count);
 	if (t_status != LTTNG_TRIGGER_STATUS_OK) {
-		ret = -1;
 		goto end;
 	}
 
