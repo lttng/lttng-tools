@@ -36,13 +36,13 @@ struct ust_error_accounting_entry {
 	struct urcu_ref ref;
 	struct lttng_ht_node_u64 node;
 	struct rcu_head rcu_head;
-	struct ustctl_daemon_counter *daemon_counter;
+	struct lttng_ust_ctl_daemon_counter *daemon_counter;
 	/*
 	 * Those `lttng_ust_abi_object_data` are anonymous handles to the
 	 * counters objects.
 	 * They are only used to be duplicated for each new applications of the
 	 * user. To destroy them, call with the `sock` parameter set to -1.
-	 * e.g. `ustctl_release_object(-1, data)`;
+	 * e.g. `lttng_ust_ctl_release_object(-1, data)`;
 	 */
 	struct lttng_ust_abi_object_data *counter;
 	struct lttng_ust_abi_object_data **cpu_counters;
@@ -127,16 +127,16 @@ static void free_ust_error_accounting_entry(struct rcu_head *head)
 			caa_container_of(head, typeof(*entry), rcu_head);
 
 	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
-		ustctl_release_object(-1, entry->cpu_counters[i]);
+		lttng_ust_ctl_release_object(-1, entry->cpu_counters[i]);
 		free(entry->cpu_counters[i]);
 	}
 
 	free(entry->cpu_counters);
 
-	ustctl_release_object(-1, entry->counter);
+	lttng_ust_ctl_release_object(-1, entry->counter);
 	free(entry->counter);
 
-	ustctl_destroy_counter(entry->daemon_counter);
+	lttng_ust_ctl_destroy_counter(entry->daemon_counter);
 
 	free(entry);
 }
@@ -372,10 +372,10 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 		struct lttng_ht *uid_ht, const struct ust_app *app)
 {
 	int i, ret, *cpu_counter_fds = NULL;
-	struct ustctl_daemon_counter *daemon_counter;
+	struct lttng_ust_ctl_daemon_counter *daemon_counter;
 	struct lttng_ust_abi_object_data *counter, **cpu_counters;
 	struct ust_error_accounting_entry *entry = NULL;
-	const struct ustctl_counter_dimension dimension = {
+	const struct lttng_ust_ctl_counter_dimension dimension = {
 		.size = ust_state.number_indices,
 		.has_underflow = false,
 		.has_overflow = false,
@@ -389,7 +389,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 
 	urcu_ref_init(&entry->ref);
 	entry->uid = app->uid;
-	entry->nr_counter_cpu_fds = ustctl_get_nr_cpu_per_counter();
+	entry->nr_counter_cpu_fds = lttng_ust_ctl_get_nr_cpu_per_counter();
 
 	cpu_counter_fds = zmalloc(entry->nr_counter_cpu_fds * sizeof(*cpu_counter_fds));
 	if (!cpu_counter_fds) {
@@ -424,17 +424,17 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 	/*
 	 * Ownership of the file descriptors transferred to the ustctl object.
 	 */
-	daemon_counter = ustctl_create_counter(1, &dimension, 0, -1,
+	daemon_counter = lttng_ust_ctl_create_counter(1, &dimension, 0, -1,
 			entry->nr_counter_cpu_fds, cpu_counter_fds,
-			USTCTL_COUNTER_BITNESS_32,
-			USTCTL_COUNTER_ARITHMETIC_MODULAR,
-			USTCTL_COUNTER_ALLOC_PER_CPU,
+			LTTNG_UST_CTL_COUNTER_BITNESS_32,
+			LTTNG_UST_CTL_COUNTER_ARITHMETIC_MODULAR,
+			LTTNG_UST_CTL_COUNTER_ALLOC_PER_CPU,
 			false);
 	if (!daemon_counter) {
 		goto error_create_daemon_counter;
 	}
 
-	ret = ustctl_create_counter_data(daemon_counter, &counter);
+	ret = lttng_ust_ctl_create_counter_data(daemon_counter, &counter);
 	if (ret) {
 		ERR("Failed to create userspace tracer counter data for application user: uid = %d, pid = %d, application name = '%s'",
 				(int) app->uid, (int) app->pid, app->name);
@@ -442,7 +442,7 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 	}
 
 	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
-		ret = ustctl_create_counter_cpu_data(daemon_counter, i,
+		ret = lttng_ust_ctl_create_counter_cpu_data(daemon_counter, i,
 				&cpu_counters[i]);
 		if (ret) {
 			ERR("Failed to create userspace tracer counter cpu data for application user: uid = %d, pid = %d, application name = '%s'",
@@ -472,14 +472,14 @@ error_create_counter_cpu_data:
 			break;
 		}
 
-		ustctl_release_object(-1, cpu_counters[i]);
+		lttng_ust_ctl_release_object(-1, cpu_counters[i]);
 		free(cpu_counters[i]);
 	}
 
-	ustctl_release_object(-1, entry->counter);
+	lttng_ust_ctl_release_object(-1, entry->counter);
 	free(entry->counter);
 error_create_counter_data:
-	ustctl_destroy_counter(daemon_counter);
+	lttng_ust_ctl_destroy_counter(daemon_counter);
 error_create_daemon_counter:
 error_shm_alloc:
 	/* Error occured before per-cpu SHMs were handed-off to ustctl. */
@@ -522,7 +522,7 @@ enum event_notifier_error_accounting_status send_counter_data_to_ust(
 
 	/* Attach counter to trigger group. */
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_send_counter_data_to_ust(app->sock,
+	ret = lttng_ust_ctl_send_counter_data_to_ust(app->sock,
 			app->event_notifier_group.object->handle, new_counter);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
@@ -554,7 +554,7 @@ enum event_notifier_error_accounting_status send_counter_cpu_data_to_ust(
 	enum event_notifier_error_accounting_status status;
 
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_send_counter_cpu_data_to_ust(app->sock,
+	ret = lttng_ust_ctl_send_counter_cpu_data_to_ust(app->sock,
 			counter, counter_cpu);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
@@ -621,7 +621,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	}
 
 	/* Duplicate counter object data. */
-	ret = ustctl_duplicate_ust_object_data(&new_counter,
+	ret = lttng_ust_ctl_duplicate_ust_object_data(&new_counter,
 			entry->counter);
 	if (ret) {
 		ERR("Failed to duplicate event notifier error accounting counter for application user: application uid = %d, pid = %d, application name = '%s'",
@@ -655,7 +655,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	for (i = 0; i < entry->nr_counter_cpu_fds; i++) {
 		struct lttng_ust_abi_object_data *new_counter_cpu = NULL;
 
-		ret = ustctl_duplicate_ust_object_data(&new_counter_cpu,
+		ret = lttng_ust_ctl_duplicate_ust_object_data(&new_counter_cpu,
 				entry->cpu_counters[i]);
 		if (ret) {
 			ERR("Failed to duplicate userspace tracer counter cpu data for application user: uid = %d, pid = %d, application name = '%s'",
@@ -702,7 +702,7 @@ error_duplicate_cpu_counter:
 			break;
 		}
 
-		ustctl_release_object(-1, cpu_counters[i]);
+		lttng_ust_ctl_release_object(-1, cpu_counters[i]);
 		free(cpu_counters[i]);
 	}
 
@@ -710,7 +710,7 @@ error_duplicate_cpu_counter:
 
 error_allocate_cpu_counters:
 error_send_counter_data:
-	ustctl_release_object(-1, new_counter);
+	lttng_ust_ctl_release_object(-1, new_counter);
 	free(new_counter);
 error_duplicate_counter:
 	ust_error_accounting_entry_put(entry);
@@ -752,14 +752,14 @@ event_notifier_error_accounting_unregister_app(struct ust_app *app)
 	}
 
 	for (i = 0; i < app->event_notifier_group.nr_counter_cpu; i++) {
-		ustctl_release_object(app->sock,
+		lttng_ust_ctl_release_object(app->sock,
 				app->event_notifier_group.counter_cpu[i]);
 		free(app->event_notifier_group.counter_cpu[i]);
 	}
 
 	free(app->event_notifier_group.counter_cpu);
 
-	ustctl_release_object(app->sock, app->event_notifier_group.counter);
+	lttng_ust_ctl_release_object(app->sock, app->event_notifier_group.counter);
 	free(app->event_notifier_group.counter);
 
 	status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK;
@@ -813,7 +813,7 @@ event_notifier_error_accounting_ust_get_count(
 		int64_t local_value = 0;
 		bool overflow = false, underflow = false;
 
-		ret = ustctl_counter_aggregate(uid_entry->daemon_counter,
+		ret = lttng_ust_ctl_counter_aggregate(uid_entry->daemon_counter,
 				dimension_indexes, &local_value, &overflow,
 				&underflow);
 		if (ret || local_value < 0) {
@@ -883,7 +883,7 @@ enum event_notifier_error_accounting_status event_notifier_error_accounting_ust_
 	 */
 	cds_lfht_for_each_entry(error_counter_uid_ht->ht, &iter.iter,
 			uid_entry, node.node) {
-		const int ret = ustctl_counter_clear(uid_entry->daemon_counter,
+		const int ret = lttng_ust_ctl_counter_clear(uid_entry->daemon_counter,
 				&dimension_index);
 
 		if (ret) {

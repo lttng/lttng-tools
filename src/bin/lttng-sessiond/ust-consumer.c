@@ -255,7 +255,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 	}
 
 	/* First, get the channel from consumer. */
-	ret = ustctl_recv_channel_from_consumer(*socket->fd_ptr, &ua_chan->obj);
+	ret = lttng_ust_ctl_recv_channel_from_consumer(*socket->fd_ptr, &ua_chan->obj);
 	if (ret < 0) {
 		if (ret != -EPIPE) {
 			ERR("Error recv channel from consumer %d with ret %d",
@@ -278,7 +278,7 @@ int ust_consumer_get_channel(struct consumer_socket *socket,
 		}
 
 		/* Stream object is populated by this call if successful. */
-		ret = ustctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
+		ret = lttng_ust_ctl_recv_stream_from_consumer(*socket->fd_ptr, &stream->obj);
 		if (ret < 0) {
 			free(stream);
 			if (ret == -LTTNG_UST_ERR_NOENT) {
@@ -371,7 +371,7 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 
 	/* Relay stream to application. */
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
+	ret = lttng_ust_ctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
@@ -408,7 +408,7 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 
 	/* Send stream to application. */
 	pthread_mutex_lock(&app->sock_lock);
-	ret = ustctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
+	ret = lttng_ust_ctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
 		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {

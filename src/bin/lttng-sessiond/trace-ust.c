@@ -560,7 +560,7 @@ int trace_ust_context_type_event_to_ust(
 		utype = LTTNG_UST_ABI_CONTEXT_IP;
 		break;
 	case LTTNG_EVENT_CONTEXT_PERF_THREAD_COUNTER:
-		if (!ustctl_has_perf_counters()) {
+		if (!lttng_ust_ctl_has_perf_counters()) {
 			utype = -1;
 			WARN("Perf counters not implemented in UST");
 		} else {

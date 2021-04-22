@@ -49,7 +49,7 @@ struct ust_app_ht_key {
  * Application registration data structure.
  */
 struct ust_register_msg {
-	enum ustctl_socket_type type;
+	enum lttng_ust_ctl_socket_type type;
 	uint32_t major;
 	uint32_t minor;
 	uint32_t abi_major;
@@ -158,7 +158,7 @@ struct ust_app_channel {
 	unsigned int expected_stream_count;
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
 	struct lttng_ust_abi_object_data *obj;
-	struct ustctl_consumer_channel_attr attr;
+	struct lttng_ust_ctl_consumer_channel_attr attr;
 	struct ust_app_stream_list streams;
 	/* Session pointer that owns this object. */
 	struct ust_app_session *session;
@@ -237,7 +237,7 @@ struct ust_app_session {
 	unsigned int live_timer_interval;	/* usec */
 
 	/* Metadata channel attributes. */
-	struct ustctl_consumer_channel_attr metadata_attr;
+	struct lttng_ust_ctl_consumer_channel_attr metadata_attr;
 
 	char root_shm_path[PATH_MAX];
 	char shm_path[PATH_MAX];

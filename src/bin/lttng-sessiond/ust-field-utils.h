@@ -14,7 +14,7 @@
  * Compare two UST fields.
  * Return 1 if both fields have identical definition, 0 otherwise.
  */
-int match_ustctl_field(const struct ustctl_field *first,
-		const struct ustctl_field *second);
+int match_lttng_ust_ctl_field(const struct lttng_ust_ctl_field *first,
+		const struct lttng_ust_ctl_field *second);
 
 #endif /* LTTNG_UST_FIELD_UTILS_H */

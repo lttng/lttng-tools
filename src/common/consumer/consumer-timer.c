@@ -247,7 +247,7 @@ int consumer_flush_ust_index(struct lttng_consumer_stream *stream)
 		}
 		ret = lttng_ustconsumer_get_stream_id(stream, &stream_id);
 		if (ret < 0) {
-			PERROR("ustctl_get_stream_id");
+			PERROR("lttng_ust_ctl_get_stream_id");
 			goto end;
 		}
 		DBG("Stream %" PRIu64 " empty, sending beacon", stream->key);

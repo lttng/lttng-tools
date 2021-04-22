@@ -132,7 +132,7 @@ struct ust_registry_channel {
 	uint64_t consumer_key;
 	/* Id set when replying to a register channel. */
 	uint32_t chan_id;
-	enum ustctl_channel_header header_type;
+	enum lttng_ust_ctl_channel_header header_type;
 
 	/*
 	 * Flag for this channel if the metadata was dumped once during
@@ -156,7 +156,7 @@ struct ust_registry_channel {
 	 * register channel notification from the UST tracer.
 	 */
 	size_t nr_ctx_fields;
-	struct ustctl_field *ctx_fields;
+	struct lttng_ust_ctl_field *ctx_fields;
 	struct lttng_ht_node_u64 node;
 	/* For delayed reclaim */
 	struct rcu_head rcu_head;
@@ -176,7 +176,7 @@ struct ust_registry_event {
 	char *signature;
 	int loglevel_value;
 	size_t nr_fields;
-	struct ustctl_field *fields;
+	struct lttng_ust_ctl_field *fields;
 	char *model_emf_uri;
 	/*
 	 * Flag for this channel if the metadata was dumped once during
@@ -192,7 +192,7 @@ struct ust_registry_event {
 
 struct ust_registry_enum {
 	char name[LTTNG_UST_ABI_SYM_NAME_LEN];
-	struct ustctl_enum_entry *entries;
+	struct lttng_ust_ctl_enum_entry *entries;
 	size_t nr_entries;
 	uint64_t id;	/* enum id in session */
 	/* Enumeration node in session hash table. */
@@ -292,7 +292,7 @@ void ust_registry_session_destroy(struct ust_registry_session *session);
 
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
-		char *sig, size_t nr_fields, struct ustctl_field *fields,
+		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
 		int loglevel_value, char *model_emf_uri, int buffer_type,
 		uint32_t *event_id_p, struct ust_app *app);
 struct ust_registry_event *ust_registry_find_event(
@@ -310,7 +310,7 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 		struct ust_registry_event *event);
 int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 		int session_objd, char *name,
-		struct ustctl_enum_entry *entries, size_t nr_entries,
+		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
 		uint64_t *enum_id);
 struct ust_registry_enum *
 	ust_registry_lookup_enum_by_id(struct ust_registry_session *session,
@@ -365,7 +365,7 @@ void ust_registry_session_destroy(struct ust_registry_session *session)
 static inline
 int ust_registry_create_event(struct ust_registry_session *session,
 		uint64_t chan_key, int session_objd, int channel_objd, char *name,
-		char *sig, size_t nr_fields, struct ustctl_field *fields,
+		char *sig, size_t nr_fields, struct lttng_ust_ctl_field *fields,
 		int loglevel_value, char *model_emf_uri, int buffer_type,
 		uint32_t *event_id_p)
 {
@@ -405,7 +405,7 @@ int ust_metadata_event_statedump(struct ust_registry_session *session,
 static inline
 int ust_registry_create_or_find_enum(struct ust_registry_session *session,
 		int session_objd, char *name,
-		struct ustctl_enum_entry *entries, size_t nr_entries,
+		struct lttng_ust_ctl_enum_entry *entries, size_t nr_entries,
 		uint64_t *enum_id)
 {
 	return 0;

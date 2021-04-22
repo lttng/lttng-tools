@@ -43,7 +43,7 @@ struct consumer_metadata_cache {
 	struct lttng_dynamic_buffer contents;
 	/*
 	 * Lock to update the metadata cache and push into the ring_buffer
-	 * (ustctl_write_metadata_to_channel).
+	 * (lttng_ust_ctl_write_metadata_to_channel).
 	 *
 	 * This is nested INSIDE the consumer_data lock.
 	 */

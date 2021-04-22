@@ -33,7 +33,7 @@ struct offset_sample {
 
 static
 int _lttng_field_statedump(struct ust_registry_session *session,
-		const struct ustctl_field *fields, size_t nr_fields,
+		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
 		size_t *iter_field, size_t nesting);
 
 static inline
@@ -218,11 +218,11 @@ static
 int ust_metadata_enum_statedump(struct ust_registry_session *session,
 		const char *enum_name,
 		uint64_t enum_id,
-		const struct ustctl_integer_type *container_type,
+		const struct lttng_ust_ctl_integer_type *container_type,
 		const char *field_name, size_t *iter_field, size_t nesting)
 {
 	struct ust_registry_enum *reg_enum;
-	const struct ustctl_enum_entry *entries;
+	const struct lttng_ust_ctl_enum_entry *entries;
 	size_t nr_entries;
 	int ret = 0;
 	size_t i;
@@ -248,9 +248,9 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 		container_type->size,
 		container_type->alignment,
 		container_type->signedness,
-		(container_type->encoding == ustctl_encode_none)
+		(container_type->encoding == lttng_ust_ctl_encode_none)
 			? "none"
-			: (container_type->encoding == ustctl_encode_UTF8)
+			: (container_type->encoding == lttng_ust_ctl_encode_UTF8)
 				? "UTF8"
 				: "ASCII",
 		container_type->base);
@@ -260,7 +260,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 	nesting++;
 	/* Dump all entries */
 	for (i = 0; i < nr_entries; i++) {
-		const struct ustctl_enum_entry *entry = &entries[i];
+		const struct lttng_ust_ctl_enum_entry *entry = &entries[i];
 		int j, len;
 
 		ret = print_tabs(session, nesting);
@@ -301,7 +301,7 @@ int ust_metadata_enum_statedump(struct ust_registry_session *session,
 		}
 
 		if (entry->u.extra.options &
-				USTCTL_UST_ENUM_ENTRY_OPTION_IS_AUTO) {
+				LTTNG_UST_CTL_UST_ENUM_ENTRY_OPTION_IS_AUTO) {
 			ret = lttng_metadata_printf(session, ",\n");
 			if (ret) {
 				goto end;
@@ -361,15 +361,15 @@ static
 int _lttng_variant_statedump(struct ust_registry_session *session,
 		uint32_t nr_choices, const char *tag_name,
 		uint32_t alignment,
-		const struct ustctl_field *fields, size_t nr_fields,
+		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
 		size_t *iter_field, size_t nesting)
 {
-	const struct ustctl_field *variant = &fields[*iter_field];
+	const struct lttng_ust_ctl_field *variant = &fields[*iter_field];
 	uint32_t i;
 	int ret;
 	char identifier[LTTNG_UST_ABI_SYM_NAME_LEN];
 
-	if (variant->type.atype != ustctl_atype_variant) {
+	if (variant->type.atype != lttng_ust_ctl_atype_variant) {
 		ret = -EINVAL;
 		goto end;
 	}
@@ -428,7 +428,7 @@ end:
 
 static
 int _lttng_field_statedump(struct ust_registry_session *session,
-		const struct ustctl_field *fields, size_t nr_fields,
+		const struct lttng_ust_ctl_field *fields, size_t nr_fields,
 		size_t *iter_field, size_t nesting)
 {
 	int ret = 0;
@@ -436,7 +436,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 	const char *bo_le = " byte_order = le;";
 	const char *bo_native = "";
 	const char *bo_reverse;
-	const struct ustctl_field *field;
+	const struct lttng_ust_ctl_field *field;
 
 	if (*iter_field >= nr_fields) {
 		ret = -EOVERFLOW;
@@ -451,7 +451,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 	}
 
 	switch (field->type.atype) {
-	case ustctl_atype_integer:
+	case lttng_ust_ctl_atype_integer:
 		ret = print_tabs(session, nesting);
 		if (ret) {
 			goto end;
@@ -461,9 +461,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->type.u.integer.size,
 			field->type.u.integer.alignment,
 			field->type.u.integer.signedness,
-			(field->type.u.integer.encoding == ustctl_encode_none)
+			(field->type.u.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: (field->type.u.integer.encoding == ustctl_encode_UTF8)
+				: (field->type.u.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII",
 			field->type.u.integer.base,
@@ -471,14 +471,14 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->name);
 		(*iter_field)++;
 		break;
-	case ustctl_atype_enum:
+	case lttng_ust_ctl_atype_enum:
 		ret = ust_metadata_enum_statedump(session,
 			field->type.u.legacy.basic.enumeration.name,
 			field->type.u.legacy.basic.enumeration.id,
 			&field->type.u.legacy.basic.enumeration.container_type,
 			field->name, iter_field, nesting);
 		break;
-	case ustctl_atype_float:
+	case lttng_ust_ctl_atype_float:
 		ret = print_tabs(session, nesting);
 		if (ret) {
 			goto end;
@@ -492,9 +492,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->name);
 		(*iter_field)++;
 		break;
-	case ustctl_atype_array:
+	case lttng_ust_ctl_atype_array:
 	{
-		const struct ustctl_basic_type *elem_type;
+		const struct lttng_ust_ctl_basic_type *elem_type;
 
 		ret = print_tabs(session, nesting);
 		if (ret) {
@@ -502,7 +502,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		}
 		elem_type = &field->type.u.legacy.array.elem_type;
 		/* Only integers are currently supported in arrays. */
-		if (elem_type->atype != ustctl_atype_integer) {
+		if (elem_type->atype != lttng_ust_ctl_atype_integer) {
 			ret = -EINVAL;
 			goto end;
 		}
@@ -511,9 +511,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			elem_type->u.basic.integer.size,
 			elem_type->u.basic.integer.alignment,
 			elem_type->u.basic.integer.signedness,
-			(elem_type->u.basic.integer.encoding == ustctl_encode_none)
+			(elem_type->u.basic.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: (elem_type->u.basic.integer.encoding == ustctl_encode_UTF8)
+				: (elem_type->u.basic.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII",
 			elem_type->u.basic.integer.base,
@@ -522,11 +522,11 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		(*iter_field)++;
 		break;
 	}
-	case ustctl_atype_array_nestable:
+	case lttng_ust_ctl_atype_array_nestable:
 	{
 		uint32_t array_length;
-		const struct ustctl_field *array_nestable;
-		const struct ustctl_type *elem_type;
+		const struct lttng_ust_ctl_field *array_nestable;
+		const struct lttng_ust_ctl_type *elem_type;
 
 		array_length = field->type.u.array_nestable.length;
 		(*iter_field)++;
@@ -539,7 +539,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		elem_type = &array_nestable->type;
 
 		/* Only integers are currently supported in arrays. */
-		if (elem_type->atype != ustctl_atype_integer) {
+		if (elem_type->atype != lttng_ust_ctl_atype_integer) {
 			ret = -EINVAL;
 			goto end;
 		}
@@ -567,9 +567,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			elem_type->u.integer.size,
 			elem_type->u.integer.alignment,
 			elem_type->u.integer.signedness,
-			(elem_type->u.integer.encoding == ustctl_encode_none)
+			(elem_type->u.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: (elem_type->u.integer.encoding == ustctl_encode_UTF8)
+				: (elem_type->u.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII",
 			elem_type->u.integer.base,
@@ -578,10 +578,10 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		(*iter_field)++;
 		break;
 	}
-	case ustctl_atype_sequence:
+	case lttng_ust_ctl_atype_sequence:
 	{
-		const struct ustctl_basic_type *elem_type;
-		const struct ustctl_basic_type *length_type;
+		const struct lttng_ust_ctl_basic_type *elem_type;
+		const struct lttng_ust_ctl_basic_type *length_type;
 
 		elem_type = &field->type.u.legacy.sequence.elem_type;
 		length_type = &field->type.u.legacy.sequence.length_type;
@@ -591,7 +591,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		}
 
 		/* Only integers are currently supported in sequences. */
-		if (elem_type->atype != ustctl_atype_integer) {
+		if (elem_type->atype != lttng_ust_ctl_atype_integer) {
 			ret = -EINVAL;
 			goto end;
 		}
@@ -601,9 +601,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			length_type->u.basic.integer.size,
 			(unsigned int) length_type->u.basic.integer.alignment,
 			length_type->u.basic.integer.signedness,
-			(length_type->u.basic.integer.encoding == ustctl_encode_none)
+			(length_type->u.basic.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: ((length_type->u.basic.integer.encoding == ustctl_encode_UTF8)
+				: ((length_type->u.basic.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII"),
 			length_type->u.basic.integer.base,
@@ -622,9 +622,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			elem_type->u.basic.integer.size,
 			(unsigned int) elem_type->u.basic.integer.alignment,
 			elem_type->u.basic.integer.signedness,
-			(elem_type->u.basic.integer.encoding == ustctl_encode_none)
+			(elem_type->u.basic.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: ((elem_type->u.basic.integer.encoding == ustctl_encode_UTF8)
+				: ((elem_type->u.basic.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII"),
 			elem_type->u.basic.integer.base,
@@ -634,10 +634,10 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		(*iter_field)++;
 		break;
 	}
-	case ustctl_atype_sequence_nestable:
+	case lttng_ust_ctl_atype_sequence_nestable:
 	{
-		const struct ustctl_field *sequence_nestable;
-		const struct ustctl_type *elem_type;
+		const struct lttng_ust_ctl_field *sequence_nestable;
+		const struct lttng_ust_ctl_type *elem_type;
 
 		(*iter_field)++;
 		if (*iter_field >= nr_fields) {
@@ -648,7 +648,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		elem_type = &sequence_nestable->type;
 
 		/* Only integers are currently supported in sequences. */
-		if (elem_type->atype != ustctl_atype_integer) {
+		if (elem_type->atype != lttng_ust_ctl_atype_integer) {
 			ret = -EINVAL;
 			goto end;
 		}
@@ -676,9 +676,9 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			elem_type->u.integer.size,
 			(unsigned int) elem_type->u.integer.alignment,
 			elem_type->u.integer.signedness,
-			(elem_type->u.integer.encoding == ustctl_encode_none)
+			(elem_type->u.integer.encoding == lttng_ust_ctl_encode_none)
 				? "none"
-				: ((elem_type->u.integer.encoding == ustctl_encode_UTF8)
+				: ((elem_type->u.integer.encoding == lttng_ust_ctl_encode_UTF8)
 					? "UTF8"
 					: "ASCII"),
 			elem_type->u.integer.base,
@@ -688,7 +688,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		(*iter_field)++;
 		break;
 	}
-	case ustctl_atype_string:
+	case lttng_ust_ctl_atype_string:
 		/* Default encoding is UTF8 */
 		ret = print_tabs(session, nesting);
 		if (ret) {
@@ -696,12 +696,12 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		}
 		ret = lttng_metadata_printf(session,
 			"string%s _%s;\n",
-			field->type.u.string.encoding == ustctl_encode_ASCII ?
+			field->type.u.string.encoding == lttng_ust_ctl_encode_ASCII ?
 				" { encoding = ASCII; }" : "",
 			field->name);
 		(*iter_field)++;
 		break;
-	case ustctl_atype_variant:
+	case lttng_ust_ctl_atype_variant:
 		ret = _lttng_variant_statedump(session,
 				field->type.u.legacy.variant.nr_choices,
 				field->type.u.legacy.variant.tag_name,
@@ -711,7 +711,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			goto end;
 		}
 		break;
-	case ustctl_atype_variant_nestable:
+	case lttng_ust_ctl_atype_variant_nestable:
 		ret = _lttng_variant_statedump(session,
 				field->type.u.variant_nestable.nr_choices,
 				field->type.u.variant_nestable.tag_name,
@@ -721,7 +721,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			goto end;
 		}
 		break;
-	case ustctl_atype_struct:
+	case lttng_ust_ctl_atype_struct:
 		if (field->type.u.legacy._struct.nr_fields != 0) {
 			/* Currently only 0-length structures are supported. */
 			ret = -EINVAL;
@@ -736,7 +736,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 			field->name);
 		(*iter_field)++;
 		break;
-	case ustctl_atype_struct_nestable:
+	case lttng_ust_ctl_atype_struct_nestable:
 		if (field->type.u.struct_nestable.nr_fields != 0) {
 			/* Currently only 0-length structures are supported. */
 			ret = -EINVAL;
@@ -761,10 +761,10 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		}
 		(*iter_field)++;
 		break;
-	case ustctl_atype_enum_nestable:
+	case lttng_ust_ctl_atype_enum_nestable:
 	{
-		const struct ustctl_field *container_field;
-		const struct ustctl_type *container_type;
+		const struct lttng_ust_ctl_field *container_field;
+		const struct lttng_ust_ctl_type *container_type;
 
 		(*iter_field)++;
 		if (*iter_field >= nr_fields) {
@@ -775,7 +775,7 @@ int _lttng_field_statedump(struct ust_registry_session *session,
 		container_type = &container_field->type;
 
 		/* Only integers are supported as container types. */
-		if (container_type->atype != ustctl_atype_integer) {
+		if (container_type->atype != lttng_ust_ctl_atype_integer) {
 			ret = -EINVAL;
 			goto end;
 		}
@@ -796,7 +796,7 @@ end:
 static
 int _lttng_context_metadata_statedump(struct ust_registry_session *session,
 		size_t nr_ctx_fields,
-		struct ustctl_field *ctx)
+		struct lttng_ust_ctl_field *ctx)
 {
 	int ret = 0;
 	size_t i = 0;
@@ -922,7 +922,7 @@ int ust_metadata_channel_statedump(struct ust_registry_session *session,
 		"	event.header := %s;\n"
 		"	packet.context := struct packet_context;\n",
 		chan->chan_id,
-		chan->header_type == USTCTL_CHANNEL_HEADER_COMPACT ?
+		chan->header_type == LTTNG_UST_CTL_CHANNEL_HEADER_COMPACT ?
 			"struct event_header_compact" :
 			"struct event_header_large");
 	if (ret) {

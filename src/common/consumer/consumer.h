@@ -160,7 +160,7 @@ struct lttng_consumer_channel {
 
 	/* For UST */
 	uid_t ust_app_uid;	/* Application UID. */
-	struct ustctl_consumer_channel *uchan;
+	struct lttng_ust_ctl_consumer_channel *uchan;
 	unsigned char uuid[LTTNG_UUID_STR_LEN];
 	/*
 	 * Temporary stream list used to store the streams once created and waiting
@@ -540,7 +540,7 @@ struct lttng_consumer_stream {
 	/* Stream name. Format is: <channel_name>_<cpu_number> */
 	char name[LTTNG_SYMBOL_NAME_LEN];
 	/* Internal state of libustctl. */
-	struct ustctl_consumer_stream *ustream;
+	struct lttng_ust_ctl_consumer_stream *ustream;
 	struct cds_list_head send_node;
 	/* On-disk circular buffer */
 	uint64_t tracefile_size_current;
