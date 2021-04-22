@@ -146,6 +146,10 @@ struct ltt_session {
 	 */
 	struct lttng_ht_node_u64 node;
 	/*
+	 * Node in ltt_sessions_ht_by_name.
+	 */
+	struct lttng_ht_node_str node_by_name;
+	/*
 	 * Timer to check periodically if a relay and/or consumer has completed
 	 * the last rotation.
 	 */
@@ -277,5 +281,16 @@ int session_close_trace_chunk(struct ltt_session *session,
 enum lttng_error_code session_open_packets(struct ltt_session *session);
 
 bool session_output_supports_trace_chunks(const struct ltt_session *session);
+
+/*
+ * Sample the id of a session looked up via its name.
+ * Here the term "sampling" hint the caller that this return the id at a given
+ * point in time with no guarantee that the session for which the id was
+ * sampled still exist at that point.
+ *
+ * Return 0 when the session is not found,
+ * Return 1 when the session is found and set `id`.
+ */
+bool sample_session_id_by_name(const char *name, uint64_t *id);
 
 #endif /* _LTT_SESSION_H */

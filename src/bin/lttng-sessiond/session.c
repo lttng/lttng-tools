@@ -45,7 +45,7 @@ struct ltt_session_clear_notifier_element {
  * NOTES:
  *
  * No ltt_session.lock is taken here because those data structure are widely
- * spread across the lttng-tools code base so before caling functions below
+ * spread across the lttng-tools code base so before calling functions below
  * that can read/write a session, the caller MUST acquire the session lock
  * using session_lock() and session_unlock().
  */
@@ -67,6 +67,8 @@ static const char *forbidden_name_chars = "/";
 
 /* Global hash table to keep the sessions, indexed by id. */
 static struct lttng_ht *ltt_sessions_ht_by_id = NULL;
+/* Global hash table to keep the sessions, indexed by name. */
+static struct lttng_ht *ltt_sessions_ht_by_name = NULL;
 
 /*
  * Validate the session name for forbidden characters.
@@ -293,7 +295,7 @@ end:
 }
 
 /*
- * Allocate the ltt_sessions_ht_by_id HT.
+ * Allocate the ltt_sessions_ht_by_id and ltt_sessions_ht_by_name HT.
  *
  * The session list lock must be held.
  */
@@ -308,6 +310,15 @@ static int ltt_sessions_ht_alloc(void)
 		ERR("Failed to allocate ltt_sessions_ht_by_id");
 		goto end;
 	}
+
+	DBG("Allocating ltt_sessions_ht_by_name");
+	ltt_sessions_ht_by_name = lttng_ht_new(0, LTTNG_HT_TYPE_STRING);
+	if (!ltt_sessions_ht_by_name) {
+		ret = -1;
+		ERR("Failed to allocate ltt_sessions_ht_by_name");
+		goto end;
+	}
+
 end:
 	return ret;
 }
@@ -319,17 +330,23 @@ end:
  */
 static void ltt_sessions_ht_destroy(void)
 {
-	if (!ltt_sessions_ht_by_id) {
-		return;
+	if (ltt_sessions_ht_by_id) {
+		ht_cleanup_push(ltt_sessions_ht_by_id);
+		ltt_sessions_ht_by_id = NULL;
 	}
-	ht_cleanup_push(ltt_sessions_ht_by_id);
-	ltt_sessions_ht_by_id = NULL;
+
+	if (ltt_sessions_ht_by_name) {
+		ht_cleanup_push(ltt_sessions_ht_by_name);
+		ltt_sessions_ht_by_name = NULL;
+	}
+
+	return;
 }
 
 /*
- * Add a ltt_session to the ltt_sessions_ht_by_id.
- * If unallocated, the ltt_sessions_ht_by_id HT is allocated.
- * The session list lock must be held.
+ * Add a ltt_session to the ltt_sessions_ht_by_id and ltt_sessions_ht_by_name.
+ * If unallocated, the ltt_sessions_ht_by_id and ltt_sessions_ht_by_name. HTs
+ * are allocated. The session list lock must be held.
  */
 static void add_session_ht(struct ltt_session *ls)
 {
@@ -344,35 +361,45 @@ static void add_session_ht(struct ltt_session *ls)
 			goto end;
 		}
 	}
+
+	/* Should always be present with ltt_sessions_ht_by_id. */
+	assert(ltt_sessions_ht_by_name);
+
 	lttng_ht_node_init_u64(&ls->node, ls->id);
 	lttng_ht_add_unique_u64(ltt_sessions_ht_by_id, &ls->node);
+
+	lttng_ht_node_init_str(&ls->node_by_name, ls->name);
+	lttng_ht_add_unique_str(ltt_sessions_ht_by_name, &ls->node_by_name);
 
 end:
 	return;
 }
 
 /*
- * Test if ltt_sessions_ht_by_id is empty.
+ * Test if ltt_sessions_ht_by_id/name are empty.
  * Return 1 if empty, 0 if not empty.
  * The session list lock must be held.
  */
 static int ltt_sessions_ht_empty(void)
 {
-	int ret;
+	unsigned long count;
 
 	if (!ltt_sessions_ht_by_id) {
-		ret = 1;
+		count = 0;
 		goto end;
 	}
 
-	ret = lttng_ht_get_count(ltt_sessions_ht_by_id) ? 0 : 1;
+	assert(ltt_sessions_ht_by_name);
+
+	count = lttng_ht_get_count(ltt_sessions_ht_by_id);
+	assert(count == lttng_ht_get_count(ltt_sessions_ht_by_name));
 end:
-	return ret;
+	return count ? 0 : 1;
 }
 
 /*
- * Remove a ltt_session from the ltt_sessions_ht_by_id.
- * If empty, the ltt_sessions_ht_by_id HT is freed.
+ * Remove a ltt_session from the ltt_sessions_ht_by_id/name.
+ * If empty, the ltt_sessions_ht_by_id/name HTs are freed.
  * The session list lock must be held.
  */
 static void del_session_ht(struct ltt_session *ls)
@@ -382,13 +409,18 @@ static void del_session_ht(struct ltt_session *ls)
 
 	assert(ls);
 	assert(ltt_sessions_ht_by_id);
+	assert(ltt_sessions_ht_by_name);
 
 	iter.iter.node = &ls->node.node;
 	ret = lttng_ht_del(ltt_sessions_ht_by_id, &iter);
 	assert(!ret);
 
+	iter.iter.node = &ls->node_by_name.node;
+	ret = lttng_ht_del(ltt_sessions_ht_by_name, &iter);
+	assert(!ret);
+
 	if (ltt_sessions_ht_empty()) {
-		DBG("Empty ltt_sessions_ht_by_id, destroying it");
+		DBG("Empty ltt_sessions_ht_by_id/name, destroying hast tables");
 		ltt_sessions_ht_destroy();
 	}
 }
@@ -1352,4 +1384,44 @@ int session_reset_rotation_state(struct ltt_session *session,
 		session_notify_clear(session);
 	}
 	return ret;
+}
+
+/*
+ * Sample the id of a session looked up via its name.
+ * Here the term "sampling" hint the caller that this return the id at a given
+ * point in time with no guarantee that the session for which the id was
+ * sampled still exist at that point.
+ *
+ * Return 0 when the session is not found,
+ * Return 1 when the session is found and set `id`.
+ */
+bool sample_session_id_by_name(const char *name, uint64_t *id)
+{
+	bool found = false;
+	struct lttng_ht_node_str *node;
+	struct lttng_ht_iter iter;
+	struct ltt_session *ls;
+
+	rcu_read_lock();
+
+	if (!ltt_sessions_ht_by_name) {
+		found = false;
+		goto end;
+	}
+
+	lttng_ht_lookup(ltt_sessions_ht_by_name, name, &iter);
+	node = lttng_ht_iter_get_node_str(&iter);
+	if (node == NULL) {
+		found = false;
+		goto end;
+	}
+
+	ls = caa_container_of(node, struct ltt_session, node_by_name);
+	*id = ls->id;
+	found = true;
+
+	DBG3("Session id `%" PRIu64 "` sampled for session `%s", *id, name);
+end:
+	rcu_read_unlock();
+	return found;
 }

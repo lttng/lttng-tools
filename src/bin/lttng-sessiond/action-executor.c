@@ -1076,17 +1076,26 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	 * simplicity and consistency.
 	 */
 	if (session_name != NULL) {
-		struct ltt_session *session = NULL;
+		uint64_t session_id;
 
-		session_lock_list();
-		session = session_find_by_name(session_name);
-		if (session) {
+		/*
+		 * Instantaneous sampling of the session id if present.
+		 *
+		 * This method is preferred over `sessiond_find_by_name` then
+		 * fetching the session'd id since `sessiond_find_by_name`
+		 * requires the session list lock to be taken.
+		 *
+		 * Taking the session list lock can lead to a deadlock
+		 * between the action executor and the notification thread
+		 * (caller of add_action_to_subitem_array). It is okay if the
+		 * session state changes between the enqueuing time and the
+		 * execution time. The execution context is validated at
+		 * execution time.
+		 */
+		if (sample_session_id_by_name(session_name, &session_id)) {
 			LTTNG_OPTIONAL_SET(&subitem.context.session_id,
-					session->id);
-			session_put(session);
+					session_id);
 		}
-
-		session_unlock_list();
 	}
 
 	/* Get a reference to the action. */
