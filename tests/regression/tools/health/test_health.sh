@@ -19,7 +19,7 @@ UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="sched_switch"
 CHANNEL_NAME="testchan"
 HEALTH_CHECK_BIN="health_check"
-NUM_TESTS=106
+NUM_TESTS=99
 SLEEP_TIME=30
 
 source $TESTDIR/utils/utils.sh
@@ -137,7 +137,10 @@ function test_health
 		# it may have been killed volountarily by testpoint.
 		stop_lttng_relayd_notap $KILL_SIGNAL
 	fi
-	stop_lttng_consumerd $KILL_SIGNAL
+
+	if [ ${test_consumerd} -eq 1 ]; then
+		stop_lttng_consumerd $KILL_SIGNAL
+	fi
 	stop_lttng_sessiond $KILL_SIGNAL
 
 	unset LTTNG_TESTPOINT_ENABLE
