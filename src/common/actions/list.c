@@ -15,8 +15,8 @@
 #include <lttng/action/list-internal.h>
 #include <lttng/action/list.h>
 
-#define IS_GROUP_ACTION(action) \
-	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_GROUP)
+#define IS_LIST_ACTION(action) \
+	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_LIST)
 
 struct lttng_action_list {
 	struct lttng_action parent;
@@ -63,7 +63,7 @@ static bool lttng_action_list_validate(struct lttng_action *action)
 	struct lttng_action_list *action_list;
 	bool valid;
 
-	assert(IS_GROUP_ACTION(action));
+	assert(IS_LIST_ACTION(action));
 
 	action_list = action_list_from_action(action);
 
@@ -138,7 +138,7 @@ static int lttng_action_list_serialize(
 
 	assert(action);
 	assert(payload);
-	assert(IS_GROUP_ACTION(action));
+	assert(IS_LIST_ACTION(action));
 
 	action_list = action_list_from_action(action);
 
@@ -196,13 +196,13 @@ ssize_t lttng_action_list_create_from_payload(
 {
 	ssize_t consumed_len;
 	const struct lttng_action_list_comm *comm;
-	struct lttng_action *group;
+	struct lttng_action *list;
 	struct lttng_action *child_action = NULL;
 	enum lttng_action_status status;
 	size_t i;
 
-	group = lttng_action_list_create();
-	if (!group) {
+	list = lttng_action_list_create();
+	if (!list) {
 		consumed_len = -1;
 		goto end;
 	}
@@ -229,7 +229,7 @@ ssize_t lttng_action_list_create_from_payload(
 			goto end;
 		}
 
-		status = lttng_action_list_add_action(group, child_action);
+		status = lttng_action_list_add_action(list, child_action);
 		if (status != LTTNG_ACTION_STATUS_OK) {
 			consumed_len = -1;
 			goto end;
@@ -242,11 +242,11 @@ ssize_t lttng_action_list_create_from_payload(
 		consumed_len += consumed_len_child;
 	}
 
-	*p_action = group;
-	group = NULL;
+	*p_action = list;
+	list = NULL;
 
 end:
-	lttng_action_list_destroy(group);
+	lttng_action_list_destroy(list);
 	return consumed_len;
 }
 
@@ -256,8 +256,8 @@ static enum lttng_action_status lttng_action_list_add_error_query_results(
 {
 	unsigned int i, count;
 	enum lttng_action_status action_status;
-	const struct lttng_action_list *group =
-			container_of(action, typeof(*group), parent);
+	const struct lttng_action_list *list =
+			container_of(action, typeof(*list), parent);
 
 	action_status = lttng_action_list_get_count(action, &count);
 	if (action_status != LTTNG_ACTION_STATUS_OK) {
@@ -291,7 +291,7 @@ struct lttng_action *lttng_action_list_create(void)
 
 	action = &action_list->parent;
 
-	lttng_action_init(action, LTTNG_ACTION_TYPE_GROUP,
+	lttng_action_init(action, LTTNG_ACTION_TYPE_LIST,
 			lttng_action_list_validate,
 			lttng_action_list_serialize,
 			lttng_action_list_is_equal, lttng_action_list_destroy,
@@ -306,27 +306,27 @@ end:
 }
 
 enum lttng_action_status lttng_action_list_add_action(
-		struct lttng_action *group, struct lttng_action *action)
+		struct lttng_action *list, struct lttng_action *action)
 {
 	struct lttng_action_list *action_list;
 	enum lttng_action_status status;
 	int ret;
 
-	if (!group || !IS_GROUP_ACTION(group) || !action) {
+	if (!list || !IS_LIST_ACTION(list) || !action) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
 
 	/*
-	 * Don't allow adding groups in groups for now, since we're afraid of
+	 * Don't allow adding lists in lists for now, since we're afraid of
 	 * cycles.
 	 */
-	if (IS_GROUP_ACTION(action)) {
+	if (IS_LIST_ACTION(action)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		goto end;
 	}
 
-	action_list = action_list_from_action(group);
+	action_list = action_list_from_action(list);
 
 	ret = lttng_dynamic_pointer_array_add_pointer(&action_list->actions,
 			action);
@@ -343,38 +343,38 @@ end:
 }
 
 enum lttng_action_status lttng_action_list_get_count(
-		const struct lttng_action *group, unsigned int *count)
+		const struct lttng_action *list, unsigned int *count)
 {
 	const struct lttng_action_list *action_list;
 	enum lttng_action_status status = LTTNG_ACTION_STATUS_OK;
 
-	if (!group || !IS_GROUP_ACTION(group)) {
+	if (!list || !IS_LIST_ACTION(list)) {
 		status = LTTNG_ACTION_STATUS_INVALID;
 		*count = 0;
 		goto end;
 	}
 
-	action_list = action_list_from_action_const(group);
+	action_list = action_list_from_action_const(list);
 	*count = lttng_dynamic_pointer_array_get_count(&action_list->actions);
 end:
 	return status;
 }
 
 const struct lttng_action *lttng_action_list_get_at_index(
-		const struct lttng_action *group, unsigned int index)
+		const struct lttng_action *list, unsigned int index)
 {
-	return lttng_action_list_borrow_mutable_at_index(group, index);
+	return lttng_action_list_borrow_mutable_at_index(list, index);
 }
 
 LTTNG_HIDDEN
 struct lttng_action *lttng_action_list_borrow_mutable_at_index(
-		const struct lttng_action *group, unsigned int index)
+		const struct lttng_action *list, unsigned int index)
 {
 	unsigned int count;
 	const struct lttng_action_list *action_list;
 	struct lttng_action *action = NULL;
 
-	if (lttng_action_list_get_count(group, &count) !=
+	if (lttng_action_list_get_count(list, &count) !=
 			LTTNG_ACTION_STATUS_OK) {
 		goto end;
 	}
@@ -383,7 +383,7 @@ struct lttng_action *lttng_action_list_borrow_mutable_at_index(
 		goto end;
 	}
 
-	action_list = action_list_from_action_const(group);
+	action_list = action_list_from_action_const(list);
 	action = lttng_dynamic_pointer_array_get_pointer(&action_list->actions,
 			index);
 end:

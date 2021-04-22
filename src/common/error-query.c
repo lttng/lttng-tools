@@ -47,9 +47,9 @@ struct lttng_error_query_action {
 	struct lttng_trigger *trigger;
 	/*
 	 * Index of the target action. Since action lists can't be nested,
-	 * the targetted action is the top-level group if the action_index is
+	 * the targetted action is the top-level list if the action_index is
 	 * unset. Otherwise, the index refers to the index within the top-level
-	 * group.
+	 * list.
 	 */
 	LTTNG_OPTIONAL(unsigned int) action_index;
 };
@@ -150,7 +150,7 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 	 */
 	if (action != trigger->action &&
 			lttng_action_get_type(trigger->action) ==
-					LTTNG_ACTION_TYPE_GROUP) {
+					LTTNG_ACTION_TYPE_LIST) {
 		unsigned int i, action_list_count;
 		enum lttng_action_status action_status;
 
@@ -178,7 +178,7 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 		}
 	} else {
 		/*
-		 * Trigger action is not a group and not equal to the target
+		 * Trigger action is not a list and not equal to the target
 		 * action; invalid action provided.
 		 */
 		goto error;
@@ -681,8 +681,8 @@ struct lttng_action *lttng_error_query_action_borrow_action_target(
 		target_action = trigger_action;
 	} else {
 		if (lttng_action_get_type(trigger_action) !=
-				LTTNG_ACTION_TYPE_GROUP) {
-			ERR("Invalid action error query target index: trigger action is not a group");
+				LTTNG_ACTION_TYPE_LIST) {
+			ERR("Invalid action error query target index: trigger action is not a list");
 			goto end;
 		}
 
@@ -827,7 +827,7 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 			target_action = trigger->action;
 		} else {
 			if (lttng_action_get_type(trigger->action) !=
-					LTTNG_ACTION_TYPE_GROUP) {
+					LTTNG_ACTION_TYPE_LIST) {
 				used_size = -1;
 				goto end;
 			}

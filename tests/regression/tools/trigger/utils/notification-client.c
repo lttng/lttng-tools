@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 		}
-		if (!((action_type == LTTNG_ACTION_TYPE_GROUP &&
+		if (!((action_type == LTTNG_ACTION_TYPE_LIST &&
 				      action_list_contains_notify(action)) ||
 				    action_type == LTTNG_ACTION_TYPE_NOTIFY)) {
 			/* "The action of trigger is not notify, skipping. */

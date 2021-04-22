@@ -23,8 +23,8 @@ const char *lttng_action_type_string(enum lttng_action_type action_type)
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_UNKNOWN:
 		return "UNKNOWN";
-	case LTTNG_ACTION_TYPE_GROUP:
-		return "GROUP";
+	case LTTNG_ACTION_TYPE_LIST:
+		return "LIST";
 	case LTTNG_ACTION_TYPE_NOTIFY:
 		return "NOTIFY";
 	case LTTNG_ACTION_TYPE_ROTATE_SESSION:
@@ -191,7 +191,7 @@ ssize_t lttng_action_create_from_payload(struct lttng_payload_view *view,
 		create_from_payload_cb =
 				lttng_action_stop_session_create_from_payload;
 		break;
-	case LTTNG_ACTION_TYPE_GROUP:
+	case LTTNG_ACTION_TYPE_LIST:
 		create_from_payload_cb = lttng_action_list_create_from_payload;
 		break;
 	default:

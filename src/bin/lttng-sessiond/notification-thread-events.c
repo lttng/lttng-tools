@@ -2487,7 +2487,7 @@ bool is_trigger_action_notify(const struct lttng_trigger *trigger)
 	if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
 		is_notify = true;
 		goto end;
-	} else if (action_type != LTTNG_ACTION_TYPE_GROUP) {
+	} else if (action_type != LTTNG_ACTION_TYPE_LIST) {
 		goto end;
 	}
 
@@ -2603,7 +2603,7 @@ enum lttng_error_code setup_tracer_notifier(
 			trigger, &error_counter_index);
 	if (error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
 		if (error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_NO_INDEX_AVAILABLE) {
-			DBG("Trigger group error accounting counter full.");
+			DBG("Trigger list error accounting counter full.");
 			ret = LTTNG_ERR_EVENT_NOTIFIER_ERROR_ACCOUNTING_FULL;
 		} else {
 			ERR("Error registering trigger for error accounting");

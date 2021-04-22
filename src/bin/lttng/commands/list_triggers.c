@@ -637,7 +637,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 	const char *value;
 
 	action_type = lttng_action_get_type(action);
-	assert(action_type != LTTNG_ACTION_TYPE_GROUP);
+	assert(action_type != LTTNG_ACTION_TYPE_LIST);
 
 	switch (action_type) {
 	case LTTNG_ACTION_TYPE_NOTIFY:
@@ -939,7 +939,7 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 
 	action = lttng_trigger_get_const_action(trigger);
 	action_type = lttng_action_get_type(action);
-	if (action_type == LTTNG_ACTION_TYPE_GROUP) {
+	if (action_type == LTTNG_ACTION_TYPE_LIST) {
 		unsigned int count, i;
 		enum lttng_action_status action_status;
 

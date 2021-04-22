@@ -135,7 +135,7 @@ static int action_executor_snapshot_session_handler(
 		struct action_executor *executor,
 		const struct action_work_item *,
 		struct action_work_subitem *);
-static int action_executor_group_handler(struct action_executor *executor,
+static int action_executor_list_handler(struct action_executor *executor,
 		const struct action_work_item *,
 		struct action_work_subitem *);
 static int action_executor_generic_handler(struct action_executor *executor,
@@ -148,7 +148,7 @@ static const action_executor_handler action_executors[] = {
 	[LTTNG_ACTION_TYPE_STOP_SESSION] = action_executor_stop_session_handler,
 	[LTTNG_ACTION_TYPE_ROTATE_SESSION] = action_executor_rotate_session_handler,
 	[LTTNG_ACTION_TYPE_SNAPSHOT_SESSION] = action_executor_snapshot_session_handler,
-	[LTTNG_ACTION_TYPE_GROUP] = action_executor_group_handler,
+	[LTTNG_ACTION_TYPE_LIST] = action_executor_list_handler,
 };
 
 /* Forward declaration */
@@ -660,11 +660,11 @@ end:
 	return ret;
 }
 
-static int action_executor_group_handler(struct action_executor *executor,
+static int action_executor_list_handler(struct action_executor *executor,
 		const struct action_work_item *work_item,
 		struct action_work_subitem *item)
 {
-	ERR("Execution of a group action by the action executor should never occur");
+	ERR("Execution of a list action by the action executor should never occur");
 	abort();
 }
 
@@ -1010,7 +1010,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 	assert(action);
 	assert(subitems);
 
-	if (type == LTTNG_ACTION_TYPE_GROUP) {
+	if (type == LTTNG_ACTION_TYPE_LIST) {
 		unsigned int count, i;
 
 		status = lttng_action_list_get_count(action, &count);
@@ -1031,7 +1031,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 
 		/*
 		 * Go directly to the end since there is no need to add the
-		 * group action by itself to the subitems array.
+		 * list action by itself to the subitems array.
 		 */
 		goto end;
 	}
@@ -1060,7 +1060,7 @@ static int add_action_to_subitem_array(struct lttng_action *action,
 				action, &session_name);
 		assert(status == LTTNG_ACTION_STATUS_OK);
 		break;
-	case LTTNG_ACTION_TYPE_GROUP:
+	case LTTNG_ACTION_TYPE_LIST:
 	case LTTNG_ACTION_TYPE_UNKNOWN:
 		/* Fallthrough */
 	default:
