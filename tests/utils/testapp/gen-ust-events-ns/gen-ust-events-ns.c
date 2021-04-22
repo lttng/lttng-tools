@@ -91,7 +91,7 @@ static void debug_printf(const char *format, ...)
 
 static int get_ns_inum(const char *ns, ino_t *ns_inum)
 {
-	int ret = 0;
+	int ret = -1;
 	struct stat sb;
 	char proc_ns_path[LTTNG_PROC_NS_PATH_MAX];
 
@@ -102,8 +102,7 @@ static int get_ns_inum(const char *ns, ino_t *ns_inum)
 			"/proc/thread-self/ns/%s", ns) >= 0) {
 		if (stat(proc_ns_path, &sb) == 0) {
 			*ns_inum = sb.st_ino;
-		} else {
-			ret = -1;
+			ret = 0;
 		}
 		goto end;
 	}
@@ -112,8 +111,7 @@ static int get_ns_inum(const char *ns, ino_t *ns_inum)
 			"/proc/self/task/%d/%s/net", lttng_gettid(), ns) >= 0) {
 		if (stat(proc_ns_path, &sb) == 0) {
 			*ns_inum = sb.st_ino;
-		} else {
-			ret = -1;
+			ret = 0;
 		}
 		goto end;
 	}
