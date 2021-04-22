@@ -797,7 +797,7 @@ static int set_options(int argc, char **argv)
 	int ret = 0, c = 0, option_index = 0;
 	int orig_optopt = optopt, orig_optind = optind;
 	char *optstring;
-	const char *config_path = NULL;
+	char *config_path = NULL;
 
 	optstring = utils_generate_optstring(long_options,
 			sizeof(long_options) / sizeof(struct option));
@@ -821,6 +821,7 @@ static int set_options(int argc, char **argv)
 			WARN("Getting '%s' argument from setuid/setgid binary refused for security reasons.",
 				"-f, --config");
 		} else {
+			free(config_path);
 			config_path = utils_expand_path(optarg);
 			if (!config_path) {
 				ERR("Failed to resolve path: %s", optarg);
@@ -866,6 +867,7 @@ static int set_options(int argc, char **argv)
 	}
 
 end:
+	free(config_path);
 	free(optstring);
 	return ret;
 }
