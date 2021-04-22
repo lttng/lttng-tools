@@ -2186,7 +2186,7 @@ end_rotate_channel_nosignal:
 		const uint64_t relayd_id =
 				msg.u.close_trace_chunk.relayd_id.value;
 		struct lttcomm_consumer_close_trace_chunk_reply reply;
-		char closed_trace_chunk_path[LTTNG_PATH_MAX];
+		char closed_trace_chunk_path[LTTNG_PATH_MAX] = {};
 		int ret;
 
 		ret_code = lttng_consumer_close_trace_chunk(
