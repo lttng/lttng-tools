@@ -73,7 +73,10 @@ struct lttng_event_expr_field *create_field_event_expr(
 	goto end;
 
 error:
-	lttng_event_expr_destroy(&expr->parent);
+	if (expr) {
+		lttng_event_expr_destroy(&expr->parent);
+	}
+	expr = NULL;
 
 end:
 	return expr;
@@ -117,6 +120,7 @@ struct lttng_event_expr *lttng_event_expr_app_specific_context_field_create(
 		const char *provider_name, const char *type_name)
 {
 	struct lttng_event_expr_app_specific_context_field *expr = NULL;
+	struct lttng_event_expr *ret_parent_expr;
 
 	if (!type_name || !provider_name) {
 		goto error;
@@ -141,13 +145,17 @@ struct lttng_event_expr *lttng_event_expr_app_specific_context_field_create(
 		goto error;
 	}
 
+	ret_parent_expr = &expr->parent;
 	goto end;
 
 error:
-	lttng_event_expr_destroy(&expr->parent);
+	if (expr) {
+		lttng_event_expr_destroy(&expr->parent);
+	}
+	ret_parent_expr = NULL;
 
 end:
-	return &expr->parent;
+	return ret_parent_expr;
 }
 
 struct lttng_event_expr *lttng_event_expr_array_field_element_create(
@@ -155,6 +163,7 @@ struct lttng_event_expr *lttng_event_expr_array_field_element_create(
 		unsigned int index)
 {
 	struct lttng_event_expr_array_field_element *expr = NULL;
+	struct lttng_event_expr *ret_parent_expr;
 
 	/* The parent array field expression must be an l-value */
 	if (!array_field_expr ||
@@ -173,13 +182,17 @@ struct lttng_event_expr *lttng_event_expr_array_field_element_create(
 
 	expr->array_field_expr = array_field_expr;
 	expr->index = index;
+	ret_parent_expr = &expr->parent;
 	goto end;
 
 error:
-	lttng_event_expr_destroy(&expr->parent);
+	if (expr) {
+		lttng_event_expr_destroy(&expr->parent);
+	}
+	ret_parent_expr = NULL;
 
 end:
-	return &expr->parent;
+	return ret_parent_expr;
 }
 
 const char *lttng_event_expr_event_payload_field_get_name(
