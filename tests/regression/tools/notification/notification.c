@@ -2569,7 +2569,7 @@ int main(int argc, const char *argv[])
 	}
 	case 4:
 	{
-		plan_tests(12);
+		plan_tests(11);
 		/* Test cases that need the kernel tracer. */
 		assert(domain_type == LTTNG_DOMAIN_KERNEL);
 
@@ -2582,7 +2582,7 @@ int main(int argc, const char *argv[])
 	}
 	case 5:
 	{
-		plan_tests(25);
+		plan_tests(23);
 		/* Test cases that need the kernel tracer. */
 		assert(domain_type == LTTNG_DOMAIN_KERNEL);
 
@@ -2602,7 +2602,7 @@ int main(int argc, const char *argv[])
 	{
 		const char *testapp_path, *test_symbol_name;
 
-		plan_tests(12);
+		plan_tests(11);
 
 		if (argc < 7) {
 			fail("Missing parameter for tests to run %d", argc);
@@ -2629,7 +2629,7 @@ int main(int argc, const char *argv[])
 			plan_tests(221);
 			break;
 		case LTTNG_DOMAIN_KERNEL:
-			plan_tests(216);
+			plan_tests(215);
 			break;
 		default:
 			assert(0);
