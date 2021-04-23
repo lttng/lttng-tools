@@ -284,11 +284,11 @@ function test_ust_notifier_discarded_count_multi_uid
 	done
 
 	lttng_add_trigger_ok "$root_trigger_name" \
-		--condition on-event --userspace tp:tptest \
+		--condition event-rule-matches --domain=user --name tp:tptest \
 		--action notify
 
-	lttng_add_trigger_ok "$user_trigger_name" --user-id "$new_uid" \
-		--condition on-event --userspace tp:tptest \
+	lttng_add_trigger_ok "$user_trigger_name" --owner-uid "$new_uid" \
+		--condition event-rule-matches --domain=user --name tp:tptest \
 		--action notify
 
 	# Stop consumption of notifier tracer notifications.
@@ -309,7 +309,7 @@ function test_ust_notifier_discarded_count_multi_uid
 		"User trigger discarded notifications number ($user_trigger_discarded_nb) is non-zero"
 
 	lttng_remove_trigger_ok "$root_trigger_name"
-	lttng_remove_trigger_ok "$user_trigger_name" --user-id "$new_uid"
+	lttng_remove_trigger_ok "$user_trigger_name" --owner-uid "$new_uid"
 
 	stop_lttng_sessiond_notap
 
@@ -364,7 +364,7 @@ function test_ust_notifier_discarded_regardless_trigger_owner
 	done
 
 	lttng_add_trigger_ok "$root_trigger_name" \
-		--condition on-event --userspace tp:tptest \
+		--condition event-rule-matches --domain=user --name tp:tptest \
 		--action notify
 
 	# Stop consumption of notifier tracer notifications.
