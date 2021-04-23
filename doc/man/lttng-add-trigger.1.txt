@@ -11,7 +11,7 @@ lttng-add-trigger - Add an LTTng trigger
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-trigger* [option:--name='NAME'] [option:--owner-id='UID']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-trigger* [option:--name='NAME'] [option:--owner-uid='UID']
       option:--condition='CONDTYPE' ['CONDARGS']
       option:--action='ACTTYPE' ['ACTARGS'] [option:--action='ACTTYPE' ['ACTARGS']]...
 
@@ -34,7 +34,7 @@ option to assign a specific name instead.
 
 The `add-trigger` command adds a trigger for your Unix user. If your
 Unix user is `root`, you can add the trigger as another user with the
-option:--owner-id option.
+option:--owner-uid option.
 
 Specify the condition of the trigger to add with a <<cond-spec,condition
 specifier>> and its actions with one or more <<action-spec,action
@@ -287,7 +287,7 @@ option:--name='NAME'::
     Set the unique name of the trigger to add to 'NAME' instead of the
     `add-trigger` command automatically assigning one.
 
-option:--owner-id='UID'::
+option:--owner-uid='UID'::
     Add the trigger as the Unix user having the user ID 'UID'.
 +
 You may only use this option if your Unix user is `root`.
