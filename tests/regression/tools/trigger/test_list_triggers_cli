@@ -90,7 +90,7 @@ test_top_level_options ()
 
 test_event_rule_matches_tracepoint ()
 {
-	diag "Listing on-event tracepoint"
+	diag "Listing event-rule-matches tracepoint"
 
 	lttng_add_trigger_ok "C" --condition event-rule-matches --domain=user --action notify
 	lttng_add_trigger_ok "A" --condition event-rule-matches --name=aaa --domain=user --filter 'p == 2' --action notify
@@ -214,7 +214,7 @@ test_event_rule_matches_probe ()
 	local channel_enable_addr
 	local channel_disable_addr
 
-	diag "Listing on-event kernel probe"
+	diag "Listing event-rule-matches kernel probe"
 
 	channel_enable_addr=$(grep ' t lttng_channel_enable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
 	channel_disable_addr=$(grep ' t lttng_channel_disable\s\[lttng_tracer\]$' /proc/kallsyms | cut -f 1 -d ' ')
@@ -274,7 +274,7 @@ test_event_rule_matches_userspace_probe_elf ()
 {
 	local elf_function_name="test_function"
 
-	diag "Listing on-event userspace-probe elf"
+	diag "Listing event-rule-matches userspace-probe elf"
 
 	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe-elf --action notify
 
@@ -299,13 +299,13 @@ test_event_rule_matches_userspace_probe_sdt ()
 	local sdt_provider_name="foobar"
 	local sdt_probe_name="tp1"
 
-	diag "on-event userspace-probe sdt"
+	diag "Listing event-rule-matches userspace-probe sdt"
 
-	lttng_add_trigger_ok "T0" --condition on-event -k --userspace-probe=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} ma-probe-sdt --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=uprobe --location=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} --event-name=ma-probe-sdt --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
-	- id: T0
-	  user id: 0
+	- name: T0
+	  owner uid: 0
 	  condition: event rule hit
 	    rule: ma-probe-sdt (type: userspace probe, location type: SDT, location: ${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name})
 	  actions:
@@ -314,17 +314,17 @@ test_event_rule_matches_userspace_probe_sdt ()
 	  errors: none
 	EOF
 
-	list_triggers_matches_ok "on-event, userspace-probe event rule SDT" "${tmp_expected_stdout}"
+	list_triggers_matches_ok "event-rule-matches, userspace-probe event rule SDT" "${tmp_expected_stdout}"
 
 	lttng_remove_trigger_ok "T0"
 }
 
 test_event_rule_matches_syscall ()
 {
-	diag "Listing on-event syscall"
+	diag "Listing event-rule-matches syscall"
 
 	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=syscall --name=open --action notify
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=syscall:entry --name=open --action notify	
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=syscall:entry --name=open --action notify
 	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=kernel --type=syscall:exit --name=open --action notify
 	lttng_add_trigger_ok "T3" --condition event-rule-matches --domain=kernel --type=syscall:entry+exit --name=open --action notify
 	lttng_add_trigger_ok "T4" --condition event-rule-matches --domain=kernel --type=syscall --name=ptrace --filter 'a > 2' --action notify
