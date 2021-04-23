@@ -20,18 +20,6 @@
 	)
 
 static
-double fixed_to_double(uint32_t val)
-{
-	return (double) val / (double) UINT32_MAX;
-}
-
-static
-uint64_t double_to_fixed(double val)
-{
-	return (val * (double) UINT32_MAX);
-}
-
-static
 bool is_usage_evaluation(const struct lttng_evaluation *evaluation)
 {
 	enum lttng_condition_type type = lttng_evaluation_get_type(evaluation);
@@ -121,17 +109,9 @@ int lttng_condition_buffer_usage_serialize(
 	usage_comm.domain_type = (int8_t) usage->domain.type;
 
 	if (usage->threshold_bytes.set) {
-		usage_comm.threshold = usage->threshold_bytes.value;
+		usage_comm.threshold_bytes = usage->threshold_bytes.value;
 	} else {
-		uint64_t val = double_to_fixed(
-				usage->threshold_ratio.value);
-
-		if (val > UINT32_MAX) {
-			/* overflow. */
-			ret = -1;
-			goto end;
-		}
-		usage_comm.threshold = val;
+		usage_comm.threshold_ratio = usage->threshold_ratio.value;
 	}
 
 	ret = lttng_dynamic_buffer_append(&payload->buffer, &usage_comm,
@@ -285,11 +265,10 @@ ssize_t init_condition_from_payload(struct lttng_condition *condition,
 
 	if (condition_comm->threshold_set_in_bytes) {
 		status = lttng_condition_buffer_usage_set_threshold(condition,
-				condition_comm->threshold);
+				condition_comm->threshold_bytes);
 	} else {
 		status = lttng_condition_buffer_usage_set_threshold_ratio(
-				condition,
-				fixed_to_double(condition_comm->threshold));
+				condition, condition_comm->threshold_ratio);
 	}
 
 	if (status != LTTNG_CONDITION_STATUS_OK) {
