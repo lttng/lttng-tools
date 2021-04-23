@@ -248,7 +248,8 @@ See below for the nloption:--rate-policy option.
 Common action options (as of LTTng{nbsp}{lttng_version}):
 
 nloption:--rate-policy='POLICY'::
-    Set the rate policy of the action to 'POLICY'.
+    Set the rate policy of the action to 'POLICY' instead of
+    `every:1` (always execute).
 +
 A trigger which ``fires'' (its condition is satisfied) leads to an
 execution request for each of its actions, in order. An execution
@@ -256,9 +257,6 @@ request of a given action{nbsp}__A__ first increments the execution
 request count{nbsp}__C__ of{nbsp}__A__. An execution request can then
 become an actual execution when{nbsp}__C__ satisfies the rate policy
 of{nbsp}__A__.
-+
-The default action rate policy is `every:1` (always execute{nbsp}__A__).
-Use this option to specify another rate policy.
 +
 'POLICY' is one of:
 +
@@ -274,6 +272,8 @@ requests.
 +
 In other words, execute{nbsp}__A__ every 'COUNT' execution requests.
 --
++
+'COUNT' must be an integer greater than{nbsp}0.
 +
 As of LTTng{nbsp}{lttng_version}, you can use this option with any
 action type, but new action types in the future may not support it.
