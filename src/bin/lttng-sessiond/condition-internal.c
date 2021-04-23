@@ -44,10 +44,7 @@ unsigned long lttng_condition_buffer_usage_hash(
 				lttng_ht_seed);
 	}
 	if (condition->threshold_ratio.set) {
-		uint64_t val;
-
-		val = condition->threshold_ratio.value * (double) UINT32_MAX;
-		hash ^= hash_key_u64(&val, lttng_ht_seed);
+		hash ^= hash_key_u64(&condition->threshold_ratio.value, lttng_ht_seed);
 	} else if (condition->threshold_bytes.set) {
 		uint64_t val;
 
