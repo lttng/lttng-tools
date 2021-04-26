@@ -9,8 +9,10 @@
 #ifndef _LTT_SHM_H
 #define _LTT_SHM_H
 
+LTTNG_HIDDEN
 char *shm_ust_get_mmap(char *shm_path, int global);
 
+LTTNG_HIDDEN
 int shm_create_anonymous(const char *owner_name);
 
 #endif /* _LTT_SHM_H */
