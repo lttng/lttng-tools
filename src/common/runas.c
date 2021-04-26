@@ -730,7 +730,7 @@ int do_send_fds(int sock, const int *fds, unsigned int fd_count)
 
 	for (i = 0; i < fd_count; i++) {
 		if (fds[i] < 0) {
-			ERR("Attempt to send invalid file descriptor to master (fd = %i)",
+			DBG("Attempt to send invalid file descriptor (fd = %i)",
 					fds[i]);
 			/* Return 0 as this is not a fatal error. */
 			return 0;
@@ -818,10 +818,14 @@ int send_fds_to_master(struct run_as_worker *worker, enum run_as_cmd cmd,
 	}
 
 	for (i = 0; i < COMMAND_OUT_FD_COUNT(cmd); i++) {
-		int ret_close = close(COMMAND_OUT_FDS(cmd, run_as_ret)[i]);
+		int fd = COMMAND_OUT_FDS(cmd, run_as_ret)[i];
+		if (fd >= 0) {
+			int ret_close = close(fd);
 
-		if (ret_close < 0) {
-			PERROR("Failed to close result file descriptor");
+			if (ret_close < 0) {
+				PERROR("Failed to close result file descriptor (fd = %i)",
+						fd);
+			}
 		}
 	}
 end:
