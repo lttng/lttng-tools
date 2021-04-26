@@ -1299,6 +1299,9 @@ int run_as_create_worker_no_lock(const char *procname,
 		reset_sighandler();
 
 		set_worker_sighandlers();
+
+		logger_set_thread_name("Run-as worker", true);
+
 		if (clean_up_func) {
 			if (clean_up_func(clean_up_user_data) < 0) {
 				ERR("Run-as post-fork clean-up failed, exiting.");
