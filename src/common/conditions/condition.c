@@ -232,7 +232,7 @@ const char *lttng_condition_type_str(enum lttng_condition_type type)
 		return "session rotation completed";
 
 	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
-		return "event rule hit";
+		return "event rule matches";
 
 	default:
 		return "???";
