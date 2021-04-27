@@ -210,12 +210,28 @@ end:
 
 int kernctl_track_pid(int fd, int pid)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_PID, pid);
+	int ret = LTTNG_IOCTL_CHECK(
+			fd, LTTNG_KERNEL_ABI_SESSION_TRACK_PID, pid);
+
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_PID, pid);
+	}
+
+	return ret;
 }
 
 int kernctl_untrack_pid(int fd, int pid)
 {
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_PID, pid);
+	int ret = LTTNG_IOCTL_CHECK(
+			fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_PID, pid);
+
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_PID, pid);
+	}
+
+	return ret;
 }
 
 int kernctl_list_tracker_pids(int fd)
@@ -247,6 +263,7 @@ static enum lttng_kernel_abi_tracker_type get_kernel_tracker_type(
 int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
 {
 	struct lttng_kernel_abi_tracker_args args;
+	int ret;
 
 	args.id = id;
 	args.type = get_kernel_tracker_type(process_attr);
@@ -254,12 +271,20 @@ int kernctl_track_id(int fd, enum lttng_process_attr process_attr, int id)
 		errno = EINVAL;
 		return -1;
 	}
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_ID, &args);
+
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_TRACK_ID, &args);
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_TRACK_ID, &args);
+	}
+
+	return ret;
 }
 
 int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
 {
 	struct lttng_kernel_abi_tracker_args args;
+	int ret;
 
 	args.id = id;
 	args.type = get_kernel_tracker_type(process_attr);
@@ -267,12 +292,20 @@ int kernctl_untrack_id(int fd, enum lttng_process_attr process_attr, int id)
 		errno = EINVAL;
 		return -1;
 	}
-	return LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_ID, &args);
+
+	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_UNTRACK_ID, &args);
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_UNTRACK_ID, &args);
+	}
+
+	return ret;
 }
 
 int kernctl_list_tracker_ids(int fd, enum lttng_process_attr process_attr)
 {
 	struct lttng_kernel_abi_tracker_args args;
+	int ret;
 
 	args.id = -1;
 	args.type = get_kernel_tracker_type(process_attr);
@@ -280,8 +313,16 @@ int kernctl_list_tracker_ids(int fd, enum lttng_process_attr process_attr)
 		errno = EINVAL;
 		return -1;
 	}
-	return LTTNG_IOCTL_NO_CHECK(
+
+	ret = LTTNG_IOCTL_NO_CHECK(
 			fd, LTTNG_KERNEL_ABI_SESSION_LIST_TRACKER_IDS, &args);
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_NO_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_LIST_TRACKER_IDS,
+				&args);
+	}
+
+	return ret;
 }
 
 int kernctl_session_regenerate_metadata(int fd)
@@ -306,6 +347,12 @@ int kernctl_session_set_name(int fd, const char *name)
 
 	ret = LTTNG_IOCTL_CHECK(
 			fd, LTTNG_KERNEL_ABI_SESSION_SET_NAME, &session_name);
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_SET_NAME,
+				&session_name);
+	}
+
 end:
 	return ret;
 }
@@ -323,6 +370,12 @@ int kernctl_session_set_creation_time(int fd, time_t time)
 
 	ret = LTTNG_IOCTL_CHECK(fd, LTTNG_KERNEL_ABI_SESSION_SET_CREATION_TIME,
 			&creation_time);
+	if (ret == -ENOSYS) {
+		ret = LTTNG_IOCTL_CHECK(fd,
+				LTTNG_KERNEL_ABI_OLD_SESSION_SET_CREATION_TIME,
+				&creation_time);
+	}
+
 end:
 	return ret;
 }
