@@ -681,34 +681,34 @@ static int list_lttng_kernel_events(char *channel_name,
 		event.filter = (unsigned char) !!kevent->filter_expression;
 
 		switch (kevent->event->instrumentation) {
-		case LTTNG_KERNEL_TRACEPOINT:
+		case LTTNG_KERNEL_ABI_TRACEPOINT:
 			event.type = LTTNG_EVENT_TRACEPOINT;
 			break;
-		case LTTNG_KERNEL_KRETPROBE:
+		case LTTNG_KERNEL_ABI_KRETPROBE:
 			event.type = LTTNG_EVENT_FUNCTION;
 			memcpy(&event.attr.probe, &kevent->event->u.kprobe,
-					sizeof(struct lttng_kernel_kprobe));
+					sizeof(struct lttng_kernel_abi_kprobe));
 			break;
-		case LTTNG_KERNEL_KPROBE:
+		case LTTNG_KERNEL_ABI_KPROBE:
 			event.type = LTTNG_EVENT_PROBE;
 			memcpy(&event.attr.probe, &kevent->event->u.kprobe,
-					sizeof(struct lttng_kernel_kprobe));
+					sizeof(struct lttng_kernel_abi_kprobe));
 			break;
-		case LTTNG_KERNEL_UPROBE:
+		case LTTNG_KERNEL_ABI_UPROBE:
 			event.type = LTTNG_EVENT_USERSPACE_PROBE;
 			break;
-		case LTTNG_KERNEL_FUNCTION:
+		case LTTNG_KERNEL_ABI_FUNCTION:
 			event.type = LTTNG_EVENT_FUNCTION;
 			memcpy(&event.attr.ftrace, &kevent->event->u.ftrace,
-					sizeof(struct lttng_kernel_function));
+					sizeof(struct lttng_kernel_abi_function));
 			break;
-		case LTTNG_KERNEL_NOOP:
+		case LTTNG_KERNEL_ABI_NOOP:
 			event.type = LTTNG_EVENT_NOOP;
 			break;
-		case LTTNG_KERNEL_SYSCALL:
+		case LTTNG_KERNEL_ABI_SYSCALL:
 			event.type = LTTNG_EVENT_SYSCALL;
 			break;
-		case LTTNG_KERNEL_ALL:
+		case LTTNG_KERNEL_ABI_ALL:
 			/* fall-through. */
 		default:
 			assert(0);

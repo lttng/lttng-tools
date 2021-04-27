@@ -124,7 +124,7 @@ struct run_as_extract_elf_symbol_offset_ret {
 
 struct run_as_extract_sdt_probe_offsets_ret {
 	uint32_t num_offset;
-	uint64_t offsets[LTTNG_KERNEL_MAX_UPROBE_NUM];
+	uint64_t offsets[LTTNG_KERNEL_ABI_MAX_UPROBE_NUM];
 } LTTNG_PACKED;
 
 struct run_as_generate_filter_bytecode_ret {
@@ -607,7 +607,7 @@ int _extract_sdt_probe_offsets(struct run_as_data *data,
 		goto end;
 	}
 
-	if (num_offset <= 0 || num_offset > LTTNG_KERNEL_MAX_UPROBE_NUM) {
+	if (num_offset <= 0 || num_offset > LTTNG_KERNEL_ABI_MAX_UPROBE_NUM) {
 		DBG("Wrong number of probes.");
 		ret = -1;
 		ret_value->_error = true;

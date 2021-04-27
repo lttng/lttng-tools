@@ -206,116 +206,116 @@ int context_kernel_add(struct ltt_kernel_session *ksession,
 	/* Setup kernel context structure */
 	switch (ctx->ctx) {
 	case LTTNG_EVENT_CONTEXT_PID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PID;
 		break;
 	case LTTNG_EVENT_CONTEXT_PROCNAME:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PROCNAME;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PROCNAME;
 		break;
 	case LTTNG_EVENT_CONTEXT_PRIO:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PRIO;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PRIO;
 		break;
 	case LTTNG_EVENT_CONTEXT_NICE:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_NICE;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NICE;
 		break;
 	case LTTNG_EVENT_CONTEXT_VPID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VPID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VPID;
 		break;
 	case LTTNG_EVENT_CONTEXT_TID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_TID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_TID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VTID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VTID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VTID;
 		break;
 	case LTTNG_EVENT_CONTEXT_PPID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PPID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PPID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VPPID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VPPID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VPPID;
 		break;
 	case LTTNG_EVENT_CONTEXT_HOSTNAME:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_HOSTNAME;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_HOSTNAME;
 		break;
 	case LTTNG_EVENT_CONTEXT_PERF_CPU_COUNTER:
 	case LTTNG_EVENT_CONTEXT_PERF_COUNTER:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER;
 		break;
 	case LTTNG_EVENT_CONTEXT_INTERRUPTIBLE:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_INTERRUPTIBLE;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_INTERRUPTIBLE;
 		break;
 	case LTTNG_EVENT_CONTEXT_PREEMPTIBLE:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PREEMPTIBLE;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PREEMPTIBLE;
 		break;
 	case LTTNG_EVENT_CONTEXT_NEED_RESCHEDULE:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_NEED_RESCHEDULE;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NEED_RESCHEDULE;
 		break;
 	case LTTNG_EVENT_CONTEXT_MIGRATABLE:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_MIGRATABLE;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_MIGRATABLE;
 		break;
 	case LTTNG_EVENT_CONTEXT_CALLSTACK_KERNEL:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CALLSTACK_KERNEL;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_KERNEL;
 		break;
 	case LTTNG_EVENT_CONTEXT_CALLSTACK_USER:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CALLSTACK_USER;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_USER;
 		break;
 	case LTTNG_EVENT_CONTEXT_CGROUP_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_CGROUP_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_CGROUP_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_IPC_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_IPC_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_IPC_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_MNT_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_MNT_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_MNT_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_NET_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_NET_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_NET_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_PID_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_PID_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_PID_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_TIME_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_TIME_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_TIME_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_USER_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_USER_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_USER_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_UTS_NS:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_UTS_NS;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_UTS_NS;
 		break;
 	case LTTNG_EVENT_CONTEXT_UID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_UID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_UID;
 		break;
 	case LTTNG_EVENT_CONTEXT_EUID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_EUID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_EUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_SUID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_SUID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_SUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_GID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_GID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_GID;
 		break;
 	case LTTNG_EVENT_CONTEXT_EGID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_EGID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_EGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_SGID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_SGID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_SGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VUID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VUID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VEUID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VEUID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VEUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VSUID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VSUID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VSUID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VGID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VGID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VEGID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VEGID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VEGID;
 		break;
 	case LTTNG_EVENT_CONTEXT_VSGID:
-		kctx->ctx.ctx = LTTNG_KERNEL_CONTEXT_VSGID;
+		kctx->ctx.ctx = LTTNG_KERNEL_ABI_CONTEXT_VSGID;
 		break;
 	default:
 		ret = LTTNG_ERR_KERN_CONTEXT_FAIL;

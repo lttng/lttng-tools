@@ -216,33 +216,33 @@ end:
 
 static
 const char *get_kernel_instrumentation_string(
-	enum lttng_kernel_instrumentation instrumentation)
+	enum lttng_kernel_abi_instrumentation instrumentation)
 {
 	const char *instrumentation_string;
 
 	switch (instrumentation) {
-	case LTTNG_KERNEL_ALL:
+	case LTTNG_KERNEL_ABI_ALL:
 		instrumentation_string = config_event_type_all;
 		break;
-	case LTTNG_KERNEL_TRACEPOINT:
+	case LTTNG_KERNEL_ABI_TRACEPOINT:
 		instrumentation_string = config_event_type_tracepoint;
 		break;
-	case LTTNG_KERNEL_KPROBE:
+	case LTTNG_KERNEL_ABI_KPROBE:
 		instrumentation_string = config_event_type_probe;
 		break;
-	case LTTNG_KERNEL_UPROBE:
+	case LTTNG_KERNEL_ABI_UPROBE:
 		instrumentation_string = config_event_type_userspace_probe;
 		break;
-	case LTTNG_KERNEL_FUNCTION:
+	case LTTNG_KERNEL_ABI_FUNCTION:
 		instrumentation_string = config_event_type_function_entry;
 		break;
-	case LTTNG_KERNEL_KRETPROBE:
+	case LTTNG_KERNEL_ABI_KRETPROBE:
 		instrumentation_string = config_event_type_function;
 		break;
-	case LTTNG_KERNEL_NOOP:
+	case LTTNG_KERNEL_ABI_NOOP:
 		instrumentation_string = config_event_type_noop;
 		break;
-	case LTTNG_KERNEL_SYSCALL:
+	case LTTNG_KERNEL_ABI_SYSCALL:
 		instrumentation_string = config_event_type_syscall;
 		break;
 	default:
@@ -254,117 +254,117 @@ const char *get_kernel_instrumentation_string(
 
 static
 const char *get_kernel_context_type_string(
-	enum lttng_kernel_context_type context_type)
+	enum lttng_kernel_abi_context_type context_type)
 {
 	const char *context_type_string;
 
 	switch (context_type) {
-	case LTTNG_KERNEL_CONTEXT_PID:
+	case LTTNG_KERNEL_ABI_CONTEXT_PID:
 		context_type_string = config_event_context_pid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_PROCNAME:
+	case LTTNG_KERNEL_ABI_CONTEXT_PROCNAME:
 		context_type_string = config_event_context_procname;
 		break;
-	case LTTNG_KERNEL_CONTEXT_PRIO:
+	case LTTNG_KERNEL_ABI_CONTEXT_PRIO:
 		context_type_string = config_event_context_prio;
 		break;
-	case LTTNG_KERNEL_CONTEXT_NICE:
+	case LTTNG_KERNEL_ABI_CONTEXT_NICE:
 		context_type_string = config_event_context_nice;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VPID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VPID:
 		context_type_string = config_event_context_vpid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_TID:
+	case LTTNG_KERNEL_ABI_CONTEXT_TID:
 		context_type_string = config_event_context_tid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VTID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VTID:
 		context_type_string = config_event_context_vtid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_PPID:
+	case LTTNG_KERNEL_ABI_CONTEXT_PPID:
 		context_type_string = config_event_context_ppid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VPPID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VPPID:
 		context_type_string = config_event_context_vppid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_HOSTNAME:
+	case LTTNG_KERNEL_ABI_CONTEXT_HOSTNAME:
 		context_type_string = config_event_context_hostname;
 		break;
-	case LTTNG_KERNEL_CONTEXT_INTERRUPTIBLE:
+	case LTTNG_KERNEL_ABI_CONTEXT_INTERRUPTIBLE:
 		context_type_string = config_event_context_interruptible;
 		break;
-	case LTTNG_KERNEL_CONTEXT_PREEMPTIBLE:
+	case LTTNG_KERNEL_ABI_CONTEXT_PREEMPTIBLE:
 		context_type_string = config_event_context_preemptible;
 		break;
-	case LTTNG_KERNEL_CONTEXT_NEED_RESCHEDULE:
+	case LTTNG_KERNEL_ABI_CONTEXT_NEED_RESCHEDULE:
 		context_type_string = config_event_context_need_reschedule;
 		break;
-	case LTTNG_KERNEL_CONTEXT_MIGRATABLE:
+	case LTTNG_KERNEL_ABI_CONTEXT_MIGRATABLE:
 		context_type_string = config_event_context_migratable;
 		break;
-	case LTTNG_KERNEL_CONTEXT_CALLSTACK_USER:
+	case LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_USER:
 		context_type_string = config_event_context_callstack_user;
 		break;
-	case LTTNG_KERNEL_CONTEXT_CALLSTACK_KERNEL:
+	case LTTNG_KERNEL_ABI_CONTEXT_CALLSTACK_KERNEL:
 		context_type_string = config_event_context_callstack_kernel;
 		break;
-	case LTTNG_KERNEL_CONTEXT_CGROUP_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_CGROUP_NS:
 		context_type_string = config_event_context_cgroup_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_IPC_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_IPC_NS:
 		context_type_string = config_event_context_ipc_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_MNT_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_MNT_NS:
 		context_type_string = config_event_context_mnt_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_NET_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_NET_NS:
 		context_type_string = config_event_context_net_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_PID_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_PID_NS:
 		context_type_string = config_event_context_pid_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_TIME_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_TIME_NS:
 		context_type_string = config_event_context_time_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_USER_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_USER_NS:
 		context_type_string = config_event_context_user_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_UTS_NS:
+	case LTTNG_KERNEL_ABI_CONTEXT_UTS_NS:
 		context_type_string = config_event_context_uts_ns;
 		break;
-	case LTTNG_KERNEL_CONTEXT_UID:
+	case LTTNG_KERNEL_ABI_CONTEXT_UID:
 		context_type_string = config_event_context_uid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_EUID:
+	case LTTNG_KERNEL_ABI_CONTEXT_EUID:
 		context_type_string = config_event_context_euid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_SUID:
+	case LTTNG_KERNEL_ABI_CONTEXT_SUID:
 		context_type_string = config_event_context_suid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_GID:
+	case LTTNG_KERNEL_ABI_CONTEXT_GID:
 		context_type_string = config_event_context_gid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_EGID:
+	case LTTNG_KERNEL_ABI_CONTEXT_EGID:
 		context_type_string = config_event_context_egid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_SGID:
+	case LTTNG_KERNEL_ABI_CONTEXT_SGID:
 		context_type_string = config_event_context_sgid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VUID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VUID:
 		context_type_string = config_event_context_vuid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VEUID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VEUID:
 		context_type_string = config_event_context_veuid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VSUID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VSUID:
 		context_type_string = config_event_context_vsuid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VGID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VGID:
 		context_type_string = config_event_context_vgid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VEGID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VEGID:
 		context_type_string = config_event_context_vegid;
 		break;
-	case LTTNG_KERNEL_CONTEXT_VSGID:
+	case LTTNG_KERNEL_ABI_CONTEXT_VSGID:
 		context_type_string = config_event_context_vsgid;
 		break;
 	default:
@@ -540,7 +540,7 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 	uint64_t offset;
 
 	switch (event->event->instrumentation) {
-	case LTTNG_KERNEL_KPROBE:
+	case LTTNG_KERNEL_ABI_KPROBE:
 		/*
 		 * Comments in lttng-kernel.h mention that
 		 * either addr or symbol_name are set, not both.
@@ -549,7 +549,7 @@ int save_kernel_kprobe_event(struct config_writer *writer,
 		offset = event->event->u.kprobe.offset;
 		symbol_name = addr ? NULL : event->event->u.kprobe.symbol_name;
 		break;
-	case LTTNG_KERNEL_KRETPROBE:
+	case LTTNG_KERNEL_ABI_KRETPROBE:
 		addr = event->event->u.kretprobe.addr;
 		offset = event->event->u.kretprobe.offset;
 		symbol_name = addr ? NULL : event->event->u.kretprobe.symbol_name;
@@ -929,10 +929,10 @@ int save_kernel_event(struct config_writer *writer,
 		}
 	}
 
-	if (event->event->instrumentation == LTTNG_KERNEL_FUNCTION ||
-		event->event->instrumentation == LTTNG_KERNEL_KPROBE ||
-		event->event->instrumentation == LTTNG_KERNEL_UPROBE ||
-		event->event->instrumentation == LTTNG_KERNEL_KRETPROBE) {
+	if (event->event->instrumentation == LTTNG_KERNEL_ABI_FUNCTION ||
+		event->event->instrumentation == LTTNG_KERNEL_ABI_KPROBE ||
+		event->event->instrumentation == LTTNG_KERNEL_ABI_UPROBE ||
+		event->event->instrumentation == LTTNG_KERNEL_ABI_KRETPROBE) {
 
 		ret = config_writer_open_element(writer,
 			config_element_attributes);
@@ -942,21 +942,21 @@ int save_kernel_event(struct config_writer *writer,
 		}
 
 		switch (event->event->instrumentation) {
-		case LTTNG_KERNEL_SYSCALL:
-		case LTTNG_KERNEL_FUNCTION:
+		case LTTNG_KERNEL_ABI_SYSCALL:
+		case LTTNG_KERNEL_ABI_FUNCTION:
 			ret = save_kernel_function_event(writer, event);
 			if (ret) {
 				goto end;
 			}
 			break;
-		case LTTNG_KERNEL_KPROBE:
-		case LTTNG_KERNEL_KRETPROBE:
+		case LTTNG_KERNEL_ABI_KPROBE:
+		case LTTNG_KERNEL_ABI_KRETPROBE:
 			ret = save_kernel_kprobe_event(writer, event);
 			if (ret) {
 				goto end;
 			}
 			break;
-		case LTTNG_KERNEL_UPROBE:
+		case LTTNG_KERNEL_ABI_UPROBE:
 			ret = save_kernel_userspace_probe_event(writer, event);
 			if (ret) {
 				goto end;
@@ -1280,7 +1280,7 @@ end:
 /* Return LTTNG_OK on success else a LTTNG_ERR* code. */
 static
 int save_kernel_context(struct config_writer *writer,
-	struct lttng_kernel_context *ctx)
+	struct lttng_kernel_abi_context *ctx)
 {
 	int ret = LTTNG_OK;
 
@@ -1294,7 +1294,7 @@ int save_kernel_context(struct config_writer *writer,
 		goto end;
 	}
 
-	if (ctx->ctx == LTTNG_KERNEL_CONTEXT_PERF_CPU_COUNTER) {
+	if (ctx->ctx == LTTNG_KERNEL_ABI_CONTEXT_PERF_CPU_COUNTER) {
 		ret = config_writer_open_element(writer,
 				config_element_context_perf);
 		if (ret) {

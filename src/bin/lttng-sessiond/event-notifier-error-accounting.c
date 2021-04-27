@@ -915,7 +915,7 @@ event_notifier_error_accounting_kernel_clear(
 	int ret;
 	uint64_t error_counter_index;
 	enum event_notifier_error_accounting_status status;
-	struct lttng_kernel_counter_clear counter_clear = {};
+	struct lttng_kernel_abi_counter_clear counter_clear = {};
 
 	status = get_error_counter_index_for_token(&kernel_state,
 			lttng_trigger_get_tracer_token(trigger),
@@ -963,11 +963,11 @@ event_notifier_error_accounting_register_kernel(
 {
 	int error_counter_fd = -1, ret;
 	enum event_notifier_error_accounting_status status;
-	const struct lttng_kernel_counter_conf error_counter_conf = {
-		.arithmetic = LTTNG_KERNEL_COUNTER_ARITHMETIC_MODULAR,
+	const struct lttng_kernel_abi_counter_conf error_counter_conf = {
+		.arithmetic = LTTNG_KERNEL_ABI_COUNTER_ARITHMETIC_MODULAR,
 		.bitness = sizeof(void *) == sizeof(uint32_t) ?
-				LTTNG_KERNEL_COUNTER_BITNESS_32 :
-				LTTNG_KERNEL_COUNTER_BITNESS_64,
+				LTTNG_KERNEL_ABI_COUNTER_BITNESS_32 :
+				LTTNG_KERNEL_ABI_COUNTER_BITNESS_64,
 		.global_sum_step = 0,
 		.number_dimensions = 1,
 		.dimensions[0].size = kernel_state.number_indices,
@@ -1145,7 +1145,7 @@ enum event_notifier_error_accounting_status
 event_notifier_error_accounting_kernel_get_count(
 		const struct lttng_trigger *trigger, uint64_t *count)
 {
-	struct lttng_kernel_counter_aggregate counter_aggregate = {};
+	struct lttng_kernel_abi_counter_aggregate counter_aggregate = {};
 	enum event_notifier_error_accounting_status status;
 	uint64_t error_counter_index;
 	int ret;
