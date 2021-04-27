@@ -4616,10 +4616,11 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 			notification->capture_buf_size, false);
 
 	if (evaluation == NULL) {
-		ERR("Failed to create event rule hit evaluation while creating and enqueuing action executor job");
+		ERR("Failed to create event rule matches evaluation while creating and enqueuing action executor job");
 		ret = -1;
 		goto end_unlock;
 	}
+
 	client_list = get_client_list_from_condition(state,
 			lttng_trigger_get_const_condition(element->trigger));
 	executor_status = action_executor_enqueue_trigger(state->executor,
