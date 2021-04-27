@@ -24,8 +24,8 @@ struct notification_thread_handle *the_notification_thread_handle;
 struct lttng_ht *the_agent_apps_ht_by_sock = NULL;
 struct lttng_ht *the_trigger_agents_ht_by_domain = NULL;
 
-struct lttng_kernel_tracer_version the_kernel_tracer_version;
-struct lttng_kernel_tracer_abi_version the_kernel_tracer_abi_version;
+struct lttng_kernel_abi_tracer_version the_kernel_tracer_version;
+struct lttng_kernel_abi_tracer_abi_version the_kernel_tracer_abi_version;
 
 int the_kernel_poll_pipe[2] = {-1, -1};
 

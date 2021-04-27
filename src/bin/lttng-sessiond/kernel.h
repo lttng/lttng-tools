@@ -58,8 +58,8 @@ int kernel_start_session(struct ltt_kernel_session *session);
 int kernel_stop_session(struct ltt_kernel_session *session);
 ssize_t kernel_list_events(struct lttng_event **event_list);
 void kernel_wait_quiescent(void);
-int kernel_validate_version(struct lttng_kernel_tracer_version *kernel_tracer_version,
-		struct lttng_kernel_tracer_abi_version *kernel_tracer_abi_version);
+int kernel_validate_version(struct lttng_kernel_abi_tracer_version *kernel_tracer_version,
+		struct lttng_kernel_abi_tracer_abi_version *kernel_tracer_abi_version);
 void kernel_destroy_session(struct ltt_kernel_session *ksess);
 void kernel_free_session(struct ltt_kernel_session *ksess);
 void kernel_destroy_channel(struct ltt_kernel_channel *kchan);

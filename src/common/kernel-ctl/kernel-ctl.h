@@ -20,8 +20,8 @@ int kernctl_create_session(int fd);
 int kernctl_open_metadata(int fd, struct lttng_channel_attr *chops);
 int kernctl_create_channel(int fd, struct lttng_channel_attr *chops);
 int kernctl_create_stream(int fd);
-int kernctl_create_event(int fd, struct lttng_kernel_event *ev);
-int kernctl_add_context(int fd, struct lttng_kernel_context *ctx);
+int kernctl_create_event(int fd, struct lttng_kernel_abi_event *ev);
+int kernctl_add_context(int fd, struct lttng_kernel_abi_context *ctx);
 
 int kernctl_enable(int fd);
 int kernctl_disable(int fd);
@@ -33,24 +33,24 @@ int kernctl_create_event_notifier_group(int fd);
 /* Apply on event notifier_group file descriptor. */
 int kernctl_create_event_notifier_group_notification_fd(int fd);
 int kernctl_create_event_notifier_group_error_counter(int fd,
-		const struct lttng_kernel_counter_conf *error_counter_conf);
+		const struct lttng_kernel_abi_counter_conf *error_counter_conf);
 int kernctl_create_event_notifier(int fd,
-		const struct lttng_kernel_event_notifier *event_notifier);
+		const struct lttng_kernel_abi_event_notifier *event_notifier);
 
 int kernctl_counter_get_aggregate_value(int counter_fd,
-		struct lttng_kernel_counter_aggregate *value);
+		struct lttng_kernel_abi_counter_aggregate *value);
 int kernctl_counter_clear(int counter_fd,
-		struct lttng_kernel_counter_clear *clear);
+		struct lttng_kernel_abi_counter_clear *clear);
 
 /* Apply on event file descriptor. */
 int kernctl_filter(int fd, const struct lttng_bytecode *filter);
-int kernctl_add_callsite(int fd, struct lttng_kernel_event_callsite *callsite);
+int kernctl_add_callsite(int fd, struct lttng_kernel_abi_event_callsite *callsite);
 int kernctl_capture(int fd, const struct lttng_bytecode *capture);
 
 int kernctl_tracepoint_list(int fd);
 int kernctl_syscall_list(int fd);
-int kernctl_tracer_version(int fd, struct lttng_kernel_tracer_version *v);
-int kernctl_tracer_abi_version(int fd, struct lttng_kernel_tracer_abi_version *v);
+int kernctl_tracer_version(int fd, struct lttng_kernel_abi_tracer_version *v);
+int kernctl_tracer_abi_version(int fd, struct lttng_kernel_abi_tracer_abi_version *v);
 int kernctl_wait_quiescent(int fd);
 
 /*

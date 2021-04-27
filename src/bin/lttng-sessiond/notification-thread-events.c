@@ -4475,7 +4475,7 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 	size_t reception_size;
 
 	struct lttng_ust_abi_event_notifier_notification ust_notification;
-	struct lttng_kernel_event_notifier_notification kernel_notification;
+	struct lttng_kernel_abi_event_notifier_notification kernel_notification;
 
 	/* Init lttng_event_notifier_notification */
 	switch(domain) {

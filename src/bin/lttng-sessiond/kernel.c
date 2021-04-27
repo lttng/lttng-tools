@@ -436,7 +436,7 @@ int userspace_probe_add_callsite(
 	switch (type) {
 	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
 	{
-		struct lttng_kernel_event_callsite callsite;
+		struct lttng_kernel_abi_event_callsite callsite;
 		uint64_t offset;
 
 		ret = extract_userspace_probe_offset_function_elf(location,
@@ -460,7 +460,7 @@ int userspace_probe_add_callsite(
 		int i;
 		uint64_t *offsets = NULL;
 		uint32_t offsets_count;
-		struct lttng_kernel_event_callsite callsite;
+		struct lttng_kernel_abi_event_callsite callsite;
 
 		/*
 		 * This call allocates the offsets buffer. This buffer must be freed
@@ -1493,8 +1493,8 @@ error:
 /*
  * Get kernel version and validate it.
  */
-int kernel_validate_version(struct lttng_kernel_tracer_version *version,
-		struct lttng_kernel_tracer_abi_version *abi_version)
+int kernel_validate_version(struct lttng_kernel_abi_tracer_version *version,
+		struct lttng_kernel_abi_tracer_abi_version *abi_version)
 {
 	int ret;
 
@@ -1515,10 +1515,10 @@ int kernel_validate_version(struct lttng_kernel_tracer_version *version,
 		ERR("Failed to retrieve lttng-modules ABI version");
 		goto error;
 	}
-	if (abi_version->major != LTTNG_MODULES_ABI_MAJOR_VERSION) {
+	if (abi_version->major != LTTNG_KERNEL_ABI_MAJOR_VERSION) {
 		ERR("Kernel tracer ABI version (%d.%d) does not match the expected ABI major version (%d.*)",
 			abi_version->major, abi_version->minor,
-			LTTNG_MODULES_ABI_MAJOR_VERSION);
+			LTTNG_KERNEL_ABI_MAJOR_VERSION);
 		goto error;
 	}
 	DBG2("Kernel tracer version validated (%d.%d, ABI %d.%d)",
@@ -1782,7 +1782,7 @@ static
 int kernel_tracer_abi_greater_or_equal(unsigned int major, unsigned int minor)
 {
 	int ret;
-	struct lttng_kernel_tracer_abi_version abi;
+	struct lttng_kernel_abi_tracer_abi_version abi;
 
 	ret = kernctl_tracer_abi_version(kernel_tracer_fd, &abi);
 	if (ret < 0) {
@@ -2301,7 +2301,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	enum lttng_condition_type condition_type;
 	enum lttng_event_rule_type event_rule_type;
 	struct ltt_kernel_event_notifier_rule *event_notifier_rule;
-	struct lttng_kernel_event_notifier kernel_event_notifier = {};
+	struct lttng_kernel_abi_event_notifier kernel_event_notifier = {};
 	unsigned int capture_bytecode_count = 0, i;
 	const struct lttng_condition *condition = NULL;
 	const struct lttng_event_rule *event_rule = NULL;

@@ -149,7 +149,7 @@ static void test_create_kernel_event(void)
 
 	ok(event->fd == -1 &&
 	   event->enabled == 1 &&
-	   event->event->instrumentation == LTTNG_KERNEL_TRACEPOINT &&
+	   event->event->instrumentation == LTTNG_KERNEL_ABI_TRACEPOINT &&
 	   strlen(event->event->name),
 	   "Validate kernel event");
 
