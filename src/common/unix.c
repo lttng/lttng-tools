@@ -780,7 +780,7 @@ ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 				sock, (int *) raw_fds.buffer.data, nb_fd);
 	}
 
-	if (ret < 0) {
+	if (ret <= 0) {
 		goto end;
 	}
 
