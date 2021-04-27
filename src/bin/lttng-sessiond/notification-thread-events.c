@@ -3954,6 +3954,12 @@ int handle_notification_thread_client_in(
 		goto end;
 	}
 
+	if (client->communication.inbound.bytes_to_receive == 0 &&
+			client->communication.inbound.fds_to_receive != 0) {
+		/* Only FDs left to receive. */
+		goto receive_fds;
+	}
+
 	offset = client->communication.inbound.payload.buffer.size -
 			client->communication.inbound.bytes_to_receive;
 	if (client->communication.inbound.expect_creds) {
@@ -3982,6 +3988,7 @@ int handle_notification_thread_client_in(
 		goto end;
 	}
 
+receive_fds:
 	assert(client->communication.inbound.bytes_to_receive == 0);
 
 	/* Receive fds. */

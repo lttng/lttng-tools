@@ -181,6 +181,10 @@ ssize_t lttcomm_recv_unix_sock(int sock, void *buf, size_t len)
 	ssize_t ret = -1;
 	size_t len_last;
 
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
+
 	memset(&msg, 0, sizeof(msg));
 
 	iov[0].iov_base = buf;
@@ -222,6 +226,10 @@ ssize_t lttcomm_recv_unix_sock_non_block(int sock, void *buf, size_t len)
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret;
+
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -270,6 +278,10 @@ ssize_t lttcomm_send_unix_sock(int sock, const void *buf, size_t len)
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret;
+
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -320,6 +332,10 @@ ssize_t lttcomm_send_unix_sock_non_block(int sock, const void *buf, size_t len)
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret;
+
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -394,6 +410,10 @@ ssize_t lttcomm_send_fds_unix_sock(int sock, const int *fds, size_t nb_fd)
 	unsigned int sizeof_fds = nb_fd * sizeof(int);
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
+
+	assert(sock);
+	assert(fds);
+	assert(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
 	memset(tmp, 0, sizeof(tmp));
@@ -525,6 +545,10 @@ ssize_t lttcomm_send_fds_unix_sock_non_block(int sock, const int *fds, size_t nb
 	char tmp[CMSG_SPACE(sizeof_fds)];
 	char dummy = 0;
 
+	assert(sock);
+	assert(fds);
+	assert(nb_fd > 0);
+
 	memset(&msg, 0, sizeof(msg));
 	memset(tmp, 0, sizeof(tmp));
 
@@ -613,6 +637,10 @@ ssize_t lttcomm_recv_fds_unix_sock(int sock, int *fds, size_t nb_fd)
 	char recv_buf[LTTNG_SOCK_RECV_FDS_BUF_SIZE];
 	struct msghdr msg;
 	char dummy;
+
+	assert(sock);
+	assert(fds);
+	assert(nb_fd > 0);
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -763,6 +791,10 @@ ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 	int default_value = -1;
 	struct lttng_dynamic_array raw_fds;
 
+	assert(sock);
+	assert(payload);
+	assert(nb_fd > 0);
+
 	lttng_dynamic_array_init(&raw_fds, sizeof(int), close_raw_fd);
 
 	for (i = 0; i < nb_fd; i++) {
@@ -828,6 +860,10 @@ ssize_t lttcomm_recv_fds_unix_sock_non_block(int sock, int *fds, size_t nb_fd)
 	ssize_t ret = 0;
 	struct cmsghdr *cmsg;
 	size_t sizeof_fds = nb_fd * sizeof(int);
+
+	assert(sock);
+	assert(fds);
+	assert(nb_fd > 0);
 
 #ifdef __linux__
 /* Account for the struct ucred cmsg in the buffer size */
@@ -967,6 +1003,10 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 
 	memset(&msg, 0, sizeof(msg));
 
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
+
 	iov[0].iov_base = (void *) buf;
 	iov[0].iov_len = len;
 	msg.msg_iov = iov;
@@ -1025,13 +1065,12 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 #endif	/* __linux__ */
 
-	memset(&msg, 0, sizeof(msg));
+	assert(sock);
+	assert(buf);
+	assert(len > 0);
+	assert(creds);
 
-	/* Not allowed */
-	if (creds == NULL) {
-		ret = -1;
-		goto end;
-	}
+	memset(&msg, 0, sizeof(msg));
 
 	/* Prepare to receive the structures */
 	iov[0].iov_base = buf;
