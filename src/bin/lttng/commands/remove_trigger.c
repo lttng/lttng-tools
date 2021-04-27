@@ -60,7 +60,7 @@ int cmd_remove_trigger(int argc, const char **argv)
 {
 	int ret;
 	struct argpar_parse_ret argpar_parse_ret = {};
-	const char *id = NULL;
+	const char *name = NULL;
 	int i;
 	struct lttng_triggers *triggers = NULL;
 	unsigned int triggers_count;
@@ -109,17 +109,17 @@ int cmd_remove_trigger(int argc, const char **argv)
 			const struct argpar_item_non_opt *item_non_opt =
 					(const struct argpar_item_non_opt *) item;
 
-			if (id) {
+			if (name) {
 				ERR("Unexpected argument '%s'", item_non_opt->arg);
 				goto error;
 			}
 
-			id = item_non_opt->arg;
+			name = item_non_opt->arg;
 		}
 	}
 
-	if (!id) {
-		ERR("Missing `id` argument.");
+	if (!name) {
+		ERR("Missing `name` argument.");
 		goto error;
 	}
 
@@ -165,24 +165,24 @@ int cmd_remove_trigger(int argc, const char **argv)
 				trigger, &trigger_uid);
 		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
 
-		if (trigger_uid == uid && strcmp(trigger_name, id) == 0) {
+		if (trigger_uid == uid && strcmp(trigger_name, name) == 0) {
 			trigger_to_remove = trigger;
 			break;
 		}
 	}
 
 	if (!trigger_to_remove) {
-		ERR("Couldn't find trigger with id `%s`.", id);
+		ERR("Couldn't find trigger with name `%s`.", name);
 		goto error;
 	}
 
 	ret = lttng_unregister_trigger(trigger_to_remove);
 	if (ret != 0) {
-		ERR("Failed to unregister trigger `%s`.", id);
+		ERR("Failed to unregister trigger `%s`.", name);
 		goto error;
 	}
 
-	MSG("Removed trigger `%s`.", id);
+	MSG("Removed trigger `%s`.", name);
 
 	ret = 0;
 	goto end;
