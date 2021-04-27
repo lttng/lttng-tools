@@ -730,6 +730,8 @@ enum lttng_error_code add_fds_to_payload(struct lttng_dynamic_array *raw_fds,
 		int *raw_fd = (int *) lttng_dynamic_array_get_element(
 			raw_fds, i);
 
+		assert(*raw_fd != -1);
+
 		handle = fd_handle_create(*raw_fd);
 		if (!handle) {
 			ret_code = LTTNG_ERR_NOMEM;
@@ -755,15 +757,19 @@ static
 ssize_t _lttcomm_recv_payload_fds_unix_sock(int sock, size_t nb_fd,
 		struct lttng_payload *payload, bool blocking)
 {
+	int i = 0;
 	enum lttng_error_code add_ret;
 	ssize_t ret;
+	int default_value = -1;
 	struct lttng_dynamic_array raw_fds;
 
 	lttng_dynamic_array_init(&raw_fds, sizeof(int), close_raw_fd);
-	ret = lttng_dynamic_array_set_count(&raw_fds, nb_fd);
-	if (ret) {
-		ret = -LTTNG_ERR_NOMEM;
-		goto end;
+
+	for (i = 0; i < nb_fd; i++) {
+		if (lttng_dynamic_array_add_element(&raw_fds, &default_value)) {
+			ret = -LTTNG_ERR_NOMEM;
+			goto end;
+		}
 	}
 
 	if (blocking) {
