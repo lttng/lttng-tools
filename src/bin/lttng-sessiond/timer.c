@@ -394,12 +394,12 @@ void *thread_timer(void *data)
 			 * still fire.
 			 */
 		} else {
-			ERR("Unexpected signal %d\n", info.si_signo);
+			ERR("Unexpected signal %d", info.si_signo);
 		}
 	}
 
 end:
-	DBG("[timer-thread] Exit");
+	DBG("Thread exit");
 	health_unregister(the_health_sessiond);
 	rcu_thread_offline();
 	rcu_unregister_thread();

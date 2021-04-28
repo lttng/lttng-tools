@@ -428,7 +428,7 @@ struct lttng_event_notifier_notification *lttng_event_notifier_notification_crea
 
 	notification = zmalloc(sizeof(struct lttng_event_notifier_notification));
 	if (notification == NULL) {
-		ERR("[notification-thread] Error allocating notification");
+		ERR("Error allocating notification");
 		goto end;
 	}
 

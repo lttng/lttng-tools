@@ -530,7 +530,7 @@ void session_info_destroy(void *_data)
 	if (session_info->channel_infos_ht) {
 		ret = cds_lfht_destroy(session_info->channel_infos_ht, NULL);
 		if (ret) {
-			ERR("[notification-thread] Failed to destroy channel information hash table");
+			ERR("Failed to destroy channel information hash table");
 		}
 	}
 	lttng_session_trigger_list_destroy(session_info->trigger_list);
@@ -870,7 +870,7 @@ int evaluate_channel_condition_for_client(
 
 	if (!channel_key){
 		/* No channel found; normal exit. */
-		DBG("[notification-thread] No known channel associated with newly subscribed-to condition");
+		DBG("No known channel associated with newly subscribed-to condition");
 		ret = 0;
 		goto end;
 	}
@@ -899,7 +899,7 @@ int evaluate_channel_condition_for_client(
 				channel_state_ht_node);
 	} else {
 		/* Nothing to evaluate, no sample was ever taken. Normal exit */
-		DBG("[notification-thread] No channel sample associated with newly subscribed-to condition");
+		DBG("No channel sample associated with newly subscribed-to condition");
 		ret = 0;
 		goto end;
 	}
@@ -909,7 +909,7 @@ int evaluate_channel_condition_for_client(
 			0, channel_info->session_info->consumed_data_size,
 			channel_info);
 	if (ret) {
-		WARN("[notification-thread] Fatal error occurred while evaluating a newly subscribed-to condition");
+		WARN("Fatal error occurred while evaluating a newly subscribed-to condition");
 		goto end;
 	}
 
@@ -945,7 +945,7 @@ const char *get_condition_session_name(const struct lttng_condition *condition)
 		abort();
 	}
 	if (status != LTTNG_CONDITION_STATUS_OK) {
-		ERR("[notification-thread] Failed to retrieve session rotation condition's session name");
+		ERR("Failed to retrieve session rotation condition's session name");
 		goto end;
 	}
 end:
@@ -976,7 +976,7 @@ int evaluate_session_condition_for_client(
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (!node) {
-		DBG("[notification-thread] No known session matching name \"%s\"",
+		DBG("No known session matching name \"%s\"",
 				session_name);
 		ret = 0;
 		goto end;
@@ -1001,7 +1001,7 @@ int evaluate_session_condition_for_client(
 				session_info->rotation.id);
 		if (!*evaluation) {
 			/* Fatal error. */
-			ERR("[notification-thread] Failed to create session rotation ongoing evaluation for session \"%s\"",
+			ERR("Failed to create session rotation ongoing evaluation for session \"%s\"",
 					session_info->name);
 			ret = -1;
 			goto end_session_put;
@@ -1053,7 +1053,7 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 				&evaluation, &object_uid, &object_gid);
 		break;
 	case LTTNG_OBJECT_TYPE_NONE:
-		DBG("[notification-thread] Newly subscribed-to condition not bound to object, nothing to evaluate");
+		DBG("Newly subscribed-to condition not bound to object, nothing to evaluate");
 		ret = 0;
 		goto end;
 	case LTTNG_OBJECT_TYPE_UNKNOWN:
@@ -1067,7 +1067,7 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 	}
 	if (!evaluation) {
 		/* Evaluation yielded nothing. Normal exit. */
-		DBG("[notification-thread] Newly subscribed-to condition evaluated to false, nothing to report to client");
+		DBG("Newly subscribed-to condition evaluated to false, nothing to report to client");
 		ret = 0;
 		goto end;
 	}
@@ -1084,7 +1084,7 @@ int evaluate_condition_for_client(const struct lttng_trigger *trigger,
 	cds_list_add(&client_list_element.node, &client_list.clients_list);
 
 	/* Send evaluation result to the newly-subscribed client. */
-	DBG("[notification-thread] Newly subscribed-to condition evaluated to true, notifying client");
+	DBG("Newly subscribed-to condition evaluated to true, notifying client");
 	ret = send_evaluation_to_clients(trigger, evaluation, &client_list,
 			state, object_uid, object_gid);
 
@@ -1164,7 +1164,7 @@ int notification_thread_client_subscribe(struct notification_client *client,
 			&client_list->triggers_list, client_list_trigger_node) {
 		if (evaluate_condition_for_client(trigger_ht_element->trigger, condition_list_element->condition,
 				client, state)) {
-			WARN("[notification-thread] Evaluation of a condition on client subscription failed, aborting.");
+			WARN("Evaluation of a condition on client subscription failed, aborting.");
 			ret = -1;
 			free(client_list_element);
 			pthread_mutex_unlock(&client_list->lock);
@@ -1469,7 +1469,7 @@ struct lttng_session_trigger_list *get_session_trigger_list(
 		 * Not an error, the list of triggers applying to that session
 		 * will be initialized when the session is created.
 		 */
-		DBG("[notification-thread] No trigger list found for session \"%s\" as it is not yet known to the notification system",
+		DBG("No trigger list found for session \"%s\" as it is not yet known to the notification system",
 				session_name);
 		goto end;
 	}
@@ -1578,7 +1578,7 @@ bool trigger_applies_to_session(const struct lttng_trigger *trigger,
 		condition_status = lttng_condition_session_rotation_get_session_name(
 			condition, &condition_session_name);
 		if (condition_status != LTTNG_CONDITION_STATUS_OK) {
-			ERR("[notification-thread] Failed to retrieve session rotation condition's session name");
+			ERR("Failed to retrieve session rotation condition's session name");
 			goto end;
 		}
 
@@ -1633,7 +1633,7 @@ struct lttng_session_trigger_list *lttng_session_trigger_list_build(
 		trigger_count++;
 	}
 
-	DBG("[notification-thread] Found %i triggers that apply to newly created session",
+	DBG("Found %i triggers that apply to newly created session",
 			trigger_count);
 	return session_trigger_list;
 error:
@@ -1659,7 +1659,7 @@ struct session_info *find_or_create_session_info(
 			&iter);
 	node = cds_lfht_iter_get_node(&iter);
 	if (node) {
-		DBG("[notification-thread] Found session info of session \"%s\" (uid = %i, gid = %i)",
+		DBG("Found session info of session \"%s\" (uid = %i, gid = %i)",
 				name, uid, gid);
 		session = caa_container_of(node, struct session_info,
 				sessions_ht_node);
@@ -1677,7 +1677,7 @@ struct session_info *find_or_create_session_info(
 	session = session_info_create(name, uid, gid, trigger_list,
 			state->sessions_ht);
 	if (!session) {
-		ERR("[notification-thread] Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
+		ERR("Failed to allocation session info for session \"%s\" (uid = %i, gid = %i)",
 				name, uid, gid);
 		lttng_session_trigger_list_destroy(trigger_list);
 		goto error;
@@ -1715,7 +1715,7 @@ int handle_notification_thread_command_add_channel(
 	struct cds_lfht_iter iter;
 	struct session_info *session_info = NULL;
 
-	DBG("[notification-thread] Adding channel %s from session %s, channel key = %" PRIu64 " in %s domain",
+	DBG("Adding channel %s from session %s, channel key = %" PRIu64 " in %s domain",
 			channel_name, session_name, channel_key_int,
 			lttng_domain_type_str(channel_domain));
 
@@ -1757,7 +1757,7 @@ int handle_notification_thread_command_add_channel(
 	}
 	rcu_read_unlock();
 
-	DBG("[notification-thread] Found %i triggers that apply to newly added channel",
+	DBG("Found %i triggers that apply to newly added channel",
 			trigger_count);
 	channel_trigger_list = zmalloc(sizeof(*channel_trigger_list));
 	if (!channel_trigger_list) {
@@ -1817,7 +1817,7 @@ int handle_notification_thread_command_remove_channel(
 	struct channel_key key = { .key = channel_key, .domain = domain };
 	struct channel_info *channel_info;
 
-	DBG("[notification-thread] Removing channel key = %" PRIu64 " in %s domain",
+	DBG("Removing channel key = %" PRIu64 " in %s domain",
 			channel_key, lttng_domain_type_str(domain));
 
 	rcu_read_lock();
@@ -1833,7 +1833,7 @@ int handle_notification_thread_command_remove_channel(
 	 * channel that doesn't exist.
 	 */
 	if (!node) {
-		ERR("[notification-thread] Channel being removed is unknown to the notification thread");
+		ERR("Channel being removed is unknown to the notification thread");
 		goto end;
 	}
 
@@ -1921,7 +1921,7 @@ int handle_notification_thread_command_session_rotation(
 	session_info->rotation.id = trace_archive_chunk_id;
 	trigger_list = get_session_trigger_list(state, session_name);
 	if (!trigger_list) {
-		DBG("[notification-thread] No triggers applying to session \"%s\" found",
+		DBG("No triggers applying to session \"%s\" found",
 				session_name);
 		goto end;
 	}
@@ -2034,14 +2034,14 @@ int handle_notification_thread_command_add_tracer_event_source(
 
 	cds_list_add(&element->node, &state->tracer_event_sources_list);
 
-	DBG3("[notification-thread] Adding tracer event source fd to poll set: tracer_event_source_fd = %d, domain = '%s'",
+	DBG3("Adding tracer event source fd to poll set: tracer_event_source_fd = %d, domain = '%s'",
 			tracer_event_source_fd,
 			lttng_domain_type_str(domain_type));
 
 	/* Adding the read side pipe to the event poll. */
 	ret = lttng_poll_add(&state->events, tracer_event_source_fd, LPOLLIN | LPOLLERR);
 	if (ret < 0) {
-		ERR("[notification-thread] Failed to add tracer event source to poll set: tracer_event_source_fd = %d, domain = '%s'",
+		ERR("Failed to add tracer event source to poll set: tracer_event_source_fd = %d, domain = '%s'",
 				tracer_event_source_fd,
 				lttng_domain_type_str(element->domain));
 		cds_list_del(&element->node);
@@ -2066,13 +2066,13 @@ int drain_event_notifier_notification_pipe(
 
 	ret = lttng_poll_create(&events, 1, LTTNG_CLOEXEC);
 	if (ret < 0) {
-		ERR("[notification-thread] Error creating lttng_poll_event");
+		ERR("Error creating lttng_poll_event");
 		goto end;
 	}
 
 	ret = lttng_poll_add(&events, pipe, LPOLLIN);
 	if (ret < 0) {
-		ERR("[notification-thread] Error adding fd event notifier notification pipe to lttng_poll_event: fd = %d",
+		ERR("Error adding fd event notifier notification pipe to lttng_poll_event: fd = %d",
 				pipe);
 		goto end;
 	}
@@ -2100,7 +2100,7 @@ int drain_event_notifier_notification_pipe(
 
 		ret = handle_one_event_notifier_notification(state, pipe, domain);
 		if (ret) {
-			ERR("[notification-thread] Error consuming an event notifier notification from pipe: fd = %d",
+			ERR("Error consuming an event notifier notification from pipe: fd = %d",
 					pipe);
 		}
 	}
@@ -2126,7 +2126,7 @@ int handle_notification_thread_command_remove_tracer_event_source(
 			continue;
 		}
 
-		DBG("[notification-thread] Removed tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
+		DBG("Removed tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
 				tracer_event_source_fd,
 				lttng_domain_type_str(source_element->domain));
 		cds_list_del(&source_element->node);
@@ -2149,14 +2149,14 @@ int handle_notification_thread_command_remove_tracer_event_source(
 		goto end;
 	}
 
-	DBG3("[notification-thread] Removing tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
+	DBG3("Removing tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
 			tracer_event_source_fd,
 			lttng_domain_type_str(source_element->domain));
 
 	/* Removing the fd from the event poll set. */
 	ret = lttng_poll_del(&state->events, tracer_event_source_fd);
 	if (ret < 0) {
-		ERR("[notification-thread] Failed to remove tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
+		ERR("Failed to remove tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
 				tracer_event_source_fd,
 				lttng_domain_type_str(source_element->domain));
 		cmd_result = LTTNG_ERR_FATAL;
@@ -2168,7 +2168,7 @@ int handle_notification_thread_command_remove_tracer_event_source(
 	ret = drain_event_notifier_notification_pipe(state, tracer_event_source_fd,
 			source_element->domain);
 	if (ret) {
-		ERR("[notification-thread] Error draining event notifier notification: tracer_event_source_fd = %d, domain = %s",
+		ERR("Error draining event notifier notification: tracer_event_source_fd = %d, domain = %s",
 				tracer_event_source_fd,
 				lttng_domain_type_str(source_element->domain));
 		cmd_result = LTTNG_ERR_FATAL;
@@ -2404,7 +2404,7 @@ int bind_trigger_to_matching_session(struct lttng_trigger *trigger,
 		status = lttng_condition_session_rotation_get_session_name(
 				condition, &session_name);
 		if (status != LTTNG_CONDITION_STATUS_OK) {
-			ERR("[notification-thread] Failed to bind trigger to session: unable to get 'session_rotation' condition's session name");
+			ERR("Failed to bind trigger to session: unable to get 'session_rotation' condition's session name");
 			ret = -1;
 			goto end;
 		}
@@ -2417,13 +2417,13 @@ int bind_trigger_to_matching_session(struct lttng_trigger *trigger,
 
 	trigger_list = get_session_trigger_list(state, session_name);
 	if (!trigger_list) {
-		DBG("[notification-thread] Unable to bind trigger applying to session \"%s\" as it is not yet known to the notification system",
+		DBG("Unable to bind trigger applying to session \"%s\" as it is not yet known to the notification system",
 				session_name);
 		goto end;
 
 	}
 
-	DBG("[notification-thread] Newly registered trigger bound to session \"%s\"",
+	DBG("Newly registered trigger bound to session \"%s\"",
 			session_name);
 	ret = lttng_session_trigger_list_add(trigger_list, trigger);
 end:
@@ -2469,7 +2469,7 @@ int bind_trigger_to_matching_channels(struct lttng_trigger *trigger,
 		CDS_INIT_LIST_HEAD(&trigger_list_element->node);
 		trigger_list_element->trigger = trigger;
 		cds_list_add(&trigger_list_element->node, &trigger_list->list);
-		DBG("[notification-thread] Newly registered trigger bound to channel \"%s\"",
+		DBG("Newly registered trigger bound to channel \"%s\"",
 				channel->name);
 	}
 end:
@@ -2985,7 +2985,7 @@ void teardown_tracer_notifier(struct notification_thread_state *state,
 				trigger_tokens_ht_element->trigger);
 
 		/* TODO talk to all app and remove it */
-		DBG("[notification-thread] Removed trigger from tokens_ht");
+		DBG("Removed trigger from tokens_ht");
 		cds_lfht_del(state->trigger_tokens_ht,
 				&trigger_tokens_ht_element->node);
 
@@ -3040,7 +3040,7 @@ int handle_notification_thread_command_unregister_trigger(
 				continue;
 			}
 
-			DBG("[notification-thread] Removed trigger from channel_triggers_ht");
+			DBG("Removed trigger from channel_triggers_ht");
 			cds_list_del(&trigger_element->node);
 			/* A trigger can only appear once per channel */
 			break;
@@ -3105,7 +3105,7 @@ int handle_notification_thread_command(
 	cds_list_del(&cmd->cmd_list_node);
 	pthread_mutex_unlock(&handle->cmd_queue.lock);
 
-	DBG("[notification-thread] Received `%s` command",
+	DBG("Received `%s` command",
 			notification_command_type_str(cmd->type));
 	switch (cmd->type) {
 	case NOTIFICATION_COMMAND_TYPE_REGISTER_TRIGGER:
@@ -3220,7 +3220,7 @@ int handle_notification_thread_command(
 		break;
 	}
 	default:
-		ERR("[notification-thread] Unknown internal command received");
+		ERR("Unknown internal command received");
 		goto error_unlock;
 	}
 
@@ -3294,7 +3294,7 @@ int handle_notification_thread_client_connect(
 	int ret;
 	struct notification_client *client;
 
-	DBG("[notification-thread] Handling new notification channel client connection");
+	DBG("Handling new notification channel client connection");
 
 	client = zmalloc(sizeof(*client));
 	if (!client) {
@@ -3312,14 +3312,14 @@ int handle_notification_thread_client_connect(
 
 	ret = client_reset_inbound_state(client);
 	if (ret) {
-		ERR("[notification-thread] Failed to reset client communication's inbound state");
+		ERR("Failed to reset client communication's inbound state");
 		ret = 0;
 		goto error;
 	}
 
 	ret = lttcomm_accept_unix_sock(state->notification_channel_socket);
 	if (ret < 0) {
-		ERR("[notification-thread] Failed to accept new notification channel client connection");
+		ERR("Failed to accept new notification channel client connection");
 		ret = 0;
 		goto error;
 	}
@@ -3328,13 +3328,13 @@ int handle_notification_thread_client_connect(
 
 	ret = socket_set_non_blocking(client->socket);
 	if (ret) {
-		ERR("[notification-thread] Failed to set new notification channel client connection socket as non-blocking");
+		ERR("Failed to set new notification channel client connection socket as non-blocking");
 		goto error;
 	}
 
 	ret = lttcomm_setsockopt_creds_unix_sock(client->socket);
 	if (ret < 0) {
-		ERR("[notification-thread] Failed to set socket options on new notification channel client socket");
+		ERR("Failed to set socket options on new notification channel client socket");
 		ret = 0;
 		goto error;
 	}
@@ -3343,11 +3343,11 @@ int handle_notification_thread_client_connect(
 			LPOLLIN | LPOLLERR |
 			LPOLLHUP | LPOLLRDHUP);
 	if (ret < 0) {
-		ERR("[notification-thread] Failed to add notification channel client socket to poll set");
+		ERR("Failed to add notification channel client socket to poll set");
 		ret = 0;
 		goto error;
 	}
-	DBG("[notification-thread] Added new notification channel client socket (%i) to poll set",
+	DBG("Added new notification channel client socket (%i) to poll set",
 			client->socket);
 
 	rcu_read_lock();
@@ -3387,7 +3387,7 @@ int notification_thread_client_disconnect(
 
 	ret = lttng_poll_del(&state->events, client->socket);
 	if (ret) {
-		ERR("[notification-thread] Failed to remove client socket %d from poll set",
+		ERR("Failed to remove client socket %d from poll set",
 				client->socket);
 	}
 
@@ -3413,12 +3413,12 @@ int handle_notification_thread_client_disconnect(
 	struct notification_client *client;
 
 	rcu_read_lock();
-	DBG("[notification-thread] Closing client connection (socket fd = %i)",
+	DBG("Closing client connection (socket fd = %i)",
 			client_socket);
 	client = get_client_from_socket(client_socket, state);
 	if (!client) {
 		/* Internal state corruption, fatal error. */
-		ERR("[notification-thread] Unable to find client (socket fd = %i)",
+		ERR("Unable to find client (socket fd = %i)",
 				client_socket);
 		ret = -1;
 		goto end;
@@ -3438,7 +3438,7 @@ int handle_notification_thread_client_disconnect_all(
 	bool error_encoutered = false;
 
 	rcu_read_lock();
-	DBG("[notification-thread] Closing all client connections");
+	DBG("Closing all client connections");
 	cds_lfht_for_each_entry(state->client_socket_ht, &iter, client,
 			client_socket_ht_node) {
 		int ret;
@@ -3548,14 +3548,14 @@ enum client_transmission_status client_flush_outgoing_queue(
 
 	/* Send data. */
 	to_send_count = pv.buffer.size;
-	DBG("[notification-thread] Flushing client (socket fd = %i) outgoing queue",
+	DBG("Flushing client (socket fd = %i) outgoing queue",
 			client->socket);
 
 	ret = lttcomm_send_unix_sock_non_block(client->socket,
 			pv.buffer.data,
 			to_send_count);
 	if ((ret >= 0 && ret < to_send_count)) {
-		DBG("[notification-thread] Client (socket fd = %i) outgoing queue could not be completely flushed",
+		DBG("Client (socket fd = %i) outgoing queue could not be completely flushed",
 				client->socket);
 		to_send_count -= max(ret, 0);
 
@@ -3574,7 +3574,7 @@ enum client_transmission_status client_flush_outgoing_queue(
 		goto end;
 	} else if (ret < 0) {
 		/* Generic error, disable the client's communication. */
-		ERR("[notification-thread] Failed to flush outgoing queue, disconnecting client (socket fd = %i)",
+		ERR("Failed to flush outgoing queue, disconnecting client (socket fd = %i)",
 				client->socket);
 		client->communication.active = false;
 		status = CLIENT_TRANSMISSION_STATUS_FAIL;
@@ -3606,7 +3606,7 @@ send_fds:
 			client->socket, &pv);
 	if (ret < 0) {
 		/* Generic error, disable the client's communication. */
-		ERR("[notification-thread] Failed to flush outgoing fds queue, disconnecting client (socket fd = %i)",
+		ERR("Failed to flush outgoing fds queue, disconnecting client (socket fd = %i)",
 				client->socket);
 		client->communication.active = false;
 		status = CLIENT_TRANSMISSION_STATUS_FAIL;
@@ -3671,7 +3671,7 @@ int client_send_command_reply(struct notification_client *client,
 
 	memcpy(buffer, &msg, sizeof(msg));
 	memcpy(buffer + sizeof(msg), &reply, sizeof(reply));
-	DBG("[notification-thread] Send command reply (%i)", (int) status);
+	DBG("Send command reply (%i)", (int) status);
 
 	pthread_mutex_lock(&client->lock);
 	if (client->communication.outbound.queued_command_reply) {
@@ -3726,7 +3726,7 @@ int client_handle_message_unknown(struct notification_client *client,
 
 	if (msg->size == 0 ||
 			msg->size > DEFAULT_MAX_NOTIFICATION_CLIENT_MESSAGE_PAYLOAD_SIZE) {
-		ERR("[notification-thread] Invalid notification channel message: length = %u",
+		ERR("Invalid notification channel message: length = %u",
 				msg->size);
 		ret = -1;
 		goto end;
@@ -3739,7 +3739,7 @@ int client_handle_message_unknown(struct notification_client *client,
 		break;
 	default:
 		ret = -1;
-		ERR("[notification-thread] Invalid notification channel message: unexpected message type");
+		ERR("Invalid notification channel message: unexpected message type");
 		goto end;
 	}
 
@@ -3785,7 +3785,7 @@ int client_handle_message_handshake(struct notification_client *client,
 	client->major = handshake_client->major;
 	client->minor = handshake_client->minor;
 	if (!client->communication.inbound.creds_received) {
-		ERR("[notification-thread] No credentials received from client");
+		ERR("No credentials received from client");
 		ret = -1;
 		goto end;
 	}
@@ -3794,7 +3794,7 @@ int client_handle_message_handshake(struct notification_client *client,
 			&client->communication.inbound.creds);
 	client->gid = LTTNG_SOCK_GET_GID_CRED(
 			&client->communication.inbound.creds);
-	DBG("[notification-thread] Received handshake from client (uid = %u, gid = %u) with version %i.%i",
+	DBG("Received handshake from client (uid = %u, gid = %u) with version %i.%i",
 			client->uid, client->gid, (int) client->major,
 			(int) client->minor);
 
@@ -3809,7 +3809,7 @@ int client_handle_message_handshake(struct notification_client *client,
 			&client->communication.outbound.payload.buffer, send_buffer,
 			sizeof(send_buffer));
 	if (ret) {
-		ERR("[notification-thread] Failed to send protocol version to notification channel client");
+		ERR("Failed to send protocol version to notification channel client");
 		goto end_unlock;
 	}
 
@@ -3820,14 +3820,14 @@ int client_handle_message_handshake(struct notification_client *client,
 	/* Set reception state to receive the next message header. */
 	ret = client_reset_inbound_state(client);
 	if (ret) {
-		ERR("[notification-thread] Failed to reset client communication's inbound state");
+		ERR("Failed to reset client communication's inbound state");
 		goto end;
 	}
 
 	/* Flushes the outgoing queue. */
 	ret = client_send_command_reply(client, state, status);
 	if (ret) {
-		ERR("[notification-thread] Failed to send reply to notification channel client");
+		ERR("Failed to send reply to notification channel client");
 		goto end;
 	}
 
@@ -3862,7 +3862,7 @@ int client_handle_message_subscription(
 	expected_condition_size = client->communication.inbound.payload.buffer.size;
 	ret = lttng_condition_create_from_payload(&condition_view, &condition);
 	if (ret != expected_condition_size) {
-		ERR("[notification-thread] Malformed condition received from client");
+		ERR("Malformed condition received from client");
 		goto end;
 	}
 
@@ -3882,13 +3882,13 @@ int client_handle_message_subscription(
 	/* Set reception state to receive the next message header. */
 	ret = client_reset_inbound_state(client);
 	if (ret) {
-		ERR("[notification-thread] Failed to reset client communication's inbound state");
+		ERR("Failed to reset client communication's inbound state");
 		goto end;
 	}
 
 	ret = client_send_command_reply(client, state, status);
 	if (ret) {
-		ERR("[notification-thread] Failed to send reply to notification channel client");
+		ERR("Failed to send reply to notification channel client");
 		goto end;
 	}
 
@@ -3907,7 +3907,7 @@ int client_dispatch_message(struct notification_client *client,
 			client->communication.inbound.msg_type !=
 				LTTNG_NOTIFICATION_CHANNEL_MESSAGE_TYPE_UNKNOWN &&
 			!client->validated) {
-		WARN("[notification-thread] client attempted a command before handshake");
+		WARN("client attempted a command before handshake");
 		ret = -1;
 		goto end;
 	}
@@ -4102,7 +4102,7 @@ bool evaluate_buffer_usage_condition(const struct lttng_condition *condition,
 
 	condition_type = lttng_condition_get_type(condition);
 	if (condition_type == LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW) {
-		DBG("[notification-thread] Low buffer usage condition being evaluated: threshold = %" PRIu64 ", highest usage = %" PRIu64,
+		DBG("Low buffer usage condition being evaluated: threshold = %" PRIu64 ", highest usage = %" PRIu64,
 				threshold, sample->highest_usage);
 
 		/*
@@ -4113,7 +4113,7 @@ bool evaluate_buffer_usage_condition(const struct lttng_condition *condition,
 			result = true;
 		}
 	} else {
-		DBG("[notification-thread] High buffer usage condition being evaluated: threshold = %" PRIu64 ", highest usage = %" PRIu64,
+		DBG("High buffer usage condition being evaluated: threshold = %" PRIu64 ", highest usage = %" PRIu64,
 				threshold, sample->highest_usage);
 
 		/*
@@ -4140,7 +4140,7 @@ bool evaluate_session_consumed_size_condition(
 				parent);
 
 	threshold = size_condition->consumed_threshold_bytes.value;
-	DBG("[notification-thread] Session consumed size condition being evaluated: threshold = %" PRIu64 ", current size = %" PRIu64,
+	DBG("Session consumed size condition being evaluated: threshold = %" PRIu64 ", current size = %" PRIu64,
 			threshold, session_consumed_size);
 	return session_consumed_size >= threshold;
 }
@@ -4356,7 +4356,7 @@ int notification_client_list_send_evaluation(
 
 	ret = lttng_notification_serialize(&notification, &msg_payload);
 	if (ret) {
-		ERR("[notification-thread] Failed to serialize notification");
+		ERR("Failed to serialize notification");
 		ret = -1;
 		goto end;
 	}
@@ -4402,17 +4402,17 @@ int notification_client_list_send_evaluation(
 				 * Client is not allowed to monitor this
 				 * object.
 				 */
-				DBG("[notification-thread] Skipping client at it does not have the object permission to receive notification for this trigger");
+				DBG("Skipping client at it does not have the object permission to receive notification for this trigger");
 				goto skip_client;
 			}
 		}
 
 		if (client->uid != lttng_credentials_get_uid(trigger_creds)) {
-			DBG("[notification-thread] Skipping client at it does not have the permission to receive notification for this trigger");
+			DBG("Skipping client at it does not have the permission to receive notification for this trigger");
 			goto skip_client;
 		}
 
-		DBG("[notification-thread] Sending notification to client (fd = %i, %zu bytes)",
+		DBG("Sending notification to client (fd = %i, %zu bytes)",
 				client->socket, msg_payload.buffer.size);
 
 		if (client_has_outbound_data_left(client)) {
@@ -4523,21 +4523,21 @@ struct lttng_event_notifier_notification *recv_one_event_notifier_notification(
 	}
 
 	if (capture_buffer_size > MAX_CAPTURE_SIZE) {
-		ERR("[notification-thread] Event notifier has a capture payload size which exceeds the maximum allowed size: capture_payload_size = %zu bytes, max allowed size = %d bytes",
+		ERR("Event notifier has a capture payload size which exceeds the maximum allowed size: capture_payload_size = %zu bytes, max allowed size = %d bytes",
 				capture_buffer_size, MAX_CAPTURE_SIZE);
 		goto end;
 	}
 
 	capture_buffer = zmalloc(capture_buffer_size);
 	if (!capture_buffer) {
-		ERR("[notification-thread] Failed to allocate capture buffer");
+		ERR("Failed to allocate capture buffer");
 		goto end;
 	}
 
 	/* Fetch additional payload (capture). */
 	ret = lttng_read(notification_pipe_read_fd, capture_buffer, capture_buffer_size);
 	if (ret != capture_buffer_size) {
-		ERR("[notification-thread] Failed to read from event source pipe (fd = %i)",
+		ERR("Failed to read from event source pipe (fd = %i)",
 				notification_pipe_read_fd);
 		goto end;
 	}
@@ -4616,7 +4616,7 @@ int dispatch_one_event_notifier_notification(struct notification_thread_state *s
 			notification->capture_buf_size, false);
 
 	if (evaluation == NULL) {
-		ERR("[notification-thread] Failed to create event rule hit evaluation while creating and enqueuing action executor job");
+		ERR("Failed to create event rule hit evaluation while creating and enqueuing action executor job");
 		ret = -1;
 		goto end_unlock;
 	}
@@ -4706,14 +4706,14 @@ int handle_one_event_notifier_notification(
 	notification = recv_one_event_notifier_notification(pipe, domain);
 	if (notification == NULL) {
 		/* Reception failed, don't consider it fatal. */
-		ERR("[notification-thread] Error receiving an event notifier notification from tracer: fd = %i, domain = %s",
+		ERR("Error receiving an event notifier notification from tracer: fd = %i, domain = %s",
 				pipe, lttng_domain_type_str(domain));
 		goto end;
 	}
 
 	ret = dispatch_one_event_notifier_notification(state, notification);
 	if (ret) {
-		ERR("[notification-thread] Error dispatching an event notifier notification from tracer: fd = %i, domain = %s",
+		ERR("Error dispatching an event notifier notification from tracer: fd = %i, domain = %s",
 				pipe, lttng_domain_type_str(domain));
 		goto end;
 	}
@@ -4751,7 +4751,7 @@ int handle_notification_thread_channel_sample(
 	 */
 	ret = lttng_read(pipe, &sample_msg, sizeof(sample_msg));
 	if (ret != sizeof(sample_msg)) {
-		ERR("[notification-thread] Failed to read from monitoring pipe (fd = %i)",
+		ERR("Failed to read from monitoring pipe (fd = %i)",
 				pipe);
 		ret = -1;
 		goto end;
@@ -4780,14 +4780,14 @@ int handle_notification_thread_channel_sample(
 		 * channel's destruction before we get a chance to process that
 		 * sample.
 		 */
-		DBG("[notification-thread] Received a sample for an unknown channel from consumerd, key = %" PRIu64 " in %s domain",
+		DBG("Received a sample for an unknown channel from consumerd, key = %" PRIu64 " in %s domain",
 				latest_sample.key.key,
 				lttng_domain_type_str(domain));
 		goto end_unlock;
 	}
 	channel_info = caa_container_of(node, struct channel_info,
 			channels_ht_node);
-	DBG("[notification-thread] Handling channel sample for channel %s (key = %" PRIu64 ") in session %s (highest usage = %" PRIu64 ", lowest usage = %" PRIu64", total consumed = %" PRIu64")",
+	DBG("Handling channel sample for channel %s (key = %" PRIu64 ") in session %s (highest usage = %" PRIu64 ", lowest usage = %" PRIu64", total consumed = %" PRIu64")",
 			channel_info->name,
 			latest_sample.key.key,
 			channel_info->session_info->name,

@@ -120,7 +120,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 	sock = lttcomm_alloc_sock_from_uri(uri);
 	uri_free(uri);
 	if (sock == NULL) {
-		ERR("[agent-thread] agent allocating TCP socket");
+		ERR("agent allocating TCP socket");
 		goto error;
 	}
 
@@ -133,11 +133,11 @@ static struct lttcomm_sock *init_tcp_socket(void)
 			port <= the_config.agent_tcp_port.end; port++) {
 		ret = lttcomm_sock_set_port(sock, (uint16_t) port);
 		if (ret) {
-			ERR("[agent-thread] Failed to set port %u on socket",
+			ERR("Failed to set port %u on socket",
 					port);
 			goto error;
 		}
-		DBG3("[agent-thread] Trying to bind on port %u", port);
+		DBG3("Trying to bind on port %u", port);
 		ret = sock->ops->bind(sock);
 		if (!ret) {
 			bind_succeeded = true;
@@ -174,7 +174,7 @@ static struct lttcomm_sock *init_tcp_socket(void)
 		goto error;
 	}
 
-	DBG("[agent-thread] Listening on TCP port %u and socket %d",
+	DBG("Listening on TCP port %u and socket %d",
 			port, sock->fd);
 
 	return sock;
@@ -198,11 +198,11 @@ static void destroy_tcp_socket(struct lttcomm_sock *sock)
 
 	ret = lttcomm_sock_get_port(sock, &port);
 	if (ret) {
-		ERR("[agent-thread] Failed to get port of agent TCP socket");
+		ERR("Failed to get port of agent TCP socket");
 		port = 0;
 	}
 
-	DBG3("[agent-thread] Destroy TCP socket on port %" PRIu16,
+	DBG3("Destroy TCP socket on port %" PRIu16,
 			port);
 
 	/* This will return gracefully if fd is invalid. */
@@ -363,7 +363,7 @@ static void *thread_agent_management(void *data)
 	const int quit_pipe_read_fd = lttng_pipe_get_readfd(
 			notifiers->quit_pipe);
 
-	DBG("[agent-thread] Manage agent application registration.");
+	DBG("Manage agent application registration.");
 
 	rcu_register_thread();
 	rcu_thread_online();
@@ -391,7 +391,7 @@ static void *thread_agent_management(void *data)
 
 		ret = write_agent_port(port);
 		if (ret) {
-			ERR("[agent-thread] Failed to create agent port file: agent tracing will be unavailable");
+			ERR("Failed to create agent port file: agent tracing will be unavailable");
 			/* Don't prevent the launch of the sessiond on error. */
 			mark_thread_as_ready(notifiers);
 			goto error;
@@ -417,12 +417,12 @@ static void *thread_agent_management(void *data)
 	}
 
 	while (1) {
-		DBG3("[agent-thread] Manage agent polling");
+		DBG3("Manage agent polling");
 
 		/* Inifinite blocking call, waiting for transmission */
 restart:
 		ret = lttng_poll_wait(&events, -1);
-		DBG3("[agent-thread] Manage agent return from poll on %d fds",
+		DBG3("Manage agent return from poll on %d fds",
 				LTTNG_POLL_GETNB(&events));
 		if (ret < 0) {
 			/*
@@ -434,7 +434,7 @@ restart:
 			goto error;
 		}
 		nb_fd = ret;
-		DBG3("[agent-thread] %d fd ready", nb_fd);
+		DBG3("%d fd ready", nb_fd);
 
 		for (i = 0; i < nb_fd; i++) {
 			/* Fetch once the poll data */
@@ -542,7 +542,7 @@ error_tcp_socket:
 	lttng_poll_clean(&events);
 error_poll_create:
 	uatomic_set(&agent_tracing_enabled, 0);
-	DBG("[agent-thread] Cleaning up and stopping.");
+	DBG("Cleaning up and stopping.");
 	rcu_thread_offline();
 	rcu_unregister_thread();
 	return NULL;
