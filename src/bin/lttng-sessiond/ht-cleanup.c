@@ -72,7 +72,7 @@ static int set_pollset(struct lttng_poll_event *events, size_t size)
 
 	ret = lttng_poll_add(events, the_ht_cleanup_pipe[0], LPOLLIN | LPOLLERR);
 	if (ret < 0) {
-		DBG("[ht-thread] lttng_poll_add error %d.", ret);
+		DBG("lttng_poll_add error %d.", ret);
 		goto error;
 	}
 
@@ -95,7 +95,7 @@ static void *thread_ht_cleanup(void *data)
 	uint32_t revents, nb_fd;
 	struct lttng_poll_event events;
 
-	DBG("[ht-thread] startup.");
+	DBG("startup.");
 
 	rcu_register_thread();
 	rcu_thread_online();
@@ -103,7 +103,7 @@ static void *thread_ht_cleanup(void *data)
 	health_register(the_health_sessiond, HEALTH_SESSIOND_TYPE_HT_CLEANUP);
 
 	if (testpoint(sessiond_thread_ht_cleanup)) {
-		DBG("[ht-thread] testpoint.");
+		DBG("testpoint.");
 		goto error_testpoint;
 	}
 
@@ -111,7 +111,7 @@ static void *thread_ht_cleanup(void *data)
 
 	ret = set_pollset(&events, 2);
 	if (ret < 0) {
-		DBG("[ht-thread] sessiond_set_ht_cleanup_thread_pollset error %d.", ret);
+		DBG("sessiond_set_ht_cleanup_thread_pollset error %d.", ret);
 		goto error_poll_create;
 	}
 
@@ -119,10 +119,10 @@ static void *thread_ht_cleanup(void *data)
 
 	while (1) {
 	restart:
-		DBG3("[ht-thread] Polling.");
+		DBG3("Polling.");
 		health_poll_entry();
 		ret = lttng_poll_wait(&events, -1);
-		DBG3("[ht-thread] Returning from poll on %d fds.",
+		DBG3("Returning from poll on %d fds.",
 			LTTNG_POLL_GETNB(&events));
 		health_poll_exit();
 		if (ret < 0) {
