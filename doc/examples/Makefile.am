@@ -1,3 +1,3 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS = trigger-condition-event-matches
+SUBDIRS = rotation trigger-condition-event-matches
