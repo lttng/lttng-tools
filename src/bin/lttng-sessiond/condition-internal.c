@@ -127,7 +127,6 @@ unsigned long lttng_condition_hash(const struct lttng_condition *condition)
 	case LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES:
 		return lttng_condition_event_rule_matches_hash(condition);
 	default:
-		//ERR("[notification-thread] Unexpected condition type caught");
 		abort();
 	}
 }
