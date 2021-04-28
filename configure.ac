@@ -1098,6 +1098,7 @@ AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
 	doc/examples/Makefile
+	doc/examples/rotation/Makefile
 	doc/examples/trigger-condition-event-matches/Makefile
 	doc/man/Makefile
 	doc/man/asciidoc-attrs.conf
