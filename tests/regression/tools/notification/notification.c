@@ -1220,7 +1220,8 @@ static void test_subscription_twice(const char *session_name,
 			domain_type, BUFFER_USAGE_TYPE_LOW, 0.99, &condition,
 			&action, &trigger);
 	if (ret) {
-		fail("Setup error on trigger registration");
+		fail("Setup error on trigger registration in %s()",
+				__FUNCTION__);
 		goto end;
 	}
 
@@ -1245,7 +1246,11 @@ static void test_subscription_twice(const char *session_name,
 			"Subscribe to a condition for which subscription was already done");
 
 end:
-	lttng_unregister_trigger(trigger);
+	ret = lttng_unregister_trigger(trigger);
+	if (ret) {
+		fail("Failed to unregister trigger in %s()", __FUNCTION__);
+	}
+
 	lttng_trigger_destroy(trigger);
 	lttng_notification_channel_destroy(notification_channel);
 	lttng_action_destroy(action);
