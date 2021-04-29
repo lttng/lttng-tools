@@ -1,6 +1,8 @@
 lttng-sessiond(8)
 =================
 :revdate: 21 April 2021
+:daemon-bin-name: lttng-sessiond
+:daemon-ini-section: sessiond
 
 
 NAME
@@ -36,8 +38,8 @@ include::common-intro.txt[]
 
 An LTTng session daemon, `lttng-sessiond`, is a program which:
 
-* Manages tracing sessions (see man:lttng-create(1) to learn more about
-  tracing sessions).
+* Manages tracing sessions (see man:lttng-concepts(7) to learn more
+  about tracing sessions).
 
 * Controls the various components (like tracers and consumer daemons) of
   LTTng.
@@ -71,46 +73,19 @@ commands before it exits.
 NOTE: The LTTng project recommends that you start the session daemon at
 boot time for stable and long-term tracing.
 
+[NOTE]
+====
+For an unprivileged Unix user running `lttng-sessiond`, the maximum
+number of file descriptors per process is usually 1024. This limits the
+number of traceable applications, since, for each instrumented
+application, there are two file descriptors per CPU as well as one
+socket for bidirectional communication.
 
-[[cfg]]
-Daemon configuration
-~~~~~~~~~~~~~~~~~~~~
-When you run `lttng-sessiond`, it configures itself from, in this order:
+For the `root` user, the limit is usually 65,535.
+====
 
-. The INI configuration file +{system_lttng_conf}+, if any.
 
-. The INI configuration file `$LTTNG_HOME/.lttng/lttng.conf`, if any.
-+
-`$LTTNG_HOME` defaults to `$HOME`.
-
-. With the option:--config='PATH' option: the INI configuration file
-  'PATH'.
-
-. The command-line options.
-
-Each step can override a previous configuration property.
-
-In INI configuration files, the session daemon only reads the properties
-under the `sessiond` INI section. Each INI property is:
-
-Key::
-    The long name of a command-line option to set (see the
-    <<options,OPTIONS>> section below).
-
-Value::
-    The selected command-line option accepts an argument:::
-        Option argument (string).
-
-    The selected command-line option is a switch:::
-        `true`::::
-        `yes`::::
-        `on`::::
-            Enable the option.
-
-        `false`::::
-        `no`::::
-        `off`::::
-            Disable the option.
+include::common-daemon-cfg.txt[]
 
 INI configuration file example:
 
@@ -153,8 +128,8 @@ With the option:--load='PATH' option::
 [[options]]
 OPTIONS
 -------
-Daemon configuration
-~~~~~~~~~~~~~~~~~~~~
+General daemon configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 option:-b, option:--background::
     Start as a Unix daemon, but keep file descriptors (console) open.
 +
@@ -211,11 +186,15 @@ option:--extra-kmod-probes='PROBE'[,'PROBE']...::
     For each 'PROBE' argument, load the LTTng kernel probe module
     named ++lttng-probe-++__PROBE__++.ko++, in addition to loading the
     default LTTng kernel probe modules.
++
+See also the `LTTNG_EXTRA_KMOD_PROBES` environment variable.
 
 option:--kmod-probes='PROBE'[,'PROBE']...::
     Only load, for each 'PROBE' argument, the LTTng kernel probe
     module named ++lttng-probe-++__PROBE__++.ko++, instead of loading
     the default LTTng kernel probe modules.
++
+See also the `LTTNG_KMOD_PROBES` environment variable.
 
 option:--no-kernel::
     Disable Linux kernel tracing.
@@ -236,15 +215,23 @@ option:-c 'PATH', option:--client-sock='PATH'::
 
 option:--consumerd32-libdir='PATH'::
     Set the 32-bit consumer daemon library directory to 'PATH'.
++
+See also the `LTTNG_CONSUMERD32_LIBDIR` environment variable.
 
 option:--consumerd32-path='PATH'::
     Set the 32-bit consumer daemon binary path to 'PATH'.
++
+See also the `LTTNG_CONSUMERD32_BIN` environment variable.
 
 option:--consumerd64-libdir='PATH'::
     Set the 64-bit consumer daemon library directory to 'PATH'.
++
+See also the `LTTNG_CONSUMERD64_LIBDIR` environment variable.
 
 option:--consumerd64-path='PATH'::
     Set the 64-bit consumer daemon binary path to 'PATH'.
++
+See also the `LTTNG_CONSUMERD32_BIN` environment variable.
 
 option:--kconsumerd-cmd-sock='PATH'::
     Set the command Unix socket path of the Linux kernel consumer daemon
@@ -334,28 +321,33 @@ Default: +{default_app_socket_rw_timeout}+.
 `LTTNG_CONSUMERD32_BIN`::
     32-bit consumer daemon binary path.
 +
-The option:--consumerd32-path option overrides this variable.
+The option:--consumerd32-path option overrides this environment
+variable.
 
 `LTTNG_CONSUMERD32_LIBDIR`::
     32-bit consumer daemon library directory path.
 +
-The option:--consumerd32-libdir option overrides this variable.
+The option:--consumerd32-libdir option overrides this environment
+variable.
 
 `LTTNG_CONSUMERD64_BIN`::
     64-bit consumer daemon binary path.
 +
-The option:--consumerd64-path option overrides this variable.
+The option:--consumerd64-path option overrides this environment
+variable.
 
 `LTTNG_CONSUMERD64_LIBDIR`::
     64-bit consumer daemon library directory path.
 +
-The option:--consumerd64-libdir option overrides this variable.
+The option:--consumerd64-libdir option overrides this environment
+variable.
 
 `LTTNG_DEBUG_NOCLONE`::
     Set to `1` to disable the use of man:clone(2)/man:fork(2).
 +
-Setting this variable is considered insecure, but it's required to allow
-debuggers to work with `lttng-sessiond` on some operating systems.
+Setting this environment variable is considered insecure, but it's
+required to allow debuggers to work with `lttng-sessiond` on some
+operating systems.
 
 `LTTNG_EXTRA_KMOD_PROBES`::
     Extra LTTng kernel probe modules to load.
@@ -429,20 +421,10 @@ EXIT STATUS
     Fatal error
 
 
-LIMITATIONS
------------
-For an unprivileged Unix user running `lttng-sessiond`, the maximum
-number of file descriptors per process is usually 1024. This limits the
-number of traceable applications, since, for each instrumented
-application, there are two file descriptors per CPU as well as one
-socket for bidirectional communication.
-
-For the `root` user, the limit is usually 65,535.
-
-
 include::common-footer.txt[]
 
 
 SEE ALSO
 --------
-man:lttng(1)
+man:lttng(1),
+man:lttng-concepts(7)

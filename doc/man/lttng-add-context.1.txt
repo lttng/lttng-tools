@@ -1,6 +1,6 @@
 lttng-add-context(1)
 ====================
-:revdate: 8 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -10,8 +10,8 @@ lttng-add-context - Add context fields to be recorded by LTTng
 
 SYNOPSIS
 --------
-Add context fields to be recorded to the LTTng event records of
-one or more channels:
+Add context fields to be recorded to the event records of one or more
+channels:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *add-context*
@@ -27,77 +27,84 @@ List the available context field types:
 
 DESCRIPTION
 -----------
-The `lttng add-context` command adds one or more context fields to be
-recorded to the event records of a given channel, or of all the channels
-of a selected tracing session, by LTTng.
+The `lttng add-context` command can:
 
-See man:lttng-enable-channel(1) to learn more about LTTng channels.
+Without the option:--list option::
+    Add one or more context fields to be recorded by LTTng to the event
+    records of a given channel, or of all the channels of:
++
+With the option:--session='SESSION' option:::
+    The tracing session named 'SESSION'.
 
-When you use the `add-context` command to add context fields for a given
-channel, all the event records which LTTng writes to a sub-buffer of
-that channel contain the dynamic values of those context fields.
+Without the option:--session option:::
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
 
-Without the option:--session option, the `add-context` command selects
-the current tracing session (see man:lttng-create(1) and
-man:lttng-set-session(1) to learn more about the current tracing
-session).
+With the option:--list option::
+    List the available context field types.
+
+See man:lttng-concepts(7) to learn more about tracing sessions and
+channels.
 
 Without the option:--channel option, LTTng adds context fields to be
 recorded to the event records of *all* the channels of the selected
 tracing session.
 
-Repeat the option:--type option to add more than one context field to be
-recorded.
+Repeat the option:--type='TYPE' option to add more than one context
+field to be recorded. 'TYPE' is one of:
 
-perf counter context fields are available:
+* A statically-known, or built-in context field named.
 
-Per-CPU::
-    Prefix: `perf:cpu:`.
+* A perf counter name:
 +
-Only available for Linux kernel (option:--kernel option) channels.
+--
+Per-CPU::
+    Prefix: `perf:cpu:`
++
+Only available with the option:--kernel option.
 
 Per-thread::
-    Prefix: `perf:thread:`.
+    Prefix: `perf:thread:`
 +
-Only available for user application/library (option:--userspace,
-option:--jul, and option:--log4j options) channels.
-
-Add PMU counter context fields by raw ID with the
-++perf:cpu:raw:r++__N__++:++__NAME__ (Linux kernel tracing domain) or
-++perf:thread:raw:r++__N__++:++__NAME__ (user space tracing domain)
-types, with:
-
+Only available with the option:--userspace, option:--jul, or
+option:--log4j option.
+--
++
+Add Performance Monitoring Unit (PMU) counter context fields by raw ID
+with the ++perf:cpu:raw:r++__N__++:++__NAME__ (option:--kernel option)
+or ++perf:thread:raw:r++__N__++:++__NAME__ (option:--userspace,
+option:--jul, or option:--log4j option) types, with:
++
+--
 'N'::
     A hexadecimal event descriptor which follows the man:perf-record(1)
     format: a concatenation of the event number and umask value which
     the manufacturer of the processor provides.
 +
-The possible values for this field are processor-specific.
+The possible values for this part are processor-specific.
 
 'NAME'::
-    Custom name to easily recognize the counter.
+    Custom name to identify the counter.
+--
 
-Add an application-specific context field with the following syntax:
-
+* An LTTng application-specific context field name:
++
 [verse]
 $app.'PROVIDER':__TYPE__
-
++
 'PROVIDER'::
     Provider name.
 
 'TYPE'::
     Context type name.
 
-NOTE: Make sure to **single-quote** the argument of the option:--type
-option when you run the `add-context` command from a shell, as `$` is a
-special character for variable substitution in most shells.
+IMPORTANT: Make sure to **single-quote** 'TYPE' when you run the
+`add-context` command from a shell, as `$` is a special character for
+variable substitution in most shells.
 
-List the available context field types with the option:--list option and
-without other arguments.
-
-NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context
-fields to be recorded to the event records of a given channel once its
-tracing session has been started (see man:lttng-start(1)) at least once.
+NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context fields
+to be recorded to the event records of a given channel once its tracing
+session has been started (see man:lttng-start(1)) at least once.
 
 
 include::common-cmd-options-head.txt[]
@@ -160,5 +167,5 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-enable-channel(1),
-man:lttng-set-session(1)
+man:lttng-concepts(7),
+man:lttng-enable-channel(1)

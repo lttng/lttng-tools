@@ -1,6 +1,6 @@
 lttng-stop(1)
 =============
-:revdate: 21 April 2021
+:revdate: 29 April 2021
 
 
 NAME
@@ -23,17 +23,14 @@ With the 'SESSION' argument::
     The tracing session named 'SESSION'.
 
 Without the 'SESSION' argument::
-    The current tracing session (see man:lttng-create(1) and
-    man:lttng-set-session(1) to learn more about the current tracing
-    session).
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
+
+See man:lttng-concepts(7) to learn more about tracing sessions.
 
 The selected tracing session must be active (started; see
 man:lttng-start(1)). A tracing session is inactive on creation (see
 man:lttng-create(1)).
-
-An active tracing session is an implicit recording event rule condition
-(see man:lttng-enable-event(1)). In other words, a recording event rule
-cannot match an event when its tracing session is inactive.
 
 A `stop-session` trigger action can also stop a tracing session (see
 man:lttng-add-trigger(1)).
@@ -74,6 +71,7 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-add-trigger(1),
+man:lttng-concepts(7),
 man:lttng-create(1),
 man:lttng-enable-event(1),
 man:lttng-rotate(1),

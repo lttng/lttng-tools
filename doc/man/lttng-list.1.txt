@@ -1,103 +1,156 @@
 lttng-list(1)
 =============
-:revdate: 28 November 2016
+:revdate: 3 May 2021
 
 
 NAME
 ----
-lttng-list - List LTTng tracing sessions, domains, channels, and events
+lttng-list - List LTTng tracing sessions and instrumentation points
 
 
 SYNOPSIS
 --------
-List existing tracing sessions:
+List the tracing sessions:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
 
-List available event sources:
+List the tracing domains with at least one channel of a tracing session:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
+
+List the channels and recording event rules of a tracing session:
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
+      [option:--kernel] [option:--userspace] [option:--jul] [option:--log4j] [option:--python]
+
+List the available LTTng tracepoints, Linux system calls, and/or
+Java/Python loggers:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--fields]
       [option:--kernel [option:--syscall]] [option:--userspace] [option:--jul] [option:--log4j] [option:--python]
 
-List tracing session's domains:
-
-[verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
-
-List tracing session's channels and recording event rules:
-
-[verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
-
 
 DESCRIPTION
 -----------
-The `lttng list` command lists tracing sessions, tracing domains,
-channels, and events.
+The `lttng list` command lists:
 
-Without arguments, `lttng list` lists the existing tracing sessions
-and shows if they are active or not.
+Without arguments::
+    The tracing sessions of your Unix user, or of all users
+    if your Unix user is `root`, within the connected session daemon.
++
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
++
+The command shows tracing session properties such as their output
+directories/URLs and whether or not they're active.
 
-With one or more of the option:--kernel, option:--userspace,
-option:--jul, option:--log4j, and option:--python domain options, the
-command lists the available event sources of the selected domain on the
-system. The JUL, log4j, and Python domains list the names of their
-available _loggers_. The option:--syscall option can be used alongside
-the option:--kernel option to get a list of traceable Linux system
-calls. The option:--fields option can be used to show the fields of the
-listed event sources.
+With the 'SESSION' argument::
+    With the option:--domain option:::
+        The tracing domains (with at least one channel) of the tracing
+        session named 'SESSION'.
 
-Providing a tracing session name 'SESSION' targets a specific tracing
-session. If the option:--domain option is used, domains containing at
-least one channel in the selected tracing session are listed. Otherwise,
-all the domains, channels, and recording event rules of the selected
-tracing session are listed along with its details (trace path, for
-example), except when the option:--channel option is used to isolate a
-specific channel by name.
+    Without the option:--domain option:::
+        With the option:--channel='CHANNEL' option::::
+            The recording event rules of the channel 'CHANNEL' of the
+            tracing session named 'SESSION'.
+
+        Without the option:--channel option::::
+            The channels of the tracing session named 'SESSION' and
+            their recording event rules.
++
+Use the dedicated tracing domain options (option:--kernel,
+option:--userspace, option:--jul, option:--log4j, and option:--python)
+to only show specific channels.
+
+Without the 'SESSION' argument and with at least one dedicated tracing domain option::
++
+--
+With the option:--kernel option::
+    Without the option:--syscall option:::
+        The available LTTng kernel tracepoints.
+    With the option:--syscall option:::
+        The available, instrumented Linux system calls.
+With the option:--userspace option::
+    The available LTTng user space tracepoints.
+With the option:--jul, option:--log4j, and/or option:--python options::
+    The available `java.util.logging`, Apache log4j, and/or Python
+    logger names.
+--
++
+Also list the available instrumentation point fields with the
+option:--fields option.
+
+See man:lttng-concept(7) to learn more about tracing sessions, tracing
+domains, channels, recording event rules, and instrumentation points.
+
+List the channels and recording event rules of the current tracing
+session (see man:lttng-concept(7) to learn more) with the
+man:lttng-status(1) command.
 
 
 include::common-cmd-options-head.txt[]
 
 
-Domain
-~~~~~~
+Tracing domain
+~~~~~~~~~~~~~~
 option:-j, option:--jul::
-    List event sources in the `java.util.logging` (JUL) domain.
+    Without the 'SESSION' argument:::
+        List the `java.util.logging` logger names.
+    With the 'SESSION' argument:::
+        Only list the `java.util.logging` channels and their recording
+        event rules.
 
 option:-k, option:--kernel::
-    List event sources in the Linux kernel domain.
+    Without the 'SESSION' argument:::
+        List the LTTng kernel instrumentation points.
+    With the 'SESSION' argument:::
+        Only list the Linux kernel channels and their recording event
+        rules.
 
 option:-l, option:--log4j::
-    List event sources in the Apache log4j domain.
+    Without the 'SESSION' argument:::
+        List the Apache log4j logger names.
+    With the 'SESSION' argument:::
+        Only list the Apache log4j channels and their recording event
+        rules.
 
 option:-p, option:--python::
-    List event sources in the Python domain.
+    Without the 'SESSION' argument:::
+        List the Python logger names.
+    With the 'SESSION' argument:::
+        Only list the Python channels and their recording event rules.
 
 option:-u, option:--userspace::
-    List event sources in the user space domain.
+    Without the 'SESSION' argument:::
+        List the LTTng user space tracepoints.
+    With the 'SESSION' argument:::
+        Only list the user space channels and their recording event
+        rules.
 
 
-Target
-~~~~~~
+Filtering
+~~~~~~~~~
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
-    Only list the details of the channel named 'CHANNEL'.
+    Only list the properties and recording event rules of the channel
+    named 'CHANNEL'.
++
+Only available with the 'SESSION' argument.
 
-
-Listing
-~~~~~~~
 option:-d, option:--domain::
-    Show the domains of the target tracing session in which at least one
-    channel exists.
+    Show the tracing domains with at least one channel of the tracing
+    session named 'SESSION'.
 
 option:-f, option:--fields::
-    When listing the event sources with one of the domain options,
-    also show their fields.
+    When listing instrumentation points, also show their fields if
+    they're available.
 
 option:--syscall::
-    When listing the event sources of the Linux kernel domain, list
-    the traceable system calls instead of the kernel tracepoints.
+    When listing LTTng kernel instrumentation points, only list Linux
+    system calls.
 
 
 include::common-cmd-help-options.txt[]
@@ -108,4 +161,5 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng(1)
+man:lttng(1),
+man:lttng-concepts(7)

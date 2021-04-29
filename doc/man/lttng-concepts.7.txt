@@ -1,0 +1,999 @@
+lttng-concepts(7)
+=================
+:revdate: 3 May 2021
+:sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
+:sect-session: TRACING SESSION
+:sect-domain: TRACING DOMAIN
+:sect-channel: CHANNEL AND RING BUFFER
+:sect-recording-event-rule: RECORDING EVENT RULE AND EVENT RECORD
+
+
+NAME
+----
+lttng-concepts - LTTng concepts
+
+
+DESCRIPTION
+-----------
+This manual page documents the concepts of LTTng.
+
+Many other LTTng manual pages refer to this one so that you can
+understand what are the various LTTng objects and how they relate to
+each other.
+
+The concepts of LTTng{nbsp}{lttng_version} are:
+
+* Instrumentation point, event rule, and event
+* Trigger
+* Tracing session
+* Tracing domain
+* Channel and ring buffer
+* Recording event rule and event record
+
+
+[[event-rule]]
+{sect-event-rule}
+-----------------
+An _instrumentation point_ is a point, within a piece of software,
+which, when executed, creates an LTTng _event_.
+
+LTTng offers various types of instrumentation; see the
+<<inst-point-types,Instrumentation point types>> section below to learn
+about them.
+
+An _event rule_ is a set of conditions to match a set of events.
+
+When LTTng creates an event{nbsp}__E__, an event rule{nbsp}__ER__ is
+said to __match__{nbsp}__E__ when{nbsp}__E__ satisfies *all* the
+conditions of{nbsp}__ER__. This concept is similar to a regular
+expression which matches a set of strings.
+
+When an event rule matches an event, LTTng _emits_ the event, therefore
+attempting to execute one or more actions.
+
+[IMPORTANT]
+====
+The event creation and emission processes are documentation concepts to
+help understand the journey from an instrumentation point to the
+execution of actions.
+
+The actual creation of an event can be costly because LTTng needs to
+evalute the arguments of the instrumentation point.
+
+In practice, LTTng implements various optimizations for the Linux kernel
+and user space tracing domains (see the <<domain,{sect-domain}>> section
+below) to avoid actually creating an event
+when the tracer knows, thanks to properties which are independent from
+the event payload and current context, that it would never emit such an
+event. Those properties are:
+
+* The instrumentation point type (see the
+  <<inst-point-types,Instrumentation point types>> section below).
+
+* The instrumentation point name.
+
+* The instrumentation point log level.
+
+* For a recording event rule (see the
+  <<recording-event-rule,{sect-recording-event-rule}>> section
+  below):
+** The status of the rule itself.
+** The status of the channel (see the <<channel,{sect-channel}>> section
+   below).
+** The activity of the tracing session (started or stopped; see
+   the <<session,{sect-session}>> section below).
+** Whether or not the process for which LTTng would create the event is
+   allowed to record events (see man:lttng-track(1)).
+
+In other words: if, for a given instrumentation point{nbsp}__IP__, the
+LTTng tracer knows that it would never emit an event,
+executing{nbsp}__IP__ represents a simple boolean variable check and,
+for a Linux kernel recording event rule, a few process attribute checks.
+====
+
+As of LTTng{nbsp}{lttng_version}, there are two places where you can
+find an event rule:
+
+Recording event rule::
+    A specific type of event rule of which the action is to record the
+    matched event as an event record.
++
+See the <<recording-event-rule,{sect-recording-event-rule}>> section
+below.
++
+Create or enable a recording event rule with the
+man:lttng-enable-event(1) command.
++
+List the recording event rules of a specific tracing session
+and/or channel with the man:lttng-list(1) and man:lttng-status(1)
+commands.
+
+``Event rule matches'' <<trigger,trigger>> condition (since LTTng{nbsp}2.13)::
+    When the event rule of the trigger condition matches an event, LTTng
+    can execute user-defined actions such as sending an LTTng
+    notification, starting a tracing session, and more.
++
+See man:lttng-add-trigger(1) and man:lttng-event-rule(7).
+
+For LTTng to emit an event{nbsp}__E__,{nbsp}__E__ must satisfy *all* the
+basic conditions of an event rule{nbsp}__ER__, that is:
+
+* The instrumentation point from which LTTng creates{nbsp}__E__ has a
+  specific type.
++
+See the <<inst-point-types,Instrumentation point types>> section below.
+
+* A pattern matches the name of{nbsp}__E__ while another pattern
+  doesn't.
+
+* The log level of the instrumentation point from which LTTng
+  creates{nbsp}__E__ is at least as severe as some value, or is exactly
+  some value.
+
+* The fields of the payload of{nbsp}__E__ and the current context fields
+  satisfy a filter expression.
+
+A recording event rule has additional, implicit conditions to satisfy.
+See the <<recording-event-rule,{sect-recording-event-rule}>> section
+below to learn more.
+
+
+[[inst-point-types]]
+Instrumentation point types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+As of LTTng{nbsp}{lttng_version}, the available instrumentation point
+types are, depending on the tracing domain (see the
+<<domain,{sect-domain}>> section below):
+
+Linux kernel::
+    LTTng tracepoint:::
+        A statically defined point in the source code of the kernel
+        image or of a kernel module using the LTTng-modules macros.
++
+List the available Linux kernel tracepoints with `lttng list --kernel`.
+See man:lttng-list(1) to learn more.
+
+    Linux kernel system call:::
+        Entry, exit, or both of a Linux kernel system call.
++
+List the available Linux kernel system call instrumentation points with
+`lttng list --kernel --syscall`. See man:lttng-list(1) to learn more.
+
+    Linux kprobe:::
+        A single probe dynamically placed in the compiled kernel code.
++
+When you create such an instrumentation point, you set its memory
+address or symbol name.
+
+    Linux user space probe:::
+        A single probe dynamically placed at the entry of a compiled
+        user space application/library function through the kernel.
++
+When you create such an instrumentation point, you set:
++
+--
+With the ELF method::
+    Its application/library path and its symbol name.
+
+With the USDT method::
+    Its application/library path, its provider name, and its probe name.
++
+``USDT'' stands for SystemTap User-level Statically Defined Tracing,
+a DTrace-style marker.
+--
++
+As of LTTng{nbsp}{lttng_version}, LTTng only supports USDT probes which
+are :not: reference-counted.
+
+    Linux kretprobe:::
+        Entry, exit, or both of a Linux kernel function.
++
+When you create such an instrumentation point, you set the memory
+address or symbol name of its function.
+
+User space::
+    LTTng tracepoint:::
+        A statically defined point in the source code of a C/$$C++$$
+        application/library using the LTTng-UST macros.
++
+List the available Linux kernel tracepoints with
+`lttng list --userspace`. See man:lttng-list(1) to learn more.
+
+`java.util.logging`, Apache log4j, and Python::
+    Java or Python logging statement:::
+        A method call on a Java or Python logger attached to an
+        LTTng-UST handler.
++
+List the available Java and Python loggers with `lttng list --jul`,
+`lttng list --log4j`, and `lttng list --python`. See man:lttng-list(1)
+to learn more.
+
+
+[[trigger]]
+TRIGGER
+-------
+A _trigger_ associates a condition to one or more actions.
+
+When the condition of a trigger is satisfied, LTTng attempts to execute
+its actions.
+
+As of LTTng{nbsp}{lttng_version}, the available trigger conditions and
+actions are:
+
+Conditions::
++
+* The consumed buffer size of a given tracing
+  session (see the <<session,{sect-session}>> section below)
+  becomes greater than some value.
+
+* The buffer usage of a given channel (see the
+  <<channel,{sect-channel}>> section below) becomes greater than some
+  value.
+
+* The buffer usage of a given channel becomes less than some value.
+
+* There's an ongoing tracing session rotation (see the
+  <<rotation,Tracing session rotation>> section below).
+
+* A tracing session rotation becomes completed.
+
+* An event rule matches an event.
++
+As of LTTng{nbsp}{lttng_version}, this is the only available condition
+when you add a trigger with the man:lttng-add-trigger(1) command. The
+other ones are available through the liblttng-ctl C{nbsp}API.
+
+Actions::
++
+* Send a notification to a user application.
+* Start a given tracing session, like man:lttng-start(1) would do.
+* Stop a given tracing session, like man:lttng-stop(1) would do.
+* Archive the current trace chunk of a given tracing session (rotate),
+  like man:lttng-rotate(1) would do.
+* Take a snapshot of a given tracing session, like man:lttng-snapshot(1)
+  would do.
+
+A trigger belongs to a session daemon (see man:lttng-sessiond(8)), not
+to a specific tracing session. For a given session daemon, each Unix
+user has its own, private triggers. Note, however, that the `root` Unix
+user may, for the root session daemon:
+
+* Add a trigger as another Unix user.
+
+* List all the triggers, regardless of their owner.
+
+* Remove a trigger which belongs to another Unix user.
+
+For a given session daemon and Unix user, a trigger has a unique name.
+
+Add a trigger to a session daemon with the man:lttng-add-trigger(1)
+command.
+
+List the triggers of your Unix user (or of all users if your
+Unix user is `root`) with the man:lttng-list-triggers(1) command.
+
+Remove a trigger with the man:lttng-remove-trigger(1) command.
+
+
+[[session]]
+{sect-session}
+--------------
+A _tracing session_ is a stateful dialogue between you and a session
+daemon (see man:lttng-sessiond(8)) for everything related to event
+recording.
+
+Everything that you do when you control LTTng tracers to record events
+happens within a tracing session. In particular, a tracing session:
+
+* Has its own name, unique for a given session daemon.
+
+* Has its own set of trace files, if any.
+
+* Has its own state of activity (started or stopped).
++
+An active tracing session is an implicit recording event rule condition
+(see the <<recording-event-rule,{sect-recording-event-rule}>> section
+below).
+
+* Has its own mode (local, network streaming, snapshot, or live).
++
+See the <<session-modes,Tracing session modes>> section below to learn
+more.
+
+* Has its own channels (see the <<channel,{sect-channel}>> section
+  below) to which are attached their own recording event rules.
+
+* Has its own process attribute inclusion sets (see man:lttng-track(1)).
+
+Those attributes and objects are completely isolated between different
+tracing sessions.
+
+A tracing session is like an ATM session: the operations you do on the
+banking system through the ATM don't alter the data of other users of
+the same system. In the case of the ATM, a session lasts as long as your
+bank card is inside. In the case of LTTng, a tracing session lasts from
+the man:lttng-create(1) command to the man:lttng-destroy(1) command.
+
+A tracing session belongs to a session daemon (see
+man:lttng-sessiond(8)). For a given session daemon, each Unix user has
+its own, private tracing sessions. Note, however, that the `root` Unix
+user may operate on or destroy another user's tracing session.
+
+Create a tracing session with the man:lttng-create(1) command.
+
+List the tracing sessions of the connected session daemon with
+the man:lttng-list(1) command.
+
+Start and stop a tracing session with the man:lttng-start(1) and
+man:lttng-stop(1) commands.
+
+Save and load a tracing session with the man:lttng-save(1) and
+man:lttng-load(1) commands.
+
+Archive the current trace chunk of (rotate) a tracing session with the
+man:lttng-rotate(1) command.
+
+Destroy a tracing session with the man:lttng-destroy(1) command.
+
+
+Current tracing session
+~~~~~~~~~~~~~~~~~~~~~~~
+When you run the man:lttng-create(1) command, LTTng creates the
+`$LTTNG_HOME/.lttngrc` file if it doesn't exist (`$LTTNG_HOME` defaults
+to `$HOME`).
+
+`$LTTNG_HOME/.lttngrc` contains the name of the _current tracing
+session_.
+
+When you create a new tracing session with the `create` command, LTTng
+updates the current tracing session.
+
+The following man:lttng(1) commands select the current tracing session
+if you don't specify one:
+
+* man:lttng-add-context(1)
+* man:lttng-clear(1)
+* man:lttng-destroy(1)
+* man:lttng-disable-channel(1)
+* man:lttng-disable-event(1)
+* man:lttng-disable-rotation(1)
+* man:lttng-enable-channel(1)
+* man:lttng-enable-event(1)
+* man:lttng-enable-rotation(1)
+* man:lttng-regenerate(1)
+* man:lttng-rotate(1)
+* man:lttng-save(1)
+* man:lttng-snapshot(1)
+* man:lttng-start(1)
+* man:lttng-status(1)
+* man:lttng-stop(1)
+* man:lttng-track(1)
+* man:lttng-untrack(1)
+* man:lttng-view(1)
+
+Set the current tracing session manually with the
+man:lttng-set-session(1) command, without having to edit the `.lttngrc`
+file.
+
+
+[[session-modes]]
+Tracing session modes
+~~~~~~~~~~~~~~~~~~~~~
+LTTng offers four tracing session modes:
+
+Local mode::
+    Write the trace data to the local file system.
+
+Network streaming mode::
+    Send the trace data over the network to a listening relay daemon
+    (see man:lttng-relayd(8)).
+
+Snapshot mode::
+    Only write the trace data to the local file system or send it to a
+    listening relay daemon (man:lttng-relayd(8)) when LTTng takes a
+    snapshot.
++
+LTTng forces all the channels (see the <<channel,{sect-channel}>>
+section below) to be created to be configured to be snapshot-ready.
++
+LTTng takes a snapshot of such a tracing session when:
++
+--
+* You run the man:lttng-snapshot(1) command.
+
+* LTTng executes a `snapshot-session` trigger action (see the
+  <<trigger,TRIGGER>> section above).
+--
+
+Live mode::
+    Send the trace data over the network to a listening relay daemon
+    (see man:lttng-relayd(8)) for live reading.
++
+An LTTng live reader (for example, man:babeltrace2(1)) can connect to
+the same relay daemon to receive trace data while the tracing session is
+active.
+
+
+[[rotation]]
+Tracing session rotation
+~~~~~~~~~~~~~~~~~~~~~~~~
+A _tracing session rotation_ is the action of archiving the current
+trace chunk of the tracing session to the file system.
+
+Once LTTng archives a trace chunk, it does :not: manage it anymore: you
+can read it, modify it, move it, or remove it.
+
+An _archived trace chunk_ is a collection of metadata and data stream
+files which form a self-contained LTTng trace. See the
+<<trace-chunk-naming,Trace chunk naming>> section below to learn how
+LTTng names a trace chunk archive directory.
+
+The _current trace chunk_ of a given tracing session includes:
+
+* The stream files which LTTng already wrote to the file system, and
+  which are not part of a previously archived trace chunk, since the
+  most recent event amongst:
+
+** The first time the tracing session was started, either with the
+   man:lttng-start(1) command or with a `start-session` trigger action
+   (see the <<trigger,TRIGGER>> section above).
+
+** The last rotation, performed with:
+
+*** An man:lttng-rotate(1) command.
+
+*** A rotation schedule previously set with
+    man:lttng-enable-rotation(1).
+
+*** An executed `rotate-session` trigger action (see the
+    <<trigger,TRIGGER>> section above).
+
+* The content of all the non-flushed sub-buffers of the channels of the
+  tracing session.
+
+
+[[trace-chunk-naming]]
+Trace chunk archive naming
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+A trace chunk archive is a subdirectory of the `archives` subdirectory
+within the output directory of a tracing session (see the
+nloption:--output option of the man:lttng-create(1) command and
+of man:lttng-relayd(8)).
+
+A trace chunk archive contains, through tracing domain and possibly
+UID/PID subdirectories, metadata and data stream files.
+
+A trace chunk archive is, at the same time:
+
+* A self-contained LTTng trace.
+
+* A member of a set of trace chunk archives which form the complete
+  trace of a tracing session.
+
+In other words, an LTTng trace reader can read both the tracing
+session output directory (all the trace chunk archives), or a
+single trace chunk archive.
+
+When LTTng performs a tracing session rotation, it names the resulting
+trace chunk archive as such, relative to the output directory of the
+tracing session:
+
+[verse]
+archives/__BEGIN__-__END__-__ID__
+
+__BEGIN__::
+    Date and time of the beginning of the trace chunk archive with
+    the ISO{nbsp}8601-compatible __YYYYmmddTHHMMSS±HHMM__ form, where
+    __YYYYmmdd__ is the date and __HHMMSS±HHMM__ is the time with the
+    time zone offset from UTC.
++
+Example: `20171119T152407-0500`
+
+__END__::
+    Date and time of the end of the trace chunk archive with
+    the ISO{nbsp}8601-compatible __YYYYmmddTHHMMSS±HHMM__ form, where
+    __YYYYmmdd__ is the date and __HHMMSS±HHMM__ is the time with the
+    time zone offset from UTC.
++
+Example: `20180118T152407+0930`
+
+__ID__::
+    Unique numeric identifier of the trace chunk within its tracing
+    session.
+
+Trace chunk archive name example:
+
+----
+archives/20171119T152407-0500-20171119T151422-0500-3
+----
+
+
+[[domain]]
+{sect-domain}
+-------------
+A _tracing domain_ identifies a type of LTTng tracer.
+
+A tracing domain has its own properties and features.
+
+There are currently five available tracing domains:
+
+[options="header"]
+|===
+|Tracing domain |``Event rule matches'' trigger condition option |Option for other CLI commands
+
+|Linux kernel
+|nloption:--domain=++kernel++
+|nloption:--kernel
+
+|User space
+|nloption:--domain=++user++
+|nloption:--userspace
+
+|`java.util.logging` (JUL)
+|nloption:--domain=++jul++
+|nloption:--jul
+
+|Apache log4j
+|nloption:--domain=++log4j++
+|nloption:--log4j
+
+|Python
+|nloption:--domain=++python++
+|nloption:--python
+|===
+
+You must specify a tracing domain to target a type of LTTng tracer when
+using some man:lttng(1) to avoid ambiguity. For example, because the
+Linux kernel and user space tracing domains support named tracepoints as
+instrumentation points (see the <<"event-rule","{sect-event-rule}">> section
+above), you need to specify a tracing domain when you create an event
+rule because both tracing domains could have tracepoints sharing the
+same name.
+
+You can create channels (see the <<channel,{sect-channel}>> section
+below) in the Linux kernel and user space tracing domains. The other
+tracing domains have a single, default channel.
+
+
+[[channel]]
+{sect-channel}
+--------------
+A _channel_ is an object which is responsible for a set of ring buffers.
+
+Each ring buffer is divided into multiple _sub-buffers_. When a
+recording event rule (see the
+<<recording-event-rule,{sect-recording-event-rule} section below)
+matches an event, LTTng can record it to one or more sub-buffers of one
+or more channels.
+
+When you create a channel with the man:lttng-enable-channel(1) command,
+you set its final attributes, that is:
+
+* Its buffering scheme.
++
+See the <<channel-buf-scheme,Buffering scheme>> section below.
+
+* What to do when there's no
+  space left for a new event record because all sub-buffers are full.
++
+See the <<channel-er-loss-mode,Event record loss mode>> section below.
+
+* The size of each ring buffer and how many sub-buffers a ring buffer
+  has.
++
+See the <<channel-sub-buf-size-count,Sub-buffer size and count>> section
+below.
+
+* The size of each trace file LTTng writes for this channel and the
+  maximum count of trace files.
++
+See the <<channel-max-trace-file-size-count,Maximum trace file size and
+count>> section below.
+
+* The periods of its read, switch, and monitor timers.
++
+See the <<channel-timers,Timers>> section below.
+
+* For a Linux kernel channel: its output type (man:mmap(2) or
+  man:splice(2)).
++
+See the nloption:--output option of the man:lttng-enable-channel(1)
+command.
+
+* For a user space channel: the value of its blocking timeout.
++
+See the nloption:--blocking-timeout option of the
+man:lttng-enable-channel(1) command.
+
+Note that the man:lttng-enable-event(1) command can automatically create
+a default channel with sane defaults when no channel exists for the
+provided tracing domain.
+
+A channel is always associated to a tracing domain (see the
+<<domain,{sect-domain}>> section below). The `java.util.logging` (JUL),
+log4j, and Python tracing domains each have a default channel which you
+can't configure.
+
+A channel owns recording event rules.
+
+List the channels of a given tracing session with the
+man:lttng-list(1) and man:lttng-status(1) commands.
+
+Disable an enabled channel with the man:lttng-disable-channel(1)
+command.
+
+
+[[channel-buf-scheme]]
+Buffering scheme
+~~~~~~~~~~~~~~~~
+A channel has at least one ring buffer per CPU. LTTng always records an
+event to the ring buffer dedicated to the CPU which emits it.
+
+The buffering scheme of a user space channel determines what has its own
+set of per-CPU ring buffers:
+
+Per-user buffering (nloption:--buffers-uid option of the man:lttng-enable-channel(1) command)::
+    Allocate one set of ring buffers (one per CPU) shared by all the
+    instrumented processes of:
+        If your Unix user is `root`:::
+            Each Unix user.
+        Otherwise:::
+            Your Unix user.
+
+Per-process buffering (nloption:--buffers-pid option of the man:lttng-enable-channel(1) command)::
+    Allocate one set of ring buffers (one per CPU) for each instrumented
+    process of:
+        If your Unix user is `root`:::
+            All Unix users.
+        Otherwise:::
+            Your Unix user.
+
+The per-process buffering scheme tends to consume more memory than the
+per-user option because systems generally have more instrumented
+processes than Unix users running instrumented processes. However, the
+per-process buffering scheme ensures that one process having a high
+event throughput won't fill all the shared sub-buffers of the same Unix
+user, only its own.
+
+The buffering scheme of a Linux kernel channel is always to allocate a
+single set of ring buffers for the whole system. This scheme is similar
+to the per-user option, but with a single, global user ``running'' the
+kernel.
+
+
+[[channel-er-loss-mode]]
+Event record loss mode
+~~~~~~~~~~~~~~~~~~~~~~
+When LTTng emits an event, LTTng can record it to a specific, available
+sub-buffer within the ring buffers of specific channels. When there's no
+space left in a sub-buffer, the tracer marks it as consumable and
+another, available sub-buffer starts receiving the following event
+records. An LTTng consumer daemon eventually consumes the marked
+sub-buffer, which returns to the available state.
+
+In an ideal world, sub-buffers are consumed faster than they are filled.
+In the real world, however, all sub-buffers can be full at some point,
+leaving no space to record the following events.
+
+By default, LTTng-modules and LTTng-UST are _non-blocking_ tracers: when
+there's no available sub-buffer to record an event, it's acceptable to
+lose event records when the alternative would be to cause substantial
+delays in the execution of the instrumented application. LTTng
+privileges performance over integrity; it aims at perturbing the
+instrumented application as little as possible in order to make the
+detection of subtle race conditions and rare interrupt cascades
+possible.
+
+Since LTTng{nbsp}2.10, the LTTng user space tracer, LTTng-UST, supports
+a _blocking mode_. See the nloption:--blocking-timeout of the
+man:lttng-enable-channel(1) command to learn how to use the blocking
+mode.
+
+When it comes to losing event records because there's no available
+sub-buffer, or because the blocking timeout of the channel is
+reached, the _event record loss mode_ of the channel determines what to
+do. The available event record loss modes are:
+
+Discard mode::
+    Drop the newest event records until a sub-buffer becomes available.
++
+This is the only available mode when you specify a blocking timeout.
++
+With this mode, LTTng increments a count of lost event records when an
+event record is lost and saves this count to the trace. A trace reader
+can use the saved discarded event record count of the trace to decide
+whether or not to perform some analysis even if trace data is known to
+be missing.
+
+Overwrite mode::
+    Clear the sub-buffer containing the oldest event records and start
+    writing the newest event records there.
++
+This mode is sometimes called _flight recorder mode_ because it's
+similar to a https://en.wikipedia.org/wiki/Flight_recorder[flight
+recorder]: always keep a fixed amount of the latest data. It's also
+similar to the roll mode of an oscilloscope.
++
+Since LTTng{nbsp}2.8, with this mode, LTTng writes to a given sub-buffer
+its sequence number within its data stream. With a local, network
+streaming, or live tracing session (see the <<session-modes,Tracing
+session modes>> section above), a trace reader can use such sequence
+numbers to report lost packets. A trace reader can use the saved
+discarded sub-buffer (packet) count of the trace to decide whether or
+not to perform some analysis even if trace data is known to be missing.
++
+With this mode, LTTng doesn't write to the trace the exact number of
+lost event records in the lost sub-buffers.
+
+Which mechanism you should choose depends on your context: prioritize
+the newest or the oldest event records in the ring buffer?
+
+Beware that, in overwrite mode, the tracer abandons a _whole sub-buffer_
+as soon as a there's no space left for a new event record, whereas in
+discard mode, the tracer only discards the event record that doesn't
+fit.
+
+Set the event record loss mode of a channel with the nloption:--discard
+and nloption:--overwrite options of the man:lttng-enable-channel(1)
+command.
+
+There are a few ways to decrease your probability of losing event
+records. The <<channel-sub-buf-size-count,Sub-buffer size and count>>
+section below shows how to fine-tune the sub-buffer size and count of a
+channel to virtually stop losing event records, though at the cost of
+greater memory usage.
+
+
+[[channel-sub-buf-size-count]]
+Sub-buffer size and count
+~~~~~~~~~~~~~~~~~~~~~~~~~
+A channel has one or more ring buffer for each CPU of the target system.
+
+See the <<channel-buf-scheme,Buffering scheme>> section above to learn
+how many ring buffers of a given channel are dedicated to each CPU
+depending on its buffering scheme.
+
+Set the size of each sub-buffer the ring buffers of a channel contain
+with the nloption:--subbuf-size option of the
+man:lttng-enable-channel(1) command.
+
+Set the number of sub-buffers each ring buffer of a channel contains
+with the nloption:--num-subbuf option of the man:lttng-enable-channel(1)
+command.
+
+Note that LTTng switching the current sub-buffer of a ring buffer
+(marking a full one as consumable and switching to an available one for
+LTTng to record the next events) introduces noticeable CPU overhead.
+Knowing this, the following list presents a few practical situations
+along with how to configure the sub-buffer size and count for them:
+
+High event throughput::
+    In general, prefer large sub-buffers to lower the risk of losing
+    event records.
++
+Having larger sub-buffers also ensures a lower sub-buffer switching
+frequency (see the <<channel-timers,Timers>> section below).
++
+The sub-buffer count is only meaningful if you create the channel in
+overwrite mode (see the <<channel-er-loss-mode,Event record loss mode>>
+section above): in this case, if LTTng overwrites a sub-buffer, then the
+other sub-buffers are left unaltered.
+
+Low event throughput::
+    In general, prefer smaller sub-buffers since the risk of losing
+    event records is low.
++
+Because LTTng emits events less frequently, the sub-buffer switching
+frequency should remain low and therefore the overhead of the tracer
+shouldn't be a problem.
+
+Low memory system::
+    If your target system has a low memory limit, prefer fewer first,
+    then smaller sub-buffers.
++
+Even if the system is limited in memory, you want to keep the
+sub-buffers as large as possible to avoid a high sub-buffer switching
+frequency.
+
+Note that LTTng uses https://diamon.org/ctf/[CTF] as its trace format,
+which means event record data is very compact. For example, the average
+LTTng kernel event record weights about 32{nbsp}bytes. Therefore, a
+sub-buffer size of 1{nbsp}MiB is considered large.
+
+The previous scenarios highlight the major trade-off between a few large
+sub-buffers and more, smaller sub-buffers: sub-buffer switching
+frequency vs. how many event records are lost in overwrite mode.
+Assuming a constant event throughput and using the overwrite mode, the
+two following configurations have the same ring buffer total size:
+
+Two sub-buffers of 4{nbsp}MiB each::
+    Expect a very low sub-buffer switching frequency, but if LTTng
+    ever needs to overwrite a sub-buffer, half of the event records so
+    far (4{nbsp}MiB) are definitely lost.
+
+Eight sub-buffers of 1{nbsp}MiB each::
+    Expect four times the tracer overhead of the configuration above,
+    but if LTTng needs to overwrite a sub-buffer, only the eighth of
+    event records so far (1{nbsp}MiB) are definitely lost.
+
+In discard mode, the sub-buffer count parameter is pointless: use two
+sub-buffers and set their size according to your requirements.
+
+
+[[channel-max-trace-file-size-count]]
+Maximum trace file size and count
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By default, trace files can grow as large as needed.
+
+Set the maximum size of each trace file that LTTng writes of a given
+channel with the nloption:--tracefile-size option of the man:lttng-enable-channel(1)
+command.
+
+When the size of a trace file reaches the fixed maximum size of the
+channel, LTTng creates another file to contain the next event records.
+LTTng appends a file count to each trace file name in this case.
+
+If you set the trace file size attribute when you create a channel, the
+maximum number of trace files that LTTng creates is _unlimited_ by
+default. To limit them, use the nloption:--tracefile-count option of
+man:lttng-enable-channel(1). When the number of trace files reaches the
+fixed maximum count of the channel, LTTng overwrites the oldest trace
+file. This mechanism is called _trace file rotation_.
+
+[IMPORTANT]
+====
+Even if you don't limit the trace file count, always assume that LTTng
+manages all the trace files of the tracing session.
+
+In other words, there's no safe way to know if LTTng still holds a given
+trace file open with the trace file rotation feature.
+
+The only way to obtain an unmanaged, self-contained LTTng trace before
+you destroy the tracing session is with the tracing session rotation
+feature (see the <<rotation,Tracing session rotation>> section above),
+which is available since LTTng{nbsp}2.11.
+====
+
+
+[[channel-timers]]
+Timers
+~~~~~~
+Each channel can have up to three optional timers:
+
+Switch timer::
+    When this timer expires, a sub-buffer switch happens: for each ring
+    buffer of the channel, LTTng marks the current sub-buffer as
+    consumable and switches to an available one to record the next
+    events.
++
+A switch timer is useful to ensure that LTTng consumes and commits trace
+data to trace files or to a distant relay daemon (man:lttng-relayd(8))
+periodically in case of a low event throughput.
++
+Such a timer is also convenient when you use large sub-buffers (see the
+<<channel-sub-buf-size-count,Sub-buffer size and count>> section above)
+to cope with a sporadic high event throughput, even if the throughput is
+otherwise low.
++
+Set the period of the switch timer of a channel, or disable the timer
+altogether, with the nloption:--switch-timer option of the
+man:lttng-enable-channel(1) command.
+
+Read timer::
+    When this timer expires, LTTng checks for full, consumable
+    sub-buffers.
++
+By default, the LTTng tracers use an asynchronous message mechanism to
+signal a full sub-buffer so that a consumer daemon can consume it.
++
+When such messages must be avoided, for example in real-time
+applications, use this timer instead.
++
+Set the period of the read timer of a channel, or disable the timer
+altogether, with the nloption:--read-timer option of the
+man:lttng-enable-channel(1) command.
+
+Monitor timer::
+    When this timer expires, the consumer daemon samples some channel
+    (see the <<channel,{sect-channel}>> section above)
+    statistics to evaluate the following trigger conditions:
++
+--
+. The consumed buffer size of a given tracing session becomes greater
+  than some value.
+. The buffer usage of a given channel becomes greater than some value.
+. The buffer usage of a given channel becomes less than some value.
+--
++
+If you disable the monitor timer of a channel{nbsp}__C__:
++
+--
+* The consumed buffer size value of the tracing session of{nbsp}__C__
+  could be wrong for trigger condition type{nbsp}1: the consumed buffer
+  size of{nbsp}__C__ won't be part of the grand total.
+
+* The buffer usage trigger conditions (types{nbsp}2 and{nbsp}3)
+  for{nbsp}__C__ will never be satisfied.
+--
++
+See the <<trigger,TRIGGER>> section above to learn more about triggers.
++
+Set the period of the monitor timer of a channel, or disable the timer
+altogether, with the nloption:--monitor-timer option of the
+man:lttng-enable-channel(1) command.
+
+
+[[recording-event-rule]]
+{sect-recording-event-rule}
+---------------------------
+A _recording event rule_ is a specific type of event rule (see the
+<<"event-rule","{sect-event-rule}">> section above) of which the action is
+to serialize and record the matched event as an _event record_.
+
+Set the explicit conditions of a recording event rule when you create it
+with the man:lttng-enable-event(1) command. A recording event rule also
+has the following implicit conditions:
+
+* The recording event rule itself is enabled.
++
+A recording event rule is enabled on creation.
+
+* The channel to which the recording event rule is attached is enabled.
++
+A channel is enabled on creation.
++
+See the <<channel,{sect-channel}>> section above.
+
+* The tracing session of the recording event rule is active (started).
++
+A tracing session is inactive (stopped) on creation.
++
+See the <<session,{sect-session}>> section above.
+
+* The process for which LTTng creates an event to match is allowed to
+  record events.
++
+All processes are allowed to record events on tracing session
+creation.
++
+Use the man:lttng-track(1) and man:lttng-untrack(1) commands to select
+which processes are allowed to record events based on specific process
+attributes.
+
+You always attach a recording event rule to a channel, which belongs to
+a tracing session, when you create it.
+
+When a recording event rule{nbsp}__ER__ matches an event{nbsp}__E__,
+LTTng attempts to serialize and record{nbsp}__E__ to one of the
+available sub-buffers of the channel to which{nbsp}__E__ is attached.
+
+When multiple matching recording event rules are attached to the same
+channel, LTTng attempts to serialize and record the matched event
+_once_. In the following example, the second recording event rule is
+redundant when both are enabled:
+
+[role="term"]
+----
+$ lttng enable-event --userspace hello:world
+$ lttng enable-event --userspace hello:world --loglevel=TRACE_INFO
+----
+
+List the recording event rules of a specific tracing session
+and/or channel with the man:lttng-list(1) and man:lttng-status(1)
+commands.
+
+Disable a recording event rule with the man:lttng-disable-event(1)
+command.
+
+As of LTTng{nbsp}{lttng_version}, you cannot remove a recording event
+rule: it exists as long as its tracing session exists.
+
+
+include::common-footer.txt[]
+
+
+SEE ALSO
+--------
+man:lttng(1),
+man:lttng-relayd(8),
+man:lttng-sessiond(8)

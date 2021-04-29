@@ -27,7 +27,7 @@ Without the 'COMMAND' argument::
 The `help` command is equivalent to:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] ['COMMAND'] --help
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] ['COMMAND'] nloption:--help
 
 The `help` command attempts to launch `/usr/bin/man` to view this the
 manual page of the command. Override the manual pager path with the

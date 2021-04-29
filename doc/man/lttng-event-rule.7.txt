@@ -1,6 +1,6 @@
 lttng-event-rule(7)
 ===================
-:revdate: 19 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -14,26 +14,26 @@ Specify an event rule to match Linux kernel tracepoint or system call
 events:
 
 [verse]
-option:--domain=kernel option:--type=(tracepoint | syscall[:entry|:exit|:entry+exit])]
+option:--domain=**kernel** option:--type=(**tracepoint** | **syscall**[**:entry**|**:exit**|**pass:[:entry+exit]**])]
 pass:[[]option:--name='NAME'] [option:--filter='EXPR']
 
 Specify an event rule to match Linux kernel kprobe or user space
 probe events:
 
 [verse]
-option:--domain=kernel option:--type=(kprobe | uprobe) option:--location='LOC'
+option:--domain=**kernel** option:--type=(**kprobe** | **uprobe**) option:--location='LOC'
 pass:[[]option:--event-name='EVENTNAME'] [option:--filter='EXPR']
 
 Specify an event rule to match user space tracepoint events:
 
 [verse]
-option:--domain=user [option:--type=tracepoint] [option:--name='NAME'] [option:--exclude-name='XNAME']...
+option:--domain=**user** [option:--type=**tracepoint**] [option:--name='NAME'] [option:--exclude-name='XNAME']...
 pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='EXPR']
 
 Specify an event rule to match Java/Python logging events:
 
 [verse]
-option:--domain=(jul | log4j | python) [option:--type=logging] [option:--name='NAME']
+option:--domain=(**jul** | **log4j** | **python**) [option:--type=**logging**] [option:--name='NAME']
 pass:[[]option:--log-level=('LOGLEVEL' | 'LOGLEVEL'.. | ..)] [option:--filter='EXPR']
 
 
@@ -45,6 +45,9 @@ line.
 As of LTTng{nbsp}{lttng_version}, the command-line options documented
 here only apply to the `event-rule-matches` trigger condition specifier
 (see man:lttng-add-trigger(1)).
+
+See man:lttng-concepts(7) to learn more about instrumentation points,
+events, and event rules.
 
 [NOTE]
 ====
@@ -58,57 +61,8 @@ condition.
 ====
 
 
-Core concepts
-~~~~~~~~~~~~~
-An _instrumentation point_ is a point, within a piece of software,
-which, when executed, creates an LTTng _event_.
-
-LTTng offers various types of instrumentation; see the
-<<inst-point-type-cond,Instrumentation point type condition>> section
-below to learn about them.
-
-An _event rule_ is a set of conditions to match a set of events.
-
-When LTTng creates an event{nbsp}__E__, a event rule{nbsp}__ER__ is said
-to __match__{nbsp}__E__ when{nbsp}__E__ satisfies *all* the conditions
-of{nbsp}__ER__. This concept is similar to a regular expression which
-matches a set of strings.
-
-When an event rule matches an event, LTTng _emits_ the event,
-therefore attempting to execute one or more actions.
-
-[NOTE]
-====
-The event creation and emission processes are documentation concepts to
-help understand the journey from an instrumentation point to the
-execution of actions.
-
-The actual creation of an event can be costly because LTTng needs to
-evalute the arguments of the instrumentation point.
-
-In practice, LTTng implements various optimizations for the Linux kernel
-and user space tracing domains (option:--domain=++kernel++ and
-option:--domain=++user++ options) to avoid actually creating an event
-when the tracer knows, thanks to properties which are independent from
-the event payload and current context, that it would never emit such an
-event. Those properties are:
-
-* The instrumentation point type (see the
-  <<inst-point-type-cond,Instrumentation point type>> section below).
-* The instrumentation point name (or event name)
-  (see the <<event-name-cond,Event name condition>> section below).
-* The instrumentation point log level (see the
-  <<inst-point-log-level-cond,Instrumentation point log level condition>>
-  section below).
-
-In other words: if, for a given instrumentation point{nbsp}__IP__, the
-LTTng tracer knows that it would never emit an event,
-executing{nbsp}__IP__ represents a simple boolean variable check.
-====
-
-
-Event rule overview
-~~~~~~~~~~~~~~~~~~~
+Overview of event rule condtions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 For LTTng to emit an event{nbsp}__E__,{nbsp}__E__ must satisfy *all* the
 conditions of an event rule, that is:
 
@@ -802,7 +756,12 @@ option:-f 'EXPR', option:--filter='EXPR'::
     event payload and current context fields, is _true_.
 
 
+include::common-footer.txt[]
+
+
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-add-trigger(1)
+man:lttng-add-trigger(1),
+man:lttng-concepts(7),
+man:lttng-list(1)

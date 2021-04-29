@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 ====================
-:revdate: 23 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -18,33 +18,27 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng add-trigger` command creates and adds an LTTng _trigger_ to
-the session daemon (see man:lttng-sessiond(8)).
+the connected session daemon (see man:lttng-sessiond(8)).
 
-A trigger is an association between a _condition_ and one or more
-_actions_. When the condition of a trigger{nbsp}__T__ is satisfied,
-LTTng requests to execute the actions of{nbsp}__T__. Depending on the
-rate policy of an action, an execution request can become an actual
-execution.
+See man:lttng-concepts(7) to learn more about LTTng triggers.
 
-A trigger doesn't belong to a specific tracing session: it's global to
-the session daemon. Within the session daemon, and for a given Unix
-user, a trigger has a unique name. By default, the `add-trigger` command
-automatically assigns a name to the added trigger. Use the option:--name
-option to assign a specific name instead.
+By default, the `add-trigger` command automatically assigns a name,
+unique for a given session daemon and Unix user, to the added trigger.
+Assign a custom name with the option:--name.
 
 The `add-trigger` command adds a trigger for your Unix user. If your
-Unix user is `root`, you can add the trigger as another user with the
+Unix user is `root`, you may add the trigger as another user with the
 option:--owner-uid option.
 
 Specify the condition of the trigger to add with a <<cond-spec,condition
 specifier>> and its actions with one or more <<action-spec,action
 specifiers>>. The order of the action specifiers is significant: LTTng
-attempts to execute the actions of a trigger in order.
+attempts to execute the actions of a firing trigger in this order.
 
-List the available triggers for your Unix user (or for all users if your
-Unix user is `root`) with the man:lttng-list-triggers(1) command.
+List the triggers of your Unix user, or of all users if your
+Unix user is `root`, with the man:lttng-list-triggers(1) command.
 
-Remove an existing trigger with the man:lttng-remove-trigger(1) command.
+Remove a trigger with the man:lttng-remove-trigger(1) command.
 
 
 [[cond-spec]]
@@ -65,7 +59,7 @@ The available condition types are:
     Synopsis:
 +
 [verse]
-option:--condition=event-rule-matches [nloption:--capture='CDESCR']... 'ERSPEC'
+option:--condition=**event-rule-matches** [nloption:--capture='CDESCR']... 'ERSPEC'
 {nbsp}
 +
 An `event-rule-matches` condition is considered satisfied when the event
@@ -168,7 +162,7 @@ Notify::
     Synopsis:
 +
 [verse]
-option:--action=notify [nloption:--rate-policy='POLICY']
+option:--action=**notify** [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Sends a notification through the notification
@@ -186,7 +180,7 @@ Start a tracing session::
     Synopsis:
 +
 [verse]
-option:--action=start-session 'SESSION' [nloption:--rate-policy='POLICY']
+option:--action=**start-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Starts the tracing session named 'SESSION' like man:lttng-start(1)
@@ -201,7 +195,7 @@ Stop a tracing session::
     Synopsis:
 +
 [verse]
-option:--action=stop-session 'SESSION' [nloption:--rate-policy='POLICY']
+option:--action=**stop-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Stops the tracing session named 'SESSION' like man:lttng-stop(1) would.
@@ -215,7 +209,7 @@ Rotate a tracing session::
     Synopsis:
 +
 [verse]
-option:--action=rotate-session 'SESSION' [nloption:--rate-policy='POLICY']
+option:--action=**rotate-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Archives the current trace chunk of the tracing session named 'SESSION'
@@ -230,7 +224,7 @@ Take a tracing session snapshot::
     Synopsis:
 +
 [verse]
-option:--action=snapshot-session 'SESSION' [nloption:--rate-policy='POLICY']
+option:--action=**snapshot-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
 Takes a snapshot of the tracing session named 'SESSION' like
@@ -315,5 +309,6 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-list-triggers(1),
 man:lttng-remove-trigger(1)

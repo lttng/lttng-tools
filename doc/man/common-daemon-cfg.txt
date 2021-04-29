@@ -1,0 +1,39 @@
+[[cfg]]
+Daemon configuration
+~~~~~~~~~~~~~~~~~~~~
+When you run +{daemon-bin-name}+, it configures itself from, in this order:
+
+. The INI configuration file +{system_lttng_conf}+, if any.
+
+. The INI configuration file `$LTTNG_HOME/.lttng/lttng.conf`, if any.
++
+`$LTTNG_HOME` defaults to `$HOME`.
+
+. With the option:--config='PATH' option: the INI configuration file
+  'PATH'.
+
+. The command-line options.
+
+Each step can override a previous configuration property.
+
+In INI configuration files, the session daemon only reads the properties
+under the +{daemon-ini-section}+ INI section. Each INI property is:
+
+Key::
+    The long name of a command-line option to set (see the
+    <<options,OPTIONS>> section below).
+
+Value::
+    The selected command-line option accepts an argument:::
+        Option argument (string).
+
+    The selected command-line option is a switch:::
+        `true`::::
+        `yes`::::
+        `on`::::
+            Enable the option.
+
+        `false`::::
+        `no`::::
+        `off`::::
+            Disable the option.

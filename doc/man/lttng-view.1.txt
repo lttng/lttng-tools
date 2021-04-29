@@ -1,6 +1,6 @@
 lttng-view(1)
 =============
-:revdate: 21 April 2021
+:revdate: 29 April 2021
 
 
 NAME
@@ -27,9 +27,8 @@ With the option:--trace-path='DIR' option::
     The local file system directory 'DIR'.
 
 Otherwise::
-    The current tracing session (see man:lttng-create(1) and
-    man:lttng-set-session(1) to learn more about the current tracing
-    session).
+    The current tracing session (see man:concepts(1) to learn more about
+    the current tracing session).
 
 With the option:--session option or without the option:--trace-path
 option, the mode of the selected tracing session may :not: be network

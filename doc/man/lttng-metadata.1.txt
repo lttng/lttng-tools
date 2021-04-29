@@ -1,22 +1,22 @@
 lttng-metadata(1)
 =================
-:revdate: 28 November 2016
+:revdate: 30 April 2021
 
 
 NAME
 ----
-lttng-metadata - Manage an LTTng tracing session's metadata generation
+lttng-metadata - Manage the metadata generation of an LTTng tracing session
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *metadata regenerate* [option:--session='SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *metadata* *regenerate* [option:--session='SESSION']
 
 
 DESCRIPTION
 -----------
-WARNING: This command is **deprecated**; it has been replaced by
+WARNING: This command is **deprecated**; it's been replaced with
 `lttng regenerate metadata` (see man:lttng-regenerate(1)).
 
 
@@ -24,22 +24,13 @@ include::common-cmd-options-head.txt[]
 
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Manage the metadata generation of the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Manage the metadata generation of the tracing session named
+    'SESSION' instead of the current tracing session (see
+    man:lttng-concepts(7) to learn more about the current tracing
+    session).
 
 
 include::common-cmd-help-options.txt[]
-
-
-LIMITATIONS
------------
-The `lttng metadata regenerate` command can only be used on kernel and
-user space tracing sessions (using per-user buffering), in non-live
-mode.
-
-See man:lttng-enable-channel(1) for more information about
-buffering schemes and man:lttng-create(1) for more information
-about the different tracing session modes.
 
 
 include::common-cmd-footer.txt[]
@@ -47,4 +38,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng(1)
+man:lttng(1),
+man:lttng-concepts(7),
+man:lttng-regenerate(1)

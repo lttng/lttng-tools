@@ -1,6 +1,6 @@
 lttng-disable-event(1)
 ======================
-:revdate: 21 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -33,7 +33,22 @@ DESCRIPTION
 -----------
 The `lttng disable-event` command disables one or more enabled recording
 event rules previously created with the man:lttng-enable-event(1)
-command.
+command which belong to:
+
+With the option:--session='SESSION' option::
+    The tracing session named 'SESSION'.
+
+Without the option:--session option::
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
+
+With the option:--channel='CHANNEL' option::
+    The channel named 'CHANNEL'.
+
+Without the option:--channel option::
+    The channel named `channel0`.
+
+See man:lttng-concepts(7) to learn more about recording event rules.
 
 As of LTTng{nbsp}{lttng_version}, the `disable-event` command can only
 find recording event rules to disable by their instrumentation point
@@ -41,7 +56,7 @@ type and event name conditions. Therefore, you cannot disable recording
 event rules having a specific instrumentation point log level condition,
 for example.
 
-List the existing recording event rules of a given tracing session
+List the recording event rules of a given tracing session
 and/or channel with the man:lttng-list(1) command.
 
 Without the option:--all-events option, the `disable-event` command
@@ -49,14 +64,6 @@ disables one recording event rule per 'NAME' argument. 'NAME' is the
 exact event name condition pattern of the recording event rule to
 disable, as listed in the output of `lttng list` (see
 man:lttng-list(1)).
-
-Without the option:--channel option, the `disable-event` command selects
-the channel named `channel0`.
-
-Without the option:--session option, the `disable-event` command selects
-the current tracing session (see man:lttng-create(1) and
-man:lttng-set-session(1) to learn more about the current tracing
-session).
 
 You may disable an enabled recording event rule regardless of the
 activity (started or stopped) of its tracing session (see
@@ -137,7 +144,7 @@ Event name condition
 ~~~~~~~~~~~~~~~~~~~~
 option:-a, option:--all-events::
     Disable recording event rules regardless of their event name
-    condition is.
+    condition.
 
 
 include::common-cmd-help-options.txt[]
@@ -149,5 +156,6 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-enable-event(1),
 man:lttng-list(1)

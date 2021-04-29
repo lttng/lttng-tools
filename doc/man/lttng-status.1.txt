@@ -1,6 +1,6 @@
 lttng-status(1)
 ===============
-:revdate: 21 April 2021
+:revdate: 29 April 2021
 
 
 NAME
@@ -17,8 +17,8 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng status` command shows the status of the current tracing
-session (see man:lttng-create(1) and man:lttng-set-session(1) to learn
-more about the current tracing session).
+session (see man:lttng-concepts(7) to learn more about the current
+tracing session).
 
 This command is equivalent to:
 
@@ -40,6 +40,7 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-create(1),
 man:lttng-list(1),
 man:lttng-set-session(1)

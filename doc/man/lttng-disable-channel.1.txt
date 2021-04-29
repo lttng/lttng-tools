@@ -1,6 +1,6 @@
 lttng-disable-channel(1)
 ========================
-:revdate: 21 April 2021
+:revdate: 29 April 2021
 
 NAME
 ----
@@ -17,13 +17,17 @@ SYNOPSIS
 DESCRIPTION
 -----------
 The `lttng disable-channel` command disables one or more channels
-previously enabled with the man:lttng-enable-channel(1) command.
+previously enabled with the man:lttng-enable-channel(1) command
+which belong to:
 
-A channel always belongs to a tracing session (see man:lttng-create(1)
-to create a tracing session). Without the option:--session option, the
-`disable-channel` command disables one or more channels of the current
-tracing session (see man:lttng-create(1) and man:lttng-set-session(1) to
-learn more about the current tracing session).
+With the option:--session='SESSION' option::
+    The tracing session named 'SESSION'.
+
+Without the option:--session option::
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
+
+See man:lttng-concepts(7) to learn more about channels.
 
 The `disable-channel` command disables one channel per 'CHANNEL'
 argument.
@@ -47,8 +51,8 @@ option:-u, option:--userspace::
     Disable one or more user space channels.
 
 
-Target
-~~~~~~
+Recording target
+~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
     Disable one or more channels of the tracing session named 'SESSION'
     instead of the current tracing session.
@@ -63,4 +67,5 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-enable-channel(1)

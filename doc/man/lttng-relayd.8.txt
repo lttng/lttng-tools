@@ -1,11 +1,13 @@
 lttng-relayd(8)
 ===============
-:revdate: 2 April 2020
+:revdate: 30 April 2021
+:daemon-bin-name: lttng-relayd
+:daemon-ini-section: relayd
 
 
 NAME
 ----
-lttng-relayd - LTTng 2 relay daemon
+lttng-relayd - LTTng relay daemon
 
 
 SYNOPSIS
@@ -13,39 +15,52 @@ SYNOPSIS
 [verse]
 *lttng-relayd* [option:--background | option:--daemonize] [option:--config='PATH']
              [option:--control-port='URL'] [option:--data-port='URL'] [option:--fd-pool-size='COUNT']
-             [option:--live-port='URL'] [option:--output='PATH']
-             [option:-v | option:-vv | option:-vvv] [option:--working-directory='PATH']
-             [option:--group-output-by-session] [option:--disallow-clear]
+             [option:--live-port='URL'] [option:--output='DIR'] [option:--group='GROUP']
+             [option:--verbose]... [option:--working-directory='DIR']
+             [option:--group-output-by-host | option:--group-output-by-session] [option:--disallow-clear]
 
 
 DESCRIPTION
 -----------
-The https://lttng.org/[_Linux Trace Toolkit: next generation_] is an open
-source software package used for correlated tracing of the Linux kernel,
-user applications, and user libraries.
+include::common-intro.txt[]
 
-LTTng consists of Linux kernel modules (for Linux kernel tracing) and
-dynamically loaded libraries (for user application and library tracing).
+An LTTng relay daemon, `lttng-relayd`, is a program which receives trace
+data from (possibly remote) LTTng session/consumer daemons and which
+writes it to the local file system. The relay daemon also accepts LTTng
+live connections from compatible readers (for example,
+man:babeltrace2(1)); this is the recommended approach to read trace data
+while the remote tracing session is active.
 
-The _LTTng relay daemon_ is responsible for receiving trace data from
-possibly remote LTTng session/consumer daemons and for writing it to
-the local file system. The relay daemon also accepts _LTTng live_
-connections from compatible viewers; this is the official approach to
-viewing LTTng events as they are emitted.
+By default, a relay daemon listens on all network interfaces to receive
+trace data, but only on `localhost` for LTTng live connections. Override
+the listening URLs with the option:--control-port, option:--data-port,
+and option:--live-port options (see the <<url-format,URL format>>
+section below). For example, use the
+option:--live-port=+tcp://0.0.0.0:{default_network_viewer_port}+ option
+to make a relay daemon listen to LTTng live connections on all network
+interfaces.
 
-The relay daemon listens by default on all network interfaces to gather
-trace data, but only on localhost for LTTng live connections.
+Once LTTng has completely sent a trace to a relay daemon{nbsp}__RD__,
+any LTTng trace reader can read the trace located on the local file
+system of{nbsp}__RD__.
 
-The relay daemon does not require any particular permissions, as long as
-it can write to the output directory and listen on the configured ports.
-If a user is within a secured network and/or has proper firewall
-settings, `lttng-relayd` can listen to LTTng live connections from _all_
-network interfaces by specifying
-+--live-port=tcp://0.0.0.0:{default_network_viewer_port}+.
+By default, `lttng-relayd` doesn't start as a daemon. Make it a daemon
+with the option:--daemonize or option:--background option. With those
+options, `lttng-relayd` ensures the daemon is listening to incoming
+connections before it exits.
 
-Once a trace has been streamed completely, the trace can be processed by
-any tool that can process an LTTng trace located on the local
-file system.
+
+include::common-daemon-cfg.txt[]
+
+INI configuration file example:
+
+[source,ini]
+----
+[relayd]
+daemonize=yes
+live-port=tcp://0.0.0.0:4567
+disallow-clear=yes
+----
 
 
 [[output-directory]]
@@ -54,20 +69,21 @@ Output directory
 The relay daemon uses different output path patterns depending on:
 
 * Its configuration.
-* The connected peer's tracing session configuration.
-* The connected peer's LTTng session daemon (see man:lttng-sessiond(8))
-  version.
++
+See the <<cfg,Daemon configuration>> section above.
+
+* The tracing session configuration of the connected peer.
+* The LTTng session daemon (see man:lttng-sessiond(8)) version
+  of the connected peer.
 
 Consider the following variables:
 
 'BASE'::
-    Base output directory: `$LTTNG_HOME/lttng-traces` or the
-    argument of the option:--output option.
-+
-NOTE: `$LTTNG_HOME` defaults to `$HOME`.
+    Base output directory: `$LTTNG_HOME/lttng-traces` (`$LTTNG_HOME`
+    defaults to `$HOME`) or the argument of the option:--output option.
 
 'HOSTNAME'::
-    Peer's hostname.
+    Hostname of the connected peer.
 
 'SESSION'::
     Tracing session name.
@@ -75,68 +91,61 @@ NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 'DATETIME'::
     Unique tracing session date/time.
 
-'TRACEPATH'::
-    Custom trace path ('TRACEPATH' part of the man:lttng-create(1)
-    command's nloption:--set-url option's argument, if any).
+'TRACEDIR'::
+    Custom trace directory path ('TRACEDIR' part of the argument of the
+    nloption:--set-url option of the man:lttng-create(1) command, if
+    any).
+
+'SESSIONDV'::
+    The version of the LTTng session daemon of the connected peer.
 
 The relay daemon output path patterns are:
 
-Hostname grouping (without option:--group-output-by-session)::
-    Without a custom trace path:::
+With the option:--group-output-by-host option (hostname grouping)::
+    Without a custom trace directory:::
 +
---
 [verse]
 'BASE'/'HOSTNAME'/'SESSION'-'DATETIME'
---
 
-With a custom trace path:::
+With a custom trace directory:::
 +
---
 [verse]
-'BASE'/'HOSTNAME'/'TRACEPATH'
---
+'BASE'/'HOSTNAME'/'TRACEDIR'
 
-Tracing session grouping (with option:--group-output-by-session)::
-    Without a custom trace path:::
-        The peer's LTTng session daemon version is at least 2.4::::
+With the option:--group-output-by-session option (tracing session grouping)::
+    Without a custom trace directory:::
+        'SESSIONDV' is at least{nbsp}2.4::::
 +
---
 [verse]
 'BASE'/'SESSION'/'HOSTNAME'-'DATETIME'
---
 
 Otherwise::::
     Defaults to the hostname grouping pattern:
 +
---
 [verse]
 'BASE'/'HOSTNAME'/'SESSION'-'DATETIME'
---
 
-With a custom trace path:::
-    The peer's LTTng session daemon version is at least 2.4::::
+With a custom trace directory:::
+    'SESSIONDV' is at least 2.4::::
 +
---
 [verse]
-'BASE'/'SESSION'/'HOSTNAME'-'DATETIME'/'TRACEPATH'
---
+'BASE'/'SESSION'/'HOSTNAME'-'DATETIME'/'TRACEDIR'
 
 Otherwise::::
     Defaults to the hostname grouping pattern:
 +
---
 [verse]
-'BASE'/'HOSTNAME'/'TRACEPATH'
---
+'BASE'/'HOSTNAME'/'TRACEDIR'
 
 
 [[url-format]]
 URL format
 ~~~~~~~~~~
-The option:--control-port, option:--data-port, and option:--live-port
-options specify URLs.
+The argument of the option:--control-port='URL',
+option:--data-port='URL', and option:--live-port='URL' options is an
+URL.
 
-The format of those URLs is:
+The format of 'URL' is:
 
 [verse]
 tcp://('HOST' | 'IPADDR'):__PORT__
@@ -144,30 +153,43 @@ tcp://('HOST' | 'IPADDR'):__PORT__
 with:
 
 ('HOST' | 'IPADDR')::
-    Binding hostname or IP address (IPv6 address *must* be enclosed in
-    brackets (`[` and `]`); see
-    https://www.ietf.org/rfc/rfc2732.txt[RFC 2732]).
+    Binding hostname or IP address.
++
+IPv6 address must be enclosed in square brackets (`[` and{nbsp}`]`);
+see https://www.ietf.org/rfc/rfc2732.txt[RFC{nbsp}2732].
 
 'PORT'::
     TCP port.
 
 
+[[options]]
 OPTIONS
 -------
-Daemon
-~~~~~~
+General daemon configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 option:-b, option:--background::
-    Start as Unix daemon, but keep file descriptors (console) open.
-    Use the option:--daemonize option instead to close the file
-    descriptors.
+    Start as a Unix daemon, but keep file descriptors (console) open.
++
+With this option, `lttng-relayd` ensures the daemon is listening
+to incoming connections before it exits.
++
+Use the option:--daemonize option instead to close the file descriptors.
 
 option:-f 'PATH', option:--config='PATH'::
-    Load relay daemon configuration from path 'PATH'.
+    Configure the daemon using the INI configuration file 'PATH' in
+    addition to the default configuration files and the command-line
+    options.
++
+See the <<cfg,Daemon configuration>> section above.
 
 option:-d, option:--daemonize::
-    Start as Unix daemon, and close file descriptors (console). Use the
-    option:--background option instead to keep the file descriptors
-    open.
+    Start as a Unix daemon and close file descriptors (console).
++
+With this option, `lttng-relayd` ensures the daemon is listening
+to incoming connections before it exits.
++
+Use the option:--background option instead to keep the file descriptors
+open.
 
 option:-x, option:--disallow-clear::
     Disallow clearing operations (see man:lttng-clear(1)).
@@ -175,161 +197,183 @@ option:-x, option:--disallow-clear::
 See also the `LTTNG_RELAYD_DISALLOW_CLEAR` environment variable.
 
 option:--fd-pool-size='SIZE'::
-    Set the size of the file descriptor pool to 'SIZE'.
+    Set the size of the file descriptor pool to 'SIZE' file descriptors.
 +
-'SIZE' is the maximum number of file descriptors that may be kept opened
-simultaneously by the relay daemon.
+'SIZE' is the maximum number of file descriptors that the relay daemon
+may keep open simultaneously.
 +
 Default: the soft `RLIMIT_NOFILE` resource limit of the process (see
 man:getrlimit(2)).
 
 option:-g 'GROUP', option:--group='GROUP'::
-    Use 'GROUP' as Unix tracing group (default: `tracing`).
+    Set the Unix tracing group to 'GROUP' instead of `tracing`.
++
+This option is only meaningful when the `root` Unix user starts
+`lttng-relayd`.
++
+Members of the Unix tracing group may connect to the health check socket
+of the relay daemon.
++
+See also the `LTTNG_RELAYD_HEALTH` environment variable.
 
-option:-w 'PATH', option:--working-directory='PATH'::
+option:-w 'DIR', option:--working-directory='DIR'::
     Set the working directory of the processes the relay daemon creates
-    to 'PATH'.
+    to 'DIR'.
 +
 See also the `LTTNG_RELAYD_WORKING_DIRECTORY` environment variable.
 
 option:-v, option:--verbose::
     Increase verbosity.
 +
-Three levels of verbosity are available, which are triggered by
-appending additional `v` letters to the option
-(that is, `-vv` and `-vvv`).
+Specify this option up to three times to get more levels of verbosity.
 
 
 Output
 ~~~~~~
-See the <<output-directory,Output directory>> section above for more
-information.
+See the <<output-directory,Output directory>> section above to learn
+more.
 
 option:-p, option:--group-output-by-host::
-    Group the written trace directories by hostname (default).
+    Group the written trace directories by hostname.
++
+As of LTTng{nbsp}{lttng_version}, this is the default output grouping
+strategy, but this may change in the future.
 
 option:-s, option:--group-output-by-session::
     Group the written trace directories by tracing session name instead
     of by hostname.
 
-option:-o 'PATH', option:--output='PATH'::
+option:-o 'DIR', option:--output='DIR'::
     Set the base output directory of the written trace directories to
-    'PATH'.
+    'DIR'.
 
 
 Ports
 ~~~~~
-See the <<url-format,URL format>> section above for more information
-about the syntax of the following 'URL' argument.
+See the <<url-format,URL format>> section above to learn more about the
+syntax of the 'URL' argument of the following options.
 
 option:-C 'URL', option:--control-port='URL'::
-    Listen to control data on URL 'URL' (default:
-    +tcp://{default_network_control_bind_address}:{default_network_control_port}+).
+    Listen to control data on URL 'URL'.
++
+Default:
++tcp://{default_network_control_bind_address}:{default_network_control_port}+.
 
 option:-D 'URL', option:--data-port='URL'::
-    Listen to trace data on URL 'URL' (default:
-    +tcp://{default_network_data_bind_address}:{default_network_data_port}+).
+    Listen to trace data on URL 'URL'.
++
+Default:
++tcp://{default_network_data_bind_address}:{default_network_data_port}+.
 
 option:-L 'URL', option:--live-port='URL'::
-    Listen to LTTng live connections on URL 'URL'
-    (default:
-    +tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+).
+    Listen to LTTng live connections on URL 'URL'.
++
+Default:
++tcp://{default_network_viewer_bind_address}:{default_network_viewer_port}+.
 
 
 Program information
 ~~~~~~~~~~~~~~~~~~~
-option:-h, option:--help::
-    Show help.
+include::common-help-option.txt[]
 
 option:-V, option:--version::
-    Show version.
+    Show version and quit.
 
 
 ENVIRONMENT VARIABLES
 ---------------------
 `LTTNG_ABORT_ON_ERROR`::
-    Set to 1 to abort the process after the first error is encountered.
+    Set to `1` to abort the process after the first error is
+    encountered.
 
 `LTTNG_NETWORK_SOCKET_TIMEOUT`::
-    Socket connection, receive and send timeout (milliseconds). A value
-    of 0 or -1 uses the timeout of the operating system (default).
+    Socket connection, receive, and send timeout (milliseconds).
++
+Set to `0` or `-1` to set an infinite timeout (default).
 
 `LTTNG_RELAYD_DISALLOW_CLEAR`::
-    Set to 1 to disallow clearing operations (see man:lttng-clear(1)).
+    Set to `1` to disallow clearing operations (see man:lttng-clear(1)).
 +
-The option:--disallow-clear option overrides this variable.
+The option:--disallow-clear option overrides this environment variable.
 
 `LTTNG_RELAYD_HEALTH`::
-    Path to relay daemon health's socket.
+    Path to the health check socket of the relay daemon.
 
 `LTTNG_RELAYD_TCP_KEEP_ALIVE`::
-    Set to 1 to enable TCP keep-alive.
+    Set to `1` to enable TCP keep-alive.
 +
 The TCP keep-alive mechanism allows the detection of dead peers
-(man:lttng-sessiond(8)) in cases of unclean termination
-(for example, a hard reset) of a peer.
+(man:lttng-sessiond(8)) in cases of unclean termination (for example, a
+hard reset) of a peer.
 +
 Supported on Linux and Solaris only. The default behaviour of the TCP
 keep-alive mechanism is OS-specific.
 +
-Search for `tcp_keepalive` in man:tcp(7) for more information.
+Search for `tcp_keepalive` in man:tcp(7) to learn more.
 
 `LTTNG_RELAYD_TCP_KEEP_ALIVE_ABORT_THRESHOLD`::
-   The time threshold in seconds to abort a TCP connection after the keep-alive
-   probing mechanism has failed.
+   The time threshold (seconds) to abort a TCP connection after the
+   keep-alive probing mechanism has failed.
 +
-Set to 0 or -1 to use the value chosen by the operating system (default).
+Set to `0` or `-1` to use the value chosen by the operating system
+(default).
 +
 Supported on Solaris 11 only.
 +
-Search for `tcp_keepalive_abort_threshold` in man:tcp(7) for more information.
+Search for `tcp_keepalive_abort_threshold` in man:tcp(7) to learn more.
 
 `LTTNG_RELAYD_TCP_KEEP_ALIVE_IDLE_TIME`::
     Number of seconds a connection needs to be idle before TCP begins
     sending out keep-alive probes.
 +
-Set to 0 or -1 to use the value chosen by the operating system (default).
+Set to `0` or `-1` to use the value chosen by the operating system
+(default).
 +
 Supported on Linux and Solaris 11 only.
 +
-On Solaris{nbsp}11, the accepted values are -1, 0, and 10 to 864000.
+On Solaris{nbsp}11, the accepted values are `-1`, `0`, and `10` to
+`864000`.
 +
 Search for `tcp_keepalive_time` and `tcp_keepalive_interval`
-in man:tcp(7) on Solaris 11 for more information.
+in man:tcp(7) on Solaris{nbsp}11 to learn more.
 
 `LTTNG_RELAYD_TCP_KEEP_ALIVE_MAX_PROBE_COUNT`::
     Maximum number of TCP keep-alive probes to send before giving up and
     killing the connection if no response is obtained from the other end.
 +
-Set to 0 or -1 to use the value chosen by the operating system (default).
+Set to `0` or `-1` to use the value chosen by the operating system
+(default).
 +
 Supported on Linux only.
 +
-Search for `tcp_keepalive_probes` in man:tcp(7) for more information.
+Search for `tcp_keepalive_probes` in man:tcp(7) to learn more.
 
 `LTTNG_RELAYD_TCP_KEEP_ALIVE_PROBE_INTERVAL`::
     Number of seconds between TCP keep-alive probes.
 +
-Set to 0 or -1 to use the value chosen by the operating system (default).
+Set to `0` or `-1` to use the value chosen by the operating system
+(default).
 +
 Supported on Linux only.
 +
-Search for `tcp_keepalive_intvl` in man:tcp(7) for more information.
+Search for `tcp_keepalive_intvl` in man:tcp(7) to learn more.
 
 `LTTNG_RELAYD_WORKING_DIRECTORY`::
     Working directory of the processes the relay daemon creates.
 +
-The option:--working-directory option overrides this variable.
+The option:--working-directory option overrides this environment
+variable.
 
 
 FILES
 -----
 `$LTTNG_HOME/.lttng`::
-    User LTTng runtime and configuration directory.
+    Unix user's LTTng runtime and configuration directory.
 
 `$LTTNG_HOME/lttng-traces`::
-    Default base output directory of LTTng traces. This can be
-    overridden with the option:--output option.
+    Default base output directory of LTTng traces.
++
+Override this path with the option:--output option.
 
 NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 
@@ -346,19 +390,6 @@ EXIT STATUS
     Fatal error
 
 
-LIMITATIONS
------------
-As of this version, only the TCP protocol is supported for both control
-and data ports. In future versions, TCP will remain the sole available
-protocol for control data since those communications are low-volume and
-need absolute reliability; trace data could be carried over UDP.
-
-For an unprivileged user running `lttng-relayd`, the maximum number of
-file descriptors per process is usually 1024. This limits the number of
-connections and opened trace files. This limit can be configured with
-*ulimit*(3).
-
-
 include::common-footer.txt[]
 
 
@@ -366,6 +397,4 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-sessiond(8),
-man:lttng-crash(1),
-man:lttng-ust(3),
 man:babeltrace2(1)
