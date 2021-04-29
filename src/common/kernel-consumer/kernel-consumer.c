@@ -1611,8 +1611,15 @@ int put_next_subbuffer(struct lttng_consumer_stream *stream,
 static
 bool is_get_next_check_metadata_available(int tracer_fd)
 {
-	return kernctl_get_next_subbuf_metadata_check(tracer_fd, NULL) !=
-			-ENOTTY;
+	const int ret = kernctl_get_next_subbuf_metadata_check(tracer_fd, NULL);
+	const bool available = ret != -ENOTTY;
+
+	if (ret == 0) {
+		/* get succeeded, make sure to put the subbuffer. */
+		kernctl_put_subbuf(tracer_fd);
+	}
+
+	return available;
 }
 
 static
