@@ -1,11 +1,11 @@
 lttng-disable-rotation(1)
 =========================
-:revdate: 21 April 2021
+:revdate: 30 April 2021
 
 
 NAME
 ----
-lttng-disable-rotation - Unset a tracing session rotation schedule
+lttng-disable-rotation - Unset an LTTng tracing session rotation schedule
 
 
 SYNOPSIS
@@ -24,9 +24,11 @@ With the option:--session='SESSION' option::
     The tracing session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-create(1) and
-    man:lttng-set-session(1) to learn more about the current tracing
-    session).
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
+
+See man:lttng-concepts(7) to learn more about the tracing session
+rotation and trace chunk concepts.
 
 
 include::common-cmd-options-head.txt[]

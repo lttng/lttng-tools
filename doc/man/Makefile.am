@@ -41,7 +41,7 @@ MAN1_NAMES = \
 	lttng-remove-trigger \
 	lttng-list-triggers
 MAN3_NAMES =
-MAN7_NAMES = lttng-event-rule
+MAN7_NAMES = lttng-event-rule lttng-concepts
 MAN8_NAMES = lttng-sessiond lttng-relayd
 MAN1_NO_ASCIIDOC_NAMES =
 MAN3_NO_ASCIIDOC_NAMES = lttng-health-check
@@ -63,7 +63,8 @@ COMMON_TXT = \
 	$(srcdir)/common-cmd-options-head.txt \
 	$(srcdir)/common-cmd-help-options.txt \
 	$(srcdir)/common-help-option.txt \
-	$(srcdir)/common-intro.txt
+	$(srcdir)/common-intro.txt \
+	$(srcdir)/common-daemon-cfg.txt
 
 # config
 ASCIIDOC_CONF = $(srcdir)/asciidoc.conf

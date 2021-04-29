@@ -1,6 +1,6 @@
 lttng-set-session(1)
 ====================
-:revdate: 21 April 2021
+:revdate: 29 April 2021
 
 
 NAME
@@ -19,36 +19,14 @@ DESCRIPTION
 The `lttng set-session` command sets the current tracing session of your
 Unix user to the tracing session named 'SESSION'.
 
-See man:lttng-create(1) to learn more about the current tracing session.
-
-The following man:lttng(1) commands select the current tracing session
-if you don't specify one:
-
-* man:lttng-add-context(1)
-* man:lttng-clear(1)
-* man:lttng-destroy(1)
-* man:lttng-disable-channel(1)
-* man:lttng-disable-event(1)
-* man:lttng-disable-rotation(1)
-* man:lttng-enable-channel(1)
-* man:lttng-enable-event(1)
-* man:lttng-enable-rotation(1)
-* man:lttng-regenerate(1)
-* man:lttng-rotate(1)
-* man:lttng-save(1)
-* man:lttng-snapshot(1)
-* man:lttng-start(1)
-* man:lttng-status(1)
-* man:lttng-stop(1)
-* man:lttng-track(1)
-* man:lttng-untrack(1)
-* man:lttng-view(1)
+See man:lttng-concepts(7) to learn more about the current tracing session.
 
 The `set-session` command effectively updates the `$LTTNG_HOME/.lttngrc`
 file.
 
-List the tracing sessions of your Unix user with the man:lttng-list(1)
-command.
+List the tracing sessions of your Unix user, or of all users if
+your Unix user is `root`, within the connected session daemon with the
+man:lttng-list(1) command.
 
 
 include::common-cmd-options-head.txt[]
@@ -62,6 +40,7 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
+man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-create(1),
-man:lttng-destroy(1),
-man:lttng(1)
+man:lttng-destroy(1)

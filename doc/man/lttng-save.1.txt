@@ -1,6 +1,6 @@
 lttng-save(1)
 =============
-:revdate: 28 November 2016
+:revdate: 3 May 2021
 
 
 NAME
@@ -11,49 +11,62 @@ lttng-save - Save LTTng tracing session configurations
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='PATH'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='DIR'] ['SESSION']
 
 
 DESCRIPTION
 -----------
-The `lttng save` command saves the configurations of one or more
-tracing sessions to files.
+The `lttng save` command saves to files the configurations of:
 
-The `lttng save` command is used in conjunction with the
-man:lttng-load(1) command to save and restore the complete
-configurations of tracing sessions. This includes the enabled channels
-and recording event rules, the context added to channels, the tracing
-activity, and more. `lttng save` does not save tracing data, only the
-tracing session parameters.
+With the 'SESSION' argument::
+	The tracing session named 'SESSION'.
 
-If 'SESSION' is omitted, all the existing tracing session configurations
-are saved (equivalent to using the option:--all option). Otherwise,
-'SESSION' is the name of an existing tracing session. `lttng list`
-outputs all the existing tracing sessions (see man:lttng-list(1)).
+Without the 'SESSION' argument::
+    *All* the tracing sessions of the connected session daemon for your
+    Unix user, or for all users if your Unix user is `root`, as listed
+    in the output of `lttng list` (see man:lttng-list(1)).
++
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
+
+See man:lttng-concepts(7) to learn more about tracing sessions.
+
+Use the `save` command in conjunction with the man:lttng-load(1) command
+to save and restore the complete configurations of tracing sessions.
+
+The `save` command does :not: save tracing data, only the tracing
+session parameters, including the channel and recording event rule
+configurations.
 
 The default output directory path is `$LTTNG_HOME/.lttng/sessions`
-(`$LTTNG_HOME` defaults to `$HOME`). Each tracing session configuration
-file is named `SESSION.lttng`, where `SESSION` is the original tracing
-session name. The default output directory path can be overridden with
-the option:--output-path option.
+(`$LTTNG_HOME` defaults to `$HOME`). Override the default output
+directory path with the option:--output-path option. Each tracing
+session configuration file is named __SNAME__++.lttng++,
+where{nbsp}__SNAME__ is the original tracing session name.
 
-By default, existing tracing session configuration files are not
-overwritten when saving; the command fails. The option:--force option
-can be used to allow this.
+By default, the `save` command does :not: overwrite existing tracing
+session configuration files: the command fails. Allow the `save` command
+to overwrite existing tracing session configuration files with the
+option:--force option.
 
 
 include::common-cmd-options-head.txt[]
 
 
 option:-a, option:--all::
-    Save all tracing session configurations (default).
+    Save all the tracing session configurations of your Unix user, or of
+    all users if your Unix user is `root`, as listed in the output of
+    man:lttng-list(1), instead of the current tracing session or the
+    tracing session named 'SESSION'.
 
 option:-f, option:--force::
     Overwrite existing tracing session configuration files when
     saving.
 
-option:-o 'PATH', option:--output-path='PATH'::
-    Set output directory path to 'PATH'.
+option:-o 'DIR', option:--output-path='DIR'::
+    Save tracing session configuration files to the directory 'DIR'
+    instead of `$LTTNG_HOME/.lttng/sessions` (`$LTTNG_HOME` defaults to
+    `$HOME`).
 
 
 include::common-cmd-help-options.txt[]
@@ -64,5 +77,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-load(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-concepts(7),
+man:lttng-load(1)

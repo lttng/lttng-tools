@@ -22,8 +22,8 @@ directory.
     configuration XML schema.
 
 `LTTNG_SESSIOND_PATH`::
-    Absolute path to the LTTng session daemon (see
-    man:lttng-sessiond(8)) binary.
+    Absolute path to the LTTng session daemon binary (see
+    man:lttng-sessiond(8)).
 +
 The genoption:--sessiond-path general option overrides this environment
 variable.

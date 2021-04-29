@@ -1,6 +1,6 @@
 lttng-enable-event(1)
 =====================
-:revdate: 13 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -50,98 +50,42 @@ The `lttng enable-event` command does one of:
 
 * Create one or more recording event rules.
 
-* Enable one or more existing, disabled recording event rules.
+* Enable one or more disabled recording event rules.
 +
 See the <<enable,Enable a disabled recording event rule>> section
 below.
 
-An _instrumentation point_ is a point, within a piece of software,
-which, when executed, creates an LTTng _event_.
+See man:lttng-concepts(7) to learn more about instrumentation points,
+events, recording event rules, and event records.
 
-LTTng offers various types of instrumentation; see the
-<<inst-point-type-cond,Instrumentation point type condition>> section
-below to learn about them.
+The recording event rule(s) to create or enable belong to:
 
-An _event rule_ is a set of conditions to match a set of events. A
-_recording event rule_ is a specific type of event rule of which the
-associated action is to serialize and record the matched event.
+With the option:--session='SESSION' option::
+    The tracing session named 'SESSION'.
 
-When LTTng creates an event{nbsp}__E__, a recording event
-rule{nbsp}__ER__ is said to __match__{nbsp}__E__ when{nbsp}__E__
-satisfies *all* the conditions of{nbsp}__ER__. This concept is similar
-to a regular expression which matches a set of strings.
+Without the option:--session option::
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
 
-When a recording event rule matches an event, LTTng _emits_ the event,
-therefore attempting to serialize and record it to one of the
-sub-buffers of its attached channel (see man:lttng-enable-channel(1) to
-learn more about LTTng channels).
+With the option:--channel='CHANNEL' option::
+    The channel named 'CHANNEL'.
 
-Without the option:--channel option, the `enable-event` command selects
-the channel named `channel0`. When the `enable-event` command creates a
-recording event rule, it automatically creates the `channel0` channel
-(for the specified tracing domain in the selected tracing session) if it
-doesn't exist.
+Without the option:--channel option::
+    The channel named `channel0`.
++
+If such a channel doesn't exist, the `enable-event` automatically
+creates it.
 
-When multiple matching recording event rules are attached to the same
-channel, LTTng attempts to serialize and record the matched event
-_once_. In the following example, the second recording event
-rule is redundant when both are enabled:
+List the recording event rules of a specific tracing session
+and/or channel with the man:lttng-list(1) and man:lttng-status(1)
+commands.
 
-[role="term"]
-----
-$ lttng enable-event --userspace hello:world
-$ lttng enable-event --userspace hello:world --loglevel=TRACE_INFO
-----
-
-Without the option:--session option, the `enable-event` command selects
-the current tracing session (see man:lttng-create(1) and
-man:lttng-set-session(1) to learn more about the current tracing
-session).
-
-[NOTE]
-====
-The event creation and emission processes are documentation concepts to
-help understand the journey from an instrumentation point to the
-serialization and recording of an event.
-
-The actual creation of an event can be costly because LTTng needs to
-evalute the arguments of the instrumentation point.
-
-In practice, LTTng implements various optimizations for the Linux kernel
-and user space tracing domains (option:--kernel and option:--userspace
-options) to avoid actually creating an event when the tracer knows,
-thanks to properties which are independent from the event payload and
-current context, that it would never emit such an event. Those
-properties are:
-
-* The status of the rule itself (enabled or disabled).
-* The status of the channel (enabled or disabled; see
-  man:lttng-enable-channel(1) and man:lttng-disable-channel(1)).
-* The activity of the tracing session (started or stopped; see
-  man:lttng-start(1) and man:lttng-stop(1)).
-* The instrumentation point type (see the
-  <<inst-point-type-cond,Instrumentation point type>> section below).
-* The instrumentation point name (or event name)
-  (see the <<event-name-cond,Event name condition>> section below).
-* The instrumentation point log level (see the
-  <<inst-point-log-level-cond,Instrumentation point log level condition>>
-  section below).
-
-In other words: if, for a given instrumentation point{nbsp}__IP__, the
-LTTng tracer knows that it would never emit and record an event,
-executing{nbsp}__IP__ represents a simple boolean variable check and,
-for the kernel tracer, a few process attribute checks.
-====
-
-List the existing recording event rules of a given tracing session
-and/or channel with the man:lttng-list(1) command.
-
-Disable an existing, enabled recording event rule with the
+Disable an enabled recording event rule with the
 man:lttng-disable-event(1) command.
 
 
-Recording event rule overview
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Overview of recording event rule conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 For LTTng to emit and record an event{nbsp}__E__,{nbsp}__E__ must
 satisfy *all* the conditions of a recording event rule{nbsp}__ER__, that
 is:
@@ -183,15 +127,13 @@ Implicit conditions::
 +
 A recording event rule is enabled on creation.
 +
-Enable an existing, disabled recording event rule with the
-`enable-event` command.
+Enable a disabled recording event rule with the `enable-event` command.
 
 * The channel to which{nbsp}__ER__ is attached is enabled.
 +
 A channel is enabled on creation.
 +
-Enable an existing, disabled channel with the
-man:lttng-enable-channel(1) command.
+Enable a disabled channel with the man:lttng-enable-channel(1) command.
 
 * The tracing session of{nbsp}__ER__ is active (started).
 +
@@ -199,8 +141,8 @@ A tracing session is inactive (stopped) on creation.
 +
 Start an inactive tracing session with the man:lttng-start(1) command.
 
-* The process for which LTTng creates{nbsp}__E__ to match is allowed to
-  record events.
+* The process for which LTTng creates{nbsp}__E__ is allowed to record
+  events.
 +
 All processes are allowed to record events on tracing session
 creation.
@@ -608,8 +550,8 @@ Event record name
 ~~~~~~~~~~~~~~~~~
 When LTTng records an event{nbsp}__E__, the resulting event record has a
 name which depends on the instrumentation point type condition (see the
-<<inst-point-type-cond,Instrumentation point type condition>> section)
-of the recording event rule which matched{nbsp}__E__:
+<<inst-point-type-cond,Instrumentation point type condition>> section
+above) of the recording event rule which matched{nbsp}__E__:
 
 LTTng tracepoint (option:--kernel/option:--userspace and option:--tracepoint options)::
     Full name of the tracepoint from which LTTng creates{nbsp}__E__.
@@ -663,8 +605,8 @@ Linux kretprobe (option:--kernel and option:--function options)::
 [[enable]]
 Enable a disabled recording event rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The `enable-event` command can enable an existing, disabled recording
-event rule, as listed in the output of the man:lttng-list(1) command.
+The `enable-event` command can enable a disabled recording event rule,
+as listed in the output of the man:lttng-list(1) command.
 
 You may enable a disabled recording event rule regardless of the
 activity (started or stopped) of its tracing session (see
@@ -912,6 +854,7 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-disable-event(1),
 man:lttng-enable-channel(1),
 man:lttng-list(1),

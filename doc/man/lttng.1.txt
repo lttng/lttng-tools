@@ -1,17 +1,17 @@
 lttng(1)
 ========
-:revdate: 16 October 2019
+:revdate: 3 May 2021
 
 
 NAME
 ----
-lttng - LTTng 2 tracer control command-line tool
+lttng - Control LTTng tracing
 
 
 SYNOPSIS
 --------
 [verse]
-*lttng* [option:--group='GROUP'] [option:--mi=xml] [option:--no-sessiond | option:--sessiond-path='PATH']
+*lttng* [option:--group='GROUP'] [option:--mi=**xml**] [option:--no-sessiond | option:--sessiond-path='PATH']
       [option:--quiet | option:-verbose...] '<<commands,COMMAND>>' ['COMMAND OPTIONS']
 
 
@@ -24,7 +24,7 @@ with the LTTng control library (`liblttng-ctl`), sends commands to a
 listening LTTng session daemon (man:lttng-sessiond(8)). A session
 daemon:
 
-* Manages tracing sessions (see man:lttng-create(1) to learn more
+* Manages tracing sessions (see man:lttng-concepts(7) to learn more
   about tracing sessions).
 
 * Controls the various components (like tracers and consumer daemons) of
@@ -40,6 +40,12 @@ daemon with the option:--no-sessiond option.
 
 NOTE: The LTTng project recommends that you start the session daemon at
 boot time for stable and long-term tracing.
+
+See man:lttng-concepts(7) to learn more about the foundational concepts
+of LTTng.
+
+The `lttng` tool offers a subcommand-based command-line interface. The
+<<commands,COMMANDS>> section below lists the available commands.
 
 
 Session daemon connection
@@ -80,9 +86,9 @@ Without the nloption:--group option of the root session daemon::
     `tracing`
 
 LTTng-instrumented user applications automatically register to both the
-root session daemon and the user session daemon. This makes it possible
-for both session daemons to list the available traceable applications
-and known instrumentation points (see man:lttng-list(1)).
+root and user session daemons. This makes it possible for both session
+daemons to list the available instrumented applications and their
+instrumentation points (see man:lttng-list(1)).
 
 
 OPTIONS
@@ -244,6 +250,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:babeltrace2(1),
+man:lttng-concepts(7)
 man:lttng-relayd(8),
 man:lttng-sessiond(8)

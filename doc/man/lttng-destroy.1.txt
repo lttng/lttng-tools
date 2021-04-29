@@ -1,6 +1,6 @@
 lttng-destroy(1)
 ================
-:revdate: 12 April 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -16,47 +16,48 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng destroy` command destroys one or more tracing sessions
-previously created with the man:lttng-create(1) command.
-
-``Destroying'' a tracing session means freeing the resources acquired by
-the LTTng daemons and tracers for it, also making sure to flush all the
-recorded trace data to either the local file system or the connected
-LTTng relay daemon (see man:lttng-relayd(8)), depending on the tracing
-session mode.
-
-Use the `destroy` command to destroy:
+The `lttng destroy` command destroys:
 
 With the 'SESSION' argument::
     The tracing session named 'SESSION'.
 
 With the option:--all option::
-    *All* the tracing sessions of your Unix user,
-    as listed in the output of `lttng list` (see man:lttng-list(1)).
+    *All* the tracing sessions of the connected session daemon for your
+    Unix user, or for all users if your Unix user is `root`, as listed
+    in the output of `lttng list` (see man:lttng-list(1)).
++
+See the ``Session daemon connection'' section of man:lttng(1) to learn
+how a user application connects to a session daemon.
 
 Otherwise::
-    The current tracing session (see man:lttng-create(1) and
-    man:lttng-set-session(1) to learn more about the current tracing
-    session).
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
 +
 In that case, the current tracing session becomes nonexistent.
 
+See man:lttng-concepts(7) to learn more about tracing sessions.
+
+``Destroying'' a tracing session means freeing the resources which the
+LTTng daemons and tracers acquired for it, also making sure to flush all
+the recorded trace data to either the local file system or the connected
+LTTng relay daemon (see man:lttng-relayd(8)), depending on the tracing
+session mode.
+
 The `destroy` command stops any tracing activity within the selected
-tracing session(s). By default, the command runs the implicit
+tracing session(s). By default, the command runs an implicit
 man:lttng-stop(1) command to ensure that the trace data of the tracing
 session(s) is valid before it exits. Make the command exit immediately
 with the option:--no-wait option. In this case, however, the traces(s)
 might not be valid when the command exits, and there's no way to know
-when it/they becomes valid.
+when it/they become valid.
 
 If, for a tracing session{nbsp}__TS__ to destroy with the `destroy`
 command, the following statements are true:
 
-* You don't use the option:--no-wait option.
+* You don't specify the option:--no-wait option.
 
-* LTTng archived the current trace chunk (see man:lttng-rotate(1) and
-  man:lttng-enable-rotation(1)) of{nbsp}__TS__ at least once during its
-  lifetime.
+* LTTng archived the current trace chunk (see man:lttng-concepts(7))
+  of{nbsp}__TS__ at least once during its lifetime.
 
 Then all the subdirectories of the output directory of{nbsp}__TS__
 (local or remote) are considered trace chunk archives once the `destroy`
@@ -68,8 +69,10 @@ include::common-cmd-options-head.txt[]
 
 
 option:-a, option:--all::
-    Destroy all the tracing sessions of your Unix user, as listed in the
-    output of man:lttng-list(1).
+    Destroy all the tracing sessions of your Unix user, or of all users
+    if your Unix user is `root`, as listed in the output of
+    man:lttng-list(1), instead of the current tracing session or the
+    tracing session named 'SESSION'.
 
 option:-n, option:--no-wait::
     Do :not: ensure that the trace data of the tracing session(s) to
@@ -85,6 +88,6 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
+man:lttng-concepts(7),
 man:lttng-create(1),
-man:lttng-list(1),
-man:lttng-set-session(1)
+man:lttng-list(1)

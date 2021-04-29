@@ -1,6 +1,6 @@
 lttng-remove-trigger(1)
 =======================
-:revdate: 5 March 2021
+:revdate: 29 April 2021
 
 
 NAME
@@ -18,10 +18,10 @@ DESCRIPTION
 -----------
 The `lttng remove-trigger` command removes the trigger named 'NAME'.
 
-See man:lttng-add-trigger(1) to learn more about LTTng triggers.
+See man:lttng-concepts(7) to learn more about LTTng triggers.
 
-List the available triggers and their name with the
-man:lttng-list-triggers(1) command.
+List the triggers of your Unix user, or of all users if your
+Unix user is `root`, with the man:lttng-list-triggers(1) command.
 
 The `remove-trigger` command removes a trigger which belong to your Unix
 user. If your Unix user is `root`, you can remove the trigger of another
@@ -47,6 +47,7 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
+man:lttng(1),
 man:lttng-add-trigger(1),
-man:lttng-list-triggers(1),
-man:lttng(1)
+man:lttng-concepts(7),
+man:lttng-list-triggers(1)

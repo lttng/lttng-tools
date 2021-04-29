@@ -1,6 +1,6 @@
 lttng-list-triggers(1)
 ======================
-:revdate: 3 March 2021
+:revdate: 3 May 2021
 
 
 NAME
@@ -16,10 +16,11 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng list-triggers` command lists the available LTTng triggers
-of your Unix user and their properties.
+The `lttng list-triggers` command lists the available LTTng triggers of
+your Unix user, or of all users if your Unix user is `root`, and their
+properties.
 
-See man:lttng-add-trigger(1) to learn more about triggers.
+See man:lttng-concepts(7) to learn more about triggers.
 
 
 OPTIONS
@@ -31,6 +32,7 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
+man:lttng(1),
 man:lttng-add-trigger(1),
-man:lttng-remove-trigger(1),
-man:lttng(1)
+man:lttng-concepts(7),
+man:lttng-remove-trigger(1)

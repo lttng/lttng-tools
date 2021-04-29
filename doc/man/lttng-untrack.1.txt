@@ -1,94 +1,95 @@
 lttng-untrack(1)
 ================
-:revdate: 4 March 2020
+:revdate: 1 May 2021
 
 
 NAME
 ----
-lttng-untrack - Remove one or more values from an LTTng process attribute tracker
+lttng-untrack - Disallow specific processes to record LTTng events
 
 
 SYNOPSIS
 --------
-Remove specific process attribute values from a Linux kernel domain tracker:
+Disallow specific processes to record Linux kernel events:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel [option:--session='SESSION']
       (option:--pid=PID[,PID]... | option:--vpid=VPID[,VPID]... |
-      option:--uid=UID[,UID]... | option:--vuid=VUID[,VUID]... |
-      option:--gid=GID[,GID]... | option:--vgid=VGID[,VGID]... )...
-
-Remove all possible process attribute values from a Linux kernel domain tracker:
+       option:--uid=UID[,UID]... | option:--vuid=VUSER[,VUSER]... |
+       option:--gid=GID[,GID]... | option:--vgid=VGROUP[,VGROUP]...)...
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel
-      option:--all (option:--pid | option:--vpid | option:--uid |
-      option:--vuid | option:--gid | option:--vgid )...
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--kernel [option:--session='SESSION']
+      option:--all (option:--pid | option:--vpid | option:--uid | option:--vuid | option:--gid | option:--vgid)...
 
-Remove specific process attribute values from a user space domain tracker:
-
-[verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace
-      (option:--vpid=VPID[,VPID]... | option:--vuid=VUID[,VUID]... | option:--vgid=VGID[,VGID]...)...
-
-Remove all possible process attribute values from a user space domain tracker:
+Disallow specific processes to record user space events:
 
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace [option:--session='SESSION']
+      (option:--vpid=VPID[,VPID]... | option:--vuid=VUSER[,VUSER]... |
+       option:--vgid=VGROUP[,VGROUP]...)...
+
+[verse]
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *untrack* option:--userspace [option:--session='SESSION']
       option:--all (option:--vpid | option:--vgid | option:--vuid)...
 
 
 DESCRIPTION
 -----------
-The `lttng untrack` commands removes one or more values from a
-process attribute tracker.
+The `lttng untrack` command disallows one or more processes to record
+LTTng events based on their attributes within:
 
-See man:lttng-track(1) to learn more about LTTng trackers.
+With the option:--session='SESSION' option::
+    The tracing session named 'SESSION'.
 
-The untrack command removes specific process attribute values from a
-tracker's inclusion set. The attributes to remove must have been
-precedently added by man:lttng-track(1). It is also possible to remove
-all the possible values of a process attribute from the inclusion set
-using the option:--all option.
+Without the option:--session option::
+    The current tracing session (see man:lttng-concepts(7) to learn more
+    about the current tracing session).
+
+See man:lttng-concepts(7) to learn more about tracing sessions and
+recording event rules.
+
+The `untrack` command removes values from _inclusion sets_ of process
+attributes. See man:lttng-track(1) to learn more about inclusion sets.
 
 
 Example
 ~~~~~~~
-One common operation is to create a tracing session
-(see man:lttng-create(1)), remove all the entries from the PID
-tracker inclusion set, start tracing, and then manually track PIDs
-while tracing is active.
+A common operation is to create a tracing session (see
+man:lttng-create(1)), remove all the entries from the PID tracker
+inclusion set, start tracing, and then manually track PIDs while the
+tracing session is active.
 
 Assume the maximum system PID is 7 for this example.
 
-Command:
-
+. Command:
++
 [role="term"]
 ----
 $ lttng create
 ----
-
++
 Initial inclusion set:
-
++
 -------------------------------
 [0] [1] [2] [3] [4] [5] [6] [7]
 -------------------------------
 
-Command:
-
+. Command:
++
 [role="term"]
 ----
 $ lttng untrack --kernel --pid --all
 ----
-
-inclusion set:
-
++
+Inclusion set:
++
 -------------------------------
 [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
 -------------------------------
 
-Commands:
-
+. Commands:
++
 [role="term"]
 ----
 $ lttng enable-event --kernel ...
@@ -96,22 +97,22 @@ $ lttng start
 $ # ...
 $ lttng track --kernel --pid=3,5
 ----
-
-inclusion set:
-
++
+Inclusion set:
++
 -------------------------------
 [ ] [ ] [ ] [3] [ ] [5] [ ] [ ]
 -------------------------------
 
-Command:
-
+. Command:
++
 [role="term"]
 ----
 $ lttng track --kernel --pid=2
 ----
-
-inclusion set:
-
++
+Inclusion set:
++
 -------------------------------
 [ ] [ ] [2] [3] [ ] [5] [ ] [ ]
 -------------------------------
@@ -120,106 +121,119 @@ inclusion set:
 include::common-cmd-options-head.txt[]
 
 
-Domain
-~~~~~~
+Tracing domain
+~~~~~~~~~~~~~~
 One of:
 
 option:-k, option:--kernel::
-    Track process attributes in the Linux kernel domain.
+    Remove values from one or more Linux kernel inclusion sets.
 
 option:-u, option:--userspace::
-    Track process attributes in the user space domain.
+    Remove values from one or more user space inclusion sets.
 
 
-Target
-~~~~~~
+Recording target
+~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Untrack process attributes in the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Remove values from one or more inclusion sets of the tracing session
+    named 'SESSION' instead of the current tracing session.
 
 
-Untracking
-~~~~~~~~~~
-option:-a, option:--all::
-    Used in conjunction with a single, empty option:--pid,
-    option:--vpid, option:--uid, option:--vuid, option:--gid,
-    or option:--vgid option: untrack _all_ possible process attribute
-    values (remove all values from the inclusion set).
-
+Inclusion set selection
+~~~~~~~~~~~~~~~~~~~~~~~
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
-    Untrack process ID values 'PID' (remove them from the process ID
-    inclusion set).
+    For each 'PID' argument, remove 'PID' from the process ID inclusion
+    set of the selected tracing session and domain.
 +
-'PID' is the process ID attribute of a process as seen from the _root
-PID namespace_ (see man:pid_namespaces(7)). It can only be used with
-the option:--kernel domain option.
+'PID' is the process ID attribute of a process as seen from the root
+PID namespace (see man:pid_namespaces(7)).
 +
-The 'PID' argument must be omitted when also using the option:--all
-option.
+Only available with option:--kernel option.
 
 option:--vpid[='VPID'[,'VPID']...]::
-    Untrack virtual process ID values 'VPID' (remove them from the
-    virtual process ID inclusion set).
+    For each 'VPID' argument, remove 'VPID' from the virtual process ID
+    inclusion set of the selected tracing session and domain.
 +
 'VPID' is the virtual process ID attribute of a process as seen from
-the _PID namespace_ of the process (see man:pid_namespaces(7)).
-+
-The 'VPID' argument must be omitted when also using the option:--all
-option.
+the PID namespace of the process (see man:pid_namespaces(7)).
 
 option:--uid[='USER'[,'USER']...]::
-    Untrack user ID process attribute values 'USER' (remove them from
-    the user ID inclusion set).
+    For each 'USER' argument, remove 'USER' from the user ID inclusion
+    set of the selected tracing session and domain.
 +
-'USER' is the real user ID (see man:getuid(3)) of a process as seen
-from the _root user namespace_ (see man:user_namespaces(7)). It can
-only be used with the option:--kernel domain option.
+'USER' is either:
 +
-'USER' can also be a user name. No name resolution is performed;
-'USER' will be matched against the names in the inclusion set.
-+
-The 'USER' argument must be omitted when also using the option:--all
-option.
+--
+* The real user ID (see man:getuid(3)) of a process as seen
+  from the root user namespace (see man:user_namespaces(7)).
 
-option:--vuid[='USER'[,'USER']...]::
-    Untrack virtual user ID process attribute values 'USER' (remove
-    them from the virtual user ID inclusion set).
+* A user name.
 +
-'USER' is the real user ID (see man:getuid(3)) of a process as seen
-from the _user namespace_ of the process (see man:user_namespaces(7)).
+The connected LTTng session daemon (see man:lttng-sessiond(8)) performs
+the user name resolution on removal from the user ID inclusion set.
+--
 +
-'USER' can also be a user name. No name resolution is performed;
-'USER' will be matched against the names in the inclusion set.
+Only available with option:--kernel option.
+
+option:--vuid[='VUSER'[,'VUSER']...]::
+    For each 'VUSER' argument, remove 'VUSER' from the virtual user ID
+    inclusion set of the selected tracing session and domain.
 +
-The 'USER' argument must be omitted when also using the option:--all
-option.
+'VUSER' is either:
++
+--
+* The real user ID (see man:getuid(3)) of a process as seen
+  from the user namespace (see man:user_namespaces(7)).
+
+* A user name.
++
+The connected LTTng session daemon (see man:lttng-sessiond(8)) performs
+the user name resolution on removal from the virtual user ID inclusion
+set.
+--
 
 option:--gid[='GROUP'[,'GROUP']...]::
-    Untrack group ID process attribute values 'GROUP' (remove them
-    from the group ID inclusion set).
+    For each 'GROUP' argument, remove 'GROUP' from the group ID
+    inclusion set of the selected tracing session and domain.
 +
-'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
-from the _root user namespace_ (see man:user_namespaces(7)). It can
-only be used with the option:--kernel domain option.
+'GROUP' is either:
 +
-'GROUP' can also be a group name. No name resolution is performed;
-'GROUP' will be matched against the names in the inclusion set.
-+
-The 'GROUP' argument must be omitted when also using the option:--all
-option.
+--
+* The real group ID (see man:getgid(3)) of a process as seen from the
+  root user namespace (see man:user_namespaces(7)).
 
-option:--vgid[='GROUP'[,'GROUP']...]::
-    Untrack virtual group ID process attribute values 'GROUP'(remove
-    them from the virtual group ID inclusion set).
+* A group name.
 +
-'GROUP' is the real group ID (see man:getgid(3)) of a process as seen
-from the _user namespace_ of the process (see man:user_namespaces(7)).
+The connected LTTng session daemon (see man:lttng-sessiond(8)) performs
+the group name resolution on removal from the group ID inclusion set.
+--
 +
-'GROUP' can also be a group name. No name resolution is performed;
-'GROUP' will be matched against the names in the inclusion set.
+Only available with option:--kernel option.
+
+option:--vgid[='VGROUP'[,'VGROUP']...]::
+    For each 'VGROUP' argument, remove 'VGROUP' from the virtual group
+    ID inclusion set of the selected tracing session and domain.
 +
-The 'GROUP' argument must be omitted when also using the option:--all
-option.
+'VGROUP' is either:
++
+--
+* The real group ID (see man:getgid(3)) of a process as seen
+  from the user namespace (see man:user_namespaces(7)).
+
+* A group name.
++
+The connected LTTng session daemon (see man:lttng-sessiond(8)) performs
+the group name resolution on removal from the virtual group ID inclusion
+set.
+--
+
+
+Inclusion set operation
+~~~~~~~~~~~~~~~~~~~~~~~
+option:-a, option:--all::
+    With one or more empty option:--pid, option:--vpid, option:--uid,
+    option:--vuid, option:--gid, and option:--vgid options: clear the
+    selected inclusion sets.
 
 
 include::common-cmd-help-options.txt[]
@@ -230,5 +244,6 @@ include::common-cmd-footer.txt[]
 
 SEE ALSO
 --------
-man:lttng-track(1),
-man:lttng(1)
+man:lttng(1),
+man:lttng-concepts(7),
+man:lttng-track(1)
