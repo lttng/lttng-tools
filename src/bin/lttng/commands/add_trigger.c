@@ -209,11 +209,6 @@ error:
 	return ret;
 }
 
-/* This is defined in enable_events.c. */
-LTTNG_HIDDEN
-int validate_exclusion_list(
-		const char *event_name, const char *const *exclusions);
-
 /*
  * Parse `str` as a log level in domain `domain_type`.
  *
@@ -961,11 +956,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		if (validate_exclusion_list(name,
-				    (const char **) exclude_names.array.buffer
-						    .data
-
-				    ) != 0) {
+		if (validate_exclusion_list(name, &exclude_names) != 0) {
 			/*
 			 * Assume validate_exclusion_list already prints an
 			 * error message.
@@ -1312,8 +1303,9 @@ end:
 
 static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 {
-	int num_token;
-	char **tokens = NULL;
+	int ret;
+	size_t num_token = 0;
+	struct lttng_dynamic_pointer_array tokens;
 	struct lttng_rate_policy *policy = NULL;
 	enum lttng_rate_policy_type policy_type;
 	unsigned long long value;
@@ -1321,12 +1313,13 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 	char *policy_value_str;
 
 	assert(policy_str);
+	lttng_dynamic_pointer_array_init(&tokens, NULL);
 
-	/*
-	 * rate policy fields are separated by ':'.
-	 */
-	tokens = strutils_split(policy_str, ':', 1);
-	num_token = strutils_array_of_strings_len(tokens);
+	/* Rate policy fields are separated by ':'. */
+	ret = strutils_split(policy_str, ':', 1, &tokens);
+	if (ret == 0) {
+		num_token = lttng_dynamic_pointer_array_get_count(&tokens);
+	}
 
 	/*
 	 * Early sanity check that the number of parameter is exactly 2.
@@ -1337,8 +1330,8 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 		goto end;
 	}
 
-	policy_type_str = tokens[0];
-	policy_value_str = tokens[1];
+	policy_type_str = lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
+	policy_value_str = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
 
 	/* Parse the type. */
 	if (strcmp(policy_type_str, "once-after") == 0) {
@@ -1378,7 +1371,7 @@ static struct lttng_rate_policy *parse_rate_policy(const char *policy_str)
 	}
 
 end:
-	strutils_free_null_terminated_array_of_strings(tokens);
+	lttng_dynamic_pointer_array_reset(&tokens);
 	return policy;
 }
 

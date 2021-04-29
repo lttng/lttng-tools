@@ -16,38 +16,49 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 69
 
+/* For error.h */
+int lttng_opt_quiet = 1;
+int lttng_opt_verbose;
+int lttng_opt_mi;
+
 static void test_one_split(const char *input, char delim, int escape_delim,
 		...)
 {
 	va_list vl;
-	char **substrings;
-	char * const *substring;
 	bool all_ok = true;
+	struct lttng_dynamic_pointer_array strings;
+	int split_ret;
+	size_t i, string_count;
 
-	substrings = strutils_split(input, delim, escape_delim);
-	assert(substrings);
+	split_ret = strutils_split(input, delim, escape_delim, &strings);
+	assert(split_ret == 0);
 	va_start(vl, escape_delim);
 
-	for (substring = substrings; *substring; substring++) {
-		const char *expected_substring = va_arg(vl, const char *);
+	string_count = lttng_dynamic_pointer_array_get_count(&strings);
 
-		diag("  got `%s`, expecting `%s`", *substring, expected_substring);
+	for (i = 0; i < string_count; i++) {
+		const char *expected_substring = va_arg(vl, const char *);
+		const char *substring =
+				lttng_dynamic_pointer_array_get_pointer(
+						&strings, i);
+
+		diag("  got `%s`, expecting `%s`", substring, expected_substring);
 
 		if (!expected_substring) {
 			all_ok = false;
 			break;
 		}
 
-		if (strcmp(*substring, expected_substring) != 0) {
+		if (strcmp(substring, expected_substring) != 0) {
 			all_ok = false;
 			break;
 		}
 	}
 
-	strutils_free_null_terminated_array_of_strings(substrings);
+	lttng_dynamic_pointer_array_reset(&strings);
 	va_end(vl);
 	ok(all_ok, "strutils_split() produces the expected substrings: `%s` (delim. `%c`, escape `%d`)",
-		input, delim, escape_delim);
+			input, delim, escape_delim);
 }
 
 static void test_split(void)

@@ -61,7 +61,7 @@ compile_commands.json
 /src/bin/lttng-crash/lttng-crash
 /src/bin/lttng-relayd/lttng-relayd
 /src/lib/lttng-ctl/lttng-ctl.pc
-/src/common/filter/filter-grammar-test
+/src/common/filter-grammar-test
 /src/common/filter/filter-lexer.c
 /src/common/filter/filter-parser.c
 /src/common/filter/filter-parser.h

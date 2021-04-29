@@ -10,6 +10,7 @@
 
 #include <stdbool.h>
 #include <common/macros.h>
+#include <common/dynamic-array.h>
 
 LTTNG_HIDDEN
 void strutils_normalize_star_glob_pattern(char *pattern);
@@ -24,7 +25,8 @@ LTTNG_HIDDEN
 char *strutils_unescape_string(const char *input, char only_char);
 
 LTTNG_HIDDEN
-char **strutils_split(const char *input, char delim, bool escape_delim);
+int strutils_split(const char *input, char delim, bool escape_delim,
+		struct lttng_dynamic_pointer_array *out_strings);
 
 LTTNG_HIDDEN
 void strutils_free_null_terminated_array_of_strings(char **array);

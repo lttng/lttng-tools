@@ -18,8 +18,13 @@
 
 #include <common/compat/errno.h>
 #include "common/bytecode/bytecode.h"
-#include "filter-ast.h"
-#include "filter-parser.h"
+#include "filter/filter-ast.h"
+#include "filter/filter-parser.h"
+
+/* For error.h */
+int lttng_opt_quiet = 1;
+int lttng_opt_verbose;
+int lttng_opt_mi;
 
 int main(int argc, char **argv)
 {
