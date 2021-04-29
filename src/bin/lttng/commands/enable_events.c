@@ -193,10 +193,11 @@ const char *print_raw_channel_name(const char *name)
  * Mi print exlcusion list
  */
 static
-int mi_print_exclusion(char **names)
+int mi_print_exclusion(const struct lttng_dynamic_pointer_array *exclusions)
 {
-	int i, ret;
-	int count = names ? strutils_array_of_strings_len(names) : 0;
+	int ret;
+	size_t i;
+	const size_t count = lttng_dynamic_pointer_array_get_count(exclusions);
 
 	assert(writer);
 
@@ -204,14 +205,18 @@ int mi_print_exclusion(char **names)
 		ret = 0;
 		goto end;
 	}
+
 	ret = mi_lttng_writer_open_element(writer, config_element_exclusions);
 	if (ret) {
 		goto end;
 	}
 
 	for (i = 0; i < count; i++) {
+		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+				exclusions, i);
+
 		ret = mi_lttng_writer_write_element_string(writer,
-				config_element_exclusion, names[i]);
+				config_element_exclusion, exclusion);
 		if (ret) {
 			goto end;
 		}
@@ -228,21 +233,24 @@ end:
  * Return allocated string for pretty-printing exclusion names.
  */
 static
-char *print_exclusions(char **names)
+char *print_exclusions(const struct lttng_dynamic_pointer_array *exclusions)
 {
 	int length = 0;
-	int i;
+	size_t i;
 	const char preamble[] = " excluding ";
 	char *ret;
-	int count = names ? strutils_array_of_strings_len(names) : 0;
+	const size_t count = lttng_dynamic_pointer_array_get_count(exclusions);
 
 	if (count == 0) {
 		return strdup("");
 	}
 
-	/* calculate total required length */
+	/* Calculate total required length. */
 	for (i = 0; i < count; i++) {
-		length += strlen(names[i]) + 4;
+		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+				exclusions, i);
+
+		length += strlen(exclusion) + 4;
 	}
 
 	length += sizeof(preamble);
@@ -250,10 +258,14 @@ char *print_exclusions(char **names)
 	if (!ret) {
 		return NULL;
 	}
+
 	strncpy(ret, preamble, length);
 	for (i = 0; i < count; i++) {
+		const char *exclusion = lttng_dynamic_pointer_array_get_pointer(
+				exclusions, i);
+
 		strcat(ret, "\"");
-		strcat(ret, names[i]);
+		strcat(ret, exclusion);
 		strcat(ret, "\"");
 		if (i != count - 1) {
 			strcat(ret, ", ");
@@ -323,16 +335,8 @@ end:
 	return ret;
 }
 
-/*
- * FIXME: find a good place to declare this since add trigger also uses it
- */
-LTTNG_HIDDEN
-int validate_exclusion_list(
-		const char *event_name, const char *const *exclusions);
-
-LTTNG_HIDDEN
-int validate_exclusion_list(
-		const char *event_name, const char *const *exclusions)
+int validate_exclusion_list(const char *event_name,
+		const struct lttng_dynamic_pointer_array *exclusions)
 {
 	int ret;
 
@@ -349,12 +353,18 @@ int validate_exclusion_list(
 	 * all exclusions are passed to the session daemon.
 	 */
 	if (strutils_is_star_at_the_end_only_glob_pattern(event_name)) {
-		const char *const *exclusion;
+		size_t i, num_exclusions;
 
-		for (exclusion = exclusions; *exclusion; exclusion++) {
-			if (!strutils_is_star_glob_pattern(*exclusion) ||
-					strutils_is_star_at_the_end_only_glob_pattern(*exclusion)) {
-				ret = check_exclusion_subsets(event_name, *exclusion);
+		num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
+
+		for (i = 0; i < num_exclusions; i++) {
+			const char *exclusion =
+					lttng_dynamic_pointer_array_get_pointer(
+							exclusions, i);
+
+			if (!strutils_is_star_glob_pattern(exclusion) ||
+					strutils_is_star_at_the_end_only_glob_pattern(exclusion)) {
+				ret = check_exclusion_subsets(event_name, exclusion);
 				if (ret) {
 					goto error;
 				}
@@ -374,43 +384,43 @@ end:
 
 static int create_exclusion_list_and_validate(const char *event_name,
 		const char *exclusions_arg,
-		char ***exclusion_list)
+		struct lttng_dynamic_pointer_array *exclusions)
 {
 	int ret = 0;
-	char **exclusions = NULL;
 
 	/* Split exclusions. */
-	exclusions = strutils_split(exclusions_arg, ',', true);
-	if (!exclusions) {
+	ret = strutils_split(exclusions_arg, ',', true, exclusions);
+	if (ret < 0) {
 		goto error;
 	}
 
-	if (validate_exclusion_list(event_name, (const char **) exclusions) !=
+	if (validate_exclusion_list(event_name, exclusions) !=
 			0) {
 		goto error;
 	}
-
-	*exclusion_list = exclusions;
 
 	goto end;
 
 error:
 	ret = -1;
-	strutils_free_null_terminated_array_of_strings(exclusions);
+	lttng_dynamic_pointer_array_reset(exclusions);
 
 end:
 	return ret;
 }
 
-static void warn_on_truncated_exclusion_names(char * const *exclusion_list,
+static void warn_on_truncated_exclusion_names(const struct lttng_dynamic_pointer_array *exclusions,
 	int *warn)
 {
-	char * const *exclusion;
+	size_t i;
+	const size_t num_exclusions = lttng_dynamic_pointer_array_get_count(exclusions);
 
-	for (exclusion = exclusion_list; *exclusion; exclusion++) {
-		if (strlen(*exclusion) >= LTTNG_SYMBOL_NAME_LEN) {
+	for (i = 0; i < num_exclusions; i++) {
+		const char * const exclusion = lttng_dynamic_pointer_array_get_pointer(exclusions, i);
+
+		if (strlen(exclusion) >= LTTNG_SYMBOL_NAME_LEN) {
 			WARN("Event exclusion \"%s\" will be truncated",
-				*exclusion);
+					exclusion);
 			*warn = 1;
 		}
 	}
@@ -426,11 +436,11 @@ static int enable_events(char *session_name)
 	int error_holder = CMD_SUCCESS, warn = 0, error = 0, success = 1;
 	char *event_name, *channel_name = NULL;
 	struct lttng_event *ev;
-	struct lttng_domain dom;
-	char **exclusion_list = NULL;
+	struct lttng_domain dom = {};
+	struct lttng_dynamic_pointer_array exclusions;
 	struct lttng_userspace_probe_location *uprobe_loc = NULL;
 
-	memset(&dom, 0, sizeof(dom));
+	lttng_dynamic_pointer_array_init(&exclusions, NULL);
 
 	ev = lttng_event_create();
 	if (!ev) {
@@ -589,22 +599,22 @@ static int enable_events(char *session_name)
 
 		if (opt_exclude) {
 			ret = create_exclusion_list_and_validate("*",
-				opt_exclude, &exclusion_list);
+				opt_exclude, &exclusions);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
 			}
 
 			ev->exclusion = 1;
-			warn_on_truncated_exclusion_names(exclusion_list,
+			warn_on_truncated_exclusion_names(&exclusions,
 				&warn);
 		}
 		if (!opt_filter) {
 			ret = lttng_enable_event_with_exclusions(handle,
 					ev, channel_name,
 					NULL,
-					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
-					exclusion_list);
+					lttng_dynamic_pointer_array_get_count(&exclusions),
+					(char **) exclusions.array.buffer.data);
 			if (ret < 0) {
 				switch (-ret) {
 				case LTTNG_ERR_KERN_EVENT_EXIST:
@@ -638,7 +648,7 @@ static int enable_events(char *session_name)
 			switch (opt_event_type) {
 			case LTTNG_EVENT_TRACEPOINT:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					char *exclusion_string = print_exclusions(exclusion_list);
+					char *exclusion_string = print_exclusions(&exclusions);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -652,7 +662,7 @@ static int enable_events(char *session_name)
 							opt_loglevel);
 					free(exclusion_string);
 				} else {
-					char *exclusion_string = print_exclusions(exclusion_list);
+					char *exclusion_string = print_exclusions(&exclusions);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -675,7 +685,7 @@ static int enable_events(char *session_name)
 				break;
 			case LTTNG_EVENT_ALL:
 				if (opt_loglevel && dom.type != LTTNG_DOMAIN_KERNEL) {
-					char *exclusion_string = print_exclusions(exclusion_list);
+					char *exclusion_string = print_exclusions(&exclusions);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -689,7 +699,7 @@ static int enable_events(char *session_name)
 							opt_loglevel);
 					free(exclusion_string);
 				} else {
-					char *exclusion_string = print_exclusions(exclusion_list);
+					char *exclusion_string = print_exclusions(&exclusions);
 
 					if (!exclusion_string) {
 						PERROR("Cannot allocate exclusion_string");
@@ -714,9 +724,9 @@ static int enable_events(char *session_name)
 
 		if (opt_filter) {
 			command_ret = lttng_enable_event_with_exclusions(handle, ev, channel_name,
-						opt_filter,
-						exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
-						exclusion_list);
+					opt_filter,
+					lttng_dynamic_pointer_array_get_count(&exclusions),
+					(char **) exclusions.array.buffer.data);
 			if (command_ret < 0) {
 				switch (-command_ret) {
 				case LTTNG_ERR_FILTER_EXIST:
@@ -776,7 +786,7 @@ static int enable_events(char *session_name)
 			}
 
 			/* print exclusion */
-			ret = mi_print_exclusion(exclusion_list);
+			ret = mi_print_exclusion(&exclusions);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -911,20 +921,18 @@ static int enable_events(char *session_name)
 					ret = CMD_ERROR;
 					goto error;
 				}
-				/* Free previously allocated items */
-				strutils_free_null_terminated_array_of_strings(
-					exclusion_list);
-				exclusion_list = NULL;
+				/* Free previously allocated items. */
+				lttng_dynamic_pointer_array_reset(&exclusions);
 				ret = create_exclusion_list_and_validate(
 					event_name, opt_exclude,
-					&exclusion_list);
+					&exclusions);
 				if (ret) {
 					ret = CMD_ERROR;
 					goto error;
 				}
 
 				warn_on_truncated_exclusion_names(
-					exclusion_list, &warn);
+					&exclusions, &warn);
 			}
 
 			ev->loglevel_type = opt_loglevel_type;
@@ -999,9 +1007,9 @@ static int enable_events(char *session_name)
 			command_ret = lttng_enable_event_with_exclusions(handle,
 					ev, channel_name,
 					NULL,
-					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
-					exclusion_list);
-			exclusion_string = print_exclusions(exclusion_list);
+					lttng_dynamic_pointer_array_get_count(&exclusions),
+					(char **) exclusions.array.buffer.data);
+			exclusion_string = print_exclusions(&exclusions);
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -1083,9 +1091,9 @@ static int enable_events(char *session_name)
 
 			command_ret = lttng_enable_event_with_exclusions(handle, ev, channel_name,
 					opt_filter,
-					exclusion_list ? strutils_array_of_strings_len(exclusion_list) : 0,
-					exclusion_list);
-			exclusion_string = print_exclusions(exclusion_list);
+					lttng_dynamic_pointer_array_get_count(&exclusions),
+					(char **) exclusions.array.buffer.data);
+			exclusion_string = print_exclusions(&exclusions);
 			if (!exclusion_string) {
 				PERROR("Cannot allocate exclusion_string");
 				error = 1;
@@ -1148,7 +1156,7 @@ static int enable_events(char *session_name)
 			}
 
 			/* print exclusion */
-			ret = mi_print_exclusion(exclusion_list);
+			ret = mi_print_exclusion(&exclusions);
 			if (ret) {
 				ret = CMD_ERROR;
 				goto error;
@@ -1194,7 +1202,7 @@ error:
 		ret = CMD_ERROR;
 	}
 	lttng_destroy_handle(handle);
-	strutils_free_null_terminated_array_of_strings(exclusion_list);
+	lttng_dynamic_pointer_array_reset(&exclusions);
 	lttng_userspace_probe_location_destroy(uprobe_loc);
 
 	/* Overwrite ret with error_holder if there was an actual error with

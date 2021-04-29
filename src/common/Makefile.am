@@ -180,6 +180,12 @@ noinst_HEADERS = \
 	uri.h \
 	utils.h
 
+noinst_PROGRAMS = filter-grammar-test
+filter_grammar_test_SOURCES = filter-grammar-test.c
+filter_grammar_test_LDADD = \
+	libcommon.la
+filter_grammar_test_CFLAGS = -I $(top_builddir)/src/common
+
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
 		for script in $(EXTRA_DIST); do \

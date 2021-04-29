@@ -194,11 +194,9 @@ void strutils_free_null_terminated_array_of_strings(char **array)
 /*
  * Splits the input string `input` using the given delimiter `delim`.
  *
- * The return value is an allocated null-terminated array of the
- * resulting substrings (also allocated). You can free this array and
- * its content with strutils_free_null_terminated_array_of_strings(). You
- * can get the number of substrings in it with
- * strutils_array_of_strings_len().
+ * The return value is a dynamic pointer array that is assumed to be empty. The
+ * array must be discarded by the caller by invoking
+ * lttng_dynamic_pointer_array_reset().
  *
  * Empty substrings are part of the result. For example:
  *
@@ -241,21 +239,25 @@ void strutils_free_null_terminated_array_of_strings(char **array)
  *       `\`
  *       `hi`
  *
- * Returns NULL if there's an error.
+ * Returns -1 if there's an error.
  */
 LTTNG_HIDDEN
-char **strutils_split(const char *input, char delim, bool escape_delim)
+int strutils_split(const char *input,
+		char delim,
+		bool escape_delim,
+		struct lttng_dynamic_pointer_array *out_strings)
 {
+	int ret;
 	size_t at;
 	size_t number_of_substrings = 1;
 	size_t longest_substring_len = 0;
 	const char *s;
 	const char *last;
-	char **substrings = NULL;
 
 	assert(input);
 	assert(!(escape_delim && delim == '\\'));
 	assert(delim != '\0');
+	lttng_dynamic_pointer_array_init(out_strings, free);
 
 	/* First pass: count the number of substrings. */
 	for (s = input, last = input - 1; *s != '\0'; s++) {
@@ -285,18 +287,20 @@ char **strutils_split(const char *input, char delim, bool escape_delim)
 		longest_substring_len = s - last - 1;
 	}
 
-	substrings = calloc(number_of_substrings + 1, sizeof(*substrings));
-	if (!substrings) {
-		goto error;
-	}
-
 	/* Second pass: actually split and copy substrings. */
 	for (at = 0, s = input; at < number_of_substrings; at++) {
 		const char *ss;
 		char *d;
+		char *substring = zmalloc(longest_substring_len + 1);
 
-		substrings[at] = zmalloc(longest_substring_len + 1);
-		if (!substrings[at]) {
+		if (!substring) {
+			goto error;
+		}
+
+		ret = lttng_dynamic_pointer_array_add_pointer(
+				out_strings, substring);
+		if (ret) {
+			free(substring);
 			goto error;
 		}
 
@@ -304,7 +308,7 @@ char **strutils_split(const char *input, char delim, bool escape_delim)
 		 * Copy characters to substring until we find the next
 		 * delimiter or the end of the input string.
 		 */
-		for (ss = s, d = substrings[at]; *ss != '\0'; ss++) {
+		for (ss = s, d = substring; *ss != '\0'; ss++) {
 			if (escape_delim && *ss == '\\') {
 				if (ss[1] == delim) {
 					/*
@@ -343,13 +347,13 @@ char **strutils_split(const char *input, char delim, bool escape_delim)
 		s = ss + 1;
 	}
 
+	ret = 0;
 	goto end;
 
 error:
-	strutils_free_null_terminated_array_of_strings(substrings);
-	substrings = NULL;
+	ret = -1;
 end:
-	return substrings;
+	return ret;
 }
 
 LTTNG_HIDDEN

@@ -2,7 +2,6 @@
 
 AM_CPPFLAGS += -I$(srcdir) -I$(builddir)
 
-noinst_PROGRAMS = filter-grammar-test
 noinst_LTLIBRARIES = libfilter.la
 noinst_HEADERS = filter-ast.h \
 		filter-symbols.h
@@ -60,8 +59,3 @@ filter-lexer.c: filter-lexer.l
 
 all-local: filter-lexer.c
 endif # HAVE_FLEX
-
-filter_grammar_test_SOURCES = filter-grammar-test.c
-filter_grammar_test_LDADD = \
-	libfilter.la \
-	../bytecode/libbytecode.la

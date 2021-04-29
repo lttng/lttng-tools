@@ -200,22 +200,24 @@ int parse_userspace_probe_opts(const char *opt,
 		struct lttng_userspace_probe_location **probe_location)
 {
 	int ret = CMD_SUCCESS;
-	int num_token;
-	char **tokens = NULL;
+	size_t num_token = 0;
 	char *target_path = NULL;
 	char *unescaped_target_path = NULL;
 	char *real_target_path = NULL;
 	char *symbol_name = NULL, *probe_name = NULL, *provider_name = NULL;
 	struct lttng_userspace_probe_location *probe_location_local = NULL;
 	struct lttng_userspace_probe_location_lookup_method *lookup_method = NULL;
+	struct lttng_dynamic_pointer_array tokens;
 
 	assert(opt);
 
 	/*
 	 * userspace probe fields are separated by ':'.
 	 */
-	tokens = strutils_split(opt, ':', 1);
-	num_token = strutils_array_of_strings_len(tokens);
+	ret = strutils_split(opt, ':', true, &tokens);
+	if (ret == 0) {
+		num_token = lttng_dynamic_pointer_array_get_count(&tokens);
+	}
 
 	/*
 	 * Early sanity check that the number of parameter is between 2 and 4
@@ -224,7 +226,7 @@ int parse_userspace_probe_opts(const char *opt,
 	 * std:PATH:PROVIDER_NAME:PROBE_NAME
 	 * PATH:SYMBOL (same behavior as ELF)
 	 */
-	if (num_token < 2 || num_token > 4) {
+	if (ret < 0 || num_token < 2 || num_token > 4) {
 		ret = CMD_ERROR;
 		goto end;
 	}
@@ -237,12 +239,12 @@ int parse_userspace_probe_opts(const char *opt,
 	case 2:
 		/* When the probe type is omitted we assume ELF for now. */
 	case 3:
-		if (num_token == 3 && strcmp(tokens[0], "elf") == 0) {
-			target_path = tokens[1];
-			symbol_name = tokens[2];
+		if (num_token == 3 && strcmp(lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "elf") == 0) {
+			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+			symbol_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
 		} else if (num_token == 2) {
-			target_path = tokens[0];
-			symbol_name = tokens[1];
+			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 0);
+			symbol_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
 		} else {
 			ret = CMD_ERROR;
 			goto end;
@@ -256,10 +258,10 @@ int parse_userspace_probe_opts(const char *opt,
 		}
 		break;
 	case 4:
-		if (strcmp(tokens[0], "sdt") == 0) {
-			target_path = tokens[1];
-			provider_name = tokens[2];
-			probe_name = tokens[3];
+		if (strcmp(lttng_dynamic_pointer_array_get_pointer(&tokens, 0), "sdt") == 0) {
+			target_path = lttng_dynamic_pointer_array_get_pointer(&tokens, 1);
+			provider_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 2);
+			probe_name = lttng_dynamic_pointer_array_get_pointer(&tokens, 3);
 		} else {
 			ret = CMD_ERROR;
 			goto end;
@@ -375,7 +377,7 @@ int parse_userspace_probe_opts(const char *opt,
 end:
 	lttng_userspace_probe_location_destroy(probe_location_local);
 	lttng_userspace_probe_location_lookup_method_destroy(lookup_method);
-	strutils_free_null_terminated_array_of_strings(tokens);
+	lttng_dynamic_pointer_array_reset(&tokens);
 	/*
 	 * Freeing both char * here makes the error handling simplier. free()
 	 * performs not action if the pointer is NULL.

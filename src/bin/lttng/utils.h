@@ -9,7 +9,8 @@
 #define _LTTNG_UTILS_H
 
 #include <popt.h>
-#include "common/argpar/argpar.h"
+#include <common/argpar/argpar.h>
+#include <common/dynamic-array.h>
 
 #include <lttng/lttng.h>
 
@@ -59,5 +60,8 @@ int show_cmd_help(const char *cmd_name, const char *help_msg);
 int print_trace_archive_location(
 		const struct lttng_trace_archive_location *location,
 		const char *session_name);
+
+int validate_exclusion_list(const char *event_name,
+		const struct lttng_dynamic_pointer_array *exclusions);
 
 #endif /* _LTTNG_UTILS_H */
