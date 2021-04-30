@@ -3382,6 +3382,7 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 	ssize_t ret, written_bytes = 0;
 	int rotation_ret;
 	struct stream_subbuffer subbuffer = {};
+	enum get_next_subbuffer_status get_next_status;
 
 	if (!locked_by_caller) {
 		stream->read_subbuffer_ops.lock(stream);
@@ -3407,14 +3408,20 @@ ssize_t lttng_consumer_read_subbuffer(struct lttng_consumer_stream *stream,
 		}
 	}
 
-	ret = stream->read_subbuffer_ops.get_next_subbuffer(stream, &subbuffer);
-	if (ret) {
-		if (ret == -ENODATA) {
-			/* Not an error. */
-			ret = 0;
-			goto sleep_stream;
-		}
+	get_next_status = stream->read_subbuffer_ops.get_next_subbuffer(
+			stream, &subbuffer);
+	switch (get_next_status) {
+	case GET_NEXT_SUBBUFFER_STATUS_OK:
+		break;
+	case GET_NEXT_SUBBUFFER_STATUS_NO_DATA:
+		/* Not an error. */
+		ret = 0;
+		goto sleep_stream;
+	case GET_NEXT_SUBBUFFER_STATUS_ERROR:
+		ret = -1;
 		goto end;
+	default:
+		abort();
 	}
 
 	ret = stream->read_subbuffer_ops.pre_consume_subbuffer(
