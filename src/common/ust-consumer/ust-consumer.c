@@ -2890,25 +2890,45 @@ end:
 	return ret;
 }
 
-static int get_next_subbuffer(struct lttng_consumer_stream *stream,
+static enum get_next_subbuffer_status get_next_subbuffer(
+		struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
 	int ret;
+	enum get_next_subbuffer_status status;
 
 	ret = lttng_ust_ctl_get_next_subbuf(stream->ustream);
-	if (ret) {
+	switch (ret) {
+	case 0:
+		status = GET_NEXT_SUBBUFFER_STATUS_OK;
+		break;
+	case -ENODATA:
+		case -EAGAIN:
+		/*
+		 * The caller only expects -ENODATA when there is no data to
+		 * read, but the kernel tracer returns -EAGAIN when there is
+		 * currently no data for a non-finalized stream, and -ENODATA
+		 * when there is no data for a finalized stream. Those can be
+		 * combined into a -ENODATA return value.
+		 */
+		status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
+		goto end;
+	default:
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
 	ret = get_next_subbuffer_common(stream, subbuffer);
 	if (ret) {
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 end:
-	return ret;
+	return status;
 }
 
-static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
+static enum get_next_subbuffer_status get_next_subbuffer_metadata(
+		struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
 	int ret;
@@ -2917,6 +2937,7 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 	bool coherent;
 	bool buffer_empty;
 	unsigned long consumed_pos, produced_pos;
+	enum get_next_subbuffer_status status;
 
 	do {
 		ret = lttng_ust_ctl_get_next_subbuf(stream->ustream);
@@ -2926,6 +2947,7 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 			got_subbuffer = false;
 			if (ret != -EAGAIN) {
 				/* Fatal error. */
+				status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 				goto end;
 			}
 		}
@@ -2937,11 +2959,12 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 		if (!got_subbuffer) {
 			ret = commit_one_metadata_packet(stream);
 			if (ret < 0 && ret != -ENOBUFS) {
+				status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 				goto end;
 			} else if (ret == 0) {
 				/* Not an error, the cache is empty. */
 				cache_empty = true;
-				ret = -ENODATA;
+				status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
 				goto end;
 			} else {
 				cache_empty = false;
@@ -2957,6 +2980,7 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 	/* Populate sub-buffer infos and view. */
 	ret = get_next_subbuffer_common(stream, subbuffer);
 	if (ret) {
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
@@ -2967,18 +2991,21 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 		 * pushed the consumption position yet (on put_next).
 		 */
 		PERROR("Failed to take a snapshot of metadata buffer positions");
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
 	ret = lttng_ustconsumer_get_consumed_snapshot(stream, &consumed_pos);
 	if (ret) {
 		PERROR("Failed to get metadata consumed position");
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
 	ret = lttng_ustconsumer_get_produced_snapshot(stream, &produced_pos);
 	if (ret) {
 		PERROR("Failed to get metadata produced position");
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
@@ -2994,8 +3021,9 @@ static int get_next_subbuffer_metadata(struct lttng_consumer_stream *stream,
 	coherent = got_subbuffer && cache_empty && buffer_empty;
 
 	LTTNG_OPTIONAL_SET(&subbuffer->info.metadata.coherent, coherent);
+	status = GET_NEXT_SUBBUFFER_STATUS_OK;
 end:
-	return ret;
+	return status;
 }
 
 static int put_next_subbuffer(struct lttng_consumer_stream *stream,

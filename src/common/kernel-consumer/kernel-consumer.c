@@ -1583,13 +1583,20 @@ end:
 }
 
 static
-int get_subbuffer_common(struct lttng_consumer_stream *stream,
+enum get_next_subbuffer_status get_subbuffer_common(
+		struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
 	int ret;
+	enum get_next_subbuffer_status status;
 
 	ret = kernctl_get_next_subbuf(stream->wait_fd);
-	if (ret) {
+	switch (ret) {
+	case 0:
+		status = GET_NEXT_SUBBUFFER_STATUS_OK;
+		break;
+	case -ENODATA:
+		case -EAGAIN:
 		/*
 		 * The caller only expects -ENODATA when there is no data to
 		 * read, but the kernel tracer returns -EAGAIN when there is
@@ -1597,65 +1604,80 @@ int get_subbuffer_common(struct lttng_consumer_stream *stream,
 		 * when there is no data for a finalized stream. Those can be
 		 * combined into a -ENODATA return value.
 		 */
+<<<<<<< HEAD
 		if (ret == -EAGAIN) {
 			ret = -ENODATA;
 		}
 
+=======
+		status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
+		goto end;
+	default:
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
+>>>>>>> ba6c36321 (Clean-up: consumerd: use a specific status code for get_next_subbuffer)
 		goto end;
 	}
 
 	ret = stream->read_subbuffer_ops.extract_subbuffer_info(
-			stream, subbuffer);
+		stream, subbuffer);
+	if (ret) {
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
+	}
 end:
-	return ret;
+	return status;
 }
 
 static
-int get_next_subbuffer_splice(struct lttng_consumer_stream *stream,
+enum get_next_subbuffer_status get_next_subbuffer_splice(
+		struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
-	int ret;
+	const enum get_next_subbuffer_status status =
+			get_subbuffer_common(stream, subbuffer);
 
-	ret = get_subbuffer_common(stream, subbuffer);
-	if (ret) {
+	if (status != GET_NEXT_SUBBUFFER_STATUS_OK) {
 		goto end;
 	}
 
 	subbuffer->buffer.fd = stream->wait_fd;
 end:
-	return ret;
+	return status;
 }
 
 static
-int get_next_subbuffer_mmap(struct lttng_consumer_stream *stream,
+enum get_next_subbuffer_status get_next_subbuffer_mmap(
+		struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
 	int ret;
+	enum get_next_subbuffer_status status;
 	const char *addr;
 
-	ret = get_subbuffer_common(stream, subbuffer);
-	if (ret) {
+	status = get_subbuffer_common(stream, subbuffer);
+	if (status != GET_NEXT_SUBBUFFER_STATUS_OK) {
 		goto end;
 	}
 
 	ret = get_current_subbuf_addr(stream, &addr);
 	if (ret) {
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
 		goto end;
 	}
 
 	subbuffer->buffer.buffer = lttng_buffer_view_init(
 			addr, 0, subbuffer->info.data.padded_subbuf_size);
 end:
-	return ret;
+	return status;
 }
 
 static
-int get_next_subbuffer_metadata_check(struct lttng_consumer_stream *stream,
+enum get_next_subbuffer_status get_next_subbuffer_metadata_check(struct lttng_consumer_stream *stream,
 		struct stream_subbuffer *subbuffer)
 {
 	int ret;
 	const char *addr;
 	bool coherent;
+	enum get_next_subbuffer_status status;
 
 	ret = kernctl_get_next_subbuf_metadata_check(stream->wait_fd,
 			&coherent);
@@ -1688,11 +1710,27 @@ end:
 	 * for a non-finalized stream, and -ENODATA when there is no data for a
 	 * finalized stream. Those can be combined into a -ENODATA return value.
 	 */
-	if (ret == -EAGAIN) {
-		ret = -ENODATA;
+	switch (ret) {
+	case 0:
+		status = GET_NEXT_SUBBUFFER_STATUS_OK;
+		break;
+	case -ENODATA:
+	case -EAGAIN:
+		/*
+		 * The caller only expects -ENODATA when there is no data to
+		 * read, but the kernel tracer returns -EAGAIN when there is
+		 * currently no data for a non-finalized stream, and -ENODATA
+		 * when there is no data for a finalized stream. Those can be
+		 * combined into a -ENODATA return value.
+		 */
+		status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
+		break;
+	default:
+		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
+		break;
 	}
 
-	return ret;
+	return status;
 }
 
 static

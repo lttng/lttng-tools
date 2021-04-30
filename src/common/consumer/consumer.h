@@ -299,6 +299,12 @@ struct stream_subbuffer {
 	} info;
 };
 
+enum get_next_subbuffer_status {
+	GET_NEXT_SUBBUFFER_STATUS_OK,
+	GET_NEXT_SUBBUFFER_STATUS_NO_DATA,
+	GET_NEXT_SUBBUFFER_STATUS_ERROR,
+};
+
 /*
  * Perform any operation required to acknowledge
  * the wake-up of a consumer stream (e.g. consume a byte on a wake-up pipe).
@@ -321,8 +327,8 @@ typedef int (*on_sleep_cb)(struct lttng_consumer_stream *,
  *
  * Stream and channel locks are acquired during this call.
  */
-typedef int (*get_next_subbuffer_cb)(struct lttng_consumer_stream *,
-		struct stream_subbuffer *);
+typedef enum get_next_subbuffer_status (*get_next_subbuffer_cb)(
+		struct lttng_consumer_stream *, struct stream_subbuffer *);
 
 /*
  * Populate the stream_subbuffer's info member. The info to populate
