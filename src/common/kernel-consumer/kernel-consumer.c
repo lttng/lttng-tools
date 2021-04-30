@@ -1711,6 +1711,14 @@ bool is_get_next_check_metadata_available(int tracer_fd)
 }
 
 static
+int signal_metadata(struct lttng_consumer_stream *stream,
+		struct lttng_consumer_local_data *ctx)
+{
+	ASSERT_LOCKED(stream->metadata_rdv_lock);
+	return pthread_cond_broadcast(&stream->metadata_rdv) ? -errno : 0;
+}
+
+static
 int lttng_kconsumer_set_stream_ops(
 		struct lttng_consumer_stream *stream)
 {
@@ -1740,6 +1748,8 @@ int lttng_kconsumer_set_stream_ops(
 			metadata_bucket_destroy(stream->metadata_bucket);
 			stream->metadata_bucket = NULL;
 		}
+
+		stream->read_subbuffer_ops.on_sleep = signal_metadata;
 	}
 
 	if (!stream->read_subbuffer_ops.get_next_subbuffer) {
