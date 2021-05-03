@@ -367,7 +367,7 @@ static int set_session_daemon_path(void)
 		in_tgroup = lttng_check_tracing_group();
 	}
 
-	if ((uid == 0) || in_tgroup) {
+	if ((uid == 0) || in_tgroup == 1) {
 		const int ret = lttng_strncpy(sessiond_sock_path,
 				DEFAULT_GLOBAL_CLIENT_UNIX_SOCK,
 				sizeof(sessiond_sock_path));
