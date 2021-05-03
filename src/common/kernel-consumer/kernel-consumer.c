@@ -1604,17 +1604,10 @@ enum get_next_subbuffer_status get_subbuffer_common(
 		 * when there is no data for a finalized stream. Those can be
 		 * combined into a -ENODATA return value.
 		 */
-<<<<<<< HEAD
-		if (ret == -EAGAIN) {
-			ret = -ENODATA;
-		}
-
-=======
 		status = GET_NEXT_SUBBUFFER_STATUS_NO_DATA;
 		goto end;
 	default:
 		status = GET_NEXT_SUBBUFFER_STATUS_ERROR;
->>>>>>> ba6c36321 (Clean-up: consumerd: use a specific status code for get_next_subbuffer)
 		goto end;
 	}
 
