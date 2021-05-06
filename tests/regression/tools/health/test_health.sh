@@ -124,7 +124,7 @@ function test_health
 	if [ ${test_relayd} -eq 1 ]; then
 		# We may fail to stop relayd here, and this is OK, since
 		# it may have been killed volountarily by testpoint.
-		stop_lttng_relayd_notap $KILL_SIGNAL
+		stop_lttng_relayd_cleanup $KILL_SIGNAL
 	fi
 
 	if [ ${test_consumerd} -eq 1 ]; then
