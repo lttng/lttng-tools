@@ -2200,6 +2200,7 @@ int cmd_add_trigger(int argc, const char **argv)
 		uid = strtol(owner_uid, &end, 10);
 		if (end == owner_uid || *end != '\0' || errno != 0) {
 			ERR("Failed to parse `%s` as a user id.", owner_uid);
+			goto error;
 		}
 
 		trigger_status = lttng_trigger_set_owner_uid(trigger, uid);
