@@ -109,4 +109,50 @@
 
     <!-- Disable hyphenation, except for URLs -->
     <xsl:param name="man.hyphenate">0</xsl:param>
+
+    <!--
+        Mainly for example blocks: indent the whole example after
+        the title, like this:
+
+            Example 1. Do something
+
+                Amet consectetur adipisicing minim sunt ad dolore culpa
+                enim labore incididunt cillum exercitation non non
+                deserunt veniam consectetur sint.
+
+                    $ lttng something
+
+                Voluptate aliquip.
+
+        instead of:
+
+            Example 1. Do something
+
+            Amet consectetur adipisicing minim sunt ad dolore culpa
+            enim labore incididunt cillum exercitation non non
+            deserunt veniam consectetur sint.
+
+                $ lttng something
+
+            Voluptate aliquip.
+    -->
+    <xsl:template name="formal.object">
+        <xsl:param name="placement" select="'before'"/>
+        <xsl:param name="class" select="local-name(.)"/>
+
+        <xsl:choose>
+            <xsl:when test="$placement = 'before'">
+                <xsl:call-template name="formal.object.heading"/>
+                <xsl:text>.RS 4&#10;</xsl:text>
+                <xsl:apply-templates/>
+                <xsl:text>.RE&#10;</xsl:text>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:text>.RS 4&#10;</xsl:text>
+                <xsl:apply-templates/>
+                <xsl:text>.RE&#10;</xsl:text>
+                <xsl:call-template name="formal.object.heading"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
 </xsl:stylesheet>
