@@ -156,6 +156,6 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-concepts(7),
 man:lttng-enable-event(1),
-man:lttng-list(1)
+man:lttng-list(1),
+man:lttng-concepts(7)

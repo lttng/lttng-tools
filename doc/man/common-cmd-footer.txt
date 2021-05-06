@@ -1,5 +1,23 @@
-ENVIRONMENT VARIABLES
----------------------
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Command error
+
+*2*::
+    Undefined command
+
+*3*::
+    Fatal error
+
+*4*::
+    Command warning (something went wrong during the command)
+
+
+ENVIRONMENT
+-----------
 `LTTNG_ABORT_ON_ERROR`::
     Set to `1` to abort the process after the first error is
     encountered.
@@ -62,24 +80,6 @@ man:lttng-create(1) command.
 
 NOTE: `$LTTNG_HOME` defaults to the value of the `HOME` environment
 variable.
-
-
-EXIT STATUS
------------
-*0*::
-    Success
-
-*1*::
-    Command error
-
-*2*::
-    Undefined command
-
-*3*::
-    Fatal error
-
-*4*::
-    Command warning (something went wrong during the command)
 
 
 include::common-footer.txt[]

@@ -763,5 +763,5 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-add-trigger(1),
-man:lttng-concepts(7),
-man:lttng-list(1)
+man:lttng-list(1),
+man:lttng-concepts(7)

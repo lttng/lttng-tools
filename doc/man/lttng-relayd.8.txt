@@ -280,8 +280,20 @@ option:-V, option:--version::
     Show version and quit.
 
 
-ENVIRONMENT VARIABLES
----------------------
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Error
+
+*3*::
+    Fatal error
+
+
+ENVIRONMENT
+-----------
 `LTTNG_ABORT_ON_ERROR`::
     Set to `1` to abort the process after the first error is
     encountered.
@@ -378,23 +390,11 @@ Override this path with the option:--output option.
 NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 
 
-EXIT STATUS
------------
-*0*::
-    Success
-
-*1*::
-    Error
-
-*3*::
-    Fatal error
-
-
 include::common-footer.txt[]
 
 
 SEE ALSO
 --------
+man:babeltrace2(1),
 man:lttng(1),
-man:lttng-sessiond(8),
-man:babeltrace2(1)
+man:lttng-sessiond(8)

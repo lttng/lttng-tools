@@ -1,23 +1,18 @@
-BUGS
-----
-If you encounter any issue or usability problem, please report it on the
-https://bugs.lttng.org/projects/lttng-tools[LTTng bug tracker].
-
-
 RESOURCES
 ---------
 * https://lttng.org[LTTng project website]
 * https://lttng.org/docs[LTTng documentation]
-* http://git.lttng.org[Git repositories]
-* http://github.com/lttng[GitHub organization]
-* http://ci.lttng.org/[Continuous integration]
-* http://lists.lttng.org[Mailing list] for support and
+* https://bugs.lttng.org[LTTng bug tracker]
+* https://git.lttng.org[Git repositories]
+* https://github.com/lttng[GitHub organization]
+* https://ci.lttng.org/[Continuous integration]
+* https://lists.lttng.org/[Mailing list] for support and
   development: `lttng-dev@lists.lttng.org`
 * irc://irc.oftc.net/lttng[IRC channel]: `#lttng` on `irc.oftc.net`
 
 
-COPYRIGHTS
-----------
+COPYRIGHT
+---------
 This program is part of the LTTng-tools project.
 
 LTTng-tools is distributed under the

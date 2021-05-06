@@ -167,5 +167,5 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-concepts(7),
-man:lttng-enable-channel(1)
+man:lttng-enable-channel(1),
+man:lttng-concepts(7)
