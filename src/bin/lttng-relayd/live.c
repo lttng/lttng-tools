@@ -1000,10 +1000,19 @@ int viewer_get_new_streams(struct relay_connection *conn)
 		goto send_reply;
 	}
 
+	/*
+	 * For any new stream, create it with LTTNG_VIEWER_SEEK_BEGINNING since
+	 * that at this point the client is already attached to the session.Aany
+	 * initial stream will have been created with the seek type at attach
+	 * time (for now most readers use the LTTNG_VIEWER_SEEK_LAST on attach).
+	 * Otherwise any event happening in a new stream between the attach and
+	 * a call to viewer_get_new_streams will be "lost" (never received) from
+	 * the viewer's point of view.
+	 */
 	pthread_mutex_lock(&session->lock);
 	ret = make_viewer_streams(session,
 			conn->viewer_session->current_trace_chunk,
-			LTTNG_VIEWER_SEEK_LAST, &nb_total, &nb_unsent,
+			LTTNG_VIEWER_SEEK_BEGINNING, &nb_total, &nb_unsent,
 			&nb_created, &closed);
 	if (ret < 0) {
 		goto error_unlock_session;
