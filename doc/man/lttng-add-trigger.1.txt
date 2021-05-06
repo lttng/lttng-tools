@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 ====================
-:revdate: 3 May 2021
+:revdate: 6 May 2021
 
 
 NAME
@@ -39,6 +39,8 @@ List the triggers of your Unix user, or of all users if your
 Unix user is `root`, with the man:lttng-list-triggers(1) command.
 
 Remove a trigger with the man:lttng-remove-trigger(1) command.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 [[cond-spec]]
@@ -304,6 +306,116 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Add an ``event rule matches'' trigger of which the action is to send a notification.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches any Linux system call entry event with a name starting
+with `exec`.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=event-rule-matches \
+                    --domain=kernel --type=syscall:entry \
+                    --name='exec*' --action=notify
+----
+====
+
+.Add an ``event rule matches'' trigger of which the action is to stop a tracing session and then rotate it.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches any user space tracepoint event with a name starting with
+`my_app:` and with a log level at least as severe as a warning.
+
+The order of the option:--action options below is significant.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=event-rule-matches \
+                    --domain=user --name='my_app:*' \
+                    --log-level=TRACE_WARNING.. \
+                    --action=stop-session my-session \
+                    --action=rotate-session my-session
+----
+
+See man:lttng-concepts(7) to learn more about tracing sessions and
+rotations.
+====
+
+.Add an ``event rule matches'' trigger with a specific name.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches events which LTTng creates from the `my-logger` Python
+logger.
+
+The added trigger is named `my-trigger`, a unique name for your Unix
+user.
+
+See the option:--name option.
+
+[role="term"]
+----
+$ lttng add-trigger --name=my-trigger \
+                    --condition=event-rule-matches \
+                    --domain=python --name=my-logger \
+                    --action=snapshot-session my-session
+----
+====
+
+.Add an ``event rule matches'' trigger as another Unix user.
+====
+The command line below adds a trigger as the `mireille` Unix user.
+
+Your Unix user must be `root` to use the option:--owner-uid option.
+
+The condition of the trigger specifies an event rule which matches LTTng
+kernel tracepoint events with a name which starts with `sched`.
+
+[role="term"]
+----
+# lttng add-trigger --owner-uid=$(id --user mireille) \
+                    --condition=event-rule-matches \
+                    --domain=kernel --name='sched*' \
+                    --action=notify
+----
+====
+
+.Add an ``event rule matches'' trigger with a notification action to be executed every 10{nbsp}times.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches all user space tracepoint events.
+
+See the nloption:--rate-policy option above.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=event-rule-matches \
+                    --domain=user --action=notify \
+                    --rate-policy=every:10
+----
+====
+
+.Add an ``event rule matches'' trigger with a tracing session starting action to be executed a single time after 40{nbsp}times.
+====
+The `event-rule-matches` trigger condition below specifies an event rule
+which matches any Linux system call event (entry and exit) of which the
+`fd` event record field is less than{nbsp}3.
+
+See the nloption:--rate-policy option above.
+
+[role="term"]
+----
+$ lttng add-trigger --condition=event-rule-matches \
+                    --domain=kernel --type=syscall \
+                    --filter='fd < 3' \
+                    --action=start-session my-session \
+                    --rate-policy=once-after:40
+----
+====
 
 
 include::common-footer.txt[]
