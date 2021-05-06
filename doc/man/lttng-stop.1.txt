@@ -53,7 +53,7 @@ the tracing session with man:lttng-destroy(1) or perform a rotation with
 man:lttng-rotate(1) to archive it.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 option:-n, option:--no-wait::
@@ -61,10 +61,13 @@ option:-n, option:--no-wait::
     is valid before exiting.
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

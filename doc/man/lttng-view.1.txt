@@ -39,7 +39,7 @@ if it's not available, man:babeltrace(1). Override which trace reader to
 launch with the option:--viewer option.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 option:-t 'DIR', option:--trace-path='DIR'::
@@ -57,10 +57,13 @@ Without this option, the `view` command uses man:babeltrace2(1) if it's
 available. Otherwise, it tries to use man:babeltrace(1).
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

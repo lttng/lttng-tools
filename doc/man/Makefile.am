@@ -59,9 +59,9 @@ MAN_XML = $(patsubst $(srcdir)/%.txt,%.xml,$(MAN_TXT))
 # common AsciiDoc source files
 COMMON_TXT = \
 	$(srcdir)/common-footer.txt \
-	$(srcdir)/common-cmd-footer.txt \
-	$(srcdir)/common-cmd-options-head.txt \
-	$(srcdir)/common-cmd-help-options.txt \
+	$(srcdir)/common-lttng-cmd-after-options.txt \
+	$(srcdir)/common-lttng-cmd-options-head.txt \
+	$(srcdir)/common-lttng-cmd-help-options.txt \
 	$(srcdir)/common-help-option.txt \
 	$(srcdir)/common-intro.txt \
 	$(srcdir)/common-daemon-cfg.txt

@@ -89,7 +89,7 @@ operations with the `enable-channel` command:
 ====
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 Tracing domain
@@ -345,10 +345,13 @@ option:--kernel and option:--buffers-global options:::
     +{default_metadata_switch_timer}+
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

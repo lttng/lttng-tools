@@ -77,9 +77,10 @@ which is not so easy to do otherwise.
 Includes
 --------
 
-  * `common-cmd-footer.txt`: common `lttng` command footer.
-  * `common-cmd-help-options.txt`: common program information section
-    of `lttng` command options.
+  * `common-lttng-cmd-after-options.txt`: common part after the options
+    section of an `lttng` command.
+  * `common-lttng-cmd-help-options.txt`: common program information
+    section of `lttng` command options.
   * `common-cmd-options-head.txt`: common `lttng` command head of
     options section.
   * `common-footer.txt`: common footer for all commands.

@@ -28,13 +28,16 @@ This command is equivalent to:
 where `CURSESSION` is the name of the current tracing session.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

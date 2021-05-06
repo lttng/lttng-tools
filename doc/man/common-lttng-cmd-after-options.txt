@@ -81,5 +81,3 @@ man:lttng-create(1) command.
 NOTE: `$LTTNG_HOME` defaults to the value of the `HOME` environment
 variable.
 
-
-include::common-footer.txt[]

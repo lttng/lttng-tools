@@ -23,11 +23,16 @@ properties.
 See man:lttng-concepts(7) to learn more about triggers.
 
 
-OPTIONS
--------
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
-include::common-cmd-footer.txt[]
+
+include::common-lttng-cmd-help-options.txt[]
+
+
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO
