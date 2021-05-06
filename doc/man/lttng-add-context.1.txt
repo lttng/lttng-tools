@@ -1,6 +1,6 @@
 lttng-add-context(1)
 ====================
-:revdate: 3 May 2021
+:revdate: 6 May 2021
 
 
 NAME
@@ -91,6 +91,7 @@ The possible values for this part are processor-specific.
 
 * An LTTng application-specific context field name:
 +
+--
 [verse]
 $app.'PROVIDER':__TYPE__
 +
@@ -99,6 +100,9 @@ $app.'PROVIDER':__TYPE__
 
 'TYPE'::
     Context type name.
+--
++
+Only available with the option:--jul and option:--log4j options.
 
 IMPORTANT: Make sure to **single-quote** 'TYPE' when you run the
 `add-context` command from a shell, as `$` is a special character for
@@ -107,6 +111,8 @@ variable substitution in most shells.
 NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context fields
 to be recorded to the event records of a given channel once its tracing
 session has been started (see man:lttng-start(1)) at least once.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]
@@ -164,6 +170,55 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.List the available context field types.
+====
+See the option:--list option.
+
+[role="term"]
+----
+$ lttng add-context --list
+----
+====
+
+.Add a single statically-known context field to be recorded to all the Linux kernel channels of the current tracing session.
+====
+[role="term"]
+----
+$ lttng add-context --kernel --type=pid
+----
+====
+
+.Add three statically-known context fields to be recorded to a specific user space channel of a specific tracing session.
+====
+[role="term"]
+----
+$ lttng add-context --userspace --session=my-session \
+                    --channel=my-channel \
+                    --type=vpid --type=procname --type=ip
+----
+====
+
+.Add a perf counter context field to be recorded to a specific Linux kernel channel of the current tracing session.
+====
+[role="term"]
+----
+$ lttng add-context --kernel --channel=my-channel \
+                    --type=perf:cpu:cache-misses
+----
+====
+
+.Add an LTTng application-specific context field to be recorded to all the JUL channels of the current tracing session.
+====
+[role="term"]
+----
+$ lttng add-context --jul --type='$app.my_server:user_cnt'
+----
+====
 
 
 include::common-footer.txt[]
