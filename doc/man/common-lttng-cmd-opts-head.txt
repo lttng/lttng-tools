@@ -1,0 +1,3 @@
+OPTIONS
+-------
+See man:lttng(1) for 'linkgenoptions:(GENERAL OPTIONS)'.

@@ -31,7 +31,7 @@ See man:lttng-concepts(7) to learn more about the tracing session
 rotation and trace chunk concepts.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 Rotation schedule condition
@@ -52,10 +52,13 @@ option:-s 'SESSION', option:--session='SESSION'::
     instead of the current tracing session.
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

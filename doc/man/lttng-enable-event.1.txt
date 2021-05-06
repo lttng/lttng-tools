@@ -618,7 +618,7 @@ create it. In particular, with the option:--filter='EXPR' option, 'EXPR'
 must be the exact same string as the one you used on creation.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 Tracing domain
@@ -845,10 +845,13 @@ option:-f 'EXPR', option:--filter='EXPR'::
     event payload and current context fields, is _true_.
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

@@ -72,7 +72,7 @@ sessions: the command fails. Allow the `load` command to overwrite
 existing tracing sessions with the option:--force option.
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 option:-a, option:--all::
@@ -100,10 +100,13 @@ type of tracing session configurations to load. This option applies to
 _all_ the loaded tracing session configurations.
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO

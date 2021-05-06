@@ -234,7 +234,7 @@ This path is relative to the base output directory of the LTTng relay
 daemon (see the nloption:--output option of man:lttng-relayd(8)).
 
 
-include::common-cmd-options-head.txt[]
+include::common-lttng-cmd-options-head.txt[]
 
 
 Mode selection
@@ -359,10 +359,13 @@ Snapshot mode (option:--snapshot option):::
     after creating the tracing session.
 
 
-include::common-cmd-help-options.txt[]
+include::common-lttng-cmd-help-options.txt[]
 
 
-include::common-cmd-footer.txt[]
+include::common-lttng-cmd-after-options.txt[]
+
+
+include::common-footer.txt[]
 
 
 SEE ALSO
