@@ -71,8 +71,8 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-add-trigger(1),
-man:lttng-concepts(7),
 man:lttng-create(1),
 man:lttng-enable-event(1),
 man:lttng-rotate(1),
-man:lttng-start(1)
+man:lttng-start(1),
+man:lttng-concepts(7)

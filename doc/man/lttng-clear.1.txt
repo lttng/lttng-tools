@@ -76,6 +76,6 @@ include::common-cmd-footer.txt[]
 SEE ALSO
 --------
 man:lttng(1),
-man:lttng-concepts(7),
 man:lttng-create(1),
+man:lttng-concepts(7),
 man:lttng-relayd(8)

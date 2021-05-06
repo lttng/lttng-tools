@@ -302,8 +302,20 @@ option:-V, option:--version::
     Show version and quit.
 
 
-ENVIRONMENT VARIABLES
----------------------
+EXIT STATUS
+-----------
+*0*::
+    Success
+
+*1*::
+    Error
+
+*3*::
+    Fatal error
+
+
+ENVIRONMENT
+-----------
 `LTTNG_ABORT_ON_ERROR`::
     Set to `1` to abort the process after the first error is
     encountered.
@@ -407,18 +419,6 @@ See the <<cfg,Daemon configuration>> section above to learn more.
 See the <<cfg,Daemon configuration>> section above to learn more.
 
 NOTE: `$LTTNG_HOME` defaults to `$HOME`.
-
-
-EXIT STATUS
------------
-*0*::
-    Success
-
-*1*::
-    Error
-
-*3*::
-    Fatal error
 
 
 include::common-footer.txt[]

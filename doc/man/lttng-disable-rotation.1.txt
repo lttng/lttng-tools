@@ -62,4 +62,5 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-enable-rotation(1),
-man:lttng-rotate(1)
+man:lttng-rotate(1),
+man:lttng-concepts(7)

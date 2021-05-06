@@ -34,5 +34,5 @@ SEE ALSO
 --------
 man:lttng(1),
 man:lttng-add-trigger(1),
-man:lttng-concepts(7),
-man:lttng-remove-trigger(1)
+man:lttng-remove-trigger(1),
+man:lttng-concepts(7)
