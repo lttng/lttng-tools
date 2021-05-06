@@ -773,7 +773,7 @@ void print_one_action(const struct lttng_trigger *trigger,
 				/* The default is 1 so print only when it is a
 				 * special case.
 				 */
-				_MSG(", rate policy: after every %" PRIu64
+				_MSG(", rate policy: every %" PRIu64
 				     " occurrences",
 						policy_value);
 			}
