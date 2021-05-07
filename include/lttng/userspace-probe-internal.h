@@ -17,12 +17,16 @@
 struct lttng_payload;
 struct lttng_payload_view;
 struct lttng_dynamic_buffer;
+struct mi_writer;
 
 typedef bool (*userspace_probe_location_equal_cb)(
 		const struct lttng_userspace_probe_location *a,
 		const struct lttng_userspace_probe_location *b);
 typedef unsigned long (*userspace_probe_location_hash_cb)(
 		const struct lttng_userspace_probe_location *location);
+typedef enum lttng_error_code (*userspace_probe_location_mi)(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer);
 
 /*
  * No elf-specific comm structure is defined since no elf-specific payload is
@@ -91,6 +95,7 @@ struct lttng_userspace_probe_location {
 	struct lttng_userspace_probe_location_lookup_method *lookup_method;
 	userspace_probe_location_equal_cb equal;
 	userspace_probe_location_hash_cb hash;
+	userspace_probe_location_hash_cb mi;
 };
 
 struct lttng_userspace_probe_location_function {
@@ -156,5 +161,10 @@ bool lttng_userspace_probe_location_is_equal(
 LTTNG_HIDDEN
 unsigned long lttng_userspace_probe_location_hash(
 		const struct lttng_userspace_probe_location *location);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_USERSPACE_PROBE_INTERNAL_H */

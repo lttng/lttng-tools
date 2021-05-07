@@ -16,6 +16,7 @@
 struct lttng_payload_view;
 struct lttng_payload;
 struct lttng_snapshot_output;
+struct mi_writer;
 
 LTTNG_HIDDEN
 bool lttng_snapshot_output_validate(const struct lttng_snapshot_output *output);
@@ -34,5 +35,10 @@ LTTNG_HIDDEN
 ssize_t lttng_snapshot_output_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_snapshot_output **output_p);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_snapshot_output_mi_serialize(
+		const struct lttng_snapshot_output *output,
+		struct mi_writer *writer);
 
 #endif /* COMMON_SNAPSHOT_H */

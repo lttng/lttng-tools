@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/rate-policy-internal.h>
 #include <lttng/action/rate-policy.h>
@@ -233,6 +234,62 @@ end:
 	return consumed_len;
 }
 
+static enum lttng_error_code lttng_action_start_session_mi_serialize(
+		const struct lttng_action *action, struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_action_status status;
+	const char *session_name = NULL;
+	const struct lttng_rate_policy *policy = NULL;
+
+	assert(action);
+	assert(IS_START_SESSION_ACTION(action));
+
+	status = lttng_action_start_session_get_session_name(
+			action, &session_name);
+	assert(status == LTTNG_ACTION_STATUS_OK);
+	assert(session_name != NULL);
+
+	status = lttng_action_start_session_get_rate_policy(action, &policy);
+	assert(status == LTTNG_ACTION_STATUS_OK);
+	assert(policy != NULL);
+
+	/* Open action start session element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_action_start_session);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Session name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_session_name, session_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Rate policy. */
+	ret_code = lttng_rate_policy_mi_serialize(policy, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close action start session element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 struct lttng_action *lttng_action_start_session_create(void)
 {
 	struct lttng_action *action = NULL;
@@ -256,7 +313,8 @@ struct lttng_action *lttng_action_start_session_create(void)
 			lttng_action_start_session_is_equal,
 			lttng_action_start_session_destroy,
 			lttng_action_start_session_internal_get_rate_policy,
-			lttng_action_generic_add_error_query_results);
+			lttng_action_generic_add_error_query_results,
+			lttng_action_start_session_mi_serialize);
 
 	status = lttng_action_start_session_set_rate_policy(action, policy);
 	if (status != LTTNG_ACTION_STATUS_OK) {

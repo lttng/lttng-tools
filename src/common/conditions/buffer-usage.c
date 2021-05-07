@@ -5,13 +5,14 @@
  *
  */
 
-#include <lttng/condition/condition-internal.h>
-#include <lttng/condition/buffer-usage-internal.h>
-#include <common/macros.h>
-#include <common/error.h>
 #include <assert.h>
-#include <math.h>
+#include <common/error.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <float.h>
+#include <lttng/condition/buffer-usage-internal.h>
+#include <lttng/condition/condition-internal.h>
+#include <math.h>
 #include <time.h>
 
 #define IS_USAGE_CONDITION(condition) ( \
@@ -193,6 +194,128 @@ end:
 	return is_equal;
 }
 
+static enum lttng_error_code lttng_condition_buffer_usage_mi_serialize(
+		const struct lttng_condition *condition,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_condition_status status;
+	const char *session_name = NULL, *channel_name = NULL;
+	enum lttng_domain_type domain_type;
+	bool is_threshold_bytes = false;
+	double threshold_ratio;
+	uint64_t threshold_bytes;
+	const char *condition_type_str = NULL;
+
+	assert(condition);
+	assert(IS_USAGE_CONDITION(condition));
+
+	status = lttng_condition_buffer_usage_get_session_name(
+			condition, &session_name);
+	assert(status == LTTNG_CONDITION_STATUS_OK);
+	assert(session_name);
+
+	status = lttng_condition_buffer_usage_get_channel_name(
+			condition, &channel_name);
+	assert(status == LTTNG_CONDITION_STATUS_OK);
+	assert(session_name);
+
+	status = lttng_condition_buffer_usage_get_domain_type(
+			condition, &domain_type);
+	assert(status == LTTNG_CONDITION_STATUS_OK);
+
+	status = lttng_condition_buffer_usage_get_threshold(
+			condition, &threshold_bytes);
+	if (status == LTTNG_CONDITION_STATUS_OK) {
+		is_threshold_bytes = true;
+	} else if (status != LTTNG_CONDITION_STATUS_UNSET) {
+		/* Unexpected at this stage. */
+		ret_code = LTTNG_ERR_INVALID;
+		goto end;
+	}
+
+	if (!is_threshold_bytes) {
+		status = lttng_condition_buffer_usage_get_threshold_ratio(
+				condition, &threshold_ratio);
+		assert(status == LTTNG_CONDITION_STATUS_OK);
+	}
+
+	switch (lttng_condition_get_type(condition)) {
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_HIGH:
+		condition_type_str =
+				mi_lttng_element_condition_buffer_usage_high;
+		break;
+	case LTTNG_CONDITION_TYPE_BUFFER_USAGE_LOW:
+		condition_type_str =
+				mi_lttng_element_condition_buffer_usage_low;
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	/* Open the sub type condition element. */
+	ret = mi_lttng_writer_open_element(writer, condition_type_str);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Session name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_session_name, session_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Channel name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_condition_channel_name, channel_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Domain. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			config_element_domain,
+			mi_lttng_domaintype_string(domain_type));
+	if (ret) {
+		goto mi_error;
+	}
+
+	if (is_threshold_bytes) {
+		/* Usage in bytes. */
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				mi_lttng_element_condition_threshold_bytes,
+				threshold_bytes);
+		if (ret) {
+			goto mi_error;
+		}
+	} else {
+		/* Ratio. */
+		ret = mi_lttng_writer_write_element_double(writer,
+				mi_lttng_element_condition_threshold_ratio,
+				threshold_ratio);
+		if (ret) {
+			goto mi_error;
+		}
+	}
+
+	/* Closing sub type condition element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 static
 struct lttng_condition *lttng_condition_buffer_usage_create(
 		enum lttng_condition_type type)
@@ -209,6 +332,7 @@ struct lttng_condition *lttng_condition_buffer_usage_create(
 	condition->parent.serialize = lttng_condition_buffer_usage_serialize;
 	condition->parent.equal = lttng_condition_buffer_usage_is_equal;
 	condition->parent.destroy = lttng_condition_buffer_usage_destroy;
+	condition->parent.mi_serialize = lttng_condition_buffer_usage_mi_serialize;
 	return &condition->parent;
 }
 

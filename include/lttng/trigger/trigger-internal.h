@@ -21,6 +21,8 @@
 
 struct lttng_payload;
 struct lttng_payload_view;
+struct mi_writer;
+struct mi_lttng_error_query_callbacks;
 
 struct lttng_trigger {
 	/* Reference counting is only exposed to internal users. */
@@ -123,6 +125,16 @@ LTTNG_HIDDEN
 void lttng_trigger_put(struct lttng_trigger *trigger);
 
 /*
+ * Serialize a trigger to a mi_writer.
+ * Return LTTNG_OK in success, other enum lttng_error_code on error.
+ */
+LTTNG_HIDDEN
+enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks);
+
+/*
  * Allocate a new set of triggers.
  * The returned object must be freed via lttng_triggers_destroy.
  */
@@ -164,6 +176,16 @@ int lttng_triggers_serialize(const struct lttng_triggers *triggers,
 LTTNG_HIDDEN
 ssize_t lttng_triggers_create_from_payload(struct lttng_payload_view *view,
 		struct lttng_triggers **triggers);
+
+/*
+ * Serialize a trigger set to a mi_writer.
+ * Return LTTNG_OK in success, other enum lttng_error_code on error.
+ */
+LTTNG_HIDDEN
+enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks);
 
 LTTNG_HIDDEN
 const struct lttng_credentials *lttng_trigger_get_credentials(

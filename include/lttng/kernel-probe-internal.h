@@ -18,6 +18,7 @@
 struct lttng_payload;
 struct lttng_payload_view;
 struct lttng_dynamic_buffer;
+struct mi_writer;
 
 typedef bool (*kernel_probe_location_equal_cb)(
 		const struct lttng_kernel_probe_location *a,
@@ -33,6 +34,9 @@ typedef ssize_t (*kernel_probe_location_create_from_payload_cb)(
 		struct lttng_kernel_probe_location **kernel_probe_location);
 typedef unsigned long (*kernel_probe_location_hash_cb)(
 		const struct lttng_kernel_probe_location *location);
+typedef enum lttng_error_code (*kernel_probe_location_mi_serialize_cb)(
+		const struct lttng_kernel_probe_location *location,
+		struct mi_writer *writer);
 
 struct lttng_kernel_probe_location_comm {
 	/* enum lttng_kernel_probe_location_type */
@@ -66,6 +70,7 @@ struct lttng_kernel_probe_location {
 	kernel_probe_location_equal_cb equal;
 	kernel_probe_location_serialize_cb serialize;
 	kernel_probe_location_hash_cb hash;
+	kernel_probe_location_mi_serialize_cb mi_serialize;
 };
 
 struct lttng_kernel_probe_location_symbol {
@@ -101,5 +106,10 @@ struct lttng_kernel_probe_location *lttng_kernel_probe_location_copy(
 LTTNG_HIDDEN
 unsigned long lttng_kernel_probe_location_hash(
 		const struct lttng_kernel_probe_location *location);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_kernel_probe_location_mi_serialize(
+		const struct lttng_kernel_probe_location *location,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_KERNEL_PROBE_INTERNAL_H */

@@ -7,10 +7,11 @@
 
 #include <assert.h>
 #include <common/dynamic-array.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/mi-lttng.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/list-internal.h>
 #include <lttng/action/list.h>
@@ -278,6 +279,86 @@ end:
 	return action_status;
 }
 
+LTTNG_HIDDEN
+enum lttng_error_code lttng_action_list_mi_serialize(
+		const struct lttng_trigger *trigger,
+		const struct lttng_action *action,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks,
+		struct lttng_dynamic_array *action_path_indexes)
+{
+	int ret;
+	struct lttng_action_list *action_list;
+	unsigned int i, count;
+	enum lttng_error_code ret_code;
+
+	assert(action);
+	assert(IS_LIST_ACTION(action));
+	assert(writer);
+
+	/* Open action list. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_action_list);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Serialize every action of the list. */
+	action_list = action_list_from_action(action);
+	count = lttng_dynamic_pointer_array_get_count(&action_list->actions);
+	for (i = 0; i < count; i++) {
+		const struct lttng_action *child =
+				lttng_action_list_get_at_index(action, i);
+		const uint64_t index = (uint64_t) i;
+
+		assert(child);
+
+		/*
+		 * Add the index to the action path.
+		 *
+		 * This index is replaced on every iteration to walk the action
+		 * tree in-order and to re-use the dynamic array instead of
+		 * copying it at every level.
+		 */
+		ret = lttng_dynamic_array_add_element(
+				action_path_indexes, &index);
+		if (ret) {
+			ret_code = LTTNG_ERR_NOMEM;
+			goto end;
+		}
+
+		ret_code = lttng_action_mi_serialize(trigger, child, writer,
+				error_query_callbacks, action_path_indexes);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+
+		ret = lttng_dynamic_array_remove_element(action_path_indexes,
+				lttng_dynamic_array_get_count(
+						action_path_indexes) -
+						1);
+		if (ret) {
+			ret_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+	}
+
+	/* Close action_list element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 struct lttng_action *lttng_action_list_create(void)
 {
 	struct lttng_action_list *action_list;
@@ -291,12 +372,14 @@ struct lttng_action *lttng_action_list_create(void)
 
 	action = &action_list->parent;
 
+	/*
+	 * The mi for the list is handled at the lttng_action_mi level to ease
+	 * action path management for error query.
+	 */
 	lttng_action_init(action, LTTNG_ACTION_TYPE_LIST,
-			lttng_action_list_validate,
-			lttng_action_list_serialize,
+			lttng_action_list_validate, lttng_action_list_serialize,
 			lttng_action_list_is_equal, lttng_action_list_destroy,
-			NULL,
-			lttng_action_list_add_error_query_results);
+			NULL, lttng_action_list_add_error_query_results, NULL);
 
 	lttng_dynamic_pointer_array_init(&action_list->actions,
 			destroy_lttng_action_list_element);

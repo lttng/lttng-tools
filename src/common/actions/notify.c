@@ -8,9 +8,11 @@
 #include <assert.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/notify-internal.h>
 #include <lttng/action/rate-policy-internal.h>
+#include <lttng/lttng-error.h>
 
 #define IS_NOTIFY_ACTION(action) \
 	(lttng_action_get_type(action) == LTTNG_ACTION_TYPE_NOTIFY)
@@ -82,6 +84,49 @@ lttng_action_notify_internal_get_rate_policy(const struct lttng_action *action)
 	return _action->policy;
 }
 
+static enum lttng_error_code lttng_action_notify_mi_serialize(
+		const struct lttng_action *action, struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_action_status status;
+	enum lttng_error_code ret_code;
+	const struct lttng_rate_policy *policy = NULL;
+
+	assert(action);
+	assert(IS_NOTIFY_ACTION(action));
+	assert(writer);
+
+	status = lttng_action_notify_get_rate_policy(action, &policy);
+	assert(status == LTTNG_ACTION_STATUS_OK);
+	assert(policy != NULL);
+
+	/* Open action notify. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_action_notify);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = lttng_rate_policy_mi_serialize(policy, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close action notify element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 struct lttng_action *lttng_action_notify_create(void)
 {
 	struct lttng_rate_policy *policy = NULL;
@@ -104,7 +149,8 @@ struct lttng_action *lttng_action_notify_create(void)
 			lttng_action_notify_is_equal,
 			lttng_action_notify_destroy,
 			lttng_action_notify_internal_get_rate_policy,
-			lttng_action_generic_add_error_query_results);
+			lttng_action_generic_add_error_query_results,
+			lttng_action_notify_mi_serialize);
 
 	notify->policy = policy;
 	policy = NULL;

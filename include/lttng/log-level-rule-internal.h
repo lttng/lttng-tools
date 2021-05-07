@@ -18,6 +18,8 @@
 #include <lttng/event.h>
 #include <lttng/log-level-rule.h>
 
+struct mi_writer;
+
 /*
  * For now only a single backing struct is used for both type of log level
  * rule (exactly, as_severe) since both only have require "level" as property.
@@ -59,5 +61,10 @@ void lttng_log_level_rule_to_loglevel(
 LTTNG_HIDDEN
 unsigned long lttng_log_level_rule_hash(
 		const struct lttng_log_level_rule *log_level_rule);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_log_level_rule_mi_serialize(
+		const struct lttng_log_level_rule *rule,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_LOG_LEVEL_RULE_INTERNAL_H */

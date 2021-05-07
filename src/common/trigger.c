@@ -9,6 +9,7 @@
 #include <common/credentials.h>
 #include <common/dynamic-array.h>
 #include <common/error.h>
+#include <common/mi-lttng.h>
 #include <common/optional.h>
 #include <common/payload-view.h>
 #include <common/payload.h>
@@ -19,6 +20,7 @@
 #include <lttng/condition/event-rule-matches-internal.h>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/domain.h>
+#include <lttng/error-query-internal.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/trigger/trigger-internal.h>
@@ -1017,4 +1019,202 @@ LTTNG_HIDDEN
 void lttng_trigger_unlock(struct lttng_trigger *trigger)
 {
 	pthread_mutex_unlock(&trigger->lock);
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_trigger_mi_serialize(const struct lttng_trigger *trigger,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_trigger_status trigger_status;
+	const struct lttng_condition *condition = NULL;
+	const struct lttng_action *action = NULL;
+	struct lttng_dynamic_array action_path_indexes;
+	uid_t owner_uid;
+
+	assert(trigger);
+	assert(writer);
+
+	lttng_dynamic_array_init(&action_path_indexes, sizeof(uint64_t), NULL);
+
+	/* Open trigger element. */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_trigger);
+	if (ret) {
+		goto mi_error;
+	}
+
+	trigger_status = lttng_trigger_get_owner_uid(trigger, &owner_uid);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	/* Name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, trigger->name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Owner uid. */
+	ret = mi_lttng_writer_write_element_signed_int(writer,
+			mi_lttng_element_trigger_owner_uid,
+			(int64_t) owner_uid);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Condition. */
+	condition = lttng_trigger_get_const_condition(trigger);
+	assert(condition);
+	ret_code = lttng_condition_mi_serialize(
+			trigger, condition, writer, error_query_callbacks);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Action. */
+	action = lttng_trigger_get_const_action(trigger);
+	assert(action);
+	ret_code = lttng_action_mi_serialize(trigger, action, writer,
+			error_query_callbacks, &action_path_indexes);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	if (error_query_callbacks && error_query_callbacks->trigger_cb) {
+		struct lttng_error_query_results *results = NULL;
+
+		ret_code = error_query_callbacks->trigger_cb(trigger, &results);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+
+		ret_code = lttng_error_query_results_mi_serialize(
+				results, writer);
+		lttng_error_query_results_destroy(results);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	/* Close trigger element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	lttng_dynamic_array_reset(&action_path_indexes);
+	return ret_code;
+}
+
+/* Used by qsort, which expects the semantics of strcmp(). */
+static int compare_triggers_by_name(const void *a, const void *b)
+{
+	const struct lttng_trigger *trigger_a =
+			*((const struct lttng_trigger **) a);
+	const struct lttng_trigger *trigger_b =
+			*((const struct lttng_trigger **) b);
+	const char *name_a, *name_b;
+	enum lttng_trigger_status trigger_status;
+
+	/* Anonymous triggers are not reachable here. */
+	trigger_status = lttng_trigger_get_name(trigger_a, &name_a);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	trigger_status = lttng_trigger_get_name(trigger_b, &name_b);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	return strcmp(name_a, name_b);
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_triggers_mi_serialize(const struct lttng_triggers *triggers,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_trigger_status status;
+	unsigned int count, i;
+	struct lttng_dynamic_pointer_array sorted_triggers;
+
+	assert(triggers);
+	assert(writer);
+
+	/*
+	 * Sort trigger by name to ensure an order at the MI level and ignore
+	 * any anonymous trigger present.
+	 */
+	lttng_dynamic_pointer_array_init(&sorted_triggers, NULL);
+
+	status = lttng_triggers_get_count(triggers, &count);
+	assert(status == LTTNG_TRIGGER_STATUS_OK);
+
+	for (i = 0; i < count; i++) {
+		int add_ret;
+		const char *unused_name;
+		const struct lttng_trigger *trigger =
+				lttng_triggers_get_at_index(triggers, i);
+
+		status = lttng_trigger_get_name(trigger, &unused_name);
+		switch (status) {
+		case LTTNG_TRIGGER_STATUS_OK:
+			break;
+		case LTTNG_TRIGGER_STATUS_UNSET:
+			/* Don't list anonymous triggers. */
+			continue;
+		default:
+			abort();
+		}
+
+		add_ret = lttng_dynamic_pointer_array_add_pointer(
+				&sorted_triggers, (void *) trigger);
+
+		if (add_ret) {
+			ERR("Failed to lttng_trigger to sorting array.");
+			ret_code = LTTNG_ERR_NOMEM;
+			goto error;
+		}
+	}
+
+	qsort(sorted_triggers.array.buffer.data, count,
+			sizeof(struct lttng_trigger *),
+			compare_triggers_by_name);
+
+	/* Open triggers element. */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_triggers);
+	if (ret) {
+		ret_code = LTTNG_ERR_MI_IO_FAIL;
+		goto error;
+	}
+
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&sorted_triggers); i++) {
+		const struct lttng_trigger *trigger =
+				(const struct lttng_trigger *)
+				lttng_dynamic_pointer_array_get_pointer(
+						&sorted_triggers, i);
+
+		lttng_trigger_mi_serialize(trigger, writer, error_query_callbacks);
+	}
+
+	/* Close triggers element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		ret_code = LTTNG_ERR_MI_IO_FAIL;
+		goto error;
+	}
+
+	ret_code = LTTNG_OK;
+
+error:
+	lttng_dynamic_pointer_array_reset(&sorted_triggers);
+	return ret_code;
 }

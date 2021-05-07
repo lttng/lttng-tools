@@ -5,17 +5,19 @@
  *
  */
 
-#include <lttng/condition/condition-internal.h>
+#include <assert.h>
+#include <common/buffer-view.h>
+#include <common/dynamic-buffer.h>
+#include <common/error.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <lttng/condition/buffer-usage-internal.h>
+#include <lttng/condition/condition-internal.h>
 #include <lttng/condition/event-rule-matches-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/condition/session-rotation-internal.h>
-#include <common/macros.h>
-#include <common/error.h>
-#include <common/dynamic-buffer.h>
-#include <common/buffer-view.h>
+#include <lttng/error-query-internal.h>
 #include <stdbool.h>
-#include <assert.h>
 
 enum lttng_condition_type lttng_condition_get_type(
 		const struct lttng_condition *condition)
@@ -237,4 +239,62 @@ const char *lttng_condition_type_str(enum lttng_condition_type type)
 	default:
 		return "???";
 	}
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_condition_mi_serialize(
+		const struct lttng_trigger *trigger,
+		const struct lttng_condition *condition,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks *error_query_callbacks)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	struct lttng_error_query_results *error_query_results = NULL;
+
+	assert(condition);
+	assert(writer);
+	assert(condition->mi_serialize);
+
+	/* Open condition element. */
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_condition);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Serialize underlying condition. */
+	ret_code = condition->mi_serialize(condition, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Serialize error query results for the action. */
+	if (error_query_callbacks && error_query_callbacks->action_cb) {
+		ret_code = error_query_callbacks->condition_cb(
+				trigger, &error_query_results);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+
+		ret_code = lttng_error_query_results_mi_serialize(
+				error_query_results, writer);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	/* Close condition element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	lttng_error_query_results_destroy(error_query_results);
+	return ret_code;
 }

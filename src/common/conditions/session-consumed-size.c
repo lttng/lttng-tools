@@ -5,14 +5,15 @@
  *
  */
 
+#include <assert.h>
+#include <common/error.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
+#include <float.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/session-consumed-size-internal.h>
 #include <lttng/constant.h>
-#include <common/macros.h>
-#include <common/error.h>
-#include <assert.h>
 #include <math.h>
-#include <float.h>
 #include <time.h>
 
 #define IS_CONSUMED_SIZE_CONDITION(condition) ( \
@@ -138,6 +139,67 @@ end:
 	return is_equal;
 }
 
+static
+enum lttng_error_code lttng_condition_session_consumed_size_mi_serialize(
+		const struct lttng_condition *condition,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_condition_status status;
+	const char *session_name = NULL;
+	uint64_t threshold_bytes;
+
+	assert(condition);
+	assert(writer);
+	assert(IS_CONSUMED_SIZE_CONDITION(condition));
+
+	status = lttng_condition_session_consumed_size_get_session_name(
+			condition, &session_name);
+	assert(status == LTTNG_CONDITION_STATUS_OK);
+	assert(session_name);
+
+	status = lttng_condition_session_consumed_size_get_threshold(
+			condition, &threshold_bytes);
+	assert(status == LTTNG_CONDITION_STATUS_OK);
+
+	/* Open condition session consumed size element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_condition_session_consumed_size);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Session name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_session_name, session_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Threshold in bytes. */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_condition_threshold_bytes,
+			threshold_bytes);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close condition session consumed size element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 {
 	struct lttng_condition_session_consumed_size *condition;
@@ -152,6 +214,7 @@ struct lttng_condition *lttng_condition_session_consumed_size_create(void)
 	condition->parent.serialize = lttng_condition_session_consumed_size_serialize;
 	condition->parent.equal = lttng_condition_session_consumed_size_is_equal;
 	condition->parent.destroy = lttng_condition_session_consumed_size_destroy;
+	condition->parent.mi_serialize = lttng_condition_session_consumed_size_mi_serialize;
 	return &condition->parent;
 }
 
