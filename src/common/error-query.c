@@ -10,6 +10,7 @@
 #include <common/dynamic-array.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <common/sessiond-comm/sessiond-comm.h>
 #include <lttng/action/action-internal.h>
 #include <lttng/action/list-internal.h>
@@ -85,6 +86,15 @@ struct lttng_error_query_results {
 	struct lttng_dynamic_pointer_array results;
 };
 
+static
+enum lttng_error_code lttng_error_query_result_mi_serialize(
+		const struct lttng_error_query_result *result,
+		struct mi_writer *writer);
+
+static
+enum lttng_error_code lttng_error_query_result_counter_mi_serialize(
+		const struct lttng_error_query_result *result,
+		struct mi_writer *writer);
 
 struct lttng_error_query *lttng_error_query_trigger_create(
 		const struct lttng_trigger *trigger)
@@ -1048,4 +1058,177 @@ enum lttng_error_query_result_status lttng_error_query_result_counter_get_value(
 	status = LTTNG_ERROR_QUERY_RESULT_STATUS_OK;
 end:
 	return status;
+}
+
+static
+enum lttng_error_code lttng_error_query_result_counter_mi_serialize(
+		const struct lttng_error_query_result *result,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_error_query_result_status status;
+	uint64_t value;
+
+	assert(result);
+	assert(writer);
+
+	status = lttng_error_query_result_counter_get_value(result, &value);
+	assert(status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+
+	/* Open error query result counter element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_error_query_result_counter);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Value. */
+	ret = mi_lttng_writer_write_element_unsigned_int(writer,
+			mi_lttng_element_error_query_result_counter_value,
+			value);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close error query result counter element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static
+enum lttng_error_code lttng_error_query_result_mi_serialize(
+		const struct lttng_error_query_result *result,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_error_query_result_status result_status;
+	enum lttng_error_query_result_type type;
+	const char *name = NULL;
+	const char *description = NULL;
+
+	assert(result);
+	assert(writer);
+
+	type = lttng_error_query_result_get_type(result);
+
+	result_status = lttng_error_query_result_get_name(result, &name);
+	assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+
+	result_status = lttng_error_query_result_get_description(
+			result, &description);
+	assert(result_status == LTTNG_ERROR_QUERY_RESULT_STATUS_OK);
+
+	/* Open error query result element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_error_query_result);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, mi_lttng_element_error_query_result_name, name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Description. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_error_query_result_description,
+			description);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Serialize the result according to its sub type. */
+	switch (type) {
+	case LTTNG_ERROR_QUERY_RESULT_TYPE_COUNTER:
+		ret_code = lttng_error_query_result_counter_mi_serialize(
+				result, writer);
+		break;
+	default:
+		abort();
+	}
+
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close error query result element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_error_query_results_mi_serialize(
+		const struct lttng_error_query_results *results,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	unsigned int i, count;
+	enum lttng_error_query_results_status results_status;
+
+	assert(results);
+	assert(writer);
+
+	/* Open error query results element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_error_query_results);
+	if (ret) {
+		goto mi_error;
+	}
+
+	results_status = lttng_error_query_results_get_count(results, &count);
+	assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+	for (i = 0; i < count; i++) {
+		const struct lttng_error_query_result *result;
+
+		results_status = lttng_error_query_results_get_result(
+				results, &result, i);
+		assert(results_status == LTTNG_ERROR_QUERY_RESULTS_STATUS_OK);
+
+		/* A single error query result. */
+		ret_code = lttng_error_query_result_mi_serialize(result, writer);
+		if (ret_code != LTTNG_OK) {
+			goto end;
+		}
+	}
+
+	/* Close error query results. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
 }

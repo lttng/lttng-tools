@@ -14,6 +14,7 @@
 #include <common/bytecode/bytecode.h>
 #include <common/error.h>
 #include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <lttng/event-expr-internal.h>
 #include <lttng/event-expr.h>
 #include <stdio.h>
@@ -656,4 +657,268 @@ end:
 	}
 
 	return status;
+}
+
+static
+enum lttng_error_code lttng_event_expr_event_payload_field_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *name = NULL;
+
+	assert(expression);
+	assert(writer);
+	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD);
+
+	name = lttng_event_expr_event_payload_field_get_name(expression);
+	assert(name);
+
+	/* Open event expr payload field element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_event_expr_payload_field);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close event expr payload field element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static
+enum lttng_error_code lttng_event_expr_channel_context_field_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *name = NULL;
+
+	assert(expression);
+	assert(writer);
+	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD);
+
+	name = lttng_event_expr_channel_context_field_get_name(expression);
+	assert(name);
+
+	/* Open event expr channel context field element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_event_expr_channel_context_field);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Name. */
+	ret = mi_lttng_writer_write_element_string(
+			writer, config_element_name, name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close event expr channel context field element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static
+enum lttng_error_code lttng_event_expr_app_specific_context_field_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *provider_name = NULL;
+	const char *type_name = NULL;
+
+	assert(expression);
+	assert(writer);
+	assert(expression->type ==
+			LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD);
+
+	provider_name = lttng_event_expr_app_specific_context_field_get_provider_name(
+			expression);
+	assert(provider_name);
+
+	type_name = lttng_event_expr_app_specific_context_field_get_type_name(
+			expression);
+	assert(provider_name);
+
+	/* Open event expr app specific context field element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_event_expr_app_specific_context_field);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Provider name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_event_expr_provider_name,
+			provider_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Type name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_event_expr_type_name, type_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close event expr app specific context field element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static
+enum lttng_error_code lttng_event_expr_array_field_element_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_event_expr_status status;
+	const struct lttng_event_expr *parent_expr = NULL;
+	unsigned int index;
+
+	assert(expression);
+	assert(writer);
+	assert(expression->type == LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT);
+
+	status = lttng_event_expr_array_field_element_get_index(
+			expression, &index);
+	assert(status == LTTNG_EVENT_EXPR_STATUS_OK);
+
+	parent_expr = lttng_event_expr_array_field_element_get_parent_expr(
+			expression);
+	assert(parent_expr != NULL);
+
+	/* Open event expr array field element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_event_expr_array_field_element);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Index. */
+	ret = mi_lttng_writer_write_element_unsigned_int(
+			writer, mi_lttng_element_event_expr_index, index);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Parent expression. */
+	ret_code = lttng_event_expr_mi_serialize(parent_expr, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close event expr array field element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_event_expr_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+
+	assert(expression);
+	assert(writer);
+
+	ret = mi_lttng_writer_open_element(writer, mi_lttng_element_event_expr);
+	if (ret) {
+		goto mi_error;
+	}
+
+	switch (expression->type) {
+	case LTTNG_EVENT_EXPR_TYPE_EVENT_PAYLOAD_FIELD:
+		ret_code = lttng_event_expr_event_payload_field_mi_serialize(
+				expression, writer);
+		break;
+	case LTTNG_EVENT_EXPR_TYPE_CHANNEL_CONTEXT_FIELD:
+		ret_code = lttng_event_expr_channel_context_field_mi_serialize(
+				expression, writer);
+		break;
+	case LTTNG_EVENT_EXPR_TYPE_APP_SPECIFIC_CONTEXT_FIELD:
+		ret_code = lttng_event_expr_app_specific_context_field_mi_serialize(
+				expression, writer);
+		break;
+	case LTTNG_EVENT_EXPR_TYPE_ARRAY_FIELD_ELEMENT:
+		ret_code = lttng_event_expr_array_field_element_mi_serialize(
+				expression, writer);
+		break;
+	default:
+		abort();
+	}
+
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+
+end:
+	return ret_code;
 }

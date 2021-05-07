@@ -22,6 +22,7 @@
 
 struct lttng_payload;
 struct lttng_payload_view;
+struct mi_writer;
 
 enum lttng_event_rule_generate_exclusions_status {
 	LTTNG_EVENT_RULE_GENERATE_EXCLUSIONS_STATUS_OK,
@@ -57,6 +58,9 @@ typedef unsigned long (*event_rule_hash_cb)(
 		const struct lttng_event_rule *event_rule);
 typedef struct lttng_event *(*event_rule_generate_lttng_event_cb)(
 		const struct lttng_event_rule *event_rule);
+typedef enum lttng_error_code (*event_rule_mi_serialize_cb)(
+		const struct lttng_event_rule *event_rule,
+		struct mi_writer *writer);
 
 struct lttng_event_rule {
 	struct urcu_ref ref;
@@ -71,6 +75,7 @@ struct lttng_event_rule {
 	event_rule_generate_exclusions_cb generate_exclusions;
 	event_rule_hash_cb hash;
 	event_rule_generate_lttng_event_cb generate_lttng_event;
+	event_rule_mi_serialize_cb mi_serialize;
 };
 
 struct lttng_event_rule_comm {
@@ -160,5 +165,9 @@ struct lttng_event *lttng_event_rule_generate_lttng_event(
 /* Test if an event rule targets an agent domain. */
 LTTNG_HIDDEN
 bool lttng_event_rule_targets_agent_domain(const struct lttng_event_rule *rule);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_event_rule_mi_serialize(
+		const struct lttng_event_rule *rule, struct mi_writer *writer);
 
 #endif /* LTTNG_EVENT_RULE_INTERNAL_H */

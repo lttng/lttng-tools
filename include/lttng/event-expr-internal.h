@@ -13,6 +13,7 @@
 #include <lttng/event-expr.h>
 
 struct lttng_bytecode;
+struct mi_writer;
 
 struct lttng_event_expr {
 	enum lttng_event_expr_type type;
@@ -60,5 +61,10 @@ bool lttng_event_expr_is_lvalue(const struct lttng_event_expr *expr)
 LTTNG_HIDDEN
 int lttng_event_expr_to_bytecode(const struct lttng_event_expr *expr,
 		struct lttng_bytecode **bytecode_out);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_event_expr_mi_serialize(
+		const struct lttng_event_expr *expression,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_EVENT_EXPR_INTERNAL_H */

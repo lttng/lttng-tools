@@ -9,11 +9,12 @@
 #include <assert.h>
 #include <common/compat/string.h>
 #include <common/error.h>
-#include <common/macros.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
 #include <fcntl.h>
 #include <lttng/constant.h>
 #include <lttng/userspace-probe-internal.h>
@@ -30,6 +31,22 @@ static
 int lttng_userspace_probe_location_tracepoint_set_binary_fd_handle(
 		struct lttng_userspace_probe_location *location,
 		struct fd_handle *binary_fd_handle);
+
+static
+enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
+		const struct lttng_userspace_probe_location_lookup_method
+				*method,
+		struct mi_writer *writer);
+
+static
+enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer);
+
+static
+enum lttng_error_code lttng_userspace_probe_location_function_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer);
 
 enum lttng_userspace_probe_location_lookup_method_type
 lttng_userspace_probe_location_lookup_method_get_type(
@@ -1964,4 +1981,285 @@ unsigned long lttng_userspace_probe_location_hash(
 		const struct lttng_userspace_probe_location *location)
 {
 	return location->hash(location);
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_userspace_probe_location_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer)
+{
+	typedef enum lttng_error_code (*mi_fp)(
+			const struct lttng_userspace_probe_location *,
+			struct mi_writer *);
+
+	int ret;
+	enum lttng_error_code ret_code;
+	mi_fp mi_function = NULL;
+
+	assert(location);
+	assert(writer);
+
+	switch (lttng_userspace_probe_location_get_type(location)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_FUNCTION:
+		mi_function = lttng_userspace_probe_location_function_mi_serialize;
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_TYPE_TRACEPOINT:
+		mi_function = lttng_userspace_probe_location_tracepoint_mi_serialize;
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	/* Open userspace probe location element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_userspace_probe_location);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Underlying user space probe location. */
+	ret_code = mi_function(location, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close userspace probe location element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+enum lttng_error_code lttng_userspace_probe_location_lookup_method_mi_serialize(
+		const struct lttng_userspace_probe_location_lookup_method
+				*method,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *type_element_str;
+
+	assert(method);
+	assert(writer);
+
+	switch (lttng_userspace_probe_location_lookup_method_get_type(method)) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_DEFAULT:
+		type_element_str =
+				mi_lttng_element_userspace_probe_location_lookup_method_function_default;
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_FUNCTION_ELF:
+		type_element_str =
+				mi_lttng_element_userspace_probe_location_lookup_method_function_elf;
+		break;
+	case LTTNG_USERSPACE_PROBE_LOCATION_LOOKUP_METHOD_TYPE_TRACEPOINT_SDT:
+		type_element_str =
+				mi_lttng_element_userspace_probe_location_lookup_method_tracepoint_sdt;
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	/* Open userspace probe location lookup method element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_userspace_probe_location_lookup_method);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* User space probe location lookup method empty element. */
+	ret = mi_lttng_writer_open_element(writer, type_element_str);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close userspace probe location lookup method element. */
+	ret = mi_lttng_close_multi_element(writer, 2);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static enum lttng_error_code lttng_userspace_probe_location_tracepoint_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *probe_name = NULL;
+	const char *provider_name = NULL;
+	const char *binary_path = NULL;
+	const struct lttng_userspace_probe_location_lookup_method
+			*lookup_method = NULL;
+
+	assert(location);
+	assert(writer);
+
+	probe_name = lttng_userspace_probe_location_tracepoint_get_probe_name(
+			location);
+	provider_name = lttng_userspace_probe_location_tracepoint_get_provider_name(
+			location);
+	binary_path = lttng_userspace_probe_location_tracepoint_get_binary_path(
+			location);
+	lookup_method = lttng_userspace_probe_location_tracepoint_get_lookup_method(
+			location);
+
+	/* Open userspace probe location tracepoint element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_userspace_probe_location_tracepoint);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Probe name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_tracepoint_probe_name,
+			probe_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Provider name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_tracepoint_provider_name,
+			provider_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Binary path. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_binary_path,
+			binary_path);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* The lookup method. */
+	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(
+			lookup_method, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close userspace probe location tracepoint. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
+static enum lttng_error_code lttng_userspace_probe_location_function_mi_serialize(
+		const struct lttng_userspace_probe_location *location,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	const char *function_name = NULL;
+	const char *binary_path = NULL;
+	const char *instrumentation_type_str = NULL;
+	enum lttng_userspace_probe_location_function_instrumentation_type
+			instrumentation_type;
+	const struct lttng_userspace_probe_location_lookup_method
+			*lookup_method = NULL;
+
+	assert(location);
+	assert(writer);
+
+	function_name = lttng_userspace_probe_location_function_get_function_name(
+			location);
+	binary_path = lttng_userspace_probe_location_function_get_binary_path(
+			location);
+	instrumentation_type =
+			lttng_userspace_probe_location_function_get_instrumentation_type(
+					location);
+	lookup_method = lttng_userspace_probe_location_function_get_lookup_method(
+			location);
+
+	switch (instrumentation_type) {
+	case LTTNG_USERSPACE_PROBE_LOCATION_FUNCTION_INSTRUMENTATION_TYPE_ENTRY:
+		instrumentation_type_str =
+				mi_lttng_userspace_probe_location_function_instrumentation_type_entry;
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	/* Open userspace probe location function element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_userspace_probe_location_function);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Function name. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_function_name,
+			function_name);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Binary path. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_binary_path,
+			binary_path);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Instrumentation type. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_userspace_probe_location_function_instrumentation_type,
+			instrumentation_type_str);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* The lookup method. */
+	ret_code = lttng_userspace_probe_location_lookup_method_mi_serialize(
+			lookup_method, writer);
+	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	/* Close userspace probe location function element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
 }

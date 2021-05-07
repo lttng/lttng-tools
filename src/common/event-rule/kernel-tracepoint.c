@@ -8,13 +8,14 @@
 #include <assert.h>
 #include <common/credentials.h>
 #include <common/error.h>
-#include <common/macros.h>
-#include <common/optional.h>
-#include <common/payload.h>
-#include <common/payload-view.h>
-#include <common/runas.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
+#include <common/optional.h>
+#include <common/payload-view.h>
+#include <common/payload.h>
+#include <common/runas.h>
 #include <common/string-utils/string-utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.h>
@@ -266,6 +267,67 @@ static unsigned long lttng_event_rule_kernel_tracepoint_hash(
 	return hash;
 }
 
+static enum lttng_error_code lttng_event_rule_kernel_tracepoint_mi_serialize(
+		const struct lttng_event_rule *rule, struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_event_rule_status status;
+	const char *filter = NULL;
+	const char *name_pattern = NULL;
+
+	assert(rule);
+	assert(writer);
+	assert(IS_KERNEL_TRACEPOINT_EVENT_RULE(rule));
+
+	status = lttng_event_rule_kernel_tracepoint_get_name_pattern(
+			rule, &name_pattern);
+	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
+	assert(name_pattern);
+
+	status = lttng_event_rule_kernel_tracepoint_get_filter(rule, &filter);
+	assert(status == LTTNG_EVENT_RULE_STATUS_OK ||
+			status == LTTNG_EVENT_RULE_STATUS_UNSET);
+
+	/* Open event rule kernel tracepoint element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_event_rule_kernel_tracepoint);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Name pattern. */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_event_rule_name_pattern, name_pattern);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Filter. */
+	if (filter != NULL) {
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_event_rule_filter_expression,
+				filter);
+		if (ret) {
+			goto mi_error;
+		}
+	}
+
+	/* Close event rule kernel tracepoint element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
+}
+
 struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 {
 	struct lttng_event_rule *rule = NULL;
@@ -292,6 +354,7 @@ struct lttng_event_rule *lttng_event_rule_kernel_tracepoint_create(void)
 	tp_rule->parent.generate_exclusions =
 			lttng_event_rule_kernel_tracepoint_generate_exclusions;
 	tp_rule->parent.hash = lttng_event_rule_kernel_tracepoint_hash;
+	tp_rule->parent.mi_serialize = lttng_event_rule_kernel_tracepoint_mi_serialize;
 
 	/* Not necessary for now. */
 	tp_rule->parent.generate_lttng_event = NULL;

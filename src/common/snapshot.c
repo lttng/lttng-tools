@@ -5,8 +5,10 @@
  *
  */
 
-#include <common/payload.h>
+#include <common/error.h>
+#include <common/mi-lttng.h>
 #include <common/payload-view.h>
+#include <common/payload.h>
 #include <common/snapshot.h>
 #include <lttng/snapshot-internal.h>
 #include <lttng/snapshot.h>
@@ -176,4 +178,81 @@ ssize_t lttng_snapshot_output_create_from_payload(
 end:
 	lttng_snapshot_output_destroy(output);
 	return ret;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_snapshot_output_mi_serialize(
+		const struct lttng_snapshot_output *output,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+
+	assert(output);
+	assert(writer);
+
+	/* Open output element. */
+	ret = mi_lttng_writer_open_element(writer,
+			mi_lttng_element_action_snapshot_session_output);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Name. */
+	if (strnlen(output->name, LTTNG_NAME_MAX) != 0) {
+		ret = mi_lttng_writer_write_element_string(
+				writer, config_element_name, output->name);
+		if (ret) {
+			goto mi_error;
+		}
+	}
+
+	/* Control url (always present). */
+	ret = mi_lttng_writer_write_element_string(writer,
+			mi_lttng_element_snapshot_ctrl_url, output->ctrl_url);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Data url (optional). */
+	if (strnlen(output->data_url, PATH_MAX) != 0) {
+		ret = mi_lttng_writer_write_element_string(writer,
+				mi_lttng_element_snapshot_data_url,
+				output->data_url);
+		if (ret) {
+			goto mi_error;
+		}
+	}
+
+	/*
+	 * Maximum size in bytes of the snapshot meaning the total size of all
+	 * streams combined. A value of 0 means unlimited. The default value is
+	 * UINT64_MAX which also means unlimited in practice.
+	 *
+	 * The value is not serialized when it is set to either of those values
+	 * to normalize them to '0'.
+	 */
+	if (output->max_size > 0 && output->max_size != UINT64_MAX) {
+		/* Total size of all stream combined. */
+		ret = mi_lttng_writer_write_element_unsigned_int(writer,
+				mi_lttng_element_snapshot_max_size,
+				output->max_size);
+		if (ret) {
+			goto mi_error;
+		}
+	}
+
+	/* Close output element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
 }

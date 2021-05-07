@@ -8,9 +8,10 @@
 #include <assert.h>
 #include <common/dynamic-buffer.h>
 #include <common/error.h>
-#include <common/macros.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
+#include <common/macros.h>
+#include <common/mi-lttng.h>
 #include <lttng/log-level-rule-internal.h>
 #include <lttng/log-level-rule.h>
 #include <stdbool.h>
@@ -299,4 +300,76 @@ unsigned long lttng_log_level_rule_hash(
 			lttng_ht_seed);
 
 	return hash;
+}
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_log_level_rule_mi_serialize(
+		const struct lttng_log_level_rule *rule,
+		struct mi_writer *writer)
+{
+	int ret;
+	enum lttng_error_code ret_code;
+	enum lttng_log_level_rule_status status;
+	const char *element_str = NULL;
+	int level;
+
+	assert(rule);
+	assert(writer);
+
+	switch (lttng_log_level_rule_get_type(rule)) {
+	case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+		status = lttng_log_level_rule_exactly_get_level(rule, &level);
+		element_str = mi_lttng_element_log_level_rule_exactly;
+		break;
+	case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+		element_str = mi_lttng_element_log_level_rule_at_least_as_severe_as;
+		status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+				rule, &level);
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	assert(status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+
+	/* Open log level rule element. */
+	ret = mi_lttng_writer_open_element(
+			writer, mi_lttng_element_log_level_rule);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Log level rule type element. */
+	ret = mi_lttng_writer_open_element(writer, element_str);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Level. */
+	ret = mi_lttng_writer_write_element_signed_int(
+			writer, mi_lttng_element_log_level_rule_level, level);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close log level rule type element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	/* Close log level rule element. */
+	ret = mi_lttng_writer_close_element(writer);
+	if (ret) {
+		goto mi_error;
+	}
+
+	ret_code = LTTNG_OK;
+	goto end;
+
+mi_error:
+	ret_code = LTTNG_ERR_MI_IO_FAIL;
+end:
+	return ret_code;
 }

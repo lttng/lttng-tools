@@ -13,6 +13,8 @@
 #include <lttng/action/rate-policy.h>
 #include <stdbool.h>
 
+struct mi_writer;
+
 LTTNG_HIDDEN
 int lttng_rate_policy_serialize(struct lttng_rate_policy *rate_policy,
 		struct lttng_payload *buf);
@@ -36,5 +38,10 @@ struct lttng_rate_policy *lttng_rate_policy_copy(
 LTTNG_HIDDEN
 bool lttng_rate_policy_should_execute(
 		const struct lttng_rate_policy *policy, uint64_t counter);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_rate_policy_mi_serialize(
+		const struct lttng_rate_policy *policy,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_RATE_POLICY */

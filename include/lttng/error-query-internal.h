@@ -15,6 +15,8 @@
 #include <common/payload.h>
 #include <common/payload-view.h>
 
+struct mi_writer;
+
 enum lttng_error_query_target_type {
 	LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER,
 	LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION,
@@ -86,5 +88,10 @@ LTTNG_HIDDEN
 int lttng_error_query_results_add_result(
 		struct lttng_error_query_results *results,
 		struct lttng_error_query_result *result);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_error_query_results_mi_serialize(
+		const struct lttng_error_query_results *results,
+		struct mi_writer *writer);
 
 #endif /* LTTNG_ERROR_QUERY_INTERNAL_H */

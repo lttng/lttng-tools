@@ -14,6 +14,10 @@
 
 struct lttng_action;
 struct lttng_payload_view;
+struct mi_writer;
+struct mi_lttng_error_query_callbacks;
+struct lttng_dynamic_array;
+struct lttng_trigger;
 
 /*
  * Create an action list from a payload view.
@@ -29,5 +33,13 @@ extern ssize_t lttng_action_list_create_from_payload(
 LTTNG_HIDDEN
 extern struct lttng_action *lttng_action_list_borrow_mutable_at_index(
 		const struct lttng_action *list, unsigned int index);
+
+LTTNG_HIDDEN
+enum lttng_error_code lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,
+		const struct lttng_action *action,
+		struct mi_writer *writer,
+		const struct mi_lttng_error_query_callbacks
+				*error_query_callbacks,
+		struct lttng_dynamic_array *action_path_indexes);
 
 #endif /* LTTNG_ACTION_LIST_INTERNAL_H */
