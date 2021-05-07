@@ -730,6 +730,7 @@ static void action_work_item_destroy(struct action_work_item *work_item)
 	lttng_evaluation_destroy(work_item->evaluation);
 	notification_client_list_put(work_item->client_list);
 	lttng_dynamic_array_reset(work_item->subitems);
+	free(work_item->subitems);
 	free(work_item);
 }
 
