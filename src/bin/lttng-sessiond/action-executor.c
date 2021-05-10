@@ -77,7 +77,7 @@ struct action_work_item {
 	 * The actions to be executed with their respective execution context.
 	 * See struct `action_work_subitem`.
 	 */
-	struct lttng_dynamic_array *subitems;
+	struct lttng_dynamic_array subitems;
 
 	/* Execution context data */
 	struct lttng_trigger *trigger;
@@ -707,11 +707,11 @@ static int action_work_item_execute(struct action_executor *executor,
 	DBG("Starting execution of action work item %" PRIu64 " of trigger `%s`",
 			work_item->id, get_trigger_name(work_item->trigger));
 
-	count = lttng_dynamic_array_get_count(work_item->subitems);
+	count = lttng_dynamic_array_get_count(&work_item->subitems);
 	for (i = 0; i < count; i++) {
 		struct action_work_subitem *item;
 
-		item = lttng_dynamic_array_get_element(work_item->subitems, i);
+		item = lttng_dynamic_array_get_element(&work_item->subitems, i);
 		ret = action_executor_generic_handler(
 				executor, work_item, item);
 		if (ret) {
@@ -729,8 +729,7 @@ static void action_work_item_destroy(struct action_work_item *work_item)
 	lttng_trigger_put(work_item->trigger);
 	lttng_evaluation_destroy(work_item->evaluation);
 	notification_client_list_put(work_item->client_list);
-	lttng_dynamic_array_reset(work_item->subitems);
-	free(work_item->subitems);
+	lttng_dynamic_array_reset(&work_item->subitems);
 	free(work_item);
 }
 
@@ -906,29 +905,8 @@ enum action_executor_status action_executor_enqueue_trigger(
 	const uint64_t work_item_id = executor->next_work_item_id++;
 	struct action_work_item *work_item;
 	bool signal = false;
-	struct lttng_dynamic_array *subitems = NULL;
 
 	assert(trigger);
-
-	/* Build the array of action work subitems for the passed trigger. */
-	subitems = zmalloc(sizeof(*subitems));
-	if (!subitems) {
-		PERROR("Failed to allocate action executor subitems array: trigger name = `%s`",
-				get_trigger_name(trigger));
-		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
-		goto error_unlock;
-	}
-
-	lttng_dynamic_array_init(subitems, sizeof(struct action_work_subitem),
-			action_work_subitem_destructor);
-
-	ret = populate_subitem_array_from_trigger(trigger, subitems);
-	if (ret) {
-		ERR("Failed to populate work item sub items on behalf of trigger: trigger name = `%s`",
-				get_trigger_name(trigger));
-		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
-		goto error_unlock;
-	}
 
 	pthread_mutex_lock(&executor->work.lock);
 	/* Check for queue overflow. */
@@ -958,8 +936,6 @@ enum action_executor_status action_executor_enqueue_trigger(
 
 	*work_item = (typeof(*work_item)){
 			.id = work_item_id,
-			/* Ownership transferred to the work item. */
-			.subitems = subitems,
 			.trigger = trigger,
 			/* Ownership transferred to the work item. */
 			.evaluation = evaluation,
@@ -973,7 +949,21 @@ enum action_executor_status action_executor_enqueue_trigger(
 	};
 
 	evaluation = NULL;
-	subitems = NULL;
+
+	/* Build the array of action work subitems for the passed trigger. */
+	lttng_dynamic_array_init(&work_item->subitems,
+			sizeof(struct action_work_subitem),
+			action_work_subitem_destructor);
+
+	ret = populate_subitem_array_from_trigger(
+			trigger, &work_item->subitems);
+	if (ret) {
+		ERR("Failed to populate work item sub items on behalf of trigger: trigger name = `%s`",
+				get_trigger_name(trigger));
+		executor_status = ACTION_EXECUTOR_STATUS_ERROR;
+		goto error_unlock;
+	}
+
 	cds_list_add_tail(&work_item->list_node, &executor->work.list);
 	executor->work.pending_count++;
 	DBG("Enqueued action for trigger: trigger name = `%s`, work item id = %" PRIu64,
@@ -984,13 +974,9 @@ error_unlock:
 	if (signal) {
 		pthread_cond_signal(&executor->work.cond);
 	}
-	pthread_mutex_unlock(&executor->work.lock);
 
+	pthread_mutex_unlock(&executor->work.lock);
 	lttng_evaluation_destroy(evaluation);
-	if (subitems) {
-		lttng_dynamic_array_reset(subitems);
-		free(subitems);
-	}
 	return executor_status;
 }
 
