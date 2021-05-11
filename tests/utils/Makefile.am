@@ -4,7 +4,7 @@ SUBDIRS = . tap testapp
 
 EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh \
              parse-callstack.py
-dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl
+dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl tap-driver.sh
 noinst_LTLIBRARIES = libtestutils.la
 
 libtestutils_la_SOURCES = utils.c utils.h

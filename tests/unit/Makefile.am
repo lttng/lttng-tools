@@ -6,7 +6,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/tests/utils/ -I$(srcdir)
 
 LOG_DRIVER_FLAGS='--merge'
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) \
-	$(top_srcdir)/config/tap-driver.sh
+	$(top_srcdir)/tests/utils/tap-driver.sh
 
 TESTS = test_kernel_data \
 	test_session \
