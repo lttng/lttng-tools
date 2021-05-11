@@ -214,7 +214,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
-	event_rule_status = lttng_event_rule_tracepoint_get_exclusions_count(
+	event_rule_status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(
 			event_rule, &exclusions_count);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 	if (exclusions_count > 0) {
@@ -222,7 +222,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		for (i = 0; i < exclusions_count; i++) {
 			const char *exclusion;
 
-			event_rule_status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+			event_rule_status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 					event_rule, i, &exclusion);
 			assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 

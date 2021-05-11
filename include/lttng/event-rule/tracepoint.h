@@ -122,7 +122,7 @@ lttng_event_rule_tracepoint_get_log_level_rule(
 		const struct lttng_log_level_rule **log_level_rule);
 
 /*
- * Add an exclusion to the set of exclusion of an event rule.
+ * Add a name pattern exclusion to the set of name pattern exclusion of an event rule.
  *
  * The passed exclusion will be copied to the event_rule.
  *
@@ -131,30 +131,30 @@ lttng_event_rule_tracepoint_get_log_level_rule(
  * LTTNG_EVENT_RULE_STATUS_UNSUPPORTED if this property is not supported by the
  * domain.
  */
-extern enum lttng_event_rule_status lttng_event_rule_tracepoint_add_exclusion(
+extern enum lttng_event_rule_status lttng_event_rule_tracepoint_add_name_pattern_exclusion(
 		struct lttng_event_rule *rule,
 		const char *exclusion);
 
 /*
- * Get the exclusions property count of an event rule.
+ * Get the name pattern exclusions property count of an event rule.
  *
  * Returns LTTNG_EVENT_RULE_STATUS_OK and sets the count output parameter
  * on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is
  * passed.
  */
 extern enum lttng_event_rule_status
-lttng_event_rule_tracepoint_get_exclusions_count(
+lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(
 		const struct lttng_event_rule *rule, unsigned int *count);
 
 /*
- * Get the event rule exclusion at the given index.
+ * Get the pattern name exclusion at the given index.
  *
  * Returns LTTNG_EVENT_RULE_STATUS_OK and sets the exclusion output parameter
  * on success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is
  * passed.
  */
 extern enum lttng_event_rule_status
-lttng_event_rule_tracepoint_get_exclusion_at_index(
+lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 		const struct lttng_event_rule *rule,
 		unsigned int index,
 		const char **exclusion);

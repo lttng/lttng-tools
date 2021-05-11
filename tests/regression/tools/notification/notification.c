@@ -1492,7 +1492,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 
 		for (i = 0; i < exclusion_count; i++) {
 			event_rule_status =
-					lttng_event_rule_tracepoint_add_exclusion(
+					lttng_event_rule_tracepoint_add_name_pattern_exclusion(
 							event_rule,
 							exclusions[i]);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {

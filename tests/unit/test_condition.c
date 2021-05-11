@@ -72,7 +72,7 @@ void test_condition_event_rule(void)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting log level range");
 
 	for (i = 0; i < 3; i++) {
-		status = lttng_event_rule_tracepoint_add_exclusion(
+		status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(
 				tracepoint, exclusions[i]);
 		ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 				"Setting exclusion pattern");

@@ -98,7 +98,7 @@ static int lttng_event_rule_tracepoint_serialize(
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_tracepoint, parent);
 
-	status = lttng_event_rule_tracepoint_get_exclusions_count(rule, &exclusion_count);
+	status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(rule, &exclusion_count);
 	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	pattern_len = strlen(tracepoint->pattern) + 1;
@@ -114,7 +114,7 @@ static int lttng_event_rule_tracepoint_serialize(
 	for (i = 0; i < exclusion_count; i++) {
 		const char *exclusion;
 
-		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 
@@ -163,7 +163,7 @@ static int lttng_event_rule_tracepoint_serialize(
 		size_t len;
 		const char *exclusion;
 
-		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 
@@ -206,9 +206,9 @@ static bool lttng_event_rule_tracepoint_is_equal(
 	a = container_of(_a, struct lttng_event_rule_tracepoint, parent);
 	b = container_of(_b, struct lttng_event_rule_tracepoint, parent);
 
-	status = lttng_event_rule_tracepoint_get_exclusions_count(_a, &count_a);
+	status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(_a, &count_a);
 	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-	status = lttng_event_rule_tracepoint_get_exclusions_count(_b, &count_b);
+	status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(_b, &count_b);
 	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Quick checks. */
@@ -248,10 +248,10 @@ static bool lttng_event_rule_tracepoint_is_equal(
 	for (i = 0; i < count_a; i++) {
 		const char *exclusion_a, *exclusion_b;
 
-		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 				_a, i, &exclusion_a);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 				_b, i, &exclusion_b);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		if (strcmp(exclusion_a, exclusion_b)) {
@@ -526,7 +526,7 @@ lttng_event_rule_tracepoint_generate_exclusions(
 		abort();
 	}
 
-	event_rule_status = lttng_event_rule_tracepoint_get_exclusions_count(
+	event_rule_status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(
 			rule, &nb_exclusions);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 	if (nb_exclusions == 0) {
@@ -550,7 +550,7 @@ lttng_event_rule_tracepoint_generate_exclusions(
 		const char *exclusion_str;
 
 		event_rule_status =
-				lttng_event_rule_tracepoint_get_exclusion_at_index(
+				lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 						rule, i, &exclusion_str);
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
@@ -598,14 +598,14 @@ static unsigned long lttng_event_rule_tracepoint_hash(
 		hash ^= lttng_log_level_rule_hash(tp_rule->log_level_rule);
 	}
 
-	status = lttng_event_rule_tracepoint_get_exclusions_count(rule,
+	status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(rule,
 			&exclusion_count);
 	assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	for (i = 0; i < exclusion_count; i++) {
 		const char *exclusion;
 
-		status = lttng_event_rule_tracepoint_get_exclusion_at_index(
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 				rule, i, &exclusion);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		hash ^= hash_key_str(exclusion, lttng_ht_seed);
@@ -883,7 +883,7 @@ skip_log_level_rule:
 			goto end;
 		}
 
-		status = lttng_event_rule_tracepoint_add_exclusion(rule, exclusion);
+		status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(rule, exclusion);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to add event rule tracepoint exclusion \"%s\".",
 					exclusion);
@@ -1209,7 +1209,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_add_exclusion(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_add_name_pattern_exclusion(
 		struct lttng_event_rule *rule,
 		const char *exclusion)
 {
@@ -1272,7 +1272,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_get_exclusions_count(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(
 		const struct lttng_event_rule *rule, unsigned int *count)
 {
 	struct lttng_event_rule_tracepoint *tracepoint;
@@ -1290,7 +1290,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_get_exclusion_at_index(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
 		const struct lttng_event_rule *rule,
 		unsigned int index,
 		const char **exclusion)
@@ -1306,7 +1306,7 @@ enum lttng_event_rule_status lttng_event_rule_tracepoint_get_exclusion_at_index(
 
 	tracepoint = container_of(
 			rule, struct lttng_event_rule_tracepoint, parent);
-	if (lttng_event_rule_tracepoint_get_exclusions_count(rule, &count) !=
+	if (lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(rule, &count) !=
 			LTTNG_EVENT_RULE_STATUS_OK) {
 		goto end;
 	}
