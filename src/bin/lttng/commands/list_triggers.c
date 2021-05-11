@@ -389,12 +389,12 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 {
 	const char *pattern, *filter;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_event_rule_syscall_emission_site_type emission_site_type;
+	enum lttng_event_rule_syscall_emission_site emission_site;
 
 	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_SYSCALL);
 
-	emission_site_type =
-		lttng_event_rule_syscall_get_emission_site_type(event_rule);
+	emission_site =
+		lttng_event_rule_syscall_get_emission_site(event_rule);
 
 	event_rule_status = lttng_event_rule_syscall_get_name_pattern(
 			event_rule, &pattern);
@@ -402,7 +402,7 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 
 	_MSG("    rule: %s (type: syscall:%s", pattern,
 			lttng_event_rule_syscall_emission_site_str(
-					emission_site_type));
+					emission_site));
 
 	event_rule_status = lttng_event_rule_syscall_get_filter(
 			event_rule, &filter);

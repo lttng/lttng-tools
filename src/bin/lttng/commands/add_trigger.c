@@ -189,7 +189,7 @@ end:
 }
 
 static bool parse_syscall_emission_site_from_type(const char *str,
-		enum lttng_event_rule_syscall_emission_site_type *type)
+		enum lttng_event_rule_syscall_emission_site *type)
 {
 	bool ret = false;
 	if (strcmp(str, "syscall") == 0 ||
@@ -1134,15 +1134,15 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 	{
 		enum lttng_event_rule_status event_rule_status;
-		enum lttng_event_rule_syscall_emission_site_type emission_site_type;
+		enum lttng_event_rule_syscall_emission_site emission_site;
 
 		if (!parse_syscall_emission_site_from_type(
-				    event_rule_type_str, &emission_site_type)) {
+				    event_rule_type_str, &emission_site)) {
 			ERR("Failed to parse syscall type '%s'.", event_rule_type_str);
 			goto error;
 		}
 
-		res.er = lttng_event_rule_syscall_create(emission_site_type);
+		res.er = lttng_event_rule_syscall_create(emission_site);
 		if (!res.er) {
 			ERR("Failed to create syscall event rule.");
 			goto error;

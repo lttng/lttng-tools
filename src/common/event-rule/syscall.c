@@ -88,7 +88,7 @@ static int lttng_event_rule_syscall_serialize(
 
 	syscall_comm.pattern_len = pattern_len;
 	syscall_comm.filter_expression_len = filter_expression_len;
-	syscall_comm.emission_site_type = syscall->emission_site_type;
+	syscall_comm.emission_site = syscall->emission_site;
 
 	ret = lttng_dynamic_buffer_append(
 			&payload->buffer, &syscall_comm, sizeof(syscall_comm));
@@ -248,15 +248,15 @@ lttng_event_rule_syscall_hash(
 }
 
 struct lttng_event_rule *lttng_event_rule_syscall_create(
-		enum lttng_event_rule_syscall_emission_site_type
-				emission_site_type)
+		enum lttng_event_rule_syscall_emission_site
+				emission_site)
 {
 	struct lttng_event_rule *rule = NULL;
 	struct lttng_event_rule_syscall *syscall_rule;
 	enum lttng_event_rule_status status;
 
 	/* Validate the emission site type */
-	switch (emission_site_type) {
+	switch (emission_site) {
 	case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
 	case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY:
 	case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT:
@@ -296,7 +296,7 @@ struct lttng_event_rule *lttng_event_rule_syscall_create(
 	}
 
 	/* Emission site type */
-	syscall_rule->emission_site_type = emission_site_type;
+	syscall_rule->emission_site = emission_site;
 
 end:
 	return rule;
@@ -334,7 +334,7 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 	}
 
 	syscall_comm = (typeof(syscall_comm)) current_buffer_view.data;
-	rule = lttng_event_rule_syscall_create(syscall_comm->emission_site_type);
+	rule = lttng_event_rule_syscall_create(syscall_comm->emission_site);
 	if (!rule) {
 		ERR("Failed to create event rule syscall");
 		ret = -1;
@@ -517,11 +517,11 @@ enum lttng_event_rule_status lttng_event_rule_syscall_get_filter(
 end:
 	return status;
 }
-extern enum lttng_event_rule_syscall_emission_site_type
-lttng_event_rule_syscall_get_emission_site_type(
+extern enum lttng_event_rule_syscall_emission_site
+lttng_event_rule_syscall_get_emission_site(
 		const struct lttng_event_rule *rule)
 {
-	enum lttng_event_rule_syscall_emission_site_type emission_site_type =
+	enum lttng_event_rule_syscall_emission_site emission_site =
 		LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_UNKNOWN;
 	struct lttng_event_rule_syscall *syscall;
 
@@ -530,17 +530,17 @@ lttng_event_rule_syscall_get_emission_site_type(
 	}
 
 	syscall = container_of(rule, struct lttng_event_rule_syscall, parent);
-	emission_site_type = syscall->emission_site_type;
+	emission_site = syscall->emission_site;
 
 end:
-	return emission_site_type;
+	return emission_site;
 }
 
 LTTNG_HIDDEN
 const char *lttng_event_rule_syscall_emission_site_str(
-		enum lttng_event_rule_syscall_emission_site_type type)
+		enum lttng_event_rule_syscall_emission_site emission_site)
 {
-	switch (type) {
+	switch (emission_site) {
 	case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY:
 		return "entry";
 	case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT:

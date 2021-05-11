@@ -15,7 +15,7 @@
 
 struct lttng_event_rule_syscall {
 	struct lttng_event_rule parent;
-	enum lttng_event_rule_syscall_emission_site_type emission_site_type;
+	enum lttng_event_rule_syscall_emission_site emission_site;
 	char *pattern;
 	char *filter_expression;
 
@@ -27,7 +27,7 @@ struct lttng_event_rule_syscall {
 };
 
 struct lttng_event_rule_syscall_comm {
-	uint32_t emission_site_type;
+	uint32_t emission_site;
 	/* Includes terminator `\0`. */
 	uint32_t pattern_len;
 	/* Includes terminator `\0`. */
@@ -47,5 +47,5 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 
 LTTNG_HIDDEN
 const char *lttng_event_rule_syscall_emission_site_str(
-		enum lttng_event_rule_syscall_emission_site_type type);
+		enum lttng_event_rule_syscall_emission_site emission_site);
 #endif /* LTTNG_EVENT_RULE_SYSCALL_INTERNAL_H */
