@@ -285,7 +285,7 @@ static int generate_agent_filter(
 	assert(rule);
 	assert(_agent_filter);
 
-	status = lttng_event_rule_tracepoint_get_pattern(rule, &pattern);
+	status = lttng_event_rule_tracepoint_get_name_pattern(rule, &pattern);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret = -1;
 		goto end;
@@ -727,7 +727,7 @@ struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 			destroy_lttng_exclusions_element);
 
 	/* Default pattern is '*'. */
-	status = lttng_event_rule_tracepoint_set_pattern(rule, "*");
+	status = lttng_event_rule_tracepoint_set_name_pattern(rule, "*");
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		lttng_event_rule_destroy(rule);
 		rule = NULL;
@@ -895,7 +895,7 @@ skip_log_level_rule:
 		offset += *exclusion_len;
 	}
 
-	status = lttng_event_rule_tracepoint_set_pattern(rule, pattern);
+	status = lttng_event_rule_tracepoint_set_name_pattern(rule, pattern);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to set event rule tracepoint pattern.");
 		ret = -1;
@@ -932,7 +932,7 @@ end:
 	return ret;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_set_pattern(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern)
 {
 	char *pattern_copy = NULL;
@@ -964,7 +964,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_tracepoint_get_pattern(
+enum lttng_event_rule_status lttng_event_rule_tracepoint_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern)
 {
 	struct lttng_event_rule_tracepoint *tracepoint;

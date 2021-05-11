@@ -2042,7 +2042,7 @@ static int init_ust_event_notifier_from_event_rule(
 	} else {
 		const struct lttng_log_level_rule *log_level_rule;
 
-		status = lttng_event_rule_tracepoint_get_pattern(rule, &pattern);
+		status = lttng_event_rule_tracepoint_get_name_pattern(rule, &pattern);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			/* At this point, this is a fatal error. */
 			abort();

@@ -660,7 +660,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		const enum lttng_domain_type domain =
 				lttng_event_rule_get_domain_type(rule);
 		const enum lttng_event_rule_status status =
-				lttng_event_rule_tracepoint_get_pattern(
+				lttng_event_rule_tracepoint_get_name_pattern(
 						rule, &name);
 
 		assert(domain == LTTNG_DOMAIN_KERNEL);
