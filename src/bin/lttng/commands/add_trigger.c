@@ -1148,7 +1148,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_syscall_set_pattern(
+		event_rule_status = lttng_event_rule_syscall_set_name_pattern(
 				res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set syscall event rule's pattern to '%s'.",

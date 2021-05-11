@@ -396,7 +396,7 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 	emission_site_type =
 		lttng_event_rule_syscall_get_emission_site_type(event_rule);
 
-	event_rule_status = lttng_event_rule_syscall_get_pattern(
+	event_rule_status = lttng_event_rule_syscall_get_name_pattern(
 			event_rule, &pattern);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
