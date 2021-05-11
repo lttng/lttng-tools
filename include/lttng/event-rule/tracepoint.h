@@ -29,18 +29,18 @@ extern struct lttng_event_rule *lttng_event_rule_tracepoint_create(
 		enum lttng_domain_type domain);
 
 /*
- * Set the pattern of a tracepoint event rule.
+ * Set the name pattern of a tracepoint event rule.
  *
  * Pattern can contain wildcard '*'. See man lttng-enable-event.
  *
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_tracepoint_set_pattern(
+extern enum lttng_event_rule_status lttng_event_rule_tracepoint_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern);
 
 /*
- * Get the pattern of a tracepoint event rule.
+ * Get the name pattern of a tracepoint event rule.
  *
  * The caller does not assume the ownership of the returned pattern. The
  * pattern shall only only be used for the duration of the event rule's
@@ -51,7 +51,7 @@ extern enum lttng_event_rule_status lttng_event_rule_tracepoint_set_pattern(
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_tracepoint_get_pattern(
+extern enum lttng_event_rule_status lttng_event_rule_tracepoint_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern);
 
 /*

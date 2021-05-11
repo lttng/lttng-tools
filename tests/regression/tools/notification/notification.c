@@ -1469,7 +1469,7 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 	event_rule = lttng_event_rule_tracepoint_create(domain_type);
 	ok(event_rule, "Tracepoint event rule object creation");
 
-	event_rule_status = lttng_event_rule_tracepoint_set_pattern(
+	event_rule_status = lttng_event_rule_tracepoint_set_name_pattern(
 			event_rule, event_pattern);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting tracepoint event rule pattern: '%s'",

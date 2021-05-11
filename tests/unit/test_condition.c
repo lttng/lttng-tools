@@ -61,7 +61,7 @@ void test_condition_event_rule(void)
 	tracepoint = lttng_event_rule_tracepoint_create(LTTNG_DOMAIN_UST);
 	ok(tracepoint, "tracepoint UST_DOMAIN");
 
-	status = lttng_event_rule_tracepoint_set_pattern(tracepoint, pattern);
+	status = lttng_event_rule_tracepoint_set_name_pattern(tracepoint, pattern);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting pattern");
 
 	status = lttng_event_rule_tracepoint_set_filter(tracepoint, filter);

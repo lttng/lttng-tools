@@ -1269,8 +1269,8 @@ struct agent_event *agent_find_event_by_trigger(
 	assert(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
 			domain == LTTNG_DOMAIN_PYTHON);
 
-	/* Get the event's pattern ('name' in the legacy terminology). */
-	er_status = lttng_event_rule_tracepoint_get_pattern(rule, &name);
+	/* Get the event's pattern name ('name' in the legacy terminology). */
+	er_status = lttng_event_rule_tracepoint_get_name_pattern(rule, &name);
 	assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Get the internal filter expression. */

@@ -159,7 +159,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 	unsigned int exclusions_count;
 	int i;
 
-	event_rule_status = lttng_event_rule_tracepoint_get_pattern(
+	event_rule_status = lttng_event_rule_tracepoint_get_name_pattern(
 			event_rule, &pattern);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 

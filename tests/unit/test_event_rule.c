@@ -78,9 +78,9 @@ void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get tracepoint domain.");
 	ok(domain_type == type, "domain type got %d expected %d.", domain_type, type);
 
-	status = lttng_event_rule_tracepoint_set_pattern(tracepoint, pattern);
+	status = lttng_event_rule_tracepoint_set_name_pattern(tracepoint, pattern);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
-	status = lttng_event_rule_tracepoint_get_pattern(tracepoint, &tmp);
+	status = lttng_event_rule_tracepoint_get_name_pattern(tracepoint, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
 	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
 
