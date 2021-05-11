@@ -289,7 +289,7 @@ struct lttng_event_rule *lttng_event_rule_syscall_create(
 	syscall_rule->parent.hash = lttng_event_rule_syscall_hash;
 
 	/* Default pattern is '*'. */
-	status = lttng_event_rule_syscall_set_pattern(rule, "*");
+	status = lttng_event_rule_syscall_set_name_pattern(rule, "*");
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		lttng_event_rule_destroy(rule);
 		rule = NULL;
@@ -387,7 +387,7 @@ ssize_t lttng_event_rule_syscall_create_from_payload(
 
 skip_filter_expression:
 
-	status = lttng_event_rule_syscall_set_pattern(rule, pattern);
+	status = lttng_event_rule_syscall_set_name_pattern(rule, pattern);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to set event rule syscall pattern");
 		ret = -1;
@@ -412,7 +412,7 @@ end:
 	return ret;
 }
 
-enum lttng_event_rule_status lttng_event_rule_syscall_set_pattern(
+enum lttng_event_rule_status lttng_event_rule_syscall_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern)
 {
 	char *pattern_copy = NULL;
@@ -442,7 +442,7 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_syscall_get_pattern(
+enum lttng_event_rule_status lttng_event_rule_syscall_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern)
 {
 	struct lttng_event_rule_syscall *syscall;

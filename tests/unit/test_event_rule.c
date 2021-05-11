@@ -187,9 +187,9 @@ static void test_event_rule_syscall(void)
 	syscall = lttng_event_rule_syscall_create(LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(syscall, "syscall object.");
 
-	status = lttng_event_rule_syscall_set_pattern(syscall, pattern);
+	status = lttng_event_rule_syscall_set_name_pattern(syscall, pattern);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
-	status = lttng_event_rule_syscall_get_pattern(syscall, &tmp);
+	status = lttng_event_rule_syscall_get_name_pattern(syscall, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
 	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
 

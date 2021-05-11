@@ -34,7 +34,7 @@ extern struct lttng_event_rule *lttng_event_rule_syscall_create(enum
 		lttng_event_rule_syscall_emission_site_type emission_site_type);
 
 /*
- * Set the pattern of a syscall event rule.
+ * Set the name pattern of a syscall event rule.
  *
  * Pattern can contain wildcard '*'. See man lttng-enable-event.
  *
@@ -43,11 +43,11 @@ extern struct lttng_event_rule *lttng_event_rule_syscall_create(enum
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_syscall_set_pattern(
+extern enum lttng_event_rule_status lttng_event_rule_syscall_set_name_pattern(
 		struct lttng_event_rule *rule, const char *pattern);
 
 /*
- * Get the pattern of a syscall event rule.
+ * Get the name pattern of a syscall event rule.
  *
  * The caller does not assume the ownership of the returned pattern. The
  * pattern shall only only be used for the duration of the event rule's
@@ -58,7 +58,7 @@ extern enum lttng_event_rule_status lttng_event_rule_syscall_set_pattern(
  * parameter is passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a pattern
  * was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_syscall_get_pattern(
+extern enum lttng_event_rule_status lttng_event_rule_syscall_get_name_pattern(
 		const struct lttng_event_rule *rule, const char **pattern);
 
 /*

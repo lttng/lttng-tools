@@ -674,7 +674,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
 	{
 		const enum lttng_event_rule_status status =
-				lttng_event_rule_syscall_get_pattern(
+				lttng_event_rule_syscall_get_name_pattern(
 						rule, &name);
 		const enum lttng_event_rule_syscall_emission_site_type
 			emission_site_type =
