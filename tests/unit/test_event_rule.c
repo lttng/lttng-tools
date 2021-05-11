@@ -24,6 +24,8 @@
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.h>
+#include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event.h>
@@ -38,7 +40,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 246
+#define NUM_TESTS 254
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -168,6 +170,55 @@ void test_event_rule_tracepoint(void)
 	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
 		test_event_rule_tracepoint_by_domain(&tests[i]);
 	}
+}
+
+static
+void test_event_rule_kernel_tracepoint(void)
+{
+	struct lttng_event_rule *tracepoint = NULL;
+	struct lttng_event_rule *tracepoint_from_buffer = NULL;
+	enum lttng_event_rule_status status;
+	const char *pattern="my_event_*";
+	const char *filter="msg_id == 23 && size >= 2048";
+	const char *tmp;
+	struct lttng_payload payload;
+
+	diag("Testing lttng_event_rule_kernel_tracepoint.");
+
+	lttng_payload_init(&payload);
+
+	tracepoint = lttng_event_rule_kernel_tracepoint_create();
+	ok(tracepoint, "tracepoint object.");
+
+	status = lttng_event_rule_kernel_tracepoint_set_name_pattern(tracepoint, pattern);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
+	status = lttng_event_rule_kernel_tracepoint_get_name_pattern(tracepoint, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
+	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
+
+	status = lttng_event_rule_kernel_tracepoint_set_filter(tracepoint, filter);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
+	status = lttng_event_rule_kernel_tracepoint_get_filter(tracepoint, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
+	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
+
+	ok(lttng_event_rule_serialize(tracepoint, &payload) == 0, "Serializing.");
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&payload, 0, -1);
+
+		ok(lttng_event_rule_create_from_payload(
+				&view, &tracepoint_from_buffer) > 0,
+				"Deserializing.");
+	}
+
+	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer), "serialized and from buffer are equal.");
+
+	lttng_payload_reset(&payload);
+	lttng_event_rule_destroy(tracepoint);
+	lttng_event_rule_destroy(tracepoint_from_buffer);
 }
 
 static void test_event_rule_syscall(void)
@@ -389,25 +440,6 @@ static void test_set_event_rule_log_level_rules(
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static void test_event_rule_log_level_kernel(void)
-{
-	struct lttng_event_rule *kernel_tracepoint_rule;
-	enum lttng_event_rule_status er_exactly_status, er_as_severe_status;
-
-	diag("Test kernel event rule + log level rule");
-	kernel_tracepoint_rule =
-			lttng_event_rule_tracepoint_create(LTTNG_DOMAIN_KERNEL);
-	assert(kernel_tracepoint_rule);
-
-	test_set_event_rule_log_level_rules(kernel_tracepoint_rule, 0, &er_exactly_status, &er_as_severe_status);
-	ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_UNSUPPORTED,
-			"Log level rule \"exactly\" rejected by kernel tracepoint event rule (unsupported)");
-	ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_UNSUPPORTED,
-			"Log level rule \"at least as severe as\" rejected by kernel tracepoint event rule (unsupported)");
-
-	lttng_event_rule_destroy(kernel_tracepoint_rule);
-}
-
 static void test_event_rule_log_level_generic(const char *domain_name,
 		enum lttng_domain_type domain,
 		log_level_name_getter get_log_level_name,
@@ -593,10 +625,10 @@ int main(int argc, const char *argv[])
 {
 	plan_tests(NUM_TESTS);
 	test_event_rule_tracepoint();
+	test_event_rule_kernel_tracepoint();
 	test_event_rule_syscall();
 	test_event_rule_userspace_probe();
 	test_event_rule_kernel_probe();
-	test_event_rule_log_level_kernel();
 	test_event_rule_log_level_ust();
 	test_event_rule_log_level_jul();
 	test_event_rule_log_level_log4j();

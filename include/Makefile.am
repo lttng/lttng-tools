@@ -154,8 +154,9 @@ lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/event-rule.h \
 	lttng/event-rule/kernel-kprobe.h \
 	lttng/event-rule/kernel-syscall.h \
-	lttng/event-rule/kernel-uprobe.h \
-	lttng/event-rule/tracepoint.h
+	lttng/event-rule/tracepoint.h \
+	lttng/event-rule/kernel-tracepoint.h \
+	lttng/event-rule/kernel-uprobe.h
 
 noinst_HEADERS = \
 	lttng/action/action-internal.h \
@@ -184,6 +185,7 @@ noinst_HEADERS = \
 	lttng/event-rule/kernel-kprobe-internal.h \
 	lttng/event-rule/kernel-syscall-internal.h \
 	lttng/event-rule/tracepoint-internal.h \
+	lttng/event-rule/kernel-tracepoint-internal.h \
 	lttng/event-rule/kernel-uprobe-internal.h \
 	lttng/health-internal.h \
 	lttng/kernel-probe-internal.h \
