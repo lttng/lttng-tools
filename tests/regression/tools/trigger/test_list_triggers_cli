@@ -575,7 +575,7 @@ test_snapshot_action ()
 	  condition: event rule matches
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
-	    snapshot session \`ze-session\`, rate policy: after every 10 occurrences
+	    snapshot session \`ze-session\`, rate policy: every 10 occurrences
 	      errors: none
 	  errors: none
 	- name: T9
@@ -621,7 +621,7 @@ test_notify_action ()
 	  condition: event rule matches
 	    rule: some-event (type: tracepoint, domain: ust)
 	  actions:
-	    notify, rate policy: after every 10 occurrences
+	    notify, rate policy: every 10 occurrences
 	      errors: none
 	  errors: none
 	EOF
