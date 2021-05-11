@@ -42,7 +42,7 @@ int lttng_opt_mi;
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
-	bool support_exclusion;
+	bool support_name_pattern_exclusion;
 };
 
 typedef const char *(*log_level_name_getter)(int log_level);
@@ -58,7 +58,7 @@ void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 	const char *pattern="my_event_*";
 	const char *filter="msg_id == 23 && size >= 2048";
 	const char *tmp;
-	const char *exclusions[] = {"my_event_test1", "my_event_test2" ,"my_event_test3"};
+	const char *name_pattern_exclusions[] = {"my_event_test1", "my_event_test2" ,"my_event_test3"};
 	struct lttng_log_level_rule *log_level_rule = NULL;
 	const struct lttng_log_level_rule *log_level_rule_return = NULL;
 	struct lttng_payload payload;
@@ -100,33 +100,33 @@ void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
 	}
 
-	if (test->support_exclusion) {
+	if (test->support_name_pattern_exclusion) {
 		int i;
 
 		for (i = 0; i < 3; i++) {
-			status = lttng_event_rule_tracepoint_add_exclusion(tracepoint, exclusions[i]);
-			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting exclusions \"%s\"", exclusions[i]);
+			status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(tracepoint, name_pattern_exclusions[i]);
+			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting name pattern exclusions \"%s\"", name_pattern_exclusions[i]);
 		}
 
-		status = lttng_event_rule_tracepoint_get_exclusions_count(tracepoint, &count);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting exclusion count.");
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(tracepoint, &count);
+		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion count.");
 		ok(count == 3, "count is %d/3", count);
 
 		for (i = 0; i < count; i++) {
-			status = lttng_event_rule_tracepoint_get_exclusion_at_index(tracepoint, i, &tmp);
-			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting exclusion at index %d.", i);
-			ok(!strncmp(exclusions[i], tmp, strlen(exclusions[i])), "%s == %s.", tmp, exclusions[i]);
+			status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(tracepoint, i, &tmp);
+			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion at index %d.", i);
+			ok(!strncmp(name_pattern_exclusions[i], tmp, strlen(name_pattern_exclusions[i])), "%s == %s.", tmp, name_pattern_exclusions[i]);
 		}
 	} else {
 		int i;
 
 		for (i = 0; i < 3; i++) {
-			status = lttng_event_rule_tracepoint_add_exclusion(tracepoint, exclusions[i]);
-			ok(status == LTTNG_EVENT_RULE_STATUS_UNSUPPORTED, "setting exclusions unsupported \"%s\".", exclusions[i]);
+			status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(tracepoint, name_pattern_exclusions[i]);
+			ok(status == LTTNG_EVENT_RULE_STATUS_UNSUPPORTED, "setting name pattern exclusions unsupported \"%s\".", name_pattern_exclusions[i]);
 		}
 
-		status = lttng_event_rule_tracepoint_get_exclusions_count(tracepoint, &count);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting exclusion count.");
+		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(tracepoint, &count);
+		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion count.");
 		ok(count == 0, "count is %d/0", count);
 	}
 

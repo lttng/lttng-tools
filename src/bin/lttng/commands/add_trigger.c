@@ -1022,7 +1022,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 								n);
 
 				event_rule_status =
-						lttng_event_rule_tracepoint_add_exclusion(
+						lttng_event_rule_tracepoint_add_name_pattern_exclusion(
 								res.er,
 								exclude_name);
 				if (event_rule_status !=
