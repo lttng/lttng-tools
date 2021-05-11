@@ -676,15 +676,15 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		const enum lttng_event_rule_status status =
 				lttng_event_rule_syscall_get_name_pattern(
 						rule, &name);
-		const enum lttng_event_rule_syscall_emission_site_type
-			emission_site_type =
-			lttng_event_rule_syscall_get_emission_site_type(rule);
+		const enum lttng_event_rule_syscall_emission_site
+			emission_site =
+			lttng_event_rule_syscall_get_emission_site(rule);
 		enum lttng_kernel_abi_syscall_entryexit entryexit;
 
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		assert(emission_site_type != LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_UNKNOWN);
+		assert(emission_site != LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_UNKNOWN);
 
-		switch(emission_site_type) {
+		switch(emission_site) {
 		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY:
 			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRY;
 			break;

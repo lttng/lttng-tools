@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-enum lttng_event_rule_syscall_emission_site_type {
+enum lttng_event_rule_syscall_emission_site {
 	LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT = 0,
 	LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY = 1,
 	LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT = 2,
@@ -25,13 +25,13 @@ enum lttng_event_rule_syscall_emission_site_type {
  * Create a newly allocated syscall event rule.
  *
  * The default pattern is '*'.
- * The default emission site type is LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT.
+ * The default emission site is LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT.
  *
  * Returns a new event rule on success, NULL on failure. This event rule must be
  * destroyed using lttng_event_rule_destroy().
  */
 extern struct lttng_event_rule *lttng_event_rule_syscall_create(enum
-		lttng_event_rule_syscall_emission_site_type emission_site_type);
+		lttng_event_rule_syscall_emission_site emission_site);
 
 /*
  * Set the name pattern of a syscall event rule.
@@ -88,12 +88,12 @@ extern enum lttng_event_rule_status lttng_event_rule_syscall_get_filter(
 		const struct lttng_event_rule *rule, const char **expression);
 
 /*
- * Get the emission site type of a syscall event rule.
+ * Get the emission site of a syscall event rule.
  *
- * Returns a enum lttng_event_rule_syscall_emission_site_type.
+ * Returns a enum lttng_event_rule_syscall_emission_site.
  */
-extern enum lttng_event_rule_syscall_emission_site_type
-lttng_event_rule_syscall_get_emission_site_type(
+extern enum lttng_event_rule_syscall_emission_site
+lttng_event_rule_syscall_get_emission_site(
 		const struct lttng_event_rule *rule);
 
 #ifdef __cplusplus
