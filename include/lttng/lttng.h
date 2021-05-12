@@ -42,6 +42,7 @@
 #include <lttng/event-expr.h>
 #include <lttng/event-field-value.h>
 #include <lttng/event-rule/event-rule.h>
+#include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint.h>

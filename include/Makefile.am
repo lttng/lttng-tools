@@ -152,6 +152,7 @@ lttngtriggerinclude_HEADERS= \
 
 lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/event-rule.h \
+	lttng/event-rule/jul-logging.h \
 	lttng/event-rule/kernel-kprobe.h \
 	lttng/event-rule/kernel-syscall.h \
 	lttng/event-rule/tracepoint.h \
@@ -183,6 +184,7 @@ noinst_HEADERS = \
 	lttng/event-field-value-internal.h \
 	lttng/event-internal.h \
 	lttng/event-rule/event-rule-internal.h \
+	lttng/event-rule/jul-logging-internal.h \
 	lttng/event-rule/kernel-kprobe-internal.h \
 	lttng/event-rule/kernel-syscall-internal.h \
 	lttng/event-rule/tracepoint-internal.h \
