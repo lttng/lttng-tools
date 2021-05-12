@@ -68,7 +68,6 @@ libcommon_la_SOURCES = \
 	event-rule/kernel-kprobe.c \
 	event-rule/kernel-syscall.c \
 	event-rule/kernel-uprobe.c \
-	event-rule/tracepoint.c \
 	event-rule/kernel-tracepoint.c \
 	event-rule/user-tracepoint.c \
 	event-rule/log4j-logging.c \

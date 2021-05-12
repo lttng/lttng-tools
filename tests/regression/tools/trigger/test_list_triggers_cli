@@ -55,13 +55,13 @@ test_top_level_options ()
 {
 	diag "Listing top level options"
 
-	lttng_add_trigger_ok "hello" --condition event-rule-matches --domain=user --name=test-name --action notify
+	lttng_add_trigger_ok "hello" --condition event-rule-matches --type=user --name=test-name --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: hello
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: test-name (type: tracepoint, domain: ust)
+	    rule: test-name (type: user tracepoint)
 	  actions:
 	    notify
 	      errors: none
@@ -77,22 +77,22 @@ test_event_rule_matches_tracepoint ()
 {
 	diag "Listing event-rule-matches tracepoint"
 
-	lttng_add_trigger_ok "C" --condition event-rule-matches --domain=user --action notify
-	lttng_add_trigger_ok "A" --condition event-rule-matches --name=aaa --domain=user --filter 'p == 2' --action notify
-	lttng_add_trigger_ok "D" --condition event-rule-matches --name='hello*' --domain=user -x hello2 --exclude-name  hello3 -x hello4 --action notify
-	lttng_add_trigger_ok "B" --condition event-rule-matches --domain=user --name=gerboise --log-level INFO.. --action notify
-	lttng_add_trigger_ok "E" --condition event-rule-matches --domain=user --name=lemming --log-level WARNING --action notify
-	lttng_add_trigger_ok "J" --condition event-rule-matches --domain=user --name=lemming --log-level .. --action notify
-	lttng_add_trigger_ok "F" --condition event-rule-matches --domain=user --name=capture-payload-field --capture a --action notify
-	lttng_add_trigger_ok "G" --condition event-rule-matches --domain=user --name=capture-array --capture 'a[2]' --capture '$ctx.tourlou[18]' --action notify
-	lttng_add_trigger_ok "H" --condition event-rule-matches --domain=user --name=capture-chan-ctx --capture '$ctx.vpid' --action notify
-	lttng_add_trigger_ok "I" --condition event-rule-matches --domain=user --name=capture-app-ctx --capture '$app.iga:active_clients' --action notify
+	lttng_add_trigger_ok "C" --condition event-rule-matches --type=user --action notify
+	lttng_add_trigger_ok "A" --condition event-rule-matches --name=aaa --type=user --filter 'p == 2' --action notify
+	lttng_add_trigger_ok "D" --condition event-rule-matches --name='hello*' --type=user -x hello2 --exclude-name  hello3 -x hello4 --action notify
+	lttng_add_trigger_ok "B" --condition event-rule-matches --type=user --name=gerboise --log-level INFO.. --action notify
+	lttng_add_trigger_ok "E" --condition event-rule-matches --type=user --name=lemming --log-level WARNING --action notify
+	lttng_add_trigger_ok "J" --condition event-rule-matches --type=user --name=lemming --log-level .. --action notify
+	lttng_add_trigger_ok "F" --condition event-rule-matches --type=user --name=capture-payload-field --capture a --action notify
+	lttng_add_trigger_ok "G" --condition event-rule-matches --type=user --name=capture-array --capture 'a[2]' --capture '$ctx.tourlou[18]' --action notify
+	lttng_add_trigger_ok "H" --condition event-rule-matches --type=user --name=capture-chan-ctx --capture '$ctx.vpid' --action notify
+	lttng_add_trigger_ok "I" --condition event-rule-matches --type=user --name=capture-app-ctx --capture '$app.iga:active_clients' --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: A
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: aaa (type: tracepoint, domain: ust, filter: p == 2)
+	    rule: aaa (type: user tracepoint, filter: p == 2)
 	  actions:
 	    notify
 	      errors: none
@@ -100,7 +100,7 @@ test_event_rule_matches_tracepoint ()
 	- name: B
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: gerboise (type: tracepoint, domain: ust, log level at least INFO)
+	    rule: gerboise (type: user tracepoint, log level at least INFO)
 	  actions:
 	    notify
 	      errors: none
@@ -108,7 +108,7 @@ test_event_rule_matches_tracepoint ()
 	- name: C
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: * (type: tracepoint, domain: ust)
+	    rule: * (type: user tracepoint)
 	  actions:
 	    notify
 	      errors: none
@@ -116,7 +116,7 @@ test_event_rule_matches_tracepoint ()
 	- name: D
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: hello* (type: tracepoint, domain: ust, exclusions: hello2,hello3,hello4)
+	    rule: hello* (type: user tracepoint, exclusions: hello2,hello3,hello4)
 	  actions:
 	    notify
 	      errors: none
@@ -124,7 +124,7 @@ test_event_rule_matches_tracepoint ()
 	- name: E
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: lemming (type: tracepoint, domain: ust, log level is WARNING)
+	    rule: lemming (type: user tracepoint, log level is WARNING)
 	  actions:
 	    notify
 	      errors: none
@@ -132,7 +132,7 @@ test_event_rule_matches_tracepoint ()
 	- name: F
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: capture-payload-field (type: tracepoint, domain: ust)
+	    rule: capture-payload-field (type: user tracepoint)
 	    captures:
 	      - a
 	  actions:
@@ -142,7 +142,7 @@ test_event_rule_matches_tracepoint ()
 	- name: G
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: capture-array (type: tracepoint, domain: ust)
+	    rule: capture-array (type: user tracepoint)
 	    captures:
 	      - a[2]
 	      - \$ctx.tourlou[18]
@@ -153,7 +153,7 @@ test_event_rule_matches_tracepoint ()
 	- name: H
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: capture-chan-ctx (type: tracepoint, domain: ust)
+	    rule: capture-chan-ctx (type: user tracepoint)
 	    captures:
 	      - \$ctx.vpid
 	  actions:
@@ -163,7 +163,7 @@ test_event_rule_matches_tracepoint ()
 	- name: I
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: capture-app-ctx (type: tracepoint, domain: ust)
+	    rule: capture-app-ctx (type: user tracepoint)
 	    captures:
 	      - \$app.iga:active_clients
 	  actions:
@@ -173,7 +173,7 @@ test_event_rule_matches_tracepoint ()
 	- name: J
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: lemming (type: tracepoint, domain: ust)
+	    rule: lemming (type: user tracepoint)
 	  actions:
 	    notify
 	      errors: none
@@ -217,9 +217,9 @@ test_event_rule_matches_probe ()
 
 	offset_hex="0x$(printf '%x' $offset)"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=kprobe --location=lttng_channel_enable --event-name=my_channel_enable --action notify
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=kprobe --location="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
-	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=kernel --type=kprobe --location="0x${channel_enable_addr}" --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kprobe --location=lttng_channel_enable --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=kprobe --location="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
+	lttng_add_trigger_ok "T2" --condition event-rule-matches --type=kprobe --location="0x${channel_enable_addr}" --event-name=my_channel_enable --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -261,7 +261,7 @@ test_event_rule_matches_userspace_probe_elf ()
 
 	diag "Listing event-rule-matches userspace-probe elf"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=kernel:uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe-elf --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kernel:uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe-elf --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -286,7 +286,7 @@ test_event_rule_matches_userspace_probe_sdt ()
 
 	diag "Listing event-rule-matches userspace-probe sdt"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=kernel:uprobe --location=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} --event-name=ma-probe-sdt --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kernel:uprobe --location=sdt:${uprobe_sdt_binary}:${sdt_provider_name}:${sdt_probe_name} --event-name=ma-probe-sdt --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -308,11 +308,11 @@ test_event_rule_matches_syscall ()
 {
 	diag "Listing event-rule-matches syscall"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=kernel --type=syscall --name=open --action notify
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=kernel --type=syscall:entry --name=open --action notify
-	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=kernel --type=syscall:exit --name=open --action notify
-	lttng_add_trigger_ok "T3" --condition event-rule-matches --domain=kernel --type=syscall:entry+exit --name=open --action notify
-	lttng_add_trigger_ok "T4" --condition event-rule-matches --domain=kernel --type=syscall --name=ptrace --filter 'a > 2' --action notify
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=syscall --name=open --action notify
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=syscall:entry --name=open --action notify
+	lttng_add_trigger_ok "T2" --condition event-rule-matches --type=syscall:exit --name=open --action notify
+	lttng_add_trigger_ok "T3" --condition event-rule-matches --type=syscall:entry+exit --name=open --action notify
+	lttng_add_trigger_ok "T4" --condition event-rule-matches --type=syscall --name=ptrace --filter 'a > 2' --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
@@ -479,22 +479,22 @@ test_snapshot_action ()
 {
 	diag "Listing snapshot actions"
 
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --path /some/path
-	lttng_add_trigger_ok "T2" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --url file:///some/other/path
-	lttng_add_trigger_ok "T3" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --url net://1.2.3.4
-	lttng_add_trigger_ok "T4" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --url net://1.2.3.4:1234:1235
-	lttng_add_trigger_ok "T5" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1111 --data-url=tcp://1.2.3.4:1112
-	lttng_add_trigger_ok "T6" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --path /some/path --max-size=1234
-	lttng_add_trigger_ok "T7" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --path /some/path --name=meh
-	lttng_add_trigger_ok "T8" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --rate-policy=every:10
-	lttng_add_trigger_ok "T9" --condition event-rule-matches --domain=user --name=some-event --action snapshot-session ze-session --rate-policy=once-after:10
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --path /some/path
+	lttng_add_trigger_ok "T2" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --url file:///some/other/path
+	lttng_add_trigger_ok "T3" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --url net://1.2.3.4
+	lttng_add_trigger_ok "T4" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --url net://1.2.3.4:1234:1235
+	lttng_add_trigger_ok "T5" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1111 --data-url=tcp://1.2.3.4:1112
+	lttng_add_trigger_ok "T6" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --path /some/path --max-size=1234
+	lttng_add_trigger_ok "T7" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --path /some/path --name=meh
+	lttng_add_trigger_ok "T8" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --rate-policy=every:10
+	lttng_add_trigger_ok "T9" --condition event-rule-matches --type=user --name=some-event --action snapshot-session ze-session --rate-policy=once-after:10
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`
 	      errors: none
@@ -502,7 +502,7 @@ test_snapshot_action ()
 	- name: T1
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path
 	      errors: none
@@ -510,7 +510,7 @@ test_snapshot_action ()
 	- name: T2
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/other/path
 	      errors: none
@@ -518,7 +518,7 @@ test_snapshot_action ()
 	- name: T3
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, url: net://1.2.3.4
 	      errors: none
@@ -526,7 +526,7 @@ test_snapshot_action ()
 	- name: T4
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, url: net://1.2.3.4:1234:1235
 	      errors: none
@@ -534,7 +534,7 @@ test_snapshot_action ()
 	- name: T5
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, control url: tcp://1.2.3.4:1111, data url: tcp://1.2.3.4:1112
 	      errors: none
@@ -542,7 +542,7 @@ test_snapshot_action ()
 	- name: T6
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path, max size: 1234
 	      errors: none
@@ -550,7 +550,7 @@ test_snapshot_action ()
 	- name: T7
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, path: /some/path, name: meh
 	      errors: none
@@ -558,7 +558,7 @@ test_snapshot_action ()
 	- name: T8
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, rate policy: every 10 occurrences
 	      errors: none
@@ -566,7 +566,7 @@ test_snapshot_action ()
 	- name: T9
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    snapshot session \`ze-session\`, rate policy: once after 10 occurrences
 	      errors: none
@@ -589,14 +589,14 @@ test_snapshot_action ()
 
 test_notify_action ()
 {
-	lttng_add_trigger_ok "T0" --condition event-rule-matches --domain=user --name=some-event --action notify --rate-policy=once-after:5
-	lttng_add_trigger_ok "T1" --condition event-rule-matches --domain=user --name=some-event --action notify --rate-policy=every:10
+	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=user --name=some-event --action notify --rate-policy=once-after:5
+	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=user --name=some-event --action notify --rate-policy=every:10
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: T0
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    notify, rate policy: once after 5 occurrences
 	      errors: none
@@ -604,7 +604,7 @@ test_notify_action ()
 	- name: T1
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: some-event (type: tracepoint, domain: ust)
+	    rule: some-event (type: user tracepoint)
 	  actions:
 	    notify, rate policy: every 10 occurrences
 	      errors: none

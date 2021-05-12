@@ -13,7 +13,9 @@
 
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/jul-logging.h>
+#include <lttng/event-rule/log4j-logging.h>
+#include <lttng/event-rule/python-logging.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/domain-internal.h>
@@ -30,6 +32,12 @@
 #include "common/error.h"
 
 #define AGENT_RET_CODE_INDEX(code) (code - AGENT_RET_CODE_SUCCESS)
+
+typedef enum lttng_event_rule_status (*event_rule_logging_get_name_pattern)(
+		const struct lttng_event_rule *rule, const char **pattern);
+typedef enum lttng_event_rule_status (*event_rule_logging_get_log_level_rule)(
+		const struct lttng_event_rule *rule,
+		const struct lttng_log_level_rule **log_level_rule);
 
 /*
  * Agent application context representation.
@@ -1249,6 +1257,8 @@ struct agent_event *agent_find_event_by_trigger(
 	/* Unused when loglevel_type is 'ALL'. */
 	int loglevel_value = 0;
 	enum lttng_loglevel_type loglevel_type;
+	event_rule_logging_get_name_pattern logging_get_name_pattern;
+	event_rule_logging_get_log_level_rule logging_get_log_level_rule;
 
 	assert(agt);
 	assert(agt->events);
@@ -1262,23 +1272,43 @@ struct agent_event *agent_find_event_by_trigger(
 			condition, &rule);
 	assert(c_status == LTTNG_CONDITION_STATUS_OK);
 
-	assert(lttng_event_rule_get_type(rule) ==
-			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+	switch (lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_jul_logging_get_name_pattern;
+		logging_get_log_level_rule =
+				lttng_event_rule_jul_logging_get_log_level_rule;
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_log4j_logging_get_name_pattern;
+		logging_get_log_level_rule =
+				lttng_event_rule_log4j_logging_get_log_level_rule;
+		break;
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_python_logging_get_name_pattern;
+		logging_get_log_level_rule =
+				lttng_event_rule_python_logging_get_log_level_rule;
+		break;
+	default:
+		abort();
+		break;
+	}
 
 	domain = lttng_event_rule_get_domain_type(rule);
 	assert(domain == LTTNG_DOMAIN_JUL || domain == LTTNG_DOMAIN_LOG4J ||
 			domain == LTTNG_DOMAIN_PYTHON);
 
 	/* Get the event's pattern name ('name' in the legacy terminology). */
-	er_status = lttng_event_rule_tracepoint_get_name_pattern(rule, &name);
+	er_status = logging_get_name_pattern(rule, &name);
 	assert(er_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 	/* Get the internal filter expression. */
 	filter_expression = lttng_event_rule_get_filter(rule);
 
 	/* Map log_level_rule to loglevel value. */
-	er_status = lttng_event_rule_tracepoint_get_log_level_rule(
-			rule, &log_level_rule);
+	er_status = logging_get_log_level_rule(rule, &log_level_rule);
 	if (er_status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 		loglevel_type = LTTNG_EVENT_LOGLEVEL_ALL;
 		loglevel_value = 0;

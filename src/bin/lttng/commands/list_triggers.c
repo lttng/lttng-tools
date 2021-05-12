@@ -29,6 +29,14 @@ static const char help_msg[] =
 ;
 #endif
 
+typedef enum lttng_event_rule_status (*event_rule_logging_get_name_pattern)(
+		const struct lttng_event_rule *rule, const char **pattern);
+typedef enum lttng_event_rule_status (*event_rule_logging_get_filter)(
+		const struct lttng_event_rule *rule, const char **expression);
+typedef enum lttng_event_rule_status (*event_rule_logging_get_log_level_rule)(
+		const struct lttng_event_rule *rule,
+		const struct lttng_log_level_rule **log_level_rule);
+
 enum {
 	OPT_HELP,
 	OPT_LIST_OPTIONS,
@@ -118,26 +126,26 @@ static void print_condition_session_rotation(
 
 /*
  * Returns the human-readable log level name associated with a numerical value
- * if there is one. The Log4j and JUL domains have discontinuous log level
+ * if there is one. The Log4j and JUL event rule have discontinuous log level
  * values (a value can fall between two labels). In those cases, NULL is
  * returned.
  */
 static const char *get_pretty_loglevel_name(
-		enum lttng_domain_type domain, int loglevel)
+		enum lttng_event_rule_type event_rule_type, int loglevel)
 {
 	const char *name = NULL;
 
-	switch (domain) {
-	case LTTNG_DOMAIN_UST:
+	switch (event_rule_type) {
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 		name = loglevel_value_to_name(loglevel);
 		break;
-	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 		name = loglevel_log4j_value_to_name(loglevel);
 		break;
-	case LTTNG_DOMAIN_JUL:
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		name = loglevel_jul_value_to_name(loglevel);
 		break;
-	case LTTNG_DOMAIN_PYTHON:
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		name = loglevel_python_value_to_name(loglevel);
 		break;
 	default:
@@ -148,10 +156,9 @@ static const char *get_pretty_loglevel_name(
 }
 
 static
-void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
+void print_event_rule_user_tracepoint(const struct lttng_event_rule *event_rule)
 {
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_domain_type domain_type;
 	const char *pattern;
 	const char *filter;
 	int log_level;
@@ -159,18 +166,13 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 	unsigned int exclusions_count;
 	int i;
 
-	event_rule_status = lttng_event_rule_tracepoint_get_name_pattern(
+	event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern(
 			event_rule, &pattern);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
-	event_rule_status = lttng_event_rule_tracepoint_get_domain_type(
-			event_rule, &domain_type);
-	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+	_MSG("    rule: %s (type: user tracepoint", pattern);
 
-	_MSG("    rule: %s (type: tracepoint, domain: %s", pattern,
-			lttng_domain_type_str(domain_type));
-
-	event_rule_status = lttng_event_rule_tracepoint_get_filter(
+	event_rule_status = lttng_event_rule_user_tracepoint_get_filter(
 			event_rule, &filter);
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
@@ -178,7 +180,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
-	event_rule_status = lttng_event_rule_tracepoint_get_log_level_rule(
+	event_rule_status = lttng_event_rule_user_tracepoint_get_log_level_rule(
 			event_rule, &log_level_rule);
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		enum lttng_log_level_rule_status llr_status;
@@ -203,7 +205,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
 
 		pretty_loglevel_name = get_pretty_loglevel_name(
-				domain_type, log_level);
+				LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT, log_level);
 		if (pretty_loglevel_name) {
 			_MSG(", log level %s %s", log_level_op,
 					pretty_loglevel_name);
@@ -214,7 +216,7 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
-	event_rule_status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(
+	event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_count(
 			event_rule, &exclusions_count);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 	if (exclusions_count > 0) {
@@ -222,12 +224,134 @@ void print_event_rule_tracepoint(const struct lttng_event_rule *event_rule)
 		for (i = 0; i < exclusions_count; i++) {
 			const char *exclusion;
 
-			event_rule_status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(
+			event_rule_status = lttng_event_rule_user_tracepoint_get_name_pattern_exclusion_at_index(
 					event_rule, i, &exclusion);
 			assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
 			_MSG("%s%s", i > 0 ? "," : "", exclusion);
 		}
+	}
+
+	MSG(")");
+}
+
+static
+void print_event_rule_kernel_tracepoint(const struct lttng_event_rule *event_rule)
+{
+	enum lttng_event_rule_status event_rule_status;
+	const char *pattern;
+	const char *filter;
+
+	event_rule_status = lttng_event_rule_kernel_tracepoint_get_name_pattern(
+			event_rule, &pattern);
+	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+
+	_MSG("    rule: %s (type: kernel tracepoint", pattern);
+
+	event_rule_status = lttng_event_rule_kernel_tracepoint_get_filter(
+			event_rule, &filter);
+	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
+		_MSG(", filter: %s", filter);
+	} else {
+		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+	}
+
+	MSG(")");
+}
+
+static
+void print_event_rule_logging(const struct lttng_event_rule *event_rule)
+{
+	enum lttng_event_rule_status event_rule_status;
+	enum lttng_event_rule_type event_rule_type = lttng_event_rule_get_type(event_rule);
+	const char *pattern;
+	const char *filter;
+	int log_level;
+	const struct lttng_log_level_rule *log_level_rule = NULL;
+	const char *type_str = NULL;
+
+	event_rule_logging_get_name_pattern logging_get_name_pattern;
+	event_rule_logging_get_filter logging_get_filter;
+	event_rule_logging_get_log_level_rule logging_get_log_level_rule;
+
+	switch (event_rule_type) {
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_jul_logging_get_name_pattern;
+		logging_get_filter = lttng_event_rule_jul_logging_get_filter;
+		logging_get_log_level_rule =
+				lttng_event_rule_jul_logging_get_log_level_rule;
+		type_str = "jul";
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_log4j_logging_get_name_pattern;
+		logging_get_filter = lttng_event_rule_log4j_logging_get_filter;
+		logging_get_log_level_rule =
+				lttng_event_rule_log4j_logging_get_log_level_rule;
+		type_str = "log4j";
+		break;
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		logging_get_name_pattern =
+				lttng_event_rule_python_logging_get_name_pattern;
+		logging_get_filter = lttng_event_rule_python_logging_get_filter;
+		logging_get_log_level_rule =
+				lttng_event_rule_python_logging_get_log_level_rule;
+		type_str = "python";
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	event_rule_status = logging_get_name_pattern(
+			event_rule, &pattern);
+	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
+
+	_MSG("    rule: %s (type: %s:logging", pattern, type_str);
+
+	event_rule_status = logging_get_filter(
+			event_rule, &filter);
+	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
+		_MSG(", filter: %s", filter);
+	} else {
+		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
+	}
+
+	event_rule_status = logging_get_log_level_rule(
+			event_rule, &log_level_rule);
+	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
+		enum lttng_log_level_rule_status llr_status;
+		const char *log_level_op;
+		const char *pretty_loglevel_name;
+
+		switch (lttng_log_level_rule_get_type(log_level_rule)) {
+		case LTTNG_LOG_LEVEL_RULE_TYPE_EXACTLY:
+			log_level_op = "is";
+			llr_status = lttng_log_level_rule_exactly_get_level(
+					log_level_rule, &log_level);
+			break;
+		case LTTNG_LOG_LEVEL_RULE_TYPE_AT_LEAST_AS_SEVERE_AS:
+			log_level_op = "at least";
+			llr_status = lttng_log_level_rule_at_least_as_severe_as_get_level(
+					log_level_rule, &log_level);
+			break;
+		default:
+			abort();
+		}
+
+		assert(llr_status == LTTNG_LOG_LEVEL_RULE_STATUS_OK);
+
+		pretty_loglevel_name = get_pretty_loglevel_name(
+				event_rule_type, log_level);
+		if (pretty_loglevel_name) {
+			_MSG(", log level %s %s", log_level_op,
+					pretty_loglevel_name);
+		} else {
+			_MSG(", log level %s %d", log_level_op, log_level);
+		}
+	} else {
+		assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_UNSET);
 	}
 
 	MSG(")");
@@ -422,8 +546,16 @@ void print_event_rule(const struct lttng_event_rule *event_rule)
 			lttng_event_rule_get_type(event_rule);
 
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		print_event_rule_tracepoint(event_rule);
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		print_event_rule_user_tracepoint(event_rule);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+		print_event_rule_kernel_tracepoint(event_rule);
+		break;
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		print_event_rule_logging(event_rule);
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 		print_event_rule_kernel_probe(event_rule);

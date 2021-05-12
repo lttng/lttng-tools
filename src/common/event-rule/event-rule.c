@@ -19,7 +19,6 @@
 #include <lttng/event-rule/log4j-logging-internal.h>
 #include <lttng/event-rule/jul-logging-internal.h>
 #include <lttng/event-rule/python-logging-internal.h>
-#include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <lttng/event-rule/user-tracepoint-internal.h>
@@ -38,13 +37,6 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 
 	switch (lttng_event_rule_get_type(event_rule)) {
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-	{
-		enum lttng_event_rule_status status;
-		status = lttng_event_rule_tracepoint_get_domain_type(event_rule, &domain_type);
-		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		break;
-	}
 	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 		domain_type = LTTNG_DOMAIN_UST;
 		break;
@@ -186,10 +178,6 @@ ssize_t lttng_event_rule_create_from_payload(
 	consumed += sizeof(*event_rule_comm);
 
 	switch ((enum lttng_event_rule_type) event_rule_comm->event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		create_from_payload =
-				lttng_event_rule_tracepoint_create_from_payload;
-		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 		create_from_payload = lttng_event_rule_kernel_kprobe_create_from_payload;
 		break;
@@ -349,8 +337,6 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 	switch (type) {
 	case LTTNG_EVENT_RULE_TYPE_UNKNOWN:
 		return "unknown";
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		return "tracepoint";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		return "kernel syscall";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:

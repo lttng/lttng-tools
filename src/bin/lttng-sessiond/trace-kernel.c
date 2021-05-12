@@ -22,8 +22,9 @@
 #include <lttng/event-rule/kernel-kprobe-internal.h>
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
-#include <lttng/event-rule/tracepoint.h>
-#include <lttng/event-rule/tracepoint-internal.h>
+#include <lttng/event-rule/kernel-tracepoint.h>
+#include <lttng/event-rule/kernel-tracepoint-internal.h>
+#include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <common/common.h>
 #include <common/defaults.h>
@@ -655,15 +656,12 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		ret_code = LTTNG_OK;
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 	{
-		const enum lttng_domain_type domain =
-				lttng_event_rule_get_domain_type(rule);
 		const enum lttng_event_rule_status status =
-				lttng_event_rule_tracepoint_get_name_pattern(
+				lttng_event_rule_kernel_tracepoint_get_name_pattern(
 						rule, &name);
 
-		assert(domain == LTTNG_DOMAIN_KERNEL);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		kernel_event_notifier->event.instrumentation =
 				LTTNG_KERNEL_ABI_TRACEPOINT;

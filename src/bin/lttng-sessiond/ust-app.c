@@ -27,7 +27,7 @@
 #include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/condition/condition.h>
 #include <lttng/condition/event-rule-matches-internal.h>
 #include <lttng/condition/event-rule-matches.h>
@@ -2022,9 +2022,6 @@ static int init_ust_event_notifier_from_event_rule(
 	int loglevel = -1, ret = 0;
 	const char *pattern;
 
-	/* For now only LTTNG_EVENT_RULE_TYPE_TRACEPOINT are supported. */
-	assert(lttng_event_rule_get_type(rule) ==
-			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
 
 	memset(event_notifier, 0, sizeof(*event_notifier));
 
@@ -2042,13 +2039,16 @@ static int init_ust_event_notifier_from_event_rule(
 	} else {
 		const struct lttng_log_level_rule *log_level_rule;
 
-		status = lttng_event_rule_tracepoint_get_name_pattern(rule, &pattern);
+		assert(lttng_event_rule_get_type(rule) ==
+				LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT);
+
+		status = lttng_event_rule_user_tracepoint_get_name_pattern(rule, &pattern);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			/* At this point, this is a fatal error. */
 			abort();
 		}
 
-		status = lttng_event_rule_tracepoint_get_log_level_rule(
+		status = lttng_event_rule_user_tracepoint_get_log_level_rule(
 				rule, &log_level_rule);
 		if (status == LTTNG_EVENT_RULE_STATUS_UNSET) {
 			ust_loglevel_type = LTTNG_UST_ABI_LOGLEVEL_ALL;
@@ -2106,6 +2106,7 @@ static int create_ust_event_notifier(struct ust_app *app,
 	const struct lttng_event_rule *event_rule = NULL;
 	unsigned int capture_bytecode_count = 0, i;
 	enum lttng_condition_status cond_status;
+	enum lttng_event_rule_type event_rule_type;
 
 	health_code_update();
 	assert(app->event_notifier_group.object);
@@ -2121,7 +2122,14 @@ static int create_ust_event_notifier(struct ust_app *app,
 	assert(condition_status == LTTNG_CONDITION_STATUS_OK);
 
 	assert(event_rule);
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+
+	event_rule_type = lttng_event_rule_get_type(event_rule);
+	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT ||
+			event_rule_type == LTTNG_EVENT_RULE_TYPE_JUL_LOGGING ||
+			event_rule_type ==
+					LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING ||
+			event_rule_type ==
+					LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING);
 
 	init_ust_event_notifier_from_event_rule(event_rule, &event_notifier);
 	event_notifier.event.token = ua_event_notifier_rule->token;
