@@ -18,6 +18,8 @@
 #include <common/payload-view.h>
 #include <common/payload.h>
 #include <lttng/domain.h>
+#include <lttng/event-rule/jul-logging-internal.h>
+#include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/kernel-kprobe-internal.h>
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
@@ -42,7 +44,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 278
+#define NUM_TESTS 291
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -364,6 +366,71 @@ static void test_event_rule_syscall(void)
 	lttng_payload_reset(&payload);
 	lttng_event_rule_destroy(syscall);
 	lttng_event_rule_destroy(syscall_from_buffer);
+}
+
+static
+void test_event_rule_jul_logging(void)
+{
+	struct lttng_event_rule *jul_logging = NULL;
+	struct lttng_event_rule *jul_logging_from_buffer = NULL;
+	enum lttng_event_rule_status status;
+	const char *pattern="my_event_*";
+	const char *filter="msg_id == 23 && size >= 2048";
+	const char *tmp;
+	struct lttng_log_level_rule *log_level_rule = NULL;
+	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_payload payload;
+
+	diag("Testing lttng_event_rule_user_jul_logging.");
+
+	lttng_payload_init(&payload);
+
+	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
+	assert(log_level_rule);
+
+	jul_logging = lttng_event_rule_jul_logging_create();
+	ok(jul_logging, "jul_logging object.");
+
+	status = lttng_event_rule_jul_logging_set_name_pattern(jul_logging, pattern);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
+	status = lttng_event_rule_jul_logging_get_name_pattern(jul_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
+	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
+
+	status = lttng_event_rule_jul_logging_set_filter(jul_logging, filter);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
+	status = lttng_event_rule_jul_logging_get_filter(jul_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
+	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
+
+	status = lttng_event_rule_jul_logging_get_log_level_rule(jul_logging, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
+
+	status = lttng_event_rule_jul_logging_set_log_level_rule(
+			jul_logging, log_level_rule);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
+	status = lttng_event_rule_jul_logging_get_log_level_rule(
+			jul_logging, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
+
+	ok(lttng_event_rule_serialize(jul_logging, &payload) == 0, "Serializing.");
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&payload, 0, -1);
+
+		ok(lttng_event_rule_create_from_payload(
+				&view, &jul_logging_from_buffer) > 0,
+				"Deserializing.");
+	}
+
+	ok(lttng_event_rule_is_equal(jul_logging, jul_logging_from_buffer), "serialized and from buffer are equal.");
+
+	lttng_payload_reset(&payload);
+	lttng_event_rule_destroy(jul_logging);
+	lttng_event_rule_destroy(jul_logging_from_buffer);
+	lttng_log_level_rule_destroy(log_level_rule);
 }
 
 static void test_event_rule_userspace_probe(void)
@@ -726,6 +793,7 @@ int main(int argc, const char *argv[])
 	test_event_rule_syscall();
 	test_event_rule_userspace_probe();
 	test_event_rule_kernel_probe();
+	test_event_rule_jul_logging();
 	test_event_rule_log_level_ust();
 	test_event_rule_log_level_jul();
 	test_event_rule_log_level_log4j();
