@@ -1453,6 +1453,18 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		struct lttng_condition **condition,
 		struct lttng_trigger **trigger)
 {
+	typedef struct lttng_event_rule *(*event_rule_create)(void);
+	typedef enum lttng_event_rule_status (
+			*event_rule_set_name_pattern)(
+			struct lttng_event_rule *rule,
+			const char *pattern);
+	typedef enum lttng_event_rule_status (*event_rule_set_filter)(
+			struct lttng_event_rule *rule,
+			const char *expression);
+	typedef enum lttng_event_rule_status (
+			*event_rule_add_name_pattern_exclusion)(
+			struct lttng_event_rule * rule, const char *exclusion);
+
 	enum lttng_event_rule_status event_rule_status;
 	struct lttng_action *tmp_action = NULL;
 	struct lttng_event_rule *event_rule = NULL;
@@ -1460,24 +1472,45 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 	struct lttng_trigger *tmp_trigger = NULL;
 	int ret;
 	enum lttng_error_code ret_code;
+	event_rule_create create;
+	event_rule_set_name_pattern set_name_pattern;
+	event_rule_set_filter set_filter;
+	event_rule_add_name_pattern_exclusion add_name_pattern_exclusion;
 
 	assert(event_pattern);
 	assert(trigger_name);
 	assert(condition);
 	assert(trigger);
 
-	event_rule = lttng_event_rule_tracepoint_create(domain_type);
+	/* Set the function pointers based on the domain type. */
+	switch (domain_type) {
+	case LTTNG_DOMAIN_UST:
+		create = lttng_event_rule_user_tracepoint_create;
+		set_name_pattern = lttng_event_rule_user_tracepoint_set_name_pattern;
+		set_filter = lttng_event_rule_user_tracepoint_set_filter;
+		add_name_pattern_exclusion = lttng_event_rule_user_tracepoint_add_name_pattern_exclusion;
+		break;
+	case LTTNG_DOMAIN_KERNEL:
+		create = lttng_event_rule_kernel_tracepoint_create;
+		set_name_pattern = lttng_event_rule_kernel_tracepoint_set_name_pattern;
+		set_filter = lttng_event_rule_kernel_tracepoint_set_filter;
+		add_name_pattern_exclusion = NULL;
+		break;
+	default:
+		abort();
+		break;
+	}
+
+	event_rule = create();
 	ok(event_rule, "Tracepoint event rule object creation");
 
-	event_rule_status = lttng_event_rule_tracepoint_set_name_pattern(
-			event_rule, event_pattern);
+	event_rule_status = set_name_pattern(event_rule, event_pattern);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting tracepoint event rule pattern: '%s'",
 			event_pattern);
 
 	if (filter) {
-		event_rule_status = lttng_event_rule_tracepoint_set_filter(
-				event_rule, filter);
+		event_rule_status = set_filter(event_rule, filter);
 		ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 				"Setting tracepoint event rule filter: '%s'",
 				filter);
@@ -1488,13 +1521,12 @@ static void create_tracepoint_event_rule_trigger(const char *event_pattern,
 		bool success = true;
 
 		assert(domain_type == LTTNG_DOMAIN_UST);
+		assert(add_name_pattern_exclusion != NULL);
 		assert(exclusion_count > 0);
 
 		for (i = 0; i < exclusion_count; i++) {
-			event_rule_status =
-					lttng_event_rule_tracepoint_add_name_pattern_exclusion(
-							event_rule,
-							exclusions[i]);
+			event_rule_status = add_name_pattern_exclusion(
+					event_rule, exclusions[i]);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				fail("Setting tracepoint event rule exclusion '%s'.",
 						exclusions[i]);

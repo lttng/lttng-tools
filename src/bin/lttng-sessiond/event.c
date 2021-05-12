@@ -607,8 +607,15 @@ int trigger_agent_enable(const struct lttng_trigger *trigger, struct agent *agt)
 			condition, &rule);
 	assert(c_status == LTTNG_CONDITION_STATUS_OK);
 
-	assert(lttng_event_rule_get_type(rule) ==
-			LTTNG_EVENT_RULE_TYPE_TRACEPOINT);
+	switch (lttng_event_rule_get_type(rule)) {
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		break;
+	default:
+		abort();
+		break;
+	}
 
 	d_type = lttng_event_rule_get_domain_type(rule);
 	assert(d_type == agt->domain);

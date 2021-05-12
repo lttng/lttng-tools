@@ -18,7 +18,7 @@
 #include <tap/tap.h>
 
 #include <lttng/event.h>
-#include <lttng/event-rule/tracepoint.h>
+#include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/condition/condition-internal.h>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/condition/event-rule-matches-internal.h>
@@ -58,21 +58,21 @@ void test_condition_event_rule(void)
 					LTTNG_LOGLEVEL_WARNING);
 	assert(log_level_rule_at_least_as_severe);
 
-	tracepoint = lttng_event_rule_tracepoint_create(LTTNG_DOMAIN_UST);
-	ok(tracepoint, "tracepoint UST_DOMAIN");
+	tracepoint = lttng_event_rule_user_tracepoint_create();
+	ok(tracepoint, "user tracepoint");
 
-	status = lttng_event_rule_tracepoint_set_name_pattern(tracepoint, pattern);
+	status = lttng_event_rule_user_tracepoint_set_name_pattern(tracepoint, pattern);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting pattern");
 
-	status = lttng_event_rule_tracepoint_set_filter(tracepoint, filter);
+	status = lttng_event_rule_user_tracepoint_set_filter(tracepoint, filter);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting filter");
 
-	status = lttng_event_rule_tracepoint_set_log_level_rule(
+	status = lttng_event_rule_user_tracepoint_set_log_level_rule(
 			tracepoint, log_level_rule_at_least_as_severe);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Setting log level range");
 
 	for (i = 0; i < 3; i++) {
-		status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(
+		status = lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
 				tracepoint, exclusions[i]);
 		ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 				"Setting exclusion pattern");

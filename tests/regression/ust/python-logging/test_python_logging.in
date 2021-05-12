@@ -693,13 +693,13 @@ function test_python_trigger_notify_action
 	diag "Test Python trigger with notify action"
 
 	lttng_add_trigger_ok "my_python_trigger" \
-		--condition event-rule-matches --domain=python --action notify
+		--condition event-rule-matches --type=python --action notify
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	- name: my_python_trigger
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: * (type: tracepoint, domain: python)
+	    rule: * (type: python:logging)
 	  actions:
 	    notify
 	      errors: none

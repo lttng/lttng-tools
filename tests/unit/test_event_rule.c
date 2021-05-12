@@ -26,8 +26,6 @@
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/python-logging-internal.h>
 #include <lttng/event-rule/python-logging.h>
-#include <lttng/event-rule/tracepoint-internal.h>
-#include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.h>
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
@@ -46,7 +44,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 317
+#define NUM_TESTS 212
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -59,129 +57,6 @@ typedef struct lttng_event_rule *(*event_rule_create)(void);
 typedef enum lttng_event_rule_status (*event_rule_set_log_level)(
 		struct lttng_event_rule *rule,
 		const struct lttng_log_level_rule *log_level_rule);
-
-static
-void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
-{
-	unsigned int count;
-	struct lttng_event_rule *tracepoint = NULL;
-	struct lttng_event_rule *tracepoint_from_buffer = NULL;
-	enum lttng_event_rule_status status;
-	enum lttng_domain_type domain_type, type;
-	const char *pattern="my_event_*";
-	const char *filter="msg_id == 23 && size >= 2048";
-	const char *tmp;
-	const char *name_pattern_exclusions[] = {"my_event_test1", "my_event_test2" ,"my_event_test3"};
-	struct lttng_log_level_rule *log_level_rule = NULL;
-	const struct lttng_log_level_rule *log_level_rule_return = NULL;
-	struct lttng_payload payload;
-
-	type = test->type;
-	diag("Testing domain %d.", type);
-
-	lttng_payload_init(&payload);
-
-	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
-	assert(log_level_rule);
-
-	tracepoint = lttng_event_rule_tracepoint_create(type);
-	ok(tracepoint, "tracepoint object.");
-
-	status = lttng_event_rule_tracepoint_get_domain_type(tracepoint, &domain_type);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get tracepoint domain.");
-	ok(domain_type == type, "domain type got %d expected %d.", domain_type, type);
-
-	status = lttng_event_rule_tracepoint_set_name_pattern(tracepoint, pattern);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
-	status = lttng_event_rule_tracepoint_get_name_pattern(tracepoint, &tmp);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
-	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
-
-	status = lttng_event_rule_tracepoint_set_filter(tracepoint, filter);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
-	status = lttng_event_rule_tracepoint_get_filter(tracepoint, &tmp);
-	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
-	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
-
-	status = lttng_event_rule_tracepoint_get_log_level_rule(tracepoint, &log_level_rule_return);
-	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
-
-	if (type != LTTNG_DOMAIN_KERNEL) {
-		status = lttng_event_rule_tracepoint_set_log_level_rule(tracepoint, log_level_rule);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
-		status = lttng_event_rule_tracepoint_get_log_level_rule(tracepoint, &log_level_rule_return);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
-	}
-
-	if (test->support_name_pattern_exclusion) {
-		int i;
-
-		for (i = 0; i < 3; i++) {
-			status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(tracepoint, name_pattern_exclusions[i]);
-			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting name pattern exclusions \"%s\"", name_pattern_exclusions[i]);
-		}
-
-		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(tracepoint, &count);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion count.");
-		ok(count == 3, "count is %d/3", count);
-
-		for (i = 0; i < count; i++) {
-			status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_at_index(tracepoint, i, &tmp);
-			ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion at index %d.", i);
-			ok(!strncmp(name_pattern_exclusions[i], tmp, strlen(name_pattern_exclusions[i])), "%s == %s.", tmp, name_pattern_exclusions[i]);
-		}
-	} else {
-		int i;
-
-		for (i = 0; i < 3; i++) {
-			status = lttng_event_rule_tracepoint_add_name_pattern_exclusion(tracepoint, name_pattern_exclusions[i]);
-			ok(status == LTTNG_EVENT_RULE_STATUS_UNSUPPORTED, "setting name pattern exclusions unsupported \"%s\".", name_pattern_exclusions[i]);
-		}
-
-		status = lttng_event_rule_tracepoint_get_name_pattern_exclusion_count(tracepoint, &count);
-		ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting name pattern exclusion count.");
-		ok(count == 0, "count is %d/0", count);
-	}
-
-	ok(lttng_event_rule_serialize(tracepoint, &payload) == 0, "Serializing.");
-
-	{
-		struct lttng_payload_view view =
-				lttng_payload_view_from_payload(
-						&payload, 0, -1);
-
-		ok(lttng_event_rule_create_from_payload(
-				&view, &tracepoint_from_buffer) > 0,
-				"Deserializing.");
-	}
-
-	ok(lttng_event_rule_is_equal(tracepoint, tracepoint_from_buffer), "serialized and from buffer are equal.");
-
-	lttng_payload_reset(&payload);
-	lttng_event_rule_destroy(tracepoint);
-	lttng_event_rule_destroy(tracepoint_from_buffer);
-	lttng_log_level_rule_destroy(log_level_rule);
-}
-
-static
-void test_event_rule_tracepoint(void)
-{
-	int i;
-	struct lttng_event_rule *tracepoint = NULL;
-	struct tracepoint_test tests[] = {{LTTNG_DOMAIN_JUL, false},
-			{LTTNG_DOMAIN_KERNEL, false},
-			{LTTNG_DOMAIN_LOG4J, false},
-			{LTTNG_DOMAIN_PYTHON, false},
-			{LTTNG_DOMAIN_UST, true}};
-
-	diag("Testing lttng_event_rule_tracepoint.");
-	tracepoint = lttng_event_rule_tracepoint_create(LTTNG_DOMAIN_NONE);
-	ok(!tracepoint, "Domain type restriction on create.");
-
-	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
-		test_event_rule_tracepoint_by_domain(&tests[i]);
-	}
-}
 
 static
 void test_event_rule_kernel_tracepoint(void)
@@ -940,7 +815,6 @@ static void test_event_rule_log_level_python(void)
 int main(int argc, const char *argv[])
 {
 	plan_tests(NUM_TESTS);
-	test_event_rule_tracepoint();
 	test_event_rule_kernel_tracepoint();
 	test_event_rule_user_tracepoint();
 	test_event_rule_syscall();

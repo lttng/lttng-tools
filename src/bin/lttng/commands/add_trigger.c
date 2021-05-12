@@ -50,7 +50,6 @@ enum {
 	OPT_EVENT_NAME,
 	OPT_LOG_LEVEL,
 
-	OPT_DOMAIN,
 	OPT_TYPE,
 	OPT_LOCATION,
 
@@ -70,7 +69,6 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 	{ OPT_LOG_LEVEL, 'l', "log-level", true },
 	{ OPT_EVENT_NAME, 'E', "event-name", true },
 
-	{ OPT_DOMAIN, 'd', "domain", true },
 	{ OPT_TYPE, 't', "type", true },
 	{ OPT_LOCATION, 'L', "location", true },
 
@@ -81,38 +79,27 @@ static const struct argpar_opt_descr event_rule_opt_descrs[] = {
 };
 
 static
-bool assign_domain_type(enum lttng_domain_type *dest, const char *arg)
+bool has_syscall_prefix(const char *arg)
 {
-	bool ret;
+	bool matches = false;
+	const char kernel_syscall_type_opt_prefix[] = "kernel:syscall";
+	const size_t kernel_syscall_type_opt_prefix_len =
+			sizeof(kernel_syscall_type_opt_prefix) - 1;
+	const char syscall_type_opt_prefix[] = "syscall";
+	const size_t syscall_type_opt_prefix_len =
+			sizeof(syscall_type_opt_prefix) - 1;
 
-	if (*dest != LTTNG_DOMAIN_NONE) {
-		ERR("More than one `--domain` was specified.");
-		goto error;
-	}
-
-	if (strcmp(arg, "kernel") == 0) {
-		*dest = LTTNG_DOMAIN_KERNEL;
-	} else if (strcmp(arg, "user") == 0 || strcmp(arg, "userspace") == 0) {
-		*dest = LTTNG_DOMAIN_UST;
-	} else if (strcmp(arg, "jul") == 0) {
-		*dest = LTTNG_DOMAIN_JUL;
-	} else if (strcmp(arg, "log4j") == 0) {
-		*dest = LTTNG_DOMAIN_LOG4J;
-	} else if (strcmp(arg, "python") == 0) {
-		*dest = LTTNG_DOMAIN_PYTHON;
+	if (strncmp(arg, syscall_type_opt_prefix,
+			    syscall_type_opt_prefix_len) == 0) {
+		matches = true;
+	} else if (strncmp(arg, kernel_syscall_type_opt_prefix,
+				   kernel_syscall_type_opt_prefix_len) == 0) {
+		matches = true;
 	} else {
-		ERR("Invalid `--domain` value: %s", arg);
-		goto error;
+		matches = false;
 	}
 
-	ret = true;
-	goto end;
-
-error:
-	ret = false;
-
-end:
-	return ret;
+	return matches;
 }
 
 static
@@ -125,8 +112,19 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 		goto error;
 	}
 
-	if (strcmp(arg, "tracepoint") == 0 || strcmp(arg, "logging") == 0) {
-		*dest = LTTNG_EVENT_RULE_TYPE_TRACEPOINT;
+	if (strcmp(arg, "user") == 0 || strcmp(arg, "user:tracepoint") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT;
+	} else if (strcmp(arg, "kernel") == 0 ||
+			strcmp(arg, "kernel:tracepoint") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT;
+	} else if (strcmp(arg, "jul") == 0 || strcmp(arg, "jul:logging") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_JUL_LOGGING;
+	} else if (strcmp(arg, "log4j") == 0 ||
+			strcmp(arg, "log4j:logging") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING;
+	} else if (strcmp(arg, "python") == 0 ||
+			strcmp(arg, "python:logging") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING;
 	} else if (strcmp(arg, "kprobe") == 0 ||
 			strcmp(arg, "kernel:kprobe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE;
@@ -134,9 +132,7 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE;
 	} else if (strcmp(arg, "function") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION;
-	} else if (strncmp(arg, "syscall", strlen("syscall")) == 0 ||
-			strncmp(arg, "kernel:syscall",
-					strlen("kernel:syscall")) == 0) {
+	} else if (has_syscall_prefix(arg)) {
 		/*
 		 * Matches the following:
 		 *   - syscall
@@ -227,7 +223,7 @@ error:
 }
 
 /*
- * Parse `str` as a log level in domain `domain_type`.
+ * Parse `str` as a log level against the passed event rule type.
  *
  * Return the log level in `*log_level`.  Return true in `*log_level_only` if
  * the string specifies exactly this log level, false if it specifies at least
@@ -236,14 +232,14 @@ error:
  * Return true if the string was successfully parsed as a log level string.
  */
 static bool parse_log_level_string(const char *str,
-		enum lttng_domain_type domain_type,
+		enum lttng_event_rule_type event_rule_type,
 		int *log_level,
 		bool *log_level_only)
 {
 	bool ret;
 
-	switch (domain_type) {
-	case LTTNG_DOMAIN_UST:
+	switch (event_rule_type) {
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 	{
 		enum lttng_loglevel log_level_min, log_level_max;
 		if (!loglevel_parse_range_string(
@@ -261,7 +257,7 @@ static bool parse_log_level_string(const char *str,
 		*log_level_only = log_level_min == log_level_max;
 		break;
 	}
-	case LTTNG_DOMAIN_LOG4J:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
 	{
 		enum lttng_loglevel_log4j log_level_min, log_level_max;
 		if (!loglevel_log4j_parse_range_string(
@@ -279,7 +275,7 @@ static bool parse_log_level_string(const char *str,
 		*log_level_only = log_level_min == log_level_max;
 		break;
 	}
-	case LTTNG_DOMAIN_JUL:
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 	{
 		enum lttng_loglevel_jul log_level_min, log_level_max;
 		if (!loglevel_jul_parse_range_string(
@@ -297,7 +293,7 @@ static bool parse_log_level_string(const char *str,
 		*log_level_only = log_level_min == log_level_max;
 		break;
 	}
-	case LTTNG_DOMAIN_PYTHON:
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	{
 		enum lttng_loglevel_python log_level_min, log_level_max;
 		if (!loglevel_python_parse_range_string(
@@ -653,7 +649,6 @@ struct parse_event_rule_res {
 static
 struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 {
-	enum lttng_domain_type domain_type = LTTNG_DOMAIN_NONE;
 	enum lttng_event_rule_type event_rule_type =
 			LTTNG_EVENT_RULE_TYPE_UNKNOWN;
 	struct argpar_state *state;
@@ -718,14 +713,6 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 					(const struct argpar_item_opt *) item;
 
 			switch (item_opt->descr->id) {
-			/* Domains. */
-			case OPT_DOMAIN:
-				if (!assign_domain_type(&domain_type,
-						item_opt->arg)) {
-					goto error;
-				}
-
-				break;
 			case OPT_TYPE:
 				if (!assign_event_rule_type(&event_rule_type,
 						item_opt->arg)) {
@@ -845,16 +832,20 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	if (event_rule_type == LTTNG_EVENT_RULE_TYPE_UNKNOWN) {
-		event_rule_type = LTTNG_EVENT_RULE_TYPE_TRACEPOINT;
+		event_rule_type = LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT;
 	}
 
 	/*
-	 * Option --name is applicable to event rules of type tracepoint
-	 * and syscall.  For tracepoint and syscall rules, if --name is
-	 * omitted, it is implicitly "*".
+	 * Option --name is applicable to event rules of type kernel, user, jul,
+	 * log4j,python and syscall.  If --name is omitted, it is implicitly
+	 * "*".
 	 */
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		if (!name) {
 			name = strdup("*");
@@ -923,39 +914,18 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	*argc -= consumed_args;
 	*argv += consumed_args;
 
-	/* Need to specify a domain. */
-	if (domain_type == LTTNG_DOMAIN_NONE) {
-		ERR("Please specify a domain (--domain=(kernel,user,jul,log4j,python)).");
-		goto error;
-	}
-
-	/* Validate event rule type against domain. */
-	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
-		if (domain_type != LTTNG_DOMAIN_KERNEL) {
-			ERR("Event type not available for user-space tracing.");
-			goto error;
-		}
-		break;
-
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		break;
-
-	default:
-		abort();
-	}
-
 	/*
 	 * Adding a filter to a probe, function or userspace-probe would be
 	 * denied by the kernel tracer as it's not supported at the moment. We
 	 * do an early check here to warn the user.
 	 */
-	if (filter && domain_type == LTTNG_DOMAIN_KERNEL) {
+	if (filter) {
 		switch (event_rule_type) {
-		case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+		case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
 		case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 			break;
 		default:
@@ -965,11 +935,15 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 	}
 
-	/* If --exclude-name/-x was passed, split it into an exclusion list. */
+	/*
+	 * If --exclude-name/-x was passed, split it into an exclusion list.
+	 * Exclusions are only supported by
+	 * LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT for now.
+	 */
 	if (lttng_dynamic_pointer_array_get_count(&exclude_names) > 0) {
-		if (domain_type != LTTNG_DOMAIN_UST) {
+		if (event_rule_type != LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT) {
 			ERR("Event name exclusions are not yet implemented for %s event rules.",
-					get_domain_str(domain_type));
+					lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 
@@ -983,44 +957,76 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	if (log_level_str) {
-		if (event_rule_type != LTTNG_EVENT_RULE_TYPE_TRACEPOINT) {
-			ERR("Log levels are only applicable to tracepoint event rules.");
-			goto error;
-		}
+		switch (event_rule_type) {
+		case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+		{
+			int log_level;
+			bool log_level_only;
 
-		if (domain_type == LTTNG_DOMAIN_KERNEL) {
-			ERR("Log levels are not supported by the kernel tracer.");
+			if (strcmp(log_level_str, "..") == 0) {
+				/*
+				 * ".." is the same as passing no log level
+				 * option and correspond to the "ANY" case.
+				 */
+				break;
+			}
+
+			if (!parse_log_level_string(log_level_str, event_rule_type,
+					    &log_level, &log_level_only)) {
+				ERR("Failed to parse log level string `%s`.",
+						log_level_str);
+				goto error;
+			}
+
+			if (log_level_only) {
+				log_level_rule = lttng_log_level_rule_exactly_create(log_level);
+			} else {
+				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(log_level);
+			}
+
+			if (log_level_rule == NULL) {
+				ERR("Failed to create log level rule object.");
+				goto error;
+			}
+			break;
+		}
+		default:
+			ERR("Log levels are not supported for %s event rules.",
+					lttng_event_rule_type_str(event_rule_type));
 			goto error;
 		}
 	}
 
 	/* Finally, create the event rule object. */
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
 	{
 		enum lttng_event_rule_status event_rule_status;
 
-		res.er = lttng_event_rule_tracepoint_create(domain_type);
+		res.er = lttng_event_rule_user_tracepoint_create();
 		if (!res.er) {
-			ERR("Failed to create tracepoint event rule.");
+			ERR("Failed to create user_tracepoint event rule.");
 			goto error;
 		}
 
 		/* Set pattern. */
-		event_rule_status = lttng_event_rule_tracepoint_set_name_pattern(
+		event_rule_status = lttng_event_rule_user_tracepoint_set_name_pattern(
 				res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-			ERR("Failed to set tracepoint event rule's pattern to '%s'.",
+			ERR("Failed to set user_tracepoint event rule's pattern to '%s'.",
 					name);
 			goto error;
 		}
 
 		/* Set filter. */
 		if (filter) {
-			event_rule_status = lttng_event_rule_tracepoint_set_filter(
+			event_rule_status = lttng_event_rule_user_tracepoint_set_filter(
 					res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
-				ERR("Failed to set tracepoint event rule's filter to '%s'.",
+				ERR("Failed to set user_tracepoint event rule's filter to '%s'.",
 						filter);
 				goto error;
 			}
@@ -1039,46 +1045,21 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 								n);
 
 				event_rule_status =
-						lttng_event_rule_tracepoint_add_name_pattern_exclusion(
+						lttng_event_rule_user_tracepoint_add_name_pattern_exclusion(
 								res.er,
 								exclude_name);
 				if (event_rule_status !=
 						LTTNG_EVENT_RULE_STATUS_OK) {
-					ERR("Failed to set tracepoint exclusion list element '%s'",
+					ERR("Failed to set user_tracepoint exclusion list element '%s'",
 							exclude_name);
 					goto error;
 				}
 			}
 		}
 
-		/*
-		 * ".." is the same as passing no log level option and
-		 * correspond the the "ANY" case.
-		 */
-		if (log_level_str && strcmp(log_level_str, "..") != 0) {
-			int log_level;
-			bool log_level_only;
-
-			if (!parse_log_level_string(log_level_str, domain_type,
-					    &log_level, &log_level_only)) {
-				ERR("Failed to parse log level string `%s`.",
-						log_level_str);
-				goto error;
-			}
-
-			if (log_level_only) {
-				log_level_rule = lttng_log_level_rule_exactly_create(log_level);
-			} else {
-				log_level_rule = lttng_log_level_rule_at_least_as_severe_as_create(log_level);
-			}
-
-			if (log_level_rule == NULL) {
-				ERR("Failed to create log level rule object.");
-				goto error;
-			}
-
+		if (log_level_rule) {
 			event_rule_status =
-					lttng_event_rule_tracepoint_set_log_level_rule(
+					lttng_event_rule_user_tracepoint_set_log_level_rule(
 							res.er, log_level_rule);
 
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
@@ -1087,6 +1068,163 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			}
 		}
 
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
+	{
+		enum lttng_event_rule_status event_rule_status;
+
+		res.er = lttng_event_rule_kernel_tracepoint_create();
+		if (!res.er) {
+			ERR("Failed to create kernel_tracepoint event rule.");
+			goto error;
+		}
+
+		/* Set pattern. */
+		event_rule_status = lttng_event_rule_kernel_tracepoint_set_name_pattern(
+				res.er, name);
+		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set kernel_tracepoint event rule's pattern to '%s'.",
+					name);
+			goto error;
+		}
+
+		/* Set filter. */
+		if (filter) {
+			event_rule_status = lttng_event_rule_kernel_tracepoint_set_filter(
+					res.er, filter);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set kernel_tracepoint event rule's filter to '%s'.",
+						filter);
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
+	{
+		enum lttng_event_rule_status event_rule_status;
+
+		res.er = lttng_event_rule_jul_logging_create();
+		if (!res.er) {
+			ERR("Failed to create jul_logging event rule.");
+			goto error;
+		}
+
+		/* Set pattern. */
+		event_rule_status = lttng_event_rule_jul_logging_set_name_pattern(
+				res.er, name);
+		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
+					name);
+			goto error;
+		}
+
+		/* Set filter. */
+		if (filter) {
+			event_rule_status = lttng_event_rule_jul_logging_set_filter(
+					res.er, filter);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set jul_logging event rule's filter to '%s'.",
+						filter);
+				goto error;
+			}
+		}
+
+		if (log_level_rule) {
+			event_rule_status =
+					lttng_event_rule_jul_logging_set_log_level_rule(
+							res.er, log_level_rule);
+
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set log level on event fule.");
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+	{
+		enum lttng_event_rule_status event_rule_status;
+
+		res.er = lttng_event_rule_log4j_logging_create();
+		if (!res.er) {
+			ERR("Failed to create jul_logging event rule.");
+			goto error;
+		}
+
+		/* Set pattern. */
+		event_rule_status = lttng_event_rule_log4j_logging_set_name_pattern(
+				res.er, name);
+		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
+					name);
+			goto error;
+		}
+
+		/* Set filter. */
+		if (filter) {
+			event_rule_status = lttng_event_rule_log4j_logging_set_filter(
+					res.er, filter);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set jul_logging event rule's filter to '%s'.",
+						filter);
+				goto error;
+			}
+		}
+
+		if (log_level_rule) {
+			event_rule_status =
+					lttng_event_rule_log4j_logging_set_log_level_rule(
+							res.er, log_level_rule);
+
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set log level on event fule.");
+				goto error;
+			}
+		}
+		break;
+	}
+	case LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING:
+	{
+		enum lttng_event_rule_status event_rule_status;
+
+		res.er = lttng_event_rule_python_logging_create();
+		if (!res.er) {
+			ERR("Failed to create jul_logging event rule.");
+			goto error;
+		}
+
+		/* Set pattern. */
+		event_rule_status = lttng_event_rule_python_logging_set_name_pattern(
+				res.er, name);
+		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+			ERR("Failed to set jul_logging event rule's pattern to '%s'.",
+					name);
+			goto error;
+		}
+
+		/* Set filter. */
+		if (filter) {
+			event_rule_status = lttng_event_rule_python_logging_set_filter(
+					res.er, filter);
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set jul_logging event rule's filter to '%s'.",
+						filter);
+				goto error;
+			}
+		}
+
+		if (log_level_rule) {
+			event_rule_status =
+					lttng_event_rule_python_logging_set_log_level_rule(
+							res.er, log_level_rule);
+
+			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
+				ERR("Failed to set log level on event fule.");
+				goto error;
+			}
+		}
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
