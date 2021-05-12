@@ -16,6 +16,7 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kernel-kprobe-internal.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
+#include <lttng/event-rule/log4j-logging-internal.h>
 #include <lttng/event-rule/jul-logging-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.h>
@@ -48,6 +49,9 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 		break;
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		domain_type = LTTNG_DOMAIN_JUL;
+		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		domain_type = LTTNG_DOMAIN_LOG4J;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
@@ -207,6 +211,10 @@ ssize_t lttng_event_rule_create_from_payload(
 		create_from_payload =
 				lttng_event_rule_jul_logging_create_from_payload;
 		break;
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		create_from_payload =
+				lttng_event_rule_log4j_logging_create_from_payload;
+		break;
 	default:
 		ERR("Attempted to create event rule of unknown type (%i)",
 				(int) event_rule_comm->event_rule_type);
@@ -349,6 +357,8 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "user tracepoint";
 	case LTTNG_EVENT_RULE_TYPE_JUL_LOGGING:
 		return "jul logging";
+	case LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING:
+		return "log4j logging";
 	default:
 		abort();
 	}

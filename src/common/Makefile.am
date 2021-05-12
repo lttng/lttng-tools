@@ -71,6 +71,7 @@ libcommon_la_SOURCES = \
 	event-rule/tracepoint.c \
 	event-rule/kernel-tracepoint.c \
 	event-rule/user-tracepoint.c \
+	event-rule/log4j-logging.c \
 	event-rule/jul-logging.c \
 	filter.c filter.h \
 	fd-handle.c fd-handle.h \
