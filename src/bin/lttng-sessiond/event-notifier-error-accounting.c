@@ -381,6 +381,12 @@ struct ust_error_accounting_entry *ust_error_accounting_entry_create(
 		.has_overflow = false,
 	};
 
+	if (!ust_app_supports_counters(app)) {
+		DBG("Refusing to create accounting entry for application (unsupported feature): app name = '%s', app ppid = %d",
+				app->name, (int) app->ppid);
+		goto error;
+	}
+
 	entry = zmalloc(sizeof(struct ust_error_accounting_entry));
 	if (!entry) {
 		PERROR("Failed to allocate event notifier error acounting entry")
@@ -586,6 +592,11 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	enum event_notifier_error_accounting_status status;
 	struct lttng_ust_abi_object_data **cpu_counters;
 
+	if (!ust_app_supports_counters(app)) {
+		status = EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED;
+		goto end;
+	}
+
 	/*
 	 * Check if we already have a error counter for the user id of this
 	 * app. If not, create one.
@@ -688,7 +699,7 @@ event_notifier_error_accounting_register_app(struct ust_app *app)
 	app->event_notifier_group.nr_counter_cpu = entry->nr_counter_cpu_fds;
 	app->event_notifier_group.counter_cpu = cpu_counters;
 	cpu_counters = NULL;
-	goto end;
+	goto end_unlock;
 
 error_send_cpu_counter_data:
 error_duplicate_cpu_counter:
@@ -716,8 +727,9 @@ error_duplicate_counter:
 	ust_error_accounting_entry_put(entry);
 error_creating_entry:
 	app->event_notifier_group.counter = NULL;
-end:
+end_unlock:
 	rcu_read_unlock();
+end:
 	return status;
 }
 
