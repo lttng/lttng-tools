@@ -21,7 +21,7 @@
 /* Default unix socket path */
 #define LTTNG_UST_SOCK_FILENAME					\
 	"lttng-ust-sock-"					\
-	__ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION)
+	__ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
 
 /*
  * Shared memory files path are automatically related to shm root, e.g.
@@ -29,7 +29,7 @@
  */
 #define LTTNG_UST_WAIT_FILENAME					\
 	"lttng-ust-wait-"					\
-	__ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION)
+	__ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
 
 struct lttng_ust_shm_handle;
 struct lttng_ust_lib_ring_buffer;
