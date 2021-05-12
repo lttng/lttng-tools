@@ -2247,6 +2247,29 @@ function lttng_remove_trigger_ok()
 	lttng_remove_trigger 0 "$@"
 }
 
+function list_triggers_matches_ok ()
+{
+	local tmp_stdout=$(mktemp -t test_list_triggers_cli_stdout.XXXXXX)
+	local tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
+
+	local test_name="$1"
+	local expected_stdout_file="$2"
+
+	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN list-triggers"
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" list-triggers > "${tmp_stdout}" 2> "${tmp_stderr}"
+	ok $? "${test_name}: exit code is 0"
+
+	diff -u "${expected_stdout_file}" "${tmp_stdout}"
+	ok $? "${test_name}: expected stdout"
+
+	diff -u /dev/null "${tmp_stderr}"
+	ok $? "${test_name}: expected stderr"
+
+	rm -f "${tmp_stdout}"
+	rm -f "${tmp_stderr}"
+}
+
 function validate_path_pattern ()
 {
 	local message=$1

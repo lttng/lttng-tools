@@ -51,21 +51,6 @@ else
 fi
 
 
-function list_triggers_matches_ok ()
-{
-	local test_name="$1"
-	local expected_stdout_file="$2"
-
-	"${FULL_LTTNG_BIN}" list-triggers > "${tmp_stdout}" 2> "${tmp_stderr}"
-	ok $? "${test_name}: exit code is 0"
-
-	diff -u "${expected_stdout_file}" "${tmp_stdout}"
-	ok $? "${test_name}: expected stdout"
-
-	diff -u /dev/null "${tmp_stderr}"
-	ok $? "${test_name}: expected stderr"
-}
-
 test_top_level_options ()
 {
 	diag "Listing top level options"
