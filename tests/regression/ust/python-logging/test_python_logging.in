@@ -25,7 +25,7 @@ run_test=@RUN_PYTHON_AGENT_TEST@
 if [[ -z "$run_test" ]]; then
 	NUM_TESTS=1
 else
-	NUM_TESTS=$(((194 * ${#python_versions[@]})+2))
+	NUM_TESTS=$(((199 * ${#python_versions[@]})+2))
 fi
 
 source $TESTDIR/utils/utils.sh
@@ -685,6 +685,34 @@ function test_python_filter_loglevel()
 	fi
 }
 
+function test_python_trigger_notify_action
+{
+	uid=$(id --user)
+	tmp_expected_stdout=$(mktemp -t test_list_triggers_python_cli_expected_stdout.XXXXXX)
+
+	diag "Test Python trigger with notify action"
+
+	lttng_add_trigger_ok "my_python_trigger" \
+		--condition event-rule-matches --domain=python --action notify
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	- name: my_python_trigger
+	  owner uid: ${uid}
+	  condition: event rule matches
+	    rule: * (type: tracepoint, domain: python)
+	  actions:
+	    notify
+	      errors: none
+	  errors: none
+	EOF
+
+	list_triggers_matches_ok "Python trigger listing" "${tmp_expected_stdout}"
+
+	lttng_remove_trigger_ok "my_python_trigger"
+
+	rm -f "${tmp_expected_stdout}"
+}
+
 plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
@@ -717,6 +745,7 @@ skip $skip_agent "Python agent test skipped." $NUM_TESTS ||
 		test_python_after_start
 		test_python_multi_session
 		test_python_filter_loglevel
+		test_python_trigger_notify_action
 	)
 
 
