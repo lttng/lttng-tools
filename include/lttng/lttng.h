@@ -46,6 +46,7 @@
 #include <lttng/event-rule/jul-logging.h>
 #include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall.h>
+#include <lttng/event-rule/python-logging.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe.h>

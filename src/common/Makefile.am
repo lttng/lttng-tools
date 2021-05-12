@@ -73,6 +73,7 @@ libcommon_la_SOURCES = \
 	event-rule/user-tracepoint.c \
 	event-rule/log4j-logging.c \
 	event-rule/jul-logging.c \
+	event-rule/python-logging.c \
 	filter.c filter.h \
 	fd-handle.c fd-handle.h \
 	fs-handle.c fs-handle.h fs-handle-internal.h \
