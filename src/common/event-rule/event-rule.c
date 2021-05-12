@@ -19,6 +19,7 @@
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/kernel-tracepoint-internal.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
+#include <lttng/event-rule/user-tracepoint-internal.h>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(
@@ -41,6 +42,9 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		break;
 	}
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		domain_type = LTTNG_DOMAIN_UST;
+		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
@@ -191,7 +195,10 @@ ssize_t lttng_event_rule_create_from_payload(
 		create_from_payload =
 				lttng_event_rule_kernel_tracepoint_create_from_payload;
 		break;
-
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		create_from_payload =
+				lttng_event_rule_user_tracepoint_create_from_payload;
+		break;
 	default:
 		ERR("Attempted to create event rule of unknown type (%i)",
 				(int) event_rule_comm->event_rule_type);
@@ -330,6 +337,8 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "kernel uprobe";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 		return "kernel tracepoint";
+	case LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT:
+		return "user tracepoint";
 	default:
 		abort();
 	}
