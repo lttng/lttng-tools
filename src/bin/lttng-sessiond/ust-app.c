@@ -4006,6 +4006,16 @@ int ust_app_version(struct ust_app *app)
 	return ret;
 }
 
+bool ust_app_supports_notifiers(const struct ust_app *app)
+{
+	return app->v_major >= 9;
+}
+
+bool ust_app_supports_counters(const struct ust_app *app)
+{
+	return app->v_major >= 9;
+}
+
 /*
  * Setup the base event notifier group.
  *
@@ -4021,6 +4031,11 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 	enum event_notifier_error_accounting_status event_notifier_error_accounting_status;
 
 	assert(app);
+
+	if (!ust_app_supports_notifiers(app)) {
+		ret = -ENOSYS;
+		goto error;
+	}
 
 	/* Get the write side of the pipe. */
 	event_pipe_write_fd = lttng_pipe_get_writefd(
@@ -4071,14 +4086,20 @@ int ust_app_setup_event_notifier_group(struct ust_app *app)
 
 	event_notifier_error_accounting_status =
 			event_notifier_error_accounting_register_app(app);
-	if (event_notifier_error_accounting_status != EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK) {
-		if (event_notifier_error_accounting_status == EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD) {
-			DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d",
-					app->sock);
-			ret = 0;
-			goto error_accounting;
-		}
-
+	switch (event_notifier_error_accounting_status) {
+	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_OK:
+		break;
+	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_UNSUPPORTED:
+		DBG3("Failed to setup event notifier error accounting (application does not support notifier error accounting): app socket fd = %d, app name = '%s', app ppid = %d",
+				app->sock, app->name, (int) app->ppid);
+		ret = 0;
+		goto error_accounting;
+	case EVENT_NOTIFIER_ERROR_ACCOUNTING_STATUS_APP_DEAD:
+		DBG3("Failed to setup event notifier error accounting (application is dead): app socket fd = %d, app name = '%s', app ppid = %d",
+				app->sock, app->name, (int) app->ppid);
+		ret = 0;
+		goto error_accounting;
+	default:
 		ERR("Failed to setup event notifier error accounting for app");
 		ret = -1;
 		goto error_accounting;
@@ -5655,6 +5676,10 @@ void ust_app_synchronize_event_notifier_rules(struct ust_app *app)
 	struct ust_app_event_notifier_rule *event_notifier_rule;
 	unsigned int count, i;
 
+	if (!ust_app_supports_notifiers(app)) {
+		goto end;
+	}
+
 	/*
 	 * Currrently, registering or unregistering a trigger with an
 	 * event rule condition causes a full synchronization of the event
@@ -5974,7 +5999,7 @@ void ust_app_global_update_event_notifier_rules(struct ust_app *app)
 	DBG2("UST application global event notifier rules update: app = '%s' (ppid: %d)",
 			app->name, app->ppid);
 
-	if (!app->compatible) {
+	if (!app->compatible || !ust_app_supports_notifiers(app)) {
 		return;
 	}
 

@@ -404,6 +404,9 @@ int ust_app_supported(void)
 	return 1;
 }
 
+bool ust_app_supports_notifiers(const struct ust_app *app);
+bool ust_app_supports_counters(const struct ust_app *app);
+
 #else /* HAVE_LIBLTTNG_UST_CTL */
 
 static inline
@@ -594,6 +597,16 @@ static inline
 int ust_app_supported(void)
 {
 	return 0;
+}
+static inline
+bool ust_app_supports_notifiers(const struct ust_app *app)
+{
+	return false;
+}
+static inline
+bool ust_app_supports_counters(const struct ust_app *app)
+{
+	return false;
 }
 static inline
 struct ust_app *ust_app_find_by_sock(int sock)
