@@ -55,6 +55,11 @@ struct tracepoint_test {
 
 typedef const char *(*log_level_name_getter)(int log_level);
 
+typedef struct lttng_event_rule *(*event_rule_create)(void);
+typedef enum lttng_event_rule_status (*event_rule_set_log_level)(
+		struct lttng_event_rule *rule,
+		const struct lttng_log_level_rule *log_level_rule);
+
 static
 void test_event_rule_tracepoint_by_domain(const struct tracepoint_test *test)
 {
@@ -713,6 +718,7 @@ static void test_event_rule_kernel_probe(void)
 
 static void test_set_event_rule_log_level_rules(
 		struct lttng_event_rule *event_rule,
+		event_rule_set_log_level set_log_level,
 		int log_level,
 		enum lttng_event_rule_status *exactly_status,
 		enum lttng_event_rule_status *as_severe_status)
@@ -723,21 +729,22 @@ static void test_set_event_rule_log_level_rules(
 			log_level);
 	assert(log_level_rule);
 
-	*as_severe_status = lttng_event_rule_tracepoint_set_log_level_rule(
+	*as_severe_status = set_log_level(
 			event_rule, log_level_rule);
 	lttng_log_level_rule_destroy(log_level_rule);
 
 	log_level_rule = lttng_log_level_rule_exactly_create(log_level);
 	assert(log_level_rule);
 
-	*exactly_status = lttng_event_rule_tracepoint_set_log_level_rule(
+	*exactly_status = set_log_level(
 			event_rule, log_level_rule);
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
-static void test_event_rule_log_level_generic(const char *domain_name,
-		enum lttng_domain_type domain,
+static void test_event_rule_log_level_generic(enum lttng_event_rule_type event_rule_type,
 		log_level_name_getter get_log_level_name,
+		event_rule_create create_event_rule,
+		event_rule_set_log_level set_log_level,
 		const int tagged_log_level_values[],
 		size_t tagged_log_level_values_count,
 		const int valid_log_level_values[],
@@ -746,27 +753,30 @@ static void test_event_rule_log_level_generic(const char *domain_name,
 		size_t invalid_log_level_values_count)
 {
 	size_t i;
-	struct lttng_event_rule *tracepoint_rule;
+	struct lttng_event_rule *rule;
 	enum lttng_event_rule_status er_exactly_status, er_as_severe_status;
+	const char *event_rule_type_str = lttng_event_rule_type_str(event_rule_type);
 
-	diag("Test %s event rule + log level rule", domain_name);
-	tracepoint_rule = lttng_event_rule_tracepoint_create(domain);
-	assert(tracepoint_rule);
+
+	diag("Test %s event rule + log level rule", event_rule_type_str);
+
+	rule = create_event_rule();
+	assert(rule);
 
 	for (i = 0; i < tagged_log_level_values_count; i++) {
 		const int tagged_log_level_value = tagged_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(tracepoint_rule,
+		test_set_event_rule_log_level_rules(rule, set_log_level,
 				tagged_log_level_value,
 				&er_exactly_status, &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"exactly\" accepted by %s tracepoint event rule: level = %s",
-				domain_name,
+				"Log level rule \"exactly\" accepted by %s event rule: level = %s",
+				event_rule_type_str,
 				get_log_level_name(
 						tagged_log_level_value));
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"as least as severe as\" accepted by %s tracepoint event rule: level = %s",
-				domain_name,
+				"Log level rule \"as least as severe as\" accepted by %s event rule: level = %s",
+				event_rule_type_str,
 				get_log_level_name(
 						tagged_log_level_value));
 	}
@@ -774,36 +784,36 @@ static void test_event_rule_log_level_generic(const char *domain_name,
 	for (i = 0; i < valid_log_level_values_count; i++) {
 		const int valid_log_level_value = valid_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(tracepoint_rule,
+		test_set_event_rule_log_level_rules(rule, set_log_level,
 				valid_log_level_value,
 				&er_exactly_status, &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"exactly\" accepted by %s tracepoint event rule: level = %d",
-				domain_name,
+				"Log level rule \"exactly\" accepted by %s event rule: level = %d",
+				event_rule_type_str,
 				valid_log_level_value);
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_OK,
-				"Log level rule \"as least as severe as\" accepted by %s tracepoint event rule: level = %d",
-				domain_name,
+				"Log level rule \"as least as severe as\" accepted by %s event rule: level = %d",
+				event_rule_type_str,
 				valid_log_level_value);
 	}
 
 	for (i = 0; i < invalid_log_level_values_count; i++) {
 		const int invalid_log_level_value = invalid_log_level_values[i];
 
-		test_set_event_rule_log_level_rules(tracepoint_rule,
+		test_set_event_rule_log_level_rules(rule, set_log_level,
 				invalid_log_level_value,
 				&er_exactly_status, &er_as_severe_status);
 		ok(er_exactly_status == LTTNG_EVENT_RULE_STATUS_INVALID,
-				"Log level rule \"exactly\" rejected by %s tracepoint event rule: level = %d",
-				domain_name,
+				"Log level rule \"exactly\" rejected by %s event rule: level = %d",
+				event_rule_type_str,
 				invalid_log_level_value);
 		ok(er_as_severe_status == LTTNG_EVENT_RULE_STATUS_INVALID,
-				"Log level rule \"as least as severe as\" rejected by %s tracepoint event rule: level = %d",
-				domain_name,
+				"Log level rule \"as least as severe as\" rejected by %s event rule: level = %d",
+				event_rule_type_str,
 				invalid_log_level_value);
 	}
 
-	lttng_event_rule_destroy(tracepoint_rule);
+	lttng_event_rule_destroy(rule);
 }
 
 static void test_event_rule_log_level_ust(void)
@@ -832,10 +842,12 @@ static void test_event_rule_log_level_ust(void)
 		LTTNG_LOGLEVEL_EMERG - 1,
 	};
 
-	test_event_rule_log_level_generic("user space", LTTNG_DOMAIN_UST,
-			loglevel_value_to_name, tagged_log_level_values,
-			ARRAY_SIZE(tagged_log_level_values),
-			NULL, 0,
+	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT,
+			loglevel_value_to_name,
+			lttng_event_rule_user_tracepoint_create,
+			lttng_event_rule_user_tracepoint_set_log_level_rule,
+			tagged_log_level_values,
+			ARRAY_SIZE(tagged_log_level_values), NULL, 0,
 			invalid_log_level_values,
 			ARRAY_SIZE(invalid_log_level_values));
 }
@@ -859,8 +871,11 @@ static void test_event_rule_log_level_jul(void)
 		1995
 	};
 
-	test_event_rule_log_level_generic("Java Util Logging", LTTNG_DOMAIN_JUL,
-			loglevel_jul_value_to_name, tagged_log_level_values,
+	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_JUL_LOGGING,
+			loglevel_jul_value_to_name,
+			lttng_event_rule_jul_logging_create,
+			lttng_event_rule_jul_logging_set_log_level_rule,
+			tagged_log_level_values,
 			ARRAY_SIZE(tagged_log_level_values),
 			valid_log_level_values,
 			ARRAY_SIZE(valid_log_level_values), NULL, 0);
@@ -884,8 +899,11 @@ static void test_event_rule_log_level_log4j(void)
 		1995
 	};
 
-	test_event_rule_log_level_generic("Log4j", LTTNG_DOMAIN_LOG4J,
-			loglevel_log4j_value_to_name, tagged_log_level_values,
+	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_LOG4J_LOGGING,
+			loglevel_log4j_value_to_name,
+			lttng_event_rule_log4j_logging_create,
+			lttng_event_rule_log4j_logging_set_log_level_rule,
+			tagged_log_level_values,
 			ARRAY_SIZE(tagged_log_level_values),
 			valid_log_level_values,
 			ARRAY_SIZE(valid_log_level_values), NULL, 0);
@@ -908,8 +926,11 @@ static void test_event_rule_log_level_python(void)
 		-657,
 	};
 
-	test_event_rule_log_level_generic("Python", LTTNG_DOMAIN_PYTHON,
-			loglevel_python_value_to_name, tagged_log_level_values,
+	test_event_rule_log_level_generic(LTTNG_EVENT_RULE_TYPE_PYTHON_LOGGING,
+			loglevel_python_value_to_name,
+			lttng_event_rule_python_logging_create,
+			lttng_event_rule_python_logging_set_log_level_rule,
+			tagged_log_level_values,
 			ARRAY_SIZE(tagged_log_level_values),
 			valid_log_level_values,
 			ARRAY_SIZE(valid_log_level_values),
