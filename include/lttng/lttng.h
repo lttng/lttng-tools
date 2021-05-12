@@ -47,6 +47,7 @@
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/kernel-tracepoint.h>
 #include <lttng/event-rule/kernel-uprobe.h>
+#include <lttng/event-rule/user-tracepoint.h>
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>
