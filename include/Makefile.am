@@ -158,6 +158,7 @@ lttngeventruleinclude_HEADERS= \
 	lttng/event-rule/tracepoint.h \
 	lttng/event-rule/kernel-tracepoint.h \
 	lttng/event-rule/kernel-uprobe.h \
+	lttng/event-rule/log4j-logging.h \
 	lttng/event-rule/user-tracepoint.h
 
 noinst_HEADERS = \
@@ -190,6 +191,7 @@ noinst_HEADERS = \
 	lttng/event-rule/tracepoint-internal.h \
 	lttng/event-rule/kernel-tracepoint-internal.h \
 	lttng/event-rule/kernel-uprobe-internal.h \
+	lttng/event-rule/log4j-logging-internal.h \
 	lttng/event-rule/user-tracepoint-internal.h \
 	lttng/health-internal.h \
 	lttng/kernel-probe-internal.h \

@@ -44,7 +44,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 291
+#define NUM_TESTS 304
 
 struct tracepoint_test {
 	enum lttng_domain_type type;
@@ -433,6 +433,71 @@ void test_event_rule_jul_logging(void)
 	lttng_log_level_rule_destroy(log_level_rule);
 }
 
+static
+void test_event_rule_log4j_logging(void)
+{
+	struct lttng_event_rule *log4j_logging = NULL;
+	struct lttng_event_rule *log4j_logging_from_buffer = NULL;
+	enum lttng_event_rule_status status;
+	const char *pattern="my_event_*";
+	const char *filter="msg_id == 23 && size >= 2048";
+	const char *tmp;
+	struct lttng_log_level_rule *log_level_rule = NULL;
+	const struct lttng_log_level_rule *log_level_rule_return = NULL;
+	struct lttng_payload payload;
+
+	diag("Testing lttng_event_rule_user_log4j_logging.");
+
+	lttng_payload_init(&payload);
+
+	log_level_rule = lttng_log_level_rule_exactly_create(LTTNG_LOGLEVEL_INFO);
+	assert(log_level_rule);
+
+	log4j_logging = lttng_event_rule_log4j_logging_create();
+	ok(log4j_logging, "log4j_logging object.");
+
+	status = lttng_event_rule_log4j_logging_set_name_pattern(log4j_logging, pattern);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
+	status = lttng_event_rule_log4j_logging_get_name_pattern(log4j_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
+	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
+
+	status = lttng_event_rule_log4j_logging_set_filter(log4j_logging, filter);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
+	status = lttng_event_rule_log4j_logging_get_filter(log4j_logging, &tmp);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
+	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
+
+	status = lttng_event_rule_log4j_logging_get_log_level_rule(log4j_logging, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_UNSET, "get unset log level rule.");
+
+	status = lttng_event_rule_log4j_logging_set_log_level_rule(
+			log4j_logging, log_level_rule);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting log level rule.");
+	status = lttng_event_rule_log4j_logging_get_log_level_rule(
+			log4j_logging, &log_level_rule_return);
+	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "get log level rule.");
+
+	ok(lttng_event_rule_serialize(log4j_logging, &payload) == 0, "Serializing.");
+
+	{
+		struct lttng_payload_view view =
+				lttng_payload_view_from_payload(
+						&payload, 0, -1);
+
+		ok(lttng_event_rule_create_from_payload(
+				&view, &log4j_logging_from_buffer) > 0,
+				"Deserializing.");
+	}
+
+	ok(lttng_event_rule_is_equal(log4j_logging, log4j_logging_from_buffer), "serialized and from buffer are equal.");
+
+	lttng_payload_reset(&payload);
+	lttng_event_rule_destroy(log4j_logging);
+	lttng_event_rule_destroy(log4j_logging_from_buffer);
+	lttng_log_level_rule_destroy(log_level_rule);
+}
+
 static void test_event_rule_userspace_probe(void)
 {
 	struct lttng_event_rule *uprobe = NULL;
@@ -793,6 +858,7 @@ int main(int argc, const char *argv[])
 	test_event_rule_syscall();
 	test_event_rule_userspace_probe();
 	test_event_rule_kernel_probe();
+	test_event_rule_log4j_logging();
 	test_event_rule_jul_logging();
 	test_event_rule_log_level_ust();
 	test_event_rule_log_level_jul();
