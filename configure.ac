@@ -1191,7 +1191,6 @@ AC_CONFIG_FILES([
 	tests/regression/ust/ust-dl/Makefile
 	tests/regression/ust/java-jul/Makefile
 	tests/regression/ust/java-log4j/Makefile
-	tests/regression/ust/python-logging/Makefile
 	tests/regression/ust/getcpu-override/Makefile
 	tests/regression/ust/clock-override/Makefile
 	tests/regression/ust/type-declarations/Makefile
@@ -1207,6 +1206,7 @@ AC_CONFIG_FILES([
 	tests/utils/testapp/Makefile
 	tests/utils/testapp/gen-ns-events/Makefile
 	tests/utils/testapp/gen-kernel-test-events/Makefile
+	tests/utils/testapp/gen-py-events/Makefile
 	tests/utils/testapp/gen-ust-events/Makefile
 	tests/utils/testapp/gen-ust-events-ns/Makefile
 	tests/utils/testapp/gen-syscall-events-callstack/Makefile
