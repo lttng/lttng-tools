@@ -23,11 +23,6 @@
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
 
-/* For error.h */
-int lttng_opt_quiet = 1;
-int lttng_opt_verbose;
-int lttng_opt_mi;
-
 static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
