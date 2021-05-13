@@ -1,6 +1,6 @@
 lttng-event-rule(7)
 ===================
-:revdate: 3 May 2021
+:revdate: 12 May 2021
 
 
 NAME
@@ -22,7 +22,7 @@ probe events:
 
 [verse]
 option:--domain=**kernel** option:--type=(**kprobe** | **uprobe**) option:--location='LOC'
-pass:[[]option:--event-name='EVENTNAME'] [option:--filter='EXPR']
+pass:[[]option:--event-name='EVENTNAME']
 
 Specify an event rule to match user space tracepoint events:
 
@@ -315,6 +315,10 @@ Event payload and context filter condition
 An event{nbsp}__E__ satisfies the event payload and context filter
 condition of an event rule if the option:--filter='EXPR' option is
 missing or if 'EXPR' is _true_.
+
+This condition is only meaningful for the LTTng tracepoint and Linux
+system call instrumentation point types: it's always satisfied for other
+types.
 
 'EXPR' can contain references to the payload fields of{nbsp}__E__ and
 to the current context fields.
@@ -754,6 +758,14 @@ section above.
 option:-f 'EXPR', option:--filter='EXPR'::
     Only match events of which 'EXPR', which can contain references to
     event payload and current context fields, is _true_.
++
+This option is only available with the following options:
++
+* option:--type=++tracepoint++
+* option:--type=++syscall++
+* option:--type=++syscall:entry++
+* option:--type=++syscall:exit++
+* option:--type=++syscall:entry+exit++
 
 
 include::common-footer.txt[]
