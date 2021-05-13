@@ -10,11 +10,7 @@ LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBHEALTH=$(top_builddir)/src/common/health/libhealth.la
 LIBCOMPAT=$(top_builddir)/src/common/compat/libcompat.la
-
-LIVE= $(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
-	 $(top_builddir)/src/bin/lttng-sessiond/snapshot.$(OBJEXT)
+LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
 
 noinst_PROGRAMS = live_test
 EXTRA_DIST = test_kernel test_lttng_kernel
@@ -24,10 +20,7 @@ EXTRA_DIST += test_ust test_ust_tracefile_count test_lttng_ust
 endif
 
 live_test_SOURCES = live_test.c
-live_test_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-		$(LIBHASHTABLE) $(LIBHEALTH) $(DL_LIBS) $(LIBCOMPAT) -lrt
-live_test_LDADD += $(LIVE) \
-		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
+live_test_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \
