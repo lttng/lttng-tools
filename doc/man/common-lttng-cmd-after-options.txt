@@ -41,14 +41,11 @@ directory.
 
 `LTTNG_SESSIOND_PATH`::
     Absolute path to the LTTng session daemon binary (see
-    man:lttng-sessiond(8)).
+    man:lttng-sessiond(8)) to spawn from the man:lttng-create(1)
+    command.
 +
 The genoption:--sessiond-path general option overrides this environment
 variable.
-+
-NOTE: The man:lttng-create(1) command can spawn an LTTng session daemon
-automatically if none is running. See man:lttng-sessiond(8) for the
-environment variables affecting the execution of the session daemon.
 
 
 FILES
