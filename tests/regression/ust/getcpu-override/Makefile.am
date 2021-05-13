@@ -18,7 +18,7 @@ GETCPU_LIBTOOL_FLAGS = \
     -module \
     -shared \
     -avoid-version \
-    --no-as-needed \
+    -Wl,--no-as-needed \
     -rpath $(abs_builddir)
 
 noinst_LTLIBRARIES = lttng-ust-getcpu-override-test.la
