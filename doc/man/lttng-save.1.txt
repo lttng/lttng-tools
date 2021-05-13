@@ -1,6 +1,6 @@
 lttng-save(1)
 =============
-:revdate: 3 May 2021
+:revdate: 12 May 2021
 
 
 NAME
@@ -11,7 +11,8 @@ lttng-save - Save LTTng tracing session configurations
 SYNOPSIS
 --------
 [verse]
-*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='DIR'] ['SESSION']
+*lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *save* [option:--force] [option:--output-path='DIR']
+      [option:--all | 'SESSION']
 
 
 DESCRIPTION
@@ -22,9 +23,10 @@ With the 'SESSION' argument::
 	The tracing session named 'SESSION'.
 
 Without the 'SESSION' argument::
-    *All* the tracing sessions of the connected session daemon for your
-    Unix user, or for all users if your Unix user is `root`, as listed
-    in the output of `lttng list` (see man:lttng-list(1)).
+    Implicit option:--all option: *all* the tracing sessions of the
+    connected session daemon for your Unix user, or for all users if
+    your Unix user is `root`, as listed in the output of `lttng list`
+    (see man:lttng-list(1)).
 +
 See the ``Session daemon connection'' section of man:lttng(1) to learn
 how a user application connects to a session daemon.
