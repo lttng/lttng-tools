@@ -35,11 +35,6 @@
 
 DEFINE_LTTNG_UST_SIGBUS_STATE();
 
-/* For error.h */
-int lttng_opt_quiet = 1;
-int lttng_opt_verbose;
-int lttng_opt_mi;
-
 static const char alphanum[] =
 	"0123456789"
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
