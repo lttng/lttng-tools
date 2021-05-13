@@ -43,6 +43,7 @@ LIBSESSIOND_COMM=$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la
 LIBHASHTABLE=$(top_builddir)/src/common/hashtable/libhashtable.la
 LIBRELAYD=$(top_builddir)/src/common/relayd/librelayd.la
 LIBLTTNG_CTL=$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la
+LIBLTTNG_SESSIOND_COMMON=$(top_builddir)/src/bin/lttng-sessiond/liblttng-sessiond-common.la
 
 # Define test programs
 noinst_PROGRAMS = \
@@ -170,21 +171,8 @@ test_ust_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
 test_ust_data_LDADD += $(SESSIOND_OBJS)
 endif
 
-# Kernel data structures unit test
-KERN_DATA_TRACE=$(top_builddir)/src/bin/lttng-sessiond/trace-kernel.$(OBJEXT) \
-		$(top_builddir)/src/common/compat/libcompat.la \
-		$(top_builddir)/src/bin/lttng-sessiond/consumer.$(OBJEXT) \
-		$(top_builddir)/src/bin/lttng-sessiond/globals.$(OBJEXT) \
-		$(top_builddir)/src/bin/lttng-sessiond/utils.$(OBJEXT) \
-		$(top_builddir)/src/bin/lttng-sessiond/tracker.$(OBJEXT) \
-		$(top_builddir)/src/common/health/libhealth.la \
-		$(top_builddir)/src/bin/lttng-sessiond/notification-thread-commands.$(OBJEXT) \
-		$(LIBLTTNG_CTL)
-
 test_kernel_data_SOURCES = test_kernel_data.c
-test_kernel_data_LDADD = $(LIBTAP) $(LIBCOMMON) $(LIBRELAYD) $(LIBSESSIOND_COMM) \
-			 $(LIBHASHTABLE) $(DL_LIBS) -lrt
-test_kernel_data_LDADD += $(KERN_DATA_TRACE)
+test_kernel_data_LDADD = $(LIBTAP) $(LIBLTTNG_SESSIOND_COMMON) $(DL_LIBS)
 
 # utils suffix for unit test
 
