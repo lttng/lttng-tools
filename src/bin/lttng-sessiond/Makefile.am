@@ -7,9 +7,9 @@ if EMBED_HELP
 AM_CPPFLAGS += -I$(top_builddir)/doc/man
 endif
 
-bin_PROGRAMS = lttng-sessiond
+noinst_LTLIBRARIES = liblttng-sessiond-common.la
 
-lttng_sessiond_SOURCES = utils.c utils.h \
+liblttng_sessiond_common_la_SOURCES = utils.c utils.h \
                        trace-kernel.c trace-kernel.h \
                        kernel.c kernel.h \
                        ust-app.h ust-sigbus.h trace-ust.h notify-apps.h \
@@ -59,21 +59,16 @@ lttng_sessiond_SOURCES = utils.c utils.h \
                        action-executor.c action-executor.h\
                        trigger-error-query.c
 
-lttng_sessiond_LDFLAGS = -rdynamic
-
 if HAVE_LIBLTTNG_UST_CTL
-lttng_sessiond_SOURCES += trace-ust.c ust-registry.c ust-app.c \
+liblttng_sessiond_common_la_SOURCES += trace-ust.c ust-registry.c ust-app.c \
 			ust-consumer.c ust-consumer.h notify-apps.c \
 			ust-metadata.c ust-clock.h agent-thread.c agent-thread.h \
 			ust-field-utils.h ust-field-utils.c \
 			ust-sigbus.c
 endif
 
-# Add main.c at the end for compile order
-lttng_sessiond_SOURCES += lttng-sessiond.h main.c
-
 # link on liblttngctl for check if sessiond is already alive.
-lttng_sessiond_LDADD = -lurcu-common $(URCU_LIBS) $(KMOD_LIBS) \
+liblttng_sessiond_common_la_LIBADD = $(URCU_LIBS) $(KMOD_LIBS) \
 		$(top_builddir)/src/lib/lttng-ctl/liblttng-ctl.la \
 		$(top_builddir)/src/common/sessiond-comm/libsessiond-comm.la \
 		$(top_builddir)/src/common/kernel-ctl/libkernel-ctl.la \
@@ -88,5 +83,13 @@ lttng_sessiond_LDADD = -lurcu-common $(URCU_LIBS) $(KMOD_LIBS) \
 
 
 if HAVE_LIBLTTNG_UST_CTL
-lttng_sessiond_LDADD += $(UST_CTL_LIBS)
+liblttng_sessiond_common_la_LIBADD += $(UST_CTL_LIBS)
 endif
+
+bin_PROGRAMS = lttng-sessiond
+
+lttng_sessiond_SOURCES = lttng-sessiond.h main.c
+
+lttng_sessiond_LDFLAGS = -rdynamic
+
+lttng_sessiond_LDADD = liblttng-sessiond-common.la
