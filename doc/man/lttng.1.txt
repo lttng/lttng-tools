@@ -1,6 +1,6 @@
 lttng(1)
 ========
-:revdate: 3 May 2021
+:revdate: 12 May 2021
 
 
 NAME
@@ -12,7 +12,8 @@ SYNOPSIS
 --------
 [verse]
 *lttng* [option:--group='GROUP'] [option:--mi=**xml**] [option:--no-sessiond | option:--sessiond-path='PATH']
-      [option:--quiet | option:-verbose...] '<<commands,COMMAND>>' ['COMMAND OPTIONS']
+      [option:--relayd-path='PATH'] [option:--quiet | option:-verbose...]
+      '<<commands,COMMAND>>' ['COMMAND OPTIONS']
 
 
 DESCRIPTION
@@ -32,11 +33,32 @@ daemon:
 
 * Sends asynchronous notifications to user applications.
 
-By default, the man:lttng-create(1) command automatically spawns a
-session daemon for your Unix user if none is currently running. Override
-the path of the session daemon binary to spawn with the
-option:--sessiond-path option. Avoid automatically spawning a session
-daemon with the option:--no-sessiond option.
+By default, the man:lttng-create(1) command automatically spawns:
+
+* A session daemon for your Unix user if none is currently running.
++
+Override the path of the session daemon binary to spawn with the
+option:--sessiond-path option.
++
+Avoid automatically spawning a session daemon with the
+option:--no-sessiond option.
+
+* A relay daemon (see man:lttng-relayd(8)) if all the following
+  statements are true:
++
+--
+* You specify the nloption:--live option.
+
+* You don't specify any of the nloption:--set-url, nloption:--ctrl-url,
+  or nloption:--data-url options.
+
+* No relay daemon is currently listening for TCP connections on
+  +127.0.0.1:{default_network_viewer_port}+ (default LTTng live reader
+  connection address and port).
+--
++
+Override the path of the relay daemon binary to spawn with the
+option:--relayd-path option.
 
 NOTE: The LTTng project recommends that you start the session daemon at
 boot time for stable and long-term tracing.
@@ -133,6 +155,10 @@ option:--sessiond-path='PATH'::
     man:lttng-create(1) command to 'PATH'.
 +
 You may :not: use this option with the option:--no-sessiond option.
+
+option:--relayd-path='PATH'::
+    Set the absolute path of the relay daemon binary to spawn from the
+    man:lttng-create(1) command to 'PATH'.
 
 option:-v, option:--verbose::
     Increase verbosity.
