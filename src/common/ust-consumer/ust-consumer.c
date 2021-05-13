@@ -2314,8 +2314,8 @@ end:
 	return ret_func;
 }
 
-void lttng_lttng_ust_ctl_flush_buffer(struct lttng_consumer_stream *stream,
-		int producer_active)
+void lttng_ust_flush_buffer(
+		struct lttng_consumer_stream *stream, int producer_active)
 {
 	assert(stream);
 	assert(stream->ustream);
