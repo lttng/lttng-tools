@@ -229,7 +229,6 @@ function test_relayd_env()
 	local cwd
 	local pid
 
-	working_dir=$(mktemp -d)
 	working_dir=$(realpath "$(mktemp -d)")
 
 	diag "Test lttng-relayd change working directory from env. variable"

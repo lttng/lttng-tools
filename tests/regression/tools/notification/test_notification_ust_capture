@@ -38,3 +38,5 @@ start_lttng_sessiond_notap
 test_basic_error_path
 
 stop_lttng_sessiond_notap
+
+rm -rf "$TMPDIR"

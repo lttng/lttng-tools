@@ -33,9 +33,9 @@ XPATH_LIST_ROTATE_SIZE="$XPATH_SESSION/lttng:rotation_schedules/lttng:size_thres
 
 function test_save_load_mi ()
 {
-	tmp_xml_output=$(mktemp -u)
-	tmp_save_output=$(mktemp -d)
-	trace_path=$(mktemp -d)
+	local tmp_xml_output=$(mktemp -u)
+	local tmp_save_output=$(mktemp -d)
+	local trace_path=$(mktemp -d)
 
 	diag "Test save/load/list/MI with rotation"
 	create_lttng_session_ok $SESSION_NAME $trace_path
@@ -76,9 +76,9 @@ function test_save_load_mi ()
 
 	# save, destroy and reload the same session
 	OUTPUT_DEST=/dev/null
-	lttng_save $SESSION_NAME "-o $tmp_save_output$SESSION_NAME"
+	lttng_save $SESSION_NAME "-o $tmp_save_output/$SESSION_NAME"
 	destroy_lttng_session_ok $SESSION_NAME
-	lttng_load_ok "-i $tmp_save_output$SESSION_NAME"
+	lttng_load_ok "-i $tmp_save_output/$SESSION_NAME"
 
 	OUTPUT_DEST=${tmp_xml_output}
 	# Check the output of lttng list with the 2 rotation parameters after the load
@@ -97,9 +97,9 @@ function test_save_load_mi ()
 	OUTPUT_DEST=/dev/null
 	destroy_lttng_session_ok $SESSION_NAME
 
-	rm -rf ${trace_path}
-	rm $tmp_xml_output
-	rm -rf $tmp_save_output
+	rm -rf "$trace_path"
+	rm "$tmp_xml_output"
+	rm -rf "$tmp_save_output"
 }
 
 plan_tests $NUM_TESTS
