@@ -958,7 +958,7 @@ do
 	fi
 done
 rm -rf $OUTPUT_DIR
-rm -rf $FOO_LOAD_DIR
+rm -rf $SESSIOND_LOAD_DIR
 
 OUTPUT_DEST=/dev/null 2>&1
 stop_lttng_sessiond

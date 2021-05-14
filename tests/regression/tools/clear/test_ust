@@ -296,7 +296,7 @@ function test_ust_streaming_live_viewer ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path=$(mktemp -d)/bt-output.txt
+	local bt_output_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_bt_output.XXXXXX)
 
 	diag "Test ust streaming live clear with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -335,13 +335,10 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path
-	local bt_error_path
-	local file_sync_before_exit
 
-	bt_output_path=$(mktemp -d)/bt-output.txt
-	bt_error_path=$(mktemp -d)/bt-output.err
-	file_sync_before_exit=$(mktemp -u)
+	local bt_output_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_bt_output.XXXXXX)
+	local bt_error_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_bt_error.XXXXXX)
+	local file_sync_before_exit=$(mktemp -u -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_sync_before_exit.XXXXXX)
 
 	diag "Test ust streaming live clear with viewer with new metadata after clear"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -411,6 +408,7 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 
 	clean_path "$bt_output_path"
 	clean_path "$bt_error_path"
+	rm -f "$file_sync_before_exit"
 }
 
 function test_ust_local ()
