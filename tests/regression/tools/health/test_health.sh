@@ -271,10 +271,10 @@ TEST_RELAYD=(
 	1
 )
 
-STDOUT_PATH=$(mktemp)
-STDERR_PATH=$(mktemp)
-TRACE_PATH=$(mktemp -d)
-HEALTH_PATH=$(mktemp -d)
+STDOUT_PATH=$(mktemp --tmpdir tmp.test_health_stdout_path.XXXXXX)
+STDERR_PATH=$(mktemp --tmpdir tmp.test_health_stderr_path.XXXXXX)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_health_trace_path.XXXXXX)
+HEALTH_PATH=$(mktemp --tmpdir -d tmp.test_health_trace_path.XXXXXX)
 
 if [ "$(id -u)" == "0" ]; then
 	isroot=1

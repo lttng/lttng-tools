@@ -18,7 +18,7 @@ APPS_PID=
 
 NUM_TESTS=105
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_snapshots_ust_trace_path.XXXXXX)
 
 source $TESTDIR/utils/utils.sh
 
@@ -36,7 +36,7 @@ NUM_TESTS=$(($NUM_TESTS + ($NR_SNAPSHOT * 3)))
 
 function start_test_app()
 {
-	local tmp_file=$(mktemp -u)
+	local tmp_file=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_tmp_file.XXXXXX")
 
 	# Start application with a temporary file.
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &

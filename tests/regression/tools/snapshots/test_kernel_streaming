@@ -12,7 +12,7 @@ EVENT_NAME="sched_switch"
 SESSION_NAME=""
 CHANNEL_NAME="chan1"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_snapshots_kernel_streaming_trace_path.XXXXXX)
 
 NUM_TESTS=66
 

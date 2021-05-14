@@ -30,8 +30,8 @@ FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 # shellcheck disable=SC2119
 start_lttng_sessiond_notap
 
-tmp_stdout=$(mktemp -t test_parse_cli_trigger_stdout.XXXXXX)
-tmp_stderr=$(mktemp -t test_parse_cli_trigger_stderr.XXXXXX)
+tmp_stdout=$(mktemp --tmpdir -t test_parse_cli_trigger_stdout.XXXXXX)
+tmp_stderr=$(mktemp --tmpdir -t test_parse_cli_trigger_stderr.XXXXXX)
 uprobe_elf_binary="${TESTDIR}/utils/testapp/userspace-probe-elf-binary/.libs/userspace-probe-elf-binary"
 
 if [ "$(id -u)" == "0" ]; then

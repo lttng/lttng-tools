@@ -94,10 +94,9 @@ function test_valid_filter
 	event_name="$3"
 	filter="$4"
 	validator="$5"
+	local trace_path=$(mktemp --tmpdir -d tmp.test_filtering_invalid_filters_trace_path.XXXXXX)
 
 	diag "Test valid $domain_name filter: $filter"
-
-	trace_path=$(mktemp -d)
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path

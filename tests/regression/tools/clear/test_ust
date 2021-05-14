@@ -19,7 +19,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 NUM_TESTS=2071
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_clear_ust_trace_path.XXXXXX)
 
 source $TESTDIR/utils/utils.sh
 
@@ -244,8 +244,8 @@ function test_ust_basic_streaming_live_viewer ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path=$(mktemp -u)
-	local file_sync_before_exit=$(mktemp -u)
+	local bt_output_path=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_bt_output_path.XXXXXX)
+	local file_sync_before_exit=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_sync_before_exit.XXXXXX)
 
 	diag "Test ust basic streaming live with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -296,7 +296,7 @@ function test_ust_streaming_live_viewer ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_bt_output.XXXXXX)
+	local bt_output_path=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_bt_output_path.XXXXXX)
 
 	diag "Test ust streaming live clear with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -336,9 +336,9 @@ function test_ust_streaming_live_viewer_new_metadata_after_clear ()
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
 
-	local bt_output_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_bt_output.XXXXXX)
-	local bt_error_path=$(mktemp -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_bt_error.XXXXXX)
-	local file_sync_before_exit=$(mktemp -u -t tmp.test_ust_streaming_live_viewer_new_metadata_after_clear_sync_before_exit.XXXXXX)
+	local bt_output_path=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_bt_output.XXXXXX")
+	local bt_error_path=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_bt_error.XXXXXX")
+	local file_sync_before_exit=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_exit.XXXXXX")
 
 	diag "Test ust streaming live clear with viewer with new metadata after clear"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"
@@ -617,10 +617,10 @@ function test_ust_local_snapshot_per_pid ()
 	# 3, 4 unused.
 	local buffer_type=$5
 	local channel_name="channel0"
-	local file_sync_before_last=$(mktemp -u)
-	local file_sync_before_last_touch=$(mktemp -u)
-	local file_sync_before_exit=$(mktemp -u)
-	local file_sync_before_exit_touch=$(mktemp -u)
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local file_sync_before_last_touch=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last_touch.XXXXXX")
+	local file_sync_before_exit=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_exit.XXXXXX")
+	local file_sync_before_exit_touch=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_exit_touch.XXXXXX")
 
 	diag "Test ust local snapshot clear per pid"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice, buffer_type=$buffer_type"

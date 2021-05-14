@@ -47,8 +47,8 @@ function test_before_apps()
 function test_after_apps()
 {
 	local out
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 	enable_ust_lttng_event_ok $SESSION_NAME $EVENT_NAME
@@ -85,7 +85,7 @@ start_lttng_sessiond
 
 diag "Start tracing BEFORE application is started"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_before_after_ust_trace_path.XXXXXX)
 
 test_before_apps
 out=$?
@@ -98,7 +98,7 @@ rm -rf $TRACE_PATH
 
 diag "Start tracing AFTER application is started"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_before_after_ust_trace_path.XXXXXX)
 
 test_after_apps
 out=$?

@@ -718,7 +718,7 @@ function stop_lttng_sessiond_opt()
 	fi
 
 	if [ -z "$pids" ]; then
-		if [ "$is_cleanup" -eq 1 ]; then 
+		if [ "$is_cleanup" -eq 1 ]; then
 			:
 		elif [ "$withtap" -eq "1" ]; then
 			fail "No session daemon to kill"
@@ -2249,8 +2249,8 @@ function lttng_remove_trigger_ok()
 
 function list_triggers_matches_ok ()
 {
-	local tmp_stdout=$(mktemp -t test_list_triggers_cli_stdout.XXXXXX)
-	local tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
+	local tmp_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	local tmp_stderr=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
 
 	local test_name="$1"
 	local expected_stdout_file="$2"

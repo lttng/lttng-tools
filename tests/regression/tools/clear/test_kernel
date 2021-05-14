@@ -11,7 +11,7 @@ TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_clear_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=837
 
@@ -200,8 +200,8 @@ function test_kernel_basic_streaming_live_viewer ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path=$(mktemp -u)
-	local file_sync_before_exit=$(mktemp -u)
+	local bt_output_path=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_bt_output.XXXXXX")
+	local file_sync_before_exit=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_exit.XXXXXX")
 
 	diag "Test kernel basic streaming live with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice"
@@ -247,7 +247,7 @@ function test_kernel_streaming_live_viewer ()
 	local local_path="${TRACE_PATH}/${HOSTNAME}/${SESSION_NAME}*"
 	local remote_trace_path="${HOSTNAME}/${SESSION_NAME}"
 	local channel_name="chan"
-	local bt_output_path=$(mktemp -d)/bt-output.txt
+	local bt_output_path=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_bt_output.XXXXXX")
 
 	diag "Test kernel streaming live clear with viewer"
 	diag "Parameters: tracing_active=$tracing_active, clear_twice=$clear_twice"

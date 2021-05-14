@@ -79,8 +79,8 @@ function enable_jul_filter_loglevel_only()
 
 function test_jul_before_start ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test JUL application BEFORE tracing starts"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -694,7 +694,7 @@ skip $withapp "JUL support is needed. Skipping all tests." $NUM_TESTS ||
 
 	for fct_test in ${tests[@]};
 	do
-		TRACE_PATH=$(mktemp -d)
+		TRACE_PATH=$(mktemp --tmpdir -d tmp.test_java_jul_trace_path.XXXXXX)
 
 		${fct_test}
 		if [ $? -ne 0 ]; then

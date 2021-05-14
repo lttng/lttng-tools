@@ -16,7 +16,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="lttng_ust_statedump:start,lttng_ust_statedump:end"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regenerate_statedump_ust_trace_path.XXXXXX)
 
 NUM_TESTS=11
 
@@ -28,8 +28,8 @@ fi
 
 function test_ust_local ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_sync_after_first.XXXXXX)
+	local file_sync_before_last=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_sync_before_last.XXXXXX)
 
 	diag "Test UST local with statedump regeneration"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH

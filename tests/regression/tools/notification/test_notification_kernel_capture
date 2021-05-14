@@ -7,10 +7,8 @@
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../../
 
-TMPDIR=$(mktemp -d)
-
 TESTAPP_PATH="$TESTDIR/utils/testapp"
-TESTAPP_STATE_PATH=$(mktemp -u "$TMPDIR/application_state.XXXXXXXXXX")
+TESTAPP_STATE_PATH=$(mktemp --tmpdir -u "tmp.test_notif_kernel_capture_application_state.XXXXXXXXXX")
 
 NUM_TESTS=104
 
@@ -51,5 +49,4 @@ else
 	skip 0 "Root access is needed. Skipping all kernel notification tests." $NUM_TESTS
 fi
 
-# Just in case cleanup
-rm -rf "$TMPDIR"
+rm -f "$TESTAPP_STATE_PATH"

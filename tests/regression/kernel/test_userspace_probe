@@ -44,7 +44,7 @@ function validate_list()
 
 function test_userspace_probe_enable_file_noexist ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_file_noexist"
 	ENABLE_EXPR="elf:/etc/file-not-exist:$ELF_SYMBOL"
 
@@ -61,7 +61,7 @@ function test_userspace_probe_enable_file_noexist ()
 
 function test_userspace_probe_enable_file_not_elf ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_file_not_elf"
 	ENABLE_EXPR="elf:/etc/passwd:$ELF_SYMBOL"
 
@@ -78,7 +78,7 @@ function test_userspace_probe_enable_file_not_elf ()
 
 function test_userspace_probe_enable_elf_missing_symbol_name ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_elf_missing_symbol"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:"
 
@@ -95,7 +95,7 @@ function test_userspace_probe_enable_elf_missing_symbol_name ()
 
 function test_userspace_probe_enable_elf_nonexistant_symbol ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_elf_nonexistant_symbol"
 	ELF_SYMBOL_NO_EXIST="function_doesnt_exist"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL_NO_EXIST"
@@ -113,7 +113,7 @@ function test_userspace_probe_enable_elf_nonexistant_symbol ()
 
 function test_userspace_probe_enable_elf_symbol_not_function ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_elf_symbol_not_function"
 	ELF_SYMBOL_NO_FUNC="not_a_function"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL_NO_FUNC"
@@ -131,7 +131,7 @@ function test_userspace_probe_enable_elf_symbol_not_function ()
 
 function test_userspace_probe_unsupported_types ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_unsupported_types"
 	# Userspace probe at an address or at an offset to a function
 	# instrumentation description types are not supported at the moment.
@@ -156,7 +156,7 @@ function test_userspace_probe_unsupported_types ()
 
 function test_userspace_probe_enable_implicit_probe_type ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_implicit_probe_type"
 	ENABLE_EXPR="$ELF_TEST_BIN:$ELF_SYMBOL"
 
@@ -178,7 +178,7 @@ function test_userspace_probe_enable_implicit_probe_type ()
 
 function test_userspace_probe_enable_elf_symbol_exists ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_elf_symbol_exists"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
 
@@ -200,7 +200,7 @@ function test_userspace_probe_enable_elf_symbol_exists ()
 
 function test_userspace_probe_enable_in_path ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_in_path"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN_NAME:$ELF_SYMBOL"
 
@@ -229,7 +229,7 @@ function test_userspace_probe_enable_in_path ()
 
 function test_userspace_probe_enable_full_path ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_full_path"
 	ENABLE_EXPR="elf:$(realpath $ELF_TEST_BIN):$ELF_SYMBOL"
 	diag "Userspace probe with full path enabled successfully"
@@ -250,9 +250,9 @@ function test_userspace_probe_enable_full_path ()
 
 function test_userspace_probe_enable_colon_in_path ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userspace_probe_enable_colon_in_path"
-	COLON_FILE_PATH=$(mktemp -d)
+	COLON_FILE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	ELF_BIN_SYMLINK="$COLON_FILE_PATH/colon_:_in_name"
 	ELF_BIN_WITH_COLON_IN_NAME_ESCAPED="$COLON_FILE_PATH/colon_\:_in_name"
 	ENABLE_EXPR="elf:"$ELF_BIN_WITH_COLON_IN_NAME_ESCAPED":$ELF_SYMBOL"
@@ -278,7 +278,7 @@ function test_userspace_probe_enable_colon_in_path ()
 
 function test_userspace_probe_elf ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
 
@@ -301,7 +301,7 @@ function test_userspace_probe_elf ()
 
 function test_userspace_probe_elf_dynamic_symbol ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf"
 	LIBFOO_PATH="$ELF_TEST_BIN_DIR/libfoo.so"
 	ENABLE_EXPR="elf:$LIBFOO_PATH:dynamic_symbol"
@@ -325,7 +325,7 @@ function test_userspace_probe_elf_dynamic_symbol ()
 
 function test_userspace_probe_elf_cxx_function ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf_cxx_function"
 	# Probing C++ mangled symbols should work the same way as regular Elf
 	# symbols
@@ -351,7 +351,7 @@ function test_userspace_probe_elf_cxx_function ()
 
 function test_userspace_probe_elf_cxx_method ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf_cxx_method"
 	# Probing C++ mangled symbols should work the same way as regular Elf
 	# symbols
@@ -377,7 +377,7 @@ function test_userspace_probe_elf_cxx_method ()
 
 function test_userspace_probe_elf_disable ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf_disable"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
 
@@ -403,7 +403,7 @@ function test_userspace_probe_elf_disable ()
 
 function test_userspace_probe_elf_list ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_elf_list"
 	ENABLE_EXPR="elf:$ELF_TEST_BIN:$ELF_SYMBOL"
 
@@ -431,9 +431,9 @@ function test_userspace_probe_save_load_elf()
 	# saves the path to the link and not to the actual file. This is to
 	# support instrumentation of shared objects that are often accessed
 	# through symlinks and updated.
-	TRACE_PATH=$(mktemp -d)
-	TMP_LINK_DIR=$(mktemp -d)
-	TMP_SAVE_DIR=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TMP_LINK_DIR=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TMP_SAVE_DIR=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	SESSION_NAME="test_userprobe_save_load_elf"
 
@@ -487,9 +487,9 @@ function test_userspace_probe_save_load_sdt()
 	# saves the path to the link and not to the actual file. This is to
 	# support instrumentation of shared objects that are often accessed
 	# through symlinks and updated.
-	TRACE_PATH=$(mktemp -d)
-	TMP_LINK_DIR=$(mktemp -d)
-	TMP_SAVE_DIR=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TMP_LINK_DIR=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TMP_SAVE_DIR=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	SESSION_NAME="test_userprobe_save_load_sdt"
 	PROVIDER="foobar"
@@ -541,7 +541,7 @@ function test_userspace_probe_save_load_sdt()
 
 function test_userspace_probe_sdt ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	PROVIDER="foobar"
 	PROBE="tp1"
 	ENABLE_EXPR="sdt:$SDT_TEST_BIN:$PROVIDER:$PROBE"
@@ -565,7 +565,7 @@ function test_userspace_probe_sdt ()
 
 function test_userspace_probe_sdt_list ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_list"
 	PROVIDER="foobar"
 	PROBE="tp1"
@@ -591,7 +591,7 @@ function test_userspace_probe_sdt_list ()
 
 function test_userspace_probe_enable_sdt_nonexistant_provider ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_nonexistand_provider"
 	PROVIDER="not_provider"
 	PROBE="tp1"
@@ -610,7 +610,7 @@ function test_userspace_probe_enable_sdt_nonexistant_provider ()
 
 function test_userspace_probe_enable_sdt_nonexistant_probe ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_nonexistant_probe"
 	PROVIDER="foobar"
 	PROBE="not_a_tracepoint"
@@ -629,7 +629,7 @@ function test_userspace_probe_enable_sdt_nonexistant_probe ()
 
 function test_userspace_probe_enable_sdt_with_sema ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_with_sema"
 	PROVIDER="foobar"
 	PROBE="tp_with_semaphore"
@@ -648,7 +648,7 @@ function test_userspace_probe_enable_sdt_with_sema ()
 
 function test_userspace_probe_sdt_one_probe ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_one_probe"
 	PROVIDER="foobar"
 	PROBE="tp1"
@@ -673,7 +673,7 @@ function test_userspace_probe_sdt_one_probe ()
 
 function test_userspace_probe_sdt_two_probes ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_two_probes"
 	PROVIDER="foobar"
 	PROBE="tp2"
@@ -698,7 +698,7 @@ function test_userspace_probe_sdt_two_probes ()
 
 function test_userspace_probe_sdt_in_shared_object ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_shared_object"
 	PROVIDER="foobar"
 	PROBE="tp_in_shared_object"
@@ -723,7 +723,7 @@ function test_userspace_probe_sdt_in_shared_object ()
 
 function test_userspace_probe_sdt_in_shared_object_dlopen ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_shared_object_dlopen"
 	PROVIDER="foobar"
 	PROBE="tp_in_dlopen"
@@ -748,7 +748,7 @@ function test_userspace_probe_sdt_in_shared_object_dlopen ()
 
 function test_userspace_probe_sdt_in_shared_object_ldpreload ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_shared_object_ldpreload"
 	PROVIDER="foobar"
 	PROBE="tp_in_ldpreload"
@@ -773,7 +773,7 @@ function test_userspace_probe_sdt_in_shared_object_ldpreload ()
 
 function test_userspace_probe_sdt_with_arg ()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_userprobe_sdt_arg"
 	PROVIDER="foobar"
 	PROBE="tp_with_arg"

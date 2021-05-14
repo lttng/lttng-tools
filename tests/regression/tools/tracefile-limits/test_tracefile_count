@@ -90,10 +90,9 @@ function test_tracefile_count_limit ()
 	local session_name
 	local stream_pattern=".*${channel_name}_${cpuno}_[0-9]*"
 	local stream_size=0
-	local trace_path
+	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	session_name=$(randstring 16 0)
-	trace_path=$(mktemp -d)
 
 	diag "Test tracefile count limit : CPU $cpuno, $count_limit tracefiles, expecting a maximum of $expected_size bytes per CPU"
 

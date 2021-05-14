@@ -12,14 +12,13 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 
 SESSION_NAME="my_session"
-TMP_DIR=$(mktemp -d)
-SESSION_OUTPUT_PATH=$TMP_DIR/output
+SESSION_OUTPUT_PATH=$(mktemp --tmpdir -d tmp.test_notif_rotation_trace_path.XXXXXX)
 EVENT_NAME="tp:tptest"
 
 PAGE_SIZE=$(getconf PAGE_SIZE)
 SUBBUF_SIZE=$(expr $PAGE_SIZE \* 8)
 
-FILE_SYNC_AFTER_FIRST_EVENT=$(mktemp -u)
+FILE_SYNC_AFTER_FIRST_EVENT=$(mktemp --tmpdir -u tmp.test_rotation_sync_after_first.XXXXXX)
 
 NR_ITER=-1
 NR_USEC_WAIT=5
@@ -58,5 +57,5 @@ stop_lttng_sessiond_notap
 kill -9 $APP_PID
 wait $APP_PID 2> /dev/null
 
-rm -rf $TMP_DIR
-rm $FILE_SYNC_AFTER_FIRST_EVENT 2> /dev/null
+rm -rf $SESSION_OUTPUT_PATH
+rm -f $FILE_SYNC_AFTER_FIRST_EVENT

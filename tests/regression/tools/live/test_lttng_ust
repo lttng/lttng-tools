@@ -19,7 +19,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="live"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_test_live_lttng_ust_trace_path.XXXXXX)
 
 DIR=$(readlink -f $TESTDIR)
 

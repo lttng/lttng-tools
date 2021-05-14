@@ -52,7 +52,7 @@ function check_trace_content()
 
 function test_working_cases()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 
 	# arm64 does not have epoll_wait
@@ -85,7 +85,7 @@ function test_working_cases()
 
 function test_timeout_cases()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 
 	# arm64 does not have epoll_wait
@@ -118,7 +118,7 @@ function test_timeout_cases()
 
 function test_pselect_invalid_fd()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="pselect6"
 
@@ -144,7 +144,7 @@ function test_pselect_invalid_fd()
 
 function test_big_ppoll()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
 
@@ -170,7 +170,7 @@ function test_big_ppoll()
 
 function test_ppoll_overflow()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
 
@@ -199,7 +199,7 @@ function test_ppoll_overflow()
 
 function test_pselect_invalid_ptr()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="pselect6"
 
@@ -225,7 +225,7 @@ function test_pselect_invalid_ptr()
 
 function test_ppoll_ulong_max()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
 
@@ -251,7 +251,7 @@ function test_ppoll_ulong_max()
 
 function test_epoll_pwait_invalid_ptr()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_pwait"
 
@@ -277,7 +277,7 @@ function test_epoll_pwait_invalid_ptr()
 
 function test_epoll_pwait_int_max()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_pwait"
 
@@ -303,7 +303,7 @@ function test_epoll_pwait_int_max()
 
 function test_ppoll_concurrent()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
 
@@ -329,7 +329,7 @@ function test_ppoll_concurrent()
 
 function test_epoll_pwait_concurrent()
 {
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_ctl,epoll_pwait"
 

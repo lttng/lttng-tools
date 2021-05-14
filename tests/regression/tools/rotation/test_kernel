@@ -10,7 +10,7 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d -t tmp.rotation_kernel_tracing.XXXXXX)
 
 NUM_TESTS=60
 

@@ -46,9 +46,9 @@ function test_ns()
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
 	ok $? "Get current $ns namespace inode: $ns_inode" || ns_inode="invalid"
 
-	trace_path=$(mktemp -d)
-	file_sync_before_last=$(mktemp -u)
-	file_sync_after_unshare=$(mktemp -u)
+	trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_after_unshare=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_unshare.XXXXXX")
 
 	start_lttng_sessiond
 

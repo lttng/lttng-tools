@@ -35,7 +35,6 @@ function test_ns()
 	local session_name="${ns}_ns"
 	local chan_name="${ns}_ns"
 	local context_name="${ns}_ns"
-
 	local trace_path
 	local ns_inode
 
@@ -45,11 +44,11 @@ function test_ns()
 		return
 	fi
 
+	trace_path=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+
 	# Get the current ns inode number
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")
 	ok $? "Get current $ns namespace inode: $ns_inode"
-
-	trace_path=$(mktemp -d)
 
 	start_lttng_sessiond
 

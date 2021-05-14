@@ -19,7 +19,7 @@ source $TESTDIR/utils/utils.sh
 
 function test_channel_disable_stopped_session()
 {
-	local TRACE_PATH=$(mktemp -d)
+	local TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	local SESSION_NAME="test_channel"
 	local CHAN_NAME="channel0"
 	local EVENT_NAME="tp:tptest"

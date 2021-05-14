@@ -40,13 +40,13 @@ function have_libpfm()
 
 function test_ust_raw()
 {
-	local TRACE_PATH=$(mktemp -d)
 	local SESSION_NAME="ust_perf"
 	local CHAN_NAME="mychan"
 	local EVENT_NAME="tp:tptest"
 	local PMU="UNHALTED_REFERENCE_CYCLES"
 	local tests_to_skip=9
 	local ret
+	local TRACE_PATH
 
 	# Find the raw perf id of the event.
 	PERFID=$("$CURDIR/find_event" "$PMU")
@@ -63,6 +63,8 @@ function test_ust_raw()
 		fail "find_event returned $ret."
 		return
 	fi
+
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -87,7 +89,6 @@ function test_ust_raw()
 
 function test_kernel_raw()
 {
-	local TRACE_PATH=$(mktemp -d)
 	local SESSION_NAME="kernel_perf"
 	local CHAN_NAME="mychan"
 	local EVENT_NAME="lttng_test_filter_event"
@@ -95,6 +96,7 @@ function test_kernel_raw()
 	local PERFID=""
 	local tests_to_skip=9
 	local ret
+	local TRACE_PATH
 
 	# Find the raw perf id of the event.
 	PERFID=$("$CURDIR/find_event" "$PMU")
@@ -111,6 +113,8 @@ function test_kernel_raw()
 		fail "find_event returned $ret."
 		return
 	fi
+
+	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

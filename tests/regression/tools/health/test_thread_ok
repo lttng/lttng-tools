@@ -110,10 +110,10 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-STDOUT_PATH=$(mktemp)
-STDERR_PATH=$(mktemp)
-TRACE_PATH=$(mktemp -d)
-HEALTH_PATH=$(mktemp -d)
+STDOUT_PATH=$(mktemp --tmpdir tmp.test_thread_ok_stdout_path.XXXXXX)
+STDERR_PATH=$(mktemp --tmpdir tmp.test_thread_ok_stderr_path.XXXXXX)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_thread_ok_trace_path.XXXXXX)
+HEALTH_PATH=$(mktemp --tmpdir -d tmp.test_thread_ok_trace_path.XXXXXX)
 
 # The manage kernel thread is only spawned if we are root
 if [ "$(id -u)" == "0" ]; then
