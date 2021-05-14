@@ -15,7 +15,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_ust_rotation_trace_path.XXXXXX)
 
 NUM_TESTS=136
 

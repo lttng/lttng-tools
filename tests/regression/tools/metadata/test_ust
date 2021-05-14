@@ -13,7 +13,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_metadata_env_ust_trace_path.XXXXXX)
 
 NUM_TESTS=37
 
@@ -31,17 +31,14 @@ fi
 
 function test_per_uid ()
 {
-	local metadata
-	local metadata_env
 	local metadata_path
 	local value
 	local value2
 
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="per-uid"
-
-	metadata=$(mktemp)
-	metadata_env=$(mktemp)
+	local metadata=$(mktemp --tmpdir tmp.test_${FUNCNAME[0]}_metadata.XXXXXX)
+	local metadata_env=$(mktemp --tmpdir tmp.test_${FUNCNAME[0]}_metadata_env.XXXXXX)
 
 	diag "Test UST metadata env field in per-uid mode"
 	create_lttng_session_ok "$session_name"
@@ -121,8 +118,6 @@ function test_per_uid ()
 
 function test_per_pid ()
 {
-	local metadata
-	local metadata_env
 	local metadata_path
 	local testapp_pid
 	local value
@@ -130,9 +125,8 @@ function test_per_pid ()
 
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="per-pid"
-
-	metadata=$(mktemp)
-	metadata_env=$(mktemp)
+	local metadata=$(mktemp --tmpdir tmp.test_${FUNCNAME[0]}_metadata.XXXXXX)
+	local metadata_env=$(mktemp --tmpdir tmp.test_${FUNCNAME[0]}_metadata_env.XXXXXX)
 
 	diag "Test UST metadata env field in per-pid mode"
 	create_lttng_session_ok "$session_name"

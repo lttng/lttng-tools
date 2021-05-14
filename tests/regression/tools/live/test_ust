@@ -19,7 +19,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="live"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_live_ust_trace_path.XXXXXX)
 
 DIR=$(readlink -f $TESTDIR)
 
@@ -44,7 +44,7 @@ function clean_live_tracing()
 	rm -rf $TRACE_PATH
 }
 
-file_sync_after_first=$(mktemp -u)
+file_sync_after_first=$(mktemp --tmpdir -u tmp.test_live_ust_sync_after_first.XXXXXX)
 
 start_lttng_sessiond_notap
 start_lttng_relayd_notap "-o $TRACE_PATH"

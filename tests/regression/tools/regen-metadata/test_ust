@@ -16,7 +16,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regen_metadata_ust_trace_path.XXXXXX)
 
 NUM_TESTS=39
 
@@ -39,8 +39,8 @@ function enable_channel_per_pid()
 
 function test_ust_streaming ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 	local metadata_path
 
 	diag "Test UST streaming with metadata regeneration"
@@ -83,8 +83,8 @@ function test_ust_streaming ()
 
 function test_ust_local ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 	local metadata_path
 
 	diag "Test UST local with metadata regeneration"
@@ -127,8 +127,8 @@ function test_ust_local ()
 
 function test_ust_pid ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST per-pid with metadata regeneration (expect failure)"
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
@@ -161,8 +161,8 @@ function test_ust_pid ()
 
 function test_ust_live ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST live with metadata regeneration (expect failure)"
 	create_lttng_session_uri $SESSION_NAME net://localhost --live

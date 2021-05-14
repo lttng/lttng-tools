@@ -40,7 +40,7 @@ function get_auto_session_name ()
 	local lttng_bin=$LTTNG_BIN
 
 	LTTNG_BIN="${lttng_bin} --mi xml"
-	OUTPUT_DEST=$(mktemp)
+	OUTPUT_DEST=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output.XXXXXX")
 
 	list_lttng_with_opts
 	$XML_VALIDATE "$OUTPUT_DEST"
@@ -462,8 +462,8 @@ function test_ust_pid_streaming_snapshot ()
 	local file_sync_after_first
 	local file_sync_before_last
 
-	file_sync_after_first=$(mktemp -u)
-	file_sync_before_last=$(mktemp -u)
+	file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	if [ -z "$session_name" ]; then
 		is_automatic_session=true
@@ -676,7 +676,7 @@ for fct_test in "${tests[@]}";
 do
 	for grouping in "${grouping_types[@]}";
 	do
-		TRACE_PATH=$(mktemp -d)
+		TRACE_PATH=$(mktemp --tmpdir -d tmp.test_relayd_grouping_ust_trace_path.XXXXXX)
 		# Set the relayd in --group-output-by-session mode
 		start_lttng_relayd "-o $TRACE_PATH $grouping"
 		start_lttng_sessiond

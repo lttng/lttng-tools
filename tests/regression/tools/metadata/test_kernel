@@ -10,7 +10,7 @@ CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_metadata_env_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=13
 
@@ -21,16 +21,13 @@ source "$CURDIR/utils.sh"
 
 function test_kernel ()
 {
-	local metadata
-	local metadata_env
 	local metadata_path
 	local value
 
 	local expected_path="${TRACE_PATH}/lttng-traces"
 	local session_name="kernel"
-
-	metadata=$(mktemp)
-	metadata_env=$(mktemp)
+	local metadata=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_metadata.XXXXXX")
+	local metadata_env=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_metadata_env.XXXXXX")
 
 	diag "Test Kernel metadata env field"
 	create_lttng_session_ok "$session_name"

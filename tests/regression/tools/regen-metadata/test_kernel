@@ -11,7 +11,7 @@ TESTDIR=$CURDIR/../../..
 EVENT_NAME="lttng_test_filter_event"
 SESSION_NAME=""
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regen_metadata_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=24
 

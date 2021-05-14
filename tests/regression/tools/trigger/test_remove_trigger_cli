@@ -27,9 +27,9 @@ plan_tests 17
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
-tmp_stdout=$(mktemp -t test_list_triggers_cli_stdout.XXXXXX)
-tmp_stderr=$(mktemp -t test_list_triggers_cli_stderr.XXXXXX)
-tmp_expected_stdout=$(mktemp -t test_list_triggers_cli_expected_stdout.XXXXXX)
+tmp_stdout=$(mktemp --tmpdir -t test_list_triggers_cli_stdout.XXXXXX)
+tmp_stderr=$(mktemp --tmpdir -t test_list_triggers_cli_stderr.XXXXXX)
+tmp_expected_stdout=$(mktemp --tmpdir -t test_list_triggers_cli_expected_stdout.XXXXXX)
 
 uid=$(id --user)
 gid=$(id --group)

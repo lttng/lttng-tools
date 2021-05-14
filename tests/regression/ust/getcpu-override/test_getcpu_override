@@ -173,7 +173,7 @@ start_lttng_sessiond
 
 for fct_test in ${TESTS[@]};
 do
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_getcpu_override_trace_path.XXXXXX)
 
 	${fct_test}
 	if [ $? -ne 0 ]; then

@@ -47,7 +47,7 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_event_tracef_trace_path.XXXXXX)
 test_event_tracef
 out=$?
 if [ $out -ne 0 ]; then

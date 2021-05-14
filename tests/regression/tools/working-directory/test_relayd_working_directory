@@ -22,11 +22,10 @@ print_test_banner "$TEST_DESC"
 function test_relayd()
 {
 	local relayd_bin_path="$DIR/../src/bin/lttng-relayd/$RELAYD_BIN"
-	local working_dir
+	local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
 	local pid
 	local cwd
 
-	working_dir=$(realpath "$(mktemp -d)")
 
 	diag "Test lttng-relayd normal mode change working directory"
 
@@ -57,11 +56,9 @@ function test_relayd()
 
 function test_relayd_daemon()
 {
-	local working_dir
 	local cwd
 	local pid
-
-	working_dir=$(realpath "$(mktemp -d)")
+	local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
 
 	diag "Test lttng-relayd daemon mode change working directory"
 
@@ -101,11 +98,9 @@ function test_relayd_daemon_no_working_dir()
 
 function test_relayd_background()
 {
-	local working_dir
 	local cwd
 	local pid
-
-	working_dir=$(realpath "$(mktemp -d)")
+	local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
 
 	diag "Test lttng-relayd background mode change working directory"
 
@@ -158,18 +153,16 @@ function test_relayd_debug_permission()
 	skip $is_user "Skipping permission debug output test; operation can't fail as root" 6 ||
 	{
 		local output_pattern='Working directory \".*\" is not writable'
-		local working_dir
 		local cwd
 		local pid
-
-		working_dir=$(realpath "$(mktemp -d)")
+		local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
 
 		# Removing write access to working dir
 		okx chmod -w "$working_dir"
 
 		# Redirect the error output to a temporary file
 
-		ERROR_OUTPUT_DEST=$(mktemp)
+		ERROR_OUTPUT_DEST=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_error_output.XXXXXX")
 		start_lttng_relayd_opt 1 "-b" "-v --working-dir $working_dir"
 
 		pid=$(lttng_pgrep "$RELAYD_MATCH")
@@ -192,15 +185,13 @@ function test_relayd_failure()
 {
 	local output_pattern='Failed to change working directory to'
 	local relayd_bin_path="$DIR/../src/bin/lttng-relayd/$RELAYD_BIN"
+	local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
+	local output_dest=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")
 
-	local working_dir
 	local working_dir_imaginary
-	local output_dest
 	local pid
 
-	working_dir=$(realpath "$(mktemp -d)")
 	working_dir_imaginary="${working_dir}/imaginary_directory"
-	output_dest=$(mktemp)
 
 	diag "Test lttng-relayd normal mode change non-existing directory"
 
@@ -225,11 +216,9 @@ function test_relayd_failure()
 
 function test_relayd_env()
 {
-	local working_dir
 	local cwd
 	local pid
-
-	working_dir=$(realpath "$(mktemp -d)")
+	local working_dir=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir.XXXXXX")")
 
 	diag "Test lttng-relayd change working directory from env. variable"
 
@@ -250,13 +239,10 @@ function test_relayd_env()
 
 function test_relayd_cmdline_overwrite_env()
 {
-	local working_dir_env
-	local working_dir_cmdline
 	local cwd
 	local pid
-
-	working_dir_env=$(realpath "$(mktemp -d)")
-	working_dir_cmdline=$(realpath "$(mktemp -d)")
+	local working_dir_env=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir_even.XXXXXX")")
+	local working_dir_cmdline=$(realpath "$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_working_dir_cmdline.XXXXXX")")
 
 	diag "Test lttng-relayd change working directory command line overwrite env variable"
 

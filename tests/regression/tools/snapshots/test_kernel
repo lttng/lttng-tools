@@ -12,7 +12,7 @@ EVENT_NAME="sched_switch"
 SESSION_NAME=""
 CHANNEL_NAME="snapchan"
 
-TRACE_PATH=$(mktemp -d)
+TRACE_PATH=$(mktemp --tmpdir -d tmp.test_snapshots_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=2061
 

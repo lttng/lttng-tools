@@ -643,7 +643,7 @@ start_lttng_sessiond
 
 while [ "$i" -lt "$TEST_COUNT" ]; do
 
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_overlap.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

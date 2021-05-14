@@ -64,8 +64,8 @@ test_after_multiple_apps() {
 test_before_multiple_apps() {
 	local out
 	local i
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Start multiple applications BEFORE tracing is started"
 
@@ -137,8 +137,8 @@ test_after_app() {
 
 test_before_app() {
 	local out
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Start application BEFORE tracing is started"
 
@@ -236,7 +236,7 @@ i=0
 start_lttng_sessiond
 
 while [ $i -lt $TEST_COUNT ]; do
-	TRACE_PATH=$(mktemp -d)
+	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_buffers_pid_trace_path.XXXXXX)
 	${TESTS[$i]}
 	rm -rf $TRACE_PATH
 	let "i++"

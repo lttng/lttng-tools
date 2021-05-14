@@ -18,8 +18,8 @@ NR_USEC_WAIT=0
 NR_ITER=10000
 
 #Temp file output
-OUTPUT_DIR=$(mktemp -d)
-SESSIOND_LOAD_DIR=$(mktemp -d)
+OUTPUT_DIR=$(mktemp --tmpdir -d tmp.test_mi_output_dir.XXXXXX)
+SESSIOND_LOAD_DIR=$(mktemp --tmpdir -d tmp.test_mi_sessiond_load_dir.XXXXXX)
 OUTPUT_FILE="default.xml"
 
 #Path to custom xml utilities
@@ -524,8 +524,8 @@ function test_list_session ()
 
 function test_list_ust_event ()
 {
-	local file_sync_after_first=$(mktemp -u)
-	local file_sync_before_last=$(mktemp -u)
+	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	OUTPUT_FILE="list_ust_event.xml"
 

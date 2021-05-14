@@ -15,7 +15,7 @@ source $TESTDIR/utils/utils.sh
 
 function test_kernel_function_basic()
 {
-	local TRACE_PATH=$(mktemp -d)
+	local TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	local SESSION_NAME="kernel_function_basic"
 	local EVENT_NAME="my_event_name"
 	local TARGET_SYMBOL="lttng_test_filter_event_write"
