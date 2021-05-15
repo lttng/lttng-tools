@@ -115,7 +115,7 @@ function test_tracefile_size_limit ()
 
 	# Validate tracing data, we should at least have some events
 
-	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-eve-ust"
+	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-events"
 	validate_trace $event_name $trace_path
 
 	rm -rf $trace_path
@@ -154,7 +154,7 @@ function test_tracefile_size_limit_pagesize ()
 
 	# Validate tracing data, we should at least have some events
 
-	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-eve-ust"
+	validate_trace_path_ust_pid "$trace_path" "" "gen-ust-events"
 	validate_trace $event_name $trace_path
 
 	rm -rf $trace_path
