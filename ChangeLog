@@ -1,3 +1,61 @@
+2021-05-14 lttng-tools 2.13.0-rc2 (National Dance Like a Chicken Day)
+	* Fix: expected procname should not have -ust suffix
+	* Fix: Tests: leftover temporary files after tests
+	* Fix: trigger: abort() when adding `--notify` action with python event rule matches
+	* Tests: move `list_triggers_matches_ok` to utils.sh
+	* Tests: Move python test app to `tests/utils/testapp` directory
+	* Fix: validate whether event notifiers are supported by UST application
+	* Fix: ust: keep using lttng-ust-sock-8 and lttng-ust-wait-8 filenames
+	* Fix: Handle SIGBUS in sessiond and consumerd
+	* Clean-up: rename double 'lttng' prefixed functions
+	* lttng-{enable-event(1),event-rule(7)}: `--filter` is not always avail.
+	* lttng(1)/lttng-create(1): document `--relayd-path`
+	* doc/man: document `LTTNG_SESSIOND_PATH` env. var. like `--sessiond-path`
+	* lttng-save(1): document `--all` option in "SYNOPSIS" and "DESCRIPTION"
+	* Fix: snapshot path have domain subdir duplicate "ust/ust" or "kernel/kernel"
+	* Fix: error: remove trailing period from error descriptions
+	* Make the subitems array a part of action_work_item
+	* Test: fix: firing policy name has changed
+	* lttng-add-trigger(1): add usage examples
+	* lttng-add-context(1): add usage examples
+	* list_triggers.c: replace "after every" -> "every"
+	* Fix: add_trigger.c: `goto error` with a wrong UID for `--owner-uid`
+	* lttng-add-context(1): use a description list to explain `--channel`
+	* doc/man/manpage.xsl: indent the body of formal (example) blocks
+	* doc/man: lttng(1) command pages: always include `common-footer.txt`
+	* doc/man: follow man-pages(7) for section names/order and for "SEE ALSO"
+	* Fix: action-executor: leak of `work_item::subitems` field
+	* lttng: change a few instances of trigger "id" to "name"
+	* Change "event rule hit" to "event-rule matches" in user interface strings
+	* Fix: relayd: live: data is missing between viewer attach and retry
+	* Build fix: filter-grammar-test: incorrect inclusion flag
+	* Tests: fix: test_tp_fail: bail out on non-existing relay daemon
+	* build system: support rotation example
+	* Add trigger on event rule matches application example
+	* Update the remaining manual pages for LTTng-tools 2.13
+	* doc/man/manpage.xsl: do not indent the title of an admonition block
+	* Fix: lttng: add-trigger: invalid access past end of exclusions buffer
+	* Fix: tests: extra arguments are not passed to the remove trigger command
+	* Fix: lttng-ctl: erroneous check if user is part of the tracing group
+	* Build fix: kernel-consumerd: merge conflict left in file
+	* Clean-up: consumerd: use a specific status code for get_next_subbuffer
+	* Fix: kernel consumer: get next subbuffer EAGAIN handling
+	* Fix: kernel consumer: signal metadata ready condition variable
+	* Fix: consumerd: unbalanced subbuffer 'get' when checking operation availability
+	* sessiond: remove commented-out logging
+	* sessiond: Remove [.*-thread] logging prefix
+	* run-as: reduce verbosity of fd sending error paths
+	* Set thread name of run-as worker process
+	* Use new ioctl macros with fixed ioctl direction
+	* Sync lttng-modules ABI in internal kernel-ioctl.h
+	* Fix: data reception is called event when only FDS are expected for reception
+	* Fix: FDs are added to payload despite not being received
+	* Fix: initialize temporary fd array element to -1
+	* Fix: common: hide shm* util symbols
+	* Fix: mark channel as disabled even if the session is inactive
+	* Fix: condition: buffer-usage: use double instead of fixed point
+	* Tests: notification: fail on trigger unregistration failure
+
 2021-04-23 lttng-tools 2.13.0-rc1 (National Take a Chance (on me ?) Day)
 	* Set the 2.13 release codename and description
 	* Tests: fix: test_notification_notifier_discarded_count missing renames
