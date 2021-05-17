@@ -1,6 +1,6 @@
 lttng-save(1)
 =============
-:revdate: 12 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -51,6 +51,8 @@ session configuration files: the command fails. Allow the `save` command
 to overwrite existing tracing session configuration files with the
 option:--force option.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -75,6 +77,38 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Save all the tracing session configurations to the default output directory.
+====
+[role="term"]
+----
+$ lttng save
+----
+====
+
+.Save a specific tracing session configuration to a specific output directory.
+====
+See the option:--output-path option.
+
+[role="term"]
+----
+$ lttng save my-session --output-path=/path/to/sessions
+----
+====
+
+.Allow LTTng to overwrite existing tracing session configuration files when saving.
+====
+See the option:--force option.
+
+[role="term"]
+----
+$ lttng save --force
+----
+====
 
 
 include::common-footer.txt[]
