@@ -1,6 +1,6 @@
 lttng-regenerate(1)
 ===================
-:revdate: 30 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -36,6 +36,8 @@ See man:lttng-concepts(7) to learn more about tracing sessions.
 
 As of this version, the `metadata` and `statedump` targets are
 available.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 Regenerate the metadata of a tracing session
@@ -97,6 +99,28 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Regenerate the metadata of the current tracing session.
+====
+[role="term"]
+----
+$ lttng regenerate metadata
+----
+====
+
+.Regenerate the state dump event records of a specific tracing session.
+====
+See the option:--session option.
+
+[role="term"]
+----
+$ lttng regenerate statedump --session=my-session
+----
+====
 
 
 include::common-footer.txt[]
