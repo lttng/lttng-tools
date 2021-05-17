@@ -35,12 +35,12 @@ specifier>> and its actions with one or more <<action-spec,action
 specifiers>>. The order of the action specifiers is significant: LTTng
 attempts to execute the actions of a firing trigger in this order.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 List the triggers of your Unix user, or of all users if your
 Unix user is `root`, with the man:lttng-list-triggers(1) command.
 
 Remove a trigger with the man:lttng-remove-trigger(1) command.
-
-See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 [[cond-spec]]
