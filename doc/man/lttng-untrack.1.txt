@@ -1,6 +1,6 @@
 lttng-untrack(1)
 ================
-:revdate: 1 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -52,6 +52,7 @@ recording event rules.
 The `untrack` command removes values from _inclusion sets_ of process
 attributes. See man:lttng-track(1) to learn more about inclusion sets.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 Inclusion set example
@@ -241,6 +242,41 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Remove the PIDs 1728 and 3775 from the Linux kernel process ID inclusion set of the current tracing session.
+====
+See the option:--pid option.
+
+[role="term"]
+----
+$ lttng untrack --kernel --pid=1728,3775
+----
+====
+
+.Remove the IDs of a specific groups from the user space virtual group ID inclusion set of a specific tracing session.
+====
+See the option:--vgid and option:--session options.
+
+[role="term"]
+----
+$ lttng untrack --userspace --session=my-session \
+                --vgid=docker,mysql
+----
+====
+
+.Remove all the user IDs from the Linux kernel user ID inclusion set of the current tracing session.
+====
+See the option:--all and option:--uid options.
+
+[role="term"]
+----
+$ lttng untrack --kernel --all --uid
+----
+====
 
 
 include::common-footer.txt[]
