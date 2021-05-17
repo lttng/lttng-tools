@@ -195,6 +195,8 @@ $ lttng add-context --kernel --type=pid
 
 .Add three statically-known context fields to be recorded to a specific user space channel of a specific tracing session.
 ====
+See the option:--session and option:--channel options.
+
 [role="term"]
 ----
 $ lttng add-context --userspace --session=my-session \
@@ -205,6 +207,8 @@ $ lttng add-context --userspace --session=my-session \
 
 .Add a perf counter context field to be recorded to a specific Linux kernel channel of the current tracing session.
 ====
+See the option:--channel option.
+
 [role="term"]
 ----
 $ lttng add-context --kernel --channel=my-channel \
