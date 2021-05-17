@@ -56,6 +56,11 @@ type and event name conditions. Therefore, you cannot disable recording
 event rules having a specific instrumentation point log level condition,
 for example.
 
+With the option:--kernel option and no instrumentation point type
+condition option, the `disable-event` command disables one or more Linux
+kernel recording event rules regardless of their instrumentation point
+type.
+
 List the recording event rules of a given tracing session
 and/or channel with the man:lttng-list(1) command.
 
@@ -135,9 +140,6 @@ With the option:--kernel or option:--userspace option:::
 With the option:--jul, option:--log4j, or option:--python option:::
     Logging events.
 --
-+
-As of LTTng{nbsp}{lttng_version}, this is the default instrumentation
-point type condition option, but this may change in the future.
 
 
 Event name condition
