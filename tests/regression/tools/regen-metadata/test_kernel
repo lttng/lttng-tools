@@ -32,7 +32,7 @@ function test_kernel_streaming ()
 	validate_trace $EVENT_NAME $TRACE_PATH/$HOSTNAME/$SESSION_NAME*
 
 	# Find the metadata file
-	metadata_path=$(find "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"* | grep metadata)
+	metadata_path=$(find "$TRACE_PATH/$HOSTNAME/$SESSION_NAME"* -name "metadata")
 
 	# Empty the metadata file
 	echo -n > "$metadata_path"
@@ -61,7 +61,7 @@ function test_kernel_local ()
 	validate_trace $EVENT_NAME "$TRACE_PATH"
 
 	# Find the metadata file
-	metadata_path=$(find "$TRACE_PATH"* | grep metadata)
+	metadata_path=$(find "$TRACE_PATH"* -name "metadata")
 
 	# Empty the metadata file
 	echo -n > "$metadata_path"
