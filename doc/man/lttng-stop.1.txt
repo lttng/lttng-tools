@@ -1,6 +1,6 @@
 lttng-stop(1)
 =============
-:revdate: 29 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -52,6 +52,8 @@ remains inactive, it's :not: a trace chunk archive: you need to destroy
 the tracing session with man:lttng-destroy(1) or perform a rotation with
 man:lttng-rotate(1) to archive it.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -65,6 +67,36 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Stop the current tracing session.
+====
+[role="term"]
+----
+$ lttng stop
+----
+====
+
+.Stop a specific tracing session.
+====
+[role="term"]
+----
+$ lttng stop my-session
+----
+====
+
+.Stop the current tracing session without waiting for completion.
+====
+See the option:--no-wait option.
+
+[role="term"]
+----
+$ lttng stop --no-wait
+----
+====
 
 
 include::common-footer.txt[]
