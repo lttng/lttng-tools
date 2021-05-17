@@ -1,6 +1,6 @@
 lttng-snapshot(1)
 =================
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -68,6 +68,8 @@ to use the `snapshot` command.
 
 A `snapshot-session` trigger action can also take a tracing session
 snapshot (see man:lttng-add-trigger(1)).
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 If you want, instead, to keep all the trace data, but divide it into
 archived chunks which are then, like snapshots, ready to be processed,
@@ -188,6 +190,62 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Take a snapshot of the current tracing session, sending the trace files to its snapshot output.
+====
+[role="term"]
+----
+$ lttng snapshot record
+----
+====
+
+.Take a snapshot of a specific tracing session, giving it a custom name.
+====
+See the option:--session and option:--name options.
+
+[role="term"]
+----
+$ lttng snapshot record --session=my-session --name=SNAP
+----
+====
+
+.Take a snapshot of the current tracing session, sending the trace files to a custom location.
+====
+See the ``Output directory'' section of man:lttng-relayd(8) to
+understand where the relay daemon to connect to (`3.96.87.215`) writes
+the received traces.
+
+[role="term"]
+----
+$ lttng snapshot record net://3.96.87.215
+----
+====
+
+.Replace the snapshot output of a specific tracing session with a local file system path.
+====
+See the option:--session option.
+
+[role="term"]
+----
+$ lttng snapshot del-output --session=monk 1
+$ lttng snapshot add-output --session=monk \
+                 file:///path/to/snapshots
+----
+====
+
+.Take a snapshot of the current tracing session, making sure its size is not over 4{nbsp}MiB.
+====
+See the option:--max-size option.
+
+[role="term"]
+----
+$ lttng snapshot record --max-size=4M
+----
+====
 
 
 include::common-footer.txt[]
