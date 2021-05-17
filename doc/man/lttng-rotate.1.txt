@@ -1,6 +1,6 @@
 lttng-rotate(1)
 ===============
-:revdate: 30 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -62,6 +62,8 @@ directly cause discarded event records or packets.
 A `rotate-session` trigger action can also rotate a tracing session (see
 man:lttng-add-trigger(1)).
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 [IMPORTANT]
 ====
 You may only use the `rotate` command when:
@@ -91,6 +93,36 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Rotate the current tracing session.
+====
+[role="term"]
+----
+$ lttng rotate
+----
+====
+
+.Rotate a specific tracing session.
+====
+[role="term"]
+----
+$ lttng rotate my-session
+----
+====
+
+.Rotate the current tracing session without waiting for completion.
+====
+See the option:--no-wait option.
+
+[role="term"]
+----
+$ lttng rotate --no-wait
+----
+====
 
 
 include::common-footer.txt[]
