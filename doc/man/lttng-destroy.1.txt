@@ -1,6 +1,6 @@
 lttng-destroy(1)
 ================
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -64,6 +64,8 @@ Then all the subdirectories of the output directory of{nbsp}__TS__
 command exits. In other words, it's safe to read them, modify them, move
 them, or remove then.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -83,6 +85,46 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Destroy the current tracing session.
+====
+[role="term"]
+----
+$ lttng destroy
+----
+====
+
+.Destroy the current tracing session without waiting for completion.
+====
+See the option:--no-wait option.
+
+[role="term"]
+----
+$ lttng destroy --no-wait
+----
+====
+
+.Destroy a specific tracing session.
+====
+[role="term"]
+----
+$ lttng destroy my-session
+----
+====
+
+.Destroy all tracing sessions.
+====
+See the option:--all option.
+
+[role="term"]
+----
+$ lttng destroy --all
+----
+====
 
 
 include::common-footer.txt[]
