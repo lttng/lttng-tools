@@ -1,6 +1,6 @@
 lttng-view(1)
 =============
-:revdate: 29 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -38,6 +38,8 @@ By default, the `view` command attempts to launch man:babeltrace2(1) or,
 if it's not available, man:babeltrace(1). Override which trace reader to
 launch with the option:--viewer option.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -61,6 +63,29 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Read the traces of the current tracing session with Babeltrace.
+====
+[role="term"]
+----
+$ lttng view
+----
+====
+
+.Read the traces of a specific tracing session with a custom trace reader.
+====
+See the option:--viewer option.
+
+[role="term"]
+----
+$ lttng view --viewer='/usr/bin/my-reader -zK --details=3' \
+             my-session
+----
+====
 
 
 include::common-footer.txt[]
