@@ -1783,7 +1783,7 @@ function validate_metadata_event ()
 	local nr_event_id=$2
 	local trace_path=$3
 
-	local metadata_file=$(find $trace_path | grep metadata)
+	local metadata_file=$(find $trace_path -name "metadata")
 	local metadata_path=$(dirname $metadata_file)
 
 	which $BABELTRACE_BIN >/dev/null

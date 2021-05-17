@@ -45,7 +45,7 @@ function test_kernel ()
 	# bt1 accepts only a directory while bt2 accepts either the metadata
 	# file directly or a directory with an immediate metadata file.
 	# Settle for the common denominator.
-	metadata_path=$(find "${expected_path}/${session_name}"* | grep metadata)
+	metadata_path=$(find "${expected_path}/${session_name}"* -name "metadata")
 	metadata_path=$(dirname "$metadata_path")
 
 	$BABELTRACE_BIN --output-format=ctf-metadata "${metadata_path}" > "$metadata"
