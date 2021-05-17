@@ -1,6 +1,6 @@
 lttng-start(1)
 ==============
-:revdate: 29 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -34,6 +34,8 @@ session is inactive on creation (see man:lttng-create(1)).
 A `start-session` trigger action can also start a tracing session
 (see man:lttng-add-trigger(1)).
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 Stop an active tracing session with the man:lttng-stop(1) command.
 
 
@@ -44,6 +46,26 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Start the current tracing session.
+====
+[role="term"]
+----
+$ lttng start
+----
+====
+
+.Start a specific tracing session.
+====
+[role="term"]
+----
+$ lttng start my-session
+----
+====
 
 
 include::common-footer.txt[]
