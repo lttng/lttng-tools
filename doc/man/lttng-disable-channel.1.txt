@@ -1,6 +1,6 @@
 lttng-disable-channel(1)
 ========================
-:revdate: 29 April 2021
+:revdate: 17 May 2021
 
 NAME
 ----
@@ -36,6 +36,8 @@ As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
 channel once its tracing session has ben started (see
 man:lttng-start(1)) at least once.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -62,6 +64,29 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Disable one Linux kernel channel of the current tracing session.
+====
+[role="term"]
+----
+$ lttng disable-channel --kernel my-channel
+----
+====
+
+.Disable two user space channels of a specific tracing session.
+====
+See the option:--session option.
+
+[role="term"]
+----
+$ lttng disable-channel --kernel --session=my-session \
+                        little,box
+----
+====
 
 
 include::common-footer.txt[]
