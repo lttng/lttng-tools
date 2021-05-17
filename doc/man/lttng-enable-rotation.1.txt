@@ -1,6 +1,6 @@
 lttng-enable-rotation(1)
 ========================
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -60,6 +60,8 @@ You may combine the option:--timer and option:--size options.
 See the man:lttng-concepts(7) to learn how LTTng names a trace chunk
 archive directory.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 Unset a tracing session rotation schedule with the
 man:lttng-disable-rotation(1) command.
 
@@ -112,6 +114,30 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Set the size-based rotation schedule of the current tracing session.
+====
+See the option:--size option.
+
+[role="term"]
+----
+$ lttng disable-rotation --size=256M
+----
+====
+
+.Set the periodic rotation schedule of a specific tracing session.
+====
+See the option:--timer and option:--session options.
+
+[role="term"]
+----
+$ lttng disable-rotation --session=my-session --timer=5m
+----
+====
 
 
 include::common-footer.txt[]
