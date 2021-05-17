@@ -1,6 +1,6 @@
 lttng-disable-event(1)
 ======================
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -73,6 +73,8 @@ man:lttng-list(1)).
 You may disable an enabled recording event rule regardless of the
 activity (started or stopped) of its tracing session (see
 man:lttng-start(1) and man:lttng-stop(1)).
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]
@@ -153,6 +155,50 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Disable all Linux kernel tracepoint recording event rules in the default channel of the current tracing session.
+====
+See the option:--all-events option.
+
+[role="term"]
+----
+$ lttng disable-event --kernel --tracepoint --all-events
+----
+====
+
+.Disable specific Apache log4j recording event rules in the default channel of a specific tracing session.
+====
+See the option:--session option.
+
+[role="term"]
+----
+$ lttng disable-event --session=my-session --log4j \
+                      MySingleton,MyProxy,MyFacade
+----
+====
+
+.Disable all user space recording event rules in a specific channel of the current tracing session.
+====
+See the option:--channel option.
+
+[role="term"]
+----
+$ lttng disable-event --channel=my-channel --userspace \
+                      --all-events
+----
+====
+
+.Disable specific Linux kernel system call recording event rules in the default channel of the current tracing session.
+====
+[role="term"]
+----
+$ lttng disable-event --kernel --syscall pipe2,eventfd
+----
+====
 
 
 include::common-footer.txt[]
