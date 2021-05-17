@@ -1,6 +1,6 @@
 lttng-load(1)
 =============
-:revdate: 30 April 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -71,6 +71,8 @@ By default, the `load` command does :not: overwrite existing tracing
 sessions: the command fails. Allow the `load` command to overwrite
 existing tracing sessions with the option:--force option.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 
 include::common-lttng-cmd-options-head.txt[]
 
@@ -104,6 +106,57 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Load all the tracing session configurations from the default search directories.
+====
+[role="term"]
+----
+$ lttng load
+----
+====
+
+.Load all the tracing session configurations from a specific directory.
+====
+See the option:--input-path option.
+
+[role="term"]
+----
+$ lttng load --input-path=/path/to/sessions
+----
+====
+
+.Load a specific tracing session configuration from the default search directories.
+====
+[role="term"]
+----
+$ lttng load my-session
+----
+====
+
+.Allow LTTng to overwrite existing tracing sessions when loading.
+====
+See the option:--force option.
+
+[role="term"]
+----
+$ lttng load --force
+----
+====
+
+.Load a specific tracing session configuration from a specific file, overriding its name.
+====
+See the option:--input-path and option:--override-name options.
+
+[role="term"]
+----
+$ lttng load my-session --input-path=/path/to/sessions.lttng \
+             --override-name=new-test
+----
+====
 
 
 include::common-footer.txt[]
