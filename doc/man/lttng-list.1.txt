@@ -1,6 +1,6 @@
 lttng-list(1)
 =============
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -15,7 +15,7 @@ List the tracing sessions:
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
 
-List the tracing domains with at least one channel of a tracing session:
+List the tracing domains of a tracing session with at least one channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
@@ -87,6 +87,8 @@ option:--fields option.
 See man:lttng-concept(7) to learn more about tracing sessions, tracing
 domains, channels, recording event rules, and instrumentation points.
 
+See the <<examples,EXAMPLES>> section below for usage examples.
+
 List the channels and recording event rules of the current tracing
 session (see man:lttng-concept(7) to learn more) with the
 man:lttng-status(1) command.
@@ -157,6 +159,64 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.List the tracing sessions.
+====
+[role="term"]
+----
+$ lttng list
+----
+====
+
+.Show the details of a specific tracing session.
+====
+[role="term"]
+----
+$ lttng list my-session
+----
+====
+
+.List the available Linux kernel system call instrumentation points.
+====
+[role="term"]
+----
+$ lttng list --kernel --syscall
+----
+====
+
+.List the available user space tracepoints with their fields.
+====
+See the option:--fields option.
+
+[role="term"]
+----
+$ lttng list --userspace --fields
+----
+====
+
+.List the tracing domains of a specific tracing session having at least one channel.
+====
+See the option:--domain option.
+
+[role="term"]
+----
+$ lttng list --domain my-session
+----
+====
+
+.Show the details of a specific channel in a specific tracing session.
+====
+See the option:--channel option.
+
+[role="term"]
+----
+$ lttng list my-session --channel=channel0
+----
+====
 
 
 include::common-footer.txt[]
