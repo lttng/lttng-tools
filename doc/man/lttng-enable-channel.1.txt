@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 3 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -62,6 +62,8 @@ Without the option:--session option::
 
 NOTE: The man:lttng-enable-event(1) command can automatically create a
 default channel when no channel exists for the provided tracing domain.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 List the channels of a given tracing session with the
 man:lttng-list(1) and man:lttng-status(1) commands.
@@ -349,6 +351,64 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Create a Linux kernel channel with default attributes in the current tracing session.
+====
+The following command line only creates a new channel if `my-channel`
+doesn't name an existing Linux kernel channel in the current tracing
+session.
+
+[role="term"]
+----
+$ lttng enable-channel --kernel my-channel
+----
+====
+
+.Create a user space channel with a per-process buffering scheme in a specific tracing session.
+====
+See the option:--session and option:--buffers-pid options.
+
+[role="term"]
+----
+$ lttng enable-channel --session=my-session --userspace \
+                       --buffers-pid my-channel
+----
+====
+
+.Create a Linux kernel channel in the current tracing session with four 32-MiB sub-buffers per ring buffer.
+====
+See the option:--num-subbuf and option:--subbuf-size options.
+
+[role="term"]
+----
+$ lttng enable-channel --kernel my-channel \
+                       --num-subbuf=4 --subbuf-size=32M
+----
+====
+
+.Create a user space channel in the current tracing session with trace file rotation.
+====
+See the option:--tracefile-count and option:--tracefile-size options.
+
+[role="term"]
+----
+$ lttng enable-channel --userspace my-channel \
+                       --tracefile-count=16 --tracefile-size=8M
+----
+====
+
+.Enable two user space channels of a specific tracing session.
+====
+[role="term"]
+----
+$ lttng enable-channel --session=my-session --userspace \
+                       canal-d,rds
+----
+====
 
 
 include::common-footer.txt[]
