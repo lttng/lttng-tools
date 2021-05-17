@@ -1,6 +1,6 @@
 lttng-create(1)
 ===============
-:revdate: 12 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -90,6 +90,8 @@ genoption:--relayd-path option.
 
 On success, the `create` command sets the current tracing session (see
 man:lttng-concepts(7) to learn more) to the created tracing session.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 Show the status of the current tracing session with the
 man:lttng-status(1) command.
@@ -390,6 +392,112 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Create a normal mode tracing session with a generated name.
+====
+[role="term"]
+----
+$ lttng create
+----
+====
+
+.Create a normal mode tracing session with a custom name.
+====
+[role="term"]
+----
+$ lttng create my-session
+----
+====
+
+.Create a normal mode tracing session with a specific output directory.
+====
+See the option:--output option.
+
+[role="term"]
+----
+$ lttng create --output=/path/to/traces
+----
+====
+
+.Create a network streaming mode tracing session.
+====
+See the ``Output directory'' section of man:lttng-relayd(8) to
+understand where the relay daemon to connect to (`10.0.0.242`) writes
+the received traces.
+
+See the option:--set-url option.
+
+[role="term"]
+----
+$ lttng create --set-url=net://10.0.0.242/inv4
+----
+====
+
+.Create a snapshot mode tracing session with a default snapshot output.
+====
+See the option:--snapshot option.
+
+[role="term"]
+----
+$ lttng create --snapshot
+----
+====
+
+.Create a snapshot mode tracing session with a custom snapshot output.
+====
+See the option:--snapshot and option:--set-url options.
+
+[role="term"]
+----
+$ lttng create --snapshot \
+        --set-url=tcp://192.168.1.102:1234:5678/my-snapshots
+----
+====
+
+.Create a snapshot mode tracing session with no snapshot output.
+====
+See the option:--snapshot and option:--no-output options.
+
+[role="term"]
+----
+$ lttng create --snapshot --no-output
+----
+====
+
+.Create an LTTng live mode tracing session with a default relay daemon URL.
+====
+See the option:--live option.
+
+[role="term"]
+----
+$ lttng create --live
+----
+====
+
+.Create an LTTng live mode tracing session with a custom live timer period and relay daemon URL.
+====
+See the option:--live and option:--set-url options.
+
+[role="term"]
+----
+$ lttng create --live=250000 \
+               --set-url=tcp://relayd34:4885:4886
+----
+====
+
+.Create a normal mode tracing session with a custom directory containing the ring buffer shared memory files.
+====
+See the option:--shm-path option.
+
+[role="term"]
+----
+$ lttng create my-session --shm-path=/mnt/nvram2/lttng
+----
+====
 
 
 include::common-footer.txt[]
