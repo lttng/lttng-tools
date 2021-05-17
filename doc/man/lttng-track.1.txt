@@ -1,6 +1,6 @@
 lttng-track(1)
 ==============
-:revdate: 1 May 2021
+:revdate: 17 May 2021
 
 
 NAME
@@ -110,6 +110,8 @@ $ lttng enable-event --kernel --all --syscall
 $ lttng track --kernel --pid=2345
 $ lttng start
 ----
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 Remove values from an inclusion set with the man:lttng-untrack(1)
 command.
@@ -292,6 +294,40 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Add the PIDs 1728 and 3775 to the Linux kernel process ID inclusion set of the current tracing session.
+====
+See the option:--pid option.
+
+[role="term"]
+----
+$ lttng track --kernel --pid=1728,3775
+----
+====
+
+.Add the ID of a specific user to the user space virtual user ID inclusion set of a specific tracing session.
+====
+See the option:--vuid and option:--session options.
+
+[role="term"]
+----
+$ lttng track --userspace --session=my-session --vuid=http
+----
+====
+
+.Add all the possible group IDs to the Linux kernel group ID inclusion set of the current tracing session.
+====
+See the option:--all and option:--gid options.
+
+[role="term"]
+----
+$ lttng track --kernel --all --gid
+----
+====
 
 
 include::common-footer.txt[]
