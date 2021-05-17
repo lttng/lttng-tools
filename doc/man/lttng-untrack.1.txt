@@ -53,12 +53,13 @@ The `untrack` command removes values from _inclusion sets_ of process
 attributes. See man:lttng-track(1) to learn more about inclusion sets.
 
 
-Example
-~~~~~~~
+
+Inclusion set example
+~~~~~~~~~~~~~~~~~~~~~
 A common operation is to create a tracing session (see
-man:lttng-create(1)), remove all the entries from the PID tracker
-inclusion set, start tracing, and then manually track PIDs while the
-tracing session is active.
+man:lttng-create(1)), remove all the entries from the Linux kernel
+process ID inclusion set, start tracing, and then manually add PIDs
+while the tracing session is active.
 
 Assume the maximum system PID is 7 for this example.
 
@@ -79,7 +80,7 @@ Initial inclusion set:
 +
 [role="term"]
 ----
-$ lttng untrack --kernel --pid --all
+$ lttng untrack --kernel --all --pid
 ----
 +
 Inclusion set:
