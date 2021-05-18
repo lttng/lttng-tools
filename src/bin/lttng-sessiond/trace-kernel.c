@@ -20,8 +20,8 @@
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/event-rule/kernel-probe.h>
 #include <lttng/event-rule/kernel-probe-internal.h>
-#include <lttng/event-rule/syscall.h>
-#include <lttng/event-rule/syscall-internal.h>
+#include <lttng/event-rule/kernel-syscall.h>
+#include <lttng/event-rule/kernel-syscall-internal.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/userspace-probe-internal.h>
@@ -671,27 +671,27 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		ret_code = LTTNG_OK;
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	{
 		const enum lttng_event_rule_status status =
-				lttng_event_rule_syscall_get_name_pattern(
+				lttng_event_rule_kernel_syscall_get_name_pattern(
 						rule, &name);
-		const enum lttng_event_rule_syscall_emission_site
+		const enum lttng_event_rule_kernel_syscall_emission_site
 			emission_site =
-			lttng_event_rule_syscall_get_emission_site(rule);
+			lttng_event_rule_kernel_syscall_get_emission_site(rule);
 		enum lttng_kernel_abi_syscall_entryexit entryexit;
 
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
-		assert(emission_site != LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_UNKNOWN);
+		assert(emission_site != LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_UNKNOWN);
 
 		switch(emission_site) {
-		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY:
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY:
 			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRY;
 			break;
-		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT:
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_EXIT:
 			entryexit = LTTNG_KERNEL_ABI_SYSCALL_EXIT;
 			break;
-		case LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
+		case LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT:
 			entryexit = LTTNG_KERNEL_ABI_SYSCALL_ENTRYEXIT;
 			break;
 		default:

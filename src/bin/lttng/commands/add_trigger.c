@@ -135,7 +135,9 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 		*dest = LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE;
 	} else if (strcmp(arg, "function") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION;
-	} else if (strncmp(arg, "syscall", strlen("syscall")) == 0) {
+	} else if (strncmp(arg, "syscall", strlen("syscall")) == 0 ||
+			strncmp(arg, "kernel:syscall",
+					strlen("kernel:syscall")) == 0) {
 		/*
 		 * Matches the following:
 		 *   - syscall
@@ -143,10 +145,15 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 		 *   - syscall:exit
 		 *   - syscall:entry+exit
 		 *   - syscall:*
+		 *   - kernel:syscall
+		 *   - kernel:syscall:entry
+		 *   - kernel:syscall:exit
+		 *   - kernel:syscall:entry+exit
+		 *   - kernel:syscall:*
 		 *
 		 * Validation for the right side is left to further usage sites.
 		 */
-		*dest = LTTNG_EVENT_RULE_TYPE_SYSCALL;
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL;
 	} else {
 		ERR("Invalid `--type` value: %s", arg);
 		goto error;
@@ -189,16 +196,27 @@ end:
 }
 
 static bool parse_syscall_emission_site_from_type(const char *str,
-		enum lttng_event_rule_syscall_emission_site *type)
+		enum lttng_event_rule_kernel_syscall_emission_site *type)
 {
 	bool ret = false;
+	const char kernel_prefix[] = "kernel:";
+	const size_t kernel_prefix_len = sizeof(kernel_prefix) - 1;
+
+	/*
+	 * If the passed string is of the form "kernel:syscall*", move the
+	 * pointer passed "kernel:".
+	 */
+	if (strncmp(str, kernel_prefix, kernel_prefix_len) == 0) {
+		str = &str[kernel_prefix_len];
+	}
+
 	if (strcmp(str, "syscall") == 0 ||
 			strcmp(str, "syscall:entry+exit") == 0) {
-		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY_EXIT;
+		*type = LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY_EXIT;
 	} else if (strcmp(str, "syscall:entry") == 0) {
-		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY;
+		*type = LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY;
 	} else if (strcmp(str, "syscall:exit") == 0) {
-		*type = LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_EXIT;
+		*type = LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_EXIT;
 	} else {
 		goto error;
 	}
@@ -838,7 +856,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	 */
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		if (!name) {
 			name = strdup("*");
 		}
@@ -917,7 +935,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		if (domain_type != LTTNG_DOMAIN_KERNEL) {
 			ERR("Event type not available for user-space tracing.");
 			goto error;
@@ -939,7 +957,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	if (filter && domain_type == LTTNG_DOMAIN_KERNEL) {
 		switch (event_rule_type) {
 		case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-		case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+		case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 			break;
 		default:
 			ERR("Filter expressions are not supported for %s event rules.",
@@ -1131,10 +1149,10 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	{
 		enum lttng_event_rule_status event_rule_status;
-		enum lttng_event_rule_syscall_emission_site emission_site;
+		enum lttng_event_rule_kernel_syscall_emission_site emission_site;
 
 		if (!parse_syscall_emission_site_from_type(
 				    event_rule_type_str, &emission_site)) {
@@ -1142,13 +1160,13 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		res.er = lttng_event_rule_syscall_create(emission_site);
+		res.er = lttng_event_rule_kernel_syscall_create(emission_site);
 		if (!res.er) {
 			ERR("Failed to create syscall event rule.");
 			goto error;
 		}
 
-		event_rule_status = lttng_event_rule_syscall_set_name_pattern(
+		event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
 				res.er, name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set syscall event rule's pattern to '%s'.",
@@ -1157,7 +1175,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 
 		if (filter) {
-			event_rule_status = lttng_event_rule_syscall_set_filter(
+			event_rule_status = lttng_event_rule_kernel_syscall_set_filter(
 					res.er, filter);
 			if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 				ERR("Failed to set syscall event rule's filter to '%s'.",

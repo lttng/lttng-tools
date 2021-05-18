@@ -318,7 +318,7 @@ test_event_rule_matches_syscall ()
 	- name: T0
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: open (type: syscall:entry+exit)
+	    rule: open (type: kernel:syscall:entry+exit)
 	  actions:
 	    notify
 	      errors: none
@@ -326,7 +326,7 @@ test_event_rule_matches_syscall ()
 	- name: T1
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: open (type: syscall:entry)
+	    rule: open (type: kernel:syscall:entry)
 	  actions:
 	    notify
 	      errors: none
@@ -334,7 +334,7 @@ test_event_rule_matches_syscall ()
 	- name: T2
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: open (type: syscall:exit)
+	    rule: open (type: kernel:syscall:exit)
 	  actions:
 	    notify
 	      errors: none
@@ -342,7 +342,7 @@ test_event_rule_matches_syscall ()
 	- name: T3
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: open (type: syscall:entry+exit)
+	    rule: open (type: kernel:syscall:entry+exit)
 	  actions:
 	    notify
 	      errors: none
@@ -350,7 +350,7 @@ test_event_rule_matches_syscall ()
 	- name: T4
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: ptrace (type: syscall:entry+exit, filter: a > 2)
+	    rule: ptrace (type: kernel:syscall:entry+exit, filter: a > 2)
 	  actions:
 	    notify
 	      errors: none

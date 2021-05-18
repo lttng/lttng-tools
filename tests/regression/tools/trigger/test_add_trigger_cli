@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 285
+plan_tests 297
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -190,7 +190,7 @@ skip $ist_root "non-root user: skipping uprobe tests" 12 || {
 	done
 }
 
-skip $ist_root "non-root user: skipping syscall tests" 18 || {
+skip $ist_root "non-root user: skipping syscall tests" 30 || {
 	test_success "--condition event-rule-matches one syscall" \
 		--condition event-rule-matches --domain=kernel --type=syscall --name=open \
 		--action notify
@@ -211,6 +211,22 @@ skip $ist_root "non-root user: skipping syscall tests" 18 || {
 	test_success "--condition event-rule-matches one syscall:entry-exit" \
 		--condition event-rule-matches --domain=kernel --type=syscall:entry+exit --name=open \
 		--action notify
+
+	# Same thing but with "kernel:syscall" type instead:
+	test_success "--condition event-rule-matches one syscall" \
+		--condition event-rule-matches --domain=kernel --type=kernel:syscall --name=open \
+		--action notify
+
+	test_success "--condition event-rule-matches one kernel:syscall:entry" \
+		--condition event-rule-matches --domain=kernel --type=kernel:syscall:entry --name=open \
+		--action notify
+	test_success "--condition event-rule-matches one kernel:syscall:exit" \
+		--condition event-rule-matches --domain=kernel --type=kernel:syscall:exit --name=open \
+		--action notify
+	test_success "--condition event-rule-matches one kernel:syscall:entry-exit" \
+		--condition event-rule-matches --domain=kernel --type=kernel:syscall:entry+exit --name=open \
+		--action notify
+
 }
 
 # `--action notify` successes
