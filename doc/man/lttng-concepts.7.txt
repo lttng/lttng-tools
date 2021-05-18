@@ -975,7 +975,7 @@ redundant when both are enabled:
 [role="term"]
 ----
 $ lttng enable-event --userspace hello:world
-$ lttng enable-event --userspace hello:world --loglevel=TRACE_INFO
+$ lttng enable-event --userspace hello:world --loglevel=INFO
 ----
 
 List the recording event rules of a specific tracing session
