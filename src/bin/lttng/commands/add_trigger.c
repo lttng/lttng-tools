@@ -128,8 +128,8 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 	if (strcmp(arg, "tracepoint") == 0 || strcmp(arg, "logging") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_TRACEPOINT;
 	} else if (strcmp(arg, "kprobe") == 0 ||
-			strcmp(arg, "kernel-probe") == 0) {
-		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE;
+			strcmp(arg, "kernel:kprobe") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE;
 	} else if (strcmp(arg, "kernel:uprobe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE;
 	} else if (strcmp(arg, "function") == 0) {
@@ -885,7 +885,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	 * If omitted, it defaults to the location.
 	 */
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		if (!location) {
@@ -931,7 +931,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 	/* Validate event rule type against domain. */
 	switch (event_rule_type) {
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
@@ -1089,7 +1089,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	{
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
@@ -1102,14 +1102,14 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 		}
 
 		assert(kernel_probe_location);
-		res.er = lttng_event_rule_kernel_probe_create(kernel_probe_location);
+		res.er = lttng_event_rule_kernel_kprobe_create(kernel_probe_location);
 		if (!res.er) {
 			ERR("Failed to create kprobe event rule.");
 			goto error;
 		}
 
 		event_rule_status =
-				lttng_event_rule_kernel_probe_set_event_name(
+				lttng_event_rule_kernel_kprobe_set_event_name(
 						res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set kprobe event rule's name to '%s'.",

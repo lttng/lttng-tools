@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_EVENT_RULE_KERNEL_PROBE_H
-#define LTTNG_EVENT_RULE_KERNEL_PROBE_H
+#ifndef LTTNG_EVENT_RULE_KERNEL_KPROBE_H
+#define LTTNG_EVENT_RULE_KERNEL_KPROBE_H
 
 #include <lttng/event-rule/event-rule.h>
 
@@ -17,18 +17,18 @@ extern "C" {
 struct lttng_kernel_probe_location;
 
 /*
- * Create a newly allocated kernel probe event rule.
+ * Create a newly allocated kernel kprobe event rule.
  *
  * The location is copied internally.
  *
  * Returns a new event rule on success, NULL on failure. The returned event rule
  * must be destroyed using lttng_event_rule_destroy().
  */
-extern struct lttng_event_rule *lttng_event_rule_kernel_probe_create(
+extern struct lttng_event_rule *lttng_event_rule_kernel_kprobe_create(
 		const struct lttng_kernel_probe_location *location);
 
 /*
- * Get the kernel probe location of a kernel probe event rule.
+ * Get the kernel probe location of a kernel kprobe event rule.
  *
  * The caller does not assume the ownership of the returned location.
  * The location shall only be used for the duration of the event
@@ -39,23 +39,23 @@ extern struct lttng_event_rule *lttng_event_rule_kernel_probe_create(
  * passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a location was not set prior to
  * this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_location(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_get_location(
 		const struct lttng_event_rule *rule,
 		const struct lttng_kernel_probe_location **location);
 
 /*
- * Set the name of a kernel probe event rule.
+ * Set the name of a kernel kprobe event rule.
  *
  * The name is copied internally.
  *
  * Returns LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_event_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_set_event_name(
 		struct lttng_event_rule *rule, const char *name);
 
 /*
- * Get the name of a kernel probe event rule.
+ * Get the name of a kernel kprobe event rule.
  *
  * The caller does not assume the ownership of the returned name.
  * The name shall only only be used for the duration of the event
@@ -65,11 +65,11 @@ extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_set_event_name
  * success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is passed,
  * or LTTNG_EVENT_RULE_STATUS_UNSET if a name was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_kernel_probe_get_event_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_kprobe_get_event_name(
 		const struct lttng_event_rule *rule, const char **name);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LTTNG_EVENT_RULE_KERNEL_PROBE_H */
+#endif /* LTTNG_EVENT_RULE_KERNEL_KPROBE_H */

@@ -294,22 +294,22 @@ void print_event_rule_kernel_probe(const struct lttng_event_rule *event_rule)
 	const char *name;
 	const struct lttng_kernel_probe_location *location;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE);
+	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE);
 
-	event_rule_status = lttng_event_rule_kernel_probe_get_event_name(event_rule, &name);
+	event_rule_status = lttng_event_rule_kernel_kprobe_get_event_name(event_rule, &name);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to get kprobe event rule's name.");
 		goto end;
 	}
 
-	event_rule_status = lttng_event_rule_kernel_probe_get_location(
+	event_rule_status = lttng_event_rule_kernel_kprobe_get_location(
 			event_rule, &location);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to get kprobe event rule's location.");
 		goto end;
 	}
 
-	_MSG("    rule: %s (type: probe, location: ", name);
+	_MSG("    rule: %s (type: kernel:kprobe, location: ", name);
 
 	print_kernel_probe_location(location);
 
@@ -425,7 +425,7 @@ void print_event_rule(const struct lttng_event_rule *event_rule)
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
 		print_event_rule_tracepoint(event_rule);
 		break;
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 		print_event_rule_kernel_probe(event_rule);
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
