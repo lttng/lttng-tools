@@ -543,12 +543,12 @@ There are currently five available tracing domains:
 |===
 
 You must specify a tracing domain to target a type of LTTng tracer when
-using some man:lttng(1) to avoid ambiguity. For example, because the
-Linux kernel and user space tracing domains support named tracepoints as
-instrumentation points (see the <<"event-rule","{sect-event-rule}">> section
-above), you need to specify a tracing domain when you create an event
-rule because both tracing domains could have tracepoints sharing the
-same name.
+using some man:lttng(1) commands to avoid ambiguity. For example,
+because the Linux kernel and user space tracing domains support named
+tracepoints as instrumentation points (see the
+<<"event-rule","{sect-event-rule}">> section above), you need to specify
+a tracing domain when you create an event rule because both tracing
+domains could have tracepoints sharing the same name.
 
 You can create channels (see the <<channel,{sect-channel}>> section
 below) in the Linux kernel and user space tracing domains. The other
