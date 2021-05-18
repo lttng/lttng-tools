@@ -225,7 +225,7 @@ test_event_rule_matches_probe ()
 	- name: T0
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: my_channel_enable (type: probe, location: lttng_channel_enable)
+	    rule: my_channel_enable (type: kernel:kprobe, location: lttng_channel_enable)
 	  actions:
 	    notify
 	      errors: none
@@ -233,7 +233,7 @@ test_event_rule_matches_probe ()
 	- name: T1
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: my_channel_enable (type: probe, location: ${base_symbol}+${offset_hex})
+	    rule: my_channel_enable (type: kernel:kprobe, location: ${base_symbol}+${offset_hex})
 	  actions:
 	    notify
 	      errors: none
@@ -241,7 +241,7 @@ test_event_rule_matches_probe ()
 	- name: T2
 	  owner uid: ${uid}
 	  condition: event rule matches
-	    rule: my_channel_enable (type: probe, location: 0x${channel_enable_addr})
+	    rule: my_channel_enable (type: kernel:kprobe, location: 0x${channel_enable_addr})
 	  actions:
 	    notify
 	      errors: none

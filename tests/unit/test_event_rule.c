@@ -18,8 +18,8 @@
 #include <common/payload-view.h>
 #include <common/payload.h>
 #include <lttng/domain.h>
-#include <lttng/event-rule/kernel-probe-internal.h>
-#include <lttng/event-rule/kernel-probe.h>
+#include <lttng/event-rule/kernel-kprobe-internal.h>
+#include <lttng/event-rule/kernel-kprobe.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint-internal.h>
@@ -313,18 +313,18 @@ static void test_event_rule_kernel_probe_by_location(
 
 	lttng_payload_init(&payload);
 
-	kprobe = lttng_event_rule_kernel_probe_create(location);
+	kprobe = lttng_event_rule_kernel_kprobe_create(location);
 	ok(kprobe, "kprobe event rule object creation.");
 
-	status = lttng_event_rule_kernel_probe_get_location(kprobe, &_location);
+	status = lttng_event_rule_kernel_kprobe_get_location(kprobe, &_location);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Getting kprobe event rule location.");
 	ok(lttng_kernel_probe_location_is_equal(location, _location), "Locations are equal.");
 
-	status = lttng_event_rule_kernel_probe_set_event_name(kprobe, probe_name);
+	status = lttng_event_rule_kernel_kprobe_set_event_name(kprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting kprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_kernel_probe_get_event_name(kprobe, &tmp);
+	status = lttng_event_rule_kernel_kprobe_get_event_name(kprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting kprobe name.");
 	ok(!strcmp(probe_name, tmp), "kprobe name are equal.");
 

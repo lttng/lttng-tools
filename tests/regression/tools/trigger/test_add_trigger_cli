@@ -147,7 +147,7 @@ test_success "--exclude-name two" \
 	--action notify
 
 skip $ist_root "non-root user: skipping kprobe tests" 18 || {
-	for type in kprobe kernel-probe; do
+	for type in kprobe kernel:kprobe; do
 		test_success "--condition event-rule-matches probe by symbol" \
 			--condition event-rule-matches --domain=kernel --type=$type --location=lttng_channel_enable --event-name=my_channel_enable \
 			--action notify
@@ -364,9 +364,9 @@ test_failure "two different --domain" \
 	"Error: More than one \`--domain\` was specified." \
 	--condition event-rule-matches --domain=user --domain=kernel
 
-for type in kprobe kernel-probe; do
+for type in kprobe kernel:kprobe; do
 	test_failure "--condition event-rule-matches: --name with --type=$type" \
-		"Error: Can't use --name with probe event rules." \
+		"Error: Can't use --name with kernel kprobe event rules." \
 		--condition event-rule-matches --type=$type --location=do_sys_open --name='hello'
 done
 

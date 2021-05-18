@@ -65,7 +65,7 @@ libcommon_la_SOURCES = \
 	event-expr-to-bytecode.c event-expr-to-bytecode.h \
 	event-field-value.c \
 	event-rule/event-rule.c \
-	event-rule/kernel-probe.c \
+	event-rule/kernel-kprobe.c \
 	event-rule/kernel-syscall.c \
 	event-rule/kernel-uprobe.c \
 	event-rule/tracepoint.c \

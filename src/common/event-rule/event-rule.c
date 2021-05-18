@@ -14,7 +14,7 @@
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/kernel-probe-internal.h>
+#include <lttng/event-rule/kernel-kprobe-internal.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/kernel-uprobe-internal.h>
@@ -41,7 +41,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 		break;
 	}
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		domain_type = LTTNG_DOMAIN_KERNEL;
@@ -172,8 +172,8 @@ ssize_t lttng_event_rule_create_from_payload(
 		create_from_payload =
 				lttng_event_rule_tracepoint_create_from_payload;
 		break;
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
-		create_from_payload = lttng_event_rule_kernel_probe_create_from_payload;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+		create_from_payload = lttng_event_rule_kernel_kprobe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		/* TODO */
@@ -315,8 +315,8 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "tracepoint";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		return "kernel syscall";
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
-		return "probe";
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
+		return "kernel kprobe";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		return "function";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
