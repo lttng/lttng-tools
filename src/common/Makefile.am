@@ -67,7 +67,7 @@ libcommon_la_SOURCES = \
 	event-rule/event-rule.c \
 	event-rule/kernel-probe.c \
 	event-rule/kernel-syscall.c \
-	event-rule/userspace-probe.c \
+	event-rule/kernel-uprobe.c \
 	event-rule/tracepoint.c \
 	filter.c filter.h \
 	fd-handle.c fd-handle.h \

@@ -17,7 +17,7 @@
 #include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/event-rule/kernel-syscall-internal.h>
 #include <lttng/event-rule/tracepoint-internal.h>
-#include <lttng/event-rule/userspace-probe-internal.h>
+#include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <stdbool.h>
 
 enum lttng_event_rule_type lttng_event_rule_get_type(
@@ -43,7 +43,7 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		domain_type = LTTNG_DOMAIN_KERNEL;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_UNKNOWN:
@@ -178,8 +178,8 @@ ssize_t lttng_event_rule_create_from_payload(
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		/* TODO */
 		break;
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
-		create_from_payload = lttng_event_rule_userspace_probe_create_from_payload;
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+		create_from_payload = lttng_event_rule_kernel_uprobe_create_from_payload;
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		create_from_payload =
@@ -319,8 +319,8 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "probe";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		return "function";
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
-		return "userspace-probe";
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
+		return "kernel uprobe";
 	default:
 		abort();
 	}

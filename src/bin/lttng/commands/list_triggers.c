@@ -327,23 +327,23 @@ void print_event_rule_userspace_probe(const struct lttng_event_rule *event_rule)
 	const struct lttng_userspace_probe_location *location;
 	enum lttng_userspace_probe_location_type userspace_probe_location_type;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE);
+	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
 
-	event_rule_status = lttng_event_rule_userspace_probe_get_event_name(
+	event_rule_status = lttng_event_rule_kernel_uprobe_get_event_name(
 			event_rule, &name);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to get uprobe event rule's name.");
 		goto end;
 	}
 
-	event_rule_status = lttng_event_rule_userspace_probe_get_location(
+	event_rule_status = lttng_event_rule_kernel_uprobe_get_location(
 			event_rule, &location);
 	if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ERR("Failed to get uprobe event rule's location.");
 		goto end;
 	}
 
-	_MSG("    rule: %s (type: userspace probe, ", name);
+	_MSG("    rule: %s (type: kernel:uprobe, ", name);
 
 	userspace_probe_location_type =
 			lttng_userspace_probe_location_get_type(location);
@@ -428,7 +428,7 @@ void print_event_rule(const struct lttng_event_rule *event_rule)
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 		print_event_rule_kernel_probe(event_rule);
 		break;
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		print_event_rule_userspace_probe(event_rule);
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:

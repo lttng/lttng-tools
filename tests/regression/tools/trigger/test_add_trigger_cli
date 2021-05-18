@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 297
+plan_tests 288
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -178,16 +178,14 @@ skip $ist_root "non-root user: skipping kprobe tests" 18 || {
 	done
 }
 
-skip $ist_root "non-root user: skipping uprobe tests" 12 || {
-	for type in uprobe userspace-probe; do
-		test_success "--condition event-rule-matches uprobe" \
-			--condition event-rule-matches --domain=kernel --type=$type --location=${uprobe_elf_binary}:test_function --event-name=ma-probe \
-			--action notify
+skip $ist_root "non-root user: skipping uprobe tests" 6 || {
+	test_success "--condition event-rule-matches uprobe" \
+		--condition event-rule-matches --domain=kernel --type=kernel:uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe \
+		--action notify
 
-		test_success "--condition event-rule-matches uprobe with elf prefix" \
-			--condition event-rule-matches --domain=kernel --type=$type --location=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
-			--action notify
-	done
+	test_success "--condition event-rule-matches uprobe with elf prefix" \
+		--condition event-rule-matches --domain=kernel --type=kernel:uprobe --location=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
+		--action notify
 }
 
 skip $ist_root "non-root user: skipping syscall tests" 30 || {
@@ -380,11 +378,9 @@ test_failure "--condition event-rule-matches: --event-name with tracepoint event
 	"Error: Can't use --event-name with tracepoint event rules." \
 	--condition event-rule-matches --domain=user --event-name='hello'
 
-for type in uprobe userspace-probe; do
-	test_failure "--condition event-rule-matches: extra argument with --type=$type" \
-		"Error: Unexpected argument 'hello'" \
-		--condition event-rule-matches --domain=kernel --type=$type --location=${uprobe_elf_binary}:test_failure hello
-done
+test_failure "--condition event-rule-matches: extra argument with --type=kernel:uprobe" \
+	"Error: Unexpected argument 'hello'" \
+	--condition event-rule-matches --domain=kernel --type=$type --location=${uprobe_elf_binary}:test_failure hello
 
 test_failure "--condition event-rule-matches: extra argument with --type=syscall" \
 	"Error: Unexpected argument 'open'" \

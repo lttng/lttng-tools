@@ -130,9 +130,8 @@ bool assign_event_rule_type(enum lttng_event_rule_type *dest, const char *arg)
 	} else if (strcmp(arg, "kprobe") == 0 ||
 			strcmp(arg, "kernel-probe") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE;
-	} else if (strcmp(arg, "uprobe") == 0 ||
-			strcmp(arg, "userspace-probe") == 0) {
-		*dest = LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE;
+	} else if (strcmp(arg, "kernel:uprobe") == 0) {
+		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE;
 	} else if (strcmp(arg, "function") == 0) {
 		*dest = LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION;
 	} else if (strncmp(arg, "syscall", strlen("syscall")) == 0 ||
@@ -887,7 +886,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	 */
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 		if (!location) {
 			ERR("Event rule of type %s requires a --location.",
@@ -934,7 +933,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	switch (event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_PROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		if (domain_type != LTTNG_DOMAIN_KERNEL) {
 			ERR("Event type not available for user-space tracing.");
@@ -1120,7 +1119,7 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	{
 		int ret;
 		enum lttng_event_rule_status event_rule_status;
@@ -1132,14 +1131,14 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 			goto error;
 		}
 
-		res.er = lttng_event_rule_userspace_probe_create(userspace_probe_location);
+		res.er = lttng_event_rule_kernel_uprobe_create(userspace_probe_location);
 		if (!res.er) {
 			ERR("Failed to create userspace probe event rule.");
 			goto error;
 		}
 
 		event_rule_status =
-				lttng_event_rule_userspace_probe_set_event_name(
+				lttng_event_rule_kernel_uprobe_set_event_name(
 						res.er, event_name);
 		if (event_rule_status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ERR("Failed to set user space probe event rule's name to '%s'.",
