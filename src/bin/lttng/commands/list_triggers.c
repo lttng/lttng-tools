@@ -18,8 +18,8 @@
 #include "lttng/condition/event-rule-matches-internal.h"
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.h"
-/* For lttng_event_rule_syscall_emission_site_str() */
-#include "lttng/event-rule/syscall-internal.h"
+/* For lttng_event_rule_kernel_syscall_emission_site_str() */
+#include "lttng/event-rule/kernel-syscall-internal.h"
 #include "../loglevel.h"
 #include <lttng/lttng.h>
 
@@ -389,22 +389,22 @@ void print_event_rule_syscall(const struct lttng_event_rule *event_rule)
 {
 	const char *pattern, *filter;
 	enum lttng_event_rule_status event_rule_status;
-	enum lttng_event_rule_syscall_emission_site emission_site;
+	enum lttng_event_rule_kernel_syscall_emission_site emission_site;
 
-	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_SYSCALL);
+	assert(lttng_event_rule_get_type(event_rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL);
 
 	emission_site =
-		lttng_event_rule_syscall_get_emission_site(event_rule);
+		lttng_event_rule_kernel_syscall_get_emission_site(event_rule);
 
-	event_rule_status = lttng_event_rule_syscall_get_name_pattern(
+	event_rule_status = lttng_event_rule_kernel_syscall_get_name_pattern(
 			event_rule, &pattern);
 	assert(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK);
 
-	_MSG("    rule: %s (type: syscall:%s", pattern,
-			lttng_event_rule_syscall_emission_site_str(
+	_MSG("    rule: %s (type: kernel:syscall:%s", pattern,
+			lttng_event_rule_kernel_syscall_emission_site_str(
 					emission_site));
 
-	event_rule_status = lttng_event_rule_syscall_get_filter(
+	event_rule_status = lttng_event_rule_kernel_syscall_get_filter(
 			event_rule, &filter);
 	if (event_rule_status == LTTNG_EVENT_RULE_STATUS_OK) {
 		_MSG(", filter: %s", filter);
@@ -431,7 +431,7 @@ void print_event_rule(const struct lttng_event_rule *event_rule)
 	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
 		print_event_rule_userspace_probe(event_rule);
 		break;
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		print_event_rule_syscall(event_rule);
 		break;
 	default:

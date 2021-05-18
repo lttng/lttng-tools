@@ -66,7 +66,7 @@ libcommon_la_SOURCES = \
 	event-field-value.c \
 	event-rule/event-rule.c \
 	event-rule/kernel-probe.c \
-	event-rule/syscall.c \
+	event-rule/kernel-syscall.c \
 	event-rule/userspace-probe.c \
 	event-rule/tracepoint.c \
 	filter.c filter.h \

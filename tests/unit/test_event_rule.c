@@ -20,8 +20,8 @@
 #include <lttng/domain.h>
 #include <lttng/event-rule/kernel-probe-internal.h>
 #include <lttng/event-rule/kernel-probe.h>
-#include <lttng/event-rule/syscall-internal.h>
-#include <lttng/event-rule/syscall.h>
+#include <lttng/event-rule/kernel-syscall-internal.h>
+#include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/userspace-probe-internal.h>
@@ -184,18 +184,18 @@ static void test_event_rule_syscall(void)
 
 	lttng_payload_init(&payload);
 
-	syscall = lttng_event_rule_syscall_create(LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY);
+	syscall = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(syscall, "syscall object.");
 
-	status = lttng_event_rule_syscall_set_name_pattern(syscall, pattern);
+	status = lttng_event_rule_kernel_syscall_set_name_pattern(syscall, pattern);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting pattern.");
-	status = lttng_event_rule_syscall_get_name_pattern(syscall, &tmp);
+	status = lttng_event_rule_kernel_syscall_get_name_pattern(syscall, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting pattern.");
 	ok(!strncmp(pattern, tmp, strlen(pattern)), "pattern is equal.");
 
-	status = lttng_event_rule_syscall_set_filter(syscall, filter);
+	status = lttng_event_rule_kernel_syscall_set_filter(syscall, filter);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "setting filter.");
-	status = lttng_event_rule_syscall_get_filter(syscall, &tmp);
+	status = lttng_event_rule_kernel_syscall_get_filter(syscall, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "getting filter.");
 	ok(!strncmp(filter, tmp, strlen(filter)), "filter is equal.");
 

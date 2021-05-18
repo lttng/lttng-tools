@@ -5,17 +5,17 @@
  *
  */
 
-#ifndef LTTNG_EVENT_RULE_SYSCALL_INTERNAL_H
-#define LTTNG_EVENT_RULE_SYSCALL_INTERNAL_H
+#ifndef LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H
+#define LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H
 
 #include <common/payload-view.h>
 #include <common/macros.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/syscall.h>
+#include <lttng/event-rule/kernel-syscall.h>
 
-struct lttng_event_rule_syscall {
+struct lttng_event_rule_kernel_syscall {
 	struct lttng_event_rule parent;
-	enum lttng_event_rule_syscall_emission_site emission_site;
+	enum lttng_event_rule_kernel_syscall_emission_site emission_site;
 	char *pattern;
 	char *filter_expression;
 
@@ -26,7 +26,7 @@ struct lttng_event_rule_syscall {
 	} internal_filter;
 };
 
-struct lttng_event_rule_syscall_comm {
+struct lttng_event_rule_kernel_syscall_comm {
 	uint32_t emission_site;
 	/* Includes terminator `\0`. */
 	uint32_t pattern_len;
@@ -41,11 +41,11 @@ struct lttng_event_rule_syscall_comm {
 } LTTNG_PACKED;
 
 LTTNG_HIDDEN
-ssize_t lttng_event_rule_syscall_create_from_payload(
+ssize_t lttng_event_rule_kernel_syscall_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **rule);
 
 LTTNG_HIDDEN
-const char *lttng_event_rule_syscall_emission_site_str(
-		enum lttng_event_rule_syscall_emission_site emission_site);
-#endif /* LTTNG_EVENT_RULE_SYSCALL_INTERNAL_H */
+const char *lttng_event_rule_kernel_syscall_emission_site_str(
+		enum lttng_event_rule_kernel_syscall_emission_site emission_site);
+#endif /* LTTNG_EVENT_RULE_KERNEL_SYSCALL_INTERNAL_H */

@@ -2054,10 +2054,10 @@ static void test_syscall_event_rule_notification(
 			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_syscall_create(LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY);
+	event_rule = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(event_rule, "syscall event rule object creation");
 
-	event_rule_status = lttng_event_rule_syscall_set_name_pattern(
+	event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
 			event_rule, syscall_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting syscall event rule pattern: '%s'", syscall_name);
@@ -2140,15 +2140,15 @@ static void test_syscall_event_rule_notification_filter(
 			lttng_session_daemon_notification_endpoint);
 	ok(notification_channel, "Notification channel object creation");
 
-	event_rule = lttng_event_rule_syscall_create(LTTNG_EVENT_RULE_SYSCALL_EMISSION_SITE_ENTRY);
+	event_rule = lttng_event_rule_kernel_syscall_create(LTTNG_EVENT_RULE_KERNEL_SYSCALL_EMISSION_SITE_ENTRY);
 	ok(event_rule, "syscall event rule object creation");
 
-	event_rule_status = lttng_event_rule_syscall_set_name_pattern(
+	event_rule_status = lttng_event_rule_kernel_syscall_set_name_pattern(
 			event_rule, syscall_name);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting syscall event rule pattern: '%s'", syscall_name);
 
-	event_rule_status = lttng_event_rule_syscall_set_filter(
+	event_rule_status = lttng_event_rule_kernel_syscall_set_filter(
 			event_rule, filter_pattern);
 	ok(event_rule_status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting filter: '%s'", filter_pattern);

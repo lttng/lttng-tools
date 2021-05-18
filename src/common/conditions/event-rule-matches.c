@@ -798,7 +798,7 @@ lttng_condition_event_rule_matches_append_capture_descriptor(
 
 	switch(lttng_event_rule_get_type(rule)) {
 	case LTTNG_EVENT_RULE_TYPE_TRACEPOINT:
-	case LTTNG_EVENT_RULE_TYPE_SYSCALL:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 		/* Supported. */
 		status = LTTNG_CONDITION_STATUS_OK;
 		break;
