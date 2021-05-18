@@ -51,7 +51,6 @@ enum lttng_domain_type lttng_event_rule_get_domain_type(
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_SYSCALL:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
 		domain_type = LTTNG_DOMAIN_KERNEL;
@@ -180,9 +179,6 @@ ssize_t lttng_event_rule_create_from_payload(
 	switch ((enum lttng_event_rule_type) event_rule_comm->event_rule_type) {
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 		create_from_payload = lttng_event_rule_kernel_kprobe_create_from_payload;
-		break;
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
-		/* TODO */
 		break;
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		create_from_payload = lttng_event_rule_kernel_uprobe_create_from_payload;
@@ -341,8 +337,6 @@ const char *lttng_event_rule_type_str(enum lttng_event_rule_type type)
 		return "kernel syscall";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_KPROBE:
 		return "kernel kprobe";
-	case LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION:
-		return "function";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 		return "kernel uprobe";
 	case LTTNG_EVENT_RULE_TYPE_KERNEL_TRACEPOINT:
