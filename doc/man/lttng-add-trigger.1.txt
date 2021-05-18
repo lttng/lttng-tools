@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 ====================
-:revdate: 6 May 2021
+:revdate: 18 May 2021
 
 
 NAME
@@ -320,7 +320,7 @@ with `exec`.
 [role="term"]
 ----
 $ lttng add-trigger --condition=event-rule-matches \
-                    --domain=kernel --type=syscall:entry \
+                    --type=syscall:entry \
                     --name='exec*' --action=notify
 ----
 ====
@@ -336,7 +336,7 @@ The order of the option:--action options below is significant.
 [role="term"]
 ----
 $ lttng add-trigger --condition=event-rule-matches \
-                    --domain=user --name='my_app:*' \
+                    --type=user --name='my_app:*' \
                     --log-level=TRACE_WARNING.. \
                     --action=stop-session my-session \
                     --action=rotate-session my-session
@@ -361,7 +361,7 @@ See the option:--name option.
 ----
 $ lttng add-trigger --name=my-trigger \
                     --condition=event-rule-matches \
-                    --domain=python --name=my-logger \
+                    --type=python --name=my-logger \
                     --action=snapshot-session my-session
 ----
 ====
@@ -379,7 +379,7 @@ kernel tracepoint events with a name which starts with `sched`.
 ----
 # lttng add-trigger --owner-uid=$(id --user mireille) \
                     --condition=event-rule-matches \
-                    --domain=kernel --name='sched*' \
+                    --type=kernel --name='sched*' \
                     --action=notify
 ----
 ====
@@ -394,7 +394,7 @@ See the nloption:--rate-policy option above.
 [role="term"]
 ----
 $ lttng add-trigger --condition=event-rule-matches \
-                    --domain=user --action=notify \
+                    --type=user --action=notify \
                     --rate-policy=every:10
 ----
 ====
@@ -410,8 +410,7 @@ See the nloption:--rate-policy option above.
 [role="term"]
 ----
 $ lttng add-trigger --condition=event-rule-matches \
-                    --domain=kernel --type=syscall \
-                    --filter='fd < 3' \
+                    --type=syscall --filter='fd < 3' \
                     --action=start-session my-session \
                     --rate-policy=once-after:40
 ----
