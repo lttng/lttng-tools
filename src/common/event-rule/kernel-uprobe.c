@@ -15,34 +15,34 @@
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/userspace-probe-internal.h>
+#include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <lttng/userspace-probe-internal.h>
 
 #define IS_UPROBE_EVENT_RULE(rule) \
-	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE)
+	(lttng_event_rule_get_type(rule) == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE)
 
-static void lttng_event_rule_userspace_probe_destroy(struct lttng_event_rule *rule)
+static void lttng_event_rule_kernel_uprobe_destroy(struct lttng_event_rule *rule)
 {
-	struct lttng_event_rule_userspace_probe *uprobe;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
 
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 
 	lttng_userspace_probe_location_destroy(uprobe->location);
 	free(uprobe->name);
 	free(uprobe);
 }
 
-static bool lttng_event_rule_userspace_probe_validate(
+static bool lttng_event_rule_kernel_uprobe_validate(
 		const struct lttng_event_rule *rule)
 {
 	bool valid = false;
-	struct lttng_event_rule_userspace_probe *uprobe;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
 
 	if (!rule) {
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 
 	/* Required field. */
 	if (!uprobe->name) {
@@ -60,15 +60,15 @@ end:
 	return valid;
 }
 
-static int lttng_event_rule_userspace_probe_serialize(
+static int lttng_event_rule_kernel_uprobe_serialize(
 		const struct lttng_event_rule *rule,
 		struct lttng_payload *payload)
 {
 	int ret;
 	size_t name_len, header_offset, size_before_probe;
-	struct lttng_event_rule_userspace_probe *uprobe;
-	struct lttng_event_rule_userspace_probe_comm uprobe_comm = {};
-	struct lttng_event_rule_userspace_probe_comm *header;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
+	struct lttng_event_rule_kernel_uprobe_comm uprobe_comm = {};
+	struct lttng_event_rule_kernel_uprobe_comm *header;
 
 	if (!rule || !IS_UPROBE_EVENT_RULE(rule)) {
 		ret = -1;
@@ -78,7 +78,7 @@ static int lttng_event_rule_userspace_probe_serialize(
 	header_offset = payload->buffer.size;
 
 	DBG("Serializing uprobe event rule.");
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 
 	name_len = strlen(uprobe->name) + 1;
 
@@ -105,7 +105,7 @@ static int lttng_event_rule_userspace_probe_serialize(
 	}
 
 	/* Update the header regarding the probe size. */
-	header = (struct lttng_event_rule_userspace_probe_comm
+	header = (struct lttng_event_rule_kernel_uprobe_comm
 					*) ((char *) payload->buffer.data +
 			header_offset);
 	header->location_len = payload->buffer.size - size_before_probe;
@@ -116,14 +116,14 @@ end:
 	return ret;
 }
 
-static bool lttng_event_rule_userspace_probe_is_equal(const struct lttng_event_rule *_a,
+static bool lttng_event_rule_kernel_uprobe_is_equal(const struct lttng_event_rule *_a,
 		const struct lttng_event_rule *_b)
 {
 	bool is_equal = false;
-	struct lttng_event_rule_userspace_probe *a, *b;
+	struct lttng_event_rule_kernel_uprobe *a, *b;
 
-	a = container_of(_a, struct lttng_event_rule_userspace_probe, parent);
-	b = container_of(_b, struct lttng_event_rule_userspace_probe, parent);
+	a = container_of(_a, struct lttng_event_rule_kernel_uprobe, parent);
+	b = container_of(_b, struct lttng_event_rule_kernel_uprobe, parent);
 
 	/* uprobe is invalid if this is not true. */
 	assert(a->name);
@@ -140,7 +140,7 @@ end:
 	return is_equal;
 }
 
-static enum lttng_error_code lttng_event_rule_userspace_probe_generate_filter_bytecode(
+static enum lttng_error_code lttng_event_rule_kernel_uprobe_generate_filter_bytecode(
 		struct lttng_event_rule *rule,
 		const struct lttng_credentials *creds)
 {
@@ -148,7 +148,7 @@ static enum lttng_error_code lttng_event_rule_userspace_probe_generate_filter_by
 	return LTTNG_OK;
 }
 
-static const char *lttng_event_rule_userspace_probe_get_filter(
+static const char *lttng_event_rule_kernel_uprobe_get_filter(
 		const struct lttng_event_rule *rule)
 {
 	/* Unsupported. */
@@ -156,14 +156,14 @@ static const char *lttng_event_rule_userspace_probe_get_filter(
 }
 
 static const struct lttng_bytecode *
-lttng_event_rule_userspace_probe_get_filter_bytecode(const struct lttng_event_rule *rule)
+lttng_event_rule_kernel_uprobe_get_filter_bytecode(const struct lttng_event_rule *rule)
 {
 	/* Unsupported. */
 	return NULL;
 }
 
 static enum lttng_event_rule_generate_exclusions_status
-lttng_event_rule_userspace_probe_generate_exclusions(const struct lttng_event_rule *rule,
+lttng_event_rule_kernel_uprobe_generate_exclusions(const struct lttng_event_rule *rule,
 		struct lttng_event_exclusion **exclusions)
 {
 	/* Unsupported. */
@@ -172,14 +172,14 @@ lttng_event_rule_userspace_probe_generate_exclusions(const struct lttng_event_ru
 }
 
 static unsigned long
-lttng_event_rule_userspace_probe_hash(
+lttng_event_rule_kernel_uprobe_hash(
 		const struct lttng_event_rule *rule)
 {
 	unsigned long hash;
-	struct lttng_event_rule_userspace_probe *urule =
+	struct lttng_event_rule_kernel_uprobe *urule =
 			container_of(rule, typeof(*urule), parent);
 
-	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE,
+	hash = hash_key_ulong((void *) LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE,
 			lttng_ht_seed);
 	hash ^= hash_key_str(urule->name, lttng_ht_seed);
 	hash ^= lttng_userspace_probe_location_hash(urule->location);
@@ -189,7 +189,7 @@ lttng_event_rule_userspace_probe_hash(
 
 static
 int userspace_probe_set_location(
-		struct lttng_event_rule_userspace_probe *uprobe,
+		struct lttng_event_rule_kernel_uprobe *uprobe,
 		const struct lttng_userspace_probe_location *location)
 {
 	int ret;
@@ -214,31 +214,31 @@ end:
 	return ret;
 }
 
-struct lttng_event_rule *lttng_event_rule_userspace_probe_create(
+struct lttng_event_rule *lttng_event_rule_kernel_uprobe_create(
 		const struct lttng_userspace_probe_location *location)
 {
 	struct lttng_event_rule *rule = NULL;
-	struct lttng_event_rule_userspace_probe *urule;
+	struct lttng_event_rule_kernel_uprobe *urule;
 
-	urule = zmalloc(sizeof(struct lttng_event_rule_userspace_probe));
+	urule = zmalloc(sizeof(struct lttng_event_rule_kernel_uprobe));
 	if (!urule) {
 		goto end;
 	}
 
 	rule = &urule->parent;
-	lttng_event_rule_init(&urule->parent, LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE);
-	urule->parent.validate = lttng_event_rule_userspace_probe_validate;
-	urule->parent.serialize = lttng_event_rule_userspace_probe_serialize;
-	urule->parent.equal = lttng_event_rule_userspace_probe_is_equal;
-	urule->parent.destroy = lttng_event_rule_userspace_probe_destroy;
+	lttng_event_rule_init(&urule->parent, LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
+	urule->parent.validate = lttng_event_rule_kernel_uprobe_validate;
+	urule->parent.serialize = lttng_event_rule_kernel_uprobe_serialize;
+	urule->parent.equal = lttng_event_rule_kernel_uprobe_is_equal;
+	urule->parent.destroy = lttng_event_rule_kernel_uprobe_destroy;
 	urule->parent.generate_filter_bytecode =
-			lttng_event_rule_userspace_probe_generate_filter_bytecode;
-	urule->parent.get_filter = lttng_event_rule_userspace_probe_get_filter;
+			lttng_event_rule_kernel_uprobe_generate_filter_bytecode;
+	urule->parent.get_filter = lttng_event_rule_kernel_uprobe_get_filter;
 	urule->parent.get_filter_bytecode =
-			lttng_event_rule_userspace_probe_get_filter_bytecode;
+			lttng_event_rule_kernel_uprobe_get_filter_bytecode;
 	urule->parent.generate_exclusions =
-			lttng_event_rule_userspace_probe_generate_exclusions;
-	urule->parent.hash = lttng_event_rule_userspace_probe_hash;
+			lttng_event_rule_kernel_uprobe_generate_exclusions;
+	urule->parent.hash = lttng_event_rule_kernel_uprobe_hash;
 
 	if (userspace_probe_set_location(urule, location)) {
 		lttng_event_rule_destroy(rule);
@@ -250,12 +250,12 @@ end:
 }
 
 LTTNG_HIDDEN
-ssize_t lttng_event_rule_userspace_probe_create_from_payload(
+ssize_t lttng_event_rule_kernel_uprobe_create_from_payload(
 		struct lttng_payload_view *view,
 		struct lttng_event_rule **_event_rule)
 {
 	ssize_t ret, offset = 0;
-	const struct lttng_event_rule_userspace_probe_comm *uprobe_comm;
+	const struct lttng_event_rule_kernel_uprobe_comm *uprobe_comm;
 	const char *name;
 	struct lttng_buffer_view current_buffer_view;
 	struct lttng_event_rule *rule = NULL;
@@ -323,20 +323,20 @@ ssize_t lttng_event_rule_userspace_probe_create_from_payload(
 	/* Skip after the location. */
 	offset += uprobe_comm->location_len;
 
-	rule = lttng_event_rule_userspace_probe_create(location);
+	rule = lttng_event_rule_kernel_uprobe_create(location);
 	if (!rule) {
 		ERR("Failed to create event rule uprobe.");
 		ret = -1;
 		goto end;
 	}
 
-	status = lttng_event_rule_userspace_probe_set_event_name(rule, name);
+	status = lttng_event_rule_kernel_uprobe_set_event_name(rule, name);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 		ret = -1;
 		goto end;
 	}
 
-	if (!lttng_event_rule_userspace_probe_validate(rule)) {
+	if (!lttng_event_rule_kernel_uprobe_validate(rule)) {
 		ret = -1;
 		goto end;
 	}
@@ -351,7 +351,7 @@ end:
 }
 
 
-enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_location(
+enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_get_location(
 		const struct lttng_event_rule *rule,
 		const struct lttng_userspace_probe_location **location)
 {
@@ -362,7 +362,7 @@ enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_location(
 		goto end;
 	}
 
-	*location = lttng_event_rule_userspace_probe_get_location_mutable(rule);
+	*location = lttng_event_rule_kernel_uprobe_get_location_mutable(rule);
 	if (!*location) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;
@@ -374,22 +374,22 @@ end:
 
 LTTNG_HIDDEN
 struct lttng_userspace_probe_location *
-lttng_event_rule_userspace_probe_get_location_mutable(
+lttng_event_rule_kernel_uprobe_get_location_mutable(
 		const struct lttng_event_rule *rule)
 {
-	struct lttng_event_rule_userspace_probe *uprobe;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
 
 	assert(rule);
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 
 	return uprobe->location;
 }
 
-enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_event_name(
+enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_set_event_name(
 		struct lttng_event_rule *rule, const char *name)
 {
 	char *name_copy = NULL;
-	struct lttng_event_rule_userspace_probe *uprobe;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_UPROBE_EVENT_RULE(rule) || !name ||
@@ -398,7 +398,7 @@ enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_event_name(
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 	name_copy = strdup(name);
 	if (!name_copy) {
 		status = LTTNG_EVENT_RULE_STATUS_ERROR;
@@ -415,10 +415,10 @@ end:
 	return status;
 }
 
-enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_event_name(
+enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_get_event_name(
 		const struct lttng_event_rule *rule, const char **name)
 {
-	struct lttng_event_rule_userspace_probe *uprobe;
+	struct lttng_event_rule_kernel_uprobe *uprobe;
 	enum lttng_event_rule_status status = LTTNG_EVENT_RULE_STATUS_OK;
 
 	if (!rule || !IS_UPROBE_EVENT_RULE(rule) || !name) {
@@ -426,7 +426,7 @@ enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_event_name(
 		goto end;
 	}
 
-	uprobe = container_of(rule, struct lttng_event_rule_userspace_probe, parent);
+	uprobe = container_of(rule, struct lttng_event_rule_kernel_uprobe, parent);
 	if (!uprobe->name) {
 		status = LTTNG_EVENT_RULE_STATUS_UNSET;
 		goto end;

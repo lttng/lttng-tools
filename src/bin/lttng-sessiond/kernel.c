@@ -32,7 +32,7 @@
 #include <lttng/condition/event-rule-matches-internal.h>
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/event-rule/event-rule-internal.h>
-#include <lttng/event-rule/userspace-probe-internal.h>
+#include <lttng/event-rule/kernel-uprobe-internal.h>
 
 #include "event-notifier-error-accounting.h"
 #include "lttng-sessiond.h"
@@ -542,9 +542,9 @@ static int userspace_probe_event_rule_add_callsites(
 	assert(creds);
 
 	event_rule_type = lttng_event_rule_get_type(rule);
-	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE);
+	assert(event_rule_type == LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE);
 
-	status = lttng_event_rule_userspace_probe_get_location(rule, &location);
+	status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
 	if (status != LTTNG_EVENT_RULE_STATUS_OK || !location) {
 		ret = -1;
 		goto end;
@@ -2394,7 +2394,7 @@ static enum lttng_error_code kernel_create_event_notifier_rule(
 	}
 
 	if (lttng_event_rule_get_type(event_rule) ==
-			LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE) {
+			LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE) {
 		ret = userspace_probe_event_rule_add_callsites(
 				event_rule, creds, event_notifier_rule->fd);
 		if (ret) {

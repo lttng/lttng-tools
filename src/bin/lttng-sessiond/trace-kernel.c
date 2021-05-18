@@ -24,7 +24,7 @@
 #include <lttng/event-rule/kernel-syscall-internal.h>
 #include <lttng/event-rule/tracepoint.h>
 #include <lttng/event-rule/tracepoint-internal.h>
-#include <lttng/event-rule/userspace-probe-internal.h>
+#include <lttng/event-rule/kernel-uprobe-internal.h>
 #include <common/common.h>
 #include <common/defaults.h>
 #include <common/trace-chunk.h>
@@ -608,13 +608,13 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 		ret_code = LTTNG_OK;
 		break;
 	}
-	case LTTNG_EVENT_RULE_TYPE_USERSPACE_PROBE:
+	case LTTNG_EVENT_RULE_TYPE_KERNEL_UPROBE:
 	{
 		const struct lttng_userspace_probe_location* location = NULL;
 		const struct lttng_userspace_probe_location_lookup_method *lookup = NULL;
 		enum lttng_event_rule_status status;
 
-		status = lttng_event_rule_userspace_probe_get_location(rule, &location);
+		status = lttng_event_rule_kernel_uprobe_get_location(rule, &location);
 		if (status != LTTNG_EVENT_RULE_STATUS_OK) {
 			ret_code = LTTNG_ERR_PROBE_LOCATION_INVAL;
 			goto error;
@@ -649,7 +649,7 @@ enum lttng_error_code trace_kernel_init_event_notifier_from_event_rule(
 			abort();
 		}
 
-		status = lttng_event_rule_userspace_probe_get_event_name(
+		status = lttng_event_rule_kernel_uprobe_get_event_name(
 				rule, &name);
 		assert(status == LTTNG_EVENT_RULE_STATUS_OK);
 		ret_code = LTTNG_OK;

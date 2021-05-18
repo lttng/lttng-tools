@@ -45,7 +45,7 @@
 #include <lttng/event-rule/kernel-probe.h>
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint.h>
-#include <lttng/event-rule/userspace-probe.h>
+#include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event.h>
 #include <lttng/handle.h>
 #include <lttng/health.h>

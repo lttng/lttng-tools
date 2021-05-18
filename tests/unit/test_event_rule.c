@@ -24,8 +24,8 @@
 #include <lttng/event-rule/kernel-syscall.h>
 #include <lttng/event-rule/tracepoint-internal.h>
 #include <lttng/event-rule/tracepoint.h>
-#include <lttng/event-rule/userspace-probe-internal.h>
-#include <lttng/event-rule/userspace-probe.h>
+#include <lttng/event-rule/kernel-uprobe-internal.h>
+#include <lttng/event-rule/kernel-uprobe.h>
 #include <lttng/event.h>
 #include <lttng/kernel-probe-internal.h>
 #include <lttng/kernel-probe.h>
@@ -255,10 +255,10 @@ static void test_event_rule_userspace_probe(void)
 
 	lttng_payload_init(&payload);
 
-	uprobe = lttng_event_rule_userspace_probe_create(probe_location);
+	uprobe = lttng_event_rule_kernel_uprobe_create(probe_location);
 	ok(uprobe, "uprobe event rule object creation.");
 
-	status = lttng_event_rule_userspace_probe_get_location(
+	status = lttng_event_rule_kernel_uprobe_get_location(
 			uprobe, &probe_location_tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Getting uprobe event rule location.");
@@ -266,10 +266,10 @@ static void test_event_rule_userspace_probe(void)
 			   probe_location, probe_location_tmp),
 			"Location is equal.");
 
-	status = lttng_event_rule_userspace_probe_set_event_name(uprobe, probe_name);
+	status = lttng_event_rule_kernel_uprobe_set_event_name(uprobe, probe_name);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK,
 			"Setting uprobe event rule name: %s.", probe_name);
-	status = lttng_event_rule_userspace_probe_get_event_name(uprobe, &tmp);
+	status = lttng_event_rule_kernel_uprobe_get_event_name(uprobe, &tmp);
 	ok(status == LTTNG_EVENT_RULE_STATUS_OK, "Getting uprobe name.");
 	ok(!strcmp(probe_name, tmp), "Uprobe name are equal.");
 

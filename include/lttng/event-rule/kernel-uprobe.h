@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef LTTNG_EVENT_RULE_USERSPACE_PROBE_H
-#define LTTNG_EVENT_RULE_USERSPACE_PROBE_H
+#ifndef LTTNG_EVENT_RULE_KERNEL_UPROBE_H
+#define LTTNG_EVENT_RULE_KERNEL_UPROBE_H
 
 #include <lttng/event-rule/event-rule.h>
 #include <lttng/userspace-probe.h>
@@ -16,18 +16,18 @@ extern "C" {
 #endif
 
 /*
- * Create a newly allocated user space probe event rule.
+ * Create a newly allocated kernel uprobe event rule.
  *
  * The location is copied internally.
  *
  * Returns a new event rule on success, NULL on failure. This event rule must be
  * destroyed using lttng_event_rule_destroy().
  */
-extern struct lttng_event_rule *lttng_event_rule_userspace_probe_create(
+extern struct lttng_event_rule *lttng_event_rule_kernel_uprobe_create(
 		const struct lttng_userspace_probe_location *location);
 
 /*
- * Get the location of a user space probe event rule.
+ * Get the location of a kernel uprobe event rule.
  *
  * The caller does not assume the ownership of the returned location.
  * The location shall only be used for the duration of the event
@@ -38,23 +38,23 @@ extern struct lttng_event_rule *lttng_event_rule_userspace_probe_create(
  * passed, or LTTNG_EVENT_RULE_STATUS_UNSET if a location was not set prior to
  * this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_location(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_get_location(
 		const struct lttng_event_rule *rule,
 		const struct lttng_userspace_probe_location **location);
 
 /*
- * Set the name of a user space probe event rule.
+ * Set the name of a kernel uprobe event rule.
  *
  * The name is copied internally.
  *
  * Return LTTNG_EVENT_RULE_STATUS_OK on success, LTTNG_EVENT_RULE_STATUS_INVALID
  * if invalid parameters are passed.
  */
-extern enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_event_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_set_event_name(
 		struct lttng_event_rule *rule, const char *name);
 
 /*
- * Get the name of a user space probe event rule.
+ * Get the name of a kernel uprobe event rule.
  *
  * The caller does not assume the ownership of the returned name.
  * The name shall only only be used for the duration of the event
@@ -64,11 +64,11 @@ extern enum lttng_event_rule_status lttng_event_rule_userspace_probe_set_event_n
  * success, LTTNG_EVENT_RULE_STATUS_INVALID if an invalid parameter is passed,
  * or LTTNG_EVENT_RULE_STATUS_UNSET if a name was not set prior to this call.
  */
-extern enum lttng_event_rule_status lttng_event_rule_userspace_probe_get_event_name(
+extern enum lttng_event_rule_status lttng_event_rule_kernel_uprobe_get_event_name(
 		const struct lttng_event_rule *rule, const char **name);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LTTNG_EVENT_RULE_USERSPACE_PROBE_H */
+#endif /* LTTNG_EVENT_RULE_KERNEL_UPROBE_H */
