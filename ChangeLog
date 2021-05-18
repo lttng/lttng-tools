@@ -1,3 +1,30 @@
+2021-05-18 lttng-tools 2.11.7 (No Dirty Dishes Day)
+	* Fix: sessiond: leak of config_path on duplicate --config option
+	* Fix: relayd: live: data is missing between viewer attach and retry
+	* Fix: lttng-ctl: erroneous check if user is part of the tracing group
+	* Fix: kernel consumer: get next subbuffer EAGAIN handling
+	* Fix: kernel consumer: signal metadata ready condition variable
+	* Fix: consumerd: unbalanced subbuffer 'get' when checking operation availability
+	* Fix: consumerd: strlen called on uninitialized path
+	* Fix: tests: health thread stall: only stop consumerd when required
+	* Fix: tests: quote variable in case it's not set
+	* Fix: sessiond: session destroy hang in per-uid when context cannot be added
+	* Fix: lttng_destroy_session_no_wait: return 0 on success
+	* config: fix typo in error message
+	* Tests: array expressions without contant index are invalid
+	* Fix: validate that array expression contains constant
+	* Fix: test: base-path tests are not run
+	* Fix: filter: memory leak in filter_parser_ctx
+	* Fix: sessiond: fix -Wshadow error in save.c
+	* Fix: utils: avoid strncpy overlap in utils_partial_realpath
+	* Clean-up: utils: make utils_partial_realpath static
+	* Fix: sessiond: kernel: invalid error code check
+	* Fix: ust-consumer: metadata thread not woken-up after version change
+	* Clean-up: ust-consumer: simplify metadata cache unlock on error path
+	* Fix: sessiond: timer: unitiliazed sigevent fields
+	* Fix: sessiond: ust-registry: dereference of NULL pointer on allocation failure
+	* Fix: ust-consumer: metadata cache lock not taken when sampling max offset
+
 2021-02-22 lttng-tools 2.11.6 (National Margarita Day)
 	* Fix: use MT-safe strtok_r in multithreaded context
 	* Fix: liblttng-ctl: unreported truncations when copying strings
