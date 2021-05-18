@@ -1,6 +1,6 @@
 lttng-concepts(7)
 =================
-:revdate: 3 May 2021
+:revdate: 18 May 2021
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
 :sect-session: TRACING SESSION
 :sect-domain: TRACING DOMAIN
@@ -522,23 +522,23 @@ There are currently five available tracing domains:
 |Tracing domain |``Event rule matches'' trigger condition option |Option for other CLI commands
 
 |Linux kernel
-|nloption:--domain=++kernel++
+|nloption:--type option starts with `kernel:`
 |nloption:--kernel
 
 |User space
-|nloption:--domain=++user++
+|nloption:--type option starts with `user:`
 |nloption:--userspace
 
 |`java.util.logging` (JUL)
-|nloption:--domain=++jul++
+|nloption:--type option starts with `jul:`
 |nloption:--jul
 
 |Apache log4j
-|nloption:--domain=++log4j++
+|nloption:--type option starts with `log4j:`
 |nloption:--log4j
 
 |Python
-|nloption:--domain=++python++
+|nloption:--type option starts with `python:`
 |nloption:--python
 |===
 
