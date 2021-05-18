@@ -1,3 +1,32 @@
+2021-05-18 lttng-tools 2.12.4 (No Dirty Dishes Day)
+	* Fix: snapshot path have domain subdir duplicate "ust/ust" or "kernel/kernel"
+	* Fix: relayd: failure to read index entry or stream packet after clear
+	* Fix: sessiond: leak of config_path on duplicate --config option
+	* Fix: relayd: live: data is missing between viewer attach and retry
+	* Fix: lttng-ctl: erroneous check if user is part of the tracing group
+	* Fix: kernel consumer: get next subbuffer EAGAIN handling
+	* Fix: kernel consumer: signal metadata ready condition variable
+	* Fix: consumerd: unbalanced subbuffer 'get' when checking operation availability
+	* Fix: tests: gen-ust-events-ns: Uninitialized argument value
+	* Fix: consumerd: strlen called on uninitialized path
+	* Fix: tests: health thread stall: only stop consumerd when required
+	* Fix: tests: quote variable in case it's not set
+	* Fix: sessiond: session destroy hang in per-uid when context cannot be added
+	* Fix: backward relayd: path contains a leading "ust" folder
+	* Fix: lttng_destroy_session_no_wait: return 0 on success
+	* config: fix typo in error message
+	* Tests: array expressions without contant index are invalid
+	* Fix: validate that array expression contains constant
+	* Fix: test: base-path tests are not run
+	* Fix: filter: memory leak in filter_parser_ctx
+	* Fix: sessiond: fix -Wshadow error in save.c
+	* Fix: utils: avoid strncpy overlap in utils_partial_realpath
+	* Clean-up: utils: make utils_partial_realpath static
+	* Fix: added missing test_channel and removed double defined test_syscall
+	* Fix: sessiond: kernel: invalid error code check
+	* Tests: fix: unchecked sscanf return value
+	* compiler warning cleanup: is_signed_type: compare -1 to 1
+
 2021-02-22 lttng-tools 2.12.3 (National Margarita Day)
 	* Fix: ust-consumer: metadata thread not woken-up after version change
 	* Clean-up: ust-consumer: simplify metadata cache unlock on error path
