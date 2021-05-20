@@ -19,6 +19,7 @@
 #include <lttng/action/action.h>
 #include <lttng/action/list.h>
 #include <lttng/action/notify.h>
+#include <lttng/action/path.h>
 #include <lttng/action/rate-policy.h>
 #include <lttng/action/rotate-session.h>
 #include <lttng/action/snapshot-session.h>

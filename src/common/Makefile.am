@@ -37,6 +37,7 @@ libcommon_la_SOURCES = \
 	actions/action.c \
 	actions/list.c \
 	actions/notify.c \
+	actions/path.c \
 	actions/rotate-session.c \
 	actions/snapshot-session.c \
 	actions/start-session.c \
