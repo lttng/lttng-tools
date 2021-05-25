@@ -84,7 +84,7 @@ int lttng_condition_buffer_usage_serialize(
 	int ret;
 	struct lttng_condition_buffer_usage *usage;
 	size_t session_name_len, channel_name_len;
-	struct lttng_condition_buffer_usage_comm usage_comm;
+	struct lttng_condition_buffer_usage_comm usage_comm = {};
 
 	if (!condition || !IS_USAGE_CONDITION(condition)) {
 		ret = -1;
