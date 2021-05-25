@@ -539,9 +539,10 @@ static void print_condition_event_rule_matches(
 	}
 }
 
-static
-void print_action_errors(const struct lttng_trigger *trigger,
-		const struct lttng_action *action)
+static void print_action_errors(const struct lttng_trigger *trigger,
+		const struct lttng_action *action,
+		const uint64_t *action_path_indexes,
+		size_t action_path_length)
 {
 	unsigned int i, count, printed_errors_count = 0;
 	enum lttng_error_code error_query_ret;
@@ -550,9 +551,13 @@ void print_action_errors(const struct lttng_trigger *trigger,
 	const char *trigger_name;
 	uid_t trigger_uid;
 	enum lttng_trigger_status trigger_status;
-	struct lttng_error_query *query =
-			lttng_error_query_action_create(trigger, action);
+	struct lttng_error_query *query;
+	struct lttng_action_path *action_path = lttng_action_path_create(
+			action_path_indexes, action_path_length);
 
+	assert(action_path);
+
+	query = lttng_error_query_action_create(trigger, action_path);
 	assert(query);
 
 	trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
@@ -625,11 +630,14 @@ end:
 	MSG("");
 	lttng_error_query_destroy(query);
 	lttng_error_query_results_destroy(results);
+	lttng_action_path_destroy(action_path);
 }
 
 static
 void print_one_action(const struct lttng_trigger *trigger,
-		const struct lttng_action *action)
+		const struct lttng_action *action,
+		const uint64_t *action_path_indexes,
+		size_t action_path_length)
 {
 	enum lttng_action_type action_type;
 	enum lttng_action_status action_status;
@@ -795,7 +803,8 @@ void print_one_action(const struct lttng_trigger *trigger,
 	}
 
 	MSG("");
-	print_action_errors(trigger, action);
+	print_action_errors(trigger, action, action_path_indexes,
+			action_path_length);
 
 end:
 	return;
@@ -949,16 +958,18 @@ void print_one_trigger(const struct lttng_trigger *trigger)
 		assert(action_status == LTTNG_ACTION_STATUS_OK);
 
 		for (i = 0; i < count; i++) {
+			const uint64_t action_path_index = i;
 			const struct lttng_action *subaction =
 					lttng_action_list_get_at_index(
 							action, i);
 
 			_MSG("    ");
-			print_one_action(trigger, subaction);
+			print_one_action(trigger, subaction, &action_path_index,
+					1);
 		}
 	} else {
 		_MSG(" action:");
-		print_one_action(trigger, action);
+		print_one_action(trigger, action, NULL, 0);
 	}
 
 	print_trigger_errors(trigger);

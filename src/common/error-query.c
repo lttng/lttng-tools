@@ -36,23 +36,11 @@ struct lttng_error_query_trigger {
 	struct lttng_trigger *trigger;
 };
 
-struct lttng_error_query_action_comm {
-	LTTNG_OPTIONAL_COMM(uint32_t) action_index;
-	/* Trigger payload. */
-	char payload[];
-};
-
 struct lttng_error_query_action {
 	struct lttng_error_query parent;
 	/* Mutable only because of the reference count. */
 	struct lttng_trigger *trigger;
-	/*
-	 * Index of the target action. Since action lists can't be nested,
-	 * the targetted action is the top-level list if the action_index is
-	 * unset. Otherwise, the index refers to the index within the top-level
-	 * list.
-	 */
-	LTTNG_OPTIONAL(unsigned int) action_index;
+	struct lttng_action_path action_path;
 };
 
 struct lttng_error_query_result {
@@ -123,15 +111,61 @@ end:
 	return query ? &query->parent : NULL;
 }
 
-extern struct lttng_error_query *lttng_error_query_action_create(
+static
+struct lttng_action *get_trigger_action_from_path(
+		struct lttng_trigger *trigger,
+		const struct lttng_action_path *action_path)
+{
+	size_t index_count, i;
+	enum lttng_action_path_status path_status;
+	struct lttng_action *current_action = NULL;
+
+	path_status = lttng_action_path_get_index_count(
+			action_path, &index_count);
+	if (path_status != LTTNG_ACTION_PATH_STATUS_OK) {
+		goto end;
+	}
+
+	current_action = lttng_trigger_get_action(trigger);
+	for (i = 0; i < index_count; i++) {
+		uint64_t path_index;
+
+		path_status = lttng_action_path_get_index_at_index(
+				action_path, i, &path_index);
+		current_action = lttng_action_list_borrow_mutable_at_index(
+				current_action, path_index);
+		if (!current_action) {
+			/* Invalid action path. */
+			goto end;
+		}
+	}
+
+end:
+	return current_action;
+}
+
+static
+bool is_valid_action_path(const struct lttng_trigger *trigger,
+		const struct lttng_action_path *action_path)
+{
+	/*
+	 * While 'trigger's constness is casted-away, the trigger and resulting
+	 * action are not modified; we merely check for the action's existence.
+	 */
+	return !!get_trigger_action_from_path(
+			(struct lttng_trigger *) trigger, action_path);
+}
+
+struct lttng_error_query *lttng_error_query_action_create(
 		const struct lttng_trigger *trigger,
-		const struct lttng_action *action)
+		const struct lttng_action_path *action_path)
 {
 	struct lttng_error_query_action *query = NULL;
-	typeof(query->action_index) action_index = {};
 	struct lttng_trigger *trigger_copy = NULL;
+	int ret_copy;
 
-	if (!trigger || !action) {
+	if (!trigger || !action_path ||
+			!is_valid_action_path(trigger, action_path)) {
 		goto end;
 	}
 
@@ -140,63 +174,25 @@ extern struct lttng_error_query *lttng_error_query_action_create(
 		goto end;
 	}
 
-	/*
-	 * If an action is not the top-level action of the trigger, our only
-	 * hope of finding its position is if the top-level action is an
-	 * action list.
-	 *
-	 * Note that action comparisons are performed by pointer since multiple
-	 * otherwise identical actions can be found in an action list (two
-	 * notify actions, for example).
-	 */
-	if (action != trigger->action &&
-			lttng_action_get_type(trigger->action) ==
-					LTTNG_ACTION_TYPE_LIST) {
-		unsigned int i, action_list_count;
-		enum lttng_action_status action_status;
-
-		action_status = lttng_action_list_get_count(
-				trigger->action, &action_list_count);
-		if (action_status != LTTNG_ACTION_STATUS_OK) {
-			goto error;
-		}
-
-		for (i = 0; i < action_list_count; i++) {
-			const struct lttng_action *candidate_action =
-					lttng_action_list_get_at_index(
-							trigger->action, i);
-
-			assert(candidate_action);
-			if (candidate_action == action) {
-				LTTNG_OPTIONAL_SET(&action_index, i);
-				break;
-			}
-		}
-
-		if (!action_index.is_set) {
-			/* Not found; invalid action. */
-			goto error;
-		}
-	} else {
-		/*
-		 * Trigger action is not a list and not equal to the target
-		 * action; invalid action provided.
-		 */
-		goto error;
-	}
-
 	query = zmalloc(sizeof(*query));
 	if (!query) {
 		PERROR("Failed to allocate action error query");
 		goto error;
 	}
 
+	ret_copy = lttng_action_path_copy(action_path, &query->action_path);
+	if (ret_copy) {
+		goto error;
+	}
+
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION;
 	query->trigger = trigger_copy;
 	trigger_copy = NULL;
-	query->action_index = action_index;
+	goto end;
+
 error:
 	lttng_trigger_put(trigger_copy);
+	lttng_error_query_destroy(query ? &query->parent : NULL);
 end:
 	return query ? &query->parent : NULL;
 }
@@ -616,19 +612,9 @@ int lttng_error_query_action_serialize(const struct lttng_error_query *query,
 	int ret;
 	const struct lttng_error_query_action *query_action =
 			container_of(query, typeof(*query_action), parent);
-	struct lttng_error_query_action_comm header = {
-		.action_index.is_set = query_action->action_index.is_set,
-		.action_index.value = query_action->action_index.value,
-	};
 
 	if (!lttng_trigger_validate(query_action->trigger)) {
 		ret = -1;
-		goto end;
-	}
-
-	ret = lttng_dynamic_buffer_append(
-			&payload->buffer, &header, sizeof(header));
-	if (ret) {
 		goto end;
 	}
 
@@ -636,6 +622,12 @@ int lttng_error_query_action_serialize(const struct lttng_error_query *query,
 	if (ret) {
 		goto end;
 	}
+
+	ret = lttng_action_path_serialize(&query_action->action_path, payload);
+	if (ret) {
+		goto end;
+	}
+
 end:
 	return ret;
 }
@@ -672,28 +664,11 @@ struct lttng_action *lttng_error_query_action_borrow_action_target(
 	const struct lttng_error_query *query,
 	struct lttng_trigger *trigger)
 {
-	struct lttng_action *target_action = NULL;
 	const struct lttng_error_query_action *query_action =
 			container_of(query, typeof(*query_action), parent);
-	struct lttng_action *trigger_action =
-			lttng_trigger_get_action(trigger);
 
-	if (!query_action->action_index.is_set) {
-		target_action = trigger_action;
-	} else {
-		if (lttng_action_get_type(trigger_action) !=
-				LTTNG_ACTION_TYPE_LIST) {
-			ERR("Invalid action error query target index: trigger action is not a list");
-			goto end;
-		}
-
-		target_action = lttng_action_list_borrow_mutable_at_index(
-				trigger_action,
-				LTTNG_OPTIONAL_GET(query_action->action_index));
-	}
-
-end:
-	return target_action;
+	return get_trigger_action_from_path(
+			trigger, &query_action->action_path);
 }
 
 LTTNG_HIDDEN
@@ -785,26 +760,10 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 	{
-		const struct lttng_action *target_action;
-		ssize_t trigger_used_size;
-		struct lttng_error_query_action_comm *action_header;
+		struct lttng_action_path *action_path = NULL;
 
 		{
-			struct lttng_payload_view action_header_view =
-					lttng_payload_view_from_view(view,
-							used_size,
-							sizeof(*action_header));
-
-			if (!lttng_payload_view_is_valid(&action_header_view)) {
-				used_size = -1;
-				goto end;
-			}
-
-			action_header = (typeof(action_header)) action_header_view.buffer.data;
-			used_size += sizeof(*action_header);
-		}
-
-		{
+			ssize_t trigger_used_size;
 			struct lttng_payload_view trigger_view =
 					lttng_payload_view_from_view(
 							view, used_size, -1);
@@ -824,22 +783,30 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 			used_size += trigger_used_size;
 		}
 
-		if (!action_header->action_index.is_set) {
-			target_action = trigger->action;
-		} else {
-			if (lttng_action_get_type(trigger->action) !=
-					LTTNG_ACTION_TYPE_LIST) {
+		{
+			ssize_t action_path_used_size;
+			struct lttng_payload_view action_path_view =
+					lttng_payload_view_from_view(
+							view, used_size, -1);
+
+			if (!lttng_payload_view_is_valid(&action_path_view)) {
 				used_size = -1;
 				goto end;
 			}
 
-			target_action = lttng_action_list_get_at_index(
-					trigger->action,
-					action_header->action_index.value);
+			action_path_used_size = lttng_action_path_create_from_payload(
+					&action_path_view, &action_path);
+			if (action_path_used_size < 0) {
+				used_size = -1;
+				goto end;
+			}
+
+			used_size += action_path_used_size;
 		}
 
 		*query = lttng_error_query_action_create(
-				trigger, target_action);
+				trigger, action_path);
+		lttng_action_path_destroy(action_path);
 		if (!*query) {
 			used_size = -1;
 			goto end;

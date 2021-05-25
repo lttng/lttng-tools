@@ -61,10 +61,15 @@ enum lttng_error_query_results_status {
 extern struct lttng_error_query *lttng_error_query_trigger_create(
 		const struct lttng_trigger *trigger);
 
-/* Create an error query targetting an action object. */
+/*
+ * Create an error query targetting an action object.
+ *
+ * `action_path` is copied internally. The root of the `action_path` is the
+ * action of `trigger`.
+ */
 extern struct lttng_error_query *lttng_error_query_action_create(
 		const struct lttng_trigger *trigger,
-		const struct lttng_action *action);
+		const struct lttng_action_path *action_path);
 
 /* Destroy an error query. */
 extern void lttng_error_query_destroy(struct lttng_error_query *query);

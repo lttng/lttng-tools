@@ -29,10 +29,6 @@ struct lttng_action_path *lttng_action_path_create(
 	}
 
 	lttng_dynamic_array_init(&path->indexes, sizeof(uint64_t), NULL);
-	ret = lttng_dynamic_array_set_count(&path->indexes, index_count);
-	if (ret) {
-		goto error;
-	}
 
 	for (i = 0; i < index_count; i++) {
 		ret = lttng_dynamic_array_add_element(
@@ -112,11 +108,6 @@ int lttng_action_path_copy(const struct lttng_action_path *src,
 	lttng_dynamic_array_init(&dst->indexes, sizeof(uint64_t), NULL);
 	src_count = lttng_dynamic_array_get_count(&src->indexes);
 
-	ret = lttng_dynamic_array_set_count(&dst->indexes, src_count);
-	if (ret) {
-		goto error;
-	}
-
 	for (i = 0; i < src_count; i++) {
 		const void *index = lttng_dynamic_array_get_element(
 				&src->indexes, i);
@@ -173,6 +164,7 @@ ssize_t lttng_action_path_create_from_payload(
 	}
 
 	ret = consumed_size;
+	*_action_path = action_path;
 end:
 	return ret;
 }
