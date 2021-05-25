@@ -19,6 +19,7 @@
 
 #include <urcu/list.h>
 
+#include <lttng/domain-internal.h>
 #include <common/mi-lttng.h>
 
 #include "../command.h"
@@ -810,11 +811,13 @@ static int add_context(char *session_name)
 		} else {
 			if (opt_channel_name) {
 				MSG("%s context %s added to channel %s",
-						get_domain_str(dom.type), type->opt->symbol,
+						lttng_domain_type_str(dom.type),
+						type->opt->symbol,
 						opt_channel_name);
 			} else {
 				MSG("%s context %s added to all channels",
-						get_domain_str(dom.type), type->opt->symbol);
+						lttng_domain_type_str(dom.type),
+						type->opt->symbol);
 			}
 			success = 1;
 		}

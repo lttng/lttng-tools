@@ -16,6 +16,7 @@
 #include <assert.h>
 
 #include <common/mi-lttng.h>
+#include <lttng/domain-internal.h>
 
 #include "../command.h"
 
@@ -226,7 +227,7 @@ static int disable_events(char *session_name)
 			enabled = 0;
 			success = 1;
 			MSG("All %s events of type %s are disabled in channel %s",
-					get_domain_str(dom.type),
+					lttng_domain_type_str(dom.type),
 					print_event_type(opt_event_type),
 					print_channel_name(channel_name));
 		}
@@ -265,7 +266,7 @@ static int disable_events(char *session_name)
 				enabled = 1;
 			} else {
 				MSG("%s %s of type %s disabled in channel %s for session %s",
-						get_domain_str(dom.type),
+						lttng_domain_type_str(dom.type),
 						event_name,
 						print_event_type(opt_event_type),
 						print_channel_name(channel_name),

@@ -18,6 +18,7 @@
 #include <common/mi-lttng.h>
 #include <common/time.h>
 #include <common/tracker.h>
+#include <lttng/domain-internal.h>
 #include <lttng/lttng.h>
 
 #include "../command.h"
@@ -576,7 +577,7 @@ static int list_agent_events(void)
 		goto error;
 	}
 
-	agent_domain_str = get_domain_str(domain.type);
+	agent_domain_str = lttng_domain_type_str(domain.type);
 
 	DBG("Getting %s tracing events", agent_domain_str);
 

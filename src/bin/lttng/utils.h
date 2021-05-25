@@ -45,7 +45,6 @@ int get_count_order_u64(uint64_t x);
  */
 int get_count_order_ulong(unsigned long x);
 
-const char *get_domain_str(enum lttng_domain_type domain);
 const char *get_event_type_str(enum lttng_event_type event_type);
 
 int print_missing_or_multiple_domains(unsigned int domain_count,

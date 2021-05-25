@@ -21,6 +21,8 @@
 #include <common/utils.h>
 #include <common/mi-lttng.h>
 
+#include <lttng/domain-internal.h>
+
 #include "../command.h"
 #include "../utils.h"
 
@@ -304,7 +306,8 @@ static int enable_channel(char *session_name)
 			}
 		} else {
 			MSG("%s channel %s enabled for session %s",
-					get_domain_str(dom.type), channel_name, session_name);
+					lttng_domain_type_str(dom.type),
+					channel_name, session_name);
 			success = 1;
 		}
 

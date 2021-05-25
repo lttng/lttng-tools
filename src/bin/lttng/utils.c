@@ -26,11 +26,6 @@
 #include "utils.h"
 #include "command.h"
 
-static const char *str_kernel = "Kernel";
-static const char *str_ust = "UST";
-static const char *str_jul = "JUL";
-static const char *str_log4j = "LOG4J";
-static const char *str_python = "Python";
 static const char *str_all = "ALL";
 static const char *str_tracepoint = "Tracepoint";
 static const char *str_syscall = "Syscall";
@@ -296,34 +291,6 @@ int get_count_order_ulong(unsigned long x)
 		return -1;
 
 	return fls_ulong(x - 1);
-}
-
-const char *get_domain_str(enum lttng_domain_type domain)
-{
-	const char *str_dom;
-
-	switch (domain) {
-	case LTTNG_DOMAIN_KERNEL:
-		str_dom = str_kernel;
-		break;
-	case LTTNG_DOMAIN_UST:
-		str_dom = str_ust;
-		break;
-	case LTTNG_DOMAIN_JUL:
-		str_dom = str_jul;
-		break;
-	case LTTNG_DOMAIN_LOG4J:
-		str_dom = str_log4j;
-		break;
-	case LTTNG_DOMAIN_PYTHON:
-		str_dom = str_python;
-		break;
-	default:
-		/* Should not have an unknown domain or else define it. */
-		assert(0);
-	}
-
-	return str_dom;
 }
 
 const char *get_event_type_str(enum lttng_event_type type)

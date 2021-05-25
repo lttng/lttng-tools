@@ -25,6 +25,7 @@
 /* Mi dependancy */
 #include <common/mi-lttng.h>
 
+#include <lttng/domain-internal.h>
 #include <lttng/event-internal.h>
 
 #include "../command.h"
@@ -486,7 +487,7 @@ static int enable_events(char *session_name)
 		case LTTNG_DOMAIN_LOG4J:
 		case LTTNG_DOMAIN_PYTHON:
 			ERR("Event name exclusions are not yet implemented for %s events",
-					get_domain_str(dom.type));
+					lttng_domain_type_str(dom.type));
 			ret = CMD_ERROR;
 			goto error;
 		case LTTNG_DOMAIN_UST:
@@ -656,7 +657,7 @@ static int enable_events(char *session_name)
 						goto end;
 					}
 					MSG("All %s tracepoints%s are enabled in channel %s for loglevel %s",
-							get_domain_str(dom.type),
+							lttng_domain_type_str(dom.type),
 							exclusion_string,
 							print_channel_name(channel_name),
 							opt_loglevel);
@@ -670,7 +671,7 @@ static int enable_events(char *session_name)
 						goto end;
 					}
 					MSG("All %s tracepoints%s are enabled in channel %s",
-							get_domain_str(dom.type),
+							lttng_domain_type_str(dom.type),
 							exclusion_string,
 							print_channel_name(channel_name));
 					free(exclusion_string);
@@ -679,7 +680,7 @@ static int enable_events(char *session_name)
 			case LTTNG_EVENT_SYSCALL:
 				if (opt_kernel) {
 					MSG("All %s system calls are enabled in channel %s",
-							get_domain_str(dom.type),
+							lttng_domain_type_str(dom.type),
 							print_channel_name(channel_name));
 				}
 				break;
@@ -693,7 +694,7 @@ static int enable_events(char *session_name)
 						goto end;
 					}
 					MSG("All %s events%s are enabled in channel %s for loglevel %s",
-							get_domain_str(dom.type),
+							lttng_domain_type_str(dom.type),
 							exclusion_string,
 							print_channel_name(channel_name),
 							opt_loglevel);
@@ -707,7 +708,7 @@ static int enable_events(char *session_name)
 						goto end;
 					}
 					MSG("All %s events%s are enabled in channel %s",
-							get_domain_str(dom.type),
+							lttng_domain_type_str(dom.type),
 							exclusion_string,
 							print_channel_name(channel_name));
 					free(exclusion_string);
@@ -1059,7 +1060,7 @@ static int enable_events(char *session_name)
 				case LTTNG_DOMAIN_KERNEL:
 				case LTTNG_DOMAIN_UST:
 					MSG("%s event %s%s created in channel %s",
-						get_domain_str(dom.type),
+						lttng_domain_type_str(dom.type),
 						event_name,
 						exclusion_string,
 						print_channel_name(channel_name));
@@ -1072,7 +1073,7 @@ static int enable_events(char *session_name)
 					 * name for agent domains.
 					 */
 					MSG("%s event %s%s enabled",
-						get_domain_str(dom.type),
+						lttng_domain_type_str(dom.type),
 						event_name,
 						exclusion_string);
 					break;

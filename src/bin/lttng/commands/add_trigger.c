@@ -18,6 +18,7 @@
 #include "common/mi-lttng.h"
 #include "common/string-utils/string-utils.h"
 #include "common/utils.h"
+#include <lttng/domain-internal.h>
 /* For lttng_event_rule_type_str(). */
 #include <lttng/event-rule/event-rule-internal.h>
 #include <lttng/lttng.h>
