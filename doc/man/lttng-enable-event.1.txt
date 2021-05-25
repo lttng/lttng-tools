@@ -1,6 +1,6 @@
 lttng-enable-event(1)
 =====================
-:revdate: 12 May 2021
+:revdate: 25 May 2021
 
 
 NAME
@@ -76,6 +76,8 @@ Without the option:--channel option::
 If there's already a channel for the selected tracing session and domain
 which isn't named `channel0`, the `enable-event` command fails.
 Otherwise, it automatically creates it.
+
+See the <<examples,EXAMPLES>> section below for usage examples.
 
 List the recording event rules of a specific tracing session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
@@ -853,6 +855,85 @@ include::common-lttng-cmd-help-options.txt[]
 
 
 include::common-lttng-cmd-after-options.txt[]
+
+
+[[examples]]
+EXAMPLES
+--------
+.Create a recording event rule which matches all Linux system call events (current tracing session, default channel).
+====
+See the option:--all and option:--syscall options.
+
+[role="term"]
+----
+$ lttng enable-event --kernel --all --syscall
+----
+====
+
+.Create a recording event rule which matches user space tracepoint events named specifically (current tracing session, default channel).
+====
+The recording event rule below matches all user space tracepoint events
+of which the name starts with `my_provider:msg`.
+
+[role="term"]
+----
+$ lttng enable-event --userspace 'my_provider:msg*'
+----
+====
+
+.Create three recording event rules which match Python logging events named specifically (current tracing session, default channel).
+====
+[role="term"]
+----
+$ lttng enable-event --python server3,ui.window,user-mgmt
+----
+====
+
+.Create a recording event rule which matches Apache log4j logging events with a specific log level range (current tracing session, specific channel).
+====
+See the option:--channel, option:--all, and option:--loglevel options.
+
+[role="term"]
+----
+$ lttng enable-event --log4j --channel=my-loggers \
+                     --all --loglevel=INFO
+----
+====
+
+.Create a recording event rule which matches specific Linux kprobe events (current tracing session, default channel).
+====
+The recording event rule below matches the entry of `usb_disconnect()`
+Linux kernel function calls. The records of such events are named `usbd`
+(see the <<er-name,Event record name>> section above).
+
+See the option:--probe option.
+
+[role="term"]
+----
+$ lttng enable-event --kernel --probe=usb_disconnect usbd
+----
+====
+
+.Create a recording event rule which matches Linux kernel tracepoint events which satisfy an event payload and context filter (specific tracing session, default channel).
+====
+See the option:--session and option:--filter options.
+
+[role="term"]
+----
+$ lttng enable-event --kernel --session=my-session 'sched_*' \
+        --filter='$ctx.preemptible && comm != "systemd*"'
+----
+====
+
+.Enable two Linux kernel tracepoint recording event rules (current tracing session, specific channel).
+====
+See the option:--channel option.
+
+[role="term"]
+----
+$ lttng enable-event --kernel --channel=tva ja,wendy
+----
+====
 
 
 include::common-footer.txt[]
