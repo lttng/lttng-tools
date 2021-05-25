@@ -710,7 +710,6 @@ const char *mi_lttng_eventfieldtype_string(enum lttng_event_field_type val)
 LTTNG_HIDDEN
 const char *mi_lttng_domaintype_string(enum lttng_domain_type value)
 {
-	/* Note: This is a *duplicate* of get_domain_str from bin/lttng/utils.c */
 	switch (value) {
 	case LTTNG_DOMAIN_KERNEL:
 		return config_domain_type_kernel;
