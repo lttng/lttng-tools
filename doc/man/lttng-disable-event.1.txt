@@ -47,6 +47,9 @@ With the option:--channel='CHANNEL' option::
 
 Without the option:--channel option::
     The channel named `channel0`.
++
+If there's more than one channel for the selected tracing session and
+domain, the `disable-event` command fails.
 
 See man:lttng-concepts(7) to learn more about recording event rules.
 
