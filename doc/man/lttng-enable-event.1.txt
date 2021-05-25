@@ -73,8 +73,9 @@ With the option:--channel='CHANNEL' option::
 Without the option:--channel option::
     The channel named `channel0`.
 +
-If such a channel doesn't exist, the `enable-event` automatically
-creates it.
+If there's already a channel for the selected tracing session and domain
+which isn't named `channel0`, the `enable-event` command fails.
+Otherwise, it automatically creates it.
 
 List the recording event rules of a specific tracing session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
