@@ -15,6 +15,7 @@
 
 #include "common/argpar/argpar.h"
 #include "common/dynamic-array.h"
+#include "common/mi-lttng.h"
 #include "common/string-utils/string-utils.h"
 #include "common/utils.h"
 /* For lttng_event_rule_type_str(). */
@@ -2186,8 +2187,34 @@ int cmd_add_trigger(int argc, const char **argv)
 	int i;
 	char *owner_uid = NULL;
 	enum lttng_error_code ret_code;
+	struct mi_writer *mi_writer = NULL;
 
 	lttng_dynamic_pointer_array_init(&actions, lttng_actions_destructor);
+
+	if (lttng_opt_mi) {
+		mi_writer = mi_lttng_writer_create(
+				fileno(stdout), lttng_opt_mi);
+		if (!mi_writer) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+		/* Open command element. */
+		ret = mi_lttng_writer_command_open(mi_writer,
+				mi_lttng_element_command_add_trigger);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+		/* Open output element. */
+		ret = mi_lttng_writer_open_element(
+				mi_writer, mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 
 	while (true) {
 		enum argpar_state_parse_next_status status;
@@ -2374,6 +2401,13 @@ int cmd_add_trigger(int argc, const char **argv)
 		goto error;
 	}
 
+	if (lttng_opt_mi) {
+		ret_code = lttng_trigger_mi_serialize(trigger, mi_writer, NULL);
+		if (ret_code != LTTNG_OK) {
+			goto error;
+		}
+	}
+
 	MSG("Trigger registered successfully.");
 	ret = 0;
 
@@ -2383,6 +2417,33 @@ error:
 	ret = 1;
 
 end:
+	/* Mi closing. */
+	if (lttng_opt_mi) {
+		int mi_ret;
+
+		/* Close output element. */
+		mi_ret = mi_lttng_writer_close_element(mi_writer);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+
+		mi_ret = mi_lttng_writer_write_element_bool(mi_writer,
+				mi_lttng_element_command_success, ret ? 0 : 1);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+
+		/* Command element close. */
+		mi_ret = mi_lttng_writer_command_close(mi_writer);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+	}
+
+cleanup:
 	argpar_state_destroy(argpar_state);
 	argpar_item_destroy(argpar_item);
 	lttng_dynamic_pointer_array_reset(&actions);
@@ -2393,5 +2454,10 @@ end:
 	free(error);
 	free(name);
 	free(owner_uid);
+	if (mi_writer && mi_lttng_writer_destroy(mi_writer)) {
+		/* Preserve original error code. */
+		ret = ret ? ret : CMD_ERROR;
+	}
+
 	return ret;
 }

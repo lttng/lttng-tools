@@ -7,6 +7,7 @@
 
 #include "../command.h"
 #include "common/argpar/argpar.h"
+#include "common/mi-lttng.h"
 #include <lttng/lttng.h>
 #include <stdio.h>
 
@@ -58,6 +59,7 @@ end:
 
 int cmd_remove_trigger(int argc, const char **argv)
 {
+	enum lttng_error_code ret_code;
 	int ret;
 	struct argpar_parse_ret argpar_parse_ret = {};
 	const char *name = NULL;
@@ -68,6 +70,32 @@ int cmd_remove_trigger(int argc, const char **argv)
 	const struct lttng_trigger *trigger_to_remove = NULL;
 	char *owner_uid = NULL;
 	long long uid;
+	struct mi_writer *mi_writer = NULL;
+
+	if (lttng_opt_mi) {
+		mi_writer = mi_lttng_writer_create(
+				fileno(stdout), lttng_opt_mi);
+		if (!mi_writer) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+		/* Open command element. */
+		ret = mi_lttng_writer_command_open(mi_writer,
+				mi_lttng_element_command_remove_trigger);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+
+		/* Open output element. */
+		ret = mi_lttng_writer_open_element(
+				mi_writer, mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto error;
+		}
+	}
 
 	argpar_parse_ret = argpar_parse(argc - 1, argv + 1,
 		remove_trigger_options, true);
@@ -182,6 +210,13 @@ int cmd_remove_trigger(int argc, const char **argv)
 		goto error;
 	}
 
+	if (lttng_opt_mi) {
+		ret_code = lttng_trigger_mi_serialize(
+				trigger_to_remove, mi_writer, NULL);
+		if (ret_code != LTTNG_OK) {
+			goto error;
+		}
+	}
 	MSG("Removed trigger `%s`.", name);
 
 	ret = 0;
@@ -191,9 +226,38 @@ error:
 	ret = 1;
 
 end:
+	/* Mi closing. */
+	if (lttng_opt_mi) {
+		/* Close output element. */
+		int mi_ret = mi_lttng_writer_close_element(mi_writer);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+
+		mi_ret = mi_lttng_writer_write_element_bool(mi_writer,
+				mi_lttng_element_command_success, ret ? 0 : 1);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+
+		/* Command element close. */
+		mi_ret = mi_lttng_writer_command_close(mi_writer);
+		if (mi_ret) {
+			ret = 1;
+			goto cleanup;
+		}
+	}
+
+cleanup:
 	argpar_parse_ret_fini(&argpar_parse_ret);
 	lttng_triggers_destroy(triggers);
 	free(owner_uid);
 
+	if (mi_writer && mi_lttng_writer_destroy(mi_writer)) {
+		/* Preserve original error code. */
+		ret = ret ? ret : CMD_ERROR;
+	}
 	return ret;
 }

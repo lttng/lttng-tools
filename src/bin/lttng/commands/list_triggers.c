@@ -1146,62 +1146,15 @@ int compare_triggers_by_name(const void *a, const void *b)
 	return strcmp(name_a, name_b);
 }
 
-int cmd_list_triggers(int argc, const char **argv)
+static int print_sorted_triggers(const struct lttng_triggers *triggers)
 {
 	int ret;
-	struct argpar_parse_ret argpar_parse_ret = {};
-	struct lttng_triggers *triggers = NULL;
 	int i;
 	struct lttng_dynamic_pointer_array sorted_triggers;
 	enum lttng_trigger_status trigger_status;
 	unsigned int num_triggers;
 
 	lttng_dynamic_pointer_array_init(&sorted_triggers, NULL);
-
-	argpar_parse_ret = argpar_parse(
-			argc - 1, argv + 1, list_trigger_options, true);
-	if (!argpar_parse_ret.items) {
-		ERR("%s", argpar_parse_ret.error);
-		goto error;
-	}
-
-	for (i = 0; i < argpar_parse_ret.items->n_items; i++) {
-		const struct argpar_item *item =
-				argpar_parse_ret.items->items[i];
-
-		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
-			const struct argpar_item_opt *item_opt =
-					(const struct argpar_item_opt *) item;
-
-			switch (item_opt->descr->id) {
-			case OPT_HELP:
-				SHOW_HELP();
-				ret = 0;
-				goto end;
-
-			case OPT_LIST_OPTIONS:
-				list_cmd_options_argpar(stdout,
-					list_trigger_options);
-				ret = 0;
-				goto end;
-
-			default:
-				abort();
-			}
-
-		} else {
-			const struct argpar_item_non_opt *item_non_opt =
-				(const struct argpar_item_non_opt *) item;
-
-			ERR("Unexpected argument: %s", item_non_opt->arg);
-		}
-	}
-
-	ret = lttng_list_triggers(&triggers);
-	if (ret != LTTNG_OK) {
-		ERR("Error listing triggers: %s.", lttng_strerror(-ret));
-		goto error;
-	}
 
 	trigger_status = lttng_triggers_get_count(triggers, &num_triggers);
 	if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
@@ -1228,7 +1181,6 @@ int cmd_list_triggers(int argc, const char **argv)
 
 		add_ret = lttng_dynamic_pointer_array_add_pointer(
 				&sorted_triggers, (void *) trigger);
-
 		if (add_ret) {
 			ERR("Failed to allocate array of struct lttng_trigger *.");
 			goto error;
@@ -1250,6 +1202,231 @@ int cmd_list_triggers(int argc, const char **argv)
 
 	ret = 0;
 	goto end;
+error:
+	ret = 1;
+
+end:
+	lttng_dynamic_pointer_array_reset(&sorted_triggers);
+	return ret;
+}
+
+static enum lttng_error_code mi_error_query_trigger_callback(
+		const struct lttng_trigger *trigger,
+		struct lttng_error_query_results **results)
+{
+	enum lttng_error_code ret_code;
+	struct lttng_error_query *query =
+			lttng_error_query_trigger_create(trigger);
+
+	assert(results);
+	assert(query);
+
+	ret_code = lttng_error_query_execute(
+			query, lttng_session_daemon_command_endpoint, results);
+	if (ret_code != LTTNG_OK) {
+		enum lttng_trigger_status trigger_status;
+		const char *trigger_name;
+		uid_t trigger_uid;
+
+		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		trigger_status = lttng_trigger_get_owner_uid(
+				trigger, &trigger_uid);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		ERR("Failed to query errors of trigger '%s' (owner uid: %d): %s",
+				trigger_name, (int) trigger_uid,
+				lttng_strerror(-ret_code));
+	}
+
+	return ret_code;
+}
+
+static enum lttng_error_code mi_error_query_action_callback(
+		const struct lttng_trigger *trigger,
+		const struct lttng_action_path *action_path,
+		struct lttng_error_query_results **results)
+{
+	enum lttng_error_code ret_code;
+	struct lttng_error_query *query =
+			lttng_error_query_action_create(trigger, action_path);
+
+	assert(results);
+	assert(query);
+
+	ret_code = lttng_error_query_execute(
+			query, lttng_session_daemon_command_endpoint, results);
+	if (ret_code != LTTNG_OK) {
+		enum lttng_trigger_status trigger_status;
+		const char *trigger_name;
+		uid_t trigger_uid;
+
+		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		trigger_status = lttng_trigger_get_owner_uid(
+				trigger, &trigger_uid);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		ERR("Failed to query errors of an action for trigger '%s' (owner uid: %d): %s",
+				trigger_name, (int) trigger_uid,
+				lttng_strerror(-ret_code));
+	}
+	return ret_code;
+}
+
+static enum lttng_error_code mi_error_query_condition_callback(
+		const struct lttng_trigger *trigger,
+		struct lttng_error_query_results **results)
+{
+	enum lttng_error_code ret_code;
+	struct lttng_error_query *query =
+			lttng_error_query_condition_create(trigger);
+
+	assert(results);
+	assert(query);
+
+	ret_code = lttng_error_query_execute(
+			query, lttng_session_daemon_command_endpoint, results);
+	if (ret_code != LTTNG_OK) {
+		enum lttng_trigger_status trigger_status;
+		const char *trigger_name;
+		uid_t trigger_uid;
+
+		trigger_status = lttng_trigger_get_name(trigger, &trigger_name);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		trigger_status = lttng_trigger_get_owner_uid(
+				trigger, &trigger_uid);
+		assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+		ERR("Failed to query errors of of condition for condition of trigger '%s' (owner uid: %d): %s",
+				trigger_name, (int) trigger_uid,
+				lttng_strerror(-ret_code));
+	}
+
+	return ret_code;
+}
+int cmd_list_triggers(int argc, const char **argv)
+{
+	int ret;
+	struct argpar_parse_ret argpar_parse_ret = {};
+	struct lttng_triggers *triggers = NULL;
+	int i;
+	struct mi_writer *mi_writer = NULL;
+
+	argpar_parse_ret = argpar_parse(
+			argc - 1, argv + 1, list_trigger_options, true);
+	if (!argpar_parse_ret.items) {
+		ERR("%s", argpar_parse_ret.error);
+		goto error;
+	}
+
+	for (i = 0; i < argpar_parse_ret.items->n_items; i++) {
+		const struct argpar_item *item =
+				argpar_parse_ret.items->items[i];
+
+		if (item->type == ARGPAR_ITEM_TYPE_OPT) {
+			const struct argpar_item_opt *item_opt =
+					(const struct argpar_item_opt *) item;
+
+			switch (item_opt->descr->id) {
+			case OPT_HELP:
+				SHOW_HELP();
+				ret = 0;
+				goto end;
+
+			case OPT_LIST_OPTIONS:
+				list_cmd_options_argpar(
+						stdout, list_trigger_options);
+				ret = 0;
+				goto end;
+
+			default:
+				abort();
+			}
+
+		} else {
+			const struct argpar_item_non_opt *item_non_opt =
+				(const struct argpar_item_non_opt *) item;
+
+			ERR("Unexpected argument: %s", item_non_opt->arg);
+		}
+	}
+
+	ret = lttng_list_triggers(&triggers);
+	if (ret != LTTNG_OK) {
+		ERR("Error listing triggers: %s.", lttng_strerror(-ret));
+		goto error;
+	}
+
+	if (lttng_opt_mi) {
+		mi_writer = mi_lttng_writer_create(
+				fileno(stdout), lttng_opt_mi);
+		if (!mi_writer) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open command element. */
+		ret = mi_lttng_writer_command_open(mi_writer,
+				mi_lttng_element_command_list_trigger);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Open output element. */
+		ret = mi_lttng_writer_open_element(
+				mi_writer, mi_lttng_element_command_output);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	if (lttng_opt_mi) {
+		const struct mi_lttng_error_query_callbacks callbacks = {
+			.trigger_cb = mi_error_query_trigger_callback,
+			.action_cb = mi_error_query_action_callback,
+			.condition_cb = mi_error_query_condition_callback,
+		};
+
+		ret = lttng_triggers_mi_serialize(
+				triggers, mi_writer, &callbacks);
+		if (ret != LTTNG_OK) {
+			ERR("Error printing MI triggers: %s.",
+					lttng_strerror(-ret));
+			goto error;
+		}
+	} else {
+		ret = print_sorted_triggers(triggers);
+		if (ret) {
+			ERR("Error printing triggers");
+			goto error;
+		}
+	}
+
+	/* Mi closing. */
+	if (lttng_opt_mi) {
+		/* Close output element. */
+		ret = mi_lttng_writer_close_element(mi_writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+
+		/* Command element close. */
+		ret = mi_lttng_writer_command_close(mi_writer);
+		if (ret) {
+			ret = CMD_ERROR;
+			goto end;
+		}
+	}
+
+	ret = 0;
+	goto end;
 
 error:
 	ret = 1;
@@ -1257,7 +1434,10 @@ error:
 end:
 	argpar_parse_ret_fini(&argpar_parse_ret);
 	lttng_triggers_destroy(triggers);
-	lttng_dynamic_pointer_array_reset(&sorted_triggers);
-
+	/* Mi clean-up. */
+	if (mi_writer && mi_lttng_writer_destroy(mi_writer)) {
+		/* Preserve original error code. */
+		ret = ret ? ret : CMD_ERROR;
+	}
 	return ret;
 }
