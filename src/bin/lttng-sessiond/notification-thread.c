@@ -568,7 +568,7 @@ static int handle_event_notification_pipe(int event_source_fd,
 	int ret = 0;
 
 	if (revents & (LPOLLERR | LPOLLHUP | LPOLLRDHUP)) {
-		ret = handle_notification_thread_remove_tracer_event_source_no_result(
+		ret = handle_notification_thread_tracer_event_source_died(
 				state, event_source_fd);
 		if (ret) {
 			ERR("Failed to remove event notification pipe from poll set: fd = %d",
