@@ -15,6 +15,9 @@ LTTNG_BIN="lttng"
 BABELTRACE_BIN="babeltrace"
 OUTPUT_DEST=/dev/null
 ERROR_OUTPUT_DEST=/dev/null
+MI_XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
+XML_PRETTY_BIN="$TESTDIR/utils/xml-utils/pretty_xml"
+XML_VALIDATE_BIN="$TESTDIR/utils/xml-utils/validate_xml"
 
 # To match 20201127-175802
 date_time_pattern="[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]"
@@ -2267,6 +2270,41 @@ function list_triggers_matches_ok ()
 	ok $? "${test_name}: expected stderr"
 
 	rm -f "${tmp_stdout}"
+	rm -f "${tmp_stderr}"
+}
+
+function list_triggers_matches_mi_ok ()
+{
+	local tmp_stdout
+	local tmp_stdout_raw
+	local tmp_stderr
+
+	local test_name="$1"
+	local expected_stdout_file="$2"
+
+	tmp_stdout_raw=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_stderr=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
+
+	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi xml list-triggers"
+
+	"$TESTDIR/../src/bin/lttng/$LTTNG_BIN" --mi=xml list-triggers > "${tmp_stdout_raw}" 2> "${tmp_stderr}"
+	ok $? "${test_name}: exit code is 0"
+
+	# Pretty-fy xml before further test.
+	$XML_PRETTY_BIN < "${tmp_stdout_raw}" > "${tmp_stdout}"
+
+	$XML_VALIDATE_BIN "${MI_XSD_PATH}" "${tmp_stdout}"
+	ok $? "list-trigger mi is valid"
+
+	diff -u "${expected_stdout_file}" "${tmp_stdout}"
+	ok $? "${test_name}: expected stdout"
+
+	diff -u /dev/null "${tmp_stderr}"
+	ok $? "${test_name}: expected stderr"
+
+	rm -f "${tmp_stdout}"
+	rm -f "${tmp_stdout_raw}"
 	rm -f "${tmp_stderr}"
 }
 
