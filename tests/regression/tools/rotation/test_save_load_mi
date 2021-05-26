@@ -20,8 +20,8 @@ LTTNG_BIN="lttng --mi xml"
 
 XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
 
-XML_VALIDATE="$TESTDIR/regression/tools/mi/validate_xml $XSD_PATH"
-XML_EXTRACT="$TESTDIR/regression/tools/mi/extract_xml"
+XML_VALIDATE="$TESTDIR/utils/xml-utils/validate_xml $XSD_PATH"
+XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
 
 XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"

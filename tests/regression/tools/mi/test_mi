@@ -23,9 +23,10 @@ SESSIOND_LOAD_DIR=$(mktemp --tmpdir -d tmp.test_mi_sessiond_load_dir.XXXXXX)
 OUTPUT_FILE="default.xml"
 
 #Path to custom xml utilities
-XML_VALIDATE="$CURDIR/validate_xml $XSD_PATH"
-XML_EXTRACT="$CURDIR/extract_xml"
-XML_NODE_CHECK="$CURDIR/extract_xml -e"
+XML_UTILS_PATH="$TESTDIR/utils/xml-utils"
+XML_VALIDATE="$XML_UTILS_PATH/validate_xml $XSD_PATH"
+XML_EXTRACT="$XML_UTILS_PATH/extract_xml"
+XML_NODE_CHECK="$XML_UTILS_PATH/extract_xml -e"
 
 XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_COMMAND_SUCCESS="/lttng:command/lttng:success/text()"
