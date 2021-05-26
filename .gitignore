@@ -141,6 +141,7 @@ compile_commands.json
 /tests/utils/testapp/gen-kernel-test-events/gen-kernel-test-events
 /tests/utils/xml-utils/extract_xml
 /tests/utils/xml-utils/validate_xml
+/tests/utils/xml-utils/pretty_xml
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 /tests/perf/find_event
