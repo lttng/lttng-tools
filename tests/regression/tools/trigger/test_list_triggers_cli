@@ -23,13 +23,14 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-NUM_TESTS=106
+NUM_TESTS=150
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
 tmp_stdout=$(mktemp --tmpdir -t test_list_triggers_cli_stdout.XXXXXX)
 tmp_stderr=$(mktemp --tmpdir -t test_list_triggers_cli_stderr.XXXXXX)
 tmp_expected_stdout=$(mktemp --tmpdir -t test_list_triggers_cli_expected_stdout.XXXXXX)
+tmp_expected_stdout_mi=$(mktemp --tmpdir -t test_list_triggers_cli_expected_stdout.mi.XXXXXX)
 uprobe_elf_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-elf-binary/.libs/userspace-probe-elf-binary")
 uprobe_sdt_binary=$(realpath "${TESTDIR}/utils/testapp/userspace-probe-sdt-binary/.libs/userspace-probe-sdt-binary")
 register_some_triggers_bin=$(realpath "${CURDIR}/utils/register-some-triggers")
@@ -69,7 +70,65 @@ test_top_level_options ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>hello</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>test-name</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "top level options" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI top level options" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "hello"
 }
@@ -191,7 +250,535 @@ test_event_rule_matches_tracepoint ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>A</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>aaa</name_pattern>
+	                <filter_expression>p == 2</filter_expression>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>B</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>gerboise</name_pattern>
+	                <log_level_rule>
+	                  <log_level_rule_at_least_as_severe_as>
+	                    <level>6</level>
+	                  </log_level_rule_at_least_as_severe_as>
+	                </log_level_rule>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>C</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>*</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>D</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>hello*</name_pattern>
+	                <name_pattern_exclusions>
+	                  <name_pattern_exclusion>hello2</name_pattern_exclusion>
+	                  <name_pattern_exclusion>hello3</name_pattern_exclusion>
+	                  <name_pattern_exclusion>hello4</name_pattern_exclusion>
+	                </name_pattern_exclusions>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>E</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>lemming</name_pattern>
+	                <log_level_rule>
+	                  <log_level_rule_exactly>
+	                    <level>4</level>
+	                  </log_level_rule_exactly>
+	                </log_level_rule>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>F</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>capture-payload-field</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors>
+	              <event_expr>
+	                <event_expr_payload_field>
+	                  <name>a</name>
+	                </event_expr_payload_field>
+	              </event_expr>
+	            </capture_descriptors>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>G</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>capture-array</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors>
+	              <event_expr>
+	                <event_expr_array_field_element>
+	                  <index>2</index>
+	                  <event_expr>
+	                    <event_expr_payload_field>
+	                      <name>a</name>
+	                    </event_expr_payload_field>
+	                  </event_expr>
+	                </event_expr_array_field_element>
+	              </event_expr>
+	              <event_expr>
+	                <event_expr_array_field_element>
+	                  <index>18</index>
+	                  <event_expr>
+	                    <event_expr_channel_context_field>
+	                      <name>tourlou</name>
+	                    </event_expr_channel_context_field>
+	                  </event_expr>
+	                </event_expr_array_field_element>
+	              </event_expr>
+	            </capture_descriptors>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>H</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>capture-chan-ctx</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors>
+	              <event_expr>
+	                <event_expr_channel_context_field>
+	                  <name>vpid</name>
+	                </event_expr_channel_context_field>
+	              </event_expr>
+	            </capture_descriptors>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>I</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>capture-app-ctx</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors>
+	              <event_expr>
+	                <event_expr_app_specific_context_field>
+	                  <provider_name>iga</provider_name>
+	                  <type_name>active_clients</type_name>
+	                </event_expr_app_specific_context_field>
+	              </event_expr>
+	            </capture_descriptors>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>J</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>lemming</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "event-rule-matches, tracepoint event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI event-rule-matches, tracepoint event rule" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "A"
 	lttng_remove_trigger_ok "B"
@@ -227,6 +814,7 @@ test_event_rule_matches_probe ()
 	fi
 
 	offset_hex="0x$(printf '%x' $offset)"
+	channel_enable_addr_decimal=$(echo "ibase=16; ${channel_enable_addr^^} " | bc)
 
 	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kprobe --location=lttng_channel_enable --event-name=my_channel_enable --action notify
 	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=kprobe --location="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
@@ -262,7 +850,174 @@ test_event_rule_matches_probe ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_kprobe>
+	                <event_name>my_channel_enable</event_name>
+	                <kernel_probe_location>
+	                  <kernel_probe_location_symbol_offset>
+	                    <name>lttng_channel_enable</name>
+	                    <offset>0</offset>
+	                  </kernel_probe_location_symbol_offset>
+	                </kernel_probe_location>
+	              </event_rule_kernel_kprobe>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T1</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_kprobe>
+	                <event_name>my_channel_enable</event_name>
+	                <kernel_probe_location>
+	                  <kernel_probe_location_symbol_offset>
+	                    <name>${base_symbol}</name>
+	                    <offset>${offset}</offset>
+	                  </kernel_probe_location_symbol_offset>
+	                </kernel_probe_location>
+	              </event_rule_kernel_kprobe>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T2</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_kprobe>
+	                <event_name>my_channel_enable</event_name>
+	                <kernel_probe_location>
+	                  <kernel_probe_location_address>
+	                    <address>${channel_enable_addr_decimal}</address>
+	                  </kernel_probe_location_address>
+	                </kernel_probe_location>
+	              </event_rule_kernel_kprobe>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "event-rule-matches, probe event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI event-rule-matches, probe event rule" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 	lttng_remove_trigger_ok "T1"
@@ -289,7 +1044,75 @@ test_event_rule_matches_userspace_probe_elf ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_uprobe>
+	                <event_name>ma-probe-elf</event_name>
+	                <userspace_probe_location>
+	                  <userspace_probe_location_function>
+	                    <name>${elf_function_name}</name>
+	                    <binary_path>${uprobe_elf_binary}</binary_path>
+	                    <instrumentation_type>ENTRY</instrumentation_type>
+	                    <userspace_probe_location_lookup_method>
+	                      <userspace_probe_location_lookup_method_function_elf/>
+	                    </userspace_probe_location_lookup_method>
+	                  </userspace_probe_location_function>
+	                </userspace_probe_location>
+	              </event_rule_kernel_uprobe>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "event-rule-matches, userspace-probe event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI event-rule-matches, userspace-probe event rule" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 }
@@ -315,7 +1138,75 @@ test_event_rule_matches_userspace_probe_sdt ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_uprobe>
+	                <event_name>ma-probe-sdt</event_name>
+	                <userspace_probe_location>
+	                  <userspace_probe_location_tracepoint>
+	                    <probe_name>${sdt_probe_name}</probe_name>
+	                    <provider_name>${sdt_provider_name}</provider_name>
+	                    <binary_path>${uprobe_sdt_binary}</binary_path>
+	                    <userspace_probe_location_lookup_method>
+	                      <userspace_probe_location_lookup_method_tracepoint_sdt/>
+	                    </userspace_probe_location_lookup_method>
+	                  </userspace_probe_location_tracepoint>
+	                </userspace_probe_location>
+	              </event_rule_kernel_uprobe>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "event-rule-matches, userspace-probe event rule SDT" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI event-rule-matches, userspace-probe event rule SDT" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 }
@@ -378,7 +1269,256 @@ test_event_rule_matches_syscall ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_syscall>
+	                <emission_site>entry+exit</emission_site>
+	                <name_pattern>open</name_pattern>
+	              </event_rule_kernel_syscall>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T1</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_syscall>
+	                <emission_site>entry</emission_site>
+	                <name_pattern>open</name_pattern>
+	              </event_rule_kernel_syscall>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T2</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_syscall>
+	                <emission_site>exit</emission_site>
+	                <name_pattern>open</name_pattern>
+	              </event_rule_kernel_syscall>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T3</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_syscall>
+	                <emission_site>entry+exit</emission_site>
+	                <name_pattern>open</name_pattern>
+	              </event_rule_kernel_syscall>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T4</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_kernel_syscall>
+	                <emission_site>entry+exit</emission_site>
+	                <name_pattern>ptrace</name_pattern>
+	                <filter_expression>a &gt; 2</filter_expression>
+	              </event_rule_kernel_syscall>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
+
 	list_triggers_matches_ok "event-rule-matches, syscall event rule" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI event-rule-matches, syscall event rule" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 	lttng_remove_trigger_ok "T1"
@@ -404,7 +1544,54 @@ test_session_consumed_size_condition ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>trigger-with-session-consumed-size-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_session_consumed_size>
+	            <session_name>the-session-name</session_name>
+	            <threshold_bytes>1234</threshold_bytes>
+	          </condition_session_consumed_size>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
+
 	list_triggers_matches_ok "session consumed size condition" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI session consumed size condition" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "trigger-with-session-consumed-size-condition"
 }
@@ -464,7 +1651,163 @@ test_buffer_usage_conditions ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>trigger-with-buffer-usage-high-bytes-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_buffer_usage_high>
+	            <session_name>the-session-name</session_name>
+	            <channel_name>the-channel-name</channel_name>
+	            <domain>UST</domain>
+	            <threshold_bytes>1234</threshold_bytes>
+	          </condition_buffer_usage_high>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>trigger-with-buffer-usage-high-ratio-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_buffer_usage_high>
+	            <session_name>the-session-name</session_name>
+	            <channel_name>the-channel-name</channel_name>
+	            <domain>UST</domain>
+	            <threshold_ratio>0.250000</threshold_ratio>
+	          </condition_buffer_usage_high>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>trigger-with-buffer-usage-low-bytes-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_buffer_usage_low>
+	            <session_name>the-session-name</session_name>
+	            <channel_name>the-channel-name</channel_name>
+	            <domain>UST</domain>
+	            <threshold_bytes>2345</threshold_bytes>
+	          </condition_buffer_usage_low>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>trigger-with-buffer-usage-low-ratio-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_buffer_usage_low>
+	            <session_name>the-session-name</session_name>
+	            <channel_name>the-channel-name</channel_name>
+	            <domain>UST</domain>
+	            <threshold_ratio>0.400000</threshold_ratio>
+	          </condition_buffer_usage_low>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "buffer usage condition" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI buffer usage condition" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "trigger-with-buffer-usage-high-bytes-condition"
 	lttng_remove_trigger_ok "trigger-with-buffer-usage-high-ratio-condition"
@@ -497,7 +1840,85 @@ test_session_rotation_conditions ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>trigger-with-session-rotation-completed-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_session_rotation_completed>
+	            <session_name>the-session-name</session_name>
+	          </condition_session_rotation_completed>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>trigger-with-session-rotation-ongoing-condition</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_session_rotation_ongoing>
+	            <session_name>the-session-name</session_name>
+	          </condition_session_rotation_ongoing>
+	          <error_query_results/>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "session rotation conditions" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI session rotation conditions" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "trigger-with-session-rotation-completed-condition"
 	lttng_remove_trigger_ok "trigger-with-session-rotation-ongoing-condition"
@@ -611,7 +2032,513 @@ test_snapshot_action ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T1</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>/some/path</ctrl_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T2</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>/some/other/path</ctrl_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T3</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>net://1.2.3.4</ctrl_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T4</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>net://1.2.3.4:1234:1235</ctrl_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T5</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>tcp://1.2.3.4:1111</ctrl_url>
+	                  <data_url>tcp://1.2.3.4:1112</data_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T6</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <ctrl_url>/some/path</ctrl_url>
+	                  <max_size>1234</max_size>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T7</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <output>
+	                  <name>meh</name>
+	                  <ctrl_url>/some/path</ctrl_url>
+	                </output>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>1</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T8</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>10</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T9</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_snapshot_session>
+	                <session_name>ze-session</session_name>
+	                <rate_policy>
+	                  <rate_policy_once_after_n>
+	                    <threshold>10</threshold>
+	                  </rate_policy_once_after_n>
+	                </rate_policy>
+	              </action_snapshot_session>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "snapshot action" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI snapshot action" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 	lttng_remove_trigger_ok "T1"
@@ -651,7 +2578,111 @@ test_notify_action ()
 	  errors: none
 	EOF
 
+	cat > "${tmp_expected_stdout_mi}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>list-trigger</name>
+	  <output>
+	    <triggers>
+	      <trigger>
+	        <name>T0</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_once_after_n>
+	                    <threshold>5</threshold>
+	                  </rate_policy_once_after_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	      <trigger>
+	        <name>T1</name>
+	        <owner_uid>${uid}</owner_uid>
+	        <condition>
+	          <condition_event_rule_matches>
+	            <event_rule>
+	              <event_rule_user_tracepoint>
+	                <name_pattern>some-event</name_pattern>
+	              </event_rule_user_tracepoint>
+	            </event_rule>
+	            <capture_descriptors/>
+	          </condition_event_rule_matches>
+	          <error_query_results>
+	            <error_query_result>
+	              <name>discarded tracer messages</name>
+	              <description>Count of messages discarded by the tracer due to a communication error with the session daemon</description>
+	              <error_query_result_counter>
+	                <value>0</value>
+	              </error_query_result_counter>
+	            </error_query_result>
+	          </error_query_results>
+	        </condition>
+	        <action>
+	          <action_list>
+	            <action>
+	              <action_notify>
+	                <rate_policy>
+	                  <rate_policy_every_n>
+	                    <interval>10</interval>
+	                  </rate_policy_every_n>
+	                </rate_policy>
+	              </action_notify>
+	              <error_query_results>
+	                <error_query_result>
+	                  <name>total execution failures</name>
+	                  <description>Aggregated count of errors encountered when executing the action</description>
+	                  <error_query_result_counter>
+	                    <value>0</value>
+	                  </error_query_result_counter>
+	                </error_query_result>
+	              </error_query_results>
+	            </action>
+	          </action_list>
+	        </action>
+	        <error_query_results/>
+	      </trigger>
+	    </triggers>
+	  </output>
+	</command>
+	EOF
+
 	list_triggers_matches_ok "notify action" "${tmp_expected_stdout}"
+	list_triggers_matches_mi_ok "MI notify action" "${tmp_expected_stdout_mi}"
 
 	lttng_remove_trigger_ok "T0"
 	lttng_remove_trigger_ok "T1"
@@ -664,10 +2695,10 @@ start_lttng_sessiond_notap
 
 test_top_level_options
 test_event_rule_matches_tracepoint
-skip $ist_root "non-root user: skipping kprobe tests" 9 || test_event_rule_matches_probe
-skip $ist_root "non-root user: skipping uprobe tests" 5 || test_event_rule_matches_userspace_probe_elf
-skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 5 || test_event_rule_matches_userspace_probe_sdt
-skip $ist_root "non-root user: skipping syscall tests" 13 || test_event_rule_matches_syscall
+skip $ist_root "non-root user: skipping kprobe tests" 13 || test_event_rule_matches_probe
+skip $ist_root "non-root user: skipping uprobe tests" 9 || test_event_rule_matches_userspace_probe_elf
+skip $(($ist_root && $hast_sdt_binary)) "skipping userspace probe SDT tests" 9 || test_event_rule_matches_userspace_probe_sdt
+skip $ist_root "non-root user: skipping syscall tests" 17 || test_event_rule_matches_syscall
 test_session_consumed_size_condition
 test_buffer_usage_conditions
 test_session_rotation_conditions

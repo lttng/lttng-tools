@@ -23,7 +23,7 @@ TESTDIR="$CURDIR/../../.."
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"
 
-plan_tests 17
+plan_tests 22
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
@@ -62,6 +62,80 @@ function remove_trigger ()
 
 	diff -u /dev/null "${tmp_stderr}"
 	ok $? "${test_name}: expected stderr"
+}
+
+function test_mi ()
+{
+	local tmp_stdout_raw
+	local tmp_expected_stdout
+
+	# Concretely the code used to serialize a trigger object is the same as
+	# the one used by the list command. Here we simply validate that a
+	# simple trigger is correctly generated on removal for MI.
+
+	tmp_stdout_raw=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_expected_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_expected_stdout.XXXXXX")
+
+	diag "${FULL_LTTNG_BIN} --mi=xml remove-trigger"
+
+	cat > "${tmp_expected_stdout}" <<- EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	  <name>remove-trigger</name>
+	  <output>
+	    <trigger>
+	      <name>mi</name>
+	      <owner_uid>${UID}</owner_uid>
+	      <condition>
+	        <condition_event_rule_matches>
+	          <event_rule>
+	            <event_rule_user_tracepoint>
+	              <name_pattern>mi_aa</name_pattern>
+	              <filter_expression>p == 2</filter_expression>
+	            </event_rule_user_tracepoint>
+	          </event_rule>
+	          <capture_descriptors/>
+	        </condition_event_rule_matches>
+	      </condition>
+	      <action>
+	        <action_list>
+	          <action>
+	            <action_notify>
+	              <rate_policy>
+	                <rate_policy_every_n>
+	                  <interval>1</interval>
+	                </rate_policy_every_n>
+	              </rate_policy>
+	            </action_notify>
+	          </action>
+	        </action_list>
+	      </action>
+	    </trigger>
+	  </output>
+	  <success>true</success>
+	</command>
+	EOF
+
+	# Add a trigger
+	lttng_add_trigger_ok "mi" --condition event-rule-matches --name=mi_aa --type=user --filter 'p == 2' --action notify
+
+	# Remove it
+	"${FULL_LTTNG_BIN}" --mi xml remove-trigger mi > "${tmp_stdout_raw}" 2> "${tmp_stderr}"
+	ok $? "remove-trigger mi: exit code is 0"
+
+	# Pretty-fy xml before further test.
+	$XML_PRETTY_BIN < "${tmp_stdout_raw}" > "${tmp_stdout}"
+
+	$XML_VALIDATE_BIN "${MI_XSD_PATH}" "${tmp_stdout}"
+	ok $? "remove-trigger mi is valid"
+
+	diff -u "${tmp_expected_stdout}" "${tmp_stdout}"
+	ok $? "mi: expected stdout"
+
+	diff -u "${tmp_stderr}" /dev/null
+	ok $? "mi: expected stderr"
+
+	rm -f "${tmp_stdout_raw}"
 }
 
 # shellcheck disable=SC2119
@@ -111,6 +185,8 @@ list_triggers "one trigger left" "${tmp_expected_stdout}"
 remove_trigger "DEF"
 
 list_triggers "no triggers left" "/dev/null"
+
+test_mi
 
 # Cleanup
 stop_lttng_sessiond_notap
