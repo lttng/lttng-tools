@@ -102,8 +102,6 @@ compile_commands.json
 /tests/utils/testapp/gen-ust-events-ns/gen-ust-events-ns
 /tests/regression/tools/health/health_check
 /tests/regression/kernel/select_poll_epoll
-/tests/regression/tools/mi/extract_xml
-/tests/regression/tools/mi/validate_xml
 /tests/regression/tools/notification/base_client
 /tests/regression/tools/notification/notification
 /tests/regression/tools/rotation/schedule_api
@@ -141,6 +139,8 @@ compile_commands.json
 /tests/utils/testapp/gen-ust-tracef/gen-ust-tracef
 /tests/utils/testapp/gen-syscall-events/gen-syscall-events
 /tests/utils/testapp/gen-kernel-test-events/gen-kernel-test-events
+/tests/utils/xml-utils/extract_xml
+/tests/utils/xml-utils/validate_xml
 /tests/regression/tools/live/live_test
 /tests/unit/ini_config/ini_config
 /tests/perf/find_event

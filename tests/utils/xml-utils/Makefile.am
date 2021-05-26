@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS = . tap testapp xml-utils
+noinst_PROGRAMS = validate_xml extract_xml
+validate_xml_SOURCES = validate_xml.c
+validate_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
+validate_xml_LDADD = $(libxml2_LIBS)
 
-EXTRA_DIST = utils.sh test_utils.py babelstats.pl warn_processes.sh \
-             parse-callstack.py
-dist_noinst_SCRIPTS = utils.sh test_utils.py babelstats.pl tap-driver.sh
-noinst_LTLIBRARIES = libtestutils.la
-
-libtestutils_la_SOURCES = utils.c utils.h
+extract_xml_SOURCES = extract_xml.c
+extract_xml_CPPFLAGS = $(libxml2_CFLAGS) $(AM_CPPFLAGS)
+extract_xml_LDADD = $(libxml2_LIBS)
 
 all-local:
 	@if [ x"$(srcdir)" != x"$(builddir)" ]; then \

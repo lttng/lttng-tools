@@ -19,6 +19,7 @@ DIR=$(readlink -f $TESTDIR)
 NUM_TESTS=75
 
 source $TESTDIR/utils/utils.sh
+XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -63,21 +64,21 @@ function test_complex_load()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list $sess -c chan2 > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain[lttng:type='UST']/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain[lttng:type='UST']/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
 	if [[ $mi_result = "false" ]]; then
 	    ok 0 "Disabled event is loaded in disabled state"
 	else
 	    fail "Disabled event is loaded in disabled state"
 	fi
 
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_disabled']/lttng:enabled/text()")
 	test $mi_result = "false"
 	ok $? "Disabled event is loaded in disabled state"
 
 	# Check that uevent_same_name_diff_llevel with log level 6 (TRACE_INFO) is enabled
 	# This ensure that the state of events with similar name but not same
 	# descriptor tuple (exclusion,filter,loglevel) is restored correctly.
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_same_name_diff_llevel' and lttng:loglevel='TRACE_INFO']/lttng:enabled/text()")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:channels/lttng:channel[lttng:name='chan2']/lttng:events/lttng:event[lttng:name='uevent_same_name_diff_llevel' and lttng:loglevel='TRACE_INFO']/lttng:enabled/text()")
 	test $mi_result = "true"
 	ok $?  "Enabled event with same name but different loglevel is in disabled state"
 
@@ -132,21 +133,21 @@ function test_trackers()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid")
+	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VPID target is present"
 	else
 	    fail "VPID target missing"
 	fi
 
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vuid_process_attr_tracker/lttng:process_attr_values/lttng:vuid")
+	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vuid_process_attr_tracker/lttng:process_attr_values/lttng:vuid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VUID target is present"
 	else
 	    fail "VUID target missing"
 	fi
 
-	mi_result=$($CURDIR/../mi/extract_xml -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vgid_process_attr_tracker/lttng:process_attr_values/lttng:vgid")
+	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vgid_process_attr_tracker/lttng:process_attr_values/lttng:vgid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VGID target is present"
 	else
@@ -184,7 +185,7 @@ function test_override_url_normal()
 	# Url of style file://
 	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${local_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
 	test $mi_result = "${local_path_compare_value}"
 	ok $? "Path url file:// override [{$mi_result}, ${local_path_compare_value}]"
@@ -193,7 +194,7 @@ function test_override_url_normal()
 	# Url of style /
 	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${local_path_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
 	test $mi_result = "${local_path_compare_value}"
 	ok $? "Path url / override [{$mi_result}, ${local_path_compare_value}]"
@@ -202,7 +203,7 @@ function test_override_url_normal()
 	# Url of style net://ip:port:port
 	lttng_load_ok "-i $CURDIR/$SESSION_NAME.lttng --override-url=${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
 	test "$mi_result" = "${stream_url_compare}"
 	ok $? "Path url net://host:port:port override [${mi_result}, ${stream_url_compare}]"
@@ -234,7 +235,7 @@ function test_override_url_snapshot()
 	# Url of style file://
 	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
 	test $mi_result = "${path_compare_value}"
 	ok $? "Path url file:// override [{$mi_result}, ${path_compare_value}]"
@@ -243,7 +244,7 @@ function test_override_url_snapshot()
 	# Url of style /
 	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${path_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
 	test $mi_result = "${path_compare_value}"
 	ok $? "Path url / override [{$mi_result}, ${path_compare_value}]"
@@ -252,12 +253,12 @@ function test_override_url_snapshot()
 	# Url of style net://ip:port:port
 	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML snapshot list-output -s "$local_session_name" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:ctrl_url")
 
 	test "$mi_result" = "${stream_url_compare_ctrl}"
 	ok $? "Path url ctrl net://host:port:port override [${mi_result}, ${stream_url_compare_ctrl}]"
 
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:data_url")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:snapshot_action/lttng:output/lttng:session/lttng:snapshots/lttng:snapshot/lttng:data_url")
 
 	test "$mi_result" = "${stream_url_compare_data}"
 	ok $? "Path url data net://host:port:port override [${mi_result}, ${stream_url_compare_data}]"
@@ -300,7 +301,7 @@ function test_override_url_live()
 	# Url of style net://ip:port:port
 	lttng_load_ok "-i $CONFIG_DIR/$local_session_name.lttng --override-url=${stream_url_override}"
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$local_session_name" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 
 	test "$mi_result" = "${stream_url_compare}"
 	ok $? "Path url net://host:port:port override [${mi_result}, ${stream_url_compare}]"
@@ -328,13 +329,13 @@ function test_override_session_name()
 	fi
 
 	${TESTDIR}/../src/bin/lttng/${LTTNG_BIN} --mi XML list "${override_name}" > $mi_output_file
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:name")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:name")
 
 	test "${mi_result}" = "${override_name}"
 	ok $? "Override name successful  [${SESSION_NAME} to ${override_name}]"
 
 	# Make sure that the name override did not change something else
-	mi_result=$($CURDIR/../mi/extract_xml $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
+	mi_result=$("$XML_EXTRACT" $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:path")
 	test "${mi_result}" = "${output_path}"
 	ok $? "Output path is not affected by name override"
 
