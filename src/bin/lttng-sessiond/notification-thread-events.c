@@ -2110,95 +2110,115 @@ end:
 }
 
 static
+struct notification_event_tracer_event_source_element *
+find_tracer_event_source_element(struct notification_thread_state *state,
+		int tracer_event_source_fd)
+{
+	struct notification_event_tracer_event_source_element *source_element;
+
+	cds_list_for_each_entry(source_element,
+			&state->tracer_event_sources_list, node) {
+		if (source_element->fd == tracer_event_source_fd) {
+			goto end;
+		}
+	}
+
+	source_element = NULL;
+end:
+	return NULL;
+}
+
+static
+int remove_tracer_event_source_from_pollset(
+		struct notification_thread_state *state,
+		struct notification_event_tracer_event_source_element *source_element)
+{
+	int ret = 0;
+
+	assert(source_element->is_fd_in_poll_set);
+
+	DBG3("Removing tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
+			source_element->fd,
+			lttng_domain_type_str(source_element->domain));
+
+	/* Removing the fd from the event poll set. */
+	ret = lttng_poll_del(&state->events, source_element->fd);
+	if (ret < 0) {
+		ERR("Failed to remove tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
+				source_element->fd,
+				lttng_domain_type_str(source_element->domain));
+		ret = -1;
+		goto end;
+	}
+
+	source_element->is_fd_in_poll_set = false;
+
+	ret = drain_event_notifier_notification_pipe(state, source_element->fd,
+			source_element->domain);
+	if (ret) {
+		ERR("Error draining event notifier notification: tracer_event_source_fd = %d, domain = %s",
+				source_element->fd,
+				lttng_domain_type_str(source_element->domain));
+		ret = -1;
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+int handle_notification_thread_tracer_event_source_died(
+		struct notification_thread_state *state,
+		int tracer_event_source_fd)
+{
+	int ret = 0;
+	struct notification_event_tracer_event_source_element *source_element;
+
+	source_element = find_tracer_event_source_element(state,
+			tracer_event_source_fd);
+
+	assert(source_element);
+
+	ret = remove_tracer_event_source_from_pollset(state, source_element);
+	if (ret) {
+		ERR("Failed to remove dead tracer event source from poll set");
+	}
+
+	return ret;
+}
+
+static
 int handle_notification_thread_command_remove_tracer_event_source(
 		struct notification_thread_state *state,
 		int tracer_event_source_fd,
 		enum lttng_error_code *_cmd_result)
 {
 	int ret = 0;
-	bool found = false;
 	enum lttng_error_code cmd_result = LTTNG_OK;
-	struct notification_event_tracer_event_source_element *source_element = NULL, *tmp;
+	struct notification_event_tracer_event_source_element *source_element = NULL;
 
-	cds_list_for_each_entry_safe(source_element, tmp,
-			&state->tracer_event_sources_list, node) {
-		if (source_element->fd != tracer_event_source_fd) {
-			continue;
-		}
+	source_element = find_tracer_event_source_element(state,
+			tracer_event_source_fd);
 
-		DBG("Removed tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
-				tracer_event_source_fd,
-				lttng_domain_type_str(source_element->domain));
-		cds_list_del(&source_element->node);
-		found = true;
-		break;
-	}
+	assert(source_element);
 
-	if (!found) {
-		/*
-		 * This is temporarily allowed since the poll activity set is
-		 * not properly cleaned-up for the moment. This is adressed in
-		 * an upcoming fix.
-		 */
-		source_element = NULL;
-		goto end;
-	}
+	/* Remove the tracer source from the list. */
+	cds_list_del(&source_element->node);
 
 	if (!source_element->is_fd_in_poll_set) {
 		/* Skip the poll set removal. */
 		goto end;
 	}
 
-	DBG3("Removing tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
-			tracer_event_source_fd,
-			lttng_domain_type_str(source_element->domain));
-
-	/* Removing the fd from the event poll set. */
-	ret = lttng_poll_del(&state->events, tracer_event_source_fd);
-	if (ret < 0) {
-		ERR("Failed to remove tracer event source from poll set: tracer_event_source_fd = %d, domain = '%s'",
-				tracer_event_source_fd,
-				lttng_domain_type_str(source_element->domain));
-		cmd_result = LTTNG_ERR_FATAL;
-		goto end;
-	}
-
-	source_element->is_fd_in_poll_set = false;
-
-	ret = drain_event_notifier_notification_pipe(state, tracer_event_source_fd,
-			source_element->domain);
+	ret = remove_tracer_event_source_from_pollset(state, source_element);
 	if (ret) {
-		ERR("Error draining event notifier notification: tracer_event_source_fd = %d, domain = %s",
-				tracer_event_source_fd,
-				lttng_domain_type_str(source_element->domain));
+		ERR("Failed to remove tracer event source from poll set");
 		cmd_result = LTTNG_ERR_FATAL;
-		goto end;
 	}
-
-	/*
-	 * The drain_event_notifier_notification_pipe() call might have read
-	 * data from an fd that we received in event in the latest _poll_wait()
-	 * call. Make sure the thread call poll_wait() again to ensure we have
-	 * a clean state.
-	 */
-	state->restart_poll = true;
 
 end:
 	free(source_element);
 	*_cmd_result = cmd_result;
-	return ret;
-}
-
-int handle_notification_thread_remove_tracer_event_source_no_result(
-		struct notification_thread_state *state,
-		int tracer_event_source_fd)
-{
-	int ret;
-	enum lttng_error_code cmd_result;
-
-	ret = handle_notification_thread_command_remove_tracer_event_source(
-			state, tracer_event_source_fd, &cmd_result);
-	(void) cmd_result;
 	return ret;
 }
 
