@@ -479,13 +479,14 @@ struct lttng_consumer_stream *consumer_stream_create(
 		goto end;
 	}
 
+	rcu_read_lock();
+
 	if (trace_chunk && !lttng_trace_chunk_get(trace_chunk)) {
 		ERR("Failed to acquire trace chunk reference during the creation of a stream");
 		ret = -1;
 		goto error;
 	}
 
-	rcu_read_lock();
 	stream->chan = channel;
 	stream->key = stream_key;
 	stream->trace_chunk = trace_chunk;
