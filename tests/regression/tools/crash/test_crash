@@ -23,7 +23,7 @@ OUTPUT_DIR=$(mktemp -d --tmpdir tmp.test_crash_shm.XXXXXX)
 
 LAST_APP_PID=
 
-NUM_TESTS=77
+NUM_TESTS=76
 
 source $TESTDIR/utils/utils.sh
 
@@ -136,12 +136,10 @@ function test_shm_path_per_pid()
 
 	start_test_app
 	second_app_pid=$LAST_APP_PID
-	second_pid_path=$(find $shm_session_path/ust/pid -mindepth 1 -maxdepth 1)
-	ok $? "Pid path exist found $second_pid_path"
 
 	file_count=$(find $shm_session_path/ust/pid -mindepth 1 -maxdepth 1 | wc -l)
 	test $file_count -eq "2"
-	ok $? "Expect 2 pid registration folder got $file_count"
+	ok $? "Expect 2 pid registration folders got $file_count"
 
 	# Stop first test application and check for cleanup
 	stop_test_app "$first_app_pid"
