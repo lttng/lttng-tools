@@ -866,30 +866,30 @@ SPDX-License-Identifier: MIT
 	<!-- Maps to the mi_lttng commands -->
 	<xs:simpleType name="command_string_type">
 		<xs:restriction base="xs:string">
-			<xs:enumeration value="create" />
-			<xs:enumeration value="list" />
-			<xs:enumeration value="snapshot" />
-			<xs:enumeration value="version" />
-			<xs:enumeration value="save" />
-			<xs:enumeration value="load" />
-			<xs:enumeration value="start" />
-			<xs:enumeration value="stop" />
-			<xs:enumeration value="destroy" />
-			<xs:enumeration value="calibrate" />
 			<xs:enumeration value="add-context" />
+			<xs:enumeration value="calibrate" />
+			<xs:enumeration value="clear" />
+			<xs:enumeration value="create" />
+			<xs:enumeration value="destroy" />
+			<xs:enumeration value="disable-channel" />
+			<xs:enumeration value="disable-event" />
+			<xs:enumeration value="disable-rotation" />
 			<xs:enumeration value="enable-channel" />
 			<xs:enumeration value="enable-event" />
-			<xs:enumeration value="set-session" />
-			<xs:enumeration value="disable-event" />
-			<xs:enumeration value="disable-channel" />
-			<xs:enumeration value="track" />
-			<xs:enumeration value="untrack" />
+			<xs:enumeration value="enable-rotation" />
+			<xs:enumeration value="list" />
+			<xs:enumeration value="load" />
 			<xs:enumeration value="metadata" />
 			<xs:enumeration value="regenerate" />
 			<xs:enumeration value="rotate" />
-			<xs:enumeration value="enable-rotation" />
-			<xs:enumeration value="disable-rotation" />
-			<xs:enumeration value="clear" />
+			<xs:enumeration value="save" />
+			<xs:enumeration value="set-session" />
+			<xs:enumeration value="snapshot" />
+			<xs:enumeration value="start" />
+			<xs:enumeration value="stop" />
+			<xs:enumeration value="track" />
+			<xs:enumeration value="untrack" />
+			<xs:enumeration value="version" />
 		</xs:restriction>
 	</xs:simpleType>
 
