@@ -510,7 +510,6 @@ static int list_lttng_agent_events(struct agent *agt,
 
 	rcu_read_lock();
 	nb_event = lttng_ht_get_count(agt->events);
-	rcu_read_unlock();
 	if (nb_event == 0) {
 		ret = nb_event;
 		*total_size = 0;
@@ -524,7 +523,6 @@ static int list_lttng_agent_events(struct agent *agt,
 	 * This is only valid because the commands which add events are
 	 * processed in the same thread as the listing.
 	 */
-	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
 		ret = increment_extended_len(event->filter_expression, NULL, NULL,
 				&extended_len);
@@ -534,7 +532,6 @@ static int list_lttng_agent_events(struct agent *agt,
 			goto error;
 		}
 	}
-	rcu_read_unlock();
 
 	*total_size = nb_event * sizeof(*tmp_events) + extended_len;
 	tmp_events = zmalloc(*total_size);
@@ -547,7 +544,6 @@ static int list_lttng_agent_events(struct agent *agt,
 	extended_at = ((uint8_t *) tmp_events) +
 		nb_event * sizeof(struct lttng_event);
 
-	rcu_read_lock();
 	cds_lfht_for_each_entry(agt->events->ht, &iter.iter, event, node.node) {
 		strncpy(tmp_events[i].name, event->name, sizeof(tmp_events[i].name));
 		tmp_events[i].name[sizeof(tmp_events[i].name) - 1] = '\0';
