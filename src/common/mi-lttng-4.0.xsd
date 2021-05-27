@@ -842,24 +842,24 @@ SPDX-License-Identifier: MIT
 
 	<xs:complexType name="output_type">
 		<xs:choice>
-			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
-			<xs:element name="sessions" type="tns:sessions_type" minOccurs="0" />
-			<xs:element name="session" type="tns:session_type" minOccurs="0" />
-			<xs:element name="snapshot_action" type="tns:snapshot_cmd_type" minOccurs="0" />
-			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" />
-			<xs:element name="version" type="tns:version_type" minOccurs="0" />
-			<xs:element name="save" type="tns:save_type" minOccurs="0" />
-			<xs:element name="load" type="tns:load_type" minOccurs="0" />
 			<xs:element name="calibrate" type="tns:calibrate_type" minOccurs="0" />
-			<xs:element name="contexts" type="tns:contexts_type" minOccurs="0" />
-			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
-			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
 			<xs:element name="channel" type="tns:channel_type" minOccurs="0" />
-			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
+			<xs:element name="channels" type="tns:channels_type" minOccurs="0" />
+			<xs:element name="contexts" type="tns:contexts_type" minOccurs="0" />
+			<xs:element name="domains" type="tns:domains_type" minOccurs="0" />
+			<xs:element name="events" type="tns:event_list_type" minOccurs="0" />
+			<xs:element name="load" type="tns:load_type" minOccurs="0" />
 			<xs:element name="metadata_action" type="tns:metadata_cmd_type" minOccurs="0" />
+			<xs:element name="process_attr_trackers" type="tns:process_attr_trackers_type" minOccurs="0" />
 			<xs:element name="regenerate_action" type="tns:regenerate_cmd_type" minOccurs="0" />
 			<xs:element name="rotation" type="tns:rotate_type" minOccurs="0" />
 			<xs:element name="rotation_schedule_results" type="tns:rotation_schedule_cmd_type" minOccurs="0" />
+			<xs:element name="save" type="tns:save_type" minOccurs="0" />
+			<xs:element name="session" type="tns:session_type" minOccurs="0" />
+			<xs:element name="sessions" type="tns:sessions_type" minOccurs="0" />
+			<xs:element name="snapshot" type="tns:snapshot_type" minOccurs="0" />
+			<xs:element name="snapshot_action" type="tns:snapshot_cmd_type" minOccurs="0" />
+			<xs:element name="version" type="tns:version_type" minOccurs="0" />
 		</xs:choice>
 	</xs:complexType>
 
