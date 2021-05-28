@@ -1204,7 +1204,7 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 	for (i = 0; i < exclusion_count; i++) {
 		size_t exclusion_len;
 
-		exclusion_len = lttng_strnlen(*(exclusion_list + i),
+		exclusion_len = lttng_strnlen(exclusion_list[i],
 				LTTNG_SYMBOL_NAME_LEN);
 		if (exclusion_len == LTTNG_SYMBOL_NAME_LEN) {
 			/* Exclusion is not NULL-terminated. */
@@ -1213,7 +1213,17 @@ int lttng_enable_event_with_exclusions(struct lttng_handle *handle,
 		}
 
 		ret = lttng_dynamic_buffer_append(&payload.buffer,
-				*(exclusion_list + i), LTTNG_SYMBOL_NAME_LEN);
+				exclusion_list[i], exclusion_len);
+		if (ret) {
+			goto mem_error;
+		}
+
+		/*
+		 * Padding the rest of the entry with zeros. Every exclusion
+		 * entries take LTTNG_SYMBOL_NAME_LEN bytes in the buffer.
+		 */
+		ret = lttng_dynamic_buffer_set_size(&payload.buffer,
+				LTTNG_SYMBOL_NAME_LEN * (i + 1));
 		if (ret) {
 			goto mem_error;
 		}
