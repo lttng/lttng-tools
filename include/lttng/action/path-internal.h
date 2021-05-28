@@ -13,6 +13,7 @@
 #include <common/dynamic-array.h>
 #include <common/payload-view.h>
 #include <common/payload.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
