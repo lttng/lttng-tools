@@ -20,17 +20,14 @@
 
 /* Default unix socket path */
 #define LTTNG_UST_SOCK_FILENAME \
-	"lttng-ust-sock-" __ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
+	"lttng-ust-sock-" lttng_ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
 
 /*
  * Shared memory files path are automatically related to shm root, e.g.
  * /dev/shm under linux.
  */
 #define LTTNG_UST_WAIT_FILENAME \
-	"lttng-ust-wait-" __ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
-
-struct lttng_ust_shm_handle;
-struct lttng_ust_lib_ring_buffer;
+	"lttng-ust-wait-" lttng_ust_stringify(LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE)
 
 struct lttng_ust_ctl_consumer_channel_attr {
 	enum lttng_ust_abi_chan_type type;
@@ -181,7 +178,7 @@ struct lttng_ust_ctl_consumer_channel;
 struct lttng_ust_ctl_consumer_stream;
 struct lttng_ust_ctl_consumer_channel_attr;
 
-int lttng_ust_ctl_get_nr_stream_per_channel();
+int lttng_ust_ctl_get_nr_stream_per_channel(void);
 
 struct lttng_ust_ctl_consumer_channel *lttng_ust_ctl_create_channel(
 	struct lttng_ust_ctl_consumer_channel_attr *attr, const int *stream_fds, int nr_stream_fds);
@@ -287,7 +284,7 @@ int lttng_ust_ctl_get_instance_id(struct lttng_ust_ctl_consumer_stream *stream, 
 int lttng_ust_ctl_get_current_timestamp(struct lttng_ust_ctl_consumer_stream *stream, uint64_t *ts);
 
 /* returns whether UST has perf counters support. */
-int lttng_ust_ctl_has_perf_counters();
+int lttng_ust_ctl_has_perf_counters(void);
 
 /* Regenerate the statedump. */
 int lttng_ust_ctl_regenerate_statedump(int sock, int handle);
@@ -527,13 +524,14 @@ int lttng_ust_ctl_recv_register_event(int sock,
 							 */
 				      size_t *nr_fields,
 				      struct lttng_ust_ctl_field **fields,
-				      char **model_emf_uri);
+				      char **model_emf_uri,
+				      uint64_t *user_token);
 
 /*
  * Returns 0 on success, negative error value on error.
  */
 int lttng_ust_ctl_reply_register_event(int sock,
-				       uint32_t id, /* event id (input) */
+				       uint64_t id, /* id (input) */
 				       int ret_code); /* return code. 0 ok, negative error */
 
 /*
@@ -591,7 +589,7 @@ enum lttng_ust_ctl_counter_alloc {
 
 struct lttng_ust_ctl_daemon_counter;
 
-int lttng_ust_ctl_get_nr_cpu_per_counter();
+int lttng_ust_ctl_get_nr_cpu_per_counter(void);
 
 struct lttng_ust_ctl_counter_dimension {
 	uint64_t size;
@@ -653,6 +651,14 @@ int lttng_ust_ctl_counter_aggregate(struct lttng_ust_ctl_daemon_counter *counter
 int lttng_ust_ctl_counter_clear(struct lttng_ust_ctl_daemon_counter *counter,
 				const size_t *dimension_indexes);
 
+int lttng_ust_ctl_counter_create_event(int sock,
+				       struct lttng_ust_abi_counter_event *counter_event,
+				       size_t counter_event_len,
+				       struct lttng_ust_abi_object_data *counter_data,
+				       struct lttng_ust_abi_object_data **counter_event_data);
+
 void lttng_ust_ctl_sigbus_handle(void *addr);
+
+int lttng_ust_ctl_get_version(uint32_t *major, uint32_t *minor, uint32_t *patchlevel);
 
 #endif /* LTTNG_UST_CTL_INTERNAL_H */

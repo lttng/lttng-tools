@@ -20,10 +20,10 @@
 #error "LTTNG_PACKED should be defined"
 #endif
 
-#ifndef __ust_stringify
-#define __ust_stringify1(x) #x
-#define __ust_stringify(x)  __ust_stringify1(x)
-#endif /* __ust_stringify */
+#ifndef lttng_ust_stringify
+#define lttng_ust_stringify1(x) #x
+#define lttng_ust_stringify(x)  lttng_ust_stringify1(x)
+#endif /* lttng_ust_stringify */
 
 #define LTTNG_UST_ABI_SYM_NAME_LEN 256
 #define LTTNG_UST_ABI_PROCNAME_LEN 16
@@ -32,9 +32,11 @@
 #define LTTNG_UST_ABI_COMM_MAGIC 0xC57C57C5
 
 /* Version for ABI between liblttng-ust, sessiond, consumerd */
-#define LTTNG_UST_ABI_MAJOR_VERSION		      9
+#define LTTNG_UST_ABI_MAJOR_VERSION		      10
 #define LTTNG_UST_ABI_MAJOR_VERSION_OLDEST_COMPATIBLE 8
 #define LTTNG_UST_ABI_MINOR_VERSION		      0
+
+#define LTTNG_UST_ABI_CMD_MAX_LEN 4096U
 
 enum lttng_ust_abi_instrumentation {
 	LTTNG_UST_ABI_TRACEPOINT = 0,
@@ -89,43 +91,6 @@ struct lttng_ust_abi_stream {
 	 */
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_COUNTER_DIMENSION_MAX 4
-
-enum lttng_ust_abi_counter_arithmetic {
-	LTTNG_UST_ABI_COUNTER_ARITHMETIC_MODULAR = 0,
-	LTTNG_UST_ABI_COUNTER_ARITHMETIC_SATURATION = 1,
-};
-
-enum lttng_ust_abi_counter_bitness {
-	LTTNG_UST_ABI_COUNTER_BITNESS_32 = 0,
-	LTTNG_UST_ABI_COUNTER_BITNESS_64 = 1,
-};
-
-struct lttng_ust_abi_counter_dimension {
-	uint64_t size;
-	uint64_t underflow_index;
-	uint64_t overflow_index;
-	uint8_t has_underflow;
-	uint8_t has_overflow;
-} LTTNG_PACKED;
-
-#define LTTNG_UST_ABI_COUNTER_CONF_PADDING1 67
-struct lttng_ust_abi_counter_conf {
-	uint32_t arithmetic; /* enum lttng_ust_abi_counter_arithmetic */
-	uint32_t bitness; /* enum lttng_ust_abi_counter_bitness */
-	uint32_t number_dimensions;
-	int64_t global_sum_step;
-	struct lttng_ust_abi_counter_dimension dimensions[LTTNG_UST_ABI_COUNTER_DIMENSION_MAX];
-	uint8_t coalesce_hits;
-	char padding[LTTNG_UST_ABI_COUNTER_CONF_PADDING1];
-} LTTNG_PACKED;
-
-struct lttng_ust_abi_counter_value {
-	uint32_t number_dimensions;
-	uint64_t dimension_indexes[LTTNG_UST_ABI_COUNTER_DIMENSION_MAX];
-	int64_t value;
-} LTTNG_PACKED;
-
 #define LTTNG_UST_ABI_EVENT_PADDING1 8
 #define LTTNG_UST_ABI_EVENT_PADDING2 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
 struct lttng_ust_abi_event {
@@ -157,25 +122,86 @@ struct lttng_ust_abi_event_notifier_notification {
 	char padding[LTTNG_UST_ABI_EVENT_NOTIFIER_NOTIFICATION_PADDING];
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_COUNTER_PADDING1	   (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
-#define LTTNG_UST_ABI_COUNTER_DATA_MAX_LEN 4096U
-struct lttng_ust_abi_counter {
-	uint64_t len;
-	char padding[LTTNG_UST_ABI_COUNTER_PADDING1];
-	char data[]; /* variable sized data */
+enum lttng_ust_abi_key_token_type {
+	LTTNG_UST_ABI_KEY_TOKEN_STRING = 0, /* arg: strtab_offset. */
+	LTTNG_UST_ABI_KEY_TOKEN_EVENT_NAME = 1, /* no arg. */
+	LTTNG_UST_ABI_KEY_TOKEN_PROVIDER_NAME = 2, /* no arg. */
+};
+
+enum lttng_ust_abi_counter_arithmetic {
+	LTTNG_UST_ABI_COUNTER_ARITHMETIC_MODULAR = 0,
+	LTTNG_UST_ABI_COUNTER_ARITHMETIC_SATURATION = 1,
+};
+
+enum lttng_ust_abi_counter_bitness {
+	LTTNG_UST_ABI_COUNTER_BITNESS_32 = 0,
+	LTTNG_UST_ABI_COUNTER_BITNESS_64 = 1,
+};
+
+struct lttng_ust_abi_counter_key_string {
+	uint32_t string_len; /* string length (includes \0) */
+	char str[]; /* Null-terminated string. */
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_COUNTER_GLOBAL_PADDING1 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
+struct lttng_ust_abi_key_token {
+	uint32_t len; /* length of this structure. */
+	uint32_t type; /* enum lttng_ust_key_token_type */
+
+	/* Followed by a struct lttng_ust_abi_counter_key_string for LTTNG_UST_ABI_KEY_TOKEN_STRING.
+	 */
+} LTTNG_PACKED;
+
+struct lttng_ust_abi_counter_key_dimension {
+	uint32_t len; /* length of this structure */
+	uint32_t nr_key_tokens;
+
+	/* Followed by a variable-length array of key tokens */
+} LTTNG_PACKED;
+
+struct lttng_ust_abi_counter_event {
+	uint32_t len; /* length of this structure */
+
+	struct lttng_ust_abi_event event;
+	uint32_t number_key_dimensions; /* array of dimensions is an array of var. len. elements. */
+
+	/* Followed by a variable-length array of key dimensions */
+} LTTNG_PACKED;
+
+enum lttng_ust_abi_counter_dimension_flags {
+	LTTNG_UST_ABI_COUNTER_DIMENSION_FLAG_UNDERFLOW = (1 << 0),
+	LTTNG_UST_ABI_COUNTER_DIMENSION_FLAG_OVERFLOW = (1 << 1),
+};
+
+struct lttng_ust_abi_counter_dimension {
+	uint32_t flags; /* enum lttng_ust_abi_counter_dimension_flags */
+	uint64_t size; /* dimension size */
+	uint64_t underflow_index;
+	uint64_t overflow_index;
+} LTTNG_PACKED;
+
+enum lttng_ust_abi_counter_conf_flags {
+	LTTNG_UST_ABI_COUNTER_CONF_FLAG_COALESCE_HITS = (1 << 0),
+};
+
+struct lttng_ust_abi_counter_conf {
+	uint32_t len; /* Length of fields before var. len. data. */
+	uint32_t flags; /* enum lttng_ust_abi_counter_conf_flags */
+	uint32_t arithmetic; /* enum lttng_ust_abi_counter_arithmetic */
+	uint32_t bitness; /* enum lttng_ust_abi_counter_bitness */
+	int64_t global_sum_step;
+	uint32_t number_dimensions;
+	uint32_t elem_len; /* array stride (size of lttng_ust_abi_counter_dimension) */
+} LTTNG_PACKED;
+
 struct lttng_ust_abi_counter_global {
-	uint64_t len; /* shm len */
-	char padding[LTTNG_UST_ABI_COUNTER_GLOBAL_PADDING1];
+	uint32_t len; /* Length of this structure */
+	uint64_t shm_len; /* shm len */
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_COUNTER_CPU_PADDING1 (LTTNG_UST_ABI_SYM_NAME_LEN + 32)
 struct lttng_ust_abi_counter_cpu {
-	uint64_t len; /* shm len */
+	uint32_t len; /* Length of this structure */
+	uint64_t shm_len; /* shm len */
 	uint32_t cpu_nr;
-	char padding[LTTNG_UST_ABI_COUNTER_CPU_PADDING1];
 } LTTNG_PACKED;
 
 enum lttng_ust_abi_field_type {
@@ -281,6 +307,7 @@ enum lttng_ust_abi_object_type {
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER = 6,
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_GLOBAL = 7,
 	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_CPU = 8,
+	LTTNG_UST_ABI_OBJECT_TYPE_COUNTER_EVENT = 9,
 };
 
 #define LTTNG_UST_ABI_OBJECT_DATA_PADDING1 32
@@ -358,9 +385,10 @@ struct lttng_ust_abi_event_exclusion {
 	char names[LTTNG_UST_ABI_SYM_NAME_LEN][0];
 } LTTNG_PACKED;
 
-#define LTTNG_UST_ABI_CMD(minor)	(minor)
-#define LTTNG_UST_ABI_CMDR(minor, type) (minor)
-#define LTTNG_UST_ABI_CMDW(minor, type) (minor)
+#define LTTNG_UST_ABI_CMD(minor)		    (minor)
+#define LTTNG_UST_ABI_CMDR(minor, type)		    (minor)
+#define LTTNG_UST_ABI_CMDW(minor, type)		    (minor)
+#define LTTNG_UST_ABI_CMDV(minor, var_len_cmd_type) (minor)
 
 /* Handled by object descriptor */
 #define LTTNG_UST_ABI_RELEASE LTTNG_UST_ABI_CMD(0x1)
@@ -404,17 +432,20 @@ struct lttng_ust_abi_event_exclusion {
 
 /* Event notifier group commands */
 #define LTTNG_UST_ABI_EVENT_NOTIFIER_CREATE \
-	LTTNG_UST_ABI_CMDW(0xB0, struct lttng_ust_abi_event_notifier)
+	LTTNG_UST_ABI_CMDV(0xB0, struct lttng_ust_abi_event_notifier)
 
 /* Event notifier commands */
 #define LTTNG_UST_ABI_CAPTURE LTTNG_UST_ABI_CMD(0xB6)
 
 /* Session and event notifier group commands */
-#define LTTNG_UST_ABI_COUNTER LTTNG_UST_ABI_CMDW(0xC0, struct lttng_ust_abi_counter)
+/* (0xC0) reserved for old ABI. */
+#define LTTNG_UST_ABI_COUNTER LTTNG_UST_ABI_CMDV(0xC1, struct lttng_ust_abi_counter_conf)
 
 /* Counter commands */
-#define LTTNG_UST_ABI_COUNTER_GLOBAL LTTNG_UST_ABI_CMDW(0xD0, struct lttng_ust_abi_counter_global)
-#define LTTNG_UST_ABI_COUNTER_CPU    LTTNG_UST_ABI_CMDW(0xD1, struct lttng_ust_abi_counter_cpu)
+/* (0xD0, 0xD1) reserved for old ABI. */
+#define LTTNG_UST_ABI_COUNTER_GLOBAL LTTNG_UST_ABI_CMDV(0xD2, struct lttng_ust_abi_counter_global)
+#define LTTNG_UST_ABI_COUNTER_CPU    LTTNG_UST_ABI_CMDV(0xD3, struct lttng_ust_abi_counter_cpu)
+#define LTTNG_UST_ABI_COUNTER_EVENT  LTTNG_UST_ABI_CMDV(0xD4, struct lttng_ust_abi_counter_event)
 
 #define LTTNG_UST_ABI_ROOT_HANDLE 0
 

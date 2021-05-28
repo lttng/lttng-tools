@@ -6617,7 +6617,7 @@ static int add_event_ust_registry(int sock,
 				  char *raw_model_emf_uri)
 {
 	int ret, ret_code;
-	uint32_t event_id = 0;
+	lsu::event_id event_id = 0;
 	uint64_t chan_reg_key;
 	struct ust_app *app;
 	struct ust_app_channel *ua_chan;
@@ -6663,7 +6663,7 @@ static int add_event_ust_registry(int sock,
 			try {
 				auto& channel = locked_registry->channel(chan_reg_key);
 
-				/* event_id is set on success. */
+				/* id is set on success. */
 				channel.add_event(
 					sobjd,
 					cobjd,
@@ -6725,7 +6725,7 @@ static int add_event_ust_registry(int sock,
 		return ret;
 	}
 
-	DBG3("UST registry event %s with id %" PRId32 " added successfully", name, event_id);
+	DBG_FMT("UST registry event successfully added: name={}, id={}", name, event_id);
 	return ret;
 }
 
@@ -6857,6 +6857,7 @@ int ust_app_recv_notify(int sock)
 		int sobjd, cobjd, loglevel_value;
 		char name[LTTNG_UST_ABI_SYM_NAME_LEN], *sig, *model_emf_uri;
 		size_t nr_fields;
+		uint64_t tracer_token = 0;
 		struct lttng_ust_ctl_field *fields;
 
 		DBG2("UST app ustctl register event received");
@@ -6869,7 +6870,8 @@ int ust_app_recv_notify(int sock)
 							&sig,
 							&nr_fields,
 							&fields,
-							&model_emf_uri);
+							&model_emf_uri,
+							&tracer_token);
 		if (ret < 0) {
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				DBG3("UST app recv event failed. Application died: sock = %d",

@@ -26,6 +26,8 @@ namespace ust {
 
 class registry_event;
 
+using event_id = uint64_t;
+
 class registry_channel : public lttng::sessiond::trace::stream_class {
 public:
 	using registered_listener_fn = std::function<void(const registry_channel&)>;
@@ -46,7 +48,7 @@ public:
 		       nonstd::optional<std::string> model_emf_uri,
 		       lttng_buffer_type buffer_type,
 		       const ust_app& app,
-		       uint32_t& out_event_id);
+		       event_id& out_event_id);
 	~registry_channel() override;
 	registry_channel(const registry_channel&) = delete;
 	registry_channel(registry_channel&&) = delete;

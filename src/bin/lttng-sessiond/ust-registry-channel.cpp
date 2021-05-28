@@ -377,9 +377,9 @@ void lsu::registry_channel::add_event(int session_objd,
 				      nonstd::optional<std::string> model_emf_uri,
 				      lttng_buffer_type buffer_type,
 				      const ust_app& app,
-				      uint32_t& out_event_id)
+				      lsu::event_id& out_event_id)
 {
-	uint32_t event_id;
+	lsu::event_id event_id;
 	struct cds_lfht_node *nptr;
 	const lttng::urcu::read_lock_guard read_lock_guard;
 
