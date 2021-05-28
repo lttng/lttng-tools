@@ -653,6 +653,6 @@ int lttng_ust_ctl_counter_aggregate(struct lttng_ust_ctl_daemon_counter *counter
 int lttng_ust_ctl_counter_clear(struct lttng_ust_ctl_daemon_counter *counter,
 		const size_t *dimension_indexes);
 
-void ustctl_sigbus_handle(void *addr);
+void lttng_ust_ctl_sigbus_handle(void *addr);
 
 #endif /* LTTNG_UST_CTL_INTERNAL_H */
