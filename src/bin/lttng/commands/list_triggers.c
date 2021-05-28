@@ -1191,9 +1191,10 @@ static int print_sorted_triggers(const struct lttng_triggers *triggers)
 			sizeof(struct lttng_trigger *),
 			compare_triggers_by_name);
 
-	for (i = 0; i < num_triggers; i++) {
-		const struct lttng_trigger *trigger_to_print =
-				(const struct lttng_trigger *)
+	for (i = 0; i < lttng_dynamic_pointer_array_get_count(&sorted_triggers);
+			i++) {
+		const struct lttng_trigger *trigger_to_print = (const struct lttng_trigger
+						*)
 				lttng_dynamic_pointer_array_get_pointer(
 						&sorted_triggers, i);
 
