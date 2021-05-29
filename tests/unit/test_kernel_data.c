@@ -15,6 +15,7 @@
 #include <common/compat/errno.h>
 #include <bin/lttng-sessiond/trace-kernel.h>
 #include <common/defaults.h>
+#include <lttng/ust-sigbus.h>
 
 #include <tap/tap.h>
 
@@ -22,6 +23,8 @@
 
 /* Number of TAP tests in this file */
 #define NUM_TESTS 11
+
+DEFINE_LTTNG_UST_SIGBUS_STATE();
 
 static const char alphanum[] =
 	"0123456789"
