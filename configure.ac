@@ -486,9 +486,9 @@ PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
 AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
 
 # URCU library version needed or newer
-PKG_CHECK_MODULES([URCU], [liburcu >= 0.9])
-PKG_CHECK_MODULES([URCU_BP], [liburcu-bp >= 0.9])
-PKG_CHECK_MODULES([URCU_CDS], [liburcu-cds >= 0.9])
+PKG_CHECK_MODULES([URCU], [liburcu >= 0.11])
+PKG_CHECK_MODULES([URCU_BP], [liburcu-bp >= 0.11])
+PKG_CHECK_MODULES([URCU_CDS], [liburcu-cds >= 0.11])
 AM_CPPFLAGS="$AM_CPPFLAGS $URCU_CFLAGS"
 
 # Check for libkmod, it will be auto-neabled if found but won't fail if it's not,

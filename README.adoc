@@ -58,7 +58,7 @@ Use `{nbh}{nbh}disable{nbh}epoll` at <<configure,build configuration>>
 time to build {lt} for an older kernel. However, note that we can't
 provide any guarantee below 2.6.27.
 
-* **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.9.0**.
+* **http://www.liburcu.org/[Userspace{nbsp}RCU]{nbsp}≥{nbsp}0.11.0**.
 +
 Debian/Ubuntu package: `liburcu{nbh}dev`.
 
