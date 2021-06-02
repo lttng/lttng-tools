@@ -48,6 +48,7 @@ function get_auto_session_name ()
 
 	value=$($XML_EXTRACT "$OUTPUT_DEST" ${XPATH_SESSION}/lttng:name/text\(\))
 	ok $? "Extraction of session name"
+	rm -f $OUTPUT_DEST
 	OUTPUT_DEST=/dev/null
 	LTTNG_BIN=$lttng_bin
 
