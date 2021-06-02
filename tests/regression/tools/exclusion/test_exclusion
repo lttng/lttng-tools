@@ -146,6 +146,9 @@ function test_exclusion_tracing_started
 		ok 0 "Validate trace exclusion output"
 		rm -rf $trace_path
 	fi
+
+	rm -f $file_wait_before_first
+	rm -f $file_create_in_main
 }
 
 function test_exclusion_fail

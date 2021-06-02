@@ -418,4 +418,4 @@ else
 	skip 0 "Root access is needed. Skipping all kernel notification tests." $KERNEL_NUM_TESTS
 fi
 
-rm -f "$TEST_TMPDIR"
+rm -rf "$TEST_TMPDIR"
