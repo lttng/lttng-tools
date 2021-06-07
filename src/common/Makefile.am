@@ -3,10 +3,14 @@
 AUTOMAKE_OPTIONS = subdir-objects
 
 SUBDIRS = \
-	string-utils \
+	argpar \
 	bytecode \
+	compat \
+	config \
+	fd-tracker \
+	string-utils \
 	filter \
-	argpar
+	hashtable
 
 # Make sure to always distribute all folders
 # since SUBDIRS is decided at configure time.
@@ -120,16 +124,8 @@ libcommon_la_LIBADD = \
 	$(top_builddir)/src/common/filter/libfilter.la \
 	$(top_builddir)/src/vendor/msgpack/libmsgpack.la
 
-if BUILD_LIB_COMPAT
-SUBDIRS += compat
-endif
-
 if BUILD_LIB_HEALTH
 SUBDIRS += health
-endif
-
-if BUILD_LIB_HASHTABLE
-SUBDIRS += hashtable
 endif
 
 if BUILD_LIB_KERNEL_CTL
@@ -144,9 +140,6 @@ if BUILD_LIB_RELAYD
 SUBDIRS += relayd
 endif
 
-if BUILD_LIB_FD_TRACKER
-SUBDIRS += fd-tracker
-endif
 
 if BUILD_LIB_KERNEL_CONSUMER
 SUBDIRS += kernel-consumer
@@ -162,10 +155,6 @@ endif
 
 if BUILD_LIB_INDEX
 SUBDIRS += index
-endif
-
-if BUILD_LIB_CONFIG
-SUBDIRS += config
 endif
 
 if BUILD_LIB_CONSUMER
