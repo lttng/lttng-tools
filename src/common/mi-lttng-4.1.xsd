@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
 	targetNamespace="https://lttng.org/xml/ns/lttng-mi"
 	xmlns:tns="https://lttng.org/xml/ns/lttng-mi"
-	elementFormDefault="qualified" version="4.0">
+	elementFormDefault="qualified" version="4.1">
 
 	<!-- Maps to the uint32_t type -->
 	<xs:simpleType name="uint32_type">

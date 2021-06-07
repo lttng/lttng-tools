@@ -19,7 +19,7 @@
 #include <assert.h>
 
 #define MI_SCHEMA_MAJOR_VERSION 4
-#define MI_SCHEMA_MINOR_VERSION 0
+#define MI_SCHEMA_MINOR_VERSION 1
 
 /* Machine interface namespace URI */
 LTTNG_HIDDEN const char * const mi_lttng_xmlns = "xmlns";
