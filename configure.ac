@@ -864,19 +864,13 @@ AC_ARG_ENABLE([extras], AS_HELP_STRING([--disable-extras],
 	      [Disable the build of the extra components]))
 
 
-# Always build libconfig since it a dependency of libcommon
-build_lib_config=yes
-
-build_lib_compat=no
 build_lib_consumer=no
-build_lib_hashtable=no
 build_lib_health=no
 build_lib_index=no
 build_lib_kernel_consumer=no
 build_lib_kernel_ctl=no
 build_lib_lttng_ctl=no
 build_lib_relayd=no
-build_lib_fd_tracker=no
 build_lib_sessiond_comm=no
 build_lib_testpoint=no
 build_lib_ust_consumer=no
@@ -911,12 +905,9 @@ AS_IF([test x$enable_bin_lttng_relayd != xno],
       [
        build_lib_lttng_ctl=yes
        build_lib_sessiond_comm=yes
-       build_lib_hashtable=yes
-       build_lib_compat=yes
        build_lib_index=yes
        build_lib_health=yes
        build_lib_testpoint=yes
-       build_lib_fd_tracker=yes
       ]
 )
 AS_IF([test x$enable_bin_lttng_sessiond != xno],
@@ -924,8 +915,6 @@ AS_IF([test x$enable_bin_lttng_sessiond != xno],
        build_lib_lttng_ctl=yes
        build_lib_sessiond_comm=yes
        build_lib_kernel_ctl=yes
-       build_lib_hashtable=yes
-       build_lib_compat=yes
        build_lib_relayd=yes
        build_lib_testpoint=yes
        build_lib_health=yes
@@ -936,7 +925,6 @@ AS_IF([test x$enable_bin_lttng_sessiond != xno],
 AS_IF([test x$build_lib_lttng_ctl = xyes],
       [
        build_lib_sessiond_comm=yes
-       build_lib_hashtable=yes
       ]
 )
 
@@ -944,8 +932,6 @@ AS_IF([test x$build_lib_consumer = xyes],
       [
        build_lib_sessiond_comm=yes
        build_lib_kernel_consumer=yes
-       build_lib_hashtable=yes
-       build_lib_compat=yes
        build_lib_relayd=yes
        AS_IF([test "x$with_lttng_ust" = "xyes"], [build_lib_ust_consumer=yes])
       ]
@@ -1040,17 +1026,13 @@ AM_CONDITIONAL([BUILD_TESTS], [test x$build_tests = xyes])
 AM_CONDITIONAL([BUILD_EXTRAS], [test x$enable_extras != xno])
 
 # Export libraries build conditions.
-AM_CONDITIONAL([BUILD_LIB_COMPAT], [test x$build_lib_compat = xyes])
-AM_CONDITIONAL([BUILD_LIB_CONFIG], [test x$build_lib_config = xyes])
 AM_CONDITIONAL([BUILD_LIB_CONSUMER], [test x$build_lib_consumer = xyes])
-AM_CONDITIONAL([BUILD_LIB_HASHTABLE], [test x$build_lib_hashtable = xyes])
 AM_CONDITIONAL([BUILD_LIB_HEALTH], [test x$build_lib_health = xyes])
 AM_CONDITIONAL([BUILD_LIB_INDEX], [test x$build_lib_index = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CONSUMER], [test x$build_lib_kernel_consumer = xyes])
 AM_CONDITIONAL([BUILD_LIB_KERNEL_CTL], [test x$build_lib_kernel_ctl = xyes])
 AM_CONDITIONAL([BUILD_LIB_LTTNG_CTL], [test x$build_lib_lttng_ctl = xyes])
 AM_CONDITIONAL([BUILD_LIB_RELAYD], [test x$build_lib_relayd = xyes])
-AM_CONDITIONAL([BUILD_LIB_FD_TRACKER], [test x$build_lib_fd_tracker = xyes])
 AM_CONDITIONAL([BUILD_LIB_SESSIOND_COMM], [test x$build_lib_sessiond_comm = xyes])
 AM_CONDITIONAL([BUILD_LIB_TESTPOINT], [test x$build_lib_testpoint = xyes])
 AM_CONDITIONAL([BUILD_LIB_UST_CONSUMER], [test x$build_lib_ust_consumer = xyes])
