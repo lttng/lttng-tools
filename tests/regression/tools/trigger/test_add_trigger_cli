@@ -92,7 +92,7 @@ function test_mi ()
 
 	cat > "${tmp_expected_stdout}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>add-trigger</name>
 	  <output>
 	    <trigger>
