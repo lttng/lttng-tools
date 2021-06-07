@@ -8,7 +8,6 @@ TEST_DESC="Machine interface testing"
 
 CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../../
-XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
 
 #Test app for ust event
 TESTAPP_PATH="$TESTDIR/utils/testapp"
@@ -21,12 +20,6 @@ NR_ITER=10000
 OUTPUT_DIR=$(mktemp --tmpdir -d tmp.test_mi_output_dir.XXXXXX)
 SESSIOND_LOAD_DIR=$(mktemp --tmpdir -d tmp.test_mi_sessiond_load_dir.XXXXXX)
 OUTPUT_FILE="default.xml"
-
-#Path to custom xml utilities
-XML_UTILS_PATH="$TESTDIR/utils/xml-utils"
-XML_VALIDATE="$XML_UTILS_PATH/validate_xml $XSD_PATH"
-XML_EXTRACT="$XML_UTILS_PATH/extract_xml"
-XML_NODE_CHECK="$XML_UTILS_PATH/extract_xml -e"
 
 XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_COMMAND_SUCCESS="/lttng:command/lttng:success/text()"
@@ -133,7 +126,7 @@ function test_version ()
 	OUTPUT_FILE="version.xml"
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	mi_print_version $OUTPUT_DEST
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: Version xsd validation"
 }
 
@@ -144,12 +137,12 @@ function test_create_session ()
 	OUTPUT_FILE="create_session.xml"
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	create_lttng_session_ok $session_name $OUTPUT_DIR
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: create session xsd validation"
 
 	#try to recreate a session. Expecting it to fail
 	create_lttng_session_fail $session_name $OUTPUT_DIR
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: expecting fail create session xsd validation"
 	is_command_success $OUTPUT_DEST true
 
@@ -174,7 +167,7 @@ function test_destroy_session ()
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	destroy_lttng_session_ok ${session_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: destroy session ${session_name[0]} xsd validation"
 
 	#Verify that we destroyed the good session
@@ -184,7 +177,7 @@ function test_destroy_session ()
 
 	#Destroy all and count:should be 2
 	destroy_lttng_sessions
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: destroy all session xsd validation"
 
 	#Verify that we destroyed 2 sessions
@@ -195,7 +188,7 @@ function test_destroy_session ()
 
 	#Verify that if no session is present command fail and mi report it.
 	destroy_lttng_session_fail ${session_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: failing destroy session ${session_name[0]} xsd validation"
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
 	test "$result" = "false"
@@ -220,7 +213,7 @@ function test_list_sessions ()
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	list_lttng_with_opts
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list sessions xsd validation"
 
 	#We should have 3 session
@@ -249,7 +242,7 @@ function test_list_session_long_path ()
 
 	OUTPUT_DEST=${output_basedir}/$OUTPUT_FILE
 	list_lttng_with_opts
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list session with long path xsd validation"
 
 	#Teardown
@@ -272,13 +265,13 @@ function test_ust_channel ()
 	#Test the enable_channel command
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	enable_ust_lttng_channel_ok $session_name ${channel_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Expect the command to fail
 	enable_ust_lttng_channel_fail $session_name ${channel_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: fail enable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST true
 
@@ -289,7 +282,7 @@ function test_ust_channel ()
 
 	#Test the disable_channel command
 	disable_ust_lttng_channel $session_name ${channel_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: disable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST false
 	#Check that we delete the good channel
@@ -299,7 +292,7 @@ function test_ust_channel ()
 
 	#Test multiple disable_channel;
 	disable_ust_lttng_channel $session_name ${channel_name[1]},${channel_name[2]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: multiple disable ust channel xsd validation"
 	is_command_success $OUTPUT_DEST false
 
@@ -331,13 +324,13 @@ function test_ust_lttng_event ()
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	#Test the enable event for ust domain
 	enable_ust_lttng_event_ok $session_name ${event[0]} $channel_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Try to reenable an enabled event. Should fail
 	enable_ust_lttng_event_fail $session_name ${event[0]} $channel_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Fail enable_event for ust domain xsd validation"
 	is_command_success $OUTPUT_DEST true
 
@@ -350,7 +343,7 @@ function test_ust_lttng_event ()
 	concat_event=$( IFS=$','; echo "${event[*]}" )
 
 	enable_ust_lttng_event_fail $session_name $concat_event $channel_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Multiple enable ust event with inside fail xsd validation"
 
 	#Check for 2 success = true and 1 success = false
@@ -366,13 +359,13 @@ function test_ust_lttng_event ()
 
 	#Disable the event
 	disable_ust_lttng_event $session_name ${event[0]} $channel_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Disable ust event xsd validation"
 	is_command_success $OUTPUT_DEST false
 
 	#Disable the 3 event combined. Should pass
 	disable_ust_lttng_event $session_name $concat_event $channel_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: Disable multiple ust event xsd validation"
 	is_command_success $OUTPUT_DEST false
 
@@ -407,7 +400,7 @@ function test_list_channel ()
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	list_lttng_with_opts "$session_name -c $channel_name"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list channel xsd validation"
 
 	#Expect 1 domain: UST
@@ -455,7 +448,7 @@ function test_list_domain ()
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	list_lttng_with_opts "$session_name -d"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list domain xsd validation"
 
 	#Expect 2 domain: Jul and UST
@@ -503,7 +496,7 @@ function test_list_session ()
 	#Begin testing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	list_lttng_with_opts $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list session xsd validation"
 
 	#Expect 2 domain: Jul and UST
@@ -546,7 +539,7 @@ function test_list_ust_event ()
 
 	touch ${file_sync_before_last}
 
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: list ust event xsd validation"
 
 	#Extract events
@@ -587,7 +580,7 @@ function test_start_stop () {
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	start_lttng_tracing_fail $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: failed start xsd validation"
 
 	#Expect a false element
@@ -602,7 +595,7 @@ function test_start_stop () {
 	#Start tracing
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	start_lttng_tracing_ok $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: start xsd validation"
 
 	#Expect a true element
@@ -622,12 +615,12 @@ function test_start_stop () {
 
 	#Test metadata regenerate command
 	regenerate_metadata_ok $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: regenerate metadata"
 
 	#Test stop command
 	stop_lttng_tracing_ok $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: stop xsd validation"
 
 	#Extract session name from xml
@@ -642,7 +635,7 @@ function test_start_stop () {
 
 	#Test failing stop command
 	stop_lttng_tracing_fail $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: failed stop xsd validation"
 
 	#Expect a false element
@@ -669,7 +662,7 @@ function test_snapshot () {
 	#No channel enable start command should return element success false
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	lttng_snapshot_add_output_ok $session_name file://$snapshot_path
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot xsd validation"
 
 	#Expect a true element
@@ -688,7 +681,7 @@ function test_snapshot () {
 
 	#Test list output
 	lttng_snapshot_list $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot list xsd validation"
 
 	#Expect a true element
@@ -702,7 +695,7 @@ function test_snapshot () {
 
 	#Test del output
 	lttng_snapshot_del_output_ok $session_name $snapshot_id
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
 	#Success ?
@@ -721,7 +714,7 @@ function test_snapshot () {
 
 	#Test fail on delete command
 	lttng_snapshot_del_output_fail $session_name $snapshot_id
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: snapshot delete xsd validation"
 
 	#Success ?
@@ -747,7 +740,7 @@ function test_track_untrack ()
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	lttng_track_ok "-p $pid -u"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: track pid xsd validation"
 
 	#Expect a true element
@@ -763,7 +756,7 @@ function test_track_untrack ()
 
 	#Test the pid_tracker listing
 	list_lttng_with_opts $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
@@ -774,7 +767,7 @@ function test_track_untrack ()
 
 	#Untrack pid 2,3
 	lttng_untrack_ok "-p 2,3 -u"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: untrack pid xsd validation"
 
 	#Expect a true element
@@ -790,7 +783,7 @@ function test_track_untrack ()
 
 	#Check pid_tracker listing
 	list_lttng_with_opts $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
@@ -801,7 +794,7 @@ function test_track_untrack ()
 
 	#Untrack all
 	lttng_untrack_ok "-p -u -a"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: untrack pid xsd validation"
 
 	#Expect a true element
@@ -823,7 +816,7 @@ function test_track_untrack ()
 	#behavior. If all pid are untrack than the pid_tracker is still
 	#enabled (pid_tracker node is present).
 	list_lttng_with_opts $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	#Check the good count
@@ -834,7 +827,7 @@ function test_track_untrack ()
 
 	#Test track all
 	lttng_track_ok "-p -u -a"
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: track pid xsd validation"
 
 	#Expect a true element
@@ -856,7 +849,7 @@ function test_track_untrack ()
 	#behavior. If all pid are untrack thant the pid_tracker is
 	#disabled (node pid_tracker do not exist)
 	list_lttng_with_opts $session_name
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: session list with pid_tracker validate"
 
 	node_check_xml $OUTPUT_DEST $XPATH_VPID_TRACKER result
@@ -875,7 +868,7 @@ function test_add_context_list()
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	lttng_add_context_list
 
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "Mi test: context listing validation"
 }
 
@@ -898,7 +891,7 @@ function test_clear_session ()
 
 	OUTPUT_DEST=$OUTPUT_DIR/$OUTPUT_FILE
 	lttng_clear_session_ok  ${session_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: clear session ${session_name[0]} xsd validation"
 
 	#Verify that we cleared the good session
@@ -908,7 +901,7 @@ function test_clear_session ()
 
 	#Destroy all and count:should be 3
 	lttng_clear_all
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: clear all session xsd validation"
 
 	#Verify that we cleared 3 sessions
@@ -921,7 +914,7 @@ function test_clear_session ()
 
 	#Verify that if no session is present command fail and mi report it.
 	lttng_clear_session_fail ${session_name[0]}
-	$XML_VALIDATE $OUTPUT_DEST
+	$MI_VALIDATE $OUTPUT_DEST
 	ok $? "MI test: failing clear session ${session_name[0]} xsd validation"
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
 	test "$result" = "false"
