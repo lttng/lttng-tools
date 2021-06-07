@@ -134,9 +134,9 @@ function test_mi ()
 	ok $? "add-trigger mi: exit code is 0"
 
 	# Pretty-fy xml before further test.
-	$XML_PRETTY_BIN < "${tmp_stdout_raw}" > "${tmp_stdout}"
+	$XML_PRETTY < "${tmp_stdout_raw}" > "${tmp_stdout}"
 
-	$XML_VALIDATE_BIN "${MI_XSD_PATH}" "${tmp_stdout}"
+	$MI_VALIDATE "${tmp_stdout}"
 	ok $? "add-trigger mi is valid"
 
 	diff -u "${tmp_expected_stdout}" "${tmp_stdout}"

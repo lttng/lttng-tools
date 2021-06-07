@@ -19,7 +19,6 @@ DIR=$(readlink -f $TESTDIR)
 NUM_TESTS=75
 
 source $TESTDIR/utils/utils.sh
-XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -133,21 +132,21 @@ function test_trackers()
 		break;
 	fi
 	$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi XML list "$SESSION_NAME-trackers" > $mi_output_file
-	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid")
+	mi_result=$($XML_NODE_CHECK $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vpid_process_attr_tracker/lttng:process_attr_values/lttng:vpid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VPID target is present"
 	else
 	    fail "VPID target missing"
 	fi
 
-	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vuid_process_attr_tracker/lttng:process_attr_values/lttng:vuid")
+	mi_result=$($XML_NODE_CHECK $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vuid_process_attr_tracker/lttng:process_attr_values/lttng:vuid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VUID target is present"
 	else
 	    fail "VUID target missing"
 	fi
 
-	mi_result=$("$XML_EXTRACT" -e $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vgid_process_attr_tracker/lttng:process_attr_values/lttng:vgid")
+	mi_result=$($XML_NODE_CHECK $mi_output_file "//lttng:command/lttng:output/lttng:sessions/lttng:session/lttng:domains/lttng:domain/lttng:process_attr_trackers/lttng:vgid_process_attr_tracker/lttng:process_attr_values/lttng:vgid")
 	if [[ $mi_result = "true" ]]; then
 	    ok 0 "VGID target is present"
 	else

@@ -18,11 +18,6 @@ source $CURDIR/rotate_utils.sh
 # Overwrite the lttng_bin to get mi output
 LTTNG_BIN="lttng --mi xml"
 
-XSD_PATH=$TESTDIR/../src/common/mi-lttng-4.0.xsd
-
-XML_VALIDATE="$TESTDIR/utils/xml-utils/validate_xml $XSD_PATH"
-XML_EXTRACT="$TESTDIR/utils/xml-utils/extract_xml"
-
 XPATH_CMD_OUTPUT="//lttng:command/lttng:output"
 XPATH_SESSION="$XPATH_CMD_OUTPUT/lttng:sessions/lttng:session"
 XPATH_ENABLE_ROTATE_TIMER="$XPATH_CMD_OUTPUT/lttng:rotation_schedule_results/lttng:rotation_schedule_result/lttng:rotation_schedule/lttng:periodic/lttng:time_us"
@@ -45,7 +40,7 @@ function test_save_load_mi ()
 
 	OUTPUT_DEST=${tmp_xml_output}
 	lttng_enable_rotation_timer_ok $SESSION_NAME 500ms
-	$XML_VALIDATE ${tmp_xml_output}
+	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation timer XML"
 
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ENABLE_ROTATE_TIMER})
@@ -54,7 +49,7 @@ function test_save_load_mi ()
 
 	# Enable a rotation size and check the MI output of the command
 	lttng_enable_rotation_size_ok $SESSION_NAME 500k
-	$XML_VALIDATE ${tmp_xml_output}
+	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng enable-rotation size XML"
 
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_ENABLE_ROTATE_SIZE})
@@ -63,7 +58,7 @@ function test_save_load_mi ()
 
 	# Check the output of lttng list with the 2 rotation parameters
 	list_lttng_with_opts $SESSION_NAME
-	$XML_VALIDATE ${tmp_xml_output}
+	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML"
 
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_TIMER})
@@ -83,7 +78,7 @@ function test_save_load_mi ()
 	OUTPUT_DEST=${tmp_xml_output}
 	# Check the output of lttng list with the 2 rotation parameters after the load
 	list_lttng_with_opts $SESSION_NAME
-	$XML_VALIDATE ${tmp_xml_output}
+	$MI_VALIDATE ${tmp_xml_output}
 	ok $? "Valid lttng list XML after load"
 
 	value=$($XML_EXTRACT ${tmp_xml_output} ${XPATH_LIST_ROTATE_TIMER})
