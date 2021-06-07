@@ -72,7 +72,7 @@ test_top_level_options ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -252,7 +252,7 @@ test_event_rule_matches_tracepoint ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -852,7 +852,7 @@ test_event_rule_matches_probe ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1046,7 +1046,7 @@ test_event_rule_matches_userspace_probe_elf ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1140,7 +1140,7 @@ test_event_rule_matches_userspace_probe_sdt ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1271,7 +1271,7 @@ test_event_rule_matches_syscall ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1546,7 +1546,7 @@ test_session_consumed_size_condition ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1653,7 +1653,7 @@ test_buffer_usage_conditions ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -1842,7 +1842,7 @@ test_session_rotation_conditions ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -2034,7 +2034,7 @@ test_snapshot_action ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
@@ -2580,7 +2580,7 @@ test_notify_action ()
 
 	cat > "${tmp_expected_stdout_mi}" <<- EOF
 	<?xml version="1.0" encoding="UTF-8"?>
-	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/4/lttng-mi-4.0.xsd" schemaVersion="4.0">
+	<command xmlns="https://lttng.org/xml/ns/lttng-mi" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://lttng.org/xml/ns/lttng-mi https://lttng.org/xml/schemas/lttng-mi/${MI_XSD_MAJOR_VERSION}/lttng-mi-${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}.xsd" schemaVersion="${MI_XSD_MAJOR_VERSION}.${MI_XSD_MINOR_VERSION}">
 	  <name>list-trigger</name>
 	  <output>
 	    <triggers>
