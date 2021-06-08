@@ -5903,13 +5903,16 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 	ret = find_or_create_ust_app_session(usess, app, &ua_sess, NULL);
 	if (ret < 0) {
 		/* Tracer is probably gone or ENOMEM. */
-		goto error;
+		if (ua_sess) {
+			destroy_app_session(app, ua_sess);
+		}
+		goto end;
 	}
 	assert(ua_sess);
 
 	pthread_mutex_lock(&ua_sess->lock);
 	if (ua_sess->deleted) {
-		goto end;
+		goto deleted_session;
 	}
 
 	rcu_read_lock();
@@ -5927,23 +5930,15 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 	 */
 	ret = create_ust_app_metadata(ua_sess, app, usess->consumer);
 	if (ret < 0) {
-		goto error_unlock;
+		ERR("Metadata creation failed for app sock %d for session id %" PRIu64,
+				app->sock, usess->id);
 	}
 
 	rcu_read_unlock();
 
+deleted_session:
+	pthread_mutex_unlock(&ua_sess->lock);
 end:
-	pthread_mutex_unlock(&ua_sess->lock);
-	/* Everything went well at this point. */
-	return;
-
-error_unlock:
-	rcu_read_unlock();
-	pthread_mutex_unlock(&ua_sess->lock);
-error:
-	if (ua_sess) {
-		destroy_app_session(app, ua_sess);
-	}
 	return;
 }
 
