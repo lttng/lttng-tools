@@ -2278,7 +2278,7 @@ int cmd_add_trigger(int argc, const char **argv)
 				goto error;
 			}
 
-			/* Ownership of the action was transferred to the group. */
+			/* Ownership of the action was transferred to the list. */
 			action = NULL;
 
 			break;
