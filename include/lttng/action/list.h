@@ -28,30 +28,30 @@ extern struct lttng_action *lttng_action_list_create(void);
  *
  * The action list acquires a reference to the action. The action can be
  * safely destroyed after calling this function. An action must not be
- * modified after adding it to a group.
+ * modified after adding it to a list.
  *
  * Adding an action list to an action list is not supported.
  */
 extern enum lttng_action_status lttng_action_list_add_action(
-		struct lttng_action *group, struct lttng_action *action);
+		struct lttng_action *list, struct lttng_action *action);
 
 /*
  * Get the number of actions in an action list.
  */
 extern enum lttng_action_status lttng_action_list_get_count(
-		const struct lttng_action *group, unsigned int *count);
+		const struct lttng_action *list, unsigned int *count);
 
 /*
  * Get an action from the action list at a given index.
  *
- * Note that the group maintains the ownership of the returned action.
+ * Note that the list maintains the ownership of the returned action.
  * It must not be destroyed by the user, nor should it be held beyond
  * the lifetime of the action list.
  *
  * Returns an action, or NULL on error.
  */
 extern const struct lttng_action *lttng_action_list_get_at_index(
-		const struct lttng_action *group,
+		const struct lttng_action *list,
 		unsigned int index);
 
 #ifdef __cplusplus

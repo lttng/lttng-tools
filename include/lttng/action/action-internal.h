@@ -122,7 +122,7 @@ enum lttng_action_status lttng_action_add_error_query_results(
 /*
  * For use by the various lttng_action implementation. Implements the default
  * behavior to the generic error "execution failure counter" that all actions
- * (except group, which passes-through) provide.
+ * (except list, which passes-through) provide.
  */
 LTTNG_HIDDEN
 enum lttng_action_status lttng_action_generic_add_error_query_results(
