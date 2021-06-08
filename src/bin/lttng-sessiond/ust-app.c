@@ -5909,7 +5909,6 @@ void ust_app_synchronize(struct ltt_ust_session *usess,
 
 	pthread_mutex_lock(&ua_sess->lock);
 	if (ua_sess->deleted) {
-		pthread_mutex_unlock(&ua_sess->lock);
 		goto end;
 	}
 
