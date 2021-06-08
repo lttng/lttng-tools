@@ -23,7 +23,6 @@
 
 #include <tap/tap.h>
 #include <lttng/lttng.h>
-#include <lttng/ust-sigbus.h>
 
 #include <urcu/list.h>
 #include <common/common.h>
@@ -42,7 +41,10 @@
 #define NUM_TESTS 11
 #define mmap_size 524288
 
+#ifdef HAVE_LIBLTTNG_UST_CTL
+#include <lttng/ust-sigbus.h>
 DEFINE_LTTNG_UST_SIGBUS_STATE();
+#endif
 
 static int control_sock;
 struct live_session *session;
