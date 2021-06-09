@@ -36,6 +36,12 @@ struct lttng_error_query_trigger {
 	struct lttng_trigger *trigger;
 };
 
+struct lttng_error_query_condition {
+	struct lttng_error_query parent;
+	/* Mutable only because of the reference count. */
+	struct lttng_trigger *trigger;
+};
+
 struct lttng_error_query_action {
 	struct lttng_error_query parent;
 	/* Mutable only because of the reference count. */
@@ -102,6 +108,37 @@ struct lttng_error_query *lttng_error_query_trigger_create(
 	}
 
 	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER;
+	query->trigger = trigger_copy;
+	trigger_copy = NULL;
+
+error:
+	lttng_trigger_put(trigger_copy);
+end:
+	return query ? &query->parent : NULL;
+}
+
+struct lttng_error_query *lttng_error_query_condition_create(
+		const struct lttng_trigger *trigger)
+{
+	struct lttng_error_query_condition *query = NULL;
+	struct lttng_trigger *trigger_copy = NULL;
+
+	if (!trigger) {
+		goto end;
+	}
+
+	trigger_copy = lttng_trigger_copy(trigger);
+	if (!trigger_copy) {
+		goto end;
+	}
+
+	query = zmalloc(sizeof(*query));
+	if (!query) {
+		PERROR("Failed to allocate condition error query");
+		goto error;
+	}
+
+	query->parent.target_type = LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION;
 	query->trigger = trigger_copy;
 	trigger_copy = NULL;
 
@@ -606,6 +643,28 @@ end:
 }
 
 static
+int lttng_error_query_condition_serialize(const struct lttng_error_query *query,
+		struct lttng_payload *payload)
+{
+	int ret;
+	const struct lttng_error_query_condition *query_trigger =
+			container_of(query, typeof(*query_trigger), parent);
+
+	if (!lttng_trigger_validate(query_trigger->trigger)) {
+		ret = -1;
+		goto end;
+	}
+
+	ret = lttng_trigger_serialize(query_trigger->trigger, payload);
+	if (ret) {
+		goto end;
+	}
+
+end:
+	return ret;
+}
+
+static
 int lttng_error_query_action_serialize(const struct lttng_error_query *query,
 		struct lttng_payload *payload)
 {
@@ -644,6 +703,16 @@ const struct lttng_trigger *lttng_error_query_trigger_borrow_target(
 		const struct lttng_error_query *query)
 {
 	const struct lttng_error_query_trigger *query_trigger =
+			container_of(query, typeof(*query_trigger), parent);
+
+	return query_trigger->trigger;
+}
+
+LTTNG_HIDDEN
+const struct lttng_trigger *lttng_error_query_condition_borrow_target(
+		const struct lttng_error_query *query)
+{
+	const struct lttng_error_query_condition *query_trigger =
 			container_of(query, typeof(*query_trigger), parent);
 
 	return query_trigger->trigger;
@@ -690,6 +759,13 @@ int lttng_error_query_serialize(const struct lttng_error_query *query,
 	switch (query->target_type) {
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
 		ret = lttng_error_query_trigger_serialize(query, payload);
+		if (ret) {
+			goto end;
+		}
+
+		break;
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
+		ret = lttng_error_query_condition_serialize(query, payload);
 		if (ret) {
 			goto end;
 		}
@@ -751,6 +827,35 @@ ssize_t lttng_error_query_create_from_payload(struct lttng_payload_view *view,
 		used_size += trigger_used_size;
 
 		*query = lttng_error_query_trigger_create(trigger);
+		if (!*query) {
+			used_size = -1;
+			goto end;
+		}
+
+		break;
+	}
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
+	{
+		ssize_t trigger_used_size;
+		struct lttng_payload_view trigger_view =
+				lttng_payload_view_from_view(
+						view, used_size, -1);
+
+		if (!lttng_payload_view_is_valid(&trigger_view)) {
+			used_size = -1;
+			goto end;
+		}
+
+		trigger_used_size = lttng_trigger_create_from_payload(
+				&trigger_view, &trigger);
+		if (trigger_used_size < 0) {
+			used_size = -1;
+			goto end;
+		}
+
+		used_size += trigger_used_size;
+
+		*query = lttng_error_query_condition_create(trigger);
 		if (!*query) {
 			used_size = -1;
 			goto end;

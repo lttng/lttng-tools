@@ -76,6 +76,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
   owner uid: ${uid}
   condition: event rule matches
     rule: aaa (type: user tracepoint, filter: p == 2)
+    errors: none
   actions:
     notify
       errors: none
@@ -84,6 +85,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
   owner uid: ${uid}
   condition: event rule matches
     rule: * (type: user tracepoint)
+    errors: none
   actions:
     notify
       errors: none
@@ -98,6 +100,7 @@ cat > "${tmp_expected_stdout}" <<- EOF
   owner uid: ${uid}
   condition: event rule matches
     rule: * (type: user tracepoint)
+    errors: none
   actions:
     notify
       errors: none

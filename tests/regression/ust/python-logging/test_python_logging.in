@@ -700,6 +700,7 @@ function test_python_trigger_notify_action
 	  owner uid: ${uid}
 	  condition: event rule matches
 	    rule: * (type: python:logging)
+	    errors: none
 	  actions:
 	    notify
 	      errors: none

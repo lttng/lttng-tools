@@ -17,6 +17,7 @@
 
 enum lttng_error_query_target_type {
 	LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER,
+	LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION,
 	LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION,
 };
 
@@ -26,6 +27,10 @@ enum lttng_error_query_target_type lttng_error_query_get_target_type(
 
 LTTNG_HIDDEN
 const struct lttng_trigger *lttng_error_query_trigger_borrow_target(
+		const struct lttng_error_query *query);
+
+LTTNG_HIDDEN
+const struct lttng_trigger *lttng_error_query_condition_borrow_target(
 		const struct lttng_error_query *query);
 
 LTTNG_HIDDEN

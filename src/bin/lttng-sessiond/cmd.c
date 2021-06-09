@@ -4662,7 +4662,7 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 {
 	enum lttng_error_code ret_code;
 	const struct lttng_trigger *query_target_trigger;
-	struct lttng_action *query_target_action = NULL;
+	const struct lttng_action *query_target_action = NULL;
 	struct lttng_trigger *matching_trigger = NULL;
 	const char *trigger_name;
 	uid_t trigger_owner;
@@ -4672,6 +4672,10 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 	switch (lttng_error_query_get_target_type(query)) {
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_TRIGGER:
 		query_target_trigger = lttng_error_query_trigger_borrow_target(query);
+		break;
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
+		query_target_trigger =
+				lttng_error_query_condition_borrow_target(query);
 		break;
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 		query_target_trigger = lttng_error_query_action_borrow_trigger_target(
@@ -4748,6 +4752,21 @@ enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cm
 		}
 
 		break;
+	case LTTNG_ERROR_QUERY_TARGET_TYPE_CONDITION:
+	{
+		trigger_status = lttng_trigger_condition_add_error_results(
+				matching_trigger, results);
+
+		switch (trigger_status) {
+		case LTTNG_TRIGGER_STATUS_OK:
+			break;
+		default:
+			ret_code = LTTNG_ERR_UNK;
+			goto end;
+		}
+
+		break;
+	}
 	case LTTNG_ERROR_QUERY_TARGET_TYPE_ACTION:
 	{
 		const enum lttng_action_status action_status =

@@ -238,6 +238,11 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 		struct lttng_error_query_results *results);
 
 LTTNG_HIDDEN
+enum lttng_trigger_status lttng_trigger_condition_add_error_results(
+		const struct lttng_trigger *trigger,
+		struct lttng_error_query_results *results);
+
+LTTNG_HIDDEN
 enum lttng_trigger_status lttng_trigger_add_action_error_query_results(
 		struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results);
