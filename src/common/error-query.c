@@ -745,7 +745,7 @@ int lttng_error_query_serialize(const struct lttng_error_query *query,
 		struct lttng_payload *payload)
 {
 	int ret;
-	struct lttng_error_query_comm header = {
+	const struct lttng_error_query_comm header = {
 		.target_type = (typeof(header.target_type)) query->target_type,
 	};
 
