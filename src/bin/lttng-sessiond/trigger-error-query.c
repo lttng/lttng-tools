@@ -15,6 +15,14 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 		const struct lttng_trigger *trigger,
 		struct lttng_error_query_results *results)
 {
+	return LTTNG_TRIGGER_STATUS_OK;
+}
+
+LTTNG_HIDDEN
+enum lttng_trigger_status lttng_trigger_condition_add_error_results(
+		const struct lttng_trigger *trigger,
+		struct lttng_error_query_results *results)
+{
 	enum lttng_trigger_status status;
 	uint64_t discarded_tracer_messages_count;
 	enum event_notifier_error_accounting_status error_accounting_status;
@@ -29,7 +37,12 @@ enum lttng_trigger_status lttng_trigger_add_error_results(
 			&trigger_owner);
 	assert(status == LTTNG_TRIGGER_STATUS_OK);
 
-	/* Only add discarded tracer messages count for applicable triggers. */
+	/*
+	 * Only add discarded tracer messages count for applicable conditions.
+	 * As of 2.13, only "event rule matches" conditions can generate
+	 * reportable errors hence why this function is very specific to this
+	 * condition type.
+	 */
 	if (!lttng_trigger_needs_tracer_notifier(trigger)) {
 		status = LTTNG_TRIGGER_STATUS_OK;
 		goto end;

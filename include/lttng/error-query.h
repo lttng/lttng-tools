@@ -61,6 +61,10 @@ enum lttng_error_query_results_status {
 extern struct lttng_error_query *lttng_error_query_trigger_create(
 		const struct lttng_trigger *trigger);
 
+/* Create an error query targetting a trigger's condition object. */
+extern struct lttng_error_query *lttng_error_query_condition_create(
+		const struct lttng_trigger *trigger);
+
 /*
  * Create an error query targetting an action object.
  *

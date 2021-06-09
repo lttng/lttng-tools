@@ -41,13 +41,13 @@ function trigger_get_discarded_notif_number()
 
 	"$FULL_LTTNG_BIN" list-triggers > "$list_triggers_stdout"
 
-	cat "$list_triggers_stdout" | grep -a7 "$trigger_name" | tail -1 | grep --quiet "errors: none"
+	cat "$list_triggers_stdout" | grep -A7 "$trigger_name" | grep -A2 "event rule matches" | tail -1 | grep --quiet "errors: none"
 	ret=$?
 
 	if [ "$ret" -eq "0" ]; then
 		notif_nb="0"
 	else
-		notif_nb=$(cat "$list_triggers_stdout" | grep -a8 "$trigger_name" | tail -1 | grep "discarded tracer messages" | cut -d' ' -f8)
+		notif_nb=$(cat "$list_triggers_stdout" | grep -A7 "$trigger_name" | grep "discarded tracer messages" | cut -d' ' -f10)
 	fi
 
 	rm -f "$list_triggers_stdout"
