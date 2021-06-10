@@ -58,7 +58,7 @@ help understand the journey from an instrumentation point to the
 execution of actions.
 
 The actual creation of an event can be costly because LTTng needs to
-evalute the arguments of the instrumentation point.
+evaluate the arguments of the instrumentation point.
 
 In practice, LTTng implements various optimizations for the Linux kernel
 and user space tracing domains (see the <<domain,{sect-domain}>> section
