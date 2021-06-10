@@ -33,7 +33,7 @@ The `disable-channel` command disables one channel per 'CHANNEL'
 argument.
 
 As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
-channel once its tracing session has ben started (see
+channel once its tracing session has been started (see
 man:lttng-start(1)) at least once.
 
 See the <<examples,EXAMPLES>> section below for usage examples.
