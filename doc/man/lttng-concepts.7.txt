@@ -895,7 +895,6 @@ man:lttng-enable-channel(1) command.
 
 Monitor timer::
     When this timer expires, the consumer daemon samples some channel
-    (see the <<channel,{sect-channel}>> section above)
     statistics to evaluate the following trigger conditions:
 +
 --
