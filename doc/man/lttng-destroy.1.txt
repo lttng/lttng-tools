@@ -64,7 +64,7 @@ Then all the subdirectories of the output directory of{nbsp}__TS__
 command exits. In other words, it's safe to read them, modify them, move
 them, or remove then.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

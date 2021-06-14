@@ -51,7 +51,7 @@ session configuration files: the command fails. Allow the `save` command
 to overwrite existing tracing session configuration files with the
 option:--force option.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

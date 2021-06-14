@@ -22,9 +22,6 @@
     <xsl:template match="*[local-name() = 'ulink']">
         <xsl:apply-templates/><xsl:text> &lt;</xsl:text><xsl:value-of select="@url"/><xsl:text>&gt;</xsl:text>
     </xsl:template>
-    <xsl:template match="*[local-name() = 'link']">
-        <xsl:text>\fI</xsl:text><xsl:apply-templates/><xsl:text>\fR</xsl:text>
-    </xsl:template>
 
     <!-- Literal -->
     <xsl:template match="*[local-name() = 'literal']">

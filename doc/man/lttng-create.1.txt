@@ -91,7 +91,7 @@ genoption:--relayd-path option.
 On success, the `create` command sets the current tracing session (see
 man:lttng-concepts(7) to learn more) to the created tracing session.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 Show the status of the current tracing session with the
 man:lttng-status(1) command.
@@ -143,7 +143,7 @@ Otherwise:::
 +
 Set the trace output destination with the option:--set-url option, or
 with the option:--ctrl-url and option:--data-url options (see the
-<<url-format,URL format>> section below).
+``<<url-format,URL format>>'' section below).
 
 [[snapshot-mode]]Snapshot mode (option:--snapshot option)::
     Only write the trace data to the local file system or send it to a
@@ -175,8 +175,8 @@ date/time.
 +
 Set the trace output destination with the option:--set-url='URL' option,
 or with the option:--ctrl-url='URL' and option:--data-url='URL' options
-(see the <<url-format,URL format>> section below). 'URL' may :not: start
-with `file://`.
+(see the ``<<url-format,URL format>>'' section below). 'URL' may :not:
+start with `file://`.
 
 
 [[url-format]]
@@ -195,8 +195,8 @@ file://'TRACEDIR'
 +
 The `file://` protocol targets the *local file system*: you may only use
 such an URL with the option:--set-url option when you create the tracing
-session in local or snapshot mode (see the <<modes,Tracing session
-modes>> section above).
+session in local or snapshot mode (see the ``<<modes,Tracing session
+modes>>'' section above).
 +
 'TRACEDIR':::
     Absolute path to the directory containing the trace data on the
@@ -210,7 +210,7 @@ Network format::
 +
 This format is only available when you create the tracing session in
 network streaming, snapshot (option:--snapshot), or live (option:--live)
-mode (see the <<modes,Tracing session modes>> section above).
+mode (see the ``<<modes,Tracing session modes>>'' section above).
 +
 'NETPROTO':::
     Network protocol, amongst:
@@ -268,7 +268,7 @@ include::common-lttng-cmd-options-head.txt[]
 
 Mode selection
 ~~~~~~~~~~~~~~
-See the <<modes,Tracing session modes>> section above.
+See the ``<<modes,Tracing session modes>>'' section above.
 
 At most one of:
 
@@ -320,8 +320,8 @@ date/time.
 Output
 ~~~~~~
 option:--no-output::
-    Depending on the tracing session mode (see the <<modes,Tracing
-    session modes>> section above):
+    Depending on the tracing session mode (see the ``<<modes,Tracing
+    session modes>>'' section above):
 +
 Local mode:::
     Disable the file system output.
@@ -339,15 +339,15 @@ option:--shm-path='DIR'::
 
 URL
 ~~~
-See the <<url-format,URL format>> section above to learn more about the
-syntax of the 'URL' argument of the following options.
+See the ``<<url-format,URL format>>'' section above to learn more about
+the syntax of the 'URL' argument of the following options.
 
 option:-C 'URL', option:--ctrl-url='URL'::
     Set the control path URL to 'URL'.
 +
 You must also use the option:--data-url option.
 +
-Not available in local mode (see the <<modes,Tracing session modes>>
+Not available in local mode (see the ``<<modes,Tracing session modes>>''
 section above).
 +
 In snapshot mode, this is equivalent to using the nloption:--ctrl-url
@@ -359,7 +359,7 @@ option:-D 'URL', option:--data-url='URL'::
 +
 You must also use the option:--ctrl-url option.
 +
-Not available in local mode (see the <<modes,Tracing session modes>>
+Not available in local mode (see the ``<<modes,Tracing session modes>>''
 section above).
 +
 In snapshot mode, this is equivalent to using the nloption:--data-url
@@ -371,8 +371,8 @@ option:-U 'URL', option:--set-url='URL'::
 +
 This URL remains unchanged as long as the tracing session exists.
 +
-Depending on the tracing session mode (see the <<modes,Tracing session
-modes>> section above):
+Depending on the tracing session mode (see the ``<<modes,Tracing session
+modes>>'' section above):
 +
 Local mode:::
     'URL' must start with `file://`, followed with the destination

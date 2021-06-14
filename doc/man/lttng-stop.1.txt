@@ -52,7 +52,7 @@ remains inactive, it's :not: a trace chunk archive: you need to destroy
 the tracing session with man:lttng-destroy(1) or perform a rotation with
 man:lttng-rotate(1) to archive it.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

@@ -35,7 +35,7 @@ specifier>> and its actions with one or more <<action-spec,action
 specifiers>>. The order of the action specifiers is significant: LTTng
 attempts to execute the actions of a firing trigger in this order.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the triggers of your Unix user, or of all users if your
 Unix user is `root`, with the man:lttng-list-triggers(1) command.
@@ -71,11 +71,11 @@ See man:lttng-event-rule(7) to learn how to specify an event rule
 ('ERSPEC' part).
 +
 Capture event record and context fields with one or more
-nloption:--capture options (see the <<capture-descr,Capture descriptor>>
-section below to learn more). When an `event-rule-matches` condition
-with capture descriptors is satisfied, the captured field values are
-available in the evaluation object of the condition using the
-liblttng-ctl C{nbsp}API.
+nloption:--capture options (see the ``<<capture-descr,Capture
+descriptor>>'' section below to learn more). When an
+`event-rule-matches` condition with capture descriptors is satisfied,
+the captured field values are available in the evaluation object of the
+condition using the liblttng-ctl C{nbsp}API.
 +
 IMPORTANT: Make sure to **single-quote** 'CDESCR' when you run the
 `add-trigger` command from a shell, as capture descriptors can include
@@ -294,12 +294,14 @@ Specifier
 option:--condition='CONDTYPE'::
     Introductory option for a condition specifier of type 'CONDTYPE'.
 +
-See the <<cond-spec,Condition specifier>> section above to learn more.
+See the ``<<cond-spec,Condition specifier>>'' section above to learn
+more.
 
 option:--action='ACTTYPE'::
     Introductory option for an action specifier of type 'ACTTYPE'.
 +
-See the <<action-spec,Action specifier>> section above to learn more.
+See the ``<<action-spec,Action specifier>>'' section above to learn
+more.
 
 
 include::common-lttng-cmd-help-options.txt[]

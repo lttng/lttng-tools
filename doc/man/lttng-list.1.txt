@@ -87,7 +87,7 @@ option:--fields option.
 See man:lttng-concept(7) to learn more about tracing sessions, tracing
 domains, channels, recording event rules, and instrumentation points.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the channels and recording event rules of the current tracing
 session (see man:lttng-concept(7) to learn more) with the

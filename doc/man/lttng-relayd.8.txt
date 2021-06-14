@@ -34,7 +34,7 @@ while the remote tracing session is active.
 By default, a relay daemon listens on all network interfaces to receive
 trace data, but only on `localhost` for LTTng live connections. Override
 the listening URLs with the option:--control-port, option:--data-port,
-and option:--live-port options (see the <<url-format,URL format>>
+and option:--live-port options (see the ``<<url-format,URL format>>''
 section below). For example, use the
 option:--live-port=+tcp://0.0.0.0:{default_network_viewer_port}+ option
 to make a relay daemon listen to LTTng live connections on all network
@@ -70,7 +70,7 @@ The relay daemon uses different output path patterns depending on:
 
 * Its configuration.
 +
-See the <<cfg,Daemon configuration>> section above.
+See the ``<<cfg,Daemon configuration>>'' section above.
 
 * The tracing session configuration of the connected peer.
 * The LTTng session daemon (see man:lttng-sessiond(8)) version
@@ -180,7 +180,7 @@ option:-f 'PATH', option:--config='PATH'::
     addition to the default configuration files and the command-line
     options.
 +
-See the <<cfg,Daemon configuration>> section above.
+See the ``<<cfg,Daemon configuration>>'' section above.
 
 option:-d, option:--daemonize::
     Start as a Unix daemon and close file descriptors (console).
@@ -230,7 +230,7 @@ Specify this option up to three times to get more levels of verbosity.
 
 Output
 ~~~~~~
-See the <<output-directory,Output directory>> section above to learn
+See the ``<<output-directory,Output directory>>'' section above to learn
 more.
 
 option:-p, option:--group-output-by-host::
@@ -250,8 +250,8 @@ option:-o 'DIR', option:--output='DIR'::
 
 Ports
 ~~~~~
-See the <<url-format,URL format>> section above to learn more about the
-syntax of the 'URL' argument of the following options.
+See the ``<<url-format,URL format>>'' section above to learn more about
+the syntax of the 'URL' argument of the following options.
 
 option:-C 'URL', option:--control-port='URL'::
     Listen to control data on URL 'URL'.

@@ -37,7 +37,7 @@ See man:lttng-concepts(7) to learn more about tracing sessions.
 As of this version, the `metadata` and `statedump` targets are
 available.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 Regenerate the metadata of a tracing session

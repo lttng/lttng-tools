@@ -62,7 +62,7 @@ directly cause discarded event records or packets.
 A `rotate-session` trigger action can also rotate a tracing session (see
 man:lttng-add-trigger(1)).
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 [IMPORTANT]
 ====

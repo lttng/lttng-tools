@@ -52,7 +52,7 @@ The `lttng enable-event` command does one of:
 
 * Enable one or more disabled recording event rules.
 +
-See the <<enable,Enable a disabled recording event rule>> section
+See the ``<<enable,Enable a disabled recording event rule>>'' section
 below.
 
 See man:lttng-concepts(7) to learn more about instrumentation points,
@@ -77,7 +77,7 @@ If there's already a channel for the selected tracing session and domain
 which isn't named `channel0`, the `enable-event` command fails.
 Otherwise, it automatically creates it.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the recording event rules of a specific tracing session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
@@ -101,25 +101,25 @@ Explicit conditions::
 * The instrumentation point type from which LTTng creates{nbsp}__E__
   has a specific type.
 +
-See the <<inst-point-type-cond,Instrumentation point type condition>>
-section below.
+See the ``<<inst-point-type-cond,Instrumentation point type
+condition>>'' section below.
 
 * A pattern matches the name of{nbsp}__E__ while another pattern
   doesn't.
 +
-See the <<event-name-cond,Event name condition>> section below.
+See the ``<<event-name-cond,Event name condition>>'' section below.
 
 * The log level of the instrumentation point from which LTTng
   creates{nbsp}__E__ is at least as severe as some value, or is exactly
   some value.
 +
-See the <<inst-point-log-level-cond,Instrumentation point log level condition>>
-section below.
+See the ``<<inst-point-log-level-cond,Instrumentation point log level
+condition>>'' section below.
 
 * The fields of the payload of{nbsp}__E__ and the current context fields
   satisfy a filter expression.
 +
-See the <<filter-cond,Event payload and context filter condition>>
+See the ``<<filter-cond,Event payload and context filter condition>>''
 section below.
 --
 
@@ -193,7 +193,7 @@ List the available Linux kernel system call instrumentation points with
 The argument of the option:--probe option is the location of the
 kprobe to insert, either a symbol or a
 memory address, while 'RECORDNAME' is the name of the record
-of{nbsp}__E__ (see the <<er-name,Event record name>> section below).
+of{nbsp}__E__ (see the ``<<er-name,Event record name>>'' section below).
 +
 The payload of a Linux kprobe event is empty.
 
@@ -215,7 +215,7 @@ are :not: reference-counted.
 --
 +
 'RECORDNAME' is the name of the record of{nbsp}__E__ (see the
-<<er-name,Event record name>> section below).
+``<<er-name,Event record name>>'' section below).
 +
 The payload of a Linux user space probe event is empty.
 
@@ -226,7 +226,7 @@ The payload of a Linux user space probe event is empty.
 The argument of the option:--function option is the location of the
 Linux kretprobe to insert, either a symbol or
 a memory address, while 'RECORDNAME' is the name of the record
-of{nbsp}__E__ (see the <<er-name,Event record name>> section below).
+of{nbsp}__E__ (see the ``<<er-name,Event record name>>'' section below).
 +
 The payload of a Linux kretprobe event is empty.
 
@@ -264,8 +264,8 @@ event rule{nbsp}__ER__ if the two following statements are true:
 
 * You specify the option:--all option or, depending on the
   instrumentation type condition (see the
-  <<inst-point-type-cond,Instrumentation point type condition>> section
-  above) of{nbsp}__ER__, 'NAME' matches:
+  ``<<inst-point-type-cond,Instrumentation point type condition>>''
+  section above) of{nbsp}__ER__, 'NAME' matches:
 +
 --
 LTTng tracepoint::
@@ -553,8 +553,8 @@ Event record name
 ~~~~~~~~~~~~~~~~~
 When LTTng records an event{nbsp}__E__, the resulting event record has a
 name which depends on the instrumentation point type condition (see the
-<<inst-point-type-cond,Instrumentation point type condition>> section
-above) of the recording event rule which matched{nbsp}__E__:
+``<<inst-point-type-cond,Instrumentation point type condition>>''
+section above) of the recording event rule which matched{nbsp}__E__:
 
 LTTng tracepoint (option:--kernel/option:--userspace and option:--tracepoint options)::
     Full name of the tracepoint from which LTTng creates{nbsp}__E__.
@@ -661,8 +661,8 @@ option:-s 'SESSION', option:--session='SESSION'::
 
 Instrumentation point type condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<inst-point-type-cond,Instrumentation point type condition>>
-section above.
+See the ``<<inst-point-type-cond,Instrumentation point type
+condition>>'' section above.
 
 At most one of:
 
@@ -681,7 +681,7 @@ Only available with the option:--kernel option.
 --
 +
 You must specify the event record name with 'RECORDNAME'. See the
-<<er-name,Event record name>> section above to learn more.
+``<<er-name,Event record name>>'' section above to learn more.
 
 option:--probe='LOC'::
     Only match Linux kprobe events.
@@ -697,7 +697,7 @@ Only available with the option:--kernel option.
 --
 +
 You must specify the event record name with 'RECORDNAME'. See the
-<<er-name,Event record name>> section above to learn more.
+``<<er-name,Event record name>>'' section above to learn more.
 
 option:--userspace-probe='LOC'::
     Only match Linux user space probe events.
@@ -773,7 +773,7 @@ Example: `--userspace-probe=sdt:./build/server:server:accept_request`
 --
 +
 You must specify the event record name with 'RECORDNAME'. See the
-<<er-name,Event record name>> section above to learn more.
+``<<er-name,Event record name>>'' section above to learn more.
 
 option:--syscall::
     Only match Linux system call events.
@@ -800,7 +800,7 @@ future.
 
 Event name condition
 ~~~~~~~~~~~~~~~~~~~~
-See the <<event-name-cond,Event name condition>> section above.
+See the ``<<event-name-cond,Event name condition>>'' section above.
 
 option:-a, option:--all::
     Equivalent to a single 'NAME' argument (LTTng tracepoint or logger
@@ -821,8 +821,8 @@ a literal `,` character, use :esccomma:.
 
 Instrumentation point log level condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<inst-point-log-level-cond,Instrumentation point log level
-condition>> section above.
+See the ``<<inst-point-log-level-cond,Instrumentation point log level
+condition>>'' section above.
 
 At most one of:
 
@@ -840,7 +840,7 @@ with the option:--kernel option.
 
 Event payload and context filter condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<filter-cond,Event payload and context filter condition>>
+See the ``<<filter-cond,Event payload and context filter condition>>''
 section above.
 
 option:-f 'EXPR', option:--filter='EXPR'::
@@ -904,7 +904,7 @@ $ lttng enable-event --log4j --channel=my-loggers \
 ====
 The recording event rule below matches the entry of `usb_disconnect()`
 Linux kernel function calls. The records of such events are named `usbd`
-(see the <<er-name,Event record name>> section above).
+(see the ``<<er-name,Event record name>>'' section above).
 
 See the option:--probe option.
 

@@ -55,7 +55,7 @@ the selected tracing session.
 When LTTng takes a snapshot, it sends the sub-buffer dump of the
 selected tracing session to the local file system or over the network to
 a listening relay daemon (man:lttng-relayd(8)). See the
-<<output,Snapshot output>> section below to learn more.
+``<<output,Snapshot output>>'' section below to learn more.
 
 When LTTng takes a snapshot, it does :not: clear the sub-buffers of the
 selected tracing session. In other words, different snapshots of the
@@ -69,7 +69,7 @@ to use the `snapshot` command.
 A `snapshot-session` trigger action can also take a tracing session
 snapshot (see man:lttng-add-trigger(1)).
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 If you want, instead, to keep all the trace data, but divide it into
 archived chunks which are then, like snapshots, ready to be processed,
@@ -159,7 +159,7 @@ option:-s 'SESSION', option:--session='SESSION'::
 
 Output
 ~~~~~~
-See the <<output,Snapshot output>> section above.
+See the ``<<output,Snapshot output>>'' section above.
 
 option:-C 'URL', option:--ctrl-url='URL'::
     Set the control path URL to 'URL'.

@@ -77,7 +77,7 @@ You may disable an enabled recording event rule regardless of the
 activity (started or stopped) of its tracing session (see
 man:lttng-start(1) and man:lttng-stop(1)).
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

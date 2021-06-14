@@ -36,7 +36,7 @@ As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
 channel once its tracing session has been started (see
 man:lttng-start(1)) at least once.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

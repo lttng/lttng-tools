@@ -21,7 +21,7 @@ under the +{daemon-ini-section}+ INI section. Each INI property is:
 
 Key::
     The long name of a command-line option to set (see the
-    <<options,OPTIONS>> section below).
+    ``<<options,OPTIONS>>'' section below).
 
 Value::
     The selected command-line option accepts an argument:::

@@ -54,7 +54,7 @@ man:lttng-relayd(8) can disable remote clearing operations. If LTTng
 sends tracing data over the network for the selected tracing session(s)
 to an LTTng relay daemon configured as such, the `clear` command fails.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

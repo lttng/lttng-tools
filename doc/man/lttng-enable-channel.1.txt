@@ -63,7 +63,7 @@ Without the option:--session option::
 NOTE: The man:lttng-enable-event(1) command can automatically create a
 default channel when no channel exists for the provided tracing domain.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 List the channels of a given tracing session with the
 man:lttng-list(1) and man:lttng-status(1) commands.

@@ -111,7 +111,7 @@ $ lttng track --kernel --pid=2345
 $ lttng start
 ----
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 Remove values from an inclusion set with the man:lttng-untrack(1)
 command.

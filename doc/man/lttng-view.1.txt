@@ -38,7 +38,7 @@ By default, the `view` command attempts to launch man:babeltrace2(1) or,
 if it's not available, man:babeltrace(1). Override which trace reader to
 launch with the option:--viewer option.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]
