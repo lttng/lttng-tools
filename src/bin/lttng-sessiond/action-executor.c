@@ -748,7 +748,7 @@ static void *action_executor_thread(void *_data)
 	DBG("Entering work execution loop");
 	pthread_mutex_lock(&executor->work.lock);
 	while (!executor->should_quit) {
-		int ret;
+		int ret = 0;
 		struct action_work_item *work_item;
 
 		health_code_update();
@@ -983,7 +983,7 @@ error_unlock:
 static int add_action_to_subitem_array(struct lttng_action *action,
 		struct lttng_dynamic_array *subitems)
 {
-	int ret;
+	int ret = 0;
 	enum lttng_action_type type = lttng_action_get_type(action);
 	const char *session_name = NULL;
 	enum lttng_action_status status;
