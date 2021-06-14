@@ -60,7 +60,7 @@ You may combine the option:--timer and option:--size options.
 See the man:lttng-concepts(7) to learn how LTTng names a trace chunk
 archive directory.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 Unset a tracing session rotation schedule with the
 man:lttng-disable-rotation(1) command.

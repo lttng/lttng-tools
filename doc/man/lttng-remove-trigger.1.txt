@@ -27,7 +27,7 @@ The `remove-trigger` command removes a trigger which belong to your Unix
 user. If your Unix user is `root`, you can remove the trigger of another
 user with the option:--owner-uid option.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 OPTIONS

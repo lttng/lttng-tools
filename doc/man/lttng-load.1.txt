@@ -71,7 +71,7 @@ By default, the `load` command does :not: overwrite existing tracing
 sessions: the command fails. Allow the `load` command to overwrite
 existing tracing sessions with the option:--force option.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

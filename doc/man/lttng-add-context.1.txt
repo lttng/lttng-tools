@@ -112,7 +112,7 @@ NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context fields
 to be recorded to the event records of a given channel once its tracing
 session has been started (see man:lttng-start(1)) at least once.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

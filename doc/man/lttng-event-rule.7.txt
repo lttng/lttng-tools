@@ -69,25 +69,25 @@ conditions of an event rule, that is:
 * The instrumentation point from which LTTng creates{nbsp}__E__ has a
   specific type.
 +
-See the <<inst-point-type-cond,Instrumentation point type condition>>
-section below.
+See the ``<<inst-point-type-cond,Instrumentation point type
+condition>>'' section below.
 
 * A pattern matches the name of{nbsp}__E__ while another pattern
   doesn't.
 +
-See the <<event-name-cond,Event name condition>> section below.
+See the ``<<event-name-cond,Event name condition>>'' section below.
 
 * The log level of the instrumentation point from which LTTng
   creates{nbsp}__E__ is at least as severe as some value, or is exactly
   some value.
 +
-See the <<inst-point-log-level-cond,Instrumentation point log level
-condition>> section below.
+See the ``<<inst-point-log-level-cond,Instrumentation point log level
+condition>>'' section below.
 
 * The fields of the payload of{nbsp}__E__ and the current context fields
   satisfy a filter expression.
 +
-See the <<filter-cond,Event payload and context filter condition>>
+See the ``<<filter-cond,Event payload and context filter condition>>''
 section below.
 
 The dedicated command-line options of most conditions are optional: if
@@ -178,8 +178,8 @@ rule{nbsp}__ER__ if the two following statements are true:
 
 * You don't specify the option:--name='NAME' option or, depending on the
   instrumentation type condition (see the
-  <<inst-point-type-cond,Instrumentation point type condition>> section
-  above) of{nbsp}__ER__, 'NAME' matches:
+  ``<<inst-point-type-cond,Instrumentation point type condition>>''
+  section above) of{nbsp}__ER__, 'NAME' matches:
 +
 --
 `kernel:tracepoint`::
@@ -529,8 +529,8 @@ OPTIONS
 -------
 Instrumentation point type condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<inst-point-type-cond,Instrumentation point type condition>>
-section above.
+See the ``<<inst-point-type-cond,Instrumentation point type
+condition>>'' section above.
 
 option:-E 'NAME', option:--event-name='NAME'::
     With the option:--type=++kernel:kprobe++ or
@@ -702,7 +702,7 @@ change in the future.
 
 Event name condition
 ~~~~~~~~~~~~~~~~~~~~
-See the <<event-name-cond,Event name condition>> section above.
+See the ``<<event-name-cond,Event name condition>>'' section above.
 
 option:-n 'NAME', option:--name='NAME'::
     Only match events of which 'NAME' matches, depending on the
@@ -742,8 +742,8 @@ Only available with the option:--type=++user:tracepoint++ option.
 
 Instrumentation point log level condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<inst-point-log-level-cond,Instrumentation point log level
-condition>> section above.
+See the ``<<inst-point-log-level-cond,Instrumentation point log level
+condition>>'' section above.
 
 option:-l 'LOGLEVELSPEC', option:--log-level='LOGLEVELSPEC'::
     Only match events of which the log level of the LTTng tracepoint or
@@ -776,7 +776,7 @@ but this default may change in the future.
 
 Event payload and context filter condition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-See the <<filter-cond,Event payload and context filter condition>>
+See the ``<<filter-cond,Event payload and context filter condition>>''
 section above.
 
 option:-f 'EXPR', option:--filter='EXPR'::

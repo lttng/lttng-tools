@@ -30,7 +30,7 @@ Without the option:--session option::
 See man:lttng-concepts(7) to learn more about the tracing session
 rotation and trace chunk concepts.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 include::common-lttng-cmd-options-head.txt[]

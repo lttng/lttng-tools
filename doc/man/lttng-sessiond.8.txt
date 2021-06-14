@@ -143,7 +143,7 @@ option:-f 'PATH', option:--config='PATH'::
     addition to the default configuration files and the command-line
     options.
 +
-See the <<cfg,Daemon configuration>> section above.
+See the ``<<cfg,Daemon configuration>>'' section above.
 
 option:-d, option:--daemonize::
     Start as a Unix daemon and close file descriptors (console).
@@ -168,7 +168,8 @@ option:-l 'PATH', option:--load='PATH'::
     or a file, instead of loading them from the default search
     directories.
 +
-See the <<load,Tracing session configuration loading>> section above.
+See the ``<<load,Tracing session configuration loading>>'' section
+above.
 
 option:-S, option:--sig-parent::
     Send the `USR1` signal to the parent process to notify readiness.
@@ -398,25 +399,25 @@ man:lttng-create(1) command.
     Directory from which `lttng-sessiond` loads Unix user tracing
     session configurations when starting.
 +
-See the <<load,Tracing session configuration loading>> section above to
-learn more.
+See the ``<<load,Tracing session configuration loading>>'' section above
+to learn more.
 
 +{system_sessions_auto_dir}+::
     Directory from which `lttng-sessiond` loads system-wide tracing
     session configurations when starting.
 +
-See the <<load,Tracing session configuration loading>> section above to
-learn more.
+See the ``<<load,Tracing session configuration loading>>'' section above
+to learn more.
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
     Unix user's LTTng daemon INI configuration file.
 +
-See the <<cfg,Daemon configuration>> section above to learn more.
+See the ``<<cfg,Daemon configuration>>'' section above to learn more.
 
 +{system_lttng_conf}+::
     System-wide LTTng daemon INI configuration file.
 +
-See the <<cfg,Daemon configuration>> section above to learn more.
+See the ``<<cfg,Daemon configuration>>'' section above to learn more.
 
 NOTE: `$LTTNG_HOME` defaults to `$HOME`.
 

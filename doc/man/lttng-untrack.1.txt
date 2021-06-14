@@ -52,7 +52,7 @@ recording event rules.
 The `untrack` command removes values from _inclusion sets_ of process
 attributes. See man:lttng-track(1) to learn more about inclusion sets.
 
-See the <<examples,EXAMPLES>> section below for usage examples.
+See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 
 Inclusion set example
