@@ -481,7 +481,7 @@ PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.7.6])
 AC_CHECK_FUNC([clock_gettime], [AC_DEFINE_UNQUOTED([LTTNG_HAVE_CLOCK_GETTIME], 1, [Has clock_gettime() support.])])
 
 # URCU library version needed or newer
-m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.9.0 is needed])
+m4_define([WRONG_LIBURCU_MSG], [Userspace RCU (liburcu) >= 0.11.0 is needed])
 
 # Check liburcu needed function calls
 AC_CHECK_DECL([cds_list_add], [],
@@ -506,9 +506,9 @@ AC_CHECK_DECL([cmm_smp_mb__before_uatomic_or], [],
         [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu.h>]]
 )
 
-#Function added in urcu 0.9.0
-AC_CHECK_DECL([urcu_ref_get_unless_zero], [],
-        [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/ref.h>]]
+#Function added in urcu 0.11.0
+AC_CHECK_DECL([urcu_memb_barrier], [],
+        [AC_MSG_ERROR([WRONG_LIBURCU_MSG])], [[#include <urcu/urcu-memb.h>]]
 )
 
 # Check for libkmod, it will be auto-neabled if found but won't fail if it's not,
