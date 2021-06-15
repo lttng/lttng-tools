@@ -17,7 +17,7 @@ This program is part of the LTTng-tools project.
 
 LTTng-tools is distributed under the
 http://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html[GNU General
-Public License version 2]. See the
+Public License version{nbsp}2]. See the
 https://github.com/lttng/lttng-tools/blob/master/LICENSE[`LICENSE`] file
 for details.
 
