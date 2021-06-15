@@ -1,11 +1,11 @@
 lttng-enable-rotation(1)
 ========================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-enable-rotation - Set an LTTng tracing session rotation schedule
+lttng-enable-rotation - Set an LTTng recording session rotation schedule
 
 
 SYNOPSIS
@@ -17,17 +17,17 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng enable-rotation` command sets a tracing session rotation
+The `lttng enable-rotation` command sets a recording session rotation
 schedule for:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn more
+    about the current recording session).
 
-See man:lttng-concepts(7) to learn more about the tracing session
+See man:lttng-concepts(7) to learn more about the recording session
 rotation and trace chunk concepts.
 
 With the option:--timer='PERIODUS' option, the `enable-rotation` command
@@ -41,8 +41,8 @@ least 'SIZE'.
 
 For both the option:--timer and option:--size options, LTTng checks the
 schedule condition periodically using the monitor timers of the channels
-of the selected tracing session (see the nloption:--monitor-timer option
-of the man:lttng-enable-channel(1) command). This means that:
+of the selected recording session (see the nloption:--monitor-timer
+option of the man:lttng-enable-channel(1) command). This means that:
 
 * With the option:--timer='PERIODUS' option, LTTng can perform an
   automatic rotation when the elapsed time since the last automatic
@@ -62,22 +62,22 @@ archive directory.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-Unset a tracing session rotation schedule with the
+Unset a recording session rotation schedule with the
 man:lttng-disable-rotation(1) command.
 
 [IMPORTANT]
 ====
 You may only use the `enable-rotation` command when:
 
-* The selected tracing session was created in normal mode or in network
-  streaming mode (see man:lttng-create(1)).
+* The selected recording session was created in normal mode or in
+  network streaming mode (see man:lttng-create(1)).
 
 * No channel was created with a configured trace file count or size
   limit (see the nloption:--tracefile-size and
   nloption:--tracefile-count options of the man:lttng-enable-channel(1)
   command).
 
-For a given tracing session, LTTng only performs an automatic rotation
+For a given recording session, LTTng only performs an automatic rotation
 when it's not currently performing a rotation.
 ====
 
@@ -106,8 +106,8 @@ and `h`{nbsp}(hours) suffixes are supported.
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Set a rotation schedule for the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Set a rotation schedule for the recording session named 'SESSION'
+    instead of the current recording session.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -119,7 +119,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Set the size-based rotation schedule of the current tracing session.
+.Set the size-based rotation schedule of the current recording session.
 ====
 See the option:--size option.
 
@@ -129,7 +129,7 @@ $ lttng disable-rotation --size=256M
 ----
 ====
 
-.Set the periodic rotation schedule of a specific tracing session.
+.Set the periodic rotation schedule of a specific recording session.
 ====
 See the option:--timer and option:--session options.
 

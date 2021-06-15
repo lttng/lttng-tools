@@ -1,11 +1,11 @@
 lttng-stop(1)
 =============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-stop - Stop an LTTng tracing session
+lttng-stop - Stop an LTTng recording session
 
 
 SYNOPSIS
@@ -16,41 +16,41 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng stop` command stops a tracing session, that is, it
+The `lttng stop` command stops a recording session, that is, it
 deactivates the LTTng tracers for:
 
 With the 'SESSION' argument::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the 'SESSION' argument::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn more
+    about the current recording session).
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
-The selected tracing session must be active (started; see
-man:lttng-start(1)). A tracing session is inactive on creation (see
+The selected recording session must be active (started; see
+man:lttng-start(1)). A recording session is inactive on creation (see
 man:lttng-create(1)).
 
-A `stop-session` trigger action can also stop a tracing session (see
+A `stop-session` trigger action can also stop a recording session (see
 man:lttng-add-trigger(1)).
 
-Start an inactive tracing session with the man:lttng-start(1) command.
+Start an inactive recording session with the man:lttng-start(1) command.
 
 By default, the `stop` command ensures that the trace data of the
-selected tracing session is valid before it exits. Make the command exit
-immediately with the option:--no-wait option. In this case, however, the
-traces(s) might not be valid when the command exits, and there's no way
-to know when it/they becomes valid.
+selected recording session is valid before it exits. Make the command
+exit immediately with the option:--no-wait option. In this case,
+however, the traces(s) might not be valid when the command exits, and
+there's no way to know when it/they becomes valid.
 
 If LTTng archived the current trace chunk (see man:lttng-rotate(1) and
-man:lttng-enable-rotation(1)) of the selected tracing session at least
+man:lttng-enable-rotation(1)) of the selected recording session at least
 once during its lifetime, the `stop` command renames the current trace
 chunk subdirectory and prints the renamed path. Although it's safe to
-read the content of this renamed subdirectory while the tracing session
-remains inactive, it's :not: a trace chunk archive: you need to destroy
-the tracing session with man:lttng-destroy(1) or perform a rotation with
-man:lttng-rotate(1) to archive it.
+read the content of this renamed subdirectory while the recording
+session remains inactive, it's :not: a trace chunk archive: you need to
+destroy the recording session with man:lttng-destroy(1) or perform a
+rotation with man:lttng-rotate(1) to archive it.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
@@ -59,8 +59,8 @@ include::common-lttng-cmd-options-head.txt[]
 
 
 option:-n, option:--no-wait::
-    Do :not: ensure that the trace data of the selected tracing session
-    is valid before exiting.
+    Do :not: ensure that the trace data of the selected recording
+    session is valid before exiting.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -72,7 +72,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Stop the current tracing session.
+.Stop the current recording session.
 ====
 [role="term"]
 ----
@@ -80,7 +80,7 @@ $ lttng stop
 ----
 ====
 
-.Stop a specific tracing session.
+.Stop a specific recording session.
 ====
 [role="term"]
 ----
@@ -88,7 +88,7 @@ $ lttng stop my-session
 ----
 ====
 
-.Stop the current tracing session without waiting for completion.
+.Stop the current recording session without waiting for completion.
 ====
 See the option:--no-wait option.
 

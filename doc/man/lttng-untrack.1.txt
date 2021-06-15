@@ -1,6 +1,6 @@
 lttng-untrack(1)
 ================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -40,13 +40,13 @@ The `lttng untrack` command disallows one or more processes to record
 LTTng events based on their attributes within:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
-See man:lttng-concepts(7) to learn more about tracing sessions and
+See man:lttng-concepts(7) to learn more about recording sessions and
 recording event rules.
 
 The `untrack` command removes values from _inclusion sets_ of process
@@ -57,10 +57,10 @@ See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 Inclusion set example
 ~~~~~~~~~~~~~~~~~~~~~
-A common operation is to create a tracing session (see
+A common operation is to create a recording session (see
 man:lttng-create(1)), remove all the entries from the Linux kernel
-process ID inclusion set, start tracing, and then manually add PIDs
-while the tracing session is active.
+process ID inclusion set, start recording, and then manually add PIDs
+while the recording session is active.
 
 Assume the maximum system PID is 7 for this example.
 
@@ -137,15 +137,15 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Remove values from one or more inclusion sets of the tracing session
-    named 'SESSION' instead of the current tracing session.
+    Remove values from one or more inclusion sets of the recording
+    session named 'SESSION' instead of the current recording session.
 
 
 Inclusion set selection
 ~~~~~~~~~~~~~~~~~~~~~~~
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
     For each 'PID' argument, remove 'PID' from the process ID inclusion
-    set of the selected tracing session and domain.
+    set of the selected recording session and domain.
 +
 'PID' is the process ID attribute of a process as seen from the root
 PID namespace (see man:pid_namespaces(7)).
@@ -154,14 +154,14 @@ Only available with option:--kernel option.
 
 option:--vpid[='VPID'[,'VPID']...]::
     For each 'VPID' argument, remove 'VPID' from the virtual process ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'VPID' is the virtual process ID attribute of a process as seen from
 the PID namespace of the process (see man:pid_namespaces(7)).
 
 option:--uid[='USER'[,'USER']...]::
     For each 'USER' argument, remove 'USER' from the user ID inclusion
-    set of the selected tracing session and domain.
+    set of the selected recording session and domain.
 +
 'USER' is either:
 +
@@ -179,7 +179,7 @@ Only available with option:--kernel option.
 
 option:--vuid[='VUSER'[,'VUSER']...]::
     For each 'VUSER' argument, remove 'VUSER' from the virtual user ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'VUSER' is either:
 +
@@ -196,7 +196,7 @@ set.
 
 option:--gid[='GROUP'[,'GROUP']...]::
     For each 'GROUP' argument, remove 'GROUP' from the group ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'GROUP' is either:
 +
@@ -214,7 +214,7 @@ Only available with option:--kernel option.
 
 option:--vgid[='VGROUP'[,'VGROUP']...]::
     For each 'VGROUP' argument, remove 'VGROUP' from the virtual group
-    ID inclusion set of the selected tracing session and domain.
+    ID inclusion set of the selected recording session and domain.
 +
 'VGROUP' is either:
 +
@@ -247,7 +247,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Remove the PIDs 1728 and 3775 from the Linux kernel process ID inclusion set of the current tracing session.
+.Remove the PIDs 1728 and 3775 from the Linux kernel process ID inclusion set of the current recording session.
 ====
 See the option:--pid option.
 
@@ -257,7 +257,7 @@ $ lttng untrack --kernel --pid=1728,3775
 ----
 ====
 
-.Remove the IDs of a specific groups from the user space virtual group ID inclusion set of a specific tracing session.
+.Remove the IDs of a specific groups from the user space virtual group ID inclusion set of a specific recording session.
 ====
 See the option:--vgid and option:--session options.
 
@@ -268,7 +268,7 @@ $ lttng untrack --userspace --session=my-session \
 ----
 ====
 
-.Remove all the user IDs from the Linux kernel user ID inclusion set of the current tracing session.
+.Remove all the user IDs from the Linux kernel user ID inclusion set of the current recording session.
 ====
 See the option:--all and option:--uid options.
 

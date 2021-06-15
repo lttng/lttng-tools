@@ -36,7 +36,7 @@ directory.
     nloption:--help option) instead of `/usr/bin/man`.
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
-    Path to the directory containing the `session.xsd` tracing session
+    Path to the directory containing the `session.xsd` recording session
     configuration XML schema.
 
 `LTTNG_SESSIOND_PATH`::
@@ -53,9 +53,9 @@ FILES
 `$LTTNG_HOME/.lttngrc`::
     Unix user's LTTng runtime configuration.
 +
-This is where LTTng stores the name of the Unix user's current tracing
+This is where LTTng stores the name of the Unix user's current recording
 session between executions of man:lttng(1). man:lttng-create(1) and
-man:lttng-set-session(1) set the current tracing session.
+man:lttng-set-session(1) set the current recording session.
 
 `$LTTNG_HOME/lttng-traces`::
     Default output directory of LTTng traces in local and snapshot
@@ -68,11 +68,11 @@ man:lttng-create(1) command.
     Unix user's LTTng runtime and configuration directory.
 
 `$LTTNG_HOME/.lttng/sessions`::
-    Default directory containing the Unix user's saved tracing session
+    Default directory containing the Unix user's saved recording session
     configurations (see man:lttng-save(1) and man:lttng-load(1)).
 
 +{system_sessions_dir}+::
-    Directory containing the system-wide saved tracing session
+    Directory containing the system-wide saved recording session
     configurations (see man:lttng-save(1) and man:lttng-load(1)).
 
 NOTE: `$LTTNG_HOME` defaults to the value of the `HOME` environment

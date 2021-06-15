@@ -1,6 +1,6 @@
 lttng-track(1)
 ==============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -41,17 +41,17 @@ The `lttng track` command allows one or more processes to record LTTng
 events based on their attributes within:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
-See man:lttng-concepts(7) to learn more about tracing sessions and
+See man:lttng-concepts(7) to learn more about recording sessions and
 recording event rules.
 
 The `track` command adds values to _inclusion sets_ of process
-attributes. The available inclusion sets are, for a given tracing
+attributes. The available inclusion sets are, for a given recording
 session:
 
 With the option:--kernel option::
@@ -83,12 +83,12 @@ With the option:--userspace option::
 When an event{nbsp}__E__ satisfies all the other explicit and implicit
 conditions of an event rule{nbsp}__ER__, __ER__ matches{nbsp}__E__ if
 the attributes of the process for which LTTng creates{nbsp}__E__ are
-*all* part of the inclusion sets of the tracing session and domain
+*all* part of the inclusion sets of the recording session and domain
 of{nbsp}__ER__.
 
-By default, on tracing session creation (see man:lttng-create(1)),
+By default, on recording session creation (see man:lttng-create(1)),
 all processes are allowed to record events. In other words, all the
-inclusion sets of the tracing session contain all the possible
+inclusion sets of the recording session contain all the possible
 process attribute values.
 
 If a given inclusion set{nbsp}__IS__ contains all the possible values
@@ -120,7 +120,7 @@ command.
 Inclusion set example
 ~~~~~~~~~~~~~~~~~~~~~
 This example operates on the Linux kernel process ID (PID) inclusion set
-of the current tracing session to show how an inclusion set works.
+of the current recording session to show how an inclusion set works.
 
 Assume the maximum system PID is 7 for this example.
 
@@ -189,15 +189,15 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Add values to one or more inclusion sets of the tracing session
-    named 'SESSION' instead of the current tracing session.
+    Add values to one or more inclusion sets of the recording session
+    named 'SESSION' instead of the current recording session.
 
 
 Inclusion set selection
 ~~~~~~~~~~~~~~~~~~~~~~~
 option:-p ['PID'[,'PID']...], option:--pid[='PID'[,'PID']...]::
     For each 'PID' argument, add 'PID' to the process ID inclusion set
-    of the selected tracing session and domain.
+    of the selected recording session and domain.
 +
 'PID' is the process ID attribute of a process as seen from the root
 PID namespace (see man:pid_namespaces(7)).
@@ -206,14 +206,14 @@ Only available with option:--kernel option.
 
 option:--vpid[='VPID'[,'VPID']...]::
     For each 'VPID' argument, add 'VPID' to the virtual process ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'VPID' is the virtual process ID attribute of a process as seen from
 the PID namespace of the process (see man:pid_namespaces(7)).
 
 option:--uid[='USER'[,'USER']...]::
     For each 'USER' argument, add 'USER' to the user ID inclusion set of
-    the selected tracing session and domain.
+    the selected recording session and domain.
 +
 'USER' is either:
 +
@@ -231,7 +231,7 @@ Only available with option:--kernel option.
 
 option:--vuid[='VUSER'[,'VUSER']...]::
     For each 'VUSER' argument, add 'VUSER' to the virtual user ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'VUSER' is either:
 +
@@ -248,7 +248,7 @@ set.
 
 option:--gid[='GROUP'[,'GROUP']...]::
     For each 'GROUP' argument, add 'GROUP' to the group ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'GROUP' is either:
 +
@@ -266,7 +266,7 @@ Only available with option:--kernel option.
 
 option:--vgid[='VGROUP'[,'VGROUP']...]::
     For each 'VGROUP' argument, add 'VGROUP' to the virtual group ID
-    inclusion set of the selected tracing session and domain.
+    inclusion set of the selected recording session and domain.
 +
 'VGROUP' is either:
 +
@@ -299,7 +299,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Add the PIDs 1728 and 3775 to the Linux kernel process ID inclusion set of the current tracing session.
+.Add the PIDs 1728 and 3775 to the Linux kernel process ID inclusion set of the current recording session.
 ====
 See the option:--pid option.
 
@@ -309,7 +309,7 @@ $ lttng track --kernel --pid=1728,3775
 ----
 ====
 
-.Add the ID of a specific user to the user space virtual user ID inclusion set of a specific tracing session.
+.Add the ID of a specific user to the user space virtual user ID inclusion set of a specific recording session.
 ====
 See the option:--vuid and option:--session options.
 
@@ -319,7 +319,7 @@ $ lttng track --userspace --session=my-session --vuid=http
 ----
 ====
 
-.Add all the possible group IDs to the Linux kernel group ID inclusion set of the current tracing session.
+.Add all the possible group IDs to the Linux kernel group ID inclusion set of the current recording session.
 ====
 See the option:--all and option:--gid options.
 

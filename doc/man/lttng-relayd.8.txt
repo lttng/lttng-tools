@@ -1,6 +1,6 @@
 lttng-relayd(8)
 ===============
-:revdate: 30 April 2021
+:revdate: 14 June 2021
 :daemon-bin-name: lttng-relayd
 :daemon-ini-section: relayd
 
@@ -29,7 +29,7 @@ data from (possibly remote) LTTng session/consumer daemons and which
 writes it to the local file system. The relay daemon also accepts LTTng
 live connections from compatible readers (for example,
 man:babeltrace2(1)); this is the recommended approach to read trace data
-while the remote tracing session is active.
+while the remote recording session is active.
 
 By default, a relay daemon listens on all network interfaces to receive
 trace data, but only on `localhost` for LTTng live connections. Override
@@ -72,7 +72,7 @@ The relay daemon uses different output path patterns depending on:
 +
 See the ``<<cfg,Daemon configuration>>'' section above.
 
-* The tracing session configuration of the connected peer.
+* The recording session configuration of the connected peer.
 * The LTTng session daemon (see man:lttng-sessiond(8)) version
   of the connected peer.
 
@@ -86,10 +86,10 @@ Consider the following variables:
     Hostname of the connected peer.
 
 'SESSION'::
-    Tracing session name.
+    Recording session name.
 
 'DATETIME'::
-    Unique tracing session date/time.
+    Unique recording session date/time.
 
 'TRACEDIR'::
     Custom trace directory path ('TRACEDIR' part of the argument of the
@@ -112,7 +112,7 @@ With a custom trace directory:::
 [verse]
 'BASE'/'HOSTNAME'/'TRACEDIR'
 
-With the option:--group-output-by-session option (tracing session grouping)::
+With the option:--group-output-by-session option (recording session grouping)::
     Without a custom trace directory:::
         'SESSIONDV' is at least{nbsp}2.4::::
 +
@@ -240,8 +240,8 @@ As of LTTng{nbsp}{lttng_version}, this is the default output grouping
 strategy, but this may change in the future.
 
 option:-s, option:--group-output-by-session::
-    Group the written trace directories by tracing session name instead
-    of by hostname.
+    Group the written trace directories by recording session name
+    instead of by hostname.
 
 option:-o 'DIR', option:--output='DIR'::
     Set the base output directory of the written trace directories to

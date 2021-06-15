@@ -1,6 +1,6 @@
 lttng-disable-event(1)
 ======================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -36,11 +36,11 @@ event rules previously created with the man:lttng-enable-event(1)
 command which belong to:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
 With the option:--channel='CHANNEL' option::
     The channel named 'CHANNEL'.
@@ -48,7 +48,7 @@ With the option:--channel='CHANNEL' option::
 Without the option:--channel option::
     The channel named `channel0`.
 +
-If there's more than one channel for the selected tracing session and
+If there's more than one channel for the selected recording session and
 domain, the `disable-event` command fails.
 
 See man:lttng-concepts(7) to learn more about recording event rules.
@@ -64,7 +64,7 @@ condition option, the `disable-event` command disables one or more Linux
 kernel recording event rules regardless of their instrumentation point
 type.
 
-List the recording event rules of a given tracing session
+List the recording event rules of a given recording session
 and/or channel with the man:lttng-list(1) command.
 
 Without the option:--all-events option, the `disable-event` command
@@ -74,7 +74,7 @@ disable, as listed in the output of `lttng list` (see
 man:lttng-list(1)).
 
 You may disable an enabled recording event rule regardless of the
-activity (started or stopped) of its tracing session (see
+activity (started or stopped) of its recording session (see
 man:lttng-start(1) and man:lttng-stop(1)).
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
@@ -111,8 +111,8 @@ option:-c 'CHANNEL', option:--channel='CHANNEL'::
     'CHANNEL' instead of `channel0`.
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Disable recording event rules in the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Disable recording event rules in the recording session named
+    'SESSION' instead of the current recording session.
 
 
 Instrumentation point type condition
@@ -163,7 +163,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Disable all Linux kernel tracepoint recording event rules in the default channel of the current tracing session.
+.Disable all Linux kernel tracepoint recording event rules in the default channel of the current recording session.
 ====
 See the option:--all-events option.
 
@@ -173,7 +173,7 @@ $ lttng disable-event --kernel --tracepoint --all-events
 ----
 ====
 
-.Disable specific Apache log4j recording event rules in the default channel of a specific tracing session.
+.Disable specific Apache log4j recording event rules in the default channel of a specific recording session.
 ====
 See the option:--session option.
 
@@ -184,7 +184,7 @@ $ lttng disable-event --session=my-session --log4j \
 ----
 ====
 
-.Disable all user space recording event rules in a specific channel of the current tracing session.
+.Disable all user space recording event rules in a specific channel of the current recording session.
 ====
 See the option:--channel option.
 
@@ -195,7 +195,7 @@ $ lttng disable-event --channel=my-channel --userspace \
 ----
 ====
 
-.Disable specific Linux kernel system call recording event rules in the default channel of the current tracing session.
+.Disable specific Linux kernel system call recording event rules in the default channel of the current recording session.
 ====
 [role="term"]
 ----

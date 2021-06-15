@@ -1,6 +1,7 @@
 lttng-disable-channel(1)
 ========================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
+
 
 NAME
 ----
@@ -21,11 +22,11 @@ previously enabled with the man:lttng-enable-channel(1) command
 which belong to:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
 See man:lttng-concepts(7) to learn more about channels.
 
@@ -33,7 +34,7 @@ The `disable-channel` command disables one channel per 'CHANNEL'
 argument.
 
 As of LTTng{nbsp}{lttng_version}, you may :not: enable a disabled
-channel once its tracing session has been started (see
+channel once its recording session has been started (see
 man:lttng-start(1)) at least once.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
@@ -56,8 +57,8 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Disable one or more channels of the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Disable one or more channels of the recording session named
+    'SESSION' instead of the current recording session.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -69,7 +70,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Disable one Linux kernel channel of the current tracing session.
+.Disable one Linux kernel channel of the current recording session.
 ====
 [role="term"]
 ----
@@ -77,7 +78,7 @@ $ lttng disable-channel --kernel my-channel
 ----
 ====
 
-.Disable two user space channels of a specific tracing session.
+.Disable two user space channels of a specific recording session.
 ====
 See the option:--session option.
 

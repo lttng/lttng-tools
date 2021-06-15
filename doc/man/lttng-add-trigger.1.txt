@@ -1,6 +1,6 @@
 lttng-add-trigger(1)
 ====================
-:revdate: 18 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -178,65 +178,66 @@ to receive LTTng notifications (see the liblttng-ctl C{nbsp}headers).
 +
 See below for the nloption:--rate-policy option.
 
-Start a tracing session::
+Start a recording session::
     Synopsis:
 +
 [verse]
 option:--action=**start-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
-Starts the tracing session named 'SESSION' like man:lttng-start(1)
+Starts the recording session named 'SESSION' like man:lttng-start(1)
 would.
 +
-If no tracing session has the name 'SESSION' when LTTng is ready to
+If no recording session has the name 'SESSION' when LTTng is ready to
 execute the action, LTTng does nothing.
 +
 See below for the nloption:--rate-policy option.
 
-Stop a tracing session::
+Stop a recording session::
     Synopsis:
 +
 [verse]
 option:--action=**stop-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
-Stops the tracing session named 'SESSION' like man:lttng-stop(1) would.
+Stops the recording session named 'SESSION' like man:lttng-stop(1)
+would.
 +
-If no tracing session has the name 'SESSION' when LTTng is ready to
+If no recording session has the name 'SESSION' when LTTng is ready to
 execute the action, LTTng does nothing.
 +
 See below for the nloption:--rate-policy option.
 
-Rotate a tracing session::
+Rotate a recording session::
     Synopsis:
 +
 [verse]
 option:--action=**rotate-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
-Archives the current trace chunk of the tracing session named 'SESSION'
-like man:lttng-rotate(1) would.
+Archives the current trace chunk of the recording session named
+'SESSION' like man:lttng-rotate(1) would.
 +
-If no tracing session has the name 'SESSION' when LTTng is ready to
+If no recording session has the name 'SESSION' when LTTng is ready to
 execute the action, LTTng does nothing.
 +
 See below for the nloption:--rate-policy option.
 
-Take a tracing session snapshot::
+Take a recording session snapshot::
     Synopsis:
 +
 [verse]
 option:--action=**snapshot-session** 'SESSION' [nloption:--rate-policy='POLICY']
 {nbsp}
 +
-Takes a snapshot of the tracing session named 'SESSION' like
+Takes a snapshot of the recording session named 'SESSION' like
 man:lttng-snapshot(1) would.
 +
-When the condition of the trigger is satisfied, the tracing session
-named 'SESSION', if any, must be a snapshot-mode tracing session
+When the condition of the trigger is satisfied, the recording session
+named 'SESSION', if any, must be a snapshot-mode recording session
 (see man:lttng-create(1)).
 +
-If no tracing session has the name 'SESSION' when LTTng is ready to
+If no recording session has the name 'SESSION' when LTTng is ready to
 execute the action, LTTng does nothing.
 +
 See below for the nloption:--rate-policy option.
@@ -327,7 +328,7 @@ $ lttng add-trigger --condition=event-rule-matches \
 ----
 ====
 
-.Add an ``event rule matches'' trigger of which the action is to stop a tracing session and then rotate it.
+.Add an ``event rule matches'' trigger of which the action is to stop a recording session and then rotate it.
 ====
 The `event-rule-matches` trigger condition below specifies an event rule
 which matches any user space tracepoint event with a name starting with
@@ -344,7 +345,7 @@ $ lttng add-trigger --condition=event-rule-matches \
                     --action=rotate-session my-session
 ----
 
-See man:lttng-concepts(7) to learn more about tracing sessions and
+See man:lttng-concepts(7) to learn more about recording sessions and
 rotations.
 ====
 
@@ -401,7 +402,7 @@ $ lttng add-trigger --condition=event-rule-matches \
 ----
 ====
 
-.Add an ``event rule matches'' trigger with a tracing session starting action to be executed a single time after 40{nbsp}times.
+.Add an ``event rule matches'' trigger with a recording session starting action to be executed a single time after 40{nbsp}times.
 ====
 The `event-rule-matches` trigger condition below specifies an event rule
 which matches any Linux system call event (entry and exit) of which the

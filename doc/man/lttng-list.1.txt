@@ -1,26 +1,27 @@
 lttng-list(1)
 =============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-list - List LTTng tracing sessions and instrumentation points
+lttng-list - List LTTng recording sessions and instrumentation points
 
 
 SYNOPSIS
 --------
-List the tracing sessions:
+List the recording sessions:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list*
 
-List the tracing domains of a tracing session with at least one channel:
+List the tracing domains of a recording session with at least one
+channel:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* option:--domain 'SESSION'
 
-List the channels and recording event rules of a tracing session:
+List the channels and recording event rules of a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *list* [option:--channel='CHANNEL'] 'SESSION'
@@ -39,27 +40,27 @@ DESCRIPTION
 The `lttng list` command lists:
 
 Without arguments::
-    The tracing sessions of your Unix user, or of all users
+    The recording sessions of your Unix user, or of all users
     if your Unix user is `root`, within the connected session daemon.
 +
 See the ``Session daemon connection'' section of man:lttng(1) to learn
 how a user application connects to a session daemon.
 +
-The command shows tracing session properties such as their output
+The command shows recording session properties such as their output
 directories/URLs and whether or not they're active.
 
 With the 'SESSION' argument::
     With the option:--domain option:::
-        The tracing domains (with at least one channel) of the tracing
+        The tracing domains (with at least one channel) of the recording
         session named 'SESSION'.
 
     Without the option:--domain option:::
         With the option:--channel='CHANNEL' option::::
             The recording event rules of the channel 'CHANNEL' of the
-            tracing session named 'SESSION'.
+            recording session named 'SESSION'.
 
         Without the option:--channel option::::
-            The channels of the tracing session named 'SESSION' and
+            The channels of the recording session named 'SESSION' and
             their recording event rules.
 +
 Use the dedicated tracing domain options (option:--kernel,
@@ -84,12 +85,12 @@ With the option:--jul, option:--log4j, and/or option:--python options::
 Also list the available instrumentation point fields with the
 option:--fields option.
 
-See man:lttng-concept(7) to learn more about tracing sessions, tracing
+See man:lttng-concept(7) to learn more about recording sessions, tracing
 domains, channels, recording event rules, and instrumentation points.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the channels and recording event rules of the current tracing
+List the channels and recording event rules of the current recording
 session (see man:lttng-concept(7) to learn more) with the
 man:lttng-status(1) command.
 
@@ -143,7 +144,7 @@ option:-c 'CHANNEL', option:--channel='CHANNEL'::
 Only available with the 'SESSION' argument.
 
 option:-d, option:--domain::
-    Show the tracing domains with at least one channel of the tracing
+    Show the tracing domains with at least one channel of the recording
     session named 'SESSION'.
 
 option:-f, option:--fields::
@@ -164,7 +165,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.List the tracing sessions.
+.List the recording sessions.
 ====
 [role="term"]
 ----
@@ -172,7 +173,7 @@ $ lttng list
 ----
 ====
 
-.Show the details of a specific tracing session.
+.Show the details of a specific recording session.
 ====
 [role="term"]
 ----
@@ -198,7 +199,7 @@ $ lttng list --userspace --fields
 ----
 ====
 
-.List the tracing domains of a specific tracing session having at least one channel.
+.List the tracing domains of a specific recording session having at least one channel.
 ====
 See the option:--domain option.
 
@@ -208,7 +209,7 @@ $ lttng list --domain my-session
 ----
 ====
 
-.Show the details of a specific channel in a specific tracing session.
+.Show the details of a specific channel in a specific recording session.
 ====
 See the option:--channel option.
 

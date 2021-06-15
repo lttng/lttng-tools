@@ -1,6 +1,6 @@
 lttng-sessiond(8)
 =================
-:revdate: 21 April 2021
+:revdate: 14 June 2021
 :daemon-bin-name: lttng-sessiond
 :daemon-ini-section: sessiond
 
@@ -38,8 +38,8 @@ include::common-intro.txt[]
 
 An LTTng session daemon, `lttng-sessiond`, is a program which:
 
-* Manages tracing sessions (see man:lttng-concepts(7) to learn more
-  about tracing sessions).
+* Manages recording sessions (see man:lttng-concepts(7) to learn more
+  about recording sessions).
 
 * Controls the various components (like tracers and consumer daemons) of
   LTTng.
@@ -98,10 +98,10 @@ extra-kmod-probes=my-driver,other-module
 
 
 [[load]]
-Tracing session configuration loading
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When the session daemon starts, it loads tracing session configurations
-from:
+Recording session configuration loading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When the session daemon starts, it loads recording session
+configurations from:
 
 Without the option:--load option::
     In this order:
@@ -114,8 +114,8 @@ Without the option:--load option::
 . All the files in +{system_sessions_auto_dir}+.
 --
 +
-`lttng-sessiond` only loads tracing configuration files from the
-directories above if its UID and their UID are the same.
+`lttng-sessiond` only loads recording session configuration files from
+the directories above if its UID and their UID are the same.
 
 With the option:--load='PATH' option::
     'PATH' is a directory:::
@@ -164,11 +164,11 @@ Members of the Unix tracing group may connect to the root session daemon
 and, therefore, control LTTng kernel tracing.
 
 option:-l 'PATH', option:--load='PATH'::
-    Load tracing session configurations from 'PATH', either a directory
-    or a file, instead of loading them from the default search
+    Load recording session configurations from 'PATH', either a
+    directory or a file, instead of loading them from the default search
     directories.
 +
-See the ``<<load,Tracing session configuration loading>>'' section
+See the ``<<load,Recording session configuration loading>>'' section
 above.
 
 option:-S, option:--sig-parent::
@@ -380,7 +380,7 @@ variable.
 Set to `0` or `-1` to use the timeout of the operating system (default).
 
 `LTTNG_SESSION_CONFIG_XSD_PATH`::
-    Tracing session configuration XML schema definition (XSD) path.
+    Recording session configuration XML schema definition (XSD) path.
 
 
 FILES
@@ -396,18 +396,18 @@ Override this path with the nloption:--output option of the
 man:lttng-create(1) command.
 
 `$LTTNG_HOME/.lttng/sessions/auto`::
-    Directory from which `lttng-sessiond` loads Unix user tracing
+    Directory from which `lttng-sessiond` loads Unix user recording
     session configurations when starting.
 +
-See the ``<<load,Tracing session configuration loading>>'' section above
-to learn more.
+See the ``<<load,Recording session configuration loading>>'' section
+above to learn more.
 
 +{system_sessions_auto_dir}+::
-    Directory from which `lttng-sessiond` loads system-wide tracing
+    Directory from which `lttng-sessiond` loads system-wide recording
     session configurations when starting.
 +
-See the ``<<load,Tracing session configuration loading>>'' section above
-to learn more.
+See the ``<<load,Recording session configuration loading>>'' section
+above to learn more.
 
 `$LTTNG_HOME/.lttng/lttng.conf`::
     Unix user's LTTng daemon INI configuration file.

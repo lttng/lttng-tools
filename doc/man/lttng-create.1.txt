@@ -1,35 +1,35 @@
 lttng-create(1)
 ===============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-create - Create an LTTng tracing session
+lttng-create - Create an LTTng recording session
 
 
 SYNOPSIS
 --------
-Create a local mode tracing session:
+Create a local mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='DIR']
       [option:--no-output | option:--output='DIR' | option:--set-url=**file://**__DIR__]
 
-Create a network streaming mode tracing session:
+Create a network streaming mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] [option:--shm-path='DIR']
       (option:--set-url='URL' | option:--ctrl-url='URL' option:--data-url='URL')
 
-Create a snapshot mode tracing session:
+Create a snapshot mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--snapshot [option:--shm-path='DIR']
       [option:--no-output | option:--output='DIR' | option:--set-url='URL' |
        option:--ctrl-url='URL' option:--data-url='URL']
 
-Create a live mode tracing session:
+Create a live mode recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *create* ['SESSION'] option:--live[='DELAYUS']
@@ -37,14 +37,14 @@ Create a live mode tracing session:
 
 DESCRIPTION
 -----------
-The `lttng create` command creates a new tracing session for your Unix
+The `lttng create` command creates a new recording session for your Unix
 user within the connected session daemon (see the ``Session daemon
 connection'' section of man:lttng(1) to learn how a user application
 connects to a session daemon).
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
-Without the 'SESSION' argument, LTTng automatically generates a tracing
+Without the 'SESSION' argument, LTTng automatically generates a recording
 session name having the ++auto-++__YYYYmmdd__++-++__HHMMSS__ form, where
 'YYYYmmdd' and 'HHMMSS' are the creation date and time. 'SESSION' may
 :not: contain the character `/`.
@@ -88,37 +88,37 @@ In this case, the `create` command spawns a relay daemon as such:
 Override the path of the relay daemon binary to spawn with the general
 genoption:--relayd-path option.
 
-On success, the `create` command sets the current tracing session (see
-man:lttng-concepts(7) to learn more) to the created tracing session.
+On success, the `create` command sets the current recording session (see
+man:lttng-concepts(7) to learn more) to the created recording session.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-Show the status of the current tracing session with the
+Show the status of the current recording session with the
 man:lttng-status(1) command.
 
-List the tracing sessions of your Unix user, or of all users if
+List the recording sessions of your Unix user, or of all users if
 your Unix user is `root`, within the connected session daemon with the
 man:lttng-list(1) command.
 
-Start and stop a tracing session with the man:lttng-start(1) and
+Start and stop a recording session with the man:lttng-start(1) and
 man:lttng-stop(1) commands.
 
-Save and load a tracing session with the man:lttng-save(1) and
+Save and load a recording session with the man:lttng-save(1) and
 man:lttng-load(1) commands.
 
 Allow and disallow specific processes to record events with the
 man:lttng-track(1) and man:lttng-untrack(1) commands.
 
-Archive the current trace chunk of (rotate) a tracing session with the
+Archive the current trace chunk of (rotate) a recording session with the
 man:lttng-rotate(1) command.
 
-Destroy a tracing session with the man:lttng-destroy(1) command.
+Destroy a recording session with the man:lttng-destroy(1) command.
 
 
 [[modes]]
-Tracing session modes
-~~~~~~~~~~~~~~~~~~~~~
-As documented in man:lttng-concepts(7), LTTng offers four tracing
+Recording session modes
+~~~~~~~~~~~~~~~~~~~~~~~
+As documented in man:lttng-concepts(7), LTTng offers four recording
 session modes:
 
 [[local-mode]]Local mode::
@@ -135,7 +135,7 @@ With the option:--output='DIR' or option:--set-url=++file://++__DIR__ option:::
 Otherwise:::
     A subdirectory, under the `$LTTNG_HOME/lttng-traces` (`$LTTNG_HOME`
     defaults to `$HOME`) directory, of which the name contains the
-    tracing session name and the date/time.
+    recording session name and the date/time.
 
 [[network-streaming-mode]]Network streaming mode::
     Send the trace data over the network to a listening relay daemon
@@ -153,20 +153,20 @@ with the option:--ctrl-url and option:--data-url options (see the
 With this mode, LTTng:
 +
 With the option:--no-output option:::
-    Does :not: add any snapshot output to the created tracing
+    Does :not: add any snapshot output to the created recording
     session.
 
 With the option:--output option, the option:--set-url option, or the option:--ctrl-url and option:--data-url options:::
     Adds a snapshot output named `snapshot-1` using the provided
-    path or URL(s) to the created tracing session.
+    path or URL(s) to the created recording session.
 
 Otherwise:::
     Adds an automatic snapshot output named `snapshot-1` to the created
-    tracing session.
+    recording session.
 +
 The automatic snapshot output is a subdirectory, under the
 `$LTTNG_HOME/lttng-traces` (`$LTTNG_HOME` defaults to `$HOME`)
-directory, of which the name contains the tracing session name and the
+directory, of which the name contains the recording session name and the
 date/time.
 
 [[live-mode]]Live mode (option:--live option)::
@@ -194,9 +194,9 @@ file://'TRACEDIR'
 {nbsp}
 +
 The `file://` protocol targets the *local file system*: you may only use
-such an URL with the option:--set-url option when you create the tracing
-session in local or snapshot mode (see the ``<<modes,Tracing session
-modes>>'' section above).
+such an URL with the option:--set-url option when you create the
+recording session in local or snapshot mode (see the ``<<modes,Recording
+session modes>>'' section above).
 +
 'TRACEDIR':::
     Absolute path to the directory containing the trace data on the
@@ -208,9 +208,9 @@ Network format::
 'NETPROTO'://('HOST' | 'IPADDR')[:__CTRLPORT__[:__DATAPORT__]][/'TRACEDIR']
 {nbsp}
 +
-This format is only available when you create the tracing session in
+This format is only available when you create the recording session in
 network streaming, snapshot (option:--snapshot), or live (option:--live)
-mode (see the ``<<modes,Tracing session modes>>'' section above).
+mode (see the ``<<modes,Recording session modes>>'' section above).
 +
 'NETPROTO':::
     Network protocol, amongst:
@@ -268,12 +268,12 @@ include::common-lttng-cmd-options-head.txt[]
 
 Mode selection
 ~~~~~~~~~~~~~~
-See the ``<<modes,Tracing session modes>>'' section above.
+See the ``<<modes,Recording session modes>>'' section above.
 
 At most one of:
 
 option:--live[='DELAYUS']::
-    Create the tracing session in live mode.
+    Create the recording session in live mode.
 +
 The optional 'DELAYUS' argument is the maximum time (in µs) you can wait
 for the data to be flushed (sent to the connected LTTng relay daemon).
@@ -287,7 +287,7 @@ The session daemon must be able to connect to a listening relay daemon
 (see man:lttng-relayd(8)).
 
 option:--snapshot::
-    Create the tracing session in snapshot mode.
+    Create the recording session in snapshot mode.
 +
 This is equivalent to:
 +
@@ -295,24 +295,24 @@ This is equivalent to:
 +
 --
 With the option:--no-output option::
-    Not adding any snapshot output after LTTng creates the tracing
+    Not adding any snapshot output after LTTng creates the recording
     session.
 
 With the option:--output option, the option:--set-url option, or the option:--ctrl-url and option:--data-url options::
     Adding a snapshot output named `snapshot-1` using the provided path
-    or URL(s) immediately after LTTng creates the tracing session.
+    or URL(s) immediately after LTTng creates the recording session.
 
 Otherwise::
     Adding an automatic snapshot output named `snapshot-1` immediately
-    after LTTng creates the tracing session.
+    after LTTng creates the recording session.
 +
 The automatic snapshot output is a subdirectory, under the
 `$LTTNG_HOME/lttng-traces` (`$LTTNG_HOME` defaults to `$HOME`)
-directory, of which the name contains the tracing session name and the
+directory, of which the name contains the recording session name and the
 date/time.
 --
 
-* Forcing all the channels to be created for the tracing session to be
+* Forcing all the channels to be created for the recording session to be
   configured with the nloption:--override and nloption:--output=++mmap++
   options (see man:lttng-enable-channel(1)).
 
@@ -320,14 +320,14 @@ date/time.
 Output
 ~~~~~~
 option:--no-output::
-    Depending on the tracing session mode (see the ``<<modes,Tracing
+    Depending on the recording session mode (see the ``<<modes,Recording
     session modes>>'' section above):
 +
 Local mode:::
     Disable the file system output.
 
 Snapshot mode (option:--snapshot option):::
-    Do :not: add a snapshot output after creating the tracing session.
+    Do :not: add a snapshot output after creating the recording session.
 
 option:-o 'DIR', option:--output='DIR'::
     Equivalent to option:--set-url=++file://++__DIR__.
@@ -347,32 +347,32 @@ option:-C 'URL', option:--ctrl-url='URL'::
 +
 You must also use the option:--data-url option.
 +
-Not available in local mode (see the ``<<modes,Tracing session modes>>''
-section above).
+Not available in local mode (see the ``<<modes,Recording session
+modes>>'' section above).
 +
 In snapshot mode, this is equivalent to using the nloption:--ctrl-url
 option of the `add-output` action of the man:lttng-snapshot(1) command
-immediately after creating the tracing session.
+immediately after creating the recording session.
 
 option:-D 'URL', option:--data-url='URL'::
     Set the trace data path URL to 'URL'.
 +
 You must also use the option:--ctrl-url option.
 +
-Not available in local mode (see the ``<<modes,Tracing session modes>>''
-section above).
+Not available in local mode (see the ``<<modes,Recording session
+modes>>'' section above).
 +
 In snapshot mode, this is equivalent to using the nloption:--data-url
 option of the `add-output` action of the man:lttng-snapshot(1) command
-immediately after creating the tracing session.
+immediately after creating the recording session.
 
 option:-U 'URL', option:--set-url='URL'::
     Set the destination URL of the control path and trace data to 'URL'.
 +
-This URL remains unchanged as long as the tracing session exists.
+This URL remains unchanged as long as the recording session exists.
 +
-Depending on the tracing session mode (see the ``<<modes,Tracing session
-modes>>'' section above):
+Depending on the recording session mode (see the ``<<modes,Recording
+session modes>>'' section above):
 +
 Local mode:::
     'URL' must start with `file://`, followed with the destination
@@ -385,7 +385,7 @@ Network streaming and live modes:::
 Snapshot mode (option:--snapshot option):::
     Equivalent to using the 'URL' non-option argument of the
     `add-output` action of the man:lttng-snapshot(1) command immediately
-    after creating the tracing session.
+    after creating the recording session.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -397,7 +397,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Create a normal mode tracing session with a generated name.
+.Create a normal mode recording session with a generated name.
 ====
 [role="term"]
 ----
@@ -405,7 +405,7 @@ $ lttng create
 ----
 ====
 
-.Create a normal mode tracing session with a custom name.
+.Create a normal mode recording session with a custom name.
 ====
 [role="term"]
 ----
@@ -413,7 +413,7 @@ $ lttng create my-session
 ----
 ====
 
-.Create a normal mode tracing session with a specific output directory.
+.Create a normal mode recording session with a specific output directory.
 ====
 See the option:--output option.
 
@@ -423,7 +423,7 @@ $ lttng create --output=/path/to/traces
 ----
 ====
 
-.Create a network streaming mode tracing session.
+.Create a network streaming mode recording session.
 ====
 See the ``Output directory'' section of man:lttng-relayd(8) to
 understand where the relay daemon to connect to (`10.0.0.242`) writes
@@ -437,7 +437,7 @@ $ lttng create --set-url=net://10.0.0.242/inv4
 ----
 ====
 
-.Create a snapshot mode tracing session with a default snapshot output.
+.Create a snapshot mode recording session with a default snapshot output.
 ====
 See the option:--snapshot option.
 
@@ -447,7 +447,7 @@ $ lttng create --snapshot
 ----
 ====
 
-.Create a snapshot mode tracing session with a custom snapshot output.
+.Create a snapshot mode recording session with a custom snapshot output.
 ====
 See the option:--snapshot and option:--set-url options.
 
@@ -458,7 +458,7 @@ $ lttng create --snapshot \
 ----
 ====
 
-.Create a snapshot mode tracing session with no snapshot output.
+.Create a snapshot mode recording session with no snapshot output.
 ====
 See the option:--snapshot and option:--no-output options.
 
@@ -468,7 +468,7 @@ $ lttng create --snapshot --no-output
 ----
 ====
 
-.Create an LTTng live mode tracing session with a default relay daemon URL.
+.Create an LTTng live mode recording session with a default relay daemon URL.
 ====
 See the option:--live option.
 
@@ -478,7 +478,7 @@ $ lttng create --live
 ----
 ====
 
-.Create an LTTng live mode tracing session with a custom live timer period and relay daemon URL.
+.Create an LTTng live mode recording session with a custom live timer period and relay daemon URL.
 ====
 See the option:--live and option:--set-url options.
 
@@ -489,7 +489,7 @@ $ lttng create --live=250000 \
 ----
 ====
 
-.Create a normal mode tracing session with a custom directory containing the ring buffer shared memory files.
+.Create a normal mode recording session with a custom directory containing the ring buffer shared memory files.
 ====
 See the option:--shm-path option.
 

@@ -48,7 +48,7 @@ Example 1:
 
 Simple and quick network streaming.
 
-1) Create a tracing session that will be streamed over the network for the
+1) Create a recording session that will be streamed over the network for the
 specified domain. This session will contain, in our example, syscall events.
 
   # lttng create syscall-session
@@ -83,12 +83,12 @@ Example 2:
 
 This example uses all possible options to fine grained control the streaming.
 
-1) Again, create a tracing session that will be streamed over the network for
+1) Again, create a recording session that will be streamed over the network for
 the specified domain.
 
   # lttng create syscall-session
 
-2) Set relayd URIs for the tracing session and kernel domain.
+2) Set relayd URIs for the recording session and kernel domain.
 
 ONLY set the remote relayd URIs (both control and data at the same destination
 and using default ports) on the consumer but does not enable the consumer to use

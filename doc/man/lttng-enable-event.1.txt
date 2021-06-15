@@ -1,6 +1,6 @@
 lttng-enable-event(1)
 =====================
-:revdate: 25 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -61,11 +61,11 @@ events, recording event rules, and event records.
 The recording event rule(s) to create or enable belong to:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
 With the option:--channel='CHANNEL' option::
     The channel named 'CHANNEL'.
@@ -73,13 +73,13 @@ With the option:--channel='CHANNEL' option::
 Without the option:--channel option::
     The channel named `channel0`.
 +
-If there's already a channel for the selected tracing session and domain
-which isn't named `channel0`, the `enable-event` command fails.
+If there's already a channel for the selected recording session and
+domain which isn't named `channel0`, the `enable-event` command fails.
 Otherwise, it automatically creates it.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the recording event rules of a specific tracing session
+List the recording event rules of a specific recording session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
 commands.
 
@@ -138,16 +138,16 @@ A channel is enabled on creation.
 +
 Enable a disabled channel with the man:lttng-enable-channel(1) command.
 
-* The tracing session of{nbsp}__ER__ is active (started).
+* The recording session of{nbsp}__ER__ is active (started).
 +
-A tracing session is inactive (stopped) on creation.
+A recording session is inactive (stopped) on creation.
 +
-Start an inactive tracing session with the man:lttng-start(1) command.
+Start an inactive recording session with the man:lttng-start(1) command.
 
 * The process for which LTTng creates{nbsp}__E__ is allowed to record
   events.
 +
-All processes are allowed to record events on tracing session
+All processes are allowed to record events on recording session
 creation.
 +
 Use the man:lttng-track(1) and man:lttng-untrack(1) commands to select
@@ -612,7 +612,7 @@ The `enable-event` command can enable a disabled recording event rule,
 as listed in the output of the man:lttng-list(1) command.
 
 You may enable a disabled recording event rule regardless of the
-activity (started or stopped) of its tracing session (see
+activity (started or stopped) of its recording session (see
 man:lttng-start(1) and man:lttng-stop(1)).
 
 To enable a disabled recording event rule, run the `enable-event`
@@ -655,8 +655,8 @@ option:-c 'CHANNEL', option:--channel='CHANNEL'::
     'CHANNEL' instead of `channel0`.
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Create or enable recording event rules in the tracing session named
-    'SESSION' instead of the current tracing session.
+    Create or enable recording event rules in the recording session
+    named 'SESSION' instead of the current recording session.
 
 
 Instrumentation point type condition
@@ -860,7 +860,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Create a recording event rule which matches all Linux system call events (current tracing session, default channel).
+.Create a recording event rule which matches all Linux system call events (current recording session, default channel).
 ====
 See the option:--all and option:--syscall options.
 
@@ -870,7 +870,7 @@ $ lttng enable-event --kernel --all --syscall
 ----
 ====
 
-.Create a recording event rule which matches user space tracepoint events named specifically (current tracing session, default channel).
+.Create a recording event rule which matches user space tracepoint events named specifically (current recording session, default channel).
 ====
 The recording event rule below matches all user space tracepoint events
 of which the name starts with `my_provider:msg`.
@@ -881,7 +881,7 @@ $ lttng enable-event --userspace 'my_provider:msg*'
 ----
 ====
 
-.Create three recording event rules which match Python logging events named specifically (current tracing session, default channel).
+.Create three recording event rules which match Python logging events named specifically (current recording session, default channel).
 ====
 [role="term"]
 ----
@@ -889,7 +889,7 @@ $ lttng enable-event --python server3,ui.window,user-mgmt
 ----
 ====
 
-.Create a recording event rule which matches Apache log4j logging events with a specific log level range (current tracing session, specific channel).
+.Create a recording event rule which matches Apache log4j logging events with a specific log level range (current recording session, specific channel).
 ====
 See the option:--channel, option:--all, and option:--loglevel options.
 
@@ -900,7 +900,7 @@ $ lttng enable-event --log4j --channel=my-loggers \
 ----
 ====
 
-.Create a recording event rule which matches specific Linux kprobe events (current tracing session, default channel).
+.Create a recording event rule which matches specific Linux kprobe events (current recording session, default channel).
 ====
 The recording event rule below matches the entry of `usb_disconnect()`
 Linux kernel function calls. The records of such events are named `usbd`
@@ -914,7 +914,7 @@ $ lttng enable-event --kernel --probe=usb_disconnect usbd
 ----
 ====
 
-.Create a recording event rule which matches Linux kernel tracepoint events which satisfy an event payload and context filter (specific tracing session, default channel).
+.Create a recording event rule which matches Linux kernel tracepoint events which satisfy an event payload and context filter (specific recording session, default channel).
 ====
 See the option:--session and option:--filter options.
 
@@ -925,7 +925,7 @@ $ lttng enable-event --kernel --session=my-session 'sched_*' \
 ----
 ====
 
-.Enable two Linux kernel tracepoint recording event rules (current tracing session, specific channel).
+.Enable two Linux kernel tracepoint recording event rules (current recording session, specific channel).
 ====
 See the option:--channel option.
 

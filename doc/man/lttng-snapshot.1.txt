@@ -1,35 +1,35 @@
 lttng-snapshot(1)
 =================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-snapshot - Take a snapshot of an LTTng tracing session
+lttng-snapshot - Take a snapshot of an LTTng recording session
 
 
 SYNOPSIS
 --------
-Take a tracing session snapshot:
+Take a recording session snapshot:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot* *record* [option:--max-size='SIZE']
       [option:--name='NAME'] [option:--session='SESSION']
       [option:--ctrl-url='URL' option:--data-url='URL' | 'URL']
 
-Add a snapshot output to a tracing session:
+Add a snapshot output to a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot* *add-output* [option:--max-size='SIZE']
       [option:--name='NAME'] [option:--session='SESSION']
       (option:--ctrl-url='URL' option:--data-url='URL' | 'URL')
 
-Show the snapshot output of a tracing session:
+Show the snapshot output of a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot* *list-output* [option:--session='SESSION']
 
-Remove the snapshot output from a tracing session:
+Remove the snapshot output from a recording session:
 
 [verse]
 *lttng* ['linkgenoptions:(GENERAL OPTIONS)'] *snapshot* *del-output* [option:--session='SESSION'] *1*
@@ -41,40 +41,40 @@ The `lttng snapshot` command can take a snapshot of, add or remove a
 snapshot output, and show the snapshot output of:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn more
+    about the current recording session).
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
 A _snapshot_ is a dump of the current sub-buffers of all the channels of
-the selected tracing session.
+the selected recording session.
 
 When LTTng takes a snapshot, it sends the sub-buffer dump of the
-selected tracing session to the local file system or over the network to
-a listening relay daemon (man:lttng-relayd(8)). See the
+selected recording session to the local file system or over the network
+to a listening relay daemon (man:lttng-relayd(8)). See the
 ``<<output,Snapshot output>>'' section below to learn more.
 
 When LTTng takes a snapshot, it does :not: clear the sub-buffers of the
-selected tracing session. In other words, different snapshots of the
-selected tracing session can contain the same event records.
+selected recording session. In other words, different snapshots of the
+selected recording session can contain the same event records.
 
-You must have created the selected tracing session in snapshot mode (see
-the nloption:--snapshot option of the man:lttng-create(1) command as
-well as man:lttng-concepts(7) to learn more about tracing session modes)
-to use the `snapshot` command.
+You must have created the selected recording session in snapshot mode
+(see the nloption:--snapshot option of the man:lttng-create(1) command
+as well as man:lttng-concepts(7) to learn more about recording session
+modes) to use the `snapshot` command.
 
-A `snapshot-session` trigger action can also take a tracing session
+A `snapshot-session` trigger action can also take a recording session
 snapshot (see man:lttng-add-trigger(1)).
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
 If you want, instead, to keep all the trace data, but divide it into
 archived chunks which are then, like snapshots, ready to be processed,
-see the tracing session rotation feature in man:lttng-concepts(7). Trace
-chunk archives do :not: overlap like snapshots can.
+see the recording session rotation feature in man:lttng-concepts(7).
+Trace chunk archives do :not: overlap like snapshots can.
 
 [NOTE]
 ====
@@ -84,15 +84,15 @@ command. Otherwise, the snapshot could contain ``holes'', the result of
 the tracers overwriting unconsumed trace packets during the snapshot
 operation.
 
-After LTTng writes the snapshot trace data, you can restart the tracing
-session with the man:lttng-start(1) command.
+After LTTng writes the snapshot trace data, you can restart the
+recording session with the man:lttng-start(1) command.
 ====
 
 
 [[output]]
 Snapshot output
 ~~~~~~~~~~~~~~~
-When you take a tracing session snapshot with the `record` action, LTTng
+When you take a recording session snapshot with the `record` action, LTTng
 writes the snapshot trace files to:
 
 If you specify the 'URL' non-option argument or the option:--ctrl-url and option:--data-url options::
@@ -102,33 +102,33 @@ If you specify the 'URL' non-option argument or the option:--ctrl-url and option
 See man:lttng-create(1) for the format of 'URL'.
 
 Otherwise::
-    The snapshot output of the selected tracing session.
+    The snapshot output of the selected recording session.
 +
-Add a snapshot output to a tracing session with the `add-output` action.
-As of LTTng{nbsp}{lttng_version}, you may only add one snapshot output
-to a given tracing session.
+Add a snapshot output to a recording session with the `add-output`
+action. As of LTTng{nbsp}{lttng_version}, you may only add one snapshot
+output to a given recording session.
 +
-When you create a snapshot mode tracing session with the
+When you create a snapshot mode recording session with the
 nloption:--snapshot option of the man:lttng-create(1) command, and
 without its nloption:--no-output option, the `create` command
 automatically adds a snapshot output named `snapshot-1` to the created
-tracing session:
+recording session:
 +
 --
 With its nloption:--output, nloption:--set-url, nloption:--ctrl-url, or nloption:--data-url options::
     Equivalent to using the `add-output` action with the provided or
-    equivalent URL(s) immediately after creating the tracing session.
+    equivalent URL(s) immediately after creating the recording session.
 
 Otherwise::
     A subdirectory, under the `$LTTNG_HOME/lttng-traces` (`$LTTNG_HOME`
     defaults to `$HOME`) directory, of which the name contains the
-    tracing session name and the date/time.
+    recording session name and the date/time.
 --
 +
-Show the current snapshot output of a tracing session with the
+Show the current snapshot output of a recording session with the
 `list-output` action.
 +
-Remove the snapshot output of a tracing session with the
+Remove the snapshot output of a recording session with the
 `del-output` action.
 
 For both the `record` and `add-output` actions:
@@ -140,7 +140,7 @@ For both the `record` and `add-output` actions:
 to this output.
 
 * By default, the snapshot files can be as big as the sum of the sizes
-  of all the sub-buffers of all the channels of the selected tracing
+  of all the sub-buffers of all the channels of the selected recording
   session.
 +
 Set the maximum total size of all the snapshot trace files LTTng writes
@@ -153,8 +153,8 @@ include::common-lttng-cmd-options-head.txt[]
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Take a snapshot of the sub-buffers of the tracing session named
-    'SESSION' instead of the current tracing session.
+    Take a snapshot of the sub-buffers of the recording session named
+    'SESSION' instead of the current recording session.
 
 
 Output
@@ -195,7 +195,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Take a snapshot of the current tracing session, sending the trace files to its snapshot output.
+.Take a snapshot of the current recording session, sending the trace files to its snapshot output.
 ====
 [role="term"]
 ----
@@ -203,7 +203,7 @@ $ lttng snapshot record
 ----
 ====
 
-.Take a snapshot of a specific tracing session, giving it a custom name.
+.Take a snapshot of a specific recording session, giving it a custom name.
 ====
 See the option:--session and option:--name options.
 
@@ -213,7 +213,7 @@ $ lttng snapshot record --session=my-session --name=SNAP
 ----
 ====
 
-.Take a snapshot of the current tracing session, sending the trace files to a custom location.
+.Take a snapshot of the current recording session, sending the trace files to a custom location.
 ====
 See the ``Output directory'' section of man:lttng-relayd(8) to
 understand where the relay daemon to connect to (`3.96.87.215`) writes
@@ -225,7 +225,7 @@ $ lttng snapshot record net://3.96.87.215
 ----
 ====
 
-.Replace the snapshot output of a specific tracing session with a local file system path.
+.Replace the snapshot output of a specific recording session with a local file system path.
 ====
 See the option:--session option.
 
@@ -237,7 +237,7 @@ $ lttng snapshot add-output --session=monk \
 ----
 ====
 
-.Take a snapshot of the current tracing session, making sure its size is not over 4{nbsp}MiB.
+.Take a snapshot of the current recording session, making sure its size is not over 4{nbsp}MiB.
 ====
 See the option:--max-size option.
 

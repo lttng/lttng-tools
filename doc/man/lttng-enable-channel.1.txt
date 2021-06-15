@@ -1,6 +1,6 @@
 lttng-enable-channel(1)
 =======================
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -54,18 +54,18 @@ See man:lttng-concepts(7) to learn more about channels.
 The channel(s) to create or enable belong to:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
 NOTE: The man:lttng-enable-event(1) command can automatically create a
 default channel when no channel exists for the provided tracing domain.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-List the channels of a given tracing session with the
+List the channels of a given recording session with the
 man:lttng-list(1) and man:lttng-status(1) commands.
 
 Disable an enabled channel with the man:lttng-disable-channel(1)
@@ -78,16 +78,16 @@ operations with the `enable-channel` command:
 
 * Change an attribute of an existing channel.
 
-* Enable a disabled channel once its tracing session has been active
+* Enable a disabled channel once its recording session has been active
   (started; see man:lttng-start(1)) at least once.
 
-* Create a channel once its tracing session has been active at least
+* Create a channel once its recording session has been active at least
   once.
 
 * Create a user space channel with a given buffering scheme
   (option:--buffers-uid or option:--buffers-pid options) and create a
   second user space channel with a different buffering scheme in the
-  same tracing session.
+  same recording session.
 ====
 
 
@@ -108,8 +108,8 @@ option:-u, option:--userspace::
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-s 'SESSION', option:--session='SESSION'::
-    Create or enable channels in the tracing session named 'SESSION'
-    instead of the current tracing session.
+    Create or enable channels in the recording session named 'SESSION'
+    instead of the current recording session.
 
 
 Buffering scheme
@@ -356,10 +356,10 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Create a Linux kernel channel with default attributes in the current tracing session.
+.Create a Linux kernel channel with default attributes in the current recording session.
 ====
 The following command line only creates a new channel if `my-channel`
-doesn't name an existing Linux kernel channel in the current tracing
+doesn't name an existing Linux kernel channel in the current recording
 session.
 
 [role="term"]
@@ -368,7 +368,7 @@ $ lttng enable-channel --kernel my-channel
 ----
 ====
 
-.Create a user space channel with a per-process buffering scheme in a specific tracing session.
+.Create a user space channel with a per-process buffering scheme in a specific recording session.
 ====
 See the option:--session and option:--buffers-pid options.
 
@@ -379,7 +379,7 @@ $ lttng enable-channel --session=my-session --userspace \
 ----
 ====
 
-.Create a Linux kernel channel in the current tracing session with four 32-MiB sub-buffers per ring buffer.
+.Create a Linux kernel channel in the current recording session with four 32-MiB sub-buffers per ring buffer.
 ====
 See the option:--num-subbuf and option:--subbuf-size options.
 
@@ -390,7 +390,7 @@ $ lttng enable-channel --kernel my-channel \
 ----
 ====
 
-.Create a user space channel in the current tracing session with trace file rotation.
+.Create a user space channel in the current recording session with trace file rotation.
 ====
 See the option:--tracefile-count and option:--tracefile-size options.
 
@@ -401,7 +401,7 @@ $ lttng enable-channel --userspace my-channel \
 ----
 ====
 
-.Enable two user space channels of a specific tracing session.
+.Enable two user space channels of a specific recording session.
 ====
 [role="term"]
 ----

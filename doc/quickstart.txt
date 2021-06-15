@@ -3,7 +3,7 @@ NOTES:
 
 2011-12-12: For user-space tracing, only the global UST domain ("-u" alone) is
 supported meaning that if you enable a tracepoint for user-space it will be
-enabled for all applications for the current tracing session you are working
+enabled for all applications for the current recording session you are working
 on.
 
 QUICKSTART
@@ -23,8 +23,8 @@ For user-space tracing, you'll need an instrumented application with lttng-ust
 
 lttng-tools provide a session daemon (lttng-sessiond) that acts as a tracing
 registry. To trace any instrumented applications or the kernel, a registered
-tracing session is needed beforehand. To interact with the session daemon and a
-tracing session, you should use the lttng command line UI (lttng). It is also
+recording session is needed beforehand. To interact with the session daemon and a
+recording session, you should use the lttng command line UI (lttng). It is also
 possible to use the liblttngctl library for tracing control (lttng.h).
 
 Here is a list of some powerful features the LTTng 2.0 kernel tracer offers:
@@ -57,7 +57,7 @@ List available kernel events:
 
 # lttng list -k
 
-1) Create a tracing session. The .lttng directory will be created with .lttngrc
+1) Create a recording session. The .lttng directory will be created with .lttngrc
 file in $HOME containing the session name (here 'mysession') you are working
 on.
 
@@ -172,7 +172,7 @@ List available registered applications:
 
 $ lttng list -u
 
-1) Create a tracing session. The .lttng directory will be created with a
+1) Create a recording session. The .lttng directory will be created with a
 .lttngrc file in $HOME containing the session name (here 'mysession') you are
 working on.
 

@@ -1,10 +1,10 @@
 lttng-clear(1)
 ==============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 NAME
 ----
-lttng-clear - Clear an LTTng tracing session
+lttng-clear - Clear an LTTng recording session
 
 
 SYNOPSIS
@@ -15,44 +15,45 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng clear` command clears one or more tracing sessions, that is,
-it deletes the contents of their tracing buffers and of all their local
-and streamed trace data.
+The `lttng clear` command clears one or more recording sessions, that
+is, it deletes the contents of their recording buffers and of all their
+local and streamed trace data.
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
 The `clear` command clears:
 
 Without any option::
-    The current tracing session.
+    The current recording session.
 +
-See man:lttng-concepts(7) to learn more about the current tracing
+See man:lttng-concepts(7) to learn more about the current recording
 session.
 
 With the 'SESSION' argument::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 With the option:--all option::
-    *All* the tracing sessions of the connected session daemon for your
-    Unix user, or for all users if your Unix user is `root`, as listed
-    in the output of `lttng list` (see man:lttng-list(1)).
+    *All* the recording sessions of the connected session daemon for
+    your Unix user, or for all users if your Unix user is `root`, as
+    listed in the output of `lttng list` (see man:lttng-list(1)).
 +
 See the ``Session daemon connection'' section of man:lttng(1) to learn
 how a user application connects to a session daemon.
 
-If a tracing session is configured in snapshot mode (see the
+If a recording session is configured in snapshot mode (see the
 nloption:--snapshot option of the man:lttng-create(1) command), the
-`clear` command only clears the tracing buffers.
+`clear` command only clears the recording buffers.
 
-For a given tracing session, if at least one rotation occurred (see
-man:lttng-concepts(7)), the `clear` command only clears its tracing
+For a given recording session, if at least one rotation occurred (see
+man:lttng-concepts(7)), the `clear` command only clears its recording
 buffers and its current trace chunk, :not: its archived trace chunks.
 
 NOTE: The nloption:--disallow-clear option and the
 `LTTNG_RELAYD_DISALLOW_CLEAR` environment variable of
 man:lttng-relayd(8) can disable remote clearing operations. If LTTng
-sends tracing data over the network for the selected tracing session(s)
-to an LTTng relay daemon configured as such, the `clear` command fails.
+sends recording data over the network for the selected recording
+session(s) to an LTTng relay daemon configured as such, the `clear`
+command fails.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
@@ -63,10 +64,10 @@ include::common-lttng-cmd-options-head.txt[]
 Recording target
 ~~~~~~~~~~~~~~~~
 option:-a, option:--all::
-    Clear all the tracing sessions of your Unix user, or of all users if
+    Clear all the recording sessions of your Unix user, or of all users if
     your Unix user is `root`, as listed in the output of
-    man:lttng-list(1), instead of the current tracing session or the
-    tracing session named 'SESSION'.
+    man:lttng-list(1), instead of the current recording session or the
+    recording session named 'SESSION'.
 
 
 include::common-lttng-cmd-help-options.txt[]
@@ -78,7 +79,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Clear the current tracing session.
+.Clear the current recording session.
 ====
 [role="term"]
 ----
@@ -86,7 +87,7 @@ $ lttng clear
 ----
 ====
 
-.Clear a specific tracing session.
+.Clear a specific recording session.
 ====
 [role="term"]
 ----
@@ -94,7 +95,7 @@ $ lttng clear my-session
 ----
 ====
 
-.Clear all tracing sessions.
+.Clear all recording sessions.
 ====
 See the option:--all option.
 

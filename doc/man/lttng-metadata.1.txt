@@ -1,11 +1,11 @@
 lttng-metadata(1)
 =================
-:revdate: 30 April 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-metadata - Manage the metadata generation of an LTTng tracing session
+lttng-metadata - Manage the metadata generation of an LTTng recording session
 
 
 SYNOPSIS
@@ -24,9 +24,9 @@ include::common-lttng-cmd-options-head.txt[]
 
 
 option:-s 'SESSION', option:--session='SESSION'::
-    Manage the metadata generation of the tracing session named
-    'SESSION' instead of the current tracing session (see
-    man:lttng-concepts(7) to learn more about the current tracing
+    Manage the metadata generation of the recording session named
+    'SESSION' instead of the current recording session (see
+    man:lttng-concepts(7) to learn more about the current recording
     session).
 
 

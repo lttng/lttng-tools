@@ -398,20 +398,20 @@ int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
 //Functions not needing redefinition
 %feature("docstring")"create(str name, str path) -> int
 
-Create a new tracing session using name and path.
+Create a new recording session using name and path.
 Returns 0 on success or a negative error code."
 int lttng_create_session(const char *name, const char *path);
 
 %feature("docstring")"create_snapshot(str name, str snapshot_url) -> int
 
-Create a new tracing session using name and snapshot_url in snapshot
+Create a new recording session using name and snapshot_url in snapshot
 mode (flight recorder).
 Returns 0 on success or a negative error code."
 int lttng_create_session_snapshot(const char *name, const char *path);
 
 %feature("docstring")"destroy(str name) -> int
 
-Tear down tracing session using name.
+Tear down recording session using name.
 Returns 0 on success or a negative error code."
 int lttng_destroy_session(const char *name);
 

@@ -1,6 +1,6 @@
 lttng-crash(1)
 ==============
-:revdate: 3 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -34,7 +34,7 @@ With the option:--extract='DIR' option::
 
 'SHMDIR' is the directory specified as the argument of the
 nloption:--shm-path option of the man:lttng-create(1) command used to
-create the tracing session for which to recover the traces.
+create the recording session for which to recover the traces.
 
 
 OPTIONS

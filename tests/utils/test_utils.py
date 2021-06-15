@@ -74,7 +74,7 @@ def create_session():
 
     res = create(session_name, trace_path)
     if res < 0:
-        bail("Failed to create tracing session.")
+        bail("Failed to create recording session.")
 
     channel = Channel()
     channel.name = "channel0"

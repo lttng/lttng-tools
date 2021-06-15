@@ -1,11 +1,11 @@
 lttng-start(1)
 ==============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-start - Start an LTTng tracing session
+lttng-start - Start an LTTng recording session
 
 
 SYNOPSIS
@@ -16,27 +16,27 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The `lttng start` command starts a tracing session, that is, it
+The `lttng start` command starts a recording session, that is, it
 activates the LTTng tracers for:
 
 With the 'SESSION' argument::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the 'SESSION' argument::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
-The selected tracing session must be inactive (stopped). A tracing
+The selected recording session must be inactive (stopped). A recording
 session is inactive on creation (see man:lttng-create(1)).
 
-A `start-session` trigger action can also start a tracing session
+A `start-session` trigger action can also start a recording session
 (see man:lttng-add-trigger(1)).
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
-Stop an active tracing session with the man:lttng-stop(1) command.
+Stop an active recording session with the man:lttng-stop(1) command.
 
 
 include::common-lttng-cmd-options-head.txt[]
@@ -51,7 +51,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Start the current tracing session.
+.Start the current recording session.
 ====
 [role="term"]
 ----
@@ -59,7 +59,7 @@ $ lttng start
 ----
 ====
 
-.Start a specific tracing session.
+.Start a specific recording session.
 ====
 [role="term"]
 ----

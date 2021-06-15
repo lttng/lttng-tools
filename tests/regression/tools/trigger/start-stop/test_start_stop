@@ -25,7 +25,7 @@ NR_USEC_WAIT=5
 function lttng_session_is_active()
 {
 	local SESSION_NAME="$1"
-	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Tracing session" | grep -q "\[active\]"
+	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Recording session" | grep -q "\[active\]"
 
 	ok $ret "Session \"$SESSION_NAME\" is active"
 }
@@ -33,7 +33,7 @@ function lttng_session_is_active()
 function lttng_session_is_inactive()
 {
 	local SESSION_NAME="$1"
-	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Tracing session" | grep -q "\[inactive\]"
+	"$FULL_LTTNG_BIN" list "$SESSION_NAME" | grep "Recording session" | grep -q "\[inactive\]"
 
 	ok $ret "Session \"$SESSION_NAME\" is inactive"
 }
