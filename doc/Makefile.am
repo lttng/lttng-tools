@@ -15,3 +15,7 @@ EXTRA_DIST = quickstart.txt streaming-howto.txt python-howto.txt \
 dist_doc_DATA = quickstart.txt streaming-howto.txt python-howto.txt \
 	snapshot-howto.txt live-reading-howto.txt \
 	live-reading-protocol.txt valgrind-howto.txt
+
+if API_DOC
+SUBDIRS += api
+endif

@@ -157,6 +157,7 @@ AS_IF([test "x$enable_Werror" = "xyes"], [
 AC_PROG_GREP
 AC_PROG_MAKE_SET
 AC_PROG_SED
+AC_PROG_MKDIR_P
 AC_PATH_PROG([report_fold], [fold])
 LT_INIT
 
@@ -755,6 +756,31 @@ if test "x$test_java_agent_jul" = "xyes" || test "x$test_java_agent_log4j" = "xy
 	fi
 fi
 
+# API documentation using Doxygen
+AC_ARG_ENABLE([api-doc], [
+	AS_HELP_STRING([--enable-api-doc], [build HTML API documentation])
+], [api_doc=$enableval], [api_doc=no])
+
+AS_IF([test "x$api_doc" = xyes], [
+	DX_DOXYGEN_FEATURE(ON)
+	DX_DOT_FEATURE(OFF)
+	DX_HTML_FEATURE(ON)
+	DX_CHM_FEATURE(OFF)
+	DX_CHI_FEATURE(OFF)
+	DX_MAN_FEATURE(OFF)
+	DX_RTF_FEATURE(OFF)
+	DX_XML_FEATURE(OFF)
+	DX_PDF_FEATURE(OFF)
+	DX_PS_FEATURE(OFF)
+	DX_INIT_DOXYGEN(["LTTng control library"], [$(builddir)/Doxyfile], [output])
+
+	AS_IF([test -z "$DX_DOXYGEN"], [
+		AC_MSG_ERROR([You need Doxygen to build the liblttng-ctl API documentation])
+	])
+])
+
+AM_CONDITIONAL([API_DOC], [test "x$api_doc" = xyes])
+
 # enable building man pages (user's intention)
 AC_ARG_ENABLE(
 	man-pages,
@@ -1203,6 +1229,9 @@ AC_SUBST(lttnglibexecdir)
 AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
+	doc/api/Makefile
+	doc/api/liblttng-ctl/Doxyfile
+	doc/api/liblttng-ctl/Makefile
 	doc/examples/Makefile
 	doc/examples/rotation/Makefile
 	doc/examples/trigger-condition-event-matches/Makefile
@@ -1464,6 +1493,9 @@ m4_popdef([build_man_pages_msg])
 
 test "x$embedded_help" = xyes && value=1 || value=0
 PPRINT_PROP_BOOL([Embed --help messages], $value, $PPRINT_COLOR_SUBTITLE)
+
+test "x$api_doc" = xyes && value=1 || value=0
+PPRINT_PROP_BOOL([liblttng-ctl HTML API documentation], $value, $PPRINT_COLOR_SUBTITLE)
 
 PPRINT_SET_INDENT(1)
 

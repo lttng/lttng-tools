@@ -12,26 +12,53 @@
 extern "C" {
 #endif
 
+/*!
+@addtogroup api_channel
+@{
+*/
+
 #include <lttng/constant.h>
 #include <lttng/lttng-export.h>
 
-/*
- * Domain types: the different possible tracers.
- */
+/*!
+@brief
+    Tracing domain type (tracer type).
+*/
 enum lttng_domain_type {
-	LTTNG_DOMAIN_NONE = 0, /* No associated domain. */
-	LTTNG_DOMAIN_KERNEL = 1, /* Linux Kernel tracer. */
-	LTTNG_DOMAIN_UST = 2, /* Global Userspace tracer. */
-	LTTNG_DOMAIN_JUL = 3, /* Java Util Logging. */
-	LTTNG_DOMAIN_LOG4J = 4, /* Java Log4j Framework. */
-	LTTNG_DOMAIN_PYTHON = 5, /* Python logging Framework. */
+	/// None.
+	LTTNG_DOMAIN_NONE = 0,
+
+	/// Linux kernel.
+	LTTNG_DOMAIN_KERNEL = 1,
+
+	/// User space.
+	LTTNG_DOMAIN_UST = 2,
+
+	/// <code>java.util.logging</code> (JUL).
+	LTTNG_DOMAIN_JUL = 3,
+
+	/// Apache log4j.
+	LTTNG_DOMAIN_LOG4J = 4,
+
+	/// Python logging.
+	LTTNG_DOMAIN_PYTHON = 5,
 };
 
-/* Buffer type for a specific domain. */
+/*!
+@brief
+    Buffering scheme of a channel.
+
+See \ref api-channel-buf-scheme "Buffering scheme" to learn more.
+*/
 enum lttng_buffer_type {
-	LTTNG_BUFFER_PER_PID, /* Only supported by UST being the default. */
-	LTTNG_BUFFER_PER_UID, /* Only supported by UST. */
-	LTTNG_BUFFER_GLOBAL, /* Only supported by the Kernel. */
+	/// Per-process buffering.
+	LTTNG_BUFFER_PER_PID,
+
+	/// Per-user buffering.
+	LTTNG_BUFFER_PER_UID,
+
+	/// Global (Linux kernel) buffering.
+	LTTNG_BUFFER_GLOBAL,
 };
 
 /*
@@ -39,9 +66,44 @@ enum lttng_buffer_type {
  */
 #define LTTNG_DOMAIN_PADDING1 12
 #define LTTNG_DOMAIN_PADDING2 LTTNG_SYMBOL_NAME_LEN + 32
+
+/*!
+@brief
+    Tracing domain summary.
+
+Such a structure is involved:
+
+- As a member of a \link #lttng_handle recording session handle\endlink.
+
+  Some functions which require both a \lt_obj_session
+  and a tracing domain accept an #lttng_handle structure.
+
+- When you list the tracing domains of a recording session with
+  lttng_list_domains().
+
+- When you create a \link #lttng_channel channel summary
+  structure\endlink with lttng_channel_create().
+
+You must initialize such a structure to zeros before setting its
+members and using it, for example:
+
+@code
+struct lttng_domain domain;
+
+memset(&domain, 0, sizeof(domain));
+@endcode
+*/
 struct lttng_domain {
+	/// Tracing domain type.
 	enum lttng_domain_type type;
+
+	/*!
+	@brief
+	    Buffering scheme of all the channels associated to this tracing
+	    domain.
+	*/
 	enum lttng_buffer_type buf_type;
+
 	char padding[LTTNG_DOMAIN_PADDING1];
 
 	union {
@@ -51,14 +113,36 @@ struct lttng_domain {
 	} attr;
 };
 
-/*
- * List the registered domain(s) of a session.
- *
- * Session name CAN NOT be NULL.
- *
- * Return the size (number of entries) of the "lttng_domain" array. Caller
- * must free domains. On error, a negative LTTng error code is returned.
- */
+/// @}
+
+/*!
+@brief
+    Sets \lt_p{*domains} to the summaries of the tracing domains which
+    contain at least one channel within the recording session
+    named \lt_p{session_name}.
+
+@ingroup api_session
+
+@param[in] session_name
+    Name of the recording session for which to get the tracing domain
+    summaries.
+@param[out] domains
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*domains} to
+    the summaries of the tracing domains.
+
+    Free \lt_p{*domains} with <code>free()</code>.
+    @endparblock
+
+@returns
+    The number of items in \lt_p{*domains} on success, or a \em negative
+    #lttng_error_code enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_not_null{domains}
+*/
 LTTNG_EXPORT extern int lttng_list_domains(const char *session_name, struct lttng_domain **domains);
 
 #ifdef __cplusplus

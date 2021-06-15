@@ -13,36 +13,79 @@
 extern "C" {
 #endif
 
-#include <lttng/constant.h>
 #include <lttng/lttng-export.h>
+
+/*!
+@addtogroup api_session
+@{
+*/
+
+#include <lttng/constant.h>
 
 struct lttng_handle;
 struct lttng_session_descriptor;
 struct lttng_destruction_handle;
 
-/*
- * Basic session information.
- *
- * The "enabled" field is only used when listing the sessions which indicate if
- * it's started or not.
- *
- * The structures should be initialized to zero before use.
- */
 #define LTTNG_SESSION_PADDING1 8
+
+/*!
+@brief
+    Recording session summary.
+
+The purpose of such a structure is to provide information about a
+\lt_obj_session itself, but not about its \lt_obj_domains
+and \lt_obj_channels (use lttng_list_domains() and lttng_list_channels()
+for this).
+
+lttng_list_sessions() sets a pointer to an array of all the available
+recording session summaries.
+*/
 struct lttng_session {
+	/// Name.
 	char name[LTTNG_NAME_MAX];
-	/*
-	 * Human-readable representation of the trace's destination.
-	 * In the case of a local tracing session, a path is provided:
-	 *     /path/to/the/output
-	 *
-	 * In the case of a remote (network) tracing session, the string has
-	 * the following format:
-	 *     net://hostname/path:ctrl_port [data: data_port]
-	 */
+
+	/*!
+	@brief
+	    <em>Human-readable</em> representation of the output (local
+	    or remote).
+	*/
 	char path[PATH_MAX];
+
+	/*!
+	@brief
+	    1 if this recording session is active (started), or 0
+	    otherwise.
+
+	@sa lttng_start_tracing() --
+	    Starts a recording session.
+	@sa lttng_stop_tracing() --
+	    Stops a recording session.
+	*/
 	uint32_t enabled; /* enabled/started: 1, disabled/stopped: 0 */
+
+	/*!
+	@brief
+	    1 if this recording session was created in
+	    \ref api-session-snapshot-mode "snapshot mode",
+	    or 0 otherwise.
+
+	@note
+	    If this member is 1, then the
+	    lttng_session::live_timer_interval member is 0.
+	*/
 	uint32_t snapshot_mode;
+
+	/*!
+	@brief
+	    Period (µs) of the \ref api-channel-live-timer "live timers"
+	    of the channels of this recording session, or 0 if this
+	    recording session wasn't created in
+	    \ref api-session-live-mode "live mode".
+
+	@note
+	    If this member is \em not 0, then the
+	    lttng_session::snapshot_mode member is 0.
+	*/
 	unsigned int live_timer_interval; /* usec */
 
 	/*
@@ -73,138 +116,397 @@ struct lttng_session {
 	} extended;
 };
 
-/*
- * Create a session on the session daemon from a session descriptor.
- *
- * See the session descriptor API description in session-descriptor.h
- *
- * Note that unspecified session descriptor parameters, such as a session's
- * name, are updated in the session descriptor if the creation of the session
- * succeeds. This allows users to query the session's auto-generated name
- * after its creation. Note that other attributes can be queried using the
- * session listing API.
- *
- * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
- * return codes.
- */
+/*!
+@brief
+    Creates a recording session from the recording session descriptor
+    \lt_p{session_descriptor}.
+
+See \ref api_session_descr to learn how to create a recording session
+descriptor.
+
+On success, if the name property of \lt_p{session_descriptor} isn't set,
+this function sets it to the automatically generated name of the
+recording session. Get the recording session name with
+lttng_session_descriptor_get_session_name().
+
+@param[in] session_descriptor
+    Descriptor from which to create a recording session.
+
+@returns
+    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_descriptor}
+@pre
+    If the name property of \lt_p{session_descriptor} is set, then no
+    available recording session has this name.
+
+@sa \ref api_session_descr.
+@sa \lt_man{lttng-create,1}
+*/
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_create_session_ext(struct lttng_session_descriptor *session_descriptor);
 
-/*
- * Create a tracing session using a name and an optional URL.
- *
- * If _url_ is NULL, no consumer is created for the session. The name can't be
- * NULL here.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int lttng_create_session(const char *name, const char *url);
+/*!
+@brief
+    Creates a recording session named \lt_p{session_name} in
+    \ref api-session-local-mode "local"
+    or \ref api-session-net-mode "network streaming" mode, optionally
+    setting its output URL to \lt_p{output_url}.
 
-/*
- * Create a tracing session that will exclusively be used for snapshot meaning
- * the session will be in no output mode and every channel enabled for that
- * session will be set in overwrite mode and in mmap output since splice is not
- * supported.
- *
- * Name can't be NULL. If an url is given, it will be used to create a default
- * snapshot output using it as a destination. If NULL, no output will be
- * defined and an add-output call will be needed.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *name, const char *snapshot_url);
+@deprecated
+    Use lttng_create_session_ext() with a dedicated
+    local or network streaming
+    \ref api_session_descr "recording session descriptor".
 
-/*
- * Create a session exclusively used for live reading.
- *
- * In this mode, the switch-timer parameter is forced for each UST channel, a
- * live-switch-timer is enabled for kernel channels, manually setting
- * switch-timer is forbidden. Synchronization beacons are sent to the relayd,
- * indexes are sent and metadata is checked for each packet.
- *
- * Name can't be NULL. If no URL is given, the default is to send the data to
- * net://127.0.0.1. The timer_interval is in usec.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int
-lttng_create_session_live(const char *name, const char *url, unsigned int timer_interval);
+@param[in] session_name
+    Name of the new recording session.
+@param[in] output_url
+    @parblock
+    \ref api-session-url "Output URL" of the recording session to
+    create.
 
-/*
- * Destroy a tracing session.
- *
- * The session will not be usable, tracing will be stopped thus buffers will be
- * flushed.
- *
- * This call will wait for data availability for each domain of the session,
- * which can take an arbitrary amount of time. However, when returning the
- * tracing data is guaranteed to be ready to be read and analyzed.
- *
- * lttng_destroy_session_no_wait() may be used if such a guarantee is not
- * needed.
- *
- * The name can't be NULL here.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int lttng_destroy_session(const char *name);
+    If it's a \ref api-session-one-port-url "single-port output URL",
+    then the trace data port is \lt_def_net_data_port.
 
-/*
- * Destroy a tracing session.
- *
- * Performs the same function as lttng_destroy_session(), but provides
- * an lttng_destruction_handle which can be used to wait for the completion
- * of the session's destruction. The lttng_destroy_handle can also be used
- * obtain the status and archive location of any implicit session
- * rotation that may have occurred during the session's destruction.
- *
- * Returns LTTNG_OK on success. The returned handle is owned by the caller
- * and must be free'd using lttng_destruction_handle_destroy().
- */
+    If \c NULL, LTTng doesn't write any trace data for this recording
+    session.
+    @endparblock
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_name_not_auto{session_name}
+@pre
+    No available recording session is named \lt_p{session_name}.
+@pre
+    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+    \ref api-session-url "output URL".
+
+@sa lttng_create_session_snapshot() --
+    Creates a recording session in snapshot mode.
+@sa lttng_create_session_live() --
+    Creates a recording session in live mode.
+@sa \lt_man{lttng-create,1}
+*/
+LTTNG_EXPORT extern int lttng_create_session(const char *session_name, const char *output_url);
+
+/*!
+@brief
+    Creates a recording session named \lt_p{session_name} in
+    \ref api-session-snapshot-mode "snapshot" mode, optionally setting
+    the URL of its initial snapshot output to \lt_p{output_url}.
+
+@deprecated
+    Use lttng_create_session_ext() with a dedicated snapshot
+    \ref api_session_descr "recording session descriptor".
+
+@param[in] session_name
+    Name of the new recording session.
+@param[in] output_url
+    @parblock
+    \ref api-session-url "URL" of an initial snapshot output
+    which LTTng adds to this recording session.
+
+    If it's a \ref api-session-one-port-url "single-port output URL",
+    then the trace data port is \lt_def_net_data_port.
+
+    This initial snapshot output is named <code>snapshot-0</code>.
+
+    If \c NULL, then the created recording session has no initial
+    snapshot output: you need to either add one with
+    lttng_snapshot_add_output() or provide one when you take a snapshot
+    with lttng_snapshot_record().
+    @endparblock
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_name_not_auto{session_name}
+@pre
+    No available recording session is named \lt_p{session_name}.
+@pre
+    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+    \ref api-session-url "output URL".
+
+@sa lttng_create_session() --
+    Creates a recording session in local or network streaming mode.
+@sa lttng_create_session_live() --
+    Creates a recording session in live mode.
+@sa \lt_man{lttng-create,1}
+*/
+LTTNG_EXPORT extern int lttng_create_session_snapshot(const char *session_name,
+						      const char *output_url);
+
+/*!
+@brief
+    Creates a recording session named \lt_p{session_name} in
+    \ref api-session-live-mode "live" mode, optionally setting its
+    URL to \lt_p{output_url}.
+
+@deprecated
+    Use lttng_create_session_ext() with a dedicated live
+    \ref api_session_descr "recording session descriptor".
+
+@param[in] session_name
+    Name of the new recording session.
+@param[in] output_url
+    @parblock
+    \ref api-session-url "Output URL" of the recording session to
+    create: \ref api-session-one-port-url "single-port" or
+    \ref api-session-two-port-url "two-port".
+
+    If it's a \ref api-session-one-port-url "single-port output URL",
+    then the trace data port is \lt_def_net_data_port.
+
+    If \c NULL, this function uses \lt_def_net_url.
+    @endparblock
+@param[in] live_timer_period
+    Period (µs) of the \ref api-channel-live-timer "live timers" of all
+    the channels of the created recording session.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_name_not_auto{session_name}
+@pre
+    No available recording session is named \lt_p{session_name}.
+@pre
+    <strong>If not \c NULL</strong>, \lt_p{output_url} is a valid
+    \ref api-session-one-port-url "single-port output URL" or
+    \ref api-session-two-port-url "two-port output URL".
+@pre
+    \lt_p{live_timer_period}&nbsp;≥&nbsp;1
+
+@sa lttng_create_session() --
+    Creates a recording session in local or network streaming mode.
+@sa lttng_create_session_snapshot() --
+    Creates a recording session in snapshot mode.
+@sa \lt_man{lttng-create,1}
+*/
+LTTNG_EXPORT extern int lttng_create_session_live(const char *session_name,
+						  const char *output_url,
+						  unsigned int live_timer_period);
+
+/*!
+@brief
+    Destroys the recording session named \lt_p{session_name}, blocking
+    until the operation completes.
+
+@deprecated
+    Use lttng_destroy_session_ext().
+
+"Destroying" a recording session means freeing the resources which the
+LTTng daemons and tracers acquired for it, also making sure to flush all
+the recorded trace data to either the local file system or the connected
+LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
+\ref api-session-modes "recording session mode".
+
+This function stops any recording activity within the recording session
+named \lt_p{session_name}.
+
+This function implicitly calls lttng_stop_tracing(), blocking until the
+trace data of the recording session becomes valid. Use
+lttng_destroy_session_no_wait() to avoid a blocking call.
+
+@param[in] session_name
+    Name of the recording session to destroy.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+
+@sa lttng_destroy_session_no_wait() --
+    Initiates the destruction operation of a recording session,
+    returning immediately.
+@sa \lt_man{lttng-destroy,1}
+*/
+LTTNG_EXPORT extern int lttng_destroy_session(const char *session_name);
+
+/*!
+@brief
+    Initiates the destruction operation of the recording session named
+    \lt_p{session_name}.
+
+@deprecated
+    Use lttng_destroy_session_ext().
+
+"Destroying" a recording session means freeing the resources which the
+LTTng daemons and tracers acquired for it, also making sure to flush all
+the recorded trace data to either the local file system or the connected
+LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
+\ref api-session-modes "recording session mode".
+
+Unlike lttng_destroy_session(), this function does \em not block until
+the destruction operation is complete: it returns immediately. This
+means the trace(s) of the recording session might not be valid when
+this function returns, and there's no way to know when it/they become
+valid.
+
+@param[in] session_name
+    Name of the recording session to destroy.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@pre
+    No destruction operation is in progress for the recording session
+    named \lt_p{session_name}.
+
+@sa lttng_destroy_session() --
+    Destroys a recording session, blocking until the operation
+    completes.
+@sa \lt_man{lttng-destroy,1}
+*/
+LTTNG_EXPORT extern int lttng_destroy_session_no_wait(const char *session_name);
+
+/*!
+@brief
+    Initiates a destruction operation of the recording session
+    named \lt_p{session_name}.
+
+"Destroying" a recording session means freeing the resources which the
+LTTng daemons and tracers acquired for it, also making sure to flush all
+the recorded trace data to either the local file system or the connected
+LTTng relay daemon (see \lt_man{lttng-relayd,8}), depending on the
+\ref api-session-modes "recording session mode".
+
+This function doesn't block until the destruction operation completes:
+it only initiates the operation.
+Use \lt_p{*handle} to wait for the operation to complete.
+
+@param[in] session_name
+    Name of the recording session to destroy.
+@param[out] handle
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*handle} to
+    a handle which identifies this recording session destruction
+    operation.
+
+    May be \c NULL.
+
+    Wait for the completion of this destruction operation with
+    lttng_destruction_handle_wait_for_completion().
+
+    Destroy \lt_p{*handle} with lttng_destruction_handle_destroy().
+    @endparblock
+
+@returns
+    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@pre
+    No destruction operation is in progress for the recording session
+    named \lt_p{session_name}.
+
+@sa \lt_man{lttng-destroy,1}
+*/
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_destroy_session_ext(const char *session_name, struct lttng_destruction_handle **handle);
 
-/*
- * Behaves exactly like lttng_destroy_session but does not wait for data
- * availability.
- */
-LTTNG_EXPORT extern int lttng_destroy_session_no_wait(const char *name);
+/*!
+@brief
+    Sets \lt_p{*sessions} to the summaries of all the available
+    recording sessions.
 
-/*
- * List all the tracing sessions.
- *
- * Return the number of entries of the "lttng_session" array. The caller
- * must free the returned sessions array directly using free().
- *
- * On error, a negative LTTng error code is returned.
- */
+@param[out] sessions
+    @parblock
+    <strong>On success</strong>, this function sets \lt_p{*sessions} to
+    the summaries of the available recording sessions.
+
+    Free \lt_p{*sessions} with <code>free()</code>.
+    @endparblock
+
+@returns
+    The number of items in \lt_p{*sessions} on success, or a \em
+    negative #lttng_error_code enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{sessions}
+
+@sa \lt_man{lttng-list,1}
+*/
 LTTNG_EXPORT extern int lttng_list_sessions(struct lttng_session **sessions);
 
-/*
- * Get the creation time of an lttng_session object on the session daemon.
- *
- * This function must only be used with lttng_session objects returned
- * by lttng_list_sessions() or lttng_session_create().
- *
- * The creation time returned is a UNIX timestamp; the number of seconds since
- * Epoch (1970-01-01 00:00:00 +0000 (UTC)).
- *
- * Returns LTTNG_OK on success. See lttng-error.h for the meaning of the other
- * return codes.
- */
-LTTNG_EXPORT extern enum lttng_error_code
-lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *creation_time);
+/*!
+@brief
+    Sets \lt_p{*creation_timestamp} to the timestamp of the creation of
+    the recording session summarized by \lt_p{session}.
 
-/*
- * Set the shared memory path for a session.
- *
- * Sets the (optional) file system path where shared memory buffers will
- * be created for the session. This is useful for buffer extraction on
- * crash, when used with filesystems like pramfs.
- *
- * Return 0 on success else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_path);
+@param[in] session
+    Summary of the recording session of which to get the creation
+    timestamp, as obtained with lttng_list_sessions().
+@param[out] creation_timestamp
+    <strong>On success</strong>, this function sets
+    \lt_p{*creation_timestamp} to the Unix timestamp of the creation of
+    \lt_p{session}.
+
+@returns
+    #LTTNG_OK on success, or a \em negative enumerator otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session}
+@pre
+    The recording session summarized by \lt_p{session} is accessible
+    within the connected session daemon.
+@lt_pre_not_null{creation_timestamp}
+*/
+LTTNG_EXPORT extern enum lttng_error_code
+lttng_session_get_creation_time(const struct lttng_session *session, uint64_t *creation_timestamp);
+
+/*!
+@brief
+    Sets the path of the directory containing the shared memory files
+    holding the channel ring buffers of the recording session named
+    \lt_p{session_name} on the local file sytem to \lt_p{shm_dir}.
+
+Specifying a location on an
+<a href="https://en.wikipedia.org/wiki/Non-volatile_random-access_memory">NVRAM</a>
+file system makes it possible to recover the latest recorded trace data
+when the system reboots after a crash with the \lt_man{lttng-crash,1}
+utility.
+
+@param[in] session_name
+    Name of the recording session of which to set the shared memory
+    file directory path.
+@param[in] shm_dir
+    Path of the directory containing the shared memory files of the
+    recording session named \lt_p{session_name}.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_sess_never_active{session_name}
+@lt_pre_not_null{shm_dir}
+@pre
+    \lt_p{shm_dir} is a writable directory.
+*/
+LTTNG_EXPORT extern int lttng_set_session_shm_path(const char *session_name, const char *shm_dir);
+
+/// @}
 
 #ifdef __cplusplus
 }

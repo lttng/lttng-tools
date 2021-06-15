@@ -33,6 +33,13 @@
 /*
  * Event symbol length. Copied from LTTng kernel ABI.
  */
+
+/*!
+@brief
+    Maximum symbol length.
+
+@ingroup api_gen
+*/
 #define LTTNG_SYMBOL_NAME_LEN 256
 
 /*
@@ -42,6 +49,12 @@
 #define LTTNG_MAX_PID	  INT32_MAX
 #define LTTNG_MAX_PID_STR "2147483647"
 
+/*!
+@brief
+    Maximum name length.
+
+@ingroup api_gen
+*/
 #define LTTNG_NAME_MAX 255
 
 /*

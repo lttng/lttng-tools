@@ -12,6 +12,8 @@
 #ifndef LTTNG_H
 #define LTTNG_H
 
+#include <lttng/lttng-export.h>
+
 /* Error codes that can be returned by API calls */
 #include <lttng/lttng-error.h>
 
@@ -59,7 +61,6 @@
 #include <lttng/location.h>
 #include <lttng/log-level-rule.h>
 #include <lttng/lttng-error.h>
-#include <lttng/lttng-export.h>
 #include <lttng/notification/channel.h>
 #include <lttng/notification/notification.h>
 #include <lttng/rotation.h>
@@ -91,20 +92,64 @@ struct lttng_calibrate {
 	char padding[LTTNG_CALIBRATE_PADDING1];
 };
 
-/*
- * Check if a session daemon is alive.
- *
- * Return 1 if alive or 0 if not. On error, returns a negative negative LTTng
- * error code.
- */
+/*!
+@brief
+    Returns whether or not liblttng-ctl is able to connect to a
+    listening session daemon.
+
+@ingroup api_gen
+
+How this function tries to
+\ref api-gen-sessiond-conn "connect to a session daemon" depends on the
+current Unix tracing group (initially \c tracing) of the library. Set
+the tracing group with lttng_set_tracing_group().
+
+@returns
+    @parblock
+    One of:
+
+    <dl>
+      <dt>1</dt>
+      <dd>
+	liblttng-ctl is able to connect to a session daemon.
+
+      <dt>0
+      <dd>
+	liblttng-ctl isn't able to connect to a session daemon.
+
+      <dt>Negative value
+      <dd>
+	Error: a negative #lttng_error_code enumerator.
+    </dl>
+    @endparblock
+
+@sa lttng_set_tracing_group() --
+    Sets the current Unix tracing group of liblttng-ctl.
+*/
 LTTNG_EXPORT extern int lttng_session_daemon_alive(void);
 
-/*
- * Set the tracing group for the *current* flow of execution.
- *
- * On success, returns 0 else a negative LTTng error code.
- */
-LTTNG_EXPORT extern int lttng_set_tracing_group(const char *name);
+/*!
+@brief
+    Sets the current Unix tracing group of liblttng-ctl to \lt_p{group}.
+
+@ingroup api_gen
+
+How the liblttng-ctl functions
+\ref api-gen-sessiond-conn "connect to a session daemon" depends on
+the current Unix tracing group (initially \c tracing) of the library.
+
+@param[in] group
+    New Unix tracing group of liblttng-ctl.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_not_null{group}
+@pre
+    \lt_p{group} names an existing Unix group.
+*/
+LTTNG_EXPORT extern int lttng_set_tracing_group(const char *group);
 
 /*
  * This call registers an "outside consumer" for a session and an lttng domain.
@@ -119,31 +164,124 @@ LTTNG_EXPORT extern int lttng_set_tracing_group(const char *name);
 LTTNG_EXPORT extern int lttng_register_consumer(struct lttng_handle *handle,
 						const char *socket_path);
 
-/*
- * Start tracing for *all* domain(s) in the session.
- *
- * Return 0 on success else a negative LTTng error code.
- */
+/*!
+@brief
+    Makes the recording session named \lt_p{session_name} active,
+    starting all the tracers for its
+    \ref api-channel-channel "channels".
+
+@ingroup api_session
+
+@note
+    An #LTTNG_ACTION_TYPE_START_SESSION trigger action can also activate
+    (start) a recording session.
+
+@param[in] session_name
+    Name of the recording session to activate/start.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_sess_inactive{session_name}
+
+@sa lttng_stop_tracing() --
+    Stops a recording session.
+@sa \lt_man{lttng-start,1}
+*/
 LTTNG_EXPORT extern int lttng_start_tracing(const char *session_name);
 
-/*
- * Stop tracing for *all* domain(s) in the session.
- *
- * This call will wait for data availability for each domain of the session so
- * this can take an abritrary amount of time. However, when returning you have
- * the guarantee that the data is ready to be read and analyze. Use the
- * _no_wait call below to avoid this behavior.
- *
- * The session_name can't be NULL.
- *
- * Return 0 on success else a negative LTTng error code.
- */
+/*!
+@brief
+    Makes the recording session named \lt_p{session_name} inactive,
+    stopping all the tracers for its
+    \ref api-channel-channel "channels", blocking until the operation
+    completes.
+
+@ingroup api_session
+
+This function blocks until the trace data of the
+recording session named \lt_p{session_name} is valid. Use
+lttng_stop_tracing_no_wait() to avoid a blocking call.
+
+If LTTng \ref api_session_rotation "archived the current trace chunk"
+of the recording session named \lt_p{session_name} at least
+once during its lifetime, then this function renames the current trace
+chunk subdirectory. Although it's safe to
+read the content of this renamed subdirectory while the recording
+session remains inactive, it's \em not a trace chunk archive: you need to
+\link lttng_destroy_session_ext() destroy\endlink the recording session
+or a rotation needs to occur to archive it.
+
+@note
+    An #LTTNG_ACTION_TYPE_STOP_SESSION trigger action can also
+    deactivate (stop) a recording session.
+
+@param[in] session_name
+    Name of the recording session to deactivate/stop.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_sess_active{session_name}
+
+@sa lttng_stop_tracing_no_wait() --
+    Deactivates a recording session without waiting for the operation
+    to complete.
+@sa lttng_start_tracing() --
+    Starts a recording session.
+@sa \lt_man{lttng-stop,1}
+*/
 LTTNG_EXPORT extern int lttng_stop_tracing(const char *session_name);
 
-/*
- * Behave exactly like lttng_stop_tracing but does not wait for data
- * availability.
- */
+/*!
+@brief
+    Makes the recording session named \lt_p{session_name} inactive,
+    stopping all the tracers for its
+    \ref api-channel-channel "channels" without waiting for the
+    operation to complete.
+
+@ingroup api_session
+
+Unlike lttng_stop_tracing(), this function does \em not block until
+the operation is complete: it returns immediately. This
+means the traces(s) of the recording session might not be valid when
+this function returns, and there's no way to know when it/they become
+valid.
+
+@note
+    An #LTTNG_ACTION_TYPE_STOP_SESSION trigger action can also
+    deactivate (stop) a recording session.
+
+@param[in] session_name
+    Name of the recording session to deactivate/stop.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_sess_active{session_name}
+@pre
+    No deactivation operation is in progress for the recording session
+    named \lt_p{session_name}.
+
+@sa lttng_stop_tracing() --
+    Deactivates a recording session, blocking until the operation
+    completes.
+@sa lttng_start_tracing() --
+    Starts a recording session.
+@sa \lt_man{lttng-stop,1}
+*/
 LTTNG_EXPORT extern int lttng_stop_tracing_no_wait(const char *session_name);
 
 /*
@@ -183,16 +321,54 @@ LTTNG_EXPORT extern int lttng_calibrate(struct lttng_handle *handle,
 LTTNG_EXPORT extern int
 lttng_set_consumer_url(struct lttng_handle *handle, const char *control_url, const char *data_url);
 
-/*
- * For a given session name, this call checks if the data is ready to be read
- * or is still being extracted by the consumer(s) (pending) hence not ready to
- * be used by any readers.
- *
- * Return 0 if there is _no_ data pending in the buffers thus having a
- * guarantee that the data can be read safely. Else, return 1 if there is still
- * traced data is pending. On error, a negative value is returned and readable
- * by lttng_strerror().
- */
+/*!
+@brief
+    Returns whether or not you may read the traces of the recording
+    session named \lt_p{session_name}.
+
+@ingroup api_session
+
+It's not safe to read the traces of a recording session while
+LTTng is still consuming data from the tracers for its
+\ref api-channel-channel "channels".
+
+This function makes it possible to know when LTTng is done consuming
+trace data from tracers for the channels of the recording session
+named \lt_p{session_name}.
+
+@param[in] session_name
+    Name of the recording session of which get whether or not
+    you may read its traces.
+
+@returns
+    @parblock
+    One of:
+
+    <dl>
+      <dt>0
+      <dd>
+	You may read the traces of the recording session named
+	\lt_p{session_name}.
+
+	This remains true as long as the recording session remains
+	\link lttng_session::enabled inactive\endlink (stopped).
+
+      <dt>1</dt>
+      <dd>
+	You may \em not read the traces of the recording session named
+	\lt_p{session_name}.
+
+      <dt>Negative value
+      <dd>
+	Error: a negative #lttng_error_code enumerator.
+    </dl>
+    @endparblock
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@lt_pre_sess_inactive{session_name}
+*/
 LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 
 /*
@@ -203,27 +379,119 @@ LTTNG_EXPORT extern int lttng_data_pending(const char *session_name);
 LTTNG_EXPORT extern enum lttng_error_code
 lttng_get_kernel_tracer_status(enum lttng_kernel_tracer_status *status);
 
-/*
- * Deprecated, replaced by lttng_regenerate_metadata.
- */
-LTTNG_DEPRECATED("Use lttng_regenerate_metadata")
+/*!
+@brief
+    Regenerates the metadata streams of the recording session named
+    \lt_p{session_name}.
+
+@ingroup api_session
+
+@deprecated
+    Use lttng_regenerate_metadata().
+
+@param[in] session_name
+    Name of the recording session of which to regenerate the metadata
+    streams.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+*/
+/// @cond DEPRECATED
+LTTNG_DEPRECATED()
+/// @endcond
 LTTNG_EXPORT extern int lttng_metadata_regenerate(const char *session_name);
 
-/*
- * Trigger the regeneration of the metadata for a session.
- * The new metadata overwrite the previous one locally or remotely (through
- * the lttng-relayd). Only kernel, per-uid and non-live sessions are supported.
- * Return 0 on success, a negative LTTng error code on error.
- */
+/*!
+@brief
+    Regenerates the metadata streams of the recording session named
+    \lt_p{session_name}.
+
+@ingroup api_session
+
+Use this function to resample the offset between the monotonic clock and
+the wall time of the system, and then regenerate (overwrite) all the
+metadata stream files (local or remote) of the recording session
+named \lt_p{session_name}.
+
+More specifically, you may want to resample the wall time following a
+major <a href="https://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a>
+correction. As such, LTTng can trace a system booting with an incorrect
+wall time before its wall time is NTP-corrected. Regenerating the
+metadata of a recording session ensures that trace readers
+can accurately determine the event record timestamps relative to the
+Unix epoch.
+
+Note that if you plan to \ref api_session_rotation "rotate" the
+recording session named \lt_p{session_name}, this function only
+regenerates the metadata stream files of the \em current and \em next
+trace chunks.
+
+See the preconditions of this function which show important limitations.
+
+@param[in] session_name
+    Name of the recording session of which to regenerate the metadata
+    streams.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+@pre
+    The recording session named \lt_p{session_name} was \em not created
+    in \ref api-session-live-mode "live mode".
+@pre
+    All the \ref api-channel-channel "channels" of the recording session
+    named \lt_p{session_name} use a
+    \ref api-channel-per-user-buf "per-user buffering scheme".
+
+@sa lttng_regenerate_statedump() --
+    Regenerates the state dump event records of a recording session.
+@sa \lt_man{lttng-regenerate,1}
+*/
 LTTNG_EXPORT extern int lttng_regenerate_metadata(const char *session_name);
 
-/*
- * Trigger the regeneration of the statedump for a session. The new statedump
- * information is appended to the currently active trace, the session needs to
- * be active.
- *
- * Return 0 on success, a negative LTTng error code on error.
- */
+/*!
+@brief
+    Regenerates the state dump event records of the recording session
+    named \lt_p{session_name}.
+
+@ingroup api_session
+
+Use this function to collect up-to-date state dump information and
+append corresponding event records to the
+\ref api-channel-channel "sub-buffers" of the recording session named
+\lt_p{session_name}.
+
+This is particularly useful if you created the recording session in
+\ref api-session-snapshot-mode "snapshot mode"
+or if LTTng \ref api_session_rotation "rotates" trace files for one of
+its \ref api-channel-channel "channels": in both cases, the state dump
+information may be lost.
+
+@param[in] session_name
+    Name of the recording session of which to regenerate the
+    state dump event records.
+
+@returns
+    0 on success, or a \em negative #lttng_error_code enumerator
+    otherwise.
+
+@lt_pre_conn
+@lt_pre_not_null{session_name}
+@lt_pre_sess_exists{session_name}
+
+@sa lttng_regenerate_metadata() --
+    Regenerates the metadata streams of a recording session.
+@sa \lt_man{lttng-regenerate,1}
+*/
 LTTNG_EXPORT extern int lttng_regenerate_statedump(const char *session_name);
 
 #ifdef __cplusplus

@@ -1,0 +1,390 @@
+// Render with Asciidoctor
+
+= LTTng-tools C API documentation guidelines
+Philippe Proulx <pproulx@efficios.com>
+25 August 2021
+:toc: left
+
+This document explains how to write documentation for the LTTng-tools
+C{nbsp}API.
+
+== General rules
+
+* Use four spaces to indent Doxygen text and two spaces to indent HTML.
+
+* Try to stay behind the 72^th^ column mark when possible.
+
+* Use https://en.wikipedia.org/wiki/Non-breaking_space[`+&nbsp;+`]
+  wherever needed.
+
+* Refer to a function with the `func()` form and to an
+  enumerator/structure/variable or type with the `#name` syntax.
++
+You don't need any `struct`/`enum` prefix with Doxygen.
+
+* When you refer to any keyword or definition, use the `+\c+` command if
+  it's a single word, otherwise surround the words with `<code>` and
+  `</code>`:
++
+--
+----
+@returns
+    Event rule on success, or \c NULL on error.
+----
+--
+
+* Use the `$$\$$__command__` style in text (paragraphs, list items,
+  definition terms, and the rest) and the `@__command__` style for
+  other locations (for example, `@brief`, `@param`, `@sa`, `@file`).
+
+* Use a `@code{.unparsed}` block for a plain text block (shell input,
+  for example):
++
+----
+@code{.unparsed}
+$ lttng enable-event --all --kernel --syscall
+@endcode
+----
+
+* In the text, use custom aliases when applicable.
++
+See `Doxyfile.in` for the list of available aliases.
+
+== Function documentation
+
+Full example:
+
+----
+/*!
+@brief
+    Does something (third person singular, simple present) with some
+    parameter \lt_p{param} unless some other parameter
+    \lt_p{other_param} has some value.
+
+Full documentation goes here and adds any relevant information that's
+not in the brief description.
+
+@code
+/* If needed, put any C code in a code block. */
+@endcode
+
+Crucifix scenester vegan organic neutra palo santo glossier occupy
+truffaut. Meh fixie taiyaki single-origin coffee wayfarers. Thundercats
+farm-to-table shoreditch vinyl.
+
+@remarks
+    This is where you would put some remarks. Occupy flexitarian neutra,
+    edison bulb bespoke sriracha post-ironic. Mlkshk plaid pop-up
+    polaroid chillwave, ennui neutra.
+
+See this image:
+
+@image html mein-illustration.png "Caption goes here."
+
+@note
+    @parblock
+    This is a multiparagraph note.
+
+    Tote bag sartorial distillery, try-hard succulents wayfarers DIY
+    YOLO four loko jianbing farm-to-table unicorn vice.
+
+    Mumblecore semiotics raw denim palo santo chartreuse helvetica
+    shabby chic, distillery pabst poke swag copper mug blue bottle.
+    @endpar
+
+@attention
+    Use an attention command if this message is really important.
+
+@attention
+    @parblock
+    An attention block with more than one paragraph:
+
+    @code
+    some_code(23)
+    @endcode
+
+    Elit dolore pariatur ex anim officia cupidatat adipisicing mollit
+    incididunt irure anim nostrud.
+    @endparblock
+
+@param[in] param
+    Description of this parameter.
+@param[in] other_param
+    @parblock
+    Description of this other parameter. Nulla consequat tempus libero,
+    sed finibus velit.
+
+    Offal actually vinyl taiyaki kickstarter etsy.
+    @endparblock
+@param[out] out_param
+    <strong>On success</strong>, \lt_p{*out_param} contains to something
+    useful.
+
+@retval #LTTNG_SOME_STATUS_OK
+    Success.
+@retval #LTTNG_SOME_STATUS_MEMORY_ERROR
+    Out of memory.
+@retval #LTTNG_SOME_STATUS_ERROR
+    @parblock
+    Longer description for this specific status.
+
+    Organic locavore sartorial 3 wolf moon brooklyn, VHS pug distillery
+    schlitz tofu banjo chambray you probably haven't heard of them hot
+    chicken copper mug.
+
+    Neutra kale chips kombucha, salvia green juice live-edge swag
+    biodiesel scenester austin yuccie dreamcatcher cronut small batch.
+    @endparblock
+
+@lt_pre_not_null{param}
+@lt_pre_not_null{other_param}
+@pre
+    \lt_p{param} is like this or like that.
+
+@post
+    \lt_p{other_param} is still in some state, and woke jean waistcoat.
+
+@sa lttng_some_other_function() --
+    Does something else with some parameter.
+@sa lttng_another_function() --
+    Cardigan celiac palo santo, tacos chicharrones pitchfork chambray
+    photo booth subway tile 90's street.
+*/
+----
+
+Parts:
+
+. **Opening Doxygen comment**.
++
+Use `+/*!+`.
+
+. **Brief description**.
++
+Use third person singular in the simple present tense: you're
+documenting what the function does. Assume that the sentence implicitly
+starts with "`This function`".
++
+Try to mention, briefly, all the parameters (with `\lt_p`) and what the
+function returns.
++
+End the sentence with a period.
+
+. **Detailed description**.
++
+Write complete sentences.
++
+Refer to parameters (with `\lt_p`) as much as possible.
++
+In general, keep paragraphs short: often, a single sentence is enough.
++
+Refer to the documented function with "`this function`".
++
+Write notes (`@note` command), remarks (`@remark` command), or
+attentions (`@attention` command) when needed. Most notes and remarks,
+however, can be simple paragraphs. Use `@parblock` end `@endparblock` to
+have more than one note/remark/warning paragraph.
+
+. **Parameter descriptions** (if any).
++
+Use the `@param[in]`, `@param[out]`, and `@param[in,out]` commands
+depending on the parameter direction.
++
+Document parameters in the declaration order.
++
+Refer to other parameters (with `\lt_p`) when useful for the reader.
++
+End each description with a period.
++
+Use `@parblock` end `@endparblock` to have more than one paragraph for a
+given parameter description.
++
+Make sure there's no blank line, except within a `@parblock` block,
+within the parameter description block so that Doxygen puts all the
+descriptions in the same section. For example, _don't_ write this:
++
+----
+@param[in] hexagon
+    Ugh literally +1 aesthetic, fashion axe try-hard mixtape pork belly
+    four loko.
+
+@param[in] selfies
+    Brooklyn ethical migas, viral edison bulb meggings butcher
+    flexitarian letterpress humblebrag kombucha pour-over etsy sriracha
+    blog.
+----
+
+. **Return value** (if any).
++
+If the function returns a status code::
+    Use the `@retval` command multiple times to document each relevant
+    status:
++
+----
+@retval #LTTNG_SOME_STATUS_OK
+    Success.
+@retval #LTTNG_SOME_STATUS_SOME_ERROR
+    Some error.
+----
++
+End each description with a period.
++
+Use `@parblock` and `@endparblock` to have more than one paragraph for a
+given return value description.
++
+Make sure there's no blank line, except within a `@parblock` block,
+within the return value description block so that Doxygen puts all the
+descriptions in the same section. For example, _don't_ write this:
++
+----
+@retval #LTTNG_SOME_STATUS_OK
+    Success.
+
+@retval #LTTNG_SOME_STATUS_SOME_ERROR
+    Some error.
+----
+
+If the function returns a simple value::
+    Use the `@returns` command to document it.
++
+Refer to parameters (with `\lt_p`) when useful for the reader.
++
+End the description with a period.
+
+. **Preconditions** (if any).
++
+List all the function's preconditions with the `@pre` command or any
+alias which starts with `@lt_pre` (see `Doxyfile.in`).
++
+Use the simple present tense.
++
+Do not write the word "`must`" as a precondition is already a
+requirement.
++
+End the description with a period.
++
+Make sure there's no blank line within the precondition description
+block so that Doxygen puts all the descriptions in the same section. For
+example, _don't_ write this:
++
+----
+@lt_pre_not_null{param}
+
+@pre
+    \lt_p{param} is like this or like that.
+----
+
+. **Postconditions** (if any).
++
+List all the function's _relevant_ postconditions with the `@post`
+command or any alias which starts with `@lt_post` (see `Doxyfile.in`).
++
+Anything that the body of the function documentation describes and which
+forms the nature of the function doesn't need to be written as an
+explicit postcondition. For example, if a function adds some
+object{nbsp}A to some object{nbsp}B, don't write the postcondition
+"`B{nbsp}contains{nbsp}A`".
++
+Use the simple present tense.
++
+End the description with a period.
++
+Make sure there's no blank line within the postcondition description
+block so that Doxygen puts all the descriptions in the same section. For
+example, _don't_ write this:
++
+----
+@post
+    The returned pointer is blue.
+
+@post
+    \lt_p{other_param} is still in some state, and woke jean waistcoat.
+----
+
+. **Items to see also** (if any).
++
+Use the `@sa` command, multiple times if needed, to refer to related
+functions or types.
++
+This is a way for you to inform the reader about other existing, related
+items. Keep in mind that the reader doesn't always know where to look
+for things.
++
+In the brief description of the referred item, _don't_ mention its
+parameters, if any.
++
+End each brief description with a period.
++
+Make sure there's no blank line within the item description block so
+that Doxygen puts all the descriptions in the same section. For example,
+_don't_ write this:
++
+----
+@sa lttng_some_other_function() --
+    Does something else with a parameter.
+
+@sa lttng_another_function() --
+    Cardigan celiac palo santo, tacos chicharrones pitchfork chambray
+    photo booth subway tile 90's street.
+----
+
+
+== Writing style
+
+The ultimate goal of the LTTng-tools C{nbsp}API documentation is to make
+the layman write code using this API as fast and correct as possible
+without having to ask for help. For this purpose, the documentation must
+be as clear as possible, just like the function and type names try to
+be.
+
+Don't hesitate to repeat technical terms, even in the same sentence, if
+needed. For example, if you document an "`event rule`", then always use
+the term "`event rule`" in the documentation, not "`event`", nor
+"`rule`", since they are ambiguous.
+
+You can use light emphasis to show the importance of a part of the text
+with the `\em` command (one word) or by surrounding the text to
+emphasize with `<em>` and `</em>`. Likewise, you can use strong emphasis
+when needed with the `\b` command (one word) or with `<strong>` and
+`</strong>`. In general, prefer light emphasis to strong emphasis, and
+use it economically.
+
+Links to other parts of the documentation are very important. Consider
+that the reader never knows that other functions exist other than the
+one she's reading. Use as many internal links as possible. Use the
+following forms of links:
+
+`__func__()`::
+    Automatic link to the function or macro named `__func__`.
+
+`#__name__`::
+    Automatic link to the type or enumerator named `__name__`.
+
+`\ref __ref__`::
+    Link to `__ref__` (page name, group name, function or macro name,
+    type name, variable name, etc.) using its default text.
+
+`\ref __ref__ "__some text__"`::
+    Link to `__ref__` (page name, group name, function or macro name,
+    type name, variable name, etc.) using the text `__some text__`.
+
+See Doxygen's "`http://www.doxygen.nl/manual/autolink.html[Automatic
+link generation]`" page for other ways to create automatic links.
+
+Follow, as much as possible, the
+https://docs.microsoft.com/en-ca/style-guide/welcome/[Microsoft Style
+Guide] when you document the API. This includes:
+
+* Use an active voice.
+* Use a gender-neutral language.
+* Use the present tense (you almost never need the future tense).
+* Address your reader directly (use "`you`").
+* Use contractions ("`it's`", "`you're`", "`don't`", and the rest).
+* Avoid anthropomorphism.
+* Ensure parallelism in lists, procedures, and sentences.
+* Terminate list items with a period, except when the list only contains
+  very short items.
+* Do not use Latin abbreviations.
+* Use "`and`" or "`or`" instead of a slash.
+* Avoid using negatives.
+* Avoid using "`should`": most of the time, you mean "`must`", and
+  that's very clear for the reader.

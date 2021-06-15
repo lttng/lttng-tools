@@ -1,0 +1,218 @@
+DOXYFILE_ENCODING       = UTF-8
+PROJECT_NAME            = "LTTng control library C API"
+PROJECT_NUMBER          = @PACKAGE_VERSION@
+CREATE_SUBDIRS          = NO
+ALLOW_UNICODE_NAMES     = NO
+OUTPUT_LANGUAGE         = English
+BRIEF_MEMBER_DESC       = YES
+REPEAT_BRIEF            = YES
+ALWAYS_DETAILED_SEC     = NO
+INLINE_INHERITED_MEMB   = NO
+FULL_PATH_NAMES         = YES
+STRIP_FROM_PATH         = "@top_srcdir@/include"
+STRIP_FROM_INC_PATH     =
+SHORT_NAMES             = NO
+JAVADOC_AUTOBRIEF       = NO
+QT_AUTOBRIEF            = NO
+MULTILINE_CPP_IS_BRIEF  = YES
+INHERIT_DOCS            = YES
+SEPARATE_MEMBER_PAGES   = NO
+TAB_SIZE                = 4
+ALIASES                 =
+
+# Aliases: general
+ALIASES                += lt_version="@PACKAGE_VERSION@"
+ALIASES                += lt_version_maj_min="@MAJOR_VERSION@.@MINOR_VERSION@"
+ALIASES                += lt_api="LTTng control library&nbsp;C&nbsp;API"
+ALIASES                += lt_p{1}="<code class=\"lt-param\">\1</code>"
+ALIASES                += lt_var{1}="<strong class=\"lt-var\">\1</strong>"
+ALIASES                += lt_dt_opt="<strong><em>Optional</em></strong>:"
+ALIASES                += lt_man_nl{2}="<code><strong>\1</strong>(\2)</code>"
+ALIASES                += lt_man{2}="<a href=\"https://lttng.org/man/\2/\1/v\lt_version_maj_min/\">\lt_man_nl{\1,\2}</a>"
+ALIASES                += lt_man_gen{2}="<a href=\"https://man7.org/linux/man-pages/man\2/\1.\2.html\">\lt_man_nl{\1,\2}</a>"
+ALIASES                += lt_voidp="<code>void&nbsp;*</code>"
+
+# Aliases: preconditions
+ALIASES                += lt_pre_not_null{1}="@pre \lt_p{\1} is \em not \c NULL."
+ALIASES                += lt_pre_valid_c_str{1}="@pre \lt_p{\1} is a valid (null-terminated) C&nbsp;string."
+ALIASES                += lt_pre_sess_exists{1}="@pre \lt_p{\1} names an accessible \ref api_session \"recording session\" within the \ref api-gen-sessiond-conn \"connected session daemon\"."
+ALIASES                += lt_pre_sess_never_active{1}="@pre \lt_p{\1} names a \ref api_session \"recording session\" which never became \link lttng_session::enabled active\endlink (started) since its creation."
+ALIASES                += lt_pre_sess_active{1}="@pre \lt_p{\1} names an \link lttng_session::enabled active\endlink (started) \ref api_session \"recording session\"."
+ALIASES                += lt_pre_sess_inactive{1}="@pre \lt_p{\1} names an \link lttng_session::enabled inactive\endlink (stopped) \ref api_session \"recording session\"."
+ALIASES                += lt_pre_sess_name_not_auto{1}="@pre \lt_p{\1} is not \c auto."
+ALIASES                += lt_pre_conn="@pre liblttng-ctl can \ref api-gen-sessiond-conn \"connect to a session daemon\"."
+ALIASES                += lt_pre_has_type{2}="@pre \lt_p{\1} has the type #\2."
+
+# Aliases: default values
+ALIASES                += lt_def_net_ctrl_port="@DEFAULT_NETWORK_CONTROL_PORT@"
+ALIASES                += lt_def_net_data_port="@DEFAULT_NETWORK_DATA_PORT@"
+ALIASES                += lt_def_net_ctrl_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_CONTROL_PORT@</code>"
+ALIASES                += lt_def_net_data_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_DATA_PORT@</code>"
+ALIASES                += lt_def_net_url="<code>net://127.0.0.1:@DEFAULT_NETWORK_CONTROL_PORT@:@DEFAULT_NETWORK_DATA_PORT@</code>"
+
+# Aliases: object names
+ALIASES                += lt_obj_session="\ref api_session \"recording session\""
+ALIASES                += lt_obj_c_session="\ref api_session \"Recording session\""
+ALIASES                += lt_obj_session_descr="\ref api_session_descr \"recording session descriptor\""
+ALIASES                += lt_obj_c_session_descr="\ref api_session_descr \"Recording session descriptor\""
+ALIASES                += lt_obj_domain="\ref api-channel-domain \"tracing domain\""
+ALIASES                += lt_obj_domains="\ref api-channel-domain \"tracing domains\""
+ALIASES                += lt_obj_c_domain="\ref api-channel-domain \"Tracing domain\""
+ALIASES                += lt_obj_channel="\ref api-channel-channel \"channel\""
+ALIASES                += lt_obj_channels="\ref api-channel-channel \"channels\""
+ALIASES                += lt_obj_c_channel="\ref api-channel-channel \"Channel\""
+ALIASES                += lt_obj_rer="\ref api_rer \"recording event rule\""
+ALIASES                += lt_obj_rers="\ref api_rer \"recording event rules\""
+ALIASES                += lt_obj_c_rer="\ref api_rer \"Recording event rule\""
+ALIASES                += lt_obj_trigger="\ref api_trigger \"trigger\""
+ALIASES                += lt_obj_triggers="\ref api_trigger \"triggers\""
+ALIASES                += lt_obj_c_trigger="\ref api_trigger \"Trigger\""
+
+
+OPTIMIZE_OUTPUT_FOR_C   = YES
+MARKDOWN_SUPPORT        = NO
+TOC_INCLUDE_HEADINGS    = 0
+AUTOLINK_SUPPORT        = YES
+SUBGROUPING             = YES
+INLINE_GROUPED_CLASSES  = NO
+INLINE_SIMPLE_STRUCTS   = NO
+TYPEDEF_HIDES_STRUCT    = NO
+LOOKUP_CACHE_SIZE       = 0
+
+EXTRACT_ALL             = NO
+EXTRACT_PRIVATE         = NO
+EXTRACT_PACKAGE         = NO
+EXTRACT_STATIC          = YES
+EXTRACT_LOCAL_CLASSES   = YES
+EXTRACT_LOCAL_METHODS   = NO
+EXTRACT_ANON_NSPACES    = NO
+HIDE_UNDOC_MEMBERS      = YES
+HIDE_UNDOC_CLASSES      = YES
+HIDE_FRIEND_COMPOUNDS   = NO
+HIDE_IN_BODY_DOCS       = YES
+INTERNAL_DOCS           = NO
+CASE_SENSE_NAMES        = NO
+HIDE_SCOPE_NAMES        = NO
+HIDE_COMPOUND_REFERENCE = NO
+SHOW_INCLUDE_FILES      = NO
+SHOW_GROUPED_MEMB_INC   = NO
+FORCE_LOCAL_INCLUDES    = NO
+INLINE_INFO             = YES
+SORT_MEMBER_DOCS        = YES
+SORT_BRIEF_DOCS         = YES
+SORT_MEMBERS_CTORS_1ST  = NO
+SORT_GROUP_NAMES        = NO
+SORT_BY_SCOPE_NAME      = NO
+STRICT_PROTO_MATCHING   = NO
+GENERATE_TODOLIST       = YES
+GENERATE_TESTLIST       = YES
+GENERATE_BUGLIST        = YES
+GENERATE_DEPRECATEDLIST = YES
+ENABLED_SECTIONS        =
+MAX_INITIALIZER_LINES   = 0
+SHOW_USED_FILES         = NO
+SHOW_FILES              = NO
+SHOW_NAMESPACES         = NO
+FILE_VERSION_FILTER     =
+LAYOUT_FILE             = "@srcdir@/DoxygenLayout.xml"
+CITE_BIB_FILES          =
+
+QUIET                   = NO
+WARNINGS                = YES
+WARN_IF_UNDOCUMENTED    = YES
+WARN_IF_DOC_ERROR       = YES
+WARN_NO_PARAMDOC        = YES
+WARN_AS_ERROR           = NO
+WARN_FORMAT             = "$file:$line: $text"
+WARN_LOGFILE            =
+
+INPUT                   = "@srcdir@/dox/groups.dox" \
+                          "@top_srcdir@/include/lttng/constant.h" \
+                          "@top_srcdir@/include/lttng/handle.h" \
+                          "@top_srcdir@/include/lttng/lttng.h" \
+                          "@top_srcdir@/include/lttng/lttng-error.h" \
+                          "@top_srcdir@/include/lttng/clear.h" \
+                          "@top_srcdir@/include/lttng/clear-handle.h" \
+                          "@top_srcdir@/include/lttng/session.h" \
+                          "@top_srcdir@/include/lttng/session-descriptor.h" \
+                          "@top_srcdir@/include/lttng/destruction-handle.h" \
+                          "@top_srcdir@/include/lttng/domain.h" \
+                          "@top_srcdir@/include/lttng/channel.h" \
+                          "@top_srcdir@/include/lttng/event.h"
+INPUT_ENCODING          = UTF-8
+FILE_PATTERNS           = *.h *.dox
+RECURSIVE               = NO
+EXCLUDE                 =
+EXCLUDE_SYMLINKS        = NO
+EXCLUDE_PATTERNS        =
+EXCLUDE_SYMBOLS         =
+EXAMPLE_PATTERNS        = *
+EXAMPLE_RECURSIVE       = NO
+IMAGE_PATH              = "@srcdir@/images"
+INPUT_FILTER            =
+FILTER_PATTERNS         =
+FILTER_SOURCE_FILES     = NO
+FILTER_SOURCE_PATTERNS  =
+USE_MDFILE_AS_MAINPAGE  =
+
+SOURCE_BROWSER          = NO
+INLINE_SOURCES          = NO
+STRIP_CODE_COMMENTS     = YES
+REFERENCED_BY_RELATION  = NO
+REFERENCES_RELATION     = NO
+REFERENCES_LINK_SOURCE  = NO
+SOURCE_TOOLTIPS         = YES
+USE_HTAGS               = NO
+VERBATIM_HEADERS        = YES
+
+ALPHABETICAL_INDEX      = YES
+IGNORE_PREFIX           =
+
+OUTPUT_DIRECTORY        = @builddir@/output
+
+GENERATE_HTML           = YES
+HTML_FILE_EXTENSION     = .html
+HTML_HEADER             =
+HTML_FOOTER             =
+HTML_STYLESHEET         =
+HTML_EXTRA_STYLESHEET   = @srcdir@/style.css
+HTML_EXTRA_FILES        =
+HTML_COLORSTYLE_HUE     = 220
+HTML_COLORSTYLE_SAT     = 100
+HTML_COLORSTYLE_GAMMA   = 120
+HTML_TIMESTAMP          = NO
+HTML_DYNAMIC_SECTIONS   = NO
+HTML_DYNAMIC_MENUS      = NO
+HTML_INDEX_NUM_ENTRIES  = 100
+
+GENERATE_DOCSET         = NO
+GENERATE_HTMLHELP       = NO
+GENERATE_CHI            = NO
+GENERATE_QHP            = NO
+GENERATE_ECLIPSEHELP    = NO
+
+DISABLE_INDEX           = NO
+GENERATE_TREEVIEW       = YES
+ENUM_VALUES_PER_LINE    = 4
+TREEVIEW_WIDTH          = 300
+EXT_LINKS_IN_WINDOW     = NO
+FORMULA_FONTSIZE        = 10
+FORMULA_TRANSPARENT     = YES
+USE_MATHJAX             = NO
+MATHJAX_FORMAT          = HTML-CSS
+MATHJAX_RELPATH         = http://cdn.mathjax.org/mathjax/latest
+MATHJAX_EXTENSIONS      =
+MATHJAX_CODEFILE        =
+SEARCHENGINE            = YES
+SERVER_BASED_SEARCH     = NO
+EXTERNAL_SEARCH         = NO
+SEARCHENGINE_URL        =
+SEARCHDATA_FILE         = searchdata.xml
+EXTERNAL_SEARCH_ID      =
+EXTRA_SEARCH_MAPPINGS   =
+
+GENERATE_LATEX          = NO
+GENERATE_RTF            = NO
+GENERATE_MAN            = NO
+GENERATE_XML            = NO
+GENERATE_PERLMOD        = NO

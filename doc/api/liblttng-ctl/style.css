@@ -1,0 +1,109 @@
+.contents h1,
+.contents h2:not(.groupheader),
+.contents h3 {
+    color: #6A2F43;
+}
+
+.contents h1,
+.contents h2:not(.groupheader) {
+    border-bottom: 1px solid #ccc;
+    display: inline-block;
+}
+
+.contents h1 {
+    font-size: 1.5em;
+    margin-top: 2em;
+}
+
+.contents h2:not(.groupheader) {
+    font-size: 1.2em;
+    margin-top: 1.5em;
+}
+
+.contents dl {
+    margin-left: 2em;
+}
+
+.contents dl.params,
+.contents dl.section,
+.contents dl.retval,
+.contents dl.exception,
+.contents dl.tparams {
+    margin-left: 0;
+}
+
+.contents .image {
+    background-color: rgba(0, 0, 0, .05);
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+.contents .image img {
+    border: 1px solid #ccc;
+    background-color: white;
+    padding: 1em;
+}
+
+.contents .image .caption {
+    font-size: 75%;
+}
+
+.contents .fragment {
+    padding: 1em;
+}
+
+#projectname {
+    font-size: 200%;
+}
+
+#projectbrief {
+    display: none;
+}
+
+code.lt-param,
+table.params .paramname {
+    color: #602020;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 90%;
+}
+
+th > code.lt-param {
+    color: white;
+}
+
+.contents dl.attention {
+    background-color: #fbdfda;
+    padding-top: 1em;
+    padding-bottom: 1em;
+}
+
+.contents table.doxtable th {
+    background-color: #5173b3;
+}
+
+.contents table.doxtable td {
+    vertical-align: top;
+}
+
+.contents p.intertd {
+    font-weight: normal;
+}
+
+.contents td > code:not(.lt-param),
+.contents p > code:not(.lt-param),
+.contents dt > code:not(.lt-param),
+.contents dd > code:not(.lt-param),
+.contents li > code:not(.lt-param) {
+    background-color: rgba(0, 0, 0, .05);
+    padding-left: .2em;
+    padding-right: .2em;
+    border-radius: .25em;
+    border: .1em solid rgba(0, 0, 0, .1)
+}
+
+.contents .lt-var {
+    font-style: italic;
+    font-family: serif;
+    font-size: 1.1em;
+}

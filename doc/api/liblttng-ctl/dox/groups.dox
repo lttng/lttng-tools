@@ -1,0 +1,2353 @@
+/*!
+@mainpage Bonjour!
+
+Welcome to the <strong>\lt_api</strong> (liblttng-ctl) documentation!
+
+The
+<a href="https://lttng.org/"><em>Linux Trace Toolkit: next generation</em></a>
+is an open-source software package used for correlated tracing of the
+Linux kernel, user applications, and user libraries.
+
+liblttng-ctl, which is part of the LTTng-tools project, makes it
+possible to control <a href="https://lttng.org/">LTTng</a> tracing, but
+also to
+\ref api_trigger "receive notifications when specific events occur".
+
+<h2>Plumbing</h2>
+
+The following diagram shows the components of LTTng:
+
+@image html plumbing.png "Components of LTTng."
+
+As you can see, liblttng-ctl is a bridge between a user application
+and a session daemon (see \lt_man{lttng-sessiond,8} and
+\ref api-gen-sessiond-conn "Session daemon connection").
+
+The \lt_man{lttng,1} command-line tool which ships with LTTng-tools, for
+example, uses liblttng-ctl to perform its commands.
+
+See the
+<a href="https://lttng.org/docs/v\lt_version_maj_min/#doc-plumbing"><em>Components of LTTng</em></a>
+section of the LTTng Documentation to learn more.
+
+<h2>Contents</h2>
+
+This API documentation has three main modules:
+
+- The \ref api_session makes it possible to create, manipulate
+  (\ref api_session_snapshot "take a snapshot",
+  \ref api_session_rotation "rotate",
+  \ref api_session_clear "clear", and the rest), and destroy
+  <em>recording sessions</em>.
+
+  A recording session is a per-Unix user dialogue for everything related
+  to event recording.
+
+  A recording session owns \lt_obj_channels which
+  own \lt_obj_rers. Those objects constitute
+  the main configuration of a recording session.
+
+- The \ref api_inst_pt makes it possible to get details about the
+  available LTTng tracepoints, Java/Python loggers, and Linux kernel
+  system calls without needing any \lt_obj_session.
+
+- The \ref api_trigger makes it possible to create and register
+  <em>triggers</em>.
+
+  A trigger associates a condition to one or more actions: when the
+  condition of a trigger is satisfied, LTTng attempts to execute its
+  actions.
+
+  This API is fully decoupled from the \ref api_session.
+
+  Amongst the interesting available trigger conditions and actions
+  are the
+  \link #LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES <em>event rule matches</em>\endlink
+  condition and the
+  \link #LTTNG_ACTION_TYPE_NOTIFY <em>notify</em>\endlink
+  action. With those, your application can receive an asynchronous
+  message (a notification) when a specified event rule matches
+  an LTTng event.
+
+The three modules above often refer to the \ref api_gen which offers
+common enumerations, macros, and functions.
+
+See <a href="modules.html">API reference</a> for the complete table
+of contents.
+
+<h2>Build with liblttng-ctl</h2>
+
+To build an application with liblttng-ctl:
+
+<dl>
+  <dt>Header file
+  <dd>
+    Include <code>%lttng/lttng.h</code>:
+
+    @code
+    #include <lttng/lttng.h>
+    @endcode
+
+    With
+    <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a>,
+    get the required C&nbsp;flags with:
+
+    @code{.unparsed}
+    $ pkg-config --cflags lttng-ctl
+    @endcode
+
+  <dt>Linking
+  <dd>
+    Link your application with <code>liblttng-ctl</code>:
+
+    @code{.unparsed}
+    $ cc my-app.o ... -llttng-ctl
+    @endcode
+
+    With pkg-config, get the required linker options with:
+
+    @code{.unparsed}
+    $ pkg-config --libs lttng-ctl
+    @endcode
+</dl>
+
+@defgroup api_gen General API
+
+The general \lt_api offers:
+
+- \ref lttng_error_code "Error code enumerators" and lttng_strerror().
+
+- \ref api-gen-sessiond-conn "Session daemon connection" functions:
+
+  - lttng_session_daemon_alive()
+  - lttng_set_tracing_group()
+
+<h1>\anchor api-gen-sessiond-conn Session daemon connection</h1>
+
+Many functions of the \lt_api require a connection to a listening LTTng
+session daemon (see \lt_man{lttng-sessiond,8}) to control LTTng tracing.
+
+liblttng-ctl connects to a session daemon through a Unix domain socket
+when you call some of its public functions, \em not when it loads.
+
+Each Unix user may have its own independent running session daemon.
+However, liblttng-ctl must connect to the session daemon of the
+\c root user (the root session daemon) to control Linux kernel tracing.
+
+How liblttng-ctl chooses which session daemon to connect to is as
+follows, considering \lt_var{U} is the Unix user of the process running
+liblttng-ctl:
+
+<dl>
+  <dt>\lt_var{U} is \c root
+  <dd>Connect to the root session daemon.
+
+  <dt>\lt_var{U} is not \c root
+  <dd>
+    <dl>
+      <dt>If \lt_var{U} is part of the current liblttng-ctl Unix <em>tracing group</em>
+      <dd>
+        Try to connect to the root session daemon.
+
+        If the root session daemon isn't running, connect to the
+        session daemon of \lt_var{U}.
+
+      <dt>If \lt_var{U} is not part of the tracing group
+      <dd>
+        Connect to the session daemon of \lt_var{U}.
+    </dl>
+</dl>
+
+The Unix tracing group of the root session daemon is one of:
+
+<dl>
+  <dt>
+    With the <code>\--group=<em>GROUP</em></code> option of the root
+    session daemon
+  <dd>
+    Exactly <code><em>GROUP</em></code>.
+
+    In that case, you must call lttng_set_tracing_group(), passing
+    exactly <code><em>GROUP</em></code>, \em before you call a
+    liblttng-ctl function which needs to connect to a session daemon.
+
+  <dt>
+    Without the <code>\--group</code> option of the root
+    session daemon
+  <dd>
+    Exactly \c tracing (also the default Unix tracing group of
+    liblttng-ctl, therefore you don't need to call
+    lttng_set_tracing_group()).
+</dl>
+
+Check that your application can successfully connect to a session daemon
+with lttng_session_daemon_alive().
+
+LTTng-instrumented user applications automatically register to both the
+root and user session daemons. This makes it possible for both session
+daemons to list the available instrumented applications and their
+\ref api_inst_pt "instrumentation points".
+
+@defgroup api_session Recording session API
+
+A <strong><em>recording session</em></strong> is a stateful dialogue
+between an application and a session daemon for everything related to
+event recording.
+
+Everything that you do when you control LTTng tracers to record events
+happens within a recording session. In particular, a recording session:
+
+- Has its own name, unique for a given session daemon.
+
+- Has its own set of trace files, if any.
+
+- Has its own state of
+  \link lttng_session::enabled activity\endlink (started or stopped).
+
+  An active recording session is an implicit
+  \lt_obj_rer condition.
+
+- Has its own \ref api-session-modes "mode"
+  (local, network streaming, snapshot, or live).
+
+- Has its own \lt_obj_channels to which are attached
+  their own recording event rules.
+
+- Has its own \ref api_pais "process attribute inclusion sets".
+
+Those attributes and objects are completely isolated between different
+recording sessions.
+
+A recording session is like an
+<a href="https://en.wikipedia.org/wiki/Automated_teller_machine">ATM</a>
+session: the operations you do on the
+banking system through the ATM don't alter the data of other users of
+the same system. In the case of the ATM, a session lasts as long as your
+bank card is inside. In the case of LTTng, a recording session lasts
+from a call to lttng_create_session_ext() to the completion of its
+destruction operation (which you can initiate with
+lttng_destroy_session_ext()).
+
+A recording session belongs to a session daemon (see
+\lt_man{lttng-sessiond,8} and
+\ref api-gen-sessiond-conn "Session daemon connection"). For a given
+session daemon, each Unix user has its own, private recording sessions.
+Note, however, that the \c root Unix user may operate on or destroy
+another user's recording session.
+
+@image html many-sessions.png "Each Unix user has its own, private recording sessions."
+
+@sa The <em>RECORDING SESSION</em> section of \lt_man{lttng-concepts,7}.
+
+<h1>Operations</h1>
+
+The recording session operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Creation
+    <td>
+      -# Create a \lt_obj_session_descr
+         with one of the dedicated creation functions depending on the
+         \ref api-session-modes "recording session mode".
+
+      -# Call lttng_create_session_ext(), passing the recording session
+         descriptor of step&nbsp;1.
+
+      -# When you're done with the recording session descriptor, destroy
+         it with lttng_session_descriptor_destroy().
+
+      @sa \lt_man{lttng-create,1}
+  <tr>
+    <td>Destruction
+    <td>
+      -# Call lttng_destroy_session_ext(), passing the name of the
+         recording session to destroy.
+
+         This function initiates a destruction operation, returning
+         immediately.
+
+         This function can set a pointer to a
+         \ref api_session_destr_handle "destruction handle"
+         (#lttng_destruction_handle) so that you can wait for the
+         completion of the operation. Without such a handle, you can't
+         know when the destruction operation completes and whether or
+         not it does successfully.
+
+      -# <strong>If you have a destruction handle from
+         step&nbsp;1</strong>:
+
+         -# Call lttng_destruction_handle_wait_for_completion() to wait
+            for the completion of the destruction operation.
+
+         -# Call lttng_destruction_handle_get_result() to get whether or
+            not the destruction operation successfully completed.
+
+            You can also call
+            lttng_destruction_handle_get_rotation_state() and
+            lttng_destruction_handle_get_archive_location() at this
+            point.
+
+         -# Destroy the destruction handle with
+            lttng_destruction_handle_destroy().
+
+      @sa \lt_man{lttng-destroy,1}
+  <tr>
+    <td>Basic property access
+    <td>
+      See:
+
+      - The members of #lttng_session
+      - lttng_session_descriptor_get_session_name()
+      - lttng_session_get_creation_time()
+      - lttng_set_session_shm_path()
+      - lttng_data_pending()
+  <tr>
+    <td>\lt_obj_c_domain access
+    <td>
+      -# Call lttng_list_domains(), passing the name of the recording
+         session of which to get the tracing domains.
+
+         This function sets a pointer to an array of
+         \link #lttng_domain tracing domain summaries\endlink
+         and returns the number of entries.
+
+      -# Access the properties of each tracing domain summary through
+         structure members.
+
+      -# When you're done with the array of tracing domain summaries,
+         free it with <code>free()</code>.
+  <tr>
+    <td>\lt_obj_c_channel access
+    <td>
+      -# Create a \link #lttng_handle recording session handle\endlink
+         with lttng_create_handle() to specify the name of the
+         recording session and the summary of the
+         \lt_obj_domain of the channels to access.
+
+      -# Call lttng_list_channels(), passing the recording session
+         handle of step&nbsp;1.
+
+         This function sets a pointer to an array of
+         \link #lttng_channel channel summaries\endlink
+         and returns the number of entries.
+
+      -# Destroy the recording session handle of step&nbsp;1 with
+         lttng_destroy_handle().
+
+      -# Access the \ref api-channel-channel-props "properties" of each
+         channel summary through structure members or using dedicated
+         getters.
+
+      -# When you're done with the array of channel summaries,
+         free it with <code>free()</code>.
+  <tr>
+    <td>Activity control
+    <td>
+      See:
+
+      - lttng_start_tracing()
+      - lttng_stop_tracing()
+      - lttng_stop_tracing_no_wait()
+
+      The #LTTNG_ACTION_TYPE_START_SESSION and
+      #LTTNG_ACTION_TYPE_STOP_SESSION trigger actions can also
+      activate and deactivate a recording session.
+  <tr>
+    <td>Listing
+    <td>
+      -# Call lttng_list_sessions().
+
+         This function sets a pointer to an array of
+         \link #lttng_session recording session summaries\endlink
+         and returns the number of entries.
+
+      -# Access the properties of each recording session summary through
+         structure members or using dedicated getters.
+
+      -# When you're done with the array of recording session summaries,
+         free it with <code>free()</code>.
+
+      @sa \lt_man{lttng-list,1}
+  <tr>
+    <td>Process attribute inclusion set access
+    <td>See \ref api_pais
+  <tr>
+    <td>Clearing
+    <td>See \ref api_session_clear
+  <tr>
+    <td>Snapshot recording
+    <td>
+      See \ref api_session_snapshot
+
+      The #LTTNG_ACTION_TYPE_SNAPSHOT_SESSION trigger action can also
+      take a recording session snapshot.
+  <tr>
+    <td>Rotation
+    <td>
+      See \ref api_session_rotation
+
+      The #LTTNG_ACTION_TYPE_ROTATE_SESSION trigger action can also
+      rotate a recording session.
+  <tr>
+    <td>Saving and loading
+    <td>See \ref api_session_save_load
+  <tr>
+    <td>Trace data regeneration
+    <td>
+      See:
+
+      - lttng_regenerate_metadata()
+      - lttng_regenerate_statedump()
+
+      @sa \lt_man{lttng-regenerate,1}
+</table>
+
+<h1>\anchor api-session-modes Recording session modes</h1>
+
+LTTng offers four <strong><em>recording session modes</em></strong>:
+
+<table>
+  <tr>
+    <th>Mode
+    <th>Description
+    <th>Descriptor creation function(s)
+  <tr>
+    <td>\anchor api-session-local-mode Local
+    <td>
+      Write the trace data to the local file system, or do not write any
+      trace data.
+    <td>
+      - lttng_session_descriptor_create()
+      - lttng_session_descriptor_local_create()
+  <tr>
+    <td>\anchor api-session-net-mode Network streaming
+    <td>
+      Send the trace data over the network to a listening relay daemon
+      (see \lt_man{lttng-relayd,8}).
+    <td>lttng_session_descriptor_network_create()
+  <tr>
+    <td>\anchor api-session-snapshot-mode Snapshot
+    <td>
+      Only write the trace data to the local file system or send it to a
+      listening relay daemon when LTTng
+      takes a \ref api_session_snapshot "snapshot".
+
+      LTTng takes a snapshot of such a recording session when:
+
+      - You call lttng_snapshot_record().
+
+      - LTTng executes an #LTTNG_ACTION_TYPE_SNAPSHOT_SESSION trigger
+        action.
+
+      LTTng forces the
+      \ref api-channel-er-loss-mode "event record loss mode" of all
+      the channels of such a recording session to be
+      \"\ref api-channel-overwrite-mode "overwrite"\".
+    <td>
+      - lttng_session_descriptor_snapshot_create()
+      - lttng_session_descriptor_snapshot_local_create()
+      - lttng_session_descriptor_snapshot_network_create()
+  <tr>
+    <td>\anchor api-session-live-mode Live
+    <td>
+      Send the trace data over the network to a listening relay daemon
+      for live reading.
+
+      An LTTng live reader (for example,
+      <a href="https://babeltrace.org/">Babeltrace&nbsp;2</a>) can
+      connect to the same relay daemon to receive trace data while the
+      recording session is active.
+    <td>
+      lttng_session_descriptor_live_network_create()
+</table>
+
+@sa The <em>Recording session modes</em> section of
+\lt_man{lttng-concepts,7}.
+
+<h1>\anchor api-session-url Output URL format</h1>
+
+Some functions of the \lt_api require an <strong><em>output
+URL</em></strong>.
+
+An output URL is a C&nbsp;string which specifies where to send trace
+data and, when LTTng connects to a relay daemon (see
+\lt_man{lttng-relayd,8}), control commands.
+
+There are three available output URL formats:
+
+<table>
+  <tr>
+    <th>Type
+    <th>Description
+    <th>Format
+  <tr>
+    <td>\anchor api-session-local-url Local
+    <td>
+      Send trace data to the local file system, without connecting to a
+      relay daemon.
+
+      Accepted by:
+
+      - lttng_create_session() (deprecated)
+      - lttng_create_session_snapshot() (deprecated)
+      - lttng_snapshot_output_set_local_path()
+      - lttng_save_session_attr_set_output_url()
+      - lttng_load_session_attr_set_input_url()
+      - lttng_load_session_attr_set_override_url()
+    <td>
+      <code>file://<em>TRACEDIR</em></code>
+
+      <dl>
+        <dt><code><em>TRACEDIR</em></code>
+        <dd>
+          Absolute path to the directory containing the trace data on
+          the local file system.
+      </dl>
+  <tr>
+    <td>\anchor api-session-one-port-url Remote: single port
+    <td>
+      Send trace data and/or control commands to a specific relay daemon
+      with a specific TCP port.
+
+      Accepted by:
+
+      - lttng_session_descriptor_network_create()
+      - lttng_session_descriptor_snapshot_network_create()
+      - lttng_session_descriptor_live_network_create()
+      - lttng_snapshot_output_set_network_urls()
+      - lttng_snapshot_output_set_ctrl_url()
+      - lttng_snapshot_output_set_data_url()
+      - lttng_load_session_attr_set_override_ctrl_url()
+      - lttng_load_session_attr_set_override_data_url()
+    <td>
+      <code><em>PROTO</em>://<em>HOST</em></code>[<code>:<em>PORT</em></code>][<code>/<em>TRACEDIR</em></code>]
+
+      <dl>
+        <dt><code><em>PROTO</em></code>
+        <dd>
+          Network protocol, amongst:
+
+          <dl>
+            <dt>\c net
+            <dd>
+              TCP over IPv4.
+
+            <dt>\c net6
+            <dd>
+              TCP over IPv6.
+
+            <dt>\c tcp
+            <dd>
+              Same as <code>net</code>.
+
+            <dt>\c tcp6
+            <dd>
+              Same as <code>net6</code>.
+          </dl>
+
+        <dt><code><em>HOST</em></code>
+        <dd>
+          Hostname or IP address.
+
+          An IPv6 address must be enclosed in square brackets (<code>[</code>
+          and&nbsp;<code>]</code>); see
+          <a href="https://www.ietf.org/rfc/rfc2732.txt">RFC&nbsp;2732</a>.
+
+        <dt><code><em>PORT</em></code>
+        <dd>
+          TCP port.
+
+          If it's missing, the default control and data ports are
+          respectively \lt_def_net_ctrl_port and
+          \lt_def_net_data_port.
+
+        <dt><code><em>TRACEDIR</em></code>
+        <dd>
+          Path of the directory containing the trace data on the remote
+          file system.
+
+          This path is relative to the base output directory of the
+          LTTng relay daemon (see the <em>Output directory</em>
+          section of \lt_man{lttng-relayd,8}).
+      </dl>
+  <tr>
+    <td>\anchor api-session-two-port-url Remote: control and data ports
+    <td>
+      Send trace data and control commands to a specific relay daemon
+      with specific TCP ports.
+
+      This form is usually a shorthand for two
+      \ref api-session-one-port-url "single-port output URLs" with
+      specified ports.
+
+      Accepted by:
+
+      - lttng_create_session_snapshot() (deprecated)
+      - lttng_create_session_live() (deprecated)
+      - lttng_session_descriptor_network_create()
+      - lttng_session_descriptor_snapshot_network_create()
+      - lttng_session_descriptor_live_network_create()
+      - lttng_snapshot_output_set_network_url()
+      - lttng_snapshot_output_set_network_urls()
+      - lttng_snapshot_output_set_ctrl_url()
+      - lttng_load_session_attr_set_override_url()
+      - lttng_load_session_attr_set_override_ctrl_url()
+    <td>
+      <code><em>PROTO</em>://<em>HOST</em>:<em>CTRLPORT</em>:<em>DATAPORT</em></code>[<code>/<em>TRACEDIR</em></code>]
+
+      <dl>
+        <dt><code><em>PROTO</em></code>
+        <dd>
+          Network protocol, amongst:
+
+          <dl>
+            <dt>\c net
+            <dd>
+              TCP over IPv4.
+
+            <dt>\c net6
+            <dd>
+              TCP over IPv6.
+
+            <dt>\c tcp
+            <dd>
+              Same as <code>net</code>.
+
+            <dt>\c tcp6
+            <dd>
+              Same as <code>net6</code>.
+          </dl>
+
+        <dt><code><em>HOST</em></code>
+        <dd>
+          Hostname or IP address.
+
+          An IPv6 address must be enclosed in square brackets (<code>[</code>
+          and&nbsp;<code>]</code>); see
+          <a href="https://www.ietf.org/rfc/rfc2732.txt">RFC&nbsp;2732</a>.
+
+        <dt><code><em>CTRLPORT</em></code>
+        <dd>
+          Control TCP port.
+
+        <dt><code><em>DATAPORT</em></code>
+        <dd>
+          Trace data TCP port.
+
+        <dt><code><em>TRACEDIR</em></code>
+        <dd>
+          Path of the directory containing the trace data on the remote
+          file system.
+
+          This path is relative to the base output directory of the
+          LTTng relay daemon (see the <code>\--output</code> option of
+          \lt_man{lttng-relayd,8}).
+      </dl>
+</table>
+
+@defgroup api_session_descr Recording session descriptor API
+@ingroup api_session
+
+A <strong><em>recording session descriptor</em></strong> describes the
+properties of a \lt_obj_session to be (not created
+yet).
+
+To create a recording session from a recording session descriptor:
+
+-# Create a recording session descriptor
+   with one of the dedicated creation functions, depending on the
+   \ref api-session-modes "recording session mode":
+
+   <dl>
+     <dt>\ref api-session-local-mode "Local mode"
+     <dd>
+       One of:
+
+       - lttng_session_descriptor_create()
+       - lttng_session_descriptor_local_create()
+
+     <dt>\ref api-session-net-mode "Network streaming mode"
+     <dd>
+       lttng_session_descriptor_network_create()
+
+     <dt>\ref api-session-snapshot-mode "Snapshot mode"
+     <dd>
+       One of:
+
+       - lttng_session_descriptor_snapshot_create()
+       - lttng_session_descriptor_snapshot_local_create()
+       - lttng_session_descriptor_snapshot_network_create()
+
+     <dt>\ref api-session-live-mode "Live mode"
+     <dd>
+       lttng_session_descriptor_live_network_create()
+   </dl>
+
+-# Call lttng_create_session_ext(), passing the recording session
+   descriptor of step&nbsp;1.
+
+   After a successful call to this function, you can call
+   lttng_session_descriptor_get_session_name() to get the name of the
+   created recording session (set when creating the descriptor or
+   automatically generated).
+
+-# When you're done with the recording session descriptor, destroy
+   it with lttng_session_descriptor_destroy().
+
+@defgroup api_session_destr_handle Recording session destruction handle API
+@ingroup api_session
+
+A <strong><em>recording session destruction handle</em></strong>
+represents a \lt_obj_session destruction operation.
+
+The main purposes of a recording session destruction handle is to:
+
+- Wait for the completion of the recording session
+  destruction operation with
+  lttng_destruction_handle_wait_for_completion() and get whether or not
+  it was successful with lttng_destruction_handle_get_result().
+
+- Get the state of any
+  \ref api_session_rotation "recording session rotation"
+  which the recording session destruction operation caused
+  with lttng_destruction_handle_get_rotation_state(), and the location
+  of its trace chunk archive with
+  lttng_destruction_handle_get_archive_location().
+
+To destroy a recording session:
+
+-# Call lttng_destroy_session_ext(), passing the name of the recording
+   session to destroy.
+
+   This function initiates a destruction operation, returning
+   immediately.
+
+   This function can set a pointer to a
+   \link #lttng_destruction_handle destruction handle\endlink so that
+   you can wait for the completion of the operation. Without such a
+   handle, you can't know when the destruction operation completes and
+   whether or not it does successfully.
+
+-# Call lttng_destruction_handle_wait_for_completion() to wait
+   for the completion of the destruction operation.
+
+-# Call lttng_destruction_handle_get_result() to get whether or
+   not the destruction operation successfully completed.
+
+-# <strong>If LTTng performed at least one
+   \ref api_session_rotation "rotation" of the destroyed recording
+   session</strong>, call lttng_destruction_handle_get_rotation_state()
+   to know whether or not the last rotation was successful and
+   lttng_destruction_handle_get_archive_location() to get the location
+   of its trace chunk archive.
+
+-# Destroy the destruction handle with
+   lttng_destruction_handle_destroy().
+
+@defgroup api_channel Domain and channel API
+@ingroup api_session
+
+<h1>\anchor api-channel-domain Tracing domain</h1>
+
+A <strong><em>tracing domain</em></strong> identifies a type of LTTng
+tracer.
+
+A tracing domain has its own properties and features.
+
+There are currently five available tracing domains:
+
+<table>
+  <tr>
+    <th>Domain name
+    <th>Type enumerator
+  <tr>
+    <td>Linux kernel
+    <td>#LTTNG_DOMAIN_KERNEL
+  <tr>
+    <td>User space
+    <td>#LTTNG_DOMAIN_UST
+  <tr>
+    <td><a href="https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html"><code>java.util.logging</code></a> (JUL)
+    <td>#LTTNG_DOMAIN_JUL
+  <tr>
+    <td><a href="https://logging.apache.org/log4j/1.2/">Apache log4j</a>
+    <td>#LTTNG_DOMAIN_LOG4J
+  <tr>
+    <td><a href="https://docs.python.org/3/library/logging.html">Python logging</a>
+    <td>#LTTNG_DOMAIN_PYTHON
+</table>
+
+A \lt_obj_channel is always part of a tracing domain.
+
+Many liblttng-ctl functions require a tracing domain type (sometimes
+within a
+\link #lttng_handle recording session handle\endlink)
+to target specific tracers or to avoid ambiguity. For example, because
+the Linux kernel and user space tracing domains support named
+tracepoints as \ref api_inst_pt "instrumentation points", you need to
+specify a tracing domain when you create a
+\lt_obj_rer with lttng_enable_event_with_exclusions() because both
+tracing domains could have LTTng tracepoints sharing the same name.
+
+@sa The <em>TRACING DOMAIN</em> section of \lt_man{lttng-concepts,7}.
+
+<h1>\anchor api-channel-channel Channel</h1>
+
+A <strong><em>channel</em></strong> is an object which is responsible
+for a set of ring buffers.
+
+Each ring buffer is divided into multiple <em>sub-buffers</em>. When a
+\lt_obj_rer matches an event, LTTng can record it to one or more
+sub-buffers of one or more channels.
+
+A channel is always associated to a \lt_obj_domain.
+The \link #LTTNG_DOMAIN_JUL <code>java.util.logging</code>\endlink,
+\link #LTTNG_DOMAIN_LOG4J Apache log4j\endlink, and
+\link #LTTNG_DOMAIN_PYTHON Python\endlink tracing
+domains each have a default channel which you can't configure.
+
+Note that the some functions, like lttng_enable_event_with_exclusions(),
+can automatically create a default channel with sane defaults when no
+channel exists for the provided \lt_obj_domain.
+
+A channel owns \lt_obj_rers.
+
+@image html concepts.png "A recording session contains channels that are members of tracing domains and contain recording event rules."
+
+You can't destroy a channel.
+
+<h2>Operations</h2>
+
+The channel operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Creation
+    <td>
+      -# Call lttng_channel_create() with a \lt_obj_domain summary to
+         create an initial channel summary.
+
+         This function calls lttng_channel_set_default_attr() to set
+         the properties of the created channel summary to default values
+         depending on the tracing domain summary.
+
+      -# Set the properties of the channel summary of step&nbsp;1
+         through direct members or with dedicated setters.
+
+         See the property table below.
+
+      -# Create a \link #lttng_handle recording session handle\endlink
+         structure to specify the name of the recording session and the
+         tracing domain of the channel to create.
+
+      -# Call lttng_enable_channel() with the recording session handle
+         of step&nbsp;3 and the channel summary of step&nbsp;1
+         o create the channel.
+
+      -# Destroy the recording session handle with
+         lttng_destroy_handle() and the channel summary with
+         lttng_channel_destroy().
+
+      @sa \lt_man{lttng-enable-channel,1}
+  <tr>
+    <td>Basic property access
+    <td>
+      See the \ref api-channel-channel-props "property table" below.
+  <tr>
+    <td>\lt_obj_c_rer access
+    <td>
+      -# Create a \link #lttng_handle recording session handle\endlink
+         with lttng_create_handle() to specify the name of the
+         recording session and the summary of the
+         \lt_obj_domain of the channel of which to get the recording
+         event rule descriptors.
+
+      -# Call lttng_list_events(), passing the recording session
+         handle of step&nbsp;1 and a channel name.
+
+         This function sets a pointer to an array of
+         \link #lttng_event recording event rule descriptors\endlink
+         and returns the number of entries.
+
+      -# Destroy the recording session handle of step&nbsp;1 with
+         lttng_destroy_handle().
+
+      -# Access the properties of each
+         recording event rule descriptor through structure members or
+         using dedicated getters.
+
+      -# When you're done with the array of recording event rule
+         descriptors, free it with <code>free()</code>.
+  <tr>
+    <td>Event record context field adding
+    <td>
+      -# Initialize a #lttng_event_context structure, setting
+         its properties to describe the context field to be added.
+
+      -# Create a \link #lttng_handle recording session handle\endlink
+         structure to specify the name of the recording session and the
+         tracing domain of the channel to create.
+
+      -# Call lttng_add_context() with the recording session handle
+         of step&nbsp;2 and the context field descriptor of step&nbsp;1,
+         optionally passing the name of the channel to target.
+
+      -# Destroy the recording session handle with
+         lttng_destroy_handle().
+
+      @sa \lt_man{lttng-add-context,1}
+  <tr>
+    <td>Enabling
+    <td>
+      Use lttng_enable_channel().
+
+      @sa \lt_man{lttng-enable-channel,1}
+  <tr>
+    <td>Disabling
+    <td>
+      Use lttng_disable_channel().
+
+      @sa \lt_man{lttng-disable-channel,1}
+  <tr>
+    <td>Statistics
+    <td>
+      See:
+
+      - lttng_channel_get_discarded_event_count()
+      - lttng_channel_get_lost_packet_count()
+</table>
+
+<h2>\anchor api-channel-channel-props Properties</h2>
+
+The properties of a channel are:
+
+<table>
+  <tr>
+    <th>Property name
+    <th>Description
+    <th>Access
+  <tr>
+    <td>Buffering scheme
+    <td>
+      See \ref api-channel-buf-scheme "Buffering scheme".
+    <td>
+      The lttng_domain::buf_type member for the containing tracing
+      domain.
+
+      All the channels of a given tracing domain share the same
+      buffering scheme.
+  <tr>
+    <td>Event record loss mode
+    <td>
+      See \ref api-channel-er-loss-mode "Event record loss mode".
+    <td>
+      The lttng_channel_attr::overwrite member.
+  <tr>
+    <td>Sub-buffer size
+    <td>
+      See \ref api-channel-sub-buf-size-count "Sub-buffer size and count".
+    <td>
+      The lttng_channel_attr::subbuf_size member.
+  <tr>
+    <td>Sub-buffer count
+    <td>
+      See \ref api-channel-sub-buf-size-count "Sub-buffer size and count".
+    <td>
+      The lttng_channel_attr::num_subbuf member.
+  <tr>
+    <td>Maximum trace file size
+    <td>
+      See \ref api-channel-max-trace-file-size-count "Maximum trace file size and count".
+    <td>
+      The lttng_channel_attr::tracefile_size member.
+  <tr>
+    <td>Maximum trace file count
+    <td>
+      See \ref api-channel-max-trace-file-size-count "Maximum trace file size and count".
+    <td>
+      The lttng_channel_attr::tracefile_count member.
+  <tr>
+    <td>Read timer period
+    <td>
+      See \ref api-channel-read-timer "Read timer".
+    <td>
+      The lttng_channel_attr::read_timer_interval member.
+  <tr>
+    <td>Switch timer period
+    <td>
+      See \ref api-channel-switch-timer "Switch timer".
+    <td>
+      The lttng_channel_attr::switch_timer_interval member.
+  <tr>
+    <td>Live timer period
+    <td>
+      See \ref api-channel-live-timer "Live timer".
+    <td>
+      The \lt_p{live_timer_period} parameter of
+      lttng_session_descriptor_live_network_create() when you create
+      the descriptor of a \ref api-session-live-mode "live" recording
+      session to contain the channel.
+  <tr>
+    <td>Monitor timer period
+    <td>
+      See \ref api-channel-monitor-timer "Monitor timer".
+    <td>
+      - lttng_channel_get_monitor_timer_interval()
+      - lttng_channel_set_monitor_timer_interval()
+  <tr>
+    <td>Output type (Linux kernel channel)
+    <td>
+      Whether to use <code>mmap()</code> or <code>splice()</code>.
+    <td>
+      The lttng_channel_attr::output member.
+  <tr>
+    <td>\anchor api-channel-blocking-timeout Blocking timeout (user space channel)
+    <td>
+      How long to block (if ever) at the instrumentation point site when
+      a sub-buffer is not available for applications executed with the
+      \c LTTNG_UST_ALLOW_BLOCKING environment variable set.
+    <td>
+      - lttng_channel_get_blocking_timeout()
+      - lttng_channel_set_blocking_timeout()
+</table>
+
+All the properties above are immutable once a channel exists.
+
+@sa The <em>CHANNEL AND RING BUFFER</em> section of
+\lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-buf-scheme Buffering scheme</h3>
+
+A channel has at least one ring buffer per CPU. LTTng always records an
+event to the ring buffer dedicated to the CPU which emits it.
+
+The <strong><em>buffering scheme</em></strong> of a
+\link #LTTNG_DOMAIN_UST user space\endlink
+channel determines what has its own set of per-CPU
+ring buffers, considering \lt_var{U} is the Unix user of the process
+running liblttng-ctl:
+
+<dl>
+  <dt>
+    \anchor api-channel-per-user-buf
+    \link #LTTNG_BUFFER_PER_UID Per-user buffering\endlink
+  <dd>
+    Allocate one set of ring buffers (one per CPU) shared by all the
+    instrumented processes of:
+
+    <dl>
+      <dt>If \lt_var{U} is <code>root</code>
+      <dd>
+        Each Unix user.
+
+        @image html per-user-buffering-root.png
+
+      <dt>Otherwise
+      <dd>
+        \lt_var{U}
+
+        @image html per-user-buffering.png
+    </dl>
+
+  <dt>
+    \anchor api-channel-per-proc-buf
+    \link #LTTNG_BUFFER_PER_PID Per-process buffering\endlink
+  <dd>
+    Allocate one set of ring buffers (one per CPU) for each
+    instrumented process of:
+
+    <dl>
+      <dt>If \lt_var{U} is <code>root</code>
+      <dd>
+        All Unix users.
+
+        @image html per-process-buffering-root.png
+
+      <dt>Otherwise
+      <dd>
+        \lt_var{U}
+
+        @image html per-process-buffering.png
+    </dl>
+</dl>
+
+The per-process buffering scheme tends to consume more memory than the
+per-user option because systems generally have more instrumented
+processes than Unix users running instrumented processes. However, the
+per-process buffering scheme ensures that one process having a high
+event throughput won't fill all the shared sub-buffers of the same Unix
+user, only its own.
+
+The buffering scheme of a Linux kernel (#LTTNG_DOMAIN_KERNEL) channel is
+always to allocate a single set of ring buffers for the whole system
+(#LTTNG_BUFFER_GLOBAL). This scheme is similar to the
+\ref api-channel-per-user-buf "per-user" one, but with a single, global
+user "running" the kernel.
+
+To set the buffering scheme of a channel when you create it:
+
+- Set the lttng_domain::buf_type member of the structure which you pass
+  within the #lttng_handle structure to lttng_enable_channel().
+
+  Note that, for a given \lt_obj_session, \em all
+  the channels of a given \lt_obj_domain must share the same buffering
+  scheme.
+
+@sa The <em>Buffering scheme</em> section of \lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-er-loss-mode Event record loss mode</h3>
+
+When LTTng emits an event, LTTng can record it to a specific, available
+sub-buffer within the ring buffers of specific channels. When there's no
+space left in a sub-buffer, the tracer marks it as consumable and
+another, available sub-buffer starts receiving the following event
+records. An LTTng consumer daemon eventually consumes the marked
+sub-buffer, which returns to the available state.
+
+In an ideal world, sub-buffers are consumed faster than they are filled.
+In the real world, however, all sub-buffers can be full at some point,
+leaving no space to record the following events.
+
+By default, LTTng-modules and LTTng-UST are <em>non-blocking</em>
+tracers: when there's no available sub-buffer to record an event, it's
+acceptable to lose event records when the alternative would be to cause
+substantial delays in the execution of the instrumented application.
+LTTng privileges performance over integrity; it aims at perturbing the
+instrumented application as little as possible in order to make the
+detection of subtle race conditions and rare interrupt cascades
+possible.
+
+Since LTTng&nbsp;2.10, the LTTng user space tracer, LTTng-UST, supports
+a <em>blocking mode</em>: see lttng_channel_get_blocking_timeout() and
+lttng_channel_set_blocking_timeout().
+
+When it comes to losing event records because there's no available
+sub-buffer, or because the blocking timeout of the channel is reached,
+the <strong><em>event record loss mode</em></strong> of the channel
+determines what to do. The available event record loss modes are:
+
+<dl>
+  <dt>\anchor api-channel-discard-mode Discard mode
+  <dd>
+    Drop the newest event records until a sub-buffer becomes available.
+
+    This is the only available mode when you specify a blocking timeout
+    with lttng_channel_set_blocking_timeout().
+
+    With this mode, LTTng increments a count of discarded event records
+    when it discards an event record and saves this count to the trace.
+    A trace reader can use the saved discarded event record count of the
+    trace to decide whether or not to perform some analysis even if
+    trace data is known to be missing.
+
+    Get the number of discarded event records of a channel with
+    lttng_channel_get_discarded_event_count().
+
+  <dt>\anchor api-channel-overwrite-mode Overwrite mode
+  <dd>
+    Clear the sub-buffer containing the oldest event records and start
+    writing the newest event records there.
+
+    This mode is sometimes called <em>flight recorder mode</em> because
+    it's similar to a
+    <a href="https://en.wikipedia.org/wiki/Flight_recorder">flight recorder</a>:
+    always keep a fixed amount of the latest data. It's also
+    similar to the roll mode of an oscilloscope.
+
+    Since LTTng&nbsp;2.8, with this mode, LTTng writes to a given
+    sub-buffer its sequence number within its data stream. With a
+    \ref api-session-local-mode "local",
+    \ref api-session-net-mode "network streaming", or
+    \ref api-session-live-mode "live" recording session, a trace
+    reader can use such sequence numbers to report discarded packets. A
+    trace reader can use the saved discarded sub-buffer (packet) count
+    of the trace to decide whether or not to perform some analysis even
+    if trace data is known to be missing.
+
+    Get the number of discarded packets (sub-buffers) of a channel with
+    lttng_channel_get_lost_packet_count().
+
+    With this mode, LTTng doesn't write to the trace the exact number of
+    lost event records in the lost sub-buffers.
+</dl>
+
+Which mechanism you should choose depends on your context: prioritize
+the newest or the oldest event records in the ring buffer?
+
+Beware that, in overwrite mode, the tracer abandons a <em>whole
+sub-buffer</em> as soon as a there's no space left for a new event
+record, whereas in discard mode, the tracer only discards the event
+record that doesn't fit.
+
+To set the event record loss mode of a channel when you create it:
+
+- Set the lttng_channel_attr::overwrite member of the lttng_channel::attr
+  member of the structure you pass to lttng_enable_channel().
+
+There are a few ways to decrease your probability of losing event
+records. The
+\ref api-channel-sub-buf-size-count "Sub-buffer size and count" section
+shows how to fine-tune the sub-buffer size and count of a channel to
+virtually stop losing event records, though at the cost of greater
+memory usage.
+
+@sa The <em>Event record loss mode</em> section of
+\lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-sub-buf-size-count Sub-buffer size and count</h3>
+
+A channel has one or more ring buffer for each CPU of the target system.
+
+See \ref api-channel-buf-scheme "Buffering scheme" to learn how many
+ring buffers of a given channel are dedicated to each CPU depending on
+its buffering scheme.
+
+To set the size of each sub-buffer the ring buffers of a channel have
+when you create it:
+
+- Set the lttng_channel_attr::subbuf_size member of the
+  lttng_channel::attr member of the structure you pass to
+  lttng_enable_channel().
+
+To set the number of sub-buffers each ring buffer of a channel has
+when you create it:
+
+- Set the lttng_channel_attr::num_subbuf member of the
+  lttng_channel::attr member of the structure you pass to
+  lttng_enable_channel().
+
+Note that LTTng switching the current sub-buffer of a ring buffer
+(marking a full one as consumable and switching to an available one for
+LTTng to record the next events) introduces noticeable CPU overhead.
+Knowing this, the following list presents a few practical situations
+along with how to configure the sub-buffer size and count for them:
+
+<dl>
+  <dt>High event throughput
+  <dd>
+    In general, prefer large sub-buffers to lower the risk of losing
+    event records.
+
+    Having larger sub-buffers also ensures a lower sub-buffer
+    \ref api-channel-switch-timer "switching frequency".
+
+    The sub-buffer count is only meaningful if you create the channel in
+    \ref api-channel-overwrite-mode "overwrite mode": in this case, if
+    LTTng overwrites a sub-buffer, then the other sub-buffers are left
+    unaltered.
+
+  <dt>Low event throughput
+  <dd>
+    In general, prefer smaller sub-buffers since the risk of losing
+    event records is low.
+
+    Because LTTng emits events less frequently, the sub-buffer switching
+    frequency should remain low and therefore the overhead of the tracer
+    shouldn't be a problem.
+
+  <dt>Low memory system
+  <dd>
+    If your target system has a low memory limit, prefer fewer first,
+    then smaller sub-buffers.
+
+    Even if the system is limited in memory, you want to keep the
+    sub-buffers as large as possible to avoid a high sub-buffer
+    switching frequency.
+</dl>
+
+Note that LTTng uses <a href="https://diamon.org/ctf/">CTF</a> as its
+trace format, which means event record data is very compact. For
+example, the average LTTng kernel event record weights about
+32&nbsp;bytes. Therefore, a sub-buffer size of 1&nbsp;MiB is considered
+large.
+
+The previous scenarios highlight the major trade-off between a few large
+sub-buffers and more, smaller sub-buffers: sub-buffer switching
+frequency vs. how many event records are lost in
+\ref api-channel-overwrite-mode "overwrite mode".
+Assuming a constant event throughput and using the overwrite mode, the
+two following configurations have the same ring buffer total size:
+
+<dl>
+  <dt>Two sub-buffers of 4&nbsp;MiB each
+  <dd>
+    Expect a very low sub-buffer switching frequency, but if LTTng ever
+    needs to overwrite a sub-buffer, half of the event records so far
+    (4&nbsp;MiB) are definitely lost.
+
+  <dt>Eight sub-buffers of 1&nbsp;MiB each
+  <dd>
+    Expect four times the tracer overhead of the configuration above,
+    but if LTTng needs to overwrite a sub-buffer, only the eighth of
+    event records so far (1&nbsp;MiB) are definitely lost.
+</dl>
+
+In \ref api-channel-discard-mode "discard mode", the sub-buffer count
+parameter is pointless: use two sub-buffers and set their size according
+to your requirements.
+
+@sa The <em>Sub-buffer size and count</em> section of
+\lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-max-trace-file-size-count Maximum trace file size and count</h3>
+
+By default, trace files can grow as large as needed.
+
+To set the maximum size of each trace file that LTTng writes from the
+ring buffers of a channel when you create it:
+
+- Set the lttng_channel_attr::tracefile_size member of the
+  lttng_channel::attr member of the structure you pass to
+  lttng_enable_channel().
+
+When the size of a trace file reaches the fixed maximum size of the
+channel, LTTng creates another file to contain the next event records.
+LTTng appends a file count to each trace file name in this case.
+
+If you set the trace file size attribute when you create a channel, the
+maximum number of trace files that LTTng creates is <em>unlimited</em>
+by default.
+
+To limit the size of each trace file that LTTng writes from the
+ring buffers of a channel when you create it:
+
+- Set the lttng_channel_attr::tracefile_count member of the
+  lttng_channel::attr member of the structure you pass to
+  lttng_enable_channel().
+
+When the number of trace files reaches the fixed maximum count of the
+channel, LTTng overwrites the oldest trace file. This mechanism is
+called <em>trace file rotation</em>.
+
+@attention
+    @parblock
+    Even if you don't limit the trace file count, always assume that
+    LTTng manages all the trace files of the recording session.
+
+    In other words, there's no safe way to know if LTTng still holds a
+    given trace file open with the trace file rotation feature.
+
+    The only way to obtain an unmanaged, self-contained LTTng trace
+    before you \link lttng_destroy_session_ext() destroy the
+    recording session\endlink is with the
+    \ref api_session_rotation "recording session rotation" feature,
+    which is available since LTTng&nbsp;2.11.
+    @endparblock
+
+@sa The <em>Maximum trace file size and count</em> section of
+\lt_man{lttng-concepts,7}.
+
+<h3>\anchor api-channel-timers Timers</h3>
+
+Each channel can have up to four optional
+<strong><em>timers</em></strong>:
+
+<dl>
+  <dt>\anchor api-channel-switch-timer Switch timer
+  <dd>
+    When this timer expires, a sub-buffer switch happens: for each ring
+    buffer of the channel, LTTng marks the current sub-buffer as
+    consumable and switches to an available one to record the next
+    events.
+
+    A switch timer is useful to ensure that LTTng consumes and commits
+    trace data to trace files or to a distant relay daemon
+    (see \lt_man{lttng-relayd,8}) periodically in case of a low event
+    throughput.
+
+    Such a timer is also convenient when you use
+    \ref api-channel-sub-buf-size-count "large sub-buffers"
+    to cope with a sporadic high event throughput, even if the
+    throughput is otherwise low.
+
+    To set the period of the switch timer of a channel when you create
+    it:
+
+    - Set the lttng_channel_attr::switch_timer_interval member of the
+      lttng_channel::attr member of the structure you pass to
+      lttng_enable_channel().
+
+    A channel only has a switch timer when its
+    recording session is \em not in
+    \ref api-session-live-mode "live mode". lttng_enable_channel()
+    ignores the lttng_channel_attr::switch_timer_interval member with a
+    live recording session. For a live recording session, the
+    \ref api-channel-live-timer "live timer" plays the role of the
+    switch timer.
+
+  <dt>\anchor api-channel-live-timer Live timer
+  <dd>
+    Like the \ref api-channel-switch-timer "switch timer", but for a
+    channel which belongs to a
+    \ref api-session-live-mode "live" recording session.
+
+    If this timer expires but there's no sub-buffer to consume, LTTng
+    sends a message with a timestamp to the connected relay daemon (see
+    \lt_man{lttng-relayd,8}) so that its live readers can progress.
+
+    To set the period of the live timer of a channel when you create
+    its recording session:
+
+    - Set the \lt_p{live_timer_period} parameter when you call
+      lttng_session_descriptor_live_network_create() to create a
+      live recording session descriptor to pass to
+      lttng_create_session_ext().
+
+    @note
+        All the channels of a live recording session share the same
+        live timer period.
+
+  <dt>\anchor api-channel-read-timer Read timer
+  <dd>
+    When this timer expires, LTTng checks for full, consumable
+    sub-buffers.
+
+    By default, the LTTng tracers use an asynchronous message mechanism
+    to signal a full sub-buffer so that a consumer daemon can consume
+    it.
+
+    When such messages must be avoided, for example in real-time
+    applications, use this timer instead.
+
+    To set the period of the read timer of a channel when you create
+    it:
+
+    - Set the lttng_channel_attr::read_timer_interval member of the
+      lttng_channel::attr member of the structure you pass to
+      lttng_enable_channel().
+
+  <dt>\anchor api-channel-monitor-timer Monitor timer
+  <dd>
+    When this timer expires, the consumer daemon samples some channel
+    statistics to evaluate the following trigger conditions:
+
+    -# The consumed buffer size of a given recording session becomes
+       greater than some value.
+
+    -# The buffer usage of a given channel becomes greater than some
+       value.
+
+    -# The buffer usage of a given channel becomes less than some value.
+
+    If you disable the monitor timer of a channel&nbsp;\lt_var{C}:
+
+    - The consumed buffer size value of the recording session
+      of&nbsp;\lt_var{C} could be wrong for trigger condition
+      type&nbsp;1: the consumed buffer size of&nbsp;\lt_var{C} won't be
+      part of the grand total.
+
+    - The buffer usage trigger conditions (types&nbsp;2 and&nbsp;3)
+      for&nbsp;\lt_var{C} will never be satisfied.
+
+      See \ref api_trigger to learn more about triggers.
+
+    To set the period of the monitor timer of a channel when you create
+    it:
+
+    - Call lttng_channel_set_monitor_timer_interval() with the
+      #lttng_channel structure you pass to lttng_enable_channel().
+</dl>
+
+@sa The <em>Timers</em> section of \lt_man{lttng-concepts,7}.
+
+@defgroup api_rer Recording event rule API
+@ingroup api_channel
+
+<h1>Concepts</h1>
+
+An <em>instrumentation point</em> is a point, within a piece of
+software, which, when executed, creates an LTTng <em>event</em>.
+See \ref api_inst_pt to learn how to list the available instrumentation
+points.
+
+An <em>event rule</em> is a set of \ref api-rer-conds "conditions" to
+match a set of events.
+
+A <strong><em>recording event rule</em></strong> is a specific type of
+event rule of which the action is to serialize and write the matched
+event as an <em>event record</em> to a sub-buffer of its attached
+\lt_obj_channel.
+
+An event record has a \ref api-rer-er-name "name" and fields.
+
+When LTTng creates an event&nbsp;\lt_var{E}, a recording event
+rule&nbsp;\lt_var{ER} is said to <em>match</em>&nbsp;\lt_var{E}
+when&nbsp;\lt_var{E} satisfies \em all the conditions
+of&nbsp;\lt_var{ER}. This concept is similar to a regular expression
+which matches a set of strings.
+
+When a recording event rule matches an event, LTTng \em emits the event,
+therefore attempting to record it.
+
+@attention
+    @parblock
+    The event creation and emission processes are \em documentation
+    concepts to help understand the journey from an instrumentation
+    point to an event record.
+
+    The actual creation of an event can be costly because LTTng needs to
+    evaluate the arguments of the instrumentation point.
+
+    In practice, LTTng implements various optimizations for the
+    \link #LTTNG_DOMAIN_KERNEL Linux kernel\endlink and
+    \link #LTTNG_DOMAIN_UST user space\endlink \lt_obj_domains
+    to avoid actually creating an event when the tracer knows, thanks to
+    properties which are independent from the event payload and current
+    \link #lttng_event_context_type context\endlink, that it would never
+    emit such an event. Those properties are:
+
+    - The \ref api-rer-conds-inst-pt-type "instrumentation point type".
+
+    - The \ref api-rer-conds-event-name "instrumentation point name" (or
+      event name).
+
+    - The \ref api-rer-conds-ll "instrumentation point log level".
+
+    - The \link lttng_event::enabled status\endlink (enabled or
+      disabled) of the rule itself.
+
+    - The \link lttng_channel::enabled status\endlink (enabled or
+      disabled) of the \lt_obj_channel containing the rule.
+
+    - The \link lttng_session::enabled activity\endlink (started or
+      stopped) of the \lt_obj_session containing the rule.
+
+    - Whether or not the process for which LTTng would create the event
+      is \ref api_pais "allowed to record events".
+
+    In other words: if, for a given instrumentation point&nbsp;\lt_var{IP},
+    the LTTng tracer knows that it would never emit an event,
+    executing&nbsp;\lt_var{IP} represents a simple boolean variable check
+    and, for a \link #LTTNG_DOMAIN_KERNEL Linux kernel\endlink
+    \lt_obj_rer, a few current process attribute checks.
+    @endparblock
+
+You always attach a recording event rule to a
+\lt_obj_channel, which belongs to
+a \lt_obj_session, when you
+\link lttng_enable_event_with_exclusions() create it\endlink.
+A channel owns recording event rules.
+
+When multiple matching recording event rules are attached to the same
+channel, LTTng attempts to serialize and record the matched event
+<em>once</em>.
+
+@image html event-rule.png "Logical path from an instrumentation point to an event record."
+
+As of LTTng-tools&nbsp;\lt_version_maj_min, you cannot remove a
+recording event rule: it exists as long as its \lt_obj_session exists.
+
+<h1>Operations</h1>
+
+The recording event rule operations are:
+
+<table>
+  <tr>
+    <th>Operation
+    <th>Means
+  <tr>
+    <td>Creation
+    <td>
+      -# Call lttng_event_create() to create an initial
+         \link #lttng_event recording event rule descriptor\endlink.
+
+      -# Set the properties of the recording event rule descriptor of
+         step&nbsp;1 through direct members or with dedicated setters.
+
+         See the property table below.
+
+      -# Create a \link #lttng_handle recording session handle\endlink
+         structure to specify the name of the recording session and the
+         tracing domain of the recording event rule to create.
+
+      -# Call lttng_enable_event_with_exclusions() with the recording
+         session handle of step&nbsp;3, the recording event rule
+         descriptor of step&nbsp;1, the name of a
+         \lt_obj_channel to which to attach the
+         created recording event rule, and, depending on the selected
+         function, other properties to create the rule.
+
+      -# Destroy the recording session handle with
+         lttng_destroy_handle() and the recording event rule descriptor
+         with lttng_event_destroy().
+
+      @sa \lt_man{lttng-enable-event,1}
+  <tr>
+    <td>Property access
+    <td>
+      See:
+
+      - The members of #lttng_event
+      - lttng_event_get_userspace_probe_location()
+      - lttng_event_set_userspace_probe_location()
+      - lttng_event_get_filter_expression()
+      - lttng_event_get_exclusion_name_count()
+      - lttng_event_get_exclusion_name()
+
+      @sa \ref api-rer-conds "Recording event rule conditions".
+  <tr>
+    <td>Enabling
+    <td>
+      With an #lttng_event instance which comes from
+      lttng_list_events(), use lttng_enable_event().
+
+      Otherwise, use lttng_enable_event_with_exclusions().
+
+      @sa \lt_man{lttng-enable-event,1}
+  <tr>
+    <td>Disabling
+    <td>
+      Use lttng_disable_event() or lttng_disable_event_ext().
+
+      @sa \lt_man{lttng-disable-event,1}
+</table>
+
+<h1>\anchor api-rer-conds Recording event rule conditions</h1>
+
+For LTTng to emit and record an event&nbsp;\lt_var{E},&nbsp;\lt_var{E}
+must satisfy \em all the conditions of a recording event
+rule&nbsp;\lt_var{ER}, that is:
+
+<dl>
+  <dt>Explicit conditions
+  <dd>
+    You set the following conditions when you
+    \link lttng_enable_event_with_exclusions() create\endlink
+    \lt_var{ER} from some
+    \link #lttng_event recording event rule descriptor\endlink
+    \c event_rule (#lttng_event).
+
+    <table>
+      <tr>
+        <th>Name
+        <th>Description
+      <tr>
+        <td>
+          \anchor api-rer-conds-inst-pt-type
+          \ref api-rer-conds-inst-pt-type "Instrumentation point type"
+        <td>
+          \lt_var{E} satisfies the instrumentation point type condition
+          of \lt_var{ER} if the instrumentation point from which LTTng
+          creates&nbsp;\lt_var{E} is, depending on the
+          \lt_obj_domain which contains \lt_var{ER}:
+
+          <dl>
+            <dt>#LTTNG_DOMAIN_KERNEL
+            <dd>
+              Depending on
+              \link lttng_event::type <code>event_rule.type</code>\endlink:
+
+              <dl>
+                <dt>#LTTNG_EVENT_TRACEPOINT
+                <dd>
+                  An LTTng kernel tracepoint, that is, a statically
+                  defined point in the source code of the kernel image
+                  or of a kernel module with LTTng kernel tracer macros.
+
+                  @sa lttng_list_tracepoints()
+
+                <dt>#LTTNG_EVENT_SYSCALL
+                <dd>
+                  The entry and exit of a Linux kernel system call.
+
+                  @sa lttng_list_syscalls()
+
+                <dt>#LTTNG_EVENT_PROBE
+                <dd>
+                  A Linux
+                  <a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kprobe</a>,
+                  that is, a single probe dynamically placed in the
+                  compiled kernel code.
+
+                  \link lttng_event::lttng_event_attr_u::probe
+                  <code>event_rule.attr.probe</code>\endlink
+                  indicates the kprobe location,
+                  while \link lttng_event::name
+                  <code>event_rule.name</code>\endlink
+                  is the name of the created kprobe instrumentation
+                  point (future event name).
+
+                  The payload of a Linux kprobe event is empty.
+
+                <dt>#LTTNG_EVENT_FUNCTION
+                <dd>
+                  A Linux
+                  <a href="https://www.kernel.org/doc/html/latest/trace/kprobes.html">kretprobe</a>,
+                  that is, two probes dynamically placed at the entry
+                  and exit of a function in the compiled kernel code.
+
+                  \link lttng_event::lttng_event_attr_u::probe
+                  <code>event_rule.attr.probe</code>\endlink
+                  indicates the kretprobe location,
+                  while \link lttng_event::name
+                  <code>event_rule.name</code>\endlink
+                  is the name of the created kretprobe instrumentation
+                  point (future event name).
+
+                  The payload of a Linux kretprobe event is empty.
+
+                <dt>#LTTNG_EVENT_USERSPACE_PROBE
+                <dd>
+                  A Linux
+                  <a href="https://lwn.net/Articles/499190/">uprobe</a>,
+                  that is, a single probe dynamically placed at the
+                  entry of a compiled user space application/library
+                  function through the kernel.
+
+                  Set and get the location of the uprobe with
+                  lttng_event_set_userspace_probe_location() and
+                  lttng_event_get_userspace_probe_location().
+
+                  \link lttng_event::name <code>event_rule.name</code>\endlink
+                  is the name of the created uprobe instrumentation
+                  point (future event name).
+
+                  The payload of a Linux uprobe event is empty.
+              </dl>
+
+            <dt>#LTTNG_DOMAIN_UST
+            <dd>
+              An LTTng user space tracepoint, that is, a statically
+              defined point in the source code of a C/C++
+              application/library with LTTng user space tracer macros.
+
+              \link lttng_event::type <code>event_rule.type</code>\endlink
+              must be #LTTNG_EVENT_TRACEPOINT.
+
+              @sa lttng_list_tracepoints()
+
+            <dt>#LTTNG_DOMAIN_JUL
+            <dt>#LTTNG_DOMAIN_LOG4J
+            <dt>#LTTNG_DOMAIN_PYTHON
+            <dd>
+              A Java/Python logging statement.
+
+              \link lttng_event::type <code>event_rule.type</code>\endlink
+              must be #LTTNG_EVENT_TRACEPOINT.
+
+              @sa lttng_list_tracepoints()
+          </dl>
+      <tr>
+        <td>
+          \anchor api-rer-conds-event-name
+          \ref api-rer-conds-event-name "Event name"
+        <td>
+          An event&nbsp;\lt_var{E} satisfies the event name condition
+          of&nbsp;\lt_var{ER} if the two following statements are
+          \b true:
+
+          - \link lttng_event::name <code>event_rule.name</code>\endlink
+            matches, depending on
+            \link lttng_event::type <code>event_rule.type</code>\endlink
+            (see \ref api-rer-conds-inst-pt-type "Instrumentation point type"
+            above):
+
+            <dl>
+              <dt>#LTTNG_EVENT_TRACEPOINT
+              <dd>
+                The full name of the LTTng tracepoint or Java/Python
+                logger from which LTTng creates&nbsp;\lt_var{E}.
+
+                Note that the full name of a
+                \link #LTTNG_DOMAIN_UST user space\endlink tracepoint is
+                <code><em>PROVIDER</em>:<em>NAME</em></code>, where
+                <code><em>PROVIDER</em></code> is the tracepoint
+                provider name and <code><em>NAME</em></code> is the
+                tracepoint name.
+
+              <dt>#LTTNG_EVENT_SYSCALL
+              <dd>
+                The name of the system call, without any
+                <code>sys_</code> prefix, from which LTTng
+                creates&nbsp;\lt_var{E}.
+            </dl>
+
+            @sa \ref api-rer-er-name "Event record name".
+
+          - If the \lt_obj_domain
+            containing&nbsp;\lt_var{ER} is #LTTNG_DOMAIN_UST:
+            none of the event name exclusion patterns of
+            \c event_rule matches the full name of the user
+            space tracepoint from which LTTng creates&nbsp;\lt_var{E}.
+
+            Set the event name exclusion patterns of
+            \c event_rule when you call
+            lttng_enable_event_with_exclusions().
+
+            Get the event name exclusion patterns of
+            a recording event rule descriptor with
+            lttng_event_get_exclusion_name_count() and
+            lttng_event_get_exclusion_name().
+
+          This condition is only meaningful when
+          \link lttng_event::type <code>event_rule.type</code>\endlink
+          is #LTTNG_EVENT_TRACEPOINT or
+          #LTTNG_EVENT_SYSCALL: it's always satisfied for the other
+          \ref api-rer-conds-inst-pt-type "instrumentation point types".
+
+          In all cases,
+          \link lttng_event::name <code>event_rule.name</code>\endlink
+          and the event name exclusion patterns of
+          \c event_rule are <em>globbing patterns</em>: the
+          <code>*</code> character means "match anything". To match a
+          literal <code>*</code> character, use <code>\\*</code>.
+      <tr>
+        <td>
+          \anchor api-rer-conds-ll
+          \ref api-rer-conds-ll "Instrumentation point log level"
+        <td>
+          An event&nbsp;\lt_var{E} satisfies the instrumentation point
+          log level condition of&nbsp;\lt_var{ER} if, depending on
+          \link lttng_event::loglevel_type <code>event_rule.loglevel_type</code>\endlink,
+          the log level of the LTTng user space tracepoint or
+          logging statement from which LTTng creates&nbsp;\lt_var{E}
+          is:
+
+          <dl>
+            <dt>#LTTNG_EVENT_LOGLEVEL_ALL
+            <dd>
+              Anything (the condition is always satisfied).
+
+            <dt>#LTTNG_EVENT_LOGLEVEL_RANGE
+            <dd>
+              At least as severe as
+              \link lttng_event::loglevel <code>event_rule.loglevel</code>\endlink.
+
+            <dt>#LTTNG_EVENT_LOGLEVEL_SINGLE
+            <dd>
+              Exactly
+              \link lttng_event::loglevel <code>event_rule.loglevel</code>\endlink.
+          </dl>
+
+          This condition is only meaningful when the \lt_obj_domain
+          containing&nbsp;\lt_var{ER} is \em not #LTTNG_DOMAIN_KERNEL:
+          it's always satisfied for #LTTNG_DOMAIN_KERNEL.
+      <tr>
+        <td>
+          \anchor api-rer-conds-filter
+          \ref api-rer-conds-filter "Event payload and context filter"
+        <td>
+          An event&nbsp;\lt_var{E} satisfies the event payload and
+          context filter condition of&nbsp;\lt_var{ER} if
+          \c event_rule has no filter expression or if its filter
+          expression \lt_var{EXPR} evaluates to \b true
+          when LTTng creates&nbsp;\lt_var{E}.
+
+          This condition is only meaningful when:
+
+          - The \lt_obj_domain containing&nbsp;\lt_var{ER} is
+            #LTTNG_DOMAIN_KERNEL or #LTTNG_DOMAIN_UST: it's always
+            satisfied for the other tracing domains.
+
+          - \link lttng_event::type <code>event_rule.type</code>\endlink
+            is #LTTNG_EVENT_TRACEPOINT or #LTTNG_EVENT_SYSCALL:
+            it's always satisfied for the other
+            \ref api-rer-conds-inst-pt-type "instrumentation point types".
+
+          Set the event payload and context filter expression of
+          \c event_rule when you call
+          lttng_enable_event_with_exclusions().
+
+          Get the event payload and context filter expression of
+          a recording event rule descriptor with
+          lttng_event_get_filter_expression().
+
+          \lt_var{EXPR} can contain references to the payload fields
+          of&nbsp;\lt_var{E} and to the current
+          \link #lttng_event_context_type context\endlink fields.
+
+          The expected syntax of \lt_var{EXPR} is similar to the syntax
+          of a C&nbsp;language conditional expression (an expression
+          which an \c if statement can evaluate), but there are a few
+          differences:
+
+          - A <code><em>NAME</em></code> expression identifies an event
+            payload field named <code><em>NAME</em></code> (a
+            C&nbsp;identifier).
+
+            Use the C&nbsp;language dot and square bracket notations to
+            access nested structure and array/sequence fields. You can
+            only use a constant, positive integer number within square
+            brackets. If the index is out of bounds, \lt_var{EXPR} is
+            \b false.
+
+            The value of an enumeration field is an integer.
+
+            When a field expression doesn't exist, \lt_var{EXPR} is
+            \b false.
+
+            Examples: <code>my_field</code>, <code>target_cpu</code>,
+            <code>seq[7]</code>, <code>msg.user[1].data[2][17]</code>.
+
+          - A <code>$ctx.<em>TYPE</em></code> expression identifies the
+            statically-known context field having the type
+            <code><em>TYPE</em></code> (a C&nbsp;identifier).
+
+            When a field expression doesn't exist, \lt_var{EXPR} is \b
+            false.
+
+            Examples: <code>$ctx.prio</code>,
+            <code>$ctx.preemptible</code>,
+            <code>$ctx.perf:cpu:stalled-cycles-frontend</code>.
+
+          - A <code>$app.<em>PROVIDER</em>:<em>TYPE</em></code>
+            expression identifies the application-specific context field
+            having the type <code><em>TYPE</em></code> (a
+            C&nbsp;identifier) from the provider
+            <code><em>PROVIDER</em></code> (a C&nbsp;identifier).
+
+            When a field expression doesn't exist, \lt_var{EXPR} is \b
+            false.
+
+            Example: <code>$app.server:cur_user</code>.
+
+          - Compare strings, either string fields or string literals
+            (double-quoted), with the <code>==</code> and
+            <code>!=</code> operators.
+
+            When comparing to a string literal, the <code>*</code>
+            character means "match anything". To match a literal
+            <code>*</code> character, use <code>\\*</code>.
+
+            Examples: <code>my_field&nbsp;==&nbsp;"user34"</code>,
+            <code>my_field&nbsp;==&nbsp;my_other_field</code>,
+            <code>my_field&nbsp;==&nbsp;"192.168.*"</code>.
+
+          - The
+            <a href="https://en.wikipedia.org/wiki/Order_of_operations">precedence table</a>
+            of the operators which are supported in
+            \lt_var{EXPR} is as follows. In this table, the highest
+            precedence is&nbsp;1:
+
+            <table>
+              <tr>
+                <th>Precedence
+                <th>Operator
+                <th>Description
+                <th>Associativity
+              <tr>
+                <td>1
+                <td><code>-</code>
+                <td>Unary minus
+                <td>Right-to-left
+              <tr>
+                <td>1
+                <td><code>+</code>
+                <td>Unary plus
+                <td>Right-to-left
+              <tr>
+                <td>1
+                <td><code>!</code>
+                <td>Logical NOT
+                <td>Right-to-left
+              <tr>
+                <td>1
+                <td><code>~</code>
+                <td>Bitwise NOT
+                <td>Right-to-left
+              <tr>
+                <td>2
+                <td><code>&lt;&lt;</code>
+                <td>Bitwise left shift
+                <td>Left-to-right
+              <tr>
+                <td>2
+                <td><code>&gt;&gt;</code>
+                <td>Bitwise right shift
+                <td>Left-to-right
+              <tr>
+                <td>3
+                <td><code>&amp;</code>
+                <td>Bitwise AND
+                <td>Left-to-right
+              <tr>
+                <td>4
+                <td><code>^</code>
+                <td>Bitwise XOR
+                <td>Left-to-right
+              <tr>
+                <td>5
+                <td><code>|</code>
+                <td>Bitwise OR
+                <td>Left-to-right
+              <tr>
+                <td>6
+                <td><code>&lt;</code>
+                <td>Less than
+                <td>Left-to-right
+              <tr>
+                <td>6
+                <td><code>&lt;=</code>
+                <td>Less than or equal to
+                <td>Left-to-right
+              <tr>
+                <td>6
+                <td><code>&gt;</code>
+                <td>Greater than
+                <td>Left-to-right
+              <tr>
+                <td>6
+                <td><code>&gt;=</code>
+                <td>Greater than or equal to
+                <td>Left-to-right
+              <tr>
+                <td>7
+                <td><code>==</code>
+                <td>Equal to
+                <td>Left-to-right
+              <tr>
+                <td>7
+                <td><code>!=</code>
+                <td>Not equal to
+                <td>Left-to-right
+              <tr>
+                <td>8
+                <td><code>&amp;&amp;</code>
+                <td>Logical AND
+                <td>Left-to-right
+              <tr>
+                <td>9
+                <td><code>||</code>
+                <td>Logical OR
+                <td>Left-to-right
+            </table>
+
+            Parentheses are supported to bypass the default order.
+
+            @attention
+                Unlike the C&nbsp;language, the bitwise AND and OR
+                operators (<code>&amp;</code> and <code>|</code>) in
+                \lt_var{EXPR} take precedence over relational
+                operators (<code>&lt;&lt;</code>, <code>&lt;=</code>,
+                <code>&gt;</code>, <code>&gt;=</code>, <code>==</code>,
+                and <code>!=</code>). This means the expression
+                <code>2&nbsp;&&nbsp;2&nbsp;==&nbsp;2</code>
+                is \b true while the equivalent C&nbsp;expression
+                is \b false.
+
+            The arithmetic operators are :not: supported.
+
+            LTTng first casts all integer constants and fields to signed
+            64-bit integers. The representation of negative integers is
+            two's complement. This means that, for example, the signed
+            8-bit integer field 0xff (-1) becomes 0xffffffffffffffff
+            (still&nbsp;-1) once casted.
+
+            Before a bitwise operator is applied, LTTng casts all its
+            operands to unsigned 64-bit integers, and then casts the
+            result back to a signed 64-bit integer. For the bitwise NOT
+            operator, it's the equivalent of this C&nbsp;expression:
+
+            @code
+            (int64_t) ~((uint64_t) val)
+            @endcode
+
+            For the binary bitwise operators, it's the equivalent of those
+            C&nbsp;expressions:
+
+            @code
+            (int64_t) ((uint64_t) lhs >> (uint64_t) rhs)
+            (int64_t) ((uint64_t) lhs << (uint64_t) rhs)
+            (int64_t) ((uint64_t) lhs & (uint64_t) rhs)
+            (int64_t) ((uint64_t) lhs ^ (uint64_t) rhs)
+            (int64_t) ((uint64_t) lhs | (uint64_t) rhs)
+            @endcode
+
+            If the right-hand side of a bitwise shift operator
+            (<code>&lt;&lt;</code> and <code>&gt;&gt;</code>) is not in
+            the [0,&nbsp;63] range, then \lt_var{EXPR} is \b false.
+
+          @note
+              See the \ref api_pais to allow or disallow processes to
+              record LTTng events based on their attributes
+              instead of using equivalent statically-known context
+              fields in \lt_var{EXPR} like <code>$ctx.pid</code>.
+              The former method is much more efficient.
+
+          \lt_var{EXPR} examples:
+
+          @code{.unparsed}
+          msg_id == 23 && size >= 2048
+          @endcode
+
+          @code{.unparsed}
+          $ctx.procname == "lttng*" && (!flag || poel < 34)
+          @endcode
+
+          @code{.unparsed}
+          $app.my_provider:my_context == 17.34e9 || some_enum >= 14
+          @endcode
+
+          @code{.unparsed}
+          $ctx.cpu_id == 2 && filename != "*.log"
+          @endcode
+
+          @code{.unparsed}
+          eax_reg & 0xff7 == 0x240 && x[4] >> 12 <= 0x1234
+          @endcode
+    </table>
+
+  <dt>Implicit conditions
+  <dd>
+    - \lt_var{ER} itself is \link lttng_event::enabled enabled\endlink.
+
+      A recording event rule is enabled on
+      \link lttng_enable_event_with_exclusions() creation\endlink.
+
+      @sa lttng_enable_event() --
+          Creates or enables a recording event rule.
+      @sa lttng_disable_event_ext() --
+          Disables a recording event rule.
+
+    - The \lt_obj_channel which contains&nbsp;\lt_var{ER} is
+      \link lttng_channel::enabled enabled\endlink.
+
+      A channel is enabled on
+      \link lttng_enable_channel() creation\endlink.
+
+      @sa lttng_enable_channel() --
+          Creates or enables a channel.
+      @sa lttng_disable_channel() --
+          Disables a channel.
+
+    - The \lt_obj_session which contains&nbsp;\lt_var{ER} is
+      \link lttng_session::enabled active\endlink (started).
+
+      A recording session is inactive (stopped) on
+      \link lttng_create_session_ext() creation\endlink.
+
+      @sa lttng_start_tracing() --
+          Starts a recording session.
+      @sa lttng_stop_tracing() --
+          Stops a recording session.
+
+    - The process for which LTTng creates&nbsp;\lt_var{E} is
+      \ref api_pais "allowed to record events".
+
+      All processes are allowed to record events on recording session
+      \link lttng_create_session_ext() creation\endlink.
+</dl>
+
+<h1>\anchor api-rer-er-name Event record name</h1>
+
+When LTTng records an event&nbsp;\lt_var{E}, the resulting event record
+has a name which depends on the
+\ref api-rer-conds-inst-pt-type "instrumentation point type condition"
+of the recording event rule&nbsp;\lt_var{ER} which matched&nbsp;\lt_var{E}
+as well as on the \lt_obj_domain which contains&nbsp;\lt_var{ER}:
+
+<table>
+  <tr>
+    <th>Tracing domain
+    <th>Instrumentation point type
+    <th>Event record name
+  <tr>
+    <td>#LTTNG_DOMAIN_KERNEL or #LTTNG_DOMAIN_UST
+    <td>#LTTNG_EVENT_TRACEPOINT
+    <td>
+      Full name of the tracepoint from which LTTng creates&nbsp;\lt_var{E}.
+
+      Note that the full name of a
+      \link #LTTNG_DOMAIN_UST user space\endlink tracepoint is
+      <code><em>PROVIDER</em>:<em>NAME</em></code>, where
+      <code><em>PROVIDER</em></code> is the tracepoint provider name and
+      <code><em>NAME</em></code> is the tracepoint name.
+  <tr>
+    <td>#LTTNG_DOMAIN_JUL
+    <td>#LTTNG_EVENT_TRACEPOINT
+    <td>
+      <code>lttng_jul:event</code>
+
+      Such an event record has a string field <code>logger_name</code>
+      which contains the name of the <code>java.util.logging</code>
+      logger from which LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_DOMAIN_LOG4J
+    <td>#LTTNG_EVENT_TRACEPOINT
+    <td>
+      <code>lttng_log4j:event</code>
+
+      Such an event record has a string field <code>logger_name</code>
+      which contains the name of the Apache log4j logger from which
+      LTTng creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_DOMAIN_PYTHON
+    <td>#LTTNG_EVENT_TRACEPOINT
+    <td>
+      <code>lttng_python:event</code>
+
+      Such an event record has a string field <code>logger_name</code>
+      which contains the name of the Python logger from which LTTng
+      creates&nbsp;\lt_var{E}.
+  <tr>
+    <td>#LTTNG_DOMAIN_KERNEL
+    <td>#LTTNG_EVENT_SYSCALL
+    <td>
+      Location:
+
+      <dl>
+        <dt>Entry
+        <dd>
+          <code>syscall_entry_<em>NAME</em></code>, where
+          <code><em>NAME</em></code> is the name of the system call from
+          which LTTng creates&nbsp;\lt_var{E}, without any
+          <code>sys_</code> prefix.
+
+        <dt>Exit
+        <dd>
+          <code>syscall_exit_<em>NAME</em></code>, where
+          <code><em>NAME</em></code> is the name of the system call from
+          which LTTng creates&nbsp;\lt_var{E}, without any
+          <code>sys_</code> prefix.
+      </dl>
+  <tr>
+    <td>#LTTNG_DOMAIN_KERNEL
+    <td>#LTTNG_EVENT_PROBE or  #LTTNG_EVENT_USERSPACE_PROBE
+    <td>
+      The lttng_event::name member of the
+      descriptor you used to create \lt_var{ER} with
+      lttng_enable_event_with_exclusions().
+  <tr>
+    <td>#LTTNG_DOMAIN_KERNEL
+    <td>#LTTNG_EVENT_FUNCTION
+    <td>
+      Location:
+
+      <dl>
+        <dt>Entry
+        <dd><code><em>NAME</em>_entry</code>
+
+        <dt>Exit
+        <dd><code><em>NAME</em>_exit</code>
+      </dl>
+
+      where <code><em>NAME</em></code> is the lttng_event::name member
+      of the descriptor you used to create
+      \lt_var{ER} with lttng_enable_event_with_exclusions().
+</table>
+
+@defgroup api_pais Process attribute inclusion set API
+@ingroup api_session
+
+To be done.
+
+@defgroup api_session_clear Recording session clearing API
+@ingroup api_session
+
+This API makes it possible to clear a \lt_obj_session, that is, to
+delete the contents of its tracing buffers and/or of all its
+\ref api-session-local-mode "local" and
+\ref api-session-net-mode "streamed" trace data.
+
+To clear a recording session:
+
+-# Call lttng_clear_session(), passing the name of the recording session
+   to clear.
+
+   This function initiates a clearing operation, returning immediately.
+
+   This function can set a pointer to a
+   \link #lttng_clear_handle clearing handle\endlink
+   so that you can wait for the completion of the
+   operation. Without such a handle, you can't know when the clearing
+   operation completes and whether or not it does successfully.
+
+-# <strong>If you have a clearing handle from step&nbsp;1</strong>:
+
+   -# Call lttng_clear_handle_wait_for_completion() to wait for the
+      completion of the clearing operation.
+
+   -# Call lttng_clear_handle_get_result() to get whether or not the
+      clearing operation successfully completed.
+
+   -# Destroy the clearing handle with lttng_clear_handle_destroy().
+
+@sa \lt_man{lttng-clear,1}
+
+@defgroup api_session_snapshot Recording session snapshot API
+@ingroup api_session
+
+To be done.
+
+@defgroup api_session_rotation Recording session rotation API
+@ingroup api_session
+
+To be done.
+
+@defgroup api_session_save_load Recording session saving and loading API
+@ingroup api_session
+
+To be done.
+
+@defgroup api_inst_pt Instrumentation point listing API
+
+The lttng_list_tracepoints() and lttng_list_syscalls() functions set a
+pointer to an array of
+<strong><em>\ref api-rer-inst-pt-descr "instrumentation point descriptors"</em></strong>.
+
+With those two functions, you can get details about the available
+LTTng tracepoints, Java/Python loggers, and Linux kernel system calls,
+as long as you can
+\ref api-gen-sessiond-conn "connect to a session daemon".
+You can then use the discovered information to create corresponding
+\lt_obj_rers so that you can record the events
+which LTTng creates from instrumentation points.
+
+See \ref api_rer to learn more about instrumentation points, events,
+event records, and recording event rules.
+
+@defgroup api_trigger Trigger API
+
+To be done.
+
+@defgroup api_trigger_cond Trigger condition API
+@ingroup api_trigger
+
+To be done.
+
+@defgroup api_trigger_cond_er_matches "Event rule matches" trigger condition API
+@ingroup api_trigger_cond
+
+To be done.
+
+@defgroup api_er Event rule API
+@ingroup api_trigger_cond_er_matches
+
+To be done.
+
+@defgroup api_ll_rule Log level rule API
+@ingroup api_er
+
+To be done.
+
+@defgroup api_ev_expr Event expression API
+@ingroup api_trigger_cond_er_matches
+
+To be done.
+
+@defgroup api_ev_field_val Event field value API
+@ingroup api_trigger_cond_er_matches
+
+To be done.
+
+@defgroup api_trigger_action Trigger action API
+@ingroup api_trigger
+
+To be done.
+
+@defgroup api_notif Notification API
+@ingroup api_trigger_action
+
+To be done.
+
+@defgroup api_error Error query API
+
+To be done.
+*/
