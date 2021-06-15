@@ -1,6 +1,6 @@
 lttng(1)
 ========
-:revdate: 12 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -25,8 +25,8 @@ with the LTTng control library (`liblttng-ctl`), sends commands to a
 listening LTTng session daemon (man:lttng-sessiond(8)). A session
 daemon:
 
-* Manages tracing sessions (see man:lttng-concepts(7) to learn more
-  about tracing sessions).
+* Manages recording sessions (see man:lttng-concepts(7) to learn more
+  about recording sessions).
 
 * Controls the various components (like tracers and consumer daemons) of
   LTTng.
@@ -185,8 +185,8 @@ COMMANDS
 The following commands also have their own nloption:--help option.
 
 
-Tracing session
-~~~~~~~~~~~~~~~
+Recording session
+~~~~~~~~~~~~~~~~~
 [options="header"]
 |===
 |Command |Description

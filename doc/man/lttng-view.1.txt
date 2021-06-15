@@ -1,6 +1,6 @@
 lttng-view(1)
 =============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -21,17 +21,17 @@ The `lttng view` command launches an external trace reader to read the
 current traces of:
 
 With the option:--session='SESSION' option::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 With the option:--trace-path='DIR' option::
     The local file system directory 'DIR'.
 
 Otherwise::
-    The current tracing session (see man:concepts(1) to learn more about
-    the current tracing session).
+    The current recording session (see man:concepts(1) to learn more
+    about the current recording session).
 
 With the option:--session option or without the option:--trace-path
-option, the mode of the selected tracing session may :not: be network
+option, the mode of the selected recording session may :not: be network
 streaming or live.
 
 By default, the `view` command attempts to launch man:babeltrace2(1) or,
@@ -46,7 +46,7 @@ include::common-lttng-cmd-options-head.txt[]
 
 option:-t 'DIR', option:--trace-path='DIR'::
     Pass 'DIR' as the last argument of the trace reader command instead
-    of the output directory of the selected tracing session.
+    of the output directory of the selected recording session.
 
 option:-e 'READER', option:--viewer='READER'::
     Use the trace reader 'READER' to read the traces.
@@ -68,7 +68,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Read the traces of the current tracing session with Babeltrace.
+.Read the traces of the current recording session with Babeltrace.
 ====
 [role="term"]
 ----
@@ -76,7 +76,7 @@ $ lttng view
 ----
 ====
 
-.Read the traces of a specific tracing session with a custom trace reader.
+.Read the traces of a specific recording session with a custom trace reader.
 ====
 See the option:--viewer option.
 

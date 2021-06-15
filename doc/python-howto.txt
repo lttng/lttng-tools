@@ -34,7 +34,7 @@ Quick example using Python to trace with LTTng.
 
   >>> lttng.create("session-name", "path/to/trace")
 
-4) Create a handle for the tracing session and domain
+4) Create a handle for the recording session and domain
 
   >>> domain = lttng.Domain()
   >>> domain.type = lttng.DOMAIN_KERNEL			*
@@ -63,7 +63,7 @@ Quick example using Python to trace with LTTng.
 
   >>> lttng.stop("session-name")
 
-7) Destroy the tracing session
+7) Destroy the recording session
 
   >>> lttng.destroy("session-name")
 

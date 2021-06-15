@@ -1,8 +1,8 @@
 lttng-concepts(7)
 =================
-:revdate: 18 May 2021
+:revdate: 14 June 2021
 :sect-event-rule: INSTRUMENTATION POINT, EVENT RULE, AND EVENT
-:sect-session: TRACING SESSION
+:sect-session: RECORDING SESSION
 :sect-domain: TRACING DOMAIN
 :sect-channel: CHANNEL AND RING BUFFER
 :sect-recording-event-rule: RECORDING EVENT RULE AND EVENT RECORD
@@ -25,7 +25,7 @@ The concepts of LTTng{nbsp}{lttng_version} are:
 
 * Instrumentation point, event rule, and event
 * Trigger
-* Tracing session
+* Recording session
 * Tracing domain
 * Channel and ring buffer
 * Recording event rule and event record
@@ -80,7 +80,7 @@ properties are:
 ** The status of the rule itself.
 ** The status of the channel (see the ``<<channel,{sect-channel}>>''
    section below).
-** The activity of the tracing session (started or stopped; see
+** The activity of the recording session (started or stopped; see
    the ``<<session,{sect-session}>>'' section below).
 ** Whether or not the process for which LTTng would create the event is
    allowed to record events (see man:lttng-track(1)).
@@ -104,14 +104,14 @@ below.
 Create or enable a recording event rule with the
 man:lttng-enable-event(1) command.
 +
-List the recording event rules of a specific tracing session
+List the recording event rules of a specific recording session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
 commands.
 
 ``Event rule matches'' <<trigger,trigger>> condition (since LTTng{nbsp}2.13)::
     When the event rule of the trigger condition matches an event, LTTng
     can execute user-defined actions such as sending an LTTng
-    notification, starting a tracing session, and more.
+    notification, starting a recording session, and more.
 +
 See man:lttng-add-trigger(1) and man:lttng-event-rule(7).
 
@@ -223,7 +223,7 @@ actions are:
 
 Conditions::
 +
-* The consumed buffer size of a given tracing
+* The consumed buffer size of a given recording
   session (see the ``<<session,{sect-session}>>'' section below)
   becomes greater than some value.
 
@@ -233,10 +233,10 @@ Conditions::
 
 * The buffer usage of a given channel becomes less than some value.
 
-* There's an ongoing tracing session rotation (see the
-  ``<<rotation,Tracing session rotation>>'' section below).
+* There's an ongoing recording session rotation (see the
+  ``<<rotation,Recording session rotation>>'' section below).
 
-* A tracing session rotation becomes completed.
+* A recording session rotation becomes completed.
 
 * An event rule matches an event.
 +
@@ -247,15 +247,15 @@ other ones are available through the liblttng-ctl C{nbsp}API.
 Actions::
 +
 * Send a notification to a user application.
-* Start a given tracing session, like man:lttng-start(1) would do.
-* Stop a given tracing session, like man:lttng-stop(1) would do.
-* Archive the current trace chunk of a given tracing session (rotate),
+* Start a given recording session, like man:lttng-start(1) would do.
+* Stop a given recording session, like man:lttng-stop(1) would do.
+* Archive the current trace chunk of a given recording session (rotate),
   like man:lttng-rotate(1) would do.
-* Take a snapshot of a given tracing session, like man:lttng-snapshot(1)
-  would do.
+* Take a snapshot of a given recording session, like
+  man:lttng-snapshot(1) would do.
 
 A trigger belongs to a session daemon (see man:lttng-sessiond(8)), not
-to a specific tracing session. For a given session daemon, each Unix
+to a specific recording session. For a given session daemon, each Unix
 user has its own, private triggers. Note, however, that the `root` Unix
 user may, for the root session daemon:
 
@@ -279,12 +279,12 @@ Remove a trigger with the man:lttng-remove-trigger(1) command.
 [[session]]
 {sect-session}
 --------------
-A _tracing session_ is a stateful dialogue between you and a session
-daemon (see man:lttng-sessiond(8)) for everything related to event
-recording.
+A _recording session_ (named ``tracing session'' prior to
+LTTng{nbsp}2.13) is a stateful dialogue between you and a session daemon
+(see man:lttng-sessiond(8)) for everything related to event recording.
 
 Everything that you do when you control LTTng tracers to record events
-happens within a tracing session. In particular, a tracing session:
+happens within a recording session. In particular, a recording session:
 
 * Has its own name, unique for a given session daemon.
 
@@ -292,13 +292,13 @@ happens within a tracing session. In particular, a tracing session:
 
 * Has its own state of activity (started or stopped).
 +
-An active tracing session is an implicit recording event rule condition
-(see the ``<<recording-event-rule,{sect-recording-event-rule}>>''
-section below).
+An active recording session is an implicit recording event rule
+condition (see the
+``<<recording-event-rule,{sect-recording-event-rule}>>'' section below).
 
 * Has its own mode (local, network streaming, snapshot, or live).
 +
-See the ``<<session-modes,Tracing session modes>>'' section below to
+See the ``<<session-modes,Recording session modes>>'' section below to
 learn more.
 
 * Has its own channels (see the ``<<channel,{sect-channel}>>'' section
@@ -307,49 +307,49 @@ learn more.
 * Has its own process attribute inclusion sets (see man:lttng-track(1)).
 
 Those attributes and objects are completely isolated between different
-tracing sessions.
+recording sessions.
 
-A tracing session is like an ATM session: the operations you do on the
+A recording session is like an ATM session: the operations you do on the
 banking system through the ATM don't alter the data of other users of
 the same system. In the case of the ATM, a session lasts as long as your
-bank card is inside. In the case of LTTng, a tracing session lasts from
+bank card is inside. In the case of LTTng, a recording session lasts from
 the man:lttng-create(1) command to the man:lttng-destroy(1) command.
 
-A tracing session belongs to a session daemon (see
+A recording session belongs to a session daemon (see
 man:lttng-sessiond(8)). For a given session daemon, each Unix user has
-its own, private tracing sessions. Note, however, that the `root` Unix
-user may operate on or destroy another user's tracing session.
+its own, private recording sessions. Note, however, that the `root` Unix
+user may operate on or destroy another user's recording session.
 
-Create a tracing session with the man:lttng-create(1) command.
+Create a recording session with the man:lttng-create(1) command.
 
-List the tracing sessions of the connected session daemon with
+List the recording sessions of the connected session daemon with
 the man:lttng-list(1) command.
 
-Start and stop a tracing session with the man:lttng-start(1) and
+Start and stop a recording session with the man:lttng-start(1) and
 man:lttng-stop(1) commands.
 
-Save and load a tracing session with the man:lttng-save(1) and
+Save and load a recording session with the man:lttng-save(1) and
 man:lttng-load(1) commands.
 
-Archive the current trace chunk of (rotate) a tracing session with the
+Archive the current trace chunk of (rotate) a recording session with the
 man:lttng-rotate(1) command.
 
-Destroy a tracing session with the man:lttng-destroy(1) command.
+Destroy a recording session with the man:lttng-destroy(1) command.
 
 
-Current tracing session
+Current recording session
 ~~~~~~~~~~~~~~~~~~~~~~~
 When you run the man:lttng-create(1) command, LTTng creates the
 `$LTTNG_HOME/.lttngrc` file if it doesn't exist (`$LTTNG_HOME` defaults
 to `$HOME`).
 
-`$LTTNG_HOME/.lttngrc` contains the name of the _current tracing
+`$LTTNG_HOME/.lttngrc` contains the name of the _current recording
 session_.
 
-When you create a new tracing session with the `create` command, LTTng
-updates the current tracing session.
+When you create a new recording session with the `create` command, LTTng
+updates the current recording session.
 
-The following man:lttng(1) commands select the current tracing session
+The following man:lttng(1) commands select the current recording session
 if you don't specify one:
 
 * man:lttng-add-context(1)
@@ -372,15 +372,15 @@ if you don't specify one:
 * man:lttng-untrack(1)
 * man:lttng-view(1)
 
-Set the current tracing session manually with the
+Set the current recording session manually with the
 man:lttng-set-session(1) command, without having to edit the `.lttngrc`
 file.
 
 
 [[session-modes]]
-Tracing session modes
-~~~~~~~~~~~~~~~~~~~~~
-LTTng offers four tracing session modes:
+Recording session modes
+~~~~~~~~~~~~~~~~~~~~~~~
+LTTng offers four recording session modes:
 
 Local mode::
     Write the trace data to the local file system.
@@ -397,7 +397,7 @@ Snapshot mode::
 LTTng forces all the channels (see the ``<<channel,{sect-channel}>>''
 section below) to be created to be configured to be snapshot-ready.
 +
-LTTng takes a snapshot of such a tracing session when:
+LTTng takes a snapshot of such a recording session when:
 +
 --
 * You run the man:lttng-snapshot(1) command.
@@ -411,15 +411,15 @@ Live mode::
     (see man:lttng-relayd(8)) for live reading.
 +
 An LTTng live reader (for example, man:babeltrace2(1)) can connect to
-the same relay daemon to receive trace data while the tracing session is
+the same relay daemon to receive trace data while the recording session is
 active.
 
 
 [[rotation]]
-Tracing session rotation
-~~~~~~~~~~~~~~~~~~~~~~~~
-A _tracing session rotation_ is the action of archiving the current
-trace chunk of the tracing session to the file system.
+Recording session rotation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+A _recording session rotation_ is the action of archiving the current
+trace chunk of the recording session to the file system.
 
 Once LTTng archives a trace chunk, it does :not: manage it anymore: you
 can read it, modify it, move it, or remove it.
@@ -429,13 +429,13 @@ files which form a self-contained LTTng trace. See the
 ``<<trace-chunk-naming,Trace chunk naming>>'' section below to learn how
 LTTng names a trace chunk archive directory.
 
-The _current trace chunk_ of a given tracing session includes:
+The _current trace chunk_ of a given recording session includes:
 
 * The stream files which LTTng already wrote to the file system, and
   which are not part of a previously archived trace chunk, since the
   most recent event amongst:
 
-** The first time the tracing session was started, either with the
+** The first time the recording session was started, either with the
    man:lttng-start(1) command or with a `start-session` trigger action
    (see the ``<<trigger,TRIGGER>>'' section above).
 
@@ -450,14 +450,14 @@ The _current trace chunk_ of a given tracing session includes:
     ``<<trigger,TRIGGER>>'' section above).
 
 * The content of all the non-flushed sub-buffers of the channels of the
-  tracing session.
+  recording session.
 
 
 [[trace-chunk-naming]]
 Trace chunk archive naming
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 A trace chunk archive is a subdirectory of the `archives` subdirectory
-within the output directory of a tracing session (see the
+within the output directory of a recording session (see the
 nloption:--output option of the man:lttng-create(1) command and
 of man:lttng-relayd(8)).
 
@@ -469,15 +469,15 @@ A trace chunk archive is, at the same time:
 * A self-contained LTTng trace.
 
 * A member of a set of trace chunk archives which form the complete
-  trace of a tracing session.
+  trace of a recording session.
 
-In other words, an LTTng trace reader can read both the tracing
+In other words, an LTTng trace reader can read both the recording
 session output directory (all the trace chunk archives), or a
 single trace chunk archive.
 
-When LTTng performs a tracing session rotation, it names the resulting
+When LTTng performs a recording session rotation, it names the resulting
 trace chunk archive as such, relative to the output directory of the
-tracing session:
+recording session:
 
 [verse]
 archives/__BEGIN__-__END__-__ID__
@@ -499,7 +499,7 @@ __END__::
 Example: `20180118T152407+0930`
 
 __ID__::
-    Unique numeric identifier of the trace chunk within its tracing
+    Unique numeric identifier of the trace chunk within its recording
     session.
 
 Trace chunk archive name example:
@@ -618,7 +618,7 @@ which you can't configure.
 
 A channel owns recording event rules.
 
-List the channels of a given tracing session with the
+List the channels of a given recording session with the
 man:lttng-list(1) and man:lttng-status(1) commands.
 
 Disable an enabled channel with the man:lttng-disable-channel(1)
@@ -718,11 +718,12 @@ similar to the roll mode of an oscilloscope.
 +
 Since LTTng{nbsp}2.8, with this mode, LTTng writes to a given sub-buffer
 its sequence number within its data stream. With a local, network
-streaming, or live tracing session (see the ``<<session-modes,Tracing
-session modes>>'' section above), a trace reader can use such sequence
-numbers to report lost packets. A trace reader can use the saved
-discarded sub-buffer (packet) count of the trace to decide whether or
-not to perform some analysis even if trace data is known to be missing.
+streaming, or live recording session (see the
+``<<session-modes,Recording session modes>>'' section above), a trace
+reader can use such sequence numbers to report lost packets. A trace
+reader can use the saved discarded sub-buffer (packet) count of the
+trace to decide whether or not to perform some analysis even if trace
+data is known to be missing.
 +
 With this mode, LTTng doesn't write to the trace the exact number of
 lost event records in the lost sub-buffers.
@@ -845,14 +846,14 @@ file. This mechanism is called _trace file rotation_.
 [IMPORTANT]
 ====
 Even if you don't limit the trace file count, always assume that LTTng
-manages all the trace files of the tracing session.
+manages all the trace files of the recording session.
 
 In other words, there's no safe way to know if LTTng still holds a given
 trace file open with the trace file rotation feature.
 
 The only way to obtain an unmanaged, self-contained LTTng trace before
-you destroy the tracing session is with the tracing session rotation
-feature (see the ``<<rotation,Tracing session rotation>>'' section
+you destroy the recording session is with the recording session rotation
+feature (see the ``<<rotation,Recording session rotation>>'' section
 above), which is available since LTTng{nbsp}2.11.
 ====
 
@@ -900,7 +901,7 @@ Monitor timer::
     statistics to evaluate the following trigger conditions:
 +
 --
-. The consumed buffer size of a given tracing session becomes greater
+. The consumed buffer size of a given recording session becomes greater
   than some value.
 . The buffer usage of a given channel becomes greater than some value.
 . The buffer usage of a given channel becomes less than some value.
@@ -909,7 +910,7 @@ Monitor timer::
 If you disable the monitor timer of a channel{nbsp}__C__:
 +
 --
-* The consumed buffer size value of the tracing session of{nbsp}__C__
+* The consumed buffer size value of the recording session of{nbsp}__C__
   could be wrong for trigger condition type{nbsp}1: the consumed buffer
   size of{nbsp}__C__ won't be part of the grand total.
 
@@ -947,16 +948,16 @@ A channel is enabled on creation.
 +
 See the ``<<channel,{sect-channel}>>'' section above.
 
-* The tracing session of the recording event rule is active (started).
+* The recording session of the recording event rule is active (started).
 +
-A tracing session is inactive (stopped) on creation.
+A recording session is inactive (stopped) on creation.
 +
 See the ``<<session,{sect-session}>>'' section above.
 
 * The process for which LTTng creates an event to match is allowed to
   record events.
 +
-All processes are allowed to record events on tracing session
+All processes are allowed to record events on recording session
 creation.
 +
 Use the man:lttng-track(1) and man:lttng-untrack(1) commands to select
@@ -964,7 +965,7 @@ which processes are allowed to record events based on specific process
 attributes.
 
 You always attach a recording event rule to a channel, which belongs to
-a tracing session, when you create it.
+a recording session, when you create it.
 
 When a recording event rule{nbsp}__ER__ matches an event{nbsp}__E__,
 LTTng attempts to serialize and record{nbsp}__E__ to one of the
@@ -981,7 +982,7 @@ $ lttng enable-event --userspace hello:world
 $ lttng enable-event --userspace hello:world --loglevel=INFO
 ----
 
-List the recording event rules of a specific tracing session
+List the recording event rules of a specific recording session
 and/or channel with the man:lttng-list(1) and man:lttng-status(1)
 commands.
 
@@ -989,7 +990,7 @@ Disable a recording event rule with the man:lttng-disable-event(1)
 command.
 
 As of LTTng{nbsp}{lttng_version}, you cannot remove a recording event
-rule: it exists as long as its tracing session exists.
+rule: it exists as long as its recording session exists.
 
 
 include::common-footer.txt[]

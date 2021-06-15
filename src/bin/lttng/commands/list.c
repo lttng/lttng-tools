@@ -2128,19 +2128,19 @@ static int list_sessions(const char *session_name)
 	} else {
 		/* Pretty print */
 		if (count == 0) {
-			MSG("Currently no available tracing session");
+			MSG("Currently no available recording session");
 			goto end;
 		}
 
 		if (session_name == NULL) {
-			MSG("Available tracing sessions:");
+			MSG("Available recording sessions:");
 		}
 
 		for (i = 0; i < count; i++) {
 			if (session_name != NULL) {
 				if (strncmp(sessions[i].name, session_name, NAME_MAX) == 0) {
 					session_found = 1;
-					MSG("Tracing session %s: [%s%s]", session_name,
+					MSG("Recording session %s: [%s%s]", session_name,
 							active_string(sessions[i].enabled),
 							snapshot_string(sessions[i].snapshot_mode));
 					if (*sessions[i].path) {

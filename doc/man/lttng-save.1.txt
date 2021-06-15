@@ -1,11 +1,11 @@
 lttng-save(1)
 =============
-:revdate: 17 May 2021
+:revdate: 14 June 2021
 
 
 NAME
 ----
-lttng-save - Save LTTng tracing session configurations
+lttng-save - Save LTTng recording session configurations
 
 
 SYNOPSIS
@@ -20,10 +20,10 @@ DESCRIPTION
 The `lttng save` command saves to files the configurations of:
 
 With the 'SESSION' argument::
-	The tracing session named 'SESSION'.
+	The recording session named 'SESSION'.
 
 Without the 'SESSION' argument::
-    Implicit option:--all option: *all* the tracing sessions of the
+    Implicit option:--all option: *all* the recording sessions of the
     connected session daemon for your Unix user, or for all users if
     your Unix user is `root`, as listed in the output of `lttng list`
     (see man:lttng-list(1)).
@@ -31,24 +31,24 @@ Without the 'SESSION' argument::
 See the ``Session daemon connection'' section of man:lttng(1) to learn
 how a user application connects to a session daemon.
 
-See man:lttng-concepts(7) to learn more about tracing sessions.
+See man:lttng-concepts(7) to learn more about recording sessions.
 
 Use the `save` command in conjunction with the man:lttng-load(1) command
-to save and restore the complete configurations of tracing sessions.
+to save and restore the complete configurations of recording sessions.
 
-The `save` command does :not: save tracing data, only the tracing
+The `save` command does :not: save tracing data, only the recording
 session parameters, including the channel and recording event rule
 configurations.
 
 The default output directory path is `$LTTNG_HOME/.lttng/sessions`
 (`$LTTNG_HOME` defaults to `$HOME`). Override the default output
-directory path with the option:--output-path option. Each tracing
+directory path with the option:--output-path option. Each recording
 session configuration file is named __SNAME__++.lttng++,
-where{nbsp}__SNAME__ is the original tracing session name.
+where{nbsp}__SNAME__ is the original recording session name.
 
-By default, the `save` command does :not: overwrite existing tracing
+By default, the `save` command does :not: overwrite existing recording
 session configuration files: the command fails. Allow the `save` command
-to overwrite existing tracing session configuration files with the
+to overwrite existing recording session configuration files with the
 option:--force option.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
@@ -58,17 +58,17 @@ include::common-lttng-cmd-options-head.txt[]
 
 
 option:-a, option:--all::
-    Save all the tracing session configurations of your Unix user, or of
-    all users if your Unix user is `root`, as listed in the output of
-    man:lttng-list(1), instead of the current tracing session or the
-    tracing session named 'SESSION'.
+    Save all the recording session configurations of your Unix user, or
+    of all users if your Unix user is `root`, as listed in the output of
+    man:lttng-list(1), instead of the current recording session or the
+    recording session named 'SESSION'.
 
 option:-f, option:--force::
-    Overwrite existing tracing session configuration files when
+    Overwrite existing recording session configuration files when
     saving.
 
 option:-o 'DIR', option:--output-path='DIR'::
-    Save tracing session configuration files to the directory 'DIR'
+    Save recording session configuration files to the directory 'DIR'
     instead of `$LTTNG_HOME/.lttng/sessions` (`$LTTNG_HOME` defaults to
     `$HOME`).
 
@@ -82,7 +82,7 @@ include::common-lttng-cmd-after-options.txt[]
 [[examples]]
 EXAMPLES
 --------
-.Save all the tracing session configurations to the default output directory.
+.Save all the recording session configurations to the default output directory.
 ====
 [role="term"]
 ----
@@ -90,7 +90,7 @@ $ lttng save
 ----
 ====
 
-.Save a specific tracing session configuration to a specific output directory.
+.Save a specific recording session configuration to a specific output directory.
 ====
 See the option:--output-path option.
 
@@ -100,7 +100,7 @@ $ lttng save my-session --output-path=/path/to/sessions
 ----
 ====
 
-.Allow LTTng to overwrite existing tracing session configuration files when saving.
+.Allow LTTng to overwrite existing recording session configuration files when saving.
 ====
 See the option:--force option.
 

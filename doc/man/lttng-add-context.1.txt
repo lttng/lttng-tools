@@ -1,6 +1,6 @@
 lttng-add-context(1)
 ====================
-:revdate: 6 May 2021
+:revdate: 14 June 2021
 
 
 NAME
@@ -34,22 +34,22 @@ Without the option:--list option::
     records of:
 +
 With the option:--session='SESSION' option:::
-    The tracing session named 'SESSION'.
+    The recording session named 'SESSION'.
 
 Without the option:--session option:::
-    The current tracing session (see man:lttng-concepts(7) to learn more
-    about the current tracing session).
+    The current recording session (see man:lttng-concepts(7) to learn
+    more about the current recording session).
 
 With the option:--channel='CHANNEL':::
     The channel named 'CHANNEL'.
 
 Without the option:--channel option:::
-    *All* the channels of the selected tracing session.
+    *All* the channels of the selected recording session.
 
 With the option:--list option::
     List the available context field types.
 
-See man:lttng-concepts(7) to learn more about tracing sessions and
+See man:lttng-concepts(7) to learn more about recording sessions and
 channels.
 
 Repeat the option:--type='TYPE' option to add more than one context
@@ -109,8 +109,9 @@ IMPORTANT: Make sure to **single-quote** 'TYPE' when you run the
 variable substitution in most shells.
 
 NOTE: As of LTTng{nbsp}{lttng_version}, you may :not: add context fields
-to be recorded to the event records of a given channel once its tracing
-session has been started (see man:lttng-start(1)) at least once.
+to be recorded to the event records of a given channel once its
+recording session has been started (see man:lttng-start(1)) at least
+once.
 
 See the ``<<examples,EXAMPLES>>'' section below for usage examples.
 
@@ -144,12 +145,12 @@ Recording target
 option:-c 'CHANNEL', option:--channel='CHANNEL'::
     Add context fields to be recorded to the event records of a channel
     named 'CHANNEL' instead of all the channels of the selected
-    tracing session.
+    recording session.
 
 option:-s 'SESSION', option:--session='SESSION'::
     Add context fields to be recorded to the event records of one or
-    more channels of the tracing session named 'SESSION' instead of the
-    current tracing session.
+    more channels of the recording session named 'SESSION' instead of
+    the current recording session.
 
 
 Context field type
@@ -185,7 +186,7 @@ $ lttng add-context --list
 ----
 ====
 
-.Add a single statically-known context field to be recorded to all the Linux kernel channels of the current tracing session.
+.Add a single statically-known context field to be recorded to all the Linux kernel channels of the current recording session.
 ====
 [role="term"]
 ----
@@ -193,7 +194,7 @@ $ lttng add-context --kernel --type=pid
 ----
 ====
 
-.Add three statically-known context fields to be recorded to a specific user space channel of a specific tracing session.
+.Add three statically-known context fields to be recorded to a specific user space channel of a specific recording session.
 ====
 See the option:--session and option:--channel options.
 
@@ -205,7 +206,7 @@ $ lttng add-context --userspace --session=my-session \
 ----
 ====
 
-.Add a perf counter context field to be recorded to a specific Linux kernel channel of the current tracing session.
+.Add a perf counter context field to be recorded to a specific Linux kernel channel of the current recording session.
 ====
 See the option:--channel option.
 
@@ -216,7 +217,7 @@ $ lttng add-context --kernel --channel=my-channel \
 ----
 ====
 
-.Add an LTTng application-specific context field to be recorded to all the JUL channels of the current tracing session.
+.Add an LTTng application-specific context field to be recorded to all the JUL channels of the current recording session.
 ====
 [role="term"]
 ----
