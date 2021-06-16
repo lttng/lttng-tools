@@ -53,7 +53,7 @@ static int setup_session(const char *session_name, const char *path)
 	int ret;
 	struct lttng_domain dom;
 	struct lttng_event ev;
-	struct lttng_handle *chan_handle;
+	struct lttng_handle *chan_handle = NULL;
 
 	printf("Creating session %s\n", session_name);
 	ret = lttng_create_session(session_name, path);
@@ -90,11 +90,10 @@ static int setup_session(const char *session_name, const char *path)
 		goto end;
 	}
 
-	lttng_destroy_handle(chan_handle);
-
 	ret = 0;
 
 end:
+	lttng_destroy_handle(chan_handle);
 	return ret;
 }
 
