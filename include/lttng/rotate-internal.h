@@ -118,11 +118,11 @@ struct lttng_session_list_schedules_return {
 	struct {
 		uint8_t set;
 		uint64_t value;
-	} periodic;
+	} LTTNG_PACKED periodic;
 	struct {
 		uint8_t set;
 		uint64_t value;
-	} size;
+	} LTTNG_PACKED size;
 } LTTNG_PACKED;
 
 #endif /* LTTNG_ROTATE_INTERNAL_ABI_H */
