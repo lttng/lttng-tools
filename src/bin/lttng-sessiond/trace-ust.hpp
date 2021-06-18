@@ -112,9 +112,9 @@ struct ltt_ust_session {
 	/* For per UID buffer, every buffer reg object is kept of this session */
 	struct cds_list_head buffer_reg_uid_list;
 	/* Next channel ID available for a newly registered channel. */
-	uint64_t next_channel_id;
-	/* Once this value reaches UINT32_MAX, no more id can be allocated. */
-	uint64_t used_channel_id;
+	uint64_t next_event_container_id;
+	/* Once this value reaches UINT64_MAX, no more id can be allocated. */
+	uint64_t used_event_container_id;
 	/* Tell or not if the session has to output the traces. */
 	unsigned int output_traces;
 	unsigned int snapshot_mode;
@@ -160,17 +160,17 @@ static inline int trace_ust_is_max_id(uint64_t id)
  * the maximum number of IDs have been reached. If not, it is safe to call this
  * function.
  *
- * Return a unique channel ID. If max is reached, the used_channel_id counter
+ * Return a unique channel ID. If max is reached, the used_event_container_id counter
  * is returned.
  */
-static inline uint64_t trace_ust_get_next_chan_id(struct ltt_ust_session *s)
+static inline uint64_t trace_ust_get_next_event_container_id(struct ltt_ust_session *s)
 {
-	if (trace_ust_is_max_id(s->used_channel_id)) {
-		return s->used_channel_id;
+	if (trace_ust_is_max_id(s->used_event_container_id)) {
+		return s->used_event_container_id;
 	}
 
-	s->used_channel_id++;
-	return s->next_channel_id++;
+	s->used_event_container_id++;
+	return s->next_event_container_id++;
 }
 
 #ifdef HAVE_LIBLTTNG_UST_CTL
