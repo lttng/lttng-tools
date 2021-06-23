@@ -7,7 +7,7 @@ noinst_PROGRAMS = \
 	notification-client \
 	register-some-triggers
 
-notification_client_SOURCES = notification-client.c
+notification_client_SOURCES = notification-client.cpp
 notification_client_LDADD = $(LIBLTTNG_CTL) \
 	$(top_builddir)/tests/utils/libtestutils.la
 

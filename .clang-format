@@ -52,6 +52,8 @@ ForEachMacros:
   - 'cds_lfht_for_each_duplicate'
   - 'cds_list_for_each_entry'
   - 'cds_list_for_each_entry_safe'
+  - 'for_each_action_mutable'
+  - 'for_each_action_const'
 
 IncludeBlocks: Regroup
 IncludeCategories:

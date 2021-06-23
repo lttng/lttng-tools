@@ -7,6 +7,7 @@
 
 #include "utils.h"
 
+#include <lttng/action/list-internal.hpp>
 #include <lttng/condition/event-rule-matches.h>
 #include <lttng/lttng.h>
 
@@ -37,19 +38,10 @@ static struct option long_options[] = {
 
 static bool action_list_contains_notify(const struct lttng_action *action_list)
 {
-	unsigned int i, count;
-	enum lttng_action_status status = lttng_action_list_get_count(action_list, &count);
+	const struct lttng_action *sub_action;
 
-	if (status != LTTNG_ACTION_STATUS_OK) {
-		printf("Failed to get action count from action list\n");
-		exit(1);
-	}
-
-	for (i = 0; i < count; i++) {
-		const struct lttng_action *action = lttng_action_list_get_at_index(action_list, i);
-		const enum lttng_action_type action_type = lttng_action_get_type(action);
-
-		if (action_type == LTTNG_ACTION_TYPE_NOTIFY) {
+	for_each_action_const (sub_action, action_list) {
+		if (lttng_action_get_type(sub_action) == LTTNG_ACTION_TYPE_NOTIFY) {
 			return true;
 		}
 	}

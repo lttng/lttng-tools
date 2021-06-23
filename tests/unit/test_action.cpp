@@ -14,6 +14,7 @@
 
 #include <lttng/action/action-internal.hpp>
 #include <lttng/action/action.h>
+#include <lttng/action/list-internal.hpp>
 #include <lttng/action/notify.h>
 #include <lttng/action/rate-policy-internal.hpp>
 #include <lttng/action/rate-policy.h>
@@ -33,7 +34,7 @@ int lttng_opt_quiet = 1;
 int lttng_opt_verbose;
 int lttng_opt_mi;
 
-#define NUM_TESTS 60
+#define NUM_TESTS 71
 
 static void test_action_notify()
 {
@@ -98,7 +99,95 @@ static void test_action_notify()
 	lttng_payload_reset(&payload);
 }
 
-static void test_action_rotate_session()
+static void test_action_list(void)
+{
+	int ret, action_idx;
+	struct lttng_action *list_action = NULL, *list_action_from_buffer = NULL,
+			    *mut_inner_action = NULL, *stop_session_action = NULL,
+			    *notify_action = NULL, *start_session_action = NULL;
+	const struct lttng_action *const_inner_action;
+	struct lttng_payload payload;
+
+	lttng_payload_init(&payload);
+
+	list_action = lttng_action_list_create();
+	ok(list_action, "Create list action");
+	ok(lttng_action_get_type(list_action) == LTTNG_ACTION_TYPE_LIST,
+	   "Action has type LTTNG_ACTION_TYPE_LIST");
+
+	start_session_action = lttng_action_start_session_create();
+	(void) lttng_action_start_session_set_session_name(start_session_action, "une-session");
+
+	stop_session_action = lttng_action_stop_session_create();
+	(void) lttng_action_stop_session_set_session_name(stop_session_action, "une-autre-session");
+	notify_action = lttng_action_notify_create();
+
+	lttng_action_list_add_action(list_action, start_session_action);
+	lttng_action_list_add_action(list_action, stop_session_action);
+	lttng_action_list_add_action(list_action, notify_action);
+
+	ret = lttng_action_serialize(list_action, &payload);
+	ok(ret == 0, "Action list serialized");
+
+	{
+		struct lttng_payload_view view = lttng_payload_view_from_payload(&payload, 0, -1);
+		(void) lttng_action_create_from_payload(&view, &list_action_from_buffer);
+	}
+	ok(list_action_from_buffer, "Notify action created from payload is non-null");
+
+	ok(lttng_action_is_equal(list_action, list_action_from_buffer),
+	   "Serialized and de-serialized list action are equal");
+
+	action_idx = 0;
+	for_each_action_const (const_inner_action, list_action) {
+		enum lttng_action_type inner_action_type =
+			lttng_action_get_type(const_inner_action);
+		switch (action_idx) {
+		case 0:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,
+			   "First inner action of action list is `start-session` action");
+			break;
+		case 1:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_STOP_SESSION,
+			   "Second inner action of action list is `stop-session` action");
+			break;
+		case 2:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_NOTIFY,
+			   "Third inner action of action list is `notify` action");
+			break;
+		}
+		action_idx++;
+	}
+
+	action_idx = 0;
+	for_each_action_mutable (mut_inner_action, list_action) {
+		enum lttng_action_type inner_action_type = lttng_action_get_type(mut_inner_action);
+		switch (action_idx) {
+		case 0:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_START_SESSION,
+			   "First inner action of action list is `start-session` action");
+			break;
+		case 1:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_STOP_SESSION,
+			   "Second inner action of action list is `stop-session` action");
+			break;
+		case 2:
+			ok(inner_action_type == LTTNG_ACTION_TYPE_NOTIFY,
+			   "Third inner action of action list is `notify` action");
+			break;
+		}
+		action_idx++;
+	}
+
+	lttng_action_destroy(list_action);
+	lttng_action_destroy(list_action_from_buffer);
+	lttng_action_destroy(start_session_action);
+	lttng_action_destroy(stop_session_action);
+	lttng_action_destroy(notify_action);
+	lttng_payload_reset(&payload);
+}
+
+static void test_action_rotate_session(void)
 {
 	int ret;
 	enum lttng_action_status status;
@@ -458,6 +547,7 @@ int main()
 {
 	plan_tests(NUM_TESTS);
 	test_action_notify();
+	test_action_list();
 	test_action_rotate_session();
 	test_action_start_session();
 	test_action_stop_session();

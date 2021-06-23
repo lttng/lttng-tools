@@ -10,6 +10,9 @@
 
 #include <common/macros.hpp>
 
+#include <lttng/lttng-error.h>
+
+#include <assert.h>
 #include <sys/types.h>
 
 struct lttng_action;
@@ -37,5 +40,20 @@ lttng_action_list_mi_serialize(const struct lttng_trigger *trigger,
 			       struct mi_writer *writer,
 			       const struct mi_lttng_error_query_callbacks *error_query_callbacks,
 			       struct lttng_dynamic_array *action_path_indexes);
+
+#define for_each_action_const(__action_element, __action_list)                                 \
+	assert(lttng_action_get_type(__action_list) == LTTNG_ACTION_TYPE_LIST);                \
+                                                                                               \
+	for (unsigned int __action_idx = 0;                                                    \
+	     (__action_element = lttng_action_list_get_at_index(__action_list, __action_idx)); \
+	     __action_idx++)
+
+#define for_each_action_mutable(__action_element, __action_list)                               \
+	assert(lttng_action_get_type(__action_list) == LTTNG_ACTION_TYPE_LIST);                \
+                                                                                               \
+	for (unsigned int __action_idx = 0;                                                    \
+	     (__action_element =                                                               \
+		      lttng_action_list_borrow_mutable_at_index(__action_list, __action_idx)); \
+	     __action_idx++)
 
 #endif /* LTTNG_ACTION_LIST_INTERNAL_H */

@@ -10,14 +10,16 @@
 #include "common/argpar/argpar.h"
 #include "common/dynamic-array.hpp"
 #include "common/mi-lttng.hpp"
+#include "lttng/action/list-internal.hpp"
 
-#include <stdio.h>
 /* For lttng_condition_type_str(). */
 #include "lttng/condition/condition-internal.hpp"
 #include "lttng/condition/event-rule-matches-internal.hpp"
 #include "lttng/condition/event-rule-matches.h"
+
 /* For lttng_domain_type_str(). */
 #include "lttng/domain-internal.hpp"
+
 /* For lttng_event_rule_kernel_syscall_emission_site_str() */
 #include "../loglevel.hpp"
 #include "lttng/event-rule/kernel-syscall-internal.hpp"
@@ -1022,21 +1024,14 @@ static void print_one_trigger(const struct lttng_trigger *trigger)
 	action = lttng_trigger_get_const_action(trigger);
 	action_type = lttng_action_get_type(action);
 	if (action_type == LTTNG_ACTION_TYPE_LIST) {
-		unsigned int count, i;
-		enum lttng_action_status action_status;
+		const struct lttng_action *subaction;
+		uint64_t action_path_index = 0;
 
 		MSG("  actions:");
-
-		action_status = lttng_action_list_get_count(action, &count);
-		LTTNG_ASSERT(action_status == LTTNG_ACTION_STATUS_OK);
-
-		for (i = 0; i < count; i++) {
-			const uint64_t action_path_index = i;
-			const struct lttng_action *subaction =
-				lttng_action_list_get_at_index(action, i);
-
+		for_each_action_const (subaction, action) {
 			_MSG("    ");
 			print_one_action(trigger, subaction, &action_path_index, 1);
+			action_path_index++;
 		}
 	} else {
 		_MSG(" action:");
