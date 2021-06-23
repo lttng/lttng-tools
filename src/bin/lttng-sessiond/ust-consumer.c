@@ -374,11 +374,16 @@ int ust_consumer_send_stream_to_ust(struct ust_app *app,
 	ret = lttng_ust_ctl_send_stream_to_ust(app->sock, channel->obj, stream->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("ustctl send stream handle %d to app pid: %d with ret %d",
-					stream->obj->handle, app->pid, ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app send stream to ust failed. Application is dead. (pid: %d, sock: %d).",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app send stream to ust failed. Communication time out (pid: %d, sock: %d).",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app send stream to ust failed. Application is dead.");
+			ERR("UST app send stream, handle %d, to ust failed with ret %d (pid: %d, sock: %d).",
+					stream->obj->handle, ret, app->pid,
+					app->sock);
 		}
 		goto error;
 	}
@@ -411,11 +416,16 @@ int ust_consumer_send_channel_to_ust(struct ust_app *app,
 	ret = lttng_ust_ctl_send_channel_to_ust(app->sock, ua_sess->handle, channel->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Error ustctl send channel %s to app pid: %d with ret %d",
-					channel->name, app->pid, ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app send channel to ust failed. Application is dead (pid: %d, sock: %d).",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app send channel to ust failed. Communication timeout (pid: %d, sock: %d).",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app send channel to ust failed. Application is dead.");
+			ERR("UST app send channel %s, to ust failed with ret %d (pid: %d, sock: %d).",
+					channel->name, ret, app->pid,
+					app->sock);
 		}
 		goto error;
 	}
