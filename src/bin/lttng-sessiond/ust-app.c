@@ -286,9 +286,18 @@ void delete_ust_app_ctx(int sock, struct ust_app_ctx *ua_ctx,
 		pthread_mutex_lock(&app->sock_lock);
 		ret = ustctl_release_object(sock, ua_ctx->obj);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app sock %d release ctx obj handle %d failed with ret %d",
-					sock, ua_ctx->obj->handle, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release ctx failed. Application is dead: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release ctx failed. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else {
+				ERR("UST app release ctx obj handle %d failed with ret %d: pid = %d, sock = %d",
+						ua_ctx->obj->handle, ret,
+						app->pid, app->sock);
+			}
 		}
 		free(ua_ctx->obj);
 	}
@@ -314,9 +323,17 @@ void delete_ust_app_event(int sock, struct ust_app_event *ua_event,
 		pthread_mutex_lock(&app->sock_lock);
 		ret = ustctl_release_object(sock, ua_event->obj);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app sock %d release event obj failed with ret %d",
-					sock, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release event failed. Application is dead: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release event failed. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else {
+				ERR("UST app release event obj failed with ret %d: pid = %d, sock = %d",
+						ret, app->pid, app->sock);
+			}
 		}
 		free(ua_event->obj);
 	}
@@ -339,9 +356,17 @@ static int release_ust_app_stream(int sock, struct ust_app_stream *stream,
 		pthread_mutex_lock(&app->sock_lock);
 		ret = ustctl_release_object(sock, stream->obj);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app sock %d release stream obj failed with ret %d",
-					sock, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release stream failed. Application is dead: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release stream failed. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else {
+				ERR("UST app release stream obj failed with ret %d: pid = %d, sock = %d",
+						ret, app->pid, app->sock);
+			}
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 2);
 		free(stream->obj);
@@ -515,9 +540,20 @@ void delete_ust_app_channel(int sock, struct ust_app_channel *ua_chan,
 		pthread_mutex_lock(&app->sock_lock);
 		ret = ustctl_release_object(sock, ua_chan->obj);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app sock %d release channel obj failed with ret %d",
-					sock, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app channel %s release failed. Application is dead: pid = %d, sock = %d",
+						ua_chan->name, app->pid,
+						app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app channel %s release failed. Communication time out: pid = %d, sock = %d",
+						ua_chan->name, app->pid,
+						app->sock);
+			} else {
+				ERR("UST app channel %s release failed with ret %d: pid = %d, sock = %d",
+						ua_chan->name, ret, app->pid,
+						app->sock);
+			}
 		}
 		lttng_fd_put(LTTNG_FD_APPS, 1);
 		free(ua_chan->obj);
@@ -880,10 +916,19 @@ void delete_ust_app_session(int sock, struct ust_app_session *ua_sess,
 		pthread_mutex_lock(&app->sock_lock);
 		ret = ustctl_release_handle(sock, ua_sess->handle);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app sock %d release session handle failed with ret %d",
-					sock, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app release session handle failed. Application is dead: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app release session handle failed. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else {
+				ERR("UST app release session handle failed with ret %d: pid = %d, sock = %d",
+						ret, app->pid, app->sock);
+			}
 		}
+
 		/* Remove session from application UST object descriptor. */
 		iter.iter.node = &ua_sess->ust_objd_node.node;
 		ret = lttng_ht_del(app->ust_sessions_objd, &iter);
@@ -1325,17 +1370,17 @@ int create_ust_channel_context(struct ust_app_channel *ua_chan,
 			ua_chan->obj, &ua_ctx->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app create channel context failed for app (pid: %d) "
-					"with ret %d", app->pid, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app add context failed. Application is dead.");
+			DBG3("UST app create channel context failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app create channel context failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app create channel context failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		goto error;
 	}
@@ -1377,17 +1422,18 @@ int set_ust_event_filter(struct ust_app_event *ua_event,
 			ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s filter failed for app (pid: %d) "
-					"with ret %d", ua_event->attr.name, app->pid, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app filter event failed. Application is dead.");
+			DBG3("UST app set filter failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			DBG3("UST app set filter failed. Communication timeout: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app event set filter failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid,
+					app->sock);
 		}
 		goto error;
 	}
@@ -1448,17 +1494,17 @@ int set_ust_event_exclusion(struct ust_app_event *ua_event,
 	ret = ustctl_set_exclusion(app->sock, ust_exclusion, ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s exclusions failed for app (pid: %d) "
-					"with ret %d", ua_event->attr.name, app->pid, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app event exclusion failed. Application is dead.");
+			DBG3("UST app event exclusion failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app event exclusion failed. Communication time out(pid: %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app event exclusions failed with ret %d: pid = %d, sock = %d, event = %s",
+					ret, app->pid, app->sock, ua_event->name);
 		}
 		goto error;
 	}
@@ -1485,18 +1531,17 @@ static int disable_ust_event(struct ust_app *app,
 	ret = ustctl_disable(app->sock, ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s disable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_event->attr.name, app->pid, ua_sess->handle, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app disable event failed. Application is dead.");
+			DBG3("UST app disable event failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app disable event failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app disable event failed with ret %d: pid = %d, sock = %d , name = %s",
+					ret, app->pid, app->sock, ua_event->attr.name);
 		}
 		goto error;
 	}
@@ -1523,23 +1568,23 @@ static int disable_ust_channel(struct ust_app *app,
 	ret = ustctl_disable(app->sock, ua_chan->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app channel %s disable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_chan->name, app->pid, ua_sess->handle, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app disable channel failed. Application is dead.");
+			DBG3("UST app disable channel failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app disable channel failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app channel %s disable failed, session handle %d, with ret %d: pid = %d, sock = %d",
+					ua_chan->name, ua_sess->handle, ret,
+					app->pid, app->sock);
 		}
 		goto error;
 	}
 
-	DBG2("UST app channel %s disabled successfully for app (pid: %d)",
+	DBG2("UST app channel %s disabled successfully for app: pid = %d",
 			ua_chan->name, app->pid);
 
 error:
@@ -1561,25 +1606,25 @@ static int enable_ust_channel(struct ust_app *app,
 	ret = ustctl_enable(app->sock, ua_chan->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app channel %s enable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_chan->name, app->pid, ua_sess->handle, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app enable channel failed. Application is dead.");
+			DBG3("UST app channel %s enable failed. Application is dead: pid = %d, sock = %d",
+					ua_chan->name, app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app channel %s enable failed. Communication time out: pid = %d, sock = %d",
+					ua_chan->name, app->pid, app->sock);
+		} else {
+			ERR("UST app channel %s enable failed, session handle %d, with ret %d: pid = %d, sock = %d",
+					ua_chan->name, ua_sess->handle, ret,
+					app->pid, app->sock);
 		}
 		goto error;
 	}
 
 	ua_chan->enabled = 1;
 
-	DBG2("UST app channel %s enabled successfully for app (pid: %d)",
+	DBG2("UST app channel %s enabled successfully for app: pid = %d",
 			ua_chan->name, app->pid);
 
 error:
@@ -1601,18 +1646,17 @@ static int enable_ust_event(struct ust_app *app,
 	ret = ustctl_enable(app->sock, ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app event %s enable failed for app (pid: %d) "
-					"and session handle %d with ret %d",
-					ua_event->attr.name, app->pid, ua_sess->handle, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app enable event failed. Application is dead.");
+			DBG3("UST app enable event failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app enable event failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app enable event failed with ret %d: pid = %d, sock = %d, event = %s",
+					ret, app->pid, app->sock, ua_event->attr.name);
 		}
 		goto error;
 	}
@@ -1650,6 +1694,13 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 		ret = -ENOTCONN;	/* Caused by app exiting. */
 		goto error;
+	} else if (ret == -EAGAIN) {
+		/* Caused by timeout. */
+		WARN("Communication with application %d timed out on send_channel for channel \"%s\" of session \"%" PRIu64 "\".",
+				app->pid, ua_chan->name, ua_sess->tracing_id);
+		/* Treat this the same way as an application that is exiting. */
+		ret = -ENOTCONN;
+		goto error;
 	} else if (ret < 0) {
 		goto error;
 	}
@@ -1660,8 +1711,18 @@ static int send_channel_pid_to_ust(struct ust_app *app,
 	cds_list_for_each_entry_safe(stream, stmp, &ua_chan->streams.head, list) {
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, stream);
 		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
-			ret = -ENOTCONN;	/* Caused by app exiting. */
+			ret = -ENOTCONN; /* Caused by app exiting. */
 			goto error;
+		} else if (ret == -EAGAIN) {
+			/* Caused by timeout. */
+			WARN("Communication with application %d timed out on send_stream for stream \"%s\" of channel \"%s\" of session \"%" PRIu64 "\".",
+					app->pid, stream->name, ua_chan->name,
+					ua_sess->tracing_id);
+			/*
+			 * Treat this the same way as an application that is
+			 * exiting.
+			 */
+			ret = -ENOTCONN;
 		} else if (ret < 0) {
 			goto error;
 		}
@@ -1696,18 +1757,18 @@ int create_ust_event(struct ust_app *app, struct ust_app_session *ua_sess,
 			&ua_event->obj);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			abort();
-			ERR("Error ustctl create event %s for app pid: %d with ret %d",
-					ua_event->attr.name, app->pid, ret);
-		} else {
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 			ret = 0;
-			DBG3("UST app create event failed. Application is dead.");
+			DBG3("UST app create event failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			ret = 0;
+			WARN("UST app create event failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app create event '%s' failed with ret %d: pid = %d, sock = %d",
+					ua_event->attr.name, ret, app->pid,
+					app->sock);
 		}
 		goto error;
 	}
@@ -2169,18 +2230,17 @@ static int find_or_create_ust_app_session(struct ltt_ust_session *usess,
 		ret = ustctl_create_session(app->sock);
 		pthread_mutex_unlock(&app->sock_lock);
 		if (ret < 0) {
-			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-				ERR("Creating session for app pid %d with ret %d",
-						app->pid, ret);
-			} else {
-				DBG("UST app creating session failed. Application is dead");
-				/*
-				 * This is normal behavior, an application can die during the
-				 * creation process. Don't report an error so the execution can
-				 * continue normally. This will get flagged ENOTCONN and the
-				 * caller will handle it.
-				 */
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG("UST app creating session failed. Application is dead: pid = %d, sock = %d",
+						app->pid, app->sock);
 				ret = 0;
+			} else if (ret == -EAGAIN) {
+				DBG("UST app creating session failed. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+				ret = 0;
+			} else {
+				ERR("UST app creating session failed with ret %d: pid = %d, sock =%d",
+						ret, app->pid, app->sock);
 			}
 			delete_ust_app_session(-1, ua_sess, app);
 			if (ret != -ENOMEM) {
@@ -2762,6 +2822,13 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 	if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 		ret = -ENOTCONN;	/* Caused by app exiting. */
 		goto error;
+	} else if (ret == -EAGAIN) {
+		/* Caused by timeout. */
+		WARN("Communication with application %d timed out on send_channel for channel \"%s\" of session \"%" PRIu64 "\".",
+				app->pid, ua_chan->name, ua_sess->tracing_id);
+		/* Treat this the same way as an application that is exiting. */
+		ret = -ENOTCONN;
+		goto error;
 	} else if (ret < 0) {
 		goto error;
 	}
@@ -2780,10 +2847,21 @@ static int send_channel_uid_to_ust(struct buffer_reg_channel *reg_chan,
 
 		ret = ust_consumer_send_stream_to_ust(app, ua_chan, &stream);
 		if (ret < 0) {
-			(void) release_ust_app_stream(-1, &stream, app);
 			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
 				ret = -ENOTCONN; /* Caused by app exiting. */
+			} else if (ret == -EAGAIN) {
+				/*
+				 * Caused by timeout.
+				 * Treat this the same way as an application
+				 * that is exiting.
+				 */
+				WARN("Communication with application %d timed out on send_stream for stream \"%s\" of channel \"%s\" of session \"%" PRIu64 "\".",
+						app->pid, stream.name,
+						ua_chan->name,
+						ua_sess->tracing_id);
+				ret = -ENOTCONN;
 			}
+			(void) release_ust_app_stream(-1, &stream, app);
 			goto error_stream_unlock;
 		}
 
@@ -3421,8 +3499,8 @@ void ust_app_add(struct ust_app *app)
 	lttng_ht_node_init_ulong(&app->notify_sock_n, app->notify_sock);
 	lttng_ht_add_unique_ulong(ust_app_ht_by_notify_sock, &app->notify_sock_n);
 
-	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock:%d name:%s "
-			"notify_sock:%d (version %d.%d)", app->pid, app->ppid, app->uid,
+	DBG("App registered with pid:%d ppid:%d uid:%d gid:%d sock =%d name:%s "
+			"notify_sock =%d (version %d.%d)", app->pid, app->ppid, app->uid,
 			app->gid, app->sock, app->name, app->notify_sock, app->v_major,
 			app->v_minor);
 
@@ -3445,10 +3523,15 @@ int ust_app_version(struct ust_app *app)
 	ret = ustctl_tracer_version(app->sock, &app->version);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-			ERR("UST app %d version failed with ret %d", app->sock, ret);
+		if (ret == -LTTNG_UST_ERR_EXITING || ret == -EPIPE) {
+			DBG3("UST app version failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app version failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app %d version failed. Application is dead", app->sock);
+			ERR("UST app version failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 	}
 
@@ -3630,11 +3713,6 @@ int ust_app_list_events(struct lttng_event **events)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list get failed. Application is dead");
-					/*
-					 * This is normal behavior, an application can die during the
-					 * creation process. Don't report an error so the execution can
-					 * continue normally. Continue normal execution.
-					 */
 					break;
 				}
 				free(tmp_event);
@@ -3689,8 +3767,17 @@ int ust_app_list_events(struct lttng_event **events)
 		}
 		ret = ustctl_release_handle(app->sock, handle);
 		pthread_mutex_unlock(&app->sock_lock);
-		if (ret < 0 && ret != -LTTNG_UST_ERR_EXITING && ret != -EPIPE) {
-			ERR("Error releasing app handle for app %d with ret %d", app->sock, ret);
+		if (ret < 0) {
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("Error releasing app handle. Application died: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else if (ret == -EAGAIN) {
+				WARN("Error releasing app handle. Communication time out: pid = %d, sock = %d",
+						app->pid, app->sock);
+			} else {
+				ERR("Error releasing app handle with ret %d: pid = %d, sock = %d",
+						ret, app->pid, app->sock);
+			}
 		}
 	}
 
@@ -3761,11 +3848,6 @@ int ust_app_list_event_fields(struct lttng_event_field **fields)
 							app->sock, ret);
 				} else {
 					DBG3("UST app tp list field failed. Application is dead");
-					/*
-					 * This is normal behavior, an application can die during the
-					 * creation process. Don't report an error so the execution can
-					 * continue normally. Reset list and count for next app.
-					 */
 					break;
 				}
 				free(tmp_event);
@@ -4438,18 +4520,20 @@ skip_setup:
 	ret = ustctl_start_session(app->sock, ua_sess->handle);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Error starting tracing for app pid: %d (ret: %d)",
-					app->pid, ret);
-		} else {
-			DBG("UST app start session failed. Application is dead.");
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app start session failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
 			pthread_mutex_unlock(&ua_sess->lock);
 			goto end;
+		} else if (ret == -EAGAIN) {
+			WARN("UST app start session failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+			pthread_mutex_unlock(&ua_sess->lock);
+			goto end;
+
+		} else {
+			ERR("UST app start session failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		goto error_unlock;
 	}
@@ -4465,9 +4549,17 @@ skip_setup:
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_wait_quiescent(app->sock);
 	pthread_mutex_unlock(&app->sock_lock);
-	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-		ERR("UST app wait quiescent failed for app pid %d ret %d",
-				app->pid, ret);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app wait quiescent failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app wait quiescent failed. Communication time out: pid =  %d, sock = %d",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app wait quiescent failed with ret %d: pid %d, sock = %d",
+					ret, app->pid, app->sock);
+		}
 	}
 
 end:
@@ -4529,17 +4621,18 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	ret = ustctl_stop_session(app->sock, ua_sess->handle);
 	pthread_mutex_unlock(&app->sock_lock);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("Error stopping tracing for app pid: %d (ret: %d)",
-					app->pid, ret);
-		} else {
-			DBG("UST app stop session failed. Application is dead.");
-			/*
-			 * This is normal behavior, an application can die during the
-			 * creation process. Don't report an error so the execution can
-			 * continue normally.
-			 */
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app stop session failed. Application is dead: pid = %d, sock = %d",
+					app->pid, app->sock);
 			goto end_unlock;
+		} else if (ret == -EAGAIN) {
+			WARN("UST app stop session failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
+			goto end_unlock;
+
+		} else {
+			ERR("UST app stop session failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		goto error_rcu_unlock;
 	}
@@ -4550,9 +4643,17 @@ int ust_app_stop_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_wait_quiescent(app->sock);
 	pthread_mutex_unlock(&app->sock_lock);
-	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-		ERR("UST app wait quiescent failed for app pid %d ret %d",
-				app->pid, ret);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d)",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d)",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d)",
+					ret, app->pid, app->sock);
+		}
 	}
 
 	health_code_update();
@@ -4900,9 +5001,17 @@ static int destroy_trace(struct ltt_ust_session *usess, struct ust_app *app)
 	pthread_mutex_lock(&app->sock_lock);
 	ret = ustctl_wait_quiescent(app->sock);
 	pthread_mutex_unlock(&app->sock_lock);
-	if (ret < 0 && ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-		ERR("UST app wait quiescent failed for app pid %d ret %d",
-				app->pid, ret);
+	if (ret < 0) {
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app wait quiescent failed. Application is dead: pid= %d, sock = %d)",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app wait quiescent failed. Communication time out: pid= %d, sock = %d)",
+					app->pid, app->sock);
+		} else {
+			ERR("UST app wait quiescent failed with ret %d: pid= %d, sock = %d)",
+					ret, app->pid, app->sock);
+		}
 	}
 end:
 	rcu_read_unlock();
@@ -5478,15 +5587,20 @@ static int reply_ust_register_channel(int sock, int cobjd,
 
 reply:
 	DBG3("UST app replying to register channel key %" PRIu64
-			" with id %u, type: %d, ret: %d", chan_reg_key, chan_id, type,
+			" with id %u, type = %d, ret = %d", chan_reg_key, chan_id, type,
 			ret_code);
 
 	ret = ustctl_reply_register_channel(sock, chan_id, type, ret_code);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app reply channel failed with ret %d", ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app reply channel failed. Application died: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app reply channel failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app reply channel failed. Application died");
+			ERR("UST app reply channel failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		goto error;
 	}
@@ -5580,10 +5694,15 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	 */
 	ret = ustctl_reply_register_event(sock, event_id, ret_code);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app reply event failed with ret %d", ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app reply event failed. Application died: pid = %d, sock = %d.",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app reply event failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app reply event failed. Application died");
+			ERR("UST app reply event failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		/*
 		 * No need to wipe the create event since the application socket will
@@ -5638,14 +5757,14 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	ua_sess = find_session_by_objd(app, sobjd);
 	if (!ua_sess) {
 		/* Return an error since this is not an error */
-		DBG("Application session is being torn down (session not found). Aborting enum registration.");
+		DBG("Application session is being torn down (session not found Aborting enum registration.");
 		free(entries);
 		goto error_rcu_unlock;
 	}
 
 	registry = get_session_registry(ua_sess);
 	if (!registry) {
-		DBG("Application session is being torn down (registry not found). Aborting enum registration.");
+		DBG("Application session is being torn down (registry not found Aborting enum registration.");
 		free(entries);
 		goto error_rcu_unlock;
 	}
@@ -5668,10 +5787,15 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 	 */
 	ret = ustctl_reply_register_enum(sock, enum_id, ret_code);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app reply enum failed with ret %d", ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app reply enum failed. Application died: pid = %d, sock = %d",
+					app->pid, app->sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app reply enum failed. Communication time out: pid = %d, sock = %d",
+					app->pid, app->sock);
 		} else {
-			DBG3("UST app reply enum failed. Application died");
+			ERR("UST app reply enum failed with ret %d: pid = %d, sock = %d",
+					ret, app->pid, app->sock);
 		}
 		/*
 		 * No need to wipe the create enum since the application socket will
@@ -5703,10 +5827,15 @@ int ust_app_recv_notify(int sock)
 
 	ret = ustctl_recv_notify(sock, &cmd);
 	if (ret < 0) {
-		if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-			ERR("UST app recv notify failed with ret %d", ret);
+		if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+			DBG3("UST app recv notify failed. Application died: sock = %d",
+					sock);
+		} else if (ret == -EAGAIN) {
+			WARN("UST app recv notify failed. Communication time out: sock = %d",
+					sock);
 		} else {
-			DBG3("UST app recv notify failed. Application died");
+			ERR("UST app recv notify failed with ret %d: sock = %d",
+					ret, sock);
 		}
 		goto error;
 	}
@@ -5725,10 +5854,15 @@ int ust_app_recv_notify(int sock)
 				&loglevel_value, &sig, &nr_fields, &fields,
 				&model_emf_uri);
 		if (ret < 0) {
-			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-				ERR("UST app recv event failed with ret %d", ret);
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app recv event failed. Application died: sock = %d",
+						sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app recv event failed. Communication time out: sock = %d",
+						sock);
 			} else {
-				DBG3("UST app recv event failed. Application died");
+				ERR("UST app recv event failed with ret %d: sock = %d",
+						ret, sock);
 			}
 			goto error;
 		}
@@ -5758,10 +5892,15 @@ int ust_app_recv_notify(int sock)
 		ret = ustctl_recv_register_channel(sock, &sobjd, &cobjd, &nr_fields,
 				&fields);
 		if (ret < 0) {
-			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-				ERR("UST app recv channel failed with ret %d", ret);
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app recv channel failed. Application died: sock = %d",
+						sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app recv channel failed. Communication time out: sock = %d",
+						sock);
 			} else {
-				DBG3("UST app recv channel failed. Application died");
+				ERR("UST app recv channel failed with ret %d: sock = %d)",
+						ret, sock);
 			}
 			goto error;
 		}
@@ -5791,10 +5930,15 @@ int ust_app_recv_notify(int sock)
 		ret = ustctl_recv_register_enum(sock, &sobjd, name,
 				&entries, &nr_entries);
 		if (ret < 0) {
-			if (ret != -EPIPE && ret != -LTTNG_UST_ERR_EXITING) {
-				ERR("UST app recv enum failed with ret %d", ret);
+			if (ret == -EPIPE || ret == -LTTNG_UST_ERR_EXITING) {
+				DBG3("UST app recv enum failed. Application died: sock = %d",
+						sock);
+			} else if (ret == -EAGAIN) {
+				WARN("UST app recv enum failed. Communication time out: sock = %d",
+						sock);
 			} else {
-				DBG3("UST app recv enum failed. Application died");
+				ERR("UST app recv enum failed with ret %d: sock = %d",
+						ret, sock);
 			}
 			goto error;
 		}
