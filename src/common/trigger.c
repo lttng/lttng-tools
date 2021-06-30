@@ -460,7 +460,7 @@ int lttng_trigger_generate_name(struct lttng_trigger *trigger,
 	int ret = 0;
 	char *generated_name = NULL;
 
-	ret = asprintf(&generated_name, "T%" PRIu64 "", unique_id);
+	ret = asprintf(&generated_name, "trigger%" PRIu64 "", unique_id);
 	if (ret < 0) {
 		ERR("Failed to generate trigger name");
 		ret = -1;
