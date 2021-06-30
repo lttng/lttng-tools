@@ -43,7 +43,8 @@ fi
 function test_success ()
 {
 	local test_name="$1"
-	shift
+	local trigger_name="$2"
+	shift 2
 
 	diag "${FULL_LTTNG_BIN} add-trigger $*"
 	set -x
@@ -51,7 +52,7 @@ function test_success ()
 	ok $? "${test_name}: exit code is 0"
 	set +x
 
-	diff -u "${tmp_stdout}" <(echo "Trigger registered successfully.")
+	diff -u "${tmp_stdout}" <(echo "Added trigger \`$trigger_name\`.")
 	ok $? "${test_name}: expected stdout"
 
 	diff -u "${tmp_stderr}" /dev/null
@@ -149,78 +150,87 @@ function test_mi ()
 }
 
 # top-level options
-test_success "explicit name" \
+test_success "explicit name" "hohoho" \
 	--name hohoho \
-	--condition event-rule-matches --name=some-event-id --type=user \
+	--condition event-rule-matches --type=user \
 	--action notify
 
 # `--condition event-rule-matches` successes
 test_success "--condition event-rule-matches some-event --type=user" \
-	--condition event-rule-matches --name=some-event --type=user \
+	"some-event" \
+	 --name=some-event --condition event-rule-matches --type=user \
 	--action notify
 
-test_success "--condition event-rule-matches --type=user" \
+test_success "--condition event-rule-matches --type=user" "trigger0" \
 	--condition event-rule-matches --type=user \
 	--action notify
 
-test_success "notify action polices" \
-	--condition event-rule-matches --type=user --name=test-rate-policy \
+test_success "notify action policies" "test-rate-policy-1" \
+	--name=test-rate-policy-1 \
+	--condition event-rule-matches --type=user \
 	--action notify \
 	--rate-policy=every:55 \
 	--action notify \
 	--rate-policy=once-after:55
 
-test_success "start session action polices" \
-	--condition event-rule-matches --type=user --name=test-rate-policy \
+test_success "start session action policies" "test-rate-policy-2" \
+	--name=test-rate-policy-2 \
+	--condition event-rule-matches --type=user \
 	--action start-session my_session \
 	--rate-policy=every:55 \
 	--action start-session my_session \
 	--rate-policy=once-after:55
 
-test_success "stop session action polices" \
-	--condition event-rule-matches --type=user --name=test-rate-policy \
+test_success "stop session action policies" "test-rate-policy-3" \
+	--name=test-rate-policy-3 \
+	--condition event-rule-matches --type=user \
 	--action stop-session my_session \
 	--rate-policy=every:55 \
 	--action stop-session my_session \
 	--rate-policy=once-after:55
 
-test_success "snapshot session action polices" \
-	--condition event-rule-matches --type=user --name=test-rate-policy \
+test_success "snapshot session action policies" "test-rate-policy-4" \
+	--name=test-rate-policy-4 \
+	--condition event-rule-matches --type=user \
 	--action snapshot-session my_session \
 	--rate-policy=every:55 \
 	--action snapshot-session my_session \
 	--rate-policy=once-after:55
 
-test_success "rotate session action polices" \
-	--condition event-rule-matches --type=user --name=test-rate-policy \
+test_success "rotate session action policies" "test-rate-policy-5" \
+	--name=test-rate-policy-5 \
+	--condition event-rule-matches --type=user \
 	--action rotate-session my_session \
 	--rate-policy=every:55 \
 	--action rotate-session my_session \
 	--rate-policy=once-after:55
 
-test_success "--log-level single level" \
+test_success "--log-level single level" "trigger1" \
 	--condition event-rule-matches --type=user --log-level=INFO \
 	--action notify
 
-test_success "--log-level range open max" \
+test_success "--log-level range open max" "trigger2" \
 	--condition event-rule-matches --type=user --log-level=INFO.. \
 	--action notify
 
-test_success "--log-level range any" \
+test_success "--log-level range any" "trigger3" \
 	--condition event-rule-matches --type=user --log-level=.. \
 	--action notify
 
-test_success "--exclude-name one" \
+test_success "--exclude-name one" "trigger4" \
 	--condition event-rule-matches --type=user --name='bernard*' --exclude-name=bernard-lermite \
 	--action notify
 
-test_success "--exclude-name two" \
+test_success "--exclude-name two" "trigger5" \
 	--condition event-rule-matches --type=user --name='jean-*' --exclude-name jean-chretien -x jean-charest \
 	--action notify
 
 skip $ist_root "non-root user: skipping kprobe tests" 18 || {
+	i=0
+
 	for type in kprobe kernel:kprobe; do
-		test_success "--condition event-rule-matches probe by symbol" \
+		test_success "--condition event-rule-matches probe by symbol" "kprobe-trigger-$i" \
+			--name="kprobe-trigger-$i" \
 			--condition event-rule-matches --type=$type --location=lttng_channel_enable --event-name=my_channel_enable \
 			--action notify
 
@@ -240,127 +250,158 @@ skip $ist_root "non-root user: skipping kprobe tests" 18 || {
 
 		offset_hex="0x$(printf '%x' $offset)"
 
-		test_success "--condition event-rule-matches probe by symbol with offset" \
+
+		test_success "--condition event-rule-matches probe by symbol with offset" "kprobe-trigger-$((i+1))" \
+			--name="kprobe-trigger-$((i+1))" \
 			--condition event-rule-matches --type=$type --location="${base_symbol}+${offset_hex}" --event-name=my_$base_symbol \
 			--action notify
 
-		test_success "--condition event-rule-matches probe by address" \
+		test_success "--condition event-rule-matches probe by address" "kprobe-trigger-$((i+2))" \
+			--name="kprobe-trigger-$((i+2))" \
 			--condition event-rule-matches --type=$type --location="0x${channel_enable_addr}" --event-name=my_channel_enable \
 			--action notify
+		i=$((i+3))
 	done
 }
 
 skip $ist_root "non-root user: skipping uprobe tests" 6 || {
-	test_success "--condition event-rule-matches uprobe" \
+	test_success "--condition event-rule-matches uprobe" "uprobe-trigger-0" \
+		--name="uprobe-trigger-0" \
 		--condition event-rule-matches --type=kernel:uprobe --location=${uprobe_elf_binary}:test_function --event-name=ma-probe \
 		--action notify
 
-	test_success "--condition event-rule-matches uprobe with elf prefix" \
+	test_success "--condition event-rule-matches uprobe with elf prefix" "uprobe-trigger-1" \
+		--name="uprobe-trigger-1" \
 		--condition event-rule-matches --type=kernel:uprobe --location=elf:${uprobe_elf_binary}:test_function --event-name=ma-probe-2 \
 		--action notify
 }
 
 skip $ist_root "non-root user: skipping syscall tests" 30 || {
-	test_success "--condition event-rule-matches one syscall" \
+	test_success "--condition event-rule-matches one syscall" "syscall-trigger-0" \
+		--name="syscall-trigger-0" \
 		--condition event-rule-matches --type=syscall --name=open \
 		--action notify
 
-	test_success "--condition event-rule-matches all syscalls" \
+	test_success "--condition event-rule-matches all syscalls" "syscall-trigger-1" \
+		--name="syscall-trigger-1" \
 		--condition event-rule-matches --type=syscall \
 		--action notify
 
-	test_success "--condition event-rule-matches one syscall with filter" \
+	test_success "--condition event-rule-matches one syscall with filter" "syscall-trigger-2" \
+		--name="syscall-trigger-2" \
 		--condition event-rule-matches --type=syscall --filter 'a > 2' --name=open \
 		--action notify
-	test_success "--condition event-rule-matches one syscall:entry" \
+	test_success "--condition event-rule-matches one syscall:entry" "syscall-trigger-3" \
+		--name="syscall-trigger-3" \
 		--condition event-rule-matches --type=syscall:entry --name=open \
 		--action notify
-	test_success "--condition event-rule-matches one syscall:exit" \
+	test_success "--condition event-rule-matches one syscall:exit" "syscall-trigger-4" \
+		--name="syscall-trigger-4" \
 		--condition event-rule-matches --type=syscall:exit --name=open \
 		--action notify
-	test_success "--condition event-rule-matches one syscall:entry-exit" \
+	test_success "--condition event-rule-matches one syscall:entry-exit" "syscall-trigger-5" \
+		--name="syscall-trigger-5" \
 		--condition event-rule-matches --type=syscall:entry+exit --name=open \
 		--action notify
 
 	# Same thing but with "kernel:syscall" type instead:
-	test_success "--condition event-rule-matches one syscall" \
+	test_success "--condition event-rule-matches one syscall" "syscall-trigger-6" \
+		--name="syscall-trigger-6" \
 		--condition event-rule-matches --type=kernel:syscall --name=open \
 		--action notify
 
-	test_success "--condition event-rule-matches one kernel:syscall:entry" \
+	test_success "--condition event-rule-matches one kernel:syscall:entry" "syscall-trigger-7" \
+		--name="syscall-trigger-7" \
 		--condition event-rule-matches --type=kernel:syscall:entry --name=open \
 		--action notify
-	test_success "--condition event-rule-matches one kernel:syscall:exit" \
+	test_success "--condition event-rule-matches one kernel:syscall:exit" "syscall-trigger-8" \
+		--name="syscall-trigger-8" \
 		--condition event-rule-matches --type=kernel:syscall:exit --name=open \
 		--action notify
-	test_success "--condition event-rule-matches one kernel:syscall:entry-exit" \
+	test_success "--condition event-rule-matches one kernel:syscall:entry-exit" "syscall-trigger-9" \
+		--name="syscall-trigger-9" \
 		--condition event-rule-matches --type=kernel:syscall:entry+exit --name=open \
 		--action notify
 
 }
 
 # `--action notify` successes
-test_success "--action notify" \
+test_success "--action notify" "notify-1" \
+	--name=notify-1 \
 	--condition event-rule-matches --type=user \
 	--action notify
 
-test_success "--action notify --capture foo" \
+test_success "--action notify --capture foo" "notify-2" \
+	--name=notify-2 \
 	--condition event-rule-matches --type=user \
 	--capture foo --action notify
 
-test_success "--action notify --capture foo[2]" \
+test_success "--action notify --capture foo[2]" "notify-3" \
+	--name=notify-3 \
 	--condition event-rule-matches --type=user \
 	--capture 'foo[2]' --action notify
 
-test_success '--action notify --capture $ctx.foo' \
+test_success '--action notify --capture $ctx.foo' "notify-4" \
+	--name=notify-4 \
 	--condition event-rule-matches --type=user \
 	--capture '$ctx.foo' --action notify
 
-test_success '--action notify --capture $ctx.foo[2]' \
+test_success '--action notify --capture $ctx.foo[2]' "notify-5" \
+	--name=notify-5 \
 	--condition event-rule-matches --type=user \
 	--capture '$ctx.foo[2]' --action notify
 
-test_success '--action notify --capture $app.prov:type' \
+test_success '--action notify --capture $app.prov:type' "notify-6" \
+	--name=notify-6 \
 	--condition event-rule-matches --type=user \
 	--capture '$app.prov:type' --action notify
 
-test_success '--action notify --capture $app.prov:type[2]' \
+test_success '--action notify --capture $app.prov:type[2]' "notify-7" \
+	--name=notify-7 \
 	--condition event-rule-matches --type=user \
 	--capture '$app.prov:type[2]' --action notify
 
-test_success '--action notify multiple captures' \
+test_success '--action notify multiple captures' "notify-8" \
+	--name=notify-8 \
 	--condition event-rule-matches --type=user \
 	--capture foo --capture '$app.hello:world' --action notify
 
 # `--action start-session` successes
-test_success "--action start-session" \
+test_success "--action start-session" "notify-9" \
+	--name=notify-9 \
 	--condition event-rule-matches --type=user \
 	--action start-session ze-session
 
 # `--action stop-session` successes
-test_success "--action stop-session foo" \
+test_success "--action stop-session foo" "notify-10"\
+	--name=notify-10 \
 	--condition event-rule-matches --type=user \
 	--action stop-session ze-session
 
 # `--action rotate-session` successes
-test_success "--action rotate-session foo" \
+test_success "--action rotate-session foo" "notify-11"\
+	--name=notify-11 \
 	--condition event-rule-matches --type=user \
 	--action rotate-session ze-session
 
 # `--action snapshot-session` successes
-test_success "--action snapshot-session foo" \
+test_success "--action snapshot-session foo" "notify-12"\
+	--name=notify-12 \
 	--condition event-rule-matches --type=user \
 	--action snapshot-session ze-session
 
-test_success "--action snapshot-session with file URI" \
+test_success "--action snapshot-session with file URI" "notify-13"\
+	--name=notify-13 \
 	--condition event-rule-matches --type=user \
 	--action snapshot-session ze-session --path /hello
 
-test_success "--action snapshot-session with net URI" \
+test_success "--action snapshot-session with net URI" "notify-14"\
+	--name=notify-14 \
 	--condition event-rule-matches --type=user \
 	--action snapshot-session ze-session --url net://1.2.3.4
 
-test_success "--action snapshot-session with ctrl/data URIs" \
+test_success "--action snapshot-session with ctrl/data URIs" "notify-15"\
+	--name=notify-15 \
 	--condition event-rule-matches --type=user \
 	--action snapshot-session ze-session --ctrl-url=tcp://1.2.3.4:1234 --data-url=tcp://1.2.3.4:1235
 
