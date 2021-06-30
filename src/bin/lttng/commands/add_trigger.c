@@ -2406,9 +2406,22 @@ int cmd_add_trigger(int argc, const char **argv)
 		if (ret_code != LTTNG_OK) {
 			goto error;
 		}
+	} else {
+		if (!name) {
+			const char *returned_trigger_name;
+			const enum lttng_trigger_status trigger_status =
+					lttng_trigger_get_name(trigger,
+							&returned_trigger_name);
+
+			if (trigger_status != LTTNG_TRIGGER_STATUS_OK) {
+				WARN("Failed to retrieve the name generated for the added trigger.");
+			} else {
+				MSG("Added trigger '%s'.",
+						returned_trigger_name);
+			}
+		}
 	}
 
-	MSG("Trigger registered successfully.");
 	ret = 0;
 
 	goto end;
