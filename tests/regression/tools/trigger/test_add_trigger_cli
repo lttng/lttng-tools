@@ -459,7 +459,7 @@ test_failure "unknown --condition" \
 # `--condition event-rule-matches` failures
 test_failure "missing args after --condition event-rule-matches" \
 	"Error: Need at least one --action." \
-	--condition event-rule-matches
+	--condition event-rule-matches --type=user
 
 test_failure "extra args after --condition event-rule-matches" \
 	"Error: Unexpected argument 'bozo'" \

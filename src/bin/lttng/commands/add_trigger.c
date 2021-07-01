@@ -832,7 +832,8 @@ struct parse_event_rule_res parse_event_rule(int *argc, const char ***argv)
 	}
 
 	if (event_rule_type == LTTNG_EVENT_RULE_TYPE_UNKNOWN) {
-		event_rule_type = LTTNG_EVENT_RULE_TYPE_USER_TRACEPOINT;
+		ERR("Event rule requires a --type.");
+		goto error;
 	}
 
 	/*
