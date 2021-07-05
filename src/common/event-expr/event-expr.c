@@ -188,9 +188,6 @@ struct lttng_event_expr *lttng_event_expr_array_field_element_create(
 	goto end;
 
 error:
-	if (expr) {
-		lttng_event_expr_destroy(&expr->parent);
-	}
 	ret_parent_expr = NULL;
 
 end:
