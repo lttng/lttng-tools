@@ -2428,7 +2428,7 @@ error:
 
 end:
 	/* Mi closing. */
-	if (lttng_opt_mi) {
+	if (lttng_opt_mi && mi_writer) {
 		int mi_ret;
 
 		/* Close output element. */
