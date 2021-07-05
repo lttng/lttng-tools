@@ -1241,6 +1241,7 @@ static enum lttng_error_code mi_error_query_trigger_callback(
 				lttng_strerror(-ret_code));
 	}
 
+	lttng_error_query_destroy(query);
 	return ret_code;
 }
 
@@ -1274,6 +1275,8 @@ static enum lttng_error_code mi_error_query_action_callback(
 				trigger_name, (int) trigger_uid,
 				lttng_strerror(-ret_code));
 	}
+
+	lttng_error_query_destroy(query);
 	return ret_code;
 }
 
@@ -1307,8 +1310,10 @@ static enum lttng_error_code mi_error_query_condition_callback(
 				lttng_strerror(-ret_code));
 	}
 
+	lttng_error_query_destroy(query);
 	return ret_code;
 }
+
 int cmd_list_triggers(int argc, const char **argv)
 {
 	int ret;
