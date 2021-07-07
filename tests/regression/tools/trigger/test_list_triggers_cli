@@ -814,7 +814,7 @@ test_event_rule_matches_probe ()
 	fi
 
 	offset_hex="0x$(printf '%x' $offset)"
-	channel_enable_addr_decimal=$(echo "ibase=16; ${channel_enable_addr^^} " | bc)
+	channel_enable_addr_decimal=$(printf '%u' 0x"${channel_enable_addr}")
 
 	lttng_add_trigger_ok "T0" --condition event-rule-matches --type=kprobe --location=lttng_channel_enable --event-name=my_channel_enable --action notify
 	lttng_add_trigger_ok "T1" --condition event-rule-matches --type=kprobe --location="${base_symbol}+${offset_hex}" --event-name=my_channel_enable --action notify
