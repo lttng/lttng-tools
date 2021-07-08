@@ -5523,7 +5523,7 @@ static int reply_ust_register_channel(int sock, int cobjd,
 	if (!app) {
 		DBG("Application socket %d is being torn down. Abort event notify",
 				sock);
-		ret = 0;
+		ret = -1;
 		goto error_rcu_unlock;
 	}
 
@@ -5644,7 +5644,7 @@ static int add_event_ust_registry(int sock, int sobjd, int cobjd, char *name,
 	if (!app) {
 		DBG("Application socket %d is being torn down. Abort event notify",
 				sock);
-		ret = 0;
+		ret = -1;
 		goto error_rcu_unlock;
 	}
 
@@ -5750,6 +5750,7 @@ static int add_enum_ust_registry(int sock, int sobjd, char *name,
 		DBG("Application socket %d is being torn down. Aborting enum registration",
 				sock);
 		free(entries);
+		ret = -1;
 		goto error_rcu_unlock;
 	}
 
