@@ -92,7 +92,6 @@ function is_command_success ()
 
 	local xpath=$XPATH_COMMAND_SUCCESS
 
-	echo $xml
 	#Extract the success element
 	#expect false
 	extract_xml $OUTPUT_DEST $XPATH_COMMAND_SUCCESS result
@@ -132,6 +131,8 @@ function test_version ()
 
 function test_create_session ()
 {
+	diag "Test create session"
+
 	local session_name="testSession"
 
 	OUTPUT_FILE="create_session.xml"
@@ -152,6 +153,8 @@ function test_create_session ()
 
 function test_destroy_session ()
 {
+	diag "Test destroy session"
+
 	local session_name=(
 			"testSession1"
 			"testSession2"
@@ -198,6 +201,8 @@ function test_destroy_session ()
 
 function test_list_sessions ()
 {
+	diag "Test list sessions"
+
 	local session_name=(
 			"testSession1"
 			"testSession2"
@@ -229,6 +234,8 @@ function test_list_sessions ()
 
 function test_list_session_long_path ()
 {
+	diag "Test list session long path"
+
 	local session_name="session_long_path"
 
 	output_basedir=$OUTPUT_DIR/$(randstring 254 0)
@@ -251,10 +258,10 @@ function test_list_session_long_path ()
 }
 function test_ust_channel ()
 {
+	diag "Test UST channel"
+
 	local session_name="testsession"
-	local channel_name=("channelUst0"
-						"channelUst1"
-						"channelUst2")
+	local channel_name=("channelUst0" "channelUst1" "channelUst2")
 
 	OUTPUT_FILE="ust_channel.xml"
 
@@ -310,6 +317,8 @@ function test_ust_channel ()
 
 function test_ust_lttng_event ()
 {
+	diag "Test UST event"
+
 	local session_name="testSession"
 	local channel_name="testChannel"
 	local event=("ev1" "ev2" "ev3")
@@ -382,6 +391,8 @@ function test_ust_lttng_event ()
 
 function test_list_channel ()
 {
+	diag "Test list channel"
+
 	local session_name="testSession"
 	local channel_name="testChannel"
 	local event=("ev1" "ev2" "ev3")
@@ -429,6 +440,8 @@ function test_list_channel ()
 
 function test_list_domain ()
 {
+	diag "Test list domain"
+
 	local session_name="testSession"
 	local channel_name="testChannel"
 	local event=("ev1" "ev2" "ev3")
@@ -477,6 +490,8 @@ function test_list_domain ()
 
 function test_list_session ()
 {
+	diag "Test list session"
+
 	local session_name="testSession"
 	local channel_name="testChannel"
 	local event=("ev1" "ev2" "ev3")
@@ -485,6 +500,7 @@ function test_list_session ()
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
+
 	create_lttng_session_ok $session_name $OUTPUT_DIR
 	enable_ust_lttng_channel_ok $session_name $channel_name
 
@@ -518,6 +534,8 @@ function test_list_session ()
 
 function test_list_ust_event ()
 {
+	diag "Test list ust event"
+
 	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
 	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
@@ -566,7 +584,10 @@ function test_list_ust_event ()
 	rm -f ${file_sync_before_last}
 }
 
-function test_start_stop () {
+function test_start_stop ()
+{
+	diag "Test start-stop"
+
 	local session_name="testStartStopSession"
 	local channel_name="startStopChannel"
 
@@ -574,6 +595,7 @@ function test_start_stop () {
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
+
 	create_lttng_session_ok $session_name $OUTPUT_DIR
 
 	#Test fail command
@@ -648,11 +670,13 @@ function test_start_stop () {
 	destroy_lttng_sessions
 }
 
-function test_snapshot () {
+function test_snapshot ()
+{
+	diag "Test snapshot"
+
 	local session_name="testSnapshotAdd"
 	local snapshot_path="$OUTPUT_DIR/snapshotoutput"
 	OUTPUT_FILE="snapshot.xml"
-
 
 	#Test buid up
 	OUTPUT_DEST=$DEVNULL
@@ -874,6 +898,8 @@ function test_add_context_list()
 
 function test_clear_session ()
 {
+	diag "Test clear session"
+
 	# Since the session are not started there is no real clear done.
 	# We are testing the MI output only here.
 	local session_name=(
