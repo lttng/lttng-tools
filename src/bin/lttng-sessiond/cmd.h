@@ -152,7 +152,7 @@ enum lttng_error_code cmd_unregister_trigger(
 		const struct lttng_trigger *trigger,
 		struct notification_thread_handle *notification_thread_handle);
 
-int cmd_list_triggers(struct command_ctx *cmd_ctx,
+enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread_handle,
 		struct lttng_triggers **return_triggers);
 enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
