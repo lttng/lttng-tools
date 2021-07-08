@@ -4631,11 +4631,10 @@ end:
 	return ret_code;
 }
 
-int cmd_list_triggers(struct command_ctx *cmd_ctx,
+enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread,
 		struct lttng_triggers **return_triggers)
 {
-	int ret = 0;
 	enum lttng_error_code ret_code;
 	struct lttng_triggers *triggers = NULL;
 
@@ -4643,16 +4642,15 @@ int cmd_list_triggers(struct command_ctx *cmd_ctx,
 	ret_code = notification_thread_command_list_triggers(
 			notification_thread, cmd_ctx->creds.uid, &triggers);
 	if (ret_code != LTTNG_OK) {
-		ret = ret_code;
 		goto end;
 	}
 
 	*return_triggers = triggers;
 	triggers = NULL;
-	ret = LTTNG_OK;
+	ret_code = LTTNG_OK;
 end:
 	lttng_triggers_destroy(triggers);
-	return ret;
+	return ret_code;
 }
 
 enum lttng_error_code cmd_execute_error_query(const struct lttng_credentials *cmd_creds,
