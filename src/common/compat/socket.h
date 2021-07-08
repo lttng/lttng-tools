@@ -117,6 +117,7 @@ typedef struct ucred lttng_sock_cred;
 struct lttng_sock_cred {
 	uid_t uid;
 	gid_t gid;
+	pid_t pid;
 };
 
 typedef struct lttng_sock_cred lttng_sock_cred;
@@ -155,7 +156,7 @@ typedef struct lttng_sock_cred lttng_sock_cred;
 #include <ucred.h>
 
 static inline
-int getpeereid(int s, uid_t *euid, gid_t *gid)
+int getpeereid(int s, uid_t *euid, gid_t *gid, pid_t *pid)
 {
 	int ret = 0;
 	ucred_t *ucred = NULL;
@@ -176,6 +177,13 @@ int getpeereid(int s, uid_t *euid, gid_t *gid)
 		goto free;
 	}
 	*gid = ret;
+
+	ret = ucred_getpid(ucred);
+	if (ret == -1) {
+		goto free;
+	}
+	*pid = ret;
+
 	ret = 0;
 free:
 	ucred_free(ucred);

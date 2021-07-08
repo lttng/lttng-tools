@@ -1133,7 +1133,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	{
 		int peer_ret;
 
-		peer_ret = getpeereid(sock, &creds->uid, &creds->gid);
+		peer_ret = getpeereid(sock, &creds->uid, &creds->gid, &creds->pid);
 		if (peer_ret != 0) {
 			return peer_ret;
 		}
