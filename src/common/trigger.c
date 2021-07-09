@@ -370,7 +370,24 @@ bool lttng_trigger_is_equal(
 		return false;
 	}
 
+	if (a->is_hidden != b->is_hidden) {
+		return false;
+	}
+
 	return true;
+}
+
+LTTNG_HIDDEN
+bool lttng_trigger_is_hidden(const struct lttng_trigger *trigger)
+{
+	return trigger->is_hidden;
+}
+
+LTTNG_HIDDEN
+void lttng_trigger_set_hidden(struct lttng_trigger *trigger)
+{
+	assert(!trigger->is_hidden);
+	trigger->is_hidden = true;
 }
 
 LTTNG_HIDDEN
@@ -547,6 +564,40 @@ int lttng_triggers_add(
 		lttng_trigger_put(trigger);
 	}
 
+	return ret;
+}
+
+LTTNG_HIDDEN
+int lttng_triggers_remove_hidden_triggers(struct lttng_triggers *triggers)
+{
+	int ret;
+	unsigned int trigger_count, i = 0;
+	enum lttng_trigger_status trigger_status;
+
+	assert(triggers);
+
+	trigger_status = lttng_triggers_get_count(triggers, &trigger_count);
+	assert(trigger_status == LTTNG_TRIGGER_STATUS_OK);
+
+	while (i < trigger_count) {
+		const struct lttng_trigger *trigger =
+				lttng_triggers_get_at_index(triggers, i);
+
+		if (lttng_trigger_is_hidden(trigger)) {
+			ret = lttng_dynamic_pointer_array_remove_pointer(
+					&triggers->array, i);
+			if (ret) {
+				goto end;
+			}
+
+			trigger_count--;
+		} else {
+			i++;
+		}
+	}
+
+	ret = 0;
+end:
 	return ret;
 }
 
@@ -942,6 +993,7 @@ struct lttng_trigger *lttng_trigger_copy(const struct lttng_trigger *trigger)
 
 	copy->tracer_token = trigger->tracer_token;
 	copy->registered = trigger->registered;
+	copy->is_hidden = trigger->is_hidden;
 	goto end;
 
 error_cleanup_trigger:

@@ -3814,9 +3814,11 @@ int client_handle_message_handshake(struct notification_client *client,
 			&client->communication.inbound.creds);
 	client->gid = LTTNG_SOCK_GET_GID_CRED(
 			&client->communication.inbound.creds);
-	DBG("Received handshake from client (uid = %u, gid = %u) with version %i.%i",
+	client->is_sessiond = LTTNG_SOCK_GET_PID_CRED(&client->communication.inbound.creds) == getpid();
+	DBG("Received handshake from client: uid = %u, gid = %u, protocol version = %i.%i, client is sessiond = %s",
 			client->uid, client->gid, (int) client->major,
-			(int) client->minor);
+			(int) client->minor,
+			client->is_sessiond ? "true" : "false");
 
 	if (handshake_client->major !=
 			LTTNG_NOTIFICATION_CHANNEL_VERSION_MAJOR) {
@@ -4412,6 +4414,14 @@ int notification_client_list_send_evaluation(
 			 */
 			DBG("Skipping client at it is marked as inactive");
 			goto skip_client;
+		}
+
+		if (lttng_trigger_is_hidden(trigger) && !client->is_sessiond) {
+			/*
+			 * Notifications resulting from an hidden trigger are
+			 * only sent to the session daemon.
+			 */
+			continue;
 		}
 
 		if (source_object_creds) {

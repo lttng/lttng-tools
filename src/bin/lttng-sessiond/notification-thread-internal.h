@@ -142,6 +142,7 @@ struct notification_client {
 	uint8_t major, minor;
 	uid_t uid;
 	gid_t gid;
+	bool is_sessiond;
 	/*
 	 * Indicates if the credentials and versions of the client have been
 	 * checked.

@@ -4635,6 +4635,7 @@ enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 		struct notification_thread_handle *notification_thread,
 		struct lttng_triggers **return_triggers)
 {
+	int ret;
 	enum lttng_error_code ret_code;
 	struct lttng_triggers *triggers = NULL;
 
@@ -4642,6 +4643,12 @@ enum lttng_error_code cmd_list_triggers(struct command_ctx *cmd_ctx,
 	ret_code = notification_thread_command_list_triggers(
 			notification_thread, cmd_ctx->creds.uid, &triggers);
 	if (ret_code != LTTNG_OK) {
+		goto end;
+	}
+
+	ret = lttng_triggers_remove_hidden_triggers(triggers);
+	if (ret) {
+		ret_code = LTTNG_ERR_UNK;
 		goto end;
 	}
 
