@@ -1,4 +1,4 @@
-SUBDIRS=utils start-stop rate-policy name
+SUBDIRS=utils start-stop rate-policy name hidden
 
 noinst_SCRIPTS = test_add_trigger_cli \
 	test_list_triggers_cli \
