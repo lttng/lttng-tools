@@ -54,6 +54,23 @@ struct lttng_trigger {
 	bool registered;
 
 	/*
+	 * A "hidden" trigger is a trigger that is not externally listed.
+	 * It is used to hide triggers that are used internally by the session
+	 * daemon so that they can't be listed nor unregistered by external
+	 * clients.
+	 *
+	 * This is a property that can only be set internally by the session
+	 * daemon. As such, it is not serialized nor set by a
+	 * "create_from_buffer" constructor.
+	 *
+	 * The hidden property is preserved by copies.
+	 *
+	 * Note that notifications originating from an "hidden" trigger will not
+	 * be sent to clients that are not within the session daemon's process.
+	 */
+	bool is_hidden;
+
+	/*
 	 * The lock is used to protect against concurrent trigger execution and
 	 * trigger removal.
 	 */
@@ -119,6 +136,12 @@ bool lttng_trigger_is_equal(
 		const struct lttng_trigger *a, const struct lttng_trigger *b);
 
 LTTNG_HIDDEN
+bool lttng_trigger_is_hidden(const struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
+void lttng_trigger_set_hidden(struct lttng_trigger *trigger);
+
+LTTNG_HIDDEN
 void lttng_trigger_get(struct lttng_trigger *trigger);
 
 LTTNG_HIDDEN
@@ -164,6 +187,12 @@ struct lttng_trigger *lttng_triggers_borrow_mutable_at_index(
 LTTNG_HIDDEN
 int lttng_triggers_add(
 		struct lttng_triggers *triggers, struct lttng_trigger *trigger);
+
+/*
+ * Remove all triggers marked as hidden from the provided trigger set.
+ */
+LTTNG_HIDDEN
+int lttng_triggers_remove_hidden_triggers(struct lttng_triggers *triggers);
 
 /*
  * Serialize a trigger set to an lttng_payload object.

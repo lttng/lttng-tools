@@ -92,6 +92,8 @@ int subscribe_session_consumed_size_rotation(struct ltt_session *session, uint64
 		goto end;
 	}
 
+	/* Ensure this trigger is not visible to external users. */
+	lttng_trigger_set_hidden(session->rotate_trigger);
 	lttng_trigger_set_credentials(
 			session->rotate_trigger, &session_creds);
 
