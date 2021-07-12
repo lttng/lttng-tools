@@ -2125,7 +2125,7 @@ find_tracer_event_source_element(struct notification_thread_state *state,
 
 	source_element = NULL;
 end:
-	return NULL;
+	return source_element;
 }
 
 static
