@@ -183,7 +183,7 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 		filter = NULL;
 		exclusion = NULL;
 		if (ret != LTTNG_OK) {
-			goto error;
+			goto end;
 		}
 
 		/* Valid to set it after the goto error since uevent is still NULL */
@@ -218,11 +218,10 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	if (ret < 0) {
 		if (ret == -LTTNG_UST_ERR_EXIST) {
 			ret = LTTNG_ERR_UST_EVENT_EXIST;
-			goto end;
 		} else {
 			ret = LTTNG_ERR_UST_ENABLE_FAIL;
-			goto error;
 		}
+		goto end;
 	}
 
 	DBG("Event UST %s %s in channel %s", uevent->attr.name,
@@ -231,24 +230,6 @@ int event_ust_enable_tracepoint(struct ltt_ust_session *usess,
 	ret = LTTNG_OK;
 
 end:
-	rcu_read_unlock();
-	free(filter_expression);
-	free(filter);
-	free(exclusion);
-	return ret;
-
-error:
-	/*
-	 * Only destroy event on creation time (not enabling time) because if the
-	 * event is found in the channel (to_create == 0), it means that at some
-	 * point the enable_event worked and it's thus valid to keep it alive.
-	 * Destroying it also implies that we also destroy it's shadow copy to sync
-	 * everyone up.
-	 */
-	if (to_create) {
-		/* In this code path, the uevent was not added to the hash table */
-		trace_ust_destroy_event(uevent);
-	}
 	rcu_read_unlock();
 	free(filter_expression);
 	free(filter);
