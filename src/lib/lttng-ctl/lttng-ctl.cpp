@@ -1769,10 +1769,14 @@ int lttng_list_syscalls(struct lttng_event **events)
 
 /*
  * Returns a human readable string describing
- * the error code (a negative value).
+ * the error code (positive or negative value).
  */
 const char *lttng_strerror(int code)
 {
+	if (code > 0) {
+		code = -code;
+	}
+
 	return error_get_str(code);
 }
 
