@@ -992,14 +992,14 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 	struct msghdr msg;
 	struct iovec iov[1];
 	ssize_t ret = -1;
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
 	lttng_sock_cred *creds;
 
 	memset(anc_buf, 0, CMSG_SPACE(sizeof_cred) * sizeof(char));
-#endif /* __linux__ */
+#endif /* __linux__, __CYGWIN__ */
 
 	memset(&msg, 0, sizeof(msg));
 
@@ -1012,7 +1012,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 	msg.msg_control = (caddr_t) anc_buf;
 	msg.msg_controllen = CMSG_LEN(sizeof_cred);
 
@@ -1029,7 +1029,7 @@ ssize_t lttcomm_send_creds_unix_sock(int sock, const void *buf, size_t len)
 	LTTNG_SOCK_SET_UID_CRED(creds, geteuid());
 	LTTNG_SOCK_SET_GID_CRED(creds, getegid());
 	LTTNG_SOCK_SET_PID_CRED(creds, getpid());
-#endif /* __linux__ */
+#endif /* __linux__, __CYGWIN__ */
 
 	do {
 		ret = sendmsg(sock, &msg, 0);
@@ -1059,11 +1059,11 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	struct iovec iov[1];
 	ssize_t ret;
 	size_t len_last;
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 	struct cmsghdr *cmptr;
 	size_t sizeof_cred = sizeof(lttng_sock_cred);
 	char anc_buf[CMSG_SPACE(sizeof_cred)];
-#endif	/* __linux__ */
+#endif	/* __linux__, __CYGWIN__ */
 
 	assert(sock);
 	assert(buf);
@@ -1078,10 +1078,10 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 	msg.msg_control = anc_buf;
 	msg.msg_controllen = sizeof(anc_buf);
-#endif /* __linux__ */
+#endif /* __linux__, __CYGWIN__ */
 
 	do {
 		len_last = iov[0].iov_len;
@@ -1100,7 +1100,7 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 	/* Else ret = 0 meaning an orderly shutdown. */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 	if (msg.msg_flags & MSG_CTRUNC) {
 		fprintf(stderr, "Error: Control message truncated.\n");
 		ret = -1;
@@ -1129,18 +1129,15 @@ ssize_t lttcomm_recv_creds_unix_sock(int sock, void *buf, size_t len,
 	}
 
 	memcpy(creds, CMSG_DATA(cmptr), sizeof_cred);
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
-	{
-		int peer_ret;
-
-		peer_ret = getpeereid(sock, &creds->uid, &creds->gid, &creds->pid);
-		if (peer_ret != 0) {
-			return peer_ret;
-		}
+#elif (defined(__FreeBSD__) || defined(__sun__) || defined(__APPLE__))
+	if (lttng_get_unix_socket_peer_creds(sock, creds)) {
+		fprintf(stderr, "ARG\n");
+		ret = -1;
+		goto end;
 	}
 #else
 #error "Please implement credential support for your OS."
-#endif	/* __linux__ */
+#endif	/* __linux__, __CYGWIN__ */
 
 end:
 	return ret;
@@ -1149,7 +1146,7 @@ end:
 /*
  * Set socket option to use credentials passing.
  */
-#ifdef __linux__
+#if defined(__linux__) || defined(__CYGWIN__)
 LTTNG_HIDDEN
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
@@ -1162,7 +1159,7 @@ int lttcomm_setsockopt_creds_unix_sock(int sock)
 	}
 	return ret;
 }
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
+#elif (defined(__FreeBSD__) || defined(__sun__) || defined(__APPLE__))
 LTTNG_HIDDEN
 int lttcomm_setsockopt_creds_unix_sock(int sock)
 {
