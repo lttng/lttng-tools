@@ -10,6 +10,7 @@
 
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include <common/macros.h>
 
@@ -97,44 +98,6 @@ ssize_t lttng_recvmsg_nosigpipe(int sockfd, struct msghdr *msg)
 }
 #endif
 
-
-#ifdef __linux__
-
-#define LTTNG_SOCK_CREDS SCM_CREDENTIALS
-
-typedef struct ucred lttng_sock_cred;
-
-#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
-#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
-#define LTTNG_SOCK_SET_PID_CRED(c, p) LTTNG_REF(c)->pid = p
-
-#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
-#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
-#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->pid
-
-#elif (defined(__FreeBSD__) || defined(__CYGWIN__) || defined(__sun__) || defined(__APPLE__))
-
-struct lttng_sock_cred {
-	uid_t uid;
-	gid_t gid;
-	pid_t pid;
-};
-
-typedef struct lttng_sock_cred lttng_sock_cred;
-
-#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
-#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
-#define LTTNG_SOCK_SET_PID_CRED(c, p)
-
-#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
-#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
-#define LTTNG_SOCK_GET_PID_CRED(c) -1
-
-#else
-#error "Please add support for your OS."
-#endif /* __linux__ , __FreeBSD__ */
-
-
 #ifdef __sun__
 
 # ifndef CMSG_ALIGN
@@ -152,11 +115,10 @@ typedef struct lttng_sock_cred lttng_sock_cred;
 #  endif
 # endif
 
-
 #include <ucred.h>
 
 static inline
-int getpeereid(int s, uid_t *euid, gid_t *gid, pid_t *pid)
+int getpeereid(int s, uid_t *euid, gid_t *gid)
 {
 	int ret = 0;
 	ucred_t *ucred = NULL;
@@ -178,12 +140,77 @@ int getpeereid(int s, uid_t *euid, gid_t *gid, pid_t *pid)
 	}
 	*gid = ret;
 
+	ret = 0;
+free:
+	ucred_free(ucred);
+end:
+	return ret;
+}
+#endif /* __sun__ */
+
+
+#if defined(__linux__) || defined(__CYGWIN__)
+
+#define LTTNG_SOCK_CREDS SCM_CREDENTIALS
+
+typedef struct ucred lttng_sock_cred;
+
+#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
+#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
+#define LTTNG_SOCK_SET_PID_CRED(c, p) LTTNG_REF(c)->pid = p
+
+#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
+#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
+#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->pid
+
+#elif (defined(__FreeBSD__) || defined(__sun__) || defined(__APPLE__))
+
+struct lttng_sock_cred {
+	uid_t uid;
+	gid_t gid;
+	pid_t pid;
+};
+
+typedef struct lttng_sock_cred lttng_sock_cred;
+
+#define LTTNG_SOCK_SET_UID_CRED(c, u) LTTNG_REF(c)->uid = u
+#define LTTNG_SOCK_SET_GID_CRED(c, g) LTTNG_REF(c)->gid = g
+#define LTTNG_SOCK_SET_PID_CRED(c, p) LTTNG_REF(c)->pid = p
+
+#define LTTNG_SOCK_GET_UID_CRED(c) LTTNG_REF(c)->uid
+#define LTTNG_SOCK_GET_GID_CRED(c) LTTNG_REF(c)->gid
+#define LTTNG_SOCK_GET_PID_CRED(c) LTTNG_REF(c)->pid
+
+#ifdef __APPLE__
+
+static inline
+int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+{
+	/* The getsockopt LOCAL_PEERPID option is available since macOS 10.8. */
+	return getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERPID, pid,
+			&((socklen_t) {sizeof(*pid)}));
+}
+
+#elif defined(__sun__)
+
+/* Use the getpeerucreds interface on Solaris. */
+static inline
+int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+{
+	int ret = 0;
+	ucred_t *ucred = NULL;
+
+	ret = getpeerucred(s, &ucred);
+	if (ret == -1) {
+		goto end;
+	}
+
 	ret = ucred_getpid(ucred);
 	if (ret == -1) {
 		goto free;
 	}
-	*pid = ret;
 
+	*pid = ret;
 	ret = 0;
 free:
 	ucred_free(ucred);
@@ -191,6 +218,53 @@ end:
 	return ret;
 }
 
-#endif /* __sun__ */
+#elif defined(__FreeBSD__)
+
+#include <sys/ucred.h>
+
+static inline
+int lttng_get_unix_socket_peer_pid(int socket_fd, pid_t *pid)
+{
+	int ret;
+	struct xucred sock_creds = {};
+
+	/* Only available in FreeBSD 13.0 and up. */
+	ret = getsockopt(socket_fd, SOL_LOCAL, LOCAL_PEERCRED, &sock_creds,
+			&((socklen_t) {sizeof(sock_creds)}));
+	if (ret) {
+		goto end;
+	}
+
+	*pid = sock_creds.cr_pid;
+end:
+	return ret;
+}
+
+#endif /* __APPLE__ */
+
+
+static inline
+int lttng_get_unix_socket_peer_creds(int socket_fd, struct lttng_sock_cred *creds)
+{
+	int ret;
+
+	/* This is a BSD extension that is supported by Cygwin. */
+	ret = getpeereid(socket_fd, &creds->uid, &creds->gid);
+	if (ret) {
+		goto end;
+	}
+
+	/*
+	 * Getting a peer's PID is a bit more troublesome as it is platform
+	 * specific.
+	 */
+	ret = lttng_get_unix_socket_peer_pid(socket_fd, &creds->pid);
+end:
+	return ret;
+}
+
+#else
+#error "Please add support for your OS."
+#endif /* __linux__ , __FreeBSD__, __APPLE__ */
 
 #endif /* _COMPAT_SOCKET_H */
