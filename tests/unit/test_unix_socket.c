@@ -19,13 +19,15 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 
 #define HIGH_FD_COUNT LTTCOMM_MAX_SEND_FDS
 #define MESSAGE_COUNT 4
 #define LARGE_PAYLOAD_SIZE 4 * 1024
 #define LARGE_PAYLOAD_RECV_SIZE	100
 
-static const int TEST_COUNT = 33;
+static const int TEST_COUNT = 37;
 
 /* For error.h */
 int lttng_opt_quiet;
@@ -499,6 +501,174 @@ error:
 	lttng_payload_reset(&received_payload);
 }
 
+static
+void test_creds_passing(void)
+{
+	pid_t fork_ret = -1;
+	int ret, parent_socket = -1, child_connection_socket = -1;
+	ssize_t sock_ret;
+	char socket_dir_path[] = "/tmp/test.unix.socket.creds.passing.XXXXXX";
+	char socket_path[PATH_MAX] = {};
+	struct expected_creds {
+		uid_t euid;
+		gid_t egid;
+		pid_t pid;
+	} expected_creds;
+
+	diag("Receive peer's effective uid, effective gid, and pid from a unix socket");
+
+	if (!mkdtemp(socket_dir_path)) {
+		PERROR("Failed to generate temporary socket location");
+		goto error;
+	}
+
+	strncat(socket_path, socket_dir_path,
+			sizeof(socket_path) - strlen(socket_path) - 1);
+	strncat(socket_path, "/test_unix_socket",
+			sizeof(socket_path) - strlen(socket_path) - 1);
+
+	parent_socket = lttcomm_create_unix_sock(socket_path);
+	ok(parent_socket >= 0, "Created unix socket at path `%s`", socket_path);
+	if (parent_socket < 0) {
+		PERROR("Failed to create unix socket at path `%s`", socket_path);
+		goto error;
+	}
+
+	ret = lttcomm_listen_unix_sock(parent_socket);
+	if (ret < 0) {
+		PERROR("Failed to mark parent socket as a passive socket");
+		goto error;
+	}
+
+	ret = lttcomm_setsockopt_creds_unix_sock(parent_socket);
+	if (ret) {
+		PERROR("Failed to set SO_PASSCRED on parent socket");
+		goto error;
+	}
+
+	fork_ret = fork();
+	if (fork_ret < 0) {
+		PERROR("Failed to fork");
+		goto error;
+	}
+
+	if (fork_ret == 0) {
+		/* Child. */
+		int child_socket;
+
+		expected_creds = (struct expected_creds){
+			.euid = geteuid(),
+			.egid = getegid(),
+			.pid = getpid(),
+		};
+
+		child_socket = lttcomm_connect_unix_sock(socket_path);
+		if (child_socket < 0) {
+			PERROR("Failed to connect to parent socket");
+			goto error;
+		}
+
+		ret = lttcomm_setsockopt_creds_unix_sock(child_socket);
+		if (ret) {
+			PERROR("Failed to set SO_PASSCRED on child socket");
+		}
+
+		sock_ret = lttcomm_send_creds_unix_sock(child_socket, &expected_creds,
+				sizeof(expected_creds));
+		if (sock_ret < 0) {
+			PERROR("Failed to send expected credentials");
+		}
+
+		ret = close(child_socket);
+		if (ret) {
+			PERROR("Failed to close child socket");
+		}
+	} else {
+		/* Parent. */
+		int child_status;
+		pid_t wait_pid_ret;
+		lttng_sock_cred received_creds = {};
+
+		child_connection_socket =
+				lttcomm_accept_unix_sock(parent_socket);
+		if (child_connection_socket < 0) {
+			PERROR();
+			goto error;
+		}
+
+		ret = lttcomm_setsockopt_creds_unix_sock(
+				child_connection_socket);
+		if (ret) {
+			PERROR("Failed to set SO_PASSCRED on child connection socket");
+			goto error;
+		}
+
+		sock_ret = lttcomm_recv_creds_unix_sock(child_connection_socket,
+				&expected_creds, sizeof(expected_creds),
+				&received_creds);
+		if (sock_ret < 0) {
+			PERROR("Failed to receive credentials");
+			goto error;
+		}
+
+		wait_pid_ret = waitpid(fork_ret, &child_status, 0);
+		if (wait_pid_ret == -1) {
+			PERROR("Failed to wait for termination of child process");
+			goto error;
+		}
+		if (!WIFEXITED(child_status) || WEXITSTATUS(child_status)) {
+			diag("Child process reported an error, test failed");
+			goto error;
+		}
+
+		ok(expected_creds.euid == received_creds.uid,
+				"Received the expected effective uid (%d == %d)",
+				expected_creds.euid, received_creds.uid);
+		ok(expected_creds.egid == received_creds.gid,
+				"Received the expected effective gid (%d == %d)",
+				expected_creds.egid, received_creds.gid);
+		ok(expected_creds.pid == received_creds.pid,
+				"Received the expected pid (%d == %d)",
+				expected_creds.pid, received_creds.pid);
+	}
+
+error:
+	if (parent_socket >= 0) {
+		ret = close(parent_socket);
+		if (ret) {
+			PERROR("Failed to close parent socket");
+		}
+	}
+
+	if (fork_ret == 0) {
+		if (child_connection_socket >= 0) {
+			ret = close(child_connection_socket);
+			if (ret) {
+				PERROR("Failed to close child connection socket");
+			}
+		}
+
+		/* Prevent libtap from printing a result for the child. */
+		fclose(stdout);
+		fclose(stderr);
+
+		/* Child exits at the end of this test. */
+		exit(0);
+	} else if (parent_socket >= 0) {
+		ret = unlink(socket_path);
+		if (ret) {
+			PERROR("Failed to unlink socket at path `%s`",
+					socket_path);
+		}
+
+		ret = rmdir(socket_dir_path);
+		if (ret) {
+			PERROR("Failed to remove test directory at `%s`",
+					socket_dir_path);
+		}
+	}
+}
+
 int main(void)
 {
 	plan_tests(TEST_COUNT);
@@ -506,6 +676,7 @@ int main(void)
 	test_high_fd_count(HIGH_FD_COUNT);
 	test_one_fd_per_message(MESSAGE_COUNT);
 	test_receive_in_chunks(LARGE_PAYLOAD_SIZE, LARGE_PAYLOAD_RECV_SIZE);
+	test_creds_passing();
 
 	return exit_status();
 }
