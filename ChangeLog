@@ -1,3 +1,123 @@
+2021-07-16 lttng-tools 2.13.0-rc3 (World Snake Day)
+	* liblttng-ctl: hide logger_thread_name
+	* liblttng-ctl: hide MI trigger command variables
+	* Cleanup: rename `get_domain_str()` -> `lttng_domain_type_str()`
+	* .gitignore: Add hidden trigger test
+	* Test: unix socket: test credential passing
+	* Build fix: retrieve unix socket peer PID on non-unix platforms
+	* Fix: sessiond: notification: find_tracer_event_source returns NULL
+	* Tests: MI: add `diag` statements to test functions
+	* Cleanup: fix comments in `duplicate_{stream,channel}_object()`
+	* Tests: add hidden trigger visibility test
+	* Fix: sessiond: list-triggers: don't return internal triggers
+	* unix: receive pid on non-linux platforms
+	* Clean-up: sessiond: return an lttng_error_code from list_triggers
+	* notification-thread: remove fd from pollset on LPOLLHUP and friends
+	* Tests: fix: list triggers: bc missing on system
+	* Clean-up: event-expr: remove unreachable code
+	* Fix: lttng: remove-trigger: null dereference on MI initialization error
+	* Fix: lttng: list-trigger: leak of error query in query callbacks
+	* Fix: lttng: add-trigger: null dereference on MI initialization error
+	* lttng: add-trigger: print generated trigger name
+	* sessiond: generate trigger name: name triggers with the 'trigger' prefix
+	* Revert "lttng: add-trigger: print generated trigger name"
+	* lttng: add-trigger: print generated trigger name
+	* MI: xsd: bump to 4.1
+	* Tests: trigger: mi: use utils.sh xsd versions for xml diff
+	* Tests: utils: regroup xml utils to utils.sh
+	* Tests: MI: {add, list, remove}-trigger
+	* MI: xsd: add objects type definition related to trigger
+	* MI: xsd: sort output_type
+	* MI: xsd: sort command_string_type
+	* Add pretty_xml utils
+	* Move xml utils from mi subfolder to xml-utils folder
+	* Fix: lttng_triggers count is not equal to the size of the sorted trigger array
+	* MI: {add, list, remove} trigger
+	* MI: implement all objects related to trigger machine interface
+	* Move event-expr-to-bytecode to event-expr
+	* Move event-expr from liblttng-ctl to libcommon
+	* MI: support double element
+	* Fix: rotation client example: leak of handle on error
+	* Silence warnings on GCC 4.8 with -Wmaybe-uninitialized
+	* doc/man/common-footer.txt: add missing non-breaking space
+	* Rename "tracing session" -> "recording session"
+	* doc/man: use double quotes when referring to internal section
+	* doc/man: update type/domain options for common event rule spec.
+	* .gitreview: Set default branch to 'stable-2.13'
+	* Fix: use of uninitialised bytes valgrind warning
+	* Fix: build: libcommon fd-tracker dependency is not available
+	* Clean-up: mark lttng_error_query communication header as const
+	* Add condition-targeting error query
+	* action list: missing renames from previous name "group"
+	* Cleanup: ust-app: simplify ust_app_synchronize() error paths
+	* Fix: double mutex_unlock() if session is deleted
+	* Fix: out of sync lttng_ust_ctl_sigbug_handle() prototype
+	* Fix: appending unallocated data from beyond exclusion entries
+	* Tests: remove leftover temporary files
+	* lttng-disable-channel(1): fix typo
+	* lttng-concepts(7): remove reference to the section it's in
+	* lttng-concepts(7): fix typo
+	* Build fix: build without lttng-ust
+	* build: Add missing DEFINE_LTTNG_UST_SIGBUS_STATE();
+	* build: Pass --no-as-needed directly to the linker
+	* build: Use liblttng-sessiond-common.la instead of LIVE
+	* build: Use liblttng-sessiond-common.la instead of SESSIOND_OBJS
+	* build: Add the liblttng-sessiond-comm.la convenience library
+	* lttng-concepts(7): add missing "commands" word
+	* Tests: crash: remove redundant directory test
+	* Fix: bump minimal urcu dependency to 0.11
+	* condition: buffer usage: validation does not check for ratio and bytes threshold
+	* Remove LTTNG_EVENT_RULE_TYPE_KERNEL_FUNCTION
+	* Remove lttng_event_rule_tracepoint
+	* Test log level for newly introduced event rule type (*_logging, user_tracepoint)
+	* Introduce lttng_event_rule_python_logging
+	* Introduce lttng_event_rule_log4j_logging
+	* Introduce lttng_event_rule_jul_logging
+	* Introduce lttng_event_rule_user_tracepoint
+	* Introduce lttng_event_rule_kernel_tracepoint
+	* Rename lttng_event_rule_kernel_probe to lttng_event_rule_kernel_kprobe
+	* Rename lttng_event_rule_userspace_probe to lttng_event_rule_kernel_uprobe
+	* Rename lttng_event_rule_syscall to lttng_event_rule_kernel_syscall
+	* Rename *emission_site_type to *emission_site
+	* Rename lttng_event_rule_syscall_(set, get)_pattern to lttng_event_rule_syscall_(set, get)_name_pattern
+	* Rename *exclusion* to *name_pattern_exclusion*
+	* Rename lttng_event_rule_tracepoint_(set,get)_pattern to lttng_event_rule_tracepoint_(set, get)_name_pattern
+	* Build fix: cygwin: unknown type ssize_t
+	* Fix: consumer: unbalanced RCU read-side lock on error
+	* lttng-enable-event(1): add usage examples
+	* lttng-{enable,disable}-event(1): document default channel limitation
+	* doc/man: log level prefixes are not required
+	* Fix: sessiond: use of uninitialized memory in buffer-usage condition
+	* lttng-ctl: use lttng_action_path to specify error query actions
+	* error-query: add lttng_action_path to express the location of an action
+	* tests: Move tap-driver.sh out of the autotools aux directory
+	* lttng-enable-channel(1): add usage examples
+	* lttng-view(1): add usage examples
+	* lttng-untrack(1): add usage examples
+	* lttng-untrack(1): follow the style of lttng-track(1) for the example
+	* lttng-track(1): add usage examples
+	* lttng-stop(1): add usage examples
+	* lttng-start(1): add usage examples
+	* lttng-snapshot(1): add usage examples
+	* lttng-save(1): add usage examples
+	* lttng-rotate(1): add usage examples
+	* lttng-remove-trigger(1): add usage examples
+	* lttng-regenerate(1): add usage examples
+	* lttng-load(1): add usage examples
+	* lttng-list(1): add usage examples
+	* lttng-enable-rotation(1): add usage examples
+	* lttng-disable-rotation(1): add usage examples
+	* lttng-disable-event(1): add usage examples
+	* lttng-disable-channel(1): add usage examples
+	* lttng-destroy(1): add usage examples
+	* lttng-create(1): add usage examples
+	* lttng-clear(1): add usage examples
+	* lttng-add-trigger(1): DESCRIPTION: move up the link to "EXAMPLES"
+	* lttng-add-context(1): EXAMPLES: add internal links to relevant options
+	* lttng-disable-event(1): `--tracepoint` option is not the default
+	* Cleanup: tests: name all temporary files to better identify leakage
+	* Cleanup: tests: use find's `-name` option instead of grep
+
 2021-05-14 lttng-tools 2.13.0-rc2 (National Dance Like a Chicken Day)
 	* Fix: expected procname should not have -ust suffix
 	* Fix: Tests: leftover temporary files after tests
