@@ -44,7 +44,7 @@ struct log_time {
 	char str[19];
 };
 extern DECLARE_URCU_TLS(struct log_time, error_log_time);
-extern DECLARE_URCU_TLS(const char *, logger_thread_name);
+extern LTTNG_HIDDEN DECLARE_URCU_TLS(const char *, logger_thread_name);
 
 extern int lttng_opt_quiet;
 extern int lttng_opt_verbose;
