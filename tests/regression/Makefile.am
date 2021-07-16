@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
-SUBDIRS = tools kernel ust
+SUBDIRS = tools
 
 LOG_DRIVER_FLAGS = --merge --post-script $(top_srcdir)/tests/utils/warn_processes.sh
 LOG_DRIVER = env PGREP='$(PGREP)' AM_TAP_AWK='$(AWK)' $(SHELL) \
@@ -64,6 +64,11 @@ TESTS = tools/base-path/test_ust \
 	tools/trigger/test_remove_trigger_cli \
 	tools/trigger/name/test_trigger_name_backwards_compat \
 	tools/trigger/hidden/test_hidden_trigger
+
+# Only build kernel tests on Linux.
+if IS_LINUX
+SUBDIRS += kernel
+endif # IS_LINUX
 
 if HAVE_LIBLTTNG_UST_CTL
 SUBDIRS += ust
