@@ -25,7 +25,12 @@ int lttng_opt_verbose;
 int lttng_opt_mi;
 int lttng_opt_quiet;
 
-int main(void)
+#ifdef __linux__
+/*
+ * Return the default pipe buffer size or a negative error.
+ */
+static
+int get_pipe_size(void)
 {
 	int ret;
 	/*
@@ -38,20 +43,40 @@ int main(void)
 
 	if (!pipe) {
 		/* lttng_pipe_open already logs on error. */
-		ret = EXIT_FAILURE;
+		ret = -1;
 		goto end;
 	}
 
 	ret = fcntl(lttng_pipe_get_writefd(pipe), F_GETPIPE_SZ);
 	if (ret < 0) {
 		PERROR("Failed to get the size of the pipe");
-		ret = EXIT_FAILURE;
-		goto end;
 	}
 
-	printf("%d\n", ret);
-	ret = EXIT_SUCCESS;
-end:
 	lttng_pipe_destroy(pipe);
+end:
 	return ret;
+}
+#elif defined(__FreeBSD__)
+static
+int get_pipe_size(void)
+{
+	return 65536;
+}
+#else
+#error "Implement get_pipe_size() for your platform."
+#endif
+
+int main(void)
+{
+	int ret;
+
+	ret = get_pipe_size();
+	if (ret < 0) {
+		return EXIT_FAILURE;
+	}
+
+	/* Print the pipe buffer size to stdout */
+	printf("%d\n", ret);
+
+	return  EXIT_SUCCESS;
 }
