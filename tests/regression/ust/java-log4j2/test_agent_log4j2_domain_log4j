@@ -58,8 +58,8 @@ function test_log4j2_before_start ()
 	local file_sync_after_first
 	local file_sync_before_last
 
-	file_sync_after_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	file_sync_before_last=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test LOG4J2 application BEFORE tracing starts"
 	create_lttng_session_ok "log4j2_before_start" "$TRACE_PATH"
@@ -580,7 +580,7 @@ tests=(
 
 for fct_test in "${tests[@]}";
 do
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_java_log4j2_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_java_log4j2_trace_path.XXXXXX)
 
 	${fct_test}
 

@@ -150,7 +150,7 @@ plan_tests $NUM_TESTS
 
 print_test_banner "$TEST_DESC"
 
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_multi_sess_per_uid_5app_streaming.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_multi_sess_per_uid_5app_streaming.XXXXXX)
 
 start_relayd "-o $TRACE_PATH"
 start_sessiond

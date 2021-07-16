@@ -111,7 +111,7 @@ function test_tracefile_count_limit ()
 	local session_name
 	local stream_pattern=".*${channel_name}_${cpuno}_[0-9]*"
 	local stream_size=0
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	session_name=$(randstring 16 0)
 

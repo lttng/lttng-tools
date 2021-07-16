@@ -49,7 +49,7 @@ bail_out_if_no_babeltrace
 
 start_lttng_sessiond
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_event_tracef_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_event_tracef_trace_path.XXXXXX)
 test_event_tracef
 out=$?
 if [ $out -ne 0 ]; then

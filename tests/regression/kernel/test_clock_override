@@ -64,8 +64,8 @@ function extract_clock_metadata_token()
 
 function test_clock_override_metadata()
 {
-	local ctf_metadata_file=$(mktemp --tmpdir -p $TRACE_PATH ctf-metadata.XXXXXX)
-	local clock_metadata_file=$(mktemp --tmpdir -p $TRACE_PATH clock-metadata.XXXXXX)
+	local ctf_metadata_file=$(TMPDIR="$TRACE_PATH" mktemp -t ctf-metadata.XXXXXX)
+	local clock_metadata_file=$(TMPDIR="$TRACE_PATH" mktemp -t clock-metadata.XXXXXX)
 	local result=""
 
 	diag "Clock override plugin metadata test"
@@ -187,7 +187,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	while [ "$i" -lt "$TEST_COUNT" ]; do
 
-		TRACE_PATH=$(mktemp --tmpdir -d tmp.test_clock_override_trace_path.XXXXXX)
+		TRACE_PATH=$(mktemp -d -t tmp.test_clock_override_trace_path.XXXXXX)
 
 		# Execute test
 		${TESTS[$i]}

@@ -20,7 +20,7 @@ source $TESTDIR/utils/utils.sh
 
 function trace_testapp()
 {
-	local start_file_sync=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_start.XXXXXX")
+	local start_file_sync=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_start.XXXXXX")
 
 	# Clear all entries from the resource tracker
 	lttng_untrack_kernel_all_ok
@@ -72,7 +72,7 @@ function test_syscall_event_list()
 
 function test_syscall_simple_list()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_simple_list"
 	local EVENT_NAME="close"
 
@@ -100,7 +100,7 @@ function test_syscall_simple_list()
 
 function test_syscall_simple_list_two()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_simple_list_two"
 	local EVENT_NAME="close"
 	local EVENT_NAME2="read"
@@ -134,7 +134,7 @@ function test_syscall_simple_list_two()
 
 function test_syscall_single()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_single"
 
 	diag "Syscall trace single"
@@ -159,7 +159,7 @@ function test_syscall_single()
 
 function test_syscall_two()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_two"
 
 	diag "Syscall trace two events"
@@ -187,7 +187,7 @@ function test_syscall_two()
 
 function test_syscall_all()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_all"
 
 	diag "Syscall trace all events"
@@ -213,7 +213,7 @@ function test_syscall_all()
 
 function test_syscall_all_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_all_disable_one"
 
 	diag "Syscall trace all events and disable one"
@@ -242,7 +242,7 @@ function test_syscall_all_disable_one()
 
 function test_syscall_all_disable_two()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_all_disable_two"
 
 	diag "Syscall trace all events and disable two"
@@ -276,7 +276,7 @@ function test_syscall_all_disable_two()
 
 function test_syscall_enable_all_disable_all()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_disable_all"
 
 	diag "Syscall trace all events and disable all"
@@ -300,7 +300,7 @@ function test_syscall_enable_all_disable_all()
 
 function test_syscall_enable_all_disable_all_enable_all()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_disable_all_enable_all"
 
 	diag "Syscall trace all events and enable/disable all"
@@ -330,7 +330,7 @@ function test_syscall_enable_all_disable_all_enable_all()
 
 function test_syscall_enable_all_enable_one_disable_all()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_enable_one_disable_all"
 
 	diag "Syscall trace all events, enable one and disable all"
@@ -359,7 +359,7 @@ function test_syscall_enable_all_enable_one_disable_all()
 
 function test_syscall_enable_one_enable_all_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_one_enable_all_disable_one"
 
 	diag "Syscall trace all events and enable/disable one"
@@ -388,7 +388,7 @@ function test_syscall_enable_one_enable_all_disable_one()
 
 function test_syscall_enable_one_enable_all_disable_all_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_one_enable_all_disable_all_disable_one"
 
 	diag "Syscall trace all events and enable/disable one"
@@ -420,7 +420,7 @@ function test_syscall_enable_one_enable_all_disable_all_disable_one()
 
 function test_syscall_enable_all_disable_all_twice()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_disable_all_twice"
 
 	diag "Syscall trace all events and enable/disable all twice"
@@ -448,7 +448,7 @@ function test_syscall_enable_all_disable_all_twice()
 
 function test_syscall_enable_one_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_one_disable_one"
 
 	diag "Syscall trace one event and disable one"
@@ -472,7 +472,7 @@ function test_syscall_enable_one_disable_one()
 
 function test_syscall_enable_two_disable_two()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_two_disable_two"
 
 	diag "Syscall trace two events and disable two"
@@ -498,7 +498,7 @@ function test_syscall_enable_two_disable_two()
 
 function test_syscall_enable_two_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_two_disable_one"
 
 	diag "Syscall trace two events and disable one"
@@ -527,7 +527,7 @@ function test_syscall_enable_two_disable_one()
 
 function test_syscall_disable_twice()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_disable_twice"
 
 	diag "Syscall trace one event and disable twice"
@@ -547,7 +547,7 @@ function test_syscall_disable_twice()
 
 function test_syscall_disable_all_twice()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_disable_all_twice"
 
 	diag "Syscall trace all events and disable all twice"
@@ -568,7 +568,7 @@ function test_syscall_disable_all_twice()
 
 function test_syscall_enable_unknown()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_unknown"
 
 	diag "Syscall enable an unknown event"
@@ -586,7 +586,7 @@ function test_syscall_enable_unknown()
 
 function test_syscall_enable_all_enable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_enable_one"
 
 	diag "Syscall enable all and enable one"
@@ -604,7 +604,7 @@ function test_syscall_enable_all_enable_one()
 
 function test_syscall_disable_all_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_all_enable_one"
 
 	diag "Syscall disable all and disable one"
@@ -623,7 +623,7 @@ function test_syscall_disable_all_disable_one()
 
 function test_syscall_enable_channel_disable_all()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
 	CHANNEL_NAME="channel"
 
@@ -643,7 +643,7 @@ function test_syscall_enable_channel_disable_all()
 
 function test_syscall_enable_channel_disable_one()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_syscall_enable_channel_disable_all"
 	CHANNEL_NAME="channel"
 

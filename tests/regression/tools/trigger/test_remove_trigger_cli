@@ -27,9 +27,9 @@ plan_tests 22
 
 FULL_LTTNG_BIN="${TESTDIR}/../src/bin/lttng/${LTTNG_BIN}"
 
-tmp_stdout=$(mktemp --tmpdir -t test_remove_triggers_cli_stdout.XXXXXX)
-tmp_stderr=$(mktemp --tmpdir -t test_remove_triggers_cli_stderr.XXXXXX)
-tmp_expected_stdout=$(mktemp --tmpdir -t test_remove_triggers_cli_expected_stdout.XXXXXX)
+tmp_stdout=$(mktemp -t test_remove_triggers_cli_stdout.XXXXXX)
+tmp_stderr=$(mktemp -t test_remove_triggers_cli_stderr.XXXXXX)
+tmp_expected_stdout=$(mktemp -t test_remove_triggers_cli_expected_stdout.XXXXXX)
 
 uid=$(id --user)
 gid=$(id --group)
@@ -73,8 +73,8 @@ function test_mi ()
 	# the one used by the list command. Here we simply validate that a
 	# simple trigger is correctly generated on removal for MI.
 
-	tmp_stdout_raw=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
-	tmp_expected_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_expected_stdout.XXXXXX")
+	tmp_stdout_raw=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_expected_stdout=$(mktemp -t "tmp.${FUNCNAME[0]}_expected_stdout.XXXXXX")
 
 	diag "${FULL_LTTNG_BIN} --mi=xml remove-trigger"
 

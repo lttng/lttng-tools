@@ -28,9 +28,9 @@ XPATH_LIST_ROTATE_SIZE="$XPATH_SESSION/lttng:rotation_schedules/lttng:size_thres
 
 function test_save_load_mi ()
 {
-	local tmp_xml_output=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_xml_output.XXXXXX")
-	local tmp_save_output=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_save_output.XXXXXX")
-	local trace_path=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local tmp_xml_output=$(mktemp -u -t "tmp.${FUNCNAME[0]}_xml_output.XXXXXX")
+	local tmp_save_output=$(mktemp -d -t "tmp.${FUNCNAME[0]}_save_output.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	diag "Test save/load/list/MI with rotation"
 	create_lttng_session_ok $SESSION_NAME $trace_path

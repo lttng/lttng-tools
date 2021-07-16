@@ -64,7 +64,7 @@ function test_ust_raw()
 		return
 	fi
 
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -114,7 +114,7 @@ function test_kernel_raw()
 		return
 	fi
 
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

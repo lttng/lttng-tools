@@ -19,7 +19,7 @@ NR_ITER=-1
 NR_USEC_WAIT=100
 APPS_PID=
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_snapshots_ust_streaming_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_snapshots_ust_streaming_trace_path.XXXXXX)
 
 NUM_TESTS=85
 
@@ -47,7 +47,7 @@ function snapshot_add_output ()
 # Start trace application and return once one event has been hit.
 function start_test_app()
 {
-	local tmp_file=$(mktemp --tmpdir -u tmp.test_${FUNCNAME[0]}_tmp_file.XXXXXX)
+	local tmp_file=$(mktemp -u -t tmp.test_${FUNCNAME[0]}_tmp_file.XXXXXX)
 
 	# Start application with a temporary file.
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT --sync-after-first-event $tmp_file &

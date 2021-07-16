@@ -36,7 +36,7 @@ function run_workload()
 	# shift the first argument, passing along the other args if any to the
 	# test app.
 	shift
-	local start_file_sync=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
+	local start_file_sync=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
 
 	lttng_untrack_all
 
@@ -60,7 +60,7 @@ function run_workload()
 
 function test_user_callstack()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	# This is the expected userspace callstack. (see gen-syscall-events-callstack.c)
 	USER_CS_EXPECTED="main fct_a fct_b fct_c my_gettid"
 	EVENT_NAME="gettid"
@@ -84,7 +84,7 @@ function test_user_callstack()
 
 function test_kernel_callstack()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	# Those are symbol expected to be present in the kernel callstack. This
 	# is not an exhaustive list since it's kernel dependent.
 

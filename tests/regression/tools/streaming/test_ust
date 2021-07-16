@@ -16,7 +16,7 @@ TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 SESSION_NAME="stream"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_streaming_ust_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_streaming_ust_trace_path.XXXXXX)
 
 NUM_TESTS=18
 
@@ -30,7 +30,7 @@ fi
 
 function test_ust_before_start ()
 {
-	local file_sync_before_last=$(mktemp --tmpdir -u "tmp.test_${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	local file_sync_before_last=$(mktemp -u -t "tmp.test_${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST streaming BEFORE tracing starts"
 	create_lttng_session_uri $SESSION_NAME net://localhost
@@ -53,7 +53,7 @@ function test_ust_before_start ()
 
 function test_ust_after_start ()
 {
-	local file_sync_after_first=$(mktemp --tmpdir -u "tmp.test_${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	local file_sync_after_first=$(mktemp -u -t "tmp.test_${FUNCNAME[0]}_sync_after_first.XXXXXX")
 
 	diag "Test UST streaming AFTER tracing starts"
 	create_lttng_session_uri $SESSION_NAME net://localhost

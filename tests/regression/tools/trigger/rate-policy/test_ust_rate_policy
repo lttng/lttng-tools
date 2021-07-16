@@ -28,7 +28,7 @@ function test_rate_policy_every_n()
 	local END_TRIGGER_NAME="end-trigger1"
 	local SYNC_AFTER_NOTIF_REGISTER_PATH
 
-	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp --tmpdir -u test-notif-register.XXXXXX)
+	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u -t test-notif-register.XXXXXX)
 
 	diag "Every N rate policy"
 
@@ -114,7 +114,7 @@ function test_rate_policy_once_after_n()
 	local END_TRIGGER_NAME="end-trigger1"
 	local SYNC_AFTER_NOTIF_REGISTER_PATH
 
-	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp --tmpdir -u test-notif-register.XXXXXX)
+	SYNC_AFTER_NOTIF_REGISTER_PATH=$(mktemp -u -t test-notif-register.XXXXXX)
 
 	diag "Once after N rate policy"
 

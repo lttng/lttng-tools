@@ -19,7 +19,7 @@ source $TESTDIR/utils/utils.sh
 
 function test_event_basic()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="ust_event_basic"
 	SESSION_NAME2="ust_event_basic2"
 	CHAN_NAME="mychan"

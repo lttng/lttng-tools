@@ -7,7 +7,7 @@
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../../
 
-TESTAPP_STATE_PATH=$(mktemp --tmpdir -u "tmp.test_notif_kernel_syscall_application_state.XXXXXX")
+TESTAPP_STATE_PATH=$(mktemp -u -t "tmp.test_notif_kernel_syscall_application_state.XXXXXX")
 
 NUM_TESTS=25
 

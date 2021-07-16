@@ -56,7 +56,7 @@ function add_context_ust_skip_ok()
 # Only test parsing of the enabling by raw ID
 function test_parsing_raw()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="ust_event_basic"
 	CHAN_NAME="mychan"
 
@@ -84,7 +84,7 @@ function test_parsing_raw()
 
 function test_event_basic()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="ust_event_basic"
 	CHAN_NAME="mychan"
 

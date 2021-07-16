@@ -148,7 +148,7 @@ i=0
 
 while [ "$i" -lt "$TEST_COUNT" ]; do
 
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_blocking_ust_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_blocking_ust_trace_path.XXXXXX)
 
 	# Execute test
 	${TESTS[$i]}

@@ -133,7 +133,7 @@ skip $isroot "Root access is needed. Skipping all tests." $NUM_TESTS ||
 
 	while [ "$i" -lt "$TEST_COUNT" ]; do
 
-		TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_kernel_rotation_destroy_flush.XXXXXX)
+		TRACE_PATH=$(mktemp -d -t tmp.test_kernel_rotation_destroy_flush.XXXXXX)
 
 		# Execute test
 		${TESTS[$i]}

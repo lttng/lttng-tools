@@ -14,7 +14,7 @@ DELAY_USEC=2000000
 SESSION_NAME="live"
 EVENT_NAME="lttng_test_filter_event"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_lttng_live_kernel_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_lttng_live_kernel_trace_path.XXXXXX)
 
 DIR=$(readlink -f $TESTDIR)
 

@@ -17,7 +17,7 @@ source $TESTDIR/utils/utils.sh
 
 function test_all_event()
 {
-	local TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="kernel_all_events_basic"
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH

@@ -17,7 +17,7 @@ SESSION_NAME="periodical-flush"
 EVENT_NAME="tp:tptest"
 BIN_NAME="gen-nevents"
 NUM_TESTS=38
-APP_TMP_FILE=$(mktemp --tmpdir -u tmp.test_periodical_metadata_flush_ust_app_tmp_file.XXXXXX)
+APP_TMP_FILE=$(mktemp -u -t tmp.test_periodical_metadata_flush_ust_app_tmp_file.XXXXXX)
 APPS_PID=
 
 source $TESTDIR/utils/utils.sh
@@ -313,7 +313,7 @@ i=0
 start_lttng_sessiond
 
 while [ $i -lt $TEST_COUNT ]; do
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_periodical_metadata_flush_ust_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_periodical_metadata_flush_ust_trace_path.XXXXXX)
 	${TESTS[$i]}
 	rm -rf $TRACE_PATH
 	let "i++"

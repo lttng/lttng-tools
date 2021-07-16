@@ -10,7 +10,7 @@ CURDIR=$(dirname $0)/
 TESTDIR=$CURDIR/../../..
 
 SESSION_NAME="my_session"
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.rotation_schedule_api.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.rotation_schedule_api.XXXXXX)
 
 source $TESTDIR/utils/utils.sh
 

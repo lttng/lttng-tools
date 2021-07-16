@@ -65,7 +65,7 @@ print_test_banner "$TEST_DESC"
 
 start_lttng_sessiond
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_multi_session_ust.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_multi_session_ust.XXXXXX)
 
 test_multi_session
 out=$?

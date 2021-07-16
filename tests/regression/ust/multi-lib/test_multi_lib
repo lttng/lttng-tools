@@ -236,7 +236,7 @@ start_lttng_sessiond
 
 while [ "$i" -lt "$TEST_COUNT" ]; do
 
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_multi_lib_ust_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_multi_lib_ust_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

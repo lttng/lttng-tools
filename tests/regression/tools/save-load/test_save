@@ -134,7 +134,7 @@ TESTS=(
 
 for fct_test in ${TESTS[@]};
 do
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_save_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_save_trace_path.XXXXXX)
 
 	${fct_test}
 	if [ $? -ne 0 ]; then

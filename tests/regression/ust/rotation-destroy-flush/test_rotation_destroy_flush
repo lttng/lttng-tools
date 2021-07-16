@@ -130,7 +130,7 @@ while [ "$i" -lt "$TEST_COUNT" ]; do
 
 	trap signal_cleanup SIGTERM SIGINT
 
-	TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_rotation_destroy_flush.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_rotation_destroy_flush.XXXXXX)
 
 	# Execute test
 	${TESTS[$i]}

@@ -20,7 +20,7 @@ SESSIOND_CTRL_PORT=5342
 SESSIOND_DATA_PORT=5343
 DEFAULT_IF="lo"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_streaming_high_throughput_limits_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_streaming_high_throughput_limits_trace_path.XXXXXX)
 
 NUM_TESTS=104
 
@@ -126,8 +126,8 @@ function test_high_throughput
 
 function validate_event_count
 {
-	TEMP_FILE=$(mktemp --tmpdir tmp.streaming_high_throughput_limit_file1.XXXXXX)
-	TEMP_FILE_2=$(mktemp --tmpdir tmp.streaming_high_throughput_limit_file2.XXXXXX)
+	TEMP_FILE=$(mktemp -t tmp.streaming_high_throughput_limit_file1.XXXXXX)
+	TEMP_FILE_2=$(mktemp -t tmp.streaming_high_throughput_limit_file2.XXXXXX)
 
 	traced=$("$BABELTRACE_BIN" $TRACE_PATH 2>/dev/null | wc -l)
 	"$BABELTRACE_BIN" $TRACE_PATH >/dev/null 2>$TEMP_FILE_2

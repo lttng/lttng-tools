@@ -35,7 +35,7 @@ function run_kernel
 
 function test_event_wildcard()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	DOMAIN="$1"
 	FIND="$2"
 	WILDCARD="$3"
@@ -69,7 +69,7 @@ function test_event_wildcard()
 
 function test_event_wildcard_fail()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	DOMAIN="$1"
 	WILDCARD="$2"
 

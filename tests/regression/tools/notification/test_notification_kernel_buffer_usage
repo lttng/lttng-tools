@@ -7,13 +7,16 @@
 CURDIR=$(dirname "$0")/
 TESTDIR=$CURDIR/../../../
 
-TEST_TMPDIR=$(mktemp --tmpdir -d tmp.test_notif_kernel_buffer_usage_dir.XXXXXX)
+TEST_TMPDIR=$(mktemp -d -t tmp.test_notif_kernel_buffer_usage_dir.XXXXXX)
+
+# Set TMPDIR for further call to mktemp
+export TMPDIR="$TEST_TMPDIR"
 
 #This is needed since the testpoint create a pipe with the consumerd type suffixed
 TESTPOINT_BASE_PATH=$(readlink -f "$TEST_TMPDIR/lttng.t_p_n")
-TESTPOINT_PIPE_PATH=$(mktemp -u --tmpdir="$TEST_TMPDIR" "lttng.t_p_n.XXXXXX")
+TESTPOINT_PIPE_PATH=$(mktemp -u -t "lttng.t_p_n.XXXXXX")
 TESTPOINT=$(readlink -f "${CURDIR}/.libs/libpause_consumer.so")
-TESTAPP_STATE_PATH=$(mktemp -u --tmpdir="$TEST_TMPDIR" "application_state.XXXXXXXXXX")
+TESTAPP_STATE_PATH=$(mktemp -u -t "application_state.XXXXXXXXXX")
 
 
 SESSION_NAME="my_session"
@@ -33,7 +36,7 @@ function test_buffer_usage_notification
 	local page_size
 	local consumerd_pipe=()
 
-	trace_path=$(mktemp -d --tmpdir="$TEST_TMPDIR" "tmp.${FUNCNAME[0]}_trace_path.XXXXXXX")
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXXX")
 	page_size=$(getconf PAGE_SIZE)
 
 	create_lttng_session_notap $SESSION_NAME "$trace_path"

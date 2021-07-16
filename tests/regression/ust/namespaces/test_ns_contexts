@@ -44,7 +44,7 @@ function test_ns()
 		return
 	fi
 
-	trace_path=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Get the current ns inode number
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")

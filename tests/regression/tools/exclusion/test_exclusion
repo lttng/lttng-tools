@@ -40,7 +40,7 @@ function run_apps
 # of our test suite to generate events.
 function dry_run
 {
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path
@@ -70,7 +70,7 @@ function test_exclusion
 {
 	local exclusions="$1"
 	local event_name_expected_to_be_missing="$2"
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path
@@ -99,9 +99,9 @@ function test_exclusion_tracing_started
 {
 	local exclusions="$1"
 	local event_name_expected_to_be_missing="$2"
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	local file_wait_before_first=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
-	local file_create_in_main=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_create_in_main.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local file_wait_before_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_first.XXXXXX")
+	local file_create_in_main=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_create_in_main.XXXXXX")
 
 	# Create session
 	create_lttng_session_ok $SESSION_NAME $trace_path

@@ -8,7 +8,7 @@ TEST_DESC="Triggers - Hidden internal triggers"
 
 CURDIR=$(dirname "$0")/
 TESTDIR=${CURDIR}/../../../..
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_trigger_hidden.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_trigger_hidden.XXXXXX)
 
 # shellcheck source=../../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"

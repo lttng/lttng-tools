@@ -19,7 +19,7 @@ if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_low_throughput_ust_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_low_throughput_ust_trace_path.XXXXXX)
 
 # MUST set TESTDIR before calling those functions
 

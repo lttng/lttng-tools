@@ -16,7 +16,7 @@ SESSION_NAME="stream"
 UST_EVENT_NAME="tp:tptest"
 KERNEL_EVENT_NAME="lttng_test_filter_event"
 
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.rotation_ust_kernel_tracing.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.rotation_ust_kernel_tracing.XXXXXX)
 
 NUM_TESTS=64
 

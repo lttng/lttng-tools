@@ -12,7 +12,7 @@ TESTAPP_PATH="$TESTDIR/utils/testapp"
 GEN_UST_NEVENTS_TESTAPP_NAME="gen-ust-nevents"
 GEN_UST_NEVENTS_TESTAPP_BIN="$TESTAPP_PATH/$GEN_UST_NEVENTS_TESTAPP_NAME/$GEN_UST_NEVENTS_TESTAPP_NAME"
 
-TESTAPP_STATE_PATH=$(mktemp --tmpdir -u "tmp.test_notif_event_rule_exclusion_ust_application_state.XXXXXX")
+TESTAPP_STATE_PATH=$(mktemp -u -t "tmp.test_notif_event_rule_exclusion_ust_application_state.XXXXXX")
 
 # shellcheck source=../../../utils/utils.sh
 source "$TESTDIR/utils/utils.sh"

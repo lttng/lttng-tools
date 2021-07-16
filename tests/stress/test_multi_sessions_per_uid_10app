@@ -126,7 +126,7 @@ diag "Starting applications"
 ./$TESTDIR/stress/$LAUNCH_APP $NR_APP &
 APPS_PID="${APPS_PID} ${!}"
 
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.test_multi_sess_per_uid_10app.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_multi_sess_per_uid_10app.XXXXXX)
 
 test_stress
 out=$?

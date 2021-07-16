@@ -58,7 +58,7 @@ function test_complex_load()
 	disable_ust_lttng_channel $sess chan3
 
 	# Confirm that an event stored as disabled is restored in its disabled state
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -127,7 +127,7 @@ function test_trackers()
 	lttng_load_ok "-i $CURDIR/$SESSION_NAME-trackers.lttng"
 
 	diag "Test pid tracker"
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -176,7 +176,7 @@ function test_override_url_normal()
 
 	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
 
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -226,7 +226,7 @@ function test_override_url_snapshot()
 
 	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
 
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -280,7 +280,7 @@ function test_override_url_live()
 
 	start_lttng_relayd "-C tcp://127.0.0.1:8172 -D tcp://127.0.0.1:9817"
 
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -316,7 +316,7 @@ function test_override_session_name()
 	local override_name="PinkyAndTheBrain"
 	local output_path="/tmp/lttng/load-42-1"
 
-	local mi_output_file=$(mktemp --tmpdir "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
+	local mi_output_file=$(mktemp -t "tmp.${FUNCNAME[0]}_output_file.XXXXXX")
 	if [ $? -ne 0 ]; then
 		break;
 	fi
@@ -362,7 +362,7 @@ TESTS=(
 
 for fct_test in ${TESTS[@]};
 do
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_load_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_load_trace_path.XXXXXX)
 
 	${fct_test}
 	if [ $? -ne 0 ]; then

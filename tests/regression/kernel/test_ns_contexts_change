@@ -80,10 +80,10 @@ function test_ns()
 		return
 	fi
 
-	trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
-	file_sync_wait_before_unshare=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_before_unshare.XXXXXX")
-	file_sync_wait_after_unshare=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_after_unshare.XXXXXX")
-	file_sync_signal_after_unshare=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_sync_signal_after_unshare.XXXXXX")
+	trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	file_sync_wait_before_unshare=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_unshare.XXXXXX")
+	file_sync_wait_after_unshare=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_unshare.XXXXXX")
+	file_sync_signal_after_unshare=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_signal_after_unshare.XXXXXX")
 
 	# Get the current ns inode number
 	ns_inode=$(stat -c '%i' -L "/proc/$$/ns/$ns")

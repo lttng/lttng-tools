@@ -40,8 +40,8 @@ source $TESTDIR/utils/utils.sh
 # untracking on an active app.
 function prepare_ust_app
 {
-	TOUCH_BEFORE_LAST_PATH=$(mktemp --tmpdir -u tmp.${FUNCNAME[0]}_touch_before_last.XXXXXX)
-	SYNC_BEFORE_LAST_PATH=$(mktemp --tmpdir -u tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX)
+	TOUCH_BEFORE_LAST_PATH=$(mktemp -u -t tmp.${FUNCNAME[0]}_touch_before_last.XXXXXX)
+	SYNC_BEFORE_LAST_PATH=$(mktemp -u -t tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX)
 
 	$TESTAPP_BIN -i $NR_ITER -w $NR_USEC_WAIT \
 		--sync-before-last-event-touch "$TOUCH_BEFORE_LAST_PATH" \
@@ -69,7 +69,7 @@ function trace_ust_app
 
 function prepare_kernel_app
 {
-	WAIT_PATH=$(mktemp --tmpdir -u "tmp.${FUNCNAME[0]}_wait_path.XXXXXX")
+	WAIT_PATH=$(mktemp -u -t "tmp.${FUNCNAME[0]}_wait_path.XXXXXX")
 
 	"$TESTAPP_KERNEL_BIN" "$WAIT_PATH" $NR_ITER &
 	CHILD_PID=$!
@@ -94,7 +94,7 @@ function test_event_tracker()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -135,7 +135,7 @@ function test_event_vpid_tracker()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -180,7 +180,7 @@ function test_event_pid_tracker()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -225,7 +225,7 @@ function test_event_tracker_fail()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 	enable_"$domain"_lttng_event_ok $SESSION_NAME "$wildcard"
@@ -246,7 +246,7 @@ function test_event_track_untrack()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -288,7 +288,7 @@ function test_event_vpid_track_untrack()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -330,7 +330,7 @@ function test_event_pid_track_untrack()
 
 	diag "${FUNCNAME[0]} $*"
 
-	trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path"
 
@@ -366,7 +366,7 @@ function test_event_ust_vpid_untrack_snapshot()
 {
 	diag "${FUNCNAME[0]} $*"
 
-	local trace_path=$(mktemp --tmpdir -d tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
+	local trace_path=$(mktemp -d -t tmp.${FUNCNAME[0]}_trace_path.XXXXXX)
 
 	create_lttng_session_ok $SESSION_NAME "$trace_path" "--snapshot"
 

@@ -48,8 +48,8 @@ function check_trace_content()
 function test_working_cases()
 {
 	SESSION_NAME="syscall_payload"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	# arm64 does not have epoll_wait
 	uname -m | grep -E "aarch64" >/dev/null 2>&1
@@ -82,8 +82,8 @@ function test_working_cases()
 function test_timeout_cases()
 {
 	SESSION_NAME="syscall_payload"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	# arm64 does not have epoll_wait
 	uname -m | grep -E "aarch64" >/dev/null 2>&1
@@ -117,8 +117,8 @@ function test_pselect_invalid_fd()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="pselect6"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "pselect with invalid FD"
 
@@ -144,8 +144,8 @@ function test_big_ppoll()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "ppoll with 2047 FDs"
 
@@ -171,8 +171,8 @@ function test_ppoll_overflow()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "ppoll buffer overflow, should segfault, waits for input"
 
@@ -200,8 +200,8 @@ function test_pselect_invalid_ptr()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="pselect6"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "pselect with invalid pointer, waits for input"
 
@@ -227,8 +227,8 @@ function test_ppoll_ulong_max()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "ppoll with ulong_max fds, waits for input"
 
@@ -254,8 +254,8 @@ function test_epoll_pwait_invalid_ptr()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_pwait"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "epoll_pwait with invalid pointer, waits for input"
 
@@ -281,8 +281,8 @@ function test_epoll_pwait_int_max()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_pwait"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "epoll_pwait with maxevents set to INT_MAX, waits for input"
 
@@ -308,8 +308,8 @@ function test_ppoll_concurrent()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="ppoll"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "ppoll with concurrent updates of the structure from user-space, stress test (3000 iterations), waits for input + timeout 1ms"
 
@@ -335,8 +335,8 @@ function test_epoll_pwait_concurrent()
 {
 	SESSION_NAME="syscall_payload"
 	SYSCALL_LIST="epoll_ctl,epoll_pwait"
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
-	TEST_VALIDATION_OUTPUT_PATH=$(mktemp --tmpdir -u "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_trace_path.XXXXXX")
+	TEST_VALIDATION_OUTPUT_PATH=$(mktemp -u -t "tmp.test_kernel_select_poll_epoll_${FUNCNAME[0]}_validation.XXXXXX")
 
 	diag "epoll_pwait with concurrent munmap of the buffer from user-space, should randomly segfault, run multiple times, waits for input + timeout 1ms"
 

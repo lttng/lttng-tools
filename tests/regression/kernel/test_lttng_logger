@@ -19,7 +19,7 @@ function test_proc_logger()
 {
 	diag "Test /proc/lttng-logger"
 
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -50,7 +50,7 @@ function test_dev_logger()
 {
 	diag "Test /dev/lttng-logger"
 
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 
@@ -81,7 +81,7 @@ function test_payload_limit()
 {
 	diag "Test lttng-logger payload limit"
 
-	local TRACE_PATH=$(mktemp --tmpdir -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 
 	create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

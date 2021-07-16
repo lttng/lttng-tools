@@ -62,8 +62,8 @@ TESTS=(
 
 for fct_test in ${TESTS[@]};
 do
-	export LTTNG_HOME=$(mktemp --tmpdir -d tmp.test_lttng_home_dir.XXXXXX)
-	export LTTNG_DIR=$(mktemp --tmpdir -d tmp.test_lttng_dir.XXXXXX)
+	export LTTNG_HOME=$(mktemp -d -t tmp.test_lttng_home_dir.XXXXXX)
+	export LTTNG_DIR=$(mktemp -d -t tmp.test_lttng_dir.XXXXXX)
 
 	${fct_test}
 	rm -rf $LTTNG_DIR

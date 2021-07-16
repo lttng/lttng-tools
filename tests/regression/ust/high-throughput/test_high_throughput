@@ -20,7 +20,7 @@ if [ ! -x "$CURDIR/$BIN_NAME" ]; then
 	BAIL_OUT "No UST nevents binary detected."
 fi
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_high_throughput_ust_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_high_throughput_ust_trace_path.XXXXXX)
 
 # MUST set TESTDIR before calling those functions
 
@@ -52,8 +52,8 @@ stop_lttng_sessiond
 
 # Validate test
 
-TEMP_FILE=$(mktemp --tmpdir tmp.test_high_throughput_tmp_file1.XXXXXX)
-TEMP_FILE_2=$(mktemp --tmpdir tmp.test_high_throughput_tmp_file2.XXXXXX)
+TEMP_FILE=$(mktemp -t tmp.test_high_throughput_tmp_file1.XXXXXX)
+TEMP_FILE_2=$(mktemp -t tmp.test_high_throughput_tmp_file2.XXXXXX)
 
 traced=$("$BABELTRACE_BIN" $TRACE_PATH 2>/dev/null | wc -l)
 "$BABELTRACE_BIN" $TRACE_PATH >/dev/null 2>$TEMP_FILE_2

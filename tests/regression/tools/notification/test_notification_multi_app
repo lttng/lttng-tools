@@ -14,7 +14,7 @@ TESTPOINT=$(readlink -f ${CURDIR}/.libs/libpause_consumer.so)
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
-TESTAPP_STATE_FILE="$(mktemp --tmpdir -u tmp.test_notification_multi_app_state_file.XXXXXX)"
+TESTAPP_STATE_FILE="$(mktemp -u -t tmp.test_notification_multi_app_state_file.XXXXXX)"
 
 NR_ITER=1000
 NR_USEC_WAIT=5
@@ -35,7 +35,7 @@ source $TESTDIR/utils/utils.sh
 source $CURDIR/util_event_generator.sh
 
 consumerd_pipe=()
-file_sync_after_first_event=$(mktemp --tmpdir -u tmp.test_notification_multi_app_sync_after_first.XXXXXX)
+file_sync_after_first_event=$(mktemp -u -t tmp.test_notification_multi_app_sync_after_first.XXXXXX)
 
 # MUST set TESTDIR before calling those functions
 plan_tests $NUM_TESTS
@@ -135,10 +135,10 @@ function test_multi_app ()
 	local app_pids=()
 	local low_output_file_pattern="low_app_output_file_"
 	local high_output_file_pattern="high_app_output_file_"
-	local output_dir=$(mktemp --tmpdir -d "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
+	local output_dir=$(mktemp -d -t "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
 
 	local testpoint_base_path=$(readlink -f "$output_dir/lttng.t_p_n_multi_app")
-	local testpoint_pipe_path=$(mktemp --tmpdir="$output_dir" -u "lttng.t_p_n_multi_app.XXXXXX")
+	local testpoint_pipe_path=$(TMPDIR="$output_dir" mktemp -u -t "lttng.t_p_n_multi_app.XXXXXX")
 
 	local nr_notification_expected=5
 	local nr_client_app=50
@@ -325,9 +325,9 @@ function test_on_register_evaluation ()
 	local app_pids=()
 	local high_output_file_pattern="high_app_output_file_on_register_evaluation"
 
-	local output_dir=$(mktemp --tmpdir -d "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
+	local output_dir=$(mktemp -d -t "tmp.test_${FUNCNAME[0]}_output_dir.XXXXXX")
 	local testpoint_base_path=$(readlink -f "$output_dir/lttng.t_p_n_register_evaluation")
-	local testpoint_pipe_path=$(mktemp --tmpdir="$output_dir" -u "lttng.t_p_n_register_evaluation.XXXXXX")
+	local testpoint_pipe_path=$(TMPDIR="$output_dir" mktemp -u -t "lttng.t_p_n_register_evaluation.XXXXXX")
 	local domain_string=""
 	local event_name=""
 
@@ -430,7 +430,7 @@ fi
 
 for fct_test in ${TESTS[@]};
 do
-	TRACE_PATH=$(mktemp --tmpdir -d tmp.test_notification_multi_app_trace_path.XXXXXX)
+	TRACE_PATH=$(mktemp -d -t tmp.test_notification_multi_app_trace_path.XXXXXX)
 
 	${fct_test}
 	if [ $? -ne 0 ]; then

@@ -12,7 +12,7 @@ EVENT_NAME="lttng_test_filter_event"
 SESSION_NAME=""
 EVENT_NAME="lttng_statedump_start,lttng_statedump_end"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_regenerate_statedump_kernel_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_regenerate_statedump_kernel_trace_path.XXXXXX)
 
 NUM_TESTS=11
 

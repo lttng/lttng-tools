@@ -13,7 +13,7 @@ TESTAPP_NAME="gen-ust-events"
 TESTAPP_BIN="$TESTAPP_PATH/$TESTAPP_NAME/$TESTAPP_NAME"
 EVENT_NAME="tp:tptest"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_base_path_ust_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_base_path_ust_trace_path.XXXXXX)
 
 NUM_TESTS=42
 

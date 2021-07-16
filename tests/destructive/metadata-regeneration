@@ -18,7 +18,7 @@ TESTDIR=$CURDIR/..
 NUM_TESTS=44
 SESSION_NAME="regen"
 KERNEL_EVENT_NAME="lttng_test_filter_event"
-TRACE_PATH=$(mktemp --tmpdir -d -t tmp.metadata_regen_after_data_change.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.metadata_regen_after_data_change.XXXXXX)
 
 TESTAPP_PATH="$TESTDIR/utils/testapp"
 TESTAPP_NAME="gen-ust-events"
@@ -110,8 +110,8 @@ function test_ust_local ()
 	local file_sync_after_first
 	local file_sync_before_last
 
-	file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST local with metadata regeneration"
 	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null
@@ -151,8 +151,8 @@ function test_ust_streaming ()
 	local file_sync_after_first
 	local file_sync_before_last
 
-	file_sync_after_first=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
-	file_sync_before_last=$(mktemp --tmpdir -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
+	file_sync_after_first=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_after_first.XXXXXX")
+	file_sync_before_last=$(mktemp -u -t "tmp.${FUNCNAME[0]}_sync_before_last.XXXXXX")
 
 	diag "Test UST streaming with metadata regeneration"
 	date "+%Y-%m-%d %H:%M" -s "$DATE1 $HOUR" >/dev/null

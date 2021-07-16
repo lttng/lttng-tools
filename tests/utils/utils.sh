@@ -2376,8 +2376,8 @@ function lttng_remove_trigger_ok()
 
 function list_triggers_matches_ok ()
 {
-	local tmp_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
-	local tmp_stderr=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
+	local tmp_stdout=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	local tmp_stderr=$(mktemp -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
 
 	local test_name="$1"
 	local expected_stdout_file="$2"
@@ -2406,9 +2406,9 @@ function list_triggers_matches_mi_ok ()
 	local test_name="$1"
 	local expected_stdout_file="$2"
 
-	tmp_stdout_raw=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
-	tmp_stdout=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
-	tmp_stderr=$(mktemp --tmpdir -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
+	tmp_stdout_raw=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_stdout=$(mktemp -t "tmp.${FUNCNAME[0]}_stdout.XXXXXX")
+	tmp_stderr=$(mktemp -t "tmp.${FUNCNAME[0]}_stderr.XXXXXX")
 
 	diag "$TESTDIR/../src/bin/lttng/$LTTNG_BIN --mi xml list-triggers"
 

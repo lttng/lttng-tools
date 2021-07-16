@@ -15,7 +15,7 @@ source $TESTDIR/utils/utils.sh
 
 function test_channel_buffer()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_session_name"
 	CHANNEL_NAME="test_channel_name"
 	create_lttng_session_ok "$SESSION_NAME" "$TRACE_PATH"
@@ -30,7 +30,7 @@ function test_channel_buffer()
 
 function test_channel_buffer_too_large()
 {
-	TRACE_PATH=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	TRACE_PATH=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	SESSION_NAME="test_session_name"
 	CHANNEL_NAME="test_channel_name"
 	create_lttng_session_ok "$SESSION_NAME" "$TRACE_PATH"

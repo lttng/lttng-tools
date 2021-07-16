@@ -36,8 +36,8 @@ start_lttng_sessiond
 
 # Start tests. Each is an infinite tracing loop.
 
-file_sync_after_first=$(mktemp --tmpdir -u tmp.test_nprocesses_sync_after_first.XXXXXX)
-file_sync_before_last=$(mktemp --tmpdir -u tmp.test_nprocesses_sync_before_last.XXXXXX)
+file_sync_after_first=$(mktemp -u -t tmp.test_nprocesses_sync_after_first.XXXXXX)
+file_sync_before_last=$(mktemp -u -t tmp.test_nprocesses_sync_before_last.XXXXXX)
 
 diag "Starting $NUM_PROCESS test applications"
 for i in `seq 1 $NUM_PROCESS`
@@ -58,7 +58,7 @@ done
 
 pass "All applications are registered to sessiond"
 
-TRACE_PATH=$(mktemp --tmpdir -d tmp.test_nprocesses_trace_path.XXXXXX)
+TRACE_PATH=$(mktemp -d -t tmp.test_nprocesses_trace_path.XXXXXX)
 
 create_lttng_session_ok $SESSION_NAME $TRACE_PATH
 

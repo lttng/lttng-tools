@@ -85,7 +85,7 @@ function check_file_size ()
 function test_tracefile_size_limit ()
 {
 	local size_limit="$1"
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	local session_name=$(randstring 16 0)
 	local channel_name="channel"
 	local event_name="tp:tptest"
@@ -125,7 +125,7 @@ function test_tracefile_size_limit_pagesize ()
 {
 	# Set a size limit lower than the page_size
 	local size_limit="$(($PAGE_SIZE-2))"
-	local trace_path=$(mktemp --tmpdir -d "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
+	local trace_path=$(mktemp -d -t "tmp.${FUNCNAME[0]}_trace_path.XXXXXX")
 	local session_name=$(randstring 16 0)
 	local channel_name="channel"
 	local event_name="tp:tptest"
