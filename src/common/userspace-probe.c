@@ -7,6 +7,7 @@
 
 #include "lttng/lttng-error.h"
 #include <common/compat/string.h>
+#include <common/align.h>
 #include <common/error.h>
 #include <common/hashtable/hashtable.h>
 #include <common/hashtable/utils.h>
@@ -1634,7 +1635,7 @@ int lttng_userspace_probe_location_function_flatten(
 	 * the next structure in the buffer probably needs to be
 	 * aligned too (depending on the arch).
 	 */
-	padding_needed = ALIGN_TO(storage_needed, sizeof(uint64_t)) - storage_needed;
+	padding_needed = lttng_align_ceil(storage_needed, sizeof(uint64_t)) - storage_needed;
 	storage_needed += padding_needed;
 
 	if (location->lookup_method) {
@@ -1762,7 +1763,7 @@ int lttng_userspace_probe_location_tracepoint_flatten(
 	 * the next structure in the buffer probably needs to be
 	 * aligned too (depending on the arch).
 	 */
-	padding_needed = ALIGN_TO(storage_needed, sizeof(uint64_t)) - storage_needed;
+	padding_needed = lttng_align_ceil(storage_needed, sizeof(uint64_t)) - storage_needed;
 	storage_needed += padding_needed;
 
 	if (location->lookup_method) {

@@ -179,7 +179,7 @@ int kernctl_syscall_mask(int fd, char **syscall_mask, uint32_t *nr_bits)
 		goto end;
 	}
 
-	array_alloc_len = ALIGN(kmask_len.len, 8) >> 3;
+	array_alloc_len = lttng_align_ceil(kmask_len.len, 8) >> 3;
 
 	kmask = zmalloc(sizeof(*kmask) + array_alloc_len);
 	if (!kmask) {

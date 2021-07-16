@@ -97,12 +97,6 @@ void *zmalloc(size_t len)
 
 #define is_signed(type) (((type) -1) < (type) 1)
 
-/*
- * Align value to the next multiple of align. Returns val if it already is a
- * multiple of align. Align must be a power of two.
- */
-#define ALIGN_TO(value, align) ((value + (align - 1)) & ~(align - 1))
-
 #define member_sizeof(type, field)	sizeof(((type *) 0)->field)
 
 #define ASSERT_LOCKED(lock) LTTNG_ASSERT(pthread_mutex_trylock(&lock))

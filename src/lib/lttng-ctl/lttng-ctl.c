@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <common/bytecode/bytecode.h>
+#include <common/align.h>
 #include <common/common.h>
 #include <common/compat/errno.h>
 #include <common/compat/string.h>
@@ -2456,7 +2457,7 @@ int lttng_list_events(struct lttng_handle *handle,
 			storage_req += ext_comm->nb_exclusions *
 					LTTNG_SYMBOL_NAME_LEN;
 			/* Padding to ensure the flat probe is aligned. */
-			storage_req = ALIGN_TO(storage_req, sizeof(uint64_t));
+			storage_req = lttng_align_ceil(storage_req, sizeof(uint64_t));
 			storage_req += probe_storage_req;
 		}
 	}
@@ -2547,7 +2548,7 @@ int lttng_list_events(struct lttng_handle *handle,
 
 			/* Insert padding to align to 64-bits. */
 			ret = lttng_dynamic_buffer_set_size(&listing,
-					ALIGN_TO(listing.size,
+					lttng_align_ceil(listing.size,
 							sizeof(uint64_t)));
 			if (ret) {
 				ret = -LTTNG_ERR_NOMEM;

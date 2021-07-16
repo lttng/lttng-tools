@@ -3950,7 +3950,7 @@ unsigned long consumer_get_consume_start_pos(unsigned long consumed_pos,
 	if (!nb_packets_per_stream) {
 		return consumed_pos;	/* Grab everything */
 	}
-	start_pos = produced_pos - offset_align_floor(produced_pos, max_sb_size);
+	start_pos = produced_pos - lttng_offset_align_floor(produced_pos, max_sb_size);
 	start_pos -= max_sb_size * nb_packets_per_stream;
 	if ((long) (start_pos - consumed_pos) < 0) {
 		return consumed_pos;	/* Grab everything */
@@ -4171,7 +4171,7 @@ int lttng_consumer_rotate_channel(struct lttng_consumer_channel *channel,
 		 * Align produced position on the start-of-packet boundary of the first
 		 * packet going into the next trace chunk.
 		 */
-		produced_pos = ALIGN_FLOOR(produced_pos, stream->max_sb_size);
+		produced_pos = lttng_align_floor(produced_pos, stream->max_sb_size);
 		if (consumed_pos == produced_pos) {
 			DBG("Set rotate ready for stream %" PRIu64 " produced = %lu consumed = %lu",
 					stream->key, produced_pos, consumed_pos);

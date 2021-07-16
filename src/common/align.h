@@ -16,26 +16,27 @@
 #define PAGE_SIZE		sysconf(_SC_PAGE_SIZE)
 #endif
 
-#ifndef PAGE_MASK	/* macOS defines its own PAGE_MASK. */
-#define PAGE_MASK		(~(PAGE_SIZE - 1))
-#endif
 
-#define __ALIGN_MASK(v, mask)	(((v) + (mask)) & ~(mask))
+/*
+ * Align value to the next multiple of align. Returns val if it already is a
+ * multiple of align. Align must be a power of two.
+ */
+#define __lttng_align_ceil_mask(v, mask)	(((v) + (mask)) & ~(mask))
 
-#ifndef ALIGN		/* macOS defines its own ALIGN. */
-#define ALIGN(v, align)		__ALIGN_MASK(v, (__typeof__(v)) (align) - 1)
-#endif
+#define lttng_align_ceil(v, align) \
+	__lttng_align_ceil_mask(v, (__typeof__(v)) (align) - 1)
 
-#define __ALIGN_FLOOR_MASK(v, mask)	((v) & ~(mask))
+/*
+ * Align value to the previous multiple of align. Returns val if it already is a
+ * multiple of align. Align must be a power of two.
+ */
+#define __lttng_align_floor_mask(v, mask)	((v) & ~(mask))
 
-#ifndef ALIGN_FLOOR
-#define ALIGN_FLOOR(v, align)	__ALIGN_FLOOR_MASK(v, (__typeof__(v)) (align) - 1)
-#endif
-
-#define PAGE_ALIGN(addr)	ALIGN(addr, PAGE_SIZE)
+#define lttng_align_floor(v, align) \
+	__lttng_align_floor_mask(v, (__typeof__(v)) (align) - 1)
 
 /**
- * offset_align - Calculate the offset needed to align an object on its natural
+ * lttng_offset_align - Calculate the offset needed to align an object on its natural
  *                alignment towards higher addresses.
  * @align_drift:  object offset from an "alignment"-aligned address.
  * @alignment:    natural object alignment. Must be non-zero, power of 2.
@@ -43,7 +44,7 @@
  * Returns the offset that must be added to align towards higher
  * addresses.
  */
-#define offset_align(align_drift, alignment)				       \
+#define lttng_offset_align(align_drift, alignment)				       \
 	({								       \
 		LTTNG_BUILD_RUNTIME_BUG_ON((alignment) == 0		       \
 				   || ((alignment) & ((alignment) - 1)));      \
@@ -51,14 +52,14 @@
 	})
 
 /**
- * offset_align_floor - Calculate the offset needed to align an object
+ * lttng_offset_align_floor - Calculate the offset needed to align an object
  *                      on its natural alignment towards lower addresses.
  * @align_drift:  object offset from an "alignment"-aligned address.
  * @alignment:    natural object alignment. Must be non-zero, power of 2.
  *
  * Returns the offset that must be substracted to align towards lower addresses.
  */
-#define offset_align_floor(align_drift, alignment)			       \
+#define lttng_offset_align_floor(align_drift, alignment)			       \
 	({								       \
 		LTTNG_BUILD_RUNTIME_BUG_ON((alignment) == 0		       \
 				   || ((alignment) & ((alignment) - 1)));      \
