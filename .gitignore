@@ -110,6 +110,7 @@ compile_commands.json
 /tests/regression/tools/trigger/utils/notification-client
 /tests/regression/tools/trigger/name/trigger_name
 /tests/regression/tools/trigger/utils/register-some-triggers
+/tests/regression/tools/trigger/hidden/hidden_trigger
 /tests/regression/ust/overlap/demo/demo
 /tests/regression/ust/linking/demo_builtin
 /tests/regression/ust/linking/demo_static
