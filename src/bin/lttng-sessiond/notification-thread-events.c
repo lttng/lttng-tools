@@ -4421,7 +4421,8 @@ int notification_client_list_send_evaluation(
 			 * Notifications resulting from an hidden trigger are
 			 * only sent to the session daemon.
 			 */
-			continue;
+			DBG("Skipping client as the trigger is hidden and the client is not the session daemon");
+			goto skip_client;
 		}
 
 		if (source_object_creds) {
