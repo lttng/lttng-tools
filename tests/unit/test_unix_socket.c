@@ -641,13 +641,6 @@ error:
 	}
 
 	if (fork_ret == 0) {
-		if (child_connection_socket >= 0) {
-			ret = close(child_connection_socket);
-			if (ret) {
-				PERROR("Failed to close child connection socket");
-			}
-		}
-
 		/* Prevent libtap from printing a result for the child. */
 		fclose(stdout);
 		fclose(stderr);
@@ -655,6 +648,13 @@ error:
 		/* Child exits at the end of this test. */
 		exit(0);
 	} else if (parent_socket >= 0) {
+		if (child_connection_socket >= 0) {
+			ret = close(child_connection_socket);
+			if (ret) {
+				PERROR("Failed to close child connection socket");
+			}
+		}
+
 		ret = unlink(socket_path);
 		if (ret) {
 			PERROR("Failed to unlink socket at path `%s`",
