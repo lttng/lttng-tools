@@ -114,7 +114,7 @@ static int create_lttng_rundir_with_perm(const char *rundir)
 			ret = chmod(rundir,
 					S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 			if (ret < 0) {
-				ERR("Unable to set permissions on %s", health_unix_sock_path);
+				ERR("Unable to set permissions on %s", rundir);
 				PERROR("chmod");
 				ret = -1;
 				goto error;
