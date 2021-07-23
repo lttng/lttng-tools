@@ -8,19 +8,20 @@
  */
 
 #define _LGPL_SOURCE
+#include <assert.h>
+#include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
+#include <pwd.h>
+#include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sched.h>
-#include <signal.h>
-#include <assert.h>
-#include <signal.h>
 
 #include <common/bytecode/bytecode.h>
 #include <common/lttng-kernel.h>
@@ -40,6 +41,8 @@
 #include <common/filter/filter-ast.h>
 
 #include "runas.h"
+
+#define GETPW_BUFFER_FALLBACK_SIZE 4096
 
 struct run_as_data;
 struct run_as_ret;
@@ -899,18 +902,207 @@ end:
 	return ret;
 }
 
+static int get_user_infos_from_uid(
+		uid_t uid, char **username, gid_t *primary_gid)
+{
+	int ret;
+	char *buf = NULL;
+	size_t buf_size;
+	struct passwd pwd;
+	struct passwd *result = NULL;
+
+	/* Fetch the max size for the temporary buffer. */
+	errno = 0;
+	buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (buf_size < 0) {
+		if (errno != 0) {
+			PERROR("Failed to query _SC_GETPW_R_SIZE_MAX");
+			goto error;
+		}
+
+		/* Limit is indeterminate. */
+		WARN("Failed to query _SC_GETPW_R_SIZE_MAX as it is "
+			"indeterminate; falling back to default buffer size");
+		buf_size = GETPW_BUFFER_FALLBACK_SIZE;
+	}
+
+	buf = zmalloc(buf_size);
+	if (buf == NULL) {
+		PERROR("Failed to allocate buffer to get password file entries");
+		goto error;
+	}
+
+	ret = getpwuid_r(uid, &pwd, buf, buf_size, &result);
+	if (ret < 0) {
+		PERROR("Failed to get user information for user:  uid = %d",
+				(int) uid);
+		goto error;
+	}
+
+	if (result == NULL) {
+		ERR("Failed to find user information in password entries: uid = %d",
+				(int) uid);
+		ret = -1;
+		goto error;
+	}
+
+	*username = strdup(result->pw_name);
+	if (*username == NULL) {
+		PERROR("Failed to copy user name");
+		goto error;
+	}
+
+	*primary_gid = result->pw_gid;
+
+end:
+	free(buf);
+	return ret;
+error:
+	*username = NULL;
+	*primary_gid = -1;
+	ret = -1;
+	goto end;
+}
+
+static int demote_creds(
+		uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+{
+	int ret = 0;
+	gid_t primary_gid;
+	char *username = NULL;
+
+	/* Change the group id. */
+	if (prev_gid != new_gid) {
+		ret = setegid(new_gid);
+		if (ret < 0) {
+			PERROR("Failed to set effective group id: new_gid = %d",
+					(int) new_gid);
+			goto end;
+		}
+	}
+
+	/* Change the user id. */
+	if (prev_uid != new_uid) {
+		ret = get_user_infos_from_uid(new_uid, &username, &primary_gid);
+		if (ret < 0) {
+			goto end;
+		}
+
+		/*
+		 * Initialize the supplementary group access list.
+		 *
+		 * This is needed to handle cases where the supplementary groups
+		 * of the user the process is demoting-to would give it access
+		 * to a given file/folder, but not it's primary group.
+		 *
+		 * e.g
+		 *   username: User1
+		 *   Primary Group: User1
+		 *   Secondary group: Disk, Network
+		 *
+		 *   mkdir inside the following directory must work since User1
+		 *   is part of the Network group.
+		 *
+		 *   drwxrwx--- 2 root Network 4096 Jul 23 17:17 /tmp/my_folder/
+		 *
+		 *
+		 * The order of the following initgroups and seteuid calls is
+		 * important here;
+		 * Only a root process or one with CAP_SETGID capability can
+		 * call the the initgroups() function. We must initialize the
+		 * supplementary groups before we change the effective
+		 * UID to a less-privileged user.
+		 */
+		ret = initgroups(username, primary_gid);
+		if (ret < 0) {
+			PERROR("Failed to init the supplementary group access list: "
+					"username = `%s`, primary gid = %d", username,
+					(int) primary_gid);
+			goto end;
+		}
+
+		ret = seteuid(new_uid);
+		if (ret < 0) {
+			PERROR("Failed to set effective user id: new_uid = %d",
+					(int) new_uid);
+			goto end;
+		}
+	}
+end:
+	free(username);
+	return ret;
+}
+
+static int promote_creds(
+		uid_t prev_uid, gid_t prev_gid, uid_t new_uid, gid_t new_gid)
+{
+	int ret = 0;
+	gid_t primary_gid;
+	char *username = NULL;
+
+	/* Change the group id. */
+	if (prev_gid != new_gid) {
+		ret = setegid(new_gid);
+		if (ret < 0) {
+			PERROR("Failed to set effective group id: new_gid = %d",
+					(int) new_gid);
+			goto end;
+		}
+	}
+
+	/* Change the user id. */
+	if (prev_uid != new_uid) {
+		ret = get_user_infos_from_uid(new_uid, &username, &primary_gid);
+		if (ret < 0) {
+			goto end;
+		}
+
+		/*
+		 * seteuid call must be done before the initgroups call because
+		 * we need to be privileged (CAP_SETGID) to call initgroups().
+		 */
+		ret = seteuid(new_uid);
+		if (ret < 0) {
+			PERROR("Failed to set effective user id: new_uid = %d",
+					(int) new_uid);
+			goto end;
+		}
+
+		/*
+		 * Initialize the supplementary group access list.
+		 *
+		 * There is a possibility the groups we set in the following
+		 * initgroups() call are not exactly the same as the ones we
+		 * had when we originally demoted. This can happen if the
+		 * /etc/group file is modified after the runas process is
+		 * forked. This is very unlikely.
+		 */
+		ret = initgroups(username, primary_gid);
+		if (ret < 0) {
+			PERROR("Failed to init the supplementary group access "
+					"list: username = `%s`, primary gid = %d",
+					username, (int) primary_gid)
+			goto end;
+		}
+	}
+end:
+	free(username);
+	return ret;
+}
+
 /*
  * Return < 0 on error, 0 if OK, 1 on hangup.
  */
 static
 int handle_one_cmd(struct run_as_worker *worker)
 {
-	int ret = 0;
+	int ret = 0, promote_ret;
 	struct run_as_data data = {};
 	ssize_t readlen, writelen;
 	struct run_as_ret sendret = {};
 	run_as_fct cmd;
-	uid_t prev_euid;
+	uid_t prev_ruid;
+	gid_t prev_rgid;
 
 	/*
 	 * Stage 1: Receive run_as_data struct from the master.
@@ -948,24 +1140,12 @@ int handle_one_cmd(struct run_as_worker *worker)
 		goto end;
 	}
 
-	prev_euid = getuid();
-	if (data.gid != getegid()) {
-		ret = setegid(data.gid);
-		if (ret < 0) {
-			sendret._error = true;
-			sendret._errno = errno;
-			PERROR("setegid");
-			goto write_return;
-		}
-	}
-	if (data.uid != prev_euid) {
-		ret = seteuid(data.uid);
-		if (ret < 0) {
-			sendret._error = true;
-			sendret._errno = errno;
-			PERROR("seteuid");
-			goto write_return;
-		}
+	prev_ruid = getuid();
+	prev_rgid = getgid();
+
+	ret = demote_creds(prev_ruid, prev_rgid, data.uid, data.gid);
+	if (ret < 0) {
+		goto write_return;
 	}
 
 	/*
@@ -985,7 +1165,7 @@ write_return:
 	ret = cleanup_received_fds(&data);
 	if (ret < 0) {
 		ERR("Error cleaning up FD");
-		goto end;
+		goto promote_back;
 	}
 
 	/*
@@ -997,7 +1177,7 @@ write_return:
 	if (writelen < sizeof(sendret)) {
 		PERROR("lttcomm_send_unix_sock error");
 		ret = -1;
-		goto end;
+		goto promote_back;
 	}
 
 	/*
@@ -1006,15 +1186,17 @@ write_return:
 	ret = send_fds_to_master(worker, data.cmd, &sendret);
 	if (ret < 0) {
 		DBG("Sending FD to master returned an error");
-		goto end;
 	}
 
-	if (seteuid(prev_euid) < 0) {
-		PERROR("seteuid");
-		ret = -1;
-		goto end;
-	}
 	ret = 0;
+
+promote_back:
+	/* Return to previous uid/gid. */
+	promote_ret = promote_creds(data.uid, data.gid, prev_ruid, prev_rgid);
+	if (promote_ret < 0) {
+		ERR("Failed to promote back to the initial credentials");
+	}
+
 end:
 	return ret;
 }
