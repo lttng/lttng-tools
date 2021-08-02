@@ -272,7 +272,7 @@ int cmd_destroy(int argc, const char **argv)
 	char *session_name = NULL;
 	const char *leftover = NULL;
 
-	struct lttng_session *sessions;
+	struct lttng_session *sessions = NULL;
 	int count;
 	int found;
 
@@ -422,6 +422,8 @@ end:
 	if (opt_session_name == NULL) {
 		free(session_name);
 	}
+
+	free(sessions);
 
 	/* Overwrite ret if an error occurred during destroy_session/all */
 	ret = command_ret ? command_ret : ret;
