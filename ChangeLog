@@ -1,3 +1,7 @@
+2021-08-02 lttng-tools 2.13.0 (Ice Cream Sandwich Day)
+	* Tests fix: unix socket: leaked socket of connection to child
+	* Fix: sessiond: notification: missing unlock on client skip
+
 2021-07-16 lttng-tools 2.13.0-rc3 (World Snake Day)
 	* liblttng-ctl: hide logger_thread_name
 	* liblttng-ctl: hide MI trigger command variables
