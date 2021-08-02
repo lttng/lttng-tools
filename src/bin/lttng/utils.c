@@ -453,8 +453,8 @@ void print_session_stats(const char *session_name)
 int get_session_stats_str(const char *session_name, char **out_str)
 {
 	int count, nb_domains, domain_idx, channel_idx, session_idx, ret;
-	struct lttng_domain *domains;
-	struct lttng_channel *channels;
+	struct lttng_domain *domains = NULL;
+	struct lttng_channel *channels = NULL;
 	uint64_t discarded_events_total = 0, lost_packets_total = 0;
 	struct lttng_session *sessions = NULL;
 	const struct lttng_session *selected_session = NULL;
@@ -496,6 +496,8 @@ int get_session_stats_str(const char *session_name, char **out_str)
 			goto end;
 		}
 
+		free(channels);
+		channels = NULL;
 		count = lttng_list_channels(handle, &channels);
 		for (channel_idx = 0; channel_idx < count; channel_idx++) {
 			uint64_t discarded_events = 0, lost_packets = 0;
@@ -557,6 +559,8 @@ int get_session_stats_str(const char *session_name, char **out_str)
 	}
 end:
 	free(sessions);
+	free(channels);
+	free(domains);
 	return ret;
 }
 
