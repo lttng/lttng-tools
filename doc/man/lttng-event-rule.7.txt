@@ -730,7 +730,7 @@ As of LTTng{nbsp}{lttng_version}, not specifying this option is
 equivalent to specifying option:--name=++\'*\'++ (when it applies), but
 this default may change in the future.
 
-option:-x 'XNAME', option:--exclude='XNAME'::
+option:-x 'XNAME', option:--exclude-name='XNAME'::
     Only match events of which 'XNAME' does :not: match the full name of
     the LTTng user space tracepoint.
 +
