@@ -1101,8 +1101,8 @@ int handle_one_cmd(struct run_as_worker *worker)
 	ssize_t readlen, writelen;
 	struct run_as_ret sendret = {};
 	run_as_fct cmd;
-	uid_t prev_ruid;
-	gid_t prev_rgid;
+	const uid_t prev_ruid = getuid();
+	const gid_t prev_rgid = getgid();
 
 	/*
 	 * Stage 1: Receive run_as_data struct from the master.
@@ -1139,9 +1139,6 @@ int handle_one_cmd(struct run_as_worker *worker)
 		ret = -1;
 		goto end;
 	}
-
-	prev_ruid = getuid();
-	prev_rgid = getgid();
 
 	ret = demote_creds(prev_ruid, prev_rgid, data.uid, data.gid);
 	if (ret < 0) {
