@@ -10,8 +10,8 @@
 
 #ifndef LTTNG_DEPRECATED
 #if defined (__GNUC__) \
-	&& ((__GNUC_MAJOR__ == 4) && (__GNUC_MINOR__ >= 5)  \
-			|| __GNUC_MAJOR__ >= 5)
+	&& ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 5)  \
+			|| __GNUC__ >= 5)
 #define LTTNG_DEPRECATED(msg) __attribute__((deprecated(msg)))
 #else
 #define LTTNG_DEPRECATED(msg) __attribute__((deprecated))
