@@ -8,6 +8,7 @@
 #ifndef MSGPACK_LTTNG_CONFIG_H
 #define MSGPACK_LTTNG_CONFIG_H
 
+#include <limits.h>
 #include <common/compat/endian.h>
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
