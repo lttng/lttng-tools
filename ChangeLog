@@ -1,3 +1,17 @@
+2021-08-06 lttng-tools 2.12.5 (International Beer Day)
+	* Fix: runas: less-than-zero comparison of an unsigned value
+	* Fix: runas: supplementary groups are ignored on lttng save
+	* Fix: lttng: free sessions in cmd_destroy
+	* Fix: lttng: free domains and channels in get_session_stats_str
+	* Fix: rotation client example: leak of handle on error
+	* .gitreview: Set default branch to 'stable-2.12'
+	* tests: Move tap-driver.sh out of the autotools aux directory
+	* Fix: use of uninitialised bytes valgrind warning
+	* Fix: bump minimal urcu dependency to 0.11
+	* Fix: consumer: unbalanced RCU read-side lock on error
+	* Fix: tests: missing LOG_DRIVER and LOG_DRIVER_FLAGS
+	* Fix: list_lttng_agent_events: unbalanced RCU read-side lock on error
+
 2021-05-18 lttng-tools 2.12.4 (No Dirty Dishes Day)
 	* Fix: snapshot path have domain subdir duplicate "ust/ust" or "kernel/kernel"
 	* Fix: relayd: failure to read index entry or stream packet after clear
