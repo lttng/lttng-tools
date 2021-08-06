@@ -907,14 +907,15 @@ static int get_user_infos_from_uid(
 {
 	int ret;
 	char *buf = NULL;
-	size_t buf_size;
+	long raw_get_pw_buf_size;
+	size_t get_pw_buf_size;
 	struct passwd pwd;
 	struct passwd *result = NULL;
 
 	/* Fetch the max size for the temporary buffer. */
 	errno = 0;
-	buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (buf_size < 0) {
+	raw_get_pw_buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (raw_get_pw_buf_size < 0) {
 		if (errno != 0) {
 			PERROR("Failed to query _SC_GETPW_R_SIZE_MAX");
 			goto error;
@@ -923,16 +924,18 @@ static int get_user_infos_from_uid(
 		/* Limit is indeterminate. */
 		WARN("Failed to query _SC_GETPW_R_SIZE_MAX as it is "
 			"indeterminate; falling back to default buffer size");
-		buf_size = GETPW_BUFFER_FALLBACK_SIZE;
+		raw_get_pw_buf_size = GETPW_BUFFER_FALLBACK_SIZE;
 	}
 
-	buf = zmalloc(buf_size);
+	get_pw_buf_size = (size_t) raw_get_pw_buf_size;
+
+	buf = zmalloc(get_pw_buf_size);
 	if (buf == NULL) {
 		PERROR("Failed to allocate buffer to get password file entries");
 		goto error;
 	}
 
-	ret = getpwuid_r(uid, &pwd, buf, buf_size, &result);
+	ret = getpwuid_r(uid, &pwd, buf, get_pw_buf_size, &result);
 	if (ret < 0) {
 		PERROR("Failed to get user information for user:  uid = %d",
 				(int) uid);
