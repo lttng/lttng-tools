@@ -71,11 +71,6 @@ You may only use the `rotate` command when:
 * The selected recording session was created in normal mode or in
   network streaming mode (see man:lttng-create(1)).
 
-* No channel was created with a configured trace file count or size
-  limit (see the nloption:--tracefile-size and
-  nloption:--tracefile-count options of the man:lttng-enable-channel(1)
-  command).
-
 * LTTng is not currently performing an immediate rotation (this
   command).
 ====
