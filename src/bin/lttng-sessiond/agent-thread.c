@@ -387,7 +387,8 @@ static void *thread_agent_management(void *data)
 	if (reg_sock) {
 		uint16_t port;
 
-		assert(lttcomm_sock_get_port(reg_sock, &port) == 0);
+		ret = lttcomm_sock_get_port(reg_sock, &port);
+		assert(ret == 0);
 
 		ret = write_agent_port(port);
 		if (ret) {

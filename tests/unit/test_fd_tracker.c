@@ -394,8 +394,10 @@ void test_unsuspendable_close_untracked(void)
 
 	ret = pipe(unknown_fds);
 	assert(!ret);
-	assert(close(unknown_fds[0]) == 0);
-	assert(close(unknown_fds[1]) == 0);
+	ret = close(unknown_fds[0]);
+	assert(ret == 0);
+	ret = close(unknown_fds[1]);
+	assert(ret == 0);
 
 	ret = fd_tracker_open_unsuspendable_fd(tracker, &out_fd,
 			NULL, 1, noop_open, &stdout_fd);
