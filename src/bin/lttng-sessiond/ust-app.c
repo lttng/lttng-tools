@@ -1249,6 +1249,7 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 {
 	enum lttng_event_rule_generate_exclusions_status
 			generate_exclusion_status;
+	enum lttng_condition_status cond_status;
 	struct ust_app_event_notifier_rule *ua_event_notifier_rule;
 	struct lttng_condition *condition = NULL;
 	const struct lttng_event_rule *event_rule = NULL;
@@ -1269,9 +1270,9 @@ static struct ust_app_event_notifier_rule *alloc_ust_app_event_notifier_rule(
 	assert(lttng_condition_get_type(condition) ==
 			LTTNG_CONDITION_TYPE_EVENT_RULE_MATCHES);
 
-	assert(LTTNG_CONDITION_STATUS_OK ==
-			lttng_condition_event_rule_matches_get_rule(
-					condition, &event_rule));
+	cond_status = lttng_condition_event_rule_matches_get_rule(
+			condition, &event_rule);
+	assert(cond_status == LTTNG_CONDITION_STATUS_OK);
 	assert(event_rule);
 
 	ua_event_notifier_rule->error_counter_index =
