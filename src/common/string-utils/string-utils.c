@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "string-utils.h"
 #include "../macros.h"
@@ -369,4 +370,25 @@ size_t strutils_array_of_strings_len(char * const *array)
 	}
 
 	return count;
+}
+
+LTTNG_HIDDEN
+int strutils_append_str(char **s, const char *append)
+{
+	char *old = *s;
+	char *new;
+	size_t oldlen = (old == NULL) ? 0 : strlen(old);
+	size_t appendlen = strlen(append);
+
+	new = calloc(oldlen + appendlen + 1, 1);
+	if (!new) {
+		return -ENOMEM;
+	}
+	if (oldlen) {
+		strcpy(new, old);
+	}
+	strcat(new, append);
+	*s = new;
+	free(old);
+	return 0;
 }
